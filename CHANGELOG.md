@@ -11,6 +11,25 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.929D - 2026-10-21 - THE SIGNATURE IS NOT THE STORY
+
+- **RSS now publishes posts instead of every file in the media store.**
+  SMACKPRESS correctly uploads a longform post's cover, body photographs, and
+  optional signature to `snap_images`, but `rss.php` treated every published
+  media row as an independent post. The photoblogs.fyi collector then selected
+  the newest item per blog and day, so a reused signature graphic displaced the
+  actual story photograph across much of the feed.
+
+  The feed is now built from SnapSmack's post model: a longform post contributes
+  its featured photograph, an ordinary post contributes its declared cover, and
+  genuinely unowned legacy photographs remain standalone entries. Featured,
+  signature, and bucket media are excluded from the legacy path. No photographs
+  are deleted or rewritten. Older installations without the current post schema
+  retain the compatible image-only fallback.
+
+- Added an RSS post-model regression check covering longform covers, ordinary
+  covers, signatures, bucket media, and the unified renderer.
+
 ## 0.7.928D - 2026-10-21 - A MAXIMUM CANNOT SEE A STRAGGLER
 
 **Build tooling only.** No site change, no skin package. Nothing in this

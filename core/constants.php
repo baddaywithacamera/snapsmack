@@ -67,9 +67,9 @@ if (PHP_SAPI !== 'cli' && !defined('SNAPSMACK_IS_UPDATER')) {
 // UPGRADED installs even where this constants.php is frozen. SECAUDIT 048
 // follow-up (2026-08-15) — do not re-inline header() calls here.
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.928D');
-define('SNAPSMACK_VERSION_SHORT', '0.7.928D');
-define("SNAPSMACK_VERSION_CODENAME", "YES MEANS YES");
+define('SNAPSMACK_VERSION', 'Alpha 0.7.929D');
+define('SNAPSMACK_VERSION_SHORT', '0.7.929D');
+define("SNAPSMACK_VERSION_CODENAME", "THE SIGNATURE IS NOT THE STORY");
 
 // --- THUMBNAIL DIMENSIONS (single source of truth) ---
 // Every display-thumbnail generator reads these so the a_ (aspect) and t_
