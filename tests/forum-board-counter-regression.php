@@ -86,6 +86,16 @@ forum_counter_check(
     'The recount script contains a destructive statement. It may only write the two counters.'
 );
 
+// 5. And the forum server must not ride along in the CMS release zip. It is
+//    a separate deployable: its files belong on the host that serves
+//    snapsmack.ca/api/forum/, not on all 19 sites at a path nothing reads.
+$builder = (string)file_get_contents($root . '/tools/_build/build-release.php');
+forum_counter_check(
+    str_contains($builder, "str_starts_with(\$file, 'projects/')"),
+    'build-release.php no longer excludes projects/ from the release zip, so the forum server '
+    . 'source would be copied onto every site in the fleet.'
+);
+
 fwrite(STDOUT, "Forum board-counter regression passed.\n");
 
 // ===== SNAPSMACK EOF =====

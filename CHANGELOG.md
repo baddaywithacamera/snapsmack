@@ -49,6 +49,15 @@ files have to go up, and the SQL has to be run once.
   commit gate without touching the network. Against the shipped handler it
   fails on both of the delete assertions.
 
+- **And the forum server would have shipped to all 19 sites.**
+  `build-release.php` includes every changed file whose extension is on its
+  allowlist, and `projects/` was never excluded. That had not bitten because
+  every recent change under `projects/` was a `.md` or `.pdf` the extension
+  gate already dropped — this release is the first with a `.php` and a `.sql`
+  in there. The zip would have copied the forum API's source onto every site,
+  at a path nothing reads. `projects/` holds separate deployables that go to
+  their own hosts by their own route, so the builder now skips it.
+
 Not addressed: there is no endpoint to recount a board, so repair needs
 database access. A SQL file Sean can run as root was the cheaper answer than a
 new authenticated admin route for something that should now stop happening.
