@@ -292,6 +292,8 @@ a { color: inherit; }
    Naming both classes raises specificity so the owner's Canvas Width control
    is honoured again. Measured after: 1426px, 89% of the viewport, centred. */
 .scroll-wall.ss-masonry,
+.scroll-wall.ss-scroll-wall,
+.scroll-wall.ss-asymmetric-wall,
 .scroll-wall.ss-square-wall {
     width: var(--scroll-canvas-pct, 90%);
     margin: 0 auto;
@@ -331,6 +333,21 @@ a { color: inherit; }
     position: relative;
     display: block;
     width: 100%;
+}
+.ss-asymmetric-wall {
+    --ss-masonry-min: 160px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--ss-masonry-min), 1fr));
+    grid-auto-flow: dense;
+    grid-auto-rows: 8px;
+    gap: var(--ss-gap, 6px);
+    width: 100%;
+}
+.ss-asymmetric-wall .ss-masonry-item {
+    grid-column: span var(--ss-cols, 1);
+    grid-row: span var(--ss-rows, 1);
+    min-width: 0;
+    margin: 0;
 }
 .ss-square-wall {
     --ss-square-cols: 4;
