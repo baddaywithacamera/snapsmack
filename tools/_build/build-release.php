@@ -230,6 +230,20 @@ foreach ($files_to_include as $file) {
     // builder explicitly ships migration files; protected_paths.json, the
     // htaccess-template and the canonical schema are runtime non-allowlist files
     // that must pass.
+    // projects/ is not part of a SnapSmack site. It holds separate deployables
+    // -- the forum server, the snapsmack.ca website -- that go to their own
+    // hosts by their own route. Shipping them in the CMS zip would copy the
+    // forum API's source onto all 19 sites, at a path nothing reads, which is
+    // dead weight at best and source disclosure at worst. It had not bitten
+    // because every recent projects/ change was a .md or .pdf the extension
+    // gate already dropped; 0.7.931D is the first with a .php and a .sql in
+    // there, which is how this surfaced.
+    if (str_starts_with($file, 'projects/')) {
+        echo "  SKIP  {$file} (separate deployable, not part of a site)
+";
+        continue;
+    }
+
     $b_ext   = strtolower(pathinfo($file, PATHINFO_EXTENSION));
     $b_keep  = ['php','css','js','txt','png','jpg','jpeg','gif','svg','ico','webp','sql'];
     $b_force = ['protected_paths.json', 'core/htaccess-template', 'database/schema/snapsmack_canonical.sql'];
