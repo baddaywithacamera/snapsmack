@@ -11,6 +11,22 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.933D - 2026-10-22 - THE MOSAIC WAS ALREADY THERE
+
+- Restores SCROLL's pre-October Asymmetric presentation: six-photograph
+  `.snap-mosaic` editorial blocks composed by the original shared MOSAIC
+  engine. This removes the replacement dense grid that made photographs
+  smaller and introduced unintended seams.
+
+- SCROLL 0.1.71 owns only the mosaic markup and presentation settings. The
+  executable compositor and incremental-feed behavior remain reviewed CMS
+  assets and are requested through the skin manifest.
+
+- The shared MOSAIC feed now understands ordinary SnapSmack page URLs as well
+  as its original JSON endpoint, so the restored presentation continues across
+  an infinite archive without returning database or network authority to the
+  skin.
+
 ## 0.7.932D - 2026-10-22 - THE WALL REFUSES COLUMNS
 
 - **SCROLL's Asymmetric choice is asymmetric again.** The control continued to

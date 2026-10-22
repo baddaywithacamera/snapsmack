@@ -35,10 +35,12 @@
         "smack-lightbox",
         "smack-columns",
         "smack-rows",
-        "smack-masonry"
+        "smack-mosaic",
+        "asset:public:ss-engine-mosaic-feed"
     ],
     "require_styles": [
-        "asset:public:ss-engine-social-dock"
+        "asset:public:ss-engine-social-dock",
+        "asset:public:page-eatmeclaude"
     ],
     "community_comments": true,
     "community_likes": true,
@@ -331,7 +333,7 @@
             "min": "2",
             "max": "6",
             "step": "1",
-            "selector": ".ss-masonry, .ss-scroll-wall, .ss-asymmetric-wall",
+            "selector": ".ss-masonry, .ss-scroll-wall",
             "property": "--ss-cols",
             "unit": ""
         },
@@ -376,7 +378,7 @@
             "default": "0",
             "min": "0",
             "max": "25",
-            "selector": ".ss-masonry, .ss-scroll-wall, .ss-asymmetric-wall",
+            "selector": ".eatmeclaude-feed",
             "property": "--ss-gap",
             "unit": "px"
         },

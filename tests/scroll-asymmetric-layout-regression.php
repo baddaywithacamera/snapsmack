@@ -10,7 +10,7 @@ require_once dirname(__DIR__) . '/core/skin-view-contract.php';
 $root = dirname(__DIR__);
 $skin = $root . '/skins/scroll';
 $manifest = json_decode((string) file_get_contents($skin . '/manifest.json'), true);
-foreach (['smack-columns', 'smack-rows', 'smack-masonry'] as $handle) {
+foreach (['smack-columns', 'smack-rows', 'smack-mosaic', 'asset:public:ss-engine-mosaic-feed'] as $handle) {
     if (!in_array($handle, $manifest['require_scripts'] ?? [], true)) {
         throw new RuntimeException("SCROLL no longer loads {$handle}.");
     }
@@ -30,7 +30,7 @@ $response = [
         'presentation_width' => 1800, 'presentation_height' => 1200,
     ]],
 ];
-$classes = ['columns' => 'ss-masonry', 'rows' => 'ss-scroll-wall', 'square' => 'ss-square-wall', 'mosaic' => 'ss-asymmetric-wall'];
+$classes = ['columns' => 'ss-masonry', 'rows' => 'ss-scroll-wall', 'square' => 'ss-square-wall'];
 foreach ($classes as $choice => $expected) {
     $site = $baseSite;
     $site['skin_presentation']['options']['scroll_wall_layout'] = $choice;
@@ -42,22 +42,21 @@ foreach ($classes as $choice => $expected) {
         throw new RuntimeException("SCROLL {$choice} selection does not reach {$expected}.");
     }
 }
-
-$engine = (string) file_get_contents($root . '/assets/js/ss-engine-masonry.js');
-foreach (['.ss-asymmetric-wall', 'grid.__ssMasonryRun', 'scroll-wall-sentinel', "url.searchParams.set('page'", 'relayout(grid)'] as $hook) {
-    if (!str_contains($engine, $hook)) throw new RuntimeException("Asymmetric engine lost {$hook}.");
-}
-$css = (string) file_get_contents($skin . '/style.css');
-foreach (['.ss-asymmetric-wall {', 'grid-auto-flow: dense', 'grid-column: span var(--ss-cols, 1)', 'grid-row: span var(--ss-rows, 1)'] as $rule) {
-    if (!str_contains($css, $rule)) throw new RuntimeException("SCROLL asymmetric CSS lost {$rule}.");
-}
-if (!str_contains($css, 'var(--ss-cols, 3)')) {
-    throw new RuntimeException('SCROLL asymmetric sizing is disconnected from the Tile Size control.');
-}
-$manifestRaw = (string) file_get_contents($skin . '/manifest.json');
-if (substr_count($manifestRaw, '.ss-masonry, .ss-scroll-wall, .ss-asymmetric-wall') < 2) {
-    throw new RuntimeException('SCROLL Tile Size and Gap controls do not both target the asymmetric wall.');
+$site = $baseSite;
+$site['skin_presentation']['options']['scroll_wall_layout'] = 'mosaic';
+$site['skin_presentation']['options']['scroll_mosaic_gap'] = '0';
+$view = snapsmack_build_skin_view($response, $site);
+ob_start();
+$ok = snapsmack_render_strict_skin_template($skin, 'layout.php', $view);
+$html = (string) ob_get_clean();
+foreach (['eatmeclaude-feed', 'snap-mosaic eatmeclaude-block', 'data-mosaic=', 'eatmeclaude-sentinel'] as $hook) {
+    if (!$ok || !str_contains($html, $hook)) throw new RuntimeException("SCROLL lost the September MOSAIC presentation hook {$hook}.");
 }
 
-echo "SCROLL asymmetric masonry and endless append contract: ok\n";
+$engine = (string) file_get_contents($root . '/assets/js/ss-engine-mosaic-feed.js');
+foreach (['data-next-url', 'DOMParser', "querySelectorAll('#eatmeclaude-feed .snap-mosaic[data-mosaic]')", 'prepare(block)'] as $hook) {
+    if (!str_contains($engine, $hook)) throw new RuntimeException("MOSAIC feed engine lost {$hook}.");
+}
+
+echo "SCROLL September MOSAIC presentation and CMS feed contract: ok\n";
 // ===== SNAPSMACK EOF =====

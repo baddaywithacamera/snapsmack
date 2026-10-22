@@ -17,6 +17,7 @@
     if (!feed || !sentinel || !window.SnapMosaic) return;
 
     var next = parseInt(sentinel.getAttribute('data-next') || '1', 10);
+    var nextUrl = sentinel.getAttribute('data-next-url') || '';
     var hasMore = sentinel.getAttribute('data-has-more') === '1';
     var cutoff = sentinel.getAttribute('data-cutoff') || '';
     var gap = parseInt(feed.getAttribute('data-gap') || '6', 10);
@@ -44,6 +45,40 @@
         if (!hasMore || loading) return;
         loading = true;
         if (status) status.textContent = 'Loading another mosaic…';
+
+        if (nextUrl) {
+            fetch(nextUrl, { credentials: 'same-origin' })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    return response.text();
+                })
+                .then(function (html) {
+                    var doc = new DOMParser().parseFromString(html, 'text/html');
+                    var blocks = doc.querySelectorAll('#eatmeclaude-feed .snap-mosaic[data-mosaic]');
+                    if (!blocks.length) {
+                        stop('Every photograph is here.');
+                        return;
+                    }
+                    Array.prototype.forEach.call(blocks, function (source) {
+                        var block = source.cloneNode(true);
+                        feed.appendChild(block);
+                        prepare(block);
+                    });
+                    var nextSentinel = doc.getElementById('eatmeclaude-sentinel');
+                    nextUrl = nextSentinel ? (nextSentinel.getAttribute('data-next-url') || '') : '';
+                    hasMore = nextUrl !== '';
+                    if (!hasMore) stop('Every photograph is here.');
+                    else if (status) status.textContent = '';
+                })
+                .catch(function () {
+                    if (status) status.textContent = 'Could not load the next mosaic. Scroll to retry.';
+                })
+                .then(function () {
+                    loading = false;
+                    if (hasMore && sentinelStillNear()) loadNext();
+                });
+            return;
+        }
 
         var url = 'eatmeclaude.php?format=json&block=' + encodeURIComponent(next)
             + '&cutoff=' + encodeURIComponent(cutoff);
