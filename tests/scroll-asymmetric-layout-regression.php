@@ -51,6 +51,13 @@ $css = (string) file_get_contents($skin . '/style.css');
 foreach (['.ss-asymmetric-wall {', 'grid-auto-flow: dense', 'grid-column: span var(--ss-cols, 1)', 'grid-row: span var(--ss-rows, 1)'] as $rule) {
     if (!str_contains($css, $rule)) throw new RuntimeException("SCROLL asymmetric CSS lost {$rule}.");
 }
+if (!str_contains($css, 'var(--ss-cols, 3)')) {
+    throw new RuntimeException('SCROLL asymmetric sizing is disconnected from the Tile Size control.');
+}
+$manifestRaw = (string) file_get_contents($skin . '/manifest.json');
+if (substr_count($manifestRaw, '.ss-masonry, .ss-scroll-wall, .ss-asymmetric-wall') < 2) {
+    throw new RuntimeException('SCROLL Tile Size and Gap controls do not both target the asymmetric wall.');
+}
 
 echo "SCROLL asymmetric masonry and endless append contract: ok\n";
 // ===== SNAPSMACK EOF =====

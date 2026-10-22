@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "SCROLL",
-  "version": "0.1.70",
+  "version": "0.1.71",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and selectable native-shape photo walls: columns, rows, square, or asymmetric dense-pack masonry. Built for photographs that refuse to show the whole damn car.",
     "status": "stable",
@@ -331,7 +331,7 @@
             "min": "2",
             "max": "6",
             "step": "1",
-            "selector": ".ss-masonry, .ss-scroll-wall",
+            "selector": ".ss-masonry, .ss-scroll-wall, .ss-asymmetric-wall",
             "property": "--ss-cols",
             "unit": ""
         },
@@ -373,10 +373,10 @@
             "section": "PHOTO WALL",
             "type": "range",
             "label": "Space Between Tiles (px)",
-            "default": "6",
-            "min": "5",
+            "default": "0",
+            "min": "0",
             "max": "25",
-            "selector": ".ss-masonry, .ss-scroll-wall",
+            "selector": ".ss-masonry, .ss-scroll-wall, .ss-asymmetric-wall",
             "property": "--ss-gap",
             "unit": "px"
         },
