@@ -11,6 +11,48 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.931D - 2026-10-22 - COUNTING WHAT IS NOT THERE
+
+**Forum server only.** `projects/forum-server/` is a separate deployable: it is
+uploaded to the host that serves `snapsmack.ca/api/forum/`, NOT shipped with
+the CMS release. Deploying 931D to the fleet does nothing for this; the API
+files have to go up, and the SQL has to be run once.
+
+- **A board counted replies to a thread that had been deleted.**
+  foundtextures.ca showed *Getting Started — 0 THREADS / 1 REPLY*. Sean saw it
+  on the page and asked. A count of something that is not there.
+
+  Deleting a thread decremented the board's `thread_count` and left its
+  `reply_count` alone, so the board went on counting replies nobody could
+  reach. The handler could not have corrected itself even in principle: its
+  `SELECT` fetched `id, install_id, category_id` and never `reply_count`, so
+  the number it needed was not in the room. The **move** handler twenty lines
+  earlier has always adjusted both, which is how we know the intent.
+
+  Delete now fetches the count, subtracts it from the board in the same
+  statement as the thread, and does both inside a transaction — as move does.
+
+- **Closing that opened a second hole, so it is closed here too.** Once a
+  deleted thread's replies are off the board, deleting one of those replies
+  individually would subtract the same reply a second time and make the board
+  under-report. The reply handler now reads the parent's `is_deleted` and only
+  touches the board when the thread is still live.
+
+- **`forum-recount-boards.sql`** repairs counters that have already drifted,
+  because fixing a path forward does not correct a number that is already
+  wrong. It derives both counters from the rows that exist, excludes
+  soft-deleted threads and replies, is safe to run twice, and prints the boards
+  afterwards. It contains no `DROP`, `TRUNCATE` or `DELETE`, and the test
+  enforces that.
+
+- `forum-board-counter-regression` pins all three offline, so it runs in the
+  commit gate without touching the network. Against the shipped handler it
+  fails on both of the delete assertions.
+
+Not addressed: there is no endpoint to recount a board, so repair needs
+database access. A SQL file Sean can run as root was the cheaper answer than a
+new authenticated admin route for something that should now stop happening.
+
 ## 0.7.930D - 2026-10-21 - THE REHEARSAL IS NOT THE SHOW
 
 - **Unattached re-uploads no longer leak into RSS.** The 0.7.929D post-model

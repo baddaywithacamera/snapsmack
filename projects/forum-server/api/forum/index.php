@@ -1112,8 +1112,13 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'threads' && ct
     $thread_id = (int)$parts[1];
     $pdo       = get_pdo();
 
+    // reply_count comes back because the board's counter has to lose this
+    // thread's replies as well as the thread. It did not, and the board kept
+    // counting replies to a thread nobody can reach: Getting Started showed
+    // "0 THREADS / 1 REPLY" on foundtextures.ca, which is how this was found.
+    // The move path a few lines up has always done both; delete did half.
     $stmt = $pdo->prepare(
-        "SELECT id, install_id, category_id FROM ss_forum_threads WHERE id = ? AND is_deleted = 0 LIMIT 1"
+        "SELECT id, install_id, category_id, reply_count FROM ss_forum_threads WHERE id = ? AND is_deleted = 0 LIMIT 1"
     );
     $stmt->execute([$thread_id]);
     $thread = $stmt->fetch();
@@ -1123,10 +1128,21 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'threads' && ct
         api_error(403, 'FORBIDDEN', 'You can only delete your own threads.');
     }
 
-    $pdo->prepare("UPDATE ss_forum_threads SET is_deleted = 1 WHERE id = ?")->execute([$thread_id]);
-    $pdo->prepare(
-        "UPDATE ss_forum_categories SET thread_count = GREATEST(0, thread_count - 1) WHERE id = ?"
-    )->execute([$thread['category_id']]);
+    $replies = (int)($thread['reply_count'] ?? 0);
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare("UPDATE ss_forum_threads SET is_deleted = 1 WHERE id = ?")->execute([$thread_id]);
+        $pdo->prepare(
+            "UPDATE ss_forum_categories
+                SET thread_count = GREATEST(0, thread_count - 1),
+                    reply_count  = GREATEST(0, reply_count - ?)
+              WHERE id = ?"
+        )->execute([$replies, $thread['category_id']]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
 
     respond(['status' => 'deleted']);
 }
@@ -1256,7 +1272,7 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'replies' && ct
 
     $pdo->prepare("UPDATE ss_forum_replies SET is_deleted = 1 WHERE id = ?")->execute([$reply_id]);
 
-    $t_stmt = $pdo->prepare("SELECT category_id FROM ss_forum_threads WHERE id = ? LIMIT 1");
+    $t_stmt = $pdo->prepare("SELECT category_id, is_deleted FROM ss_forum_threads WHERE id = ? LIMIT 1");
     $t_stmt->execute([$reply['thread_id']]);
     $parent = $t_stmt->fetch();
 
@@ -1264,7 +1280,10 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'replies' && ct
         "UPDATE ss_forum_threads SET reply_count = GREATEST(0, reply_count - 1) WHERE id = ?"
     )->execute([$reply['thread_id']]);
 
-    if ($parent) {
+    // Only when the thread is still live. Deleting the thread already took all
+    // of its replies off the board's counter, so doing it again here would
+    // subtract the same reply twice and make the board under-report.
+    if ($parent && !(int)($parent['is_deleted'] ?? 0)) {
         $pdo->prepare(
             "UPDATE ss_forum_categories SET reply_count = GREATEST(0, reply_count - 1) WHERE id = ?"
         )->execute([$parent['category_id']]);
