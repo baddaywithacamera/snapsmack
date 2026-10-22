@@ -176,6 +176,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Oct 21</span><a href="#a062">Upstream PHP Emergency &mdash; SnapSmack Infrastructure Patched and Verified</a></li>
                 <li><span class="idx-date">Oct 6</span><a href="#a060">Skin-Boundary Migration Integrity &mdash; Independent Findings and Ratcheted Closeout</a></li>
                 <li><span class="idx-date">Oct 6</span><a href="#a059">Skin Execution Boundary &mdash; Authority Removed, Presentation Follow-Up Named</a></li>
                 <li><span class="idx-date">Sep 18</span><a href="#a058">Codebase Sweep &mdash; A Photo Editor That Mailed Its Key to Google, and a Restore That Never Looked Before It Unpacked</a></li>
@@ -240,6 +241,15 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a062">
+                <div class="post-meta"><span class="post-date">October 21, 2026</span><span class="post-tag">Upstream Emergency Closed</span></div>
+                <h2>PHP2Shell &mdash; The Infrastructure SnapSmack Relies On Was Patched and Checked</h2>
+                <p>This was not a vulnerability or defect introduced by SnapSmack. CVE-2026-109618 and CVE-2026-109619 were critical flaws in the upstream PHP runtime, capable of reaching unauthenticated remote code execution before application code could defend itself. That meant no CMS patch, authentication rule, or plugin update could close the exposure: the runtime beneath SnapSmack had to be upgraded.</p>
+                <p>The emergency response covered the infrastructure SnapSmack relies upon, including production sites, SMACK CENTRAL, forums, the skin registry and repository, directory services, and the Pixelfed applications. CT101 through CT106 were upgraded to PHP 8.4.27; CT107 and CT108 were rebuilt on PHP 8.5.12. Apache and application services were validated, both Pixelfed routes returned HTTP 200, and CT110 was confirmed to be MariaDB-only and outside PHP scope.</p>
+                <p>Cloudflare&rsquo;s managed php2shell protections were confirmed active as defense in depth; patched PHP remained the primary fix. A thirty-installation integrity sweep found twenty-nine clean sites and one already-known deliberate hotfix, with no unexplained modifications or evidence of exploitation. The audit closes the infrastructure event without mislabelling an upstream runtime failure as a SnapSmack product flaw.</p>
+                <a class="report-link" href="secaudits/2026-10-21-062-upstream-php-emergency-infrastructure-assurance.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a060">
                 <div class="post-meta"><span class="post-date">October 5, 2026 &mdash; closed October 6</span><span class="post-tag">Independent Findings Closed &mdash; Deferred Debt Named</span></div>

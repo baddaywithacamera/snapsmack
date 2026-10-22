@@ -70,6 +70,16 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         'div' => ['class', 'id', 'data-mosaic', 'data-gap', 'data-emphasis', 'data-template'],
         'span' => ['class', 'data-cd', 'data-cd-caption', 'data-cd-clock', 'aria-hidden'],
         'section' => ['class', 'id', 'aria-label'],
+        // The photoblogs.fyi directory shortcode emits a searchable semantic
+        // table. These elements carry presentation metadata and ordinary form
+        // values only; scripts, event handlers and inline style remain banned.
+        'header' => ['class'],
+        'form' => ['class', 'method', 'action'],
+        'input' => ['class', 'type', 'name', 'value', 'placeholder', 'aria-label'],
+        'button' => ['class', 'type'],
+        'table' => ['class'], 'thead' => ['class'], 'tbody' => ['class'],
+        'tr' => ['class'], 'th' => ['class', 'scope'], 'td' => ['class'],
+        'small' => ['class'],
         'time' => ['class', 'datetime', 'data-cd-date'],
         'figure' => ['class'], 'figcaption' => ['class'],
         // Frames are accepted only for the CMS-generated YouTube player. The
@@ -138,6 +148,22 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
             }
             $node->setAttribute('loading', 'lazy');
             $node->setAttribute('allowfullscreen', '');
+        }
+        if ($tag === 'form') {
+            $method = strtolower(trim((string)$node->getAttribute('method')));
+            if (!in_array($method, ['get', 'post'], true)) $node->setAttribute('method', 'get');
+            $action = trim((string)$node->getAttribute('action'));
+            if ($action === '' || !str_starts_with($action, '/') || str_starts_with($action, '//')) {
+                $node->setAttribute('action', '/');
+            }
+        }
+        if ($tag === 'input') {
+            $type = strtolower(trim((string)$node->getAttribute('type')));
+            if (!in_array($type, ['search', 'hidden'], true)) $node->setAttribute('type', 'search');
+        }
+        if ($tag === 'button') {
+            $type = strtolower(trim((string)$node->getAttribute('type')));
+            if (!in_array($type, ['submit', 'button'], true)) $node->setAttribute('type', 'submit');
         }
         if ($tag === 'a' && $node->hasAttribute('href')) $node->setAttribute('rel', 'noopener noreferrer');
         if ($tag === 'img') $node->setAttribute('loading', 'lazy');

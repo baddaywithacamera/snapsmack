@@ -63,6 +63,27 @@ foreach (['<ol class="pfd-steps">', '<li class="pfd-step">'] as $safe) {
 foreach (['style=', 'onclick='] as $unsafe) {
     if (str_contains($styledList, $unsafe)) throw new RuntimeException("Trusted list HTML retained {$unsafe}");
 }
+$directory = (string)snapsmack_trusted_html(
+    '<header class="pbf-directory-head"><h1>Directory</h1></header>'
+    . '<form class="pbf-directory-controls" method="get" action="/page.php" onsubmit="steal()">'
+    . '<input type="hidden" name="slug" value="directory"><input type="search" name="q" placeholder="Search" aria-label="Search the directory">'
+    . '<button>Search</button></form>'
+    . '<table class="pbf-directory-table"><thead><tr><th scope="col">Name</th></tr></thead>'
+    . '<tbody><tr><th scope="row"><a href="https://example.test">Example</a><small>example.test</small></th></tr></tbody></table>'
+);
+foreach (['<header class="pbf-directory-head">', '<form class="pbf-directory-controls" method="get" action="/page.php">',
+          '<input type="hidden" name="slug" value="directory">', '<input type="search" name="q" placeholder="Search" aria-label="Search the directory">',
+          '<button type="submit">Search</button>', '<table class="pbf-directory-table">', '<thead>', '<tbody>', '<tr>',
+          '<th scope="col">', '<th scope="row">', '<small>example.test</small>'] as $safe) {
+    if (!str_contains($directory, $safe)) throw new RuntimeException("Trusted HTML lost directory markup: {$safe}");
+}
+if (str_contains($directory, 'onsubmit=')) throw new RuntimeException('Trusted directory HTML retained an event handler.');
+$unsafeDirectory = (string)snapsmack_trusted_html(
+    '<form method="delete" action="https://evil.test/steal"><input type="file" name="payload"><button type="reset">Go</button></form>'
+);
+foreach (['method="get"', 'action="/"', 'type="search"', 'type="submit"'] as $safeFallback) {
+    if (!str_contains($unsafeDirectory, $safeFallback)) throw new RuntimeException("Directory sanitizer missed safe fallback: {$safeFallback}");
+}
 $mosaic = (string)snapsmack_trusted_html(
     '<div class="snap-mosaic" data-mosaic="[]" data-gap="4" data-emphasis="landscape" data-template="one-left" onclick="steal()"></div>'
 );
