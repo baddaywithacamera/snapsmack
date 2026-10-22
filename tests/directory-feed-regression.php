@@ -8,6 +8,7 @@ $api = file_get_contents($root . '/directory-api.php');
 $payload = file_get_contents($root . '/core/photoblogs-directory.php');
 $rss = file_get_contents($root . '/rss.php');
 $directory_view = file_get_contents($root . '/core/photoblogs-directory-view.php');
+$htaccess = file_get_contents($root . '/core/htaccess-template');
 $fail = [];
 $expect = function (bool $ok, string $message) use (&$fail): void { if (!$ok) $fail[] = $message; };
 
@@ -26,7 +27,9 @@ $expect(str_contains($rss, 'snapsmack:postCount'), 'member RSS must advertise th
 $expect(str_contains($cron, "local-name()=\"postCount\""), 'directory poller must read the published-post count');
 $expect(str_contains($directory_view, 'pbf-directory-table'), 'directory must render a compact semantic table');
 $expect(str_contains($cron, "feed_status=IF(feed_failures+1>=?,'dead','error')"), 'poller must age repeated failures into dead state');
-$expect(str_contains($feed, '/page.php?slug=feed'), 'legacy feed route must redirect to the skinned CMS page');
+$expect(str_contains($feed, "\$_GET['name'] = 'feed'"), 'clean Feed route must render the skinned CMS page without a redirect loop');
+$expect(str_contains($htaccess, 'RewriteRule ^feed$ feed.php [L,QSA]'), 'clean Feed route must open the skinned CMS page');
+$expect(str_contains($htaccess, 'RewriteRule ^rss$ rss.php [L,QSA]'), 'clean RSS route must remain the machine-readable feed');
 $expect(str_contains($shortcode_feed, "\$r['post_url']"), 'feed images must link to RSS post permalinks');
 $expect(str_contains($shortcode_feed, 'FROM snap_directory_feed_items f'), 'CMS feed shortcode must read the current directory RSS cache');
 $expect(str_contains($shortcode_feed, "l.state = 'active' AND l.feed_status <> 'dead'"), 'CMS feed shortcode must exclude inactive and dead blogs');
