@@ -11,6 +11,18 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.930D - 2026-10-21 - THE REHEARSAL IS NOT THE SHOW
+
+- **Unattached re-uploads no longer leak into RSS.** The 0.7.929D post-model
+  correction exposed a second migration edge case on baddaywithacamera.ca:
+  interrupted or repeated SMACKPRESS imports had uploaded support files before
+  the post association was saved. Those rows were technically unowned legacy
+  photographs, so the compatibility path still admitted them. The legacy path
+  now rejects any published checksum that occurs more than once. This removes
+  repeated signatures and abandoned retry media without deleting a file, while
+  preserving genuinely standalone photographs and all properly associated post
+  covers.
+
 ## 0.7.929D - 2026-10-21 - THE SIGNATURE IS NOT THE STORY
 
 - **RSS now publishes posts instead of every file in the media store.**
