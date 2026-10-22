@@ -7,6 +7,7 @@ $checks = [
     'JOIN snap_post_images pi' => 'ordinary post covers remain in RSS',
     'p.signature_image_id=i.id' => 'signature assets are excluded from standalone photos',
     'FROM snap_bucket_items b WHERE b.image_id=i.id' => 'bucket assets are excluded from standalone photos',
+    'duplicate_media.img_checksum=i.img_checksum' => 're-uploaded support media is excluded from legacy photos',
     'foreach ($rss_rows as $row)' => 'the renderer consumes the unified post stream',
 ];
 foreach ($checks as $needle => $message) {

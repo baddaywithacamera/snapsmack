@@ -60,6 +60,12 @@ $rss_stream_sql = "
        AND NOT EXISTS (SELECT 1 FROM snap_posts p
                         WHERE p.featured_image_id=i.id OR p.signature_image_id=i.id)
        AND NOT EXISTS (SELECT 1 FROM snap_bucket_items b WHERE b.image_id=i.id)
+       AND NOT EXISTS (SELECT 1 FROM snap_images duplicate_media
+                        WHERE duplicate_media.id<>i.id
+                          AND duplicate_media.img_status='published'
+                          AND duplicate_media.img_checksum IS NOT NULL
+                          AND duplicate_media.img_checksum<>''
+                          AND duplicate_media.img_checksum=i.img_checksum)
 ";
 
 $post_count = 0;
