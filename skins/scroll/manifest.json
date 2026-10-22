@@ -1,9 +1,9 @@
 {
     "schema_version": 2,
     "name": "SCROLL",
-  "version": "0.1.69",
+  "version": "0.1.70",
     "author": "Sean McCormick, Claude, OpenAI Codex",
-    "description": "A solo photoblog skin with a typographic masthead and a four-column photo wall that runs every picture at its native shape — portraits stand tallest. Built for photographs that refuse to show the whole damn car.",
+    "description": "A solo photoblog skin with a typographic masthead and selectable native-shape photo walls: columns, rows, square, or asymmetric dense-pack masonry. Built for photographs that refuse to show the whole damn car.",
     "status": "stable",
     "features": {
         "supports_wall": false,
@@ -33,7 +33,9 @@
         "smack-grid-nav",
         "smack-grid-lightbox",
         "smack-lightbox",
-        "smack-columns"
+        "smack-columns",
+        "smack-rows",
+        "smack-masonry"
     ],
     "require_styles": [
         "asset:public:ss-engine-social-dock"
