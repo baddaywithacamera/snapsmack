@@ -132,7 +132,12 @@ if (!function_exists('sc_download_to_file')) {
 
 if (!function_exists('sc_github_get')) {
     function sc_github_get(string $endpoint): array|false {
-        $headers = ['Accept: application/vnd.github.v3+json', 'User-Agent: SnapSmack-SC/0.7.9c'];
+        $headers = [
+            'Accept: application/vnd.github.v3+json',
+            'User-Agent: SnapSmack-SC/0.7.9c',
+            'Cache-Control: no-cache',
+            'Pragma: no-cache',
+        ];
         if (SNAPSMACK_GITHUB_TOKEN) $headers[] = 'Authorization: token ' . SNAPSMACK_GITHUB_TOKEN;
         $body = sc_http_raw('https://api.github.com/' . ltrim($endpoint, '/'), $headers, 15);
         if ($body === false) return false;
@@ -266,7 +271,8 @@ function sc_extract_one_skin(string $ref, string $slug): array {
                 $size = (int)($entry['size'] ?? 0);
                 if (++$count > 500 || ($bytes += max(0, $size)) > 50 * 1024 * 1024) return false;
                 $url = (string)($entry['download_url'] ?? '');
-                $body = $url !== '' ? sc_http_raw($url, [], 30) : false;
+                $raw_headers = ['Cache-Control: no-cache', 'Pragma: no-cache'];
+                $body = $url !== '' ? sc_http_raw($url, $raw_headers, 30) : false;
                 if ($body === false || file_put_contents($dest . '/' . $name, $body) === false) return false;
             }
         }
