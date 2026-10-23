@@ -11,6 +11,34 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.936D - 2026-10-22 - ONE GREY
+
+- **The inline-CSS gate was counting the exception, not the offence.** It read
+  27 for weeks and nobody could reduce it, because the 27 were never
+  violations. The check matched the *opening* of any `style=` attribute and
+  never looked inside, so it could not tell `style="color:red"` from a
+  per-photograph frame colour written by PHP. Measured on 23 Oct: 28 matches,
+  **28 dynamic, 0 static.**
+
+  Sean's rule is *"no static `style=` ever; dynamic PHP styles the only
+  exception"* — so the gate was counting the exception. That is why the number
+  could only ever be carried and never paid down, and why acting on it would
+  have been worse than ignoring it: "clear all 28" means deleting the frame
+  colour an owner picked for a single photograph, to satisfy a miscount.
+
+  It now counts only attributes with no PHP in them. The real figure is **0**,
+  the budget is **0**, and the next genuine hard-coded style fails the build on
+  its first commit instead of hiding among 28 permitted ones. Verified by
+  planting `style="color:red"` in a skin: caught, named, and the file reported.
+
+  This also clears 0.7.933D of a charge I laid twice in the Brain Trust.
+  `--eatmeclaude-gap` is a dynamic custom property, the same shape as the other
+  27, and never broke the rule. The gate did. Agreed with Codex before touching
+  a shared file.
+
+  The gate had been red since 933D, and 933D, 934D and 935D all shipped with it
+  failing — which is what a number nobody can act on does to a team.
+
 - **The System Dashboard now tells the truth about RSS scheduling.** The old
   CRON STATUS card asked only whether the web-server user had a local crontab,
   then declared RSS unavailable even while the authenticated fleet driver was
@@ -22,7 +50,6 @@
   may still register local cron safely; the existing heartbeat gate makes local
   cron primary and the hub fallback.
 
-## 0.7.936D - 2026-10-22 - ONE GREY
 
 **Needs a CMS deploy and 1 skin package:** 50 SHADES 1.7.6.
 
