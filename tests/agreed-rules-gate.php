@@ -37,11 +37,31 @@ $check = static function (bool $ok, string $what) use (&$failures): void {
  * The only file exceptions are the self-contained, one-file bootstrap
  * installers fedup.php and setup.php. Neither is part of the skin/template
  * scan below. The count is the known presentation debt in actual templates. */
-// 36 on 15 Oct 2026, measured by this gate. Codex counted 27 because he
-// scanned skins/ only; the three CMS renderers that draw skins hold the rest.
-// A budget set to a hoped-for number is a gate that gets switched off, so this
-// is the truth on the day, and it may only ever go down.
-$INLINE_STYLE_BUDGET = 27;   // measured 2026-10-17, see the note below
+// 0 on 23 Oct 2026, and 0 is the real number -- not an aspiration.
+//
+// This read 27 for weeks and nobody could reduce it, because the 27 were not
+// violations. The check matched the opening of any style= attribute and could
+// not see whether PHP was inside it, so every per-photograph frame colour and
+// every custom property fed from a setting was counted as presentation debt.
+// Sean's rule allows exactly those: "no static style= ever; dynamic PHP styles
+// the only exception." The gate was counting the exception.
+//
+// Acting on that count would have been worse than ignoring it. "Clear all 28"
+// means deleting the frame colour an owner picked for one photograph -- a real
+// feature -- to satisfy a miscount. A number that cannot be acted on honestly
+// is one people learn to carry, and that is how this gate came to be red for
+// three shipped releases with nobody treating it as real.
+//
+// It now counts only attributes with no PHP in them, the budget is 0, and the
+// next genuine static style fails the build on its first commit instead of
+// hiding in a crowd of 28 permitted ones.
+//
+// The literal-minded hole, agreed in the Brain Trust as not worth closing:
+// a style= whose PHP merely echoes a constant string passes. It is contrived,
+// review catches
+// deliberate disguise, and a rule with no give in it is one that gets
+// switched off.
+$INLINE_STYLE_BUDGET = 0;    // measured 2026-10-23: ZERO static inline styles
 // 1513b8ac set this to 9 while the real count was 28. The gate failed from
 // that commit onward and nobody ran it: 0.7.898D, 899D and 900D all shipped
 // with it red, and 900D is deployed on the fleet. A budget is the MEASURED
@@ -58,7 +78,22 @@ $inline = 0;
 $offenders = [];
 foreach ($templates as $file) {
     $src = (string)file_get_contents($file);
-    $n = preg_match_all('/\bstyle\s*=\s*"/i', $src);
+    // Match the WHOLE attribute, then keep only the ones with no PHP in them.
+    // The old pattern matched '/\bstyle\s*=\s*"/' -- the opening of the
+    // attribute -- and stopped looking, so it could not tell
+    //     style="color:red"                                 a violation
+    // from
+    //     style="<?php echo $item['frame_colours']; ..."   the exception
+    // and counted both. Measured 2026-10-23: 28 matches, 28 of them dynamic,
+    // zero static. The budget of 27 was never presentation debt awaiting
+    // cleanup; it was the permitted exception being counted as an offence,
+    // which is why it could only ever be carried, never paid down.
+    if (!preg_match_all('/\bstyle\s*=\s*"([^"]*)"/i', $src, $m)) continue;
+    $n = 0;
+    foreach ($m[1] as $value) {
+        if (strpos($value, '<?php') !== false || strpos($value, '<?=') !== false) continue;
+        $n++;
+    }
     if ($n > 0) {
         $inline += $n;
         $rel = ltrim(str_replace(array($root, chr(92)), array('', '/'), $file), '/');
@@ -66,8 +101,10 @@ foreach ($templates as $file) {
     }
 }
 $check($inline <= $INLINE_STYLE_BUDGET,
-    'inline style attributes in skin templates rose to ' . $inline . ', budget is '
-    . $INLINE_STYLE_BUDGET . '. New inline CSS is not allowed: ' . implode(', ', $offenders));
+    'STATIC inline style attributes in skin templates rose to ' . $inline . ', budget is '
+    . $INLINE_STYLE_BUDGET . '. Hard-coded CSS in markup is not allowed -- geometry belongs in '
+    . 'the master stylesheet, colour in the theme files. (A style= carrying a PHP value is the '
+    . 'documented exception and is not counted.) Offenders: ' . implode(', ', $offenders));
 $check($inline >= $INLINE_STYLE_BUDGET,
     'inline style attributes dropped to ' . $inline . ' -- lower $INLINE_STYLE_BUDGET to '
     . $inline . ' so the ratchet holds the ground that was just taken');
