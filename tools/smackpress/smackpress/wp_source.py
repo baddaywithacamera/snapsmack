@@ -243,11 +243,16 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
     body = content or ""
 
     def mosaic_marker(positions) -> str:
-        """Give three-photo imports an intentional composition by default."""
+        """Leave imported mosaics automatic unless the author chose a layout.
+
+        The shared mosaic engine varies three-photo compositions by page and
+        document order. Saving every imported triptych as ``one-left`` bypassed
+        that behavior and made otherwise unrelated posts repeat the same hero
+        placement.
+        """
         positions = list(positions)
-        layout = "one-left" if len(positions) == 3 else "asymmetric"
-        return "\n[mosaic=%s layout=%s]\n" % (
-            ",".join(str(position) for position in positions), layout)
+        return "\n[mosaic=%s layout=asymmetric]\n" % (
+            ",".join(str(position) for position in positions),)
 
     # Classic [gallery] shortcodes are expanded by the companion inside this
     # explicit boundary.  Resolve every member through slot() first, then carry
