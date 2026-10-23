@@ -765,9 +765,12 @@ body.archive-page #system-footer {
 .static-transmission #footer { background: var(--bg-secondary) !important; }
 .static-transmission #system-footer { background: var(--bg-chrome) !important; border-top: 1px solid var(--border) !important; }
 
-/* Card sitting on the --bg-primary stage — mirrors Galleria's card-on-wall
-   treatment but uses FSOG's greyscale token set. All three variants handle
-   themselves via --static-card-bg (defined in each variant-*.css).
+/* The content column on a static page. NOT a card any more -- it has no
+   surface of its own and the page is one grey from edge to edge, the same
+   --bg-primary as the landing page and the archive.
+   The --static-card-bg token still exists in each variant-*.css and is now
+   unread; left in place rather than stripped, so that re-introducing a panel
+   later is a deliberate act with its colours already chosen.
    !important beats the compiled CSS blob which sets background on this
    selector directly and loads after style.css. */
 .static-content {
@@ -775,10 +778,18 @@ body.archive-page #system-footer {
     margin: 40px auto 40px auto !important;
     padding: 72px 40px 96px !important;
     box-sizing: border-box;
-    /* Fall back to the page's own grey, not a lighter one: a static page
-       should read as the same surface as the landing page unless the
-       owner deliberately asks for a panel. */
-    background: var(--static-card-bg, var(--bg-primary));
+    /* No surface of its own. The static pages are the same grey as the
+       landing page and the archive -- one background, edge to edge, and the
+       content simply sits on it.
+
+       This used to be a panel: two colour controls, Static Page Stage and
+       Static Page Card, painting #1a1a1a and #242424 over the skin's own
+       --bg-primary. Three greys on one site. Sean: "makes the skin look
+       rushed", and he was right -- nothing else here is drawn as a box, so a
+       darker slab behind the text read as a dialog that had wandered onto the
+       page. Both controls are gone rather than merely re-defaulted, because a
+       stored value on a live site ignores a changed default. */
+    background: transparent;
     /* No border and no shadow. Nothing else on this site is drawn as a box --
        the home page is a photograph edge to edge -- so a bordered, shadowed
        panel floating on the stage read as a dialog rather than as a page.

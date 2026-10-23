@@ -1083,6 +1083,30 @@ button:active,
     flex-shrink: 0;
 }
 
+/* The thumbnail in Manage Archive is a link to the post's editor. It is the
+   thing a hand reaches for first, it did nothing for a long time, and it is a
+   far bigger target than the EDIT button beside it. Geometry only -- the
+   border and hover colours stay in the theme files. */
+.archive-thumb-link {
+    display: block;
+    flex-shrink: 0;
+    line-height: 0;
+    border-radius: 4px;
+}
+.archive-thumb-link .archive-thumb {
+    display: block;
+    transition: opacity 120ms ease;
+}
+.archive-thumb-link:hover .archive-thumb,
+.archive-thumb-link:focus-visible .archive-thumb {
+    opacity: 0.82;
+}
+.archive-thumb-link:focus-visible {
+    outline-width: 2px;
+    outline-style: solid;
+    outline-offset: 2px;
+}
+
 .item-text {
     display: flex;
     flex-direction: column;
