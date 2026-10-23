@@ -27,6 +27,32 @@ $target_dir = __DIR__;
 // If the installed key ever differs, smack-update.php has a repair tool.
 define('SETUP_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');
 
+// --- PHP VERSION GATE ---
+// The docblock at the top of this file has claimed "Requirements: PHP 8.3+"
+// since it was written, and nothing checked it. An owner on an older PHP got a
+// successful-looking deploy and a site that could not run. Refuse, and say the
+// number, so the message they take to their host is a specific one.
+//
+// Everything in this file is deliberately kept to PHP 7-compatible syntax so
+// that this check can RUN on the boxes it exists to turn away. A file using
+// newer syntax fails to parse before any line of it executes, and the owner
+// sees a blank white page -- which teaches them nothing and looks like our bug.
+// Before adding anything modern here, check it parses on PHP 7.
+define('SETUP_PHP_MINIMUM', '8.3.0');
+if (version_compare(PHP_VERSION, SETUP_PHP_MINIMUM, '<')) {
+    http_response_code(500);
+    die('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SnapSmack</title>'
+      . '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0e0e0e;color:#d0d0d0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}.wrap{width:100%;max-width:560px}h1{font-size:1.4rem;color:#a0ff90;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}h1 span{color:#555;font-weight:300}.sub{color:#555;font-size:.8rem;letter-spacing:1px;margin-bottom:32px}p{color:#999;margin-bottom:20px}strong{color:#d0d0d0}a{color:#a0ff90}</style>'
+      . '</head><body><div class="wrap">'
+      . '<h1>SNAPSMACK <span>SETUP</span></h1><p class="sub">Cannot install on this server</p>'
+      . '<p>SnapSmack needs <strong>PHP ' . SETUP_PHP_MINIMUM . '</strong> or newer. '
+      . 'This server is running <strong>PHP ' . PHP_VERSION . '</strong>.</p>'
+      . '<p>Nothing has been installed and nothing has been changed. Ask your host to '
+      . 'move this site to a newer PHP version, then open this page again. Most hosts '
+      . 'have a PHP version switch in their control panel.</p>'
+      . '</div></body></html>');
+}
+
 // --- SAFETY CHECK (SECAUDIT 2026-08-15: installer kill-switch) ---
 // setup.php only deploys code into an EMPTY directory. If SnapSmack is already
 // present — the code (core/parser.php) OR a live DB config (core/db.php) — refuse
@@ -57,7 +83,8 @@ $success = false;
 $release = null;
 
 // --- FETCH RELEASE MANIFEST ---
-function setup_fetch_url(string $url): string|false {
+/** @return string|false  Return type left off: see the PHP VERSION GATE note above. */
+function setup_fetch_url($url) {
     global $has_curl, $has_fopen;
     if ($has_curl) {
         $ch = curl_init($url);
@@ -78,7 +105,8 @@ function setup_fetch_url(string $url): string|false {
 }
 
 // --- VERIFY PACKAGE ---
-function setup_verify(string $file_path, string $expected_sha256, string $signature_hex): string|true {
+/** @return string|true  Error message, or true. Return type left off: see the PHP VERSION GATE note. */
+function setup_verify(string $file_path, string $expected_sha256, string $signature_hex) {
     $actual = hash_file('sha256', $file_path);
     if ($actual === false) {
         return 'Could not read downloaded file for checksum — check directory permissions.';
@@ -349,6 +377,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
 
     <ul class="method-list">
         <li>
+            <span>PHP <?php echo htmlspecialchars(PHP_VERSION); ?></span>
+            <span class="pass">OK</span>
+        </li>
+        <li>
             <span>cURL</span>
             <span class="<?php echo $has_curl ? 'pass' : 'fail'; ?>"><?php echo $has_curl ? 'AVAILABLE' : 'NOT FOUND'; ?></span>
         </li>
@@ -365,6 +397,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
             <span class="<?php echo $has_sodium ? 'pass' : 'warn'; ?>"><?php echo $has_sodium ? 'AVAILABLE' : 'NOT FOUND — checksum only'; ?></span>
         </li>
     </ul>
+
+    <p class="method-note">SnapSmack needs PHP <?php echo htmlspecialchars(SETUP_PHP_MINIMUM); ?> or newer,
+        and this server is new enough. What we cannot check is whether your PHP has its latest
+        <strong>security</strong> patches &mdash; those arrive as updates to the last number in the version,
+        and your host controls them. Please confirm with your host that this server is on the
+        current patch release of its PHP version. Out-of-date PHP is the most common way a
+        self-hosted site gets broken into.</p>
 
     <?php if (!$has_sodium): ?>
         <div class="warn-box">Sodium extension not found. The release package will be verified by SHA-256 checksum only — Ed25519 signature verification will be skipped. Ask your host to enable the sodium PHP extension for full verification.</div>

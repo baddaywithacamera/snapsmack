@@ -2971,9 +2971,20 @@ $help_topics['installer'] = [
 <p>The installer (<code>install.php</code>) guides you through setting up a fresh
 SnapSmack installation. It runs once and self-deletes on completion.</p>
 
+<h4>Before the installer: the deployer</h4>
+<p><code>setup.php</code> is the single file you upload to an empty directory to fetch and
+verify the signed release, before <code>install.php</code> runs at all. It checks the PHP
+version first and <strong>refuses outright</strong> if the server is below PHP 8.3, naming
+both the version required and the version found so you have something specific to take to
+your host. Nothing is installed and nothing is changed when it refuses.</p>
+<p>What it cannot check is whether your PHP has its latest <em>security</em> patches — those
+arrive as updates to the last number in the version and your host controls them. The page
+says so and asks you to confirm the patch level with your host. Out-of-date PHP is the most
+common way a self-hosted site is broken into, and nobody but your host can fix it.</p>
+
 <h4>Steps</h4>
 <ol>
-    <li><strong>Environment Check</strong> — verifies PHP version (8.0+), required extensions
+    <li><strong>Environment Check</strong> — verifies PHP version (8.3+), required extensions
     (PDO, GD, libsodium), and directory write permissions.</li>
     <li><strong>Database Setup</strong> — enter your MySQL hostname, database name, username,
     and password. The installer tests the connection immediately.</li>
