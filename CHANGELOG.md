@@ -11,6 +11,52 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.937D - 2026-10-23 - DOOR POLICY
+
+- **The installer stated a PHP requirement and never checked it.** The docblock
+  at the top of `setup.php` has read *"Requirements: PHP 8.3+"* since the day it
+  was written. Measured on 23 Oct: the file contained no `version_compare` and
+  no `PHP_VERSION` anywhere. It checked cURL, ZipArchive and sodium, then
+  deployed onto anything. An owner on an older PHP got an install that looked
+  successful and a site that could not run.
+
+  `setup.php` now refuses below PHP 8.3 and names both numbers — what SnapSmack
+  needs and what the server is running — so the owner has something specific to
+  take to their host, plus a plain line saying nothing was installed and nothing
+  was changed.
+
+- **`setup.php` is now parseable by PHP 7, deliberately.** A version gate that
+  cannot execute on the versions it exists to turn away is decoration: PHP fails
+  to compile the whole file before any line of it runs, and the owner sees a
+  blank white page that looks like our bug. Two union return types
+  (`string|false`, `string|true`) were enough to do that. Both are gone, with
+  the contract kept in a docblock, and a test now fails the build if PHP 8-only
+  syntax returns to that one file.
+
+- **`install.php` refuses too, before any step runs.** Step 1 showed an
+  environment check and hid the Continue button when PHP was too old, but
+  `$step` comes from the request — a POST of `step=1b` walked straight past it.
+  The refusal is now at the top of the file, and the step 1 row reads the same
+  constant instead of its own copy of the number. Known limit: `install.php`
+  uses PHP 8 syntax, so it covers 8.0 through 8.2; `setup.php` is the file that
+  handles anything older.
+
+- **We recommend a patch check; we do not gate on one.** The setup page now says
+  plainly that the version gate only proves PHP is new enough to RUN, that we
+  cannot see whether it carries its latest security patches, and that the owner
+  should confirm the current patch release with their host. Refusing on a CVE
+  list was considered and declined: it would tell owners we vet their PHP, and
+  the next CVE we had not added would then read as our all-clear. Disclosure,
+  not enforcement.
+
+- The Installer help topic said PHP 8.0+. `install.php` has required 8.3 for
+  some time, so the help was simply wrong; it now covers the deployer, the
+  refusal, and the patch recommendation.
+
+- The runtime-floor test asserted the string `PHP 8.3+` was present in
+  `setup.php` — which it was, in the docblock. The test was confirming a
+  comment. It now requires the constant and the comparison.
+
 ## 0.7.936D - 2026-10-22 - ONE GREY
 
 - **The inline-CSS gate was counting the exception, not the offence.** It read

@@ -4,8 +4,12 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 $expectations = [
     'fedup.php' => ['PHP_VERSION_ID >= 80300', 'PHP 8.3+'],
-    'install.php' => ["version_compare(PHP_VERSION, '8.3.0', '>=')", 'Requires 8.3+'],
-    'setup.php' => ['PHP 8.3+'],
+    // Both of these now hold the floor in a named constant and refuse on it,
+    // rather than repeating the literal. Before 23 Oct 2026 the only thing this
+    // test could find in setup.php was the string 'PHP 8.3+' -- in its docblock.
+    // The file had no version check at all, so the test was confirming a comment.
+    'install.php' => ["define('INSTALL_PHP_MINIMUM', '8.3.0')", 'version_compare(PHP_VERSION, INSTALL_PHP_MINIMUM', 'Requires '],
+    'setup.php' => ['PHP 8.3+', "define('SETUP_PHP_MINIMUM', '8.3.0')", 'version_compare(PHP_VERSION, SETUP_PHP_MINIMUM'],
     'smack-central/sc-setup.php' => ["version_compare(PHP_VERSION, '8.3.0', '>=')", 'Need 8.3+.'],
     'smack-central/sc-release.php' => ["?? '8.3'", 'name="requires_php" value="8.3"'],
     'smack-central/sc-skins.php' => ["?? '8.3'"],

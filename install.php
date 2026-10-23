@@ -17,6 +17,37 @@
  */
 
 
+// --- PHP VERSION GATE ---
+// Step 1 shows an environment check and hides the Continue button when PHP is
+// too old. That is the UI only: $step comes from the request, so a POST of
+// step=1b walks straight past it. Refuse here instead, before any step runs,
+// so there is one answer and no way around it.
+//
+// Known limit, and it is worth knowing rather than discovering: this file uses
+// PHP 8 syntax (str_starts_with, among others), so on PHP 7 it fails to compile
+// and the owner sees a blank page instead of this message. setup.php -- the
+// normal path -- is deliberately kept PHP 7-parseable and refuses properly
+// there. This gate is for 8.0 through 8.2, which parse fine and are the
+// versions a host is actually likely to be running.
+define('INSTALL_PHP_MINIMUM', '8.3.0');
+if (version_compare(PHP_VERSION, INSTALL_PHP_MINIMUM, '<')) {
+    http_response_code(500);
+    die('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SnapSmack</title>'
+      . '<style>body{background:#0e0e0e;color:#d0d0d0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;'
+      . 'font-size:15px;line-height:1.6;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;'
+      . 'padding:40px 20px}.wrap{width:100%;max-width:560px}h1{font-size:1.4rem;color:#a0ff90;letter-spacing:2px;'
+      . 'text-transform:uppercase;margin:0 0 4px}h1 span{color:#555;font-weight:300}.sub{color:#555;font-size:.8rem;'
+      . 'letter-spacing:1px;margin:0 0 32px}p{color:#999;margin:0 0 20px}strong{color:#d0d0d0}</style>'
+      . '</head><body><div class="wrap">'
+      . '<h1>SNAPSMACK <span>INSTALLER</span></h1><p class="sub">Cannot install on this server</p>'
+      . '<p>SnapSmack needs <strong>PHP ' . INSTALL_PHP_MINIMUM . '</strong> or newer. '
+      . 'This server is running <strong>PHP ' . PHP_VERSION . '</strong>.</p>'
+      . '<p>Nothing has been installed and no database has been touched. Ask your host to move '
+      . 'this site to a newer PHP version, then open this page again. Most hosts have a PHP '
+      . 'version switch in their control panel.</p>'
+      . '</div></body></html>');
+}
+
 // --- CONFIGURATION ---
 // Version is read from core/constants.php (always present in the release package).
 // Fallback hardcoded value is a safety net only — should never be needed.
@@ -2405,8 +2436,10 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         $all_pass = true;
 
         // PHP Version
-        $php_ok = version_compare(PHP_VERSION, '8.3.0', '>=');
-        $checks[] = ['PHP Version (' . PHP_VERSION . ')', $php_ok, 'Requires 8.3+'];
+        // The hard refusal at the top of this file already stopped anything
+        // below the minimum, so this row is here to be seen, not to decide.
+        $php_ok = version_compare(PHP_VERSION, INSTALL_PHP_MINIMUM, '>=');
+        $checks[] = ['PHP Version (' . PHP_VERSION . ')', $php_ok, 'Requires ' . INSTALL_PHP_MINIMUM . '+'];
         if (!$php_ok) $all_pass = false;
 
         // PDO MySQL
