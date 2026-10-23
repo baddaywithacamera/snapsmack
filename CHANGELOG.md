@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.935D - 2026-10-22 - ONYX MEANS ONYX
+
+- **FEDISTRUCTURE spokes now report only their permitted service skin to the fleet.** PhotoFri.day, Mirror Project, and other FEDISTRUCTURE installs already expose only ONYX in their Skin Manager, but the multisite heartbeat reported every legacy skin directory still on disk. That made the hub claim those sites had two or three installed skins and let **PUSH ALL SKINS** reinstall packages they cannot use. The heartbeat now applies the same distribution boundary as the gallery, so fleet inventory and deployment target ONYX only. Old directories remain removable through the existing inactive-skin cleanup; they are no longer treated as usable or deployable skins. (`core/multisite-api.php`.)
+
 ## 0.7.934D - 2026-10-22 - PRESENTATION MEANS PRESENTATION
 
 - Moves SCROLL mosaic block construction into the audited CMS view model. The

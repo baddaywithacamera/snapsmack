@@ -604,7 +604,16 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         @require_once __DIR__ . '/skin-registry.php';
     }
     if (function_exists('skin_registry_local')) {
-        foreach (skin_registry_local() as $_slug => $_meta) {
+        $_heartbeat_skins = skin_registry_local();
+        // A FEDISTRUCTURE install is an infrastructure appliance, not a skin
+        // collection.  Its picker already exposes only service skins (ONYX),
+        // so its fleet heartbeat must apply the same boundary.  Otherwise old
+        // directories left by an earlier build are advertised to the hub and
+        // PUSH ALL SKINS keeps reinstalling skins the site cannot use.
+        if (function_exists('snapsmack_skins_for_distribution')) {
+            $_heartbeat_skins = snapsmack_skins_for_distribution($_heartbeat_skins);
+        }
+        foreach ($_heartbeat_skins as $_slug => $_meta) {
             $installed_skins[$_slug] = $_meta['version'] ?? '0.0';
         }
     }
