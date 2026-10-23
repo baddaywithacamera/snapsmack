@@ -845,6 +845,26 @@ include 'core/sidebar.php';
                         <?php endif; ?>
 
                         <div class="item-details">
+                            <?php
+                                // EDIT routes to the right editor for the mode:
+                                //  photoblog → single-image editor (keyed by image id)
+                                //  carousel  → same editor, dispatched by the cover image id
+                                //  smacktalk → the longform composer (keyed by post id)
+                                // Computed here rather than down in item-actions because the
+                                // thumbnail links to the same place and is rendered first.
+                                if ($mng_site_mode === 'smacktalk') {
+                                    $edit_href = 'smack-post-long.php?edit=' . (int)$p['id'];
+                                } elseif ($mng_site_mode === 'carousel') {
+                                    $edit_href = 'smack-edit.php?id=' . (int)($p['cover_img_id'] ?? 0);
+                                } else {
+                                    $edit_href = 'smack-edit.php?id=' . (int)$p['id'];
+                                }
+                            ?>
+                            <?php /* The thumbnail is the obvious thing to click and did nothing.
+                                     It now goes where EDIT goes -- the same target, not a second
+                                     route -- which also gives a target far bigger than the button
+                                     for anyone whose aim is not reliable. */ ?>
+                            <a href="<?php echo htmlspecialchars($edit_href, ENT_QUOTES); ?>" class="archive-thumb-link" title="Edit this post">
                             <?php if (!empty($p['img_file'])):
                                 $_af  = $p['img_file'];
                                 $_api = pathinfo($_af);
@@ -858,6 +878,7 @@ include 'core/sidebar.php';
                             <div class="archive-thumb archive-thumb--text" title="Text post — no cover image"
                                  style="display:flex;align-items:center;justify-content:center;font-size:1.4rem;opacity:0.55;">✎</div>
                             <?php endif; ?>
+                            </a>
 
                             <div class="item-text">
                                 <strong>
@@ -884,17 +905,6 @@ include 'core/sidebar.php';
 
                         <div class="item-actions">
                             <?php
-                                // EDIT routes to the right editor for the mode:
-                                //  photoblog → single-image editor (keyed by image id)
-                                //  carousel  → same editor, dispatched by the cover image id
-                                //  smacktalk → the longform composer (keyed by post id)
-                                if ($mng_site_mode === 'smacktalk') {
-                                    $edit_href = 'smack-post-long.php?edit=' . (int)$p['id'];
-                                } elseif ($mng_site_mode === 'carousel') {
-                                    $edit_href = 'smack-edit.php?id=' . (int)($p['cover_img_id'] ?? 0);
-                                } else {
-                                    $edit_href = 'smack-edit.php?id=' . (int)$p['id'];
-                                }
                                 $del_key = $is_post_mode ? 'delete_post' : 'delete';
                                 $del_noun = $is_post_mode ? 'post' : 'transmission';
                             ?>

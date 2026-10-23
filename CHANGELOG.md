@@ -11,6 +11,46 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.936D - 2026-10-22 - ONE GREY
+
+**Needs a CMS deploy and 1 skin package:** 50 SHADES 1.7.6.
+
+- **50 SHADES drew its static pages as a box, in a different grey from the
+  rest of the site.** photowalk.ing was painting three greys at once: the
+  landing page and archive on the skin's own `--bg-primary` (#3c3c3c under
+  variant-medium), then About and Blogroll on a #1a1a1a stage with a #242424
+  card floating on top. Sean: *"makes the skin look rushed."* Nothing else in
+  the skin is drawn as a box, so a darker slab behind the text read as a dialog
+  that had wandered onto the page.
+
+  Both controls that painted it — Static Page Stage and Static Page Card — are
+  removed, and `.static-content` no longer paints a surface at all. The static
+  pages are now the same single grey as the landing page, edge to edge.
+
+  They are **removed rather than re-defaulted** because both already defaulted
+  to #3c3c3c. A fresh install never had the box; the damage was the stored
+  values on the live site, which a changed default does not touch.
+
+- **The Manage Archive thumbnail now opens the post.** Sean kept clicking it
+  expecting to edit and nothing happened. It links to the same target as EDIT —
+  longform composer, cover-id editor or image-id editor by site mode — rather
+  than being a second route to the same action. It is also by far the largest
+  target in the row, which matters when aim is not reliable.
+
+**NOT fixed here, and not mine to fix.** `skins/scroll/layout.php` carries an
+inline style that took the count to 28 against a budget of 27, so
+`agreed-rules-gate` has been **red since 0.7.933D** — and 933D, 934D and 935D
+all shipped with it failing. The budget is a ratchet that may only go down, so
+it must not be raised to accommodate this. SCROLL is Codex's; raised with him
+rather than edited.
+
+Noted and not fixed here: the SCROLL mosaic feed ships under the name
+`eatmeclaude` — a page, a stylesheet, a registry handle, DOM ids and an entry
+in ASSET-INVENTORY. It is publicly reachable at
+`/eatmeclaude.php` and appears in the page source of any site running SCROLL.
+70 occurrences across 8 names. Renaming it is mechanical but touches the asset
+registry, and it is Sean's call.
+
 ## 0.7.935D - 2026-10-22 - ONYX MEANS ONYX
 
 - **FEDISTRUCTURE spokes now report only their permitted service skin to the fleet.** PhotoFri.day, Mirror Project, and other FEDISTRUCTURE installs already expose only ONYX in their Skin Manager, but the multisite heartbeat reported every legacy skin directory still on disk. That made the hub claim those sites had two or three installed skins and let **PUSH ALL SKINS** reinstall packages they cannot use. The heartbeat now applies the same distribution boundary as the gallery, so fleet inventory and deployment target ONYX only. Old directories remain removable through the existing inactive-skin cleanup; they are no longer treated as usable or deployable skins. (`core/multisite-api.php`.)

@@ -2,7 +2,7 @@
     "schema_version": 2,
     "name": "50 SHADES OF NOAH GREY",
     "oh_snap_ready": true,
-    "version": "1.7.5",
+    "version": "1.7.6",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Pure greyscale photography skin. Three monochrome variants with zero colour accents.",
@@ -670,22 +670,6 @@
             },
             "selector": "#system-footer .inside, #system-footer p, #sig-text",
             "property": "font-family"
-        },
-        "stage_bg_color": {
-            "section": "COLOURS",
-            "type": "color",
-            "label": "Static Page Stage (Behind Card)",
-            "default": "#3c3c3c",
-            "selector": ".static-transmission #scroll-stage",
-            "property": "background-color"
-        },
-        "card_bg_color": {
-            "section": "COLOURS",
-            "type": "color",
-            "label": "Static Page Card (Content Area)",
-            "default": "#3c3c3c",
-            "selector": ".static-content",
-            "property": "background-color"
         },
         "header_font_size": {
             "section": "HEADER & NAV",
