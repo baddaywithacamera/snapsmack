@@ -34,18 +34,74 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-/** Can this host self-register cron? Returns [bool supported, string php_cli]. */
-function cron_capability(): array {
-    if (!function_exists('exec')) return [false, ''];
+/**
+ * Explain whether this PHP process can inspect and manage a local crontab.
+ * Keep "unverifiable" separate from "unavailable": shared hosts commonly
+ * disable exec(), which means we have not actually tested cron at all.
+ */
+function cron_capability_detail(): array {
+    if (!function_exists('exec')) {
+        return ['state' => 'unverifiable', 'php_cli' => '', 'reason' => 'PHP exec() is disabled, so SnapSmack cannot inspect or manage local cron.'];
+    }
     $out = []; $code = 1;
     @exec('crontab -l 2>&1', $out, $code);
     // `crontab -l` exits 1 when this user has no crontab yet. That is not lack
     // of capability; it is precisely the state in which registration is needed.
     $listing = implode("\n", $out);
-    if ($code !== 0 && stripos($listing, 'no crontab for') === false) return [false, ''];
+    if ($code !== 0 && stripos($listing, 'no crontab for') === false) {
+        $missing = stripos($listing, 'not found') !== false || stripos($listing, 'not recognized') !== false;
+        return [
+            'state' => $missing ? 'unavailable' : 'unverifiable',
+            'php_cli' => '',
+            'reason' => $missing
+                ? 'The crontab command is not available on this host.'
+                : 'The host did not allow SnapSmack to inspect the local crontab.',
+        ];
+    }
     $php = trim((string)@exec('which php 2>&1'));
-    if (strpos($php, '/') !== 0) return [false, ''];  // no CLI PHP on PATH
-    return [true, $php];
+    if (strpos($php, '/') !== 0) {
+        return ['state' => 'unavailable', 'php_cli' => '', 'reason' => 'Command-line PHP is not available on this host.'];
+    }
+    return ['state' => 'manageable', 'php_cli' => $php, 'reason' => ''];
+}
+
+/** Can this host self-register cron? Returns [bool supported, string php_cli]. */
+function cron_capability(): array {
+    $detail = cron_capability_detail();
+    return [$detail['state'] === 'manageable', $detail['php_cli']];
+}
+
+/**
+ * Identify the active RSS launcher from launcher-owned heartbeats.
+ * rss_last_run is deliberately not used as proof: CLI, RUN NOW, and the hub
+ * worker all write it. The authenticated fleet endpoint owns the hub stamp.
+ */
+function cron_rss_driver_state(array $settings, ?int $now = null): array {
+    $now = $now ?? time();
+    $fresh_for = 5400; // Same grace period used by fediverse-webcron.
+    $parse = static function ($value): int {
+        $text = trim((string)$value);
+        return $text === '' ? 0 : (strtotime($text) ?: 0);
+    };
+    $cli_at = $parse($settings['rss_cli_cron_last_run'] ?? '');
+    $hub_at = $parse($settings['rss_hub_driver_last_tick'] ?? '');
+    $cli_fresh = $cli_at > 0 && ($now - $cli_at) < $fresh_for;
+    $hub_fresh = $hub_at > 0 && ($now - $hub_at) < $fresh_for
+        && ($settings['multisite_role'] ?? '') === 'spoke';
+
+    if ($cli_fresh) {
+        return ['state' => 'local', 'label' => 'LOCAL CLI', 'last_at' => $cli_at, 'fresh_for' => $fresh_for];
+    }
+    if ($hub_fresh) {
+        return ['state' => 'hub', 'label' => 'HUB-DRIVEN', 'last_at' => $hub_at, 'fresh_for' => $fresh_for];
+    }
+    $last_at = max($cli_at, $hub_at);
+    return [
+        'state' => $last_at > 0 ? 'stale' : 'none',
+        'label' => $last_at > 0 ? 'STALE — NO CURRENT DRIVER' : 'NOT RUNNING',
+        'last_at' => $last_at,
+        'fresh_for' => $fresh_for,
+    ];
 }
 
 /** Root directory a crontab command must name for the line to be THIS site's. */

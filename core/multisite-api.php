@@ -473,7 +473,16 @@ if ($resource === 'run-crons') {
     if (is_file(__DIR__ . '/fediverse-webcron.php')) {
         require_once __DIR__ . '/fediverse-webcron.php';
         if (function_exists('sv_web_cron_tick')) {
-            try { sv_web_cron_tick($pdo, $settings); $ran[] = 'web-cron tick scheduled'; }
+            try {
+                sv_web_cron_tick($pdo, $settings);
+                $ran[] = 'web-cron tick scheduled';
+                // Launcher-owned evidence for the dashboard. rss_last_run is
+                // shared by CLI, RUN NOW, and this path, so it cannot identify
+                // the hub by itself.
+                $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('rss_hub_driver_last_tick', ?)
+                    ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+                    ->execute([date('Y-m-d H:i:s')]);
+            }
             catch (Throwable $e) { error_log('run-crons tick failed: ' . $e->getMessage()); }
         }
     }

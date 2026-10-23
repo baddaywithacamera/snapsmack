@@ -48,14 +48,12 @@ if (($settings['distribution'] ?? '') === 'fedistructure'
 }
 
 // --- CRON CAPABILITY DETECTION ---
-// Check if the server supports cron and PHP CLI for scheduled task runner
-$cron_supported  = false;
-$php_cli_path    = '';
-if (function_exists('exec')) {
-    exec('crontab -l 2>&1', $ct_out, $ct_code);
-    $cron_supported = ($ct_code === 0);
-    $php_cli_path   = trim(exec('which php 2>&1'));
-    if (strpos($php_cli_path, '/') !== 0) $php_cli_path = '';
+// Capability is separate from whether a hub or local scheduler is active.
+if (!isset($cron_capability_detail)) {
+    require_once __DIR__ . '/cron-register.php';
+    $cron_capability_detail = cron_capability_detail();
+    $cron_supported = $cron_capability_detail['state'] === 'manageable';
+    $php_cli_path = $cron_capability_detail['php_cli'];
 }
 
 // --- THEME RESOLUTION ---

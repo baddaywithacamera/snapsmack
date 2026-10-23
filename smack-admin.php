@@ -70,15 +70,10 @@ if (($settings['smackback_enabled'] ?? '0') === '1') {
 // Must run before any POST handlers that depend on $cron_supported.
 // admin-header.php also sets these, but it loads after the handlers.
 if (!isset($cron_supported)) {
-    $cron_supported = false;
-    $php_cli_path   = '';
-    if (function_exists('exec')) {
-        exec('crontab -l 2>&1', $_ct_out, $_ct_code);
-        $cron_supported = ($_ct_code === 0)
-            || ($_ct_code !== 0 && stripos(implode("\n", $_ct_out), 'no crontab for') !== false);
-        $php_cli_path   = trim(exec('which php 2>&1'));
-        if (strpos($php_cli_path, '/') !== 0) $php_cli_path = '';
-    }
+    require_once __DIR__ . '/core/cron-register.php';
+    $cron_capability_detail = cron_capability_detail();
+    $cron_supported = $cron_capability_detail['state'] === 'manageable';
+    $php_cli_path = $cron_capability_detail['php_cli'];
 }
 
 // --- UPDATE NOTIFICATION CHECK ---
@@ -262,6 +257,10 @@ if ($cron_supported && isset($_POST['cron_action'])) {
 
 // Is THIS site's RSS fetcher line in the crontab?
 $rss_job_registered = $cron_supported && cron_job_registered('# snapsmack-rss-fetch', $rss_cron_script);
+$rss_driver = cron_rss_driver_state($settings);
+$rss_driver_when = $rss_driver['last_at']
+    ? date('Y-m-d H:i:s', (int)$rss_driver['last_at'])
+    : '';
 
 // --- BIG WHEEL / PIMPMOBILE ---
 // ui_mode is per-user — read from session (loaded at login from snap_users.ui_mode)
@@ -490,13 +489,23 @@ include 'core/sidebar.php';
             <?php if ($cron_msg): ?>
                 <div class="alert alert-success mb-25">&gt; <?php echo htmlspecialchars($cron_msg); ?></div>
             <?php endif; ?>
+            <label>ACTIVE RSS DRIVER</label>
+            <div class="read-only-display <?php echo in_array($rss_driver['state'], ['local', 'hub'], true) ? 'highlight-green' : ''; ?>">
+                <?php echo htmlspecialchars($rss_driver['label']); ?>
+            </div>
+            <?php if ($rss_driver_when !== ''): ?>
+                <p class="dim mt-10 text-sm">Last driver heartbeat: <?php echo htmlspecialchars($rss_driver_when); ?></p>
+            <?php endif; ?>
+
+            <label class="mt-30">LOCAL SCHEDULER</label>
             <?php if ($cron_supported): ?>
-                <label>CRON ENGINE</label>
-                <div class="read-only-display highlight-green">SUPPORTED</div>
-                <label class="mt-30">PHP CLI PATH</label>
-                <div class="read-only-display"><?php echo htmlspecialchars($php_cli_path ?: 'NOT FOUND'); ?></div>
+                <div class="read-only-display highlight-green">MANAGEABLE</div>
+                <p class="dim mt-10 text-sm">PHP CLI: <?php echo htmlspecialchars($php_cli_path); ?></p>
                 <label class="mt-30">RSS FEED FETCHER</label>
                 <div class="read-only-display"><?php echo $rss_job_registered ? 'REGISTERED — RUNS HOURLY' : 'NOT REGISTERED'; ?></div>
+                <?php if ($rss_driver['state'] === 'hub'): ?>
+                    <p class="dim mt-10 text-sm">The hub is currently driving RSS. Registering a local job is safe: local cron becomes primary and the hub stands down while its heartbeat is fresh.</p>
+                <?php endif; ?>
                 <form method="POST" class="mt-25">
                     <div class="action-grid-dual">
                         <button type="submit" name="cron_action" value="register" class="btn-smack" <?php echo $rss_job_registered ? 'disabled' : ''; ?>>REGISTER RSS JOB</button>
@@ -504,9 +513,13 @@ include 'core/sidebar.php';
                     </div>
                 </form>
             <?php else: ?>
-                <label>CRON ENGINE</label>
-                <div class="read-only-display">NOT SUPPORTED ON THIS HOST</div>
-                <p class="dim mt-20 text-sm">RSS last-updated features are unavailable. Cron access is required.</p>
+                <div class="read-only-display"><?php echo strtoupper(htmlspecialchars($cron_capability_detail['state'])); ?></div>
+                <p class="dim mt-20 text-sm"><?php echo htmlspecialchars($cron_capability_detail['reason']); ?></p>
+                <?php if (!in_array($rss_driver['state'], ['local', 'hub'], true)): ?>
+                    <p class="alert alert-warn mt-20">&gt; RSS background updates are not currently running. Configure the hourly RSS command in your hosting control panel or ask your host to enable scheduled tasks.</p>
+                <?php elseif ($rss_driver['state'] === 'hub'): ?>
+                    <p class="dim mt-20 text-sm">RSS remains available because the authenticated hub driver is active.</p>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>

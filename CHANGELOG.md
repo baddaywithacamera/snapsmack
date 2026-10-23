@@ -11,6 +11,17 @@
 # SnapSmack Changelog
 ## Unreleased
 
+- **The System Dashboard now tells the truth about RSS scheduling.** The old
+  CRON STATUS card asked only whether the web-server user had a local crontab,
+  then declared RSS unavailable even while the authenticated fleet driver was
+  fetching feeds. It now reports the active RSS driver separately from the
+  host's ability to manage local cron: local CLI, hub-driven, stale/not running,
+  and manageable, unavailable or unverifiable local scheduling are distinct
+  states. The fleet endpoint owns a dedicated heartbeat, so RUN NOW and a
+  shared `rss_last_run` timestamp cannot impersonate the hub. Hub-driven sites
+  may still register local cron safely; the existing heartbeat gate makes local
+  cron primary and the hub fallback.
+
 ## 0.7.936D - 2026-10-22 - ONE GREY
 
 **Needs a CMS deploy and 1 skin package:** 50 SHADES 1.7.6.
