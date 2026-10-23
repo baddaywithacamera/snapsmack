@@ -143,8 +143,7 @@ include $skin_path . '/skin-meta.php';
 <main class="scroll-wall eatmeclaude-content">
     <div id="eatmeclaude-feed" class="eatmeclaude-feed"
          data-gap="<?php echo $gap; ?>"
-         data-emphasis="<?php echo htmlspecialchars($emphasis, ENT_QUOTES); ?>"
-         style="--eatmeclaude-gap:<?php echo $gap; ?>px;">
+         data-emphasis="<?php echo htmlspecialchars($emphasis, ENT_QUOTES); ?>">
         <?php if ($images): ?>
             <div class="snap-mosaic eatmeclaude-block"
                  data-gap="<?php echo $gap; ?>"

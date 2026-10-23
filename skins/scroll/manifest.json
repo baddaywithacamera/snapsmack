@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "SCROLL",
-  "version": "0.1.72",
+  "version": "0.1.73",
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and selectable native-shape photo walls: columns, rows, square, or asymmetric dense-pack masonry. Built for photographs that refuse to show the whole damn car.",
     "status": "stable",
