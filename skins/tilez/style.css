@@ -2288,6 +2288,15 @@ body.blog, body.single, body.archive { background: #fff; }
     width: 100%;
     margin: 0;
 }
+
+/* Keep the final masonry row from sitting on the footer rule. The footer uses
+   margin-top:auto to stay at the bottom of short pages, which overrides its
+   ordinary top margin once the feed is taller than the viewport. Put the
+   breathing room inside the feed section so it survives both flex and the
+   shared columns engine. */
+.content > .section-inner:has(> .tilez-posts) {
+    padding-bottom: 54px;
+}
 .posts .post.ss-masonry-item {
     display: block;
     width: auto;
