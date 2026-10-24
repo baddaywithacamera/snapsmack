@@ -39,6 +39,28 @@
 
 ## 0.7.938D - 2026-10-24 - PANORAMA DRAMA
 
+- **Shadows lifted pure black to a flat grey, so the photograph looked faded.**
+  Photoshop leaves the darkest part of the blacks alone: Shadows opens up
+  dense shadow detail and Blacks owns the black point. Ours had a shelf --
+  full weight everywhere below 10% luminance, pure black included. The band
+  now falls back to nothing at pure black and peaks at about 12%, where dense
+  shadow detail actually lives. Peak weight is 0.986 against the old 1.0, so
+  the control is no weaker where it was doing the work people wanted, and
+  Blacks still reaches full weight at pure black. Measured on a 0-255 ramp at
+  Shadows +100:
+
+  | input | before | after |
+  |-------|--------|-------|
+  |     0 |     50 |     0 |
+  |     8 |     58 |    16 |
+  |    16 |     66 |    43 |
+  |    26 |     76 |    73 |
+  |    38 |     84 |    84 |
+  |   128 |    128 |   128 |
+
+  This is `tone_version` 3. An edit saved under an earlier tone version keeps
+  the version it was made with and renders exactly as it did.
+
 - **A RAW photograph reverted to the original while a slider moved.**
   A regression from the preview-size development earlier in this version.
   `_raw_developed_adjustments` records which RAW controls are already baked
