@@ -53,6 +53,26 @@
   some time, so the help was simply wrong; it now covers the deployer, the
   refusal, and the patch recommendation.
 
+- **The forum client reported id 0 for everything it created.** The API answers
+  a create with its own key — `{"thread_id": 42}` for a thread, `{"reply_id": 7}`
+  for a reply — and never a bare `id`. `snap_forum.py` read `.get("id") or 0`,
+  so it returned **0 every single time**, with exit code 0 and no error.
+
+  Measured when it bit: 32 threads posted to the skins board, all 32 created
+  correctly, all 32 reporting id 0. The write worked and the receipt lied,
+  which is the worse half — `fc post --flag` feeds that id straight into
+  `set_flag`, so a flagged post PATCHed thread 0 instead of the thread it had
+  just made, and nothing complained. The id now comes from the key the API
+  actually sends, and a create with no id raises instead of returning a zero
+  that reads like success.
+
+- **FORUM CLI gained `edit`.** There is deliberately no delete anywhere in that
+  tool, which left no way at all to correct something already posted. `fc edit
+  <id> --body-file F` rewrites a thread body — own thread, or role 2 for
+  anyone's — and sends only the body, because PATCH /threads/{id} picks its
+  branch by which field is present. Listed in the agent sheet, with a test that
+  fails if a command exists the sheet does not mention.
+
 - The runtime-floor test asserted the string `PHP 8.3+` was present in
   `setup.php` — which it was, in the docblock. The test was confirming a
   comment. It now requires the constant and the comparison.

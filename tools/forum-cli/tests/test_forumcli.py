@@ -19,6 +19,7 @@ for _p in (BASE, os.path.abspath(os.path.join(BASE, "..", "_shared"))):
         sys.path.insert(0, _p)
 
 import fc  # noqa: E402
+import snap_forum  # noqa: E402
 from forumcli import agent  # noqa: E402
 
 
@@ -61,6 +62,9 @@ class FakeForum:
 
     def set_flag(self, tid, flag):
         self._record("set_flag", tid, flag)
+
+    def edit_thread(self, tid, body):
+        self._record("edit_thread", tid, body)
 
     def reply(self, tid, body):
         self._record("reply", tid, body)
@@ -227,4 +231,56 @@ def test_there_is_no_delete():
 def test_read_commands_emit_valid_json(argv, capsys):
     assert run(argv + ["--json"]) == 0
     json.loads(capsys.readouterr().out)
+
+# ── the id a create hands back ──────────────────────────────────────────────
+#
+# 23 Oct 2026: 32 threads posted to the skins board, every one of them created
+# correctly, every one of them reporting id 0. The API answers a create with
+# {"thread_id": N} and {"reply_id": N}; the client read .get("id") and fell
+# back to 0. Exit code 0 throughout, so nothing anywhere said a word.
+#
+# The id is not cosmetic. `post --flag` feeds it straight to set_flag, so a
+# flagged post PATCHed thread 0 instead of the thread it had just made.
+
+def test_create_reads_the_key_the_api_actually_sends():
+    assert snap_forum._created_id({"thread_id": 42, "flag": "none"}, "thread") == 42
+    assert snap_forum._created_id({"reply_id": 7}, "reply") == 7
+
+
+def test_create_still_accepts_a_bare_id():
+    """If the API is ever changed to answer with "id", this keeps working."""
+    assert snap_forum._created_id({"id": 42}, "thread") == 42
+    assert snap_forum._created_id({"thread": {"id": 42}}, "thread") == 42
+
+
+def test_create_refuses_to_invent_a_zero():
+    """There is no honest zero. A create with no id is a failure, and the
+    caller must not carry on as though it had an id."""
+    for payload in ({}, {"id": 0}, {"thread_id": None}, {"status": "ok"}):
+        with pytest.raises(snap_forum.ForumError):
+            snap_forum._created_id(payload, "thread")
+
+
+# ── edit, because there is no delete ────────────────────────────────────────
+
+def test_edit_sends_only_the_body():
+    """PATCH /threads/{id} picks its branch by which field is present, so an
+    edit that also sent a flag or a pin state would do two things at once."""
+    assert run(["edit", "42", "--body", "corrected"]) == 0
+    assert ("edit_thread", (42, "corrected"), {}) in FakeForum.last.calls
+
+
+def test_edit_refuses_an_empty_body(monkeypatch, capsys):
+    built = []
+    monkeypatch.setattr(fc, "Forum", lambda *a, **k: built.append(1))
+    assert run(["edit", "42"]) == 2
+    assert built == []
+    assert "required" in capsys.readouterr().err
+
+
+def test_the_agent_sheet_lists_edit():
+    """An agent only knows what the sheet tells it. A command the sheet does
+    not mention may as well not exist."""
+    assert "edit" in {c["name"] for c in agent.COMMANDS}
+
 # ===== SNAPSMACK EOF =====

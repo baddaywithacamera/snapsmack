@@ -55,6 +55,12 @@ COMMANDS = [
      "example": ENTRY + " reply 42 --body 'Fixed in 0.7.903D.'",
      "notes": "Notifies the author and everyone following. 10/hour ordinary."},
 
+    {"name": "edit", "does": "Rewrite a thread's body.", "returns": "status",
+     "args": ["ID", "--body B | --body-file F"],
+     "example": ENTRY + " edit 42 --body-file corrected.txt",
+     "notes": "Own thread, or role 2 for anyone's. Replaces the body entirely; "
+              "there is no delete, so this is how a mistake gets corrected."},
+
     {"name": "react", "does": "Add or remove an emoji reaction.",
      "returns": "status", "args": ["ID", "--emoji X", "--reply", "--remove"],
      "example": ENTRY + " react 42 --emoji ??",

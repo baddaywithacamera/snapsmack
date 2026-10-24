@@ -157,6 +157,17 @@ def cmd_reply(args):
     return 0
 
 
+def cmd_edit(args):
+    body = _body(args)
+    if not body:
+        print("--body or --body-file is required.", file=sys.stderr)
+        return 2
+    _forum(args).edit_thread(args.id, body)
+    _out(args, {"status": "updated", "id": args.id},
+         "Thread " + str(args.id) + " rewritten.")
+    return 0
+
+
 def cmd_react(args):
     f = _forum(args)
     target = "reply" if args.reply else "thread"
@@ -292,6 +303,12 @@ def build_parser():
     rp.add_argument("--body", default="")
     rp.add_argument("--body-file", dest="body_file", default="")
     rp.set_defaults(func=cmd_reply)
+
+    ed = sub.add_parser("edit")
+    ed.add_argument("id", type=int)
+    ed.add_argument("--body", default="")
+    ed.add_argument("--body-file", dest="body_file", default="")
+    ed.set_defaults(func=cmd_edit)
 
     rc = sub.add_parser("react")
     rc.add_argument("id", type=int)
