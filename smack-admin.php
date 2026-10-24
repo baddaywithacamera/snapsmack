@@ -15,6 +15,7 @@
 
 
 require_once 'core/auth-smack.php';
+require_once 'core/stats-logger.php';
 
 // --- SETTINGS ---
 // Must load before any logic that reads $settings (UI mode, offer card, etc.).
@@ -179,13 +180,10 @@ $current_admin_meta = $admin_themes[$active_admin_slug] ?? [
 // Uses PHP's local timestamp (not MySQL NOW()) to match the timezone used when
 // posts are saved — same pattern as smack-manage.php.
 $now_local     = date('Y-m-d H:i:s');
-$count_pub     = $pdo->prepare("SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date <= ?");
-$count_pub->execute([$now_local]);
-$count_pub     = $count_pub->fetchColumn();
-$count_pending = $pdo->prepare("SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date > ?");
-$count_pending->execute([$now_local]);
-$count_pending = $count_pending->fetchColumn();
-$count_drafts  = $pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status='draft'")->fetchColumn();
+$_content_counts = snapsmack_content_status_counts($pdo, $now_local);
+$count_pub       = $_content_counts['published'];
+$count_pending   = $_content_counts['scheduled'];
+$count_drafts    = $_content_counts['drafts'];
 
 // Tallies pending and approved comments for the moderation queue.
 $pending_count = $pdo->query("SELECT COUNT(*) FROM snap_comments WHERE is_approved = 0")->fetchColumn();

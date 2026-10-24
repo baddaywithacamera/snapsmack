@@ -11,6 +11,18 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.939D - 2026-10-24 - COUNT DRACULA
+
+- **SMACKTALK photographs are photographs again, not phantom posts in the
+  dashboard and fleet totals.** The shared post counter applied SMACKONEOUT's
+  one-photo/one-post rule to every install mode. On A Bad Day With a Camera it
+  therefore reported 3,979 posts—the number of published Gallery images—instead
+  of its 425 real longform articles. Counts now follow the site's content model:
+  SMACKONEOUT counts standalone/grouped photo entries, while GRAMOFSMACK,
+  SMACKTALK and SMACKTHEMUP count `snap_posts`. The dashboard's published,
+  scheduled and draft figures use the same mode-aware rule, so the individual
+  site and fleet can no longer disagree about what a post is.
+
 ## 0.7.938D - 2026-10-24 - PANORAMA DRAMA
 
 - **Extreme panoramas no longer collapse landing-page titles into slivers.**
