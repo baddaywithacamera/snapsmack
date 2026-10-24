@@ -278,6 +278,42 @@ def test_edit_refuses_an_empty_body(monkeypatch, capsys):
     assert "required" in capsys.readouterr().err
 
 
+# ── a new board lands at the bottom, and reports its real id ────────────────
+#
+# GET /categories orders by sort_order and POST /categories defaults it to 0,
+# so a board created without one sorts ABOVE all five seeded boards (1..5).
+# The create also answers {"category_id": N}, which ensure_board read as "id"
+# and turned into 0 -- the same bug as threads and replies, in a third place.
+
+class AdminFake(FakeForum):
+    def am_i_admin(self):
+        self._record("am_i_admin")
+        return True
+
+    def ensure_board(self, name, description="", sort_order=0):
+        self._record("ensure_board", name, description, sort_order)
+        return 6
+
+
+def test_board_new_passes_the_sort_order_through(monkeypatch):
+    monkeypatch.setattr(fc, "Forum", AdminFake)
+    assert run(["board-new", "The Lounge", "--sort", "6"]) == 0
+    assert ("ensure_board", ("The Lounge", "", 6), {}) in AdminFake.last.calls
+
+
+def test_board_create_reads_the_key_the_api_actually_sends():
+    assert snap_forum._created_id({"category_id": 6, "slug": "the-lounge"},
+                                  "category") == 6
+
+
+def test_the_agent_sheet_names_the_sort_trap():
+    """An agent that does not know about --sort creates a board at the top of
+    the list, which looks like a mistake and is not obviously undoable here."""
+    board_new = [c for c in agent.COMMANDS if c["name"] == "board-new"][0]
+    assert "--sort N" in board_new["args"]
+    assert "ABOVE" in board_new["notes"]
+
+
 def test_the_agent_sheet_lists_edit():
     """An agent only knows what the sheet tells it. A command the sheet does
     not mention may as well not exist."""

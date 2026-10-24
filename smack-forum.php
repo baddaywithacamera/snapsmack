@@ -414,8 +414,24 @@ if ($forum_enabled && $forum_api_key) {
     // new-thread fetches categories inline below
 }
 
-// Category accent colours — rotates through a palette for visual variety.
+// Board accent colours.
+//
+// Keyed on the board's slug, not its position. Position was the whole rule
+// before, so hiding a board or giving one a new sort_order silently recoloured
+// every board below it — people learn "the green one" and it stops being the
+// green one. A slug is stable for the life of the board.
+//
+// $cat_accents stays as the fallback for a board Sean adds later: it still
+// gets a colour, just not a chosen one.
 $cat_accents = ['#888888','#e2b714','#39FF14','#00bcd4','#ab47bc','#ff7043','#26a69a','#5c6bc0'];
+$cat_accent_by_slug = [
+    'getting-started'  => '#888888',  // grey  — the quiet one you start at
+    'skins'            => '#e2b714',  // amber
+    'bug-reports'      => '#39FF14',  // Midnight Lime
+    'feature-requests' => '#00bcd4',  // cyan
+    'show-and-tell'    => '#ab47bc',  // purple
+    'the-lounge'       => '#ff7043',  // warm orange — the one room that is off duty
+];
 
 $current_page = 'smack-forum.php';
 require 'core/admin-header.php';
@@ -528,7 +544,8 @@ require 'core/sidebar.php';
 
         <div class="forum-cat-list">
           <?php foreach ($cats as $ci => $cat):
-              $accent = $cat_accents[$ci % count($cat_accents)];
+              $accent = $cat_accent_by_slug[$cat['slug'] ?? '']
+                        ?? $cat_accents[$ci % count($cat_accents)];
           ?>
           <a href="smack-forum.php?view=threads&cat=<?php echo (int)$cat['id']; ?>" class="forum-cat-row">
             <div class="forum-cat-row__accent" style="background:<?php echo $accent; ?>;"></div>
