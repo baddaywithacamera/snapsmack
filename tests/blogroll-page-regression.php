@@ -146,6 +146,23 @@ $check(!str_contains($css, '.blogroll-group'),
 $check(str_contains($page, 'class="blogroll-canvas"'),
     'the renderer must use the canvas the Content Max Width control targets');
 
+// TILEZ's editorial blogroll should share the navigation palette. A legacy
+// ALFRED accent fallback made these links browser blue while the menu uses
+// TILEZ's own dark ink and red interaction state.
+$tilezCss = (string)@file_get_contents($root . '/skins/tilez/style.css');
+$check((bool)preg_match(
+    '/\.blogroll-group a\s*\{[^}]*color:\s*var\(--tilez-ink\)/s',
+    $tilezCss
+), 'TILEZ blogroll links must use the same dark ink as its main navigation');
+$check(!preg_match(
+    '/\.blogroll-group a\s*\{[^}]*--alfred-accent/s',
+    $tilezCss
+), 'TILEZ must not inherit the old blue ALFRED accent for blogroll links');
+$check((bool)preg_match(
+    '/\.blogroll-group a:hover,\s*\.blogroll-group a:focus-visible\s*\{[^}]*color:\s*#b3261e/s',
+    $tilezCss
+), 'TILEZ blogroll hover and keyboard focus must match the menu interaction colour');
+
 if ($failures) {
     fwrite(STDERR, "Blogroll page regression FAILED:\n");
     foreach ($failures as $failure) fwrite(STDERR, '  - ' . $failure . "\n");

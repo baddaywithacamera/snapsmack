@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+- **TILEZ 0.2.72: blogroll links match the main menu.** Blog names now use TILEZ's dark menu ink instead of the inherited blue accent. Hover and keyboard focus use the same red treatment as the primary navigation.
+
 ## 0.7.942D - 2026-10-24 - CLICK THE DAMN PICTURE
 
 - **Every photograph in a strict-skin MOSAIC links to its solo page again.** Repository rows provide an image slug, while ordinary tile components synthesize a URL from that slug. The JSON MOSAIC view expected a prebuilt URL that those rows do not contain, emitted an empty `href`, and consequently rendered every photograph as a non-clickable image. The strict view contract now supplies the same canonical solo-page route used by other gallery layouts. A regression test verifies the resulting MOSAIC JSON contains a real link, not merely a rendered image.
