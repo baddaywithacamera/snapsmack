@@ -134,6 +134,9 @@
             sentinel.setAttribute('data-has-more', '0');
             if (observer) observer.disconnect();
         }
+        function sentinelStillNear() {
+            return sentinel.getBoundingClientRect().top <= window.innerHeight + 1200;
+        }
         function loadNext() {
             if (loading || exhausted()) return;
             loading = true;
@@ -159,7 +162,10 @@
                     relayout(grid);
                 })
                 .catch(function () { if (++failures >= maxFailures) stop(); })
-                .then(function () { loading = false; });
+                .then(function () {
+                    loading = false;
+                    if (!exhausted() && sentinelStillNear()) loadNext();
+                });
         }
 
         if (typeof IntersectionObserver !== 'undefined') {

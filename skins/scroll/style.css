@@ -1032,6 +1032,7 @@ body.is-blogroll .blogroll-canvas > .blogroll-category-block {
 #infobox a.inactive { opacity: .55; }
 #infobox a.active   { opacity: 1; }
 #infobox .sep { opacity: .35; }
+#system-footer .sep { display: inline-block; margin: 0 .7em; opacity: .55; }
 #infobox .filter-group { display: inline-flex; align-items: center; }
 #infobox .archive-search-form { margin: 0; }
 /* Same field as the header nav's search (see .scroll-nav-search-panel input). */

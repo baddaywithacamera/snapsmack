@@ -881,7 +881,7 @@ a:hover { color: var(--sl-link-hover); }
 }
 #system-footer .footer-link { color: #ffffff; }
 #system-footer .footer-link:hover { color: #ffffff; text-decoration: underline; }
-#system-footer .sep { color: #777777; }
+#system-footer .sep { display: inline-block; margin: 0 .7em; color: #777777; }
 
 @media (max-width: 700px) {
   .sl-cover { height: 180px; }

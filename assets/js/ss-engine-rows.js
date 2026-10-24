@@ -248,6 +248,9 @@
 
         function exhausted() { return sentinel.getAttribute('data-has-more') !== '1'; }
         function stop() { sentinel.setAttribute('data-has-more', '0'); if (io) io.disconnect(); }
+        function sentinelStillNear() {
+            return sentinel.getBoundingClientRect().top <= window.innerHeight + 1200;
+        }
 
         function loadNext() {
             if (loading || exhausted()) return;
@@ -277,7 +280,14 @@
                 .catch(function () {
                     if (++fails >= MAX_FAILS) stop();
                 })
-                .then(function () { loading = false; });
+                .then(function () {
+                    loading = false;
+                    // IntersectionObserver only reports boundary changes. A short
+                    // page can leave the zero-height sentinel continuously inside
+                    // the prefetch margin, so no second callback ever arrives.
+                    // Keep filling until the marker genuinely moves beyond it.
+                    if (!exhausted() && sentinelStillNear()) loadNext();
+                });
         }
 
         var io = null;

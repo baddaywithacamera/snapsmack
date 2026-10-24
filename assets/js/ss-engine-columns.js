@@ -316,7 +316,14 @@
                     // fail identically and retry forever — give up after a few.
                     if (++fails >= MAX_FAILS) stop();
                 })
-                .then(function () { loading = false; });
+                .then(function () {
+                    loading = false;
+                    // A short append can leave the sentinel continuously inside
+                    // the observer margin. IntersectionObserver will not fire
+                    // again until it exits and re-enters, so explicitly continue
+                    // while the current viewport is still near the end.
+                    if (!exhausted() && nearEnd()) loadNext();
+                });
         }
 
         // The nearest ancestor that actually scrolls. On most skins that is the
