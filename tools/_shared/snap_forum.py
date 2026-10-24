@@ -63,6 +63,35 @@ class ForumError(RuntimeError):
     pass
 
 
+def _created_id(made: dict, kind: str) -> int:
+    """The id of a thread or reply the API has just created.
+
+    The API answers a create with its own key name -- {"thread_id": 42} for a
+    thread, {"reply_id": 7} for a reply -- and never a bare "id". This read
+    .get("id") or 0, so it returned 0 every single time, with exit code 0 and
+    no error anywhere.
+
+    Measured 23 Oct 2026: 32 threads posted to the skins board, 32 ids of 0,
+    all 32 threads created correctly. The write worked and the receipt lied,
+    which is the worse half. `fc post --flag` feeds that id straight into
+    set_flag, so a flagged post PATCHes thread 0 instead of the thread it just
+    made, and nothing complains.
+
+    This raises on a missing id rather than defaulting to 0, because there is
+    no honest zero: if the API created something then it has an id, and if it
+    did not then the caller must not carry on as though it had.
+    """
+    payload = made.get(kind) or made
+    for key in (kind + "_id", "id"):
+        value = payload.get(key)
+        if value not in (None, "", 0):
+            return int(value)
+    raise ForumError(
+        "The forum said it created a " + kind + " but returned no id: "
+        + repr(made) + ". Nothing has been retried; check the board before "
+        "posting again, in case it was created after all.")
+
+
 class Forum:
     """Thin client. Read methods work with any key. Posting, locking and
     pinning need role >= 2; creating the Tickets board needs role >= 3, which is
@@ -169,11 +198,20 @@ class Forum:
     def post_ticket(self, category_id: int, title: str, body: str) -> int:
         made = self._call("POST", "threads",
                           {"category_id": category_id, "title": title, "body": body})
-        return int((made.get("thread") or made).get("id") or 0)
+        return _created_id(made, "thread")
 
     def reply(self, thread_id: int, body: str) -> int:
         made = self._call("POST", f"threads/{thread_id}/replies", {"body": body})
-        return int((made.get("reply") or made).get("id") or 0)
+        return _created_id(made, "reply")
+
+    def edit_thread(self, thread_id: int, body: str) -> None:
+        """Replace a thread's body. The API distinguishes the PATCH branches by
+        which field is present, so this sends body and nothing else.
+
+        There is no delete anywhere in this tool, deliberately. That makes an
+        edit the only way to correct something already posted, which is why it
+        is here rather than left to a human with database access."""
+        self._call("PATCH", f"threads/{thread_id}", {"body": body})
 
     def set_flag(self, thread_id: int, flag: str) -> None:
         self._call("PATCH", f"threads/{thread_id}", {"flag": flag})
