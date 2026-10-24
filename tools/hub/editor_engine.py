@@ -974,40 +974,19 @@ def apply_adjustments(image, adjustments):
     output = _split_tone(output, settings)
     output = _colour_glow(output, settings)
 
-    vignette = float(settings["vignette"])
-    if vignette:
+    if float(settings["vignette"]):
+        # One vignette, shared with the float compositor that draws the canvas.
+        # Two implementations drifted apart: this one followed the frame and
+        # honoured the blend mode and edge colour while the canvas drew a plain
+        # circle and ignored both, so a preset thumbnail showed a different
+        # vignette from the photograph beside it.
         width, height = output.size
-        # A fourth-power superellipse follows the rectangular frame instead of
-        # advertising a distinct oval. It still rounds the corners enough to
-        # look photographic, while feather remains a softness control rather
-        # than an accidental shape control.
         yy, xx = np.ogrid[:height, :width]
-        nx = np.abs((xx - (width - 1) / 2) / max(1, width / 2))
-        ny = np.abs((yy - (height - 1) / 2) / max(1, height / 2))
-        radius = (nx ** 4 + ny ** 4) ** .25
-        size = max(0.0, min(200.0, float(settings.get("vignette_size", 70)))) / 100.0
-        feather = max(0.0, min(200.0, float(
-            settings.get("vignette_feather", 50)))) / 100.0
-        midpoint = .55 + size * .40
-        transition = .04 + feather * .42
-        start = max(.08, midpoint - transition / 2)
-        end = min(1.80, midpoint + transition / 2)
-        weight = np.clip((radius - start) / max(.001, end - start), 0.0, 1.0)
-        weight = weight ** 3 * (weight * (weight * 6.0 - 15.0) + 10.0)
-        strength = abs(vignette) / 100.0
-        chosen = settings.get("vignette_color", [0, 0, 0])
-        colour = tuple(max(0, min(255, int(v))) for v in list(chosen)[:3])
-        if len(colour) != 3:
-            colour = (0, 0, 0)
-        # Positive values retain the historical white-vignette behaviour unless
-        # a colour has explicitly been selected.
-        if vignette > 0 and colour == (0, 0, 0):
-            colour = (255, 255, 255)
-        edge = Image.new("RGB", output.size, colour)
-        mode = str(settings.get("vignette_blend", "normal"))
-        effected = blend_images(output, edge, mode=mode, opacity=1.0).convert("RGB")
-        effect_mask = Image.fromarray(np.uint8(np.rint(weight * strength * 255)), "L")
-        output = Image.composite(effected, output, effect_mask)
+        weight = highbit.vignette_geometry(settings, yy, xx, width, height)
+        pixels = np.asarray(output.convert("RGB"), dtype=np.float32) / 255.0
+        mixed = highbit.apply_vignette(pixels, settings, weight)
+        output = Image.fromarray(
+            np.uint8(np.rint(np.clip(mixed, 0.0, 1.0) * 255.0)), "RGB")
 
     grain = float(settings["grain"])
     if grain > 0:
