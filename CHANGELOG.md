@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.940D - 2026-10-24 - KEEP ON SCROLLING
+
+- **GRAMOFSMACK walls continue loading when a short batch leaves the continuation marker inside the prefetch zone.** The browser observer only reports boundary changes, so a marker that stayed inside the zone could strand a wall after several batches even though thousands of photographs remained. Row, column and asymmetric walls now keep filling until the marker actually moves beyond the viewport lead; MOSAIC requests also time out cleanly instead of displaying “Loading another mosaic” forever. SCROLL and SLICKR footer separators regain readable spacing.
+
 ## 0.7.939D - 2026-10-24 - COUNT DRACULA
 
 - **SMACKTALK photographs are photographs again, not phantom posts in the

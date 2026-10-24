@@ -41,13 +41,28 @@
         return sentinel.getBoundingClientRect().top <= window.innerHeight + 1000;
     }
 
+    function fetchWithTimeout(url) {
+        var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var timer = controller ? setTimeout(function () { controller.abort(); }, 15000) : null;
+        return fetch(url, {
+            credentials: 'same-origin',
+            signal: controller ? controller.signal : undefined
+        }).then(function (response) {
+            if (timer) clearTimeout(timer);
+            return response;
+        }, function (error) {
+            if (timer) clearTimeout(timer);
+            throw error;
+        });
+    }
+
     function loadNext() {
         if (!hasMore || loading) return;
         loading = true;
         if (status) status.textContent = 'Loading another mosaic…';
 
         if (nextUrl) {
-            fetch(nextUrl, { credentials: 'same-origin' })
+            fetchWithTimeout(nextUrl)
                 .then(function (response) {
                     if (!response.ok) throw new Error('HTTP ' + response.status);
                     return response.text();
@@ -82,7 +97,7 @@
 
         var url = 'eatmeclaude.php?format=json&block=' + encodeURIComponent(next)
             + '&cutoff=' + encodeURIComponent(cutoff);
-        fetch(url, { credentials: 'same-origin' })
+        fetchWithTimeout(url)
             .then(function (response) {
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 return response.json();
