@@ -2587,8 +2587,9 @@ body.blog, body.single, body.archive { background: #fff; }
 .blogroll-group h2 { margin: 0 0 20px; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .blogroll-group ul { margin: 0; padding: 0; list-style: none; }
 .blogroll-group li { padding: 17px 0; border-top: 1px solid #e7e7e7; }
-.blogroll-group a { font-size: 20px; color: var(--alfred-accent, #1e73be); text-decoration: none; }
-.blogroll-group a:hover { text-decoration: underline; }
+.blogroll-group a { font-size: 20px; color: var(--tilez-ink); text-decoration: none; }
+.blogroll-group a:hover,
+.blogroll-group a:focus-visible { color: #b3261e; text-decoration: underline; }
 .blogroll-group p { margin: 7px 0 0; color: #555; font-size: 15px; line-height: 1.55; }
 
 .tilez-page .page-container { padding-top: 72px; padding-bottom: 30px; }
