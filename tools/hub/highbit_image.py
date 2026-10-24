@@ -771,6 +771,31 @@ def _smoothstep(edge0, edge1, value):
     return amount * amount * (3.0 - 2.0 * amount)
 
 
+def _smootherstep(edge0, edge1, value):
+    """Quintic ramp: flat where it meets each end, so no visible seam."""
+    xp = _xp(value)
+    amount = xp.clip((value - edge0) / max(1e-6, edge1 - edge0), 0.0, 1.0)
+    return (amount ** 3 * (amount * (amount * 6.0 - 15.0) + 10.0)).astype(xp.float32)
+
+
+def _to_linear(value):
+    """Display-encoded floats to linear light, sRGB curve, sign preserved."""
+    xp = _xp(value)
+    positive = xp.clip(value, 0.0, None)
+    curved = xp.where(positive <= 0.04045, positive / 12.92,
+                      xp.power((positive + 0.055) / 1.055, 2.4))
+    return xp.where(value >= 0.0, curved, value).astype(xp.float32)
+
+
+def _to_display(value):
+    """Linear light back to display-encoded floats, sign preserved."""
+    xp = _xp(value)
+    positive = xp.clip(value, 0.0, None)
+    curved = xp.where(positive <= 0.0031308, positive * 12.92,
+                      1.055 * xp.power(positive, 1.0 / 2.4) - 0.055)
+    return xp.where(value >= 0.0, curved, value).astype(xp.float32)
+
+
 def _remap_luminance(rgb, source_luma, target_luma):
     """Change luminance without independently bending the RGB channels.
 
@@ -880,6 +905,79 @@ def _soft_light(base, blend):
                  xp.sqrt(base_safe))
     light = base + (2.0 * blend - 1.0) * (d - base)
     return xp.where(blend <= .5, dark, light)
+
+
+VIGNETTE_BLEND_MODES = ("normal", "multiply", "soft_light", "overlay")
+
+
+def vignette_geometry(settings, yy, xx, width, height):
+    """How strongly the vignette applies at every pixel, 0 to 1.
+
+    A fourth-power superellipse follows the rectangular frame instead of
+    advertising a distinct oval, so Feather stays a softness control rather
+    than becoming an accidental shape control. A circle reaches the corners at
+    radius 1.414 and this reaches them at 1.189, so an ordinary Feather still
+    has gradient left where the corner is -- which is what stops the edge
+    looking hard and bounded once the darkening gets deep enough to bottom out.
+    """
+    xp = _xp(xx)
+    nx = xp.abs((xx - (width - 1) / 2) / max(1, width / 2))
+    ny = xp.abs((yy - (height - 1) / 2) / max(1, height / 2))
+    radius = (nx ** 4 + ny ** 4) ** .25
+    size = min(2.0, max(0.0, float(settings.get("vignette_size", 70.0)) / 100.0))
+    feather = min(2.0, max(0.0, float(settings.get("vignette_feather", 50.0)) / 100.0))
+    midpoint = .55 + size * .40
+    transition = .04 + feather * .42
+    return _smootherstep(max(.08, midpoint - transition / 2),
+                         min(1.80, midpoint + transition / 2), radius)
+
+
+def vignette_edge_colour(settings):
+    """The edge colour as 0-255 ints, keeping the historical white for plus."""
+    try:
+        chosen = list(settings.get("vignette_color", [0, 0, 0]) or [])[:3]
+        colour = tuple(max(0, min(255, int(round(float(v))))) for v in chosen)
+    except (TypeError, ValueError):
+        colour = ()
+    if len(colour) != 3:
+        colour = (0, 0, 0)
+    if float(settings.get("vignette", 0.0)) > 0 and colour == (0, 0, 0):
+        colour = (255, 255, 255)
+    return colour
+
+
+def apply_vignette(rgb, settings, weight):
+    """Mix the feathered edge colour into display-encoded float pixels.
+
+    Normal is the plain darkening a photographer reaches for, and it happens in
+    linear light the way a lens does it: an even ramp of light taken away. Done
+    instead on the gamma-encoded numbers it is far steeper -- at the same
+    setting a mid-grey subject reads 9 of 255 where linear light gives 34 --
+    which is why it used to slam into black instead of rolling off. The named
+    blend modes are layer maths and stay in display space, which is where a
+    layer blends.
+    """
+    xp = _xp(rgb)
+    strength = min(1.0, abs(float(settings.get("vignette", 0.0))) / 100.0)
+    if not strength:
+        return rgb
+    colour = xp.asarray([value / 255.0 for value in vignette_edge_colour(settings)],
+                        dtype=xp.float32).reshape((1, 1, 3))
+    mask = xp.asarray(weight, dtype=xp.float32)[:, :, None] * xp.float32(strength)
+    mode = str(settings.get("vignette_blend", "normal") or "normal")
+    if mode == "multiply":
+        blended = rgb * colour
+    elif mode == "screen":
+        blended = 1.0 - (1.0 - rgb) * (1.0 - colour)
+    elif mode == "soft_light":
+        blended = _soft_light(rgb, colour)
+    elif mode == "overlay":
+        blended = xp.where(rgb <= .5, 2.0 * rgb * colour,
+                           1.0 - 2.0 * (1.0 - rgb) * (1.0 - colour))
+    else:
+        base, edge = _to_linear(rgb), _to_linear(colour)
+        return _to_display(base * (1.0 - mask) + edge * mask)
+    return (blended * mask + rgb * (1.0 - mask)).astype(xp.float32)
 
 
 def _oiio_result(image, operation, *args, **kwargs):
@@ -1548,22 +1646,10 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
         bloom = glow_mask[:, :, None] * colour.reshape((1, 1, 3))
         rgb = 1.0 - (1.0 - rgb) * (1.0 - bloom)
 
-    vignette = float(settings.get("vignette", 0.0))
-    if vignette:
-        width, height = frame.width, frame.height
+    if float(settings.get("vignette", 0.0)):
         yy, xx = frame.rows_columns(*rgb.shape[:2], xp=xp)
-        radius = xp.sqrt(((xx - (width - 1) / 2) / max(1, width / 2)) ** 2 +
-                         ((yy - (height - 1) / 2) / max(1, height / 2)) ** 2)
-        size = np.clip(float(settings.get("vignette_size", 70.0)) / 100.0, 0.0, 2.0)
-        feather = np.clip(float(settings.get("vignette_feather", 50.0)) / 100.0,
-                          0.0, 2.0)
-        midpoint = .55 + size * .40
-        transition = .04 + feather * .42
-        weight = _smoothstep(max(.08, midpoint - transition / 2),
-                             min(1.80, midpoint + transition / 2), radius)
-        amount = (weight * min(1.0, abs(vignette) / 100.0))[:, :, None]
-        edge = 0.0 if vignette < 0 else 1.0
-        rgb = rgb * (1.0 - amount) + edge * amount
+        weight = vignette_geometry(settings, yy, xx, frame.width, frame.height)
+        rgb = apply_vignette(rgb, settings, weight)
 
     grain = max(0.0, float(settings.get("grain", 0.0)))
     if grain:

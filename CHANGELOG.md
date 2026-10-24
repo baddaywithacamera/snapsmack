@@ -39,6 +39,41 @@
 
 ## 0.7.938D - 2026-10-24 - PANORAMA DRAMA
 
+- **The vignette drew one shape on the photograph and a different one in the
+  preset thumbnails, and the blend mode and colour did nothing at all.**
+  There were two implementations. The float compositor that draws the canvas
+  drew a plain circle with a cubic ramp and never read `vignette_blend` or
+  `vignette_color`, so the Normal/Multiply/Soft Light/Overlay dropdown and the
+  edge-colour picker were inert on the photograph while the LEWKS, LEWK AGAIN
+  and TEACH ME thumbnails honoured both. One shared vignette now serves both,
+  so a thumbnail shows what the photograph will do, and the two paths were
+  measured to agree within one count of 255 across every mode and colour.
+
+  A circle reaches the corners at radius 1.414 and at Size 70 / Feather 105 the
+  ramp ended at 1.183, so the mask saturated three quarters of the way out and
+  the whole outer quarter of the diagonal was flat. Flat against a gradient is
+  a visible edge as soon as the darkening is deep enough to bottom out, which
+  is why the feathering looked harder the darker it got. The frame-following
+  superellipse reaches the corners at 1.189, so the ramp still has gradient
+  where the corner is.
+
+  Normal now takes light away in linear light, the way a lens does it and the
+  way Photoshop's post-crop vignette does, instead of multiplying the
+  gamma-encoded numbers. Multiply, Soft Light and Overlay are layer maths and
+  stay in display space, which is where a layer blends. Measured on a mid-grey
+  128 subject along the diagonal at Size 70 / Feather 105:
+
+  | out along diagonal | -100 before | -100 after | -54 before | -54 after |
+  |--------------------|-------------|------------|------------|-----------|
+  | 60%                |        57.0 |      120.8 |       89.4 |     124.0 |
+  | 70%                |         9.9 |       91.6 |       64.0 |     109.9 |
+  | 75%                |         0.2 |       68.4 |       58.8 |     101.0 |
+  | 80%                |         0.0 |       41.0 |       58.6 |      93.4 |
+  | 90%                |         0.0 |        0.0 |       58.6 |      88.4 |
+
+  Existing edits that carry a vignette will render differently -- that is the
+  fix, not a side effect.
+
 - **Extreme panoramas no longer collapse landing-page titles into slivers.**
   Featured images wider than 2:1 now keep their original file and remain
   untouched inside the post, while the landing tile uses a bounded 2:1 cover
