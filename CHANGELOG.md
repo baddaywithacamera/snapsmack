@@ -39,6 +39,21 @@
 
 ## 0.7.938D - 2026-10-24 - PANORAMA DRAMA
 
+- **A RAW photograph reverted to the original while a slider moved.**
+  A regression from the preview-size development earlier in this version.
+  `_raw_developed_adjustments` records which RAW controls are already baked
+  into the file at `source_path`, and the editor takes the live slider delta
+  as `current - developed`. Only a full-resolution master moves `source_path`;
+  a preview development is deliberately kept out of that chain, but it was
+  still marking the controls as developed. So the pair disagreed: the baseline
+  said exposure was already in the master while the master was still the
+  neutral one, the delta came out zero, and a zero delta on the neutral master
+  is the undeveloped photograph. Measured on a synthetic 4000x3000 master
+  where the grey level encodes exposure: a drag at exposure +1.5 rendered 80
+  of 255 -- the original -- where it now renders 130 and the release render
+  lands on 226. Only a development that moves `source_path` now claims the
+  controls were developed.
+
 - **The vignette drew one shape on the photograph and a different one in the
   preset thumbnails, and the blend mode and colour did nothing at all.**
   There were two implementations. The float compositor that draws the canvas
