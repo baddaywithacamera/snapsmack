@@ -219,7 +219,9 @@ DEFAULT_ADJUSTMENTS = {
     # died above 20% luminance; 2 == black-point move plus a wide smooth
     # band (0.8.19+). A saved project without this key is version 1, so
     # existing work never shifts under the photographer.
-    "tone_version": 2,
+    # 3 releases the deepest blacks from the Shadows control. Older edits keep
+    # the version they were made with and render exactly as they did.
+    "tone_version": 3,
     "temperature": 0.0, "tint": 0.0, "saturation": 0.0, "vibrance": 0.0,
     "clarity": 0.0, "texture": 0.0, "dehaze": 0.0, "sharpen": 0.0,
     # Smart-sharpen controls. amount == the sharpen slider above. Lens mode
@@ -779,7 +781,7 @@ def _tonal_lut(adjustments):
         # make small weights disappear instead of visibly leaking into the
         # neighbouring band. The 50-level shoulder ceiling remains monotonic
         # even at ±100; midtones use a smooth bell centred on middle grey.
-        shadow_weight = (1.0 - _smoothstep(.10, .50, normalized)) ** 2
+        shadow_weight = highbit._shadow_weight(normalized, tone_version)
         highlight_weight = _smoothstep(.50, .90, normalized) ** 2
         midtone_weight = 1.0 - _smoothstep(0.0, .32, abs(normalized - .5))
         value += shadows * 50.0 * shadow_weight

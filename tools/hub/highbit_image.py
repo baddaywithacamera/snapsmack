@@ -765,6 +765,27 @@ def _band_values(settings, prefix, hue, scale):
     return 1.0 + xp.interp(hue, extended_x, extended_y).astype(xp.float32) / 100.0 * scale
 
 
+def _shadow_weight(tone, tone_version=1):
+    """Where the Shadows control acts, 0 to 1.
+
+    Photoshop leaves the darkest blacks alone: Shadows opens up dense shadow
+    detail and Blacks owns the black point. Ours had a shelf -- full weight
+    everywhere below 10% luminance, pure black included -- so the control
+    lifted the deepest blacks to a flat grey and the photograph looked faded
+    with nothing anchoring it. The band now falls back to nothing at pure
+    black and peaks at about 12%, where dense detail actually lives. Peak
+    weight is 0.986 against the old 1.0, so the control is no weaker where it
+    was doing the work people wanted.
+
+    Blacks still reaches full weight at pure black, which is the half of the
+    pair that is supposed to move it.
+    """
+    fall = (1.0 - _smoothstep(.10, .50, tone)) ** 2
+    if int(tone_version) < 3:
+        return fall
+    return _smoothstep(0.0, .12, tone) * fall
+
+
 def _smoothstep(edge0, edge1, value):
     xp = _xp(value)
     amount = xp.clip((value - edge0) / max(1e-6, edge1 - edge0), 0.0, 1.0)
@@ -1455,7 +1476,7 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
         delta = xp.zeros_like(mask_tone)
         if shadows:
             delta += (shadows / 100.0 * 50.0 / 255.0 *
-                      (1.0 - _smoothstep(.10, .50, mask_tone)) ** 2)
+                      _shadow_weight(mask_tone, tone_version))
         if midtones:
             delta += (midtones / 100.0 * 55.0 / 255.0 *
                       (1.0 - _smoothstep(0.0, .32, xp.abs(mask_tone - .5))))
