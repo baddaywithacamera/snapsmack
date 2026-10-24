@@ -126,12 +126,17 @@ def _cache_path(path):
     return os.path.join(folder, digest + ".jpg")
 
 
-def _development_cache_path(path, adjustments):
+def _development_cache_path(path, adjustments, preview_max=None):
     details = os.stat(path)
-    identity = json.dumps({
+    identity = {
         "path": os.path.abspath(path), "size": details.st_size,
         "mtime": details.st_mtime_ns, "adjustments": adjustments,
-    }, sort_keys=True, separators=(",", ":"))
+    }
+    # Only a bounded development adds the key, so every full-resolution master
+    # already on disk keeps the digest it was cached under.
+    if preview_max:
+        identity["preview_max"] = int(preview_max)
+    identity = json.dumps(identity, sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
     folder = os.path.join(snap_home.config_dir("snap_slapper"), "raw_developments")
     os.makedirs(folder, exist_ok=True)
@@ -177,7 +182,24 @@ def _visible_library_preview(image):
     return rgb
 
 
-def _pp3_text(adjustments):
+# A developed master is the full sensor: 8216x5482 for a 45 MP camera, 270 MB
+# of 16-bit TIFF. The editor shows a few hundred pixels of it. Developing the
+# whole sensor to fill that preview -- then writing, hashing, verifying and
+# decoding 270 MB to throw almost all of it away -- cost more than
+# RawTherapee's own development did. RawTherapee resizes at the END of its
+# pipeline, after demosaic, geometry and Lensfun, so a bounded development is
+# the same photograph developed the same way, never larger than the screen can
+# show. AllowUpscaling=false makes a budget at or above the sensor a no-op,
+# and the export path never asks for one.
+def _resize_profile(preview_max):
+    longest = max(1, int(preview_max))
+    return ("[Resize]\nEnabled=true\nScale=1\nAppliesTo=Full image\n"
+            "Method=Lanczos\nDataSpecified=3\n"
+            f"Width={longest}\nHeight={longest}\n"
+            "AllowUpscaling=false\n\n")
+
+
+def _pp3_text(adjustments, preview_max=None):
     """Translate SNAP SLAPPER's base RAW controls into a RawTherapee profile."""
     exposure = max(-5.0, min(12.0, float(adjustments.get("exposure", 0.0))))
     brightness = round(max(-100, min(100, float(adjustments.get("brightness", 0.0)))))
@@ -256,17 +278,23 @@ def _pp3_text(adjustments):
             f"UseVignette={'true' if lensfun_vignette else 'false'}\n"
             f"UseCA={'true' if lensfun_ca else 'false'}\n\n"
             "[Vignetting Correction]\n"
-            f"Amount={vignette}\nRadius=50\nStrength=1\nCenterX=0\nCenterY=0\n")
+            f"Amount={vignette}\nRadius=50\nStrength=1\nCenterX=0\nCenterY=0\n"
+            + (_resize_profile(preview_max) if preview_max else ''))
 
 
-def develop(path, adjustments=None, timeout=300):
-    """Develop an untouched RAW to a validated 16-bit TIFF via RawTherapee."""
+def develop(path, adjustments=None, timeout=300, preview_max=None):
+    """Develop an untouched RAW to a validated 16-bit TIFF via RawTherapee.
+
+    preview_max bounds the long edge for on-screen work. Leave it unset for
+    the full-resolution master; only that one is a durable, exportable
+    artifact, and only that one enters a document provenance chain.
+    """
     cli = find_rawtherapee(cli=True)
     if not cli:
         raise RuntimeError("RawTherapee is required to edit RAW photographs")
     path = os.path.abspath(os.fspath(path))
     adjustments = dict(adjustments or {})
-    target = _development_cache_path(path, adjustments)
+    target = _development_cache_path(path, adjustments, preview_max)
     profile = os.path.splitext(target)[0] + ".pp3"
     if _cache_is_authentic(target, profile):
         snap_imgsafe.safe_open(target, formats={"TIFF"},
@@ -277,7 +305,7 @@ def develop(path, adjustments=None, timeout=300):
     complete = False
     try:
         with open(profile, "w", encoding="utf-8", newline="\n") as handle:
-            handle.write(_pp3_text(adjustments))
+            handle.write(_pp3_text(adjustments, preview_max))
         result = subprocess_limits.run(
             [cli, "-q", "-p", profile, "-t", "-b16", "-Y", "-o", temporary,
              "-c", path], capture_output=True, text=True, timeout=timeout,
@@ -306,8 +334,27 @@ def develop(path, adjustments=None, timeout=300):
                     pass
 
 
+def cached_master(path, adjustments=None):
+    """The full-resolution master for these settings, if one is already on disk.
+
+    Opening a RAW develops the master up front, and exporting develops it
+    again. A preview must never develop a second, smaller copy of a photograph
+    it can already read at full quality, so it asks here first. Returns an
+    empty string when nothing authentic is cached.
+    """
+    path = os.path.abspath(os.fspath(path))
+    target = _development_cache_path(path, dict(adjustments or {}))
+    profile = os.path.splitext(target)[0] + ".pp3"
+    return target if _cache_is_authentic(target, profile) else ""
+
+
 def development_artifacts(path, adjustments=None, timeout=300):
-    """Return explicit typed-path inputs/outputs; no consumer derives a .pp3."""
+    """Return explicit typed-path inputs/outputs; no consumer derives a .pp3.
+
+    Always the full-resolution master. These paths are recorded in a
+    document provenance chain and become its edit source, so a bounded
+    preview development is deliberately not offered here.
+    """
     master = develop(path, adjustments, timeout=timeout)
     profile = os.path.splitext(master)[0] + ".pp3"
     if not os.path.isfile(profile):

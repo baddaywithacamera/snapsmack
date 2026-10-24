@@ -32,7 +32,16 @@ def test_raw_recovery_thumbnail_does_not_apply_raw_controls_twice(
         return {"original": str(raw), "profile": str(profile),
                 "master": str(adjusted_master), "producer": "test"}
 
+    def develop(_path, adjustments=None, timeout=300, preview_max=None):
+        # A thumbnail is a sized render, so it asks for a bounded development
+        # rather than the full sensor.
+        assert preview_max
+        assert adjustments["exposure"] == 2.0
+        return str(adjusted_master)
+
     monkeypatch.setattr(raw_preview, "development_artifacts", artifacts)
+    monkeypatch.setattr(raw_preview, "develop", develop)
+    monkeypatch.setattr(raw_preview, "cached_master", lambda *a, **k: "")
     document = editor_engine.EditorDocument(str(neutral_master))
     document.raw_source_path = str(raw)
     document.adjustments["exposure"] = 2.0
