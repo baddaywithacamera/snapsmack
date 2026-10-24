@@ -31,8 +31,11 @@ COMMANDS = [
      "args": [], "example": ENTRY + " boards --json"},
 
     {"name": "board-new", "does": "Create a board.", "returns": "board id",
-     "args": ["NAME", "--description D"], "example": ENTRY + " board-new Tickets",
-     "notes": "Role 3. Idempotent: an existing board of that name is returned."},
+     "args": ["NAME", "--description D", "--sort N"],
+     "example": ENTRY + " board-new Tickets --sort 6",
+     "notes": "Role 3. Idempotent: an existing board of that name is returned. "
+              "Without --sort the board sorts 0 and lands ABOVE every existing "
+              "board; the seeded five are 1..5."},
 
     {"name": "threads", "does": "List threads, pinned first then by activity.",
      "returns": "id, title, excerpt, flag, reply_count, last reply, unread",

@@ -97,7 +97,7 @@ def cmd_board_new(args):
         print("This key cannot create boards: that needs role 3 (admin). "
               "Check with `fc whoami`.", file=sys.stderr)
         return 3
-    bid = f.ensure_board(args.name, args.description or "")
+    bid = f.ensure_board(args.name, args.description or "", args.sort)
     _out(args, {"id": bid, "name": args.name},
          "Board " + args.name + " is id " + str(bid) + ".")
     return 0
@@ -277,6 +277,7 @@ def build_parser():
     bn = sub.add_parser("board-new")
     bn.add_argument("name")
     bn.add_argument("--description", default="")
+    bn.add_argument("--sort", type=int, default=0)
     bn.set_defaults(func=cmd_board_new)
 
     th = sub.add_parser("threads")

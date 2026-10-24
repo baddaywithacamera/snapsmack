@@ -73,6 +73,26 @@
   branch by which field is present. Listed in the agent sheet, with a test that
   fails if a command exists the sheet does not mention.
 
+- **The same id bug was in a third place: creating a board.** `ensure_board()`
+  read `.get("id")` from a create that answers `{"category_id": 6}`, so
+  `fc board-new` reported board 0 for a board it had just made correctly. It now
+  goes through the same read as threads and replies, and raises rather than
+  returning a zero.
+
+- **A new board landed at the top of the forum, not the bottom.** `GET
+  /categories` orders by `sort_order` and `POST /categories` defaults it to 0,
+  while the five seeded boards are 1 to 5 — so any board created through the
+  CLI sorted above Getting Started. `fc board-new` takes `--sort N`, and the
+  agent sheet names the trap, because an agent that does not know about the flag
+  makes the mistake silently.
+
+- **Forum board colours are keyed on the board, not its position.** The accent
+  stripe on each board row was `palette[index % 8]`, so hiding a board or
+  changing one `sort_order` recoloured every board below it — people learn "the
+  green one" and it quietly stops being the green one. Each of the five boards
+  now holds its own colour, with the rotation kept as the fallback for a board
+  added later. The Lounge, when it exists, is warm orange.
+
 - The runtime-floor test asserted the string `PHP 8.3+` was present in
   `setup.php` — which it was, in the docblock. The test was confirming a
   comment. It now requires the constant and the comparison.

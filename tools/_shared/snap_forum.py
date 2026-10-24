@@ -187,13 +187,26 @@ class Forum:
     def unfollow(self, thread_id: int) -> None:
         self._call("DELETE", f"threads/{thread_id}/follow")
 
-    def ensure_board(self, name: str, description: str = "") -> int:
+    def ensure_board(self, name: str, description: str = "",
+                     sort_order: int = 0) -> int:
+        """A board's id, creating it only if no board of that name exists.
+
+        sort_order is where it sits in the list: GET /categories orders by it
+        and the API defaults it to 0, so a board created without one lands
+        ABOVE every board already there. The five seeded boards are 1..5, so a
+        new board wants 6, not the default.
+
+        The id read is the same bug _created_id was written for: this create
+        answers {"category_id": N}, and reading .get("id") returned 0.
+        """
         for cat in self.categories():
             if (cat.get("name") or "").strip().lower() == name.strip().lower():
                 return int(cat.get("id") or 0)
-        made = self._call("POST", "categories",
-                          {"name": name, "description": description})
-        return int((made.get("category") or made).get("id") or 0)
+        payload = {"name": name, "description": description}
+        if sort_order:
+            payload["sort_order"] = int(sort_order)
+        made = self._call("POST", "categories", payload)
+        return _created_id(made, "category")
 
     def post_ticket(self, category_id: int, title: str, body: str) -> int:
         made = self._call("POST", "threads",
