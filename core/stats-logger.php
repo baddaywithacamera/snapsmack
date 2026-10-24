@@ -306,14 +306,13 @@ function snapsmack_client_ip() {
 }
 
 /**
- * Count published POSTS and IMAGES for this install, mode-agnostic.
+ * Count published POSTS and IMAGES for this install, mode-aware.
  *
- * Images = every published transmission (snap_images). Posts = each standalone
- * image (post_id NULL — the SMACKONEOUT / imported case, where the image IS the
- * post) PLUS each grouped post once (GRAMOFSMACK carousel/panorama images share
- * a post_id and collapse to a single post). snap_images is the canonical store;
- * solo images are never wrapped in snap_posts, so COUNT(snap_posts) undercounts
- * every non-carousel install.
+ * Images always means published Gallery rows. Posts follow the install's actual
+ * content model: SMACKONEOUT has one post per standalone/grouped photograph,
+ * while GRAMOFSMACK, SMACKTALK and SMACKTHEMUP store posts in snap_posts. Using
+ * the SMACKONEOUT image rule on SMACKTALK turns every article photograph into a
+ * fake post in dashboard/fleet totals.
  *
  * @param  PDO $pdo
  * @return array  ['posts' => int, 'images' => int]
@@ -322,11 +321,47 @@ function snapsmack_content_counts($pdo) {
     $posts = 0; $images = 0;
     try {
         $images = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
-        $solo   = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published' AND post_id IS NULL")->fetchColumn();
-        $groups = (int)$pdo->query("SELECT COUNT(DISTINCT post_id) FROM snap_images WHERE img_status = 'published' AND post_id IS NOT NULL")->fetchColumn();
-        $posts  = $solo + $groups;
+        $mode = (string)($pdo->query(
+            "SELECT setting_val FROM snap_settings WHERE setting_key = 'site_mode' LIMIT 1"
+        )->fetchColumn() ?: 'photoblog');
+
+        if ($mode === 'photoblog') {
+            $solo   = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published' AND post_id IS NULL")->fetchColumn();
+            $groups = (int)$pdo->query("SELECT COUNT(DISTINCT post_id) FROM snap_images WHERE img_status = 'published' AND post_id IS NOT NULL")->fetchColumn();
+            $posts  = $solo + $groups;
+        } else {
+            $posts = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts WHERE status = 'published'")->fetchColumn();
+        }
     } catch (\Throwable $e) { /* tables may be absent on a very fresh install */ }
     return ['posts' => $posts, 'images' => $images];
+}
+
+/** Count live, scheduled and draft content using the install's real post model. */
+function snapsmack_content_status_counts($pdo, string $now_local): array {
+    $mode = (string)($pdo->query(
+        "SELECT setting_val FROM snap_settings WHERE setting_key = 'site_mode' LIMIT 1"
+    )->fetchColumn() ?: 'photoblog');
+
+    if ($mode === 'photoblog') {
+        $table = 'snap_images';
+        $status = 'img_status';
+        $date = 'img_date';
+    } else {
+        $table = 'snap_posts';
+        $status = 'status';
+        $date = 'created_at';
+    }
+
+    $live = $pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE {$status}='published' AND {$date} <= ?");
+    $live->execute([$now_local]);
+    $scheduled = $pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE {$status}='published' AND {$date} > ?");
+    $scheduled->execute([$now_local]);
+
+    return [
+        'published' => (int)$live->fetchColumn(),
+        'scheduled' => (int)$scheduled->fetchColumn(),
+        'drafts'    => (int)$pdo->query("SELECT COUNT(*) FROM {$table} WHERE {$status}='draft'")->fetchColumn(),
+    ];
 }
 
 /**
