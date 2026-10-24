@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.941D - 2026-10-24 - THE RIGHT NEXT PAGE
+
+- **SCROLL's MOSAIC feed now requests the page the server actually advertised.** The shared view contract supplies continuation pages as numbers (`2`, `3`, ...), but the browser treated those numbers as relative paths and requested `/2`, which returned a 404 and left “Loading another mosaic…” at the bottom of the wall. Numeric continuations are now translated to `?page=2`; fully formed continuation URLs remain supported unchanged.
+
 ## 0.7.940D - 2026-10-24 - KEEP ON SCROLLING
 
 - **GRAMOFSMACK walls continue loading when a short batch leaves the continuation marker inside the prefetch zone.** The browser observer only reports boundary changes, so a marker that stayed inside the zone could strand a wall after several batches even though thousands of photographs remained. Row, column and asymmetric walls now keep filling until the marker actually moves beyond the viewport lead; MOSAIC requests also time out cleanly instead of displaying “Loading another mosaic” forever. SCROLL and SLICKR footer separators regain readable spacing.
