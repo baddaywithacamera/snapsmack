@@ -300,6 +300,24 @@ function snapsmack_smacktalk_feed(PDO $pdo, array $settings, string $base, int $
             if (is_array($size) && ($size[0] ?? 0) > 0 && ($size[1] ?? 0) > 0) {
                 $post['width'] = (int)$size[0]; $post['height'] = (int)$size[1];
             }
+            $displayOptions = json_decode((string)($post['featured_display_options'] ?? ''), true);
+            $tileAspect = is_array($displayOptions) ? (string)($displayOptions['landing_tile_aspect'] ?? '') : '';
+            if ($tileAspect === 'portrait') {
+                $post['width'] = 2;
+                $post['height'] = 3;
+            } elseif ($tileAspect === 'square') {
+                $post['width'] = 1;
+                $post['height'] = 1;
+            } elseif ($tileAspect === 'landscape') {
+                $post['width'] = 3;
+                $post['height'] = 2;
+            } elseif ($post['width'] / $post['height'] > 2) {
+                // An uncropped panorama makes a landing tile too shallow to carry
+                // its date and title. Keep the source intact on the post, but give
+                // automatic feed tiles a bounded 2:1 cover box.
+                $post['width'] = 2;
+                $post['height'] = 1;
+            }
         }
     }
     unset($post);
