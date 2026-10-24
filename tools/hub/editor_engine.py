@@ -2050,6 +2050,15 @@ class EditorDocument:
             artifacts = raw_preview.development_artifacts(raw_source, raw_settings)
             self._use_raw_development(artifacts)
             master = artifacts["master"]
+            # This pair has to stay a pair. _raw_developed_adjustments says
+            # which RAW controls are already baked into the file at
+            # source_path, and _use_raw_development is what moves source_path
+            # to this new master. A preview development moves neither, so it
+            # must not touch this either: claiming the controls were developed
+            # into a master that is still the neutral one makes the editor
+            # compute a zero slider delta and the photograph reverts to the
+            # original while the slider moves.
+            self._raw_developed_adjustments = copy.deepcopy(raw_settings)
         else:
             # Opening and exporting both leave a full master behind. Reading
             # one costs less than developing a smaller copy of it.
@@ -2057,7 +2066,6 @@ class EditorDocument:
             if not master:
                 master = raw_preview.develop(raw_source, raw_settings,
                                              preview_max=budget)
-        self._raw_developed_adjustments = copy.deepcopy(raw_settings)
         # RawTherapee has already applied these controls. The remaining
         # SNAP SLAPPER-only controls continue through the layer engine.
         base_adjustments = copy.deepcopy(self.adjustments)
