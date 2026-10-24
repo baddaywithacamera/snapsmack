@@ -56,13 +56,22 @@
         });
     }
 
+    function pageRequestUrl(value) {
+        value = String(value || '').trim();
+        // The public view contract exposes next_page as a page number. Treating
+        // that number as a relative URL requests `/2`, `/3`, etc. and receives
+        // the site's 404 page. Preserve real URLs, but turn the numeric contract
+        // into the query-string route understood by the public controller.
+        return /^\d+$/.test(value) ? '?page=' + encodeURIComponent(value) : value;
+    }
+
     function loadNext() {
         if (!hasMore || loading) return;
         loading = true;
         if (status) status.textContent = 'Loading another mosaic…';
 
         if (nextUrl) {
-            fetchWithTimeout(nextUrl)
+            fetchWithTimeout(pageRequestUrl(nextUrl))
                 .then(function (response) {
                     if (!response.ok) throw new Error('HTTP ' + response.status);
                     return response.text();
