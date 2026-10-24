@@ -5,7 +5,8 @@ snapsmack_assert_strict_skin_feature('tilez');
 $css = file_get_contents(__DIR__ . '/../skins/tilez/style.css');
 $mosaic = file_get_contents(__DIR__ . '/../assets/js/ss-engine-mosaic.js');
 $layout = file_get_contents(__DIR__ . '/../skins/tilez/layout.php');
-if (!is_string($css) || !is_string($mosaic) || !is_string($layout)
+$controller = file_get_contents(__DIR__ . '/../core/smacktalk-public-controller.php');
+if (!is_string($css) || !is_string($mosaic) || !is_string($layout) || !is_string($controller)
     || str_contains($layout, 'data-merge-adjacent-mosaics')
     || !str_contains($css, '.snap-inline-frame:has(+ .snap-inline-frame)')
     || !str_contains($css, '.content > .section-inner:has(> .tilez-posts)')
@@ -13,6 +14,11 @@ if (!is_string($css) || !is_string($mosaic) || !is_string($layout)
     || substr_count($css, 'margin-bottom: 4px;') < 3
     || str_contains($css, 'width: calc(50% - 10px) !important;')) {
     throw new RuntimeException('TILEZ standalone post photographs must remain tightly stacked as separate blocks.');
+}
+if (!str_contains($controller, "\$post['width'] / \$post['height'] > 2")
+    || !str_contains($controller, "\$post['width'] = 2;")
+    || !str_contains($controller, "\$post['height'] = 1;")) {
+    throw new RuntimeException('Extreme panorama landing tiles must be bounded to a readable 2:1 cover box.');
 }
 $manifest = json_decode((string) file_get_contents(__DIR__ . '/../skins/tilez/manifest.json'), true);
 // A FLOOR, not a pin. Pinning the exact version made every legitimate

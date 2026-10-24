@@ -11,6 +11,13 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.938D - 2026-10-24 - PANORAMA DRAMA
+
+- **Extreme panoramas no longer collapse landing-page titles into slivers.**
+  Featured images wider than 2:1 now keep their original file and remain
+  untouched inside the post, while the landing tile uses a bounded 2:1 cover
+  box. Explicit portrait, square, and landscape tile choices still win.
+
 ## 0.7.937D - 2026-10-23 - DOOR POLICY
 
 - **The installer stated a PHP requirement and never checked it.** The docblock

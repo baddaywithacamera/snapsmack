@@ -2279,8 +2279,8 @@ body.blog, body.single, body.archive { background: #fff; }
     padding-top: var(--tilez-content-start);
 }
 
-/* Shared SS-COLUMNS geometry. Every cover keeps its native aspect; the engine
-   places the next post in the shortest of three columns. */
+/* Shared SS-COLUMNS geometry. Ordinary covers keep their native aspect; the
+   feed controller bounds extreme panoramas so titles retain enough height. */
 .posts.ss-masonry {
     --ss-cols: 3;
     --ss-gap: var(--tilez-gap);
