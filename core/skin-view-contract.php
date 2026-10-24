@@ -31,7 +31,13 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
             $tiles[] = [
                 'src' => (string)($tile['img_thumb_aspect'] ?? $tile['img_file'] ?? ''),
                 'full' => (string)($tile['img_file'] ?? $tile['img_thumb_aspect'] ?? ''),
-                'href' => (string)($tile['url'] ?? ''),
+                // Repository rows carry img_slug, while several ordinary skin
+                // components can synthesize their own link from it. MOSAIC is
+                // JSON-driven and cannot do that after the strict view boundary,
+                // so give it the same solo-page fallback here.
+                'href' => (string)($tile['url'] ?? (!empty($tile['img_slug'])
+                    ? snap_route_url('photo', ['slug' => (string)$tile['img_slug']])
+                    : '')),
                 'alt' => (string)($tile['img_alt'] ?? $tile['img_title'] ?? ''),
                 'id' => (int)($tile['id'] ?? $tile['img_id'] ?? 0),
                 'width' => max(1, (int)($tile['presentation_width'] ?? $tile['img_width'] ?? 1)),
