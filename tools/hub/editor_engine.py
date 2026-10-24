@@ -306,6 +306,30 @@ RAW_DEVELOPMENT_KEYS = {
     "raw_lensfun_ca",
 }
 
+# Never develop a smaller preview than this, so ordinary window resizing and
+# small crops reuse one development instead of starting a new one each time.
+RAW_PREVIEW_FLOOR = 1600
+
+
+def raw_preview_budget(max_size, geometry=None):
+    """Long edge a preview development needs, or None to demand the master.
+
+    A preview is shown at a few hundred pixels, so developing the whole sensor
+    to fill it is wasted work. A crop shows part of the frame at that size, so
+    the development has to be correspondingly larger to keep the detail the
+    viewer would otherwise see.
+    """
+    if not max_size:
+        return None
+    longest = max(int(max_size[0]), int(max_size[1]))
+    crop = (geometry or {}).get("crop")
+    if crop:
+        left, top, right, bottom = crop
+        fraction = max(1e-3, min(float(right) - float(left),
+                                 float(bottom) - float(top)))
+        longest = int(math.ceil(longest / fraction))
+    return max(RAW_PREVIEW_FLOOR, longest)
+
 
 # Photo Filter presets — the classic Photoshop set (a coloured gel over the lens
 # at a density) plus a few faux-infrared washes. Each entry is (label, RGB,
@@ -2030,6 +2054,38 @@ class EditorDocument:
             identity["path_identity"] = render_graph.file_identity(path)
         return identity
 
+    def _raw_development_master(self, max_size):
+        """The developed TIFF this render should read, and its base settings.
+
+        A full-resolution master is a durable artifact: it becomes the edit
+        source and is recorded in the provenance chain. A preview-sized
+        development is a render detail with the same profile, so it is used for
+        the picture and deliberately kept out of that chain.
+        """
+        import raw_preview
+        raw_source = self.raw_source_path
+        raw_settings = {key: self.adjustments.get(key, DEFAULT_ADJUSTMENTS[key])
+                        for key in RAW_DEVELOPMENT_KEYS}
+        budget = raw_preview_budget(max_size, self.geometry)
+        if budget is None:
+            artifacts = raw_preview.development_artifacts(raw_source, raw_settings)
+            self._use_raw_development(artifacts)
+            master = artifacts["master"]
+        else:
+            # Opening and exporting both leave a full master behind. Reading
+            # one costs less than developing a smaller copy of it.
+            master = raw_preview.cached_master(raw_source, raw_settings)
+            if not master:
+                master = raw_preview.develop(raw_source, raw_settings,
+                                             preview_max=budget)
+        self._raw_developed_adjustments = copy.deepcopy(raw_settings)
+        # RawTherapee has already applied these controls. The remaining
+        # SNAP SLAPPER-only controls continue through the layer engine.
+        base_adjustments = copy.deepcopy(self.adjustments)
+        for key in RAW_DEVELOPMENT_KEYS:
+            base_adjustments[key] = DEFAULT_ADJUSTMENTS[key]
+        return master, base_adjustments
+
     def _graph_decode_source(self, max_size):
         raw_source = getattr(self, "raw_source_path", "")
         if not raw_source:
@@ -2038,17 +2094,9 @@ class EditorDocument:
             # frame. Reuse that already-decoded float source instead of sending
             # the same multi-megapixel photograph through the decoder again.
             return _read_float_source(self.source_path, max_size)
-        import raw_preview
-        raw_settings = {key: self.adjustments.get(key, DEFAULT_ADJUSTMENTS[key])
-                        for key in RAW_DEVELOPMENT_KEYS}
-        artifacts = raw_preview.development_artifacts(raw_source, raw_settings)
-        self._use_raw_development(artifacts)
-        self._raw_developed_adjustments = copy.deepcopy(raw_settings)
-        base_adjustments = copy.deepcopy(self.adjustments)
-        for key in RAW_DEVELOPMENT_KEYS:
-            base_adjustments[key] = DEFAULT_ADJUSTMENTS[key]
+        master, base_adjustments = self._raw_development_master(max_size)
         self._graph_base_adjustments = base_adjustments
-        return _read_float_source(artifacts["master"], max_size)
+        return _read_float_source(master, max_size)
 
     def _graph_stage_document(self, image):
         stage = copy.copy(self)
@@ -2154,18 +2202,8 @@ class EditorDocument:
         if graph_input is not None:
             image = graph_input
         elif raw_source:
-            import raw_preview
-            raw_settings = {key: self.adjustments.get(key, DEFAULT_ADJUSTMENTS[key])
-                            for key in RAW_DEVELOPMENT_KEYS}
-            artifacts = raw_preview.development_artifacts(raw_source, raw_settings)
-            self._use_raw_development(artifacts)
-            self._raw_developed_adjustments = copy.deepcopy(raw_settings)
-            image = _read_float_source(artifacts["master"], max_size)
-            # RawTherapee has already applied these controls. The remaining
-            # SNAP SLAPPER-only controls continue through the layer engine.
-            base_adjustments = copy.deepcopy(self.adjustments)
-            for key in RAW_DEVELOPMENT_KEYS:
-                base_adjustments[key] = DEFAULT_ADJUSTMENTS[key]
+            master, base_adjustments = self._raw_development_master(max_size)
+            image = _read_float_source(master, max_size)
         else:
             image = _read_float_source(self.source_path, max_size)
         if not getattr(self, "_graph_skip_base", False):

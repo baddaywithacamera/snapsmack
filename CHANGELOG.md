@@ -18,6 +18,63 @@
   untouched inside the post, while the landing tile uses a bounded 2:1 cover
   box. Explicit portrait, square, and landscape tile choices still win.
 
+- **Every RAW DEVELOP slider developed the whole sensor to fill a preview.**
+  Letting go of one slider on a 45 MP DNG took 6.9 seconds, and a five-slider
+  edit took 37.8. Measured on 24 Oct against a 47.8 MB Canon DNG with
+  RawTherapee 5.13, timing each stage of a single slider release:
+
+  | stage                                   | before  |
+  |-----------------------------------------|---------|
+  | RawTherapee development                 |  6.10 s |
+  | SHA-256 integrity check of the result   |  0.32 s |
+  | verified re-open and decode             |  0.46 s |
+  | **total, per slider released**          | **6.88 s** |
+
+  Every control on that panel -- Exposure, Brightness, Contrast, Highlights,
+  Shadows, Black Level, Temperature, Tint, Saturation and Noise Reduction as
+  well as the geometry group -- is applied by RawTherapee, so each one is a new
+  development. The panel's own help text said tone was immediate; it was not.
+
+  What made it twice as slow as it had to be: every one of those developments
+  produced the full sensor, 8216x5482 and 270 MB of 16-bit TIFF, to show a
+  photograph a few hundred pixels wide. SNAP SLAPPER then hashed those 270 MB,
+  verified them, decoded them, and threw away more than 99% of the pixels.
+
+  A preview now develops at preview size. RawTherapee resizes at the end of its
+  own pipeline -- after demosaic, geometry and Lensfun -- so it is the same
+  photograph developed with the same profile, just never larger than the screen
+  can show. A crop asks for proportionally more so no detail is lost.
+
+  | stage                                   | before  | after   |
+  |-----------------------------------------|---------|---------|
+  | RawTherapee development                 |  6.10 s |  3.34 s |
+  | SHA-256 integrity check of the result   |  0.32 s |  0.02 s |
+  | verified re-open and decode             |  0.46 s |  0.02 s |
+  | **total, per slider released**          | **6.88 s** | **3.38 s** |
+  | five slider releases                    | 37.75 s | 20.79 s |
+  | TIFF written and read back              |  270 MB |   10 MB |
+
+  The remaining 3.3 seconds is RawTherapee's own development of the raw file
+  and is not ours to remove: a cheaper demosaic saves 0.2 s (3.29 -> 3.09) and
+  developing to 900 px instead of 1600 saves 0.1 s, so the cost is reading and
+  demosaicing the sensor, which a preview still needs in full. Time tracks
+  sensor size, not process startup -- 1.3 s for a 16.5 MB raw, 3.2 s for a
+  47.8 MB one.
+
+  Nothing about the photograph that gets saved has changed. The full-resolution
+  master is developed from a byte-identical profile, lands under the same cache
+  key as before, and is still the only thing recorded in a document's
+  provenance chain -- a bounded preview is a render detail and can never become
+  an edit or export source. Opening and exporting both leave a master behind,
+  and a preview reads one when it is already there rather than developing a
+  smaller copy of it.
+
+  One honest trade: exporting straight after an edit now develops the
+  full-resolution master once, because previews no longer leave one behind at
+  the settings being exported. That is about 6 seconds paid once, against 3.5
+  saved on every slider.
+
+
 ## 0.7.937D - 2026-10-23 - DOOR POLICY
 
 - **The installer stated a PHP requirement and never checked it.** The docblock
