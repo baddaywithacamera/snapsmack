@@ -197,16 +197,54 @@ function snapsmack_photo_description_html(string $content): SnapTrustedHtml
             static fn(string $paragraph): string => '<p>' . preg_replace('/\n+/', '<br>', trim($paragraph)) . '</p>',
             array_filter($paragraphs, static fn(string $paragraph): bool => trim($paragraph) !== '')
         ));
-    } else {
-        // Some imported rows contain a bare opening paragraph followed by
-        // proper block markup. Restore only that unambiguous leading block;
-        // the sanitizer below remains the authority for allowed HTML.
-        if (preg_match('~^(.*?)(?=<(?:p|div|section|blockquote|ul|ol|pre|h[1-6]|figure|table|details)\b)~is', $content, $match)) {
-            $leading = trim($match[1]);
-            if ($leading !== '') {
-                $content = '<p>' . preg_replace('/\n+/', '<br>', $leading) . '</p>' . substr($content, strlen($match[1]));
+    } elseif (class_exists('DOMDocument')) {
+        // Imported posts can alternate CMS blocks with bare prose, especially
+        // around an inline photograph: </div>Bare paragraph.<p>Next...</p>.
+        // Wrap every meaningful top-level inline run, not only the opening
+        // run. Inline emphasis and links move into the restored paragraph.
+        $document = new DOMDocument('1.0', 'UTF-8');
+        $previous = libxml_use_internal_errors(true);
+        $document->loadHTML('<?xml encoding="utf-8" ?><div id="snap-paragraph-root">' . $content . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $root = $document->getElementById('snap-paragraph-root');
+        if ($root) {
+            $blockTags = array_flip(['p','div','section','blockquote','ul','ol','pre','h1','h2','h3','h4','h5','h6','figure','table','details','header','form','nav']);
+            $run = [];
+            $flush = static function (?DOMNode $before = null) use (&$run, $document, $root): void {
+                if (!$run) return;
+                $meaningful = false;
+                foreach ($run as $node) {
+                    if (trim((string)$node->textContent) !== '' || ($node instanceof DOMElement && strtolower($node->tagName) === 'img')) {
+                        $meaningful = true;
+                        break;
+                    }
+                }
+                if ($meaningful) {
+                    $paragraph = $document->createElement('p');
+                    $root->insertBefore($paragraph, $run[0]);
+                    foreach ($run as $node) $paragraph->appendChild($node);
+                }
+                $run = [];
+            };
+            foreach (iterator_to_array($root->childNodes) as $child) {
+                if ($child instanceof DOMElement && isset($blockTags[strtolower($child->tagName)])) {
+                    $flush($child);
+                    continue;
+                }
+                $run[] = $child;
             }
+            $flush();
+            $content = '';
+            foreach ($root->childNodes as $child) $content .= $document->saveHTML($child);
         }
+    } else {
+        // Conservative fallback for PHP builds without DOM.
+        $content = preg_replace_callback(
+            '~(?:^|(?<=</(?:div|section|figure|table|details)>))([^<].*?)(?=<(?:p|div|section|blockquote|ul|ol|pre|h[1-6]|figure|table|details)\b|$)~is',
+            static fn(array $match): string => trim($match[1]) === '' ? $match[1] : '<p>' . preg_replace('/\n+/', '<br>', trim($match[1])) . '</p>',
+            $content
+        ) ?? $content;
     }
 
     return snapsmack_trusted_html($content);

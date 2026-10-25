@@ -11,6 +11,14 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.947D - 2026-10-25 - EVERY PARAGRAPH IS A PARAGRAPH
+
+- **Mixed historical photo posts regain every missing paragraph, including prose after an inline photograph.** The first repair handled plain-text descriptions and bare prose at the start of mixed HTML, but posts can also contain a CMS image block followed by unwrapped text and then proper `<p>` elements. The shared safe formatter now wraps every meaningful top-level prose run wherever it occurs, preserving inline links and emphasis while leaving existing blocks intact. This remains a central renderer fix used by every photo skin.
+
+- **SMACKTALK and photography Fediverse readers now have separate native-service presentations.** SMACKTALK follows Mastodon's current navigation, timeline and rail structure; photography installs retain Pixelfed's image-first three-column presentation. SMACKTALK's palette is complete and cannot inherit unreadable light-theme text, and its admin link is labelled Mastodon rather than Pixelfed.
+
+- **RATIONAL GEO's publication date is visibly attached to its article.** It is larger, brighter and placed immediately after the final paragraph instead of floating in unused space above the tags.
+
 ## 0.7.946D - 2026-10-25 - PARAGRAPHS ARE PARAGRAPHS
 
 - **Ordinary photo posts preserve their paragraphs again across every photo skin.** Historical descriptions stored as blank-line-separated text are converted into safe paragraph markup, while mixed imported descriptions retain their existing HTML and regain any bare opening paragraph. The shared formatter still passes through the CMS sanitizer; SMACKTALK longform rendering is unchanged.
