@@ -5,6 +5,7 @@ $root = dirname(__DIR__);
 $pixel = file_get_contents($root . '/pixel.php');
 $js = file_get_contents($root . '/assets/js/ss-pixel.js');
 $css = file_get_contents($root . '/assets/css/ss-pixel.css');
+$sidebar = file_get_contents($root . '/core/sidebar.php');
 
 $failures = [];
 $check = static function (bool $ok, string $message) use (&$failures): void {
@@ -19,6 +20,8 @@ $check(str_contains($js, 'Favourite</button>') && str_contains($js, 'Reply</butt
 $check(str_contains($js, 'Like</button>') && str_contains($js, 'Comment</button>'), 'Pixelfed-style actions were not preserved');
 $check(str_contains($css, '.sx-reader-mastodon .sx-caption') && str_contains($css, 'order:3'), 'SMACKTALK text is not ordered before media');
 $check(str_contains($css, '.sx-reader-mastodon .sx-media') && str_contains($css, 'order:4'), 'SMACKTALK media order is missing');
+$check(str_contains($css, '--fg:#f5f5f7') && str_contains($css, '--muted:#9baec8'), 'SMACKTALK reader does not lock in readable foreground colours');
+$check(str_contains($sidebar, "\$_site_is_smacktalk ? 'Mastodon' : 'Pixelfed'"), 'admin reader label is not mode-aware');
 
 if ($failures) {
     fwrite(STDERR, implode(PHP_EOL, $failures) . PHP_EOL);
