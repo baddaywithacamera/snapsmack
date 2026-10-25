@@ -11,6 +11,10 @@ Checks, in order, and exits 1 on the first failure:
     version number was right, the entry script was wrong.
   * --no-tk        — no `tkinter` module and no `_tkinter` binary in the bundle
                      (a Qt build that drags Tk in is the wrong build).
+  * --require-gpu  — CuPy and the CUDA wheels are bundled beside the exe. For
+                     SNAP SLAPPER, which needs SNAP_SLAPPER_NVIDIA_BUILD=1 at
+                     build time; without it every other check still passes and
+                     the build silently loses GPU acceleration.
   * version        — the Windows version resource is present (Properties →
                      Details). With --version, it must equal that string.
   * icon           — the exe carries at least one icon resource.
@@ -69,6 +73,25 @@ def check_no_tk(reader, toc) -> str:
     return ''
 
 
+def check_gpu(path: str) -> str:
+    """CuPy and the CUDA wheels sit beside the exe in a onedir build.
+
+    SNAP SLAPPER 0.7.57 was first built without SNAP_SLAPPER_NVIDIA_BUILD=1,
+    which the spec reads to decide whether to bundle them. The result was a
+    192 MB CPU-only build in place of a 2.6 GB one, and it passed every other
+    check here: the entry script, the version resource and the icon are all
+    identical either way. Installing it would have taken GPU acceleration off
+    the machine silently.
+    """
+    folder = os.path.dirname(os.path.abspath(path))
+    missing = [name for name in ('cupy', 'cupy_backends', 'cupyx', 'nvidia')
+               if not os.path.isdir(os.path.join(folder, name))]
+    if missing:
+        return ('GPU build expected but %s missing beside the exe — build with '
+                'SNAP_SLAPPER_NVIDIA_BUILD=1' % ', '.join(missing))
+    return ''
+
+
 def _file_version(path: str) -> str:
     """Read ProductVersion/FileVersion from the PE version resource (Windows)."""
     if sys.platform != 'win32':
@@ -106,6 +129,8 @@ def main() -> int:
     ap.add_argument('exe')
     ap.add_argument('--entry', required=True, help='launcher module name, e.g. flkrfckr_launcher')
     ap.add_argument('--no-tk', action='store_true')
+    ap.add_argument('--require-gpu', action='store_true',
+                    help='CuPy and the CUDA wheels must be bundled (onedir)')
     ap.add_argument('--version', default='')
     ap.add_argument('--no-icon-check', action='store_true')
     a = ap.parse_args()
@@ -127,6 +152,12 @@ def main() -> int:
         if err:
             return _fail(err)
         print('verify_exe: no tkinter in bundle OK')
+
+    if a.require_gpu:
+        err = check_gpu(a.exe)
+        if err:
+            return _fail(err)
+        print('verify_exe: CuPy and CUDA wheels bundled OK')
 
     fv = _file_version(a.exe)
     if fv == '':

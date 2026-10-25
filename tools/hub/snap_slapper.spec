@@ -1,5 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Standalone SNAP SLAPPER (Qt / PySide6) build recipe.
+#
+# Build it like this, from this directory, with the pinned runtime:
+#
+#   SNAP_SLAPPER_NVIDIA_BUILD=1 \
+#     C:/dev/snapsmack/.python-build/python.exe -m PyInstaller \
+#     --noconfirm --clean snap_slapper.spec
+#
+#   python ../_build/verify_exe.py "dist/SNAP SLAPPER/SNAP SLAPPER.exe" \
+#     --entry run_slapper_qt --no-tk --require-gpu --version <BUILD_VERSION>
+#
+# The flag is not optional for a release. Without it this spec excludes CuPy
+# and the CUDA wheels (see _gpu_excludes below) and produces a 192 MB
+# CPU-only build instead of a 2.6 GB one. Nothing about the exe itself
+# differs, which is why --require-gpu exists.
 import os
 import sys
 from PyInstaller.utils.hooks import collect_all, collect_submodules
