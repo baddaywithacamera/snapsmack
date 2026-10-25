@@ -11,7 +11,17 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.943D - 2026-10-24 - THE RULES WERE THERE
+
+- **THE GRID and the eight related frame-aware skins respect their saved image sizes, borders, colours and shadows again.** The existing shared frame stylesheet was still correct, but strict skin pages no longer loaded it after THE BIG BANG. The CMS now supplies that same stylesheet at the strict rendering boundary instead of inventing replacement layout rules.
+
+- **PHOTOGRAM's feed continues past its first page and its phone navigation is back.** Its historical JSON continuation response is restored through the strict controller, with the initial page and later pages using the same bounded tile renderer.
+
+- **INSTANT CAMERA once again preserves the CMS-selected non-square and trigram presentation.** The skin now consumes the prepared presentation image and class while retaining the shared frame-token contract.
+
 - **TILEZ 0.2.72: blogroll links match the main menu.** Blog names now use TILEZ's dark menu ink instead of the inherited blue accent. Hover and keyboard focus use the same red treatment as the primary navigation.
+
+- **This candidate also carries the queued SNAP SLAPPER 0.7.57 corrections already on `dev`.** Vignette previews and the photograph use the same frame-following compositor; RAW slider previews no longer fall back to the neutral source; and Shadows opens dense detail without lifting pure black.
 
 ## 0.7.942D - 2026-10-24 - CLICK THE DAMN PICTURE
 

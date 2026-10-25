@@ -150,6 +150,10 @@ $check($registered, 'ss-frame-tokens.css is not a public asset in ASSET-INVENTOR
 $check(str_contains((string)file_get_contents($root . '/core/meta.php'), 'ss-frame-tokens.css'),
     'core/meta.php no longer ships ss-frame-tokens.css. Nothing else does, so every '
     . 'photograph on every grid skin would lose its inset, border and shadow.');
+$index = (string)file_get_contents($root . '/index.php');
+$check(str_contains($index, "['styles' => ['asset:public:ss-frame-tokens']]")
+    && str_contains($index, "'the-grid'"),
+    'Strict grid-family pages do not register the CMS-owned frame-token stylesheet.');
 
 // ---------------------------------------------------------------------------
 // 3b. The skin chooses which key it reads; the CMS does not sniff
