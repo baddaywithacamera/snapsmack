@@ -13,7 +13,7 @@ foreach(['photogram','onyx'] as $skin){
  $view=snapsmack_build_skin_view(['status'=>200,'kind'=>'landing','items'=>[['img_title'=>'Photo','img_slug'=>'photo','img_thumb_aspect'=>'/media/thumb.jpg']],'photo_count'=>1,'like_count'=>2,'comment_count'=>3,'navigation'=>[]],['site_name'=>'Example','site_description'=>'Biography','avatar_url'=>'/media/avatar.jpg','language'=>'en','direction'=>'ltr','skin_style_url'=>'/skins/'.$skin.'/style.css']);
  ob_start();$ok=snapsmack_render_strict_skin_template($dir,'layout.php',$view);$html=(string)ob_get_clean();if(!$ok)throw new RuntimeException("{$skin} failed strict rendering.");
  if($skin==='photogram'){
-  foreach(['pg-profile-header','pg-profile-stats','pg-grid-cell'] as $hook)if(!str_contains($html,$hook))throw new RuntimeException("PHOTOGRAM lost its {$hook} presentation structure.");
+  foreach(['pg-profile-header','pg-profile-stats','pg-grid-cell','pg-nav'] as $hook)if(!str_contains($html,$hook))throw new RuntimeException("PHOTOGRAM lost its {$hook} presentation structure.");
   if(str_contains($html,'site-header')||str_contains($html,'archive-grid'))throw new RuntimeException('PHOTOGRAM regressed to the generic public skeleton.');
   $photoView=snapsmack_build_skin_view(['status'=>200,'kind'=>'photo','item'=>['img_title'=>'Photo','img_file'=>'/media/photo.jpg','img_description'=>snapsmack_trusted_html('<p>Caption</p>')],'navigation'=>[]],['site_name'=>'Example','avatar_url'=>'/media/avatar.jpg','language'=>'en','direction'=>'ltr','skin_style_url'=>'/skins/photogram/style.css']);
   ob_start();$photoOk=snapsmack_render_strict_skin_template($dir,'layout.php',$photoView);$photoHtml=(string)ob_get_clean();

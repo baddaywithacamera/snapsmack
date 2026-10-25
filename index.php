@@ -209,6 +209,16 @@ try {
     }
     require_once __DIR__ . '/core/asset-registry.php';
     $_registered_skin_assets = snapsmack_skin_declared_assets($_active_manifest);
+    // These strict grid-family skins render CMS frame tokens. The stylesheet is
+    // CMS-owned (skins must not declare it), so strict pages have to register it
+    // here just as legacy pages receive it through core/meta.php.
+    $_frame_token_skins = ['aurora', 'game-on', 'heuristic', 'instant-camera', 'jive-turkey', 'parade', 'sliders', 'sudden-impact', 'the-grid'];
+    if (in_array($active_skin, $_frame_token_skins, true)) {
+        $_registered_skin_assets = snapsmack_merge_registered_assets(
+            $_registered_skin_assets,
+            ['styles' => ['asset:public:ss-frame-tokens']]
+        );
+    }
     if (($_active_manifest['cms_controller'] ?? '') === 'smacktalk') {
         require_once __DIR__ . '/core/smacktalk-public-controller.php';
         $_smacktalk = snapsmack_smacktalk_request($pdo, $settings, [
@@ -374,6 +384,26 @@ try {
             'slickr_profile' => $active_skin === 'slickr' ? snapsmack_prepare_slickr_profile($pdo, $settings, $_public['navigation'] ?? []) : [],
             'crop_circles' => snapsmack_prepare_crop_circles($pdo, $settings, $_active_manifest, $_public['navigation'] ?? []),
         ]);
+
+        // PHOTOGRAM's phone feed uses its historical ?format=json&p=N wire
+        // contract. Return bounded tile markup instead of a full HTML page.
+        if ($active_skin === 'photogram'
+            && ($_GET['format'] ?? '') === 'json'
+            && in_array((string)($_public['kind'] ?? ''), ['landing', 'archive'], true)) {
+            $_photogram_tiles = '';
+            foreach (($_strict_view['response']['items'] ?? []) as $_photogram_item) {
+                if (!is_array($_photogram_item)) continue;
+                $_photogram_tiles .= (string)snap_render_component('photogram-grid-cell', ['item' => $_photogram_item]);
+            }
+            $_photogram_next = (int)($_strict_view['response']['next_page'] ?? 0);
+            header('Content-Type: application/json; charset=utf-8');
+            header('X-Content-Type-Options: nosniff');
+            echo json_encode([
+                'html' => $_photogram_tiles,
+                'has_more' => $_photogram_next > 0 && $_photogram_tiles !== '',
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            exit;
+        }
 
         // ── Endless-scroll tiles for a photo wall ────────────────────────
         // ss-engine-rows/columns fetch "?pg=wall&format=json&c=N" as the

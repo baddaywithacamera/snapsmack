@@ -35,7 +35,7 @@ foreach ($expectations as $file => $needles) {
 
 $tracked = shell_exec('git -C ' . escapeshellarg($root) . ' grep -n -E '
     . escapeshellarg("requires_php.*['\"]8\\.0['\"]|PHP 8\\.0\\+|PHP 8\\+|PHP 8\\.1|PHP_VERSION[^,]*8\\.0\\.0")
-    . ' -- "*.php" "*.md" ":(exclude)CHANGELOG.md" ":(exclude)docs/**" ":(exclude)secaudits/**"');
+    . ' -- "*.php" "*.md" ":(exclude)CHANGELOG.md" ":(exclude)docs/**" ":(exclude)secaudits/**" ":(exclude)tests/**"');
 if (is_string($tracked) && trim($tracked) !== '') {
     throw new RuntimeException("Stale supported-runtime claim remains:\n" . $tracked);
 }

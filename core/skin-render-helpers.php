@@ -52,6 +52,7 @@ function snap_route_url(string $route, array $parameters = []): string {
         'home' => '', 'archive' => 'archive', 'search' => 'search', 'hashtag' => 'tag',
         'post' => 'post', 'photo' => 'photo', 'page' => 'page', 'albums' => 'albums',
         'collections' => 'collections', 'collection' => 'collection', 'blogroll' => 'blogroll',
+        'app' => 'app',
         'game-scores' => 'game-on-scores.php',
     ];
     if (!array_key_exists($route, $routes)) return '';
@@ -208,6 +209,24 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . '<button type="button" class="gsd-toggle" aria-label="Search" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>'
                 . '<input type="search" name="q" class="gsd-input" placeholder="' . snap_escape_attr($dock['placeholder'] ?? 'Search or #tag…') . '" autocomplete="off" aria-label="Search photos or tags" tabindex="-1">'
                 . '</form></div>';
+        }
+    } elseif ($name === 'photogram-grid-cell') {
+        $item = is_array($data['item'] ?? null) ? $data['item'] : [];
+        $url = (string)($item['url'] ?? '');
+        if ($url === '' && !empty($item['img_slug'])) $url = snap_route_url('photo', ['slug' => $item['img_slug']]);
+        $image = (string)($item['presentation_image'] ?? $item['img_thumb_aspect'] ?? $item['img_thumb_square'] ?? $item['img_file'] ?? '');
+        $title = (string)($item['presentation_title'] ?? $item['img_title'] ?? $item['title'] ?? '');
+        $classes = 'pg-grid-cell';
+        if (!empty($item['is_phantom'])) $classes .= ' pg-grid-cell--phantom';
+        if ((int)($item['trigram_id'] ?? 0) > 0) $classes .= ' pg-grid-cell--trigram';
+        if (!empty($item['is_phantom'])) {
+            $html = '<span class="' . $classes . '" aria-hidden="true"></span>';
+        } else {
+            $html = '<a href="' . snap_escape_url($url) . '" class="' . $classes . '" title="' . snap_escape_attr($title) . '" aria-label="' . snap_escape_attr($title) . '">';
+            if ($image !== '') $html .= (string)snap_render_component('image', ['url' => $image, 'alt' => $item['img_alt'] ?? $title]);
+            $count = (int)($item['image_count'] ?? 0);
+            if ($count > 1) $html .= '<span class="pg-carousel-badge" aria-label="' . $count . ' photos">&#x29C9;</span>';
+            $html .= '</a>';
         }
     } elseif ($name === 'wall-tile') {
         // One photograph in a wall. The page renderer and the endless-scroll
