@@ -144,31 +144,63 @@ function forum_avatar_hue(string $name): int {
 }
 
 /**
- * Render an avatar element.  If a domain is available, uses the site's
- * favicon via Google's favicon service with a fallback to the initials
- * circle on load error.  Without a domain, renders initials directly.
+ * Render an avatar element: the blog's own avatar, or its initials.
+ *
+ * $avatar_url is the address the posting blog reported for itself, which the
+ * forum server only accepts as https on that blog's own domain. When a blog
+ * has not set one, the initials circle stands in.
+ *
+ * This used to ask Google for a favicon instead:
+ *
+ *     https://www.google.com/s2/favicons?domain=<blog>&sz=64
+ *
+ * which meant every person reading the forum told Google their IP address and
+ * which blogs appeared in the thread they were reading, once per avatar on the
+ * page. For a product sold on being self-hosted and free of third-party
+ * tracking -- on sites whose own privacy notice promises "no cross-site
+ * tracking, no third-party analytics" -- that was the wrong request to make on
+ * a reader's behalf. Nothing here now leaves the reader's own network except
+ * the image on the blog being shown.
  *
  * $size: 'sm' | '' | 'lg'
  */
-function forum_avatar(string $name, string $domain = '', string $size = ''): string {
+function forum_avatar(string $name, string $domain = '', string $size = '',
+                      string $avatar_url = ''): string {
     $hue      = forum_avatar_hue($name);
     $initials = htmlspecialchars(forum_initials($name));
     $cls      = 'forum-avatar' . ($size ? " forum-avatar--{$size}" : '');
     $bg       = "background:hsl({$hue},55%,45%);";
 
-    if ($domain !== '') {
-        // Google's public favicon API — returns a 16/32/64px icon for any domain.
-        $fav_url = 'https://www.google.com/s2/favicons?domain=' . urlencode($domain) . '&sz=64';
-        // On error, swap the <img> for the initials fallback
+    $avatar_url = trim($avatar_url);
+    if ($avatar_url !== '' && stripos($avatar_url, 'https://') === 0) {
+        // The initials sit underneath and show through if the image fails,
+        // so a blog that moves or deletes its avatar degrades to a letter
+        // rather than to a broken-image icon.
         return '<div class="' . $cls . '" style="' . $bg . '">'
-             . '<img src="' . htmlspecialchars($fav_url) . '" '
-             . 'alt="" style="width:100%;height:100%;border-radius:4px;object-fit:cover;" '
+             . '<img src="' . htmlspecialchars($avatar_url) . '" '
+             . 'alt="" loading="lazy" referrerpolicy="no-referrer" '
+             . 'style="width:100%;height:100%;border-radius:4px;object-fit:cover;" '
              . 'onerror="this.remove();">'
              . '<span class="forum-avatar__fallback">' . $initials . '</span>'
              . '</div>';
     }
 
     return '<div class="' . $cls . '" style="' . $bg . '">' . $initials . '</div>';
+}
+
+/**
+ * The "MOD" marker that follows an author's name, or ''.
+ *
+ * The forum sends author_role (0 user, 1 power, 2 moderator, 3 admin) and
+ * mirrors it in author_is_moderator. Read the role where it is present and
+ * fall back to the flag, so a site talking to a forum server that has not
+ * taken this change yet shows a plain name instead of failing.
+ */
+function forum_mod_badge(array $row): string {
+    $role = $row['author_role'] ?? null;
+    $is_mod = $role !== null ? (int)$role >= 2 : !empty($row['author_is_moderator']);
+    if (!$is_mod) return '';
+    return '<span class="forum-badge forum-badge--mod" title="Moderator">MOD</span>';
 }
 
 /**
@@ -185,6 +217,32 @@ function forum_ago(string $datetime): string {
     return date('M j', $ts);
 }
 
+/**
+ * This blog's own avatar, as an absolute URL, or '' if it has none.
+ *
+ * The forum shows the blog's real avatar beside its posts, so it needs the
+ * address of the same image the blog already uses everywhere else. That is a
+ * solved problem: sv_avatar() applies the active skin's overlay (the setting
+ * is stored per-skin as "<skin>__skin_avatar"), checks the file is actually on
+ * disk, and returns an absolute URL. Reuse it rather than resolve it a second
+ * way here, which is how the two would drift.
+ */
+function forum_our_avatar_url(array $settings): string {
+    // Resolved once per request: the identity sync asks for it on every page
+    // load to spot a change, and the reply composer asks again to draw the
+    // avatar beside the box. Both want the same answer.
+    static $resolved = null;
+    if ($resolved !== null) return $resolved;
+    if (!function_exists('sv_avatar')) {
+        // The usual way an admin page reaches these helpers; smack-comments,
+        // smack-directory and smack-dms all pull the same file in.
+        @require_once __DIR__ . '/core/fediverse.php';
+    }
+    if (!function_exists('sv_avatar')) return $resolved = '';
+    $icon = sv_avatar($settings);
+    return $resolved = (is_array($icon) ? (string)($icon['url'] ?? '') : '');
+}
+
 // ── Auto-Registration ─────────────────────────────────────────────────────────
 // On first visit (no stored API key), register this install and persist the key.
 $reg_error = '';
@@ -198,6 +256,7 @@ if ($forum_enabled && $forum_api_key === '') {
         'domain'       => $domain,
         'display_name' => $display_name,
         'ss_version'   => $ss_version,
+        'avatar_url'   => forum_our_avatar_url($settings),
     ]);
 
     if (!$reg['_error'] && !empty($reg['api_key'])) {
@@ -213,22 +272,36 @@ if ($forum_enabled && $forum_api_key === '') {
     }
 }
 
-// ── Display-Name Sync ─────────────────────────────────────────────────────────
-// If the site name has changed since registration, push the update to the forum
-// server via PATCH /installs/me. We compare against the last-synced name stored
-// in snap_settings ('forum_display_name') to avoid hitting the API every load.
+// ── Identity Sync ─────────────────────────────────────────────────────────────
+// If the site name or the blog avatar has changed since registration, push the
+// update to the forum server via PATCH /installs/me. Both are compared against
+// the last-synced value stored in snap_settings ('forum_display_name',
+// 'forum_avatar_url') so an unchanged identity costs no API call on page load.
 if ($forum_enabled && $forum_api_key !== '') {
-    $current_name   = $settings['site_name']        ?? '';
+    $current_name   = $settings['site_name']          ?? '';
     $synced_name    = $settings['forum_display_name'] ?? '';
+    $current_avatar = forum_our_avatar_url($settings);
+    $synced_avatar  = $settings['forum_avatar_url']   ?? '';
 
-    if ($current_name !== '' && $current_name !== $synced_name) {
-        $patch = forum_api('PATCH', 'installs/me', ['display_name' => $current_name], $forum_api_key);
+    $name_moved   = $current_name !== '' && $current_name !== $synced_name;
+    $avatar_moved = $current_avatar !== $synced_avatar;
+
+    if ($name_moved || $avatar_moved) {
+        // Send both every time either moves. The forum stores one identity for
+        // this blog, and a half-sent one is how the name and the face end up
+        // describing different versions of the site.
+        $payload = ['avatar_url' => $current_avatar];
+        if ($current_name !== '') $payload['display_name'] = $current_name;
+        $patch = forum_api('PATCH', 'installs/me', $payload, $forum_api_key);
         if (!$patch['_error']) {
-            $pdo->prepare(
-                "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('forum_display_name', ?)
-                 ON DUPLICATE KEY UPDATE setting_val = ?"
-            )->execute([$current_name, $current_name]);
+            $remember = $pdo->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+            );
+            $remember->execute(['forum_display_name', $current_name]);
+            $remember->execute(['forum_avatar_url', $current_avatar]);
             $settings['forum_display_name'] = $current_name;
+            $settings['forum_avatar_url']   = $current_avatar;
         }
     }
 }
@@ -634,7 +707,7 @@ require 'core/sidebar.php';
               $last_act = $t['last_reply_at'] ?? $t['created_at'];
           ?>
           <div class="forum-thread-row<?php echo $pinned ? ' forum-thread-row--pinned' : ''; ?>">
-            <?php echo forum_avatar($t['display_name'], $t['author_domain'] ?? ''); ?>
+            <?php echo forum_avatar($t['display_name'], $t['author_domain'] ?? '', '', $t['author_avatar'] ?? ''); ?>
             <div class="forum-thread-row__info">
               <div class="forum-thread-row__title">
                 <?php if ($pinned || $locked): ?>
@@ -646,7 +719,7 @@ require 'core/sidebar.php';
                 <a href="smack-forum.php?view=thread&id=<?php echo (int)$t['id']; ?>"><?php echo htmlspecialchars($t['title']); ?></a>
               </div>
               <div class="forum-thread-row__byline">
-                <?php echo htmlspecialchars($t['display_name']); ?>
+                <?php echo htmlspecialchars($t['display_name']); ?><?php echo forum_mod_badge($t); ?>
                 &middot;
                 <?php echo date('M j, Y', strtotime($t['created_at'])); ?>
               </div>
@@ -735,11 +808,11 @@ require 'core/sidebar.php';
           <!-- Opening Post -->
           <div class="forum-post forum-post--op">
             <div class="forum-post__gutter">
-              <?php echo forum_avatar($thread['display_name'], $thread['author_domain'] ?? '', 'lg'); ?>
+              <?php echo forum_avatar($thread['display_name'], $thread['author_domain'] ?? '', 'lg', $thread['author_avatar'] ?? ''); ?>
             </div>
             <div class="forum-post__content">
               <div class="forum-post__header">
-                <span class="forum-post__author"><?php echo htmlspecialchars($thread['display_name']); ?></span>
+                <span class="forum-post__author"><?php echo htmlspecialchars($thread['display_name']); ?></span><?php echo forum_mod_badge($thread); ?>
                 <span class="forum-post__time"><?php echo date('M j, Y \a\t g:ia', strtotime($thread['created_at'])); ?></span>
                 <?php if ($thread['display_name'] === $my_display || $is_mod): ?>
                 <div class="forum-post__actions">
@@ -784,11 +857,11 @@ require 'core/sidebar.php';
           <?php foreach ($replies as $r): ?>
           <div class="forum-post">
             <div class="forum-post__gutter">
-              <?php echo forum_avatar($r['display_name'], $r['author_domain'] ?? '', 'lg'); ?>
+              <?php echo forum_avatar($r['display_name'], $r['author_domain'] ?? '', 'lg', $r['author_avatar'] ?? ''); ?>
             </div>
             <div class="forum-post__content">
               <div class="forum-post__header">
-                <span class="forum-post__author"><?php echo htmlspecialchars($r['display_name']); ?></span>
+                <span class="forum-post__author"><?php echo htmlspecialchars($r['display_name']); ?></span><?php echo forum_mod_badge($r); ?>
                 <span class="forum-post__time"><?php echo date('M j, Y \a\t g:ia', strtotime($r['created_at'])); ?></span>
                 <?php if ($r['display_name'] === $my_display || $is_mod): ?>
                 <div class="forum-post__actions">
@@ -826,7 +899,7 @@ require 'core/sidebar.php';
             // The composer avatar uses the current install's own domain
             $my_domain = preg_replace('/^https?:\/\//i', '', rtrim($settings['site_url'] ?? '', '/'));
             $my_domain = rtrim($my_domain, '/');
-            echo forum_avatar($my_display, $my_domain, 'sm');
+            echo forum_avatar($my_display, $my_domain, 'sm', forum_our_avatar_url($settings));
             ?>
             Reply as <?php echo htmlspecialchars($my_display); ?>
           </div>

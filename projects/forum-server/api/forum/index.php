@@ -37,7 +37,7 @@
  *   DELETE threads/{id}/tags/{tag_id}         Mod: remove tag from thread
  *   GET    notifications?page=N               Get notifications for this install
  *   POST   notifications/read                 Mark notification(s) as read
- *   PATCH  installs/me                        Update display_name when blog name changes
+ *   PATCH  installs/me                        Update display_name / avatar_url for this blog
  *   GET    installs                           Admin/God: roster of blogs with roles
  *   PATCH  installs/{id}/role                 Admin/God: promote / demote a blog (strictly-below cap)
  */
@@ -163,6 +163,39 @@ function install_role(?array $install): int {
     if (!$install) return 0;
     if (isset($install['role'])) return (int)$install['role'];
     return !empty($install['is_moderator']) ? 2 : 0;
+}
+
+/**
+ * Validate an avatar URL an install is trying to set on itself.
+ *
+ * Returns the cleaned URL, or '' to mean "no avatar" (passing an empty value
+ * is how an install clears one). Anything else is refused outright.
+ *
+ * The rule is that the address must be https and must sit on the install's own
+ * domain. That is deliberately strict. This URL ends up in every reader's
+ * browser, so an install free to point it at a host it does not own could log
+ * the IP of everyone who reads the forum, or quietly swap the image for
+ * something else long after a moderator looked at it. Restricting it to the
+ * blog that owns the account removes both without storing a single image here.
+ */
+function clean_avatar_url(string $url, string $domain): string {
+    $url = trim($url);
+    if ($url === '') return '';
+    if (mb_strlen($url) > 500) {
+        api_error(400, 'AVATAR_TOO_LONG', 'avatar_url must be 500 characters or fewer.');
+    }
+    $parts = parse_url($url);
+    if ($parts === false || empty($parts['scheme']) || empty($parts['host'])) {
+        api_error(400, 'AVATAR_INVALID', 'avatar_url must be a full https:// address.');
+    }
+    if (strtolower($parts['scheme']) !== 'https') {
+        api_error(400, 'AVATAR_NOT_HTTPS', 'avatar_url must be https.');
+    }
+    if (strtolower($parts['host']) !== strtolower($domain)) {
+        api_error(400, 'AVATAR_WRONG_HOST',
+            'avatar_url must be on your own domain (' . $domain . ').');
+    }
+    return $url;
 }
 
 /** Returns true if the caller has moderator power (role >= 2) or the global mod key. */
@@ -589,6 +622,7 @@ if ($method === 'POST' && $path === 'register') {
     $domain       = trim($b['domain']       ?? '');
     $display_name = trim($b['display_name'] ?? '');
     $ss_version   = trim($b['ss_version']   ?? '');
+    $avatar_url   = trim($b['avatar_url']   ?? '');
 
     if ($domain === '' || $display_name === '') {
         api_error(400, 'MISSING_FIELDS', 'domain and display_name are required.');
@@ -600,6 +634,9 @@ if ($method === 'POST' && $path === 'register') {
 
     if (mb_strlen($domain)       > 255) api_error(400, 'DOMAIN_TOO_LONG', 'domain must be 255 chars or fewer.');
     if (mb_strlen($display_name) > 100) api_error(400, 'NAME_TOO_LONG',   'display_name must be 100 chars or fewer.');
+    // Checked against the normalised domain above, so it can only ever be the
+    // install's own address.
+    $avatar_url = clean_avatar_url($avatar_url, $domain);
 
     $pdo = get_pdo();
 
@@ -610,6 +647,15 @@ if ($method === 'POST' && $path === 'register') {
         $pdo->prepare(
             "UPDATE ss_forum_installs SET display_name = ?, ss_version = ?, last_seen_at = NOW() WHERE domain = ?"
         )->execute([$display_name, $ss_version, $domain]);
+        // Only written when the blog actually sent one. Register is the
+        // automatic check-in, and a SnapSmack older than this change sends no
+        // avatar_url at all; overwriting unconditionally would let every such
+        // check-in silently wipe an avatar that was already set. Clearing one
+        // is done deliberately through PATCH installs/me.
+        if ($avatar_url !== '') {
+            $pdo->prepare("UPDATE ss_forum_installs SET avatar_url = ? WHERE domain = ?")
+                ->execute([$avatar_url, $domain]);
+        }
         $mod_stmt = $pdo->prepare("SELECT is_moderator FROM ss_forum_installs WHERE domain = ? LIMIT 1");
         $mod_stmt->execute([$domain]);
         $mod_row = $mod_stmt->fetch();
@@ -618,8 +664,9 @@ if ($method === 'POST' && $path === 'register') {
 
     $api_key = bin2hex(random_bytes(32));
     $pdo->prepare(
-        "INSERT INTO ss_forum_installs (api_key, domain, display_name, ss_version) VALUES (?, ?, ?, ?)"
-    )->execute([$api_key, $domain, $display_name, $ss_version]);
+        "INSERT INTO ss_forum_installs (api_key, domain, display_name, ss_version, avatar_url)
+         VALUES (?, ?, ?, ?, ?)"
+    )->execute([$api_key, $domain, $display_name, $ss_version, $avatar_url]);
 
     respond(['api_key' => $api_key, 'status' => 'registered'], 201);
 }
@@ -783,6 +830,8 @@ if ($method === 'GET' && $path === 'threads') {
                t.created_at,
                c.name AS category_name, c.slug AS category_slug,
                i.domain AS author_domain,
+               i.role AS author_role, i.is_moderator AS author_is_moderator,
+               i.avatar_url AS author_avatar,
                rs.read_reply_count,
                (fo.install_id IS NOT NULL) AS is_following
         FROM ss_forum_threads t
@@ -833,7 +882,9 @@ if ($method === 'GET' && count($parts) === 2 && $parts[0] === 'threads' && ctype
 
     $stmt = $pdo->prepare("
         SELECT t.*, c.name AS category_name, c.slug AS category_slug,
-               i.domain AS author_domain
+               i.domain AS author_domain,
+               i.role AS author_role, i.is_moderator AS author_is_moderator,
+               i.avatar_url AS author_avatar
         FROM ss_forum_threads t
         JOIN ss_forum_categories c ON c.id = t.category_id
         LEFT JOIN ss_forum_installs i ON i.id = t.install_id
@@ -857,7 +908,9 @@ if ($method === 'GET' && count($parts) === 2 && $parts[0] === 'threads' && ctype
     $reply_stmt = $pdo->prepare("
         SELECT r.id, r.install_id, r.display_name, r.body, r.created_at,
                r.is_edited, r.edited_at, r.reaction_count,
-               i.domain AS author_domain
+               i.domain AS author_domain,
+               i.role AS author_role, i.is_moderator AS author_is_moderator,
+               i.avatar_url AS author_avatar
         FROM ss_forum_replies r
         LEFT JOIN ss_forum_installs i ON i.id = r.install_id
         WHERE r.thread_id = ? AND r.is_deleted = 0
@@ -1748,15 +1801,31 @@ if ($method === 'PATCH' && $path === 'installs/me') {
     $install      = require_auth();
     $b            = body();
     $display_name = trim($b['display_name'] ?? '');
+    // Absent and empty mean different things here. Leaving avatar_url out
+    // keeps whatever is stored; sending it empty is how an install removes
+    // its avatar. Sending neither field is still the old error.
+    $has_avatar   = array_key_exists('avatar_url', $b);
 
-    if ($display_name === '') api_error(400, 'MISSING_FIELDS', 'display_name is required.');
+    if ($display_name === '' && !$has_avatar) {
+        api_error(400, 'MISSING_FIELDS', 'display_name is required.');
+    }
     if (mb_strlen($display_name) > 100) api_error(400, 'NAME_TOO_LONG', 'display_name must be 100 characters or fewer.');
 
-    get_pdo()->prepare(
-        "UPDATE ss_forum_installs SET display_name = ? WHERE id = ?"
-    )->execute([$display_name, $install['id']]);
+    $pdo = get_pdo();
+    if ($display_name !== '') {
+        $pdo->prepare("UPDATE ss_forum_installs SET display_name = ? WHERE id = ?")
+            ->execute([$display_name, $install['id']]);
+    }
+    $avatar_url = null;
+    if ($has_avatar) {
+        $avatar_url = clean_avatar_url(trim((string)$b['avatar_url']), (string)$install['domain']);
+        $pdo->prepare("UPDATE ss_forum_installs SET avatar_url = ? WHERE id = ?")
+            ->execute([$avatar_url, $install['id']]);
+    }
 
-    respond(['status' => 'updated', 'display_name' => $display_name]);
+    respond(['status' => 'updated',
+             'display_name' => $display_name !== '' ? $display_name : $install['display_name'],
+             'avatar_url'   => $has_avatar ? $avatar_url : $install['avatar_url']]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1891,7 +1960,7 @@ if ($method === 'GET' && $path === 'installs') {
     if (!is_install_admin($caller)) api_error(403, 'FORBIDDEN', 'Admin (or God key) required.');
     $pdo = get_pdo();
     $rows = $pdo->query(
-        "SELECT id, domain, display_name, role, is_moderator, is_banned, ss_version, last_seen_at, registered_at
+        "SELECT id, domain, display_name, avatar_url, role, is_moderator, is_banned, ss_version, last_seen_at, registered_at
          FROM ss_forum_installs
          ORDER BY role DESC, last_seen_at DESC
          LIMIT 500"

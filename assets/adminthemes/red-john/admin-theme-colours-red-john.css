@@ -516,6 +516,10 @@ input[type="range"]::-webkit-slider-thumb {
 .forum-avatar { color: #fff; }
 .forum-badge--pinned { background-color: #cc1111; color: #fff; }
 .forum-badge--locked { background-color: #330000; color: #883333; }
+/* MOD marks a moderator's post. This theme's accent is already the pinned
+   colour, so MOD takes the light inverse instead -- same family, cannot be
+   confused with a pinned thread. */
+.forum-badge--mod    { background-color: #ffdddd; color: #880000; }
 .forum-post { border-bottom-color: #1a0000; }
 .forum-post__author { color: #ddaaaa; }
 .forum-post__time { color: #883333; }

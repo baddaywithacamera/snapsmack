@@ -521,6 +521,9 @@ input[type="range"]::-webkit-slider-thumb {
 .forum-avatar { color: #fff; }
 .forum-badge--pinned { background-color: #FF8C00; color: #fff; }
 .forum-badge--locked { background-color: #ddeeff; color: #555555; }
+/* MOD marks a moderator's post -- the theme accent, distinct from the
+   orange pinned badge so official answers read at a glance. */
+.forum-badge--mod    { background-color: #004DFF; color: #fff; }
 .forum-post { border-bottom-color: #b0d0f0; }
 .forum-post__author { color: #111111; }
 .forum-post__time { color: #888888; }

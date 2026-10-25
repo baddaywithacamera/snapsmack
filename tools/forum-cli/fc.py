@@ -103,6 +103,20 @@ def cmd_board_new(args):
     return 0
 
 
+def _byline(row):
+    """Author name, with MOD after it when the account carries moderator power.
+
+    The API sends author_role (0 user, 1 power, 2 moderator, 3 admin) and
+    mirrors it in author_is_moderator. Read the role when it is there and fall
+    back to the flag, so this keeps working against a forum that has not been
+    updated yet -- an older one sends neither and simply shows the name.
+    """
+    name = str(row.get("display_name", ""))
+    role = row.get("author_role")
+    is_mod = int(role) >= 2 if role is not None else bool(row.get("author_is_moderator"))
+    return name + "  [MOD]" if is_mod else name
+
+
 def cmd_threads(args):
     data = _forum(args).threads(args.board or 0, args.page, args.tag or "")
     rows = data.get("threads") or data.get("items") or []
@@ -114,7 +128,7 @@ def cmd_threads(args):
         lines.append("  [" + str(t.get("id")) + "] " + marks.ljust(3) + " "
                      + str(t.get("title", "")))
         lines.append("        " + str(t.get("reply_count", 0)) + " replies — "
-                     + str(t.get("display_name", "")))
+                     + _byline(t))
     _out(args, data, "\n".join(lines))
     return 0
 
@@ -123,10 +137,10 @@ def cmd_thread(args):
     data = _forum(args).thread(args.id)
     t = data.get("thread") or {}
     lines = ["[" + str(t.get("id")) + "] " + str(t.get("title", "")),
-             "  by " + str(t.get("display_name", "")) + "  " + str(t.get("created_at", "")),
+             "  by " + _byline(t) + "  " + str(t.get("created_at", "")),
              "", (t.get("body") or "").strip(), ""]
     for r in (data.get("replies") or []):
-        lines.append("  --- [" + str(r.get("id")) + "] " + str(r.get("display_name", ""))
+        lines.append("  --- [" + str(r.get("id")) + "] " + _byline(r)
                      + "  " + str(r.get("created_at", "")))
         lines.append("  " + (r.get("body") or "").strip().replace("\n", "\n  "))
     _out(args, data, "\n".join(lines))
