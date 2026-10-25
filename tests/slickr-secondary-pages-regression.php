@@ -17,6 +17,7 @@ $controller = (string)file_get_contents($root . '/core/public-controller.php');
 $repository = (string)file_get_contents($root . '/core/public-repository.php');
 $runtime = (string)file_get_contents($root . '/core/public-runtime.php');
 $rows = (string)file_get_contents($root . '/assets/js/ss-engine-rows.js');
+$entry = (string)file_get_contents($root . '/index.php');
 
 // A FLOOR, not a pin. Pinning the exact version made every legitimate
 // skin release fail this test, so the cheap way out was to change the
@@ -51,6 +52,9 @@ if (!str_contains($runtime, "'route' => 'search'")
 }
 foreach (["window.location.search", "has('q')", "data-next', '2'", "params.set('c'", "window.location.pathname"] as $hook) {
     if (!str_contains($rows, $hook)) throw new RuntimeException("STACKER drops search/album filters: {$hook}");
+}
+foreach (["=== 'search'", "['results']['photographs']", 'foreach ($_wall_items as $_wall_item)'] as $hook) {
+    if (!str_contains($entry, $hook)) throw new RuntimeException("Search continuation does not render search photographs: {$hook}");
 }
 
 echo "SLICKR secondary-page restoration regression passed\n";

@@ -418,7 +418,14 @@ try {
         // to one that arrived with the page.
         if (($_GET['format'] ?? '') === 'json' && ($_GET['pg'] ?? '') === 'wall') {
             $_wall_tiles = '';
-            foreach (($_strict_view['response']['items'] ?? []) as $_wall_item) {
+            // Search keeps photographs under results.photographs while the
+            // landing/archive/hashtag routes use items.  The page renderer
+            // already understands both shapes; the JSON continuation must do
+            // the same or page two of a search is silently returned empty.
+            $_wall_items = (($_strict_view['response']['kind'] ?? '') === 'search')
+                ? ($_strict_view['response']['results']['photographs'] ?? [])
+                : ($_strict_view['response']['items'] ?? []);
+            foreach ($_wall_items as $_wall_item) {
                 if (!is_array($_wall_item)) continue;
                 $_wall_tiles .= (string)snap_render_component('wall-tile', ['item' => $_wall_item]);
             }
