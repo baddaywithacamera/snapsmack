@@ -10,7 +10,12 @@ foreach (['.rg-single > #footer', 'position: absolute', 'bottom: var(--infobox-h
         throw new RuntimeException("RATIONAL GEO lost its non-destructive info tray hook: {$hook}");
     }
 }
-if (version_compare((string)($manifest['version'] ?? '0'), '2.1.30', '<')) {
+foreach (['.rg-single .rg-description', 'margin-bottom: 0', 'font-size: var(--font-scale-lg)', 'color: var(--rg-text-secondary)', 'margin: 0.65rem auto 0'] as $hook) {
+    if (!str_contains($css, $hook)) {
+        throw new RuntimeException("RATIONAL GEO lost its article-date presentation hook: {$hook}");
+    }
+}
+if (version_compare((string)($manifest['version'] ?? '0'), '2.1.35', '<')) {
     throw new RuntimeException('RATIONAL GEO version was not advanced for the info-tray repair.');
 }
 

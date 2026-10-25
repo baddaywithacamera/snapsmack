@@ -666,6 +666,13 @@ body[data-frame="none"]   { --rg-hero-colour: transparent; }
   text-align: justify;
 }
 
+/* Keep the publication date attached to the article it dates. The generic
+   description spacing is useful elsewhere, but made the solo date look like
+   unrelated metadata floating in the tray. */
+.rg-single .rg-description {
+  margin-bottom: 0;
+}
+
 .rg-exif-section {
   margin-top: var(--space-2xl);
   padding-top: var(--space-xl);
@@ -2070,11 +2077,12 @@ input[type="reset"]:active {
   width: 100%;
   max-width: 1200px;
   font-family: 'DM Mono', monospace;
-  font-size: var(--font-scale-base);
-  color: var(--rg-text-dim);
+  font-size: var(--font-scale-lg);
+  font-weight: 600;
+  color: var(--rg-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin: var(--space-md) auto 0;
+  margin: 0.65rem auto 0;
   text-align: center;
 }
 
