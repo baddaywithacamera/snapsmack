@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.945D - 2026-10-25 - SEARCH KEEPS GOING
+
+- **SLICKR search continuation now returns the photographs from later result pages.** The search query and pagination were correct in 0.7.944D, but the shared JSON wall response read the archive item field instead of the search result field. Full-page page two contained the next photographs while STACKER received an empty batch. The JSON renderer now uses the route's actual result collection, and the regression gate covers the complete public request path.
+
 ## 0.7.944D - 2026-10-25 - KEEP THE FILTER
 
 - **SLICKR albums stay on the clean `/archive` address and render through SLICKR.** Servers that rewrite `/archive` to the legacy endpoint now dispatch internally to the strict controller without changing the browser URL. Album, category, search and layout parameters survive, so `/archive?album=299` presents the album in SLICKR instead of exposing the old unstyled archive page.
