@@ -850,21 +850,6 @@ button {
 }
 
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DISCOVER PAGE
-   ═══════════════════════════════════════════════════════════════════════════ */
-.pg-discover {
-    padding: 16px;
-}
-
-.pg-discover-heading {
-    font-size: 26px;
-    font-weight: 800;
-    color: var(--pg-text);
-    margin: 0 0 20px;
-    letter-spacing: -0.5px;
-}
-
 .pg-section-label {
     font-size: 14px;
     font-weight: 700;
@@ -931,25 +916,6 @@ button {
     font-size: 13px;
     font-weight: 600;
 }
-
-/* Phase 1 Discover notice */
-.pg-discover-notice {
-    background: #FFF8E7;
-    border: 1px solid #FFD966;
-    border-radius: 10px;
-    padding: 14px 16px;
-    margin-bottom: 24px;
-    font-size: 13px;
-    color: #7A5C00;
-    line-height: 1.5;
-}
-
-.pg-discover-notice strong {
-    display: block;
-    margin-bottom: 4px;
-    font-size: 14px;
-}
-
 
 /* ═══════════════════════════════════════════════════════════════════════════
    LOAD MORE / PAGINATION
@@ -1537,59 +1503,4 @@ button {
 .nav-submenu a:hover { opacity: 1; }
 
 
-/* The menu separator. The CMS drew a pipe between menu items until
-   0.7.873D, when the hard-coded one was removed from the shared renderer
-   because it reached every skin at once -- including three that already
-   drew their own and so showed two. This skin never styled that span, so
-   what it had was an unstyled pipe, and it vanished. The character is the
-   skin's to choose; this restores what was on the screen. */
-/* The Discover menu. The CMS emits the shared navigation component --
-   <nav class="navigation"><ul class="nav-menu"><li><a> -- and this skin never
-   styled that list, so it rendered as a default bulleted column in the
-   browser's link blue. The pipe separator added in 0.7.875D then sat on top of
-   that, which is why each item after the first read "| BLOGROLL" under a
-   bullet.
-
-   On a phone the row wraps, and a ::before pipe then dangles at the start of
-   the second line. CSS cannot see a wrap, so inside Discover the separator is
-   dropped and the spacing comes from gap instead. The list reset follows
-   50 SHADES, which has always rendered this component correctly. Measured on
-   theschoolofhardnocks.ca at 375px: four items, two rows, no dangling
-   separator, no horizontal overflow. */
-.pg-discover .nav-menu {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 18px;
-}
-
-.pg-discover .nav-menu > li {
-    display: inline-flex;
-    align-items: center;
-}
-
-.pg-discover .nav-menu > li + li::before {
-    content: none;
-}
-
-.pg-discover .nav-menu a {
-    color: var(--pg-text);
-    text-decoration: none;
-    font-size: 0.9rem;
-    letter-spacing: 0.02em;
-}
-
-.pg-discover .nav-menu a:hover {
-    color: var(--pg-accent);
-}
-
-.nav-menu > li + li::before {
-    content: "|";
-    padding: 0 10px;
-    opacity: .5;
-    cursor: default;
-}
 /* ===== SNAPSMACK EOF ===== */

@@ -11,6 +11,16 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.946D - 2026-10-25 - PARAGRAPHS ARE PARAGRAPHS
+
+- **Ordinary photo posts preserve their paragraphs again across every photo skin.** Historical descriptions stored as blank-line-separated text are converted into safe paragraph markup, while mixed imported descriptions retain their existing HTML and regain any bare opening paragraph. The shared formatter still passes through the CMS sanitizer; SMACKTALK longform rendering is unchanged.
+
+- **RATIONAL GEO post dates sit closer to the story and are easier to read.** The date now uses the skin's normal text scale and a smaller top gap, without altering the tag spacing below it.
+
+- **Password and recovery-code failures have independent cooldowns.** Five failed password attempts block only password login for ten minutes; the owner may immediately use a recovery code. Five failed recovery-code attempts block only recovery for ten minutes while password login remains available. A successful method clears its own failure counter.
+
+- **“Forgot password?” now opens the Recovery Code panel.** The link's `?tab=recovery` parameter was ignored during page setup, so it reloaded the password form. The server now honours the requested tab before rendering.
+
 ## 0.7.945D - 2026-10-25 - SEARCH KEEPS GOING
 
 - **SLICKR search continuation now returns the photographs from later result pages.** The search query and pagination were correct in 0.7.944D, but the shared JSON wall response read the archive item field instead of the search result field. Full-page page two contained the next photographs while STACKER received an empty batch. The JSON renderer now uses the route's actual result collection, and the regression gate covers the complete public request path.

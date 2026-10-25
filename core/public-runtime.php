@@ -180,7 +180,7 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     require_once __DIR__ . '/trusted-html.php';
     $trustItem = static function (array $item) use ($settings): array {
         foreach (['content', 'description', 'img_description'] as $field) {
-            if (isset($item[$field]) && is_string($item[$field])) $item[$field] = snapsmack_trusted_html($item[$field]);
+            if (isset($item[$field]) && is_string($item[$field])) $item[$field] = snapsmack_photo_description_html($item[$field]);
         }
         // EXIF / Technical Specs is switched off in Solo Image Appearance.
         // Until 0.7.877D only core/meta.php honoured it, a file no strict

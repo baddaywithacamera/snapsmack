@@ -14,7 +14,6 @@ function snapsmack_public_skin_presentation(string $skin, array $options): array
             'retina'=>$on('retina_logo'), 'show_tagline'=>$on('show_tagline'),
         ];
     }
-    if ($skin === 'photogram') $out['discover'] = ['visible'=>$on('pg_show_discover')];
     if ($skin === 'rational-geo') {
         // No colours and no CSS are decided here. The owner's choice travels
         // as the bare word they picked; the stylesheet turns it into a colour,
