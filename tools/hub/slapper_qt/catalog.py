@@ -1,10 +1,24 @@
 """Persistent SNAP SLAPPER catalogue shared with the earlier desktop library."""
 
+import atexit
 import os
+import shutil
 import tempfile
 import time
 
 import photo_manager
+
+
+def _test_scratch():
+    """A throwaway catalogue directory for a headless run, removed at exit.
+
+    Both callers below are already gated on QT_QPA_PLATFORM=offscreen, so this
+    only ever runs under test. It was leaking a slapper_catalog_test_*
+    directory into %TEMP% per run, which nothing ever came back for.
+    """
+    directory = tempfile.mkdtemp(prefix="slapper_catalog_test_")
+    atexit.register(shutil.rmtree, directory, ignore_errors=True)
+    return directory
 
 
 class Catalog:
@@ -13,7 +27,7 @@ class Catalog:
     def __init__(self, directory=None):
         if directory is None and os.environ.get("QT_QPA_PLATFORM") == "offscreen" \
                 and not os.environ.get("SNAPSMACK_HOME"):
-            directory = tempfile.mkdtemp(prefix="slapper_catalog_test_")
+            directory = _test_scratch()
         if directory is None:
             try:
                 import snap_home
@@ -27,7 +41,7 @@ class Catalog:
         except OSError:
             if os.environ.get("QT_QPA_PLATFORM") != "offscreen":
                 raise
-            directory = tempfile.mkdtemp(prefix="slapper_catalog_test_")
+            directory = _test_scratch()
         self.directory = directory
         self.metadata_path = os.path.join(directory, "photo_metadata.json")
         self.albums_path = os.path.join(directory, "albums.json")
