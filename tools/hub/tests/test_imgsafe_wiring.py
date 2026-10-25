@@ -55,8 +55,13 @@ _texture = {"id": "wiretest", "full_url": "https://example.test/x.jpg"}
 
 _orig_fetch = found_textures.fetch_bytes
 _orig_cache = found_textures.cache_dir
+import atexit
+import shutil
 import tempfile
 _tmpdir = tempfile.mkdtemp(prefix="imgsafe-wire-")
+# Without this the cache outlives the run, and %TEMP% collects an
+# imgsafe-wire-* directory for every time anybody has ever run this file.
+atexit.register(shutil.rmtree, _tmpdir, ignore_errors=True)
 found_textures.cache_dir = lambda: _tmpdir
 
 found_textures.fetch_bytes = lambda *a, **k: b"<html>this is not an image</html>"

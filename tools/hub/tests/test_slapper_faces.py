@@ -10,9 +10,11 @@ prints SKIP and does not fail — CI boxes don't have 38 MB of model files.
 Run: python tools/hub/tests/test_slapper_faces.py   (exit 0 = all pass)
 """
 
+import atexit
 import math
 import os
 import random
+import shutil
 import sys
 import tempfile
 import time
@@ -22,6 +24,9 @@ sys.path.insert(0, _HUB)
 sys.path.insert(0, os.path.join(os.path.dirname(_HUB), "_shared"))
 
 _tmp = tempfile.mkdtemp(prefix="slapper-faces-")
+# Without this the sandbox outlives the run, and %TEMP% collects a
+# slapper-faces-* directory for every time anybody has ever run this file.
+atexit.register(shutil.rmtree, _tmp, ignore_errors=True)
 os.environ["SNAPSMACK_HOME"] = os.path.join(_tmp, "root")
 
 import slapper_faces as sf  # noqa: E402

@@ -7,7 +7,9 @@ The pin ledger lives in %APPDATA%, outside the jail.
 Run: python tools/hub/tests/test_exe_pinning.py   (exit 0 = all pass)
 """
 
+import atexit
 import os
+import shutil
 import sys
 import tempfile
 
@@ -17,6 +19,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(_HUB), "_shared"))
 
 # Sandbox the ledger AND the shared root before importing the hub.
 _tmp = tempfile.mkdtemp(prefix="hub-pin-")
+# Without this the sandbox outlives the run, and %TEMP% collects a hub-pin-*
+# directory for every time anybody has ever run this file.
+atexit.register(shutil.rmtree, _tmp, ignore_errors=True)
 os.environ["APPDATA"] = os.path.join(_tmp, "appdata")
 os.environ["SNAPSMACK_HOME"] = os.path.join(_tmp, "root")
 
