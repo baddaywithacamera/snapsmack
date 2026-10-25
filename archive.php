@@ -90,10 +90,19 @@ try {
         // design, so /archive?page=2 redirected to /archive?page=2 and page two
         // of the archive was unreachable on four of the seven sites I measured.
         // The whole address has to be compared, not half of it.
-        if (!snapsmack_is_same_address(
+        if (snapsmack_is_same_address(
                 $_archive_target,
                 strtok((string)($_SERVER['REQUEST_URI'] ?? ''), '?'),
                 (string)($_SERVER['QUERY_STRING'] ?? ''))) {
+            // The web server rewrote the clean /archive address here. Keep
+            // that public URL in the address bar, but hand the request to the
+            // strict controller so the active skin owns the response. $_GET
+            // still carries album/category/search/layout filters unchanged.
+            $_GET['view'] = 'archive';
+            define('SNAPSMACK_INTERNAL_ARCHIVE_DISPATCH', true);
+            require __DIR__ . '/index.php';
+            exit;
+        } else {
             // 302, not 301: this address is derived from the site's menu and
             // changes when the owner renames an item, and a 301 that a reader
             // has already cached cannot be taken back.

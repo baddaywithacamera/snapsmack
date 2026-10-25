@@ -307,7 +307,7 @@ try {
         require_once __DIR__ . '/core/skin-presentation.php';
         $_public_aliases = $skin_view['route_aliases'] ?? [];
         $_legacy_public_view = strtolower(trim((string)($_GET['view'] ?? '')));
-        if ($_legacy_public_view !== '') {
+        if ($_legacy_public_view !== '' && !defined('SNAPSMACK_INTERNAL_ARCHIVE_DISPATCH')) {
             if (($settings['site_mode'] ?? '') === 'carousel' && $_legacy_public_view === 'archive') {
                 header('Location: ' . BASE_URL, true, 301);
                 exit;

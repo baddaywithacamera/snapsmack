@@ -397,9 +397,11 @@ final class SnapPublicRepository
         );
     }
 
-    public function search(string $term, int $limit = 50): array {
+    public function search(string $term, int $limit = 50, int $offset = 0): array {
         $like = '%' . $term . '%';
         $tagLike = '%' . strtolower($term) . '%';
+        $limit = max(1, min(100, $limit));
+        $offset = max(0, $offset);
         return [
             'photographs' => $this->all(
                 "SELECT DISTINCT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,
@@ -413,16 +415,16 @@ final class SnapPublicRepository
                                    WHERE sam.image_id=i.id AND a.album_name LIKE ?)
                         OR EXISTS (SELECT 1 FROM snap_image_cat_map scm JOIN snap_categories c ON c.id=scm.cat_id
                                    WHERE scm.image_id=i.id AND c.cat_name LIKE ?))
-                 ORDER BY i.img_date DESC,i.id DESC LIMIT ?",
-                [$like, $like, $like, $tagLike, $like, $like, max(1, min(100, $limit))]
+                 ORDER BY i.img_date DESC,i.id DESC LIMIT ? OFFSET ?",
+                [$like, $like, $like, $tagLike, $like, $like, $limit, $offset]
             ),
             'posts' => $this->all(
                 "SELECT id,title,slug,description,post_type,created_at,featured_image_id
                  FROM snap_posts
                  WHERE status='published' AND created_at <= NOW()
                    AND (title LIKE ? OR description LIKE ? OR content LIKE ?)
-                 ORDER BY created_at DESC,id DESC LIMIT ?",
-                [$like, $like, $like, max(1, min(100, $limit))]
+                 ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?",
+                [$like, $like, $like, $limit, $offset]
             ),
         ];
     }

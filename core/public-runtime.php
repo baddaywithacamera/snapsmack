@@ -48,7 +48,9 @@ function snapsmack_public_parse_page_content(PDO $pdo, array $response): array
 /** Map an entry-point request into the central public controller's bounded vocabulary. */
 function snapsmack_public_runtime_request(array $input): array
 {
-    if (trim((string)($input['query'] ?? '')) !== '') return ['route' => 'search', 'query' => $input['query']];
+    if (trim((string)($input['query'] ?? '')) !== '') return [
+        'route' => 'search', 'query' => $input['query'], 'page' => $input['page'] ?? 1,
+    ];
     if (trim((string)($input['tag'] ?? '')) !== '') return ['route' => 'hashtag', 'slug' => $input['tag'], 'page' => $input['page'] ?? 1];
     $view = strtolower(trim((string)($input['view'] ?? '')));
     $routes = ['archive', 'albums', 'collections', 'collection', 'photo', 'post', 'page', 'blogroll'];

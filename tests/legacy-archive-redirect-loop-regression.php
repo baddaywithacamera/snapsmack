@@ -125,6 +125,12 @@ $check(str_contains($archive, "REQUEST_URI") && str_contains($archive, 'true, 30
     . 'is renamed, and a 301 a reader has cached cannot be taken back');
 $check(str_contains($archive, "QUERY_STRING"),
     'the redirect must pass the incoming query to the helper');
+$check(str_contains($archive, "\$_GET['view'] = 'archive'")
+        && str_contains($archive, 'SNAPSMACK_INTERNAL_ARCHIVE_DISPATCH')
+        && str_contains($archive, "require __DIR__ . '/index.php'"),
+    'a rewritten /archive must dispatch internally to the strict controller');
+$check(!str_contains($archive, "rtrim(BASE_URL, '/') . '/?view=archive'"),
+    'the same-path fix must not replace the public /archive URL with a query URL');
 
 // --- THE QUESTION MUST SURVIVE THE REDIRECT -----------------------------
 // An album card links to /archive?album=232. Carrying only the path answered
