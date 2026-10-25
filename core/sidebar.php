@@ -209,7 +209,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                 </button>
                 <ul class="nav-section-links">
                     <li>
-                        <a href="pixel.php" target="_blank" rel="noopener">Pixelfed &#8599;</a>
+                        <a href="pixel.php" target="_blank" rel="noopener"><?php echo $_site_is_smacktalk ? 'Mastodon' : 'Pixelfed'; ?> &#8599;</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-dms.php') ? 'active' : ''; ?>">
                         <a href="smack-dms.php">Messages</a>

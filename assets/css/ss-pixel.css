@@ -226,6 +226,11 @@ button{ font-family:inherit; cursor:pointer; }
   --accent:#8c8dff; --accent-strong:#6364ff; --active:#8c8dff;
   --bg:#191b22; --page:#191b22; --card:#282c37; --rail:#282c37;
   --line:#3b404d; --line-soft:#343945; --pill:#313543; --hover:#313543;
+  /* The SMACKTALK reader is always the dark Mastodon-style surface. Define
+   * its foreground palette here too so a saved Pixelfed light-theme choice
+   * cannot leave dark text on these dark panels. */
+  --fg:#f5f5f7; --fg-2:#e3e5e9; --muted:#9baec8; --muted-2:#b8c3d1;
+  --like:#ff6b7a; --avatar-ring:#454b5b;
 }
 .sx-reader-mastodon .sx-top{ background:#191b22; }
 .sx-reader-mastodon .sx-top-in,
