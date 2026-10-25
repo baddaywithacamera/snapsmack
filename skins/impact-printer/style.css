@@ -225,6 +225,7 @@ body.landing-only .ip-header-inside,
 }
 
 .ip-ascii-frame-inner img {
+    image-rendering: var(--print-image-rendering, pixelated);
     display: block;
     width: auto;
     height: auto;
@@ -587,6 +588,7 @@ body.archive-page #scroll-stage {
    the buttons track the right edge of the masonry grid (now 95% wide with
    auto margins). No !important override — the JS inline style wins.        */
 #justified-grid .justified-item img {
+    image-rendering: var(--print-image-rendering, pixelated);
     opacity: var(--ip-ink-opacity, 0.65);
 }
 
@@ -656,6 +658,7 @@ body.archive-page #scroll-stage {
     box-sizing: border-box;
 }
 .square-grid .thumb-link img {
+    image-rendering: var(--print-image-rendering, pixelated);
     width: calc(100% - 22px);
     height: calc(100% - 22px);
     margin: 11px;
@@ -696,6 +699,7 @@ body.archive-page #scroll-stage {
     aspect-ratio: 1 / 1 !important;
 }
 .cropped-grid .thumb-link img {
+    image-rendering: var(--print-image-rendering, pixelated);
     width: calc(100% - 22px) !important;
     height: calc(100% - 22px) !important;
     margin: 11px;
