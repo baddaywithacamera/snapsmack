@@ -282,16 +282,6 @@
             "selector": ":root",
             "property": "custom-pg-sheet-speed"
         },
-        "pg_show_discover": {
-            "section": "NAVIGATION",
-            "type": "select",
-            "label": "Show Discover Tab",
-            "default": "1",
-            "options": {
-                "1": "Yes",
-                "0": "No"
-            }
-        },
         "pg_body_font": {
             "section": "TYPOGRAPHY",
             "type": "select",

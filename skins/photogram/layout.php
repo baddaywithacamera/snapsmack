@@ -7,7 +7,7 @@
 <section class="pg-profile" aria-label="Profile"><div class="pg-profile-top">
 <?php if (!empty($view['site']['avatar_url'])): ?><div class="pg-avatar"><img src="<?php echo snap_escape_url($view['site']['avatar_url']); ?>" alt="<?php echo snap_escape_attr($view['site']['site_name']); ?>" width="80" height="80"></div><?php else: ?><div class="pg-avatar-placeholder" aria-hidden="true"></div><?php endif; ?>
 <div class="pg-profile-stats"><div class="pg-stat"><span class="pg-stat-count"><?php echo snap_escape_html($view['response']['photo_count_display'] ?? $view['response']['photo_count'] ?? ''); ?></span><span class="pg-stat-label">Posts</span></div><div class="pg-stat"><span class="pg-stat-count"><?php echo snap_escape_html($view['response']['like_count_display'] ?? $view['response']['like_count'] ?? ''); ?></span><span class="pg-stat-label">Likes</span></div><div class="pg-stat"><span class="pg-stat-count"><?php echo snap_escape_html($view['response']['comment_count_display'] ?? $view['response']['comment_count'] ?? ''); ?></span><span class="pg-stat-label">Comments</span></div></div></div>
-<?php if (!empty($view['site']['site_description'])): ?><div class="pg-profile-bio"><p class="pg-bio-text"><?php echo snap_escape_html($view['site']['site_description']); ?></p></div><?php endif; ?></section><div class="pg-divider"></div><?php if (!empty($view['site']['skin_presentation']['discover']['visible'])): ?><section id="pg-discover" class="pg-discover" aria-label="Discover"><h2 class="pg-discover-heading">Discover</h2><?php echo snap_render_html(snap_render_component('navigation',['items'=>$view['response']['navigation'] ?? []])); ?></section><?php endif; ?>
+<?php if (!empty($view['site']['site_description'])): ?><div class="pg-profile-bio"><p class="pg-bio-text"><?php echo snap_escape_html($view['site']['site_description']); ?></p></div><?php endif; ?></section><div class="pg-divider"></div>
 <main class="pg-grid h-feed" id="pg-grid" aria-label="Photos"><?php foreach (($view['response']['items'] ?? []) as $item): ?><?php echo snap_render_html(snap_render_component('photogram-grid-cell', ['item'=>$item])); ?><?php endforeach; ?><?php if (empty($view['response']['items'])): ?><div class="pg-grid-empty">No photos yet.</div><?php endif; ?></main><?php if (!empty($view['response']['next_page'])): ?><div id="pg-grid-sentinel" class="pg-feed-sentinel pg-feed-loading" data-page="<?php echo snap_escape_attr($view['response']['next_page']); ?>" data-has-more="1" aria-hidden="true"></div><?php endif; ?>
 <?php elseif (($view['response']['kind'] ?? '') === 'photo' || ($view['response']['kind'] ?? '') === 'post' || ($view['response']['kind'] ?? '') === 'collection'): ?>
 <header class="pg-top-bar"><a class="pg-top-bar-btn pg-back-btn" href="<?php echo snap_route_url('home'); ?>" aria-label="Back">&#x2039;</a><span class="pg-top-bar-title">Post</span><span class="pg-top-bar-btn" aria-hidden="true">&#x2026;</span></header>
@@ -18,6 +18,34 @@
 <?php elseif (($view['response']['kind'] ?? '') === 'search'): ?><main class="pg-search-wrap"><h1 class="pg-section-label"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Search'); ?></h1><?php foreach (($view['response']['results'] ?? []) as $group): ?><?php foreach ($group as $item): ?><a class="pg-search-meta" href="<?php echo snap_escape_url($item['url'] ?? '#'); ?>"><?php echo snap_escape_html($item['img_title'] ?? $item['title'] ?? ''); ?></a><?php endforeach; ?><?php endforeach; ?></main>
 <?php else: ?><main class="pg-grid-empty"><h1>Not found</h1></main><?php endif; ?>
 </div></div>
-<nav id="pg-nav" role="navigation" aria-label="Main navigation"><a href="<?php echo snap_route_url('home'); ?>" class="pg-nav-tab<?php if (($view['response']['kind'] ?? '') === 'landing' || ($view['response']['kind'] ?? '') === 'archive'): ?> active<?php endif; ?>" aria-label="Home">Home</a><?php if (!empty($view['site']['skin_presentation']['discover']['visible'])): ?><a href="#pg-discover" class="pg-nav-tab" aria-label="Discover">Discover</a><?php endif; ?><?php if (!empty($view['site']['search_dock']['enabled'])): ?><a href="<?php echo snap_route_url('search'); ?>" class="pg-nav-tab<?php if (($view['response']['kind'] ?? '') === 'search'): ?> active<?php endif; ?>" aria-label="Search">Search</a><?php endif; ?><a href="<?php echo snap_route_url('app'); ?>" class="pg-nav-tab pg-nav-create" aria-label="Create a post">Create</a></nav>
+<?php
+$pgAboutUrl = '';
+foreach (($view['response']['navigation'] ?? []) as $pgNavItem) {
+    if (!is_array($pgNavItem)) continue;
+    $pgNavLabel = strtolower(trim((string)($pgNavItem['label'] ?? $pgNavItem['title'] ?? '')));
+    if ($pgNavLabel === 'about' && !empty($pgNavItem['url'])) {
+        $pgAboutUrl = (string)$pgNavItem['url'];
+        break;
+    }
+}
+?>
+<nav id="pg-nav" role="navigation" aria-label="Main navigation">
+    <a href="<?php echo snap_route_url('home'); ?>" class="pg-nav-tab<?php if (($view['response']['kind'] ?? '') === 'landing'): ?> active<?php endif; ?>" aria-label="Home">
+        <svg class="pg-icon-outline" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5Z"/><path d="M9 21v-9h6v9"/></svg>
+        <svg class="pg-icon-filled" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-9H9v9H4a1 1 0 0 1-1-1V9.5Z"/></svg>
+    </a>
+    <a href="<?php echo snap_route_url('archive'); ?>" class="pg-nav-tab<?php if (($view['response']['kind'] ?? '') === 'archive'): ?> active<?php endif; ?>" aria-label="Browse photographs">
+        <svg class="pg-icon-outline" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <svg class="pg-icon-filled" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    </a>
+    <a href="<?php echo snap_route_url('search'); ?>" class="pg-nav-tab<?php if (($view['response']['kind'] ?? '') === 'search'): ?> active<?php endif; ?>" aria-label="Search">
+        <svg class="pg-icon-outline" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <svg class="pg-icon-filled" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    </a>
+    <?php if ($pgAboutUrl !== ''): ?><a href="<?php echo snap_escape_url($pgAboutUrl); ?>" class="pg-nav-tab<?php if (($view['response']['kind'] ?? '') === 'page'): ?> active<?php endif; ?>" aria-label="About">
+        <svg class="pg-icon-outline" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <svg class="pg-icon-filled" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </a><?php endif; ?>
+</nav>
 <?php echo snap_render_html(snap_render_component('registered-assets',['assets'=>$view['site']['registered_assets'] ?? []])); ?><?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?></body></html>
 

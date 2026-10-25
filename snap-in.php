@@ -76,6 +76,36 @@ function snap_login_is_rate_limited(PDO $pdo, string $ip): bool {
     return (int)($row->fetchColumn() ?: 0) >= 5;
 }
 
+/** Record a failed recovery-code attempt without affecting password login. */
+function snap_record_recovery_failure(PDO $pdo, string $ip): void {
+    $pdo->prepare(
+        "INSERT INTO snap_rate_limits (ip, action, count, window_start)
+         VALUES (?, 'recovery_fail', 1, NOW())
+         ON DUPLICATE KEY UPDATE
+           count        = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), 1, count + 1),
+           window_start = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), NOW(), window_start)"
+    )->execute([$ip]);
+}
+
+/** Is this address inside the recovery-code-only cooldown? */
+function snap_recovery_is_rate_limited(PDO $pdo, string $ip): bool {
+    $row = $pdo->prepare(
+        "SELECT count FROM snap_rate_limits
+         WHERE ip = ? AND action = 'recovery_fail'
+           AND window_start >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+         LIMIT 1"
+    );
+    $row->execute([$ip]);
+    return (int)($row->fetchColumn() ?: 0) >= 5;
+}
+
+/** A successful method clears only its own failure counter. */
+function snap_clear_auth_failures(PDO $pdo, string $ip, string $action): void {
+    if (!in_array($action, ['login_fail', 'recovery_fail'], true)) return;
+    $pdo->prepare("DELETE FROM snap_rate_limits WHERE ip = ? AND action = ?")
+        ->execute([$ip, $action]);
+}
+
 // Do not refuse GET access based on the requested filename or User-Agent.
 // Those heuristics provided no credential protection and could hide the login
 // and recovery form behind an unexplained 403 on legitimate browsers. Actual
@@ -159,7 +189,7 @@ if (file_exists($manifest_path)) {
 $active_skin_path = $theme_base . $colour_css_file;
 
 $error      = '';
-$active_tab = 'password';
+$active_tab = (($_GET['tab'] ?? '') === 'recovery') ? 'recovery' : 'password';
 
 if (($_GET['err'] ?? '') === '2fa_locked') {
     $error = 'Too many failed 2FA attempts. Please log in again.';
@@ -169,13 +199,14 @@ if (($_GET['err'] ?? '') === '2fa_locked') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $login_type = $_POST['login_type'] ?? 'password';
 
-    if (snap_login_is_rate_limited($pdo, $_snap_ip)) {
-        http_response_code(429);
-        $error = "TOO MANY ATTEMPTS: Wait ten minutes before trying again.";
-    } elseif ($login_type === 'password') {
+    if ($login_type === 'password') {
         $active_tab = 'password';
-        $user_input = trim($_POST['username'] ?? '');
-        $pass_input = $_POST['password'] ?? '';
+        if (snap_login_is_rate_limited($pdo, $_snap_ip)) {
+            http_response_code(429);
+            $error = "TOO MANY PASSWORD ATTEMPTS: Wait ten minutes or use a recovery code now.";
+        } else {
+            $user_input = trim($_POST['username'] ?? '');
+            $pass_input = $_POST['password'] ?? '';
 
         $stmt = $pdo->prepare("SELECT id, username, password_hash, user_role, preferred_skin, force_password_change, totp_enabled, totp_secret FROM snap_users WHERE username = ?");
         $stmt->execute([$user_input]);
@@ -189,6 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($user && password_verify($pass_input, $user['password_hash'])) {
+            try { snap_clear_auth_failures($pdo, $_snap_ip, 'login_fail'); } catch (PDOException $e) {}
             if (!empty($user['totp_enabled']) && !empty($user['totp_secret'])) {
                 // Check for a valid long-lived TOTP trust cookie before sending
                 // the user through the interstitial. If the cookie is good, skip
@@ -247,16 +279,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "ACCESS DENIED: Invalid credentials.";
             try { snap_record_login_failure($pdo, $_snap_ip); } catch (PDOException $e) {}
         }
+        }
 
     } elseif ($login_type === 'recovery') {
         $active_tab = 'recovery';
-        $rec_user   = trim($_POST['rec_username'] ?? '');
-        $rec_code   = strtoupper(trim($_POST['rec_code'] ?? ''));
+        if (snap_recovery_is_rate_limited($pdo, $_snap_ip)) {
+            http_response_code(429);
+            $error = "TOO MANY RECOVERY CODE ATTEMPTS: Wait ten minutes or use your password now.";
+        } else {
+            $rec_user   = trim($_POST['rec_username'] ?? '');
+            $rec_code   = strtoupper(trim($_POST['rec_code'] ?? ''));
 
         $user = snapsmack_validate_recovery_code($pdo, $rec_user, $rec_code);
 
         if ($user) {
-            snapsmack_consume_recovery_code($pdo, $user['id']);
+            try { snap_clear_auth_failures($pdo, $_snap_ip, 'recovery_fail'); } catch (PDOException $e) {}
+            snapsmack_consume_recovery_code(
+                $pdo,
+                (int)$user['id'],
+                (string)($user['_snapsmack_recovery_kind'] ?? 'account'),
+                isset($user['_snapsmack_recovery_index']) ? (int)$user['_snapsmack_recovery_index'] : null
+            );
             session_regenerate_id(true);
             $_SESSION['user_login']            = $user['username'];
             $_SESSION['user_role']             = $user['user_role'] ?: 'editor';
@@ -267,7 +310,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         } else {
             $error = "ACCESS DENIED: Invalid username or recovery code.";
-            try { snap_record_login_failure($pdo, $_snap_ip); } catch (PDOException $e) {}
+            try { snap_record_recovery_failure($pdo, $_snap_ip); } catch (PDOException $e) {}
+        }
         }
     }
 }
@@ -341,9 +385,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="control-group">
                     <label for="rec_code">RECOVERY CODE</label>
                     <input type="text" id="rec_code" name="rec_code"
-                           placeholder="XXXX-XXXX-XXXX"
+                           placeholder="SNAP-XXXX-XXXX-XXXX or XXXXXXXX-XXXXXXXX"
                            autocomplete="off" required>
-                    <span class="field-tip" data-tip="Find your one-time recovery code in smack-recovery-codes.txt, generated when you enabled 2FA.">&#9432;</span>
+                    <span class="field-tip" data-tip="Use a saved 2FA recovery code or the one-time account recovery code generated by User Manager.">&#9432;</span>
                 </div>
 
                 <button type="submit" class="btn-smack btn-login">AUTHORIZE ACCESS</button>

@@ -172,4 +172,43 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
     foreach ($root->childNodes as $child) $output .= $document->saveHTML($child);
     return SnapTrustedHtml::__snapsmackCmsOnly($output);
 }
+
+/**
+ * Render an ordinary photo description as safe, paragraph-preserving HTML.
+ *
+ * The image table contains two generations of content: older rows are plain
+ * text separated by blank lines, while newer/edited rows may contain <p> and
+ * other CMS HTML.  Treating both as already-rendered HTML collapses the blank
+ * lines, and mixed rows can leave their opening paragraph as a bare text node.
+ */
+function snapsmack_photo_description_html(string $content): SnapTrustedHtml
+{
+    $content = trim(str_replace(["\r\n", "\r"], "\n", $content));
+    if ($content === '') return snapsmack_trusted_html('');
+
+    $hasBlockMarkup = (bool)preg_match(
+        '~<(?:p|div|section|blockquote|ul|ol|pre|h[1-6]|figure|table|details)\b~i',
+        $content
+    );
+
+    if (!$hasBlockMarkup) {
+        $paragraphs = preg_split('/\n[\t ]*\n+/', $content) ?: [$content];
+        $content = implode('', array_map(
+            static fn(string $paragraph): string => '<p>' . preg_replace('/\n+/', '<br>', trim($paragraph)) . '</p>',
+            array_filter($paragraphs, static fn(string $paragraph): bool => trim($paragraph) !== '')
+        ));
+    } else {
+        // Some imported rows contain a bare opening paragraph followed by
+        // proper block markup. Restore only that unambiguous leading block;
+        // the sanitizer below remains the authority for allowed HTML.
+        if (preg_match('~^(.*?)(?=<(?:p|div|section|blockquote|ul|ol|pre|h[1-6]|figure|table|details)\b)~is', $content, $match)) {
+            $leading = trim($match[1]);
+            if ($leading !== '') {
+                $content = '<p>' . preg_replace('/\n+/', '<br>', $leading) . '</p>' . substr($content, strlen($match[1]));
+            }
+        }
+    }
+
+    return snapsmack_trusted_html($content);
+}
 // ===== SNAPSMACK EOF =====
