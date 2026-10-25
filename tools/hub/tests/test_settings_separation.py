@@ -4,6 +4,7 @@ SNAPSMACK_EOF_HEADER: last non-empty line must be # ===== SNAPSMACK EOF =====
 """
 
 import ast
+import re
 from pathlib import Path
 
 
@@ -57,7 +58,12 @@ def test_settings_owns_every_configuration_surface():
 
 def test_repair_has_packaged_layout_proof():
     source = SOURCE.read_text(encoding="utf-8")
-    assert 'BUILD_VERSION = "0.7.47"' in source
+    # This used to pin BUILD_VERSION = "0.7.47", the build the layout repair
+    # shipped in. A version only ever moves forward, so that check was
+    # guaranteed to fail at the next bump and says nothing about the layout.
+    # SNAP HQ is at 0.7.52 now. Assert that a version is declared at all, and
+    # leave the proof to the three markers below.
+    assert re.search(r'^BUILD_VERSION = "\d+\.\d+\.\d+"$', source, re.M)
     assert 'SNAP_HQ_LAYOUT_QA_MARKER' in source
     assert 'Settings content leaked into the SNAP HQ launcher' in source
     assert 'SNAP HQ Settings is missing a configuration section' in source

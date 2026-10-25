@@ -317,13 +317,18 @@ def test_raw_project_references_original_and_keeps_typed_artifacts(tmp_path, mon
     document = editor_engine.EditorDocument(str(master))
     document.attach_raw_source(str(raw), str(master), str(profile), "RT-test")
     project = tmp_path / "edit.slapper"
+    # This stub used to be installed after save_project, which left the save
+    # itself trying to develop a 12-byte stand-in RAW for its preview: real
+    # RawTherapee ran and refused the file, so the test died inside
+    # save_project with "Error loading file" long before it checked anything.
+    # The save needs the same already-developed master the reopen does.
+    monkeypatch.setattr(raw_preview, "develop", lambda *_args, **_kwargs: str(master))
     document.save_project(str(project))
     with zipfile.ZipFile(project) as archive:
         assert "original/source.raf" not in archive.namelist()
         value = __import__("json").loads(archive.read("project.json"))
     assert value["source_ingredient"]["external"] is True
     assert value["artifacts"]
-    monkeypatch.setattr(raw_preview, "develop", lambda *_args, **_kwargs: str(master))
     reopened = editor_engine.EditorDocument.load_project(
         str(project), trust_external_source=True)
     assert reopened.original_artifact_id == document.original_artifact_id

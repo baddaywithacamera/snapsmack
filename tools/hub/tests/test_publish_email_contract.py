@@ -48,9 +48,19 @@ def test_export_worker_runs_render_and_write_off_ui_thread(tmp_path, monkeypatch
 
 
 def test_publish_preparation_worker_runs_off_ui_thread(tmp_path, monkeypatch):
+    """Preparing a derivative must never happen on the thread drawing the UI.
+
+    This used to patch publishing_contract.prepare and assert the job called
+    it. Commit 53efe7b4 moved preparation out of the thread and into a
+    separate process -- a stronger answer to the same question, since RAW work
+    can no longer starve Qt even inside one interpreter -- so prepare() is not
+    called here at all any more and the patched stub recorded nothing. The
+    contract under test is unchanged; what carries it is now the subprocess.
+    """
+    import json
     from PIL import Image
     import editor_engine
-    from slapper_qt import publishing_contract
+    from slapper_qt import editor_window
     from slapper_qt.editor_window import _PublishPrepareJob
 
     source = tmp_path / "source.png"
@@ -58,15 +68,27 @@ def test_publish_preparation_worker_runs_off_ui_thread(tmp_path, monkeypatch):
     document = editor_engine.EditorDocument(source)
     ui_thread = threading.get_ident()
     called = []
+    target = tmp_path / "web.jpg"
+    manifest_path = tmp_path / "web.json"
 
-    def fake_prepare(*_args, **_kwargs):
+    def fake_run(command, **_kwargs):
         called.append(threading.get_ident())
-        return str(tmp_path / "web.jpg"), str(tmp_path / "web.json"), {}
+        assert "--blog-copy-worker" in command, command
+        with open(command[-1], encoding="utf-8") as handle:
+            job_value = json.load(handle)
+        with open(job_value["result_path"], "w", encoding="utf-8") as handle:
+            json.dump({"ok": True, "target": str(target),
+                       "manifest_path": str(manifest_path),
+                       "manifest": {}}, handle)
+        return type("Done", (), {"returncode": 0, "stdout": "", "stderr": ""})()
 
-    monkeypatch.setattr(publishing_contract, "prepare", fake_prepare)
+    monkeypatch.setattr(editor_window.subprocess, "run", fake_run)
+    failures = []
     job = _PublishPrepareJob(1, document, {}, "", str(tmp_path), "local")
+    job.signals.failed.connect(lambda _token, message: failures.append(message))
     worker = threading.Thread(target=job.run)
     worker.start(); worker.join()
+    assert failures == []
     assert called == [worker.ident]
     assert called[0] != ui_thread
 
