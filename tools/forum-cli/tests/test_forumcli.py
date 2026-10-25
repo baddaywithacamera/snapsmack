@@ -5,6 +5,9 @@ client, because a CLI that an agent depends on fails in two ways: it forgets a
 command the agent sheet promises, or it sends a field the API does not read.
 The second one is what broke lock() for its whole life -- "locked" where the
 API reads "is_locked" -- and it was invisible until somebody tried it.
+
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line must be the Python SNAPSMACK EOF marker.
 """
 
 import json
@@ -318,5 +321,29 @@ def test_the_agent_sheet_lists_edit():
     """An agent only knows what the sheet tells it. A command the sheet does
     not mention may as well not exist."""
     assert "edit" in {c["name"] for c in agent.COMMANDS}
+
+
+def test_a_moderator_byline_carries_mod():
+    """Readers can only trust an answer if they can see who is answering.
+
+    The forum sends author_role (2 is moderator) and mirrors it in
+    author_is_moderator. Both are read, because a forum that has not taken
+    this change yet sends neither and must still print a plain name rather
+    than crash or claim everyone is staff.
+    """
+    assert fc._byline({"display_name": "Sean", "author_role": 2}) == "Sean  [MOD]"
+    assert fc._byline({"display_name": "Sean", "author_role": 3}) == "Sean  [MOD]"
+    assert fc._byline({"display_name": "a reader", "author_role": 0}) == "a reader"
+    assert fc._byline({"display_name": "a reader", "author_role": 1}) == "a reader"
+
+
+def test_a_byline_falls_back_to_the_flag_then_to_the_plain_name():
+    # Role absent, flag present: an older forum that only kept is_moderator.
+    assert fc._byline({"display_name": "Sean", "author_is_moderator": 1}) == "Sean  [MOD]"
+    assert fc._byline({"display_name": "Sean", "author_is_moderator": 0}) == "Sean"
+    # Neither field: a forum from before any of this. Print the name, say
+    # nothing about status, and above all do not fail.
+    assert fc._byline({"display_name": "Sean"}) == "Sean"
+    assert fc._byline({}) == ""
 
 # ===== SNAPSMACK EOF =====

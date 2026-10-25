@@ -27,6 +27,12 @@ CREATE TABLE IF NOT EXISTS ss_forum_installs (
     api_key         VARCHAR(64)    NOT NULL,
     domain          VARCHAR(255)   NOT NULL,
     display_name    VARCHAR(100)   NOT NULL DEFAULT '',
+    -- The blog's own avatar, so a post carries the face the blog already uses.
+    -- Held as a URL on the blog itself, never a copy: the forum stores no
+    -- images. Writing it is restricted to an https address on the install's
+    -- own domain -- every reader's browser fetches this, so an install that
+    -- could point it anywhere could log the IP of everyone reading the forum.
+    avatar_url      VARCHAR(500)   NOT NULL DEFAULT '',
     ss_version      VARCHAR(20)    NOT NULL DEFAULT '',
     registered_at   TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_seen_at    TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -282,6 +288,10 @@ CREATE TABLE IF NOT EXISTS ss_forum_follows (
 
 -- installs (v4): role ladder
 ALTER TABLE ss_forum_installs ADD COLUMN IF NOT EXISTS role TINYINT NOT NULL DEFAULT 0;
+
+-- installs (v5): the blog's avatar, carried on check-in. See the column
+-- comment above for why writing it is restricted to the install's own domain.
+ALTER TABLE ss_forum_installs ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500) NOT NULL DEFAULT '';
 
 -- threads (v2): richer thread metadata
 ALTER TABLE ss_forum_threads ADD COLUMN IF NOT EXISTS excerpt                 VARCHAR(400) NOT NULL DEFAULT '';

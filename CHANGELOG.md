@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+- **The forum shows who is a moderator.** A post now carries a MOD marker when its author's account holds moderator power or above, so somebody reading an answer can tell whether it came from staff. The forum already stored the role and simply never sent it to anyone.
+
+- **The forum shows each blog's own avatar beside its posts.** A blog reports its avatar when it checks in, and the forum serves that address. The forum stores no images: it holds the URL, and only accepts an https address on the blog's own domain, so a blog cannot point its avatar at a host it does not control.
+
+- **Reading the forum no longer tells Google who is reading it.** Avatars were drawn by requesting `google.com/s2/favicons?domain=<blog>` once per avatar on the page, which handed Google the reader's IP address and the list of blogs in the thread they were looking at. Nothing on a forum page now leaves the reader's network except the blog's own image.
+
 ## 0.7.947D - 2026-10-25 - EVERY PARAGRAPH IS A PARAGRAPH
 
 - **Mixed historical photo posts regain every missing paragraph, including prose after an inline photograph.** The first repair handled plain-text descriptions and bare prose at the start of mixed HTML, but posts can also contain a CMS image block followed by unwrapped text and then proper `<p>` elements. The shared safe formatter now wraps every meaningful top-level prose run wherever it occurs, preserving inline links and emphasis while leaving existing blocks intact. This remains a central renderer fix used by every photo skin.
