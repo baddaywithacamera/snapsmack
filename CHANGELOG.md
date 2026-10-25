@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.944D - 2026-10-25 - KEEP THE FILTER
+
+- **SLICKR albums stay on the clean `/archive` address and render through SLICKR.** Servers that rewrite `/archive` to the legacy endpoint now dispatch internally to the strict controller without changing the browser URL. Album, category, search and layout parameters survive, so `/archive?album=299` presents the album in SLICKR instead of exposing the old unstyled archive page.
+
+- **SLICKR search and album walls keep their filters while STACKER loads later batches.** The shared endless-wall engine no longer replaces the complete query string, which had dropped `q=rodeo` and `album=299`. Search is paged through the public controller instead of stopping at its first hard-capped batch, and older installed SLICKR packages receive a safe runtime continuation marker without being overwritten.
+
 ## 0.7.943D - 2026-10-24 - THE RULES WERE THERE
 
 - **THE GRID and the eight related frame-aware skins respect their saved image sizes, borders, colours and shadows again.** The existing shared frame stylesheet was still correct, but strict skin pages no longer loaded it after THE BIG BANG. The CMS now supplies that same stylesheet at the strict rendering boundary instead of inventing replacement layout rules.

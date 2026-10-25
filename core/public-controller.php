@@ -629,9 +629,18 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     }
     if ($route === 'search') {
         $query = trim((string)($request['query'] ?? ''));
-        $results = $query === '' ? ['photographs' => [], 'posts' => []] : $repository->search($query);
+        $results = $query === '' ? ['photographs' => [], 'posts' => []]
+            : $repository->search($query, $perPage, $offset);
+        if ($skin === 'slickr') {
+            $results['photographs'] = snapsmack_grid_frame_items(
+                $results['photographs'] ?? [], $settings, $skin
+            );
+        }
+        $nextSearchPage = count($results['photographs'] ?? []) === $perPage ? $page + 1 : 0;
         return ['status' => 200, 'kind' => 'search', 'query' => $query,
-            'results' => $results, 'navigation' => $navigation];
+            'results' => $results, 'navigation' => $navigation, 'page' => $page,
+            'per_page' => $perPage, 'next_page' => $nextSearchPage,
+            'has_more' => $nextSearchPage > 0];
     }
     if ($route === 'hashtag') {
         $total = $slug === '' ? 0 : $repository->hashtagPhotographCount($slug);
