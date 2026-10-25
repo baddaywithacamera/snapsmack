@@ -227,7 +227,7 @@ body[data-paper="greenbar"] #wwi-page {
 }
 .post-content { font-size: 1rem; }
 .post-content p { margin: 0 0 1.2em; }
-.post-content img { max-width: 100%; height: auto; filter: grayscale(1) contrast(1.15); }
+.post-content img { max-width: 100%; height: auto; filter: grayscale(1) contrast(1.15); image-rendering: var(--print-image-rendering, pixelated); }
 .post-content h2, .post-content h3 {
     font-family: 'Tiny5-Matrix', 'DotMatrix', monospace;
     letter-spacing: .06em; text-transform: uppercase;
@@ -438,6 +438,7 @@ body[data-paper="greenbar"] #wwi-page {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    image-rendering: var(--print-image-rendering, pixelated);
     filter: grayscale(1) contrast(1.2);
 }
 

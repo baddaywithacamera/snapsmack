@@ -1375,8 +1375,14 @@ button, input, select, textarea,
    dithered, so this is close to a no-op on them. If it reads well, THIS is the
    block to lift into IMPACT PRINTER for phone shooters. pixelated keeps the dots
    crunchy instead of letting the browser smooth them into grey on downscale. */
-.tg-tile img { filter: grayscale(1) contrast(1.35) brightness(1.06); image-rendering: pixelated; }
+.tg-tile img { filter: grayscale(1) contrast(1.35) brightness(1.06); image-rendering: var(--print-image-rendering, pixelated); }
 .tg-tile:hover img { filter: grayscale(1) contrast(1.5); opacity: 1; }
+.tg-post-ig-image img,
+.tg-single-img,
+.tg-slide--framed img,
+.tg-lightbox img {
+    image-rendering: var(--print-image-rendering, pixelated);
+}
 .tg-tile-indicator, .tg-tile-indicator--icon { color: #2a2520; filter: none; }
 
 /* ---- NAV: dashed DOUBLE-RULE dot-matrix lines, not thin bars ---- */
