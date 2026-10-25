@@ -56,6 +56,8 @@ button{ font-family:inherit; cursor:pointer; }
   display:grid; grid-template-columns:300px 1fr 320px; align-items:center; gap:28px;
 }
 .sx-brand{ display:flex; align-items:center; gap:9px; font-weight:800; font-size:1.28rem; letter-spacing:-.01em; }
+.sx-brand-copy{ display:flex; flex-direction:column; line-height:1.05; }
+.sx-brand-copy small{ margin-top:3px; color:var(--muted); font-size:.58rem; font-weight:500; letter-spacing:0; }
 .sx-brand .sx-mark{
   width:26px; height:26px; border-radius:8px; flex:0 0 auto;
   background:conic-gradient(from 210deg,#f9317f,#ff7a45,#ffd23f,#37d67a,#3897f0,#8b5cf6,#f9317f);
@@ -217,6 +219,14 @@ button{ font-family:inherit; cursor:pointer; }
 .sx-caption{ padding:2px 14px 14px; font-size:.93rem; color:var(--fg); overflow-wrap:anywhere; }
 .sx-caption a{ color:var(--accent); }
 
+/* Pixelfed presentation: image-led cards inside the three-column web shell. */
+.sx-reader-pixelfed .sx-card{
+  background:var(--card); border:1px solid var(--line-soft); border-radius:12px;
+  overflow:hidden; margin-bottom:18px;
+}
+.sx-reader-pixelfed .sx-media{ border-radius:0; }
+.sx-reader-pixelfed .sx-caption{ padding-top:8px; }
+
 /* ---- SMACKTALK reader ----------------------------------------------------
  * The words-first install gets a Mastodon-like home timeline. Photography
  * installs retain the image-led Pixelfed presentation above. This is an
@@ -235,10 +245,48 @@ button{ font-family:inherit; cursor:pointer; }
 .sx-reader-mastodon .sx-top{ background:#191b22; }
 .sx-reader-mastodon .sx-top-in,
 .sx-reader-mastodon .sx-app{ max-width:1180px; }
+.sx-reader-mastodon .sx-top-in{ grid-template-columns:240px minmax(0,620px) 280px; gap:20px; }
+.sx-reader-mastodon .sx-brand .sx-mark{ display:none; }
+.sx-reader-mastodon .sx-brand{ align-self:center; font-size:1.05rem; }
+.sx-reader-mastodon .sx-search{ grid-column:3; }
+.sx-reader-mastodon .sx-top-right{
+  position:fixed; z-index:42; left:max(18px,calc(50% - 590px)); bottom:22px;
+  width:240px; justify-content:flex-start; padding:8px; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); box-shadow:0 8px 28px rgba(0,0,0,.28);
+}
+.sx-reader-mastodon .fb-switcher{ flex:1; }
+.sx-reader-mastodon .fb-toggle{ width:100%; max-width:none; border:0; background:transparent; }
+.sx-reader-mastodon .fb-help,
+.sx-reader-mastodon .sx-theme{ display:none; }
+.sx-reader-mastodon .sx-account-menu{ top:auto; right:0; bottom:48px; }
 .sx-reader-mastodon .sx-app{
   grid-template-columns:240px minmax(0,620px) 280px;
-  gap:20px; padding-top:0;
+  gap:20px; padding-top:0; min-height:calc(100vh - 62px);
 }
+.sx-reader-mastodon .sx-col-left{
+  min-height:calc(100vh - 84px); padding-bottom:94px; display:flex; flex-direction:column;
+}
+.sx-reader-mastodon .sx-idcard,
+.sx-reader-mastodon .sx-foot{ display:none; }
+.sx-reader-mastodon .sx-nav{
+  order:1; border:0; background:transparent; padding:12px 0; display:flex; flex-direction:column;
+}
+.sx-reader-mastodon .sx-create{
+  order:2; width:auto; margin:10px 0 0; border-radius:999px; background:#8c8dff;
+  color:#17151f; font-weight:750;
+}
+.sx-reader-mastodon .sx-nav-list a{
+  padding:11px 4px; color:var(--fg); font-size:.98rem; font-weight:650;
+}
+.sx-reader-mastodon .sx-nav-list a:hover{ background:transparent; color:#fff; }
+.sx-reader-mastodon .sx-nav-list a.active::before{ display:none; }
+.sx-reader-mastodon .sx-nav-list a.active{ color:#fff; }
+.sx-reader-mastodon .sx-nav-list a .sx-ic{ color:inherit; font-size:1.25rem; }
+.sx-reader-mastodon .sx-masto-section{
+  padding:20px 4px 5px; color:var(--muted-2); font-size:.9rem; font-weight:700;
+}
+.sx-reader-mastodon .sx-masto-secondary{ margin-top:auto; padding-top:30px; }
+.sx-reader-mastodon .sx-masto-secondary a{ font-size:.84rem; }
 .sx-reader-mastodon .sx-col-center{
   background:var(--card); border-left:1px solid var(--line);
   border-right:1px solid var(--line); min-height:calc(100vh - 62px);
@@ -278,12 +326,22 @@ button{ font-family:inherit; cursor:pointer; }
 .sx-reader-mastodon .sx-idcard,
 .sx-reader-mastodon .sx-nav,
 .sx-reader-mastodon .sx-railcard{ border-radius:8px; }
-.sx-reader-mastodon .sx-create{ border-radius:4px; }
+.sx-reader-mastodon .sx-masto-about{
+  position:fixed; bottom:28px; width:280px; color:var(--muted-2); font-size:.78rem;
+}
+.sx-reader-mastodon .sx-masto-about b{ display:block; margin-bottom:5px; color:var(--fg-2); font-size:.9rem; }
+.sx-reader-mastodon .sx-masto-about a{ margin-right:8px; text-decoration:underline; }
+.sx-reader-mastodon .sx-masto-about small{ display:block; margin-top:15px; color:var(--muted); }
 
 @media (max-width:1000px){
   .sx-reader-mastodon .sx-app{ grid-template-columns:1fr; padding:0; }
   .sx-reader-mastodon .sx-col-center{ border-left:0; border-right:0; }
   .sx-reader-mastodon .sx-home-title{ top:110px; }
+  .sx-reader-mastodon .sx-top-in{ grid-template-columns:minmax(0,1fr); }
+  .sx-reader-mastodon .sx-search{ grid-column:1; }
+  .sx-reader-mastodon .sx-top-right{ position:static; width:auto; box-shadow:none; }
+  .sx-reader-mastodon .sx-col-left{ min-height:0; padding-bottom:0; }
+  .sx-reader-mastodon .sx-masto-secondary{ margin-top:0; }
 }
 @media (max-width:600px){
   .sx-reader-mastodon .sx-card{ padding-left:12px; padding-right:12px; }

@@ -22,6 +22,9 @@ $check(str_contains($css, '.sx-reader-mastodon .sx-caption') && str_contains($cs
 $check(str_contains($css, '.sx-reader-mastodon .sx-media') && str_contains($css, 'order:4'), 'SMACKTALK media order is missing');
 $check(str_contains($css, '--fg:#f5f5f7') && str_contains($css, '--muted:#9baec8'), 'SMACKTALK reader does not lock in readable foreground colours');
 $check(str_contains($sidebar, "\$_site_is_smacktalk ? 'Mastodon' : 'Pixelfed'"), 'admin reader label is not mode-aware');
+$check(str_contains($pixel, 'Mastodon.social') && str_contains($pixel, '>pixelfed</'), 'reader brands do not match their presentation modes');
+$check(str_contains($pixel, 'sx-masto-primary') && str_contains($pixel, '>Explore</a>'), 'Mastodon navigation shell is missing');
+$check(str_contains($css, '.sx-reader-pixelfed .sx-card') && str_contains($css, '.sx-reader-mastodon .sx-nav'), 'reader-specific shells are not separated');
 
 if ($failures) {
     fwrite(STDERR, implode(PHP_EOL, $failures) . PHP_EOL);

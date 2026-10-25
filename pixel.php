@@ -234,7 +234,13 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
 
 <header class="sx-top">
   <div class="sx-top-in">
-    <a class="sx-brand" href="pixel.php"><span class="sx-mark"></span> FEDIVERSE</a>
+    <a class="sx-brand" href="pixel.php"><span class="sx-mark"></span>
+      <?php if ($sv_reader_style === 'mastodon'): ?>
+        <span class="sx-brand-copy"><b>Mastodon.social</b><small>powered by SnapSmack</small></span>
+      <?php else: ?>
+        <span class="sx-brand-copy"><b>pixelfed</b></span>
+      <?php endif; ?>
+    </a>
     <div class="sx-search"><span class="sx-mag">&#128269;</span>
       <input type="text" placeholder="@user@host  ·  #hashtag" aria-label="Search the fediverse">
     </div>
@@ -325,6 +331,20 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
     <a class="sx-create" href="smack-post-solo.php" title="Posting happens in the blog composer (same fields, same posts)">&#8593; Create New Post</a>
 
     <nav class="sx-nav">
+      <?php if ($sv_reader_style === 'mastodon'): ?>
+      <div class="sx-nav-list sx-masto-primary">
+        <a href="?panel=home" data-panel="home" class="active"><span class="sx-ic">&#8962;</span>Home</a>
+        <a href="?panel=discover" data-panel="discover"><span class="sx-ic">&#9906;</span>Explore</a>
+        <div class="sx-masto-section">Custom Feeds</div>
+        <a href="?panel=local" data-panel="local"><span class="sx-ic">&#9776;</span>Local Feed</a>
+        <a href="?panel=global" data-panel="global"><span class="sx-ic">&#127760;</span>Global Feed</a>
+      </div>
+      <div class="sx-nav-list sx-masto-secondary">
+        <a href="?panel=notifications" data-panel="notifications"><span class="sx-ic">&#9825;</span>Notifications<?php if ($sv_unread > 0): ?><span class="sx-badge"><?php echo (int)$sv_unread; ?></span><?php endif; ?></a>
+        <a href="?panel=direct" data-panel="direct"><span class="sx-ic">&#9993;</span>Messages</a>
+        <a href="?panel=profile" data-panel="profile"><span class="sx-ic">&#9728;</span>Profile</a>
+      </div>
+      <?php else: ?>
       <div class="sx-nav-top">
         <a href="?panel=home" data-panel="home" class="active"><span class="sx-ic">&#8962;</span>Home</a>
         <a href="?panel=local" data-panel="local"><span class="sx-ic">&#9776;</span>Local</a>
@@ -336,6 +356,7 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
         <a href="?panel=notifications" data-panel="notifications"><span class="sx-ic">&#9825;</span>Notifications<?php if ($sv_unread > 0): ?><span class="sx-badge"><?php echo (int)$sv_unread; ?></span><?php endif; ?></a>
         <a href="?panel=profile" data-panel="profile"><span class="sx-ic">&#9728;</span>Profile</a>
       </div>
+      <?php endif; ?>
     </nav>
 
     <div class="sx-foot">
@@ -358,10 +379,18 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
 
   <!-- RIGHT -->
   <aside class="sx-col-right">
+    <?php if ($sv_reader_style === 'mastodon'): ?>
+    <div class="sx-masto-about">
+      <b><?php echo px_e((string)($sv_settings['site_name'] ?? 'SMACKTALK')); ?></b>
+      <div><a href="index.php">About</a> <a href="privacy-policy.php">Privacy</a> <a href="smack-help.php?topic=fedboard">Help</a></div>
+      <small>Mastodon presentation · powered by SnapSmack</small>
+    </div>
+    <?php else: ?>
     <div class="sx-railcard">
       <div class="sx-railcard-h">Notifications<span class="sx-sp"></span><button aria-label="Refresh">&#8635;</button></div>
       <div class="sx-rail-body"></div>
     </div>
+    <?php endif; ?>
   </aside>
 </div>
 
