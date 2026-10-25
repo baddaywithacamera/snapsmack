@@ -114,17 +114,57 @@ def test_sharpen_matches_apart_from_the_threshold_knife_edge(frame):
     assert np.median(difference) <= TOLERANCE
 
 
+FULL_EDIT = {
+    "exposure": .5, "contrast": 18, "shadows": 25, "highlights": -20,
+    "saturation": 20, "vibrance": 20, "temperature": 12, "col_sat_red": 25,
+    "clarity": 25, "vignette": -35, "glow_amount": 15,
+    "grain": 12, "split_shadow_amount": 20,
+    "curve": [[0, 0], [115, 140], [255, 255]]}
+
+
 @requires_card
 def test_a_full_edit_matches(frame):
-    processor, card = _both_ways(frame, {
-        "exposure": .5, "contrast": 18, "shadows": 25, "highlights": -20,
-        "saturation": 20, "vibrance": 20, "temperature": 12, "col_sat_red": 25,
-        "clarity": 25, "texture": 20, "vignette": -35, "glow_amount": 15,
-        "grain": 12, "split_shadow_amount": 20,
-        "curve": [[0, 0], [115, 140], [255, 255]]})
+    """Fifteen controls at once, and every sample still agrees to the last bit.
+
+    Texture is deliberately not in this edit; it has its own test below. It
+    routes through unsharp(), which applies a threshold, and a threshold
+    cannot be held to a strict bound -- see the test that follows.
+    """
+    processor, card = _both_ways(frame, FULL_EDIT)
     difference = np.abs(processor - card)
     assert difference.max() <= TOLERANCE, (
-        f"worst difference {difference.max() * 255:.5f} of an 8-bit code value")
+        f"worst difference {difference.max() * 255:.5f} of an 8-bit code value, "
+        f"over {(difference > TOLERANCE).sum()} samples")
+
+
+@requires_card
+def test_a_full_edit_with_texture_matches_apart_from_the_knife_edge(frame):
+    """Texture is a thresholded sharpen, so it is bounded by count, not size.
+
+    Positive Texture calls unsharp(radius .65, amount texture * .018,
+    threshold 2/255), and unsharp zeroes any detail under the threshold. That
+    is the same hard cutoff this file already documents for Sharpen: the blur
+    underneath legitimately differs between the two devices by about one ULP,
+    so a sample whose detail sits that close to the cutoff is zeroed on one
+    device and kept on the other, and the output moves by exactly
+    threshold * amount -- 0.00784 * 0.36 = 0.00282, or 0.72 of an 8-bit code
+    value at Texture 20. No implementation of a thresholded sharpen can be
+    held under TOLERANCE, which is why the strict test above leaves Texture
+    out and this one counts samples instead.
+
+    Measured on an RTX 3050: one sample in 4,200,000, in four of eight seeds.
+    """
+    processor, card = _both_ways(frame, dict(FULL_EDIT, texture=20))
+    difference = np.abs(processor - card)
+    outliers = int((difference > TOLERANCE).sum())
+    assert outliers <= KNIFE_EDGE_SAMPLES, (
+        f"{outliers} samples differ, which is more than a threshold knife edge")
+    assert np.median(difference) <= TOLERANCE
+    # The size of a knife-edge jump is capped by the threshold and the amount.
+    # Anything bigger is a real divergence wearing the same costume.
+    assert difference.max() <= (2.0 / 255.0) * (20 * .018) * 1.01, (
+        f"worst difference {difference.max() * 255:.5f} of an 8-bit code value "
+        f"is larger than the threshold knife edge can account for")
 
 
 @requires_card

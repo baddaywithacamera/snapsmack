@@ -38,7 +38,18 @@ class FoundTexturesCredentialTests(unittest.TestCase):
             self.assertEqual(found_textures.resolve_profile(),
                              ("https://foundtextures.ca", "sybu-publishing-key"))
 
-    def test_hub_catalogue_uses_credential_saved_by_discovery(self):
+    def test_full_hub_credential_is_never_handed_to_the_catalogue(self):
+        """api_key_local mints a GYSS key; it is never the key we browse with.
+
+        This test used to expect resolve_profile() to return the "full" hub
+        credential from extras.api_key_local when discovery was unavailable.
+        It never passed: it was written in 5cf1bd38, the same commit that made
+        the narrow SYBU key the fallback, and no run of it reached that
+        assertion. Asserting the old expectation would have handed the full
+        hub credential to the texture browser, which is the opposite of what
+        SECAUDIT 058 closed. The least-privilege key is the right answer, so
+        that is what is pinned here.
+        """
         profile = {"site_url": "https://foundtextures.ca", "api_key": "sybu",
                    "extras": {"api_key_local": "full"}}
         profiles = type("Profiles", (), {
@@ -49,8 +60,9 @@ class FoundTexturesCredentialTests(unittest.TestCase):
         with patch.object(found_textures, "snap_profiles", profiles), \
                 patch.object(found_textures, "snap_connections", connections), \
                 patch.object(found_textures, "snap_discovery", None):
-            self.assertEqual(found_textures.resolve_profile(),
-                             ("https://foundtextures.ca", "full"))
+            site, key = found_textures.resolve_profile()
+        self.assertEqual((site, key), ("https://foundtextures.ca", "sybu"))
+        self.assertNotEqual(key, "full")
 
 
 

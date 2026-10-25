@@ -54,7 +54,16 @@ def test_project_contains_and_can_restore_untouched_original(tmp_path):
 
     with zipfile.ZipFile(project) as archive:
         members = archive.namelist()
-        embedded = next(name for name in members if name.startswith("original/source"))
+        # This looked for "original/source*". The archive writes the embedded
+        # photograph at PROJECT_ORIGINAL_NAME + the source extension, which is
+        # "original/original.jpg" here, so the search found nothing and raised
+        # StopIteration instead of reporting a missing original. Read the name
+        # off the constant so the two cannot drift apart again.
+        embedded = next(
+            (name for name in members
+             if name.startswith(editor_engine.PROJECT_ORIGINAL_NAME)), None)
+        assert embedded is not None, (
+            f"no embedded original in the project: {members}")
         assert archive.read(embedded) == original
 
     os.remove(source)
