@@ -11,6 +11,14 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.948D - 2026-10-25 - THE WHOLE PICTURE
+
+- **INSTANT CAMERA shows the entire instant-print scan again.** Its portrait tile and `contain` rules were intact, but the shared strict controller handed unframed tiles a square-cropped thumbnail before the skin could display them. INSTANT CAMERA now receives the aspect-preserved thumbnail while THE GRID and other square-grid presentations retain their intended crops. A dedicated cross-skin regression test protects both sides of that boundary.
+
+- **PHOTOGRAM avatars link to the site's active About page again.** The CMS now resolves the About page independently of whether the owner included it in the visible menu, and supplies that bounded URL to the skin for profile and post avatars.
+
+- **PHOTOGRAM inherits INSTANT CAMERA's saved print format again.** Polaroid, SX-70, Polaroid Go, Instax and validated custom ratios are interpreted centrally by the CMS and delivered as presentation data; executable discovery and settings logic remain outside the skin package.
+
 - **The forum shows who is a moderator.** A post now carries a MOD marker when its author's account holds moderator power or above, so somebody reading an answer can tell whether it came from staff. The forum already stored the role and simply never sent it to anyone.
 
 - **The forum shows each blog's own avatar beside its posts.** A blog reports its avatar when it checks in, and the forum serves that address. The forum stores no images: it holds the URL, and only accepts an https address on the blog's own domain, so a blog cannot point its avatar at a host it does not control.
