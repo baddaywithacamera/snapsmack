@@ -4,7 +4,7 @@ Sean's rules, written down because agents kept breaking them from memory.
 Several of these were agreed, broken, re-agreed, and broken again. Where a
 machine can check a rule, the check is named. Where it cannot, that is said.
 
-Last updated: 2026-10-16
+Last updated: 2026-10-25
 
 ---
 
@@ -218,6 +218,39 @@ has. Prefer the declared form.
 build recipes are code and are tracked. `docs/` is not used — note that it is
 currently tracked in git and holds 10+ spec files, which is a standing
 violation nobody has cleared.
+
+## 10b. The gates run on this machine, and they are not advice
+
+Four checks are wired into git itself, because OPAUDIT 022 said it plainly:
+compliance that depends on an agent remembering at the moment it types is not
+a mechanism. Each one below was written after the thing it stops had already
+happened.
+
+Switch them on once per clone:
+
+```
+php tools/install-hooks.php
+```
+
+That sets `core.hooksPath = .githooks` for the whole clone, main checkout and
+every worktree. `tests/git-hooks-installed-regression.php` fails while it is
+unset, so the suite says so instead of nobody noticing — which is what
+happened for months with the pre-commit hook, correct and never armed.
+
+| gate | refuses |
+| --- | --- |
+| `.githooks/pre-commit` | staged PHP with null bytes or syntax errors; skin changes that fail the three ratchets |
+| `.githooks/commit-msg` | a subject saying restore / put back / bring back with no `Restores: <sha>` trailer, or one naming a commit that does not exist or shares no file with this one |
+| `.githooks/pre-push` | a release tag whose commit has no passing release-gate note — the hole `tag-dev` could not cover, because a tag can be made by hand |
+| `tests/test-strength-regression.php` | a test file that asserts less, asks less, or changes a numeric bar, without `--update` |
+
+Git LFS hooks live in `.githooks/` too. `core.hooksPath` stops git reading
+`.git/hooks`, so without those copies turning the gate on would turn LFS off.
+
+Two things these do not do. They are per clone and per machine, so none of
+them sees a tag pushed from somewhere else. And a rebuild is still allowed —
+`commit-msg` only objects to the word "restore" going unsupported; write
+"rebuild" and it has nothing to say.
 
 ## 11. Plain speech
 

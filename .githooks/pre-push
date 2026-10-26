@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""
+Pre-push hook — a release tag may not leave this machine over a red suite.
+
+OPAUDIT 026, step 1. tools/release-flow.php already refuses to tag without a
+passing release-gate note. The hole was that the tool is optional: a tag made
+with plain `git tag` and pushed with plain `git push` never meets it. That is
+how v0.7.946D, v0.7.947D and v0.7.948D were cut on 24-25 October 2026, on top
+of three regression tests that had been red for a day.
+
+This hook closes the hole at the only point every route shares: the push. For
+each ref being pushed that looks like a release tag, it asks the same question
+release-flow.php asks, in the same words, by calling it:
+
+    php tools/release-flow.php gate-check <the tag's commit>
+
+No note, or a note that does not pass, and the push is refused. Branch pushes
+are untouched; this blocks tags, not work.
+
+There is no override flag, on purpose. The way past it is to make the gate
+pass. If the gate itself is wrong, fix the gate in a commit somebody can read.
+
+It also carries the Git LFS pre-push step, because core.hooksPath stops git
+reading .git/hooks where git-lfs installed its own copy. The ref list arrives
+on stdin and stdin can only be read once, so it is read here and handed on.
+
+What this does NOT cover: a tag pushed from a different clone where
+core.hooksPath was never set, and anything done directly on the server. It is
+a gate on this machine.
+
+Install once:  php tools/install-hooks.php
+"""
+
+import re
+import os
+import subprocess
+import sys
+
+TAG_REF = re.compile(r'^refs/tags/(v[0-9]+\.[0-9]+\.[0-9]+D?)$')
+ZERO = re.compile(r'^0+$')
+
+
+def repo_root() -> str:
+    out = subprocess.run(
+        ['git', 'rev-parse', '--show-toplevel'],
+        capture_output=True, text=True
+    )
+    return out.stdout.strip() or os.getcwd()
+
+
+def refused(lines):
+    print('\n\033[31m[pre-push] RELEASE TAG REFUSED\033[0m')
+    for line in lines:
+        print(line)
+    print('\nA tag is a promise that this commit passed. Make the gate pass, then push.\n')
+
+
+def main() -> int:
+    payload = sys.stdin.read()
+    root = repo_root()
+
+    problems = []
+    for line in payload.splitlines():
+        parts = line.split()
+        if len(parts) < 4:
+            continue
+        local_ref, local_sha, remote_ref, _remote_sha = parts[0], parts[1], parts[2], parts[3]
+        match = TAG_REF.match(remote_ref) or TAG_REF.match(local_ref)
+        if not match:
+            continue              # a branch, or a tag that is not a release
+        if ZERO.match(local_sha):
+            continue              # a deletion; nothing is being released
+
+        tag = match.group(1)
+
+        # An annotated tag's object is not a commit; resolve through it.
+        resolved = subprocess.run(
+            ['git', 'rev-parse', local_sha + '^{commit}'],
+            capture_output=True, text=True, cwd=root
+        )
+        if resolved.returncode != 0:
+            problems.append(f'  {tag}: cannot resolve the commit it points at.')
+            continue
+        commit = resolved.stdout.strip()
+
+        gate = subprocess.run(
+            ['php', 'tools/release-flow.php', 'gate-check', commit],
+            capture_output=True, text=True, cwd=root
+        )
+        if gate.returncode != 0:
+            reason = (gate.stderr.strip() or gate.stdout.strip()
+                      or 'the release gate could not be checked')
+            problems.append(f'  {tag} -> {commit[:12]}\n      {reason}')
+
+    if problems:
+        refused(problems)
+        return 1
+
+    # Hand the same ref list to Git LFS, which would otherwise never run.
+    # tests/git-hook-behaviour-regression.php sets SNAPSMACK_HOOK_SKIP_LFS so
+    # it can drive this hook without a remote. It skips the handoff below and
+    # nothing above it: the gate has already run by this line.
+    if os.environ.get('SNAPSMACK_HOOK_SKIP_LFS') == '1':
+        return 0
+    lfs = subprocess.run(
+        ['git', 'lfs', 'pre-push'] + sys.argv[1:],
+        input=payload, text=True
+    )
+    if lfs.returncode != 0:
+        if lfs.returncode == 127:
+            print("\n[pre-push] 'git lfs' was not found on your path.")
+        return lfs.returncode
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
+# ===== SNAPSMACK EOF =====

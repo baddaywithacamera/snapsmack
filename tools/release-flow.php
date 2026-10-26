@@ -184,16 +184,25 @@ function rf_require_packaged_tag_alignment(string $requested): void {
     if ($refusal !== '') rf_fail($refusal . '. No override exists.');
 }
 
-function rf_require_release_gate(): void {
-    $head = rf_git(['rev-parse', 'HEAD']);
+/**
+ * Why the named commit may not be released, or '' if it may be.
+ *
+ * This used to be the body of rf_require_release_gate() and only ever asked
+ * about HEAD. It takes a commit now because the pre-push hook has to ask the
+ * same question about a tag's target before letting the tag leave the machine
+ * (OPAUDIT 026, step 1): v0.7.946D, v0.7.947D and v0.7.948D were all tagged by
+ * hand, outside this tool, over three red regressions. One wording, one set of
+ * rules, two callers.
+ */
+function rf_release_gate_problem(string $head): string {
     $ref = 'refs/notes/release-gates';
     exec('git notes --ref=' . escapeshellarg($ref) . ' show ' . escapeshellarg($head) . ' 2>&1', $lines, $code);
     if ($code !== 0) {
-        rf_fail("commit {$head} has no release-gate note; security, full skin parity, and authority review must pass before tagging");
+        return "commit {$head} has no release-gate note; security, full skin parity, and authority review must pass before tagging";
     }
     $raw = trim(implode("\n", $lines));
     $gate = json_decode($raw, true);
-    if (!is_array($gate)) rf_fail("release-gate note for {$head} is not valid JSON");
+    if (!is_array($gate)) return "release-gate note for {$head} is not valid JSON";
     $required = [
         'commit' => $head,
         'security' => 'pass',
@@ -203,7 +212,7 @@ function rf_require_release_gate(): void {
     ];
     foreach ($required as $field => $expected) {
         if (($gate[$field] ?? null) !== $expected) {
-            rf_fail("release-gate note field {$field} must be " . json_encode($expected));
+            return "release-gate note field {$field} must be " . json_encode($expected);
         }
     }
     $skinDirs = glob(dirname(__DIR__) . '/skins/*/manifest.json') ?: [];
@@ -212,27 +221,33 @@ function rf_require_release_gate(): void {
     $skinCount = count($skinNames);
     $inventoryHash = hash('sha256', implode("\n", $skinNames));
     if (($gate['skin_count'] ?? null) !== $skinCount) {
-        rf_fail("release-gate note must record all {$skinCount} packaged skins");
+        return "release-gate note must record all {$skinCount} packaged skins";
     }
     if (($gate['skin_inventory_sha256'] ?? null) !== $inventoryHash) {
-        rf_fail('release-gate note skin inventory does not match the packaged skins');
+        return 'release-gate note skin inventory does not match the packaged skins';
     }
     if (!array_key_exists('skin_render_changes', $gate) || !is_array($gate['skin_render_changes'])) {
-        rf_fail('release-gate note must include skin_render_changes as an array (normally empty)');
+        return 'release-gate note must include skin_render_changes as an array (normally empty)';
     }
     foreach ($gate['skin_render_changes'] as $index => $change) {
         if (!is_array($change)) {
-            rf_fail("skin_render_changes entry {$index} must be an object");
+            return "skin_render_changes entry {$index} must be an object";
         }
         foreach (['skin', 'reason', 'pre_strip_reference'] as $field) {
             if (!is_string($change[$field] ?? null) || trim($change[$field]) === '') {
-                rf_fail("skin_render_changes entry {$index} must declare {$field}");
+                return "skin_render_changes entry {$index} must declare {$field}";
             }
         }
         if (!in_array($change['skin'], $skinNames, true)) {
-            rf_fail("skin_render_changes entry {$index} names an unbundled skin");
+            return "skin_render_changes entry {$index} names an unbundled skin";
         }
     }
+    return '';
+}
+
+function rf_require_release_gate(): void {
+    $problem = rf_release_gate_problem(rf_git(['rev-parse', 'HEAD']));
+    if ($problem !== '') rf_fail($problem);
 }
 
 function rf_tests(): void {
@@ -251,6 +266,19 @@ if ($command === 'status') {
     echo "Commit: " . rf_git(['rev-parse', '--short', 'HEAD']) . "\n";
     echo "Source version: " . rf_source_version() . "\n";
     echo "Working tree: " . (rf_worktree_status() === '' ? 'clean' : 'dirty') . "\n";
+    exit(0);
+}
+
+if ($command === 'gate-check') {
+    // Asked by .githooks/pre-push about the commit a tag points at, before the
+    // tag is allowed to leave the machine. Silent and exit 0 when the commit
+    // may be released; one line on stderr and exit 1 when it may not.
+    $target = $argv[2] ?? 'HEAD';
+    $commit = rf_git(['rev-parse', $target . '^{commit}']);
+    if ($commit === '') rf_fail("cannot resolve {$target} to a commit");
+    $problem = rf_release_gate_problem($commit);
+    if ($problem !== '') rf_fail($problem);
+    echo "release gate passes for {$commit}\n";
     exit(0);
 }
 
@@ -314,5 +342,5 @@ if ($command === 'promote-stable') {
     exit(0);
 }
 
-rf_fail('unknown command; use status, push-dev, tag-dev, or promote-stable');
+rf_fail('unknown command; use status, gate-check, push-dev, tag-dev, or promote-stable');
 // ===== SNAPSMACK EOF =====
