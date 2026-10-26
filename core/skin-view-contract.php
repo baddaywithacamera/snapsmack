@@ -38,10 +38,12 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     $presentation['body_class'] = implode(' ', $bodyClasses);
     // Skins display this bounded value; they do not search or interpret the
     // CMS navigation tree themselves.
-    $response['about_url'] = snapsmack_skin_navigation_url(
-        is_array($response['navigation'] ?? null) ? $response['navigation'] : [],
-        'about'
-    );
+    if (empty($response['about_url'])) {
+        $response['about_url'] = snapsmack_skin_navigation_url(
+            is_array($response['navigation'] ?? null) ? $response['navigation'] : [],
+            'about'
+        );
+    }
     // MOSAIC is an audited CMS compositor.  Skins receive only display-ready
     // block data; they never assemble JSON or run layout logic themselves.
     $response['mosaic_blocks'] = [];

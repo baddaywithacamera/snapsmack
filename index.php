@@ -352,6 +352,9 @@ try {
         if (!empty($skin_view['navigation']) && is_array($skin_view['navigation'])) {
             $_public['navigation'] = $skin_view['navigation'];
         }
+        if (!empty($skin_view['about_url'])) {
+            $_public['about_url'] = (string)$skin_view['about_url'];
+        }
         if (is_array($_public['required_assets'] ?? null)) {
             $_registered_skin_assets = snapsmack_merge_registered_assets(
                 $_registered_skin_assets,

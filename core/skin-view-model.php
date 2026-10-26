@@ -50,7 +50,7 @@ function snapsmack_resolve_skin_media_slot(PDO $pdo, array $settings, array $slo
 
 function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slug): array
 {
-    $view = ['media_slots' => [], 'navigation' => [], 'route_aliases' => []];
+    $view = ['media_slots' => [], 'navigation' => [], 'route_aliases' => [], 'about_url' => ''];
     $slug = preg_replace('/[^a-zA-Z0-9_\-]/', '', $skin_slug);
     if ($slug === '') return $view;
 
@@ -71,6 +71,18 @@ function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slu
     }
     $view['route_aliases'] = snapsmack_public_route_aliases($settings, $manifest);
     $view['navigation'] = snapsmack_prepare_skin_navigation($pdo, $settings, $manifest);
+    // About is an identity destination, not a menu-placement decision. Mobile
+    // profiles link their avatar to it even when the owner intentionally keeps
+    // About out of the visible navigation.
+    try {
+        $about = $pdo->query("SELECT slug FROM snap_pages WHERE is_active = 1 AND slug = 'about' LIMIT 1");
+        $aboutSlug = trim((string)($about ? $about->fetchColumn() : ''));
+        if ($aboutSlug !== '') {
+            $view['about_url'] = snap_route_url('page', ['slug' => $aboutSlug]);
+        }
+    } catch (Throwable $e) {
+        // Older/incomplete installs may not have the page table yet.
+    }
     return $view;
 }
 
