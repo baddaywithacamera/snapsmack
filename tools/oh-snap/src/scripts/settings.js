@@ -37,6 +37,7 @@ const OhSnapSettings = (() => {
         kimi_key:       '',
         ollama_endpoint: 'http://localhost:11434',
         ollama_model:   'llama3',
+        claude_model: 'claude-sonnet-4-6', gemini_model: 'gemini-3.8-flash', openai_model: 'gpt-4o', deepseek_model: 'deepseek-chat', kimi_model: 'kimi-latest',
     };
 
     // --- PUBLIC ---
@@ -71,6 +72,11 @@ const OhSnapSettings = (() => {
         const names = ['claude_key','gemini_key','openai_key','deepseek_key','kimi_key'];
         const values = await Promise.all(names.map(name => OhSnapVault.get(`ai:${name}`).catch(() => null)));
         names.forEach((name, i) => { if (values[i]) SESSION_SECRETS[name] = values[i]; });
+        const preferences=JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+        if (!preferences.ai_provider) {
+            const ready=names.find(name=>SESSION_SECRETS[name]);
+            if(ready)localStorage.setItem(STORE_KEY,JSON.stringify({...preferences,ai_provider:ready.replace(/_key$/,'')}));
+        }
     }
 
     function get(key) {
@@ -104,7 +110,7 @@ const OhSnapSettings = (() => {
     </div>
 
         <div class="settings-body">
-            <p class="field-hint">Security: AI keys are kept for this running session only and are not written to browser storage.</p>
+            <p class="field-hint">AI keys use protected Windows credential storage. Shared SNAP keys are loaded when available. Browser storage contains preferences, not keys.</p>
 
         <section class="settings-section">
             <h3 class="settings-section-title">AI Provider</h3>
@@ -213,6 +219,13 @@ const OhSnapSettings = (() => {
 </div>`;
 
         document.body.appendChild(modal);
+        ['claude','gemini','openai','deepseek','kimi'].forEach(provider => {
+            const field=document.createElement('div');field.className='field';
+            const label=document.createElement('label');label.htmlFor=`s-${provider}-model`;label.textContent='Model ID';
+            const input=document.createElement('input');input.id=label.htmlFor;input.className='settings-input';input.autocomplete='off';input.spellcheck=false;
+            const hint=document.createElement('p');hint.className='field-hint';hint.textContent='Use a model available to your API account. Your chat subscription is separate from API billing.';
+            field.append(label,input,hint);modal.querySelector(`#s-section-${provider}`).appendChild(field);
+        });
         _populateModal(modal);
 
         // Close on backdrop click
@@ -243,6 +256,7 @@ const OhSnapSettings = (() => {
         modal.querySelector('#s-kimi-key').value       = s.kimi_key;
         modal.querySelector('#s-ollama-endpoint').value = s.ollama_endpoint;
         modal.querySelector('#s-ollama-model').value   = s.ollama_model;
+        ['claude','gemini','openai','deepseek','kimi'].forEach(provider=>modal.querySelector(`#s-${provider}-model`).value=s[`${provider}_model`] || DEFAULTS[`${provider}_model`]);
         _updateProviderVisibility(modal);
     }
 
@@ -265,6 +279,7 @@ const OhSnapSettings = (() => {
             kimi_key:        modal.querySelector('#s-kimi-key').value.trim(),
             ollama_endpoint: modal.querySelector('#s-ollama-endpoint').value.trim(),
             ollama_model:    modal.querySelector('#s-ollama-model').value.trim(),
+            ...Object.fromEntries(['claude','gemini','openai','deepseek','kimi'].map(provider=>[`${provider}_model`,modal.querySelector(`#s-${provider}-model`).value.trim() || DEFAULTS[`${provider}_model`]])),
         });
         closeModal();
     }

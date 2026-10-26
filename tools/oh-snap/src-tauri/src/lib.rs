@@ -8,8 +8,9 @@
 // The SnapSmack ohsnap-api.php handler emits CORS headers for tauri://
 // origins so no Rust proxy is needed.
 
-#[cfg(debug_assertions)]
+// SNAPSMACK_EOF_HEADER: preserve the canonical EOF marker below.
 use tauri::Manager;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use std::fs;
 use std::io::Write;
 use std::path::Path;
@@ -64,6 +65,7 @@ pub fn run() {
             vault_delete,
             shared_profiles,
             shared_site_credential,
+            confirm_action,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Oh Snap!");
@@ -132,8 +134,42 @@ fn load_project(path: String) -> Result<String, String> {
 struct PackageFile { path: String, content: String }
 
 #[tauri::command]
+async fn confirm_action(app: tauri::AppHandle, message: String) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || app.dialog().message(message).title("OH SNAP").buttons(MessageDialogButtons::OkCancel).blocking_show())
+        .await.map_err(|e| e.to_string())
+}
+
+fn validate_package_files(files: &[PackageFile]) -> Result<(), String> {
+    let allowed = ["manifest.json", "layout.php", "style.css", "README.md", "validation-report.json"];
+    if files.len() != allowed.len() { return Err("Package must contain exactly the five reviewed starter files.".into()); }
+    let mut seen = std::collections::HashSet::new();
+    let mut total = 0;
+    for item in files {
+        if !allowed.contains(&item.path.as_str()) || !seen.insert(item.path.as_str()) { return Err("Unexpected or duplicate package file.".into()); }
+        if item.content.len() > 5_000_000 { return Err("Package file exceeds 5 MB.".into()); }
+        total += item.content.len();
+    }
+    if total > 25_000_000 { return Err("Package exceeds 25 MB.".into()); }
+    let template = &files.iter().find(|f| f.path == "layout.php").unwrap().content;
+    if template != include_str!("../../kit/layout.php") { return Err("The presentation template differs from the reviewed starter.".into()); }
+    let manifest: serde_json::Value = serde_json::from_str(&files.iter().find(|f| f.path == "manifest.json").unwrap().content).map_err(|e| e.to_string())?;
+    if manifest["schema_version"] != 2 || manifest["security_policy"] != 2 || manifest["cms_controller"] != "public" || manifest["view_model"] != "snapsmack.public.v1" { return Err("Invalid schema-v2 skin contract.".into()); }
+    let templates = manifest["templates"].as_object().ok_or("Missing skin templates.")?;
+    if templates.get("default").and_then(|v| v.as_str()) != Some("layout.php") || templates.values().any(|v| v.as_str() != Some("layout.php")) { return Err("Invalid presentation template declaration.".into()); }
+    for field in ["require_scripts", "require_styles"] {
+        if !manifest[field].as_array().is_some_and(|a| a.is_empty()) { return Err("This starter does not support additional engine dependencies.".into()); }
+    }
+    for item in files.iter().filter(|f| f.path == "style.css") {
+        let clean: String = item.content.to_ascii_lowercase().chars().filter(|c| !c.is_whitespace()).collect();
+        if ["<", ">", "\\", "@import", "url(", "javascript:", "expression(", "-moz-binding"].iter().any(|needle| clean.contains(needle)) { return Err("Unsupported CSS content in package.".into()); }
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn export_shareable_package(path: String, files: Vec<PackageFile>) -> Result<(), String> {
     use std::io::Write as _;
+    validate_package_files(&files)?;
     let target = Path::new(&path);
     let parent = target.parent().ok_or_else(|| "Package path has no parent directory".to_string())?;
     let temp = parent.join(format!(".{}.tmp", target.file_name().and_then(|v| v.to_str()).unwrap_or("ohsnap.zip")));
@@ -148,7 +184,7 @@ fn export_shareable_package(path: String, files: Vec<PackageFile>) -> Result<(),
             return Err(format!("Unsafe package path: {}", item.path));
         }
         let ext = Path::new(&normalized).extension().and_then(|v| v.to_str()).unwrap_or("").to_ascii_lowercase();
-        if matches!(ext.as_str(), "php"|"phtml"|"phar"|"exe"|"dll"|"bat"|"cmd"|"ps1"|"sh") || normalized.eq_ignore_ascii_case(".htaccess") {
+        if matches!(ext.as_str(), "phtml"|"phar"|"exe"|"dll"|"bat"|"cmd"|"ps1"|"sh") || normalized.eq_ignore_ascii_case(".htaccess") {
             return Err(format!("Forbidden SHAREABLE file: {}", normalized));
         }
         archive.start_file(normalized, options).map_err(|e| e.to_string())?;
@@ -171,7 +207,11 @@ fn vault_get(account: String) -> Result<Option<String>, String> {
     let entry = keyring::Entry::new(VAULT_SERVICE, &account).map_err(|e| e.to_string())?;
     match entry.get_password() {
         Ok(value) => Ok(Some(value)),
-        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(keyring::Error::NoEntry) => {
+            let shared = account.strip_prefix("ai:").and_then(|key| key.strip_suffix("_key"))
+                .and_then(|provider| shared_credentials::read_ai(&shared_root(), provider).ok());
+            Ok(shared)
+        },
         Err(e) => Err(e.to_string()),
     }
 }
@@ -181,3 +221,36 @@ fn vault_delete(account: String) -> Result<(), String> {
     let entry = keyring::Entry::new(VAULT_SERVICE, &account).map_err(|e| e.to_string())?;
     match entry.delete_credential() { Ok(()) | Err(keyring::Error::NoEntry) => Ok(()), Err(e) => Err(e.to_string()) }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn files() -> Vec<PackageFile> {
+        let manifest=serde_json::json!({"schema_version":2,"security_policy":2,"cms_controller":"public","view_model":"snapsmack.public.v1","templates":{"default":"layout.php"},"require_scripts":[],"require_styles":[]});
+        vec![PackageFile{path:"manifest.json".into(),content:manifest.to_string()},PackageFile{path:"layout.php".into(),content:include_str!("../../kit/layout.php").into()},PackageFile{path:"style.css".into(),content:"body {color: #123456;}".into()},PackageFile{path:"README.md".into(),content:"Reviewed skin".into()},PackageFile{path:"validation-report.json".into(),content:"{}".into()}]
+    }
+    #[test]
+    fn template_and_manifest_cannot_be_replaced() {
+        assert!(validate_package_files(&files()).is_ok());
+        let mut changed=files();changed[1].content.push_str("<?php system('bad');");assert!(validate_package_files(&changed).is_err());
+        let mut changed=files();changed[0].content="{\"schema_version\":1}".into();assert!(validate_package_files(&changed).is_err());
+        let mut changed=files();changed[2].path="helper.php".into();assert!(validate_package_files(&changed).is_err());
+        let mut changed=files();changed[2].content="body{background:url (//bad.invalid/x)}".into();assert!(validate_package_files(&changed).is_err());
+    }
+    #[test]
+    fn actual_frontend_packages_export_to_readable_zips() {
+        let Ok(input)=std::env::var("SNAP_OHSNAP_EXPORT_FIXTURE") else { return; };
+        let fixtures: serde_json::Value=serde_json::from_slice(&fs::read(input).unwrap()).unwrap();
+        for fixture in fixtures.as_array().unwrap() {
+            let files:Vec<PackageFile>=serde_json::from_value(fixture["files"].clone()).unwrap();
+            let output=Path::new(fixture["dir"].as_str().unwrap()).join("native-export.zip");
+            export_shareable_package(output.to_string_lossy().into_owned(),files).unwrap();
+            let mut zip=zip::ZipArchive::new(fs::File::open(output).unwrap()).unwrap();
+            assert_eq!(zip.len(),5);
+            use std::io::Read;
+            let mut template=String::new();zip.by_name("layout.php").unwrap().read_to_string(&mut template).unwrap();
+            assert_eq!(template,include_str!("../../kit/layout.php"));
+        }
+    }
+}
+// ===== SNAPSMACK EOF =====

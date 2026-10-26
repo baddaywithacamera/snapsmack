@@ -34,21 +34,23 @@ const OhSnapProject = (() => {
             contract: context.contract || { schema_version: '1.0', source: 'bundled-snapshot' },
             base_css: context.base_css || '', user_css: '', overrides: {}, required_scripts: [], required_styles: [],
             preview_content: context.preview_content || previewContent(), created: now, modified: now,
-            generation_history: [], validation_state: { errors: [], warnings: [] },
+            skin_version: '0.1.0', author: 'OH SNAP user', ai_conversation: [],
+            generation_history: [], history_index: -1, validation_state: { errors: [], warnings: [] },
         };
     }
 
     function newProject(context = {}) {
+        if (project) saveDraftNow();
         project = seed(context); savedPath = null; history = []; historyIndex = -1;
         updateProjectName(project.name); applyProject(project); recordCheckpoint('Project created'); saveDraftNow();
         return clone(project);
     }
 
     function setContext(skinSlug, context = {}) {
-        const draft = Object.values(allDrafts()).find(p => p.skin_slug === skinSlug);
+        const draft = Object.values(allDrafts()).find(p => p.skin_slug === skinSlug && p.connected_source?.url === context.connected_source?.url);
         if (!draft) return newProject({ ...context, skin_slug: skinSlug || context.skin_slug });
-        project = migrate(draft); savedPath = null; updateProjectName(project.name); applyProject(project);
-        restoreHistory(project.generation_history); return clone(project);
+        project = migrate({...draft, connected_source: context.connected_source, mode: context.mode || draft.mode}); savedPath = null; updateProjectName(project.name); applyProject(project);
+        restoreHistory(project.generation_history, project.history_index); return clone(project);
     }
 
     function current() { if (!project) newProject(); sync(); return clone(project); }
@@ -68,7 +70,12 @@ const OhSnapProject = (() => {
     }
     function applyGeneration(result) {
         if (!project) return;
-        controlsApplyExternal({ ...project.overrides, ...(result.overrides || {}) });
+        sync();
+        OhSnapPolicy.validateDependencies(result);
+        const mode = window.OH_SNAP_CONTRACT.modes[project.mode];
+        const values = OhSnapPolicy.normalizeOverrides(result.overrides || {}, project.source === 'connected' ? window.ohsnapActiveVariables : mode.variables);
+        OhSnapPolicy.validateCss(result.user_css || '');
+        controlsApplyExternal({ ...project.overrides, ...values });
         if (result.user_css) controlsSetUserCss(`${project.user_css || ''}\n${result.user_css}`.trim());
         project.required_scripts = [...new Set([...(project.required_scripts || []), ...(result.required_scripts || [])])];
         project.required_styles = [...new Set([...(project.required_styles || []), ...(result.required_styles || [])])];
@@ -79,8 +86,8 @@ const OhSnapProject = (() => {
     async function save() {
         sync(); const filename = safeName(project.name) + '.ohsnap';
         try {
-            if (window.__TAURI__?.dialog && window.__TAURI__?.core) {
-                savedPath ||= await window.__TAURI__.dialog.save({ title: 'Save OH SNAP Project', defaultPath: filename, filters: [{ name: 'OH SNAP Project', extensions: ['ohsnap'] }] });
+            if (OhSnapNative.available()) {
+                savedPath ||= await OhSnapNative.save({ title: 'Save OH SNAP Project', defaultPath: filename, filters: [{ name: 'OH SNAP Project', extensions: ['ohsnap'] }] });
                 if (!savedPath) return false;
                 await window.__TAURI__.core.invoke('save_project', { path: savedPath, content: JSON.stringify(project, null, 2) });
             } else download(JSON.stringify(project, null, 2), filename, 'application/json');
@@ -90,18 +97,21 @@ const OhSnapProject = (() => {
 
     async function load() {
         try {
+            if(project)saveDraftNow();
             let json;
-            if (window.__TAURI__?.dialog && window.__TAURI__?.core) {
-                const path = await window.__TAURI__.dialog.open({ title: 'Open OH SNAP Project', filters: [{ name: 'OH SNAP Project', extensions: ['ohsnap'] }], multiple: false });
-                if (!path) return null; savedPath = path; json = await window.__TAURI__.core.invoke('load_project', { path });
-            } else { json = await browserOpen(); savedPath = null; }
-            if (!json) return null; project = migrate(JSON.parse(json)); validate(project);
-            updateProjectName(project.name); applyProject(project); restoreHistory(project.generation_history); saveDraftNow(); window.clearDirty?.(); return clone(project);
+            let selectedPath = null;
+            if (OhSnapNative.available()) {
+                selectedPath = await OhSnapNative.open({ title: 'Open OH SNAP Project', filters: [{ name: 'OH SNAP Project', extensions: ['ohsnap'] }], multiple: false });
+                if (!selectedPath) return null; json = await OhSnapNative.invoke('load_project', { path: selectedPath });
+            } else json = await browserOpen();
+            if (!json) return null; const candidate = migrate(JSON.parse(json)); validate(candidate);
+            project = candidate; savedPath = selectedPath;
+            updateProjectName(project.name); restoreHistory(project.generation_history, project.history_index); window.clearDirty?.(); return clone(project);
         } catch (err) { alert(`Could not open project: ${err.message || err}`); return null; }
     }
 
     function exportCss() {
-        sync(); const vars = Object.entries(project.overrides).map(([p, v]) => `  ${p}: ${v};`).join('\n');
+        sync(); const vars = Object.entries(OhSnapPolicy.normalizeOverrides(project.overrides, window.ohsnapActiveVariables || window.OH_SNAP_CONTRACT.modes[project.mode].variables)).map(([p, v]) => `  ${p}: ${v};`).join('\n');
         if (!vars && !project.user_css.trim()) return alert('Nothing to export—this project has no CSS changes.');
         const css = `/**\n * OH SNAP CSS Overrides\n * Project: ${project.name}\n * Target skin: ${project.skin_slug}\n * CSS only—not an installable skin package.\n */\n${vars ? `:root {\n${vars}\n}\n` : ''}${project.user_css}`;
         download(css, safeName(project.name) + '-overrides.css', 'text/css');
@@ -112,8 +122,15 @@ const OhSnapProject = (() => {
         const errors = [], warnings = [];
         const css = `${project.base_css || ''}\n${project.user_css || ''}`;
         if (!/^[a-z0-9][a-z0-9-]*$/i.test(project.skin_slug || '')) errors.push('Skin slug must contain only letters, numbers, and hyphens.');
+        if (!/^\d+\.\d+\.\d+$/.test(project.skin_version || '0.1.0')) errors.push('Skin version must look like 0.1.0.');
+        if (!project.name.trim() || project.name.length > 160) errors.push('Skin name must contain 1–160 characters.');
         if (project.package_lane !== 'SHAREABLE') errors.push('Only SHAREABLE packages are permitted.');
         if (!window.OH_SNAP_CONTRACT?.modes?.[project.mode]) errors.push(`Unsupported install mode: ${project.mode}`);
+        try {
+            OhSnapPolicy.validateCss(css);
+            OhSnapPolicy.normalizeOverrides(project.overrides, project.source === 'connected' ? window.ohsnapActiveVariables : window.OH_SNAP_CONTRACT.modes[project.mode]?.variables);
+            OhSnapPolicy.validateDependencies(project);
+        } catch (err) { errors.push(err.message); }
         if ((css.match(/\{/g) || []).length !== (css.match(/\}/g) || []).length) errors.push('CSS braces are unbalanced.');
         if (/@import\b/i.test(css)) errors.push('Remote/imported CSS is forbidden; declare shared styles instead.');
         if (/url\s*\(\s*['"]?https?:/i.test(css)) errors.push('Remote CSS asset URLs are forbidden in SHAREABLE packages.');
@@ -129,30 +146,33 @@ const OhSnapProject = (() => {
     }
 
     async function exportPackage() {
+        if (project?.source === 'connected') return alert('Connected-skin changes can be saved or exported as CSS. Start a New Offline Skin to build a complete skin with the reviewed starter layout.');
         const report = validateProject();
         if (report.errors.length) return alert(`Package blocked:\n\n${report.errors.join('\n')}`);
         const mode = window.OH_SNAP_CONTRACT.modes[project.mode];
         const manifest = {
-            schema_version: 1, name: project.name, slug: project.skin_slug, version: '0.1.0', author: 'OH SNAP user',
-            description: `SHAREABLE skin generated by OH SNAP for ${project.mode}.`, status: 'draft', modes: [mode.profile],
+            schema_version: 2, name: project.name, version: project.skin_version || '0.1.0', author: project.author || 'OH SNAP user',
+            description: `SHAREABLE skin generated by OH SNAP for ${project.mode}.`, status: 'draft', modes: mode.profiles || [mode.profile],
             install_mode: mode.install_mode, oh_snap_ready: true, package_lane: 'SHAREABLE', css_variables: mode.variables,
-            required_scripts: project.required_scripts || [], required_styles: project.required_styles || [],
-            ohsnap_contract_schema: window.OH_SNAP_CONTRACT.contract_schema,
+            require_scripts: [], require_styles: [], security_policy: 2, cms_controller: 'public', view_model: 'snapsmack.public.v1',
+            templates: Object.fromEntries(['photo','post','archive','landing','page','search','hashtag','albums','collections','collection','blogroll','not_found','default'].map(kind => [kind, 'layout.php'])),
+            features: {has_landing: true, post_modes: project.mode === 'SMACKTALK' ? ['longform'] : ['image'], carousel: project.mode === 'GRAMOFSMACK', instagram_mode: project.mode === 'GRAMOFSMACK', fedistructure_only: project.mode === 'FEDISTRUCTURE', community:['comments'], archive_layouts:['square']},
         };
-        const varCss = Object.entries(project.overrides || {}).map(([p,v]) => `  ${p}: ${v};`).join('\n');
-        const style = `${project.base_css || mode.shell_css}\n${varCss ? `:root {\n${varCss}\n}\n` : ''}${project.user_css || ''}\n`;
-        const validation = { status: 'pass', errors: [], warnings: report.warnings, contract_schema: window.OH_SNAP_CONTRACT.contract_schema, mode: project.mode, required_hooks: mode.required_hooks };
-        const readme = `# ${project.name}\n\nGenerated by OH SNAP as a SHAREABLE SnapSmack skin.\n\n- Mode: ${project.mode} (${mode.install_mode})\n- No PHP or server-executable files\n- Validate and submit through the reviewed skin pipeline\n- Do not upload or unpack directly on a live site\n`;
+        const varCss = OhSnapPolicy.variablesCss(project.overrides || {}, mode.variables);
+        const style = `${project.base_css || mode.shell_css}\n${varCss}\n${project.user_css || ''}\n/* ===== SNAPSMACK EOF ===== */\n`;
+        const validation = { status: 'local-design-checks-passed', starter: 'OH SNAP 0.3.1 fixed presentation template; CMS-policy checked at build time', errors: [], warnings: report.warnings, contract_schema: window.OH_SNAP_CONTRACT.contract_schema, mode: project.mode };
+        const readme = `# ${project.name}\n\nGenerated by OH SNAP 0.3.1.\n\n- Supported modes: ${(mode.profiles || [mode.profile]).join(', ')}\n- Fixed reviewed schema-v2 presentation template; AI changes CSS only\n- Run the current CMS skin gate and signing pipeline before distribution\n- Do not upload or unpack directly on a live site\n\n<!-- ===== SNAPSMACK EOF ===== -->\n`;
         const files = [
             { path: 'manifest.json', content: JSON.stringify(manifest, null, 2) + '\n' },
+            { path: 'layout.php', content: window.OH_SNAP_CONTRACT.starter_template },
             { path: 'style.css', content: style },
             { path: 'README.md', content: readme },
             { path: 'validation-report.json', content: JSON.stringify(validation, null, 2) + '\n' },
         ];
-        if (!window.__TAURI__?.dialog || !window.__TAURI__?.core) return alert('Install/run the desktop build to create a validated ZIP package.');
-        const path = await window.__TAURI__.dialog.save({ title: 'Export SHAREABLE Skin Package', defaultPath: `${safeName(project.name)}.zip`, filters: [{ name: 'ZIP package', extensions: ['zip'] }] });
+        if (!OhSnapNative.available()) return alert('Run the desktop build to create a ZIP skin package.');
+        const path = await OhSnapNative.save({ title: 'Export Skin Package for Review', defaultPath: `${project.skin_slug}-${project.skin_version || '0.1.0'}.zip`, filters: [{ name: 'ZIP package', extensions: ['zip'] }] });
         if (!path) return;
-        try { await window.__TAURI__.core.invoke('export_shareable_package', { path, files }); window.showStatus?.('Validated SHAREABLE skin package exported.'); }
+        try { await OhSnapNative.invoke('export_shareable_package', { path, files }); window.showStatus?.('Skin package exported with the reviewed starter. Ready for the normal CMS signing workflow.'); }
         catch (err) { alert(`Package export failed: ${err.message || err}`); }
     }
 
@@ -161,18 +181,18 @@ const OhSnapProject = (() => {
         if (!project.connected_source.oh_snap_ready) return alert('This skin has not declared OH SNAP compatibility. Export CSS for review instead.');
         const vars = controlsGetOverrides(); if (!Object.keys(vars).length) return alert('Nothing to push.');
         const target = project.connected_source.site_name || project.connected_source.url;
-        if (!confirm(`Push ${Object.keys(vars).length} variable override(s) to ${target}\nSkin: ${project.skin_slug}\n\nNo skin package will be uploaded or activated.`)) return;
+        if (!(await OhSnapNative.confirm(`Push ${Object.keys(vars).length} variable override(s) to ${target}\nSkin: ${project.skin_slug}\n\nNo skin package will be uploaded or activated.`))) return;
         const btn = document.getElementById('btn-push'); if (btn) { btn.disabled = true; btn.textContent = 'Pushing…'; }
-        try { await client.pushVars(project.skin_slug, vars); window.showStatus?.(`Variable overrides pushed to ${target}.`); }
+        try { await client.pushVars(project.skin_slug, OhSnapPolicy.normalizeOverrides(vars, window.ohsnapActiveVariables)); window.showStatus?.(`Variable overrides pushed to ${target}.`); }
         catch (err) { alert(`Push failed: ${err.message || err}`); }
         finally { if (btn) { btn.disabled = false; btn.textContent = 'Push Variable Overrides'; } }
     }
 
     function recordCheckpoint(label = 'Design changed') {
         if (restoring || !project) return; sync();
-        const state = { at: new Date().toISOString(), label, overrides: clone(project.overrides), user_css: project.user_css };
+        const state = { at: new Date().toISOString(), label, overrides: clone(project.overrides), user_css: project.user_css, required_scripts:clone(project.required_scripts || []), required_styles:clone(project.required_styles || []), preview_content:clone(project.preview_content) };
         const prior = history[historyIndex];
-        if (prior && JSON.stringify(prior.overrides) === JSON.stringify(state.overrides) && prior.user_css === state.user_css) return;
+        if (prior && ['overrides','user_css','required_scripts','required_styles','preview_content'].every(key => JSON.stringify(prior[key]) === JSON.stringify(state[key]))) return;
         history = history.slice(0, historyIndex + 1); history.push(state); if (history.length > MAX_HISTORY) history.shift();
         historyIndex = history.length - 1; project.generation_history = clone(history); renderHistory();
     }
@@ -182,8 +202,9 @@ const OhSnapProject = (() => {
     function restore(index) {
         if (index < 0 || index >= history.length || index === historyIndex) return;
         historyIndex = index; const state = history[index]; restoring = true; controlsApplyExternal(state.overrides || {});
-        controlsSetUserCss(state.user_css || ''); restoring = false;
-        sync(); window.markDirty?.(); renderHistory();
+        controlsSetUserCss(state.user_css || ''); project.required_scripts=clone(state.required_scripts || []); project.required_styles=clone(state.required_styles || []);
+        if (state.preview_content) project.preview_content=clone(state.preview_content);
+        sync(); window.markDirty?.(false); restoring = false; renderHistory();
     }
 
     function saveDraftNow() {
@@ -192,9 +213,9 @@ const OhSnapProject = (() => {
         catch (err) { window.showStatus?.(`Autosave failed: ${err.message || err}`, true); }
     }
 
-    function sync() { if (!project) return; project.overrides = controlsGetOverrides(); project.user_css = controlsGetUserCss(); project.modified = new Date().toISOString(); project.generation_history = clone(history); OhSnapPreview.setProject?.(project); }
+    function sync() { if (!project) return; project.overrides = controlsGetOverrides(); project.user_css = controlsGetUserCss(); project.modified = new Date().toISOString(); project.generation_history = clone(history); project.history_index=historyIndex; OhSnapPreview.setProject?.(project); }
     function applyProject(p) { controlsApplyExternal(p.overrides || {}); controlsSetUserCss(p.user_css || ''); OhSnapPreview.setProject?.(p); }
-    function restoreHistory(items) { history = Array.isArray(items) ? items.slice(-MAX_HISTORY) : []; historyIndex = history.length - 1; if (!history.length) recordCheckpoint('Project opened'); renderHistory(); }
+    function restoreHistory(items, selected = null) { history = Array.isArray(items) ? items.slice(-MAX_HISTORY) : []; historyIndex = Number.isInteger(selected) && selected >= 0 && selected < history.length ? selected : history.length - 1; renderHistory(); }
     function renderHistory() {
         const list = document.getElementById('history-list'); if (!list) return; list.innerHTML = '';
         if (!history.length) list.textContent = 'No changes yet.';
@@ -208,12 +229,16 @@ const OhSnapProject = (() => {
         if (version === 1) return { ...seed({ name: input.name || 'Imported Skin', skin_slug: input.skin_slug || 'imported-skin' }), overrides: input.overrides || {}, created: input.created || new Date().toISOString(), modified: input.modified || new Date().toISOString() };
         return { ...seed(), ...input, schema_version: SCHEMA_VERSION };
     }
-    function validate(p) { if (!p.project_id || !p.name || !p.preview_content || !p.overrides) throw new Error('Project is missing required schema-v2 fields.'); if (p.package_lane !== 'SHAREABLE') throw new Error('Only SHAREABLE projects are supported.'); }
+    function validate(p) { if (!p.project_id || typeof p.name !== 'string' || !p.preview_content || !p.overrides || Array.isArray(p.overrides) || !Array.isArray(p.preview_content.posts) || !window.OH_SNAP_CONTRACT.modes[p.mode]) throw new Error('Project is missing valid schema-v2 fields or a supported mode.'); if (p.package_lane !== 'SHAREABLE') throw new Error('Only SHAREABLE projects are supported.'); OhSnapPolicy.validateCss(p.base_css || ''); OhSnapPolicy.validateCss(p.user_css || ''); }
     function allDrafts() { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}'); } catch { return {}; } }
     function safeName(name) { return String(name).replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'ohsnap-project'; }
     function download(content, filename, type) { const url = URL.createObjectURL(new Blob([content], { type })); const a = Object.assign(document.createElement('a'), { href: url, download: filename }); document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000); }
     function browserOpen() { return new Promise((resolve, reject) => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.ohsnap,application/json'; input.onchange = () => { const file = input.files?.[0]; if (!file) return resolve(null); const reader = new FileReader(); reader.onload = e => resolve(e.target.result); reader.onerror = () => reject(new Error('Could not read file')); reader.readAsText(file); }; input.click(); }); }
 
-    return { newProject, setContext, current, updateProjectName, updatePreviewContent, applyGeneration, save, load, exportCss, validateProject, exportPackage, pushToSite, saveDraftNow, recordCheckpoint, undo, redo };
+    function restoreControls() { if (project) applyProject(project); }
+    function updateMetadata(values) { if (!project) return; for(const key of ['skin_slug','skin_version','author']) if(typeof values[key]==='string')project[key]=values[key].trim(); window.markDirty?.(); }
+    function rememberConversation(user, assistant) { if (!project) return; project.ai_conversation=[...(project.ai_conversation || []),{role:'user',content:user},{role:'assistant',content:JSON.stringify(assistant)}].slice(-12); saveDraftNow(); }
+    function resumeDraft() { const candidate=Object.values(allDrafts()).sort((a,b)=>String(b.modified).localeCompare(String(a.modified)))[0]; if (!candidate) return null; const loaded=migrate(candidate); validate(loaded); project=loaded; savedPath=null; restoreHistory(project.generation_history,project.history_index); updateProjectName(project.name); return clone(project); }
+    return { newProject, setContext, current, updateProjectName, updatePreviewContent, applyGeneration, save, load, exportCss, validateProject, exportPackage, pushToSite, saveDraftNow, recordCheckpoint, undo, redo, restoreControls, rememberConversation, resumeDraft, updateMetadata };
 })();
 // ===== SNAPSMACK EOF =====

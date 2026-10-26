@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const toolRoot = path.resolve(here, '..');
@@ -37,11 +38,31 @@ const hooks = ['#header','.site-title-text','.nav-menu','#scroll-stage','#system
 const mode = (label, installMode, profile, extraHooks) => ({ label, install_mode: installMode, profile, variables, shell_css: shellCss, required_hooks: [...hooks, ...extraHooks] });
 const modes = {
   SMACKONEOUT: mode('SMACKONEOUT — single-photo blog','1.0','photoblog',['#photobox','#infobox','.static-transmission']),
-  GRAMOFSMACK: mode('GRAMOFSMACK — carousel/grid blog','2.0','gram',['#browse-grid','.gram-strip']),
+  GRAMOFSMACK: mode('GRAMOFSMACK / SMACKTHEMUP — shared gallery skin','2.0','gram',['#browse-grid','.gram-strip']),
   SMACKTALK: mode('SMACKTALK — long-form blog','3.0','longform',['.longform','.static-page-title']),
   FEDISTRUCTURE: mode('FEDISTRUCTURE — hub/spoke 4.0','4.0','fedistructure',['.fedi-card','#browse-grid']),
 };
-const contract = { contract_schema:'1.0', generated_at:new Date().toISOString(), source_inventory_schema:inventory.schema_version, package_lane:'SHAREABLE', modes, asset_inventory:inventory, project_schema:2, package_rules:{forbidden_extensions:['php','phtml','phar','htaccess','exe','dll','bat','cmd','ps1','sh'],forbidden_names:['.htaccess'],max_file_bytes:5000000,max_package_bytes:25000000} };
+const starterCss = fs.readFileSync(path.join(toolRoot, 'kit/style.css'), 'utf8');
+const starterTemplate = fs.readFileSync(path.join(toolRoot, 'kit/layout.php'), 'utf8');
+const previews = JSON.parse(execFileSync('php', [path.join(here,'render-fixtures.php')], {encoding:'utf8'}));
+variables.LAYOUT.vars['--grid-columns'] = {label:'Archive Columns',type:'range',default:'3',min:'1',max:'6',step:'1'};
+variables.LAYOUT.vars['--image-radius'] = {label:'Image Corners',type:'range',default:'0',min:'0',max:'64',step:'1',unit:'px'};
+variables.TYPOGRAPHY.vars['--font-family'] = {label:'Typeface',type:'select',default:'Arial, sans-serif',options:[{label:'Sans serif',value:'Arial, sans-serif'},{label:'Serif',value:'Georgia, serif'},{label:'Monospace',value:'monospace'}]};
+variables.LAYOUT.vars['--content-width'].default='1100';
+variables.LAYOUT.vars['--grid-gap'].default='20';
+variables.TYPOGRAPHY.vars['--content-lh'].default='1.7';
+variables.TYPOGRAPHY.vars['--title-size'].default='36';
+variables.BACKGROUNDS.vars['--bg-chrome'].default='#181818';
+variables.TEXT.vars['--text-dim'].default='#999999';
+variables.TEXT.vars['--text-link'].default='#b9e678';
+for (const mode of Object.values(modes)) { mode.shell_css=starterCss; mode.required_hooks=['#header','#scroll-stage','#system-footer','#browse-grid','.single-post','.static-transmission']; }
+modes.GRAMOFSMACK.profile='carousel';
+modes.GRAMOFSMACK.profiles=['carousel','smackthemup'];
+// Retain old service projects without offering them in the normal project selector.
+modes.FEDISTRUCTURE.user_selectable=false;
+modes.SMACKTALK.profile='smacktalk';
+modes.FEDISTRUCTURE.profile='photoblog';
+const contract = { contract_schema:'2.0', generated_at:new Date().toISOString(), source_inventory_schema:inventory.schema_version, package_lane:'SHAREABLE', modes, starter_template:starterTemplate, previews, supported_scripts:[], supported_styles:[], asset_inventory:inventory, project_schema:2, package_rules:{forbidden_extensions:['phtml','phar','htaccess','exe','dll','bat','cmd','ps1','sh'],forbidden_names:['.htaccess'],max_file_bytes:5000000,max_package_bytes:25000000} };
 const outDir = path.join(toolRoot,'src','data');
 fs.mkdirSync(outDir,{recursive:true});
 fs.writeFileSync(path.join(outDir,'skin-kit-contract.js'),`/** SNAPSMACK_EOF_HEADER — generated contract. */\nwindow.OH_SNAP_CONTRACT = ${JSON.stringify(contract)};\n// ===== SNAPSMACK EOF =====\n`,'utf8');

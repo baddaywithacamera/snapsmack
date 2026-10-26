@@ -55,13 +55,20 @@ function controlsApplyExternal(overrides) {
     Object.keys(currentOverrides).forEach(prop => delete currentOverrides[prop]);
     Object.entries(_skinVariables).forEach(([_group, groupDef]) => {
         Object.entries(groupDef.vars || {}).forEach(([prop, meta]) => {
-            if (_controlInputs[prop]) _controlInputs[prop].value = meta.default ?? '';
+            if (_controlInputs[prop]) {
+                _controlInputs[prop].value = meta.default ?? '';
+                const hex=_controlInputs[prop].closest('.ctrl-row')?.querySelector('.ctrl-hex');
+                if(hex)hex.value=String(meta.default || '').toUpperCase();
+            }
         });
     });
     Object.entries(overrides).forEach(([prop, val]) => {
         currentOverrides[prop] = val;
         if (_controlInputs[prop]) {
-            _controlInputs[prop].value = val;
+            const meta = Object.values(_skinVariables).map(group => group.vars?.[prop]).find(Boolean);
+            _controlInputs[prop].value = meta?.type === 'range' ? String(parseFloat(val)) : val;
+            const hex = _controlInputs[prop].closest('.ctrl-row')?.querySelector('.ctrl-hex');
+            if (hex) hex.value = String(val).toUpperCase();
             // Trigger label update for ranges
             const label = _controlInputs[prop].closest('.ctrl-row')?.querySelector('.ctrl-value');
             if (label) label.textContent = val;
@@ -246,7 +253,7 @@ function _buildRangeInput(prop, meta) {
     slider.min       = meta.min  || '0';
     slider.max       = meta.max  || '100';
     slider.step      = meta.step || '1';
-    slider.value     = currentOverrides[prop] || meta.default;
+    slider.value     = parseFloat(currentOverrides[prop] ?? meta.default);
 
     const valueDisplay = document.createElement('span');
     valueDisplay.className = 'ctrl-value';
@@ -319,7 +326,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function _parseCssEditorIntoOverrides(css) {
     // Extract CSS custom property declarations from the editor content
-    const matches = [...css.matchAll(/(-{2}[a-z][a-z0-9-]*)\s*:\s*([^;}\n]+)/gi)];
+    const root = css.match(/^\s*:root\s*\{([\s\S]*?)\}/i);
+    const matches = [...(root?.[1] || '').matchAll(/(-{2}[a-z][a-z0-9-]*)\s*:\s*([^;}\n]+)/gi)];
     Object.keys(currentOverrides).forEach(prop => delete currentOverrides[prop]);
     matches.forEach(([, prop, val]) => {
         const trimmed = val.trim();
@@ -331,7 +339,7 @@ function _parseCssEditorIntoOverrides(css) {
         }
     });
 
-    _userCss = css.replace(/:root\s*\{[\s\S]*?\}/i, '').trim();
+    _userCss = (root ? css.slice(root[0].length) : css).trim();
 
     OhSnapPreview.applyOverrides(currentOverrides);
     markDirty();

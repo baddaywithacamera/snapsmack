@@ -1,3 +1,4 @@
+// SNAPSMACK_EOF_HEADER: protected shared-credential reader; preserve EOF marker.
 use base64::Engine;
 use std::path::Path;
 use aes::Aes128;
@@ -70,10 +71,18 @@ fn decrypt(key: &[u8], token: &str) -> Result<String, String> {
 
 pub fn read(root: &Path, site: &str, kind: &str) -> Result<String, String> {
     if let Ok(value) = native_read(site, kind) { return Ok(value); }
+    read_shared(root, &format!("site:{}:api_key_{}", site_key(site)?, kind))
+}
+
+pub fn read_ai(root: &Path, provider: &str) -> Result<String, String> {
+    if !["claude", "gemini", "openai", "deepseek", "kimi"].contains(&provider) { return Err("Unknown AI provider".into()); }
+    read_shared(root, &format!("{}_api_key", provider))
+}
+
+fn read_shared(root: &Path, name: &str) -> Result<String, String> {
     let auth = root.join("shared_library").join("auth");
     let store: serde_json::Value = serde_json::from_slice(&std::fs::read(auth.join("shared_creds.json")).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-    let name = format!("site:{}:api_key_{}", site_key(site)?, kind);
-    let blob = store.get(name).and_then(|v| v.as_str()).ok_or_else(|| format!("Discover has no {} key for this site", kind))?;
+    let blob = store.get(name).and_then(|v| v.as_str()).ok_or_else(|| "Shared credential not configured".to_string())?;
     if let Some(token) = blob.strip_prefix("enc1:") {
         let sealed = base64::engine::general_purpose::STANDARD.decode(std::fs::read(auth.join("vault.machine")).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
         return decrypt(&unprotect(&sealed, b"SnapSmack:SnapSmackShared")?, token);
@@ -92,3 +101,4 @@ pub fn read(root: &Path, site: &str, kind: &str) -> Result<String, String> {
         assert_eq!(native_read("https://native-bridge.invalid", "test").unwrap(), "secret-value");
     }
 }}
+// ===== SNAPSMACK EOF =====

@@ -80,16 +80,16 @@ const btnAiToggle  = $('btn-ai-toggle');
 
 // --- DIRTY STATE ---
 
-function markDirty() {
+function markDirty(record = true) {
     _dirty = true;
     toolbarDirty?.classList.remove('hidden');
-    OhSnapProject?.recordCheckpoint?.('Design changed');
+    if (record) OhSnapProject?.recordCheckpoint?.('Design changed');
 
     // Auto-save draft 30 s after last change
     clearTimeout(_autoSaveTimer);
     _autoSaveTimer = setTimeout(() => {
         OhSnapProject.saveDraftNow();
-    }, 30_000);
+    }, 1000);
 }
 
 function clearDirty() {
@@ -280,15 +280,18 @@ async function enterApp(pingData) {
 
 async function loadConnectedSkin(slug, pingData) {
         skinData = await api.skin(slug);
+        const profiles=skinData.manifest?.modes || [];
         $('btn-push').disabled = skinData.oh_snap_ready !== true;
         $('btn-push').title = skinData.oh_snap_ready === true
             ? `Push variable overrides to ${skinData.skin_slug}`
             : 'This skin has not declared OH SNAP compatibility';
 
         controlsInit(skinData);
+        window.ohsnapActiveVariables = skinData.css_variables || {};
         OhSnapPreview.init(previewFrame, skinData, postsData, pingData.base_url || activeProfile.url);
         OhSnapProject.setContext(skinData.skin_slug || '', {
             source: 'connected',
+            mode: profiles.includes('smacktalk')||profiles.includes('longform')?'SMACKTALK':(profiles.includes('carousel')||profiles.includes('smackthemup'))?'GRAMOFSMACK':skinData.manifest?.features?.fedistructure_only?'FEDISTRUCTURE':'SMACKONEOUT',
             base_css: skinData.style_css || '',
             preview_content: {
                 site_name: pingData.site_name || 'Preview Site',
@@ -388,18 +391,24 @@ function enterOfflineProject(existing = null, create = true) {
     showScreen('app'); toolbarSiteName.innerHTML = '<span class="offline-badge">Offline project</span>';
     $('skin-picker').classList.add('hidden');
     controlsInit(kit);
+    window.ohsnapActiveVariables = kit.css_variables;
     const project = create ? OhSnapProject.newProject({ mode: modeName, skin_slug: kit.skin_slug, base_css: kit.style_css, contract: { schema_version: window.OH_SNAP_CONTRACT.contract_schema, inventory_schema: window.OH_SNAP_CONTRACT.source_inventory_schema, source: 'bundled-server-contract' } }) : existing;
-    controlsApplyExternal(project.overrides || {});
+    OhSnapProject.restoreControls();
     OhSnapPreview.initOffline(previewFrame, project);
+    for(const [id,key] of [['skin-slug','skin_slug'],['skin-author','author'],['skin-version','skin_version']]) $(id).value=project[key] || (key==='skin_version'?'0.1.0':'');
+    $('fixture-site-name').value=project.preview_content?.site_name || '';
+    $('fixture-post-title').value=project.preview_content?.posts?.[0]?.title || '';
+    $('fixture-caption').value=project.preview_content?.posts?.[0]?.description || '';
     toolbarProjectName.contentEditable = 'true';
     $('btn-push').disabled = true;
     $('btn-open-browser').disabled = true;
-    appendAiMessage('Offline kit loaded. Manual controls, preview, save, open, history, and CSS export are available without a connection.', 'assistant');
+    appendAiMessage('Skin starter loaded. Describe the layout, colours, typography or spacing you want. AI and manual CSS use the same reviewed presentation template. Preview does not activate a skin or change a site.', 'assistant');
 }
 
 $('btn-new-offline')?.addEventListener('click', () => enterOfflineProject());
+$('btn-resume-draft')?.addEventListener('click', () => {try{const draft=OhSnapProject.resumeDraft();if(draft)enterOfflineProject(draft,false);else showStatus('No saved draft yet. Create or open a project first.');}catch(err){showStatus(err.message,true);}});
+for(const [id,key] of [['skin-slug','skin_slug'],['skin-author','author'],['skin-version','skin_version']]) $(id)?.addEventListener('change',()=>OhSnapProject.updateMetadata({[key]:$(id).value}));
 $('btn-open-project')?.addEventListener('click', async () => {
-    controlsInit(offlineSkin($('offline-mode')?.value || 'SMACKONEOUT'));
     const loaded = await OhSnapProject.load();
     if (loaded) enterOfflineProject(loaded, false);
 });
@@ -460,18 +469,19 @@ async function sendAiMessage() {
 
     try {
         const reference = await readReferenceImage($('ai-reference')?.files?.[0]);
-        const result = await OhSnapAI.send(text, skinData?.css_variables || {}, libraryData || { engines: window.OH_SNAP_CONTRACT?.asset_inventory?.javascript || [], inventory: window.OH_SNAP_CONTRACT?.asset_inventory || {} }, reference);
+        const result = await OhSnapAI.send(text, skinData?.css_variables || {}, api ? libraryData : null, reference, OhSnapProject.current());
         const overrides = result?.overrides || {};
 
         if (!Object.keys(overrides).length && !result?.user_css && !result?.required_scripts?.length && !result?.required_styles?.length) {
             appendAiMessage("I didn't find any CSS variables to change for that request. Try being more specific about colors, fonts, or spacing.", 'assistant');
         } else {
             const changeSummary = `${Object.keys(overrides).length} variables, ${result.user_css ? 'custom CSS, ' : ''}${(result.required_scripts?.length || 0) + (result.required_styles?.length || 0)} dependencies`;
-            if (!confirm(`Review AI proposal\n\n${result.summary || 'Design change'}\n${changeSummary}\n\nApply this as an undoable checkpoint?`)) {
+            if (!(await OhSnapNative.confirm(`Review AI proposal\n\n${result.summary || 'Design change'}\n${changeSummary}\n\nApply this as an undoable checkpoint?`))) {
                 appendAiMessage('Proposal discarded; the project was not changed.', 'assistant');
                 return;
             }
             const validation = OhSnapProject.applyGeneration(result);
+            OhSnapProject.rememberConversation(text, result);
 
             const count  = Object.keys(overrides).length;
             const sample = Object.entries(overrides).slice(0, 3)
@@ -530,6 +540,7 @@ document.addEventListener('keydown', e => {
 renderProfiles();
 OhSnapSettings.hydrateVault().catch(err => console.warn('Credential vault unavailable:', err));
 showScreen('connect');
+window.addEventListener('beforeunload', () => OhSnapProject.saveDraftNow());
 
 // --- UTILS ---
 
