@@ -419,6 +419,15 @@
             200
         ]
     },
+    "font-size-slider-regression.php": {
+        "assertions": 6,
+        "predicates": 4,
+        "thresholds": [
+            2,
+            45,
+            45
+        ]
+    },
     "forum-board-counter-regression.php": {
         "assertions": 11,
         "predicates": 8,
@@ -1009,12 +1018,18 @@
         "thresholds": []
     },
     "release-flow-regression.php": {
-        "assertions": 51,
-        "predicates": 54,
+        "assertions": 55,
+        "predicates": 58,
         "thresholds": [
+            2,
             2,
             2
         ]
+    },
+    "release-gate-scope-regression.php": {
+        "assertions": 14,
+        "predicates": 10,
+        "thresholds": []
     },
     "remaining-public-control-authority-regression.php": {
         "assertions": 16,
@@ -1337,6 +1352,11 @@
     "smackpress-import-boundary-regression.php": {
         "assertions": 2,
         "predicates": 1,
+        "thresholds": []
+    },
+    "smacktalk-archive-search-regression.php": {
+        "assertions": 20,
+        "predicates": 17,
         "thresholds": []
     },
     "smacktalk-family-v2-regression.php": {

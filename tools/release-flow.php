@@ -37,6 +37,37 @@ function rf_branch(): string {
     return rf_git(['branch', '--show-current']);
 }
 
+/**
+ * Paths that cannot reach a CMS release, and so cannot make one unsafe.
+ *
+ * The clean check used to read the whole repository. In a shared checkout that
+ * means a half-finished desktop tool, an audit still being written, or Smack
+ * Central -- which ships through its own updater, not this zip -- blocks a CMS
+ * release that none of them can affect. It refused tag after tag for work that
+ * was never going in the package, and the message named nothing, so the only
+ * way to find out why was to run git status yourself.
+ *
+ * This is a narrowing of scope, not of strictness: everything that ships is
+ * still checked, and the release machinery under tools/_build and this file
+ * are checked too, because a release cut with an edited builder is exactly the
+ * thing worth stopping.
+ */
+function rf_nonshipping_prefixes(): array {
+    return [
+        'smack-central/',   // its own product with its own self-updater
+        'opaudits/',        // reports about the software, never in it
+        'outputs/',         // generated audit and parity reports
+        'projects/',        // per-site content, not CMS code
+        '_spec/',           // private design notes, gitignored anyway
+        'tools/',           // desktop apps and scripts; see rf_shipping_tools()
+    ];
+}
+
+/** Paths under tools/ that ARE release machinery and must be clean. */
+function rf_shipping_tools(): array {
+    return ['tools/_build/', 'tools/release-flow.php'];
+}
+
 function rf_worktree_status(): string {
     // Pytest can leave Windows cache directories with ACLs that Git cannot
     // traverse. They are disposable and never release inputs, so exclude them
@@ -48,10 +79,62 @@ function rf_worktree_status(): string {
     ]);
 }
 
-function rf_require_clean(): void {
-    if (rf_worktree_status() !== '') {
-        rf_fail('working tree is not clean; commit or deliberately set aside every change first');
+/**
+ * Split the dirty paths into the ones that would ship and the ones that cannot.
+ * Returns ['shipping' => [...], 'ignored' => [...]].
+ */
+function rf_dirty_split(): array {
+    return rf_classify_dirt(explode("
+", rf_worktree_status()));
+}
+
+/**
+ * The classification on its own, so it can be tested with fixed input instead
+ * of whatever happens to be lying around in somebody's checkout.
+ * Takes raw `git status --porcelain` lines.
+ */
+function rf_classify_dirt(array $lines): array {
+    $shipping = [];
+    $ignored = [];
+    foreach ($lines as $line) {
+        $line = rtrim($line);
+        if ($line === '') continue;
+        $path = trim(substr($line, 2));
+        if (str_contains($path, ' -> ')) $path = trim(substr($path, strpos($path, ' -> ') + 4));
+        $path = trim($path, '"');
+        $isShipping = true;
+        foreach (rf_nonshipping_prefixes() as $prefix) {
+            if (str_starts_with($path, $prefix)) { $isShipping = false; break; }
+        }
+        foreach (rf_shipping_tools() as $prefix) {
+            if (str_starts_with($path, $prefix)) { $isShipping = true; break; }
+        }
+        if ($isShipping) $shipping[] = $path; else $ignored[] = $path;
     }
+    return ['shipping' => $shipping, 'ignored' => $ignored];
+}
+
+function rf_require_clean(): void {
+    $split = rf_dirty_split();
+    if ($split['shipping'] === []) {
+        if ($split['ignored'] !== []) {
+            echo 'NOTE: ' . count($split['ignored']) . " uncommitted file(s) outside the release are being left alone.
+";
+        }
+        return;
+    }
+    $shown = array_slice($split['shipping'], 0, 20);
+    $more = count($split['shipping']) - count($shown);
+    rf_fail("these release files are uncommitted:
+      "
+        . implode("
+      ", $shown)
+        . ($more > 0 ? "
+      ... and {$more} more" : '')
+        . "
+  Commit them, or set them aside deliberately. Work under "
+        . implode(', ', rf_nonshipping_prefixes())
+        . ' is ignored because it cannot reach a CMS release.');
 }
 
 function rf_require_dev(): void {
@@ -259,13 +342,31 @@ function rf_tests(): void {
     rf_run([PHP_BINARY, '-l', __FILE__]);
 }
 
+// Requiring this file from a test must not run a command. When it is the
+// script being run, argv[0] is this file; when it is included, it is not.
+if (!isset($argv[0]) || realpath($argv[0]) !== realpath(__FILE__)) return;
+
 $command = strtolower($argv[1] ?? 'status');
 
 if ($command === 'status') {
     echo "Branch: " . rf_branch() . "\n";
     echo "Commit: " . rf_git(['rev-parse', '--short', 'HEAD']) . "\n";
     echo "Source version: " . rf_source_version() . "\n";
-    echo "Working tree: " . (rf_worktree_status() === '' ? 'clean' : 'dirty') . "\n";
+    $split = rf_dirty_split();
+    echo "Working tree: " . ($split['shipping'] === [] ? 'clean for release' : 'dirty') . "
+";
+    if ($split['shipping'] !== []) {
+        echo 'Uncommitted release files (' . count($split['shipping']) . "):
+";
+        foreach (array_slice($split['shipping'], 0, 20) as $path) echo "  {$path}
+";
+        if (count($split['shipping']) > 20) echo '  ... and ' . (count($split['shipping']) - 20) . " more
+";
+    }
+    if ($split['ignored'] !== []) {
+        echo 'Outside the release, left alone: ' . count($split['ignored']) . " file(s)
+";
+    }
     exit(0);
 }
 
@@ -342,5 +443,74 @@ if ($command === 'promote-stable') {
     exit(0);
 }
 
-rf_fail('unknown command; use status, gate-check, push-dev, tag-dev, or promote-stable');
+if ($command === 'gate-note') {
+    // The gate note used to be hand-written JSON: the commit sha copied by
+    // hand, the skin count counted by hand, the inventory hash computed by
+    // hand. Every one of those is derivable, and getting one wrong refuses the
+    // tag with a message about a field rather than about the release. What is
+    // NOT derivable is the sign-off, so this still refuses unless each of the
+    // four judgements is stated outright. The check is unchanged; only the
+    // typing is gone.
+    rf_require_dev();
+    rf_require_clean();
+
+    $flags = [];
+    foreach (array_slice($argv, 2) as $arg) {
+        if (!preg_match('/^--([a-z-]+)=(.+)$/', $arg, $m)) {
+            rf_fail("unrecognised argument '{$arg}'; expected --name=value");
+        }
+        $flags[$m[1]] = $m[2];
+    }
+    $required = [
+        'security' => 'pass',
+        'parity' => 'pass',
+        'skin-render-parity' => 'pass',
+        'authority' => 'approved',
+    ];
+    $missing = [];
+    foreach ($required as $flag => $expected) {
+        if (($flags[$flag] ?? '') !== $expected) $missing[] = "--{$flag}={$expected}";
+    }
+    if ($missing) {
+        rf_fail("this release has not been signed off. State each judgement outright:
+      "
+            . implode("
+      ", $missing)
+            . "
+  Nothing here is inferred, because a gate that signs itself is not a gate.");
+    }
+
+    $head = rf_git(['rev-parse', 'HEAD']);
+    $skinDirs = glob(dirname(__DIR__) . '/skins/*/manifest.json') ?: [];
+    $skinNames = array_map(static fn (string $manifest): string => basename(dirname($manifest)), $skinDirs);
+    sort($skinNames, SORT_STRING);
+
+    $note = [
+        'commit' => $head,
+        'security' => 'pass',
+        'parity' => 'pass',
+        'skin_render_parity' => 'pass',
+        'authority_review' => 'approved',
+        'skin_count' => count($skinNames),
+        'skin_inventory_sha256' => hash('sha256', implode("
+", $skinNames)),
+        'skin_render_changes' => [],
+    ];
+    if (isset($flags['tests'])) $note['tests'] = $flags['tests'];
+    if (isset($flags['authority-by'])) $note['authority'] = $flags['authority-by'];
+
+    $tmp = tempnam(sys_get_temp_dir(), 'rfgate');
+    file_put_contents($tmp, json_encode($note, JSON_UNESCAPED_SLASHES));
+    rf_git(['notes', '--ref=release-gates', 'add', '-f', '-F', $tmp, $head]);
+    @unlink($tmp);
+
+    // Prove it by the same code the tag uses, rather than by assertion.
+    rf_require_release_gate();
+    echo "GATE NOTE WRITTEN for {$head} (" . count($skinNames) . " skins). "
+        . "It is checked again when you tag.
+";
+    exit(0);
+}
+
+rf_fail('unknown command; use status, gate-check, gate-note, push-dev, tag-dev, or promote-stable');
 // ===== SNAPSMACK EOF =====

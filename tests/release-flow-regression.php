@@ -56,8 +56,26 @@ rel_expect(str_contains($guard, "if (\$command === 'push-dev')"),
     'release guard must provide ordinary dev pushes');
 rel_expect(str_contains($guard, "if (\$command === 'promote-stable')"),
     'release guard must provide guarded stable promotion');
-rel_expect(substr_count($guard, 'rf_require_release_gate();') === 2,
-    'both development tagging and stable promotion must require the exact-commit release gate');
+// Was `=== 2`. A count is not the property: adding a THIRD caller -- gate-note,
+// which proves the note it has just written with the same check the tag uses --
+// made this red for doing more checking, not less. Assert the thing that
+// matters instead, which is that each gated command carries the call.
+$rel_command_block = static function (string $source, string $command): string {
+    $start = strpos($source, "if (\$command === '{$command}')");
+    if ($start === false) return '';
+    $next = strpos($source, "if (\$command === '", $start + 10);
+    return $next === false ? substr($source, $start) : substr($source, $start, $next - $start);
+};
+foreach (['tag-dev', 'promote-stable'] as $rel_gated) {
+    $rel_block = $rel_command_block($guard, $rel_gated);
+    rel_expect($rel_block !== '', "the release guard no longer provides {$rel_gated}");
+    rel_expect(str_contains($rel_block, 'rf_require_release_gate();'),
+        "{$rel_gated} no longer requires the exact-commit release gate");
+    rel_expect(str_contains($rel_block, 'rf_tests();'),
+        "{$rel_gated} no longer runs the regression suite");
+}
+rel_expect(substr_count($guard, 'rf_require_release_gate();') >= 2,
+    'the exact-commit release gate is required by fewer than two commands');
 rel_expect(str_contains($guard, "glob(dirname(__DIR__) . '/skins/*/manifest.json')"),
     'release gate must derive the complete packaged skin inventory');
 rel_expect(str_contains($guard, "['skin_inventory_sha256']"),
