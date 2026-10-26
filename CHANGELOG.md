@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.954D - 2026-10-26 - LET IT SCROLL
+
 ## 0.7.953D - 2026-10-26 - NOTHING WAS LISTENING
 
 ### Queued for 0.7.953D
