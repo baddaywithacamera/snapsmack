@@ -13,6 +13,10 @@
 
 - **Every skin's rendered page is now compared against the last one somebody approved.** The release suite already rendered each skin against each page kind, then asked only whether the result was HTML — so a page could lose its paragraphs, its date, its stylesheet, or swap a photograph for a cropped version of itself and still report a pass. `tests/skin-render-snapshot-regression.php` keeps the page instead of discarding it: for each of 125 skin-and-page combinations it records which images and stylesheets appear, how many paragraphs, links and headings, and a hash of the visible words, and fails when any of that changes without the fixture being updated on purpose. Output is still free to change; changing it silently is not. Written up as OPAUDIT 026.
 
+## 0.7.951D - 2026-10-25 - THE PRODUCTION PATH
+
+- **Paragraph repair now works on production PHP builds without the DOM extension.** The no-DOM fallback used an invalid variable-length lookbehind, so PCRE rejected the repair and left prose between inline photographs as bare text. The fallback now uses an ordinary captured boundary and is tested directly against the mixed image/prose shape from the affected SMACKTALK posts.
+
 ## 0.7.950D - 2026-10-25 - THE TABLETOP FLOATS
 
 - **ORGANIZED MAYHEM uses its known-good scattered tabletop again.** The later one-shot coverage grid enlarged 400px thumbnails into a regular oversized arrangement and made the background look soft. The original region scatter, overlap handling and coherent whole-wall float are restored. Prints retain their fixed, moderate `rotateX`/`rotateY` physical warp, but never wobble or move independently of their neighbours. The 400px aspect-preserving thumbnail source remains unchanged for performance.

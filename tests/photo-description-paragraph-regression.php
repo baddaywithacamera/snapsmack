@@ -32,4 +32,17 @@ paragraph_check(substr_count($severalInterruptions, '<p>') === 4, 'Only the firs
 $unsafe = (string)snapsmack_photo_description_html("Safe.\n\n<script>alert(1)</script>Still safe.");
 paragraph_check(!str_contains($unsafe, '<script'), 'Description paragraph repair bypassed HTML sanitization.');
 
+// Production hosts may omit ext-dom. Exercise the fallback expression itself;
+// its former variable-length lookbehind was rejected by PCRE and silently
+// returned the original bare prose.
+$fallbackSource = (string)file_get_contents(dirname(__DIR__) . '/core/trusted-html.php');
+paragraph_check(!str_contains($fallbackSource, '(?<=</(?:div|section|figure|table|details)>'), 'Fallback still uses unsupported variable-length lookbehind.');
+$fallbackInput = '<div class="snap-inline-frame">image</div>Hussar was worth a stop. Well.<div class="snap-inline-frame">next</div>';
+$fallbackOutput = preg_replace_callback(
+    '~(^|</(?:div|section|figure|table|details)>)([^<].*?)(?=<(?:p|div|section|blockquote|ul|ol|pre|h[1-6]|figure|table|details)\b|$)~is',
+    static fn(array $match): string => $match[1] . (trim($match[2]) === '' ? $match[2] : '<p>' . trim($match[2]) . '</p>'),
+    $fallbackInput
+);
+paragraph_check(str_contains((string)$fallbackOutput, '</div><p>Hussar was worth a stop. Well.</p><div'), 'No-DOM fallback did not wrap prose between CMS blocks.');
+
 echo "photo description paragraph regression: ok\n";
