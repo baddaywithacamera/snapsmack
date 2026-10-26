@@ -60,12 +60,35 @@ $check(!str_contains($tree, 'class="sep"'),
 // lost their separator in 0.7.873D and nothing said so. It asks about BOTH
 // now, and a skin may legitimately answer "none": three of them set
 // .sep { display: none } on purpose and must not be given one back.
+// A skin may be menu-less ON PURPOSE, and that has to be written down here or
+// the next person reads a lower number and assumes a skin broke.
+//
+// PHOTOGRAM is the phone companion. Sean's instruction, 25 October 2026: it is
+// not supposed to show a menu at all -- the avatar goes to the About page and
+// that is the whole of it. SnapSmack is desktop software and the phone skin is
+// a courtesy, not a destination.
+//
+// 0.7.946D removed PHOTOGRAM's menu and this check was lowered from 23 to 22
+// to stop it complaining, which is the wrong way round: the number moved and
+// nothing recorded why. Naming the skin means a menu appearing in PHOTOGRAM
+// again is caught as the change it would be.
+$menuless = [
+    'photogram' => 'phone skin: the avatar links to About and there is no menu, by design',
+];
+
 $callers = $drawing = $deliberately_none = 0;
 foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
     $skin = basename(dirname($layout));
     $src = (string)file_get_contents($layout);
     $rendersMenu = str_contains($src, 'navigation-tree')
         || str_contains($src, "snap_render_component('navigation'");
+    if (isset($menuless[$skin])) {
+        $check(!$rendersMenu,
+            $skin . ' renders the shared menu, but it is recorded here as menu-less on '
+            . 'purpose (' . $menuless[$skin] . '). Either the skin changed or this note is '
+            . 'out of date -- ask before deciding which.');
+        continue;
+    }
     if (!$rendersMenu) continue;
     $callers++;
     $css = (string)@file_get_contents($root . '/skins/' . $skin . '/style.css');
@@ -97,8 +120,11 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
         . 'declares it wants none; it lost the one the CMS used to emit');
     if ($draws) $drawing++; elseif ($hides) $deliberately_none++;
 }
+// 22 skins, with PHOTOGRAM accounted for by name above rather than by a
+// number nobody can explain. If this count drops again, a skin lost its menu.
 $check($callers >= 22,
-    'expected at least 23 skins rendering the shared menu, found ' . $callers);
+    'expected at least 22 skins rendering the shared menu, found ' . $callers
+    . ' (' . count($menuless) . ' skin(s) are menu-less on purpose and are not counted)');
 $check($drawing >= 17, 'expected at least 17 skins drawing a separator, found ' . $drawing);
 
 printf("menu separators: %d skins render the shared menu -- %d draw their own character, %d want none.
