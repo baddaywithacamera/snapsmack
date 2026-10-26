@@ -10,5 +10,5 @@
  */
 
 define('SC_VERSION',  '0.7.706');
-define('SC_CODENAME', 'NOTHING WAS LISTENING');
+define('SC_CODENAME', 'LET IT SCROLL');
 // ===== SNAPSMACK EOF =====
