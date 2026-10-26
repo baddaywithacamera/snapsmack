@@ -1,5 +1,4 @@
 /**
- * SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
  * SNAPSMACK — Organized Mayhem
  * ss-engine-organized-mayhem.js
  *
@@ -21,8 +20,7 @@
  *        mounted, hard-capped by budget.maxMounted (watchdog-tunable).
  *     3. The update pass is CHANGE-DRIVEN — full scans run only when the view
  *        actually moved or new regions are pending, never idly at 60fps.
- *   Individual prints remain fixed within the tabletop. Only the shared world
- *   transform moves, so the arrangement drifts as one coherent surface.
+ *   Idle "alive" wobble is a CSS animation (GPU/compositor), not per-frame JS.
  *
  * DATA CONTRACT
  *   Mount on a container carrying [data-mayhem] plus:
@@ -85,12 +83,6 @@
         //   data-ambient="1" → always drift, not just when idle (backdrop)
         var panEnabled   = d.pan !== '0';
         var ambient      = d.ambient === '1';
-        if (ambient) {
-            container.style.position = 'fixed';
-            container.style.inset = '0';
-            container.style.zIndex = '-1';
-            container.style.pointerEvents = 'none';
-        }
         var prefersReduced = window.matchMedia &&
             window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -113,8 +105,6 @@
         var poolIdx = 0;
         var regions = {};             // key -> { rx, ry, cards: [] }
         var cardCount = 0;            // live model card count (across kept regions)
-        var coverageMode = false;     // ambient backdrop: one-shot full-coverage,
-                                      // each image used once, gentle bounded drift
 
         // ── DOM scaffold ─────────────────────────────────────────────────
         if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
@@ -176,10 +166,6 @@
             if (!pool.length) return null;
             var img = pool[poolIdx % pool.length]; poolIdx++; return img;
         }
-        function imageAspect(img) {
-            var aspect = parseFloat(img && img.aspect);
-            return isFinite(aspect) && aspect > 0 ? aspect : 1;
-        }
 
         // ── Fetch the image pool (+ server vitals) ───────────────────────
         // Resolves the whole payload { images:[...], vitals:{...} }. A bare
@@ -218,7 +204,7 @@
 
         function placeCard(reg, img, anchorX, anchorY, rx, ry) {
             var w = maxWidth * rand(0.66, 1.0);
-            var h = w / imageAspect(img);
+            var h = w * rand(0.66, 1.45);
             var x = anchorX + rand(-REGION * 0.18, REGION * 0.18);
             var y = anchorY + rand(-REGION * 0.18, REGION * 0.18);
 
@@ -270,14 +256,11 @@
             var a = document.createElement('a');
             a.className = 'om-card';
             a.href = card.url;
-            // HARD RULE: prints stay WHOLE. Only a 2D translate + rotate — no
-            // rotateX/rotateY 3D warp. The warp foreshortened each rectangle into
-            // a wedge, and overlapping wedges read as sliced/merged images. Flat
-            // rotated rectangles overlap cleanly, layered by z-index, never merge.
             a.style.cssText = 'position:absolute;left:0;top:0;display:block;width:' +
                 card.w.toFixed(0) + 'px;z-index:' + card.z + ';will-change:transform;text-decoration:none;' +
                 'transform:translate3d(' + card.x.toFixed(1) + 'px,' + card.y.toFixed(1) + 'px,0) rotate(' +
-                card.rot.toFixed(2) + 'deg);';
+                card.rot.toFixed(2) + 'deg)' + (budget.warp ? ' rotateX(' + card.warpX.toFixed(1) +
+                'deg) rotateY(' + card.warpY.toFixed(1) + 'deg)' : '') + ';';
 
             var img = document.createElement('img');
             img.src = card.src; img.alt = card.title;
@@ -464,19 +447,8 @@
                 if (document.hidden) { raf = requestAnimationFrame(loop); return; }
                 watchdog(dt);
                 var idle = ambient || ((now() - lastInteract) > driftDelay && !dragging);
-                if (coverageMode) {
-                    // Full-coverage backdrop: gentle bounded sway around origin
-                    // (always within the field margin) + a slow zoom-IN breath
-                    // (never zooms out past the edge). The field is built once and
-                    // fully covers the viewport, so NO region (re)generation runs.
-                    if (budget.drift) {
-                        var amp = Math.min(container.clientWidth, container.clientHeight) * 0.05;
-                        view.x = Math.sin(t / 11000) * amp;
-                        view.y = Math.cos(t / 13000) * amp;
-                        view.z = driftZ0 + (0.5 + 0.5 * Math.sin(t / 9000)) * 0.04;  // 1.00 → 1.04
-                        renderView();
-                    }
-                } else if (budget.drift && idle) {
+
+                if (budget.drift && idle) {
                     view.x += driftVX * (dt / 16.7);
                     view.y += driftVY * (dt / 16.7);
                     view.z = driftZ0 + Math.sin(t / 9000) * 0.06;
@@ -537,103 +509,6 @@
             requestAnimationFrame(step);
         }
 
-        // ── Ambient backdrop: one-shot FULL COVERAGE (spec: instant-camera) ──
-        // Fixed (non-pannable) tabletop that must completely cover the viewport
-        // with NO gaps and NO repeats. Each pool image is placed exactly once on
-        // a jittered grid sized to the viewport (+ margin for the drift), with
-        // each print scaled larger than its cell so neighbours overlap into a
-        // solid pile. Few images => big cells => the prints zoom in to still
-        // cover. Many images => smaller prints, finer scatter. The loop applies
-        // only a gentle bounded sway, so the field never drifts off its edge.
-        function buildAmbientCoverage() {
-            // reset model
-            for (var k in regions) { if (!regions.hasOwnProperty(k)) continue;
-                var cz = regions[k].cards; for (var z = 0; z < cz.length; z++) unmount(cz[z]); }
-            regions = {}; cardCount = 0; poolIdx = 0;
-            view.x = 0; view.y = 0; view.z = 1; driftZ0 = 1;
-            renderView();
-
-            var reg = { rx: 0, ry: 0, cards: [] };
-            regions['0:0'] = reg;
-
-            var W = container.clientWidth || 1200, H = container.clientHeight || 800;
-            var MARGIN = 0.20;                                   // extra field beyond viewport for the sway
-            var fieldW = W * (1 + MARGIN * 2), fieldH = H * (1 + MARGIN * 2);
-            var ox = -W * MARGIN, oy = -H * MARGIN;              // field origin (view starts at 0,0)
-
-            // Each image once; cap for very large libraries so a backdrop never
-            // mounts thousands of nodes (still no repeats — just a subset).
-            var M = Math.max(1, Math.min(pool.length, 220));
-            var cols = Math.max(1, Math.round(Math.sqrt(M * fieldW / fieldH)));
-            // The coverage grid must never contain more cells than photographs.
-            // The previous ceil/ceil pair left every spare cell at the right end
-            // of the final row — exactly the exposed strips this mode forbids.
-            var rows = Math.max(1, Math.floor(M / cols));
-            while (cols * rows > M && cols > 1) cols--;
-            var cellW = fieldW / cols, cellH = fieldH / rows;
-
-            budget.maxMounted = Math.max(budget.maxMounted, M + 4);
-
-            var idx = 0;
-            function addAmbientCard(img, r, c, extra) {
-                    var aspect = imageAspect(img);
-                    var cx = ox + (c + 0.5) * cellW + rand(-cellW * 0.16, cellW * 0.16);
-                    var cy = oy + (r + 0.5) * cellH + rand(-cellH * 0.16, cellH * 0.16);
-                    if (extra) {
-                        cx += rand(-cellW * 0.22, cellW * 0.22);
-                        cy += rand(-cellH * 0.22, cellH * 0.22);
-                    }
-                    // Size from the photograph's REAL aspect ratio. Both axes
-                    // exceed the cell by enough for rotation and jitter, so a
-                    // panorama cannot masquerade as a tall coverage rectangle.
-                    var w = Math.max(cellW * 1.72, cellH * aspect * 1.72) * rand(0.98, 1.12);
-                    var h = w / aspect;
-                    var card = {
-                        title: img.title || '', src: img.src || '', url: img.url || '#',
-                        x: cx - w / 2, y: cy - h / 2, w: w, h: h,
-                        z: 1 + ((r * cols + c) % 9),
-                        rot: rand(-16, 16), warpX: rand(-5, 5), warpY: rand(-5, 5),
-                        node: null
-                    };
-                    reg.cards.push(card); cardCount++;
-            }
-            // First occupy every cell. Remaining unique photographs become a
-            // second scattered layer instead of manufacturing empty cells.
-            for (var r = 0; r < rows; r++) {
-                for (var c = 0; c < cols; c++) {
-                    addAmbientCard(pool[idx++], r, c, false);
-                }
-            }
-            var baseCells = cols * rows;
-            while (idx < M) {
-                var slot = (idx - baseCells) % baseCells;
-                addAmbientCard(pool[idx++], Math.floor(slot / cols), slot % cols, true);
-            }
-            syncMounted();
-            hideOverlay();
-            startLoop();
-        }
-
-        // Ambient coverage is geometry, not decoration: when the viewport
-        // meaningfully changes shape, rebuild against the new bounds. Debounce
-        // avoids churn from mobile browser chrome and live desktop resizing.
-        var coverageW = 0, coverageH = 0, coverageResizeTimer = null;
-        function rememberCoverageSize() {
-            coverageW = container.clientWidth;
-            coverageH = container.clientHeight;
-        }
-        window.addEventListener('resize', function () {
-            if (!coverageMode) return;
-            if (coverageResizeTimer) clearTimeout(coverageResizeTimer);
-            coverageResizeTimer = setTimeout(function () {
-                var dw = Math.abs(container.clientWidth - coverageW);
-                var dh = Math.abs(container.clientHeight - coverageH);
-                if (dw < 24 && dh < 48) return;
-                buildAmbientCoverage();
-                rememberCoverageSize();
-            }, 180);
-        });
-
         function reshuffle() {
             for (var key in regions) { if (!regions.hasOwnProperty(key)) continue; var cs = regions[key].cards; for (var i = 0; i < cs.length; i++) unmount(cs[i]); }
             regions = {}; cardCount = 0; poolIdx = 0;
@@ -643,7 +518,7 @@
                 var imgs = payload && payload.images;
                 pool = (imgs && imgs.length) ? imgs : pool;
                 applyVitals(payload && payload.vitals);
-                if (ambient) { coverageMode = true; buildAmbientCoverage(); rememberCoverageSize(); } else { build(); }
+                build();
             }).catch(function (e) { fault('reshuffle', e); });
         }
         var reBtn = document.querySelector('[data-mayhem-reshuffle]');
@@ -669,7 +544,7 @@
             pool = (payload && payload.images) || [];
             if (!pool.length) { fault('empty pool', null); hideOverlay(); return; }
             applyVitals(payload && payload.vitals);
-            if (ambient) { coverageMode = true; buildAmbientCoverage(); rememberCoverageSize(); } else { build(); }
+            build();
         }).catch(function (e) { fault('init', e); hideOverlay(); });
     }
 
@@ -681,10 +556,9 @@
         if (document.getElementById('om-keyframes')) return;
         var s = document.createElement('style');
         s.id = 'om-keyframes';
-        // Only the loading indicator animates. Prints themselves stay fixed
-        // inside the world and inherit movement solely from the world transform.
         s.textContent =
-            '@keyframes om-flip{0%{transform:rotate(0)}50%{transform:rotate(180deg)}100%{transform:rotate(360deg)}}';
+            '@keyframes om-flip{0%{transform:rotate(0)}50%{transform:rotate(180deg)}100%{transform:rotate(360deg)}}' +
+            '.om-world{transform-style:preserve-3d}.om-card{perspective:900px}';
         document.head.appendChild(s);
     }
 

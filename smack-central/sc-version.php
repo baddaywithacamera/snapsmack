@@ -10,5 +10,5 @@
  */
 
 define('SC_VERSION',  '0.7.706');
-define('SC_CODENAME', 'PARAGRAPHS STAY PUT');
+define('SC_CODENAME', 'THE TABLETOP FLOATS');
 // ===== SNAPSMACK EOF =====

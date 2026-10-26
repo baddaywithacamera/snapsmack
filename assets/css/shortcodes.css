@@ -188,18 +188,19 @@
    MOSAIC keeps complete control of its own tile geometry. The wrapper retains
    the author's requested width; the image scales proportionally without crop. */
 .post-content .snap-inline-frame .ip-ascii-frame-inner {
-    /* Shrink-wrap the displayed photograph. A block flex container spans the
-       prose column and lets portrait photographs enlarge into empty space. */
-    display: inline-flex;
+    /* Fill the shortcode frame's requested width. The frame already clamps
+       that request to the content column; intrinsic sizing made small images
+       such as imported reaction images ignore the authored/default width. */
+    display: flex;
+    width: 100%;
     justify-content: center;
     max-width: 100%;
     overflow: hidden;
     vertical-align: top;
 }
 .post-content .snap-inline-frame img {
-    width: auto;
+    width: 100%;
     max-width: 100%;
-    max-height: 75vh;
     height: auto;
     margin-inline: auto;
     object-fit: contain;

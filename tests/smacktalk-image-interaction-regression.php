@@ -9,7 +9,9 @@ $shared = (string)file_get_contents(dirname(__DIR__) . '/assets/css/shortcodes.c
 $tilez = (string)file_get_contents(dirname(__DIR__) . '/skins/tilez/style.css');
 
 $checks = [
-    'shared frame shrink-wraps the displayed photograph' => str_contains($shared, 'display: inline-flex;'),
+    'shared frame fills the shortcode requested width' => str_contains($shared, 'display: flex;')
+        && str_contains($shared, 'width: 100%;'),
+    'small inline images scale to the requested frame width' => preg_match('/\.post-content \.snap-inline-frame img\s*\{[^}]*width:\s*100%;/s', $shared) === 1,
     'shared frame clips hover enlargement' => str_contains($shared, 'overflow: hidden;'),
     'shared interaction targets standalone lightbox images' => str_contains($shared, '.snap-inline-frame img[data-lightbox-src]'),
     'shared interaction targets mosaic lightbox images' => str_contains($shared, '.mosaic-item img[data-lightbox-src]'),
