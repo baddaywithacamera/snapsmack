@@ -67,7 +67,7 @@ if ($rationalMin['infobox_height'] !== 30 || $rationalMax['infobox_height'] !== 
 }
 $slickrOff = snapsmack_skin_presentation(['single_show_description'=>'0','show_exif_panel'=>'0','show_geo_link'=>'0','show_provenance_footer'=>'0'], 'slickr')['slickr'];
 if (array_filter($slickrOff)) throw new RuntimeException('Slickr off controls failed.');
-foreach (['photogram'=>'discover','rational-geo'=>'rational','scroll'=>'scroll','slickr'=>'slickr'] as $skin=>$model) {
+foreach (['photogram'=>'style','rational-geo'=>'rational','scroll'=>'scroll','slickr'=>'slickr'] as $skin=>$model) {
     $layout = (string)file_get_contents($root . '/skins/' . $skin . '/layout.php');
     if (!str_contains($layout, "['skin_presentation']['{$model}']")) throw new RuntimeException($skin . ' does not consume its bounded presentation model.');
 }

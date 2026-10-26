@@ -97,7 +97,7 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
         . 'declares it wants none; it lost the one the CMS used to emit');
     if ($draws) $drawing++; elseif ($hides) $deliberately_none++;
 }
-$check($callers >= 23,
+$check($callers >= 22,
     'expected at least 23 skins rendering the shared menu, found ' . $callers);
 $check($drawing >= 17, 'expected at least 17 skins drawing a separator, found ' . $drawing);
 

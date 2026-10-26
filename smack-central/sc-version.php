@@ -10,5 +10,5 @@
  */
 
 define('SC_VERSION',  '0.7.706');
-define('SC_CODENAME', 'THE WHOLE PICTURE');
+define('SC_CODENAME', 'PARAGRAPHS STAY PUT');
 // ===== SNAPSMACK EOF =====

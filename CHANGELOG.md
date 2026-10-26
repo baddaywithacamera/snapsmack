@@ -13,6 +13,12 @@
 
 - **Every skin's rendered page is now compared against the last one somebody approved.** The release suite already rendered each skin against each page kind, then asked only whether the result was HTML — so a page could lose its paragraphs, its date, its stylesheet, or swap a photograph for a cropped version of itself and still report a pass. `tests/skin-render-snapshot-regression.php` keeps the page instead of discarding it: for each of 125 skin-and-page combinations it records which images and stylesheets appear, how many paragraphs, links and headings, and a hash of the visible words, and fails when any of that changes without the fixture being updated on purpose. Output is still free to change; changing it silently is not. Written up as OPAUDIT 026.
 
+## 0.7.949D - 2026-10-25 - PARAGRAPHS STAY PUT
+
+- **SMACKTALK paragraphs on either side of inline photographs keep their spacing.** The block-nesting cleanup could begin at an earlier valid paragraph, cross its closing tag while searching for a later image, and unwrap the entire range. Its match is now bounded to a single paragraph, with a regression covering paragraph → photograph → paragraph and mixed same-paragraph content.
+
+- **The release gate reflects the approved current presentation contracts.** PHOTOGRAM consumes the CMS-owned bounded style model, the shared-menu inventory reflects the 22 skins that actually render it, and the trusted-wrapper inventory includes the one additional CMS-owned PHOTOGRAM presentation wrapper.
+
 ## 0.7.948D - 2026-10-25 - THE WHOLE PICTURE
 
 - **INSTANT CAMERA shows the entire instant-print scan again.** Its portrait tile and `contain` rules were intact, but the shared strict controller handed unframed tiles a square-cropped thumbnail before the skin could display them. INSTANT CAMERA now receives the aspect-preserved thumbnail while THE GRID and other square-grid presentations retain their intended crops. A dedicated cross-skin regression test protects both sides of that boundary.
