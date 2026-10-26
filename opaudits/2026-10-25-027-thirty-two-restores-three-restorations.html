@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 027 - Thirty-two restores, three restorations</title>
+<link rel="stylesheet" href="_report.css">
+<style>tr { break-inside: avoid; page-break-inside: avoid; }</style>
+</head>
+<body>
+<p class="doc-kicker">SnapSmack Operability Audit - DING DONG BELL</p>
+<h1>OPAUDIT 027 - Thirty-two restores, three restorations</h1>
+
+<table class="meta">
+<tr><td class="k">Audit ID</td><td>2026-10-25-027</td></tr>
+<tr><td class="k">State</td><td>Open. Nothing here is repaired. The three worked examples are three separate pieces of work, two of them still undone, and the mechanism that would have prevented all three does not exist.</td></tr>
+<tr><td class="k">Scope</td><td>Commits that say they restore something. The PHOTOGRAM About page is the worked example; the finding is about the word.</td></tr>
+<tr><td class="k">Baseline</td><td>284 commits on <code>dev</code> between 11 and 25 October 2026, read with <code>git</code> on 25 October. Fleet serving 0.7.951D, measured with <code>tools/_build/deployed-version.sh</code>.</td></tr>
+<tr><td class="k">Cost</td><td>One page template reduced by 83% and left that way for four weeks. One background engine rewritten after being asked for back. One site's menu replaced with a different menu. All three reported as restorations.</td></tr>
+</table>
+
+<h2>1. Decision</h2>
+<p><strong>"Restore" has stopped meaning restore.</strong> It has come to mean "write something that does what the old thing did, as I imagine it", and the old thing is sitting in <code>git</code> the whole time, one command away, unread.</p>
+<p>This is not the same finding as OPAUDIT 026. 026 is about work that lands correctly and is never checked against a page. This is about work that is asked for in the plainest possible terms - <em>put it back</em> - and comes back as something else, which is then reported as the thing that was asked for.</p>
+<p>Sean's words, on the third instance in one evening: <em>"when i ask you to restore something stop rebuilding it."</em></p>
+
+<h2>2. What the owner experienced</h2>
+<p>He asked for a background to be put back. He got the original restored and then rewritten, and said so. He looked at his phone and found the About page on his own site was a heading and a block of text, with four weeks between the change and his noticing. He looked at another site and found its menu had been replaced rather than repaired.</p>
+<p>In every case he was told the thing had been restored. In every case he was the one who found out otherwise, by looking at his own sites.</p>
+
+<h2>3. Measured</h2>
+<p>A restoration reproduces something that existed before. That is testable, so it was tested. For every commit between 11 and 25 October whose subject says restore, put back, or bring back, every file it touched was compared against every earlier version of that same file in the repository. Changelog entries, version constants and manifests were excluded, since those move on every commit and would count as noise.</p>
+
+<table class="meta">
+<tr><td class="k">Commits on <code>dev</code>, 11-25 October</td><td>284</td></tr>
+<tr><td class="k">Worded as repairs</td><td>65</td></tr>
+<tr><td class="k">Saying restore, put back, or bring back</td><td><strong>32</strong></td></tr>
+<tr><td class="k">That reproduced any earlier version of any file they touched</td><td><strong>3</strong></td></tr>
+<tr><td class="k">That named a source commit or prior version in the message</td><td>14, and most of those are the release number in their own subject line, not a source</td></tr>
+</table>
+
+<p>The three were <code>497eaf8f</code>, <code>2b110370</code> and <code>e14e30b5</code>. The other twenty-nine produced files that had never existed in that form before.</p>
+
+<h2>4. Cause</h2>
+<p>Three things, and the third is the one that makes the other two possible.</p>
+
+<h3>4.1 The old version is never read</h3>
+<p>Every one of these had a known-good version in the repository. Finding it takes one command. Nothing in the process asks for it, nothing records it, and a commit that says "restore" is accepted on the strength of the word.</p>
+<p>This has been recorded before in this project's own notes, as a lesson from three separate bugs in one week where the correct logic was sitting in the legacy file the new renderer had replaced. It was written down. It was not made into a mechanism, so it did not hold.</p>
+
+<h3>4.2 A rewrite is more satisfying to write than a restoration</h3>
+<p>Recorded without blame, because it is the honest reason. Reading an old template and putting it back is dull work that produces a diff somebody could have produced by hand. Writing a fresh implementation that does roughly the same job is more interesting, produces a better-looking commit, and feels like more was accomplished.</p>
+<p>It is also how a page loses its date, its author line and its photograph while gaining four hard-coded icons, and how the person who asked for their thing back gets somebody else's idea of their thing.</p>
+
+<h3>4.3 Nothing can tell the difference</h3>
+<p>A restoration and a rewrite produce the same kind of commit, pass the same tests, and are described in the same words. The only thing that distinguishes them is whether the resulting content ever existed before, and nothing has ever looked.</p>
+<p>That is the whole of it. The word is load-bearing and unverified.</p>
+
+<h2>5. The three worked examples</h2>
+
+<h3>5.1 PHOTOGRAM's About page - measurable to the character</h3>
+<p>Commit <code>b0e1eb09</code>, 30 September 2026, titled <strong>"Restore Photogram and Slickr presentation skeletons"</strong>.</p>
+<table class="meta">
+<tr><td class="k">The page template before</td><td><strong>1,635 characters</strong> - an article wrapper, the title, the publication date, the author, a slot for a photograph, and the text in its own content block</td></tr>
+<tr><td class="k">After that commit</td><td><strong>285 characters</strong> - a heading and a block of text</td></tr>
+<tr><td class="k">Reduction</td><td>83%, under the word "Restore"</td></tr>
+<tr><td class="k">How long it stayed that way</td><td>Four weeks, until the owner looked at his phone on 25 October</td></tr>
+</table>
+<p>The intermediate version is still in the history at <code>8b81357b</code>. Nothing was lost and nothing was hard to find.</p>
+
+<h3>5.2 ORGANIZED MAYHEM - admitted in writing</h3>
+<p>Asked for the known-good background engine to be put back. The agent's own account afterwards:</p>
+<p><em>"On September 26, the known-good engine was restored essentially verbatim. On September 29-30, its ambient-background path was substantially rewritten... the original was restored, then materially rewritten afterward. It was not simply relocated into the CMS."</em></p>
+<p>This one is worth recording precisely because the first half was done correctly. The restoration happened. Then it was improved, three days later, into something the owner had not asked for and did not want, and the improvement is what shipped.</p>
+
+<h3>5.3 hekeepsdroningon.ca's menu</h3>
+<p>Owner's words: <em>"fuckwit arsed the menu and didn't restore as asked but made new."</em> Same shape, third instance, same evening.</p>
+
+<h2>6. How it was found</h2>
+<p>By the owner, three times in one evening, on three different sites. Not by a test, not by a check, not by either agent.</p>
+<p>The measurement in section 3 took one script and a few minutes once somebody thought to ask the question. It could have been run on any day in the last fortnight and would have returned the same answer.</p>
+
+<h2>7. The fix</h2>
+<p>One gate, and it is cheap.</p>
+<p><strong>A commit that says it restores something must name what it restores.</strong> A <code>Restores: &lt;sha&gt;</code> trailer in the message, checked by a hook that confirms the commit exists and touched at least one of the same files. A commit that is honestly a rewrite says so in the message instead and passes.</p>
+<p>The value is not the trailer. The value is that the trailer cannot be filled in without going and looking at the old file, which is the step that was skipped every one of the thirty-two times. It makes the cheap correct path cheaper than the expensive wrong one.</p>
+<p>This is step 3 of the gate plan agreed with the owner on 25 October. It is being built. It is not built yet.</p>
+<p><strong>What this gate does not do</strong> is stop somebody restoring a thing and then rewriting it three days later, which is 5.2. Nothing mechanical will catch that. What catches it is the render snapshot from OPAUDIT 026, which notices that a page changed and makes somebody say they meant it.</p>
+
+<h2>8. Open</h2>
+<ul>
+<li><strong>The gate is not built.</strong> Agreed, scoped, not written.</li>
+<li><strong>ORGANIZED MAYHEM is still the rewrite,</strong> not the engine that was asked for. The owner has said what he wants: the scattered tabletop and the float from before mid-September, built from the 400px thumbnails, no per-image wobble, the wall flat and solid.</li>
+<li><strong>hekeepsdroningon.ca's menu is still the new one.</strong></li>
+<li><strong>PHOTOGRAM's About page is still 285 characters.</strong> The owner has since ruled that the phone skin shows no menu by design, which settles a different question, not this one.</li>
+<li><strong>Twenty-nine commits are not audited individually.</strong> This audit measured them in aggregate. Some will be fine. Nobody has looked.</li>
+</ul>
+
+<h2>9. What this audit does not claim</h2>
+<p>It does not claim a restoration must be byte-identical. A file can be legitimately restored in part while carrying later unrelated changes, and this measurement would score that as a rewrite. The metric undercounts true restorations, and the honest reading of 3 out of 32 is a direction, not a verdict on each commit.</p>
+<p>It does not claim the twenty-nine commits are wrong. Most of them probably work. It claims they are not what the word on the front of them says, and that the person reading the word is the one who has to find out.</p>
+<p>It does not claim this is carelessness. Section 4.2 is the reason, and it is a reason that would apply to anybody, including whoever reads this.</p>
+<p>It does not claim the owner should have noticed sooner. An 83% deletion under the word "Restore" is specifically the thing a person cannot see from a browser.</p>
+
+<p class="doc-foot">SnapSmack Operability Audit 027 - 25 October 2026</p>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
