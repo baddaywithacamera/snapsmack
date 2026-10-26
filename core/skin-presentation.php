@@ -323,6 +323,30 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
         $existing = isset($presentation['style']) ? (string)$presentation['style'] : '';
         $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly($existing . $declaredStyle);
     }
+    // PHOTOGRAM is the phone companion for every photoblog. When the desktop
+    // presentation is INSTANT CAMERA, carry its measured print format into the
+    // mobile grid. This restores uncropped Polaroid/Instax proportions without
+    // giving the PHOTOGRAM skin access to settings or presentation logic.
+    if ($skinSlug === 'photogram' && ($settings['active_skin'] ?? '') === 'instant-camera') {
+        $format = (string)($settings['instant-camera__ic_format'] ?? '');
+        $ratios = [
+            'polaroid'=>'823 / 1000', 'sx70'=>'1 / 1', 'go'=>'47 / 60',
+            'instax_mini'=>'62 / 46', 'instax_wide'=>'99 / 62', 'instax_square'=>'1 / 1',
+        ];
+        $aspect = $ratios[$format] ?? '';
+        if ($format === 'custom') {
+            $raw = trim((string)($settings['instant-camera__ic_custom_ratio'] ?? ''));
+            if (preg_match('/^\s*(\d{1,4})\s*[:\/xX]\s*(\d{1,4})\s*$/', $raw, $match)
+                && (int)$match[1] > 0 && (int)$match[2] > 0) {
+                $aspect = (int)$match[1] . ' / ' . (int)$match[2];
+            }
+        }
+        if ($aspect !== '') {
+            $existing = isset($presentation['style']) ? (string)$presentation['style'] : '';
+            $style = '<style id="snapsmack-photogram-print-format">:root{--pg-tile-aspect:' . $aspect . ';}</style>';
+            $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly($existing . $style);
+        }
+    }
     snapsmack_attach_local_font_faces($presentation);
     return $presentation;
 }
