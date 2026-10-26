@@ -160,6 +160,40 @@ function snapshot_matches(string $html, string $pattern): array
 }
 
 /** The small set of facts worth holding somebody to. */
+/**
+ * Remove every <style> and <script> block, contents included.
+ *
+ * strip_tags() drops the tags and keeps what is between them, so a stylesheet
+ * rule counts as page text: adding one CSS rule to eleven skins moved the word
+ * count on 77 pages whose words had not changed at all. A gate that cries wolf
+ * on every CSS edit teaches people to --update without reading it.
+ */
+function snapshot_without_code_blocks(string $html): string
+{
+    foreach (['style', 'script'] as $tag) {
+        $out = '';
+        $pos = 0;
+        $open = '<' . $tag;
+        $close = '</' . $tag . '>';
+        while (($start = stripos($html, $open, $pos)) !== false) {
+            $after = $start + strlen($open);
+            // <styles> or <scripted> are different tags; only a delimiter counts.
+            if ($after < strlen($html) && !in_array($html[$after], [' ', '>', "	", "
+", ""], true)) {
+                $out .= substr($html, $pos, $after - $pos);
+                $pos = $after;
+                continue;
+            }
+            $end = stripos($html, $close, $after);
+            $out .= substr($html, $pos, $start - $pos) . ' ';
+            if ($end === false) { $pos = strlen($html); break; }
+            $pos = $end + strlen($close);
+        }
+        $html = $out . substr($html, $pos);
+    }
+    return $html;
+}
+
 function snapshot_fingerprint(string $html): array
 {
     // strip_tags drops the tags but KEEPS what is between <style> and <script>,
@@ -168,7 +202,10 @@ function snapshot_fingerprint(string $html): array
     // a page whose words had not changed at all. A gate that cries wolf on every
     // CSS edit teaches people to --update without reading, which is the exact
     // habit it exists to prevent.
-    $visible = (string)preg_replace('#<(style|script)[^>]*>.*?</>#is', ' ', $html);
+    // A regex with .*? over a whole stylesheet hits PCRE's backtrack limit and
+    // returns null, which silently left the CSS in the text. Scan for the blocks
+    // instead: no backtracking, no limit, and it cannot fail quietly.
+    $visible = snapshot_without_code_blocks($html);
     $text = html_entity_decode(strip_tags($visible), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $text = trim((string)preg_replace('/\s+/u', ' ', $text));
     return [

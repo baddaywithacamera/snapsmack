@@ -1255,7 +1255,7 @@
     },
     "skin-render-snapshot-regression.php": {
         "assertions": 7,
-        "predicates": 7,
+        "predicates": 10,
         "thresholds": [
             2
         ]

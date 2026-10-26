@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "RATIONAL GEO",
-    "version": "2.1.35",
+    "version": "2.1.36",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "An homage to the world's best magazine. Editorial serif typography, the iconic yellow accent, light and dark variants. For anyone who has read it and loved it or dreamed of having their work published in it.",
@@ -783,6 +783,22 @@
                 "max": "1.4",
                 "step": "0.05"
             }
+        },
+        "page_title_font_weight": {
+            "section": "MASTHEAD TYPE",
+            "type": "select",
+            "label": "Photo Title Weight",
+            "default": "700",
+            "options": {
+                "300": "Light (300)",
+                "400": "Regular (400)",
+                "500": "Medium (500)",
+                "600": "Semi-Bold (600)",
+                "700": "Bold (700)",
+                "900": "Black (900)"
+            },
+            "selector": ".rg-photo-title",
+            "property": "font-weight"
         },
         "single_show_description": {
             "section": "SINGLE IMAGE",

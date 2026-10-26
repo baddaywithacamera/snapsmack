@@ -2,7 +2,7 @@
     "schema_version": 2,
     "name": "NEW HORIZON",
     "oh_snap_ready": true,
-  "version": "1.3.22",
+    "version": "1.3.23",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "High-contrast photography skin with archival framing, tactical layout controls, and full JS library support. Light and dark variants.",
@@ -899,6 +899,22 @@
             },
             "selector": "#system-footer .inside, #system-footer p, #sig-text",
             "property": "font-family"
+        },
+        "page_title_font_weight": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Photo Title Weight",
+            "default": "700",
+            "options": {
+                "300": "Light (300)",
+                "400": "Regular (400)",
+                "500": "Medium (500)",
+                "600": "Semi-Bold (600)",
+                "700": "Bold (700)",
+                "900": "Black (900)"
+            },
+            "selector": ".photo-title-footer",
+            "property": "font-weight"
         },
         "page_bg_color": {
             "section": "COLOURS",
