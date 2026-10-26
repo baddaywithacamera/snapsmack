@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.952D - 2026-10-26 - SHOW YOUR FACE
+
 - **The commit gate that was written months ago is now switched on, and the suite says so if it ever goes off again.** `.githooks/pre-commit` has blocked null bytes, PHP syntax errors and three skin ratchet failures since the day it was written, and it had never run once: `core.hooksPath` was unset in the main checkout, unset globally, and unset in every worktree. `php tools/install-hooks.php` turns it on for a whole clone, and `tests/git-hooks-installed-regression.php` fails while it is off. The four Git LFS hooks are copied into `.githooks/` as part of this, because `core.hooksPath` stops git reading `.git/hooks` and turning the gate on would otherwise have turned Git LFS off.
 
 - **A release tag can no longer leave this machine over a red suite.** `tools/release-flow.php` already refused to tag without a passing release-gate note, but the tool is optional: a tag made with plain `git tag` never meets it, which is how v0.7.946D, v0.7.947D and v0.7.948D were cut on top of three regression tests that had been red for a day. `.githooks/pre-push` asks the same question at the point every route shares, by calling the same code (`release-flow.php gate-check <commit>`). Branch pushes and tag deletions are untouched. There is no override flag.
