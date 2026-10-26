@@ -18,17 +18,6 @@
 <?php elseif (($view['response']['kind'] ?? '') === 'search'): ?><main class="pg-search-wrap"><h1 class="pg-section-label"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Search'); ?></h1><?php foreach (($view['response']['results'] ?? []) as $group): ?><?php foreach ($group as $item): ?><a class="pg-search-meta" href="<?php echo snap_escape_url($item['url'] ?? '#'); ?>"><?php echo snap_escape_html($item['img_title'] ?? $item['title'] ?? ''); ?></a><?php endforeach; ?><?php endforeach; ?></main>
 <?php else: ?><main class="pg-grid-empty"><h1>Not found</h1></main><?php endif; ?>
 </div></div>
-<?php
-$pgAboutUrl = '';
-foreach (($view['response']['navigation'] ?? []) as $pgNavItem) {
-    if (!is_array($pgNavItem)) continue;
-    $pgNavLabel = strtolower(trim((string)($pgNavItem['label'] ?? $pgNavItem['title'] ?? '')));
-    if ($pgNavLabel === 'about' && !empty($pgNavItem['url'])) {
-        $pgAboutUrl = (string)$pgNavItem['url'];
-        break;
-    }
-}
-?>
 <nav id="pg-nav" role="navigation" aria-label="Main navigation">
     <a href="<?php echo snap_route_url('home'); ?>" class="pg-nav-tab<?php if (($view['response']['kind'] ?? '') === 'landing'): ?> active<?php endif; ?>" aria-label="Home">
         <svg class="pg-icon-outline" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5Z"/><path d="M9 21v-9h6v9"/></svg>
@@ -42,7 +31,7 @@ foreach (($view['response']['navigation'] ?? []) as $pgNavItem) {
         <svg class="pg-icon-outline" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <svg class="pg-icon-filled" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     </a>
-    <?php if ($pgAboutUrl !== ''): ?><a href="<?php echo snap_escape_url($pgAboutUrl); ?>" class="pg-nav-tab<?php if (($view['response']['kind'] ?? '') === 'page'): ?> active<?php endif; ?>" aria-label="About">
+    <?php if (!empty($view['response']['about_url'])): ?><a href="<?php echo snap_escape_url($view['response']['about_url']); ?>" class="pg-nav-tab<?php if (($view['response']['kind'] ?? '') === 'page'): ?> active<?php endif; ?>" aria-label="About">
         <svg class="pg-icon-outline" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         <svg class="pg-icon-filled" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     </a><?php endif; ?>

@@ -3,6 +3,21 @@ declare(strict_types=1);
 
 const SNAPSMACK_SKIN_VIEW_MODEL_VERSION = 1;
 
+/** Resolve one labelled destination before the bounded view reaches a skin. */
+function snapsmack_skin_navigation_url(array $items, string $wantedLabel): string
+{
+    $wantedLabel = strtolower(trim($wantedLabel));
+    foreach ($items as $item) {
+        if (!is_array($item)) continue;
+        $label = strtolower(trim((string)($item['label'] ?? $item['title'] ?? '')));
+        if ($label === $wantedLabel && !empty($item['url'])) return (string)$item['url'];
+        $children = is_array($item['children'] ?? null) ? $item['children'] : [];
+        $found = snapsmack_skin_navigation_url($children, $wantedLabel);
+        if ($found !== '') return $found;
+    }
+    return '';
+}
+
 /** Convert a controller response into the only data a strict skin receives. */
 function snapsmack_build_skin_view(array $response, array $presentation = []): array
 {
@@ -21,6 +36,12 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     if ($kind === 'blogroll') $bodyClasses[] = 'is-blogroll';
     if ($kind === 'photo') $bodyClasses[] = 'is-photo-page';
     $presentation['body_class'] = implode(' ', $bodyClasses);
+    // Skins display this bounded value; they do not search or interpret the
+    // CMS navigation tree themselves.
+    $response['about_url'] = snapsmack_skin_navigation_url(
+        is_array($response['navigation'] ?? null) ? $response['navigation'] : [],
+        'about'
+    );
     // MOSAIC is an audited CMS compositor.  Skins receive only display-ready
     // block data; they never assemble JSON or run layout logic themselves.
     $response['mosaic_blocks'] = [];
@@ -55,7 +76,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         'page_title', 'rendered_content', 'signature', 'previous', 'next', 'categories',
         'albums', 'categories_label', 'albums_label', 'author', 'colophon', 'photo_count', 'photo_count_display', 'comment_count', 'comment_count_display', 'like_count', 'like_count_display', 'word_count', 'comments_enabled',
         'show_titles', 'blogroll_groups', 'taxonomy', 'groups', 'puzzle_items', 'fragment', 'autoopen',
-        'first', 'last', 'next_page', 'is_homepage', 'sort', 'sort_options', 'album', 'filmstrip', 'community', 'mosaic_blocks'];
+        'first', 'last', 'next_page', 'is_homepage', 'sort', 'sort_options', 'album', 'filmstrip', 'community', 'mosaic_blocks', 'about_url'];
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'base_style_url', 'skin_variant_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',

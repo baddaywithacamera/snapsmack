@@ -15,6 +15,7 @@ foreach(['photogram','onyx'] as $skin){
  if($skin==='photogram'){
   foreach(['pg-profile-header','pg-profile-stats','pg-grid-cell','pg-nav'] as $hook)if(!str_contains($html,$hook))throw new RuntimeException("PHOTOGRAM lost its {$hook} presentation structure.");
   foreach(['aria-label="Home"','aria-label="Browse photographs"','aria-label="Search"','aria-label="About"','pg-icon-outline','pg-icon-filled'] as $hook)if(!str_contains($html,$hook))throw new RuntimeException("PHOTOGRAM lost its screenshot navigation contract: {$hook}.");
+  if(!str_contains($html,'href="/about"'))throw new RuntimeException('PHOTOGRAM About destination was not resolved by core.');
   foreach(['>Discover<','>Create<','id="pg-discover"','pg-nav-create'] as $invention)if(str_contains($html,$invention))throw new RuntimeException("PHOTOGRAM restored an unrequested text control: {$invention}.");
   $photogramCss=(string)file_get_contents($dir.'/style.css');
   if(!str_contains($photogramCss,'.pg-grid-cell {')||!str_contains($photogramCss,'aspect-ratio: var(--pg-tile-aspect, 1 / 1)')||!str_contains($photogramCss,'.pg-grid-cell img')||!str_contains($photogramCss,'object-fit: cover'))throw new RuntimeException('PHOTOGRAM lost configurable non-square INSTANT CAMERA tile framing.');
