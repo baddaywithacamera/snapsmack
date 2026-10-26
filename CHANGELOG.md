@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.953D - 2026-10-26 - NOTHING WAS LISTENING
+
 ### Queued for 0.7.953D
 
 - Desktop automation: structured CLI entry points for GYSS, SYBU, SNAP SLAPPER / LEWK AGAIN, COLD SNAP, SHOTS FIRED, SUYB and SMACKPRESS; source design/render CLI and native package commands for OH SNAP. Commands reuse existing services, retain device authorization, and do not fall back to paid AI generation. Usage and current scope: `tools/DESKTOP-CLI.md`.
