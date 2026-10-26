@@ -1348,6 +1348,11 @@
         "predicates": 1,
         "thresholds": []
     },
+    "smacktalk-archive-search-regression.php": {
+        "assertions": 20,
+        "predicates": 17,
+        "thresholds": []
+    },
     "smacktalk-family-v2-regression.php": {
         "assertions": 16,
         "predicates": 21,
