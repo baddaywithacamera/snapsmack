@@ -419,6 +419,15 @@
             200
         ]
     },
+    "font-size-slider-regression.php": {
+        "assertions": 6,
+        "predicates": 4,
+        "thresholds": [
+            2,
+            45,
+            45
+        ]
+    },
     "forum-board-counter-regression.php": {
         "assertions": 11,
         "predicates": 8,
