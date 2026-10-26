@@ -11,8 +11,8 @@
         "paragraphs": 1,
         "links": 6,
         "headings": 1,
-        "words": 146,
-        "text_sha256": "0a60f89acfd41edd4b301a4f6ac875a224c252dd030dc2e9747abcf24307e05b"
+        "words": 149,
+        "text_sha256": "8dc23c1937f06ef57aa7f29b5e2547f97bfa141bdf5b25c70c3920be5185b4e7"
     },
     "50-shades-of-noah-grey/landing": {
         "images": [
@@ -26,8 +26,8 @@
         "paragraphs": 1,
         "links": 6,
         "headings": 1,
-        "words": 146,
-        "text_sha256": "0a60f89acfd41edd4b301a4f6ac875a224c252dd030dc2e9747abcf24307e05b"
+        "words": 149,
+        "text_sha256": "8dc23c1937f06ef57aa7f29b5e2547f97bfa141bdf5b25c70c3920be5185b4e7"
     },
     "50-shades-of-noah-grey/not_found": {
         "images": [],
@@ -38,8 +38,8 @@
         "paragraphs": 1,
         "links": 2,
         "headings": 1,
-        "words": 145,
-        "text_sha256": "82106e691bf7e05fa1df3e4a64424f93f0f7eab214bc06da285cf31af56ad644"
+        "words": 148,
+        "text_sha256": "616daefef137d0e2e283d1d7e6139db702452e037f1c0abde43a5a8bdcb02026"
     },
     "50-shades-of-noah-grey/page": {
         "images": [
@@ -52,8 +52,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 2,
-        "words": 147,
-        "text_sha256": "4f0f6e4bab0535c3ec9e7576bbe42cbd2c5f66d0543d9a811cb9fbb8f8d2a1fc"
+        "words": 150,
+        "text_sha256": "bc1ce4336dfcb0cc45259b0a140236cff1021ac506a115f9c4379d62078ad3e9"
     },
     "50-shades-of-noah-grey/photo": {
         "images": [
@@ -66,8 +66,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 2,
-        "words": 156,
-        "text_sha256": "84353ad45787f2c2eb3ced4d253fbf35948228232bf17e118216cfde5ac85280"
+        "words": 159,
+        "text_sha256": "625df2b61772b440e2b60010fa7f9cc77ec9b6527a163c154bc691827b5f0bae"
     },
     "50-shades-of-noah-grey/post": {
         "images": [],
@@ -78,8 +78,8 @@
         "paragraphs": 3,
         "links": 3,
         "headings": 2,
-        "words": 155,
-        "text_sha256": "7e1f573ec33e1ebe258696fb2280a2a62c207ec0806fd899fcaf08af6aa01581"
+        "words": 158,
+        "text_sha256": "295409e592551d8659bb09db2a2d4f068e35dee864c977381312b9f3ed1be9fd"
     },
     "50-shades-of-noah-grey/post-mixed": {
         "images": [
@@ -92,8 +92,8 @@
         "paragraphs": 5,
         "links": 3,
         "headings": 2,
-        "words": 174,
-        "text_sha256": "95885a042076a46df0df7d03b22ea7b05aee22699323dfed8e9ab5b8dbab6914"
+        "words": 177,
+        "text_sha256": "61fb7e17642015cc2392442009ad80fbc7877317908629dba04656aceece8efd"
     },
     "52-card-pickup/archive": {
         "images": [

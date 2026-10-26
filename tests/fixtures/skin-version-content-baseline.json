@@ -3,7 +3,7 @@
     "purpose": "One published skin version must mean exactly one set of files. A site installs a skin BY VERSION, so if two different file-states ship under one number, the sites that took the first are frozen on it and no CMS release can move them. That is what left photowalk.ing running the 0.7.850D 50 SHADES layout while reporting the same 1.5.2 as the repaired one. Change any skin file and change its version in the same commit, then regenerate this file.",
     "skins": {
         "50-shades-of-noah-grey": {
-            "version": "1.7.6",
+            "version": "1.7.7",
             "files_sha256": "d1ffe0d1adf9cee1642be8f0f947dd7862994249a4913d6a11692bb0c8376f85"
         },
         "52-card-pickup": {
