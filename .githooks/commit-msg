@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""
+Commit-msg hook — a commit that says "restore" must name what it restores.
+
+OPAUDIT 026, step 3. In the fortnight to 25 October 2026, 32 commits on dev
+said they were restoring something. Nothing checked whether they did.
+
+The worked example is b0e1eb09, "Restore Photogram and Slickr presentation
+skeletons". It cut a page template from 1,635 characters to 285 and left it
+that way for four weeks. It was written in good faith and read as a repair by
+everyone, including the person who wrote it, because the word "restore" was
+doing the work that evidence should have been doing.
+
+So: if the subject line says restore / restores / restored / restoring /
+put back / bring back / brought back / bringing back, the message must carry
+
+    Restores: <sha>
+
+and that sha must exist and must have touched at least one file this commit
+touches. If it does not, the word is unsupported and the commit is refused.
+
+Rebuilding something from scratch is a perfectly good thing to do. It is just
+not restoring. Say "rebuild", "re-add", "reinstate from scratch", or write
+what actually happened, and this hook has nothing to say.
+
+Several trailers are allowed, one sha each:
+
+    Restores: b0e1eb09
+    Restores: d5a56c69
+
+What this does NOT cover: it proves the named commit is real and overlaps this
+one. It cannot prove the content is genuinely back -- that is what
+tests/skin-render-snapshot-regression.php is for.
+
+Install once:  php tools/install-hooks.php
+"""
+
+import re
+import subprocess
+import sys
+
+CLAIM = re.compile(
+    r'\b(restore[sd]?|restoring|puts? back|put back|putting back'
+    r'|brings? back|bring back|brought back|bringing back)\b',
+    re.IGNORECASE
+)
+TRAILER = re.compile(r'^\s*Restores:\s*([0-9a-fA-F]{7,40})\s*$', re.MULTILINE)
+
+
+def git(args):
+    return subprocess.run(['git'] + args, capture_output=True, text=True)
+
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        return 0
+    with open(sys.argv[1], 'r', encoding='utf-8', errors='replace') as fh:
+        message = fh.read()
+
+    # Everything up to the first blank line is the subject; comment lines that
+    # git strips are not part of what anybody reads.
+    body_lines = [l for l in message.splitlines() if not l.startswith('#')]
+    subject = body_lines[0].strip() if body_lines else ''
+
+    # A merge or revert commit carries a message git wrote, not a claim.
+    if subject.startswith('Merge ') or subject.startswith('Revert '):
+        return 0
+    if not CLAIM.search(subject):
+        return 0
+
+    shas = TRAILER.findall(message)
+    problems = []
+
+    if not shas:
+        problems.append(
+            'The subject line claims a restore:\n'
+            f'      {subject}\n'
+            '  but the message carries no  Restores: <sha>  trailer, so nothing says\n'
+            '  what is being put back or where it went.'
+        )
+    else:
+        touched = git(['diff', '--cached', '--name-only']).stdout.split()
+        for sha in shas:
+            exists = git(['cat-file', '-e', sha + '^{commit}'])
+            if exists.returncode != 0:
+                problems.append(f'Restores: {sha} -- no such commit in this repository.')
+                continue
+            then = git(['show', '--pretty=format:', '--name-only', sha]).stdout.split()
+            overlap = sorted(set(then) & set(touched))
+            if not overlap:
+                problems.append(
+                    f'Restores: {sha} -- that commit touched none of the files this one does.\n'
+                    f'      this commit: {", ".join(touched[:6]) or "(nothing staged)"}\n'
+                    '  Either name the commit the content actually came from, or say\n'
+                    '  "rebuild" instead of "restore" -- a rebuild is a fine thing to do.'
+                )
+
+    if problems:
+        print('\n\033[31m[commit-msg] UNSUPPORTED RESTORE CLAIM -- commit blocked\033[0m')
+        for problem in problems:
+            print('  - ' + problem)
+        print(
+            '\n  Add a trailer naming the commit the content comes back from:\n'
+            '      Restores: <sha>\n'
+            '  Worked example of why: b0e1eb09 "Restore Photogram and Slickr\n'
+            '  presentation skeletons" cut a page template from 1,635 characters\n'
+            '  to 285 and stayed that way for four weeks.\n'
+        )
+        return 1
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
+# ===== SNAPSMACK EOF =====
