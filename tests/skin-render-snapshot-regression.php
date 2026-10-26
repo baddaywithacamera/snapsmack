@@ -162,7 +162,14 @@ function snapshot_matches(string $html, string $pattern): array
 /** The small set of facts worth holding somebody to. */
 function snapshot_fingerprint(string $html): array
 {
-    $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    // strip_tags drops the tags but KEEPS what is between <style> and <script>,
+    // so a stylesheet rule counted as page text: adding one font-weight control
+    // to a manifest moved the word count 174 -> 177 and changed the text hash on
+    // a page whose words had not changed at all. A gate that cries wolf on every
+    // CSS edit teaches people to --update without reading, which is the exact
+    // habit it exists to prevent.
+    $visible = (string)preg_replace('#<(style|script)[^>]*>.*?</>#is', ' ', $html);
+    $text = html_entity_decode(strip_tags($visible), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $text = trim((string)preg_replace('/\s+/u', ' ', $text));
     return [
         'images'      => snapshot_matches($html, '/<img[^>]+src="([^"]*)"/i'),
