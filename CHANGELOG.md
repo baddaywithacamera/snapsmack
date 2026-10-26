@@ -13,6 +13,12 @@
 
 - **Every skin's rendered page is now compared against the last one somebody approved.** The release suite already rendered each skin against each page kind, then asked only whether the result was HTML — so a page could lose its paragraphs, its date, its stylesheet, or swap a photograph for a cropped version of itself and still report a pass. `tests/skin-render-snapshot-regression.php` keeps the page instead of discarding it: for each of 125 skin-and-page combinations it records which images and stylesheets appear, how many paragraphs, links and headings, and a hash of the visible words, and fails when any of that changes without the fixture being updated on purpose. Output is still free to change; changing it silently is not. Written up as OPAUDIT 026.
 
+## 0.7.950D - 2026-10-25 - THE TABLETOP FLOATS
+
+- **ORGANIZED MAYHEM uses its known-good scattered tabletop again.** The later one-shot coverage grid enlarged 400px thumbnails into a regular oversized arrangement and made the background look soft. The original region scatter, overlap handling and coherent whole-wall float are restored. Prints retain their fixed, moderate `rotateX`/`rotateY` physical warp, but never wobble or move independently of their neighbours. The 400px aspect-preserving thumbnail source remains unchanged for performance.
+
+- **Small SMACKTALK inline images honour the shortcode's display width.** The shared frame no longer shrink-wraps an imported image to its small source dimensions; it scales proportionally to the requested frame width. Dither-oriented print skins retain their configurable crisp `image-rendering` override.
+
 ## 0.7.949D - 2026-10-25 - PARAGRAPHS STAY PUT
 
 - **SMACKTALK paragraphs on either side of inline photographs keep their spacing.** The block-nesting cleanup could begin at an earlier valid paragraph, cross its closing tag while searching for a later image, and unwrap the entire range. Its match is now bounded to a single paragraph, with a regression covering paragraph → photograph → paragraph and mixed same-paragraph content.
