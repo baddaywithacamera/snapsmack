@@ -75,6 +75,7 @@ $renderHelpers=(string)file_get_contents($root.'/core/skin-render-helpers.php');
 foreach(['gram-page','ic-scrim','pa-parade-bg','go-puzzle-field'] as $leakedSkeleton)if(str_contains($renderHelpers,$leakedSkeleton))throw new RuntimeException("CMS render helpers retain grid-family skeleton: {$leakedSkeleton}");
 $instantCameraCss=(string)file_get_contents($root.'/skins/instant-camera/style.css');
 if(!preg_match('/body\s*\{[^}]*isolation:\s*isolate\s*;/s',$instantCameraCss)) throw new RuntimeException('Instant Camera lost its bounded stacking context.');
+if(!str_contains($instantCameraCss,'.tg-tile img')||!str_contains($instantCameraCss,'object-fit: contain !important')) throw new RuntimeException('Instant Camera no longer preserves whole print scans.');
 foreach(['.ic-bg'=>0,'.ic-scrim'=>1,'.ic-panel'=>2,'.tg-content-wrap'=>3] as $selector=>$layer){
     if(!preg_match('/'.preg_quote($selector,'/').'\s*\{[^}]*z-index:\s*'.preg_quote((string)$layer,'/').'\s*;/s',$instantCameraCss)) throw new RuntimeException("Instant Camera backdrop layer {$selector} lost its z-index contract.");
 }
