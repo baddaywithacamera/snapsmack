@@ -33,7 +33,6 @@ $pdo = new PreviewFixturePDO();
 $settings = ['active_skin' => 'tilez', 'site_name' => 'Preview fixture', 'site_author' => 'Photographer', 'site_url' => BASE_URL];
 $html = snapsmack_admin_content_preview($pdo, $settings, ['preview_kind' => 'post', 'title' => 'UNSAVED TITLE',
     'content' => '<p>Unsaved paragraph.</p>[mosaic:489]', 'post_id' => 0]);
-file_put_contents(dirname(__DIR__) . '/.codex-temp/desktop-cli/actual-post-preview.html', $html);
 foreach (['class="post-content', 'class="post-record', 'UNSAVED TITLE', 'Unsaved paragraph.', 'snap-mosaic',
           'ss-engine-mosaic.js', 'ss-engine-mosaic.css', 'ss-engine-lightbox.js', 'PREVIEW — NOT PUBLISHED'] as $required) {
     if (!str_contains($html, $required)) throw new RuntimeException('Missing actual preview component: ' . $required);
