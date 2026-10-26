@@ -81,9 +81,16 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
         if (($settings['archive_layout'] ?? 'square') === 'none') {
             return ['handled' => true, 'redirect' => $base];
         }
-        return ['handled' => true, 'kind' => 'archive', 'page_title' => 'ARCHIVE',
+        // The search box every SMACKTALK skin draws posts ?q= at this route and
+        // nothing here had ever read it, so the archive answered every search
+        // with the whole library.
+        $archiveSearch = trim((string)($request['search'] ?? ''));
+        return ['handled' => true, 'kind' => 'archive',
+            'page_title' => $archiveSearch === '' ? 'ARCHIVE' : 'SEARCH',
+            'search_term' => $archiveSearch === '' ? null : $archiveSearch,
             'tiles' => snapsmack_smacktalk_archive_tiles(
-                $pdo, $base, max(0, (int)($request['category'] ?? 0)), max(0, (int)($request['album'] ?? 0))
+                $pdo, $base, max(0, (int)($request['category'] ?? 0)), max(0, (int)($request['album'] ?? 0)),
+                $archiveSearch
             )];
     }
 
@@ -191,10 +198,10 @@ function snapsmack_smacktalk_blogroll(PDO $pdo): array
     return ['blogroll_groups' => $bounded];
 }
 
-function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base, int $categoryId = 0, int $albumId = 0): array
+function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base, int $categoryId = 0, int $albumId = 0, string $search = ''): array
 {
     try {
-        $images = (new SnapPublicRepository($pdo))->archivePhotographs(10000, 0, $categoryId, $albumId);
+        $images = (new SnapPublicRepository($pdo))->archivePhotographs(10000, 0, $categoryId, $albumId, $search);
     } catch (Throwable $e) { return []; }
 
     $tiles = [];

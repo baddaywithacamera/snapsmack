@@ -231,6 +231,28 @@ function snapsmack_declared_skin_options(array $settings, string $skinSlug): arr
         }
         $out[$key] = substr(trim((string)$value), 0, 500);
     }
+
+    // Every font control in Skin Admin draws a size slider beneath it, named
+    // <key>_size (or the manifest's sz_key_override). The slider saves like any
+    // other control and snapsmack_declared_skin_style() already looks for it --
+    // but it only looks inside this array, and this loop only carries keys the
+    // manifest declares as options. Forty-five sliders across thirteen skins use
+    // a key no manifest declares, so the value was written on every save and read
+    // by nothing: the font changed and its size never did. Carry the saved number
+    // here, clamped to the slider's own range, so the control does what it says.
+    foreach ($manifest['options'] as $key => $definition) {
+        if (!is_array($definition) || isset($out[$key . '_size'])) continue;
+        $isFont = (($definition['property'] ?? '') === 'font-family') || !empty($definition['is_font']);
+        if (!$isFont || !empty($definition['no_size_slider'])) continue;
+        $sizeKey = (string)($definition['sz_key_override'] ?? ($key . '_size'));
+        if (isset($manifest['options'][$sizeKey])) continue;   // declared; already carried
+        if (!array_key_exists($sizeKey, $settings) || !is_numeric($settings[$sizeKey])) continue;
+        $range = is_array($definition['size'] ?? null) ? $definition['size'] : [];
+        $min = is_numeric($range['min'] ?? null) ? (float)$range['min'] : 0.5;
+        $max = is_numeric($range['max'] ?? null) ? (float)$range['max'] : 4.0;
+        $out[$sizeKey] = max($min, min($max, (float)$settings[$sizeKey]));
+    }
+
     return $out;
 }
 
@@ -446,10 +468,24 @@ function snapsmack_declared_skin_style(string $skinSlug, array $options): string
         foreach ($properties as $name) $declarations[] = $name . ':' . $cssValue;
         $rules[] = $selector . '{' . implode(';', $declarations) . ';}';
 
-        if ($property === 'font-family' && empty($definition['no_size_slider'])) {
-            $sizeKey = $key . '_size';
+        // The size slider under a font control. Two things were wrong here.
+        // The key was assumed to be <key>_size, which ignores the manifest's
+        // sz_key_override and dropped CHAPLIN's six sliders outright. And a
+        // skin whose font is a CSS variable (--chap-title-font) reads the
+        // number through its sibling variable, not through a font-size rule:
+        // style.css asks for calc(var(--chap-title-size, 11) * 0.1rem) and
+        // nothing has ever set that variable, so every CHAPLIN font size has
+        // been the fallback in the calc.
+        $isFontControl = $property === 'font-family' || !empty($definition['is_font']);
+        if ($isFontControl && empty($definition['no_size_slider'])) {
+            $sizeKey = (string)($definition['sz_key_override'] ?? ($key . '_size'));
             if (array_key_exists($sizeKey, $options)) {
-                $rules[] = $selector . '{font-size:' . (string)$options[$sizeKey] . 'rem;}';
+                $sizeValue = (string)$options[$sizeKey];
+                if (str_starts_with($property, '--') && str_ends_with($property, '-font')) {
+                    $rules[] = $selector . '{' . substr($property, 0, -5) . '-size:' . $sizeValue . ';}';
+                } else {
+                    $rules[] = $selector . '{font-size:' . $sizeValue . 'rem;}';
+                }
             }
         }
     }
