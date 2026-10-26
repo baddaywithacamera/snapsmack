@@ -11,13 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
-<<<<<<< HEAD
 ### Queued for 0.7.953D
 
 - Desktop automation: structured CLI entry points for GYSS, SYBU, SNAP SLAPPER / LEWK AGAIN, COLD SNAP, SHOTS FIRED, SUYB and SMACKPRESS; source design/render CLI and native package commands for OH SNAP. Commands reuse existing services, retain device authorization, and do not fall back to paid AI generation. Usage and current scope: `tools/DESKTOP-CLI.md`.
 - Mosaic management: find a mosaic by numeric ID, `[mosaic:ID]` shortcode or title, with a clear empty-result message.
 - Full editor preview: use the active skin's actual presentation and registered mosaic/lightbox engines instead of the substitute plain-content page. Longform previews include the unsaved title, body, cover and date without saving or publishing.
-=======
+
 - **The release gate stops blocking on things that cannot reach a release.** `tools/release-flow.php` read the whole repository for uncommitted work. In a shared checkout that means a half-finished desktop tool, an audit still being written, or SMACK CENTRAL -- which reaches sites through its own self-updater, never through the CMS zip -- refuses a CMS release none of them can affect. It did that twice in one evening on 2026-10-26, and the message said only "working tree is not clean", naming nothing, so the only way to find out what was blocking was to run `git status` by hand. The check now splits the dirty paths: anything that ships still blocks, including `tools/_build/` and `release-flow.php` itself, because a release cut with an edited builder is exactly the thing worth stopping; `tools/`, `smack-central/`, `opaudits/`, `outputs/`, `projects/` and `_spec/` are reported as left alone. Refusals now list the files. `release-flow.php status` lists them too, so you can see it before you try.
 
 - **The gate note is a command instead of hand-written JSON.** `php tools/release-flow.php gate-note --security=pass --parity=pass --skin-render-parity=pass --authority=approved` derives the commit, the skin count and the skin inventory hash, writes the note, and then proves it with the same check the tag uses. The four judgements are not inferred and the command refuses without all four, because a gate that signs itself is not a gate. Typing one of the derived fields wrong used to refuse the tag with a message about a JSON field rather than about the release.
@@ -31,7 +30,6 @@
   **A size you set months ago starts applying when this installs.** Nothing is being changed for you; the control is doing what its label says for the first time. `php tools/skin-setting-trace.php <skin>` prints every slider and the value it holds, so you can look before you install.
 
 - **A read-only way to see where a skin setting stops.** `tools/skin-setting-trace.php` prints, for every option a skin declares, the scoped row, the bare row, the manifest default and what the page actually receives, and names any control that stored a value the page never gets. It writes nothing. It exists because a control can look saved in Skin Admin and still arrive as the default, and until now nothing in between said so.
->>>>>>> Github/dev
 
 ## 0.7.952D - 2026-10-26 - SHOW YOUR FACE
 
