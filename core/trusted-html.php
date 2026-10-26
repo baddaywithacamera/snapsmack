@@ -241,8 +241,10 @@ function snapsmack_photo_description_html(string $content): SnapTrustedHtml
     } else {
         // Conservative fallback for PHP builds without DOM.
         $content = preg_replace_callback(
-            '~(?:^|(?<=</(?:div|section|figure|table|details)>))([^<].*?)(?=<(?:p|div|section|blockquote|ul|ol|pre|h[1-6]|figure|table|details)\b|$)~is',
-            static fn(array $match): string => trim($match[1]) === '' ? $match[1] : '<p>' . preg_replace('/\n+/', '<br>', trim($match[1])) . '</p>',
+            '~(^|</(?:div|section|figure|table|details)>)([^<].*?)(?=<(?:p|div|section|blockquote|ul|ol|pre|h[1-6]|figure|table|details)\b|$)~is',
+            static fn(array $match): string => $match[1] . (trim($match[2]) === ''
+                ? $match[2]
+                : '<p>' . preg_replace('/\n+/', '<br>', trim($match[2])) . '</p>'),
             $content
         ) ?? $content;
     }
