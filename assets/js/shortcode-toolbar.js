@@ -245,6 +245,21 @@
         input.value = textarea.value;
         form.appendChild(input);
 
+        // The preview uses the real post template and needs the current unsaved
+        // title/cover/date as well as the body. No editor save is performed.
+        var editorForm = textarea.closest('form');
+        var values = editorForm ? new FormData(editorForm) : null;
+        ['title', 'post_id', 'featured_image_id', 'post_date'].forEach(function (name) {
+            if (!values || !values.has(name)) return;
+            var field = document.createElement('input');
+            field.type = 'hidden'; field.name = name; field.value = values.get(name);
+            form.appendChild(field);
+        });
+        var kind = document.createElement('input');
+        kind.type = 'hidden'; kind.name = 'preview_kind';
+        kind.value = textarea.id === 'long-content' ? 'post' : 'page';
+        form.appendChild(kind);
+
         document.body.appendChild(form);
         form.submit();
         document.body.removeChild(form);

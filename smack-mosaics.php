@@ -228,7 +228,20 @@ if ($is_ajax && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']
 }
 
 // --- PAGE LOAD ---
-$mosaics = $pdo->query("SELECT * FROM snap_mosaics ORDER BY updated_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+$mosaic_search = is_string($_GET['q'] ?? null) ? mb_substr(trim($_GET['q']), 0, 200) : '';
+if ($mosaic_search === '') {
+    $mosaics = $pdo->query("SELECT * FROM snap_mosaics ORDER BY updated_at DESC, id DESC")->fetchAll(PDO::FETCH_ASSOC);
+} elseif (preg_match('/^(?:#?(\d+)|\[mosaic:(\d+)\])$/i', $mosaic_search, $mosaic_match)) {
+    $mosaic_search_id = (int)($mosaic_match[1] !== '' ? $mosaic_match[1] : $mosaic_match[2]);
+    $stmt = $pdo->prepare("SELECT * FROM snap_mosaics WHERE id = ? ORDER BY updated_at DESC, id DESC");
+    $stmt->execute([$mosaic_search_id]);
+    $mosaics = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    $mosaic_search_pattern = '%' . str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $mosaic_search) . '%';
+    $stmt = $pdo->prepare("SELECT * FROM snap_mosaics WHERE title LIKE ? ESCAPE '!' ORDER BY updated_at DESC, id DESC");
+    $stmt->execute([$mosaic_search_pattern]);
+    $mosaics = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
 $editing = null;
 if (!empty($_GET['edit'])) {
@@ -965,9 +978,25 @@ include 'core/sidebar.php';
         <a href="smack-mosaics.php?new=1"><button type="button">+ NEW MOSAIC</button></a>
     </div>
 
+    <form method="get" action="smack-mosaics.php" class="box">
+        <label for="mosaic-search">FIND A MOSAIC — ID, SHORTCODE OR TITLE</label>
+        <input type="search" id="mosaic-search" name="q" maxlength="200" class="w-100"
+               value="<?php echo htmlspecialchars($mosaic_search, ENT_QUOTES, 'UTF-8'); ?>"
+               placeholder="489, [mosaic:489], or part of a title">
+        <button type="submit">SEARCH</button>
+        <?php if ($mosaic_search !== ''): ?>
+            <a href="smack-mosaics.php" class="btn-secondary">CLEAR SEARCH</a>
+            <p class="dim"><?php echo count($mosaics); ?> matching mosaic<?php echo count($mosaics) === 1 ? '' : 's'; ?>.</p>
+        <?php endif; ?>
+    </form>
+
     <?php if (empty($mosaics)): ?>
         <div class="box">
+            <?php if ($mosaic_search !== ''): ?>
+            <p class="dim empty-notice">No mosaics match your search. Try an ID, a shortcode such as <code>[mosaic:489]</code>, or part of the title.</p>
+            <?php else: ?>
             <p class="dim empty-notice">No mosaics yet. Create one to embed tiled image panels in your posts and pages via <code>[mosaic:ID]</code>.</p>
+            <?php endif; ?>
         </div>
     <?php else: ?>
         <div class="box">
