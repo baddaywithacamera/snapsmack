@@ -113,7 +113,14 @@ foreach($gridModeCases as $skin=>$settings){$html=special_render($skin,$settings
 $chaplin = snapsmack_skin_presentation(['chap_line_count'=>'3','chap_line_1_width'=>'2','chap_line_2_width'=>'3','chap_line_3_width'=>'4','chap_line_gap'=>'5','chap_grain_intensity'=>'7'], 'chaplin');
 foreach (['--chap-frame-total:19px','--chap-grain-opacity:0.07','--chap-frame-stripes:linear-gradient'] as $value) special_check(str_contains((string)$chaplin['style'], $value), "CHAPLIN control missing: {$value}");
 $chaplinHtml = special_render('chaplin', ['chap_line_count'=>'3','chap_ornament_style'=>'D','chap_corner_ornaments'=>'1','chap_title_position'=>'below_photo','chap_card_style'=>'minimal','single_show_description'=>'0'], 'photo');
-foreach (['data-chap-card="minimal"','class="p-name photo-title-footer"','class="chap-frame-deco"','/skins/chaplin/assets/svg/D-corner.svg','class="chap-frame-lines"'] as $value) special_check(str_contains($chaplinHtml, $value), "CHAPLIN presentation missing: {$value}");
+// The single-photo title is the intertitle card -- rule, title, date, rule --
+// which is what skins/chaplin/style.css:775-805 draws. photo-title-footer was
+// asserted here and has NEVER had a rule in CHAPLIN's stylesheet, so this
+// assertion held the strict conversion's unstyled h1 in place. The centring
+// wrapper is asserted with it: #rg-photobox and .rg-photo-wrap carry the
+// max-width, the centring and the viewport height calc, and the single page
+// emitted neither, which is why its photograph sat flush against the left edge.
+foreach (['data-chap-card="minimal"','class="chap-intertitle-title p-name"','id="rg-photobox"','class="rg-photo-wrap"','class="chap-frame-deco"','/skins/chaplin/assets/svg/D-corner.svg','class="chap-frame-lines"'] as $value) special_check(str_contains($chaplinHtml, $value), "CHAPLIN presentation missing: {$value}");
 // The control gates the DESCRIPTION, not the navigation bar. This asserted the
 // absence of id="infobox", which is the nav bar's wrapper in every skin that
 // has one -- `<!-- INFOBOX (core navigation bar) -->` in CHAPLIN's own layout
