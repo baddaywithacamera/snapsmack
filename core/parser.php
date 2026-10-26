@@ -620,7 +620,12 @@ class SnapSmack {
     private function cleanBlockNesting($content) {
         // Match any <p> that contains a snap-inline-frame div
         $content = preg_replace_callback(
-            '/<p>(.*?<div class="snap-inline-frame[^"]*">.*?<\/div><\/div>.*?)<\/p>/si',
+            // Never cross an earlier </p> while looking for the frame. The old
+            // `.*?` could begin at a perfectly valid prose paragraph, walk
+            // through its closing tag to an image in the next paragraph, then
+            // unwrap the whole range. That left every post-image paragraph as
+            // anonymous text with no paragraph spacing.
+            '/<p>((?:(?!<\/p>).)*?<div class="snap-inline-frame[^"]*">.*?<\/div><\/div>(?:(?!<\/p>).)*)<\/p>/si',
             function ($matches) {
                 $inner = $matches[1];
 
