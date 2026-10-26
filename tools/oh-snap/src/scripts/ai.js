@@ -49,6 +49,9 @@ Rules:
 - user_css may contain CSS only: never scripts, remote URLs, @import, or server code.
 - required_scripts and required_styles may contain ONLY exact handles from the shared library.
 - If you're not sure which variables to change, make your best judgment.
+- Design CSS for the supplied starter HTML. You can change grids, image sizing, typography, framing, spacing and responsive layout with selectors. Do not invent markup, classes or interactive features.
+- required_scripts and required_styles must be empty arrays in this version. Additional engines need separately reviewed template hooks.
+- user_css is additional CSS appended after the current design. Do not use url(), @import, backslash escapes, external fonts, HTML or JavaScript. Use system fonts and CSS gradients.
 
 Available CSS variables for this skin:
 `;
@@ -67,7 +70,8 @@ Available CSS variables for this skin:
      *                               plainly it only has this skin's own variables.
      * @returns {Promise<Object>}    CSS variable overrides { '--var': 'val' }
      */
-    async function send(userMessage, variables, library, referenceImage = null) {
+    let conversation = [];
+    async function send(userMessage, variables, library, referenceImage = null, project = null) {
         const s        = OhSnapSettings.load();
         const provider = s.ai_provider;
 
@@ -75,16 +79,26 @@ Available CSS variables for this skin:
             throw new Error('No AI provider configured. Open Settings to add an API key.');
         }
 
+        conversation = (project?.ai_conversation || []).slice(-8);
+        const snapshot = {mode:project?.mode, overrides:project?.overrides || {}, user_css:(project?.user_css || '').slice(-30000), base_css:(project?.base_css || '').slice(0,15000)};
+        const markup = project?.source === 'connected' ? 'Connected CSS study: use the declared variables; export CSS for review on the real site.' : ['photo','archive','page'].map(kind => window.OH_SNAP_CONTRACT.previews[kind]).join('\n').slice(0,22000);
         const systemPrompt = _systemPromptBase + _formatVariableList(variables)
-                           + '\n\n' + _formatLibrary(library);
+                           + '\n\nCurrent design:\n' + JSON.stringify(snapshot) + '\n\nActual starter markup:\n' + markup;
+        const validate = async pending => {
+            const result = await pending;
+            result.overrides = OhSnapPolicy.normalizeOverrides(result.overrides || {}, variables);
+            OhSnapPolicy.validateCss(result.user_css || '');
+            OhSnapPolicy.validateDependencies(result);
+            return result;
+        };
 
         switch (provider) {
-            case 'claude':  return _callClaude(s, systemPrompt, userMessage, referenceImage);
-            case 'gemini':  return _callGemini(s, systemPrompt, userMessage, referenceImage);
-            case 'openai':  return _callOpenAI(s, systemPrompt, userMessage, referenceImage);
-            case 'deepseek': if (referenceImage) throw new Error('DeepSeek reference-image input is not enabled; choose Claude, Gemini, or OpenAI.'); return _callDeepSeek(s, systemPrompt, userMessage);
-            case 'kimi':    if (referenceImage) throw new Error('Kimi reference-image input is not enabled; choose Claude, Gemini, or OpenAI.'); return _callKimi(s, systemPrompt, userMessage);
-            case 'ollama':  if (referenceImage) throw new Error('This Ollama adapter is text-only; remove the image or choose a vision provider.'); return _callOllama(s, systemPrompt, userMessage);
+            case 'claude':  return validate(_callClaude(s, systemPrompt, userMessage, referenceImage));
+            case 'gemini':  return validate(_callGemini(s, systemPrompt, userMessage, referenceImage));
+            case 'openai':  return validate(_callOpenAI(s, systemPrompt, userMessage, referenceImage));
+            case 'deepseek': if (referenceImage) throw new Error('DeepSeek reference-image input is not enabled; choose Claude, Gemini, or OpenAI.'); return validate(_callDeepSeek(s, systemPrompt, userMessage));
+            case 'kimi':    if (referenceImage) throw new Error('Kimi reference-image input is not enabled; choose Claude, Gemini, or OpenAI.'); return validate(_callKimi(s, systemPrompt, userMessage));
+            case 'ollama':  if (referenceImage) throw new Error('This Ollama adapter is text-only; remove the image or choose a vision provider.'); return validate(_callOllama(s, systemPrompt, userMessage));
             default: throw new Error(`Unknown provider: ${provider}`);
         }
     }
@@ -94,7 +108,7 @@ Available CSS variables for this skin:
     async function _callClaude(s, system, userMsg, image) {
         if (!s.claude_key) throw new Error('Claude API key not set. Open Settings.');
 
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
+        const res = await _fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
                 'Content-Type':         'application/json',
@@ -103,10 +117,10 @@ Available CSS variables for this skin:
                 'anthropic-dangerous-direct-browser-access': 'true',
             },
             body: JSON.stringify({
-                model:      'claude-sonnet-4-6',
-                max_tokens: 2048,
+                model:      s.claude_model || 'claude-sonnet-4-6',
+                max_tokens: 4096,
                 system,
-                messages: [{ role: 'user', content: image ? [{ type:'image', source:{ type:'base64', media_type:image.type, data:image.base64 } }, { type:'text', text:userMsg }] : userMsg }],
+                messages: [...conversation, { role: 'user', content: image ? [{ type:'image', source:{ type:'base64', media_type:image.type, data:image.base64 } }, { type:'text', text:userMsg }] : userMsg }],
             }),
         });
 
@@ -120,15 +134,15 @@ Available CSS variables for this skin:
     async function _callGemini(s, system, userMsg, image) {
         if (!s.gemini_key) throw new Error('Gemini API key not set. Open Settings.');
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(s.gemini_key)}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(s.gemini_model || 'gemini-3.8-flash')}:generateContent`;
 
-        const res = await fetch(url, {
+        const res = await _fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': s.gemini_key },
             body: JSON.stringify({
                 systemInstruction: { parts: [{ text: system }] },
-                contents: [{ role: 'user', parts: image ? [{ inlineData:{ mimeType:image.type, data:image.base64 } }, { text:userMsg }] : [{ text: userMsg }] }],
-                generationConfig: { maxOutputTokens: 2048, temperature: 0.3 },
+                contents: [...conversation.map(turn=>({role:turn.role==='assistant'?'model':'user',parts:[{text:turn.content}]})), { role: 'user', parts: image ? [{ inlineData:{ mimeType:image.type, data:image.base64 } }, { text:userMsg }] : [{ text: userMsg }] }],
+                generationConfig: { maxOutputTokens: 8192, temperature: 0.3, responseMimeType: 'application/json' },
             }),
         });
 
@@ -142,17 +156,18 @@ Available CSS variables for this skin:
     async function _callOpenAI(s, system, userMsg, image) {
         if (!s.openai_key) throw new Error('OpenAI API key not set. Open Settings.');
 
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        const res = await _fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type':  'application/json',
                 'Authorization': `Bearer ${s.openai_key}`,
             },
             body: JSON.stringify({
-                model:      'gpt-4o',
-                max_tokens: 2048,
+                model:      s.openai_model || 'gpt-4o',
+                max_completion_tokens: 4096,
                 messages: [
                     { role: 'system', content: system },
+                    ...conversation,
                     { role: 'user', content: image ? [{type:'text',text:userMsg},{type:'image_url',image_url:{url:`data:${image.type};base64,${image.base64}`}}] : userMsg },
                 ],
             }),
@@ -168,18 +183,18 @@ Available CSS variables for this skin:
     async function _callDeepSeek(s, system, userMsg) {
         if (!s.deepseek_key) throw new Error('DeepSeek API key not set. Open Settings.');
 
-        const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        const res = await _fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type':  'application/json',
                 'Authorization': `Bearer ${s.deepseek_key}`,
             },
             body: JSON.stringify({
-                model:      'deepseek-chat',
-                max_tokens: 512,
+                model:      s.deepseek_model || 'deepseek-chat',
+                max_tokens: 4096,
                 messages: [
                     { role: 'system', content: system },
-                    { role: 'user',   content: userMsg },
+                    ...conversation, { role: 'user',   content: userMsg },
                 ],
             }),
         });
@@ -194,18 +209,18 @@ Available CSS variables for this skin:
     async function _callKimi(s, system, userMsg) {
         if (!s.kimi_key) throw new Error('Kimi API key not set. Open Settings.');
 
-        const res = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+        const res = await _fetch('https://api.moonshot.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type':  'application/json',
                 'Authorization': `Bearer ${s.kimi_key}`,
             },
             body: JSON.stringify({
-                model:      'kimi-latest',
-                max_tokens: 512,
+                model:      s.kimi_model || 'kimi-latest',
+                max_tokens: 4096,
                 messages: [
                     { role: 'system', content: system },
-                    { role: 'user',   content: userMsg },
+                    ...conversation, { role: 'user',   content: userMsg },
                 ],
             }),
         });
@@ -221,15 +236,16 @@ Available CSS variables for this skin:
         const endpoint = (s.ollama_endpoint || 'http://localhost:11434').replace(/\/$/, '');
         const model    = s.ollama_model || 'llama3';
 
-        const res = await fetch(`${endpoint}/api/generate`, {
+        if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(endpoint)) throw new Error('Ollama must use a local localhost or 127.0.0.1 endpoint.');
+        const res = await _fetch(`${endpoint}/api/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 model,
                 system,
-                prompt: userMsg,
+                prompt: [...conversation.map(turn=>`${turn.role}: ${turn.content}`),`user: ${userMsg}`].join('\n'),
                 stream: false,
-                options: { num_predict: 512, temperature: 0.3 },
+                options: { num_predict: 4096, temperature: 0.3 },
             }),
         });
 
@@ -241,6 +257,10 @@ Available CSS variables for this skin:
     }
 
     // --- UTILS ---
+    async function _fetch(url, options) {
+        try { return await fetch(url, {...options, redirect:'error', signal:AbortSignal.timeout(120000)}); }
+        catch(err) { if(err.name==='TimeoutError'||err.name==='AbortError') throw new Error('AI request timed out after two minutes. Your design is unchanged.'); throw new Error(`AI connection failed: ${err.message}`); }
+    }
 
     /**
      * Parse a model response into a CSS override object.
@@ -253,24 +273,24 @@ Available CSS variables for this skin:
 
         // Extract the first {...} block in case there's prose around it
         const match = clean.match(/\{[^]*\}/);
-        if (!match) return {};
+        if (!match) throw new Error('AI returned no design JSON. Try again; the current design is unchanged.');
 
         try {
             const obj = JSON.parse(match[0]);
+            if (!obj || Array.isArray(obj) || typeof obj !== 'object') throw new Error('Expected a design object.');
             const rawOverrides = obj.overrides && typeof obj.overrides === 'object' ? obj.overrides : obj;
             // Filter: only CSS custom properties with plausible values
             const safe = {};
             Object.entries(rawOverrides).forEach(([k, v]) => {
-                if (typeof k === 'string' && /^--[a-z][a-z0-9-]*$/i.test(k) &&
-                    typeof v === 'string' && !/[;<>{}]/.test(v)) {
+                if (typeof k === 'string' && k.startsWith('--')) {
                     safe[k] = v;
                 }
             });
-            const userCss = typeof obj.user_css === 'string' && !/@import|https?:|<script|javascript:/i.test(obj.user_css) ? obj.user_css : '';
-            const handles = value => Array.isArray(value) ? value.filter(x => typeof x === 'string' && /^[a-z0-9._-]+$/i.test(x)) : [];
+            const userCss = typeof obj.user_css === 'string' ? obj.user_css : '';
+            const handles = value => Array.isArray(value) ? value.filter(x => typeof x === 'string') : [];
             return { overrides: safe, user_css: userCss, required_scripts: handles(obj.required_scripts), required_styles: handles(obj.required_styles), summary: typeof obj.summary === 'string' ? obj.summary.slice(0,200) : 'AI design' };
         } catch {
-            return { overrides:{}, user_css:'', required_scripts:[], required_styles:[], summary:'No valid design returned' };
+            throw new Error('AI returned incomplete or invalid design JSON. Try a smaller change; the current design is unchanged.');
         }
     }
 

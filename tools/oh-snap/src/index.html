@@ -16,8 +16,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy"
-          content="default-src 'self' tauri: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; img-src 'self' data: blob: https:;">
-    <title>Oh Snap!</title>
+          content="default-src 'self' tauri: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https: http://localhost:* http://127.0.0.1:*; img-src 'self' data: blob: https:;">
+    <title>OH SNAP! 0.3.1</title>
     <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
@@ -41,14 +41,14 @@
             <div class="start-actions">
                 <button type="button" id="btn-new-offline" class="btn btn-primary">New Offline Skin</button>
                 <button type="button" id="btn-open-project" class="btn">Open Project</button>
+                <button type="button" id="btn-resume-draft" class="btn">Resume Last Draft</button>
             </div>
             <div class="field offline-mode-field">
                 <label for="offline-mode">New project type</label>
                 <select id="offline-mode">
                     <option value="SMACKONEOUT">SMACKONEOUT — single-photo blog</option>
-                    <option value="GRAMOFSMACK">GRAMOFSMACK — carousel/grid blog</option>
+                    <option value="GRAMOFSMACK">GRAMOFSMACK / SMACKTHEMUP — shared gallery skin</option>
                     <option value="SMACKTALK">SMACKTALK — long-form blog</option>
-                    <option value="FEDISTRUCTURE">FEDISTRUCTURE — hub/spoke 4.0</option>
                 </select>
             </div>
             <p class="field-hint start-hint">No site, photos, or AI account required.</p>
@@ -158,6 +158,9 @@
             </div>
             <div class="tab-panel" id="tab-content">
                 <div class="content-lab">
+                    <div class="field"><label for="skin-slug">Skin folder name</label><input id="skin-slug" placeholder="my-new-skin"></div>
+                    <div class="field"><label for="skin-author">Skin author</label><input id="skin-author" placeholder="Your name"></div>
+                    <div class="field"><label for="skin-version">Skin version</label><input id="skin-version" value="0.1.0"></div>
                     <div class="field"><label for="fixture-site-name">Site name</label><input id="fixture-site-name" value="My Photo Blog"></div>
                     <div class="field"><label for="fixture-post-title">Lead title</label><input id="fixture-post-title" value="The Long Way Home"></div>
                     <div class="field"><label for="fixture-caption">Lead caption</label><textarea id="fixture-caption">A quiet road, late light, and enough time to notice.</textarea></div>
@@ -204,6 +207,7 @@
                     <button class="preview-view-btn active" data-view="post">Post</button>
                     <button class="preview-view-btn" data-view="archive">Archive</button>
                     <button class="preview-view-btn" data-view="landing">Landing</button>
+                    <button class="preview-view-btn" data-view="page">Page</button>
                 </div>
 
                 <button type="button" class="toolbar-btn" id="btn-open-browser" title="Open in browser">
@@ -214,7 +218,7 @@
             <!-- The preview iframe -->
             <div class="preview-frame-wrap" id="preview-wrap">
                 <iframe id="preview-frame" class="preview-frame"
-                        sandbox="allow-same-origin allow-scripts"
+                        sandbox="allow-same-origin"
                         title="Skin preview"></iframe>
                 <div class="preview-placeholder" id="preview-placeholder">
                     <p>Choose New Offline Skin or connect to a site.</p>
@@ -232,7 +236,7 @@
         <div class="ai-drawer-body" id="ai-drawer-body">
             <div class="ai-messages" id="ai-messages">
                 <div class="ai-msg ai-msg-system">
-                    Describe a colour, type, or spacing change. AI is optional; manual design works offline.
+                    Describe the layout, colours, typography or spacing you want. AI creates CSS for the reviewed skin starter. Manual design works offline. Add an API key and model in Settings to enable AI.
                 </div>
             </div>
             <div class="ai-input-row">
@@ -246,6 +250,8 @@
 </div><!-- /#screen-app -->
 
 <script src="data/skin-kit-contract.js"></script>
+<script src="scripts/native.js"></script>
+<script src="scripts/design-policy.js"></script>
 <script src="scripts/api.js"></script>
 <script src="scripts/vault.js"></script>
 <script src="scripts/settings.js"></script>

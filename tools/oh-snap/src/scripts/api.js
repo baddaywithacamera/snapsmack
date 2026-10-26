@@ -19,7 +19,9 @@ class SnapSmackAPI {
     /** @param {string} baseUrl  Trailing-slash site URL.
      *  @param {string} apiKey   Raw API key from the key management page. */
     constructor(baseUrl, apiKey) {
-        this.baseUrl = baseUrl.replace(/\/$/, '');
+        const parsed=new URL(baseUrl.trim());
+        if(parsed.username || parsed.password || parsed.search || parsed.hash || (parsed.protocol!=='https:' && !(parsed.protocol==='http:' && ['localhost','127.0.0.1'].includes(parsed.hostname)))) throw new Error('Use the HTTPS site address without a query, password or fragment.');
+        this.baseUrl = parsed.href.replace(/\/$/, '');
         this.apiKey  = apiKey;
     }
 
@@ -31,6 +33,7 @@ class SnapSmackAPI {
 
     async _get(route) {
         const res = await fetch(this._endpoint(route), {
+            redirect:'error', signal:AbortSignal.timeout(30000),
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${this.apiKey}`,
@@ -46,6 +49,7 @@ class SnapSmackAPI {
 
     async _post(route, formData) {
         const res = await fetch(this._endpoint(route), {
+            redirect:'error', signal:AbortSignal.timeout(30000),
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${this.apiKey}`,
@@ -112,6 +116,7 @@ class SnapSmackAPI {
         let res, body;
         try {
             res  = await fetch(this._endpoint('ohsnap/library'), {
+                redirect:'error', signal:AbortSignal.timeout(30000),
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Accept': 'application/json' },
             });
@@ -166,6 +171,7 @@ class SnapSmackAPI {
      *  Returns { skin_slug, vars_count, stored_key }. */
     async pushVars(skinSlug, vars) {
         const res = await fetch(this._endpoint('ohsnap/skin/vars'), {
+            redirect:'error', signal:AbortSignal.timeout(30000),
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${this.apiKey}`,
