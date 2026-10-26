@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "CHAPLIN",
-    "version": "0.2.20",
+    "version": "0.2.21",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Silent-film era. Near-black canvas, B&W photo treatment, Art Deco border system with ornament placement, animated film effects. Full-screen intertitle overlay for info and signals.",
@@ -474,6 +474,22 @@
                 "step": "1",
                 "unit": "×0.1REM"
             }
+        },
+        "page_title_font_weight": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Photo Title Weight",
+            "default": "600",
+            "options": {
+                "300": "Light (300)",
+                "400": "Regular (400)",
+                "500": "Medium (500)",
+                "600": "Semi-Bold (600)",
+                "700": "Bold (700)",
+                "900": "Black (900)"
+            },
+            "selector": ".chap-intertitle-title",
+            "property": "font-weight"
         },
         "chap_nav_color": {
             "section": "TYPOGRAPHY",
