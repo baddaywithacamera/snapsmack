@@ -67,6 +67,20 @@
         "words": 155,
         "text_sha256": "7e1f573ec33e1ebe258696fb2280a2a62c207ec0806fd899fcaf08af6aa01581"
     },
+    "50-shades-of-noah-grey/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/50-shades-of-noah-grey/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 3,
+        "headings": 2,
+        "words": 174,
+        "text_sha256": "95885a042076a46df0df7d03b22ea7b05aee22699323dfed8e9ab5b8dbab6914"
+    },
     "52-card-pickup/archive": {
         "images": [
             "/media/first-whole-print.jpg",
@@ -131,6 +145,20 @@
         "headings": 1,
         "words": 62,
         "text_sha256": "0fba6239e0799b850ce2ccd4e941424ef0a48b99192c02bde4e56ccb88162507"
+    },
+    "52-card-pickup/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/52-card-pickup/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 1,
+        "headings": 1,
+        "words": 81,
+        "text_sha256": "9fbc2cf3ad2f443453de66a960f08f3e92f6bbcc7ec4ef926b892a29604b08cb"
     },
     "aurora/archive": {
         "images": [
@@ -208,6 +236,23 @@
         "words": 184,
         "text_sha256": "27c5274f6cf594640692ae495b37123758735fdb69e1a33d6753c582299d8034"
     },
+    "aurora/post-mixed": {
+        "images": [
+            "",
+            "/media/first-full.jpg",
+            "/media/inline.jpg",
+            "/media/second-full.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/aurora/style.css"
+        ],
+        "paragraphs": 6,
+        "links": 1,
+        "headings": 2,
+        "words": 203,
+        "text_sha256": "037895dff6131d712023b73d467ffeaf3124d982b5142409f59118714f8378d3"
+    },
     "chaplin/archive": {
         "images": [
             "/media/first-square-crop.jpg",
@@ -279,6 +324,20 @@
         "words": 77,
         "text_sha256": "b3f419dca44850f26c68be04d3a8cc5f9d0cbb3ec3b3de8e75115e0d62aeed4d"
     },
+    "chaplin/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/chaplin/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 3,
+        "headings": 1,
+        "words": 96,
+        "text_sha256": "08dd99e26e757d3505f600aadd77d0bda4eb68db30773bb5a1740330d1242608"
+    },
     "full-monty/archive": {
         "images": [
             "/media/first-square-crop.jpg",
@@ -347,6 +406,20 @@
         "words": 26,
         "text_sha256": "d8b1ff8bb61b93db6a6d923cbe2533c129c18eff444f2ed58aa6fdf82265221f"
     },
+    "full-monty/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/full-monty/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 0,
+        "headings": 1,
+        "words": 45,
+        "text_sha256": "fc887fe7138c9cc5a37da4fe407b090711549f9218e11c0c0ec2b2ab5044ff11"
+    },
     "galleria/archive": {
         "images": [
             "/media/first-whole-print.jpg",
@@ -411,6 +484,20 @@
         "headings": 1,
         "words": 167,
         "text_sha256": "e3c23cb59ae3eb8af67c9b6b00c6320bf53d9718ad9f8f8854f3d727b6f44d8f"
+    },
+    "galleria/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/galleria/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 3,
+        "headings": 1,
+        "words": 187,
+        "text_sha256": "f1a1b3c67b6f1cd7ee8cc1fd87e3d6677b394190d81aecc035e15b18a243b45b"
     },
     "game-on/archive": {
         "images": [
@@ -488,6 +575,23 @@
         "words": 185,
         "text_sha256": "4c133246e67e2641bed8cae7fa7875f0bd1f53bcfc81c5c9748fa34bd042f02e"
     },
+    "game-on/post-mixed": {
+        "images": [
+            "",
+            "/media/first-full.jpg",
+            "/media/inline.jpg",
+            "/media/second-full.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/game-on/style.css"
+        ],
+        "paragraphs": 6,
+        "links": 1,
+        "headings": 2,
+        "words": 204,
+        "text_sha256": "13e4553014d26c942f286c67a9bbd2a42add4158eed4f2877c866bb262218d1f"
+    },
     "glide/archive": {
         "images": [],
         "stylesheets": [
@@ -552,6 +656,20 @@
         "headings": 1,
         "words": 27,
         "text_sha256": "138e0834bb5c36ab360b7921ca61444695e78239d0ac9b81aebbd7ecdc43161f"
+    },
+    "glide/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/glide/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 1,
+        "headings": 1,
+        "words": 46,
+        "text_sha256": "8c4bffe3a16127e9b66db81fbaf8fbe43bf6085679710b2d63c0814bed3af0ea"
     },
     "heuristic/archive": {
         "images": [
@@ -629,6 +747,23 @@
         "words": 50,
         "text_sha256": "cc9911385599fd7e6901cc7f517b06d0ffd9f171b77966029d0cac6d7e4986e1"
     },
+    "heuristic/post-mixed": {
+        "images": [
+            "",
+            "/media/first-full.jpg",
+            "/media/inline.jpg",
+            "/media/second-full.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/heuristic/style.css"
+        ],
+        "paragraphs": 6,
+        "links": 1,
+        "headings": 2,
+        "words": 69,
+        "text_sha256": "9a619bac340eb6135f621aaed6e602fa0b133a0aa8689af0dcdaa2aeba05099b"
+    },
     "hip-to-be-square/archive": {
         "images": [
             "/media/first-square-crop.jpg",
@@ -693,6 +828,20 @@
         "headings": 1,
         "words": 194,
         "text_sha256": "d56aff4cbbb4d3d9065a1c5b5068b92ede7ecd11e66abb7d8dae596a80383a75"
+    },
+    "hip-to-be-square/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/hip-to-be-square/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 3,
+        "headings": 1,
+        "words": 214,
+        "text_sha256": "59812acad267fc1847c07e315c93eddb01cf8fb73088811a6d99d960f8efae1d"
     },
     "impact-printer/archive": {
         "images": [
@@ -761,6 +910,20 @@
         "headings": 1,
         "words": 204,
         "text_sha256": "acc7356aab49505dbb392c9a7a6ece572744f439df611ce740e8b19503f735f1"
+    },
+    "impact-printer/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/impact-printer/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 3,
+        "headings": 1,
+        "words": 223,
+        "text_sha256": "60691f65af2bc6ed314e22e426b71a17755d254d2319bb75e969b75df012eaaf"
     },
     "instant-camera/archive": {
         "images": [
@@ -838,6 +1001,23 @@
         "words": 229,
         "text_sha256": "80e66898d0ab725108a4b99f18674b574a537c21ecb136cec94bc47042084eb7"
     },
+    "instant-camera/post-mixed": {
+        "images": [
+            "",
+            "/media/first-full.jpg",
+            "/media/inline.jpg",
+            "/media/second-full.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/instant-camera/style.css"
+        ],
+        "paragraphs": 6,
+        "links": 1,
+        "headings": 2,
+        "words": 248,
+        "text_sha256": "9adeddc49eada812bd1fce4ce11064d316192d3217a66e76ae14a3519e4dc4e1"
+    },
     "jive-turkey/archive": {
         "images": [
             "",
@@ -914,6 +1094,23 @@
         "words": 186,
         "text_sha256": "489b6e0f7ef42f2c3c8be4520a54ee4aeae80054852efa3188aeca4b99aeaf09"
     },
+    "jive-turkey/post-mixed": {
+        "images": [
+            "",
+            "/media/first-full.jpg",
+            "/media/inline.jpg",
+            "/media/second-full.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/jive-turkey/style.css"
+        ],
+        "paragraphs": 6,
+        "links": 1,
+        "headings": 2,
+        "words": 205,
+        "text_sha256": "3fc4aab743f5c64d5217aaa41be95ec7e3c9692cce361b6636e748dd0df44efb"
+    },
     "new-horizon/archive": {
         "images": [
             "/media/first-square-crop.jpg",
@@ -982,6 +1179,20 @@
         "words": 171,
         "text_sha256": "535772f46ce46b783bcf41c76eec8991a66c168ed3349657629607f6ed31b13f"
     },
+    "new-horizon/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/new-horizon/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 3,
+        "headings": 1,
+        "words": 190,
+        "text_sha256": "f63deda59003a2dee64ba741d8fc71e832ea30ebd83d9019d0dab4b1edb7c424"
+    },
     "onyx/archive": {
         "images": [
             "/media/first-whole-print.jpg",
@@ -1049,6 +1260,20 @@
         "headings": 2,
         "words": 68,
         "text_sha256": "9132ea4d864deedd2b4b9170d0a39354afdcc1f5b7a96819b0154456e09884af"
+    },
+    "onyx/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/onyx/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 3,
+        "headings": 2,
+        "words": 87,
+        "text_sha256": "bd53687d4a05c34e55ebbce5f09fc2bc8e742591889c3ad8df81ad609065b63d"
     },
     "parade/archive": {
         "images": [
@@ -1126,6 +1351,23 @@
         "words": 179,
         "text_sha256": "a241d651c568bc94d626cdbafeb62f48a18163dbe2577d61edec09b06e739e7c"
     },
+    "parade/post-mixed": {
+        "images": [
+            "",
+            "/media/first-full.jpg",
+            "/media/inline.jpg",
+            "/media/second-full.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/parade/style.css"
+        ],
+        "paragraphs": 6,
+        "links": 1,
+        "headings": 2,
+        "words": 198,
+        "text_sha256": "912b268f602f24b4eabd0bd02db50d3f51d16fc85a40bace4b173e20808bd618"
+    },
     "photogram/archive": {
         "images": [
             "/media/first-square-crop.jpg",
@@ -1193,6 +1435,20 @@
         "headings": 0,
         "words": 49,
         "text_sha256": "43b853c46af8709c17593abbef68d01e8ade5a3effd9597f5c312adf9bd78b8b"
+    },
+    "photogram/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/photogram/style.css"
+        ],
+        "paragraphs": 4,
+        "links": 4,
+        "headings": 0,
+        "words": 68,
+        "text_sha256": "28d9834f6b562a35880d7e6b003c6468748975c9a98db14ac8971eb806c8ebcc"
     },
     "rational-geo/archive": {
         "images": [
@@ -1262,6 +1518,20 @@
         "words": 83,
         "text_sha256": "4d35f9c6fe1693f8baaca98abea0d41011e30d590e34c8a0ae7fa203c61e74c8"
     },
+    "rational-geo/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/rational-geo/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 3,
+        "headings": 1,
+        "words": 102,
+        "text_sha256": "1da18ba706da7cd492e5068b28cd56023de4943aec85188b56befc72a89c7406"
+    },
     "scroll/archive": {
         "images": [
             "/media/first-whole-print.jpg",
@@ -1329,6 +1599,20 @@
         "headings": 1,
         "words": 224,
         "text_sha256": "c4218ad4f0bde823546ce54657ec01d9983e7d34ac48ec60b4931d71ef1f47fd"
+    },
+    "scroll/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/scroll/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 3,
+        "headings": 1,
+        "words": 243,
+        "text_sha256": "f515112979319d413db41d50e9837f21380cb8469ce39cc6fe5dd951045234f2"
     },
     "show-n-tell/archive": {
         "images": [
@@ -1400,6 +1684,20 @@
         "words": 79,
         "text_sha256": "8d369bf77dcc24086ffa7462d790eca2f00e0890cc895c2ef64c53c221906371"
     },
+    "show-n-tell/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/show-n-tell/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 1,
+        "headings": 1,
+        "words": 98,
+        "text_sha256": "0a8e89e957818a7fe7a1b4ce874cd405884dff035dd5ca71733ad09e56e9199b"
+    },
     "slickr/archive": {
         "images": [
             "/media/first-whole-print.jpg",
@@ -1467,6 +1765,20 @@
         "headings": 2,
         "words": 48,
         "text_sha256": "4dde3a811af8f30bf627f90e2ea9024e052fa5d62091087dfb06c388549af000"
+    },
+    "slickr/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/slickr/style.css"
+        ],
+        "paragraphs": 6,
+        "links": 5,
+        "headings": 2,
+        "words": 67,
+        "text_sha256": "5a18365eec643eddedc5f2f4bf64d160b182fbf496a9637fd6c854369ac055b1"
     },
     "sliders/archive": {
         "images": [
@@ -1544,6 +1856,23 @@
         "words": 161,
         "text_sha256": "73f9e123c82e3d28680866391e9ab220a12b56c25ca92c2d6701386ceb58df5a"
     },
+    "sliders/post-mixed": {
+        "images": [
+            "",
+            "/media/first-full.jpg",
+            "/media/inline.jpg",
+            "/media/second-full.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/sliders/style.css"
+        ],
+        "paragraphs": 6,
+        "links": 1,
+        "headings": 2,
+        "words": 180,
+        "text_sha256": "53ac86b12a74c15d4bb724d95655cd42aa7cc53fb70d3957a7d3f8821d16eb61"
+    },
     "sudden-impact/archive": {
         "images": [
             "",
@@ -1619,6 +1948,23 @@
         "headings": 2,
         "words": 151,
         "text_sha256": "25699c393bb7f7dba16bf1db0a3aeea7fab553c5189ec95887b8cd7f4c8e8beb"
+    },
+    "sudden-impact/post-mixed": {
+        "images": [
+            "",
+            "/media/first-full.jpg",
+            "/media/inline.jpg",
+            "/media/second-full.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/sudden-impact/style.css"
+        ],
+        "paragraphs": 6,
+        "links": 1,
+        "headings": 2,
+        "words": 170,
+        "text_sha256": "5521eeff6d421048bd719563377ef6aeca6ddccfbaaf4328e42f33e0ab53c189"
     },
     "the-grid/archive": {
         "images": [
@@ -1696,6 +2042,23 @@
         "words": 148,
         "text_sha256": "64003df24bb70de9fa76312def2d6f7d3891cf12cd9ad97b93d12e8ef1212ccd"
     },
+    "the-grid/post-mixed": {
+        "images": [
+            "",
+            "/media/first-full.jpg",
+            "/media/inline.jpg",
+            "/media/second-full.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/the-grid/style.css"
+        ],
+        "paragraphs": 6,
+        "links": 1,
+        "headings": 2,
+        "words": 167,
+        "text_sha256": "442c808c1ba742ca9931286ab6c4bd506e15ccf2f23fbe94320181cbc30353aa"
+    },
     "true-grit/archive": {
         "images": [
             "/media/first-square-crop.jpg",
@@ -1763,5 +2126,19 @@
         "headings": 1,
         "words": 231,
         "text_sha256": "6aa25099f9d5dafcae3cb08b2c27fda4d9469c20740787d15c80f4207c1d62e0"
+    },
+    "true-grit/post-mixed": {
+        "images": [
+            "/media/inline.jpg"
+        ],
+        "stylesheets": [
+            "",
+            "/skins/true-grit/style.css"
+        ],
+        "paragraphs": 5,
+        "links": 3,
+        "headings": 1,
+        "words": 250,
+        "text_sha256": "37aab6a45ebdf41a0afd3b24a19a9a55ba848d18a8b774f41feee15a605f34d4"
     }
 }

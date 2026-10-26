@@ -86,17 +86,41 @@ function snapshot_items(string $skin): array
     return $items;
 }
 
+/**
+ * Prose and photographs alternating, run through the real description formatter.
+ *
+ * This is the shape that broke twice in one day on 25 October 2026: a post
+ * where the writing between the photographs lost its paragraphs and became
+ * loose text with no spacing of its own. The formatter is the thing under
+ * test, so the raw string goes in and whatever comes out is what gets
+ * recorded -- if the wrapping changes, the snapshot says so.
+ */
+function snapshot_mixed_post_body(): SnapTrustedHtml
+{
+    $frame = '<div class="snap-inline-frame align-center"><div class="ip-ascii-frame-inner">'
+           . '<img src="/media/inline.jpg" alt="Inline"></div></div>';
+    return snapsmack_photo_description_html(
+        '<p>An opening paragraph.</p>' . $frame
+        . 'Loose prose directly after a photograph.' . $frame
+        . 'A second loose run between two photographs.'
+        . '<p>And a properly wrapped closing paragraph.</p>'
+    );
+}
+
 function snapshot_responses(string $skin): array
 {
     $items = snapshot_items($skin);
+    // Keyed by label, because two of these are the same page kind.
     return [
-        ['status' => 200, 'kind' => 'landing', 'items' => $items, 'navigation' => []],
-        ['status' => 200, 'kind' => 'archive', 'items' => $items, 'navigation' => []],
-        ['status' => 200, 'kind' => 'photo', 'navigation' => [], 'comments' => [],
-         'item' => $items[0] + ['img_description' => snapsmack_trusted_html('<p>A caption with words in it.</p>')]],
-        ['status' => 200, 'kind' => 'post', 'navigation' => [], 'photographs' => $items,
-         'item' => ['id' => 9, 'title' => 'A post', 'content' => snapsmack_trusted_html('<p>First paragraph.</p><p>Second paragraph.</p>')]],
-        ['status' => 404, 'kind' => 'not_found', 'navigation' => []],
+        'landing'    => ['status' => 200, 'kind' => 'landing', 'items' => $items, 'navigation' => []],
+        'archive'    => ['status' => 200, 'kind' => 'archive', 'items' => $items, 'navigation' => []],
+        'photo'      => ['status' => 200, 'kind' => 'photo', 'navigation' => [], 'comments' => [],
+                         'item' => $items[0] + ['img_description' => snapsmack_trusted_html('<p>A caption with words in it.</p>')]],
+        'post'       => ['status' => 200, 'kind' => 'post', 'navigation' => [], 'photographs' => $items,
+                         'item' => ['id' => 9, 'title' => 'A post', 'content' => snapsmack_trusted_html('<p>First paragraph.</p><p>Second paragraph.</p>')]],
+        'post-mixed' => ['status' => 200, 'kind' => 'post', 'navigation' => [], 'photographs' => $items,
+                         'item' => ['id' => 10, 'title' => 'A mixed post', 'content' => snapshot_mixed_post_body()]],
+        'not_found'  => ['status' => 404, 'kind' => 'not_found', 'navigation' => []],
     ];
 }
 
@@ -154,7 +178,7 @@ $current = [];
 foreach ($skins as $skin) {
     $dir = $root . '/skins/' . $skin;
     if (!is_file($dir . '/layout.php')) continue;
-    foreach (snapshot_responses($skin) as $response) {
+    foreach (snapshot_responses($skin) as $label => $response) {
         $view = snapsmack_build_skin_view($response, [
             'site_name'         => 'Example',
             'tagline'           => 'Tag',
@@ -167,8 +191,8 @@ foreach ($skins as $skin) {
         ob_start();
         $ok   = snapsmack_render_strict_skin_template($dir, 'layout.php', $view);
         $html = (string)ob_get_clean();
-        if (!$ok) throw new RuntimeException("{$skin}/{$response['kind']} did not render.");
-        $current[$skin . '/' . $response['kind']] = snapshot_fingerprint($html);
+        if (!$ok) throw new RuntimeException("{$skin}/{$label} did not render.");
+        $current[$skin . '/' . $label] = snapshot_fingerprint($html);
     }
 }
 ksort($current);
