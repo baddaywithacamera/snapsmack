@@ -1,5 +1,11 @@
 <!-- SNAPSMACK_EOF_HEADER: preserve final EOF marker. -->
 
+# OH SNAP 0.3.2 — October 26, 2026
+
+- Source CLI creates, edits, validates, renders and exports offline projects through the actual editor services. No paid AI fallback.
+- Native executable accepts --cli for capability discovery, project inspection and reviewed package validation/export, with --result JSON output for windowed builds.
+- Existing 0.3.1 executable remains separate.
+
 # OH SNAP 0.3.1 — October 26, 2026
 
 - Normal project choices are SMACKONEOUT, the shared GRAMOFSMACK / SMACKTHEMUP skin family, and SMACKTALK.

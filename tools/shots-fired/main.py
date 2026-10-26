@@ -36,6 +36,13 @@ import os
 import sys
 
 
+# Headless automation must run before the desktop event loop or log capture.
+import os as _cli_os, sys as _cli_sys
+if "--cli" in _cli_sys.argv:
+    _cli_sys.path.insert(0, _cli_os.path.abspath(_cli_os.path.join(_cli_os.path.dirname(__file__), "..", "_shared")))
+    import app_cli as _desktop_cli
+    raise SystemExit(_desktop_cli.main(_cli_sys.argv[_cli_sys.argv.index("--cli") + 1:]))
+
 def _setup_log() -> str:
     """Open the SHOTS FIRED debug log. Prefers the shared
     C:\\snapsmack\\logs\\shots-fired_debug_<ts>.log; falls back to a next-to-exe file
