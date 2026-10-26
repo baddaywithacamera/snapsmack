@@ -289,11 +289,7 @@ function snapsmack_grid_landing_items(SnapPublicRepository $repository, array $s
             $classes .= ' ' . $prefix . '-tile--trigram ' . $prefix . '-tile--trigram-' . ($labels[$slot] ?? 'M');
         }
         $item['presentation_class'] = $classes;
-        $item['presentation_image'] = !empty($item['trigram_slice_path'])
-            ? (string)$item['trigram_slice_path']
-            : (!empty($item['is_framed'])
-            ? (string)($item['img_thumb_aspect'] ?? $item['img_file'] ?? '')
-            : (string)($item['img_thumb_square'] ?? $item['img_file'] ?? ''));
+        $item['presentation_image'] = snapsmack_grid_presentation_image($item, $skin);
         $item['presentation_title'] = (string)($item['title'] ?? $item['img_title'] ?? '');
         // Layout engines need the photograph's native shape, but strict skins
         // may only print bounded presentation values prepared by the CMS.
@@ -303,6 +299,16 @@ function snapsmack_grid_landing_items(SnapPublicRepository $repository, array $s
     }
     unset($item);
     return $items;
+}
+
+/** Choose the bounded grid source without discarding a whole-print scan. */
+function snapsmack_grid_presentation_image(array $item, string $skin): string
+{
+    if (!empty($item['trigram_slice_path'])) return (string)$item['trigram_slice_path'];
+    if ($skin === 'instant-camera' || !empty($item['is_framed'])) {
+        return (string)($item['img_thumb_aspect'] ?? $item['img_file'] ?? '');
+    }
+    return (string)($item['img_thumb_square'] ?? $item['img_file'] ?? '');
 }
 
 /** Pack a complete photograph inventory into bounded justified-layout pages. */
