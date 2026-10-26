@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 026 - Three hundred pages rendered, none of them read</title>
+<link rel="stylesheet" href="_report.css">
+<style>tr { break-inside: avoid; page-break-inside: avoid; }</style>
+</head>
+<body>
+<p class="doc-kicker">SnapSmack Operability Audit - DING DONG BELL</p>
+<h1>OPAUDIT 026 - Three hundred pages rendered, none of them read</h1>
+
+<table class="meta">
+<tr><td class="k">Audit ID</td><td>2026-10-25-026</td></tr>
+<tr><td class="k">State</td><td>Open. The worked example is fixed in source (<code>62b9c5cd</code>) and not deployed. One operational cause - a harness that renders three hundred pages and reads none of them - is addressed by a check built during this audit. The second cause, found while writing it, is not: three regression tests are red on <code>dev</code> and three releases were tagged on top of them today.</td></tr>
+<tr><td class="k">Scope</td><td>The automated checks that run before a release. INSTANT CAMERA's photographs are the worked example; the finding is about what the checks assert.</td></tr>
+<tr><td class="k">Baseline</td><td>16 of 19 sites serving 0.7.947D, 3 serving 0.7.932D, measured with <code>tools/_build/deployed-version.sh</code> on 25 October 2026. fauxlaroid.fyi running INSTANT CAMERA 1.0.55, which matches the repository.</td></tr>
+<tr><td class="k">Cost</td><td>284 commits on <code>dev</code> in fourteen days. 65 of them worded as repairs. 32 of those say they restore something that used to work.</td></tr>
+</table>
+
+<h2>1. Decision</h2>
+<p>This is a verification failure, not a coding failure. The commit that caused it was careful, carried tests, and restored a contract that was genuinely wanted.</p>
+<p>The test suite renders every skin against every page kind - about three hundred combinations - and then asserts that the result is HTML. It does not read the page. So a refactor replaced every photograph on a live site with a cropped version of itself, and the suite reported three hundred passes.</p>
+<p>Sean's words: <em>"i am getting hammred with one regression after another right now."</em> The rate is real and it is measured in section 6. This audit claims the harness is the reason they are not caught before he sees them.</p>
+
+<h2>2. What the owner experienced</h2>
+<p>He opened fauxlaroid.fyi, a site whose entire premise is instant-camera prints, and every print had its top and bottom cut off.</p>
+<p>Shortly before, he had been told - correctly, about a different skin - that PHOTOGRAM now inherited the Instant Camera print format and that all three hundred skin/page combinations passed. Both statements were true. Neither was about the thing that was broken, and the commit carrying them did not touch it.</p>
+
+<h2>3. Measured</h2>
+<p>Every number here was read from the live site or from <code>git</code> on 25 October 2026. The two image files were downloaded and their dimensions read from the JPEG header.</p>
+
+<table class="meta">
+<tr><td class="k">The aspect thumbnail (<code>a_</code>) on fauxlaroid.fyi</td><td>741 x 900 pixels - ratio <strong>0.823</strong></td></tr>
+<tr><td class="k">What 0.823 is</td><td>823:1000, the Polaroid card. The white border is <strong>in the photograph</strong>, placed there by SNAP SLAPPER. The file is the finished print.</td></tr>
+<tr><td class="k">The square thumbnail (<code>t_</code>)</td><td>400 x 400 - a centre crop of that print</td></tr>
+<tr><td class="k">What the live page serves</td><td><code>t_</code>, read from the page markup: <code>&lt;article class="tg-tile" data-frame-size="100" data-frame-border="0" data-frame-shadow="0"&gt;</code></td></tr>
+<tr><td class="k">Consequence per tile</td><td>250 pixels removed from the top of the card and 250 from the bottom, including the top edge of the frame</td></tr>
+<tr><td class="k">Commit that changed it</td><td><code>4e1b5df3</code>, 0.7.943D, 24 October 21:54 - "restore strict skin presentation contracts"</td></tr>
+<tr><td class="k">What it changed</td><td>The skin stopped asking for <code>img_thumb_aspect</code> and started printing <code>presentation_image</code>, which the CMS sets to the square crop whenever <code>is_framed</code> is false</td></tr>
+<tr><td class="k">Why <code>is_framed</code> is false here</td><td>It requires frame size under 100%, or a border, or a shadow. INSTANT CAMERA has none of those, because its frame is already in the picture.</td></tr>
+<tr><td class="k">Hours live before anyone noticed</td><td>About 22</td></tr>
+<tr><td class="k">Tests that failed</td><td><strong>None</strong></td></tr>
+<tr><td class="k">Found by</td><td>Sean, looking at his own site</td></tr>
+</table>
+
+<h2>4. Cause</h2>
+<p>Three things compound.</p>
+
+<h3>4.1 The harness renders and does not look</h3>
+<p>This is the whole render assertion in <code>tests/grid-family-v2-regression.php</code>:</p>
+<pre><code>ob_start(); $ok = snapsmack_render_strict_skin_template($dir,'layout.php',$view); $html = (string)ob_get_clean();
+if (!$ok || !str_contains($html,'&lt;!doctype html&gt;') || stripos($html,'&lt;script&gt;no&lt;/script&gt;') !== false)
+    throw new RuntimeException("{$skin}/{$response['kind']} render boundary failed.");</code></pre>
+<p>Three questions: did it crash, is it HTML, did an injected script survive. The checks that follow look for structural hooks - a content wrapper, modal and lightbox ids, a tile class. All of them would still pass on a page that rendered the wrong photograph, no photograph, or a blank white document with a doctype on it.</p>
+<p>In the entire loop there is exactly one assertion about an image source, and it is for one skin on one page kind: GAME ON's search results must contain <code>/media/match.jpg</code>. The harness is therefore <em>capable</em> of the check that was needed. It does it once, by hand, for one case out of three hundred.</p>
+<p>The page is rendered into a variable and the variable is thrown away. That is the defect.</p>
+
+<h3>4.2 One contract, copied by hand into three files</h3>
+<p>The map from a skin to its CSS class prefix exists in three places, and they do not agree:</p>
+<table class="meta">
+<tr><td class="k"><code>core/public-controller.php</code> line 277<br>(decides the CSS classes)</td><td><code>instant-camera</code> is <strong>absent</strong>; falls through <code>?? 'tg'</code></td></tr>
+<tr><td class="k"><code>core/public-controller.php</code> line 342<br>(decides the frame settings)</td><td><code>instant-camera</code> =&gt; <code>'ic'</code></td></tr>
+<tr><td class="k"><code>tests/grid-family-v2-regression.php</code><br>(decides what the test looks for)</td><td><code>instant-camera</code> =&gt; <code>'tg'</code></td></tr>
+</table>
+<p>The skin reads its frame settings from <code>ic_*</code> and emits <code>tg-*</code> classes. Both halves work, for opposite reasons, and the test holds its own third copy that happens to match the accident. <code>sliders</code> has the same split: <code>'ic'</code> in one map, <code>'tg'</code> in the other. One of those two is wrong and nothing will say which.</p>
+<p>A test that keeps its own copy of the contract can agree with the code while both disagree with the site.</p>
+
+<h3>4.3 "Fixed" is still reported against the source tree</h3>
+<p>This is OPAUDIT 025 section 4, unchanged and unaddressed. The report that three hundred combinations passed was true of the suite and told nobody anything about the page. 025 recorded that nothing refuses a false report. Nothing still does.</p>
+
+<h3>4.4 The suite has been red all day and three releases were tagged anyway</h3>
+<p>While writing this audit, every <code>tests/*regression.php</code> file was run against the tip of <code>dev</code>. <strong>Three of them fail.</strong> All three passed at <code>v0.7.943D</code> on 24 October. All three were broken today.</p>
+
+<table class="meta">
+<tr><td class="k"><code>89af1973</code> - 0.7.946D<br>"restore photo post paragraphs"</td><td>broke <code>menu-separator-contract-regression</code> (expects at least 23 skins rendering the shared menu, finds 22) and <code>remaining-public-control-authority-regression</code> (removed both uses of <code>['skin_presentation']['discover']</code> from PHOTOGRAM's layout)</td></tr>
+<tr><td class="k"><code>35144854</code><br>"Restore PHOTOGRAM About and instant print presentation"</td><td>broke <code>privileged-wrapper-construction-regression</code> (the privileged-wrapper production inventory changed)</td></tr>
+<tr><td class="k">Tags cut on top of the red suite</td><td><strong><code>v0.7.946D</code>, <code>v0.7.947D</code>, <code>v0.7.948D</code></strong></td></tr>
+</table>
+
+<p>This is the part that matters. <code>tools/release-flow.php</code> already has the mechanism: <code>rf_tests()</code> runs every <code>tests/*regression.php</code> and <code>rf_require_release_gate()</code> refuses to tag without a passing gate note. It is a real gate and it works.</p>
+<p>Three tags went on anyway. Either the gate was bypassed, or those tags were not cut through <code>release-flow.php</code> at all. Both answers mean the same thing operationally: the suite is only consulted at release time, releases are being made without consulting it, and a test can sit red through five commits and three tags with nobody told.</p>
+<p>So the harness in 4.1 is the wrong question being asked, and 4.4 is the right questions not being asked either. Fixing 4.1 alone would have produced one more red test nobody ran.</p>
+
+<h2>5. How it was found</h2>
+<p>By the owner, again. Not by a test, not by a check, not by either agent.</p>
+<p>The diagnosis took about twenty minutes and consisted of downloading two image files and reading their dimensions. No part of it was difficult. No part of it required knowing the codebase. It is precisely the kind of work a machine should have done at 21:54 on the 24th, and the machine had the rendered page in hand at that moment and discarded it.</p>
+
+<h2>6. The pattern, which is larger than one skin</h2>
+<p>Commits on <code>dev</code> between 11 and 25 October: <strong>284</strong>. Worded as repairs: <strong>65</strong>. Saying "restore", "put back" or "bring back": <strong>32</strong>.</p>
+<p>What those 32 are restoring, taken from their own titles:</p>
+<ul>
+<li>restore every mixed post paragraph</li>
+<li>restore photo post paragraphs</li>
+<li>Bring RATIONAL GEO date back to its article</li>
+<li>Restore PHOTOGRAM About</li>
+<li>Restore solo links on mosaic tiles</li>
+<li>Restore True Grit archive endless scroll</li>
+<li>Restore New Horizon palette stylesheet</li>
+<li>Restore Gram solo arrow navigation</li>
+<li>restore SCROLL mosaic presentation</li>
+<li>restore SCROLL asymmetric masonry</li>
+<li>Restore whole-print thumbnails in Instant Camera</li>
+</ul>
+<p>Every one of these is <strong>content that stopped appearing on a rendered page</strong>: a paragraph, a date, a link, a stylesheet, a photograph. Not one of them is a crash, a security hole, or malformed HTML.</p>
+<p>That is the shape of this fortnight's regressions, and it is the exact shape the harness cannot see. A check that asks "is this HTML" will never catch a missing paragraph, and eleven of these say so out loud.</p>
+<p>The test effort is not missing. 169 of the 284 commits touch <code>tests/</code>. The tests are the wrong kind, not absent.</p>
+
+<h2>7. The fix, cheapest first</h2>
+
+<h3>7.1 Keep the page the harness already rendered</h3>
+<p>The harness renders three hundred pages into <code>$html</code> and drops each one. Store a normalised snapshot of each per skin and page kind, commit it, and compare on every run. A change that nobody wrote down becomes a failing test instead of a live site.</p>
+<p>This is cheap because the rendering - the expensive part - already happens. What is missing is one fixture file and a comparison. It costs one deliberate regeneration whenever output is meant to change, which is the point: it forces somebody to say out loud that they meant it.</p>
+<p>A snapshot of the INSTANT CAMERA landing page would have failed at 21:54 on the 24th with the <code>src</code> changing from <code>a_</code> to <code>t_</code>, in the same commit that caused it.</p>
+<p><strong>Built, as part of this audit:</strong> <code>tests/skin-render-snapshot-regression.php</code>. It renders 125 pages across all 25 schema-2 public skins and records, per page, which images and stylesheets appear, how many paragraphs, links and headings, and a hash of the visible words. The fixture is <code>tests/fixtures/skin-render-snapshot.json</code>; <code>--update</code> accepts a change deliberately. Its name matches the <code>tests/*regression.php</code> glob, so <code>release-flow.php</code> picks it up with no wiring.</p>
+<p>It was verified against the real defect rather than reasoned about. Reverting <code>62b9c5cd</code> and running it:</p>
+<pre><code>Rendered output changed on 2 point(s):
+
+  - instant-camera/archive: images changed
+      was: /media/first-whole-print.jpg, /media/second-whole-print.jpg
+      now: /media/first-square-crop.jpg, /media/second-square-crop.jpg
+  - instant-camera/landing: images changed
+      ...</code></pre>
+<p>One detail is worth recording because it is the reason the old harness could not have caught this however carefully it was read. Its landing fixture carries <code>img_thumb_aspect</code> and no <code>img_thumb_square</code>. The square crop did not exist in the test data, so a skin that switched to it still rendered the aspect file and nothing moved. <strong>A choice you cannot observe is a choice you cannot test.</strong> The new fixture carries both.</p>
+
+<h3>7.2 Give the prefix map one home</h3>
+<p>One function, read by both call sites in <code>core/public-controller.php</code> and by the test. A skin missing from it should be an error, not a silent <code>'tg'</code>.</p>
+
+<h3>7.3 What this audit does not propose</h3>
+<p>The repair commit <code>62b9c5cd</code> added <code>tests/instant-camera-whole-print-regression.php</code>, which asserts that <code>snapsmack_grid_presentation_image()</code> hands INSTANT CAMERA the whole print. That test is correct and worth keeping. It catches <em>this bug</em>. It does not catch <em>this shape of bug</em>, and writing one more of them after each regression is how a suite reaches 169 commits of effort and still cannot see a photograph change.</p>
+
+<h2>8. Open</h2>
+<ul>
+<li><strong>Three regression tests are red on the tip of <code>dev</code>.</strong> <code>menu-separator-contract</code>, <code>privileged-wrapper-construction</code> and <code>remaining-public-control-authority</code>. Broken today by 0.7.946D and <code>35144854</code>. Nothing is fixed by this audit; they are reported, not repaired.</li>
+<li><strong>Three tags were cut over the red suite</strong> - <code>v0.7.946D</code>, <code>v0.7.947D</code>, <code>v0.7.948D</code>. Whether the gate was bypassed or not used needs an answer before the next tag.</li>
+<li><strong><code>62b9c5cd</code> is not deployed.</strong> Until it goes out, every INSTANT CAMERA site is serving square crops of whole prints.</li>
+<li><strong>Three sites are 15 releases behind</strong> - mirrorproject.fyi, photoblogs.fyi and photofri.day, all on 0.7.932D. photofri.day is the priority site.</li>
+<li><strong>The prefix map is still in three files</strong>, and <code>sliders</code> still has two different answers. Not touched here: <code>core/public-controller.php</code> was being edited by the other agent at the time.</li>
+<li><strong>The snapshot covers rendering, not delivery.</strong> It proves what the code would render. It says nothing about what a site is serving, which is 025's finding and still open.</li>
+<li><strong>Nothing refuses a false report.</strong> Carried forward from 025, unchanged.</li>
+</ul>
+
+<h2>9. What this audit does not claim</h2>
+<p>It does not claim <code>4e1b5df3</code> was careless. It restored a real contract, it touched its tests, and the strict presentation boundary it enforces is worth having. It claims the commit changed what a live site serves and that nothing in the process could tell.</p>
+<p>It does not claim all 65 repair-worded commits are self-inflicted. That was not measured. Some restore things broken long before this fortnight. The 32 is a rate worth watching, not a verdict on anyone.</p>
+<p>It does not claim the fleet is broadly stale. It was measured: 16 of 19 sites are current.</p>
+<p>It does not claim more tests are needed. It claims the three hundred that run are asking the wrong question, and that on the day this was written nobody was running them at all.</p>
+<p>It does not claim the three red tests in 4.4 have anything to do with INSTANT CAMERA. They do not. They were found by running the suite, which is the only unusual thing that happened to them today.</p>
+<p>It does not repair them. Naming a defect and fixing it in the same breath is how the last fortnight went, and <code>core/</code> was in another agent's hands while this was written.</p>
+
+<p class="doc-foot">SnapSmack Operability Audit 026 - 25 October 2026</p>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
