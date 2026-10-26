@@ -339,7 +339,9 @@ body:not(.archive-page):not(.static-transmission) #scroll-stage {
   overflow: visible;
   box-sizing: border-box;
   flex-grow: 0;
-  flex-shrink: 0;
+  /* Shrinkable: the intertitle and the infobox take their natural height and
+     the photograph takes what is left, instead of the column overflowing. */
+  flex-shrink: 1;
   min-height: 0;
   /* Explicit height — fills viewport minus header and infobox (no sysfooter on single view).
      --chap-bottom-chrome = infobox(50) [+ intertitle(71) if shown below photo], from skin-header.php. */
@@ -774,7 +776,12 @@ body:not(.archive-page):not(.static-transmission) .chap-img-frame .post-image {
 
 .chap-intertitle {
   text-align: center;
-  padding: 0.75rem 2rem 0.5rem;
+  /* 25px under the title so it is not sitting on the bottom edge. The photobox
+     above is allowed to give that space back (flex-shrink below) rather than
+     the page overflowing, because --chap-bottom-chrome is never actually set:
+     its comment says infobox(50) + intertitle(71), and the 50px fallback is
+     what every CHAPLIN page has been using, so the box is 71px too tall. */
+  padding: 0.75rem 2rem 25px;
   flex-shrink: 0;
   background-color: var(--chap-bg);
 }
