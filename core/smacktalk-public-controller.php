@@ -130,7 +130,12 @@ function snapsmack_smacktalk_page(PDO $pdo, string $slug, ?array $page = null): 
     if (!$page) return ['kind' => 'not_found', 'page_title' => '404 — Not Found'];
 
     $parser = new SnapSmack($pdo);
-    $rendered = $parser->parseContent((string)($page['content'] ?? ''));
+    // Prose that sits between two inline photographs arrives here as a loose
+    // text node with no paragraph spacing of its own. The repair lives in
+    // trusted-html.php and this road never called it. See
+    // snap_wrap_bare_paragraphs() for what that cost.
+    require_once __DIR__ . '/trusted-html.php';
+    $rendered = snap_wrap_bare_paragraphs($parser->parseContent((string)($page['content'] ?? '')));
     $photo_count = preg_match_all('/<img\b/i', $rendered);
     if (preg_match_all('/\bdata-mosaic=(?:"([^"]*)"|\'([^\']*)\')/i', $rendered, $mosaics, PREG_SET_ORDER)) {
         foreach ($mosaics as $mosaic) {
@@ -253,7 +258,8 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         }
     } catch (Throwable $e) { /* optional relationships may not exist on older installs */ }
     $parser = new SnapSmack($pdo);
-    $rendered = $parser->parseContent((string)($post['content'] ?? ''));
+    require_once __DIR__ . '/trusted-html.php';
+    $rendered = snap_wrap_bare_paragraphs($parser->parseContent((string)($post['content'] ?? '')));
     $colophon = trim(html_entity_decode(strip_tags((string)($post['colophon'] ?? '')), ENT_QUOTES | ENT_HTML5));
     $photo_count = preg_match_all('/<img\b/i', $rendered);
     if (preg_match_all('/\bdata-mosaic=(?:"([^"]*)"|\'([^\']*)\')/i', $rendered, $matches, PREG_SET_ORDER)) {

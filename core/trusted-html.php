@@ -251,4 +251,92 @@ function snapsmack_photo_description_html(string $content): SnapTrustedHtml
 
     return snapsmack_trusted_html($content);
 }
+
+/**
+ * Put paragraph tags back around prose that sits loose between block elements.
+ *
+ * This is the same repair snapsmack_photo_description_html() performs, with the
+ * sanitiser left out, so it can be applied to content the CMS has already
+ * parsed and trusted. Running the sanitiser again over parsed output would
+ * strip the attributes the parser just wrote -- data-mosaic, data-lightbox-src
+ * and the rest -- so it must not be used for this.
+ *
+ * Why this exists at all, recorded because three releases were spent on it.
+ * A longform post is rendered by SnapSmack::parseContent(), and the result is
+ * handed to the skin as rendered_content. The paragraph repair lived only in
+ * snapsmack_photo_description_html(), which that path never calls. So on
+ * baddaywithacamera.ca/my-name-is-mud every paragraph that followed an inline
+ * photograph was a loose text node with no spacing of its own, through
+ * 0.7.949D, 0.7.950D and 0.7.951D, while the repair was real and correct and
+ * simply not in the road the content travels. Measured each time: three bare
+ * runs and one empty paragraph, unchanged.
+ *
+ * Returns the HTML unchanged when there is nothing loose to wrap, and when the
+ * DOM extension is missing.
+ */
+function snap_wrap_bare_paragraphs(string $html): string
+{
+    if (trim($html) === '' || !class_exists('DOMDocument')) return $html;
+
+    $document = new DOMDocument('1.0', 'UTF-8');
+    $previous = libxml_use_internal_errors(true);
+    $loaded = $document->loadHTML(
+        '<?xml encoding="utf-8" ?><div id="snap-bare-paragraph-root">' . $html . '</div>',
+        LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+    );
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+    if (!$loaded) return $html;
+
+    $root = $document->getElementById('snap-bare-paragraph-root');
+    if (!$root) return $html;
+
+    $blockTags = array_flip(['p','div','section','blockquote','ul','ol','pre',
+        'h1','h2','h3','h4','h5','h6','figure','table','details','header','footer','nav','form','hr']);
+    $run = [];
+    $wrapped = false;
+    $flush = static function () use (&$run, &$wrapped, $document, $root): void {
+        if (!$run) return;
+        $meaningful = false;
+        foreach ($run as $node) {
+            if (trim((string)$node->textContent) !== ''
+                || ($node instanceof DOMElement && strtolower($node->tagName) === 'img')) {
+                $meaningful = true;
+                break;
+            }
+        }
+        if ($meaningful) {
+            $paragraph = $document->createElement('p');
+            $root->insertBefore($paragraph, $run[0]);
+            foreach ($run as $node) $paragraph->appendChild($node);
+            $wrapped = true;
+        }
+        $run = [];
+    };
+    foreach (iterator_to_array($root->childNodes) as $child) {
+        if ($child instanceof DOMElement && isset($blockTags[strtolower($child->tagName)])) {
+            $flush();
+            continue;
+        }
+        $run[] = $child;
+    }
+    $flush();
+
+    // An empty paragraph is what a block element inside a <p> leaves behind
+    // when the browser -- or this loader -- closes the paragraph early. It
+    // draws a gap and holds nothing, so it goes.
+    foreach (iterator_to_array($root->getElementsByTagName('p')) as $paragraph) {
+        if (trim((string)$paragraph->textContent) === ''
+            && $paragraph->getElementsByTagName('img')->length === 0) {
+            $paragraph->parentNode?->removeChild($paragraph);
+            $wrapped = true;
+        }
+    }
+
+    if (!$wrapped) return $html;
+
+    $out = '';
+    foreach ($root->childNodes as $child) $out .= $document->saveHTML($child);
+    return $out;
+}
 // ===== SNAPSMACK EOF =====
