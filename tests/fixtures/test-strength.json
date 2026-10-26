@@ -1018,12 +1018,18 @@
         "thresholds": []
     },
     "release-flow-regression.php": {
-        "assertions": 51,
-        "predicates": 54,
+        "assertions": 55,
+        "predicates": 58,
         "thresholds": [
+            2,
             2,
             2
         ]
+    },
+    "release-gate-scope-regression.php": {
+        "assertions": 14,
+        "predicates": 10,
+        "thresholds": []
     },
     "remaining-public-control-authority-regression.php": {
         "assertions": 16,
