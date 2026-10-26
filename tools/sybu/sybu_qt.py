@@ -230,6 +230,7 @@ class Window(QMainWindow):
     def _queue_page(self):
         page,l=self._page("Your posting queue","Edit the fields that matter. Selection, enrichment and posting all operate on this table.")
         tools=FlowLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); up=QPushButton("▲ Move up"); up.setToolTip("Move the highlighted row up one. You can also drag a row."); up.clicked.connect(lambda:self._move_row(-1)); tools.addWidget(up); down=QPushButton("▼ Move down"); down.setToolTip("Move the highlighted row down one. You can also drag a row."); down.clicked.connect(lambda:self._move_row(1)); tools.addWidget(down); rnd=QPushButton("Randomize"); rnd.setToolTip("Shuffle the posting order."); rnd.clicked.connect(self._randomize); tools.addWidget(rnd); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); self.qpost_btn=QPushButton("POST"); self.qpost_btn.clicked.connect(lambda:self._post(None)); tools.addWidget(self.qpost_btn); self.qpost_solo=QPushButton("POST SOLO"); self.qpost_solo.clicked.connect(lambda:self._post(False)); tools.addWidget(self.qpost_solo); self.qpost_gram=QPushButton("POST GRAM"); self.qpost_gram.clicked.connect(lambda:self._post(True)); tools.addWidget(self.qpost_gram); self.queue_count=label("0 images","Muted"); self.queue_count.setWordWrap(False); tools.addWidget(self.queue_count); l.addLayout(tools)
+        batch_tags=QHBoxLayout(); batch_tags.addWidget(label("ADDITIONAL HASHTAGS FOR THIS IMPORT", "Eyebrow")); self.additional_tags=QLineEdit(); self.additional_tags.setPlaceholderText("e.g. #photofrifall #horsconcours"); self.additional_tags.setToolTip("Appended to every selected image when this queue is published. Not saved to the site profile or enrichment prompt."); batch_tags.addWidget(self.additional_tags,1); l.addLayout(batch_tags)
         self.table=QueueTable(0,12); self.table.moved.connect(self._reorder); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         # Text columns SHARE the width the window has; nothing dictates it. FILE
         # used to size to its longest filename and squeeze title/caption/alt to
@@ -323,7 +324,7 @@ class Window(QMainWindow):
                     restored = self.engine.recovery.enriched_count_for(self.engine.entries)
                     if restored: result = self.engine.apply_resume()
             except Exception as e: self._say(f"Saved enrichment not restored: {e}")
-            self._fill_queue(result); self._show(1)
+            self.additional_tags.clear(); self._fill_queue(result); self._show(1)
             self._say(f"Loaded {result['count']} images." + (f" Restored saved enrichment for {restored} of them from the last run - no Gemini cost." if restored else ""))
             if restored: self.progress_text.setText(f"{restored} of {result['count']} images already enriched (restored from the last run).")
 
@@ -425,7 +426,7 @@ class Window(QMainWindow):
     def _clear_queue(self):
         if not self.table.rowCount(): return
         if QMessageBox.question(self,"Clear posting queue","Remove the images from this posting queue?\n\nThe image files themselves will not be deleted. Failed rows are retained so an upload problem cannot be lost.",QMessageBox.Yes|QMessageBox.Cancel,QMessageBox.Cancel)!=QMessageBox.Yes:return
-        self._fill_queue(self.engine.clear_queue()); self._say("Posting queue cleared.")
+        self._fill_queue(self.engine.clear_queue()); self.additional_tags.clear(); self._say("Posting queue cleared.")
 
     def _enrich(self):
         try:
@@ -474,8 +475,10 @@ class Window(QMainWindow):
             if grams is None: self._error("Connect to the blog first — it decides solo or gram."); return
         try:
             self._sync_queue(); pf=self.engine.post_preflight(grams,self.drive.isChecked())
-            if QMessageBox.question(self,"Confirm publish",f"Post {pf['count']} selected image(s) to {pf['dest']} as {'GRAM' if grams else 'SOLO'}?",QMessageBox.Yes|QMessageBox.No)!=QMessageBox.Yes:return
-            out=self.engine.post_start(grams,self.cat.currentText(),self.album.currentText(),self.orient.currentText(),"",self.engine.config.get('copyright_text',''),self.drive_folder.text(),ack_no_drive=True,ack_unknown_mode=True,drive_enabled=self.drive.isChecked())
+            extra=self.additional_tags.text().strip()
+            tag_note=f"\n\nAdditional hashtags: {extra}" if extra else ""
+            if QMessageBox.question(self,"Confirm publish",f"Post {pf['count']} selected image(s) to {pf['dest']} as {'GRAM' if grams else 'SOLO'}?{tag_note}",QMessageBox.Yes|QMessageBox.No)!=QMessageBox.Yes:return
+            out=self.engine.post_start(grams,self.cat.currentText(),self.album.currentText(),self.orient.currentText(),"",self.engine.config.get('copyright_text',''),self.drive_folder.text(),ack_no_drive=True,ack_unknown_mode=True,drive_enabled=self.drive.isChecked(),additional_tags=extra)
             if out.get('needs_ack'): self._error("Google Drive is not connected."); return
             self.poll_seen['post']=0; self.progress.setValue(0); self.progress_text.setText(f"Publishing {pf['count']} image(s) to {pf['dest']}…"); self.stop_btn.setEnabled(True); self._fill_queue()
         except Exception as e:self._error(str(e))

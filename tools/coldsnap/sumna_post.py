@@ -731,11 +731,30 @@ class SmacktalkPoster:
             payload["page_id"] = int(draft.remote_post_id)
         return payload
 
-    def list_posts(self, limit: int = 100) -> list:
-        r = self.session.get(self._route("smackpress/posts"),
-                             params={"limit": max(1, min(500, int(limit)))}, timeout=30)
-        r.raise_for_status()
-        return list(r.json().get("posts") or [])
+    def list_posts(self, limit: int = 500) -> list:
+        """Return the site's long-form post catalogue for the desktop picker.
+
+        The API deliberately caps this read at 500.  Asking for its full cap is
+        important here: the old default of 100 made older posts silently vanish
+        from COLD TAKE on established sites.
+        """
+        page_size = max(1, min(500, int(limit)))
+        posts, offset = [], 0
+        while True:
+            r = self.session.get(self._route("smackpress/posts"),
+                                 params={"limit": page_size, "offset": offset}, timeout=30)
+            r.raise_for_status()
+            payload = r.json()
+            page = list(payload.get("posts") or [])
+            posts.extend(page)
+            total = payload.get("total")
+            # Older SnapSmack installs do not advertise a total or understand
+            # offsets.  One maximum-size request remains safe and still raises
+            # their former 100-post ceiling to 500 without looping forever.
+            if total is None or len(posts) >= int(total) or len(page) < page_size:
+                break
+            offset += len(page)
+        return posts
 
     def list_pages(self, limit: int = 500) -> list:
         r = self.session.get(self._route("smackpress/pages"),

@@ -18,6 +18,9 @@ $needles = [
     'featured_image_id,user_id',
     "if (\$sub === 'pages' && \$method === 'GET')",
     "SELECT id,title,slug,is_active,created_at FROM snap_pages",
+    "\$_GET['offset']",
+    "SELECT COUNT(*) FROM snap_posts WHERE post_type='longform'",
+    "'total' => \$total",
     '$stmt = $pdo->prepare(',
 ];
 foreach ($needles as $needle) {

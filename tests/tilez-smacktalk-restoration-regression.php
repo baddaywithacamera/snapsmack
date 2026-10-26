@@ -16,6 +16,9 @@ if (!str_contains($repo, 'p.signature_image_id=i.id')) {
 foreach (["img_thumb_aspect", "is_file(dirname(__DIR__)", "'width'", "'height'"] as $hook) {
     if (!str_contains($controller, $hook)) throw new RuntimeException("Archive media validation missing: {$hook}");
 }
+foreach (['$post[\'width\'] / $post[\'height\'] > 2', '$post[\'width\'] = 2', '$post[\'height\'] = 1'] as $hook) {
+    if (!str_contains($controller, $hook)) throw new RuntimeException("TILEZ panoramic feed clamp missing: {$hook}");
+}
 foreach (['alfred-archive-grid ss-masonry', 'alfred-archive-tile ss-masonry-item', 'data-w=', 'data-h='] as $hook) {
     if (!str_contains($layout, $hook)) throw new RuntimeException("TILEZ archive lost shared columns hook: {$hook}");
 }
@@ -45,6 +48,9 @@ if (!str_contains($viewModel, "blogroll\\.php") || !str_contains($viewModel, "ty
 }
 if (!str_contains($css, '.alfred-archive-grid {') || !str_contains($css, '--ss-cols: 5')) {
     throw new RuntimeException('TILEZ archive no longer defaults to the smaller asymmetric wall.');
+}
+if (!str_contains($css, 'object-fit: cover') || !str_contains($css, 'object-position: center')) {
+    throw new RuntimeException('TILEZ feed covers no longer crop bounded panoramic tiles cleanly.');
 }
 
 echo "TILEZ SMACKTALK restoration regression passed\n";

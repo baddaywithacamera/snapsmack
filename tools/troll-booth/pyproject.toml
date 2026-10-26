@@ -11,7 +11,9 @@ dependencies = [
   "mcp[cli]==2.3.0",
   "pydantic>=2.11,<3",
   "uvicorn>=0.35,<1",
-  "PySide6>=6.8,<7",
+  # Qt 6.12 currently freezes into a Windows executable that fails while
+  # loading QtCore. Keep the desktop package on the verified 6.8 line.
+  "PySide6>=6.8,<6.9",
   "PyMySQL>=1.1,<2",
 ]
 
@@ -22,6 +24,11 @@ troll-booth-owner = "troll_booth.owner:main"
 troll-booth-desktop = "troll_booth.desktop:main"
 smack-dealer = "troll_booth.dealer:main"
 troll-booth = "troll_booth.cli:main"
+brain-trust-server = "troll_booth.server:main"
+brain-trust-worker = "troll_booth.worker:main"
+brain-trust-owner = "troll_booth.owner:main"
+brain-trust-desktop = "troll_booth.desktop:main"
+brain-trust = "troll_booth.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["troll_booth"]

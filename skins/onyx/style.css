@@ -121,13 +121,15 @@ img { max-width: 100%; height: auto; }
    HEADER — the photofri.day top bar, built from core/header.php
    =========================================================================== */
 
-#pfd-header {
+#pfd-header,
+#header.site-header {
     position: relative;
     z-index: 2;
     border-bottom: 1px solid var(--pfd-red);
 }
 
-.pfd-header-inside {
+.pfd-header-inside,
+#header.site-header > .inside {
     display: flex;
     align-items: center;
     justify-content: space-between;

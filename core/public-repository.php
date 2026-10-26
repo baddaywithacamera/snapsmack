@@ -263,7 +263,8 @@ final class SnapPublicRepository
         return $this->all(
             "SELECT p.id,p.title,p.slug,p.description,p.created_at,p.updated_at,p.featured_image_id,
                     i.img_file AS featured_image_path,i.img_thumb_aspect AS featured_thumb,
-                    i.img_width AS featured_width,i.img_height AS featured_height
+                    i.img_width AS featured_width,i.img_height AS featured_height,
+                    i.img_display_options AS featured_display_options
              FROM snap_posts p LEFT JOIN snap_images i ON i.id=p.featured_image_id
                AND i.img_status='published' AND i.img_date <= NOW()
              WHERE p.post_type='longform' AND p.status='published' AND p.created_at <= NOW()
@@ -384,9 +385,11 @@ final class SnapPublicRepository
         );
     }
 
-    public function search(string $term, int $limit = 50): array {
+    public function search(string $term, int $limit = 50, int $offset = 0): array {
         $like = '%' . $term . '%';
         $tagLike = '%' . strtolower($term) . '%';
+        $limit = max(1, min(100, $limit));
+        $offset = max(0, $offset);
         return [
             'photographs' => $this->all(
                 "SELECT DISTINCT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,
@@ -400,16 +403,16 @@ final class SnapPublicRepository
                                    WHERE sam.image_id=i.id AND a.album_name LIKE ?)
                         OR EXISTS (SELECT 1 FROM snap_image_cat_map scm JOIN snap_categories c ON c.id=scm.cat_id
                                    WHERE scm.image_id=i.id AND c.cat_name LIKE ?))
-                 ORDER BY i.img_date DESC,i.id DESC LIMIT ?",
-                [$like, $like, $like, $tagLike, $like, $like, max(1, min(100, $limit))]
+                 ORDER BY i.img_date DESC,i.id DESC LIMIT ? OFFSET ?",
+                [$like, $like, $like, $tagLike, $like, $like, $limit, $offset]
             ),
             'posts' => $this->all(
                 "SELECT id,title,slug,description,post_type,created_at,featured_image_id
                  FROM snap_posts
                  WHERE status='published' AND created_at <= NOW()
                    AND (title LIKE ? OR description LIKE ? OR content LIKE ?)
-                 ORDER BY created_at DESC,id DESC LIMIT ?",
-                [$like, $like, $like, max(1, min(100, $limit))]
+                 ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?",
+                [$like, $like, $like, $limit, $offset]
             ),
         ];
     }

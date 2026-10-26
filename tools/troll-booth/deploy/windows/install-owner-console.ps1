@@ -15,19 +15,19 @@ if (-not (Test-Path -LiteralPath $venvPython)) {
 
 & $venvPython -m pip install --disable-pip-version-check -e $InstallRoot
 
-$launcherDir = Join-Path $env:LOCALAPPDATA "SnapSmack\TrollBooth"
+$launcherDir = Join-Path $env:LOCALAPPDATA "SnapSmack\BrainTrust"
 New-Item -ItemType Directory -Force -Path $launcherDir | Out-Null
 $launcher = Join-Path $launcherDir "run-owner.cmd"
 $launcherBody = "@echo off`r`n`"$venvPythonw`" -m troll_booth.desktop`r`n"
 Set-Content -LiteralPath $launcher -Value $launcherBody -Encoding Ascii -NoNewline
 
 $startupDir = [Environment]::GetFolderPath("Startup")
-$startupLauncher = Join-Path $startupDir "TROLL BOOTH Owner Console.cmd"
+$startupLauncher = Join-Path $startupDir "BRAIN TRUST Owner Console.cmd"
 $startupBody = "@echo off`r`nstart `"`" /b `"$launcher`"`r`n"
 Set-Content -LiteralPath $startupLauncher -Value $startupBody -Encoding Ascii -NoNewline
 
 Start-Process -FilePath $venvPythonw -ArgumentList "-m", "troll_booth.desktop" -WindowStyle Hidden
-Write-Host "TROLL BOOTH desktop application installed and started."
+Write-Host "BRAIN TRUST desktop application installed and started."
 Write-Host "Source: $InstallRoot"
 Write-Host "Launcher: $launcher"
 Write-Host "Startup entry: $startupLauncher"

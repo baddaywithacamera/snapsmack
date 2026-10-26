@@ -419,7 +419,17 @@ def open_conversation_store(*, allow_offline_cache: bool = True):
     from .secret_config import load_mariadb_url
     url = load_mariadb_url()
     if url:
-        return MariaConversationStore(url), "MARIADB"
+        try:
+            return MariaConversationStore(url), "MARIADB"
+        except Exception:
+            # The owner console must remain reachable when the central host is
+            # rebooting, disconnected, or otherwise unavailable. Agent/server
+            # processes pass allow_offline_cache=False and still fail closed;
+            # only an explicitly offline-capable caller may use the local copy.
+            if not allow_offline_cache:
+                raise
+            path = Path(os.environ.get("TROLL_BOOTH_OFFLINE_CACHE", Path.home() / ".troll-booth" / "history.sqlite3"))
+            return ConversationStore(path), "OFFLINE CACHE · MARIADB UNREACHABLE"
     if not allow_offline_cache:
         raise RuntimeError("TROLL_BOOTH_MARIADB_URL is not configured")
     path = Path(os.environ.get("TROLL_BOOTH_OFFLINE_CACHE", Path.home() / ".troll-booth" / "history.sqlite3"))

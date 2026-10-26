@@ -26,6 +26,7 @@ os.environ["SNAPSMACK_HOME"] = _SANDBOX
 import sumna_offline as O          # noqa: E402
 import sumna_post as P             # noqa: E402
 import snap_library as L           # noqa: E402
+from coldsnap_qt.cold_storage import StorageMode  # noqa: E402
 
 passed = 0
 
@@ -116,7 +117,11 @@ check("want_id reply parses to the image id", int(body.split(":", 1)[1]) == 123)
 pulled = L.store_media(SITE, b"\xff\xd8\xff\xe0PULLEDBYTES", orig_name="dsc9.jpg", ext=".jpg")
 pulled.update({"alt": "a dog on a dock", "title": "Dock dog", "description": "the dog waits",
                "color_mode": "bw", "status": "published", "img_date": "2026-09-06 10:00:00",
-               "source_ref": "img:90", "width": 640, "height": 480})
+               "source_ref": "img:90", "width": 640, "height": 480,
+               "usage_known": True,
+               "buckets": [{"post_id": 12, "title": "Dog days", "status": "draft"}],
+               "placements": [],
+               "mosaics": [{"id": 4, "title": "Dogs", "used_by": []}]})
 L.upsert_asset(SITE, pulled)
 rows = {a["asset_id"]: a for a in L.all_assets(SITE)}
 pa = rows[pulled["asset_id"]]
@@ -124,7 +129,21 @@ check("pulled title with the image", pa["title"] == "Dock dog")
 check("pulled caption with the image", pa["description"] == "the dog waits")
 check("pulled colour with the image", pa["color_mode"] == "bw")
 check("pulled asset in no posts yet", pa["used_in"] == 0)
+check("authoritative usage flag survives", pa["usage_known"] == 1)
+check("bucket membership survives", pa["buckets"][0]["title"] == "Dog days")
+check("empty placement remains distinct from bucket", pa["placements"] == [])
+check("unused mosaic survives", pa["mosaics"][0]["used_by"] == [])
 check("skip-list knows it", "img:90" in L.asset_source_refs(SITE))
+check("storage calls bucket-only what it is",
+      StorageMode._usage_state(pa) == "bucket-only")
+check("storage distinguishes an actual placement",
+      StorageMode._usage_state({"usage_known": 1, "placements": [{"post_id": 12}],
+                                "buckets": [], "mosaics": []}) == "placed")
+check("storage distinguishes unused mosaic",
+      StorageMode._usage_state({"usage_known": 1, "placements": [], "buckets": [],
+                                "mosaics": [{"used_by": []}]}) == "unused-mosaic")
+check("storage refuses to guess before a usage sync",
+      StorageMode._usage_state({"usage_known": 0}) == "unknown")
 
 # --- record_post on the same bytes must NOT wipe the pulled metadata ---------
 draft3 = O.Draft(draft_id="d3", kind=O.KIND_SOLO, mode=O.MODE_SOLO, title="Dock post")

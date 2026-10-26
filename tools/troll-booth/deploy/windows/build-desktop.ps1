@@ -1,11 +1,20 @@
 $ErrorActionPreference = 'Stop'
 $Project = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$Python = (py -3.10 -c "import sys; print(sys.executable)").Trim()
+$Python = Join-Path $Project '.venv\Scripts\python.exe'
+$Icon = Join-Path $Project 'assets\brain-trust.ico'
 $Dist = Join-Path $Project 'dist'
 $Build = Join-Path $Project 'build'
 
+if (-not (Test-Path $Python)) {
+  throw "BRAIN TRUST's isolated Python environment is missing: $Python"
+}
+if (-not (Test-Path $Icon)) {
+  throw "BRAIN TRUST's application icon is missing: $Icon"
+}
+
 & $Python -m pip install -e $Project
-& $Python -m PyInstaller --noconfirm --clean --windowed --name 'TROLL BOOTH' `
+& $Python -m PyInstaller --noconfirm --clean --windowed --name 'BRAIN TRUST' `
+  --icon $Icon `
   --hidden-import pymysql --hidden-import win32crypt `
   --distpath $Dist --workpath $Build --specpath $Build `
   (Join-Path $Project 'desktop_entry.py')

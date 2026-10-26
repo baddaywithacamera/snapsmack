@@ -4,14 +4,23 @@ snapsmack_assert_strict_skin_feature('tilez');
 
 $css = file_get_contents(__DIR__ . '/../skins/tilez/style.css');
 $mosaic = file_get_contents(__DIR__ . '/../assets/js/ss-engine-mosaic.js');
-if (!is_string($css) || !is_string($mosaic)
-    || !str_contains($css, 'promoted by ss-engine-mosaic.js')
-    || !str_contains($mosaic, 'function promoteInlineImageRuns(scope)')
-    || !str_contains($mosaic, "mosaic.className = 'snap-mosaic snap-mosaic--promoted-run'")
+$layout = file_get_contents(__DIR__ . '/../skins/tilez/layout.php');
+if (!is_string($css) || !is_string($mosaic) || !is_string($layout)
+    || str_contains($layout, 'data-merge-adjacent-mosaics')
     || str_contains($css, 'width: calc(50% - 10px) !important;')) {
-    throw new RuntimeException('TILEZ consecutive post photographs must become one exact-packed asymmetric mosaic.');
+    throw new RuntimeException('TILEZ standalone post photographs must remain separate stacked blocks.');
 }
 $manifest = json_decode((string) file_get_contents(__DIR__ . '/../skins/tilez/manifest.json'), true);
+$bodyFont = $manifest['options']['body_font_family'] ?? [];
+$bodyFontChoices = $bodyFont['options'] ?? [];
+if (($bodyFont['selector'] ?? '') !== '.post-content, .entry-content'
+    || ($bodyFont['property'] ?? '') !== 'custom-font-family'
+    || ($bodyFont['default'] ?? '') !== 'Montserrat'
+    || count($bodyFontChoices) !== 20
+    || !isset($bodyFontChoices['Droid Serif'], $bodyFontChoices['Georgia'], $bodyFontChoices['Segoe UI'])
+    || ($manifest['options']['body_font_size']['default'] ?? '') !== '20') {
+    throw new RuntimeException('TILEZ must expose its curated post body font and size controls without changing the existing default.');
+}
 // A FLOOR, not a pin. Pinning the exact version made every legitimate
 // skin release fail this test, so the cheap way out was to change the
 // files and leave the version alone — which is exactly how sites ended

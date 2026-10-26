@@ -21,7 +21,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='TROLL BOOTH',
+    name='BRAIN TRUST',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -30,6 +30,7 @@ exe = EXE(
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
+    icon=['C:/dev/snapsmack/tools/troll-booth/assets/brain-trust.ico'],
     codesign_identity=None,
     entitlements_file=None,
 )
@@ -40,5 +41,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='TROLL BOOTH',
+    name='BRAIN TRUST',
 )

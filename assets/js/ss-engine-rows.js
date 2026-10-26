@@ -242,7 +242,21 @@
     function initInfiniteScroll() {
         var sentinel = document.querySelector('.scroll-wall-sentinel');
         var grid = document.querySelector('.ss-scroll-wall');
-        if (!sentinel || !grid) return;
+        if (!grid) return;
+        // Older installed SLICKR packages predate the search sentinel.  The
+        // controller is paged, so let the shared engine supply the marker at
+        // runtime instead of forcing a skin replacement (skins are protected
+        // owner content). An empty second page cleanly marks the end.
+        if (!sentinel && new URLSearchParams(window.location.search || '').has('q')
+                && grid.children.length > 0) {
+            sentinel = document.createElement('div');
+            sentinel.className = 'scroll-wall-sentinel';
+            sentinel.setAttribute('data-next', '2');
+            sentinel.setAttribute('data-has-more', '1');
+            sentinel.setAttribute('aria-hidden', 'true');
+            grid.parentNode.insertBefore(sentinel, grid.nextSibling);
+        }
+        if (!sentinel) return;
 
         var loading = false, fails = 0, MAX_FAILS = 4;
 
@@ -253,8 +267,15 @@
             if (loading || exhausted()) return;
             loading = true;
             var next = parseInt(sentinel.getAttribute('data-next'), 10) || 1;
-            var url = '?pg=wall&format=json&c=' + next
-                    + '&t=' + encodeURIComponent(sentinel.getAttribute('data-cutoff') || '');
+            // Keep the route's filters.  Replacing the whole query discarded
+            // q=rodeo and album=299, so the second batch silently switched to
+            // the unfiltered landing feed.
+            var params = new URLSearchParams(window.location.search || '');
+            params.set('pg', 'wall');
+            params.set('format', 'json');
+            params.set('c', String(next));
+            params.set('t', sentinel.getAttribute('data-cutoff') || '');
+            var url = window.location.pathname + '?' + params.toString();
             fetch(url, { credentials: 'same-origin' })
                 .then(function (r) { return r.ok ? r.json() : null; })
                 .then(function (data) {

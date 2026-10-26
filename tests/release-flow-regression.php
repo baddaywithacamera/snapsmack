@@ -97,6 +97,16 @@ rel_expect(str_contains($packager, "'source_commit'"),
     'published manifests must record the exact source commit');
 rel_expect(str_contains($packager, 'sc_record_release_identifier'),
     'packager must record checksum and signature before publication');
+rel_expect(str_contains($packager, 'function sc_delete_older_release_versions')
+    && str_contains($packager, "['stable', 'dev']"),
+    'release packager must offer guarded per-track cleanup of older versions');
+rel_expect(str_contains($packager, "!hash_equals(\$keep_file, \$manifest_file)"),
+    'bulk cleanup must fail closed when history and the live manifest disagree');
+rel_expect(str_contains($packager, "DELETE FROM {\$table} WHERE id <> ?")
+    && str_contains($packager, 'release-identifiers.json'),
+    'bulk cleanup must preserve the newest row and immutable identifier ledger');
+rel_expect(substr_count($packager, '>Delete all older</button>') === 2,
+    'stable and development histories must each expose bulk cleanup');
 rel_expect(str_contains($packager, '$dev_build_notice = sc_dev_sequence_notice(sc_db(), $version)'),
     'dev packager must expose predecessor drift as a non-blocking operator notice');
 rel_expect(sc_dev_predecessor('0.7.837D') === '0.7.836D',

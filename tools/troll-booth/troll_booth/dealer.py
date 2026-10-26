@@ -25,7 +25,7 @@ class DealerWindow(QMainWindow):
         box.addWidget(title)
         box.addWidget(subtitle)
         grid = QGridLayout()
-        grid.addWidget(self._tile("TROLL BOOTH", "Agent bridge, shared rooms, CLI connections", self.launch_troll_booth), 0, 0)
+        grid.addWidget(self._tile("BRAIN TRUST", "Agent bridge, shared rooms, app connections", self.launch_troll_booth), 0, 0)
         grid.addWidget(self._tile("CRONOMETER", "Scheduled operations", None), 0, 1)
         box.addLayout(grid, 1)
         self.setCentralWidget(root)
@@ -52,9 +52,10 @@ class DealerWindow(QMainWindow):
         return frame
 
     def launch_troll_booth(self) -> None:
-        packaged = Path(sys.executable).with_name("TROLL BOOTH.exe")
-        if getattr(sys, "frozen", False) and packaged.exists():
-            command = [str(packaged)]
+        packaged = Path(sys.executable).with_name("BRAIN TRUST.exe")
+        legacy_packaged = Path(sys.executable).with_name("TROLL BOOTH.exe")
+        if getattr(sys, "frozen", False) and (packaged.exists() or legacy_packaged.exists()):
+            command = [str(packaged if packaged.exists() else legacy_packaged)]
         else:
             command = [str(Path(sys.executable)), "-m", "troll_booth.desktop"]
         flags = 0

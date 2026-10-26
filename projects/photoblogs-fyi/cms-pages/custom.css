@@ -17,8 +17,10 @@
 /* ---------------------------------------------------------------- palette */
 
 :root {
-  --pbf-red:   #D40000;
-  --pbf-link:  #F50A0A;
+  /* Follow the active ONYX palette instead of pinning the original Garnet
+     colours. The fallbacks preserve this page outside ONYX. */
+  --pbf-red:   var(--pfd-red, #D40000);
+  --pbf-link:  var(--pfd-link, #F50A0A);
   --pbf-black: #111111;
   --pbf-panel: #141414;
   --pbf-line:  #282828;
@@ -310,7 +312,18 @@ body.homepage-static .pbf-how  { max-width: 48em; margin-left: auto; margin-righ
    footer to the old static reference (transparent, 3px red top rule, centred monospace grey).
    IDs + !important are needed to beat the skin's own id-scoped !important footer rules. */
 body.homepage-static #scroll-stage { display: flex !important; flex-direction: column !important; overflow-y: auto !important; }
-body.homepage-static #scroll-stage .static-content { flex: 0 0 auto !important; overflow: visible !important; width: min(calc(100% - 40px), 1200px) !important; max-width: 1200px !important; margin-top: 0 !important; padding-top: 12px !important; padding-bottom: 10px !important; }
+body.homepage-static #scroll-stage .static-content {
+  flex: 1 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  overflow: visible !important;
+  width: min(calc(100% - 40px), 1200px) !important;
+  max-width: 1200px !important;
+  margin-top: 0 !important;
+  padding-top: 12px !important;
+  padding-bottom: 10px !important;
+}
 body.homepage-static .description { width: 100% !important; max-width: 100% !important; }
 body.homepage-static .pbf-lede { max-width: 58em !important; }
 body.homepage-static .pbf-sub  { max-width: 72em !important; }

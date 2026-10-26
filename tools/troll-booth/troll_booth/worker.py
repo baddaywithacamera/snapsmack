@@ -184,7 +184,7 @@ class CapabilityRegistry:
             )
         if capability == "scope.release" and self.history:
             return self.history.release_scope(str(arguments.get("scope", "")), actor)
-        raise ValueError("capability is not available to this TROLL BOOTH worker")
+        raise ValueError("capability is not available to this BRAIN TRUST worker")
 
 
 def run(base: str, token: str, config: Path, history: Path, worker_id: str, once: bool = False) -> None:
@@ -209,7 +209,7 @@ def run(base: str, token: str, config: Path, history: Path, worker_id: str, once
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="TROLL BOOTH outbound read-only worker")
+    parser = argparse.ArgumentParser(description="BRAIN TRUST outbound capability worker")
     parser.add_argument("--server", default=os.environ.get("TROLL_BOOTH_SERVER", ""))
     parser.add_argument("--token", default=os.environ.get("TROLL_BOOTH_WORKER_TOKEN", ""))
     parser.add_argument("--token-file", type=Path)

@@ -79,6 +79,10 @@
 
         if (cells.length === 3) {
             if (template === 'one-left') return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
+            if (template === 'tall-right') {
+                cells[0].ar = Math.min(cells[0].ar, 0.72);
+                return group('horizontal', [group('vertical', cells.slice(1)), cells[0]]);
+            }
             if (template === 'one-right') return group('horizontal', [group('vertical', cells.slice(1)), cells[0]]);
             if (template === 'three-across') return group('horizontal', cells);
             if (template === 'one-top') return group('vertical', [cells[0], group('horizontal', cells.slice(1))]);
@@ -89,6 +93,20 @@
                 return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
             }
             return group('horizontal', cells);
+        }
+
+        if (template === 'one-left') {
+            return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
+        }
+        if (template === 'tall-right') {
+            cells[0].ar = Math.min(cells[0].ar, 0.72);
+            return group('horizontal', [group('vertical', cells.slice(1)), cells[0]]);
+        }
+        if (template === 'one-right') {
+            return group('horizontal', [group('vertical', cells.slice(1)), cells[0]]);
+        }
+        if (template === 'one-top') {
+            return group('vertical', [cells[0], group('horizontal', cells.slice(1))]);
         }
 
         if (cells[0].ar < 1.15) {
@@ -291,7 +309,8 @@
            boundary. Six-image groups require the general solver because the
            original editorial tree only defines arrangements up to four cells. */
         var enforceUsefulSize = containerWidth >= 1200;
-        if (images.length >= 5) {
+        var explicitEditorialTemplate = template === 'one-left' || template === 'one-right' || template === 'tall-right' || template === 'one-top';
+        if (images.length >= 5 && !explicitEditorialTemplate) {
             return solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant);
         }
         var tree = buildSection(images, false, template);

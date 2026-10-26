@@ -21,6 +21,7 @@
  *   [newest_post]                    — date of most recent post
  *   [oldest_post]                    — date of first post
  *   [embed:key]                      — named HTML embed from Smack Your Scripts Up!
+ *   Bare YouTube URLs                — privacy-enhanced inline video player
  *   [fedi_handle]                    — blog's own fediverse @handle as a follow link (blank if federation off)
  *   [pc_prompt which="next|current" field="prompt|tag|drop|open|close|friday" format="" empty=""]
  *                                    — live PHOTO CHALLENGE schedule read from the prompt queue
@@ -117,6 +118,11 @@ class SnapSmack {
         // Convert double newlines to <p> tags for any remaining top-level text.
         $content = $this->autoParagraph($content);
 
+        // --- PHASE 2b: SAFE VIDEO EMBEDS ---
+        // WordPress migrations commonly leave a YouTube URL on its own line.
+        // Convert only standalone YouTube URLs; links inside prose stay links.
+        $content = $this->parseYouTubeEmbeds($content);
+
         // --- PHASE 3: DROPCAP ---
         $content = $this->parseDropcap($content);
 
@@ -180,6 +186,31 @@ class SnapSmack {
         // --- PHASE 13: GAME SCORE HISTORY ---
         $content = $this->parseGameScores($content);
 
+        return $content;
+    }
+
+    /**
+     * Turn standalone youtube.com / youtu.be URLs into a responsive,
+     * privacy-enhanced player. The video id is deliberately restricted to
+     * YouTube's inert 11-character identifier before it reaches HTML.
+     */
+    private function parseYouTubeEmbeds(string $content): string {
+        $url = '(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?(?:[^<>&]*&amp;)*v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[^<\s]*)?';
+        $render = static function (array $match): string {
+            $id = $match[1];
+            return '<div class="snap-video snap-video--youtube"><iframe src="https://www.youtube-nocookie.com/embed/' . $id . '" title="YouTube video player" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>';
+        };
+
+        // autoParagraph() wraps a URL-only line in <p>; some older imports
+        // wrapped it in <figure>. Supporting both keeps migration data intact.
+        $content = preg_replace_callback(
+            '~<figure(?:\s+[^>]*)?>\s*(?:<p>\s*)?' . $url . '(?:\s*</p>)?\s*(<figcaption(?:\s+[^>]*)?>.*?</figcaption>)?\s*</figure>~is',
+            static function (array $match) use ($render): string {
+                return '<figure class="snap-video-figure">' . $render($match) . ($match[2] ?? '') . '</figure>';
+            },
+            $content
+        );
+        $content = preg_replace_callback('~<p>\s*' . $url . '\s*</p>~i', $render, $content);
         return $content;
     }
 
@@ -399,7 +430,7 @@ class SnapSmack {
             // what each engine binds to; the item class is '.ss-masonry-item' for all
             // three. Square needs no JS at all — it is native CSS Grid.
             $layout = (string)($mosaic['layout'] ?? 'asymmetric');
-            $templates = ['one-left', 'one-right', 'three-across', 'one-top'];
+            $templates = ['one-left', 'one-right', 'tall-right', 'three-across', 'one-top'];
             if (!in_array($layout, array_merge(['asymmetric', 'columns', 'rows', 'square'], $templates), true)) {
                 $layout = 'asymmetric';
             }

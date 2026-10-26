@@ -505,9 +505,12 @@ function smackpress_save_bucket(PDO $pdo, int $post_id, array $body, string $con
 // =====================================================================
 if ($sub === 'posts' && $method === 'GET') {
     $limit = max(1, min(500, (int)($_GET['limit'] ?? 100)));
+    $offset = max(0, (int)($_GET['offset'] ?? 0));
+    $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts WHERE post_type='longform'")
+                      ->fetchColumn();
     $stmt = $pdo->prepare("SELECT id,title,slug,status,created_at,updated_at,featured_image_id
                             FROM snap_posts WHERE post_type='longform'
-                        ORDER BY updated_at DESC, id DESC LIMIT " . $limit);
+                        ORDER BY updated_at DESC, id DESC LIMIT " . $limit . " OFFSET " . $offset);
     $stmt->execute();
     $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
     foreach ($posts as &$post) {
@@ -515,7 +518,8 @@ if ($sub === 'posts' && $method === 'GET') {
         $post['featured_image_id'] = (int)($post['featured_image_id'] ?? 0);
     }
     unset($post);
-    smackpress_ok(['posts' => $posts]);
+    smackpress_ok(['posts' => $posts, 'total' => $total,
+                   'limit' => $limit, 'offset' => $offset]);
 }
 
 // =====================================================================

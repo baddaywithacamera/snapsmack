@@ -1,4 +1,4 @@
-# TROLL BOOTH recovery
+# BRAIN TRUST recovery
 
 Everything required to rebuild the applications belongs in Git. Secrets and
 live user data do not.

@@ -1,11 +1,11 @@
 <!-- SNAPSMACK_EOF_HEADER -->
 <!-- Last non-empty line of this file MUST be the SNAPSMACK EOF marker below. -->
 
-# TROLL BOOTH
+# BRAIN TRUST
 
 **Nobody crosses without papers.**
 
-TROLL BOOTH is SnapSmack's local, loopback-only capability broker and agent
+BRAIN TRUST is SnapSmack's local, loopback-only capability broker and agent
 collaboration room. It lets an explicitly paired Claude Web or ChatGPT Web
 session discover and use the supported CLI surfaces of installed SnapSmack
 desktop applications without exposing a shell or a public network service.
@@ -34,7 +34,7 @@ cleanup, restore, deletion, or deployment belongs in the first build.
 
 ## Implementation status
 
-The experimental v0.1.3 collaboration slice is implemented in `troll_booth/`:
+The experimental v0.1.4 collaboration slice is implemented in `troll_booth/`:
 
 - OAuth-protected Streamable HTTP MCP endpoint;
 - short-lived, single-use owner pairing codes;
@@ -53,9 +53,9 @@ The experimental v0.1.3 collaboration slice is implemented in `troll_booth/`:
 - systemd and Apache deployment templates.
 - credential-free Windows owner-console installer and a recovery runbook.
 
-OAuth sessions are intentionally revoked whenever the remote service restarts
-in this first build. This is safer than persisting bearer and refresh tokens
-before the owner-facing revocation UI exists.
+OAuth clients and hashed session tokens persist across routine service restarts,
+so a healthy restart no longer disconnects every paired agent. Raw bearer and
+refresh tokens are never stored in the database.
 
 The pairing code is the owner's explicit step-up decision. A normal code grants
 read-only access. A code issued with `--write` adds collaboration write access
@@ -102,7 +102,8 @@ The production endpoint is `/mcp`. `/health` discloses only service name,
 version, and health. The worker endpoints require a separate random bearer
 credential that is never granted to Claude.
 
-Create a browser pairing code on the remote adapter host:
+Create a browser pairing code from the desktop's **AGENT CONNECTIONS** panel.
+The legacy server-side command remains available for recovery:
 
 ```text
 troll-booth pair-code --actor claude

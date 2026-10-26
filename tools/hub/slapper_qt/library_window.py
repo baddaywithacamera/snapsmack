@@ -395,6 +395,7 @@ class LibraryWindow(QMainWindow):
         self._scan_generation = 0
         self._scan_token = None
         self._populate_generation = 0
+        self._pending_scroll_value = None
         self._editors = []        # keep editor windows alive
         self._opening_editor_paths = set()  # suppress re-entrant activation while loading
         self._signals = _ThumbSignals()
@@ -592,13 +593,17 @@ class LibraryWindow(QMainWindow):
         self.act_move.triggered.connect(lambda: self._choose_transfer(False))
         self.act_copy = QAction("Copy to Folder…", self)
         self.act_copy.triggered.connect(lambda: self._choose_transfer(True))
-        self.act_trash = QAction("Move to SNAP SLAPPER Trash…", self)
+        self.act_trash = QAction("Delete or Remove Photo…", self)
         self.act_trash.setShortcut(QKeySequence.Delete)
-        self.act_trash.triggered.connect(self._trash_selected)
+        self.act_trash.setToolTip(
+            "Remove from SNAP SLAPPER only, or move the original to recoverable Trash")
+        self.act_trash.triggered.connect(self._delete_selected)
         self.act_show_folder = QAction("Show in Folder", self)
         self.act_show_folder.triggered.connect(self._show_in_folder)
         self.act_restore_trash = QAction("Restore Last Trashed Photo", self)
         self.act_restore_trash.triggered.connect(self._restore_trash)
+        self.act_restore_excluded = QAction("Restore Photos Removed from SNAP SLAPPER", self)
+        self.act_restore_excluded.triggered.connect(self._restore_excluded)
         self.act_undo_files = QAction("Undo Last Move/Rename", self)
         self.act_undo_files.setShortcut(QKeySequence("Ctrl+Alt+Z"))
         self.act_undo_files.triggered.connect(self._undo_file_operation)
@@ -642,7 +647,8 @@ class LibraryWindow(QMainWindow):
         organize_menu = QMenu(self)
         for action in (self.act_new_folder, self.act_rename,
                        self.act_batch_rename, self.act_move, self.act_copy, self.act_trash,
-                       self.act_restore_trash, self.act_rotate_left,
+                       self.act_restore_trash, self.act_restore_excluded,
+                       self.act_rotate_left,
                        self.act_undo_files,
                        self.act_rotate_right, self.act_find_duplicates,
                        self.act_find_quality, self.act_cull,
@@ -680,7 +686,8 @@ class LibraryWindow(QMainWindow):
         for action in (self.act_import, self.act_new_folder, self.act_rename,
                        self.act_batch_rename,
                        self.act_move, self.act_copy, self.act_trash,
-                       self.act_restore_trash, self.act_rotate_left,
+                       self.act_restore_trash, self.act_restore_excluded,
+                       self.act_rotate_left,
                        self.act_undo_files,
                        self.act_rotate_right, self.act_find_duplicates,
                        self.act_find_quality, self.act_cull,
@@ -1427,16 +1434,41 @@ class LibraryWindow(QMainWindow):
                 f"{verb} {len(done)} photo(s) to {destination}", 6000)
         self._reload_current()
 
-    def _trash_selected(self):
+    def _delete_selected(self):
         paths = self._selected_photo_paths()
         if not paths:
-            QMessageBox.information(self, "Trash", "Select one or more photos first.")
+            QMessageBox.information(self, "Delete or Remove", "Select one or more photos first.")
             return
-        answer = QMessageBox.question(
-            self, "Move to SNAP SLAPPER Trash",
-            f"Move {len(paths)} selected photo(s) to recoverable SNAP SLAPPER Trash?",
-            QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel)
-        if answer != QMessageBox.Yes:
+        box = QMessageBox(self)
+        box.setWindowTitle("Delete or Remove Photo")
+        box.setIcon(QMessageBox.Question)
+        box.setText(f"What should SNAP SLAPPER do with {len(paths)} selected photo(s)?")
+        box.setInformativeText(
+            "Remove from SNAP SLAPPER keeps the original files where they are.\n\n"
+            "Delete Original moves the files to recoverable SNAP SLAPPER Trash.")
+        remove_button = box.addButton(
+            "Remove from SNAP SLAPPER", QMessageBox.AcceptRole)
+        delete_button = box.addButton(
+            "Delete Original (Recoverable)", QMessageBox.DestructiveRole)
+        box.addButton(QMessageBox.Cancel)
+        box.setDefaultButton(remove_button)
+        box.exec()
+        chosen = box.clickedButton()
+        if chosen == remove_button:
+            self.catalog.exclude_paths(paths)
+            self.status.showMessage(
+                f"Removed {len(paths)} photo(s) from SNAP SLAPPER; originals kept", 7000)
+            self._reload_current()
+        elif chosen == delete_button:
+            self._trash_paths(paths)
+
+    def _trash_selected(self):
+        paths = self._selected_photo_paths()
+        if paths:
+            self._trash_paths(paths)
+
+    def _trash_paths(self, paths):
+        if not paths:
             return
         try:
             photo_manager.trash_files(
@@ -1444,6 +1476,18 @@ class LibraryWindow(QMainWindow):
         except OSError as exc:
             QMessageBox.warning(self, "Trash failed", str(exc))
             return
+        self.status.showMessage(
+            f"Moved {len(paths)} photo(s) to recoverable SNAP SLAPPER Trash", 7000)
+        self._reload_current()
+
+    def _restore_excluded(self):
+        restored = self.catalog.restore_excluded()
+        if not restored:
+            QMessageBox.information(
+                self, "Removed Photos", "No photos are currently removed from SNAP SLAPPER.")
+            return
+        self.status.showMessage(
+            f"Restored {restored} removed photo(s) to SNAP SLAPPER", 7000)
         self._reload_current()
 
     def _restore_trash(self):
@@ -1580,10 +1624,17 @@ class LibraryWindow(QMainWindow):
 
     def _reload_current(self, _checked=None):
         if self._folder:
-            self.load_folder(self._folder)
+            self.load_folder(self._folder, preserve_view=True)
+        elif self._virtual_source:
+            self._pending_scroll_value = self.list.verticalScrollBar().value()
+            self._paths = [path for path in self._paths
+                           if os.path.isfile(path) and not self.catalog.is_excluded(path)]
+            self._populate()
 
-    def load_folder(self, folder):
+    def load_folder(self, folder, preserve_view=False):
         folder = os.path.abspath(folder)
+        self._pending_scroll_value = (
+            self.list.verticalScrollBar().value() if preserve_view else None)
         from . import prefs
         values = prefs.load()
         if values.get("library_folder") != folder:
@@ -1635,7 +1686,7 @@ class LibraryWindow(QMainWindow):
         if generation != self._scan_generation or folder != self._folder or \
                 recursive != self.act_subfolders.isChecked():
             return  # a newer folder/scope selection superseded this scan
-        self._paths = paths
+        self._paths = [path for path in paths if not self.catalog.is_excluded(path)]
         self.catalog.update_index(paths)
         self._refresh_catalog_sources()
         self._populate()
@@ -1699,6 +1750,12 @@ class LibraryWindow(QMainWindow):
                 QTimer.singleShot(0, lambda: add_batch(end))
             else:
                 self._apply_filter(self.search.text())
+                if self._pending_scroll_value is not None:
+                    value = self._pending_scroll_value
+                    self._pending_scroll_value = None
+                    QTimer.singleShot(
+                        0, lambda value=value: self.list.verticalScrollBar().setValue(
+                            min(value, self.list.verticalScrollBar().maximum())))
 
         add_batch()
 

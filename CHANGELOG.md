@@ -11,6 +11,26 @@
 # SnapSmack Changelog
 ## Unreleased
 
+- Restored the GRID-family's saved per-image sizing, borders, mattes, and drop shadows after the strict-skin conversion left those values inert; the existing skin CSS again owns the presentation, including newly appended endless-feed tiles.
+- Corrected the combined TELEGRAM/TILEZ regression so TILEZ is checked against its current explicit-MOSAIC and standalone-image contract instead of an obsolete automatic-mosaic comment.
+
+- **PHOTOGRAM's pre–BIG BANG phone chrome and endless feed are restored.**
+  The strict conversion kept the profile and three-across grid but dropped the
+  fixed bottom navigation entirely. It also deleted the landing endpoint that
+  answered the feed engine's historical `?format=json&p=N` request, so the
+  engine received a whole HTML page and stopped after its first batch. The
+  phone navigation is back, later batches now come from a bounded CMS renderer,
+  and the first page and appended pages use the same tile component. PHOTOGRAM
+  is released as 2.0.26.
+
+- **INSTANT CAMERA consumes the CMS-prepared print tiles again.** Its format
+  control still produced non-square Polaroid, Go, Mini, Wide and custom aspect
+  ratios, but the converted template ignored the prepared tile class and image
+  chosen by the CMS. That discarded trigram slices and other per-tile identity
+  before the skin could present them. The template now uses the bounded
+  presentation values while retaining the skin's uncropped `object-fit:
+  contain` contract. INSTANT CAMERA is released as 1.0.51.
+
 ## 0.7.899D - 2026-10-16 - PARADE gets its colour-shifting borders back
 
 - **PARADE's animated flag-coloured tile rings are back.** The moving ring of

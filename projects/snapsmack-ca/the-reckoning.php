@@ -63,14 +63,14 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>The codebase</h2>
             <div class="reckoning-copy">
-                <p>These figures come from the Git-tracked repository on October 6, 2026. CLOC 2.10 classified source, comments, and blank lines separately. Dependencies, generated files, and untracked work are excluded.</p>
+                <p>These figures come from Git-tracked files in the working tree on October 25, 2026, including local edits to tracked files. CLOC 2.10 classified source, comments, and blank lines separately, with duplicate-file suppression disabled. Untracked work and untracked build output are excluded.</p>
             </div>
             <div class="number-grid">
-                <div class="number-card"><strong>2,383</strong><span>Tracked files</span></div>
-                <div class="number-card"><strong>198,687</strong><span>PHP, JavaScript, and CSS source lines</span></div>
-                <div class="number-card"><strong>305,653</strong><span>Expanded implementation source including Python, SQL, Rust, and scripts</span></div>
-                <div class="number-card"><strong>447</strong><span>Python files for desktop applications and tooling</span></div>
-                <div class="number-card"><strong>30</strong><span>Skin directories</span></div>
+                <div class="number-card"><strong>2,519</strong><span>Tracked files</span></div>
+                <div class="number-card"><strong>215,227</strong><span>PHP, JavaScript, and CSS source lines</span></div>
+                <div class="number-card"><strong>329,300</strong><span>Expanded implementation source including Python, SQL, Rust, and scripts</span></div>
+                <div class="number-card"><strong>481</strong><span>Tracked Python files, including desktop applications, tooling, and tests</span></div>
+                <div class="number-card"><strong>30</strong><span>Skins with tracked manifests</span></div>
                 <div class="number-card"><strong>60</strong><span>Published numbered security audits</span></div>
             </div>
         </div>
@@ -80,13 +80,28 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>What would a company pay?</h2>
             <div class="cost-callout">
-                <strong>CAD $5.3-13 million</strong>
-                <p>Estimated conventional commercial development cost for a company commissioning SNAPSMACK at its current scope.</p>
+                <strong>CAD $6.7-16.4 million</strong>
+                <p>Estimated conventional commercial replacement cost, reassessed October 25, 2026 from the scope added since the original August 12 estimate.</p>
             </div>
             <div class="reckoning-copy">
                 <p>This is a replacement-cost estimate, not a sale price or company valuation. It covers product planning, core and desktop development, design, federation and infrastructure, security engineering, QA, compatibility testing, documentation, release engineering, project management, contingency, and vendor overhead.</p>
-                <p>The underlying estimate is approximately 31,000-53,000 hours, or 16-27 person-years. It is based on replacement workstreams and commercial delivery costs, not a dollars-per-line formula.</p>
-                <p>The workstream estimate has not been inflated merely because the repository line count grew; it remains the same until the replacement-cost model itself is recalculated.</p>
+                <p>The revised estimate is approximately <strong>40,500-70,000 hours</strong>, or <strong>20-35 person-years</strong> at 2,000 hours per year. The original August 12 workstream model was 26,500-46,000 hours. Added scope contributes an estimated 14,000-24,000 hours; this replaces the later interim headline of 31,000-53,000 hours rather than adding that uplift twice.</p>
+                <table>
+                    <caption>Conventional replacement effort by workstream, in hours</caption>
+                    <thead><tr><th scope="col">Workstream</th><th scope="col">August 12</th><th scope="col">October 25</th></tr></thead>
+                    <tbody>
+                        <tr><th scope="row">Core CMS, publishing and skins</th><td>12,000-20,000</td><td>14,000-23,500</td></tr>
+                        <tr><th scope="row">Desktop, editing and workflow tools</th><td>5,000-9,000</td><td>12,000-21,000</td></tr>
+                        <tr><th scope="row">Federation, multisite and distribution</th><td>4,000-7,000</td><td>5,000-9,000</td></tr>
+                        <tr><th scope="row">Security engineering</th><td>1,500-3,000</td><td>2,500-4,500</td></tr>
+                        <tr><th scope="row">QA, compatibility, releases and documentation</th><td>4,000-7,000</td><td>7,000-12,000</td></tr>
+                        <tr><th scope="row">Total</th><td>26,500-46,000</td><td>40,500-70,000</td></tr>
+                    </tbody>
+                </table>
+                <p><strong>The largest addition is SNAP SLAPPER:</strong> non-destructive layered editing, masks and colour tools, high-bit image processing, RAW development integration, portable projects, layered export, catalogue management, local people tagging, image-quality selection and optional generative-fill integration. The desktop allowance also covers the expanded GYSS organizer, shared profiles and credential handling, and additional publishing, export and recovery integration.</p>
+                <p>Other additions include post-backed content and mosaic workflows, long-form publishing, photo-challenge boards and prompt archives, the directory and fleet workflows, broader client compatibility, and the enforced presentation-only skin boundary. Security and QA allowances cover the resulting trust boundaries, hostile-file handling, package validation, visual comparisons, interaction checks and installed-build compatibility.</p>
+                <p><strong>Cost calculation:</strong> 40,500-70,000 hours at an assumed blended CAD $120-170 per hour gives $4.86-11.90 million. Add $0.30-0.70 million for separately commissioned independent security assessment and its remediation reserve, then 30% for vendor programme management, procurement coordination, contingency and margin: <strong>$6.708-16.380 million, rounded to $6.7-16.4 million</strong>. These are explicit planning assumptions carried forward from the original rate range, not measured supplier quotations. QA, documentation and release engineering are already in the hours and are not added again in the 30%.</p>
+                <p>The estimate assumes reuse of available libraries and separately installed tools; it prices integration with them, not rebuilding Qt, RawTherapee, image models or other third-party software. It excludes abandoned features, future roadmap work, the experimental agent broker, taxes and ongoing hosting or service fees. Repeated regression repairs are not counted as additional product features. Current source scope is not a claim that every feature is deployed or free of outstanding defects. This is a planning range, not an audited valuation or a vendor bid.</p>
             </div>
         </div>
     </section>
@@ -121,7 +136,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>The useful conclusion is not that one person replaced a team in every sense. AI changed which parts of software production required scarce specialist labour. Human responsibility for goals, judgment, verification, and consequences remained.</p>
                 <p><strong>Or, put less politely: Sean accidentally founded a small software company without the inconvenience of employees, funding, or adult supervision.</strong></p>
             </div>
-            <p class="method-note"><strong>Counting note:</strong> CLOC classified 377,221 source lines, 60,328 comment lines, and 54,874 blank lines across all recognized tracked file types: 492,423 physical lines in total. The 305,653 headline is the implementation-language subset and excludes documentation, configuration, and data formats. Counts measure repository scale, not quality or effort.</p>
+            <p class="method-note"><strong>Counting note:</strong> CLOC classified 409,990 source lines, 63,914 comment lines, and 60,969 blank lines across all recognized tracked file types: 534,873 physical lines in total. The 329,300 headline is the implementation-language subset and excludes documentation, configuration, and data formats. Counts include tracked tests and tooling; they measure repository scale, not quality, effort, or the contents of a deployed release.</p>
         </div>
     </section>
 </main>

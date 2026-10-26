@@ -161,11 +161,11 @@ require_once __DIR__ . '/includes/header.php';
             <div class="feat-head">
                 <p class="site-discovery-kicker">Not alone</p>
                 <h2>The ship has sailed on the lonely blog.</h2>
-                <p class="lede">Discoverability isn&rsquo;t optional anymore. You need social &mdash; the <em>right</em> social, where you own your art and set the terms. So SnapSmack comes with a small, quiet network of photographers built in, and the wider fediverse one switch away: the part of Flickr that mattered, without the landlord.</p>
+                <p class="lede">The fediverse was built in from day one &mdash; not bolted on later. Discoverability isn&rsquo;t optional anymore. You need social &mdash; the <em>right</em> social, where you own your art and set the terms. So SnapSmack comes with a small, quiet network of photographers built in, and the wider fediverse one switch away: the part of Flickr that mattered, without the landlord.</p>
             </div>
             <div class="feat-grid">
-                <article class="feat-card"><h3>photoblogs.fyi</h3><p>A shared front door for finding independent photography sites, and a reader for following them, without making any of those sites depend on it.</p></article>
-                <article class="feat-card"><h3>PHOTOFRI.DAY</h3><p>A weekly one-word photo challenge. Shoot the prompt wherever you already publish, tag it, and it shows up with everyone else&rsquo;s.</p></article>
+                <article class="feat-card"><h3>photoblogs.fyi</h3><p>The network relay that lets independent SnapSmack installs act as though they share a local server: members see one another&rsquo;s posts without following every site by hand. It also provides the shared directory and reader.</p></article>
+                <article class="feat-card"><h3>PHOTOFRI.DAY</h3><p>A weekly photo challenge that helps build photography culture across the fediverse. It creates an opt-in starter kit of photographers that anyone can use, including people joining through SnapSmack, so a new GLOBAL tab begins with people and photographs instead of an empty feed.</p></article>
                 <article class="feat-card"><h3>Readers follow you anywhere</h3><p>People on Mastodon, Pixelfed, and the rest of the fediverse can discover, follow, like, boost, and reply to your work while the original stays on your site. Turn it off and your site is entirely its own thing.</p></article>
                 <article class="feat-card"><h3>Local community</h3><p>Accounts, comments, reactions, follows, direct messages, moderation queues, keyword controls, and anti-spam filtering on your own site.</p></article>
                 <article class="feat-card"><h3>Cross-posting</h3><p>Publish once on your domain and syndicate out. RSS and IndieWeb links included. The canonical copy is always yours.</p></article>

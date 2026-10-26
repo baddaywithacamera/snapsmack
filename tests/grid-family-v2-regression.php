@@ -13,8 +13,8 @@ $responses = [
     ['status'=>200,'kind'=>'landing','items'=>[['img_title'=>'Photo','img_slug'=>'photo','img_thumb_aspect'=>'/media/thumb.jpg']],'navigation'=>[]],
     ['status'=>200,'kind'=>'photo','item'=>['id'=>1,'img_title'=>'Photo','img_file'=>'/media/photo.jpg','img_description'=>snapsmack_trusted_html('<p>Caption</p>')],'comments'=>[['comment_author'=>'Reader','comment_text'=>'<script>no</script>']],'navigation'=>[]],
     ['status'=>200,'kind'=>'post','item'=>['id'=>2,'title'=>'Carousel','content'=>snapsmack_trusted_html('<p>Carousel caption</p>')],'photographs'=>[
-        ['id'=>11,'img_title'=>'First','img_alt'=>'First slide','img_file'=>'/media/first.jpg','is_framed'=>true,'frame_style'=>'--slide-bg:#abcdef'],
-        ['id'=>12,'img_title'=>'Second','img_alt'=>'Second & slide','img_file'=>'/media/second.jpg','is_framed'=>false,'frame_style'=>''],
+        ['id'=>11,'img_title'=>'First','img_alt'=>'First slide','img_file'=>'/media/first.jpg','is_framed'=>true,'frame_presentation'=>['size'=>'82%','border_width'=>'6px','border_color'=>'#123456','background'=>'#abcdef','shadow'=>'2']],
+        ['id'=>12,'img_title'=>'Second','img_alt'=>'Second & slide','img_file'=>'/media/second.jpg','is_framed'=>false,'frame_presentation'=>['size'=>'100%','border_width'=>'0px','border_color'=>'#000000','background'=>'#ffffff','shadow'=>'0']],
     ],'navigation'=>[]],
     ['status'=>200,'kind'=>'search','query'=>'cat','results'=>['photographs'=>[['img_title'=>'Match','img_slug'=>'match','img_file'=>'/media/match.jpg']],'posts'=>[]],'navigation'=>[]],
     ['status'=>404,'kind'=>'not_found','navigation'=>[]],
@@ -47,6 +47,8 @@ foreach($skins as $skin){
             if(substr_count($html,'class="ss-slider-dot')!==3||substr_count($html,'data-slide-index=')!==2)throw new RuntimeException("{$skin} post carousel indicator count drifted from its photographs.");
             foreach(['/media/first.jpg','/media/second.jpg'] as $source)if(!str_contains($html,'data-lightbox-src="'.$source.'"'))throw new RuntimeException("{$skin} post carousel lost its escaped lightbox source.");
             if(!str_contains($html,'alt="Second &amp; slide"'))throw new RuntimeException("{$skin} post carousel alt text escaped its render boundary.");
+            if(str_contains($html,' style='))throw new RuntimeException("{$skin} post route emitted an inline style attribute.");
+            foreach(['data-frame-size="82%"','data-frame-border-width="6px"','data-frame-border-color="#123456"','data-frame-background="#abcdef"','data-frame-shadow="2"'] as $frameData)if(!str_contains($html,$frameData))throw new RuntimeException("{$skin} post route lost frame data: {$frameData}");
         }
         if($skin!=='instant-camera'&&$skin!=='sliders'&&(str_contains($html,'class="ic-scrim"')||str_contains($html,'class="ic-panel"'))) throw new RuntimeException("{$skin} received INSTANT CAMERA structure.");
         if($skin==='instant-camera'&&(!str_contains($html,'class="ic-scrim"')||!str_contains($html,'class="ic-panel"'))) throw new RuntimeException('INSTANT CAMERA layout no longer owns its backdrop structure.');

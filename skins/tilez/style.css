@@ -2279,14 +2279,23 @@ body.blog, body.single, body.archive { background: #fff; }
     padding-top: var(--tilez-content-start);
 }
 
-/* Shared SS-COLUMNS geometry. Every cover keeps its native aspect; the engine
-   places the next post in the shortest of three columns. */
+/* Shared SS-COLUMNS geometry. Ordinary covers keep their native aspect; the
+   feed controller bounds extreme panoramas so titles retain enough height. */
 .posts.ss-masonry {
     --ss-cols: 3;
     --ss-gap: var(--tilez-gap);
     display: block;
     width: 100%;
     margin: 0;
+}
+
+/* Keep the final masonry row from sitting on the footer rule. The footer uses
+   margin-top:auto to stay at the bottom of short pages, which overrides its
+   ordinary top margin once the feed is taller than the viewport. Put the
+   breathing room inside the feed section so it survives both flex and the
+   shared columns engine. */
+.content > .section-inner:has(> .tilez-posts) {
+    padding-bottom: 54px;
 }
 .posts .post.ss-masonry-item {
     display: block;
@@ -2305,7 +2314,8 @@ body.blog, body.single, body.archive { background: #fff; }
     width: 100%;
     height: 100%;
     max-width: none;
-    object-fit: fill;
+    object-fit: cover;
+    object-position: center;
     filter: brightness(1);
     transition: filter .3s ease, transform .35s ease;
 }
@@ -2513,9 +2523,9 @@ body.blog, body.single, body.archive { background: #fff; }
     margin-top: 2.6em;
     margin-bottom: 2.6em;
 }
-/* Consecutive standalone photographs are promoted by ss-engine-mosaic.js into
-   one exact-packed asymmetric composition. A single image remains a normal
-   framed block. */
+/* Standalone photographs remain individual block-level frames, including when
+   authors place several consecutively. Explicit MOSAIC shortcodes keep their
+   own packed layout. */
 .entry-content > .snap-mosaic,
 .entry-content > .snap-mosaic-wall {
     width: 100%;

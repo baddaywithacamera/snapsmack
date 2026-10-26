@@ -38,9 +38,11 @@ TOPICS = [
      "formats with RawTherapee or darktable from the offline handoff window. The original is "
      "passed to that program untouched. Files SNAP SLAPPER cannot decode receive the same clear "
      "handoff instead of opening a broken editor."),
-    ("Trash and recovery", "Trash is recoverable and records the original and trash locations "
-     "in a local manifest. If that manifest cannot be saved, moved photographs are returned to "
-     "their original locations. Restore last trashed photo recovers the newest valid entry."),
+    ("Delete, remove, and recovery", "Delete or Remove offers two explicit scopes. Remove from "
+     "SNAP SLAPPER hides the photograph from its catalogue while leaving the original file in "
+     "place; Organize > Restore Photos Removed from SNAP SLAPPER brings those entries back. "
+     "Delete Original moves the file to recoverable SNAP SLAPPER Trash and records its original "
+     "location. Restore Last Trashed Photo recovers the newest valid trash entry."),
     ("Keyboard reference", "Library: Enter opens the selected photograph. Editor: Ctrl+S saves "
      "the project, Ctrl+Z undoes, Ctrl+Y redoes, F1 opens this help, and Escape closes transient "
      "windows. Viewer navigation uses the arrow keys where shown."),

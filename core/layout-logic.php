@@ -40,8 +40,8 @@ if (!empty($img['img_exif'])) {
 
 // --- COMMENT FETCHING ---
 // Retrieve all approved comments for this photo, ordered by date
-$comments = [];
-if (isset($img['id'])) {
+$comments = is_array($comments ?? null) ? $comments : [];
+if (isset($img['id']) && isset($pdo) && $pdo instanceof PDO) {
     $stm_c = $pdo->prepare("SELECT * FROM snap_comments WHERE img_id = ? AND is_approved = 1 ORDER BY comment_date ASC");
     $stm_c->execute([$img['id']]);
     $comments = $stm_c->fetchAll();

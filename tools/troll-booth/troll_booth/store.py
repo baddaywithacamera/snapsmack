@@ -60,6 +60,18 @@ class BoothStore:
                     version TEXT NOT NULL,
                     apps_json TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS oauth_clients (
+                    client_id TEXT PRIMARY KEY,
+                    payload_json TEXT NOT NULL,
+                    updated_at INTEGER NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS oauth_tokens (
+                    token_hash TEXT PRIMARY KEY,
+                    kind TEXT NOT NULL CHECK(kind IN ('access','refresh')),
+                    payload_json TEXT NOT NULL,
+                    expires_at INTEGER,
+                    updated_at INTEGER NOT NULL
+                );
                 """
             )
 
@@ -98,6 +110,48 @@ class BoothStore:
         data = {"actor": row["actor"], "scopes": json.loads(row["scopes_json"])}
         self.audit(data["actor"], "pair-code.consumed", {"scopes": data["scopes"]})
         return data
+
+    def save_oauth_client(self, client_id: str, payload: dict[str, Any]) -> None:
+        with self._connect() as db:
+            db.execute(
+                "INSERT INTO oauth_clients(client_id,payload_json,updated_at) VALUES(?,?,?) "
+                "ON CONFLICT(client_id) DO UPDATE SET payload_json=excluded.payload_json,updated_at=excluded.updated_at",
+                (client_id, json.dumps(payload), int(time.time())),
+            )
+
+    def oauth_client(self, client_id: str) -> dict[str, Any] | None:
+        with self._connect() as db:
+            row = db.execute("SELECT payload_json FROM oauth_clients WHERE client_id=?", (client_id,)).fetchone()
+        return json.loads(row["payload_json"]) if row else None
+
+    def save_oauth_token(self, token: str, kind: str, payload: dict[str, Any], expires_at: int | None) -> None:
+        if kind not in {"access", "refresh"}:
+            raise ValueError("invalid OAuth token kind")
+        with self._connect() as db:
+            db.execute("DELETE FROM oauth_tokens WHERE expires_at IS NOT NULL AND expires_at < ?", (int(time.time()),))
+            db.execute(
+                "INSERT INTO oauth_tokens(token_hash,kind,payload_json,expires_at,updated_at) VALUES(?,?,?,?,?) "
+                "ON CONFLICT(token_hash) DO UPDATE SET kind=excluded.kind,payload_json=excluded.payload_json,"
+                "expires_at=excluded.expires_at,updated_at=excluded.updated_at",
+                (self._hash_code(token), kind, json.dumps(payload), expires_at, int(time.time())),
+            )
+
+    def oauth_token(self, token: str, kind: str) -> dict[str, Any] | None:
+        now = int(time.time())
+        digest = self._hash_code(token)
+        with self._connect() as db:
+            row = db.execute(
+                "SELECT payload_json,expires_at FROM oauth_tokens WHERE token_hash=? AND kind=?",
+                (digest, kind),
+            ).fetchone()
+            if row and row["expires_at"] is not None and row["expires_at"] < now:
+                db.execute("DELETE FROM oauth_tokens WHERE token_hash=?", (digest,))
+                return None
+        return json.loads(row["payload_json"]) if row else None
+
+    def delete_oauth_token(self, token: str) -> None:
+        with self._connect() as db:
+            db.execute("DELETE FROM oauth_tokens WHERE token_hash=?", (self._hash_code(token),))
 
     def enqueue(self, actor: str, capability: str, arguments: dict[str, Any], reason: str, ticket_id: str | None) -> str:
         job_id = secrets.token_urlsafe(18)

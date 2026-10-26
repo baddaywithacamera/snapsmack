@@ -79,6 +79,27 @@ class StorageMode(QWidget):
         head.addWidget(self.sync_btn)
         left.addLayout(head)
 
+        filters = QHBoxLayout()
+        self.search_edit = QLineEdit()
+        self.search_edit.setPlaceholderText("Search photographs…")
+        self.search_edit.setClearButtonEnabled(True)
+        self.usage_combo = QComboBox()
+        self.usage_combo.addItem("All usage", "all")
+        self.usage_combo.addItem("Placed in a post", "placed")
+        self.usage_combo.addItem("Bucket only — not placed", "bucket-only")
+        self.usage_combo.addItem("Not in any bucket", "unbucketed")
+        self.usage_combo.addItem("In an unused mosaic", "unused-mosaic")
+        self.usage_combo.addItem("Usage not synced", "unknown")
+        self.bucket_combo = QComboBox()
+        self.bucket_combo.addItem("All buckets", "all")
+        filters.addWidget(self.search_edit, 1)
+        filters.addWidget(self.usage_combo)
+        filters.addWidget(self.bucket_combo)
+        left.addLayout(filters)
+        self.search_edit.textChanged.connect(self._render_grid)
+        self.usage_combo.currentIndexChanged.connect(self._render_grid)
+        self.bucket_combo.currentIndexChanged.connect(self._render_grid)
+
         self.grid = QListWidget()
         self.grid.setViewMode(QListWidget.IconMode)
         self.grid.setIconSize(QSize(96, 96))
@@ -203,17 +224,23 @@ class StorageMode(QWidget):
 
     def reload(self):
         site = self._site()
-        self.grid.clear()
         self._assets = snap_library.all_assets(site) if site else []
-        for a in self._assets:
-            label = a.get("title") or a.get("orig_name") or a.get("asset_id", "")[:12]
-            item = QListWidgetItem(label)
-            media = snap_library.asset_file(site, a["asset_id"])
-            pm = load_pixmap(media, 96) if media else None
-            if pm:
-                item.setIcon(QIcon(pm))
-            item.setData(Qt.UserRole, a["asset_id"])
-            self.grid.addItem(item)
+        selected_bucket = self.bucket_combo.currentData()
+        bucket_names = {}
+        for asset in self._assets:
+            for bucket in asset.get("buckets") or []:
+                bucket_names[int(bucket.get("post_id") or 0)] = str(
+                    bucket.get("title") or "Untitled")
+        self.bucket_combo.blockSignals(True)
+        self.bucket_combo.clear()
+        self.bucket_combo.addItem("All buckets", "all")
+        self.bucket_combo.addItem("No bucket", "none")
+        for post_id, title in sorted(bucket_names.items(), key=lambda row: row[1].casefold()):
+            self.bucket_combo.addItem(title, post_id)
+        restore = self.bucket_combo.findData(selected_bucket)
+        self.bucket_combo.setCurrentIndex(max(0, restore))
+        self.bucket_combo.blockSignals(False)
+        self._render_grid()
         n = len(self._assets)
         self.count_lbl.setText(f"COLD STORAGE — {n} image{'' if n == 1 else 's'} offline")
         if not n:
@@ -224,6 +251,63 @@ class StorageMode(QWidget):
         self._sel = None
         self.detail.setEnabled(False)
         self.detail_stack.setCurrentIndex(1)
+
+    @staticmethod
+    def _usage_state(asset):
+        if not asset.get("usage_known"):
+            return "unknown"
+        placements = asset.get("placements") or []
+        buckets = asset.get("buckets") or []
+        mosaics = asset.get("mosaics") or []
+        if placements:
+            return "placed"
+        if buckets:
+            return "bucket-only"
+        if any(not (mosaic.get("used_by") or []) for mosaic in mosaics):
+            return "unused-mosaic"
+        return "unbucketed"
+
+    def _render_grid(self, *_args):
+        if not hasattr(self, "grid"):
+            return
+        site = self._site()
+        needle = self.search_edit.text().strip().casefold()
+        wanted_usage = str(self.usage_combo.currentData() or "all")
+        wanted_bucket = self.bucket_combo.currentData()
+        self.grid.clear()
+        shown = 0
+        state_labels = {
+            "placed": "● PLACED", "bucket-only": "◐ BUCKET ONLY",
+            "unbucketed": "○ UNUSED", "unused-mosaic": "◇ UNUSED MOSAIC",
+            "unknown": "? USAGE NOT SYNCED",
+        }
+        for asset in self._assets:
+            state = self._usage_state(asset)
+            buckets = asset.get("buckets") or []
+            bucket_ids = {int(row.get("post_id") or 0) for row in buckets}
+            text = " ".join(str(asset.get(key) or "") for key in
+                            ("title", "orig_name", "description", "alt")).casefold()
+            if needle and needle not in text:
+                continue
+            if wanted_usage != "all" and state != wanted_usage:
+                continue
+            if wanted_bucket == "none" and bucket_ids:
+                continue
+            if isinstance(wanted_bucket, int) and wanted_bucket not in bucket_ids:
+                continue
+            title = asset.get("title") or asset.get("orig_name") or asset.get("asset_id", "")[:12]
+            item = QListWidgetItem(f"{state_labels[state]}\n{title}")
+            media = snap_library.asset_file(site, asset["asset_id"])
+            pm = load_pixmap(media, 96) if media else None
+            if pm:
+                item.setIcon(QIcon(pm))
+            item.setData(Qt.UserRole, asset["asset_id"])
+            bucket_text = ", ".join(str(row.get("title") or "Untitled") for row in buckets)
+            item.setToolTip(state_labels[state] + (f"\nBucket: {bucket_text}" if bucket_text else ""))
+            self.grid.addItem(item)
+            shown += 1
+        if self._assets:
+            self.status_lbl.setText(f"Showing {shown} of {len(self._assets)}")
 
     def _on_pick(self, item, _prev=None):
         if item is None:
@@ -239,7 +323,6 @@ class StorageMode(QWidget):
         media = snap_library.asset_file(site, aid)
         pm = load_pixmap(media, 180) if media else None
         self.preview.setPixmap(pm) if pm else self.preview.clear()
-        used = int(a.get("used_in", 0) or 0)
         bits = []
         if a.get("width") and a.get("height"):
             bits.append(f"{a['width']}×{a['height']}")
@@ -247,7 +330,25 @@ class StorageMode(QWidget):
             bits.append(a["status"])
         if a.get("source_ref", "").startswith("img:"):
             bits.append(f"site id {a['source_ref'][4:]}")
-        bits.append(f"in {used} post{'' if used == 1 else 's'} here")
+        state = self._usage_state(a)
+        bits.append({
+            "placed": "placed in a post", "bucket-only": "in a bucket, not placed",
+            "unbucketed": "not in a bucket or post", "unused-mosaic": "in an unused mosaic",
+            "unknown": "usage has not been synced from the site",
+        }[state])
+        buckets = a.get("buckets") or []
+        placements = a.get("placements") or []
+        mosaics = a.get("mosaics") or []
+        if buckets:
+            bits.append("bucket: " + ", ".join(str(row.get("title") or "Untitled")
+                                                for row in buckets))
+        if placements:
+            bits.append("used by: " + ", ".join(str(row.get("title") or "Untitled")
+                                                 for row in placements))
+        unused_mosaics = [str(row.get("title") or "Untitled") for row in mosaics
+                          if not (row.get("used_by") or [])]
+        if unused_mosaics:
+            bits.append("unused mosaic: " + ", ".join(unused_mosaics))
         self.info_lbl.setText(" · ".join(bits))
         self.title_edit.setText(a.get("title", "") or "")
         self.desc_edit.setPlainText(a.get("description", "") or "")
@@ -281,7 +382,9 @@ class StorageMode(QWidget):
 
         def worker():
             try:
-                have = snap_library.asset_source_refs(site)
+                existing = {str(asset.get("source_ref") or ""): asset
+                            for asset in snap_library.all_assets(site)
+                            if asset.get("source_ref")}
                 new = 0
                 total = 0
                 page = 1
@@ -304,16 +407,17 @@ class StorageMode(QWidget):
                         break
                     for row in rows:
                         ref = "img:%d" % int(row["id"])
-                        if ref in have:
-                            continue
-                        f = conn.session.get(f"{site}/{row['file'].lstrip('/')}",
-                                             timeout=120)
-                        if f.status_code != 200 or not f.content:
-                            continue
-                        entry = snap_library.store_media(
-                            site, f.content,
-                            orig_name=os.path.basename(row["file"]),
-                            ext=os.path.splitext(row["file"])[1])
+                        entry = existing.get(ref)
+                        if entry is None:
+                            f = conn.session.get(f"{site}/{row['file'].lstrip('/')}",
+                                                 timeout=120)
+                            if f.status_code != 200 or not f.content:
+                                continue
+                            entry = snap_library.store_media(
+                                site, f.content,
+                                orig_name=os.path.basename(row["file"]),
+                                ext=os.path.splitext(row["file"])[1])
+                            new += 1
                         entry.update({
                             "alt": row.get("alt", ""), "source_ref": ref,
                             "width": row.get("width", 0), "height": row.get("height", 0),
@@ -322,10 +426,12 @@ class StorageMode(QWidget):
                             "color_mode": row.get("color_mode", ""),
                             "status": row.get("status", ""),
                             "img_date": row.get("img_date", ""),
+                            "usage_known": row.get("usage_known", False),
+                            "buckets": row.get("buckets") or [],
+                            "placements": row.get("placements") or [],
+                            "mosaics": row.get("mosaics") or [],
                         })
                         snap_library.upsert_asset(site, entry)
-                        have.add(ref)
-                        new += 1
                         bridge.progressed.emit(f"Syncing… {new} pulled")
                     if page * int(data.get("per", 100)) >= total:
                         break

@@ -45,11 +45,27 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         // `class` is inert and style/event attributes remain forbidden.
         'blockquote' => [], 'ul' => ['class'], 'ol' => ['class'], 'li' => ['class'], 'code' => [], 'pre' => [],
         'h1' => [], 'h2' => [], 'h3' => [], 'h4' => [], 'h5' => [], 'h6' => [],
-        'div' => ['class', 'id', 'data-mosaic'],
+        // Mosaic geometry is CMS-generated inert data consumed by the shared
+        // compositor. Stripping these attributes silently turns every saved
+        // three-photo composition back into the engine's generic fallback.
+        'div' => ['class', 'id', 'data-mosaic', 'data-gap', 'data-emphasis', 'data-template'],
         'span' => ['class', 'data-cd', 'data-cd-caption', 'data-cd-clock', 'aria-hidden'],
         'section' => ['class', 'id', 'aria-label'],
+        // The photoblogs.fyi directory shortcode emits a semantic, searchable
+        // table. These elements carry presentation metadata and ordinary form
+        // values only; executable attributes and inline style remain forbidden.
+        'header' => ['class'],
+        'form' => ['class', 'method', 'action'],
+        'input' => ['class', 'type', 'name', 'value', 'placeholder', 'aria-label'],
+        'button' => ['class', 'type'],
+        'table' => ['class'], 'thead' => ['class'], 'tbody' => ['class'],
+        'tr' => ['class'], 'th' => ['class', 'scope'], 'td' => ['class'],
+        'small' => ['class'],
         'time' => ['class', 'datetime', 'data-cd-date'],
         'figure' => ['class'], 'figcaption' => ['class'],
+        // iframe is accepted only for the CMS-generated privacy-enhanced
+        // YouTube player. The host/path check below rejects every other frame.
+        'iframe' => ['src', 'title', 'class', 'loading', 'allow', 'allowfullscreen'],
         // Native, script-free disclosure controls used by CMS-authored FAQs.
         'details' => ['class'], 'summary' => ['class'],
         // nav, and class on a. THE BOARD's prompt index is a <nav> of linked
@@ -104,6 +120,31 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
                     $node->removeAttribute($name);
                 }
             }
+        }
+        if ($tag === 'iframe') {
+            $src = trim((string)$node->getAttribute('src'));
+            if (!preg_match('~^https://www\.youtube-nocookie\.com/embed/[A-Za-z0-9_-]{11}$~D', $src)) {
+                $node->parentNode?->removeChild($node);
+                continue;
+            }
+            $node->setAttribute('loading', 'lazy');
+            $node->setAttribute('allowfullscreen', '');
+        }
+        if ($tag === 'form') {
+            $method = strtolower(trim((string)$node->getAttribute('method')));
+            if (!in_array($method, ['get', 'post'], true)) $node->setAttribute('method', 'get');
+            $action = trim((string)$node->getAttribute('action'));
+            if ($action === '' || !str_starts_with($action, '/') || str_starts_with($action, '//')) {
+                $node->setAttribute('action', '/');
+            }
+        }
+        if ($tag === 'input') {
+            $type = strtolower(trim((string)$node->getAttribute('type')));
+            if (!in_array($type, ['search', 'hidden'], true)) $node->setAttribute('type', 'search');
+        }
+        if ($tag === 'button') {
+            $type = strtolower(trim((string)$node->getAttribute('type')));
+            if (!in_array($type, ['submit', 'button'], true)) $node->setAttribute('type', 'submit');
         }
         if ($tag === 'a' && $node->hasAttribute('href')) $node->setAttribute('rel', 'noopener noreferrer');
         if ($tag === 'img') $node->setAttribute('loading', 'lazy');

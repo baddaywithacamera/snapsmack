@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
+    QSizePolicy,
 )
 
 import sumna_offline as O
@@ -199,11 +200,17 @@ class TakeMode(QWidget):
         ai_btn.clicked.connect(self._ai_fill)
         brow.addWidget(add_btn)
         brow.addWidget(open_btn)
-        brow.addWidget(ai_btn)
         brow.addStretch(1)
         self.photos_sec.add_layout(brow)
-        self.photos_sec.add(
-            hint("The ★ photo leads the post. This order is the order in the post."))
+        # AI FILL gets its own line.  Three full-size buttons cannot fit the
+        # deliberately narrow rail and used to enlarge its contents off-screen.
+        ai_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.photos_sec.add(ai_btn)
+        lead_hint = hint(
+            "The ★ photo leads the post. This order is the order in the post.")
+        lead_hint.setMinimumWidth(0)
+        lead_hint.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.photos_sec.add(lead_hint)
         self.bucket_count = hint("")   # its own line — AI-ALT progress / status only
         self.photos_sec.add(self.bucket_count)
 
@@ -608,19 +615,90 @@ class TakeMode(QWidget):
             return
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("Open a published post")
-        dialog.resize(720, 520)
+        dialog.setWindowTitle("Open a site post")
+        dialog.resize(820, 600)
         layout = QVBoxLayout(dialog)
-        layout.addWidget(hint("Choose a post. COLD SNAP will load its saved bucket and keep its original date."))
+        layout.addWidget(hint(
+            f"{len(posts)} posts loaded. Choose one; COLD SNAP will keep its "
+            "photos and original date."))
+
+        tools = QHBoxLayout()
+        search = QLineEdit()
+        search.setPlaceholderText("Search title, date, slug, or status…")
+        search.setClearButtonEnabled(True)
+        status = QComboBox()
+        status.addItem("All statuses", "all")
+        status.addItem("Published", "published")
+        status.addItem("Drafts", "draft")
+        ordering = QComboBox()
+        ordering.addItem("Newest first", "date-new")
+        ordering.addItem("Oldest first", "date-old")
+        ordering.addItem("Recently changed", "updated")
+        ordering.addItem("Title A–Z", "title-az")
+        ordering.addItem("Title Z–A", "title-za")
+        tools.addWidget(search, 1)
+        tools.addWidget(status)
+        tools.addWidget(ordering)
+        layout.addLayout(tools)
+
+        count = hint("")
+        layout.addWidget(count)
         choices = QListWidget()
-        for post in posts:
-            label = f"{str(post.get('created_at') or '')[:10]}   {post.get('title') or 'Untitled'}   [{post.get('status') or 'draft'}]"
-            item = QListWidgetItem(label)
-            item.setData(Qt.UserRole, int(post.get("id") or 0))
-            choices.addItem(item)
-        if choices.count():
-            choices.setCurrentRow(0)
+        choices.setAlternatingRowColors(True)
         layout.addWidget(choices, 1)
+
+        def refresh_choices():
+            needle = search.text().strip().casefold()
+            wanted_status = str(status.currentData() or "all")
+            visible = []
+            for post in posts:
+                post_status = str(post.get("status") or "draft").casefold()
+                haystack = " ".join(str(post.get(key) or "") for key in
+                                    ("title", "slug", "status", "created_at", "updated_at")).casefold()
+                if wanted_status != "all" and post_status != wanted_status:
+                    continue
+                if needle and needle not in haystack:
+                    continue
+                visible.append(post)
+
+            order = str(ordering.currentData() or "date-new")
+            if order == "date-old":
+                visible.sort(key=lambda p: (str(p.get("created_at") or ""),
+                                            int(p.get("id") or 0)))
+            elif order == "updated":
+                visible.sort(key=lambda p: (str(p.get("updated_at") or ""),
+                                            int(p.get("id") or 0)), reverse=True)
+            elif order in ("title-az", "title-za"):
+                visible.sort(key=lambda p: (str(p.get("title") or "").casefold(),
+                                            int(p.get("id") or 0)),
+                             reverse=(order == "title-za"))
+            else:
+                visible.sort(key=lambda p: (str(p.get("created_at") or ""),
+                                            int(p.get("id") or 0)), reverse=True)
+
+            selected_id = (int(choices.currentItem().data(Qt.UserRole))
+                           if choices.currentItem() else 0)
+            choices.clear()
+            restore_row = -1
+            for row, post in enumerate(visible):
+                label = (f"{str(post.get('created_at') or '')[:10]}   "
+                         f"{post.get('title') or 'Untitled'}   "
+                         f"[{post.get('status') or 'draft'}]")
+                item = QListWidgetItem(label)
+                post_id = int(post.get("id") or 0)
+                item.setData(Qt.UserRole, post_id)
+                item.setToolTip(str(post.get("slug") or ""))
+                choices.addItem(item)
+                if post_id == selected_id:
+                    restore_row = row
+            if choices.count():
+                choices.setCurrentRow(restore_row if restore_row >= 0 else 0)
+            count.setText(f"Showing {len(visible)} of {len(posts)} posts")
+
+        search.textChanged.connect(refresh_choices)
+        status.currentIndexChanged.connect(refresh_choices)
+        ordering.currentIndexChanged.connect(refresh_choices)
+        refresh_choices()
         buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Open)
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
@@ -787,26 +865,39 @@ class TakeMode(QWidget):
             col.setSpacing(4)
             lay = QHBoxLayout()
             lay.addWidget(thumb_label(im.thumb_square or im.local_path, 40))
-            name = QLabel(("★ " if is_cover else "") +
-                          (im.filename or os.path.basename(im.local_path)))
+            full_name = (("★ " if is_cover else "") +
+                         (im.filename or os.path.basename(im.local_path)))
+            name = QLabel()
+            # Calculate the compact text after the label has inherited the
+            # application's font.  The full filename remains one hover away.
+            name.setText(name.fontMetrics().elidedText(full_name, Qt.ElideMiddle, 205))
+            name.setToolTip(full_name)
+            name.setMinimumWidth(0)
+            name.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
             name.setStyleSheet(
                 f"color: {theme.ACCENT if is_cover else theme.BODY}; background: transparent;")
             lay.addWidget(name, 1)
+            col.addLayout(lay)
+
+            controls = QHBoxLayout()
+            controls.addStretch(1)
             up = QPushButton("▲"); up.setFixedWidth(34)
             up.clicked.connect(lambda _=False, i=i: self._move(i, -1))
             dn = QPushButton("▼"); dn.setFixedWidth(34)
             dn.clicked.connect(lambda _=False, i=i: self._move(i, 1))
-            lay.addWidget(up); lay.addWidget(dn)
+            controls.addWidget(up); controls.addWidget(dn)
             if not is_cover:
                 cov = QPushButton("★ Lead")
                 cov.clicked.connect(lambda _=False, i=i: self._set_cover(i))
-                lay.addWidget(cov)
+                controls.addWidget(cov)
             rm = QPushButton("✕"); rm.setObjectName("Danger"); rm.setFixedWidth(34)
             rm.clicked.connect(lambda _=False, i=i: self._remove(i))
-            lay.addWidget(rm)
-            col.addLayout(lay)
+            controls.addWidget(rm)
+            col.addLayout(controls)
             # Per-photo ALT — saved with the image on the site (img_alt).
             alt = QLineEdit(getattr(im, "alt", "") or "")
+            alt.setMinimumWidth(0)
+            alt.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
             alt.setPlaceholderText("ALT — one plain sentence describing this photo")
             alt.textChanged.connect(lambda text, im=im: (setattr(im, "alt", text.strip()),
                                                          self._changed()))

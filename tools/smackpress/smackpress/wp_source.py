@@ -242,13 +242,19 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
 
     body = content or ""
 
+    def mosaic_marker(positions) -> str:
+        """Give three-photo imports an intentional composition by default."""
+        positions = list(positions)
+        layout = "one-left" if len(positions) == 3 else "asymmetric"
+        return "\n[mosaic=%s layout=%s]\n" % (
+            ",".join(str(position) for position in positions), layout)
+
     # Classic [gallery] shortcodes are expanded by the companion inside this
     # explicit boundary.  Resolve every member through slot() first, then carry
     # the whole authored group forward as one native mosaic placeholder.
     def repl_sp_gallery(match):
         positions = [slot(item.group(2)) for item in _SP_IMAGE.finditer(match.group(1))]
-        return ("\n[mosaic=%s layout=asymmetric]\n" %
-                ",".join(str(position) for position in positions)) if positions else ""
+        return mosaic_marker(positions) if positions else ""
 
     body = _SP_GALLERY.sub(repl_sp_gallery, body)
     body = _SP_IMAGE.sub(repl_sp, body)
@@ -265,8 +271,7 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
             alt = _ALT_ATTR.search(tag)
             positions.append(slot(
                 src.group(1), html.unescape(alt.group(1)) if alt else ""))
-        return ("\n[mosaic=%s layout=asymmetric]\n" %
-                ",".join(str(position) for position in positions)) if positions else ""
+        return mosaic_marker(positions) if positions else ""
 
     body = _WP_GALLERY_BLOCK.sub(repl_wp_gallery, body)
     # A WordPress image wrapped in a media-file link is authored lightbox intent.
@@ -297,7 +302,7 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
     # a layout from one site's historical block structure.
     def adjacent_mosaic(match):
         positions = _BUCKET_TOKEN.findall(match.group("run"))
-        return "\n[mosaic=%s layout=asymmetric]\n" % ",".join(positions)
+        return mosaic_marker(positions)
 
     body = _ADJACENT_BUCKETS.sub(adjacent_mosaic, body).strip()
     return body, ordered

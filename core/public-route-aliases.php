@@ -151,4 +151,5 @@ function snapsmack_legacy_archive_target(string $base, array $aliases, string $s
     return $path . '?' . http_build_query($merged);
 }
 
+
 // ===== SNAPSMACK EOF =====

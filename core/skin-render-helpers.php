@@ -52,6 +52,7 @@ function snap_route_url(string $route, array $parameters = []): string {
         'home' => '', 'archive' => 'archive', 'search' => 'search', 'hashtag' => 'tag',
         'post' => 'post', 'photo' => 'photo', 'page' => 'page', 'albums' => 'albums',
         'collections' => 'collections', 'collection' => 'collection', 'blogroll' => 'blogroll',
+        'app' => 'app',
         'game-scores' => 'game-on-scores.php',
     ];
     if (!array_key_exists($route, $routes)) return '';
@@ -138,7 +139,13 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             foreach ($photographs as $photograph) {
                 if (!is_array($photograph) || empty($photograph['img_file'])) continue;
                 $classes = 'slider-slide' . (!empty($photograph['is_framed']) ? ' ' . $prefix . '-slide--framed' : '');
-                $html .= '<div class="' . $classes . '" data-image-id="' . snap_escape_attr($photograph['id'] ?? '') . '" style="' . snap_escape_attr($photograph['frame_style'] ?? '') . '">'
+                $frame = is_array($photograph['frame_presentation'] ?? null) ? $photograph['frame_presentation'] : [];
+                $html .= '<div class="' . $classes . '" data-image-id="' . snap_escape_attr($photograph['id'] ?? '') . '"'
+                    . ' data-frame-size="' . snap_escape_attr($frame['size'] ?? '100%') . '"'
+                    . ' data-frame-border-width="' . snap_escape_attr($frame['border_width'] ?? '0px') . '"'
+                    . ' data-frame-border-color="' . snap_escape_attr($frame['border_color'] ?? '#000000') . '"'
+                    . ' data-frame-background="' . snap_escape_attr($frame['background'] ?? '#ffffff') . '"'
+                    . ' data-frame-shadow="' . snap_escape_attr($frame['shadow'] ?? '0') . '">'
                     . (string)snap_render_component('image', [
                         'url' => $photograph['img_file'],
                         'alt' => $photograph['img_alt'] ?? $photograph['img_title'] ?? '',
@@ -204,6 +211,26 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . '<button type="button" class="gsd-toggle" aria-label="Search" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>'
                 . '<input type="search" name="q" class="gsd-input" placeholder="' . snap_escape_attr($dock['placeholder'] ?? 'Search or #tag…') . '" autocomplete="off" aria-label="Search photos or tags" tabindex="-1">'
                 . '</form></div>';
+        }
+    } elseif ($name === 'photogram-grid-cell') {
+        $item = is_array($data['item'] ?? null) ? $data['item'] : [];
+        $url = (string)($item['url'] ?? '');
+        if ($url === '' && !empty($item['img_slug'])) $url = snap_route_url('photo', ['slug' => $item['img_slug']]);
+        $image = (string)($item['img_thumb_aspect'] ?? '');
+        if ($image === '') $image = (string)($item['img_thumb_square'] ?? '');
+        if ($image === '') $image = (string)($item['img_file'] ?? '');
+        $title = (string)($item['img_title'] ?? $item['title'] ?? '');
+        $classes = 'pg-grid-cell';
+        if (!empty($item['is_phantom'])) $classes .= ' pg-grid-cell--phantom';
+        if ((int)($item['trigram_id'] ?? 0) > 0) $classes .= ' pg-grid-cell--trigram';
+        if (!empty($item['is_phantom'])) {
+            $html = '<span class="' . $classes . '" aria-hidden="true"></span>';
+        } else {
+            $html = '<a href="' . snap_escape_url($url) . '" class="' . $classes . '" title="' . snap_escape_attr($title) . '" aria-label="' . snap_escape_attr($title) . '">';
+            if ($image !== '') $html .= (string)snap_render_component('image', ['url'=>$image, 'alt'=>$item['img_alt'] ?? $title]);
+            $count = (int)($item['image_count'] ?? 0);
+            if ($count > 1) $html .= '<span class="pg-carousel-badge" aria-label="' . $count . ' photos">&#x29C9;</span>';
+            $html .= '</a>';
         }
     } elseif ($name === 'wall-tile') {
         // One photograph in a wall. The page renderer and the endless-scroll

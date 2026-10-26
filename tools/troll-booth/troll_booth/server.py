@@ -16,6 +16,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import AnyHttpUrl
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
+from starlette.routing import Route
 
 from . import __version__
 from .oauth import BoothOAuthProvider
@@ -39,7 +40,7 @@ auth = AuthSettings(
     ),
     validate_token_resource=True,
 )
-mcp = MCPServer("TROLL BOOTH", version=__version__, auth=auth, auth_server_provider=provider)
+mcp = MCPServer("BRAIN TRUST", version=__version__, auth=auth, auth_server_provider=provider)
 
 
 def _actor() -> str:
@@ -64,7 +65,7 @@ async def _queued(capability: str, arguments: dict, reason: str, ticket_id: str 
     return {"id": job_id, "status": "queued", "message": "Local worker has not returned yet."}
 
 
-@mcp.tool(description="Report TROLL BOOTH health, connected local workers, and queued read-only work.")
+@mcp.tool(description="Report BRAIN TRUST health, connected local workers, and queued work.")
 def booth_status() -> dict:
     return store.status()
 
@@ -109,7 +110,7 @@ async def post_message(
     title: str | None = None,
     ticket_id: str | None = None,
     task_id: str | None = None,
-    reason: str = "Collaborate in TROLL BOOTH",
+    reason: str = "Collaborate in BRAIN TRUST",
 ) -> dict:
     _require_scope("booth:write")
     return await _queued(
@@ -163,11 +164,11 @@ async def approve(request: Request):
         safe_id = html.escape(request_id, quote=True)
         return HTMLResponse(
             "<!doctype html><meta name=viewport content='width=device-width'>"
-            "<title>Pair Claude with TROLL BOOTH</title>"
+            "<title>Pair an agent with BRAIN TRUST</title>"
             "<style>body{font:18px system-ui;max-width:42rem;margin:8vh auto;padding:2rem;background:#111;color:#eee}"
             "input,button{font:inherit;padding:.7rem;margin:.4rem 0;width:100%;box-sizing:border-box}button{background:#75ff3b}</style>"
-            "<h1>TROLL BOOTH</h1><p>Nobody crosses without papers.</p>"
-            "<p>Enter the short-lived code shown by the local TROLL BOOTH application. Never enter your password or TOTP here.</p>"
+            "<h1>BRAIN TRUST</h1><p>Private collaboration for your connected agents.</p>"
+            "<p>Enter the short-lived code shown by the local BRAIN TRUST application. Never enter your password or TOTP here.</p>"
             f"<form method=post action='/approve?request={safe_id}'><input name=code autocomplete=one-time-code required>"
             "<button>Pair this agent session</button></form>"
         )
@@ -186,6 +187,21 @@ async def worker_heartbeat(request: Request) -> JSONResponse:
     data = await request.json()
     store.heartbeat(str(data["worker_id"]), str(data.get("version", "unknown")), list(data.get("apps", [])))
     return JSONResponse({"ok": True})
+
+
+@mcp.custom_route("/worker/pair-code", methods=["POST"])
+async def worker_pair_code(request: Request) -> JSONResponse:
+    """Let the authenticated local app create the code shown in its UI."""
+    if not _worker_authorized(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    data = await request.json()
+    actor = str(data.get("actor", "")).strip().lower()
+    if not actor or len(actor) > 64 or not all(character.isalnum() or character in "-_" for character in actor):
+        return JSONResponse({"error": "invalid actor"}, status_code=400)
+    write = bool(data.get("write", True))
+    scopes = ["booth:read", "booth:write"] if write else ["booth:read"]
+    code = store.issue_pair_code(actor, scopes, ttl=300)
+    return JSONResponse({"code": code, "actor": actor, "scopes": scopes, "expires_in": 300})
 
 
 @mcp.custom_route("/worker/claim", methods=["POST"])
@@ -211,6 +227,44 @@ app = mcp.streamable_http_app(
         allowed_hosts=[public_host, "127.0.0.1:*", "localhost:*"],
         allowed_origins=["https://claude.ai", "https://www.claude.ai", PUBLIC_URL],
     )
+)
+
+
+async def oauth_authorization_server_metadata(_: Request) -> JSONResponse:
+    """Advertise the public PKCE client mode accepted by dynamic registration.
+
+    The MCP SDK's generated discovery document currently lists only client
+    secret authentication even though its registration endpoint accepts
+    ``token_endpoint_auth_method=none``. Claude Web rejects that contradiction
+    before it can open the owner approval page.
+    """
+    return JSONResponse(
+        {
+            "issuer": f"{PUBLIC_URL}/",
+            "authorization_endpoint": f"{PUBLIC_URL}/authorize",
+            "token_endpoint": f"{PUBLIC_URL}/token",
+            "registration_endpoint": f"{PUBLIC_URL}/register",
+            "scopes_supported": ["booth:read", "booth:write"],
+            "response_types_supported": ["code"],
+            "grant_types_supported": ["authorization_code", "refresh_token"],
+            "token_endpoint_auth_methods_supported": [
+                "none",
+                "client_secret_post",
+                "client_secret_basic",
+            ],
+            "code_challenge_methods_supported": ["S256"],
+        }
+    )
+
+
+# Put the compatibility route ahead of the SDK-generated metadata route.
+app.router.routes.insert(
+    0,
+    Route(
+        "/.well-known/oauth-authorization-server",
+        oauth_authorization_server_metadata,
+        methods=["GET"],
+    ),
 )
 
 

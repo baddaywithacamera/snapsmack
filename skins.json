@@ -1,0 +1,14 @@
+{
+    "generated": "2026-10-22 20:16:32",
+    "base_url": "https://snapsmack.ca/releases/skins/",
+    "skins": {
+        "scroll": {
+            "label": "SCROLL",
+            "status": "stable",
+            "download_url": "https://snapsmack.ca/releases/skins/snapsmack-skin-scroll.zip",
+            "checksum_sha256": "17526fadb7ca89638bd14f5719d51e24e5326af1fffcb712f809213825daf5c6",
+            "download_size": 4453956,
+            "compatible_with": "0.7.899D"
+        }
+    }
+}

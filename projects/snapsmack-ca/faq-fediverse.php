@@ -21,6 +21,13 @@ $faq_qas = <<<'HTML'
                 <p>Why you need it: it's simply how people find your work now. A blog nobody can stumble onto is a lonely blog. Federation is the reach of social — without becoming the product.</p>
             </div>
 
+<div class="qa" id="q-pixelfed-apps">
+    <h3>Can I use a Pixelfed app with SnapSmack?</h3>
+    <p><strong>Pixelfed apps.</strong> The official Pixelfed apps only connect to servers that identify as Pixelfed. SnapSmack is not Pixelfed and won't pretend to be. We do not wish to offend a developer whose work we admire and are grateful for.</p>
+    <p>PixelDroid and Pixelix both work with SnapSmack. PixelDroid warns that the server isn't Pixelfed, then lets you post. You can also use the site directly.</p>
+    <p>Pixelfed-compatible apps should only be used with <strong>GRAMOFSMACK</strong> installs.</p>
+</div>
+
             <div class="qa" id="q-fediverse-ethics">
                 <h3>Why did you build SnapSmack on the Fediverse?</h3>
                 <p>Because we believe social software should serve the people using it, not capture them. The Fediverse gives photographers control over their identities, work, relationships, and choice of platform.</p>

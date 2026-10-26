@@ -66,6 +66,24 @@ class FakeSession:
         return FakeResp(200, {})
 
 
+class PagingSession(FakeSession):
+    """A catalogue larger than one server page must be returned in full."""
+    def __init__(self, total=725):
+        super().__init__()
+        self.rows = [{"id": value, "title": f"Post {value}"}
+                     for value in range(total, 0, -1)]
+        self.offsets = []
+
+    def get(self, url, timeout=None, params=None):
+        if "smackpress/posts" not in url:
+            return super().get(url, timeout=timeout, params=params)
+        limit = int((params or {}).get("limit", 100))
+        offset = int((params or {}).get("offset", 0))
+        self.offsets.append(offset)
+        return FakeResp(200, {"posts": self.rows[offset:offset + limit],
+                              "total": len(self.rows)})
+
+
 def _img(path, color=(90, 120, 60)):
     Image.new("RGB", (200, 150), color).save(path, "JPEG")
 
@@ -188,6 +206,14 @@ def _checks():
         "[mosaic=2,3,4 layout=three-across]", [101, 102, 103, 104], draft)
     assert resolved == "[mosaic:55]", resolved
     assert mids == [55] and calls == [([102, 103, 104], "three-across")], calls
+    n += 1
+
+    # 10. Established blogs are not silently truncated at the first 100/500.
+    paging = PagingSession()
+    catalogue = P.SmacktalkPoster("https://smacktalk.example", "deadbeef",
+                                  session=paging).list_posts()
+    assert len(catalogue) == 725, len(catalogue)
+    assert paging.offsets == [0, 500], paging.offsets
     n += 1
 
     return n

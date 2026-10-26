@@ -46,7 +46,7 @@ $faq_qas = <<<'HTML'
 
             <div class="qa" id="q-whats-next">
                 <h3>What's next?</h3>
-                <p>What indeed. Honest answer: I don't know. Six months ago SnapSmack didn't exist. I'm not guessing what can happen next.</p>
+                <p>What indeed. Honest answer: I don't know. Ten months ago SnapSmack didn't exist. I'm not guessing what can happen next.</p>
             </div>
 
 HTML;

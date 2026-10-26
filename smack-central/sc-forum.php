@@ -24,6 +24,17 @@ define('PGSB_DISPLAY_NAME', 'Pan Galactic Straw Boss');
 define('PGSB_SHORT',        'PGSB');
 define('PGSB_DOMAIN',       'snapsmack.ca');
 
+// The forum role ladder, exactly as the API's install_role() reads it in
+// projects/forum-server/api/forum/index.php. Smack Central writes this DB
+// directly, so this page is the ONLY place role 3 can be granted: the API's
+// own PATCH installs/{id}/role refuses to set a role at or above the caller's.
+const SC_FORUM_ROLES = [
+    0 => 'Member',
+    1 => 'Power',
+    2 => 'Moderator',
+    3 => 'Admin',
+];
+
 // Load the hub install row once — used to detect PGSB posts and to post as PGSB.
 $hub_row = $db->query(
     "SELECT id FROM ss_forum_installs WHERE domain = 'snapsmack.ca' LIMIT 1"
@@ -103,12 +114,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'unban_install' && !empty($_POST['id'])) {
         $db->prepare("UPDATE ss_forum_installs SET is_banned = 0 WHERE id = ?")->execute([(int)$_POST['id']]);
         $flash = 'Install unbanned.';
-    } elseif ($action === 'promote_mod' && !empty($_POST['id'])) {
-        $db->prepare("UPDATE ss_forum_installs SET is_moderator = 1 WHERE id = ?")->execute([(int)$_POST['id']]);
-        $flash = 'Install promoted to moderator.';
-    } elseif ($action === 'demote_mod' && !empty($_POST['id'])) {
-        $db->prepare("UPDATE ss_forum_installs SET is_moderator = 0 WHERE id = ?")->execute([(int)$_POST['id']]);
-        $flash = 'Moderator privileges removed.';
+    } elseif ($action === 'set_role' && !empty($_POST['id'])) {
+        // This replaced promote_mod/demote_mod, which set is_moderator and
+        // nothing else. is_moderator is only a back-compat MIRROR of role >= 2:
+        // install_role() reads `role` first and returns 0 when it is 0, so the
+        // old Promote button granted precisely nothing once the v4 ladder
+        // landed. Write the ladder; keep the mirror consistent with it.
+        $new_role = (int)($_POST['role'] ?? -1);
+        if (!isset(SC_FORUM_ROLES[$new_role])) {
+            $flash = 'Unknown role. Pick Member, Power, Moderator or Admin.';
+        } else {
+            try {
+                $db->prepare(
+                    "UPDATE ss_forum_installs SET role = ?, is_moderator = ? WHERE id = ?"
+                )->execute([$new_role, $new_role >= 2 ? 1 : 0, (int)$_POST['id']]);
+                $flash = 'Role set to ' . SC_FORUM_ROLES[$new_role] . '.';
+            } catch (PDOException $e) {
+                // The ladder arrived in the forum v4 migration. A hub that has
+                // not had it applied has no `role` column, and saying so beats
+                // a stack trace.
+                $flash = 'Could not set the role: the forum database has no '
+                       . 'role column yet. Apply forum-schema-v4-migration.sql '
+                       . '(or run Schema Check) and try again.';
+            }
+        }
     } elseif ($action === 'rename_install' && !empty($_POST['id']) && isset($_POST['display_name'])) {
         $new_name = trim($_POST['display_name']);
         if ($new_name !== '' && mb_strlen($new_name) <= 100) {
@@ -1031,7 +1060,8 @@ foreach ($categories as $c) {
 <!-- ══════════════════════════════════════════════════════════════════════════ -->
 <?php
 $installs = $db->query("
-    SELECT id, domain, display_name, ss_version, registered_at, last_seen_at, is_banned, is_moderator
+    SELECT id, domain, display_name, ss_version, registered_at, last_seen_at,
+           is_banned, is_moderator, role
     FROM ss_forum_installs
     ORDER BY is_banned ASC, registered_at DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
@@ -1084,10 +1114,10 @@ $installs = $db->query("
           <td>
             <?php if ($is_hub): ?>
               <span class="scf-badge scf-badge--pgsb">PGSB</span>
-            <?php elseif ($row['is_moderator']): ?>
-              <span class="sc-badge sc-badge--ok">Moderator</span>
-            <?php else: ?>
-              <span class="sc-badge">Member</span>
+            <?php else: $rung = (int)$row['role']; ?>
+              <span class="sc-badge<?php echo $rung >= 2 ? ' sc-badge--ok' : ''; ?>">
+                <?php echo SC_FORUM_ROLES[$rung] ?? 'Member'; ?>
+              </span>
             <?php endif; ?>
           </td>
           <td>
@@ -1098,10 +1128,19 @@ $installs = $db->query("
           <td>
             <?php if (!$is_hub): ?>
             <div class="sc-btn-row sc-btn-row--tight">
-              <form method="post" style="display:inline;">
+              <form method="post" class="sc-btn-row sc-btn-row--tight"
+                    data-domain="<?php echo htmlspecialchars($row['domain']); ?>"
+                    onsubmit="return scfConfirmRole(this);">
                 <input type="hidden" name="id" value="<?php echo (int)$row['id']; ?>">
-                <input type="hidden" name="action" value="<?php echo $row['is_moderator'] ? 'demote_mod' : 'promote_mod'; ?>">
-                <button class="sc-btn sc-btn--sm"><?php echo $row['is_moderator'] ? 'Demote' : 'Promote'; ?></button>
+                <input type="hidden" name="action" value="set_role">
+                <select name="role" class="sc-select sc-select--sm">
+                  <?php foreach (SC_FORUM_ROLES as $rung_val => $rung_label): ?>
+                  <option value="<?php echo $rung_val; ?>"<?php echo $rung_val === (int)$row['role'] ? ' selected' : ''; ?>>
+                    <?php echo $rung_label; ?>
+                  </option>
+                  <?php endforeach; ?>
+                </select>
+                <button class="sc-btn sc-btn--sm">Set</button>
               </form>
               <form method="post" style="display:inline;">
                 <input type="hidden" name="id" value="<?php echo (int)$row['id']; ?>">

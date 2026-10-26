@@ -721,6 +721,11 @@ $inventory = [
             'css'          => 'assets/css/ss-engine-mosaic.css',
             'has_settings' => false,
         ],
+        'smack-masonry' => [
+            'label'        => 'Asymmetric dense-pack photo wall',
+            'path'         => 'assets/js/ss-engine-masonry.js',
+            'has_settings' => false,
+        ],
         'smack-alfred-archive' => [
             'label'        => 'Alfred-family archive viewer',
             'path'         => 'assets/js/ss-engine-alfred-archive.js',

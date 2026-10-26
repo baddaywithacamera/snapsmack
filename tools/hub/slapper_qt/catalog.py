@@ -34,6 +34,7 @@ class Catalog:
         self.folders_path = os.path.join(directory, "library_folders.json")
         self.index_path = os.path.join(directory, "catalog_index.json")
         self.history_path = os.path.join(directory, "operation_history.json")
+        self.excluded_path = os.path.join(directory, "excluded_photos.json")
         self.trash_path = os.path.join(directory, "trash_manifest.json")
         self.trash_root = os.path.join(directory, "trash")
         self.metadata = photo_manager.load_versioned(
@@ -46,6 +47,10 @@ class Catalog:
             self.index_path, "photos", {})
         self.history = photo_manager.load_versioned(
             self.history_path, "operations", [])
+        self.excluded = photo_manager.load_versioned(
+            self.excluded_path, "photos", [])
+        if not isinstance(self.excluded, list):
+            self.excluded = []
 
     @staticmethod
     def key(path):
@@ -159,8 +164,37 @@ class Catalog:
         photo_manager.save_versioned(self.index_path, "photos", self.index)
 
     def all_paths(self):
+        excluded = {self.key(path) for path in self.excluded}
         return [row["path"] for row in self.index.values()
-                if isinstance(row, dict) and os.path.isfile(row.get("path", ""))]
+                if isinstance(row, dict) and os.path.isfile(row.get("path", ""))
+                and self.key(row["path"]) not in excluded]
+
+    def is_excluded(self, path):
+        return self.key(path) in {self.key(value) for value in self.excluded}
+
+    def exclude_paths(self, paths):
+        """Remove photographs from SNAP SLAPPER without touching disk."""
+        excluded = {self.key(path): os.path.abspath(path)
+                    for path in self.excluded}
+        removed = {self.key(path) for path in paths}
+        for path in paths:
+            excluded[self.key(path)] = os.path.abspath(path)
+            self.metadata.pop(self.key(path), None)
+            self.index.pop(self.key(path), None)
+        for name, album_paths in list(self.albums.items()):
+            self.albums[name] = [path for path in album_paths
+                                 if self.key(path) not in removed]
+        self.excluded = sorted(excluded.values(), key=str.lower)
+        photo_manager.save_versioned(self.excluded_path, "photos", self.excluded)
+        photo_manager.save_versioned(self.metadata_path, "photos", self.metadata)
+        photo_manager.save_versioned(self.index_path, "photos", self.index)
+        self.save_albums()
+
+    def restore_excluded(self):
+        count = len(self.excluded)
+        self.excluded = []
+        photo_manager.save_versioned(self.excluded_path, "photos", self.excluded)
+        return count
 
     def record_operation(self, kind, changes):
         self.history.append({

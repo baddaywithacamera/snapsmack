@@ -1,4 +1,4 @@
-# Build specs for TROLL BOOTH and SMACK DEALER
+# Build specs for BRAIN TRUST and SMACK DEALER
 
 These are the PyInstaller specs, kept **here** rather than in `build/`
 because `.gitignore` excludes `tools/*/build/` — so a spec left there does not
@@ -11,10 +11,10 @@ that decides what actually goes in the exe; it belongs in git.
 
 ## Rebuilding
 
-TROLL BOOTH is a PySide6 app and the shipped exe bundles **Python 3.10 with
-PySide6 6.12** — that is the app's own `.venv`, not the suite's
+BRAIN TRUST is a PySide6 app and the shipped exe bundles **Python 3.10 with
+PySide6 6.8** — that is the app's own `.venv`, not the suite's
 `.python-build` (Python 3.12, PySide6 6.9.3). Building with the suite
-interpreter would quietly downgrade PySide6 by three minor versions.
+interpreter would silently change the tested Qt runtime.
 
     cd tools/troll-booth
     .venv/Scripts/python.exe -m pip install pyinstaller

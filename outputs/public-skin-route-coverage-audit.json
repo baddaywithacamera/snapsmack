@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
-    "generated_at_utc": "2026-10-05T06:46:59+00:00",
-    "head": "088ee886164141daf0be8502d2e267b22494ea0f",
+    "generated_at_utc": "2026-10-11T01:05:53+00:00",
+    "head": "3b3f52e2f01284d2fc8902c5715c8d8e2e56a79d",
     "method": "render each route with a unique marker and reject not-found fallthrough",
     "warning": "Route marker coverage proves bounded content reaches the skin; it does not prove visual parity or interaction behavior.",
     "skins": {
@@ -570,7 +570,7 @@
             }
         },
         "game-on": {
-            "covered_count": 7,
+            "covered_count": 8,
             "declared_count": 11,
             "routes": {
                 "landing": {
@@ -615,9 +615,9 @@
                 },
                 "search": {
                     "declared_template": "layout.php",
-                    "covered": false,
+                    "covered": true,
                     "marker_present": true,
-                    "not_found_fallthrough": true,
+                    "not_found_fallthrough": false,
                     "warning_count": 0,
                     "warnings": []
                 },
@@ -1886,7 +1886,7 @@
             }
         },
         "slickr": {
-            "covered_count": 8,
+            "covered_count": 11,
             "declared_count": 11,
             "routes": {
                 "landing": {
@@ -1931,9 +1931,9 @@
                 },
                 "search": {
                     "declared_template": "layout.php",
-                    "covered": false,
+                    "covered": true,
                     "marker_present": true,
-                    "not_found_fallthrough": true,
+                    "not_found_fallthrough": false,
                     "warning_count": 0,
                     "warnings": []
                 },
@@ -1947,17 +1947,17 @@
                 },
                 "albums": {
                     "declared_template": "layout.php",
-                    "covered": false,
+                    "covered": true,
                     "marker_present": true,
-                    "not_found_fallthrough": true,
+                    "not_found_fallthrough": false,
                     "warning_count": 0,
                     "warnings": []
                 },
                 "collections": {
                     "declared_template": "layout.php",
-                    "covered": false,
+                    "covered": true,
                     "marker_present": true,
-                    "not_found_fallthrough": true,
+                    "not_found_fallthrough": false,
                     "warning_count": 0,
                     "warnings": []
                 },
@@ -2358,5 +2358,5 @@
     },
     "skin_count": 25,
     "declared_route_total": 275,
-    "covered_route_total": 230
+    "covered_route_total": 234
 }

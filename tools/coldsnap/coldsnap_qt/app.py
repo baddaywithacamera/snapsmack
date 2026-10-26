@@ -9,7 +9,14 @@ Run from source:  python -m coldsnap_qt        (cwd: tools/coldsnap)
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
+import ctypes
+import os
 import sys
+
+
+def _icon_path() -> str:
+    root = getattr(sys, "_MEIPASS", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(root, "assets", "coldsnap.ico")
 
 
 def main() -> int:
@@ -17,6 +24,16 @@ def main() -> int:
     if not snap_single_instance.acquire("cold-snap", "COLD SNAP"):
         return 0
 
+    # The executable icon alone is not enough for a Qt taskbar button.  Give
+    # Windows a stable identity before QApplication creates any windows.
+    if sys.platform == "win32":
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+                "SnapSmack.ColdSnap")
+        except (AttributeError, OSError):
+            pass
+
+    from PySide6.QtGui import QIcon
     from PySide6.QtWidgets import QApplication
 
     from . import theme
@@ -24,6 +41,9 @@ def main() -> int:
 
     app = QApplication(sys.argv)
     app.setApplicationName("COLD SNAP")
+    icon_path = _icon_path()
+    if os.path.isfile(icon_path):
+        app.setWindowIcon(QIcon(icon_path))
     app.setStyleSheet(theme.stylesheet())
     win = MainWindow()
     win.show()

@@ -310,7 +310,7 @@ if (in_array($_snap_page, ['page', 'blog', 'index'])): ?>
 // mode (a cross-mode leak). Mirrors the shortcodes/columns/lightbox guard above.
 if (in_array($_snap_page, ['page', 'blog'], true)): ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
-<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT . '-' . (string) @filemtime(__DIR__ . '/../assets/js/ss-engine-mosaic.js'); ?>" defer></script>
 <?php // A [mosaic:ID] block can now be Columns, Rows or Square as well as Asymmetric,
       // reusing the SCROLL wall's shipped engines rather than new code. Same page gate.
       // The CSS is chrome only (the engines write geometry inline), the engines bind to

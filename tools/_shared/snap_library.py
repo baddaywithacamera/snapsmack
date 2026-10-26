@@ -90,7 +90,11 @@ CREATE TABLE IF NOT EXISTS assets (
     description TEXT DEFAULT '',
     color_mode  TEXT DEFAULT '',       -- 'color' | 'bw' | ''
     status      TEXT DEFAULT '',       -- published | draft (as the server reported)
-    img_date    TEXT DEFAULT ''
+    img_date    TEXT DEFAULT '',
+    usage_known INTEGER DEFAULT 0,     -- server supplied authoritative usage data
+    buckets     TEXT DEFAULT '[]',     -- JSON post summaries owning this image
+    placements  TEXT DEFAULT '[]',     -- JSON actual post placements
+    mosaics     TEXT DEFAULT '[]'      -- JSON mosaic membership + whether placed
 );
 CREATE INDEX IF NOT EXISTS assets_post ON assets(post_id);
 
@@ -188,6 +192,10 @@ _ASSET_COLUMN_MIGRATIONS = (
     "ALTER TABLE assets ADD COLUMN color_mode  TEXT DEFAULT ''",
     "ALTER TABLE assets ADD COLUMN status      TEXT DEFAULT ''",
     "ALTER TABLE assets ADD COLUMN img_date    TEXT DEFAULT ''",
+    "ALTER TABLE assets ADD COLUMN usage_known INTEGER DEFAULT 0",
+    "ALTER TABLE assets ADD COLUMN buckets     TEXT DEFAULT '[]'",
+    "ALTER TABLE assets ADD COLUMN placements  TEXT DEFAULT '[]'",
+    "ALTER TABLE assets ADD COLUMN mosaics     TEXT DEFAULT '[]'",
 )
 
 _CATALOG_COLUMN_MIGRATIONS = (
@@ -619,10 +627,17 @@ def all_assets(site) -> list:
     conn = _connect(site)
     conn.row_factory = sqlite3.Row
     try:
-        return [dict(r) for r in conn.execute(
+        rows = [dict(r) for r in conn.execute(
             """SELECT a.*, (SELECT COUNT(*) FROM post_assets pa
                             WHERE pa.asset_id = a.asset_id) AS used_in
                FROM assets a ORDER BY a.rowid DESC""").fetchall()]
+        for row in rows:
+            for key in ("buckets", "placements", "mosaics"):
+                try:
+                    row[key] = json.loads(row.get(key) or "[]")
+                except (TypeError, ValueError):
+                    row[key] = []
+        return rows
     finally:
         conn.close()
 
@@ -642,8 +657,9 @@ def upsert_asset(site, entry: dict) -> None:
                 """INSERT INTO assets
                    (asset_id, post_id, media_path, thumb_path, orig_name,
                     mime, width, height, alt, source_ref,
-                    title, description, color_mode, status, img_date)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    title, description, color_mode, status, img_date,
+                    usage_known, buckets, placements, mosaics)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(asset_id) DO UPDATE SET
                      media_path  = excluded.media_path,
                      thumb_path  = excluded.thumb_path,
@@ -657,7 +673,11 @@ def upsert_asset(site, entry: dict) -> None:
                      description = excluded.description,
                      color_mode  = excluded.color_mode,
                      status      = excluded.status,
-                     img_date    = excluded.img_date""",
+                     img_date    = excluded.img_date,
+                     usage_known = excluded.usage_known,
+                     buckets     = excluded.buckets,
+                     placements  = excluded.placements,
+                     mosaics     = excluded.mosaics""",
                 (aid, None,
                  str(entry.get("media_path", "") or ""),
                  str(entry.get("thumb_path", "") or ""),
@@ -671,7 +691,11 @@ def upsert_asset(site, entry: dict) -> None:
                  str(entry.get("description", "") or ""),
                  str(entry.get("color_mode", "") or ""),
                  str(entry.get("status", "") or ""),
-                 str(entry.get("img_date", "") or "")))
+                 str(entry.get("img_date", "") or ""),
+                 1 if entry.get("usage_known") else 0,
+                 json.dumps(entry.get("buckets") or []),
+                 json.dumps(entry.get("placements") or []),
+                 json.dumps(entry.get("mosaics") or [])))
     finally:
         conn.close()
 

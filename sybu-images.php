@@ -106,10 +106,97 @@ $stmt->bindValue(1, $per, PDO::PARAM_INT);    // integer binds — native prepar
 $stmt->bindValue(2, $offset, PDO::PARAM_INT); // statements reject string LIMITs
 $stmt->execute();
 
+$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$page_ids = array_map(static function ($row) { return (int)$row['id']; }, $rows);
+$wanted = array_fill_keys($page_ids, true);
+$buckets_by_image = [];
+$placements_by_image = [];
+$mosaics_by_image = [];
+
+// A bucket is only a post's working set.  A placement is a photograph actually
+// referenced by a post (lead/signature/inline or through a MOSAIC).  Report both
+// so the desktop can identify honest "bucket only" and unused states.
+if ($page_ids) {
+    require_once __DIR__ . '/core/bucket.php';
+    snap_bucket_ensure($pdo);
+    $ph = implode(',', array_fill(0, count($page_ids), '?'));
+    $bucket_stmt = $pdo->prepare(
+        "SELECT b.image_id,p.id AS post_id,p.title,p.status
+           FROM snap_bucket_items b JOIN snap_posts p ON p.id=b.post_id
+          WHERE b.image_id IN ($ph)
+       ORDER BY p.created_at DESC,p.id DESC,b.position ASC"
+    );
+    $bucket_stmt->execute($page_ids);
+    foreach ($bucket_stmt->fetchAll(PDO::FETCH_ASSOC) as $membership) {
+        $iid = (int)$membership['image_id'];
+        $buckets_by_image[$iid][] = [
+            'post_id' => (int)$membership['post_id'],
+            'title' => (string)$membership['title'],
+            'status' => (string)$membership['status'],
+        ];
+    }
+
+    $add_placement = static function (int $iid, array $post, string $kind,
+                                      ?int $mosaic_id = null) use (&$placements_by_image, $wanted): void {
+        if (empty($wanted[$iid])) return;
+        $key = (int)$post['id'] . ':' . $kind . ':' . (int)$mosaic_id;
+        if (isset($placements_by_image[$iid][$key])) return;
+        $entry = ['post_id' => (int)$post['id'], 'title' => (string)$post['title'],
+                  'status' => (string)$post['status'], 'kind' => $kind];
+        if ($mosaic_id) $entry['mosaic_id'] = $mosaic_id;
+        $placements_by_image[$iid][$key] = $entry;
+    };
+
+    $posts = $pdo->query(
+        "SELECT id,title,status,content,featured_image_id,signature_image_id
+           FROM snap_posts WHERE post_type='longform'"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    $mosaic_posts = [];
+    foreach ($posts as $post) {
+        $lead = (int)($post['featured_image_id'] ?? 0);
+        $signature = (int)($post['signature_image_id'] ?? 0);
+        if ($lead) $add_placement($lead, $post, 'lead');
+        if ($signature) $add_placement($signature, $post, 'signature');
+        if (preg_match_all('/\[img:\s*g?\s*(\d+)/i', (string)$post['content'], $matches)) {
+            foreach ($matches[1] as $iid) $add_placement((int)$iid, $post, 'inline');
+        }
+        if (preg_match_all('/\[mosaic:\s*(\d+)\s*\]/i', (string)$post['content'], $matches)) {
+            foreach ($matches[1] as $mid) $mosaic_posts[(int)$mid][] = $post;
+        }
+    }
+
+    try {
+        $mosaic_rows = $pdo->query("SELECT id,title,asset_ids FROM snap_mosaics")
+                           ->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $mosaic_rows = [];
+    }
+    foreach ($mosaic_rows as $mosaic) {
+        $mid = (int)$mosaic['id'];
+        $used_by = $mosaic_posts[$mid] ?? [];
+        $used_summary = array_map(static function ($post) {
+            return ['post_id' => (int)$post['id'], 'title' => (string)$post['title'],
+                    'status' => (string)$post['status']];
+        }, $used_by);
+        $ids = json_decode((string)$mosaic['asset_ids'], true);
+        if (!is_array($ids)) continue;
+        foreach ($ids as $iid) {
+            $iid = (int)$iid;
+            if (empty($wanted[$iid])) continue;
+            $mosaics_by_image[$iid][] = [
+                'id' => $mid, 'title' => (string)$mosaic['title'],
+                'used_by' => $used_summary,
+            ];
+            foreach ($used_by as $post) $add_placement($iid, $post, 'mosaic', $mid);
+        }
+    }
+}
+
 $images = [];
-foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+foreach ($rows as $row) {
+    $iid = (int)$row['id'];
     $images[] = [
-        'id'           => (int)$row['id'],
+        'id'           => $iid,
         'title'        => (string)$row['img_title'],
         'description'  => (string)($row['img_description'] ?? ''),
         'alt'          => (string)($row['img_alt'] ?? ''),
@@ -123,6 +210,10 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         'width'        => (int)($row['img_width'] ?? 0),
         'height'       => (int)($row['img_height'] ?? 0),
         'checksum'     => (string)($row['img_checksum'] ?? ''),
+        'usage_known'  => true,
+        'buckets'      => array_values($buckets_by_image[$iid] ?? []),
+        'placements'   => array_values($placements_by_image[$iid] ?? []),
+        'mosaics'      => array_values($mosaics_by_image[$iid] ?? []),
     ];
 }
 

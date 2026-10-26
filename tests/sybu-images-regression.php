@@ -41,6 +41,12 @@ $checks = [
     "limit bound as int"            => strpos($src, 'PDO::PARAM_INT') !== false,
     "per-page capped"               => strpos($src, 'min(200, $per)') !== false,
 
+    // Editorial usage — bucket membership is not the same as placement.
+    "bucket membership reported"    => strpos($src, "'buckets'") !== false && strpos($src, 'snap_bucket_items') !== false,
+    "actual placements reported"    => strpos($src, "'placements'") !== false && strpos($src, '\'kind\' => $kind') !== false,
+    "unused mosaics distinguishable"=> strpos($src, "'mosaics'") !== false && strpos($src, "'used_by'") !== false,
+    "usage is authoritative"        => strpos($src, "'usage_known'  => true") !== false,
+
     // Lazy columns for older installs.
     "img_alt lazy alter"            => strpos($src, 'ADD COLUMN IF NOT EXISTS img_alt') !== false,
     "img_color_mode lazy alter"     => strpos($src, 'ADD COLUMN IF NOT EXISTS img_color_mode') !== false,

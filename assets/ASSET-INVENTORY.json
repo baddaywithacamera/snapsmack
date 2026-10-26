@@ -13,7 +13,6 @@
                 "new-horizon",
                 "onyx",
                 "show-n-tell",
-                "slickr",
                 "true-grit"
             ],
             "security_signals": [
@@ -514,9 +513,11 @@
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-archive-filter",
-            "legacy_handle": null,
+            "legacy_handle": "smack-crop-circles",
             "callers": [
-                "archive.php"
+                "archive.php",
+                "core/skin-render-helpers.php",
+                "scroll"
             ],
             "security_signals": [],
             "security_review": null,
@@ -758,27 +759,29 @@
                 "core/ohsnap-api.php",
                 "core/parser.php",
                 "skins/50-shades-of-noah-grey/manifest.json",
+                "skins/impact-printer/manifest.json",
                 "skins/onyx/manifest.json",
+                "skins/rational-geo/manifest.json",
                 "skins/scroll/manifest.json",
                 "skins/telegram/manifest.json",
                 "skins/tilez/manifest.json",
                 "50-shades-of-noah-grey",
+                "impact-printer",
                 "onyx",
+                "rational-geo",
                 "scroll",
                 "telegram",
                 "tilez"
             ],
             "security_signals": [
-                "html-sink",
                 "network"
             ],
             "security_review": {
                 "signals": [
-                    "html-sink",
                     "network"
                 ],
                 "reviewer": "SECAUDIT-059",
-                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+                "review": "Reviewed same-origin public pagination requests; normal public CSP restricts connections to same-origin."
             },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
@@ -1549,12 +1552,10 @@
                 "skins/new-horizon/manifest.json",
                 "skins/onyx/manifest.json",
                 "skins/show-n-tell/manifest.json",
-                "skins/slickr/manifest.json",
                 "skins/true-grit/manifest.json",
                 "new-horizon",
                 "onyx",
                 "show-n-tell",
-                "slickr",
                 "true-grit"
             ],
             "security_signals": [],
@@ -1573,11 +1574,13 @@
             "legacy_handle": "smack-lazyload",
             "callers": [
                 "skins/glide/manifest.json",
+                "skins/rational-geo/manifest.json",
                 "skins/scroll/manifest.json",
                 "skins/slickr/manifest.json",
                 "skins/telegram/manifest.json",
                 "skins/tilez/manifest.json",
                 "glide",
+                "rational-geo",
                 "scroll",
                 "slickr",
                 "telegram",
@@ -1701,6 +1704,33 @@
             "vendor": false,
             "requires": [],
             "purpose": "Longform cover pan/zoom cropper Drives the COVER FRAMING widget on smack-post-long.php."
+        },
+        {
+            "file": "assets/js/ss-engine-masonry.js",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-masonry",
+            "legacy_handle": "smack-masonry",
+            "callers": [
+                "core/asset-security-reviews.php",
+                "skins/scroll/manifest.json",
+                "scroll"
+            ],
+            "security_signals": [
+                "network"
+            ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed same-origin public pagination requests; normal public CSP restricts connections to same-origin."
+            },
+            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
+            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
+            "vendor": false,
+            "requires": [],
+            "purpose": "Asymmetric Masonry Wall."
         },
         {
             "file": "assets/js/ss-engine-masthead-crop.js",
@@ -2023,7 +2053,6 @@
             "registry_handle": "asset:public:ss-engine-progressive-reveal",
             "legacy_handle": "smack-progressive-reveal",
             "callers": [
-                "index.php",
                 "core/asset-security-reviews.php",
                 "skins/aurora/manifest.json",
                 "skins/game-on/manifest.json",
@@ -2104,12 +2133,19 @@
             "legacy_handle": "smack-rows",
             "callers": [
                 "smack-mosaics.php",
+                "core/50-shades-page-component.php",
                 "core/asset-security-reviews.php",
                 "core/meta.php",
                 "skins/50-shades-of-noah-grey/manifest.json",
+                "skins/impact-printer/manifest.json",
+                "skins/scroll/manifest.json",
+                "skins/slickr/manifest.json",
                 "skins/telegram/manifest.json",
                 "skins/tilez/manifest.json",
                 "50-shades-of-noah-grey",
+                "impact-printer",
+                "scroll",
+                "slickr",
                 "telegram",
                 "tilez"
             ],
@@ -2334,20 +2370,20 @@
                 "skins/instant-camera/manifest.json",
                 "skins/jive-turkey/manifest.json",
                 "skins/parade/manifest.json",
-                "skins/slickr/manifest.json",
                 "skins/sliders/manifest.json",
                 "skins/sudden-impact/manifest.json",
                 "skins/the-grid/manifest.json",
+                "skins/tilez/manifest.json",
                 "aurora",
                 "game-on",
                 "heuristic",
                 "instant-camera",
                 "jive-turkey",
                 "parade",
-                "slickr",
                 "sliders",
                 "sudden-impact",
-                "the-grid"
+                "the-grid",
+                "tilez"
             ],
             "security_signals": [
                 "html-sink",
@@ -2778,12 +2814,10 @@
                 "skins/new-horizon/manifest.json",
                 "skins/onyx/manifest.json",
                 "skins/show-n-tell/manifest.json",
-                "skins/slickr/manifest.json",
                 "skins/true-grit/manifest.json",
                 "new-horizon",
                 "onyx",
                 "show-n-tell",
-                "slickr",
                 "true-grit"
             ],
             "security_signals": [],
@@ -2796,10 +2830,13 @@
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:page-archive",
-            "legacy_handle": null,
+            "legacy_handle": "smack-archive-toggle:css",
             "callers": [
                 "core/asset-security-reviews.php",
-                "core/meta.php"
+                "core/meta.php",
+                "chaplin",
+                "rational-geo",
+                "slickr"
             ],
             "security_signals": [
                 "concealment"
@@ -2880,7 +2917,8 @@
             "registry_handle": "asset:public:photochallenge-board-embed",
             "legacy_handle": null,
             "callers": [
-                "core/photochallenge.php"
+                "core/photochallenge.php",
+                "core/public-runtime.php"
             ],
             "security_signals": [],
             "security_review": null,
@@ -2894,7 +2932,8 @@
             "registry_handle": "asset:public:photochallenge-board-layouts",
             "legacy_handle": null,
             "callers": [
-                "core/photochallenge.php"
+                "core/photochallenge.php",
+                "core/public-runtime.php"
             ],
             "security_signals": [],
             "security_review": null,
@@ -2908,6 +2947,7 @@
             "registry_handle": "asset:public:public-base",
             "legacy_handle": null,
             "callers": [
+                "index.php",
                 "core/asset-security-reviews.php",
                 "core/meta.php",
                 "skins/slickr/manifest.json",
@@ -3423,10 +3463,16 @@
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-scroll-wall",
-            "legacy_handle": null,
+            "legacy_handle": "smack-rows:css",
             "callers": [
                 "smack-mosaics.php",
-                "core/meta.php"
+                "core/meta.php",
+                "50-shades-of-noah-grey",
+                "impact-printer",
+                "scroll",
+                "slickr",
+                "telegram",
+                "tilez"
             ],
             "security_signals": [],
             "security_review": null,
@@ -3478,10 +3524,13 @@
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-social-dock",
-            "legacy_handle": null,
+            "legacy_handle": "smack-crop-circles:css",
             "callers": [
+                "core/asset-registry.php",
                 "core/asset-security-reviews.php",
-                "core/footer-scripts.php"
+                "core/footer-scripts.php",
+                "skins/scroll/manifest.json",
+                "scroll"
             ],
             "security_signals": [
                 "concealment"

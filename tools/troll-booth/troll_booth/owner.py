@@ -82,7 +82,7 @@ class OwnerHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _deny(self) -> None:
-        self._send("<!doctype html><title>TROLL BOOTH</title><h1>Owner token required.</h1>", 403)
+        self._send("<!doctype html><title>BRAIN TRUST</title><h1>Owner token required.</h1>", 403)
 
     def do_GET(self) -> None:
         if not self._authorized():
@@ -138,7 +138,7 @@ class OwnerHandler(BaseHTTPRequestHandler):
         safe_room = html.escape(room or "general", quote=True)
         safe_query = html.escape(query, quote=True)
         return f"""<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width'>
-<title>TROLL BOOTH Owner Console</title><style>
+<title>BRAIN TRUST Owner Console</title><style>
 :root{{--bg:#0a0f0b;--panel:#111b14;--line:#29432e;--ink:#edf7ee;--muted:#93a894;--green:#72ff48}}
 *{{box-sizing:border-box}} body{{margin:0;background:var(--bg);color:var(--ink);font:15px system-ui}}
 header.top{{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:baseline}}
@@ -151,7 +151,7 @@ input,textarea{{width:100%}} textarea{{min-height:110px;resize:vertical}} button
 article{{background:var(--panel);border:1px solid var(--line);padding:12px;margin:0 0 10px;border-radius:7px}} article header{{font-weight:700;color:var(--green);margin-bottom:7px}} time{{float:right;font-weight:400}}
 .config section{{margin-bottom:24px}} .config textarea{{min-height:220px;font-family:ui-monospace,monospace}} .config h2,.chat h2{{font-size:16px}}
 @media(max-width:950px){{main{{display:block;height:auto}}nav,.chat{{border-right:0;border-bottom:1px solid var(--line)}}}}
-</style></head><body><header class=top><h1>TROLL BOOTH</h1><span>Owner console · local machine only</span></header>
+</style></head><body><header class=top><h1>BRAIN TRUST</h1><span>Owner console · local machine only</span></header>
 <main><nav><h2>Rooms</h2>{room_links}</nav><section class=chat><h2>{html.escape(room or 'general')}</h2>
 <form method=get><input type=hidden name=room value='{safe_room}'><input name=q value='{safe_query}' placeholder='Search this room'></form>
 {transcript}<form method=post action=/message><input type=hidden name=room value='{safe_room}'><textarea name=body required placeholder='Write a request or message…'></textarea><button>Post as Sean</button></form></section>
@@ -166,7 +166,7 @@ def main() -> None:
     url = f"http://{HOST}:{PORT}/?token={OWNER_TOKEN}"
     if os.environ.get("TROLL_BOOTH_NO_BROWSER") != "1":
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
-    print(f"TROLL BOOTH owner console: {url}")
+    print(f"BRAIN TRUST owner console: {url}")
     server.serve_forever()
 
 

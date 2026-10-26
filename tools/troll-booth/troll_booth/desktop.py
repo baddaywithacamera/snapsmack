@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+import urllib.error
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 
@@ -40,6 +42,8 @@ from .secret_config import public_mariadb_settings, save_mariadb_settings
 ROOT = Path(os.environ.get("TROLL_BOOTH_HOME", Path.home() / ".troll-booth"))
 AGREEMENT = Path(os.environ.get("TROLL_BOOTH_AGREEMENT", ROOT / "working-agreement.md"))
 APPS = Path(os.environ.get("TROLL_BOOTH_APPS", ROOT / "apps.json"))
+SERVER = os.environ.get("TROLL_BOOTH_SERVER", "https://trollbooth.photoblogs.fyi").rstrip("/")
+WORKER_TOKEN_FILE = Path(os.environ.get("TROLL_BOOTH_WORKER_TOKEN_FILE", ROOT / "worker-token"))
 
 
 def _icon() -> QIcon:
@@ -49,7 +53,7 @@ def _icon() -> QIcon:
     painter.setPen(QColor("#72ff48"))
     font = QFont("Segoe UI", 27, QFont.Weight.Black)
     painter.setFont(font)
-    painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "TB")
+    painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "BT")
     painter.end()
     return QIcon(pixmap)
 
@@ -92,9 +96,12 @@ class BoothWindow(QMainWindow):
         ROOT.mkdir(parents=True, exist_ok=True)
         self.store, self.storage_label = open_conversation_store()
         self.current_room = ""
+        self._rendered_room = ""
+        self._rendered_message_count = -1
+        self._rendered_query = ""
         self.seen_message_ids: set[str] = set()
         self.unread_by_room: dict[str, int] = {}
-        self.setWindowTitle("TROLL BOOTH")
+        self.setWindowTitle("BRAIN TRUST")
         self.setWindowIcon(_icon())
         self.resize(1320, 820)
         self.setMinimumSize(960, 620)
@@ -115,12 +122,12 @@ class BoothWindow(QMainWindow):
         header = QFrame()
         header.setObjectName("header")
         header_layout = QHBoxLayout(header)
-        brand = QLabel("TROLL BOOTH")
+        brand = QLabel("BRAIN TRUST")
         brand.setObjectName("brand")
         self.status = QLabel("LOCAL · STARTING")
         self.status.setObjectName("status")
         quit_button = QPushButton("QUIT")
-        quit_button.setToolTip("Close TROLL BOOTH completely")
+        quit_button.setToolTip("Close BRAIN TRUST completely")
         quit_button.clicked.connect(QApplication.instance().quit)
         header_layout.addWidget(brand)
         header_layout.addStretch()
@@ -183,7 +190,7 @@ class BoothWindow(QMainWindow):
         panel = QWidget()
         box = QVBoxLayout(panel)
         tabs = QComboBox()
-        tabs.addItems(["CONNECTED APPS", "WORKING AGREEMENT", "AGENT / CLI ACCESS"])
+        tabs.addItems(["CONNECTED APPS", "WORKING AGREEMENT", "AGENT CONNECTIONS"])
         self.control_stack = QStackedWidget()
         tabs.currentIndexChanged.connect(self.control_stack.setCurrentIndex)
         box.addWidget(tabs)
@@ -211,7 +218,18 @@ class BoothWindow(QMainWindow):
 
         access_page = QWidget()
         access_box = QVBoxLayout(access_page)
-        access_box.addWidget(QLabel("Agent-facing interfaces"))
+        access_box.addWidget(QLabel("Pair Claude, Codex, or another MCP agent"))
+        self.pair_actor = QComboBox()
+        self.pair_actor.setEditable(True)
+        self.pair_actor.addItems(["claude", "codex"])
+        access_box.addWidget(self.pair_actor)
+        pair_button = QPushButton("GENERATE 5-MINUTE PAIRING CODE")
+        pair_button.clicked.connect(self.generate_pair_code)
+        access_box.addWidget(pair_button)
+        self.pair_code = QLineEdit()
+        self.pair_code.setReadOnly(True)
+        self.pair_code.setPlaceholderText("The pairing code will appear here")
+        access_box.addWidget(self.pair_code)
         cli = QPlainTextEdit()
         cli.setReadOnly(True)
         cli.setPlainText(
@@ -237,6 +255,38 @@ class BoothWindow(QMainWindow):
         box.addWidget(self.control_stack, 1)
         return panel
 
+    def generate_pair_code(self) -> None:
+        actor = self.pair_actor.currentText().strip().lower()
+        token = os.environ.get("TROLL_BOOTH_WORKER_TOKEN", "").strip()
+        if not token:
+            try:
+                token = WORKER_TOKEN_FILE.read_text(encoding="utf-8").strip()
+            except FileNotFoundError:
+                token = ""
+        if not token:
+            QMessageBox.warning(
+                self,
+                "Pairing is not configured",
+                f"BRAIN TRUST needs its worker token at {WORKER_TOKEN_FILE} before it can create pairing codes.",
+            )
+            return
+        payload = json.dumps({"actor": actor, "write": True}).encode("utf-8")
+        request = urllib.request.Request(
+            f"{SERVER}/owner/pair-code",
+            data=payload,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                result = json.loads(response.read().decode("utf-8"))
+        except (OSError, ValueError, urllib.error.URLError) as exc:
+            QMessageBox.critical(self, "Pairing failed", f"Could not reach the BRAIN TRUST connector: {exc}")
+            return
+        self.pair_code.setText(str(result["code"]))
+        self.pair_code.selectAll()
+        self.pair_code.setFocus()
+
     def _build_tray(self) -> None:
         # The notification area is not always there -- it can be missing or
         # not yet started at login. Qt returns a QSystemTrayIcon that simply
@@ -247,7 +297,7 @@ class BoothWindow(QMainWindow):
             return
         self.tray = QSystemTrayIcon(_icon(), self)
         menu = QMenu()
-        show = QAction("Show TROLL BOOTH", self)
+        show = QAction("Show BRAIN TRUST", self)
         show.triggered.connect(self.show_from_tray)
         quit_action = QAction("Quit", self)
         quit_action.triggered.connect(QApplication.instance().quit)
@@ -255,8 +305,18 @@ class BoothWindow(QMainWindow):
         menu.addSeparator()
         menu.addAction(quit_action)
         self.tray.setContextMenu(menu)
-        self.tray.activated.connect(lambda reason: self.show_from_tray() if reason == QSystemTrayIcon.ActivationReason.DoubleClick else None)
+        self.tray.activated.connect(self._tray_activated)
         self.tray.show()
+
+    def _tray_activated(self, reason) -> None:
+        # Windows normally reports a single left-click as Trigger. Requiring a
+        # double-click left a minimized BRAIN TRUST running but apparently
+        # unreachable from its notification-area icon.
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+        ):
+            self.show_from_tray()
 
     def closeEvent(self, event) -> None:  # noqa: N802
         if self.tray is None:
@@ -266,10 +326,13 @@ class BoothWindow(QMainWindow):
             return
         event.ignore()
         self.hide()
-        self.tray.showMessage("TROLL BOOTH", "Still running in the notification area.", QSystemTrayIcon.MessageIcon.Information, 2000)
+        self.tray.showMessage("BRAIN TRUST", "Still running in the notification area.", QSystemTrayIcon.MessageIcon.Information, 2000)
 
     def show_from_tray(self) -> None:
+        if self.isMinimized():
+            self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized)
         self.showNormal()
+        self.show()
         self.raise_()
         self.activateWindow()
 
@@ -335,7 +398,7 @@ class BoothWindow(QMainWindow):
             preview = str(message["body"]).replace("\n", " ")[:180]
             if self.tray is not None:
                 self.tray.showMessage(
-                    f"TROLL BOOTH · {message['sender']}",
+                    f"BRAIN TRUST · {message['sender']}",
                     f"{room['title']}: {preview}",
                     QSystemTrayIcon.MessageIcon.Information,
                     8000,
@@ -351,6 +414,13 @@ class BoothWindow(QMainWindow):
         except Exception as exc:
             self.transcript.setHtml(f"<p>Search error: {str(exc)}</p>")
             return
+        scrollbar = self.transcript.verticalScrollBar()
+        room_changed = self._rendered_room != self.current_room
+        was_at_bottom = scrollbar.value() >= scrollbar.maximum() - 4
+        previous_value = scrollbar.value()
+        message_count = len(messages)
+        if not room_changed and query == self._rendered_query and message_count == self._rendered_message_count:
+            return
         chunks = []
         for message in messages:
             stamp = datetime.fromtimestamp(message["created_at"]).strftime("%Y-%m-%d %H:%M")
@@ -358,7 +428,20 @@ class BoothWindow(QMainWindow):
             sender = message["sender"].replace("&", "&amp;").replace("<", "&lt;")
             chunks.append(f"<div class='message'><b>{sender}</b><span>{stamp}</span><p>{body}</p></div>")
         self.transcript.setHtml("".join(chunks) or "<p>No messages here yet.</p>")
-        self.transcript.verticalScrollBar().setValue(self.transcript.verticalScrollBar().maximum())
+        self._rendered_room = self.current_room
+        self._rendered_message_count = message_count
+        self._rendered_query = query
+        if room_changed or was_at_bottom:
+            # QTextBrowser finalises its scrollbar range on the next event-loop
+            # turn. Setting maximum synchronously uses the old range and strands
+            # long rooms partway up the transcript.
+            QTimer.singleShot(0, self._scroll_transcript_to_bottom)
+        else:
+            QTimer.singleShot(0, lambda value=previous_value: self.transcript.verticalScrollBar().setValue(value))
+
+    def _scroll_transcript_to_bottom(self) -> None:
+        scrollbar = self.transcript.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
 
     def post_message(self) -> None:
         body = self.composer.toPlainText().strip()
@@ -455,7 +538,7 @@ class BoothWindow(QMainWindow):
             return
         self.store, self.storage_label = new_store, label
         self.refresh_rooms(); self.refresh_status()
-        QMessageBox.information(self, "Database connected", "TROLL BOOTH is now using the central MariaDB store.")
+        QMessageBox.information(self, "Database connected", "BRAIN TRUST is now using the central MariaDB store.")
 
 
 STYLE = """
@@ -479,7 +562,8 @@ QTextBrowser { padding: 12px; }
 
 def main() -> None:
     app = QApplication(sys.argv)
-    app.setApplicationName("TROLL BOOTH")
+    app.setApplicationName("BRAIN TRUST")
+    app.setWindowIcon(_icon())
     app.setQuitOnLastWindowClosed(False)
     ROOT.mkdir(parents=True, exist_ok=True)
     instance_lock = QLockFile(str(ROOT / "desktop.lock"))
@@ -502,8 +586,8 @@ def main() -> None:
             where = f" (process {pid} on {host})" if pid else ""
             QMessageBox.information(
                 None,
-                "TROLL BOOTH",
-                "TROLL BOOTH is already running" + where + ".\n\n"
+                "BRAIN TRUST",
+                "BRAIN TRUST is already running" + where + ".\n\n"
                 "Look for it in the notification area. If it is not there, "
                 "quit it from Task Manager and start it again.",
             )

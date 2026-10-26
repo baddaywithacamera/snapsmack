@@ -12,7 +12,7 @@ from mcp.shared.auth import OAuthClientInformationFull
 from pydantic import AnyUrl
 
 from troll_booth.oauth import BoothOAuthProvider
-from troll_booth.history import ConversationStore
+from troll_booth.history import ConversationStore, open_conversation_store
 from troll_booth.store import BoothStore
 from troll_booth.worker import CapabilityRegistry
 
@@ -42,6 +42,25 @@ class StoreTests(unittest.TestCase):
 
 
 class ConversationTests(unittest.TestCase):
+    def test_desktop_falls_back_when_configured_mariadb_is_unreachable(self) -> None:
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as directory, \
+             patch("troll_booth.secret_config.load_mariadb_url", return_value="mariadb://user:pass@offline/db"), \
+             patch("troll_booth.history.MariaConversationStore", side_effect=TimeoutError("offline")), \
+             patch.dict("os.environ", {"TROLL_BOOTH_OFFLINE_CACHE": str(Path(directory) / "history.sqlite3")}):
+            store, label = open_conversation_store()
+        self.assertIsInstance(store, ConversationStore)
+        self.assertEqual(label, "OFFLINE CACHE · MARIADB UNREACHABLE")
+
+    def test_non_desktop_callers_fail_closed_when_mariadb_is_unreachable(self) -> None:
+        from unittest.mock import patch
+
+        with patch("troll_booth.secret_config.load_mariadb_url", return_value="mariadb://user:pass@offline/db"), \
+             patch("troll_booth.history.MariaConversationStore", side_effect=TimeoutError("offline")):
+            with self.assertRaises(TimeoutError):
+                open_conversation_store(allow_offline_cache=False)
+
     def test_history_is_searchable_and_hash_chained(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store = ConversationStore(Path(directory) / "history.sqlite3")
@@ -98,6 +117,28 @@ class ConversationTests(unittest.TestCase):
 
 
 class OAuthTests(unittest.TestCase):
+    @staticmethod
+    def _client(client_id: str = "agent-test") -> OAuthClientInformationFull:
+        return OAuthClientInformationFull(
+            client_id=client_id,
+            redirect_uris=[AnyUrl("https://claude.ai/api/mcp/auth_callback")],
+            token_endpoint_auth_method="none",
+            grant_types=["authorization_code", "refresh_token"],
+            response_types=["code"],
+            scope="booth:read booth:write",
+        )
+
+    @staticmethod
+    def _params() -> AuthorizationParams:
+        return AuthorizationParams(
+            state="state",
+            scopes=["booth:read", "booth:write"],
+            code_challenge="challenge",
+            redirect_uri=AnyUrl("https://claude.ai/api/mcp/auth_callback"),
+            redirect_uri_provided_explicitly=True,
+            resource="https://booth.example/mcp",
+        )
+
     def test_owner_code_approves_one_request(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store = BoothStore(Path(directory) / "booth.sqlite3")
@@ -178,6 +219,33 @@ class OAuthTests(unittest.TestCase):
             provider.approve(request_id, code)
             issued = next(iter(provider.codes.values()))
             self.assertEqual(issued.scopes, ["booth:read", "booth:write"])
+
+    def test_client_and_tokens_survive_provider_restart_with_correct_actor(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = BoothStore(Path(directory) / "booth.sqlite3")
+            provider = BoothOAuthProvider(store, "https://booth.example")
+            client = self._client("codex-test")
+            asyncio.run(provider.register_client(client))
+            approval_url = asyncio.run(provider.authorize(client, self._params()))
+            request_id = approval_url.rsplit("=", 1)[1]
+            pair_code = store.issue_pair_code("codex", ["booth:read", "booth:write"], ttl=60)
+            provider.approve(request_id, pair_code)
+            authorization_code = next(iter(provider.codes.values()))
+            token_response = asyncio.run(provider.exchange_authorization_code(client, authorization_code))
+            persisted_access = store.oauth_token(token_response.access_token, "access")
+            self.assertNotIn("token", persisted_access)
+
+            restarted = BoothOAuthProvider(BoothStore(Path(directory) / "booth.sqlite3"), "https://booth.example")
+            loaded_client = asyncio.run(restarted.get_client("codex-test"))
+            access = asyncio.run(restarted.load_access_token(token_response.access_token))
+            refresh = asyncio.run(restarted.load_refresh_token(loaded_client, token_response.refresh_token))
+
+            self.assertEqual(loaded_client.client_id, "codex-test")
+            self.assertEqual(access.subject, "codex")
+            self.assertEqual(refresh.subject, "codex")
+            refreshed = asyncio.run(restarted.exchange_refresh_token(loaded_client, refresh, ["booth:read"]))
+            refreshed_access = asyncio.run(restarted.load_access_token(refreshed.access_token))
+            self.assertEqual(refreshed_access.subject, "codex")
 
 
 class WorkerTests(unittest.TestCase):

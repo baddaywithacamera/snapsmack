@@ -1,4 +1,4 @@
-"""TROLL BOOTH must never start into nothing.
+"""BRAIN TRUST must never start into nothing.
 
 19 October 2026. Sean: "there were multiple troll booth apps running and i
 think one was supposed to show in the system tray but was not." Two separate
@@ -34,7 +34,7 @@ DESKTOP = (Path(__file__).resolve().parents[1] / "troll_booth" / "desktop.py").r
 class SingleInstanceTests(unittest.TestCase):
     def test_second_instance_is_reported_not_swallowed(self) -> None:
         self.assertIn("QMessageBox.information", DESKTOP)
-        self.assertIn("TROLL BOOTH is already running", DESKTOP)
+        self.assertIn("BRAIN TRUST is already running", DESKTOP)
 
     def test_lock_info_is_unpacked_as_three_values(self) -> None:
         # PySide6 returns (pid, hostname, appname). Unpacking four raises
@@ -95,6 +95,9 @@ class SingleInstanceTests(unittest.TestCase):
 
 
 class TrayTests(unittest.TestCase):
+    def test_application_icon_is_set_for_taskbar_and_app_switcher(self) -> None:
+        self.assertIn("app.setWindowIcon(_icon())", DESKTOP)
+
     def test_tray_availability_is_checked(self) -> None:
         self.assertIn("QSystemTrayIcon.isSystemTrayAvailable()", DESKTOP)
         self.assertIn("self.tray = None", DESKTOP)
@@ -107,6 +110,15 @@ class TrayTests(unittest.TestCase):
 
     def test_notifications_tolerate_a_missing_tray(self) -> None:
         self.assertIn("if self.tray is not None:", DESKTOP)
+
+    def test_single_click_and_double_click_restore_the_window(self) -> None:
+        self.assertIn("QSystemTrayIcon.ActivationReason.Trigger", DESKTOP)
+        self.assertIn("QSystemTrayIcon.ActivationReason.DoubleClick", DESKTOP)
+        self.assertIn("self.tray.activated.connect(self._tray_activated)", DESKTOP)
+
+    def test_restore_explicitly_clears_the_minimized_state(self) -> None:
+        self.assertIn("if self.isMinimized():", DESKTOP)
+        self.assertIn("~Qt.WindowState.WindowMinimized", DESKTOP)
 
 
 if __name__ == "__main__":

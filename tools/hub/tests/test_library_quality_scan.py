@@ -114,4 +114,22 @@ def test_a_selection_survives_the_grid_rebuild(tmp_path, monkeypatch):
         window.close()
 
 
+def test_reload_requests_viewport_preservation(tmp_path, monkeypatch):
+    """A destructive action must not rebuild the current folder at its top."""
+    window = library_window.LibraryWindow()
+    try:
+        window._folder = str(tmp_path)
+        called = {}
+
+        def fake_load(folder, preserve_view=False):
+            called["folder"] = folder
+            called["preserve_view"] = preserve_view
+
+        monkeypatch.setattr(window, "load_folder", fake_load)
+        window._reload_current()
+        assert called == {"folder": str(tmp_path), "preserve_view": True}
+    finally:
+        window.close()
+
+
 # ===== SNAPSMACK EOF =====

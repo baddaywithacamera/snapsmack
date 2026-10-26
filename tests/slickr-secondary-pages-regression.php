@@ -15,6 +15,8 @@ $layout = (string)file_get_contents($root . '/skins/slickr/layout.php');
 $css = (string)file_get_contents($root . '/skins/slickr/style.css');
 $controller = (string)file_get_contents($root . '/core/public-controller.php');
 $repository = (string)file_get_contents($root . '/core/public-repository.php');
+$runtime = (string)file_get_contents($root . '/core/public-runtime.php');
+$rows = (string)file_get_contents($root . '/assets/js/ss-engine-rows.js');
 
 // A FLOOR, not a pin. Pinning the exact version made every legitimate
 // skin release fail this test, so the cheap way out was to change the
@@ -42,6 +44,13 @@ foreach (['presentation_id', 'presentation_count', 'presentation_posted'] as $fi
 }
 foreach (['photograph_count', 'latest_date', 'cover_path'] as $field) {
     if (!str_contains($repository, $field)) throw new RuntimeException("Collection provider missing: {$field}");
+}
+if (!str_contains($runtime, "'route' => 'search'")
+        || !str_contains($runtime, "'page' => \$input['page'] ?? 1")) {
+    throw new RuntimeException('Search pagination is discarded at the public runtime boundary.');
+}
+foreach (["window.location.search", "has('q')", "data-next', '2'", "params.set('c'", "window.location.pathname"] as $hook) {
+    if (!str_contains($rows, $hook)) throw new RuntimeException("STACKER drops search/album filters: {$hook}");
 }
 
 echo "SLICKR secondary-page restoration regression passed\n";

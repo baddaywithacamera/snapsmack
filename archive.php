@@ -86,6 +86,16 @@ try {
         // whatever a future alias table says. A loop is worse than a plain page.
         $_archive_here = strtok((string)($_SERVER['REQUEST_URI'] ?? ''), '?');
         $_archive_there = parse_url($_archive_target, PHP_URL_PATH);
+        if (rtrim((string)$_archive_there, '/') === rtrim((string)$_archive_here, '/')) {
+            // The clean /archive route is rewritten here by the web server.
+            // Keep that public URL in the address bar, but render it through
+            // the strict controller so the active skin and its assets own the
+            // response.  Album/category/search parameters remain in $_GET.
+            $_GET['view'] = 'archive';
+            define('SNAPSMACK_INTERNAL_ARCHIVE_DISPATCH', true);
+            require __DIR__ . '/index.php';
+            exit;
+        }
         if (rtrim((string)$_archive_there, '/') !== rtrim((string)$_archive_here, '/')
                 || parse_url($_archive_target, PHP_URL_QUERY)) {
             // 302, not 301: this address is derived from the site's menu and
