@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+### Queued for 0.7.953D
+
+- Desktop automation: structured CLI entry points for GYSS, SYBU, SNAP SLAPPER / LEWK AGAIN, COLD SNAP, SHOTS FIRED, SUYB and SMACKPRESS; source design/render CLI and native package commands for OH SNAP. Commands reuse existing services, retain device authorization, and do not fall back to paid AI generation. Usage and current scope: `tools/DESKTOP-CLI.md`.
+- Mosaic management: find a mosaic by numeric ID, `[mosaic:ID]` shortcode or title, with a clear empty-result message.
+- Full editor preview: use the active skin's actual presentation and registered mosaic/lightbox engines instead of the substitute plain-content page. Longform previews include the unsaved title, body, cover and date without saving or publishing.
+
 ## 0.7.952D - 2026-10-26 - SHOW YOUR FACE
 
 - **The commit gate that was written months ago is now switched on, and the suite says so if it ever goes off again.** `.githooks/pre-commit` has blocked null bytes, PHP syntax errors and three skin ratchet failures since the day it was written, and it had never run once: `core.hooksPath` was unset in the main checkout, unset globally, and unset in every worktree. `php tools/install-hooks.php` turns it on for a whole clone, and `tests/git-hooks-installed-regression.php` fails while it is off. The four Git LFS hooks are copied into `.githooks/` as part of this, because `core.hooksPath` stops git reading `.git/hooks` and turning the gate on would otherwise have turned Git LFS off.

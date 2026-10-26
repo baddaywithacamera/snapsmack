@@ -40,44 +40,21 @@ $content = $_POST['content'] ?? '';
 $snapsmack = new SnapSmack($pdo);
 $rendered  = $snapsmack->parseContent($content);
 
-// --- FULL PAGE MODE (new tab preview) ---
+// --- FULL PAGE MODE (new tab preview through the active skin) ---
 if (isset($_GET['mode']) && $_GET['mode'] === 'full') {
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-    $active_skin = $settings['active_skin'] ?? '50-shades-of-noah-grey';
-
-    // Force Pocket Rocket on mobile devices (phones only, not tablets)
-    if (function_exists('snapsmack_is_mobile') && snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
-        $active_skin = SNAPSMACK_MOBILE_SKIN;
+    if (!defined('BASE_URL')) define('BASE_URL', rtrim($settings['site_url'] ?? '/', '/') . '/');
+    require_once __DIR__ . '/core/admin-content-preview.php';
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    header('X-Robots-Tag: noindex, nofollow');
+    try {
+        echo snapsmack_admin_content_preview($pdo, $settings, $_POST);
+    } catch (Throwable $error) {
+        error_log('Content preview failed: ' . $error->getMessage());
+        http_response_code(422);
+        echo '<!doctype html><meta charset="utf-8"><title>Preview unavailable</title><p>The active skin could not render this preview. Your edits have not been saved or published.</p>';
     }
-
-    // Overlay skin-scoped settings so each skin retains its own customizations
-    snapsmack_apply_skin_settings($settings, $active_skin);
-
-    if (!defined('BASE_URL')) {
-        define('BASE_URL', rtrim($settings['site_url'] ?? '/', '/') . '/');
-    }
-    ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PREVIEW — SnapSmack</title>
-    <link rel="stylesheet" href="skins/<?php echo htmlspecialchars($active_skin); ?>/style.css">
-    <link rel="stylesheet" href="assets/css/columns.css">
-    <style>
-        body { padding: 40px 20px; max-width: 900px; margin: 0 auto; }
-        .preview-banner { text-align: center; font-size: 0.65rem; text-transform: uppercase;
-            letter-spacing: 2px; color: #666; border-bottom: 1px solid #333;
-            padding-bottom: 12px; margin-bottom: 30px; }
-    </style>
-</head>
-<body>
-    <div class="preview-banner">PREVIEW — NOT PUBLISHED</div>
-    <div class="description"><?php echo $rendered; ?></div>
-</body>
-</html>
-    <?php
     exit;
 }
 
