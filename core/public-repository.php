@@ -319,7 +319,7 @@ final class SnapPublicRepository
         return is_array($row) ? $row : null;
     }
 
-    public function archivePhotographs(int $limit, int $offset = 0, int $categoryId = 0, int $albumId = 0): array {
+    public function archivePhotographs(int $limit, int $offset = 0, int $categoryId = 0, int $albumId = 0, string $search = ''): array {
         $scope = '';
         $params = [];
         if ($categoryId > 0) {
@@ -329,6 +329,38 @@ final class SnapPublicRepository
         if ($albumId > 0) {
             $scope .= ' AND EXISTS (SELECT 1 FROM snap_image_album_map am WHERE am.image_id=i.id AND am.album_id=?)';
             $params[] = $albumId;
+        }
+        // The search the SMACKTALK archive never had. archive.php has filtered
+        // on ?q= for a long time; this road was built without it, so every
+        // SMACKTALK site answered every search with its whole library --
+        // measured on baddaywithacamera.ca, where the same 6,998 photographs
+        // came back for a real query and for deliberate gibberish alike.
+        //
+        // Same rule as archive.php: split the query into words and AND them, so
+        // each word must match SOMEWHERE -- title, description, tag slug,
+        // colour family, album name or category name -- in any order. A leading
+        // # is a hashtag, and the tag clause already covers it once stripped.
+        $search = trim($search);
+        if ($search !== '') {
+            $terms = preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [$search];
+            foreach (array_slice($terms, 0, 8) as $term) {
+                $term = ltrim($term, '#');
+                if ($term === '') continue;
+                $like = '%' . $term . '%';
+                $scope .= " AND (i.img_title LIKE ? OR i.img_description LIKE ?"
+                    . " OR EXISTS (SELECT 1 FROM snap_image_tags _sit JOIN snap_tags _st ON _st.id = _sit.tag_id"
+                    . " WHERE _sit.image_id = i.id AND (_st.slug LIKE ? OR _st.color_family = ?))"
+                    . " OR EXISTS (SELECT 1 FROM snap_image_album_map _sam JOIN snap_albums _sa ON _sa.id = _sam.album_id"
+                    . " WHERE _sam.image_id = i.id AND _sa.album_name LIKE ?)"
+                    . " OR EXISTS (SELECT 1 FROM snap_image_cat_map _scm JOIN snap_categories _sca ON _sca.id = _scm.cat_id"
+                    . " WHERE _scm.image_id = i.id AND _sca.cat_name LIKE ?))";
+                $params[] = $like;                  // img_title
+                $params[] = $like;                  // img_description
+                $params[] = '%' . strtolower($term) . '%';  // tag slug
+                $params[] = strtolower($term);      // colour family
+                $params[] = $like;                  // album name
+                $params[] = $like;                  // category name
+            }
         }
         $params[] = max(1, min(5000, $limit));
         $params[] = max(0, $offset);

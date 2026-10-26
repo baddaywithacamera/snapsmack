@@ -229,6 +229,9 @@ try {
             'page' => $_GET['page'] ?? 1,
             'category' => $_GET['category'] ?? 0,
             'album' => $_GET['album'] ?? 0,
+            // Both spellings, the same way archive.php accepts them: skin
+            // search boxes post ?q=, the stats logger uses ?search=.
+            'search' => $_GET['q'] ?? $_GET['search'] ?? '',
             'requested_slug' => $requested_slug ?? '',
             'route_aliases' => $skin_view['route_aliases'] ?? [],
         ]);
