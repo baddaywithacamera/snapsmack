@@ -797,7 +797,7 @@ def drafts(site, *, status=None) -> list:
         conn.close()
 
 
-def save_draft(site, draft_uuid, *, title=None, status=None, blocks=None) -> dict:
+def save_draft(site, draft_uuid, *, title=None, status=None, blocks=None, expected_revision=None) -> dict:
     """Atomically autosave document metadata and, when supplied, its block tree.
 
     Existing block UUIDs are retained. New blocks receive UUIDs. Callers may use
@@ -808,11 +808,14 @@ def save_draft(site, draft_uuid, *, title=None, status=None, blocks=None) -> dic
     conn = _connect(site)
     try:
         with conn:
+            conn.execute("BEGIN IMMEDIATE")
             current = conn.execute(
                 "SELECT revision FROM draft_documents WHERE draft_uuid = ?", (draft_uuid,)
             ).fetchone()
             if not current:
                 raise KeyError(f"unknown draft: {draft_uuid}")
+            if expected_revision is not None and int(current[0]) != int(expected_revision):
+                raise ValueError("Draft revision conflict")
             changes, args = ["updated_at = ?", "autosaved_at = ?", "revision = revision + 1"], [now, now]
             if title is not None:
                 changes.append("title = ?"); args.append(str(title))
