@@ -120,6 +120,20 @@ function snapshot_responses(string $skin): array
                          'item' => ['id' => 9, 'title' => 'A post', 'content' => snapsmack_trusted_html('<p>First paragraph.</p><p>Second paragraph.</p>')]],
         'post-mixed' => ['status' => 200, 'kind' => 'post', 'navigation' => [], 'photographs' => $items,
                          'item' => ['id' => 10, 'title' => 'A mixed post', 'content' => snapshot_mixed_post_body()]],
+        // A static page carrying a hero photograph, which is what an About page
+        // is. Measured on 25 October 2026: nine of nineteen live sites had an
+        // About photograph in the database that their skin never drew. The
+        // fields are the ones snap_pages actually stores -- image_asset,
+        // image_size, image_align, image_shadow -- not img_file, which a page
+        // row has never had.
+        'page'       => ['status' => 200, 'kind' => 'page', 'navigation' => [],
+                         'page_title' => 'About',
+                         'rendered_content' => snapsmack_trusted_html('<p>Who I am.</p>'),
+                         'item' => ['id' => 11, 'title' => 'About', 'slug' => 'about',
+                                    'content' => snapsmack_trusted_html('<p>Who I am.</p>'),
+                                    'image_asset' => 'media_assets/about-hero.jpg',
+                                    'image_size' => 'full', 'image_align' => 'center',
+                                    'image_shadow' => 0, 'created_at' => '2026-10-25']],
         'not_found'  => ['status' => 404, 'kind' => 'not_found', 'navigation' => []],
     ];
 }

@@ -109,6 +109,41 @@ function snap_render_navigation_tree(array $items, int $depth = 0): string {
 }
 
 /** Render fixed shared chrome from bounded data; components cannot execute code. */
+/**
+ * The photograph at the top of a static page, as an About page carries.
+ *
+ * Measured on 25 October 2026: five live sites had a photograph stored on
+ * their About page that their skin never drew, because this markup existed
+ * only inside the 'static-page' component and twelve skins render their own
+ * page markup instead. The photograph was never lost -- nothing put it on the
+ * page.
+ *
+ * It lives here so there is one copy. snap_pages stores image_asset with
+ * image_size, image_align and image_shadow beside it; a page row has never
+ * had img_file or featured_image_path, and a skin that reaches for those
+ * finds nothing however carefully it is written.
+ *
+ * Returns '' when the page has no photograph, so a caller can print it
+ * unconditionally.
+ */
+function snap_page_hero_html(array $item, string $title = ''): string {
+    $hero = trim((string)($item['image_asset'] ?? ''));
+    if ($hero === '') return '';
+    $base = defined('BASE_URL') ? (string)BASE_URL : '/';
+    $size = in_array(($item['image_size'] ?? ''), ['medium', 'small'], true)
+        ? (string)$item['image_size'] : 'full';
+    $align = in_array(($item['image_align'] ?? ''), ['left', 'right'], true)
+        ? (string)$item['image_align'] : 'center';
+    $shadow = !empty($item['image_shadow']) ? ' page-hero--shadow' : '';
+    if ($title === '') $title = (string)($item['title'] ?? '');
+    return '<div id="photobox" class="page-hero page-hero--' . $size
+        . ' page-hero--' . $align . $shadow . '">'
+        . '<div class="main-photo">'
+        . '<img src="' . snap_escape_url(rtrim($base, '/') . '/' . ltrim($hero, '/'))
+        . '" class="post-image" alt="' . snap_escape_attr($title) . '">'
+        . '</div></div>';
+}
+
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
     if (in_array($name, ['50-shades-page', 'chaplin-page', 'galleria-page', 'impact-printer-page', 'onyx-page', 'rational-geo-page'], true)) {
@@ -592,19 +627,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $html = '<div class="static-content">'
             . '<h1 class="static-page-title">' . snap_escape_html($title) . '</h1>';
 
-        if ($hero !== '') {
-            $size = in_array(($item['image_size'] ?? ''), ['medium', 'small'], true)
-                ? (string)$item['image_size'] : 'full';
-            $align = in_array(($item['image_align'] ?? ''), ['left', 'right'], true)
-                ? (string)$item['image_align'] : 'center';
-            $shadow = !empty($item['image_shadow']) ? ' page-hero--shadow' : '';
-            $html .= '<div id="photobox" class="page-hero page-hero--' . $size
-                . ' page-hero--' . $align . $shadow . '">'
-                . '<div class="main-photo">'
-                . '<img src="' . snap_escape_url(rtrim($base, '/') . '/' . ltrim($hero, '/'))
-                . '" class="post-image" alt="' . snap_escape_attr($title) . '">'
-                . '</div></div>';
-        }
+        $html .= snap_page_hero_html($item, $title);
 
         $rendered = snap_render_html($body);
         if (trim(strip_tags($rendered)) === '' && !str_contains($rendered, '<img')) {

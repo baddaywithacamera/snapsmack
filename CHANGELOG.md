@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+- **Prose between two inline photographs keeps its paragraph.** Three releases repaired this and none of them reached the page, because a longform post is rendered by the content parser and handed to the skin as `rendered_content`, and the repair lived in a function that road never calls. The repair now runs where the content actually travels, on both the post and the static-page path, without re-sanitising parsed output — so mosaics and lightboxes keep the attributes the parser just wrote. Empty paragraphs left behind by a block element inside a paragraph are removed too. Measured on baddaywithacamera.ca/my-name-is-mud: three loose runs and one empty paragraph, unchanged through 0.7.949D, 0.7.950D and 0.7.951D.
+
+- **GALLERIA frames the photograph on a static page, as it frames every other photograph.** The About page was delegating to the shared static-page renderer, which draws a bare image, so the one photograph on the site that is of the owner was the only one not in a frame. It now uses the skin's own frame, reading the same bevel and wood-grain settings as the landing and archive.
+
+- **The photograph on a static page has one implementation.** `snap_page_hero_html()` holds it, so a skin that draws its own page markup can print it in one call instead of reaching for `img_file`, which a page row has never had.
+
 - **Every skin's rendered page is now compared against the last one somebody approved.** The release suite already rendered each skin against each page kind, then asked only whether the result was HTML — so a page could lose its paragraphs, its date, its stylesheet, or swap a photograph for a cropped version of itself and still report a pass. `tests/skin-render-snapshot-regression.php` keeps the page instead of discarding it: for each of 125 skin-and-page combinations it records which images and stylesheets appear, how many paragraphs, links and headings, and a hash of the visible words, and fails when any of that changes without the fixture being updated on purpose. Output is still free to change; changing it silently is not. Written up as OPAUDIT 026.
 
 ## 0.7.951D - 2026-10-25 - THE PRODUCTION PATH
