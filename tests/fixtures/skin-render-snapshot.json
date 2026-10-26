@@ -236,7 +236,8 @@
     },
     "aurora/page": {
         "images": [
-            ""
+            "",
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
@@ -340,7 +341,10 @@
         "text_sha256": "ac7f1eb666d609a6be00a9368fc8d19e715932fd8e15a2aa0e54fb44f3203fc1"
     },
     "chaplin/page": {
-        "images": [],
+        "images": [
+            "/media_assets/about-hero.jpg",
+            "/skins/chaplin/assets/svg/A-corner.svg"
+        ],
         "stylesheets": [
             "",
             "/skins/chaplin/style.css"
@@ -1126,7 +1130,8 @@
     },
     "instant-camera/page": {
         "images": [
-            ""
+            "",
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
@@ -1233,7 +1238,8 @@
     },
     "jive-turkey/page": {
         "images": [
-            ""
+            "",
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
@@ -1530,7 +1536,8 @@
     },
     "parade/page": {
         "images": [
-            ""
+            "",
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",

@@ -634,6 +634,24 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             $rendered = "<p class='dim'>No content signal found for this sector.</p>";
         }
         $html .= '<div class="description">' . $rendered . '</div></div>';
+    } elseif ($name === 'page-hero') {
+        // The About page photograph, on its own, for skins that render their
+        // own static-page markup instead of calling 'static-page'.
+        //
+        // Four skins -- AURORA, JIVE TURKEY, INSTANT CAMERA, PARADE -- print a
+        // title and a body in their own layout.php and dropped the photograph
+        // entirely. They cannot call snap_page_hero_html() themselves: the skin
+        // template policy allows eight functions and that is not one of them.
+        // They also cannot build the URL, because BASE_URL and string
+        // concatenation are both outside the policy, and image_asset is stored
+        // relative ('media_assets/about-hero.jpg') -- printed raw it resolves
+        // against the current page URL and 404s.
+        //
+        // So the hero gets a component of its own. One call, allowlisted,
+        // and the size/align/shadow bounding stays in the one function that
+        // has always done it.
+        $item = is_array($data['item'] ?? null) ? $data['item'] : [];
+        $html = snap_page_hero_html($item, (string)($data['title'] ?? ''));
     } elseif ($name === 'blogroll') {
         // The markup blogroll.php has always emitted, class for class. The
         // skins already style .blogroll-canvas, .blogroll-category-block,
