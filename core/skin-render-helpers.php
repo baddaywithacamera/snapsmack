@@ -634,6 +634,52 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             $rendered = "<p class='dim'>No content signal found for this sector.</p>";
         }
         $html .= '<div class="description">' . $rendered . '</div></div>';
+    } elseif ($name === 'page-hero') {
+        // The About page photograph, on its own, for the skins that render
+        // their own static-page markup instead of calling 'static-page'.
+        //
+        // Thirteen of them printed a title and a body and dropped the
+        // photograph entirely, and two more -- GAME ON and SLICKR -- printed
+        // image_asset exactly as stored. A skin cannot do better unaided. The
+        // template policy in skin-security-policy.php allows eight functions
+        // and snap_page_hero_html() is not one of them; it allows neither
+        // BASE_URL nor string concatenation, so a skin cannot turn the stored
+        // relative path ('media_assets/about-hero.jpg') into an absolute URL
+        // either. Left relative the browser resolves it against whatever page
+        // it is on: right at /about, wrong the moment that address gains a
+        // trailing slash or another path segment. Every other skin emits an
+        // absolute URL, so this was one shape out of step with sixteen.
+        //
+        // So the hero gets a component. One allowlisted call per skin, and
+        // the URL and the size/align/shadow bounding stay in the one function
+        // that has always done them.
+        //
+        // 'prefix' is for a skin that already styles its own hero classes.
+        // GAME ON has .go-page-hero and five modifiers in its stylesheet and
+        // emitted a <figure>; handing it the shared markup would have left
+        // those rules dead and quietly restyled its About page. It keeps its
+        // own shape and gets the absolute URL and the bounding.
+        $item = is_array($data['item'] ?? null) ? $data['item'] : [];
+        $title = (string)($data['title'] ?? '');
+        $prefix = (string)($data['prefix'] ?? '');
+        if ($prefix === '') {
+            $html = snap_page_hero_html($item, $title);
+        } elseif (in_array($prefix, ['go'], true)) {
+            $hero = trim((string)($item['image_asset'] ?? ''));
+            if ($hero !== '') {
+                if ($title === '') $title = (string)($item['title'] ?? '');
+                $base = defined('BASE_URL') ? (string)BASE_URL : '/';
+                $size = in_array(($item['image_size'] ?? ''), ['medium', 'small'], true)
+                    ? (string)$item['image_size'] : 'full';
+                $align = in_array(($item['image_align'] ?? ''), ['left', 'right'], true)
+                    ? (string)$item['image_align'] : 'center';
+                $html = '<figure class="' . $prefix . '-page-hero ' . $prefix . '-page-hero--' . $size
+                    . ' ' . $prefix . '-page-hero--' . $align
+                    . (!empty($item['image_shadow']) ? ' ' . $prefix . '-page-hero--shadow' : '') . '">'
+                    . '<img src="' . snap_escape_url(rtrim($base, '/') . '/' . ltrim($hero, '/'))
+                    . '" alt="' . snap_escape_attr($title) . '"></figure>';
+            }
+        }
     } elseif ($name === 'blogroll') {
         // The markup blogroll.php has always emitted, class for class. The
         // skins already style .blogroll-canvas, .blogroll-category-block,
