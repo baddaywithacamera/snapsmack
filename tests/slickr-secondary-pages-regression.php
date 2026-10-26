@@ -31,7 +31,15 @@ $aliases = snapsmack_public_route_aliases([], $manifest);
 foreach (['albums' => 'albums', 'collections' => 'collections'] as $slug => $route) {
     if (($aliases[$slug] ?? '') !== $route) throw new RuntimeException("SLICKR route missing: {$slug}");
 }
-foreach (["=== 'albums'", "=== 'collections'", "=== 'collection'", "=== 'blogroll'", "page-hero page-hero--", 'ss-scroll-wall', "snap_render_component('wall-tile'", 'scroll-wall-sentinel'] as $hook) {
+// The hook for the About page photograph used to be the literal
+// "page-hero page-hero--", because SLICKR built that markup itself -- and
+// built it with the stored relative path, so the URL was the one shape out
+// of seventeen that was not absolute. The markup is now the shared
+// 'page-hero' component, so the hook is the call. Same guarantee: the
+// layout still draws the photograph. The classes it comes out with are
+// checked where they can actually be seen, in the rendered page, by
+// tests/skin-render-snapshot-regression.php.
+foreach (["=== 'albums'", "=== 'collections'", "=== 'collection'", "=== 'blogroll'", "snap_render_component('page-hero'", 'ss-scroll-wall', "snap_render_component('wall-tile'", 'scroll-wall-sentinel'] as $hook) {
     if (!str_contains($layout, $hook)) throw new RuntimeException("SLICKR strict layout missing: {$hook}");
 }
 if (!str_contains($css, 'border-radius: 999px;')) throw new RuntimeException('SLICKR search is no longer a pill.');

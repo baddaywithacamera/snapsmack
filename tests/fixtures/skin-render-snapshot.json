@@ -236,7 +236,8 @@
     },
     "aurora/page": {
         "images": [
-            ""
+            "",
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
@@ -340,7 +341,10 @@
         "text_sha256": "ac7f1eb666d609a6be00a9368fc8d19e715932fd8e15a2aa0e54fb44f3203fc1"
     },
     "chaplin/page": {
-        "images": [],
+        "images": [
+            "/media_assets/about-hero.jpg",
+            "/skins/chaplin/assets/svg/A-corner.svg"
+        ],
         "stylesheets": [
             "",
             "/skins/chaplin/style.css"
@@ -630,7 +634,7 @@
     "game-on/page": {
         "images": [
             "",
-            "media_assets/about-hero.jpg"
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
@@ -830,7 +834,8 @@
     },
     "heuristic/page": {
         "images": [
-            ""
+            "",
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
@@ -1126,7 +1131,8 @@
     },
     "instant-camera/page": {
         "images": [
-            ""
+            "",
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
@@ -1233,7 +1239,8 @@
     },
     "jive-turkey/page": {
         "images": [
-            ""
+            "",
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
@@ -1335,7 +1342,9 @@
         "text_sha256": "85579cc351bb1a3fb4978be74943e7bd4fc4d1b70412a82dc8fba8ff8a6de8a6"
     },
     "new-horizon/page": {
-        "images": [],
+        "images": [
+            "/media_assets/about-hero.jpg"
+        ],
         "stylesheets": [
             "",
             "/skins/new-horizon/style.css"
@@ -1530,7 +1539,8 @@
     },
     "parade/page": {
         "images": [
-            ""
+            "",
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
@@ -1632,7 +1642,9 @@
         "text_sha256": "fd0672830be83b7a26c8daaeba6245f4ef7db6fe23b1bbe323e6a93731e473f3"
     },
     "photogram/page": {
-        "images": [],
+        "images": [
+            "/media_assets/about-hero.jpg"
+        ],
         "stylesheets": [
             "",
             "/skins/photogram/style.css"
@@ -1822,7 +1834,9 @@
         "text_sha256": "ac3f7080bd2fa50296836bdac597745b262144449519f5ccbc91ee3d0ad29862"
     },
     "scroll/page": {
-        "images": [],
+        "images": [
+            "/media_assets/about-hero.jpg"
+        ],
         "stylesheets": [
             "",
             "/skins/scroll/style.css"
@@ -2015,7 +2029,7 @@
     },
     "slickr/page": {
         "images": [
-            "media_assets/about-hero.jpg"
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
@@ -2115,7 +2129,8 @@
     },
     "sliders/page": {
         "images": [
-            ""
+            "",
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
@@ -2222,7 +2237,8 @@
     },
     "sudden-impact/page": {
         "images": [
-            ""
+            "",
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
@@ -2329,7 +2345,8 @@
     },
     "the-grid/page": {
         "images": [
-            ""
+            "",
+            "/media_assets/about-hero.jpg"
         ],
         "stylesheets": [
             "",
