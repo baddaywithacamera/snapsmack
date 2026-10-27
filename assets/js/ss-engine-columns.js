@@ -332,7 +332,10 @@
         // fallback below measured window.scrollY against document.body, which
         // on such a skin is two numbers that never change.
         function scroller(el) {
-            for (var n = el.parentElement; n && n !== document.body; n = n.parentElement) {
+            // BODY can itself scroll while HTML stays fixed (archive layouts).
+            // Skipping it makes nearEnd() measure that fixed HTML viewport and
+            // continuously fetch pages even when the visitor has not scrolled.
+            for (var n = el.parentElement; n && n !== document.documentElement; n = n.parentElement) {
                 var oy = getComputedStyle(n).overflowY;
                 if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight + 1) return n;
             }
