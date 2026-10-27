@@ -20,6 +20,21 @@ declare(strict_types=1);
  *   php tools/_build/generate-skin-version-baseline.php [output.json]
  */
 
+/**
+ * Line endings are not content.
+ *
+ * Git stores LF and hands the working tree whatever `core.autocrlf` says, so
+ * the same commit is CRLF in one checkout and LF in another. Hashing the bytes
+ * as they sit on disk made this check pass in a worktree and fail in the main
+ * checkout at the SAME commit — the baseline was written from one and read in
+ * the other. That is a harness fault reported as a skin fault, and it cost a
+ * release night. Normalise before hashing so the digest is a property of the
+ * commit, not of the machine that checked it out.
+ */
+function snapsmack_skin_canonical_bytes(string $bytes): string {
+    return str_replace(["\r\n", "\r"], "\n", $bytes);
+}
+
 /** Hash every file in a skin except its manifest: sorted path, then bytes. */
 function snapsmack_skin_files_digest(string $dir): string {
     $dir = rtrim(str_replace('\\', '/', $dir), '/');
@@ -39,7 +54,7 @@ function snapsmack_skin_files_digest(string $dir): string {
     $digest = hash_init('sha256');
     foreach ($files as $rel => $path) {
         hash_update($digest, $rel . "\0");
-        hash_update($digest, (string)file_get_contents($path));
+        hash_update($digest, snapsmack_skin_canonical_bytes((string)file_get_contents($path)));
         hash_update($digest, "\0");
     }
     return hash_final($digest);
