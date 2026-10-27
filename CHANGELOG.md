@@ -11,6 +11,13 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.955D - 2026-10-27 - ONE ARCHIVE, NOT TWO
+
+- **CHAPLIN rendered its archive twice.** `core/chaplin-page-component.php` emits `#browse-grid` and then `#justified-grid` with the same photographs. The stylesheet has always chosen between them -- `skins/chaplin/style.css:1562-1565` shows exactly one through `html[data-archive-layout]` -- but nothing ever set that attribute, so both drew: the thumbnail grid, then the same archive again underneath as an unstyled wall of full-width images. Measured on acolourlesslife.ca: grid about 1,480px tall, duplicate wall about 27,824px. The preamble is copied from `core/50-shades-page-component.php`, which has always done this correctly. The owner's archive layout choice still decides -- masonry still selects the wall. Known residual: CHAPLIN receives no scroll-wall stylesheet, so the wall it correctly shows under masonry is unstyled; that is the same asset-attachment defect as NEW HORIZON.
+
+- **A check that can see whether a page is laid out at all.** `tests/archive-presentation-contract-regression.php`. Sean found three broken archives in two weeks by opening them in a browser while the suite was green, because nothing in it looks at presentation: `every-skin-every-page-regression.php` renders 30 skins against every page kind and hands each one the fixture URL `https://example.test/s.css`, asserting markup and never opening a stylesheet; `skin-render-snapshot-regression.php` records stylesheet hrefs as a fingerprint, catching a link that disappears but not a baseline that was wrong from the start. The new check resolves the stylesheets a page really receives, through the same functions `index.php` calls, and asserts the element holding the photographs is given grid, flex or columns by a rule in that set. It finds the container by parsing the document rather than by name, counts JavaScript walls separately instead of failing them, and fails an archive page that renders no photographs at all. Its first version passed NEW HORIZON -- the skin it was written to catch -- on a rule that laid out a child; that is fixed and recorded. 24 skins covered, 18 laid out, 2 still failing (GLIDE, SHOW N TELL -- neither in use).
+
+
 ## 0.7.954D - 2026-10-26 - LET IT SCROLL
 
 ## 0.7.953D - 2026-10-26 - NOTHING WAS LISTENING
