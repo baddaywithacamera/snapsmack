@@ -1101,7 +1101,9 @@ if (!empty($google_families)) {
         </div>
     </div>
 
-    <?php if (isset($_GET['msg'])): ?>
+    <?php if (!empty($gallery_msg)): ?>
+        <div class="alert" role="alert"><?php echo htmlspecialchars($gallery_msg, ENT_QUOTES, 'UTF-8'); ?></div>
+    <?php elseif (isset($_GET['msg'])): ?>
         <div class="alert alert-success">> SKIN ARCHITECTURE CALIBRATED</div>
     <?php endif; ?>
 

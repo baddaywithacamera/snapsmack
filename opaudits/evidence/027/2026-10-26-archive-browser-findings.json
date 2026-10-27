@@ -1,0 +1,198 @@
+{
+  "observedAt": "2026-10-27T04:00:34.914Z",
+  "sourceCommit": "ab6216b1",
+  "readOnlyLiveInspection": true,
+  "experiments": "Ephemeral headless browser changes only; no source, settings or live content modified",
+  "results": [
+    {
+      "skin": "true-grit",
+      "url": "https://foundtextures.ca/archive",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "before": {
+        "htmlArchiveLayout": null,
+        "bodyClass": "true-grit-v2",
+        "pageWrapper": false,
+        "browse": {
+          "count": 1,
+          "display": "grid",
+          "position": "static",
+          "zIndex": "auto",
+          "columns": "375px 375px 375px 375px",
+          "width": 1920,
+          "height": 3665.875
+        },
+        "wall": null,
+        "overlayOpacity": "0.85",
+        "styleSheets": [
+          "https://foundtextures.ca/assets/css/public-base.css?v=0.7.954D",
+          "https://foundtextures.ca/skins/true-grit/style.css?v=1.3.15",
+          "https://foundtextures.ca/assets/css/ss-engine-comms.css?v=0.7.954D",
+          "https://foundtextures.ca/assets/css/fjGallery.css?v=0.7.954D",
+          "https://foundtextures.ca/assets/css/ss-community.css?v=0.7.954D",
+          "https://foundtextures.ca/assets/css/page-blogroll.css?v=0.7.954D"
+        ]
+      },
+      "experiment": "Isolated browser only: position archive content above body overlay",
+      "after": {
+        "htmlArchiveLayout": null,
+        "bodyClass": "true-grit-v2",
+        "pageWrapper": false,
+        "browse": {
+          "count": 1,
+          "display": "grid",
+          "position": "static",
+          "zIndex": "auto",
+          "columns": "375px 375px 375px 375px",
+          "width": 1920,
+          "height": 3665.875
+        },
+        "wall": null,
+        "overlayOpacity": "0.85",
+        "styleSheets": [
+          "https://foundtextures.ca/assets/css/public-base.css?v=0.7.954D",
+          "https://foundtextures.ca/skins/true-grit/style.css?v=1.3.15",
+          "https://foundtextures.ca/assets/css/ss-engine-comms.css?v=0.7.954D",
+          "https://foundtextures.ca/assets/css/fjGallery.css?v=0.7.954D",
+          "https://foundtextures.ca/assets/css/ss-community.css?v=0.7.954D",
+          "https://foundtextures.ca/assets/css/page-blogroll.css?v=0.7.954D"
+        ]
+      }
+    },
+    {
+      "skin": "chaplin",
+      "url": "https://acolourlesslife.ca/archive-view",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "before": {
+        "htmlArchiveLayout": null,
+        "bodyClass": "chaplin-v2 archive-page",
+        "pageWrapper": false,
+        "browse": {
+          "count": 1,
+          "display": "grid",
+          "position": "static",
+          "zIndex": "auto",
+          "columns": "210px 210px 210px 210px",
+          "width": 1600,
+          "height": 1480
+        },
+        "wall": {
+          "count": 1,
+          "display": "block",
+          "position": "relative",
+          "zIndex": "auto",
+          "columns": "none",
+          "width": 1600,
+          "height": 27824.1875
+        },
+        "overlayOpacity": "1",
+        "styleSheets": [
+          "https://acolourlesslife.ca/assets/css/public-base.css?v=0.7.954D",
+          "https://acolourlesslife.ca/skins/chaplin/style.css?v=0.2.19",
+          "https://acolourlesslife.ca/assets/css/ss-engine-comms.css?v=0.7.954D",
+          "https://acolourlesslife.ca/assets/css/ss-community.css?v=0.7.954D",
+          "https://acolourlesslife.ca/assets/css/page-blogroll.css?v=0.7.954D",
+          "https://acolourlesslife.ca/assets/css/page-archive.css?v=0.7.954D"
+        ]
+      },
+      "experiment": "Isolated browser only: set missing archive layout attribute to thumbs",
+      "after": {
+        "htmlArchiveLayout": "thumbs",
+        "bodyClass": "chaplin-v2 archive-page",
+        "pageWrapper": false,
+        "browse": {
+          "count": 1,
+          "display": "grid",
+          "position": "static",
+          "zIndex": "auto",
+          "columns": "210px 210px 210px 210px",
+          "width": 1600,
+          "height": 1480
+        },
+        "wall": {
+          "count": 1,
+          "display": "none",
+          "position": "relative",
+          "zIndex": "auto",
+          "columns": "none",
+          "width": 0,
+          "height": 0
+        },
+        "overlayOpacity": "1",
+        "styleSheets": [
+          "https://acolourlesslife.ca/assets/css/public-base.css?v=0.7.954D",
+          "https://acolourlesslife.ca/skins/chaplin/style.css?v=0.2.19",
+          "https://acolourlesslife.ca/assets/css/ss-engine-comms.css?v=0.7.954D",
+          "https://acolourlesslife.ca/assets/css/ss-community.css?v=0.7.954D",
+          "https://acolourlesslife.ca/assets/css/page-blogroll.css?v=0.7.954D",
+          "https://acolourlesslife.ca/assets/css/page-archive.css?v=0.7.954D"
+        ]
+      }
+    },
+    {
+      "skin": "new-horizon",
+      "url": "https://curbappeal.photoblogs.fyi/archive",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "before": {
+        "htmlArchiveLayout": null,
+        "bodyClass": "new-horizon-v2",
+        "pageWrapper": false,
+        "browse": {
+          "count": 1,
+          "display": "block",
+          "position": "static",
+          "zIndex": "auto",
+          "columns": "none",
+          "width": 579.65625,
+          "height": 4219.3125
+        },
+        "wall": null,
+        "overlayOpacity": "1",
+        "styleSheets": [
+          "https://curbappeal.photoblogs.fyi/assets/css/public-base.css?v=0.7.954D",
+          "https://curbappeal.photoblogs.fyi/skins/new-horizon/variant-dark.css?v=1.3.22",
+          "https://curbappeal.photoblogs.fyi/skins/new-horizon/style.css?v=1.3.22",
+          "https://curbappeal.photoblogs.fyi/assets/css/ss-engine-comms.css?v=0.7.954D",
+          "https://curbappeal.photoblogs.fyi/assets/css/fjGallery.css?v=0.7.954D",
+          "https://curbappeal.photoblogs.fyi/assets/css/ss-community.css?v=0.7.954D",
+          "https://curbappeal.photoblogs.fyi/assets/css/page-blogroll.css?v=0.7.954D"
+        ]
+      },
+      "experiment": "Isolated browser only: load omitted existing archive stylesheet",
+      "after": {
+        "htmlArchiveLayout": null,
+        "bodyClass": "new-horizon-v2",
+        "pageWrapper": false,
+        "browse": {
+          "count": 1,
+          "display": "grid",
+          "position": "static",
+          "zIndex": "auto",
+          "columns": "200px 200px 200px 200px",
+          "width": 1030,
+          "height": 700
+        },
+        "wall": null,
+        "overlayOpacity": "1",
+        "styleSheets": [
+          "https://curbappeal.photoblogs.fyi/assets/css/public-base.css?v=0.7.954D",
+          "https://curbappeal.photoblogs.fyi/skins/new-horizon/variant-dark.css?v=1.3.22",
+          "https://curbappeal.photoblogs.fyi/skins/new-horizon/style.css?v=1.3.22",
+          "https://curbappeal.photoblogs.fyi/assets/css/page-archive.css?v=0.7.954D",
+          "https://curbappeal.photoblogs.fyi/assets/css/ss-engine-comms.css?v=0.7.954D",
+          "https://curbappeal.photoblogs.fyi/assets/css/fjGallery.css?v=0.7.954D",
+          "https://curbappeal.photoblogs.fyi/assets/css/ss-community.css?v=0.7.954D",
+          "https://curbappeal.photoblogs.fyi/assets/css/page-blogroll.css?v=0.7.954D"
+        ]
+      }
+    }
+  ]
+}
