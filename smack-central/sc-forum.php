@@ -10,6 +10,7 @@
  */
 
 require_once __DIR__ . '/sc-auth.php';
+require_once __DIR__ . '/../core/forum-post-body.php';
 $sc_active_nav = 'sc-forum.php';
 $sc_page_title = 'Community Forum';
 
@@ -42,6 +43,42 @@ $hub_row = $db->query(
 $hub_id = $hub_row ? (int)$hub_row['id'] : 0;
 
 // ── Helper Functions ──────────────────────────────────────────────────────────
+
+/**
+ * Attachments for a set of posts, shaped exactly as the forum API returns
+ * them so core/forum-post-body.php can be handed either.
+ *
+ * SMACK CENTRAL reads the forum database directly rather than through the
+ * API, and it had no attachment query at all: it rendered the text of a post
+ * and dropped every image in silence. A photographer reporting a fault from
+ * their own site attached the screenshot and the hub owner never saw it.
+ *
+ * @return array [target_id => [ ['url'=>..,'alt'=>..], ... ]]
+ */
+function sc_forum_attachments(PDO $db, string $target_type, array $ids): array {
+    $ids = array_values(array_filter(array_map('intval', $ids)));
+    if ($ids === []) return [];
+    $ph   = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $db->prepare(
+        "SELECT id, target_id, stored_name, orig_name
+         FROM ss_forum_attachments
+         WHERE target_type = ? AND target_id IN ($ph) AND is_deleted = 0
+         ORDER BY id ASC"
+    );
+    $stmt->execute(array_merge([$target_type], $ids));
+    // The same base the API serves them from, so a URL here and a URL on a
+    // site's own forum page are the same URL.
+    $base = (defined('FORUM_API_URL') ? rtrim(FORUM_API_URL, '/') : '') . '/uploads/';
+    $out  = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $out[(int)$row['target_id']][] = [
+            'id'  => (int)$row['id'],
+            'url' => $base . $row['stored_name'],
+            'alt' => (string)$row['orig_name'],
+        ];
+    }
+    return $out;
+}
 
 function sc_forum_initials(string $name): string {
     $parts = preg_split('/[\s\-_.]+/', trim($name));
@@ -497,6 +534,11 @@ require __DIR__ . '/sc-layout-top.php';
 .scf-post__mod    { margin-left: auto; display: flex; gap: 4px; }
 .scf-post__body   { font-size: 0.88rem; line-height: 1.7; color: #bbb; white-space: pre-wrap; word-break: break-word; }
 .scf-post--op .scf-post__body { font-size: 0.92rem; }
+.scf-post__images { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.scf-post__image  { display: block; line-height: 0; border-radius: 6px; overflow: hidden; border: 1px solid #333; }
+.scf-post__image img { max-width: 240px; max-height: 240px; width: auto; height: auto; display: block; }
+.scf-post__body .forum-post__inline-image { display: block; margin: 12px 0; line-height: 0; border-radius: 6px; overflow: hidden; border: 1px solid #333; max-width: 520px; }
+.scf-post__body .forum-post__inline-image img { display: block; width: 100%; height: auto; }
 
 /* ── Thread title bar ──────────────────────────────────────────────────────── */
 .scf-thread-header {
@@ -812,6 +854,14 @@ if ($thread) {
     ");
     $r_stmt->execute([$thread_id]);
     $replies = $r_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $t_att = sc_forum_attachments($db, 'thread', [$thread_id]);
+    $thread['attachments'] = $t_att[$thread_id] ?? [];
+    $r_att = sc_forum_attachments($db, 'reply', array_column($replies, 'id'));
+    foreach ($replies as &$r_row) {
+        $r_row['attachments'] = $r_att[(int)$r_row['id']] ?? [];
+    }
+    unset($r_row);
 }
 ?>
 
@@ -910,7 +960,17 @@ $t_is_pgsb = ($hub_id > 0 && (int)$thread['install_id'] === $hub_id);
           <?php /* OP delete is already in the thread-controls above — no duplicate here */ ?>
         </div>
       </div>
-      <div class="scf-post__body"><?php echo nl2br(htmlspecialchars($thread['body'])); ?></div>
+      <div class="scf-post__body"><?php echo snapsmack_forum_post_body((string)$thread['body'], $thread['attachments'] ?? []); ?></div>
+      <?php $scf_rest = snapsmack_forum_trailing_attachments((string)$thread['body'], $thread['attachments'] ?? []); ?>
+      <?php if (!empty($scf_rest)): ?>
+      <div class="scf-post__images">
+        <?php foreach ($scf_rest as $scf_att): ?>
+        <a href="<?php echo htmlspecialchars($scf_att['url']); ?>" target="_blank" rel="noopener" class="scf-post__image">
+          <img src="<?php echo htmlspecialchars($scf_att['url']); ?>" alt="<?php echo htmlspecialchars($scf_att['alt'] ?? ''); ?>" loading="lazy">
+        </a>
+        <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
     </div>
   </div>
 
@@ -958,7 +1018,17 @@ $t_is_pgsb = ($hub_id > 0 && (int)$thread['install_id'] === $hub_id);
           <?php endif; ?>
         </div>
       </div>
-      <div class="scf-post__body"><?php echo nl2br(htmlspecialchars($r['body'])); ?></div>
+      <div class="scf-post__body"><?php echo snapsmack_forum_post_body((string)$r['body'], $r['attachments'] ?? []); ?></div>
+      <?php $scf_rest = snapsmack_forum_trailing_attachments((string)$r['body'], $r['attachments'] ?? []); ?>
+      <?php if (!empty($scf_rest)): ?>
+      <div class="scf-post__images">
+        <?php foreach ($scf_rest as $scf_att): ?>
+        <a href="<?php echo htmlspecialchars($scf_att['url']); ?>" target="_blank" rel="noopener" class="scf-post__image">
+          <img src="<?php echo htmlspecialchars($scf_att['url']); ?>" alt="<?php echo htmlspecialchars($scf_att['alt'] ?? ''); ?>" loading="lazy">
+        </a>
+        <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
     </div>
   </div>
   <?php endforeach; ?>

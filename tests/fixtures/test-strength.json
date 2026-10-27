@@ -460,6 +460,13 @@
         "predicates": 8,
         "thresholds": []
     },
+    "forum-inline-images-regression.php": {
+        "assertions": 18,
+        "predicates": 18,
+        "thresholds": [
+            2
+        ]
+    },
     "frame-token-contract.php": {
         "assertions": 28,
         "predicates": 24,
