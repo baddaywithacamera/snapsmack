@@ -94,6 +94,56 @@ function skin_manifest_exists(string $slug): bool {
     return is_file(dirname(__DIR__) . '/skins/' . $slug . '/manifest.json');
 }
 
+/** The only three words a skin's `status` may be. */
+const SNAPSMACK_SKIN_STATUSES = ['stable', 'beta', 'development'];
+
+/** Words found in the wild, each mapped to the legal word with the same behaviour. */
+const SNAPSMACK_SKIN_STATUS_ALIASES = [
+    'alpha'        => 'beta',
+    'experimental' => 'beta',
+    'dev'          => 'beta',
+    'available'    => 'beta',
+];
+
+/**
+ * A skin's maturity is one of three words, and only three.
+ *
+ * `status` is not a label, it decides behaviour. core/skin-registry.php makes a
+ * skin uninstallable when it reads exactly "development", and SMACK CENTRAL's
+ * packager pre-ticks a skin into the registry when it reads exactly "stable".
+ * Both comparisons are string-exact, so a skin that said "dev" counted as
+ * shippable while one that said "development" did not -- the same intent, the
+ * opposite outcome, decided by three letters.
+ *
+ * Measured 26 October 2026: seven different words were in use across 30 skins
+ * (stable 16, beta 7, alpha 3, available 1, dev 1, experimental 1,
+ * development 1) against a vocabulary of three declared in skin-registry.php.
+ * Three of those four extra words were never asked for.
+ *
+ * Each alias maps to the legal word that keeps the behaviour the manifest
+ * already had, so canonicalising changes no skin's installability:
+ *
+ *   alpha / experimental / dev / available -> beta
+ *     all four were installable and none was auto-ticked, which is exactly
+ *     what "beta" does. "alpha" and "experimental" read as less finished than
+ *     beta; if a skin is meant to be genuinely unshippable, write
+ *     "development" deliberately -- that is the word that withholds it.
+ *
+ * An unrecognised word is NOT guessed at. It becomes "development", so a typo
+ * withholds a skin rather than shipping it.
+ *
+ * tests/skin-status-vocabulary-regression.php holds the vocabulary from both
+ * sides: no manifest may carry a word outside the three, and this map may not
+ * grow a target outside them either.
+ */
+function snapsmack_skin_status(?string $declared): string
+{
+    $word = strtolower(trim((string)$declared));
+    if ($word === '') return 'development';
+    if (in_array($word, SNAPSMACK_SKIN_STATUSES, true)) return $word;
+    return SNAPSMACK_SKIN_STATUS_ALIASES[$word] ?? 'development';
+}
+
 /**
  * Validate the top-level schema while preserving the existing consumer shape.
  */
@@ -148,7 +198,10 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
         }
         if (in_array($key, $string_keys, true)) {
             if (is_string($value) && strlen($value) <= 16384) {
-                $out[$key] = $value;
+                // Maturity is a decision the registry and the packager act on,
+                // so it is reduced to the three legal words here rather than
+                // compared string-exact at each call site.
+                $out[$key] = $key === 'status' ? snapsmack_skin_status($value) : $value;
             }
             continue;
         }

@@ -1277,6 +1277,13 @@
         "predicates": 6,
         "thresholds": []
     },
+    "skin-status-vocabulary-regression.php": {
+        "assertions": 1,
+        "predicates": 4,
+        "thresholds": [
+            25
+        ]
+    },
     "skin-version-content-regression.php": {
         "assertions": 7,
         "predicates": 1,
