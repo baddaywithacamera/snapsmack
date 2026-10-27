@@ -132,21 +132,53 @@ function apc_resolved_stylesheets(string $root, string $skin, array $manifest): 
     return array_values(array_unique(array_filter($paths, static fn($p) => is_file($root . '/' . $p))));
 }
 
-/** The element the archive's photographs sit in: its id and its classes. */
+/**
+ * The element the archive's photographs sit in: its id and its classes.
+ *
+ * Found by structure, not by name. The first version looked for id="browse-grid"
+ * or class="archive-grid" with a regex and gave up on five of twenty-five
+ * skins -- IMPACT PRINTER, RATIONAL GEO, SCROLL, PHOTOGRAM and FULL MONTY --
+ * reporting them as "not applicable" when it simply could not see them. A
+ * check that quietly skips what it cannot parse is the failure this whole
+ * exercise is about, so it now parses the document and looks for the element
+ * that actually holds the photographs: the deepest element whose own children
+ * include two or more links to photographs.
+ */
 function apc_archive_container(string $html): ?array
 {
-    if (preg_match('/<(section|div|main|ul)\b([^>]*\bid="browse-grid"[^>]*)>/i', $html, $m)) {
-        $attrs = $m[2];
-    } elseif (preg_match('/<(section|div|main|ul)\b([^>]*\bclass="[^"]*\barchive-grid\b[^"]*"[^>]*)>/i', $html, $m)) {
-        $attrs = $m[2];
-    } else {
-        return null;
+    $doc = new DOMDocument();
+    $prev = libxml_use_internal_errors(true);
+    $ok = $doc->loadHTML('<?xml encoding="utf-8" ?>' . $html, LIBXML_NOWARNING | LIBXML_NOERROR);
+    libxml_clear_errors();
+    libxml_use_internal_errors($prev);
+    if (!$ok) return null;
+
+    $best = null;
+    $bestDepth = -1;
+    foreach ((new DOMXPath($doc))->query('//*') as $node) {
+        if (!$node instanceof DOMElement) continue;
+        $tiles = 0;
+        foreach ($node->childNodes as $child) {
+            if (!$child instanceof DOMElement) continue;
+            // A tile is a child that carries a link and a photograph, whether
+            // the child IS the link (justified walls) or wraps one (grids).
+            // A tile is a child that contains a photograph. Requiring a link
+            // as well missed GLIDE; accepting a link instead picked TRUE
+            // GRIT's header nav and SLICKR's tab row, which have several link
+            // children and sit deeper than the grid. A photograph in each
+            // child is what an archive actually is.
+            if ($child->getElementsByTagName('img')->length > 0) $tiles++;
+        }
+        if ($tiles < 2) continue;
+        $depth = 0;
+        for ($p = $node; $p !== null; $p = $p->parentNode) $depth++;
+        if ($depth > $bestDepth) { $best = $node; $bestDepth = $depth; }
     }
-    preg_match('/\bid="([^"]*)"/i', $attrs, $i);
-    preg_match('/\bclass="([^"]*)"/i', $attrs, $c);
+    if ($best === null) return null;
+
     return [
-        'id'      => $i[1] ?? '',
-        'classes' => array_values(array_filter(preg_split('/\s+/', $c[1] ?? '') ?: [])),
+        'id'      => $best->getAttribute('id'),
+        'classes' => array_values(array_filter(preg_split('/\s+/', $best->getAttribute('class')) ?: [])),
     ];
 }
 
@@ -218,6 +250,7 @@ function apc_has_layout_rule(string $css, array $container, array &$evidence): b
 /* ------------------------------------------------------------------------ */
 
 $rows = [];
+$walls = [];
 $skipped = [];
 set_error_handler(static fn(int $n, string $m): bool => true, E_WARNING | E_NOTICE | E_DEPRECATED);
 
@@ -238,11 +271,45 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
     $html = (string)ob_get_clean();
 
     $container = apc_archive_container($html);
-    if ($container === null) { $skipped[$skin] = 'no archive container found in the rendered page'; continue; }
+    if ($container === null) {
+        // Not a skip. On a photoblog, an archive page with no photographs on
+        // it is the bug, not a gap in the check. GLIDE is how this was found:
+        // its archive emits <article><a><h2>Title</h2></a></article> per item
+        // and never renders an image, so there was nothing to lay out and its
+        // stylesheet has no archive rules at all. Calling that "not
+        // applicable" would hide a photoblog archive with no photographs.
+        $rows[$skin] = [
+            'ok'        => false,
+            'container' => '(no photographs on the page)',
+            'sheets'    => apc_resolved_stylesheets($root, $skin, $manifest),
+            'evidence'  => [],
+            'reason'    => 'its archive page renders no photographs at all -- only links and titles',
+        ];
+        continue;
+    }
 
     $sheets = apc_resolved_stylesheets($root, $skin, $manifest);
     $css = '';
     foreach ($sheets as $path) $css .= "\n" . (string)@file_get_contents($root . '/' . $path);
+
+    // A WALL LAID OUT BY JAVASCRIPT IS NOT A FAILURE OF CSS.
+    //
+    // The scroll wall, the masonry wall and the justified gallery compute
+    // their geometry at runtime and set it inline; their containers
+    // legitimately carry no display:grid. Judging them by this contract
+    // reported RATIONAL GEO, SCROLL and IMPACT PRINTER as broken on the first
+    // run, and they are not. They are NOT passed either -- they are counted
+    // separately and named, because "this check cannot see it" and "this is
+    // fine" are different statements and the second one is how all of this
+    // reached Sean in the first place.
+    $wallMarkers = ['ss-scroll-wall', 'ss-masonry', 'ss-square-wall', 'justified-grid', 'scroll-wall'];
+    $isWall = in_array($container['id'], $wallMarkers, true)
+        || array_intersect($container['classes'], $wallMarkers) !== [];
+    if ($isWall) {
+        $walls[$skin] = ($container['id'] !== '' ? '#' . $container['id'] : '')
+                      . ($container['classes'] ? '.' . implode('.', $container['classes']) : '');
+        continue;
+    }
 
     $evidence = [];
     $rows[$skin] = [
@@ -287,8 +354,17 @@ if ($broken !== []) {
         fwrite(STDERR, "  {$skin}\n");
         fwrite(STDERR, "    container: {$r['container']}\n");
         fwrite(STDERR, "    receives:  " . (implode(', ', $r['sheets']) ?: '(no stylesheets at all)') . "\n");
-        fwrite(STDERR, "    Nothing in those stylesheets gives that element a grid, flex or column\n");
-        fwrite(STDERR, "    layout, so its photographs stack in one full-width column.\n\n");
+        if (isset($r['reason'])) {
+            fwrite(STDERR, '    ' . $r['reason'] . ".
+
+");
+        } else {
+            fwrite(STDERR, "    Nothing in those stylesheets gives that element a grid, flex or column
+");
+            fwrite(STDERR, "    layout, so its photographs stack in one full-width column.
+
+");
+        }
     }
     fwrite(STDERR, "Run with --list to see every skin, including the ones that pass.\n");
     exit(1);

@@ -64,8 +64,10 @@
     },
     "archive-presentation-contract-regression.php": {
         "assertions": 2,
-        "predicates": 10,
-        "thresholds": []
+        "predicates": 8,
+        "thresholds": [
+            2
+        ]
     },
     "archive-thumb-edit-link-regression.php": {
         "assertions": 11,
