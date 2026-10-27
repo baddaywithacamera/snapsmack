@@ -462,6 +462,20 @@ body:not(.archive-page):not(.static-transmission) .chap-img-frame .post-image {
   overflow: visible;
 }
 
+/* ARCHIVE THUMBNAILS: THE FRAME HUGS THE PHOTO.
+   On a photo page the frame stands off by --chap-frame-gap, which the owner
+   sets -- 47px on acolourlesslife.ca. Inside a 219px archive thumbnail that
+   puts every line 47px OUTSIDE .fsog-thumb, which clips its overflow, so the
+   whole BORDER panel drew nothing on the archive. Measured live at 0.7.956D:
+   .chap-frame-lines 313x313 at inset -47px inside a 219x230 thumb, top line
+   not visible at all. The lines were painted and then thrown away.
+   A thumbnail is not a print; its frame sits on the photo edge. The owner's
+   rule count, thicknesses and ornament choices still apply. */
+.fsog-thumb .chap-frame-deco,
+.fsog-thumb .chap-frame-lines {
+  inset: 0;
+}
+
 /* ── Line connectors ── */
 /* Dimensions (height/width) and background gradient set by skin-header.php.
    Insets (--chap-line-h-inset / --chap-line-v-inset) = corner ornament size
