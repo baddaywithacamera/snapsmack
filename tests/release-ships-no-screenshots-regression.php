@@ -60,6 +60,28 @@ $skins = (string)file_get_contents($root . '/smack-central/sc-skins.php');
 rs_test(!preg_match("/str_starts_with\(\\\$[a-z_]+, 'screenshot'\)/i", $skins),
     'the skin packager does NOT strip screenshots -- skins may carry their own images');
 
+// NOTHING MAY BE REMOVED FROM A PACKAGE WHILE CODE STILL READS ITS PATH.
+//
+// That combination is how skins broke three times in a month: a file stops
+// shipping, the reference to it does not change, and the page renders empty.
+// Two things keep this particular removal safe, and both are asserted here
+// rather than assumed.
+//
+// First, skins/ is blanket-excluded from the core zip, so the screenshot rule
+// is not what keeps skin previews out of the release -- they were never in it.
+// If that blanket exclude were ever dropped, skins WOULD ship, minus their
+// screenshots, and smack-skin.php's local lookup would find nothing.
+rs_test(preg_match("/^\s*'skins\/',/m", $screl) === 1,
+    'skins/ is still blanket-excluded from the core zip, so this rule removes no skin file from it');
+
+// Second, the one piece of shipped code that reads a local screenshot path,
+// smack-skin.php skin_screenshots(), has a registry fallback. A skin with no
+// local shot shows the server copy instead of an empty card.
+$admin = (string)file_get_contents($root . '/smack-skin.php');
+rs_test(str_contains($admin, 'function skin_screenshots(string $slug): array')
+     && str_contains($admin, '$remote_screenshots'),
+    'the only shipped reader of a local screenshot path falls back to the registry URL');
+
 // What the core rule is worth, measured.
 $bytes = 0; $count = 0;
 $it = new RecursiveIteratorIterator(
