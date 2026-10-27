@@ -132,14 +132,14 @@
 </ul>
 <p><strong>Disposition:</strong> the report is extended; CHAPLIN is not declared repaired. Claude owns the active repair. This review changed the audit and preserved evidence only; it did not modify CHAPLIN, shared rendering code, checks, release versions or a live site.</p>
 
-<h2>11. Supplement, 27 October 2026: a page the owner could neither see nor recover</h2>
+<h2>12. Supplement, 27 October 2026: a page the owner could neither see nor recover</h2>
 
 <p>The owner, on curbappeal.photoblogs.fyi: "why did you bring bak the floating gallery (which doesn't work well) in the navbar instead of my about page?" Two faults in one sentence, and only the second is a defect.</p>
 
-<h3>11.1 The Floating Gallery link is not a regression</h3>
+<h3>12.1 The Floating Gallery link is not a regression</h3>
 <p>A rewrite on 6 October replaced the auto-built navigation with Home and Blogroll alone, which is how the Archive View link disappeared on hekeepsdroningon.ca. The restore on 19 October (<code>fab2ce54</code>, in <code>core/skin-view-model.php</code>) reinstated the pre-rewrite list gate for gate. One of those gates is <code>show_wall_link</code>, and on this install that setting is 1. The link returned because the owner's own saved setting says to show it. Restoring a setting is not choosing it, and the control is at Global Vibe &rarr; ENABLE FLOATING GALLERY. No change is proposed here.</p>
 
-<h3>11.2 The About page is a defect, and the defect is that nothing could report it</h3>
+<h3>12.2 The About page is a defect, and the defect is that nothing could report it</h3>
 <p>Measured from outside the install, read-only, 27 October:</p>
 <ul>
 <li>The rendered navigation is <code>Home | Archive View | Floating Gallery | Blogroll</code> and nothing after it. That ordering is the auto-built fallback in <code>snapsmack_prepare_skin_navigation()</code>, which appends active static pages last. None were appended.</li>
@@ -158,7 +158,7 @@
 
 <p>The second hole is what makes this an operability failure rather than a bug. The owner is shown a page that exists, is told nothing, is given no control, and the site disagrees with the admin screen. There is no sequence of actions available in the interface that recovers the page. That is the same shape as OPAUDIT 026: a check or a screen that cannot report the thing it is for.</p>
 
-<h3>11.3 Repair</h3>
+<h3>12.3 Repair</h3>
 <p>In <code>smack-pages.php</code>:</p>
 <ul>
 <li>Creation writes <code>is_active</code> explicitly as 1. A page the owner just made is a page they want visible; that is stated rather than inherited.</li>
@@ -168,7 +168,7 @@
 
 <p><code>tests/static-pages-visible-and-fixable-regression.php</code> holds all three, and also asserts that the strict controller, the sitemap and the skin navigation still gate on <code>is_active = 1</code> &mdash; if one of those ever stops checking, the test is guarding the wrong contract and should be revisited rather than trusted. Verified to fail five ways against <code>smack-pages.php</code> as shipping before this change.</p>
 
-<h3>11.4 What this does not claim</h3>
+<h3>12.4 What this does not claim</h3>
 <p>This repair gives the owner a control and a status they did not have. It does <strong>not</strong> establish why this particular install's page is at 0, or whether a page row exists there at all; the database was not read, and nothing here should be taken as having read it. Three external readers agreeing that no active page exists is consistent with a row at 0, with a row that was deleted, and with a page that was never created on this install. Those are distinguished by one read of <code>snap_pages</code> on the install, which is a paste-verify step, not an inference. After this build reaches the install, the Page Manager answers the question directly: a hidden row is now labelled, and an absent row is absent.</p>
 
 <p class="doc-foot">SnapSmack Operability Audit 027 - 25 October 2026; evidence supplements 26 and 27 October 2026</p>
