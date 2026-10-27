@@ -2416,9 +2416,9 @@
         ],
         "paragraphs": 1,
         "links": 3,
-        "headings": 2,
-        "words": 221,
-        "text_sha256": "9a0853988ce0db69f7eb38bcaecf5c32ad918a8920eadd6351ba63d1bb197cb8"
+        "headings": 0,
+        "words": 220,
+        "text_sha256": "a2530bbc9e8ec790025ff628c073b1a4be2b29417ff1b393261038e431e203d9"
     },
     "true-grit/landing": {
         "images": [
