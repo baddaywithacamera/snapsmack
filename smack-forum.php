@@ -16,6 +16,7 @@
 
 
 require_once 'core/auth-smack.php';
+require_once 'core/forum-post-body.php';
 
 // Load settings before any output — needed for API calls and registration.
 if (!isset($settings)) {
@@ -840,10 +841,11 @@ require 'core/sidebar.php';
                 </div>
                 <?php endif; ?>
               </div>
-              <div class="forum-post__body"><?php echo nl2br(htmlspecialchars($thread['body'])); ?></div>
-              <?php if (!empty($thread['attachments'])): ?>
+              <div class="forum-post__body"><?php echo snapsmack_forum_post_body((string)$thread['body'], $thread['attachments'] ?? []); ?></div>
+              <?php $att_rest = snapsmack_forum_trailing_attachments((string)$thread['body'], $thread['attachments'] ?? []); ?>
+              <?php if (!empty($att_rest)): ?>
               <div class="forum-post__images">
-                <?php foreach ($thread['attachments'] as $att): ?>
+                <?php foreach ($att_rest as $att): ?>
                 <a href="<?php echo htmlspecialchars($att['url']); ?>" target="_blank" rel="noopener" class="forum-post__image">
                   <img src="<?php echo htmlspecialchars($att['url']); ?>" alt="<?php echo htmlspecialchars($att['alt'] ?? ''); ?>" loading="lazy">
                 </a>
@@ -875,10 +877,11 @@ require 'core/sidebar.php';
                 </div>
                 <?php endif; ?>
               </div>
-              <div class="forum-post__body"><?php echo nl2br(htmlspecialchars($r['body'])); ?></div>
-              <?php if (!empty($r['attachments'])): ?>
+              <div class="forum-post__body"><?php echo snapsmack_forum_post_body((string)$r['body'], $r['attachments'] ?? []); ?></div>
+              <?php $att_rest = snapsmack_forum_trailing_attachments((string)$r['body'], $r['attachments'] ?? []); ?>
+              <?php if (!empty($att_rest)): ?>
               <div class="forum-post__images">
-                <?php foreach ($r['attachments'] as $att): ?>
+                <?php foreach ($att_rest as $att): ?>
                 <a href="<?php echo htmlspecialchars($att['url']); ?>" target="_blank" rel="noopener" class="forum-post__image">
                   <img src="<?php echo htmlspecialchars($att['url']); ?>" alt="<?php echo htmlspecialchars($att['alt'] ?? ''); ?>" loading="lazy">
                 </a>
@@ -918,7 +921,7 @@ require 'core/sidebar.php';
             <div class="forum-attach">
               <label class="forum-attach__label">IMAGES <span class="dim">(optional)</span></label>
               <input type="file" name="images[]" accept="image/jpeg,image/png,image/gif,image/webp" multiple class="forum-attach__input">
-              <div class="forum-attach__hint">Up to 8 images, 10&nbsp;MB each.</div>
+              <div class="forum-attach__hint">Up to 8 images, 10&nbsp;MB each. To put one in the middle of your text, type <code>[img:1]</code> on its own line for the first image, <code>[img:2]</code> for the second, and so on. Anything you do not place appears underneath.</div>
             </div>
             <div class="forum-composer__footer">
               <button type="submit" class="forum-new-btn">Post Reply</button>
@@ -1002,7 +1005,7 @@ require 'core/sidebar.php';
           <div class="forum-attach">
             <label class="forum-attach__label">IMAGES <span class="dim">(optional — jpg, png, gif, webp)</span></label>
             <input type="file" name="images[]" accept="image/jpeg,image/png,image/gif,image/webp" multiple class="forum-attach__input">
-            <div class="forum-attach__hint">Up to 8 images, 10&nbsp;MB each. Screenshots welcome.</div>
+            <div class="forum-attach__hint">Up to 8 images, 10&nbsp;MB each. Screenshots welcome. To put one in the middle of your text, type <code>[img:1]</code> on its own line for the first image, <code>[img:2]</code> for the second, and so on. Anything you do not place appears underneath.</div>
           </div>
 
           <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:16px;">

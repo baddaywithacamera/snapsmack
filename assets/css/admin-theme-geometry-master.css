@@ -7543,6 +7543,29 @@ input[type="range"]:active::-webkit-slider-thumb {
     object-fit: cover;
     display: block;
 }
+/* An image the author placed in the body with [img:N]. It sits in the text
+   rather than in the row underneath, so it is given room instead of being
+   capped at a 240px thumbnail. */
+.forum-post__inline-image {
+    display: block;
+    margin: 12px 0;
+    line-height: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border, #333);
+    max-width: 100%;
+}
+.forum-post__inline-image img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+.forum-attach__hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.78rem;
+    opacity: 0.7;
+}
 .forum-attach {
     margin-top: 12px;
 }
