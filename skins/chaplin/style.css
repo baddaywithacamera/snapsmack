@@ -1086,6 +1086,18 @@ body.archive-page #scroll-stage {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
+/* CHAPLIN carries orientation on the inner thumb. Let that box determine
+   the link height instead of the generic archive's landscape-only fallback. */
+.fsog-archive-grid.cropped-grid .fsog-archive-item > .thumb-link {
+  aspect-ratio: auto !important;
+}
+
+.fsog-archive-item .fsog-thumb > .chap-img-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .fsog-archive-item .fsog-thumb img {
     width: 100%;
     height: 100%;
