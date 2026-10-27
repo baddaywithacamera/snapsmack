@@ -552,6 +552,22 @@ body::before {
     flex: 1 0 auto;
 }
 
+/* Archive tiles must fit the phone viewport even when desktop settings request
+   four columns and wide gutters. Keep the desktop composition unchanged. */
+@media (max-width: 600px) {
+    body.archive-page #browse-grid.square-grid,
+    body.archive-page #browse-grid.cropped-grid {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+        padding: 0 20px;
+        margin: 40px auto;
+    }
+    body.archive-page #browse-grid .thumb-container { min-width: 0; width: 100%; }
+}
+
 /* --- GRID B: Justified (Own ID, own rules) --- */
 #justified-grid {
     display: block;
