@@ -823,11 +823,6 @@
         "predicates": 14,
         "thresholds": []
     },
-    "packages-ship-code-not-pictures-regression.php": {
-        "assertions": 8,
-        "predicates": 7,
-        "thresholds": []
-    },
     "paragraph-image-boundary-regression.php": {
         "assertions": 4,
         "predicates": 4,
@@ -1057,6 +1052,13 @@
         "assertions": 14,
         "predicates": 10,
         "thresholds": []
+    },
+    "release-ships-no-screenshots-regression.php": {
+        "assertions": 9,
+        "predicates": 12,
+        "thresholds": [
+            2
+        ]
     },
     "remaining-public-control-authority-regression.php": {
         "assertions": 16,

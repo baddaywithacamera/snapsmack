@@ -707,9 +707,21 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         $basename = basename($rel);
         // Strip key JSON files (service account keys etc.) from anywhere in the tree
         if (str_ends_with($basename, '.json') && str_contains($basename, 'key')) { $skipped++; continue; }
-        // Strip screenshot PNGs from all skins — gallery previews are served from
-        // SC assets, not from the install directory. Keeping them bloats the package.
-        if (str_starts_with($basename, 'screenshot') && str_ends_with($basename, '.png') && str_starts_with($rel, 'skins/')) {
+        // THE SNAPSMACK RELEASE CONTAINS NO SCREENSHOTS. Anywhere in the tree,
+        // any image type, whatever the directory.
+        //
+        // Skins may carry images — textures, ornaments, backgrounds — and this
+        // is not about them; the skin packager is a separate rail and leaves
+        // them alone. This is the CORE zip, which every site downloads and
+        // unzips. The more a server unzips, the more chances it has to hit a
+        // resource limit, and a site that trips one installs nothing at all.
+        //
+        // The old rule only looked at skins/ and only at .png, so a 1,331 KB
+        // audit screenshot in opaudits/ walked straight past it and made the
+        // 0.7.953D package a third larger overnight. A rule that names one
+        // directory is a rule that is waiting for the next directory.
+        $screenshotish = str_contains($basename, 'screenshot') || str_contains($basename, 'screencapture');
+        if ($screenshotish && preg_match('/\.(png|jpe?g|gif|webp|bmp|avif)$/', $basename) === 1) {
             $skipped++;
             continue;
         }
@@ -789,6 +801,18 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
                 @unlink($zip_dest);   // never leave a poisoned half-built package behind
                 return ['ok' => false, 'msg' => "BUILD REFUSED — dev path '{$zrel}' reached the release zip. Fix the exclude list; never ship dev directories (SECAUDIT 055)."];
             }
+        }
+        // The release contains no screenshots. The filename rule above should
+        // make this impossible; this refuses the build rather than shipping
+        // quietly, because silence is how 1,331 KB rode to every install.
+        $zbase = strtolower(basename($zrel));
+        if ((str_contains($zbase, 'screenshot') || str_contains($zbase, 'screencapture'))
+            && preg_match('/\.(png|jpe?g|gif|webp|bmp|avif)$/', $zbase) === 1) {
+            $dst->close();
+            $src->close();
+            @unlink($tmp_src);
+            @unlink($zip_dest);
+            return ['ok' => false, 'msg' => "BUILD REFUSED — screenshot '{$zrel}' reached the release zip. The SnapSmack release contains no screenshots; serve them from this server instead."];
         }
     }
 
