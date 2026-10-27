@@ -95,4 +95,37 @@ a.logo-area,
     color: inherit;
     text-decoration: none;
 }
+/* ARCHIVE
+   GLIDE's landing is a fullscreen drag field, but its archive is an ordinary
+   page and was emitting titles with no photographs at all and no layout. The
+   archive container now gets a grid here, in the skin's own stylesheet, so it
+   does not depend on assets/css/page-archive.css -- that file rides on two
+   JavaScript engines GLIDE does not declare, so it never arrives. */
+#browse-grid.archive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--glide-gap);
+    max-width: 1400px;
+    margin: 40px auto;
+    padding: 0 24px;
+}
+.glide-archive-item a {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+}
+.glide-archive-item img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--glide-radius);
+    background: #181818;
+}
+.glide-archive-item h2 {
+    margin: 8px 0 0;
+    font-size: 0.85rem;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+}
+
 /* ===== SNAPSMACK EOF ===== */
