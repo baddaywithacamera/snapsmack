@@ -318,8 +318,15 @@ body:not(.archive-page):not(.static-transmission) #scroll-stage {
   display: none;
 }
 
-/* Hidden #footer kept for smack-footer / smack-keyboard compat */
-#footer {
+/* Hidden #footer kept for smack-footer / smack-keyboard compat.
+   SCOPED on 2026-10-27. The CMS footer component wraps its own content in
+   <div id="footer" class="inside">, so this unscoped rule was hiding the real
+   footer: #system-footer rendered as an empty 65px band on every CHAPLIN page.
+   Measured live on acolourlesslife.ca -- footer 65px tall, every child 0px.
+   It was invisible until 0.7.955D only because the duplicate archive wall
+   pushed the band 27,824px down the page. The compat element is the one
+   OUTSIDE the system footer; that is the one to hide. */
+#footer:not(.inside) {
   display: none !important;
 }
 
