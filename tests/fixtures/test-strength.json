@@ -79,6 +79,11 @@
             2
         ]
     },
+    "archive-settings-reach-the-page-regression.php": {
+        "assertions": 9,
+        "predicates": 8,
+        "thresholds": []
+    },
     "archive-thumb-edit-link-regression.php": {
         "assertions": 11,
         "predicates": 9,
@@ -1054,8 +1059,8 @@
         "thresholds": []
     },
     "release-ships-no-screenshots-regression.php": {
-        "assertions": 9,
-        "predicates": 12,
+        "assertions": 11,
+        "predicates": 15,
         "thresholds": [
             2
         ]
