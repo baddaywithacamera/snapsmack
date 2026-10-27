@@ -11,6 +11,13 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.958D - 2026-10-27 - PORTRAIT IS A SHAPE
+
+- **CHAPLIN's archive thumbnails had no shape until their photograph loaded, so portraits were not portraits.** The component emitted a bare `.fsog-thumb` with no aspect ratio. A box with no intrinsic height collapses, a collapsed box never comes near the viewport, and a lazy image that never nears the viewport never loads -- measured on acolourlesslife.ca at 0.7.957D: every thumb 219x33, every image naturalWidth 0, every file returning 200. Each thumbnail now carries its own ratio, clamped to 2:3..3:2 the way `core/50-shades-page-component.php` has always done it, plus a `fsog-thumb-portrait` / `-landscape` / `-square` class. Square mode pins 1:1.
+
+- **Archive paging appended into the pane nobody could see.** CHAPLIN and 50 SHADES render BOTH `#browse-grid` and `#justified-grid` and let the stylesheet show one. `ss-engine-rows.js` takes `.ss-scroll-wall` and `ss-engine-columns.js` takes the grid, and with both loaded each fetched page 2 and each bumped the SAME sentinel, so the thumbnail grid's next page landed in the hidden wall. 24 of 40 photographs on screen with the sentinel present and `data-has-more=1`. Both engines now skip a grid that is not visible. CHAPLIN's manifest gains `smack-columns`, which is the engine that pages a thumbnail grid. Carries Codex's fix for paging draining when the body scrolls. CHAPLIN 0.2.25.
+
+
 ## 0.7.957D - 2026-10-27 - FLIP IT AND LOOK
 
 - **The BORDER panel drew nothing on CHAPLIN's archive, and it was being thrown away rather than never drawn.** 0.7.956D put `chap-img-frame` and `chap-frame-lines` around every archive thumbnail, and all 24 rendered. `.chap-frame-lines` is positioned at `inset: calc(-1 * var(--chap-frame-gap))` so the frame stands off the photo on a photo page -- 47px on acolourlesslife.ca. Inside a 219px archive thumbnail that puts every line outside `.fsog-thumb`, which clips its overflow. Measured live at 0.7.956D: frame lines 313x313 at inset -47px inside a 219x230 thumb, top line not visible at all. The lines were painted and then thrown away. A thumbnail is not a print, so its frame now sits on the photo edge; rule count, thicknesses and ornaments still follow the owner's settings. Verified in a browser on the live page before shipping. CHAPLIN 0.2.24.

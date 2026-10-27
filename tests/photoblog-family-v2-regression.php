@@ -49,7 +49,7 @@ ob_start();$chaplinArchiveOk=snapsmack_render_strict_skin_template($chaplinDir,'
 // entirely -- it asked for img_thumb_square first and unconditionally, so
 // "cropped (natural aspect)" changed nothing on a live site. The settings
 // classes are asserted here so that cannot silently come undone again.
-foreach(['class="fsog-archive-grid archive-grid h-feed ','archive-layout-','archive-cols-','archive-thumbs-','class="fsog-thumb"','class="chap-img-frame"','id="justified-grid"','src="/media/thumb-a.jpg"'] as $hook){
+foreach(['class="fsog-archive-grid archive-grid h-feed ','archive-layout-','archive-cols-','archive-thumbs-','class="fsog-thumb fsog-thumb-','aspect-ratio:','class="chap-img-frame"','id="justified-grid"','src="/media/thumb-a.jpg"'] as $hook){
  // thumb-a is the natural-aspect file. This asserted the SQUARE one, which was
  // the bug written down as a contract: CHAPLIN asked for img_thumb_square
  // unconditionally. THUMB STYLE defaults to cropped, so a default site now

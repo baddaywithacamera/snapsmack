@@ -243,6 +243,15 @@
         var sentinel = document.querySelector('.scroll-wall-sentinel');
         var grid = document.querySelector('.ss-scroll-wall');
         if (!grid) return;
+        // ONLY THE VISIBLE PANE PAGES.
+        // CHAPLIN and 50 SHADES render BOTH an archive grid and a scroll wall
+        // and let the stylesheet show one, so a bare querySelector finds the
+        // hidden one too. With both engines loaded, each fetched page 2 and
+        // each bumped the SAME sentinel's data-next, so the two raced and the
+        // thumbnail grid's own next page was appended into a pane nobody could
+        // see. Measured on acolourlesslife.ca at 0.7.957D: 24 of 40 photographs
+        // on screen, sentinel present, data-has-more 1, nothing ever arriving.
+        if (grid.offsetParent === null && getComputedStyle(grid).position !== 'fixed') return;
         // Older installed SLICKR packages predate the search sentinel. The
         // controller is paged, so the shared engine supplies the marker at
         // runtime instead of replacing an owner's protected skin package.
