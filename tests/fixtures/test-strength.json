@@ -91,6 +91,11 @@
             2
         ]
     },
+    "audit-reports-never-ship-regression.php": {
+        "assertions": 9,
+        "predicates": 6,
+        "thresholds": []
+    },
     "aurora-border-hook-regression.php": {
         "assertions": 1,
         "predicates": 4,

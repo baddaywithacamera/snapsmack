@@ -628,6 +628,12 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'screenshots/',
         'media_assets/',
         'secaudits/',
+        // opaudits/ was MISSING here, and it is the same fault as tests/ and
+        // wip/ above. A 1,331 KB evidence screenshot committed on 2026-10-26
+        // made the release zip a third larger overnight — 2,710 KB at 0.7.952D,
+        // 4,032 KB at 0.7.953D — and shipped a picture of the owner's own site
+        // to every install. Audit reports are ABOUT the software, never IN it.
+        'opaudits/',
         'migrations/',
         'database/',
         'data/',
@@ -771,7 +777,8 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
     // excludes above should make this impossible; this catches a future edit
     // (or force-include) quietly re-shipping them — silence is how tests/ and
     // wip/ rode to 28 live installs for months.
-    $dev_dir_tripwire = ['tests/', 'wip/', 'core/tests/', 'smack-central/', '_spec/'];
+    $dev_dir_tripwire = ['tests/', 'wip/', 'core/tests/', 'smack-central/', '_spec/',
+        'opaudits/', 'secaudits/'];
     for ($i = 0; $i < $dst->numFiles; $i++) {
         $zrel = (string)$dst->getNameIndex($i);
         foreach ($dev_dir_tripwire as $ddt) {
