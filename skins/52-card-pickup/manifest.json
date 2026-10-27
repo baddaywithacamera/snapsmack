@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "52 PICKUP",
-    "version": "1.4.16",
+    "version": "1.4.17",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "The landing IS the table. An infinite, pannable tabletop of scattered photo prints (the Organized Mayhem engine) — drag to roam, scroll to zoom, hover to lift a print, click to pick it up and read it, ESC to drop it back. Nav and footer stay hidden under the pile until you reach for the screen edges. Named for the card trick where someone throws a deck on the floor.",
@@ -436,6 +436,22 @@
             },
             "selector": "body, .description, .meta",
             "property": "font-family"
+        },
+        "page_title_font_weight": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Photo Title Weight",
+            "default": "400",
+            "options": {
+                "300": "Light (300)",
+                "400": "Regular (400)",
+                "500": "Medium (500)",
+                "600": "Semi-Bold (600)",
+                "700": "Bold (700)",
+                "900": "Black (900)"
+            },
+            "selector": ".photo-title-footer",
+            "property": "font-weight"
         }
     },
     "admin_styling": "\r\n        .control-group-flex { display: flex; align-items: center; gap: 20px; }\r\n        .control-group-flex input { flex: 1; }\r\n        .active-val { width: 50px; text-align: right; font-family: monospace; }\r\n    ",

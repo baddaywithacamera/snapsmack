@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "SHOW N TELL",
-  "version": "1.2.12",
+    "version": "1.2.13",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Portfolio & photoblog hybrid. Clean hero slider fed from the media library, justified grid below. Pixel frames or Galleria frames. Optional contact form shortcode. Professional face, photoblogging soul.",
@@ -572,6 +572,22 @@
             },
             "selector": "body, .description, .meta",
             "property": "font-family"
+        },
+        "page_title_font_weight": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Photo Title Weight",
+            "default": "600",
+            "options": {
+                "300": "Light (300)",
+                "400": "Regular (400)",
+                "500": "Medium (500)",
+                "600": "Semi-Bold (600)",
+                "700": "Bold (700)",
+                "900": "Black (900)"
+            },
+            "selector": ".post-title",
+            "property": "font-weight"
         },
         "masonry_border_width": {
             "section": "ARCHIVE",

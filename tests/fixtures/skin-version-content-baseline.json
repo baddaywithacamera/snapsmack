@@ -3,11 +3,11 @@
     "purpose": "One published skin version must mean exactly one set of files. A site installs a skin BY VERSION, so if two different file-states ship under one number, the sites that took the first are frozen on it and no CMS release can move them. That is what left photowalk.ing running the 0.7.850D 50 SHADES layout while reporting the same 1.5.2 as the repaired one. Change any skin file and change its version in the same commit, then regenerate this file.",
     "skins": {
         "50-shades-of-noah-grey": {
-            "version": "1.7.6",
+            "version": "1.7.7",
             "files_sha256": "d1ffe0d1adf9cee1642be8f0f947dd7862994249a4913d6a11692bb0c8376f85"
         },
         "52-card-pickup": {
-            "version": "1.4.16",
+            "version": "1.4.17",
             "files_sha256": "a8fc7cb5f5606b384565a5e394279a5dab66bbeb7cd85b5b10d1ffac7a15972b"
         },
         "alfred": {
@@ -20,7 +20,7 @@
         },
         "chaplin": {
             "version": "0.2.21",
-            "files_sha256": "8455aeb72aab135ae26cee48e3e79905cc2a685d04d25927d690a7441b1bfbae"
+            "files_sha256": "412f608175c7b41296b05d69c9fb5058da9860925d737ece2cd65b0c026d32ea"
         },
         "full-monty": {
             "version": "0.1.10",
@@ -47,7 +47,7 @@
             "files_sha256": "0de2f0dc50ac7a93b198419c1d2eb89f31053ababddf9b92ed8e68694c863ebf"
         },
         "impact-printer": {
-            "version": "2.1.17",
+            "version": "2.1.18",
             "files_sha256": "c6aa5f9e5dfffa51bdcf52938efaebfc833759635577d9c7453ed72353c3a4dd"
         },
         "instant-camera": {
@@ -59,11 +59,11 @@
             "files_sha256": "a510697b4ef2bb8a14d6818bc7a4a0115d4c287d3244ae3815ce8259b89bbbbe"
         },
         "new-horizon": {
-            "version": "1.3.23",
+            "version": "1.3.24",
             "files_sha256": "35d91cdc8d730c4ef489ec4f2c59c1a339dd1f3cf1d29fb10592a650f6facbf2"
         },
         "onyx": {
-            "version": "0.1.25",
+            "version": "0.1.26",
             "files_sha256": "00fce344d3718210863dbaa6c2feec394575b8589100c50b884402e5a41ee96a"
         },
         "parade": {
@@ -75,19 +75,19 @@
             "files_sha256": "3a5c0ee81ea9719bb49051b1095467dc4eb38701f84ece463d74833d0c90aaa5"
         },
         "rational-geo": {
-            "version": "2.1.35",
+            "version": "2.1.36",
             "files_sha256": "d338eccb0703e20a6713bcdf2eee4d701c208882336a8be08ea304803148149f"
         },
         "scroll": {
-            "version": "0.1.74",
+            "version": "0.1.75",
             "files_sha256": "c8df754e806edcc788724b1eaea23be5a5bcd4e0f74940870f4f80cdaba23202"
         },
         "show-n-tell": {
-            "version": "1.2.12",
+            "version": "1.2.13",
             "files_sha256": "1af21128c20fd36b4cdb81957d36678d54d97e7d679642042417ec45f8e93688"
         },
         "slickr": {
-            "version": "1.0.49",
+            "version": "1.0.50",
             "files_sha256": "7244aa8492cc06df301205dd6bd21a826f15a8c9f2792a9876abf166e1177406"
         },
         "sliders": {
@@ -115,7 +115,7 @@
             "files_sha256": "5962b0cf972c46f527ef0a9e9771a3949f249a2dbed66fa0293ec461e715bdac"
         },
         "true-grit": {
-            "version": "1.3.16",
+            "version": "1.3.17",
             "files_sha256": "8953116d9d1f8989dd69505ebce0d41f7d92d8a33cb74f6dccbddeb3ed79bf5d"
         },
         "writing-with-impact": {

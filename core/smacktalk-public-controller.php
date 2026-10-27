@@ -225,11 +225,13 @@ function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base, int $category
     return $tiles;
 }
 
-function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, string $slug, int $id): ?array
+function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, string $slug, int $id, ?array $previewPost = null): ?array
 {
     try {
         $repository = new SnapPublicRepository($pdo);
-        $post = $slug !== '' ? $repository->postBySlug($slug, 'longform') : $repository->postById($id, 'longform');
+        // Authenticated editor previews supply unsaved data internally. Public
+        // request handling never forwards an override from request parameters.
+        $post = $previewPost ?? ($slug !== '' ? $repository->postBySlug($slug, 'longform') : $repository->postById($id, 'longform'));
         if ($post && !empty($post['featured_image_id'])) {
             $post['featured_image_path'] = $repository->photographPathById((int)$post['featured_image_id']);
         }

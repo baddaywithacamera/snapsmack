@@ -18,6 +18,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use zip::write::SimpleFileOptions;
 mod shared_credentials;
+mod cli;
 
 #[cfg(windows)]
 fn replace_file(from: &Path, to: &Path) -> Result<(), String> {
@@ -36,6 +37,10 @@ fn replace_file(from: &Path, to: &Path) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let arguments: Vec<String> = std::env::args().collect();
+    if arguments.get(1).map(String::as_str) == Some("--cli") {
+        std::process::exit(cli::run(&arguments[2..]));
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {

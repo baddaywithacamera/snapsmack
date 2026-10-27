@@ -11,8 +11,8 @@
         "paragraphs": 1,
         "links": 6,
         "headings": 1,
-        "words": 146,
-        "text_sha256": "0a60f89acfd41edd4b301a4f6ac875a224c252dd030dc2e9747abcf24307e05b"
+        "words": 5,
+        "text_sha256": "33869435a957983f663b71582c6c0fd9306dd5eb5c60afc9c2ed6489c5afc232"
     },
     "50-shades-of-noah-grey/landing": {
         "images": [
@@ -26,8 +26,8 @@
         "paragraphs": 1,
         "links": 6,
         "headings": 1,
-        "words": 146,
-        "text_sha256": "0a60f89acfd41edd4b301a4f6ac875a224c252dd030dc2e9747abcf24307e05b"
+        "words": 5,
+        "text_sha256": "33869435a957983f663b71582c6c0fd9306dd5eb5c60afc9c2ed6489c5afc232"
     },
     "50-shades-of-noah-grey/not_found": {
         "images": [],
@@ -38,8 +38,8 @@
         "paragraphs": 1,
         "links": 2,
         "headings": 1,
-        "words": 145,
-        "text_sha256": "82106e691bf7e05fa1df3e4a64424f93f0f7eab214bc06da285cf31af56ad644"
+        "words": 4,
+        "text_sha256": "70272b2fcde90b18cd53fca4be66f9f6eef8533a1cdabeb73aca2a8050205c75"
     },
     "50-shades-of-noah-grey/page": {
         "images": [
@@ -52,8 +52,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 2,
-        "words": 147,
-        "text_sha256": "4f0f6e4bab0535c3ec9e7576bbe42cbd2c5f66d0543d9a811cb9fbb8f8d2a1fc"
+        "words": 6,
+        "text_sha256": "d51faf5b7c4e162659c114bad447eae2b4c09a91771e0b75ea1ea038228100c7"
     },
     "50-shades-of-noah-grey/photo": {
         "images": [
@@ -66,8 +66,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 2,
-        "words": 156,
-        "text_sha256": "84353ad45787f2c2eb3ced4d253fbf35948228232bf17e118216cfde5ac85280"
+        "words": 15,
+        "text_sha256": "2124823b648616fa7b340d76c8499cd39482a6f351e5b826aaddf10ca5bf8479"
     },
     "50-shades-of-noah-grey/post": {
         "images": [],
@@ -78,8 +78,8 @@
         "paragraphs": 3,
         "links": 3,
         "headings": 2,
-        "words": 155,
-        "text_sha256": "7e1f573ec33e1ebe258696fb2280a2a62c207ec0806fd899fcaf08af6aa01581"
+        "words": 14,
+        "text_sha256": "92b93d3ecac29057beca0e789c4c28314493da71a47e26dd5931fb28de9c03f0"
     },
     "50-shades-of-noah-grey/post-mixed": {
         "images": [
@@ -92,8 +92,8 @@
         "paragraphs": 5,
         "links": 3,
         "headings": 2,
-        "words": 174,
-        "text_sha256": "95885a042076a46df0df7d03b22ea7b05aee22699323dfed8e9ab5b8dbab6914"
+        "words": 33,
+        "text_sha256": "37fb322544a3fceb72726ae6a5eec4c2965e8b2e5ce89939c1e6e0d3dec3cbea"
     },
     "52-card-pickup/archive": {
         "images": [
@@ -107,8 +107,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 0,
-        "words": 58,
-        "text_sha256": "2a0cc853af4a2f9730a750c10581ff188c19f6be76b856690f9159c943e0563c"
+        "words": 2,
+        "text_sha256": "a6fe4696930e642ed0ed1c290703547d0fa9b86f3646f5394dc4212c7a6ca7df"
     },
     "52-card-pickup/landing": {
         "images": [],
@@ -119,8 +119,8 @@
         "paragraphs": 1,
         "links": 2,
         "headings": 0,
-        "words": 58,
-        "text_sha256": "321798af3a0bdbff254eec032c9a7a4f5099e78f3a149774a89765383c8a2b6f"
+        "words": 2,
+        "text_sha256": "aa60234b43ba1ff85edc8479eb9c1e04735ba455bd0a71551c424679a1f454fc"
     },
     "52-card-pickup/not_found": {
         "images": [],
@@ -131,8 +131,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 0,
-        "words": 58,
-        "text_sha256": "91bbe7b9fbf23f5c25347caa3cd7a9331ac7bec944764fb3e323eae466679aab"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "52-card-pickup/page": {
         "images": [
@@ -145,8 +145,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 60,
-        "text_sha256": "edb9c9fe7f84240131ed8f2587262a1f72f81bc740d10997db8d8198d54cd2df"
+        "words": 4,
+        "text_sha256": "fc77e049396e0def24bd63b0f156e1193e3ce0be56c7f4f9855e67343fe36014"
     },
     "52-card-pickup/photo": {
         "images": [
@@ -159,8 +159,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 63,
-        "text_sha256": "210ad1301cafbec21d91553f2358b776a3fa8ea1d79d93a73be5c6ec006757ff"
+        "words": 7,
+        "text_sha256": "d333c4744f0594d8ecb99e20e08920616a434a326d869e5d027d1901fd77338c"
     },
     "52-card-pickup/post": {
         "images": [],
@@ -171,8 +171,8 @@
         "paragraphs": 3,
         "links": 1,
         "headings": 1,
-        "words": 62,
-        "text_sha256": "0fba6239e0799b850ce2ccd4e941424ef0a48b99192c02bde4e56ccb88162507"
+        "words": 6,
+        "text_sha256": "40beb472074e35d20f2809df9702c32f07e248c4fe16e9f4facafbb419f6fcbb"
     },
     "52-card-pickup/post-mixed": {
         "images": [
@@ -185,8 +185,8 @@
         "paragraphs": 5,
         "links": 1,
         "headings": 1,
-        "words": 81,
-        "text_sha256": "9fbc2cf3ad2f443453de66a960f08f3e92f6bbcc7ec4ef926b892a29604b08cb"
+        "words": 25,
+        "text_sha256": "ab2210f37778ef933664e49c69855f6c7b7f5293a80423c5f07793b32ea74cca"
     },
     "aurora/archive": {
         "images": [
@@ -201,8 +201,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 179,
-        "text_sha256": "d14828f4bfda5727d8b052e447bdc1c3848dab3e6035819dfc6041f17edc4c07"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "aurora/landing": {
         "images": [
@@ -217,8 +217,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 179,
-        "text_sha256": "d14828f4bfda5727d8b052e447bdc1c3848dab3e6035819dfc6041f17edc4c07"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "aurora/not_found": {
         "images": [
@@ -231,8 +231,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 2,
-        "words": 181,
-        "text_sha256": "3e2a8ebf62ffedf6fe72430c08b744552c06642330e34c389a1539a379756261"
+        "words": 6,
+        "text_sha256": "58da902d7836cd3605701e1c8d56bc1b1dfa7ed13c32db942203eab5da470adb"
     },
     "aurora/page": {
         "images": [
@@ -246,8 +246,8 @@
         "paragraphs": 3,
         "links": 1,
         "headings": 2,
-        "words": 182,
-        "text_sha256": "93855f28fc1fc6662eb8d65ad6f490e56ed63c7bb46e35dc047a840fff2d92e9"
+        "words": 7,
+        "text_sha256": "a33b9d70b52ec3afc59049ec214ac7280dd401f6669f6b8b6c7c497f85b3fcc5"
     },
     "aurora/photo": {
         "images": [
@@ -260,8 +260,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 179,
-        "text_sha256": "d14828f4bfda5727d8b052e447bdc1c3848dab3e6035819dfc6041f17edc4c07"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "aurora/post": {
         "images": [
@@ -276,8 +276,8 @@
         "paragraphs": 4,
         "links": 1,
         "headings": 2,
-        "words": 184,
-        "text_sha256": "27c5274f6cf594640692ae495b37123758735fdb69e1a33d6753c582299d8034"
+        "words": 9,
+        "text_sha256": "3e4169402777b89abdddd27a5d08ef8f941c0b063ff14d8b4c14c17d7cd0f7ec"
     },
     "aurora/post-mixed": {
         "images": [
@@ -293,8 +293,8 @@
         "paragraphs": 6,
         "links": 1,
         "headings": 2,
-        "words": 203,
-        "text_sha256": "037895dff6131d712023b73d467ffeaf3124d982b5142409f59118714f8378d3"
+        "words": 28,
+        "text_sha256": "ce8f3a0b4ef76f019eccbecc228ff04335b26dddfa45f27fa44997c1181f32c4"
     },
     "chaplin/archive": {
         "images": [
@@ -310,8 +310,8 @@
         "paragraphs": 1,
         "links": 5,
         "headings": 2,
-        "words": 67,
-        "text_sha256": "e27a7b858dc3e899b64072d2849ef9da11fbc80df20cc9aa7754814e9396bd25"
+        "words": 3,
+        "text_sha256": "272a90989f9a7ec41dbae4e70d6e741a69f9c7af4b3e78e83cf4d1b25bc15399"
     },
     "chaplin/landing": {
         "images": [
@@ -325,8 +325,8 @@
         "paragraphs": 1,
         "links": 2,
         "headings": 0,
-        "words": 69,
-        "text_sha256": "776ee264dba9e58b1ca109ac4cd421945861fd45ffb21e2c1da10485fead75d5"
+        "words": 5,
+        "text_sha256": "e36fefd61111732ce6d03d304e9a0c4e1d3ea3dd385fd9005b69a92da5a05463"
     },
     "chaplin/not_found": {
         "images": [],
@@ -337,8 +337,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 1,
-        "words": 68,
-        "text_sha256": "ac7f1eb666d609a6be00a9368fc8d19e715932fd8e15a2aa0e54fb44f3203fc1"
+        "words": 4,
+        "text_sha256": "154e91dcd4fe45969e7b17b24f5387ef3c4bc79e4ffc84b8628d6dd217ec6fd2"
     },
     "chaplin/page": {
         "images": [
@@ -352,8 +352,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 69,
-        "text_sha256": "ae7194a3a38b53ff11859b4eea7652fdf78784935d7748bdab48e6c649037e2d"
+        "words": 5,
+        "text_sha256": "88cf91fafb37c7daa60147b95af17738497aac31f1d3f54159d06faeca81b734"
     },
     "chaplin/photo": {
         "images": [
@@ -367,8 +367,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 81,
-        "text_sha256": "27fb98312f8919e871ea2e3338e646ce4035d53652fdceba051f80644e366dcc"
+        "words": 17,
+        "text_sha256": "b1146c51c8dc93509ee52c272b22769eed054286ea3d274d5bf1b002177007a9"
     },
     "chaplin/post": {
         "images": [],
@@ -379,8 +379,8 @@
         "paragraphs": 3,
         "links": 3,
         "headings": 1,
-        "words": 77,
-        "text_sha256": "b3f419dca44850f26c68be04d3a8cc5f9d0cbb3ec3b3de8e75115e0d62aeed4d"
+        "words": 13,
+        "text_sha256": "831de51772dee398a5184936a12317a4d022e1d99a931ac5c858a14664893f5b"
     },
     "chaplin/post-mixed": {
         "images": [
@@ -393,8 +393,8 @@
         "paragraphs": 5,
         "links": 3,
         "headings": 1,
-        "words": 96,
-        "text_sha256": "08dd99e26e757d3505f600aadd77d0bda4eb68db30773bb5a1740330d1242608"
+        "words": 32,
+        "text_sha256": "954e37e21583704cfd33381ae46e29ed37ddf6ebc4c3a1aefdf2f388f3ee0ae9"
     },
     "full-monty/archive": {
         "images": [
@@ -408,8 +408,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 0,
-        "words": 17,
-        "text_sha256": "bc7e8f7af15b0e1b688a8ace68a8aba6c51974a0467012587cdf233cb65d42e8"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "full-monty/landing": {
         "images": [
@@ -423,8 +423,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 0,
-        "words": 17,
-        "text_sha256": "bc7e8f7af15b0e1b688a8ace68a8aba6c51974a0467012587cdf233cb65d42e8"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "full-monty/not_found": {
         "images": [],
@@ -435,8 +435,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 0,
-        "words": 17,
-        "text_sha256": "bc7e8f7af15b0e1b688a8ace68a8aba6c51974a0467012587cdf233cb65d42e8"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "full-monty/page": {
         "images": [
@@ -449,8 +449,8 @@
         "paragraphs": 2,
         "links": 0,
         "headings": 1,
-        "words": 19,
-        "text_sha256": "3b39a85c3aebebc08e61521f7ba43e229d8ff94a3c2e65d54183dbe1ca70f2f3"
+        "words": 4,
+        "text_sha256": "66c5390b2270473bd4e56210ef600f0be806bf049bfdd62adf6fbe5cc898f907"
     },
     "full-monty/photo": {
         "images": [
@@ -463,8 +463,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 27,
-        "text_sha256": "a8d01605ab76a8d08fa6001e39da216abb55edc24736c3f68945619971ccd691"
+        "words": 12,
+        "text_sha256": "2e29e66461844422a923b790f1845a783d9213d3b3df711d9e3e3904cded29ed"
     },
     "full-monty/post": {
         "images": [],
@@ -475,8 +475,8 @@
         "paragraphs": 3,
         "links": 0,
         "headings": 1,
-        "words": 26,
-        "text_sha256": "d8b1ff8bb61b93db6a6d923cbe2533c129c18eff444f2ed58aa6fdf82265221f"
+        "words": 11,
+        "text_sha256": "59d2dd071df7bf9f4d729ad159c82f590f1605d89d2772f88786293e1991552d"
     },
     "full-monty/post-mixed": {
         "images": [
@@ -489,8 +489,8 @@
         "paragraphs": 5,
         "links": 0,
         "headings": 1,
-        "words": 45,
-        "text_sha256": "fc887fe7138c9cc5a37da4fe407b090711549f9218e11c0c0ec2b2ab5044ff11"
+        "words": 30,
+        "text_sha256": "05a4296d44ff62b42c6fe583cef57e1b62bdf35ae45559f4d89bd02cb3d3b720"
     },
     "galleria/archive": {
         "images": [
@@ -504,8 +504,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 0,
-        "words": 154,
-        "text_sha256": "9214afd6a9b2546b616d10a29cd333f46cfd848318b5034b56845e9343d8f4f5"
+        "words": 3,
+        "text_sha256": "272a90989f9a7ec41dbae4e70d6e741a69f9c7af4b3e78e83cf4d1b25bc15399"
     },
     "galleria/landing": {
         "images": [],
@@ -516,8 +516,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 0,
-        "words": 153,
-        "text_sha256": "223066625264dd322cf91ad7c5fc4662685e220403358baa18f8aa1d2727f737"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "galleria/not_found": {
         "images": [],
@@ -528,8 +528,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 1,
-        "words": 155,
-        "text_sha256": "9684a62c7808c929186b8cd7fc02517a7362e4df181a0ac1a17c2e7baf876615"
+        "words": 4,
+        "text_sha256": "154e91dcd4fe45969e7b17b24f5387ef3c4bc79e4ffc84b8628d6dd217ec6fd2"
     },
     "galleria/page": {
         "images": [
@@ -542,8 +542,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 156,
-        "text_sha256": "0dfbf52fc94c2a37f18ee1a53fa7a60581f38e046229c05c18ed8f66bcce2ae8"
+        "words": 5,
+        "text_sha256": "88cf91fafb37c7daa60147b95af17738497aac31f1d3f54159d06faeca81b734"
     },
     "galleria/photo": {
         "images": [
@@ -556,8 +556,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 172,
-        "text_sha256": "2505b214c1913e5e0b5fd8653b22221ed9fe414efcdbee876ad7f766bacbf593"
+        "words": 21,
+        "text_sha256": "4d2a5ccbf73c035bb09891a5d27d360a734ce84c5da7847362b2e8638b39d4cc"
     },
     "galleria/post": {
         "images": [],
@@ -568,8 +568,8 @@
         "paragraphs": 3,
         "links": 3,
         "headings": 1,
-        "words": 167,
-        "text_sha256": "e3c23cb59ae3eb8af67c9b6b00c6320bf53d9718ad9f8f8854f3d727b6f44d8f"
+        "words": 16,
+        "text_sha256": "ce4b8d7a5ad5eb72172d955c116eede421bf0395070e2ba8ed0d3ae2354df42d"
     },
     "galleria/post-mixed": {
         "images": [
@@ -582,8 +582,8 @@
         "paragraphs": 5,
         "links": 3,
         "headings": 1,
-        "words": 187,
-        "text_sha256": "f1a1b3c67b6f1cd7ee8cc1fd87e3d6677b394190d81aecc035e15b18a243b45b"
+        "words": 36,
+        "text_sha256": "077b0cfed1ff72004c3c9aadd6a4a3fba04d540f6d52fb95af21ea902969eaca"
     },
     "game-on/archive": {
         "images": [
@@ -598,8 +598,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 178,
-        "text_sha256": "9700578700bcd3e5c15997e745ed338d8cc6adb56e2140ffce7bd3644f0a48af"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "game-on/landing": {
         "images": [
@@ -614,8 +614,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 178,
-        "text_sha256": "9700578700bcd3e5c15997e745ed338d8cc6adb56e2140ffce7bd3644f0a48af"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "game-on/not_found": {
         "images": [
@@ -628,8 +628,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 2,
-        "words": 180,
-        "text_sha256": "1f6f28c04c0beea48709c47f77543646dba491234865723cb2eedb17ac66fdbe"
+        "words": 6,
+        "text_sha256": "58da902d7836cd3605701e1c8d56bc1b1dfa7ed13c32db942203eab5da470adb"
     },
     "game-on/page": {
         "images": [
@@ -643,8 +643,8 @@
         "paragraphs": 3,
         "links": 1,
         "headings": 2,
-        "words": 181,
-        "text_sha256": "9913c399693550761a332abc934010c47b0fef1d9e6366e588bbf7e015b92224"
+        "words": 7,
+        "text_sha256": "a33b9d70b52ec3afc59049ec214ac7280dd401f6669f6b8b6c7c497f85b3fcc5"
     },
     "game-on/photo": {
         "images": [
@@ -657,8 +657,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 178,
-        "text_sha256": "9700578700bcd3e5c15997e745ed338d8cc6adb56e2140ffce7bd3644f0a48af"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "game-on/post": {
         "images": [
@@ -673,8 +673,8 @@
         "paragraphs": 4,
         "links": 1,
         "headings": 2,
-        "words": 185,
-        "text_sha256": "4c133246e67e2641bed8cae7fa7875f0bd1f53bcfc81c5c9748fa34bd042f02e"
+        "words": 11,
+        "text_sha256": "cc1d194a7da2cef13e19b813b2aacf40d1eae8421edd09c6ffbbcae341bccd85"
     },
     "game-on/post-mixed": {
         "images": [
@@ -690,8 +690,8 @@
         "paragraphs": 6,
         "links": 1,
         "headings": 2,
-        "words": 204,
-        "text_sha256": "13e4553014d26c942f286c67a9bbd2a42add4158eed4f2877c866bb262218d1f"
+        "words": 30,
+        "text_sha256": "bd329e285a2d4a1d88e36e009bc2e186f9d26ea9e3a105c994a435d9ae4e3f6a"
     },
     "glide/archive": {
         "images": [],
@@ -702,8 +702,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 2,
-        "words": 23,
-        "text_sha256": "2659efc9cc9e999715f04434ce9a54e4be14351ad96969b0ba0e4a7f91948709"
+        "words": 2,
+        "text_sha256": "a6fe4696930e642ed0ed1c290703547d0fa9b86f3646f5394dc4212c7a6ca7df"
     },
     "glide/landing": {
         "images": [
@@ -717,8 +717,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 0,
-        "words": 24,
-        "text_sha256": "27084e3076805b5bf22336fa1bbb855d3821a75a5c1b7ebe80b15df11ea521a8"
+        "words": 3,
+        "text_sha256": "645ed59d8c7f6cdd45d8ee04072a772d21e8b4da02df51eac58d626860892b29"
     },
     "glide/not_found": {
         "images": [],
@@ -729,8 +729,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 0,
-        "words": 23,
-        "text_sha256": "15d1525db79b7d4b3b7a3562f31c14f626e5f37d5d7e5556b099f70db0fc480b"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "glide/page": {
         "images": [
@@ -743,8 +743,8 @@
         "paragraphs": 2,
         "links": 0,
         "headings": 1,
-        "words": 25,
-        "text_sha256": "19666d7c63c7efb9c4649139bdcd7b2c2749c55979a7cf4764c0f16b1228c24c"
+        "words": 4,
+        "text_sha256": "66c5390b2270473bd4e56210ef600f0be806bf049bfdd62adf6fbe5cc898f907"
     },
     "glide/photo": {
         "images": [
@@ -757,8 +757,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 28,
-        "text_sha256": "9edf2734a0c03e809a8dad683d3e27c3c4393b3d954aa09845e2a1a13967c6e6"
+        "words": 7,
+        "text_sha256": "d333c4744f0594d8ecb99e20e08920616a434a326d869e5d027d1901fd77338c"
     },
     "glide/post": {
         "images": [],
@@ -769,8 +769,8 @@
         "paragraphs": 3,
         "links": 1,
         "headings": 1,
-        "words": 27,
-        "text_sha256": "138e0834bb5c36ab360b7921ca61444695e78239d0ac9b81aebbd7ecdc43161f"
+        "words": 6,
+        "text_sha256": "40beb472074e35d20f2809df9702c32f07e248c4fe16e9f4facafbb419f6fcbb"
     },
     "glide/post-mixed": {
         "images": [
@@ -783,8 +783,8 @@
         "paragraphs": 5,
         "links": 1,
         "headings": 1,
-        "words": 46,
-        "text_sha256": "8c4bffe3a16127e9b66db81fbaf8fbe43bf6085679710b2d63c0814bed3af0ea"
+        "words": 25,
+        "text_sha256": "ab2210f37778ef933664e49c69855f6c7b7f5293a80423c5f07793b32ea74cca"
     },
     "heuristic/archive": {
         "images": [
@@ -799,8 +799,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 45,
-        "text_sha256": "98cc925ce45f79ac7c90faa68b9aa7b93c676feca96a1c707153481c388667c0"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "heuristic/landing": {
         "images": [
@@ -815,8 +815,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 45,
-        "text_sha256": "98cc925ce45f79ac7c90faa68b9aa7b93c676feca96a1c707153481c388667c0"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "heuristic/not_found": {
         "images": [
@@ -829,8 +829,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 2,
-        "words": 47,
-        "text_sha256": "4a41b3285144d067070fc3282338656e6dff6589dadb7b45911f5638a54811a2"
+        "words": 6,
+        "text_sha256": "58da902d7836cd3605701e1c8d56bc1b1dfa7ed13c32db942203eab5da470adb"
     },
     "heuristic/page": {
         "images": [
@@ -844,8 +844,8 @@
         "paragraphs": 3,
         "links": 1,
         "headings": 2,
-        "words": 48,
-        "text_sha256": "9c6e7d770b65bc76cefeb7cf31a4e4dcbd3ff56f71d929a0277a190885d03dfd"
+        "words": 7,
+        "text_sha256": "a33b9d70b52ec3afc59049ec214ac7280dd401f6669f6b8b6c7c497f85b3fcc5"
     },
     "heuristic/photo": {
         "images": [
@@ -858,8 +858,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 45,
-        "text_sha256": "98cc925ce45f79ac7c90faa68b9aa7b93c676feca96a1c707153481c388667c0"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "heuristic/post": {
         "images": [
@@ -874,8 +874,8 @@
         "paragraphs": 4,
         "links": 1,
         "headings": 2,
-        "words": 50,
-        "text_sha256": "cc9911385599fd7e6901cc7f517b06d0ffd9f171b77966029d0cac6d7e4986e1"
+        "words": 9,
+        "text_sha256": "3e4169402777b89abdddd27a5d08ef8f941c0b063ff14d8b4c14c17d7cd0f7ec"
     },
     "heuristic/post-mixed": {
         "images": [
@@ -891,8 +891,8 @@
         "paragraphs": 6,
         "links": 1,
         "headings": 2,
-        "words": 69,
-        "text_sha256": "9a619bac340eb6135f621aaed6e602fa0b133a0aa8689af0dcdaa2aeba05099b"
+        "words": 28,
+        "text_sha256": "ce8f3a0b4ef76f019eccbecc228ff04335b26dddfa45f27fa44997c1181f32c4"
     },
     "hip-to-be-square/archive": {
         "images": [
@@ -906,8 +906,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 0,
-        "words": 181,
-        "text_sha256": "e8a9a01b23983ff24a384fa544e6ef414fd4f767c5bcc73d1a5d02b0f24d3f72"
+        "words": 3,
+        "text_sha256": "272a90989f9a7ec41dbae4e70d6e741a69f9c7af4b3e78e83cf4d1b25bc15399"
     },
     "hip-to-be-square/landing": {
         "images": [],
@@ -918,8 +918,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 0,
-        "words": 180,
-        "text_sha256": "fd1c0103114fab8227c6e73152b33cc741045abc65fed62b63b915afecc1e080"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "hip-to-be-square/not_found": {
         "images": [],
@@ -930,8 +930,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 1,
-        "words": 182,
-        "text_sha256": "1c195f2f5273c09f47a1091166dfece07fc65bbbe65438af263f04b9031b0b5a"
+        "words": 4,
+        "text_sha256": "154e91dcd4fe45969e7b17b24f5387ef3c4bc79e4ffc84b8628d6dd217ec6fd2"
     },
     "hip-to-be-square/page": {
         "images": [
@@ -944,8 +944,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 183,
-        "text_sha256": "5940bc9d2435db54fe21bb2930cd15ce62c2b39defd980e167e23a6031cd6247"
+        "words": 5,
+        "text_sha256": "88cf91fafb37c7daa60147b95af17738497aac31f1d3f54159d06faeca81b734"
     },
     "hip-to-be-square/photo": {
         "images": [
@@ -958,8 +958,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 199,
-        "text_sha256": "ac8a337b03a85ab1aa9a5a6fedb3d5c8caec9814fbe09f52c5053ac1cb027d68"
+        "words": 21,
+        "text_sha256": "4b0fb31e614bba2d9035a7975772b89ad5f0fca6ac71694cd47c219ce76ff204"
     },
     "hip-to-be-square/post": {
         "images": [],
@@ -970,8 +970,8 @@
         "paragraphs": 3,
         "links": 3,
         "headings": 1,
-        "words": 194,
-        "text_sha256": "d56aff4cbbb4d3d9065a1c5b5068b92ede7ecd11e66abb7d8dae596a80383a75"
+        "words": 16,
+        "text_sha256": "ca06a71e0b5f05db81f300eb6c148e36526c8bab8786a3c910f216384bede058"
     },
     "hip-to-be-square/post-mixed": {
         "images": [
@@ -984,8 +984,8 @@
         "paragraphs": 5,
         "links": 3,
         "headings": 1,
-        "words": 214,
-        "text_sha256": "59812acad267fc1847c07e315c93eddb01cf8fb73088811a6d99d960f8efae1d"
+        "words": 36,
+        "text_sha256": "5f826ed00f20c6c201f35e550fbe81d5ba5167ac39dbcf0f3690dfa8e052eb91"
     },
     "impact-printer/archive": {
         "images": [
@@ -999,8 +999,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 0,
-        "words": 193,
-        "text_sha256": "8630a48611d893e20da611be0808130e2f9b897605ab6214888d9e6d1e7c476e"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "impact-printer/landing": {
         "images": [
@@ -1014,8 +1014,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 0,
-        "words": 193,
-        "text_sha256": "8630a48611d893e20da611be0808130e2f9b897605ab6214888d9e6d1e7c476e"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "impact-printer/not_found": {
         "images": [],
@@ -1026,8 +1026,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 0,
-        "words": 193,
-        "text_sha256": "8630a48611d893e20da611be0808130e2f9b897605ab6214888d9e6d1e7c476e"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "impact-printer/page": {
         "images": [
@@ -1040,8 +1040,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 196,
-        "text_sha256": "78b6cd7840d4214fa8f9ca887c4deb45717d41b128f5e8143526020e7ccb7c84"
+        "words": 5,
+        "text_sha256": "88cf91fafb37c7daa60147b95af17738497aac31f1d3f54159d06faeca81b734"
     },
     "impact-printer/photo": {
         "images": [
@@ -1054,8 +1054,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 205,
-        "text_sha256": "807c904166095ebcf4eddf28f9331fdbb12bc01604bb3429b23fb605d58b729b"
+        "words": 14,
+        "text_sha256": "0d8f23af8867c377abc19075aaaf4bc1b059d90d759ddeae94e798d61ed695c1"
     },
     "impact-printer/post": {
         "images": [],
@@ -1066,8 +1066,8 @@
         "paragraphs": 3,
         "links": 3,
         "headings": 1,
-        "words": 204,
-        "text_sha256": "acc7356aab49505dbb392c9a7a6ece572744f439df611ce740e8b19503f735f1"
+        "words": 13,
+        "text_sha256": "37962203998bbe954bacc74ee26e023d189fc13df16462a9fed3b0480f0f4010"
     },
     "impact-printer/post-mixed": {
         "images": [
@@ -1080,8 +1080,8 @@
         "paragraphs": 5,
         "links": 3,
         "headings": 1,
-        "words": 223,
-        "text_sha256": "60691f65af2bc6ed314e22e426b71a17755d254d2319bb75e969b75df012eaaf"
+        "words": 32,
+        "text_sha256": "a845eb8b58ce5dbd73d30f9868ba1db8bcfe7a470ed5071f46270049c032079b"
     },
     "instant-camera/archive": {
         "images": [
@@ -1096,8 +1096,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 224,
-        "text_sha256": "e5e009853c49e020651f1d4e4ba21e2a243a7dfd393b11ecb2d73a8199013788"
+        "words": 5,
+        "text_sha256": "d4f30fa4acabd1eb4d2578f1f9234682bf92b8be58cab04ca98fdd4bc9af3e89"
     },
     "instant-camera/landing": {
         "images": [
@@ -1112,8 +1112,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 224,
-        "text_sha256": "e5e009853c49e020651f1d4e4ba21e2a243a7dfd393b11ecb2d73a8199013788"
+        "words": 5,
+        "text_sha256": "d4f30fa4acabd1eb4d2578f1f9234682bf92b8be58cab04ca98fdd4bc9af3e89"
     },
     "instant-camera/not_found": {
         "images": [
@@ -1126,8 +1126,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 2,
-        "words": 226,
-        "text_sha256": "3cdfc49d735b7096682b3b9a8e9044dfc1ed4b373cfdd629b630198c15071e38"
+        "words": 7,
+        "text_sha256": "987d1872049c82785668a0fd432b113074955ab7fb3af3235816e3c66a90fed7"
     },
     "instant-camera/page": {
         "images": [
@@ -1141,8 +1141,8 @@
         "paragraphs": 3,
         "links": 1,
         "headings": 2,
-        "words": 227,
-        "text_sha256": "4b2b2d16c036df4dbfab455a35e273bbdf1e6456d9b18407088cf8fa766800c9"
+        "words": 8,
+        "text_sha256": "584583b048a2abbfa0b99ac8ed5ed2e13946491dbf8b6dd487839dc653e6a817"
     },
     "instant-camera/photo": {
         "images": [
@@ -1155,8 +1155,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 224,
-        "text_sha256": "e5e009853c49e020651f1d4e4ba21e2a243a7dfd393b11ecb2d73a8199013788"
+        "words": 5,
+        "text_sha256": "d4f30fa4acabd1eb4d2578f1f9234682bf92b8be58cab04ca98fdd4bc9af3e89"
     },
     "instant-camera/post": {
         "images": [
@@ -1171,8 +1171,8 @@
         "paragraphs": 4,
         "links": 1,
         "headings": 2,
-        "words": 229,
-        "text_sha256": "80e66898d0ab725108a4b99f18674b574a537c21ecb136cec94bc47042084eb7"
+        "words": 10,
+        "text_sha256": "faf74ed581bd42b60e9475af1ee1125b4b5f07092998182c23f87d12ed674caa"
     },
     "instant-camera/post-mixed": {
         "images": [
@@ -1188,8 +1188,8 @@
         "paragraphs": 6,
         "links": 1,
         "headings": 2,
-        "words": 248,
-        "text_sha256": "9adeddc49eada812bd1fce4ce11064d316192d3217a66e76ae14a3519e4dc4e1"
+        "words": 29,
+        "text_sha256": "2a868a643615e2f1ba20e5d04d1b4109d38d55d5f51651d8beea285b24262a24"
     },
     "jive-turkey/archive": {
         "images": [
@@ -1204,8 +1204,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 181,
-        "text_sha256": "901931d96e6e1ef28808b9849e6999fed3b6678eec414ec7bbaaf08d98287002"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "jive-turkey/landing": {
         "images": [
@@ -1220,8 +1220,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 181,
-        "text_sha256": "901931d96e6e1ef28808b9849e6999fed3b6678eec414ec7bbaaf08d98287002"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "jive-turkey/not_found": {
         "images": [
@@ -1234,8 +1234,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 2,
-        "words": 183,
-        "text_sha256": "84757b23ad0457ce8ed62fa785ea7df005b9fecce72c6ba9e6454801f9a36d96"
+        "words": 6,
+        "text_sha256": "58da902d7836cd3605701e1c8d56bc1b1dfa7ed13c32db942203eab5da470adb"
     },
     "jive-turkey/page": {
         "images": [
@@ -1249,8 +1249,8 @@
         "paragraphs": 3,
         "links": 1,
         "headings": 2,
-        "words": 184,
-        "text_sha256": "e980135c8fe4355c53032bb54d6979edffa549971d815287fae9988bd513e47b"
+        "words": 7,
+        "text_sha256": "a33b9d70b52ec3afc59049ec214ac7280dd401f6669f6b8b6c7c497f85b3fcc5"
     },
     "jive-turkey/photo": {
         "images": [
@@ -1263,8 +1263,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 181,
-        "text_sha256": "901931d96e6e1ef28808b9849e6999fed3b6678eec414ec7bbaaf08d98287002"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "jive-turkey/post": {
         "images": [
@@ -1279,8 +1279,8 @@
         "paragraphs": 4,
         "links": 1,
         "headings": 2,
-        "words": 186,
-        "text_sha256": "489b6e0f7ef42f2c3c8be4520a54ee4aeae80054852efa3188aeca4b99aeaf09"
+        "words": 9,
+        "text_sha256": "3e4169402777b89abdddd27a5d08ef8f941c0b063ff14d8b4c14c17d7cd0f7ec"
     },
     "jive-turkey/post-mixed": {
         "images": [
@@ -1296,8 +1296,8 @@
         "paragraphs": 6,
         "links": 1,
         "headings": 2,
-        "words": 205,
-        "text_sha256": "3fc4aab743f5c64d5217aaa41be95ec7e3c9692cce361b6636e748dd0df44efb"
+        "words": 28,
+        "text_sha256": "ce8f3a0b4ef76f019eccbecc228ff04335b26dddfa45f27fa44997c1181f32c4"
     },
     "new-horizon/archive": {
         "images": [
@@ -1311,8 +1311,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 2,
-        "words": 159,
-        "text_sha256": "534992e62665a3771d601be3b0a6f38c9d3b38915ee01b5759d4c7543a908f9e"
+        "words": 3,
+        "text_sha256": "272a90989f9a7ec41dbae4e70d6e741a69f9c7af4b3e78e83cf4d1b25bc15399"
     },
     "new-horizon/landing": {
         "images": [
@@ -1326,8 +1326,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 2,
-        "words": 159,
-        "text_sha256": "534992e62665a3771d601be3b0a6f38c9d3b38915ee01b5759d4c7543a908f9e"
+        "words": 3,
+        "text_sha256": "272a90989f9a7ec41dbae4e70d6e741a69f9c7af4b3e78e83cf4d1b25bc15399"
     },
     "new-horizon/not_found": {
         "images": [],
@@ -1338,8 +1338,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 1,
-        "words": 160,
-        "text_sha256": "85579cc351bb1a3fb4978be74943e7bd4fc4d1b70412a82dc8fba8ff8a6de8a6"
+        "words": 4,
+        "text_sha256": "154e91dcd4fe45969e7b17b24f5387ef3c4bc79e4ffc84b8628d6dd217ec6fd2"
     },
     "new-horizon/page": {
         "images": [
@@ -1352,8 +1352,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 161,
-        "text_sha256": "305a0db8733ade11cc0210f05bdf5d6d7565e71485cf2fc84855eda980d8b821"
+        "words": 5,
+        "text_sha256": "88cf91fafb37c7daa60147b95af17738497aac31f1d3f54159d06faeca81b734"
     },
     "new-horizon/photo": {
         "images": [
@@ -1366,8 +1366,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 175,
-        "text_sha256": "56cae62f777d9fc642fc9a5759e9641e91c7a4473eae9f3287a8f7c3ca5b10bf"
+        "words": 19,
+        "text_sha256": "a58a30300f6da4fdd17480ad21acf5e87015d4c62c409435d55f059dc64912e7"
     },
     "new-horizon/post": {
         "images": [],
@@ -1378,8 +1378,8 @@
         "paragraphs": 3,
         "links": 3,
         "headings": 1,
-        "words": 171,
-        "text_sha256": "535772f46ce46b783bcf41c76eec8991a66c168ed3349657629607f6ed31b13f"
+        "words": 15,
+        "text_sha256": "444eb76772ee0235b53e4630155ca5c0bda71b1bfe03d111844bbe61934c4a23"
     },
     "new-horizon/post-mixed": {
         "images": [
@@ -1392,8 +1392,8 @@
         "paragraphs": 5,
         "links": 3,
         "headings": 1,
-        "words": 190,
-        "text_sha256": "f63deda59003a2dee64ba741d8fc71e832ea30ebd83d9019d0dab4b1edb7c424"
+        "words": 34,
+        "text_sha256": "8a560a8d6c9d3072ae304607a84893c3156d5ac8a15c99e52dc32b7839e09297"
     },
     "onyx/archive": {
         "images": [
@@ -1407,8 +1407,8 @@
         "paragraphs": 1,
         "links": 5,
         "headings": 1,
-        "words": 58,
-        "text_sha256": "032ba3aff986d284b0fa0c85efeed4e88638fb78f0bcef6aaa052418444f7070"
+        "words": 3,
+        "text_sha256": "272a90989f9a7ec41dbae4e70d6e741a69f9c7af4b3e78e83cf4d1b25bc15399"
     },
     "onyx/landing": {
         "images": [
@@ -1422,8 +1422,8 @@
         "paragraphs": 1,
         "links": 5,
         "headings": 1,
-        "words": 58,
-        "text_sha256": "032ba3aff986d284b0fa0c85efeed4e88638fb78f0bcef6aaa052418444f7070"
+        "words": 3,
+        "text_sha256": "272a90989f9a7ec41dbae4e70d6e741a69f9c7af4b3e78e83cf4d1b25bc15399"
     },
     "onyx/not_found": {
         "images": [],
@@ -1434,8 +1434,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 2,
-        "words": 59,
-        "text_sha256": "ec7fd3b294d8fa095c05733d6694a08c2c8a781b8e6b557c18d9847c8f2ca7a8"
+        "words": 4,
+        "text_sha256": "154e91dcd4fe45969e7b17b24f5387ef3c4bc79e4ffc84b8628d6dd217ec6fd2"
     },
     "onyx/page": {
         "images": [
@@ -1448,8 +1448,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 2,
-        "words": 60,
-        "text_sha256": "556bfc64e1e67e0bf330e717fe2a8b4bb4f27a6d72e722fd90d750a2480941b5"
+        "words": 5,
+        "text_sha256": "88cf91fafb37c7daa60147b95af17738497aac31f1d3f54159d06faeca81b734"
     },
     "onyx/photo": {
         "images": [
@@ -1462,8 +1462,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 2,
-        "words": 69,
-        "text_sha256": "e9c68ec2c85f44251e3b4901cb34de6126d8773f1637a24467b787831d7b4951"
+        "words": 14,
+        "text_sha256": "1a5599e699d7acfbda1ba47491b2ce01c5b4a18656587803dd8279d5960af71f"
     },
     "onyx/post": {
         "images": [],
@@ -1474,8 +1474,8 @@
         "paragraphs": 3,
         "links": 3,
         "headings": 2,
-        "words": 68,
-        "text_sha256": "9132ea4d864deedd2b4b9170d0a39354afdcc1f5b7a96819b0154456e09884af"
+        "words": 13,
+        "text_sha256": "c847337f69de3c9fbcdf16d8fdc3cd74ea75a4c0f8e77c7bd539e5e076276afa"
     },
     "onyx/post-mixed": {
         "images": [
@@ -1488,8 +1488,8 @@
         "paragraphs": 5,
         "links": 3,
         "headings": 2,
-        "words": 87,
-        "text_sha256": "bd53687d4a05c34e55ebbce5f09fc2bc8e742591889c3ad8df81ad609065b63d"
+        "words": 32,
+        "text_sha256": "8c3b470771b081f4562277635bd2030d01d872472086b760e0cf014a1919f752"
     },
     "parade/archive": {
         "images": [
@@ -1504,8 +1504,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 174,
-        "text_sha256": "b008d47b7ab7875bac749126836d4ccadcc6ab69617fade608cc735ca963b288"
+        "words": 3,
+        "text_sha256": "b5cb17386df3cd1c8d56f6075a6ee41588b642731f5508c8a678dcad589aa942"
     },
     "parade/landing": {
         "images": [
@@ -1520,8 +1520,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 174,
-        "text_sha256": "b008d47b7ab7875bac749126836d4ccadcc6ab69617fade608cc735ca963b288"
+        "words": 3,
+        "text_sha256": "b5cb17386df3cd1c8d56f6075a6ee41588b642731f5508c8a678dcad589aa942"
     },
     "parade/not_found": {
         "images": [
@@ -1534,8 +1534,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 2,
-        "words": 176,
-        "text_sha256": "fc13aee3a6deb0ab7367b743c6921798407a9ca7e2abc798c6fa3c36dfd525b9"
+        "words": 5,
+        "text_sha256": "a35abcad554e5e06189da07acfec6e39d2b485736562f66761d3cb3dbf4ebdc0"
     },
     "parade/page": {
         "images": [
@@ -1549,8 +1549,8 @@
         "paragraphs": 3,
         "links": 1,
         "headings": 2,
-        "words": 177,
-        "text_sha256": "3639ce79724a44d8df038fcb561110133f1054dd82c72b3d77396d17a98a0453"
+        "words": 6,
+        "text_sha256": "6fb9915c351d1c02052e7ba1f8c8262c195918758c7ca7c3fdfe761b2053b0de"
     },
     "parade/photo": {
         "images": [
@@ -1563,8 +1563,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 174,
-        "text_sha256": "b008d47b7ab7875bac749126836d4ccadcc6ab69617fade608cc735ca963b288"
+        "words": 3,
+        "text_sha256": "b5cb17386df3cd1c8d56f6075a6ee41588b642731f5508c8a678dcad589aa942"
     },
     "parade/post": {
         "images": [
@@ -1579,8 +1579,8 @@
         "paragraphs": 4,
         "links": 1,
         "headings": 2,
-        "words": 179,
-        "text_sha256": "a241d651c568bc94d626cdbafeb62f48a18163dbe2577d61edec09b06e739e7c"
+        "words": 8,
+        "text_sha256": "5681e51641ec291c078227ed26435a001301820e6b90c7637e44cfdc746a98ed"
     },
     "parade/post-mixed": {
         "images": [
@@ -1596,8 +1596,8 @@
         "paragraphs": 6,
         "links": 1,
         "headings": 2,
-        "words": 198,
-        "text_sha256": "912b268f602f24b4eabd0bd02db50d3f51d16fc85a40bace4b173e20808bd618"
+        "words": 27,
+        "text_sha256": "1d356f2693f5bf63e235a4b0252f2e7f91964c34b1151eb2cdf3798dc53c2795"
     },
     "photogram/archive": {
         "images": [
@@ -1611,8 +1611,8 @@
         "paragraphs": 0,
         "links": 5,
         "headings": 0,
-        "words": 43,
-        "text_sha256": "1eeb496cafaf1ba3ce9b194c9ac57cc14f2d625f4809e7e96997c707272f40f7"
+        "words": 3,
+        "text_sha256": "99b24cf695cf6537c3809d3299bb1d416d68daeef50a8b82672de1ca1b0d427e"
     },
     "photogram/landing": {
         "images": [
@@ -1626,8 +1626,8 @@
         "paragraphs": 0,
         "links": 5,
         "headings": 0,
-        "words": 43,
-        "text_sha256": "1eeb496cafaf1ba3ce9b194c9ac57cc14f2d625f4809e7e96997c707272f40f7"
+        "words": 3,
+        "text_sha256": "99b24cf695cf6537c3809d3299bb1d416d68daeef50a8b82672de1ca1b0d427e"
     },
     "photogram/not_found": {
         "images": [],
@@ -1638,8 +1638,8 @@
         "paragraphs": 0,
         "links": 3,
         "headings": 1,
-        "words": 43,
-        "text_sha256": "fd0672830be83b7a26c8daaeba6245f4ef7db6fe23b1bbe323e6a93731e473f3"
+        "words": 3,
+        "text_sha256": "c4bd4f64978651997c05a62f7d88ab9df09cf3c14d40898ea8617fa783fcfc17"
     },
     "photogram/page": {
         "images": [
@@ -1652,8 +1652,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 1,
-        "words": 44,
-        "text_sha256": "10465b3cafbd163a37de5a2f094da90c0088b78e195e3ffd67601133d721a23a"
+        "words": 4,
+        "text_sha256": "66c5390b2270473bd4e56210ef600f0be806bf049bfdd62adf6fbe5cc898f907"
     },
     "photogram/photo": {
         "images": [
@@ -1666,8 +1666,8 @@
         "paragraphs": 1,
         "links": 4,
         "headings": 0,
-        "words": 52,
-        "text_sha256": "c1ee2c1f0651d14138319c98f833338147807b5f05a4f534129b0d74de4c66d4"
+        "words": 12,
+        "text_sha256": "d4b8c6d999e6845a427877f17d37588284d7647e700d1cc18b480c300f1cd5c0"
     },
     "photogram/post": {
         "images": [],
@@ -1678,8 +1678,8 @@
         "paragraphs": 2,
         "links": 4,
         "headings": 0,
-        "words": 49,
-        "text_sha256": "43b853c46af8709c17593abbef68d01e8ade5a3effd9597f5c312adf9bd78b8b"
+        "words": 9,
+        "text_sha256": "a12f768e589b0cdeb88f6819e9bbb054842eebdde15d310e03f10c2d7d13141e"
     },
     "photogram/post-mixed": {
         "images": [
@@ -1692,8 +1692,8 @@
         "paragraphs": 4,
         "links": 4,
         "headings": 0,
-        "words": 68,
-        "text_sha256": "28d9834f6b562a35880d7e6b003c6468748975c9a98db14ac8971eb806c8ebcc"
+        "words": 28,
+        "text_sha256": "9cbaa1b2613056c25f1afb69177055438df6242493cf2b511b9015f15dae4974"
     },
     "rational-geo/archive": {
         "images": [
@@ -1707,8 +1707,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 0,
-        "words": 71,
-        "text_sha256": "c37db9ef6c97b3786b786297f136a0e78a8618e6d51fc67fc454e08b99538a7c"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "rational-geo/landing": {
         "images": [
@@ -1722,8 +1722,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 0,
-        "words": 71,
-        "text_sha256": "c37db9ef6c97b3786b786297f136a0e78a8618e6d51fc67fc454e08b99538a7c"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "rational-geo/not_found": {
         "images": [],
@@ -1734,8 +1734,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 0,
-        "words": 71,
-        "text_sha256": "c37db9ef6c97b3786b786297f136a0e78a8618e6d51fc67fc454e08b99538a7c"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "rational-geo/page": {
         "images": [
@@ -1748,8 +1748,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 74,
-        "text_sha256": "4c25d5a9dd13055829ed107d1208abe232871279af4ea6ebfda21343eae0d419"
+        "words": 5,
+        "text_sha256": "88cf91fafb37c7daa60147b95af17738497aac31f1d3f54159d06faeca81b734"
     },
     "rational-geo/photo": {
         "images": [
@@ -1762,8 +1762,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 86,
-        "text_sha256": "765bd31cfc4989028e101ee79d18d0d1297d297ea837c674e3e36a86907ca0b3"
+        "words": 17,
+        "text_sha256": "2eeb849dbbce9a75fc4c5fe167da7ed4915da25b189eb37bd016e542ea62c456"
     },
     "rational-geo/post": {
         "images": [],
@@ -1774,8 +1774,8 @@
         "paragraphs": 3,
         "links": 3,
         "headings": 1,
-        "words": 83,
-        "text_sha256": "4d35f9c6fe1693f8baaca98abea0d41011e30d590e34c8a0ae7fa203c61e74c8"
+        "words": 14,
+        "text_sha256": "92b93d3ecac29057beca0e789c4c28314493da71a47e26dd5931fb28de9c03f0"
     },
     "rational-geo/post-mixed": {
         "images": [
@@ -1788,8 +1788,8 @@
         "paragraphs": 5,
         "links": 3,
         "headings": 1,
-        "words": 102,
-        "text_sha256": "1da18ba706da7cd492e5068b28cd56023de4943aec85188b56befc72a89c7406"
+        "words": 33,
+        "text_sha256": "37fb322544a3fceb72726ae6a5eec4c2965e8b2e5ce89939c1e6e0d3dec3cbea"
     },
     "scroll/archive": {
         "images": [
@@ -1803,8 +1803,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 1,
-        "words": 217,
-        "text_sha256": "a92421e978b908124f4fe38eee988b9bc7930428b84091849c327c797743ff1f"
+        "words": 7,
+        "text_sha256": "cf8f693b9d72340d70165af9025467ff544e5d00e421bb24c1d679b50f7cdf08"
     },
     "scroll/landing": {
         "images": [
@@ -1818,8 +1818,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 1,
-        "words": 217,
-        "text_sha256": "a92421e978b908124f4fe38eee988b9bc7930428b84091849c327c797743ff1f"
+        "words": 7,
+        "text_sha256": "cf8f693b9d72340d70165af9025467ff544e5d00e421bb24c1d679b50f7cdf08"
     },
     "scroll/not_found": {
         "images": [],
@@ -1830,8 +1830,8 @@
         "paragraphs": 1,
         "links": 0,
         "headings": 1,
-        "words": 213,
-        "text_sha256": "ac3f7080bd2fa50296836bdac597745b262144449519f5ccbc91ee3d0ad29862"
+        "words": 3,
+        "text_sha256": "c4bd4f64978651997c05a62f7d88ab9df09cf3c14d40898ea8617fa783fcfc17"
     },
     "scroll/page": {
         "images": [
@@ -1844,8 +1844,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 214,
-        "text_sha256": "14dbda50cabca550e11c1e2ee6f2d6a0ecff38e6e258590b3196dae8f5324046"
+        "words": 4,
+        "text_sha256": "fc77e049396e0def24bd63b0f156e1193e3ce0be56c7f4f9855e67343fe36014"
     },
     "scroll/photo": {
         "images": [
@@ -1858,8 +1858,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 225,
-        "text_sha256": "630b97fdd02ba7a72bd0c9f2762b9e010a5c4c525d45257487ab93aaf2d76ce0"
+        "words": 15,
+        "text_sha256": "999dd717416f80ccacd16981f6ab7008fe2fd7f8522e36797c82433dc8a28e7e"
     },
     "scroll/post": {
         "images": [],
@@ -1870,8 +1870,8 @@
         "paragraphs": 3,
         "links": 3,
         "headings": 1,
-        "words": 224,
-        "text_sha256": "c4218ad4f0bde823546ce54657ec01d9983e7d34ac48ec60b4931d71ef1f47fd"
+        "words": 14,
+        "text_sha256": "8d904a7a8da62302e1bba693e1cd3cb47388a6a5afa7468157d97b97fedc4b90"
     },
     "scroll/post-mixed": {
         "images": [
@@ -1884,8 +1884,8 @@
         "paragraphs": 5,
         "links": 3,
         "headings": 1,
-        "words": 243,
-        "text_sha256": "f515112979319d413db41d50e9837f21380cb8469ce39cc6fe5dd951045234f2"
+        "words": 33,
+        "text_sha256": "58fcfa5f66b72c5d9f69be7fe393758552dddb27aadd0484f6549feabe3492f0"
     },
     "show-n-tell/archive": {
         "images": [
@@ -1899,8 +1899,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 0,
-        "words": 74,
-        "text_sha256": "cb8140ed4669e7fc5bd2d01f065da7bcc0bcea67f40dffcc13a81e8883def1ed"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "show-n-tell/landing": {
         "images": [
@@ -1916,8 +1916,8 @@
         "paragraphs": 5,
         "links": 3,
         "headings": 1,
-        "words": 76,
-        "text_sha256": "d7344ca91619c7f1f6ff5c4e171cd25c9216008b6a5f58fd91f624581690e73a"
+        "words": 4,
+        "text_sha256": "634e76211bd3542e119fc6877a6e100897278117f283344ac0fc74533150eaf2"
     },
     "show-n-tell/not_found": {
         "images": [],
@@ -1928,8 +1928,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 1,
-        "words": 76,
-        "text_sha256": "5bc5545d4cb1723c8329c38bb0df54804839f90042fb33b7e430e52f61167b4a"
+        "words": 4,
+        "text_sha256": "154e91dcd4fe45969e7b17b24f5387ef3c4bc79e4ffc84b8628d6dd217ec6fd2"
     },
     "show-n-tell/page": {
         "images": [
@@ -1942,8 +1942,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 77,
-        "text_sha256": "4892a21f7c896b1141895d8bae3dd014370fe44f01c2b81ee3b0b327b7750250"
+        "words": 5,
+        "text_sha256": "88cf91fafb37c7daa60147b95af17738497aac31f1d3f54159d06faeca81b734"
     },
     "show-n-tell/photo": {
         "images": [
@@ -1956,8 +1956,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 83,
-        "text_sha256": "d90d808eb8b2c695ef82ae438ff403bd2486c851050b787df0585738ae02748c"
+        "words": 11,
+        "text_sha256": "030d3877a8526affe4b3e6bcc949031ea565582e177be0488e251fa7c8983b82"
     },
     "show-n-tell/post": {
         "images": [],
@@ -1968,8 +1968,8 @@
         "paragraphs": 3,
         "links": 1,
         "headings": 1,
-        "words": 79,
-        "text_sha256": "8d369bf77dcc24086ffa7462d790eca2f00e0890cc895c2ef64c53c221906371"
+        "words": 7,
+        "text_sha256": "c3eee87d3c3c93156b62460b18e0524b3c5d7b441a617b3dd30c725cae3b3bac"
     },
     "show-n-tell/post-mixed": {
         "images": [
@@ -1982,8 +1982,8 @@
         "paragraphs": 5,
         "links": 1,
         "headings": 1,
-        "words": 98,
-        "text_sha256": "0a8e89e957818a7fe7a1b4ce874cd405884dff035dd5ca71733ad09e56e9199b"
+        "words": 26,
+        "text_sha256": "5370db5af2d38a73e6aff3486a230a6a134aa53fcab43db837f91949441670d9"
     },
     "slickr/archive": {
         "images": [
@@ -1997,8 +1997,8 @@
         "paragraphs": 2,
         "links": 5,
         "headings": 1,
-        "words": 37,
-        "text_sha256": "200597eb74bcdbcd91d4521640736c920cfd294223f9f4fdfe79fa5f01755509"
+        "words": 3,
+        "text_sha256": "122cef71d95e05a55f7ce91c0418cbd1faa3df9ee0c5e6ca10d26cc081739717"
     },
     "slickr/landing": {
         "images": [
@@ -2012,8 +2012,8 @@
         "paragraphs": 2,
         "links": 5,
         "headings": 1,
-        "words": 37,
-        "text_sha256": "200597eb74bcdbcd91d4521640736c920cfd294223f9f4fdfe79fa5f01755509"
+        "words": 3,
+        "text_sha256": "122cef71d95e05a55f7ce91c0418cbd1faa3df9ee0c5e6ca10d26cc081739717"
     },
     "slickr/not_found": {
         "images": [],
@@ -2024,8 +2024,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 2,
-        "words": 39,
-        "text_sha256": "951dc8fc44bf47b0325e3f37d7281bbb61e3530f64e9ce76628bea9db3b41017"
+        "words": 5,
+        "text_sha256": "ac0f107af3b6344f1ed3b00a7dc9492372d7fc5f77bf066b3a4f3478e30b6ba7"
     },
     "slickr/page": {
         "images": [
@@ -2038,8 +2038,8 @@
         "paragraphs": 3,
         "links": 3,
         "headings": 2,
-        "words": 40,
-        "text_sha256": "b80488fd3a2fd63941a9a7a385d90eb584637c30764f5c7b51cd1aba4d97941e"
+        "words": 6,
+        "text_sha256": "ca71d34d3e40be798fb4712a5315ea6ce67435ccd764ca7f2df06f418d875ed0"
     },
     "slickr/photo": {
         "images": [
@@ -2052,8 +2052,8 @@
         "paragraphs": 3,
         "links": 5,
         "headings": 2,
-        "words": 49,
-        "text_sha256": "154db318349a077d66105c36c8e6efe5d8dcaa78a29d68731d8f6d5ac7bd5aff"
+        "words": 15,
+        "text_sha256": "8859a030457f9346a47875bff0b85d47c125eda4d350827c3ff5346ed9610149"
     },
     "slickr/post": {
         "images": [],
@@ -2064,8 +2064,8 @@
         "paragraphs": 4,
         "links": 5,
         "headings": 2,
-        "words": 48,
-        "text_sha256": "4dde3a811af8f30bf627f90e2ea9024e052fa5d62091087dfb06c388549af000"
+        "words": 14,
+        "text_sha256": "0f3030c1d4513100330c791da70cec5397f8cc27f32b5bf52fc1c2c66a0ab438"
     },
     "slickr/post-mixed": {
         "images": [
@@ -2078,8 +2078,8 @@
         "paragraphs": 6,
         "links": 5,
         "headings": 2,
-        "words": 67,
-        "text_sha256": "5a18365eec643eddedc5f2f4bf64d160b182fbf496a9637fd6c854369ac055b1"
+        "words": 33,
+        "text_sha256": "292ebd197129e064aea93e57c20233832306da6533b9ce54aba28809ca13fb9e"
     },
     "sliders/archive": {
         "images": [
@@ -2094,8 +2094,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 156,
-        "text_sha256": "798a19339adcd0a8a45bf45e4b70a7c6ec9ae68f5120eaa6119e3dc0bb55a3b2"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "sliders/landing": {
         "images": [
@@ -2110,8 +2110,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 156,
-        "text_sha256": "798a19339adcd0a8a45bf45e4b70a7c6ec9ae68f5120eaa6119e3dc0bb55a3b2"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "sliders/not_found": {
         "images": [
@@ -2124,8 +2124,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 2,
-        "words": 158,
-        "text_sha256": "6573a7a5539f4f39a6fbb833fc6c961966aeb88dd9c1db943afacde02c3ac9a5"
+        "words": 6,
+        "text_sha256": "58da902d7836cd3605701e1c8d56bc1b1dfa7ed13c32db942203eab5da470adb"
     },
     "sliders/page": {
         "images": [
@@ -2139,8 +2139,8 @@
         "paragraphs": 3,
         "links": 1,
         "headings": 2,
-        "words": 159,
-        "text_sha256": "098202190b1b758efda00695577bece8d01984a1b07ce72ff16a0e1cf7c42cf4"
+        "words": 7,
+        "text_sha256": "a33b9d70b52ec3afc59049ec214ac7280dd401f6669f6b8b6c7c497f85b3fcc5"
     },
     "sliders/photo": {
         "images": [
@@ -2153,8 +2153,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 156,
-        "text_sha256": "798a19339adcd0a8a45bf45e4b70a7c6ec9ae68f5120eaa6119e3dc0bb55a3b2"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "sliders/post": {
         "images": [
@@ -2169,8 +2169,8 @@
         "paragraphs": 4,
         "links": 1,
         "headings": 2,
-        "words": 161,
-        "text_sha256": "73f9e123c82e3d28680866391e9ab220a12b56c25ca92c2d6701386ceb58df5a"
+        "words": 9,
+        "text_sha256": "3e4169402777b89abdddd27a5d08ef8f941c0b063ff14d8b4c14c17d7cd0f7ec"
     },
     "sliders/post-mixed": {
         "images": [
@@ -2186,8 +2186,8 @@
         "paragraphs": 6,
         "links": 1,
         "headings": 2,
-        "words": 180,
-        "text_sha256": "53ac86b12a74c15d4bb724d95655cd42aa7cc53fb70d3957a7d3f8821d16eb61"
+        "words": 28,
+        "text_sha256": "ce8f3a0b4ef76f019eccbecc228ff04335b26dddfa45f27fa44997c1181f32c4"
     },
     "sudden-impact/archive": {
         "images": [
@@ -2202,8 +2202,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 146,
-        "text_sha256": "14fe4c3ba0c372ecb3f32eb096026ff30068586b5a360efe3f7edd6da926afb7"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "sudden-impact/landing": {
         "images": [
@@ -2218,8 +2218,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 146,
-        "text_sha256": "14fe4c3ba0c372ecb3f32eb096026ff30068586b5a360efe3f7edd6da926afb7"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "sudden-impact/not_found": {
         "images": [
@@ -2232,8 +2232,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 2,
-        "words": 148,
-        "text_sha256": "afd0e5ff04227bc1d0ad5a616ef601fc37af5bafdd9e45475bc886e1cb4662c9"
+        "words": 6,
+        "text_sha256": "58da902d7836cd3605701e1c8d56bc1b1dfa7ed13c32db942203eab5da470adb"
     },
     "sudden-impact/page": {
         "images": [
@@ -2247,8 +2247,8 @@
         "paragraphs": 3,
         "links": 1,
         "headings": 2,
-        "words": 149,
-        "text_sha256": "ce5ef22078d863273d61006e75a8da2b51508d1e667bac65e22f7dc10662272a"
+        "words": 7,
+        "text_sha256": "a33b9d70b52ec3afc59049ec214ac7280dd401f6669f6b8b6c7c497f85b3fcc5"
     },
     "sudden-impact/photo": {
         "images": [
@@ -2261,8 +2261,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 146,
-        "text_sha256": "14fe4c3ba0c372ecb3f32eb096026ff30068586b5a360efe3f7edd6da926afb7"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "sudden-impact/post": {
         "images": [
@@ -2277,8 +2277,8 @@
         "paragraphs": 4,
         "links": 1,
         "headings": 2,
-        "words": 151,
-        "text_sha256": "25699c393bb7f7dba16bf1db0a3aeea7fab553c5189ec95887b8cd7f4c8e8beb"
+        "words": 9,
+        "text_sha256": "3e4169402777b89abdddd27a5d08ef8f941c0b063ff14d8b4c14c17d7cd0f7ec"
     },
     "sudden-impact/post-mixed": {
         "images": [
@@ -2294,8 +2294,8 @@
         "paragraphs": 6,
         "links": 1,
         "headings": 2,
-        "words": 170,
-        "text_sha256": "5521eeff6d421048bd719563377ef6aeca6ddccfbaaf4328e42f33e0ab53c189"
+        "words": 28,
+        "text_sha256": "ce8f3a0b4ef76f019eccbecc228ff04335b26dddfa45f27fa44997c1181f32c4"
     },
     "the-grid/archive": {
         "images": [
@@ -2310,8 +2310,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 143,
-        "text_sha256": "61baf85ed22ff72eb15786b5d4c16560cc2deddeba9b7eab475525bbec249505"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "the-grid/landing": {
         "images": [
@@ -2326,8 +2326,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 143,
-        "text_sha256": "61baf85ed22ff72eb15786b5d4c16560cc2deddeba9b7eab475525bbec249505"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "the-grid/not_found": {
         "images": [
@@ -2340,8 +2340,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 2,
-        "words": 145,
-        "text_sha256": "49ed73e17ae94cab42a8ed6aa5caf0ef6b21573b37753c76545e3bcdc76d7d1a"
+        "words": 6,
+        "text_sha256": "58da902d7836cd3605701e1c8d56bc1b1dfa7ed13c32db942203eab5da470adb"
     },
     "the-grid/page": {
         "images": [
@@ -2355,8 +2355,8 @@
         "paragraphs": 3,
         "links": 1,
         "headings": 2,
-        "words": 146,
-        "text_sha256": "e1e8ef4c49408e5df0196ef78d6b17bf08d22f9b10cce36e1b25af0c6116ee34"
+        "words": 7,
+        "text_sha256": "a33b9d70b52ec3afc59049ec214ac7280dd401f6669f6b8b6c7c497f85b3fcc5"
     },
     "the-grid/photo": {
         "images": [
@@ -2369,8 +2369,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 143,
-        "text_sha256": "61baf85ed22ff72eb15786b5d4c16560cc2deddeba9b7eab475525bbec249505"
+        "words": 4,
+        "text_sha256": "b7558a681bba3fbe022b4f0bb3640b0013b892777f6a8c625d974e101d1bb719"
     },
     "the-grid/post": {
         "images": [
@@ -2385,8 +2385,8 @@
         "paragraphs": 4,
         "links": 1,
         "headings": 2,
-        "words": 148,
-        "text_sha256": "64003df24bb70de9fa76312def2d6f7d3891cf12cd9ad97b93d12e8ef1212ccd"
+        "words": 9,
+        "text_sha256": "3e4169402777b89abdddd27a5d08ef8f941c0b063ff14d8b4c14c17d7cd0f7ec"
     },
     "the-grid/post-mixed": {
         "images": [
@@ -2402,8 +2402,8 @@
         "paragraphs": 6,
         "links": 1,
         "headings": 2,
-        "words": 167,
-        "text_sha256": "442c808c1ba742ca9931286ab6c4bd506e15ccf2f23fbe94320181cbc30353aa"
+        "words": 28,
+        "text_sha256": "ce8f3a0b4ef76f019eccbecc228ff04335b26dddfa45f27fa44997c1181f32c4"
     },
     "true-grit/archive": {
         "images": [
@@ -2417,8 +2417,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 0,
-        "words": 220,
-        "text_sha256": "a2530bbc9e8ec790025ff628c073b1a4be2b29417ff1b393261038e431e203d9"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "true-grit/landing": {
         "images": [
@@ -2432,8 +2432,8 @@
         "paragraphs": 1,
         "links": 3,
         "headings": 2,
-        "words": 221,
-        "text_sha256": "9a0853988ce0db69f7eb38bcaecf5c32ad918a8920eadd6351ba63d1bb197cb8"
+        "words": 3,
+        "text_sha256": "272a90989f9a7ec41dbae4e70d6e741a69f9c7af4b3e78e83cf4d1b25bc15399"
     },
     "true-grit/not_found": {
         "images": [],
@@ -2444,8 +2444,8 @@
         "paragraphs": 1,
         "links": 1,
         "headings": 0,
-        "words": 220,
-        "text_sha256": "a2530bbc9e8ec790025ff628c073b1a4be2b29417ff1b393261038e431e203d9"
+        "words": 2,
+        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
     },
     "true-grit/page": {
         "images": [
@@ -2458,8 +2458,8 @@
         "paragraphs": 2,
         "links": 1,
         "headings": 1,
-        "words": 223,
-        "text_sha256": "c2e05c6c31ccf70aee9ad1f7319ae134b6bbeba95db7be93437ab088ff28d982"
+        "words": 5,
+        "text_sha256": "88cf91fafb37c7daa60147b95af17738497aac31f1d3f54159d06faeca81b734"
     },
     "true-grit/photo": {
         "images": [
@@ -2472,8 +2472,8 @@
         "paragraphs": 2,
         "links": 3,
         "headings": 1,
-        "words": 235,
-        "text_sha256": "74794bf5dba10855c1256202a9520409fc16fd93603c285b647a7985ad65c6a1"
+        "words": 17,
+        "text_sha256": "71c300fa93cc4b1157f0f3aca03679d781f1e04fd8e571ad2c89876a066d5a4a"
     },
     "true-grit/post": {
         "images": [],
@@ -2484,8 +2484,8 @@
         "paragraphs": 3,
         "links": 3,
         "headings": 1,
-        "words": 231,
-        "text_sha256": "6aa25099f9d5dafcae3cb08b2c27fda4d9469c20740787d15c80f4207c1d62e0"
+        "words": 13,
+        "text_sha256": "c847337f69de3c9fbcdf16d8fdc3cd74ea75a4c0f8e77c7bd539e5e076276afa"
     },
     "true-grit/post-mixed": {
         "images": [
@@ -2498,7 +2498,7 @@
         "paragraphs": 5,
         "links": 3,
         "headings": 1,
-        "words": 250,
-        "text_sha256": "37aab6a45ebdf41a0afd3b24a19a9a55ba848d18a8b774f41feee15a605f34d4"
+        "words": 32,
+        "text_sha256": "8c3b470771b081f4562277635bd2030d01d872472086b760e0cf014a1919f752"
     }
 }

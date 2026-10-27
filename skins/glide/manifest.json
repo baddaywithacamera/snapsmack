@@ -129,6 +129,22 @@
             "default": "#ffffff",
             "selector": ":root",
             "property": "--glide-ink"
+        },
+        "page_title_font_weight": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Photo Title Weight",
+            "default": "400",
+            "options": {
+                "300": "Light (300)",
+                "400": "Regular (400)",
+                "500": "Medium (500)",
+                "600": "Semi-Bold (600)",
+                "700": "Bold (700)",
+                "900": "Black (900)"
+            },
+            "selector": ".photo-title-footer",
+            "property": "font-weight"
         }
     },
     "security_policy": 2,

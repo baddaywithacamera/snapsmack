@@ -164,4 +164,19 @@ img[data-lightbox-src] {
    it scrolls within reach. */
 .ss-feed-sentinel { grid-column: 1 / -1; height: 1px; margin: 0; padding: 0; }
 
+/* Editor-only notice overlays the real skin instead of replacing its layout. */
+.snap-preview-notice {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 2147483647;
+    padding: 6px 10px;
+    border: 1px solid #666;
+    background: #111;
+    color: #fff;
+    font: 11px/1.4 sans-serif;
+    letter-spacing: 1px;
+    pointer-events: none;
+}
+
 /* ===== SNAPSMACK EOF ===== */
