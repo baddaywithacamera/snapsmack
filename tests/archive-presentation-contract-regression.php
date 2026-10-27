@@ -334,16 +334,38 @@ if ($listOnly) {
         printf("%-24s   sheets: %s\n", '', implode(', ', $r['sheets']) ?: '(none)');
         if ($r['evidence']) printf("%-24s   rule:   %s\n", '', $r['evidence'][0]);
     }
+    if ($walls) {
+        echo "\nLaid out by JavaScript — NOT checked by this contract:\n";
+        foreach ($walls as $skin => $container) printf("  %-22s %s\n", $skin, $container);
+        echo "  These need a browser. Nothing here says they are right.\n";
+    }
     if ($skipped) {
         echo "\nNot applicable:\n";
         foreach ($skipped as $skin => $why) printf("  %-22s %s\n", $skin, $why);
     }
-    printf("\n%d laid out, %d with no layout rule at all.\n", count($rows) - count($broken), count($broken));
+    printf("\n%d laid out, %d with no layout rule at all, %d left to a browser, %d not applicable. %d skins accounted for.\n",
+        count($rows) - count($broken), count($broken), count($walls), count($skipped),
+        count($rows) + count($walls) + count($skipped));
     exit(0);
 }
 
 if ($rows === []) {
     fwrite(STDERR, "FAIL: no skin was checked at all; the sweep is not finding the skins.\n");
+    exit(1);
+}
+
+// EVERY SKIN MUST BE ACCOUNTED FOR, BY NAME.
+//
+// IMPACT PRINTER, SCROLL, RATIONAL GEO and SLICKR were collected as
+// JavaScript walls and then never printed: the listing said "21 skins" and
+// silently dropped four, including the archive the owner points to as the one
+// that works. A report that quietly omits a skin is the same failure as the
+// suite that was green while three archives were broken.
+$accounted = count($rows) + count($walls) + count($skipped);
+$present   = count(glob($root . '/skins/*/layout.php') ?: []);
+if ($accounted !== $present) {
+    fwrite(STDERR, "FAIL: {$present} skins have a layout.php but only {$accounted} were accounted for.\n");
+    fwrite(STDERR, "A skin that appears in no bucket has been dropped silently. Find it before trusting this check.\n");
     exit(1);
 }
 
@@ -371,5 +393,7 @@ if ($broken !== []) {
 }
 
 printf("Archive presentation contract: %d skins, every archive container receives a layout rule.\n", count($rows));
+printf("  %d left to a browser (JavaScript walls): %s\n", count($walls),
+    $walls ? implode(', ', array_keys($walls)) : 'none');
 exit(0);
 // ===== SNAPSMACK EOF =====
