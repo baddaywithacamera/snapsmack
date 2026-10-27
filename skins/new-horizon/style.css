@@ -491,6 +491,35 @@ img.post-image {
     flex: 1 0 auto;
 }
 
+/* The strict template does not receive the legacy archive page stylesheet.
+   Keep the square/cropped archive geometry in this skin. */
+#browse-grid.square-grid,
+#browse-grid.cropped-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
+    gap: var(--grid-gap, 50px);
+    justify-content: center;
+}
+#browse-grid.square-grid .thumb-container,
+#browse-grid.cropped-grid .thumb-container {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+}
+@media (max-width: 600px) {
+    #browse-grid.square-grid,
+    #browse-grid.cropped-grid {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+        padding: 0 20px;
+        margin: 40px auto;
+    }
+    #browse-grid .thumb-container { min-width: 0; width: 100%; }
+}
+
 /* --- GRID B: Justified (Own ID — ZERO shared selectors with Grid A) --- */
 #justified-grid {
     display: block;
