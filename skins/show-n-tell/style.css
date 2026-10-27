@@ -317,6 +317,29 @@ a:hover { color: var(--text-primary); }
     padding: 0 30px;
 }
 
+/* The rule above gave the container width and spacing and no layout at all,
+   so every photograph stacked in one full-width column. The skin declares
+   square, cropped and masonry archive layouts and loads the justified engine,
+   but nothing laid the container out when that engine did not run -- and
+   assets/css/page-archive.css never arrives here, because it rides on two
+   JavaScript engines this skin does not declare. The grid is stated here, in
+   the skin's own stylesheet, so the archive has a layout on its own. */
+.snt-archive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.snt-archive-grid > a {
+    display: block;
+}
+
+.snt-archive-grid > a img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    CONTACT FORM
    ══════════════════════════════════════════════════════════════════════ */

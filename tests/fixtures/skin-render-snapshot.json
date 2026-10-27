@@ -692,7 +692,10 @@
         "text_sha256": "bd329e285a2d4a1d88e36e009bc2e186f9d26ea9e3a105c994a435d9ae4e3f6a"
     },
     "glide/archive": {
-        "images": [],
+        "images": [
+            "/media/first-whole-print.jpg",
+            "/media/second-whole-print.jpg"
+        ],
         "stylesheets": [
             "",
             "/skins/glide/style.css"
