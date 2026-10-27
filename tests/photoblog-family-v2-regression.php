@@ -44,7 +44,12 @@ foreach(['id="chap-film-bg"','id="rg-header"','class="chap-landing-link"','id="r
 $chaplinArchiveResponse=['status'=>200,'kind'=>'archive','items'=>[$landingItem],'navigation'=>[]];
 $chaplinArchiveView=snapsmack_build_skin_view($chaplinArchiveResponse,['site_name'=>'Example','language'=>'en','direction'=>'ltr','skin_style_url'=>'/skins/chaplin/style.css','skin_presentation'=>snapsmack_skin_presentation([],'chaplin')]);
 ob_start();$chaplinArchiveOk=snapsmack_render_strict_skin_template($chaplinDir,'layout.php',$chaplinArchiveView);$chaplinArchiveHtml=(string)ob_get_clean();
-foreach(['class="fsog-archive-grid archive-grid h-feed"','class="fsog-thumb"','id="justified-grid"','src="/media/thumb.jpg"'] as $hook){
+// The grid keeps its three original classes AND now carries the owner's
+// archive settings. CHAPLIN ignored THUMB STYLE, COLUMNS and THUMBNAIL SIZE
+// entirely -- it asked for img_thumb_square first and unconditionally, so
+// "cropped (natural aspect)" changed nothing on a live site. The settings
+// classes are asserted here so that cannot silently come undone again.
+foreach(['class="fsog-archive-grid archive-grid h-feed ','archive-layout-','archive-cols-','archive-thumbs-','class="fsog-thumb"','class="chap-img-frame"','id="justified-grid"','src="/media/thumb.jpg"'] as $hook){
  if(!$chaplinArchiveOk||!str_contains($chaplinArchiveHtml,$hook))throw new RuntimeException("chaplin archive lost {$hook}.");
 }
 
