@@ -73,7 +73,7 @@
         "thresholds": []
     },
     "archive-presentation-contract-regression.php": {
-        "assertions": 2,
+        "assertions": 3,
         "predicates": 8,
         "thresholds": [
             2
@@ -821,6 +821,11 @@
     "overlay-contract-regression.php": {
         "assertions": 14,
         "predicates": 14,
+        "thresholds": []
+    },
+    "packages-ship-code-not-pictures-regression.php": {
+        "assertions": 8,
+        "predicates": 7,
         "thresholds": []
     },
     "paragraph-image-boundary-regression.php": {

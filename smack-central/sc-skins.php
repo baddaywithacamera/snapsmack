@@ -639,6 +639,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                     if ($file->isFile()) {
                         $real_path = $file->getRealPath();
                         $relative  = str_replace('\\', '/', substr($real_path, strlen($skin_dir) + 1));
+                        // Gallery previews are served from this server, not shipped.
+                        // sc-release.php has stripped them from the CORE zip since
+                        // 0.7.313; the skin packager never did, so CHAPLIN 0.2.22 was
+                        // a 2,424 KB package carrying 2,375 KB of screenshot PNGs to
+                        // install 70 KB of stylesheet -- 98% of every skin package,
+                        // unzipped and hashed on every site, for files already copied
+                        // to releases/skins/screenshots/ a few lines above and already
+                        // named by the registry entry. smack-skin.php prefers a local
+                        // shot and falls back to the registry URL, so the gallery is
+                        // unchanged. Every byte a site does not unzip is a resource
+                        // limit it cannot hit.
+                        $ss_basename = strtolower(basename($relative));
+                        if (str_starts_with($ss_basename, 'screenshot') && str_ends_with($ss_basename, '.png')) {
+                            continue;
+                        }
                         $zip_path_in_zip = $slug . '/' . $relative;
                         $zip->addFile($real_path, $zip_path_in_zip);
                         $content = file_get_contents($real_path);
