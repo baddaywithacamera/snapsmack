@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.959D - 2026-10-27 - THE PAGE YOU CANNOT UNHIDE
+
+- **A static page could be invisible on the site while the Page Manager listed it looking perfectly normal, and no control anywhere could bring it back.** Measured read-only on curbappeal.photoblogs.fyi: the navigation ended at Blogroll with no pages appended, `/sitemap.xml` listed nine photographs and no pages, and `/about` returned 404 -- three independent readers agreeing the install had no active page. Four other installs show their About page through the same code, so the path works. Eight public readers of `snap_pages` gate on `is_active = 1`, and two holes put an install in that state and kept it there. `smack-pages.php` INSERTed without `is_active`, so a new page took whatever the column default happened to be on that table; and the Page Manager never read the column, let alone offered a control over it, so the only routes back were the SMACKPRESS API or a hand-written UPDATE. Creation now writes `is_active` explicitly. The stored-pages list marks a page that is not on the site. SHOW / HIDE sits with EDIT and DELETE, CSRF-verified like the delete beside it, toggling `1 - COALESCE(is_active, 0)` so a NULL goes to visible rather than to NULL. `tests/static-pages-visible-and-fixable-regression.php` fails five ways against the shipping file. OPAUDIT 027 section 11.
+
+- **SMACK CENTRAL can rename a forum board.** The Boards table could create, hide and reorder, never rename. The slug stays read-only: it is in every link to the board and in every client's cached board list.
+
 ## 0.7.958D - 2026-10-27 - PORTRAIT IS A SHAPE
 
 - **CHAPLIN's archive thumbnails had no shape until their photograph loaded, so portraits were not portraits.** The component emitted a bare `.fsog-thumb` with no aspect ratio. A box with no intrinsic height collapses, a collapsed box never comes near the viewport, and a lazy image that never nears the viewport never loads -- measured on acolourlesslife.ca at 0.7.957D: every thumb 219x33, every image naturalWidth 0, every file returning 200. Each thumbnail now carries its own ratio, clamped to 2:3..3:2 the way `core/50-shades-page-component.php` has always done it, plus a `fsog-thumb-portrait` / `-landscape` / `-square` class. Square mode pins 1:1.
