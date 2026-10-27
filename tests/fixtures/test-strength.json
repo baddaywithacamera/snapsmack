@@ -1478,6 +1478,11 @@
         "predicates": 0,
         "thresholds": []
     },
+    "static-page-body-class-regression.php": {
+        "assertions": 7,
+        "predicates": 6,
+        "thresholds": []
+    },
     "static-page-clean-url-regression.php": {
         "assertions": 0,
         "predicates": 3,
@@ -1563,6 +1568,14 @@
         "assertions": 1,
         "predicates": 0,
         "thresholds": []
+    },
+    "tilez-post-total-regression.php": {
+        "assertions": 1,
+        "predicates": 2,
+        "thresholds": [
+            2,
+            2
+        ]
     },
     "tilez-presentation-boundary-regression.php": {
         "assertions": 2,
