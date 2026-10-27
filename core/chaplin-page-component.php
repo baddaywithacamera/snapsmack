@@ -20,8 +20,17 @@ $archivePane = $archiveLayout === 'masonry' ? 'masonry' : 'thumbs';
 // honoured the owner's choice. CHAPLIN asked for img_thumb_square first and
 // unconditionally, so "cropped (natural aspect)" in ARCHIVE APPEARANCE changed
 // nothing and every archive stayed square whatever the owner picked.
-$archiveThumbStyle = in_array($archiveLayout, ['square', 'cropped'], true)
-    ? $archiveLayout
+// Read the RAW archive_layout, not the normalised one. DEFAULT LAYOUT writes
+// 'thumbs' or 'masonry'; THUMB STYLE writes 'square' or 'cropped', and the two
+// are independent settings. The normalisation above folds any unrecognised
+// value to 'square', so testing it here turned every 'thumbs' site into a
+// square one and shadowed THUMB STYLE exactly as before -- measured live on
+// acolourlesslife.ca at 0.7.956D, which emitted archive-layout-square while
+// the owner had chosen CROPPED (NATURAL ASPECT). Only the legacy 'square' and
+// 'cropped' values of archive_layout may stand in for the thumb style.
+$archiveLayoutRaw  = (string)($view['site']['archive_layout'] ?? '');
+$archiveThumbStyle = in_array($archiveLayoutRaw, ['square', 'cropped'], true)
+    ? $archiveLayoutRaw
     : (string)($view['site']['archive_thumb_style'] ?? 'cropped');
 if (!in_array($archiveThumbStyle, ['square', 'cropped'], true)) $archiveThumbStyle = 'cropped';
 ?>
