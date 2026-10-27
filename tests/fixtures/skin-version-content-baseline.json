@@ -7,8 +7,8 @@
             "files_sha256": "d1ffe0d1adf9cee1642be8f0f947dd7862994249a4913d6a11692bb0c8376f85"
         },
         "52-card-pickup": {
-            "version": "1.4.15",
-            "files_sha256": "ef597fb431f6113a29edc894955fce806e6c5f4a5afe8da20bb94dabe0632c16"
+            "version": "1.4.16",
+            "files_sha256": "a8fc7cb5f5606b384565a5e394279a5dab66bbeb7cd85b5b10d1ffac7a15972b"
         },
         "alfred": {
             "version": "1.0.9",
@@ -19,7 +19,7 @@
             "files_sha256": "7d7ea475823008d4cffcef0b170fb9ccdbd3c4a5498654d642b72fd82079f14f"
         },
         "chaplin": {
-            "version": "0.2.20",
+            "version": "0.2.21",
             "files_sha256": "8455aeb72aab135ae26cee48e3e79905cc2a685d04d25927d690a7441b1bfbae"
         },
         "full-monty": {
@@ -39,7 +39,7 @@
             "files_sha256": "77020c642df88aabceabad6248bdfe5fafcbffbd475214c05f43e6a15942648c"
         },
         "heuristic": {
-            "version": "0.1.15",
+            "version": "0.1.16",
             "files_sha256": "e684af8bcef8440b53d9270817605b7d9988b20a5f3cf673ca4492c38396eec1"
         },
         "hip-to-be-square": {
@@ -63,7 +63,7 @@
             "files_sha256": "a6143642c5c431d31802c71a60f65d1a26b994d40fb1fa0e15a3c52457b48fed"
         },
         "onyx": {
-            "version": "0.1.24",
+            "version": "0.1.25",
             "files_sha256": "00fce344d3718210863dbaa6c2feec394575b8589100c50b884402e5a41ee96a"
         },
         "parade": {

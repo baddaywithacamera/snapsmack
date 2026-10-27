@@ -99,8 +99,8 @@ const SNAPSMACK_SKIN_STATUSES = ['stable', 'beta', 'development'];
 
 /** Words found in the wild, each mapped to the legal word with the same behaviour. */
 const SNAPSMACK_SKIN_STATUS_ALIASES = [
-    'alpha'        => 'beta',
-    'experimental' => 'beta',
+    'alpha'        => 'development',
+    'experimental' => 'development',
     'dev'          => 'beta',
     'available'    => 'beta',
 ];
@@ -123,11 +123,18 @@ const SNAPSMACK_SKIN_STATUS_ALIASES = [
  * Each alias maps to the legal word that keeps the behaviour the manifest
  * already had, so canonicalising changes no skin's installability:
  *
- *   alpha / experimental / dev / available -> beta
- *     all four were installable and none was auto-ticked, which is exactly
- *     what "beta" does. "alpha" and "experimental" read as less finished than
- *     beta; if a skin is meant to be genuinely unshippable, write
- *     "development" deliberately -- that is the word that withholds it.
+ *   dev / available -> beta
+ *     both were installable and neither was auto-ticked, which is exactly
+ *     what "beta" does.
+ *
+ *   alpha / experimental -> development
+ *     the owner's ruling, 26 October 2026: he calls HEURISTIC experimental and
+ *     means it is not ready to go out. Both words say a skin is earlier than
+ *     beta, and the word for that is "development", which withholds it from
+ *     installation. This is the one alias that changes behaviour rather than
+ *     preserving it, and it does so in the safe direction: a skin someone
+ *     called alpha stops being offered until a person writes a word that
+ *     ships it.
  *
  * An unrecognised word is NOT guessed at. It becomes "development", so a typo
  * withholds a skin rather than shipping it.
