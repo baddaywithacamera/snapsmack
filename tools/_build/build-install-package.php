@@ -92,6 +92,8 @@ $exclude_dirs = [
     '_spec',
     'docs',
     'secaudits',
+    'opaudits',            // Same fault as tests/ above: missing from this list,
+                           // a 1,331 KB evidence screenshot shipped in 0.7.953D.
     'migrations',
     'skins',               // NEVER bundle skins. The installer fetches ONLY the
                            // mode-appropriate default(s) + PHOTOGRAM from snapsmack.ca
