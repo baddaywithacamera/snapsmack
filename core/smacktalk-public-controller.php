@@ -288,6 +288,7 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         'categories' => $categories, 'albums' => $albums,
         'categories_label' => implode(', ', $categories), 'albums_label' => implode(', ', $albums), 'author' => $author,
         'colophon' => $colophon, 'photo_count' => $photo_count,
+        'published_post_count' => $repository->publishedPostCount('longform'),
         'word_count' => count($words[0]), 'comments_enabled' => !empty($post['allow_comments']),
         'comments' => $repository->approvedComments(null, (int)$post['id']),
     ];

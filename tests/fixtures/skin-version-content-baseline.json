@@ -111,8 +111,8 @@
             "files_sha256": "4d81138a0ad4b046bbfe9080d3bce1893e87f18f38f0923317692cf4dc56c253"
         },
         "tilez": {
-            "version": "0.2.72",
-            "files_sha256": "4e0e524e50fc931ff289e9bd2c097e665a180865f1bf48eeb2f89536b24b579e"
+            "version": "0.2.73",
+            "files_sha256": "1727f8f20dd59199b230756f26712dd7c3036f3c898837cb055f14b2e944a31a"
         },
         "true-grit": {
             "version": "1.3.17",
