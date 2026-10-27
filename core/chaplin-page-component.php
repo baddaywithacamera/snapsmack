@@ -1,5 +1,23 @@
 <?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
-<!doctype html><html lang="<?php echo snap_escape_attr($view['site']['language']); ?>" dir="<?php echo snap_escape_attr($view['site']['direction']); ?>">
+<?php
+// CHAPLIN's archive emits BOTH #browse-grid and #justified-grid with the same
+// photographs. Its stylesheet already chooses between them -- style.css lines
+// 1562-1565 show exactly one through html[data-archive-layout] -- but nothing
+// ever set that attribute, so both were visible: the thumbnail grid, and then
+// the same archive again as an unstyled 27,824px wall of full-width images
+// underneath it. Measured by Codex on acolourlesslife.ca, 26 October 2026;
+// setting the attribute in an isolated browser took the duplicate wall to
+// height zero.
+//
+// Copied from core/50-shades-page-component.php:4-7, which has always done
+// this and whose archive is correct. 'croppedwithcalendar' is in the list
+// because it is a thumbnail layout; only masonry selects the wall.
+$archiveLayout = in_array(($view['site']['archive_layout'] ?? ''), ['square', 'cropped', 'masonry', 'croppedwithcalendar'], true)
+    ? (string)$view['site']['archive_layout']
+    : 'square';
+$archivePane = $archiveLayout === 'masonry' ? 'masonry' : 'thumbs';
+?>
+<!doctype html><html lang="<?php echo snap_escape_attr($view['site']['language']); ?>" dir="<?php echo snap_escape_attr($view['site']['direction']); ?>" data-archive-layout="<?php echo snap_escape_attr($archivePane); ?>">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?php echo snap_escape_html($view['response']['page_title'] ?? $view['site']['site_name']); ?></title><link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['base_style_url'] ?? ''); ?>"><link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_style_url']); ?>"><?php echo snap_render_html($view['site']['skin_custom_style'] ?? ''); ?><?php echo snap_render_html($view['site']['skin_presentation']['style'] ?? ''); ?></head>
 <?php // static-transmission is what CHAPLIN's own stylesheet gates its static
       // pages on -- ten rules, including the three written for #photobox.page-hero
