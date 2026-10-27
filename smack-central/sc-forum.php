@@ -173,6 +173,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     : 'Could not create board.';
             }
         }
+    } elseif ($action === 'rename_category' && !empty($_POST['id'])) {
+        // A board could be created and hidden but never renamed, so the only
+        // way to change "Bug Reports" to something else was to edit the row by
+        // hand in the database. The SLUG is deliberately NOT editable here:
+        // it is in every link to the board and in every client's cached list,
+        // and renaming a board is not a reason to break those.
+        $name = trim($_POST['cat_name']        ?? '');
+        $desc = trim($_POST['cat_description'] ?? '');
+        if ($name === '' || mb_strlen($name) > 100) {
+            $flash = 'Board name is required (1–100 characters).';
+        } elseif (mb_strlen($desc) > 255) {
+            $flash = 'Board description must be 255 characters or fewer.';
+        } else {
+            $db->prepare("UPDATE ss_forum_categories SET name = ?, description = ? WHERE id = ?")
+               ->execute([$name, $desc, (int)$_POST['id']]);
+            $flash = 'Board renamed: ' . $name;
+        }
     } elseif ($action === 'toggle_category' && !empty($_POST['id'])) {
         $db->prepare("UPDATE ss_forum_categories SET is_active = 1 - is_active WHERE id = ?")->execute([(int)$_POST['id']]);
         $flash = 'Board visibility toggled.';
@@ -1194,9 +1211,17 @@ $installs = $db->query("
       <?php foreach ($categories as $row): ?>
         <tr class="<?php echo !$row['is_active'] ? 'sc-row--muted' : ''; ?>">
           <td class="sc-dim"><?php echo (int)$row['sort_order']; ?></td>
-          <td><?php echo htmlspecialchars($row['name']); ?></td>
+          <td>
+            <input class="sc-input" type="text" form="sc-cat-<?php echo (int)$row['id']; ?>"
+                   name="cat_name" maxlength="100" required
+                   value="<?php echo htmlspecialchars($row['name']); ?>">
+          </td>
           <td class="sc-mono"><?php echo htmlspecialchars($row['slug']); ?></td>
-          <td class="sc-dim"><?php echo htmlspecialchars($row['description']); ?></td>
+          <td>
+            <input class="sc-input" type="text" form="sc-cat-<?php echo (int)$row['id']; ?>"
+                   name="cat_description" maxlength="255"
+                   value="<?php echo htmlspecialchars($row['description']); ?>">
+          </td>
           <td><?php echo (int)$row['thread_count']; ?></td>
           <td><?php echo (int)$row['reply_count']; ?></td>
           <td>
@@ -1205,13 +1230,20 @@ $installs = $db->query("
                 : '<span class="sc-badge">Hidden</span>'; ?>
           </td>
           <td>
-            <form method="post">
-              <input type="hidden" name="id" value="<?php echo (int)$row['id']; ?>">
-              <input type="hidden" name="action" value="toggle_category">
-              <button class="sc-btn sc-btn--sm">
-                <?php echo $row['is_active'] ? 'Hide' : 'Show'; ?>
-              </button>
-            </form>
+            <div class="sc-btn-row--tight">
+              <form method="post" id="sc-cat-<?php echo (int)$row['id']; ?>">
+                <input type="hidden" name="id" value="<?php echo (int)$row['id']; ?>">
+                <input type="hidden" name="action" value="rename_category">
+                <button class="sc-btn sc-btn--sm">Save</button>
+              </form>
+              <form method="post">
+                <input type="hidden" name="id" value="<?php echo (int)$row['id']; ?>">
+                <input type="hidden" name="action" value="toggle_category">
+                <button class="sc-btn sc-btn--sm">
+                  <?php echo $row['is_active'] ? 'Hide' : 'Show'; ?>
+                </button>
+              </form>
+            </div>
           </td>
         </tr>
       <?php endforeach; ?>
