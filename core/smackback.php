@@ -1006,12 +1006,12 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
         // via the Skin Packager and legitimately change between core updates. This
         // function upserts the core files (and skips skins/ above) but it never
         // DELETED skin rows that an OLDER version had baselined — so those rows
-        // survived every single update and false-breached on the next scan. THAT is
-        // the recurring fleet lockout. Purge them so every update leaves a clean,
-        // skin-free core manifest. (init_from_disk already prunes; this aligns the
-        // update path.)
+        // survived every single update and false-breached on the next scan.
+        // Purge only legacy CORE-owned rows. Signed skin installs own rows with
+        // skin_id set; deleting those destroys their provenance and makes Skin
+        // Admin reject subsequent settings saves even though no skin changed.
         if ($skin_id === null) {
-            $pdo->exec("DELETE FROM snap_file_manifest WHERE file_path LIKE 'skins/%'");
+            $pdo->exec("DELETE FROM snap_file_manifest WHERE file_path LIKE 'skins/%' AND skin_id IS NULL");
         }
 
         // Same for never-trust dev dirs: rows a pre-055 baseline laundered in
