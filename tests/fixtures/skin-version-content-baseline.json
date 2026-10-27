@@ -19,8 +19,8 @@
             "files_sha256": "a813f71f1ef9d7240fb831b8f6372b59520cef50214aa0f61ac6f9e33533cb32"
         },
         "chaplin": {
-            "version": "0.2.25",
-            "files_sha256": "df8c9e0ba213c130e8721e14e4f48b22201a161d6e581e320d744b0aefb8c5c7"
+            "version": "0.2.26",
+            "files_sha256": "7acb82fb381eea538a280400bd7c4f0bbd67a3885a27940c02314ad996d8711d"
         },
         "full-monty": {
             "version": "0.1.10",
