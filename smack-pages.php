@@ -115,7 +115,16 @@ if (isset($_POST['save_page'])) {
                 $stmt = $pdo->prepare("UPDATE snap_pages SET title = ?, slug = ?, content = ?, image_asset = ?, image_size = ?, image_align = ?, image_shadow = ? WHERE id = ?");
                 $stmt->execute([$title, $slug, $content, $asset, $image_size, $image_align, $image_shadow, $id]);
             } else {
-                $stmt = $pdo->prepare("INSERT INTO snap_pages (title, slug, content, image_asset, image_size, image_align, image_shadow) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                // is_active is written EXPLICITLY. It used to be left out so a
+                // new page took the column default, and the canonical schema
+                // defaults it to 1 — but an install whose snap_pages predates
+                // that default, or was built by some other hand, gets whatever
+                // ITS column says. A page created there is invisible: no nav
+                // link, nothing in the sitemap, 404 on its own URL, while the
+                // Page Manager lists it looking perfectly normal. A page the
+                // owner just created is a page they want visible, so say so
+                // rather than inheriting an answer from the table.
+                $stmt = $pdo->prepare("INSERT INTO snap_pages (title, slug, content, image_asset, image_size, image_align, image_shadow, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
                 $stmt->execute([$title, $slug, $content, $asset, $image_size, $image_align, $image_shadow]);
             }
             $msg = "Static transmission synchronized. HTML hidden in interface.";
@@ -123,6 +132,22 @@ if (isset($_POST['save_page'])) {
             $msg = "That page could not be saved — the slug may already be in use. Nothing was changed.";
         }
     }
+}
+
+// --- VISIBILITY HANDLER ---
+// Every public reader of snap_pages is gated on is_active = 1: the nav in
+// core/header.php and core/skin-view-model.php, the strict controller through
+// core/public-repository.php, sitemap.php, the consent banner's privacy-page
+// lookup. Nothing in this admin could SEE that column, let alone change it, so
+// a page sitting at 0 was listed here as if it were fine and 404'd on the site
+// with no control anywhere to bring it back. The only ways out were SMACKPRESS
+// or a hand-written UPDATE.
+if (isset($_GET['toggle'])) {
+    csrf_verify();
+    $pdo->prepare("UPDATE snap_pages SET is_active = 1 - COALESCE(is_active, 0) WHERE id = ?")
+        ->execute([(int)$_GET['toggle']]);
+    header("Location: smack-pages.php");
+    exit;
 }
 
 // --- DELETION HANDLER ---
@@ -279,17 +304,21 @@ include 'core/sidebar.php';
 
     <div class="box">
         <h3>STORED PAGES</h3>
-        <?php foreach ($pages as $p): ?>
+        <?php foreach ($pages as $p): $p_live = (int)($p['is_active'] ?? 0) === 1; ?>
             <div class="recent-item">
                 <div class="item-text">
                     <div class="signal-sender">
                         <?php echo htmlspecialchars($p['title']); ?>
                         <span class="dim text-sm ml-10">/<?php echo htmlspecialchars($p['slug']); ?></span>
+                        <?php if (!$p_live): ?>
+                            <span class="dim text-sm ml-10">HIDDEN — NOT ON THE SITE</span>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <div class="item-actions">
                     <a href="<?php echo BASE_URL . 'page.php?slug=' . urlencode($p['slug']); ?>" class="action-view" target="_blank" rel="noopener">VIEW</a>
                     <a href="?edit=<?php echo $p['id']; ?>" class="action-edit">EDIT</a>
+                    <a href="?toggle=<?php echo $p['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-edit"><?php echo $p_live ? 'HIDE' : 'SHOW'; ?></a>
                     <a href="?delete=<?php echo $p['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete" onclick="return confirm('Purge this transmission?')">DELETE</a>
                 </div>
             </div>
