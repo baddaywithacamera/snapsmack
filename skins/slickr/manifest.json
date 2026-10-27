@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "SLICKR",
-    "version": "1.0.49",
+    "version": "1.0.50",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "Flickr, the way it was. Justified masonry archive, classic solo view with EXIF sidebar, albums directory. Built for migrated Flickr archives — includes an optional Flickr provenance badge on imported images.",
@@ -209,6 +209,22 @@
             "default": "#ffffff",
             "selector": "#system-footer .footer-link",
             "property": "color"
+        },
+        "page_title_font_weight": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Photo Title Weight",
+            "default": "400",
+            "options": {
+                "300": "Light (300)",
+                "400": "Regular (400)",
+                "500": "Medium (500)",
+                "600": "Semi-Bold (600)",
+                "700": "Bold (700)",
+                "900": "Black (900)"
+            },
+            "selector": ".sl-photo-title",
+            "property": "font-weight"
         }
     },
     "security_policy": 2,

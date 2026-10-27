@@ -4,6 +4,16 @@
         "predicates": 11,
         "thresholds": []
     },
+    "admin-content-preview-regression.php": {
+        "assertions": 7,
+        "predicates": 7,
+        "thresholds": [
+            5,
+            5,
+            5,
+            5
+        ]
+    },
     "agreed-rules-gate.php": {
         "assertions": 12,
         "predicates": 8,
@@ -1252,7 +1262,7 @@
     },
     "skin-render-snapshot-regression.php": {
         "assertions": 7,
-        "predicates": 7,
+        "predicates": 10,
         "thresholds": [
             2
         ]

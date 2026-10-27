@@ -1,4 +1,11 @@
 """GET YOUR SHIT SORTED — native Qt, local-first photo organizer."""
+# Headless automation must run before the desktop event loop or log capture.
+import os as _cli_os, sys as _cli_sys
+if "--cli" in _cli_sys.argv:
+    _cli_sys.path.insert(0, _cli_os.path.abspath(_cli_os.path.join(_cli_os.path.dirname(__file__), "..", "_shared")))
+    import app_cli as _desktop_cli
+    raise SystemExit(_desktop_cli.main(_cli_sys.argv[_cli_sys.argv.index("--cli") + 1:]))
+
 import json, os, re, subprocess, sys, threading, time, urllib.parse, uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -72,40 +79,7 @@ def merge_enrichment_record(record,result):
         if field in applied and bundle.get(field) not in (None,""):row[target]=bundle[field]
     return row
 
-class API:
-    def __init__(self,p):
-        self.base=p["site_url"].rstrip("/"); self.s=requests.Session(); self.s.headers.update({"Authorization":"Bearer "+p.get("api_key",""),"Accept":"application/json",**_site_scope(self.base)})
-    def call(self,method,endpoint,params=None,body=None,timeout=90):
-        q={"route":"gyss/"+endpoint}; q.update(params or {}); r=self.s.request(method,self.base+"/api.php",params=q,json=body,timeout=timeout)
-        try:data=r.json()
-        except Exception:raise RuntimeError(f"{endpoint.replace('-', ' ').title()} failed: the site returned HTTP {r.status_code}, not a GYSS response.")
-        if not r.ok or not data.get("ok",False):raise RuntimeError(data.get("error") or f"HTTP {r.status_code}")
-        return repaired(data)
-    def ping(self):return self.call("GET","ping",timeout=25)
-    def meta(self):return self.call("GET","meta")
-    def photos(self,f):
-        try:return self.call("GET","photos",f)
-        except RuntimeError as exc:
-            # Older/irregular installs can lack one of the optional tables used
-            # by the filtered endpoint.  The library endpoint is deliberately
-            # schema-tolerant, so use it as a read-only compatibility path and
-            # perform the small requested slice here.
-            if "HTTP 500" not in str(exc):raise
-            data=self.library(); rows=list(data.get("images",[])); cats={}; albums={}
-            for image_id,value in data.get("cat_map",[]):cats.setdefault(str(image_id),[]).append(value)
-            for image_id,value in data.get("album_map",[]):albums.setdefault(str(image_id),[]).append(value)
-            category=f.get("category_id"); album=f.get("album_id")
-            if category is not None:rows=[x for x in rows if category in cats.get(str(x.get("id")),[])]
-            if album is not None:rows=[x for x in rows if album in albums.get(str(x.get("id")),[])]
-            limit=max(1,min(int(f.get("limit",200)),500))
-            return {"ok":True,"total":len(rows),"photos":rows[:limit],"compatibility_fallback":True}
-    def library(self,since=None):return self.call("GET","library",{"since":since} if since else None,timeout=180)
-    def batch(self,u):return self.call("POST","batch-update",body={"updates":u},timeout=180)
-    def gram_posts(self):return self.call("GET","gram-posts",{"limit":500})
-    def gram_order(self,ids):return self.call("POST","gram-reorder",body={"ids":ids})
-    def gram_carousel(self,ids,cover):return self.call("POST","gram-carousel",body={"ids":ids,"cover_post_id":cover})
-    def audit(self):return self.call("GET","enrichment-audit",{"limit":1000},timeout=180)
-    def enrich(self,i,prompt,fields,overwrite,force):return self.call("POST","enrich-one",body={"id":i,"prompt":prompt,"fields":fields,"overwrite":overwrite,"force_refresh":force},timeout=300)
+from gyss_api import API
 
 class Worker(QObject):
     done=Signal(object); failed=Signal(str); progress=Signal(str,int,int)

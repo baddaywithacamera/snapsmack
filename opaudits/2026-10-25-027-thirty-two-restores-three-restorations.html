@@ -102,7 +102,37 @@
 <p>It does not claim this is carelessness. Section 4.2 is the reason, and it is a reason that would apply to anybody, including whoever reads this.</p>
 <p>It does not claim the owner should have noticed sooner. An 83% deletion under the word "Restore" is specifically the thing a person cannot see from a browser.</p>
 
-<p class="doc-foot">SnapSmack Operability Audit 027 - 25 October 2026</p>
+<h2>10. Supplement, 26 October 2026: CHAPLIN and the limit of the new gates</h2>
+<p><strong>OPEN. Owner-reported visual failure; repair in progress by Claude, not verified here.</strong> This supplement preserves the 25 October measurements and their time window. CHAPLIN is additional evidence of presentation being rewritten away from its stylesheet contract; it is not counted as a fourth proven false-restoration commit in the original sample. The complete causal history and the final repair remain to be established.</p>
+
+<h3>10.1 What the owner supplied</h3>
+<p>On 26 October Sean supplied a fullscreen screenshot of <em>A Colourless Life</em> showing CHAPLIN's photo page: the photograph occupies the left portion of the viewport with a large empty area to the right; the title is oversized and crosses a horizontal line; date and description sit outside the intended photo presentation. The screenshot establishes the visible failure, not the deployed commit, active settings, browser zoom or its exact cause. The browser's fullscreen exit notification is browser chrome, not a skin defect.</p>
+<p><a href="evidence/027/2026-10-26-chaplin-owner-screenshot.png">Preserved owner screenshot, 26 October 2026</a>. The original attachment was copied without modification. No live site was opened or measured for this supplement.</p>
+
+<h3>10.2 A source-level mismatch, independently visible in the checkout</h3>
+<table class="meta">
+<tr><td class="k">Historical photo structure</td><td><code>ff881acf^:skins/chaplin/layout.php</code>, before <code>ff881acf</code> (28 September, “Convert first photoblog group to strict runtime”), contains <code>#rg-photobox</code>, <code>.rg-photo-wrap</code> and an image with <code>rg-image post-image chap-photo</code>. It also contains <code>.chap-info-title</code> and <code>.chap-intertitle</code> markup. This is a source reference for comparison, not authorization to ship old code or proof that every historical behavior is correct.</td></tr>
+<tr><td class="k">What the current stylesheet expects</td><td><code>skins/chaplin/style.css</code> gives <code>#rg-photobox</code> viewport-aware height and alignment, <code>.rg-photo-wrap</code> centered width, padding and height, and <code>.rg-image.post-image, .chap-photo</code> image sizing. CHAPLIN's info and intertitle selectors define its own title presentation.</td></tr>
+<tr><td class="k">What the current photo route emits</td><td><code>skins/chaplin/layout.php</code> delegates to <code>core/chaplin-page-component.php</code>. Its photo/post/collection branch emits <code>article#photobox.h-entry.single-image-page</code>, a <code>.post-image-wrap.chap-img-frame</code> and an image passed only <code>post-image</code>. It omits the historical <code>#rg-photobox</code> and <code>.rg-photo-wrap</code> photo wrappers and the image's <code>rg-image</code>/<code>chap-photo</code> classes. The photo title is an <code>h1.photo-title-header</code> or <code>h1.photo-title-footer</code>, rather than the historical CHAPLIN title structure.</td></tr>
+<tr><td class="k">Why a partial check could miss it</td><td>The current landing branch still emits the CHAPLIN photo wrappers and image classes. Seeing the landing page work, finding these selectors somewhere in the file, or checking only that a photo URL and title survived does not establish that the single-photo branch honors its stylesheet.</td></tr>
+</table>
+<p>This is a concrete loss of matching presentation hooks, consistent with the owner's screenshot. It does not prove that every observed pixel fault has the same cause. <code>7a3eaaad</code> (30 September, “Move public skin skeletons into layouts”) introduced <code>single-image-page</code> and <code>photo-title-footer</code> into this layout according to path-scoped history searches. <code>325c9b88</code> (9 October, “Move CHAPLIN rendering behind CMS boundary”) moved that presentation into the current core component. Neither commit subject establishes byte-identical relocation. Attribute each visual regression only after comparing rendered output and the intervening history.</p>
+
+<h3>10.3 Correct the present status without rewriting the original record</h3>
+<p>Sections 7 and 8 describe the gate as unbuilt on 25 October. On inspection on 26 October, <code>.githooks/commit-msg</code> exists, implements the <code>Restores:</code> trailer check, and this clone reports <code>core.hooksPath=.githooks</code>. <code>tests/skin-render-snapshot-regression.php</code> also exists. Their presence and configuration are verified here; enforcement and mutation tests were not rerun in this review. They are no longer accurately described as nonexistent in the current checkout.</p>
+<p>The trailer hook checks whether a named commit exists and overlaps changed files. It does not prove that its presentation was reproduced. The snapshot test's current <code>snapshot_fingerprint()</code> records image URLs, stylesheet URLs, paragraph/link/heading counts, word count and a visible-text hash. It does not record the wrapper IDs/classes or browser geometry. A wrapper/class change can therefore leave that fingerprint unchanged while disconnecting the stylesheet; a passing snapshot is not evidence of centered photography, correct title sizing or working frame controls. This is the relevant residual from OPAUDIT 026 as well as the restoration problem in this audit.</p>
+
+<h3>10.4 Evidence required before calling CHAPLIN restored</h3>
+<ul>
+<li>Name the historical presentation source, read it with its CSS and engines, and document the necessary security/runtime adaptations separately. Do not restore vulnerable historical runtime code wholesale.</li>
+<li>Compare the actual rendered photo branch with that reference: its wrappers, image classes, title placement, info panel, navigation and frame structure. A selector appearing in a different branch is insufficient.</li>
+<li>Capture the repaired page in a browser with the owner's relevant settings and viewport recorded. Measure image position and bounds, title size/wrapping, frame alignment, and overlap with header/footer/navigation. Include a long title and both portrait and landscape photographs.</li>
+<li>Exercise CHAPLIN's existing title-position, frame/ornament and photo-size controls, plus info/comments and navigation. Check landing, single photo, archive, static page and blogroll separately at desktop and phone widths. Keep results tied to the exact repair commit/build.</li>
+<li>Demonstrate a check that fails when the photo wrapper or image classes are removed, even though its text and image URL remain. An HTML fingerprint alone cannot close that failure mode. Capture the visual comparison rather than accepting a new baseline solely because the current output renders.</li>
+</ul>
+<p><strong>Disposition:</strong> the report is extended; CHAPLIN is not declared repaired. Claude owns the active repair. This review changed the audit and preserved evidence only; it did not modify CHAPLIN, shared rendering code, checks, release versions or a live site.</p>
+
+<p class="doc-foot">SnapSmack Operability Audit 027 - 25 October 2026; evidence supplement 26 October 2026</p>
 </body>
 </html>
 <!-- ===== SNAPSMACK EOF ===== -->

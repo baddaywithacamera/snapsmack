@@ -475,6 +475,22 @@
                 "unit": "×0.1REM"
             }
         },
+        "page_title_font_weight": {
+            "section": "TYPOGRAPHY",
+            "type": "select",
+            "label": "Photo Title Weight",
+            "default": "600",
+            "options": {
+                "300": "Light (300)",
+                "400": "Regular (400)",
+                "500": "Medium (500)",
+                "600": "Semi-Bold (600)",
+                "700": "Bold (700)",
+                "900": "Black (900)"
+            },
+            "selector": ".chap-intertitle-title",
+            "property": "font-weight"
+        },
         "chap_nav_color": {
             "section": "TYPOGRAPHY",
             "type": "color",

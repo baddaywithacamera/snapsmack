@@ -11,6 +11,16 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.954D - 2026-10-26 - LET IT SCROLL
+
+## 0.7.953D - 2026-10-26 - NOTHING WAS LISTENING
+
+### Queued for 0.7.953D
+
+- Desktop automation: structured CLI entry points for GYSS, SYBU, SNAP SLAPPER / LEWK AGAIN, COLD SNAP, SHOTS FIRED, SUYB and SMACKPRESS; source design/render CLI and native package commands for OH SNAP. Commands reuse existing services, retain device authorization, and do not fall back to paid AI generation. Usage and current scope: `tools/DESKTOP-CLI.md`.
+- Mosaic management: find a mosaic by numeric ID, `[mosaic:ID]` shortcode or title, with a clear empty-result message.
+- Full editor preview: use the active skin's actual presentation and registered mosaic/lightbox engines instead of the substitute plain-content page. Longform previews include the unsaved title, body, cover and date without saving or publishing.
+
 - **The owner set each skin's maturity, and "52 CARD PICKUP" is "52 PICKUP".** Following the vocabulary repair: CHAPLIN and ONYX are `stable`, HEURISTIC and 52 PICKUP are `development`. That has an effect and it is the intended one -- `development` withholds a skin from installation through the registry, which is what "in development and untested" should mean, and `stable` is what the packager pre-ticks. The rename has been asked for since April and had never been made; the display name and the help card now read 52 PICKUP, while the slug stays `52-card-pickup` because it is the directory name, the prefix on every saved setting (`52-card-pickup__*`) and the identity every installed site knows it by. `alpha` and `experimental` now fold to `development` rather than `beta` -- the one alias that changes behaviour instead of preserving it, and it changes it in the safe direction: a skin someone called alpha stops being offered until a person writes a word that ships it.
 
 - **A skin's maturity is one of three words again.** `status` is not a label, it decides behaviour: `core/skin-registry.php` withholds a skin from installation when it reads exactly `development`, and SMACK CENTRAL's packager pre-ticks a skin into the registry when it reads exactly `stable`. Both comparisons are string-exact, so CHAPLIN -- which said `dev` -- counted as shippable while SHOW N TELL -- which said `development` -- did not: the same intent, the opposite outcome, three letters apart. Measured across 30 skins on 2026-10-26, seven words were in use (stable 16, beta 7, alpha 3, available 1, dev 1, experimental 1, development 1) against the three the registry's own comment declares. Six manifests were moved onto the legal word that keeps the behaviour they already had -- FULL MONTY, GLIDE and ONYX from `alpha`, HEURISTIC from `experimental`, CHAPLIN from `dev` and 52 CARD PICKUP from `available`, all to `beta`, which is installable and not auto-ticked, exactly as those four words already were. No skin's installability changed. `snapsmack_skin_status()` now folds the word at manifest load, and an unrecognised one becomes `development` rather than being guessed at, so a typo withholds a skin instead of shipping it. `tests/skin-status-vocabulary-regression.php` holds the vocabulary from both sides: no manifest may carry a fourth word, and the alias map may not grow a target outside the three.
