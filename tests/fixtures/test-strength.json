@@ -1488,6 +1488,11 @@
         "predicates": 12,
         "thresholds": []
     },
+    "static-pages-visible-and-fixable-regression.php": {
+        "assertions": 9,
+        "predicates": 7,
+        "thresholds": []
+    },
     "stats-single-direct-bot-rule-regression.php": {
         "assertions": 15,
         "predicates": 16,
