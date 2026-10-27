@@ -1,10 +1,10 @@
 {
     "schema_version": 2,
     "name": "FULL MONTY",
-    "version": "0.1.9",
+    "version": "0.1.10",
     "author": "Sean McCormick & OpenAI Codex",
     "support": "sean@baddaywithacamera.ca",
-    "status": "alpha",
+    "status": "beta",
     "description": "The photograph becomes the room: a sharp full frame floats over its own adaptive, blurred, full-viewport atmosphere. Click the photograph to step back into a diagonal square archive.",
     "modes": [
         "photoblog"
