@@ -1,10 +1,10 @@
 {
     "schema_version": 2,
     "name": "ONYX",
-  "version": "0.1.24",
+  "version": "0.1.25",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
-    "status": "beta",
+    "status": "stable",
     "description": "A minimal dark editorial skin: an onyx canvas, Arial Black wordmark, hairline rules, and a faint accent glow behind the black. Geometry lives in style.css; colour is a swappable palette chosen from the SKIN PALETTE dropdown. Lean for photoblog and longform reading. Ships zero JavaScript of its own.",
     "modes": [
         "photoblog"

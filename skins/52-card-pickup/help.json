@@ -1,9 +1,9 @@
 {
-    "skin_name": "52 Card Pickup",
+    "skin_name": "52 Pickup",
     "topics": [
         {
             "title": "The Pile Concept",
-            "body": "52 Card Pickup presents your photo archive as a randomised pile of physical prints scattered on a surface. Each page load shows a random selection of images with random rotations, positions, and z-index stacking. Click any image to view it. Click Reshuffle (or press R) to throw a new set of prints."
+            "body": "52 Pickup presents your photo archive as a randomised pile of physical prints scattered on a surface. Each page load shows a random selection of images with random rotations, positions, and z-index stacking. Click any image to view it. Click Reshuffle (or press R) to throw a new set of prints."
         },
         {
             "title": "Frame Styles",
