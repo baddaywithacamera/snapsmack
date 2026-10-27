@@ -187,6 +187,25 @@
 <h3>12.4 What this does not claim</h3>
 <p>This repair gives the owner a control and a status they did not have. It does <strong>not</strong> establish why this particular install's page is at 0, or whether a page row exists there at all; the database was not read, and nothing here should be taken as having read it. Three external readers agreeing that no active page exists is consistent with a row at 0, with a row that was deleted, and with a page that was never created on this install. Those are distinguished by one read of <code>snap_pages</code> on the install, which is a paste-verify step, not an inference. After this build reaches the install, the Page Manager answers the question directly: a hidden row is now labelled, and an absent row is absent.</p>
 
+<h2>13. Supplement, 27 October 2026: eight skins wrote rules that could never match</h2>
+
+<p>The owner, on curbappeal.photoblogs.fyi running NEW HORIZON: "why is box around photo weird with line at bottom?" His About page hero sat in a dark box far taller than the photograph, with a band underneath it.</p>
+
+<h3>13.1 Measured</h3>
+<p>Read from the live page, 27 October. <code>&lt;body class="new-horizon-v2"&gt;</code> &mdash; nothing else. The CMS-generated presentation block on the same page contains <code>#photobox{padding-bottom:50px;}</code>.</p>
+<p><code>core/skin-view-contract.php</code> computes a body class for every page: <code>static-transmission</code> for a static page or the blogroll, <code>archive-page</code>, <code>is-photo-page</code>, <code>is-blogroll</code>, <code>homepage-static</code> and <code>page-slug-&lt;slug&gt;</code>. It publishes it at <code>$view['site']['body_class']</code>. NEW HORIZON's layout hardcodes its own body class and discards it.</p>
+<p>So NEW HORIZON's seven <code>.static-transmission #photobox.page-hero</code> rules &mdash; which set <code>padding: 0 !important</code>, <code>background: transparent !important</code> and <code>min-height: auto !important</code>, written precisely to undo the photo-page treatment on a static page &mdash; never matched a single page on any site. The hero fell through to the photo-page rules at <code>skins/new-horizon/style.css:168</code>: <code>background: var(--bg-page)</code> and <code>height: calc(100dvh - 140px)</code>. That is the dark box and its height.</p>
+<p>The band at the bottom is a control. <code>skins/new-horizon/manifest.json:1037</code> declares OPTICAL VERTICAL LIFT (px), section VERTICAL LOCKS, default 50, selector <code>#photobox</code>, property <code>padding-bottom</code>. A control for the photograph page was padding the bottom of his About page, because both pages use the same element id.</p>
+
+<h3>13.2 Why the id is shared, and why it stays shared</h3>
+<p><code>core/skin-render-helpers.php:139</code> emits <code>&lt;div id="photobox" class="page-hero ..."&gt;</code> for every static-page hero, and seven skins style <code>#photobox.page-hero</code>: 50 SHADES, CHAPLIN, IMPACT PRINTER, NEW HORIZON, RATIONAL GEO and TRUE GRIT. Renaming the id to separate the two pages would break every one of them, which is the failure mode already recorded in this audit. The CLASS is what distinguishes a static page from a photograph page, and the class simply was not arriving.</p>
+
+<h3>13.3 Repair, and what the check found that nobody had reported</h3>
+<p>Four places now pass the CMS body class through to their own <code>&lt;body&gt;</code>: <code>skins/new-horizon/layout.php</code>, <code>skins/true-grit/layout.php</code>, <code>skins/hip-to-be-square/layout.php</code> and <code>core/galleria-page-component.php</code>. Only NEW HORIZON was reported. TRUE GRIT is live on foundtextures.ca carrying the same dead rules; GALLERIA and HIP 2 B SQUARE were found by <code>tests/static-page-body-class-regression.php</code> on its first run. That check renders every skin's static page and requires the class wherever that skin's stylesheet writes rules which need it.</p>
+
+<h3>13.4 Still open, and deliberately not changed</h3>
+<p>Twenty-one skins still discard <code>$view['site']['body_class']</code>: 52 CARD PICKUP, ALFRED, AURORA, FULL MONTY, GAME ON, GLIDE, HEURISTIC, INSTANT CAMERA, JIVE TURKEY, PARADE, PHOTOGRAM, SCROLL, SHOW N TELL, SLICKR, SLIDERS, STANLEY, SUDDEN IMPACT, TELEGRAM, THE GRID, TILEZ, WRITING WITH IMPACT. None of them writes <code>.static-transmission</code> rules today, so nothing of theirs is currently dead and none was changed. They are listed because the next skin rule written under any of those class names will silently fail in exactly the same way, and because a contract that twenty-one of thirty consumers ignore is a contract in name only. Whether the body class should be emitted by the CMS rather than left to each skin to remember is a design question this audit raises and does not answer.</p>
+
 <p class="doc-foot">SnapSmack Operability Audit 027 - 25 October 2026; evidence supplements 26 and 27 October 2026</p>
 </body>
 </html>
