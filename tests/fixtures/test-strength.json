@@ -528,8 +528,8 @@
         "thresholds": []
     },
     "git-hook-behaviour-regression.php": {
-        "assertions": 19,
-        "predicates": 3,
+        "assertions": 20,
+        "predicates": 4,
         "thresholds": []
     },
     "git-hooks-installed-regression.php": {
@@ -683,6 +683,11 @@
     "instant-camera-whole-print-regression.php": {
         "assertions": 2,
         "predicates": 0,
+        "thresholds": []
+    },
+    "jive-border-presentation-regression.php": {
+        "assertions": 4,
+        "predicates": 3,
         "thresholds": []
     },
     "justified-feed-contract-regression.php": {
@@ -1066,8 +1071,8 @@
         ]
     },
     "release-gate-scope-regression.php": {
-        "assertions": 14,
-        "predicates": 10,
+        "assertions": 16,
+        "predicates": 12,
         "thresholds": []
     },
     "release-ships-no-screenshots-regression.php": {
