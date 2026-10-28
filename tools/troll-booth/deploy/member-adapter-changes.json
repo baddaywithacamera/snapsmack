@@ -1,0 +1,58 @@
+{
+  "server.py": [
+    [
+      "\nimport asyncio\nimport html\n",
+      "# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.\n\nimport asyncio\nimport html\n"
+    ],
+    [
+      "    required_scopes=[\"booth:read\"],\n",
+      "    required_scopes=[],\n"
+    ],
+    [
+      "        valid_scopes=[\"booth:read\", \"booth:write\"],\n",
+      "        valid_scopes=[\"booth:read\", \"booth:write\", \"conversation:read\", \"conversation:post\"],\n"
+    ],
+    [
+      "    job_id = store.enqueue(_actor(), capability, arguments, reason, ticket_id)\n    for _ in range(150):\n        await asyncio.sleep(0.2)\n",
+      "    token = get_access_token()\n    scopes = set(token.scopes if token else [])\n    required = \"conversation:read\" if capability.startswith(\"conversation.\") else \"booth:read\"\n    if \"booth:read\" not in scopes and required not in scopes:\n        raise PermissionError(\"This session cannot use this capability\")\n    job_id = store.enqueue(_actor(), capability, arguments, reason, ticket_id)\n    for _ in range(150):\n        await asyncio.sleep(0.2)\n"
+    ],
+    [
+      "    _actor()\n    return store.status()\n\n",
+      "    _require_scope(\"booth:read\")\n    _actor()\n    return store.status()\n\n"
+    ],
+    [
+      "@mcp.tool(description=\"Full-text search locally stored collaboration history, optionally within one room.\")\nasync def search_conversation(\n    query: str, room_id: str | None = None, limit: int = 50, reason: str = \"Search collaboration history\"\n",
+      "@mcp.tool(description=\"Catch up in append order. Save next_cursor only after processing messages; null starts at the beginning.\")\nasync def conversation_catch_up(room_id: str, after: str | None = None, limit: int = 200, reason: str = \"Catch up on room\") -> dict:\n    return await _queued(\"conversation.catch_up\", {\"room_id\": room_id, \"after\": after, \"limit\": limit}, reason)\n\n\n@mcp.tool(description=\"Full-text search locally stored collaboration history, optionally within one room.\")\nasync def search_conversation(\n    query: str, room_id: str | None = None, limit: int = 50, reason: str = \"Search collaboration history\"\n"
+    ],
+    [
+      "    _require_scope(\"booth:write\")\n",
+      "    token = get_access_token()\n    if not {\"booth:write\", \"conversation:post\"}.intersection(token.scopes if token else []):\n        raise PermissionError(\"This session cannot post messages\")\n"
+    ],
+    [
+      "    if actor not in {\"claude\", \"codex\"}:\n        return JSONResponse({\"error\": \"actor must be claude or codex\"}, status_code=400)\n",
+      "    if actor not in {\"claude\", \"codex\", \"muse\"}:\n        return JSONResponse({\"error\": \"actor must be claude, codex or muse\"}, status_code=400)\n"
+    ],
+    [
+      "    code = store.issue_pair_code(actor, scopes, ttl=300)\n    return JSONResponse({\"actor\": actor, \"code\": code, \"expires_in\": 300, \"scopes\": scopes})\n\n",
+      "    if actor == \"muse\":\n        scopes = [\"conversation:read\", \"conversation:post\"]\n    code = store.issue_pair_code(actor, scopes, ttl=300)\n    return JSONResponse({\"actor\": actor, \"code\": code, \"expires_in\": 300, \"scopes\": scopes})\n\n"
+    ],
+    [
+      "",
+      "# ===== SNAPSMACK EOF =====\n"
+    ]
+  ],
+  "oauth.py": [
+    [
+      "\nimport secrets\nimport time\n",
+      "# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.\n\nimport secrets\nimport time\n"
+    ],
+    [
+      "        if \"booth:read\" not in allowed:\n",
+      "        for scope in (\"conversation:read\", \"conversation:post\"):\n            if scope in identity[\"scopes\"] and scope not in allowed:\n                allowed.append(scope)\n        if not {\"booth:read\", \"conversation:read\"}.intersection(allowed):\n"
+    ],
+    [
+      "",
+      "# ===== SNAPSMACK EOF =====\n"
+    ]
+  ]
+}
