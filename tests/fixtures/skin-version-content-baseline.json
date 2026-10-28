@@ -75,8 +75,8 @@
             "files_sha256": "3a5c0ee81ea9719bb49051b1095467dc4eb38701f84ece463d74833d0c90aaa5"
         },
         "rational-geo": {
-            "version": "2.1.37",
-            "files_sha256": "319b119d640a61862f364e95dfa4972c29e98df6491ce0e0261a8241d2714065"
+            "version": "2.1.38",
+            "files_sha256": "79963ef70b8007185b03386d354585363b8f0f39aba9597ff7cbf7cc902882de"
         },
         "scroll": {
             "version": "0.1.75",

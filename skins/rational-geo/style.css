@@ -1221,7 +1221,11 @@ body.static-transmission .static-page-title {
 
 .static-transmission .main-photo {
   height: auto !important;
-  padding: 0 !important;
+  /* An outline paints outside the image box. Reserve its thickness inside
+     the reading lane so the visible yellow frame, not just the image's
+     white border box, shares the text column's edges. */
+  padding: var(--rg-hero-border) !important;
+  box-sizing: border-box;
   width: 100% !important;
   text-align: center !important;
   line-height: 0;  /* collapse space below inline image */
