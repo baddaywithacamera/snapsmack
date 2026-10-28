@@ -30,6 +30,7 @@ const { chromium } = require(path.join(ROOT, 'tools', 'browser-tests', 'runtime.
 
 const fixtureDir = path.resolve(process.argv[2] || path.join(ROOT, '.geometry-fixtures'));
 const outFile = process.argv[3] || path.join(fixtureDir, 'geometry.json');
+const shots = !process.argv.includes('--no-shots');
 
 // 1920x1080 first, because that is the viewport the owner's reference captures
 // were taken at. Confirmed: every capture is 1920 wide and shows no browser
@@ -154,6 +155,21 @@ function fail(message) {
         }, srcs);
         results.push({ skin: entry.skin, kind: entry.kind, skin_version: entry.skin_version, viewport: vp.name, ...data });
         measured++;
+        // LOOK AT IT, do not only measure it. Sean: "are you looking at
+        // screenshots when verifying skins or just code? because i think if
+        // you're not that's how you're missing the problems." He is right.
+        // Measuring only ever finds what someone thought to ask for; a
+        // picture shows what nobody asked about. These are written so the
+        // skins can be looked at, by a person or by an agent that can read an
+        // image, without opening a single site.
+        if (shots) {
+          const shotDir = path.join(fixtureDir, 'shots');
+          if (!fs.existsSync(shotDir)) fs.mkdirSync(shotDir, { recursive: true });
+          await page.screenshot({
+            path: path.join(shotDir, entry.skin + '--' + entry.kind + '--' + vp.name + '.png'),
+            fullPage: false,
+          });
+        }
       } catch (err) {
         results.push({ skin: entry.skin, kind: entry.kind, viewport: vp.name, error: String(err && err.message || err) });
         unmeasurable++;
