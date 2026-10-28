@@ -1123,8 +1123,10 @@ body.static-transmission #scroll-stage {
   position: relative;
 }
 
-/* Static content lane — generous whitespace, centered */
-.static-content {
+/* Keep the original reading lane when the shared page defaults load later.
+   The hero uses this same width and 40px inset; a later 820px/24px default
+   had narrowed only the words, separating the portrait from its column. */
+body.static-transmission .static-content {
   max-width: var(--static-content-width, 1040px);
   margin: 60px auto 80px auto;
   padding: 0 40px;
@@ -1139,7 +1141,7 @@ body.static-transmission #scroll-stage {
 }
 
 /* Page title — Marcellus editorial style */
-.static-page-title {
+body.static-transmission .static-page-title {
   font-family: 'Marcellus', serif;
   font-size: 1.6rem;
   font-weight: 400;
