@@ -66,7 +66,13 @@
 
                     // Append the tiles (or justified rows) from the fetched page.
                     var newTiles = tmp.querySelectorAll(itemSel);
-                    newTiles.forEach(function (t) { grid.appendChild(t); });
+                    newTiles.forEach(function (t) {
+                        // A sentinel inside the grid must remain after the last
+                        // tile. Otherwise page two strands it halfway up the
+                        // archive and scrolling farther can never reach it again.
+                        if (sentinel.parentNode === grid) grid.insertBefore(t, sentinel);
+                        else grid.appendChild(t);
+                    });
                     // Other engines (border travel, fade-in, lightbox) re-scan on this.
                     document.dispatchEvent(new CustomEvent(P + ':grid-updated'));
 
@@ -75,6 +81,10 @@
                     if (newSentinel) {
                         nextPg++;
                         loading = false;
+                        // Recheck even when a short batch leaves it intersecting:
+                        // IntersectionObserver only reports threshold changes.
+                        obs.unobserve(sentinel);
+                        obs.observe(sentinel);
                     } else {
                         obs.disconnect();
                         sentinel.remove();
