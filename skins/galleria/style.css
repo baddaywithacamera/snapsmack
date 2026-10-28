@@ -1720,6 +1720,26 @@ footer a:hover {
         --mat-width: 12px;
     }
 
+    /* The navigation laid four items and their separators on one line at any
+       width. Measured live at 390px: nav.navigation ran from x=239 to x=675
+       against a 390px viewport, document.scrollWidth 675, so the whole page
+       scrolled sideways and most of the menu could not be reached. The only
+       rule it had was display:flex with no wrap.
+
+       Wrapping is the whole repair. Desktop is untouched: this rule exists
+       only below 480px, where the row cannot fit by definition. */
+    .nav-menu {
+        flex-wrap: wrap;
+        justify-content: center;
+        row-gap: 4px;
+    }
+
+    /* A separator belongs BETWEEN two items on a line, never at the start of
+       a wrapped line. */
+    .nav-menu > li:first-child::before {
+        content: none;
+    }
+
     body {
         font-size: 11px;
     }
