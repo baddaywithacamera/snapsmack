@@ -88,11 +88,13 @@ function snapsmack_send_mail(string $to, string $subject, string $body, array $o
         if ($code >= 200 && $code < 300) {
             return true;
         }
+        if (!empty($opts['brevo_only'])) return false;
         // Brevo failed — log and fall through to mail() so the message still tries.
         error_log("SNAPSMACK mailer: Brevo send failed (HTTP {$code} {$err}) — falling back to mail() for {$to}");
     }
 
     // ── PHP mail() fallback ────────────────────────────────────────────────
+    if (!empty($opts['brevo_only'])) return false;
     $headers  = 'From: ' . $from_name . ' <' . $from_email . ">\r\n";
     if ($reply_to !== '') {
         $headers .= 'Reply-To: ' . $reply_to . "\r\n";

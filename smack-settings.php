@@ -18,6 +18,37 @@ require_once 'core/auth-smack.php';
 require_once 'core/ste-client.php';
 require_once 'core/client-ip.php';
 
+// Separate POST action: test saved settings without saving the main form.
+$brevo_test_flash = (string)($_SESSION['brevo_test_flash'] ?? '');
+unset($_SESSION['brevo_test_flash']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['brevo_test'])) {
+    smack_require_admin(); // auth-smack already enforces CSRF.
+    require_once __DIR__ . '/core/mailer.php';
+    $recipient = trim((string)($_POST['brevo_test_recipient'] ?? ''));
+    $mail_settings = snapsmack_mail_settings($pdo);
+    if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+        $result = 'Enter a valid test recipient email address.';
+    } elseif (time() - (int)($_SESSION['brevo_test_last'] ?? 0) < 60) {
+        $result = 'Wait one minute before sending another test.';
+    } elseif (secret_decrypt(trim($mail_settings['brevo_api_key'] ?? '')) === '') {
+        $result = 'No saved Brevo API key. Save communications settings first.';
+    } elseif (!function_exists('curl_init')) {
+        $result = 'This server needs the PHP cURL extension to contact Brevo.';
+    } else {
+        $_SESSION['brevo_test_last'] = time();
+        $site = (string)($mail_settings['site_url'] ?? BASE_URL);
+        $ok = snapsmack_send_mail($recipient, '[SnapSmack mail test] ' . $site,
+            "Requested test email from " . $site . "\nSent using this site's saved Brevo configuration.\n",
+            ['pdo' => $pdo, 'settings' => $mail_settings, 'brevo_only' => true]);
+        $result = $ok
+            ? 'Brevo accepted the test for ' . $recipient . '. Check your inbox and Brevo delivery logs; acceptance does not confirm delivery.'
+            : 'Brevo did not accept the test. Check the saved API key, verified sender and Brevo logs. No PHP mail fallback was used.';
+    }
+    $_SESSION['brevo_test_flash'] = $result;
+    header('Location: smack-settings.php#brevo-test');
+    exit;
+}
+
 // SNAPSMACK_AI_GRACE_DAYS is guard-defined in core/ai-provider.php, but this page
 // checks the AI helpers via function_exists() and never loads that module — so on
 // an updated install (whose protected constants.php predates the constant) the AI
@@ -1121,12 +1152,23 @@ include 'core/sidebar.php';
             </div>
         </div>
 
+        <div id="brevo-test">
+            <h3>TEST BREVO EMAIL</h3>
+            <p>Uses saved communications settings. Save changes first. Sends one labelled test without changing your configuration.</p>
+            <label for="brevo-test-recipient">TEST RECIPIENT</label>
+            <input type="email" id="brevo-test-recipient" name="brevo_test_recipient" form="brevo-test-form" required>
+            <button type="submit" form="brevo-test-form" class="master-update-btn">SEND TEST EMAIL</button>
+            <?php if ($brevo_test_flash !== ''): ?>
+                <p role="status"><?php echo htmlspecialchars($brevo_test_flash, ENT_QUOTES, 'UTF-8'); ?></p>
+            <?php endif; ?>
+        </div>
         <button type="submit" name="save_settings" class="master-update-btn">SAVE CONFIGURATION</button>
 
     </form>
 
     <!-- Action forms outside #config-form to avoid illegal nesting.
          Buttons above reference these by form="id". -->
+    <form method="POST" id="brevo-test-form"><input type="hidden" name="brevo_test" value="1"><?php csrf_field(); ?></form>
     <form method="POST" id="ste-register-form"><input type="hidden" name="ste_action" value="register"></form>
     <form method="POST" id="ste-sync-form"><input type="hidden" name="ste_action" value="sync_now"></form>
     <form method="POST" id="ste-optout-form"><input type="hidden" name="ste_action" value="optout"></form>
