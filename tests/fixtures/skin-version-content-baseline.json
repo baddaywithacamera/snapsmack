@@ -27,8 +27,8 @@
             "files_sha256": "a8f62a7e14c62f81512384c5b194305f868d9d4112a40652903b2038c80f6356"
         },
         "galleria": {
-            "version": "1.3.19",
-            "files_sha256": "7a2e08e219843607723cb797b9db3633dbf29581afc9314163d0d92cdc7467b6"
+            "version": "1.3.20",
+            "files_sha256": "06a13ec01b10e5968a8f61074f7f9349f8106ae8b2aad0273f7ecae62c935025"
         },
         "game-on": {
             "version": "0.1.39",
@@ -47,8 +47,8 @@
             "files_sha256": "c9fa2ef1a9062aa04ec8eb28d3a3e0ed1c86e54b09d5fa8ce2838232c6a9c7a5"
         },
         "impact-printer": {
-            "version": "2.1.18",
-            "files_sha256": "8fb5587dcdf25c92de492f6b76e195da133cdb85c2daff9aded2dd3eeb3ae6db"
+            "version": "2.1.19",
+            "files_sha256": "5b541cc7842cba258bbbc5487cb1e419059203ffff43e01f0447850c897a306a"
         },
         "instant-camera": {
             "version": "1.0.56",
