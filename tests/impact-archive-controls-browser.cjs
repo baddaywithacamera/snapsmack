@@ -46,6 +46,9 @@ assert.ok(fixture.html.includes(fixture.row) && fixture.row.includes('smack-arch
    await page.locator('#smack-archive-filter-btn').click();
    assert.equal(await page.locator('#smack-archive-filter-btn').getAttribute('aria-expanded'),'true');
    assert.ok(await page.locator('#smack-archive-filter-panel').isVisible());
+   const panel=await page.locator('#smack-archive-filter-panel').boundingBox();
+   assert.ok(panel.x>=0 && panel.x+panel.width<=width, 'filter panel must fit viewport');
+   if(process.env.SNAPSMACK_BROWSER_OUTPUT) await page.screenshot({path:path.join(process.env.SNAPSMACK_BROWSER_OUTPUT,`impact-controls-${width}.png`)});
    await page.locator('[data-type="alb"]').check();
    await page.waitForURL(u=>u.searchParams.getAll('f[]').includes('alb:9'));
    const url=new URL(page.url());
@@ -59,3 +62,4 @@ assert.ok(fixture.html.includes(fixture.row) && fixture.row.includes('smack-arch
   }
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
+// ===== SNAPSMACK EOF =====

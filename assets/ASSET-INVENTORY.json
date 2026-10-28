@@ -517,6 +517,7 @@
             "callers": [
                 "archive.php",
                 "core/skin-render-helpers.php",
+                "skins/impact-printer/manifest.json",
                 "scroll"
             ],
             "security_signals": [],
@@ -2860,6 +2861,7 @@
             "callers": [
                 "core/asset-security-reviews.php",
                 "core/meta.php",
+                "skins/impact-printer/manifest.json",
                 "chaplin",
                 "rational-geo",
                 "slickr"
