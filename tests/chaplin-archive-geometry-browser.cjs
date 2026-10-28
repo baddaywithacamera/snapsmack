@@ -1,9 +1,9 @@
 // SNAPSMACK_EOF_HEADER
 // Render CHAPLIN's nested archive frame against both real stylesheets.
-const {chromium}=require('playwright');
+const {chromium}=require('../tools/browser-tests/runtime.cjs');
 const fs=require('node:fs');const assert=require('node:assert/strict');
 (async()=>{
- const browser=await chromium.launch({channel:'msedge',headless:true});
+ const browser=await chromium.launch({headless:true});
  const shared=fs.readFileSync('assets/css/page-archive.css','utf8');
  const skin=fs.readFileSync('skins/chaplin/style.css','utf8');
  // Mutation restores the faulty landscape constraint; this must fail geometry.

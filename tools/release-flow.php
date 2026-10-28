@@ -65,7 +65,7 @@ function rf_nonshipping_prefixes(): array {
 
 /** Paths under tools/ that ARE release machinery and must be clean. */
 function rf_shipping_tools(): array {
-    return ['tools/_build/', 'tools/release-flow.php'];
+    return ['tools/_build/', 'tools/browser-tests/', 'tools/release-flow.php'];
 }
 
 function rf_worktree_status(): string {
@@ -292,6 +292,7 @@ function rf_release_gate_problem(string $head): string {
         'parity' => 'pass',
         'skin_render_parity' => 'pass',
         'authority_review' => 'approved',
+        'browser_regressions' => 'pass',
     ];
     foreach ($required as $field => $expected) {
         if (($gate[$field] ?? null) !== $expected) {
@@ -333,6 +334,11 @@ function rf_require_release_gate(): void {
     if ($problem !== '') rf_fail($problem);
 }
 
+function rf_browser_tests(): void {
+    rf_run(['node', __DIR__ . '/../tests/browser-release-runner-regression.cjs']);
+    rf_run(['node', __DIR__ . '/browser-tests/run-regressions.cjs']);
+}
+
 function rf_tests(): void {
     foreach (glob(__DIR__ . '/../tests/*regression.php') ?: [] as $test) {
         rf_run([PHP_BINARY, $test]);
@@ -340,6 +346,7 @@ function rf_tests(): void {
     rf_run([PHP_BINARY, '-l', __DIR__ . '/../smack-central/sc-release.php']);
     rf_run([PHP_BINARY, '-l', __DIR__ . '/../core/updater.php']);
     rf_run([PHP_BINARY, '-l', __FILE__]);
+    rf_browser_tests();
 }
 
 // Requiring this file from a test must not run a command. When it is the
@@ -480,6 +487,10 @@ if ($command === 'gate-note') {
   Nothing here is inferred, because a gate that signs itself is not a gate.");
     }
 
+    // Run the actual browsers before recording their result, never accept a
+    // hand-typed --browser-pass assertion. Clean inputs bind the run to HEAD.
+    rf_require_clean();
+    rf_browser_tests();
     $head = rf_git(['rev-parse', 'HEAD']);
     $skinDirs = glob(dirname(__DIR__) . '/skins/*/manifest.json') ?: [];
     $skinNames = array_map(static fn (string $manifest): string => basename(dirname($manifest)), $skinDirs);
@@ -495,6 +506,7 @@ if ($command === 'gate-note') {
         'skin_inventory_sha256' => hash('sha256', implode("
 ", $skinNames)),
         'skin_render_changes' => [],
+        'browser_regressions' => 'pass',
     ];
     if (isset($flags['tests'])) $note['tests'] = $flags['tests'];
     if (isset($flags['authority-by'])) $note['authority'] = $flags['authority-by'];

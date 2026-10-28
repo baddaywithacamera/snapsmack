@@ -1,0 +1,14 @@
+{
+  "name": "snapsmack-browser-tests",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "regressions": "node run-regressions.cjs",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "browsers": "playwright install"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
+}
