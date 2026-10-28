@@ -250,11 +250,14 @@
   }
  },
  "viewport": {
-  "width": 1920,
-  "height": 1080,
-  "browser_chrome": "none - these are viewport captures, not screen captures",
-  "confirmed": "Every PNG checked is 1920 wide; newhorizon-landing.png read and shows page content edge to edge with no tab bar or address bar.",
-  "why_it_matters": "A pixel in a capture and a pixel measured at a 1920x1080 viewport are the same pixel, so expectations can be absolute and not only proportional."
+  "stated_by_owner": "1920x1080 full HD for any capture used on the site",
+  "capture_method": "NOT uniform. Confirm each capture by reading it before using its pixels as an absolute.",
+  "verified": {
+   "newhorizon-landing.png": "1920x1080, no browser chrome, NO scrollbar. Full 1920 is page width. Safe as an absolute reference.",
+   "gameon-landing.png": "1920x1032, no browser chrome, but a SCROLLBAR is visible on the right. Usable page width is about 1905, so horizontal figures are about 15px narrower than the file suggests. Owner says this one was taken with an in-browser tool."
+  },
+  "unverified": "Every other capture has been checked only for its pixel dimensions, not read. Read it before treating its pixels as absolute.",
+  "why_it_matters": "A scrollbar, or any chrome, shifts every horizontal measurement. The difference is small and is exactly the size of the faults being chased."
  },
  "note_gameon": "gameon-landing.png is 1920x1032; the others are 1920x1080. Treat its vertical figures with care."
 }
