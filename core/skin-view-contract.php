@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/public-route-aliases.php';
+
 const SNAPSMACK_SKIN_VIEW_MODEL_VERSION = 1;
 
 /** Resolve one labelled destination before the bounded view reaches a skin. */

@@ -98,31 +98,42 @@ function fail(message) {
             || [...document.querySelectorAll('img')].find((i) => (i.getAttribute('src') || '').endsWith(srcs.hero)) || null;
 
           // The navigation row, and the gap either side of every separator.
+          // Group the links by the navigation they belong to. A page can
+          // carry more than one -- a header nav and a footer nav -- and
+          // treating them as one row produced gaps like 0,0,0,755,40,40,40:
+          // the 755 was the distance between two separate navigations. Every
+          // gap reported here is between two items of the SAME navigation.
           const navLinks = [...document.querySelectorAll('a')]
             .filter((a) => ['Home', 'Blogroll', 'About Sean', 'Image Use'].includes(textOf(a)));
-          let navRow = null;
-          if (navLinks.length >= 2) {
-            navRow = navLinks[0].parentElement;
-            while (navRow && !navLinks.every((l) => navRow.contains(l))) navRow = navRow.parentElement;
+          const navs = new Map();
+          for (const link of navLinks) {
+            const item = link.closest('li') || link;
+            const owner = link.closest('nav') || item.parentElement;
+            if (!owner) continue;
+            if (!navs.has(owner)) navs.set(owner, []);
+            navs.get(owner).push(item);
           }
           const gaps = [];
-          if (navRow) {
-            // Only compare links that share a line. A nav that wraps or
-            // stacks has legitimately negative horizontal gaps between rows,
-            // and reporting those as uneven spacing is a false alarm.
+          const gapsByNav = [];
+          let navRow = null;
+          for (const [owner, items] of navs) {
+            if (items.length < 2) continue;
+            if (!navRow) navRow = owner;
+            // Only items sharing a line: a wrapped nav has legitimately
+            // negative horizontal gaps between its rows.
             const rows = new Map();
-            for (const l of navLinks) {
-              const r = l.getBoundingClientRect();
+            for (const el of items) {
+              const r = el.getBoundingClientRect();
               const key = Math.round(r.top / 4) * 4;
               if (!rows.has(key)) rows.set(key, []);
               rows.get(key).push(r);
             }
+            const mine = [];
             for (const row of rows.values()) {
               row.sort((a, b) => a.left - b.left);
-              for (let i = 1; i < row.length; i++) {
-                gaps.push(Math.round(row[i].left - row[i - 1].right));
-              }
+              for (let k = 1; k < row.length; k++) mine.push(Math.round(row[k].left - row[k - 1].right));
             }
+            if (mine.length) { gapsByNav.push(mine); gaps.push(...mine); }
           }
 
           // The photographs on an archive, so a collapsed grid is visible here
@@ -135,7 +146,7 @@ function fail(message) {
             viewportWidth: window.innerWidth,
             documentWidth: Math.round(document.documentElement.scrollWidth),
             title: box(title), body: box(body), hero: box(hero),
-            nav: box(navRow), navGaps: gaps,
+            nav: box(navRow), navGaps: gaps, navGapsByNav: gapsByNav,
             tiles: tiles.length,
             tileSizes: tiles.slice(0, 4),
             overflowsViewport: document.documentElement.scrollWidth > window.innerWidth + 1,
@@ -167,8 +178,21 @@ function fail(message) {
     const note = [];
     if (r.overflowsViewport) note.push('OVERFLOWS VIEWPORT');
     if (r.hero && r.body && (r.hero.left !== r.body.left || r.hero.width !== r.body.width)) note.push('hero != body column');
-    if (r.navGaps.length && new Set(r.navGaps).size > 1) note.push('uneven nav gaps ' + r.navGaps.join(','));
-    if (r.kind === 'archive' && r.tiles === 0) note.push('NO PHOTOGRAPHS');
+    // NO AUTOMATIC VERDICT ON NAV SPACING. "All gaps equal" is not a rule.
+    // A navigation using space-between has one large deliberate gap in the
+    // middle, and flagging that produced false alarms on ALFRED, TELEGRAM and
+    // TILEZ. 52 CARD PICKUP was flagged too, until measuring the list items
+    // rather than the anchors showed a perfect 20, 20, 20.
+    //
+    // The numbers are recorded and the per-skin expectation, taken from the
+    // owner's own capture, is what judges them. This is Codex's correction
+    // about universal rules, applied to my own check.
+    // SMACKTALK skins are blog skins and have no photograph archive, so an
+    // archive with no photographs is correct for them, not a defect.
+    const SMACKTALK = ['alfred', 'stanley', 'telegram', 'tilez', 'writing-with-impact'];
+    if (r.kind === 'archive' && r.tiles === 0) {
+      note.push(SMACKTALK.includes(r.skin) ? 'no photo archive (SMACKTALK, expected)' : 'NO PHOTOGRAPHS');
+    }
     console.log(pad(r.skin, 24) + pad(r.kind, 8) + pad(r.viewport, 8)
       + pad(lw(r.title), 13) + pad(lw(r.body), 13) + pad(lw(r.hero), 13)
       + pad(r.navGaps.join(','), 18) + note.join('; '));
