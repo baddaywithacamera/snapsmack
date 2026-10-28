@@ -1,0 +1,252 @@
+{
+ "what": "Owner reference captures. Sean, 2026-10-27: \"if it is in there it is the look that i want.\"",
+ "source_folder": "C:/dev/snapsmack/projects/snapsmack-ca/img",
+ "authority": "These are the target. A geometry expectation that disagrees with one of these is wrong.",
+ "skins": {
+  "50-shades-of-noah-grey": {
+   "archive": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/50shades-archive.png",
+    "captured": "2026-10-25",
+    "bytes": 2801171
+   },
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/50shades-landing.png",
+    "captured": "2026-10-27",
+    "bytes": 1623646
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/50shades-page.png",
+    "captured": "2026-07-30",
+    "bytes": 712379
+   }
+  },
+  "aurora": {
+   "archive": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/aurora-archive.png",
+    "captured": "2026-07-30",
+    "bytes": 1232608
+   },
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/aurora-landing.png",
+    "captured": "2026-07-30",
+    "bytes": 1402825
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/aurora-page.png",
+    "captured": "2026-07-30",
+    "bytes": 993217
+   }
+  },
+  "chaplin": {
+   "archive": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/chaplin-archive.png",
+    "captured": "2026-07-30",
+    "bytes": 733999
+   },
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/chaplin-landing.png",
+    "captured": "2026-07-30",
+    "bytes": 1275086
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/chaplin-page.png",
+    "captured": "2026-07-30",
+    "bytes": 422472
+   }
+  },
+  "galleria": {
+   "archive": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/galleria-archive.png",
+    "captured": "2026-07-30",
+    "bytes": 2737667
+   },
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/galleria-landing.png",
+    "captured": "2026-07-30",
+    "bytes": 1047584
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/galleria-page.png",
+    "captured": "2026-07-30",
+    "bytes": 475058
+   }
+  },
+  "game-on": {
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/gameon-landing.png",
+    "captured": "2026-09-09",
+    "bytes": 2445160
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/gameon-page.png",
+    "captured": "2026-09-10",
+    "bytes": 2402701
+   },
+   "photo": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/gameon-solo.png",
+    "captured": "2026-09-09",
+    "bytes": 2223615
+   }
+  },
+  "the-grid": {
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/grid-landing.png",
+    "captured": "2026-07-30",
+    "bytes": 2641135
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/grid-page.png",
+    "captured": "2026-07-30",
+    "bytes": 1785949
+   },
+   "photo": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/grid-solo.png",
+    "captured": "2026-07-30",
+    "bytes": 1953849
+   }
+  },
+  "impact-printer": {
+   "archive": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/impact-archive.png",
+    "captured": "2026-07-30",
+    "bytes": 1654425
+   },
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/impact-landing.png",
+    "captured": "2026-09-08",
+    "bytes": 2814585
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/impact-page.png",
+    "captured": "2026-09-08",
+    "bytes": 1858151
+   }
+  },
+  "instant-camera": {
+   "archive": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/instantcam-archive.png",
+    "captured": "2026-07-30",
+    "bytes": 1497650
+   },
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/instantcam-landing.png",
+    "captured": "2026-07-30",
+    "bytes": 2517138
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/instantcam-page.png",
+    "captured": "2026-07-30",
+    "bytes": 2054126
+   }
+  },
+  "jive-turkey": {
+   "archive": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/jturk-archive.png",
+    "captured": "2026-07-30",
+    "bytes": 1940283
+   },
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/jturk-landing.png",
+    "captured": "2026-07-30",
+    "bytes": 1200327
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/jturk-page.png",
+    "captured": "2026-07-30",
+    "bytes": 381303
+   }
+  },
+  "new-horizon": {
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/newhorizon-landing.png",
+    "captured": "2026-09-16",
+    "bytes": 1328363
+   }
+  },
+  "parade": {
+   "archive": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/parade-archive.png",
+    "captured": "2026-09-10",
+    "bytes": 1383862
+   },
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/parade-landing.png",
+    "captured": "2026-09-10",
+    "bytes": 1320626
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/parade-page.png",
+    "captured": "2026-09-10",
+    "bytes": 658084
+   }
+  },
+  "rational-geo": {
+   "archive": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/rationalgeo-archive.png",
+    "captured": "2026-07-30",
+    "bytes": 2625203
+   },
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/rationalgeo-landing.png",
+    "captured": "2026-07-30",
+    "bytes": 1586547
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/rationalgeo-page.png",
+    "captured": "2026-07-30",
+    "bytes": 888386
+   }
+  },
+  "scroll": {
+   "archive": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/scroll-archive.png",
+    "captured": "2026-09-08",
+    "bytes": 2002693
+   },
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/scroll-landing.png",
+    "captured": "2026-09-08",
+    "bytes": 1687336
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/scroll-page.png",
+    "captured": "2026-09-08",
+    "bytes": 765110
+   }
+  },
+  "slickr": {
+   "archive": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/slickr-archive.png",
+    "captured": "2026-07-30",
+    "bytes": 2208894
+   },
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/slickr-landing.png",
+    "captured": "2026-07-30",
+    "bytes": 2470140
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/slickr-page.png",
+    "captured": "2026-07-30",
+    "bytes": 1258141
+   }
+  },
+  "true-grit": {
+   "archive": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/truegrit-archive.png",
+    "captured": "2026-07-30",
+    "bytes": 3077550
+   },
+   "landing": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/truegrit-landing.png",
+    "captured": "2026-07-30",
+    "bytes": 3153142
+   },
+   "page": {
+    "file": "C:/dev/snapsmack/projects/snapsmack-ca/img/truegrit-page.png",
+    "captured": "2026-07-30",
+    "bytes": 2791938
+   }
+  }
+ }
+}
