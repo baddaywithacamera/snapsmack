@@ -275,3 +275,4 @@ tools/smackpress/visible30-*.json
 
 # OH SNAP build output: installers, source zips and verification runs.
 outputs/oh-snap-*/
+.geometry-fixtures/
