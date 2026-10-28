@@ -31,7 +31,12 @@ const { chromium } = require(path.join(ROOT, 'tools', 'browser-tests', 'runtime.
 const fixtureDir = path.resolve(process.argv[2] || path.join(ROOT, '.geometry-fixtures'));
 const outFile = process.argv[3] || path.join(fixtureDir, 'geometry.json');
 
+// 1920x1080 first, because that is the viewport the owner's reference captures
+// were taken at. Confirmed: every capture is 1920 wide and shows no browser
+// chrome, so a pixel in a capture and a pixel measured here are the same
+// pixel. Without that, only proportions would be comparable.
 const WIDTHS = [
+  { name: 'reference', width: 1920, height: 1080 },
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'phone', width: 390, height: 844 },
 ];
