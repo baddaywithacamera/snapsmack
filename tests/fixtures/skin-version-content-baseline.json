@@ -107,8 +107,8 @@
             "files_sha256": "ee2eb3372487d014cd69e047fea6b118dcdbc892bb5d805f05dbe1945ede9445"
         },
         "the-grid": {
-            "version": "1.3.55",
-            "files_sha256": "4d81138a0ad4b046bbfe9080d3bce1893e87f18f38f0923317692cf4dc56c253"
+            "version": "1.3.56",
+            "files_sha256": "c8ca1f9caf36f6288c5095b491e9c52a9cac93695396daa65f227497b53fd2e7"
         },
         "tilez": {
             "version": "0.2.73",

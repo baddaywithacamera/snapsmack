@@ -1061,6 +1061,44 @@ body.tg-modal-open { overflow: hidden; }
     padding: 40px 20px 60px;
 }
 
+/* The title and the hero are SIBLINGS of .tg-static-content, not children of
+   it, so the 680px reading column applied to the body text and nothing else.
+   Measured at 1920: body 640 wide 640, title 493 wide 935, hero 493 wide 935
+   and only 21px TALL -- the photograph collapsed to a sliver, which is the
+   blank band the owner saw where his picture should be. The title also sat at
+   0px below the navigation.
+
+   His own capture, projects/snapsmack-ca/img/grid-page.png, has the title,
+   the hero and the text all on one left edge at 632, the hero 640 wide, and
+   about 47px of air under the nav. That capture carries a scrollbar, so its
+   usable width is 1905: (1905 - 680) / 2 + 20 = 632. The same rule at 1920
+   gives 640, which is exactly where the body text already is. The numbers
+   reconcile, so this restores the original column rather than inventing one.
+
+   Same shape as the AURORA repair, same figures as .tg-static-content. */
+.tg-static-page > .tg-static-title,
+.tg-static-page > #photobox.page-hero {
+    max-width: 680px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 20px;
+    padding-right: 20px;
+    box-sizing: border-box;
+}
+
+/* The air under the navigation that .tg-static-content's padding-top used to
+   provide, now that the title sits above it. */
+.tg-static-page > .tg-static-title {
+    margin-top: 40px;
+}
+
+/* The hero had no size of its own and collapsed to 21px. */
+.tg-static-page > #photobox.page-hero .main-photo img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
 .tg-static-title {
     font-size: 22px;
     font-weight: 600;
