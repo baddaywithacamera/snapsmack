@@ -1,8 +1,8 @@
 {
   "server.py": [
     [
-      "\nimport asyncio\nimport html\n",
-      "# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.\n\nimport asyncio\nimport html\n"
+      "from __future__ import annotations\n",
+      "from __future__ import annotations\n# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.\n"
     ],
     [
       "    required_scopes=[\"booth:read\"],\n",
@@ -13,28 +13,28 @@
       "        valid_scopes=[\"booth:read\", \"booth:write\", \"conversation:read\", \"conversation:post\"],\n"
     ],
     [
-      "    job_id = store.enqueue(_actor(), capability, arguments, reason, ticket_id)\n    for _ in range(150):\n        await asyncio.sleep(0.2)\n",
-      "    token = get_access_token()\n    scopes = set(token.scopes if token else [])\n    required = \"conversation:read\" if capability.startswith(\"conversation.\") else \"booth:read\"\n    if \"booth:read\" not in scopes and required not in scopes:\n        raise PermissionError(\"This session cannot use this capability\")\n    job_id = store.enqueue(_actor(), capability, arguments, reason, ticket_id)\n    for _ in range(150):\n        await asyncio.sleep(0.2)\n"
+      "async def _queued(capability: str, arguments: dict, reason: str, ticket_id: str | None = None) -> dict:\n",
+      "async def _queued(capability: str, arguments: dict, reason: str, ticket_id: str | None = None) -> dict:\n    token = get_access_token()\n    scopes = set(token.scopes if token else [])\n    required = \"conversation:read\" if capability.startswith(\"conversation.\") else \"booth:read\"\n    if \"booth:read\" not in scopes and required not in scopes:\n        raise PermissionError(\"This session cannot use this capability\")\n"
     ],
     [
-      "    _actor()\n    return store.status()\n\n",
-      "    _require_scope(\"booth:read\")\n    _actor()\n    return store.status()\n\n"
+      "def booth_status() -> dict:\n",
+      "def booth_status() -> dict:\n    _require_scope(\"booth:read\")\n"
     ],
     [
-      "@mcp.tool(description=\"Full-text search locally stored collaboration history, optionally within one room.\")\nasync def search_conversation(\n    query: str, room_id: str | None = None, limit: int = 50, reason: str = \"Search collaboration history\"\n",
-      "@mcp.tool(description=\"Catch up in append order. Save next_cursor only after processing messages; null starts at the beginning.\")\nasync def conversation_catch_up(room_id: str, after: str | None = None, limit: int = 200, reason: str = \"Catch up on room\") -> dict:\n    return await _queued(\"conversation.catch_up\", {\"room_id\": room_id, \"after\": after, \"limit\": limit}, reason)\n\n\n@mcp.tool(description=\"Full-text search locally stored collaboration history, optionally within one room.\")\nasync def search_conversation(\n    query: str, room_id: str | None = None, limit: int = 50, reason: str = \"Search collaboration history\"\n"
+      "        \"conversation.messages\", {\"room_id\": room_id, \"limit\": limit, \"before\": before}, reason\n    )\n\n\n",
+      "        \"conversation.messages\", {\"room_id\": room_id, \"limit\": limit, \"before\": before}, reason\n    )\n\n\n@mcp.tool(description=\"Catch up in append order. Save next_cursor only after processing messages; null starts at the beginning.\")\nasync def conversation_catch_up(room_id: str, after: str | None = None, limit: int = 200, reason: str = \"Catch up on room\") -> dict:\n    return await _queued(\"conversation.catch_up\", {\"room_id\": room_id, \"after\": after, \"limit\": limit}, reason)\n\n\n"
     ],
     [
-      "    _require_scope(\"booth:write\")\n",
-      "    token = get_access_token()\n    if not {\"booth:write\", \"conversation:post\"}.intersection(token.scopes if token else []):\n        raise PermissionError(\"This session cannot post messages\")\n"
+      "    reason: str = \"Collaborate in TROLL BOOTH\",\n) -> dict:\n    _require_scope(\"booth:write\")\n",
+      "    reason: str = \"Collaborate in TROLL BOOTH\",\n) -> dict:\n    token = get_access_token()\n    if not {\"booth:write\", \"conversation:post\"}.intersection(token.scopes if token else []):\n        raise PermissionError(\"This session cannot post messages\")\n"
     ],
     [
       "    if actor not in {\"claude\", \"codex\"}:\n        return JSONResponse({\"error\": \"actor must be claude or codex\"}, status_code=400)\n",
       "    if actor not in {\"claude\", \"codex\", \"muse\"}:\n        return JSONResponse({\"error\": \"actor must be claude, codex or muse\"}, status_code=400)\n"
     ],
     [
-      "    code = store.issue_pair_code(actor, scopes, ttl=300)\n    return JSONResponse({\"actor\": actor, \"code\": code, \"expires_in\": 300, \"scopes\": scopes})\n\n",
-      "    if actor == \"muse\":\n        scopes = [\"conversation:read\", \"conversation:post\"]\n    code = store.issue_pair_code(actor, scopes, ttl=300)\n    return JSONResponse({\"actor\": actor, \"code\": code, \"expires_in\": 300, \"scopes\": scopes})\n\n"
+      "    scopes = [\"booth:read\", \"booth:write\"] if bool(data.get(\"write\", True)) else [\"booth:read\"]\n",
+      "    scopes = [\"booth:read\", \"booth:write\"] if bool(data.get(\"write\", True)) else [\"booth:read\"]\n    if actor == \"muse\":\n        scopes = [\"conversation:read\", \"conversation:post\"]\n"
     ],
     [
       "",
@@ -43,8 +43,8 @@
   ],
   "oauth.py": [
     [
-      "\nimport secrets\nimport time\n",
-      "# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.\n\nimport secrets\nimport time\n"
+      "from __future__ import annotations\n",
+      "from __future__ import annotations\n# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.\n"
     ],
     [
       "        if \"booth:read\" not in allowed:\n",
