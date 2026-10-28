@@ -279,10 +279,24 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             $html .= (string)snap_render_component('image', [
                 'url' => $thumb,
                 'alt' => $item['img_alt'] ?? $item['img_title'] ?? '',
-                'attributes' => [
-                    'data-w' => max(1, (int)($item['img_width'] ?? 3)),
-                    'data-h' => max(1, (int)($item['img_height'] ?? 2)),
-                ],
+                // SAY NOTHING RATHER THAN SAY 3:2. These two attributes used
+                // to fall back to 3 and 2, which is not a safe default: it is
+                // an assertion that every photograph is landscape. A query
+                // that forgot to select img_width and img_height therefore
+                // produced tiles that all claimed the same shape, portraits
+                // were cropped on their side, and the masonry engine could
+                // not vary tile widths, so the last row came out a different
+                // size from the rows above it. That is exactly what happened
+                // to search results (SS-1029, SS-1030).
+                //
+                // Omitting them instead lets ss-engine-masonry fall back to
+                // the image's own naturalWidth and naturalHeight, which it
+                // already does and which is always true. A missing dimension
+                // now degrades to "measure it yourself" rather than to a lie.
+                'attributes' => array_filter([
+                    'data-w' => (int)($item['img_width'] ?? 0) > 0 ? (int)$item['img_width'] : null,
+                    'data-h' => (int)($item['img_height'] ?? 0) > 0 ? (int)$item['img_height'] : null,
+                ], static fn($v) => $v !== null),
             ]);
         }
         $html .= '</a>';
