@@ -1,0 +1,16 @@
+{
+  "source_commit": "89b1ae81",
+  "description": "Actual live homepage markup and loaded CSS replayed; only tested overlay stacking lift applied. Title rectangle unchanged at both widths. Archive/static fixture geometry also unchanged, but fixture alone does not reproduce live static stacking fault.",
+  "results": [
+    {
+      "viewport": 1920,
+      "before_dark_pixels": 0,
+      "after_dark_pixels": 3110
+    },
+    {
+      "viewport": 390,
+      "before_dark_pixels": 0,
+      "after_dark_pixels": 989
+    }
+  ]
+}
