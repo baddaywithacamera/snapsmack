@@ -10,6 +10,7 @@ const checks = [
   [process.execPath, 'tests/columns-paging-browser.cjs'],
   [process.execPath, 'tests/mosaic-preview-browser.cjs'],
   [process.execPath, 'tests/jive-border-geometry-browser.cjs'],
+  [process.execPath, 'tests/engine-config-csp-browser.cjs'],
   [process.execPath, 'tests/scrolltime-beacon-regression.cjs'],
 ];
 let failed = false;

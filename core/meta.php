@@ -561,7 +561,7 @@ $_smack_js_config['calendar'] = [
 
 if (!empty($_smack_js_config)):
 ?>
-<script>window.SMACK_CONFIG = <?php echo json_encode($_smack_js_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); /* SECAUDIT 2026-08-15: tag-escape inline JSON so settings-derived strings can't break out of <script> */ ?>;</script>
+<script src="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8'); ?>assets/js/ss-engine-config.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" data-smack-config="<?php echo htmlspecialchars(json_encode($_smack_js_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>"></script>
 <?php endif; ?>
 
 <?php if (!empty($settings['nav_menu_json']) && $settings['nav_menu_json'] !== '[]'): ?>
