@@ -27,8 +27,8 @@
             "files_sha256": "a8f62a7e14c62f81512384c5b194305f868d9d4112a40652903b2038c80f6356"
         },
         "galleria": {
-            "version": "1.3.20",
-            "files_sha256": "06a13ec01b10e5968a8f61074f7f9349f8106ae8b2aad0273f7ecae62c935025"
+            "version": "1.3.21",
+            "files_sha256": "ef2302b0e065b1a594bf3a3e08e4a85ba96caa984dc016d0c7a615f3bb2ac64a"
         },
         "game-on": {
             "version": "0.1.39",

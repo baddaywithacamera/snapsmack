@@ -1,0 +1,338 @@
+[
+  {
+    "skin": "galleria",
+    "width": 1920,
+    "url": "https://hekeepsdroningon.ca/photographer",
+    "overflow": false,
+    "nav": [
+      {
+        "text": "Home",
+        "left": 1382.625,
+        "right": 1442.625
+      },
+      {
+        "text": "Archive View",
+        "left": 1466.015625,
+        "right": 1585.375
+      },
+      {
+        "text": "Blogroll",
+        "left": 1608.765625,
+        "right": 1701.46875
+      },
+      {
+        "text": "The Photographer",
+        "left": 1724.859375,
+        "right": 1890
+      }
+    ],
+    "boxes": [
+      {
+        "class": "static-content",
+        "id": "",
+        "x": 550,
+        "width": 820
+      },
+      {
+        "class": "static-page-title",
+        "id": "",
+        "x": 574,
+        "width": 772
+      },
+      {
+        "class": "page-hero page-hero--full page-hero--center",
+        "id": "photobox",
+        "x": 574,
+        "width": 772
+      }
+    ]
+  },
+  {
+    "skin": "galleria",
+    "width": 390,
+    "url": "https://hekeepsdroningon.ca/photographer",
+    "overflow": false,
+    "nav": [
+      {
+        "text": "Home",
+        "left": 36.109375,
+        "right": 96.109375
+      },
+      {
+        "text": "Archive View",
+        "left": 118.96875,
+        "right": 238.328125
+      },
+      {
+        "text": "Blogroll",
+        "left": 261.1875,
+        "right": 353.890625
+      },
+      {
+        "text": "The Photographer",
+        "left": 123.859375,
+        "right": 289
+      }
+    ],
+    "boxes": [
+      {
+        "class": "static-content",
+        "id": "",
+        "x": 0,
+        "width": 390
+      },
+      {
+        "class": "static-page-title",
+        "id": "",
+        "x": 24,
+        "width": 342
+      },
+      {
+        "class": "page-hero page-hero--full page-hero--center",
+        "id": "photobox",
+        "x": 24,
+        "width": 342
+      }
+    ]
+  },
+  {
+    "skin": "aurora",
+    "width": 1920,
+    "url": "https://lightafterdark.ca/about",
+    "overflow": false,
+    "nav": [
+      {
+        "text": "Home",
+        "left": 852.234375,
+        "right": 888.78125
+      },
+      {
+        "text": "Blogroll",
+        "left": 919.140625,
+        "right": 966.84375
+      },
+      {
+        "text": "About Sean",
+        "left": 997.203125,
+        "right": 1067.75
+      }
+    ],
+    "boxes": [
+      {
+        "class": "au-profile-username",
+        "id": "",
+        "x": 774.5,
+        "width": 142.1875
+      },
+      {
+        "class": "au-static-title",
+        "id": "",
+        "x": 620,
+        "width": 680
+      },
+      {
+        "class": "page-hero page-hero--full page-hero--center",
+        "id": "photobox",
+        "x": 620,
+        "width": 680
+      },
+      {
+        "class": "au-static-content",
+        "id": "",
+        "x": 620,
+        "width": 680
+      }
+    ]
+  },
+  {
+    "skin": "aurora",
+    "width": 390,
+    "url": "https://lightafterdark.ca/about",
+    "overflow": true,
+    "nav": [
+      {
+        "text": "Home",
+        "left": 87.234375,
+        "right": 123.78125
+      },
+      {
+        "text": "Blogroll",
+        "left": 154.140625,
+        "right": 201.84375
+      },
+      {
+        "text": "About Sean",
+        "left": 232.203125,
+        "right": 302.75
+      }
+    ],
+    "boxes": [
+      {
+        "class": "au-profile-username",
+        "id": "",
+        "x": 76,
+        "width": 113.75
+      },
+      {
+        "class": "au-static-title",
+        "id": "",
+        "x": 0,
+        "width": 390
+      },
+      {
+        "class": "page-hero page-hero--full page-hero--center",
+        "id": "photobox",
+        "x": 0,
+        "width": 390
+      },
+      {
+        "class": "au-static-content",
+        "id": "",
+        "x": 0,
+        "width": 390
+      }
+    ]
+  },
+  {
+    "skin": "the-grid",
+    "width": 1920,
+    "url": "https://unzucked.ca/about",
+    "overflow": false,
+    "nav": [
+      {
+        "text": "Home",
+        "left": 852.234375,
+        "right": 888.78125
+      },
+      {
+        "text": "Blogroll",
+        "left": 919.140625,
+        "right": 966.84375
+      },
+      {
+        "text": "About Sean",
+        "left": 997.203125,
+        "right": 1067.75
+      }
+    ],
+    "boxes": [
+      {
+        "class": "tg-profile-username",
+        "id": "",
+        "x": 774.5,
+        "width": 89.59375
+      },
+      {
+        "class": "tg-static-title",
+        "id": "",
+        "x": 620,
+        "width": 680
+      }
+    ]
+  },
+  {
+    "skin": "the-grid",
+    "width": 390,
+    "url": "https://unzucked.ca/about",
+    "overflow": false,
+    "nav": [
+      {
+        "text": "Home",
+        "left": 103.71875,
+        "right": 140.265625
+      },
+      {
+        "text": "Blogroll",
+        "left": 170.625,
+        "right": 218.328125
+      },
+      {
+        "text": "About Sean",
+        "left": 238.328125,
+        "right": 286.296875
+      }
+    ],
+    "boxes": [
+      {
+        "class": "tg-profile-username",
+        "id": "",
+        "x": 156,
+        "width": 71.671875
+      },
+      {
+        "class": "tg-static-title",
+        "id": "",
+        "x": 80,
+        "width": 230
+      }
+    ]
+  },
+  {
+    "skin": "impact-printer",
+    "width": 1920,
+    "url": "https://pixhellated.ca/archive-view",
+    "overflow": false,
+    "nav": [
+      {
+        "text": "HOME",
+        "left": 953.875,
+        "right": 992.453125
+      },
+      {
+        "text": "ARCHIVE VIEW",
+        "left": 1026.015625,
+        "right": 1141.75
+      },
+      {
+        "text": "BLOGROLL",
+        "left": 1175.3125,
+        "right": 1252.46875
+      },
+      {
+        "text": "THE PHOTOGRAPHER",
+        "left": 1286.03125,
+        "right": 1440.34375
+      },
+      {
+        "text": "THE CAMERAS",
+        "left": 1473.90625,
+        "right": 1580
+      }
+    ],
+    "boxes": []
+  },
+  {
+    "skin": "impact-printer",
+    "width": 390,
+    "url": "https://pixhellated.ca/archive-view",
+    "overflow": false,
+    "nav": [
+      {
+        "text": "HOME",
+        "left": -56,
+        "right": -27.15625
+      },
+      {
+        "text": "ARCHIVE VIEW",
+        "left": 6.40625,
+        "right": 92.9375
+      },
+      {
+        "text": "BLOGROLL",
+        "left": 126.5,
+        "right": 184.1875
+      },
+      {
+        "text": "THE PHOTOGRAPHER",
+        "left": 217.75,
+        "right": 333.125
+      },
+      {
+        "text": "THE CAMERAS",
+        "left": 366.6875,
+        "right": 446.015625
+      }
+    ],
+    "boxes": []
+  }
+]
