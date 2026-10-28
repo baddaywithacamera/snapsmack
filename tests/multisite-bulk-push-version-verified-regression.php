@@ -132,6 +132,38 @@ $skins_page = (string)file_get_contents($root . '/smack-skin.php');
 bp_test(preg_match('/\$registry\s*=\s*skin_registry_fetch\(\$registry_url,\s*true\)/', $skins_page) === 1,
     'the Skins screen renders install buttons from a fresh registry, not a cached one');
 
+// ---------------------------------------------------------------------------
+// 7. ONLY WHAT IS BEHIND. The bulk push used to package every skin a spoke
+//    had installed and reinstall all of them whatever version they were on,
+//    so a fleet of 25 sites re-downloaded dozens of unchanged skins to
+//    deliver one changed file. The owner: no time for manual site updates.
+//    The hub already knows each spoke's installed version from the heartbeat.
+// ---------------------------------------------------------------------------
+bp_test(preg_match('/snap_version_compare\(\$registryVersion,\s*\$spokeVersion/', $push_block) === 1,
+    'the fleet push compares the registry version against the version each spoke reports');
+bp_test(str_contains($push_block, 'if (!$bulk_force) {')
+     && preg_match("/!snap_version_compare.{0,200}continue;/s", $push_block) === 1,
+    'a skin already on the current version is not packaged at all');
+bp_test(str_contains($push_block, '$bulk_force'),
+    'a full reinstall is still possible, as its own explicit action');
+bp_test(str_contains($hub, "push_all_skins_force"),
+    'the force path is a separate POST field, not the default');
+
+// A version that cannot be compared must be SENT, never silently skipped,
+// or "skipped" would stop meaning "checked and already current".
+bp_test(str_contains($push_block, '$unknown[] = $slug;'),
+    'a skin whose version cannot be compared is sent rather than skipped');
+bp_test(str_contains($push_block, 'Already current:'),
+    'each site reports which skins were already current');
+bp_test(str_contains($push_block, 'could not be compared'),
+    'each site reports anything whose version could not be compared');
+
+// The button must not promise a full reinstall any more.
+bp_test(!str_contains($hub, 'Reinstall EVERY registry skin already present on EVERY active spoke?'),
+    'the primary fleet button no longer reinstalls every skin on every spoke');
+bp_test(str_contains($hub, 'UPDATE EVERY SPOKE THAT IS BEHIND'),
+    'the primary fleet action says what it does');
+
 if ($fail > 0) {
     echo "Multisite bulk push version verification: FAIL ({$fail}).\n";
     exit(1);

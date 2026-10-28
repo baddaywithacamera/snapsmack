@@ -797,6 +797,11 @@ if (isset($_POST['push_all_skins_all_spokes'])) {
     if ($multisite_role !== 'hub') {
         $err = "Only a hub can push skin reinstalls.";
     } else {
+        // Default is "only what is behind". A full reinstall is a separate,
+        // explicit action, because it costs every site a download of every
+        // skin it has and the owner asked for one button that updates only
+        // what is older. (SS-1034.)
+        $bulk_force   = !empty($_POST['push_all_skins_force']);
         $registry_url = $settings['skin_registry_url'] ?? SKIN_REGISTRY_DEFAULT_URL;
         // FRESH, never the session cache. Publishing a package warms that
         // cache, and publishing then pushing is the owner's actual sequence,
@@ -829,10 +834,36 @@ if (isset($_POST['push_all_skins_all_spokes'])) {
                     continue;
                 }
 
-                $packages = [];
-                foreach (array_keys($installed) as $slug) {
+                // ONLY WHAT IS ACTUALLY BEHIND. The bulk push used to package
+                // every skin a spoke had installed and reinstall all of them,
+                // whatever version they were already on, so a fleet of 25
+                // sites re-downloaded and re-unpacked dozens of unchanged
+                // skins to deliver one changed file. The hub already knows
+                // each spoke's installed version: the heartbeat stores
+                // installed_skins as {slug: version}. Compare it with the
+                // registry and send only the ones that are older, using the
+                // same snap_version_compare the per-skin push has used since
+                // 0.7.343. FORCE remains available as its own action for a
+                // deliberate full reinstall. (SS-1034.)
+                $packages   = [];
+                $current    = [];   // already on the registry version
+                $unknown    = [];   // spoke or registry did not say
+                foreach ($installed as $slug => $installedVersion) {
                     $rskin = $bulk_registry[$slug] ?? null;
                     if (!$rskin || empty($rskin['download_url'])) continue;
+                    $registryVersion = trim((string)($rskin['version'] ?? ''));
+                    $spokeVersion    = trim((string)($installedVersion ?? ''));
+                    if (!$bulk_force) {
+                        if ($registryVersion === '' || $spokeVersion === '') {
+                            // Never silently skip on an absent version. Send it,
+                            // and say it could not be compared, so "skipped"
+                            // always means "checked and already current".
+                            $unknown[] = $slug;
+                        } elseif (!snap_version_compare($registryVersion, $spokeVersion, '>')) {
+                            $current[] = $slug . ' v' . $spokeVersion;
+                            continue;
+                        }
+                    }
                     $packages[] = [
                         'skin_slug'    => $slug,
                         'download_url' => $rskin['download_url'],
@@ -853,7 +884,9 @@ if (isset($_POST['push_all_skins_all_spokes'])) {
                         'name'    => $tn['site_name'] ?? $tn['site_url'],
                         'ok'      => true,
                         'skipped' => true,
-                        'detail'  => 'Skipped -- no installed skins have registry packages.',
+                        'detail'  => $current
+                            ? 'Nothing to do -- already current: ' . implode(', ', $current) . '.'
+                            : 'Skipped -- no installed skins have registry packages.',
                     ];
                     continue;
                 }
@@ -913,8 +946,18 @@ if (isset($_POST['push_all_skins_all_spokes'])) {
                         && $ok_count === count($packages)
                         && empty($stale)
                         && empty($unverified);
-                    $result['detail'] = $ok_count . ' skin' . ($ok_count === 1 ? '' : 's') . ' installed'
+                    $result['detail'] = $ok_count . ' skin' . ($ok_count === 1 ? '' : 's') . ' updated'
                         . ($fail_count ? '; ' . $fail_count . ' failed' : '') . '.';
+                    // Say what was NOT sent and why, so a small number here
+                    // reads as "nothing else needed doing" rather than as
+                    // work that quietly went missing.
+                    if ($current) {
+                        $result['detail'] .= ' Already current: ' . implode(', ', $current) . '.';
+                    }
+                    if ($unknown) {
+                        $result['detail'] .= ' Version could not be compared, so sent anyway: '
+                            . implode(', ', $unknown) . '.';
+                    }
                     if ($stale) {
                         $result['detail'] .= ' STILL ON THE OLD PACKAGE: ' . implode('; ', $stale) . '.';
                     }
@@ -1977,12 +2020,24 @@ include 'core/sidebar.php';
             <?php if (!empty($registry_skins)): ?>
             <div class="skin-deploy-primary">
             <form method="POST"
-                  onsubmit="return confirm('Reinstall EVERY registry skin already present on EVERY active spoke? This may take several minutes.');">
+                  onsubmit="return confirm('Update every spoke that is behind on any skin? Skins already on the current version are not touched.');">
                 <button type="submit" name="push_all_skins_all_spokes" class="master-update-btn">
-                    PUSH ALL SKINS TO ALL SPOKES
+                    UPDATE EVERY SPOKE THAT IS BEHIND
                 </button>
             </form>
-            <p>One authenticated batch per spoke. Custom and uninstalled skins are left alone.</p>
+            <p>One authenticated batch per spoke, carrying only the skins whose
+               registry version is newer than the version that spoke reports.
+               A skin already on the current version is not sent. Custom and
+               uninstalled skins are left alone. Each site reports what it
+               updated, what was already current, and anything whose version
+               could not be compared.</p>
+            <form method="POST"
+                  onsubmit="return confirm('REINSTALL every registry skin on every active spoke, including ones already up to date? This downloads every skin again and may take several minutes.');">
+                <input type="hidden" name="push_all_skins_force" value="1">
+                <button type="submit" name="push_all_skins_all_spokes" class="secondary-btn">
+                    Force a full reinstall instead
+                </button>
+            </form>
             </div>
             <details class="skin-deploy-advanced">
                 <summary>Deploy one skin instead</summary>
