@@ -1,0 +1,122 @@
+[
+  {
+    "width": 1920,
+    "state": "before",
+    "hero": {
+      "x": 440,
+      "width": 1040,
+      "y": 110,
+      "height": 702.65625
+    },
+    "image": {
+      "x": 480,
+      "width": 960,
+      "y": 140,
+      "height": 642.65625
+    },
+    "text": {
+      "x": 574,
+      "width": 772,
+      "y": 1017.484375,
+      "height": 671.84375
+    },
+    "title": {
+      "x": 574,
+      "width": 772,
+      "y": 920.65625,
+      "height": 68.828125
+    },
+    "scrollWidth": 1920,
+    "viewport": 1920
+  },
+  {
+    "width": 1920,
+    "state": "after",
+    "hero": {
+      "x": 440,
+      "width": 1040,
+      "y": 110,
+      "height": 702.65625
+    },
+    "image": {
+      "x": 480,
+      "width": 960,
+      "y": 140,
+      "height": 642.65625
+    },
+    "text": {
+      "x": 480,
+      "width": 960,
+      "y": 963.078125,
+      "height": 537.46875
+    },
+    "title": {
+      "x": 480,
+      "width": 960,
+      "y": 872.65625,
+      "height": 50.421875
+    },
+    "scrollWidth": 1920,
+    "viewport": 1920
+  },
+  {
+    "width": 390,
+    "state": "before",
+    "hero": {
+      "x": 0,
+      "width": 390,
+      "y": 110,
+      "height": 269.328125
+    },
+    "image": {
+      "x": 40,
+      "width": 310,
+      "y": 140,
+      "height": 209.328125
+    },
+    "text": {
+      "x": 24,
+      "width": 342,
+      "y": 569.4375,
+      "height": 952
+    },
+    "title": {
+      "x": 24,
+      "width": 342,
+      "y": 487.328125,
+      "height": 54.109375
+    },
+    "scrollWidth": 390,
+    "viewport": 390
+  },
+  {
+    "width": 390,
+    "state": "after",
+    "hero": {
+      "x": 0,
+      "width": 390,
+      "y": 110,
+      "height": 269.328125
+    },
+    "image": {
+      "x": 40,
+      "width": 310,
+      "y": 140,
+      "height": 209.328125
+    },
+    "text": {
+      "x": 40,
+      "width": 310,
+      "y": 529.75,
+      "height": 952
+    },
+    "title": {
+      "x": 40,
+      "width": 310,
+      "y": 439.328125,
+      "height": 50.421875
+    },
+    "scrollWidth": 390,
+    "viewport": 390
+  }
+]
