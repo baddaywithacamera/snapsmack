@@ -478,6 +478,8 @@ function snapsmack_record_dwell($pdo, $hit_id, $ms) {
  * @return void
  */
 function snapsmack_scrolltime_tag($settings) {
+    static $emitted = false;
+    if ($emitted) return;
     $hit = $GLOBALS['snapsmack_hit'] ?? null;
     if (!$hit || empty($hit['id'])) return;
 
@@ -494,6 +496,8 @@ function snapsmack_scrolltime_tag($settings) {
     $ok = (in_array($mode, ['carousel', 'smackthemup'], true) && $type === 'landing')
        || ($mode === 'photoblog' && ($type === 'landing' || $type === 'archive'));
     if (!$ok) return;
+
+    $emitted = true;
 
     $ver  = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';
     $base = defined('BASE_URL') ? BASE_URL : '/';

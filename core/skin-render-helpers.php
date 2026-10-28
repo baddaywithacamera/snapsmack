@@ -419,6 +419,13 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $assets=is_array($data['assets']??null)?$data['assets']:[];
         foreach(($assets['styles']??[]) as $url)$html.='<link rel="stylesheet" href="'.snap_escape_url($url).'">';
         foreach(($assets['scripts']??[]) as $url)$html.='<script src="'.snap_escape_url($url).'" defer></script>';
+        // Strict pages do not include the legacy footer. Keep telemetry in the
+        // CMS, using the actual logged hit and the same eligibility rules.
+        if (function_exists('snapsmack_scrolltime_tag')) {
+            ob_start();
+            snapsmack_scrolltime_tag($GLOBALS['settings'] ?? []);
+            $html .= (string)ob_get_clean();
+        }
     } elseif ($name === 'navigation') {
         $html = '<nav class="navigation" aria-label="Primary"><ul class="nav-menu">';
         foreach (($data['items'] ?? []) as $item) {
