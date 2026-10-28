@@ -11,6 +11,16 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.965D - 2026-10-28 - ONLY WHAT IS BEHIND
+
+- **PUSH ALL SKINS reinstalled every skin on every spoke, whatever version it was already on.** Sean, with six packaged skins waiting and twenty-five sites: "no time for manual site updates". The fleet button packaged every slug a spoke reported as installed and sent the lot, so delivering one changed file meant every site re-downloading and re-unpacking dozens of skins that had not changed. The hub already knew better: the heartbeat stores each spoke's `installed_skins` as slug and version, and the per-skin push has compared versions with `snap_version_compare` since 0.7.343. The fleet push now does the same thing — it sends only the skins whose registry version is newer than the version that spoke reports.
+
+- **A skip now means something exact.** Each site reports what it updated, which skins were already current and at what version, and — separately — anything whose version could not be compared, because a skin with no version on either side is SENT rather than skipped. If "skipped" could mean either "already current" or "we could not tell", it would mean neither.
+
+- **A full reinstall is still available and is now its own deliberate action.** The primary button says UPDATE EVERY SPOKE THAT IS BEHIND and does exactly that; forcing a complete reinstall is a second button with its own confirmation, because it costs every site a download of every skin it has. SS-1034, raised by Codex on Sean's behalf so the request could not vanish between us.
+
+- `tests/multisite-bulk-push-version-verified-regression.php` gained nine assertions and fails nine ways against the shipping hub, including that a skin already on the current version is not packaged at all, that an uncomparable version is sent rather than silently dropped, and that the primary button no longer promises a full reinstall.
+
 ## 0.7.964D - 2026-10-28 - THE DEFAULT THAT LIED
 
 - **CHAPLIN 0.2.27 — three faults the owner found on one site, all in one stylesheet.** The blogroll title rendered full width at the viewport edge while the About title sat correctly in the reading column: the two pages emit different classes, `blogroll-page-title` and `static-page-title`, and only the second was styled. Measured at 1920, the blogroll title was left 0, width 1920, 48px against About's left 574, width 772, 41.6px. The blogroll title now matches About in position, width, font and rule. **The header was pinned regardless of the owner's setting.** `#rg-header` declared `position: fixed` unconditionally, so a site with the sticky header switched OFF got sticky behaviour anyway — and, because the CMS only emits `--sticky-opacity` and `--sticky-blur` when the switch is ON, got it fully opaque instead of translucent. It is now `position: relative`, and the shared gated engine pins it only when the owner has asked for it. **The archive's top row was hidden under that fixed header**, since only `body.static-transmission` reserved its height: archive body padding measured 0px against a 56px header, with the first photograph's top at 9px. An in-flow header needs no reservation, so that fault goes with the first. SS-1026, SS-1027, SS-1028.
