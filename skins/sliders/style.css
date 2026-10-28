@@ -1415,7 +1415,7 @@ body { background: transparent !important; }      /* let the fixed layers show *
  * position can be changed without a CMS release. */
 .tg-sticky-nav-links > li + li::before {
     content: "|";
-    margin-right: 0.5em;
+    margin-right: 20px;
 }
 
 /* ===== SNAPSMACK EOF ===== */

@@ -19,8 +19,8 @@
             "files_sha256": "d804dcb1c60e290501231f744b973e2b942ea18d4d5354dc496e0ab49de717fe"
         },
         "chaplin": {
-            "version": "0.2.26",
-            "files_sha256": "7acb82fb381eea538a280400bd7c4f0bbd67a3885a27940c02314ad996d8711d"
+            "version": "0.2.27",
+            "files_sha256": "4e531a575db5628f0acef929cd888891dc8dc5631ec1dccb4aa49d48de2de3ae"
         },
         "full-monty": {
             "version": "0.1.10",
@@ -39,24 +39,24 @@
             "files_sha256": "6f71929ff8ee6fa03b1f9c3cc0839af6693563201df02ff69688cbc6dd92b98a"
         },
         "heuristic": {
-            "version": "0.1.16",
-            "files_sha256": "e684af8bcef8440b53d9270817605b7d9988b20a5f3cf673ca4492c38396eec1"
+            "version": "0.1.17",
+            "files_sha256": "1204856a9d032fcf6b0aa80b7cef2502abb4da172fd3ab32fa6eaca4affd0cf4"
         },
         "hip-to-be-square": {
             "version": "1.3.20",
             "files_sha256": "c9fa2ef1a9062aa04ec8eb28d3a3e0ed1c86e54b09d5fa8ce2838232c6a9c7a5"
         },
         "impact-printer": {
-            "version": "2.1.19",
-            "files_sha256": "5b541cc7842cba258bbbc5487cb1e419059203ffff43e01f0447850c897a306a"
+            "version": "2.1.20",
+            "files_sha256": "e33c678d28acd8c2f03272b31174b2609767520e1fdb0ea59534e88566bab794"
         },
         "instant-camera": {
-            "version": "1.0.56",
-            "files_sha256": "22c4b7250f867a517aeaf33a5f4e8ceea8f0dcefaccf43224cda3568ab363123"
+            "version": "1.0.57",
+            "files_sha256": "200852489f61c8c954594441ce4767e9c2e1cbaecdf1b01deaa0a35d4f5b3281"
         },
         "jive-turkey": {
-            "version": "0.1.42",
-            "files_sha256": "9e8e9d16eb830d214d33345fe2da4ec1d422b459d489a37d5e607b229034175b"
+            "version": "0.1.43",
+            "files_sha256": "6228220c3fe212d192daa3801249924bcd65842ecebc559f90a8ec9f45494ed2"
         },
         "new-horizon": {
             "version": "1.3.26",
@@ -91,8 +91,8 @@
             "files_sha256": "20463711ef6a032afa14e50a53f151c4db0db0d856105446f4df9763def2c65e"
         },
         "sliders": {
-            "version": "0.1.15",
-            "files_sha256": "ef75cab95a71bbcdcf3d0ad9b5d648695f519c0de8efa9c0068bd1e1369b6b66"
+            "version": "0.1.16",
+            "files_sha256": "f69b876200218d0057f6cafb54bc245573e8054d41070bafd90357d8dbd4de67"
         },
         "stanley": {
             "version": "1.1.9",

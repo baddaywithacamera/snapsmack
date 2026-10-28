@@ -1540,7 +1540,7 @@ body { font-family: "Helvetica Neue", Arial, sans-serif; }
  * position can be changed without a CMS release. */
 .he-sticky-nav-links > li + li::before {
     content: "|";
-    margin-right: 0.5em;
+    margin-right: 20px;
 }
 
 /* ===== SNAPSMACK EOF ===== */

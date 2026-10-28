@@ -193,7 +193,8 @@ small, .text-small { font-size: var(--font-scale-sm); color: var(--chap-ink-dim)
    ========================================================================== */
 
 #rg-header {
-  position: fixed;
+  /* The shared sticky engine owns pinning when the owner enables it. */
+  position: relative;
   top: 0;
   left: 0;
   right: 0;
@@ -340,7 +341,7 @@ body:not(.archive-page):not(.static-transmission) #scroll-stage {
   align-items: center;
   width: 100%;
   background-color: var(--chap-bg);
-  margin-top: var(--header-height);
+  margin-top: 0;
   position: relative;
   /* overflow visible — ornaments extend outside .chap-img-frame border */
   overflow: visible;
@@ -945,7 +946,7 @@ body.archive-page #page-wrapper {
 
 body.archive-page #infobox {
   position: relative;
-  margin-top: var(--header-height);
+  margin-top: 0;
   background-color: var(--chap-bg-chrome);
   border-top: none;
   border-bottom: 1px solid var(--chap-border);
@@ -1196,7 +1197,7 @@ html:has(body.static-transmission) {
 body.static-transmission {
   overflow: auto !important;
   height: auto !important;
-  padding-top: var(--header-height);
+  padding-top: 0;
   background-color: var(--chap-bg);
 }
 
@@ -1220,7 +1221,8 @@ body.static-transmission #scroll-stage {
   text-align: left;
 }
 
-.static-page-title {
+.static-page-title,
+.blogroll-page-title {
   font-family: var(--chap-page-title-font, var(--chap-heading-font));
   font-size: calc(var(--chap-page-title-size, 12) * 0.1rem);
   font-weight: 700;
@@ -1230,6 +1232,18 @@ body.static-transmission #scroll-stage {
   margin: 0 0 40px 0;
   padding-bottom: 20px;
   border-bottom: 1px solid var(--chap-border);
+}
+
+/* Blogroll is a sibling page, not a child of .static-content. Give its
+   heading the same reading lane; leave the wider peer-card canvas intact. */
+.blogroll-page-title {
+  max-width: 772px;
+  width: calc(100% - 48px);
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  line-height: 1.15;
+  margin: 48px auto 28px;
+  padding: 0 0 20px;
+  box-sizing: border-box;
 }
 
 .static-content .description {
