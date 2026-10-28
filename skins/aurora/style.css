@@ -1145,6 +1145,36 @@ body.au-modal-open { overflow: hidden; }
        INSTANT CAMERA, covers every page) — this column just sets reading width. */
 }
 
+/* The title and the hero are SIBLINGS of .au-static-content, not children of
+   it, so the 680px reading column applied to the body text and to nothing
+   else. Measured at 1920: body 648 wide 624, hero 493 wide 935, title 493 --
+   the photograph ran 311px wider than the text under it and started 155px to
+   its left, which is the "image outside of content area" the owner reported.
+
+   His own reference capture, projects/snapsmack-ca/img/aurora-page.png, has
+   the title, the hero and the text all on one left edge at 640 with the hero
+   624 wide. That capture includes a scrollbar, so its usable width is 1905:
+   (1905 - 680) / 2 + 28 = 640. The same rule at 1920 gives 648. The numbers
+   reconcile exactly, which is how we know this is the original intent and not
+   a new guess.
+
+   So the column is given to the title and the hero as well. One rule, same
+   figures as .au-static-content, nothing invented. */
+.au-static-page > .au-static-title,
+.au-static-page > #photobox.page-hero {
+    max-width: 680px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 28px;
+    padding-right: 28px;
+    box-sizing: border-box;
+}
+
+.au-static-page > #photobox.page-hero .main-photo img {
+    width: 100%;
+    height: auto;
+}
+
 .au-static-title {
     font-size: 22px;
     font-weight: 600;

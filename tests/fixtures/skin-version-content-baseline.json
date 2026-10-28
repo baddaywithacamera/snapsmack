@@ -15,8 +15,8 @@
             "files_sha256": "1fa238fcc790e494ef7dfd7ea5cb46e07fd67b7d66cbab1ad5350de9cc8865e5"
         },
         "aurora": {
-            "version": "1.0.53",
-            "files_sha256": "a813f71f1ef9d7240fb831b8f6372b59520cef50214aa0f61ac6f9e33533cb32"
+            "version": "1.0.54",
+            "files_sha256": "d804dcb1c60e290501231f744b973e2b942ea18d4d5354dc496e0ab49de717fe"
         },
         "chaplin": {
             "version": "0.2.26",
