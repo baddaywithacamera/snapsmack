@@ -1,0 +1,124 @@
+SKIN                    KIND    VP      TITLE l/w    BODY l/w     HERO l/w     NAV GAPS          NOTE
+----------------------------------------------------------------------------------------------------------------------
+50-shades-of-noah-grey  page    desktop 210/1020     735/495      210/469      33,33,33          hero != body column
+50-shades-of-noah-grey  page    phone   40/310       40/310       40/310       33,33,33          
+50-shades-of-noah-grey  archive desktop -            -            -            33,33,33          
+50-shades-of-noah-grey  archive phone   -            -            -            33,33,33          
+52-card-pickup          page    desktop 0/1440       0/1440       0/1440       46,46,46          
+52-card-pickup          page    phone   0/390        0/390        0/390        46,20,27          uneven nav gaps 46,20,27
+52-card-pickup          archive desktop -            -            -            46,46,46          
+52-card-pickup          archive phone   -            -            -            46,20,27          uneven nav gaps 46,20,27
+alfred                  page    desktop 486/468      460/520      -            0,0,0,515,40,40,40uneven nav gaps 0,0,0,515,40,40,40
+alfred                  page    phone   54/282       29/332       -            0,0,0,0,0,0,0     
+alfred                  archive desktop 486/468      -            -            0,0,0,515,40,40,40uneven nav gaps 0,0,0,515,40,40,40; NO PHOTOGRAPHS
+alfred                  archive phone   46/298       -            -            0,0,0,0,0,0,0     NO PHOTOGRAPHS
+aurora                  page    desktop 253/935      408/624      253/935      30,30,30          hero != body column
+aurora                  page    phone   0/390        28/334       0/390        30,30,30          OVERFLOWS VIEWPORT; hero != body column
+aurora                  archive desktop -            -            -            30,30,30          
+aurora                  archive phone   -            -            -            30,30,30          OVERFLOWS VIEWPORT
+chaplin                 page    desktop 400/640      400/640      400/640      32,32,32          
+chaplin                 page    phone   40/310       40/310       40/310       12,12             
+chaplin                 archive desktop -            -            -            32,32,32          
+chaplin                 archive phone   -            -            -            12,12             
+full-monty              page    desktop 0/1440       0/1440       0/1440                         
+full-monty              page    phone   0/390        0/390        0/390                          
+full-monty              archive desktop -            -            -                              
+full-monty              archive phone   -            -            -                              
+galleria                page    desktop 0/1440       0/1440       0/1440       23,23,23          
+galleria                page    phone   0/390        0/390        0/390        23,23             OVERFLOWS VIEWPORT
+galleria                archive desktop -            -            -            23,23,23          
+galleria                archive phone   -            -            -            23,23             OVERFLOWS VIEWPORT
+game-on                 page    desktop 295/850      295/850      295/850      30,30,30          
+game-on                 page    phone   0/390        20/350       20/350       30,30,30          
+game-on                 archive desktop -            -            -            30,30,30          
+game-on                 archive phone   -            -            -            30,30,30          
+glide                   page    desktop 8/1424       8/1424       8/1424                         
+glide                   page    phone   8/374        8/374        8/374                          
+glide                   archive desktop -            -            -                              
+glide                   archive phone   -            -            -                              
+heuristic               page    desktop 253/935      408/624      253/935      31,31,31          hero != body column
+heuristic               page    phone   12/367       40/311       12/367       31,31,31          hero != body column
+heuristic               archive desktop -            -            -            31,31,31          
+heuristic               archive phone   -            -            -            31,31,31          
+hip-to-be-square        page    desktop 0/1440       0/1440       0/1440       23,23,23          
+hip-to-be-square        page    phone   0/390        0/390        0/390        23,23             
+hip-to-be-square        archive desktop -            -            -            23,23,23          
+hip-to-be-square        archive phone   -            -            -            23,23             
+impact-printer          page    desktop 315/810      335/770      315/100      34,34,34          hero != body column
+impact-printer          page    phone   20/350       30/330       20/100       34,34,34          hero != body column
+impact-printer          archive desktop -            -            -            34,34,34          
+impact-printer          archive phone   -            -            -            34,34,34          
+instant-camera          page    desktop 253/935      408/624      253/935      30,30,30          hero != body column
+instant-camera          page    phone   0/390        28/334       0/390        30,30,30          hero != body column
+instant-camera          archive desktop -            -            -            30,30,30          
+instant-camera          archive phone   -            -            -            30,30,30          
+jive-turkey             page    desktop 408/624      408/624      408/624      30,30,30          
+jive-turkey             page    phone   28/334       28/334       28/334       30,30,30          
+jive-turkey             archive desktop -            -            -            30,30,30          
+jive-turkey             archive phone   -            -            -            30,30,30          
+new-horizon             page    desktop 315/810      335/770      315/187      36,36,36          hero != body column
+new-horizon             page    phone   20/350       40/310       20/187       36,36,36          hero != body column
+new-horizon             archive desktop -            -            -            36,36,36          
+new-horizon             archive phone   -            -            -            36,36,36          
+onyx                    page    desktop 324/792      324/792      324/792      22,22,22          
+onyx                    page    phone   24/342       24/342       24/342       22,22             
+onyx                    archive desktop -            -            -            22,22,22          
+onyx                    archive phone   -            -            -            22,22             
+parade                  page    desktop 253/935      408/624      253/935      30,30,30          hero != body column
+parade                  page    phone   0/390        28/334       0/390        30,30,30          hero != body column
+parade                  archive desktop -            -            -            30,30,30          
+parade                  archive phone   -            -            -            30,30,30          
+photogram               page    desktop 480/480      496/448      480/480                        hero != body column
+photogram               page    phone   0/390        16/358       0/390                          hero != body column
+photogram               archive desktop -            -            -                              
+photogram               archive phone   -            -            -                              
+rational-geo            page    desktop 240/960      240/960      200/1040     40,40,40          hero != body column
+rational-geo            page    phone   40/310       40/310       0/390        0,0,0             hero != body column
+rational-geo            archive desktop -            -            -            40,40,40          
+rational-geo            archive phone   -            -            -            0,0,0             
+scroll                  page    desktop 253/920      253/920      253/920                        
+scroll                  page    phone   59/258       59/258       59/258                         
+scroll                  archive desktop -            -            -                              
+scroll                  archive phone   -            -            -                              
+show-n-tell             page    desktop 0/1440       0/1440       0/1440       48,48,48          
+show-n-tell             page    phone   0/390        0/390        0/390        36,36             
+show-n-tell             archive desktop -            -            -            48,48,48          
+show-n-tell             archive phone   -            -            -            36,36             
+slickr                  page    desktop 334/772      334/772      334/772                        
+slickr                  page    phone   24/342       24/342       24/342                         
+slickr                  archive desktop -            -            -                              
+slickr                  archive phone   -            -            -                              
+sliders                 page    desktop 253/935      408/624      253/935      30,30,30          hero != body column
+sliders                 page    phone   0/390        28/334       0/390        30,30,30          hero != body column
+sliders                 archive desktop -            -            -            30,30,30          
+sliders                 archive phone   -            -            -            30,30,30          
+stanley                 page    desktop 137/760      137/760      -                              
+stanley                 page    phone   20/350       20/350       -                              
+stanley                 archive desktop 137/760      -            -                              NO PHOTOGRAPHS
+stanley                 archive phone   20/350       -            -                              NO PHOTOGRAPHS
+sudden-impact           page    desktop 253/935      400/640      253/935      35,35,35          hero != body column
+sudden-impact           page    phone   0/390        20/350       0/390        35,35,35          hero != body column
+sudden-impact           archive desktop -            -            -            35,35,35          
+sudden-impact           archive phone   -            -            -            35,35,35          
+telegram                page    desktop 352/736      352/736      -            0,0,0,395,58,58,58uneven nav gaps 0,0,0,395,58,58,58
+telegram                page    phone   14/362       14/362       -            0,0,0,0,0,0,0     
+telegram                archive desktop 352/736      -            -            0,0,0,395,58,58,58uneven nav gaps 0,0,0,395,58,58,58; NO PHOTOGRAPHS
+telegram                archive phone   14/362       -            -            0,0,0,0,0,0,0     NO PHOTOGRAPHS
+the-grid                page    desktop 253/935      400/640      253/935      30,30,30          hero != body column
+the-grid                page    phone   0/390        20/350       0/390        30,30,30          hero != body column
+the-grid                archive desktop -            -            -            30,30,30          
+the-grid                archive phone   -            -            -            30,30,30          
+tilez                   page    desktop 940/370      130/752      -            54,54,54,0,0,0    uneven nav gaps 54,54,54,0,0,0
+tilez                   page    phone   14/308       14/250       -            0,0,0,0,0,0,0     
+tilez                   archive desktop -            -            -            54,54,54,0,0,0    uneven nav gaps 54,54,54,0,0,0; NO PHOTOGRAPHS
+tilez                   archive phone   -            -            -            0,0,0,0,0,0,0     NO PHOTOGRAPHS
+true-grit               page    desktop 335/770      335/770      335/770      34,34,34          
+true-grit               page    phone   40/310       40/310       40/310       34,34,34          
+true-grit               archive desktop -            -            -            34,34,34          
+true-grit               archive phone   -            -            -            34,34,34          
+writing-with-impact     page    desktop 351/760      351/760      -                              
+writing-with-impact     page    phone   36/318       36/318       -                              
+writing-with-impact     archive desktop 351/760      -            -                              NO PHOTOGRAPHS
+writing-with-impact     archive phone   36/318       -            -                              NO PHOTOGRAPHS
+
+120 measured, 0 unmeasurable. Written to C:\dev\snapsmack\.geometry-fixtures\geometry.json
