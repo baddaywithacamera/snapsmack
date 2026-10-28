@@ -12,6 +12,9 @@ def transform(source, changes):
         if not before:
             source += after
         else:
+            if source.count(before) == 0 and "TROLL BOOTH" in before:
+                before = before.replace("TROLL BOOTH", "BRAIN TRUST")
+                after = after.replace("TROLL BOOTH", "BRAIN TRUST")
             if source.count(before) != 1:
                 raise RuntimeError('Installed adapter differs at a required change; no files installed')
             source = source.replace(before, after, 1)
