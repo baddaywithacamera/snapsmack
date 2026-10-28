@@ -1,4 +1,5 @@
 from __future__ import annotations
+# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.
 
 import argparse
 import atexit
@@ -274,6 +275,8 @@ class CapabilityRegistry:
                     int(arguments["before"]) if arguments.get("before") is not None else None,
                 )
             }
+        if capability == "conversation.catch_up" and self.history:
+            return self.history.catch_up(str(arguments.get("room_id", "")), arguments.get("after"), int(arguments.get("limit", 200)))
         if capability == "conversation.search" and self.history:
             return {
                 "messages": self.history.search(
@@ -356,3 +359,4 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
+# ===== SNAPSMACK EOF =====

@@ -1,4 +1,5 @@
 from __future__ import annotations
+# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.
 
 import hashlib
 import json
@@ -178,6 +179,19 @@ class ConversationStore:
         results.reverse()
         return results
 
+    def catch_up(self, room_id: str, after: str | None = None, limit: int = 200) -> dict[str, Any]:
+        limit = max(1, min(int(limit), 1000))
+        with self._connect() as db:
+            sequence = 0
+            if after is not None:
+                row = db.execute("SELECT rowid FROM messages WHERE id=? AND room_id=?", (after, room_id)).fetchone()
+                if row is None:
+                    raise ValueError("Cursor not found in this room/store; do not silently reset it")
+                sequence = row[0]
+            rows = db.execute("SELECT * FROM messages WHERE room_id=? AND rowid>? ORDER BY rowid LIMIT ?", (room_id, sequence, limit + 1)).fetchall()
+        messages = [self._message_dict(row) for row in rows[:limit]]
+        return {"messages": messages, "next_cursor": messages[-1]["id"] if messages else after, "has_more": len(rows) > limit, "store": "sqlite"}
+
     def search(self, query: str, room_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         if not query.strip():
             return []
@@ -333,6 +347,8 @@ class MariaConversationStore:
             with db.cursor() as cursor:
                 cursor.execute("INSERT IGNORE INTO troll_rooms(id,title,ticket_id,task_id,created_at) VALUES(%s,%s,%s,%s,%s)",
                                (room_id, title or room_id, ticket_id, task_id, timestamp))
+                cursor.execute("SELECT id FROM troll_rooms WHERE id=%s FOR UPDATE", (room_id,))
+                cursor.fetchone()
                 cursor.execute("SELECT message_hash FROM troll_messages WHERE room_id=%s ORDER BY created_at DESC,id DESC LIMIT 1 FOR UPDATE", (room_id,))
                 prior = cursor.fetchone()
                 previous_hash = prior["message_hash"] if prior else None
@@ -368,6 +384,22 @@ class MariaConversationStore:
                 cursor.execute(sql, params); rows = list(cursor.fetchall())
         rows.reverse()
         return [self._message_dict(row) for row in rows]
+
+    def catch_up(self, room_id: str, after: str | None = None, limit: int = 200) -> dict[str, Any]:
+        limit = max(1, min(int(limit), 1000))
+        with self._connect() as db:
+            with db.cursor() as cursor:
+                sequence = 0
+                if after is not None:
+                    cursor.execute("SELECT member_sequence FROM troll_messages WHERE id=%s AND room_id=%s", (after, room_id))
+                    row = cursor.fetchone()
+                    if row is None:
+                        raise ValueError("Cursor not found in this room/store; do not silently reset it")
+                    sequence = row["member_sequence"]
+                cursor.execute("SELECT * FROM troll_messages WHERE room_id=%s AND member_sequence>%s ORDER BY member_sequence LIMIT %s", (room_id, sequence, limit + 1))
+                rows = list(cursor.fetchall())
+        messages = [self._message_dict(row) for row in rows[:limit]]
+        return {"messages": messages, "next_cursor": messages[-1]["id"] if messages else after, "has_more": len(rows) > limit, "store": "mariadb"}
 
     def search(self, query: str, room_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         if not query.strip(): return []
@@ -424,3 +456,5 @@ def open_conversation_store(*, allow_offline_cache: bool = True):
         raise RuntimeError("TROLL_BOOTH_MARIADB_URL is not configured")
     path = Path(os.environ.get("TROLL_BOOTH_OFFLINE_CACHE", Path.home() / ".troll-booth" / "history.sqlite3"))
     return ConversationStore(path), "OFFLINE CACHE"
+
+# ===== SNAPSMACK EOF =====

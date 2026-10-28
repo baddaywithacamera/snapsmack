@@ -1,4 +1,5 @@
 from __future__ import annotations
+# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.
 
 import argparse
 import json
@@ -20,7 +21,9 @@ def main() -> None:
     pair = commands.add_parser("pair-code", help="Issue a short-lived, single-use browser pairing code")
     pair.add_argument("--actor", default="claude")
     pair.add_argument("--ttl", type=int, default=300)
-    pair.add_argument("--write", action="store_true", help="Also grant collaboration write access")
+    grants = pair.add_mutually_exclusive_group()
+    grants.add_argument("--member", action="store_true", help="Grant room read/post only; no app or work-scope access")
+    grants.add_argument("--write", action="store_true", help="Also grant collaboration write access")
     commands.add_parser("status", help="Show remote broker and worker status")
     history = commands.add_parser("history", help="Manage the append-only local collaboration history")
     history.add_argument("--history-database", type=Path)
@@ -59,6 +62,8 @@ def main() -> None:
     store = BoothStore(args.database)
     if args.command == "pair-code":
         scopes = ["booth:read", "booth:write"] if args.write else ["booth:read"]
+        if args.member:
+            scopes = ["conversation:read", "conversation:post"]
         print(store.issue_pair_code(args.actor, scopes, max(60, min(args.ttl, 900))))
     elif args.command == "status":
         print(json.dumps(store.status(), indent=2))
@@ -115,3 +120,4 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
+# ===== SNAPSMACK EOF =====
