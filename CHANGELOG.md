@@ -19,6 +19,8 @@
 
 - **SMACK CENTRAL was dropping every forum image in silence.** It reads the forum database directly rather than through the API and had no attachment query at all, so it rendered the text of a post and showed none of its pictures. A photographer reporting a fault from their own site would attach the screenshot and the hub owner would never see it -- on the one screen the hub owner reads. It now loads attachments and renders them, inline and below, from the same URLs the API serves.
 
+- **The static-page hero keeps the photograph page's fixed height, so NEW HORIZON left dead space under the picture.** `#photobox` is the photograph page's box and is locked to `calc(100dvh - 140px)` so one photograph fills the screen. A static-page hero is not that -- it is an image in a column of text. The `.static-transmission` override released `min-height` and never released `height`, so with 0.7.960D's body-class fix in place the black band went but the space stayed. Measured on curbappeal.photoblogs.fyi: a square 2655x2655 photograph rendering at 722x722 inside an 860px box, 138px of it empty. With `height: auto` the box is 802px -- the photograph plus the 40px `.main-photo` frame above and below it, even on both sides. NEW HORIZON 1.3.26.
+
 - Both forum screens render through one shared `core/forum-post-body.php` so they cannot drift apart, and the composer on both the new-thread and reply forms says how to place an image.
 
 ## 0.7.960D - 2026-10-27 - RULES THAT NEVER MATCHED

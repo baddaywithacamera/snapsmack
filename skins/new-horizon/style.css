@@ -670,6 +670,16 @@ img.post-image {
 .static-transmission #photobox.page-hero {
     display: block !important; 
     min-height: auto !important;
+    /* #photobox is the PHOTOGRAPH page's box and is locked to
+       calc(100dvh - 140px) so one photograph fills the screen. A static page
+       hero is not that: it is an image in a column of text, and the fixed
+       height left 58px of dead space under it on Sean's About page -- a
+       square 2655x2655 photograph rendering 722x722 inside an 860px box.
+       min-height was already released here; height never was, and without it
+       the release does nothing. Measured on curbappeal.photoblogs.fyi: the box
+       goes 860 to 802, which is the photograph plus the 40px .main-photo
+       frame above and below it, even on both sides. */
+    height: auto !important;
     padding: 0 !important; 
     width: auto !important;
     float: left !important; 
