@@ -1,4 +1,5 @@
 from __future__ import annotations
+# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.
 
 import asyncio
 import json
@@ -231,7 +232,7 @@ class WorkerTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            registry = CapabilityRegistry(config)
+            registry = CapabilityRegistry(config, root / "test-history.sqlite3")
             self.assertEqual(registry.execute("apps.list", {})["apps"][0]["slug"], "test-app")
             self.assertEqual(registry.execute("apps.capabilities", {"app": "test-app"})["schema_version"], 1)
             with self.assertRaises(ValueError):
@@ -338,3 +339,4 @@ class WorkerTests(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+# ===== SNAPSMACK EOF =====

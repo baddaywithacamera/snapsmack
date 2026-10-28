@@ -1,4 +1,5 @@
 from __future__ import annotations
+# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.
 
 import secrets
 import time
@@ -76,7 +77,10 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
         allowed = [scope for scope in requested if scope in identity["scopes"]]
         if "booth:write" in identity["scopes"] and "booth:write" not in allowed:
             allowed.append("booth:write")
-        if "booth:read" not in allowed:
+        for scope in ("conversation:read", "conversation:post"):
+            if scope in identity["scopes"] and scope not in allowed:
+                allowed.append(scope)
+        if not {"booth:read", "conversation:read"}.intersection(allowed):
             return None
         code_value = f"code_{secrets.token_urlsafe(24)}"
         code = AuthorizationCode(
@@ -161,3 +165,4 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
         self.refresh_tokens.pop(token.token, None)
         self.refresh_subjects.pop(token.token, None)
 
+# ===== SNAPSMACK EOF =====

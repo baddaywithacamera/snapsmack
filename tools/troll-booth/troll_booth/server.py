@@ -1,4 +1,5 @@
 from __future__ import annotations
+# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.
 
 import asyncio
 import html
@@ -31,10 +32,10 @@ provider = BoothOAuthProvider(store, PUBLIC_URL)
 auth = AuthSettings(
     issuer_url=AnyHttpUrl(PUBLIC_URL),
     resource_server_url=AnyHttpUrl(f"{PUBLIC_URL}/mcp"),
-    required_scopes=["booth:read"],
+    required_scopes=[],
     client_registration_options=ClientRegistrationOptions(
         enabled=True,
-        valid_scopes=["booth:read", "booth:write"],
+        valid_scopes=["booth:read", "booth:write", "conversation:read", "conversation:post"],
         default_scopes=["booth:read", "booth:write"],
     ),
     validate_token_resource=True,
@@ -57,6 +58,11 @@ def _require_scope(scope: str) -> None:
 
 
 async def _queued(capability: str, arguments: dict, reason: str, ticket_id: str | None = None) -> dict:
+    token = get_access_token()
+    scopes = set(token.scopes if token else [])
+    required = "conversation:read" if capability.startswith("conversation.") else "booth:read"
+    if "booth:read" not in scopes and required not in scopes:
+        raise PermissionError("This session cannot use this capability")
     job_id = store.enqueue(_actor(), capability, arguments, reason, ticket_id)
     for _ in range(150):
         await asyncio.sleep(0.2)
@@ -68,6 +74,7 @@ async def _queued(capability: str, arguments: dict, reason: str, ticket_id: str 
 
 @mcp.tool(description="Report TROLL BOOTH health, connected local workers, and queued read-only work.")
 def booth_status() -> dict:
+    _require_scope("booth:read")
     _actor()
     return store.status()
 
@@ -111,6 +118,11 @@ async def conversation_messages(
     )
 
 
+@mcp.tool(description="Catch up in append order. Save next_cursor only after processing messages; null starts at the beginning.")
+async def conversation_catch_up(room_id: str, after: str | None = None, limit: int = 200, reason: str = "Catch up on room") -> dict:
+    return await _queued("conversation.catch_up", {"room_id": room_id, "after": after, "limit": limit}, reason)
+
+
 @mcp.tool(description="Full-text search locally stored collaboration history, optionally within one room.")
 async def search_conversation(
     query: str, room_id: str | None = None, limit: int = 50, reason: str = "Search collaboration history"
@@ -129,7 +141,9 @@ async def post_message(
     task_id: str | None = None,
     reason: str = "Collaborate in TROLL BOOTH",
 ) -> dict:
-    _require_scope("booth:write")
+    token = get_access_token()
+    if not {"booth:write", "conversation:post"}.intersection(token.scopes if token else []):
+        raise PermissionError("This session cannot post messages")
     return await _queued(
         "conversation.post",
         {"room_id": room_id, "body": body, "title": title, "ticket_id": ticket_id, "task_id": task_id},
@@ -236,9 +250,11 @@ async def owner_pair_code(request: Request) -> JSONResponse:
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     data = await request.json()
     actor = str(data.get("actor", "")).strip().lower()
-    if actor not in {"claude", "codex"}:
-        return JSONResponse({"error": "actor must be claude or codex"}, status_code=400)
+    if actor not in {"claude", "codex", "muse"}:
+        return JSONResponse({"error": "actor must be claude, codex or muse"}, status_code=400)
     scopes = ["booth:read", "booth:write"] if bool(data.get("write", True)) else ["booth:read"]
+    if actor == "muse":
+        scopes = ["conversation:read", "conversation:post"]
     code = store.issue_pair_code(actor, scopes, ttl=300)
     return JSONResponse({"actor": actor, "code": code, "expires_in": 300, "scopes": scopes})
 
@@ -260,3 +276,4 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
+# ===== SNAPSMACK EOF =====
