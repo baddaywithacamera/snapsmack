@@ -10,7 +10,7 @@ fs.mkdirSync(path.join(temp, 'tests'));
 fs.copyFileSync(path.join(root, 'tools/browser-tests/run-regressions.cjs'), path.join(runnerDir, 'run-regressions.cjs'));
 const fixture = path.join(temp, 'tests/admin-content-preview-regression.php');
 const first = path.join(temp, 'tests/chaplin-archive-geometry-browser.cjs');
-const scripts = ['chaplin-archive-geometry-browser.cjs', 'columns-paging-browser.cjs', 'mosaic-preview-browser.cjs', 'scrolltime-beacon-regression.cjs'];
+const scripts = ['chaplin-archive-geometry-browser.cjs', 'columns-paging-browser.cjs', 'mosaic-preview-browser.cjs', 'jive-border-geometry-browser.cjs', 'scrolltime-beacon-regression.cjs'];
 function run(deps = true) {
   return spawnSync(process.execPath, [path.join(runnerDir, 'run-regressions.cjs')], {
     encoding: 'utf8', timeout: 30000,

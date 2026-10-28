@@ -678,6 +678,9 @@ function snapsmack_aurora_presentation(array $options): array
 
 function snapsmack_jive_turkey_presentation(array $options): array
 {
+    // September skin-profile used one width for both the photo inset and the
+    // animated ring. Losing the CSS half leaves a 2px photo inset under an 8px ring.
+    $borderWidth = snapsmack_declared_option_int($options, 'jt_border_width', 5, 15);
     // The colourways live in skins/jive-turkey/manifest.json.
     $colourways = snapsmack_skin_palettes('jive-turkey');
     $key = strtoupper((string)($options['jt_palette'] ?? ''));
@@ -694,11 +697,13 @@ function snapsmack_jive_turkey_presentation(array $options): array
         'palette'=>json_encode($active['colors'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), 'field'=>$active['cream'],
         'speed'=>snapsmack_declared_option_int($options, 'jt_speed', 1, 100), 'cycle'=>snapsmack_declared_option_int($options, 'jt_cycle_time', 6, 120),
         'random'=>(string)($options['jt_random_colour'] ?? '') === '1' ? '1' : '0', 'border'=>(string)($options['jt_border_on'] ?? '') === '1' ? '1' : '0',
-        'border_width'=>snapsmack_declared_option_int($options, 'jt_border_width', 0, 40), 'border_speed'=>snapsmack_declared_option_int($options, 'jt_border_speed', 1, 100),
+        'border_width'=>$borderWidth, 'border_speed'=>snapsmack_declared_option_int($options, 'jt_border_speed', 0, 100),
         'border_wave'=>snapsmack_declared_option_int($options, 'jt_border_wave', 0, 100), 'border_trans'=>snapsmack_declared_option_int($options, 'jt_border_trans', 0, 100),
         'border_dir'=>(string)($options['jt_border_dir'] ?? ''),
     ], 'treatment'=>['enabled'=>$treatmentMode === 'color' || ($treatmentMode === 'image' && $treatmentImage !== ''), 'mode'=>$treatmentMode, 'image'=>$treatmentImage, 'position'=>(string)($options['jt_treatment_position'] ?? '')]];
     snapsmack_presentation_style($result, 'snapsmack-jive-presentation', [
+        '--tile-bw'=>$borderWidth.'px',
+        '--tile-radius'=>(int)round($borderWidth * 1.4).'px',
         '--panel-bg'=>$panelOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'jt_panel_color'), $panelOpacity) : 'transparent',
         '--panel-extend'=>snapsmack_declared_option_int($options, 'jt_panel_extend', 0, 100).'px',
         '--jt-navbar-bg'=>$navOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'jt_navbar_color'), $navOpacity) : 'transparent',
