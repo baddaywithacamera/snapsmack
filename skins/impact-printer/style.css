@@ -1384,4 +1384,26 @@ time.dt-published,
 .cropped-grid.archive-thumbs-l { --thumb-width: 310px; }
 .cropped-grid.archive-thumbs-xl { --thumb-width: 375px; }
 
+/* The restored archive controls use this skin's paper and ink. */
+.archive-filter-row .saf-panel {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px dashed var(--border);
+}
+.archive-filter-row .saf-item,
+.archive-filter-row .saf-search { color: var(--text-primary); }
+
+@media (max-width: 600px) {
+    #infobox.archive-filter-row { height: auto; min-height: 50px; }
+    .archive-filter-row .archive-filter-inner { padding: 8px 10px; }
+    #infobox.archive-filter-row .center { flex-wrap: wrap; gap: 10px; }
+    .archive-filter-row .saf-wrap { position: static; }
+    .archive-filter-row .saf-panel {
+        left: 0;
+        right: 0;
+        min-width: 0;
+        max-width: 100%;
+        transform: none;
+    }
+}
 /* ===== SNAPSMACK EOF ===== */
