@@ -998,10 +998,10 @@
             "/skins/impact-printer/style.css"
         ],
         "paragraphs": 1,
-        "links": 3,
+        "links": 4,
         "headings": 0,
-        "words": 2,
-        "text_sha256": "c19d9478efeb13cadeb09fda5de379f01711050146171b7409f7a099be8e136e"
+        "words": 4,
+        "text_sha256": "70272b2fcde90b18cd53fca4be66f9f6eef8533a1cdabeb73aca2a8050205c75"
     },
     "impact-printer/landing": {
         "images": [
