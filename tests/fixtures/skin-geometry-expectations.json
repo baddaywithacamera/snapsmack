@@ -1,0 +1,48 @@
+{
+ "what": "Per-skin geometry expectations, each derived from one of the owner's own reference captures and each carrying the capture it came from.",
+ "why": "Codex, 2026-10-27: per-skin historical expectations, not universal rules. Skins differ on purpose, and a rule like 'the hero must match the body column' reports a deliberate full-bleed layout as a defect. Every entry here names its evidence so the call can be checked.",
+ "authority": "Sean, 2026-10-27: 'if it is in there it's the look that i want.' A disagreement between this file and a capture means this file is wrong.",
+ "how_a_figure_is_derived": [
+  "Read the capture and measure the element in it.",
+  "Note the capture's usable width: 1920 minus a scrollbar where one is visible.",
+  "Render the skin at that same width and confirm the repaired figure reconciles with the capture.",
+  "Record both widths, so the arithmetic can be re-checked by anyone."
+ ],
+ "status_values": {
+  "verified": "Derived from a capture that was read, and reconciled against a render.",
+  "unverified": "No capture read. NEVER treat as passing.",
+  "not_applicable": "The skin has no such page or the element is absent by design."
+ },
+ "skins": {
+  "aurora": {
+   "page": {
+    "status": "verified",
+    "capture": "C:/dev/snapsmack/projects/snapsmack-ca/img/aurora-page.png",
+    "captured": "2026-07-30",
+    "capture_usable_width": 1905,
+    "capture_note": "A scrollbar is visible, so the page had 1905 not 1920.",
+    "expect": {
+     "hero_shares_body_column": true,
+     "column_content_width": 624,
+     "column_left_at_1905": 640,
+     "column_left_at_1920": 648
+    },
+    "arithmetic": "(1905 - 680) / 2 + 28 = 640. The same rule at 1920 gives 648.",
+    "measured_before_repair": { "hero": "493/935", "body": "648/624", "title": "493" },
+    "measured_after_repair": { "hero_at_1905": "641/624", "hero_at_1920": "648/624" },
+    "repair": "AURORA 1.0.54 — the 680px reading column given to the title and the hero, which were siblings of the text column rather than inside it.",
+    "ticket": "SS-1010"
+   }
+  }
+ },
+ "unverified_skins": [
+  "50-shades-of-noah-grey", "chaplin", "galleria", "game-on", "impact-printer",
+  "instant-camera", "jive-turkey", "new-horizon", "parade", "rational-geo",
+  "scroll", "slickr", "the-grid", "true-grit"
+ ],
+ "no_capture_at_all": [
+  "52-card-pickup", "alfred", "full-monty", "glide", "heuristic", "onyx",
+  "photogram", "show-n-tell", "sliders", "stanley", "sudden-impact",
+  "telegram", "tilez", "writing-with-impact"
+ ]
+}
