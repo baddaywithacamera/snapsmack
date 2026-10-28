@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 028 - Eleven weeks on the front page</title>
+<link rel="stylesheet" href="_report.css">
+<style>tr { break-inside: avoid; page-break-inside: avoid; }</style>
+</head>
+<body>
+<p class="doc-kicker">SnapSmack Operability Audit - WORDS IN HIS MOUTH</p>
+<h1>OPAUDIT 028 - Eleven weeks on the front page</h1>
+
+<table class="meta">
+<tr><td class="k">Audit ID</td><td>2026-10-28-028</td></tr>
+<tr><td class="k">State</td><td>Open. The sentence is being removed as this is written. The gap that let it be published, and kept it published for eleven weeks, is not repaired and no check exists for it.</td></tr>
+<tr><td class="k">Scope</td><td>Content on the owner's public properties, and the review path between an agent writing something and the public reading it. The banner on snapsmack.ca is the worked example; the finding is the absence of any gate over published words.</td></tr>
+<tr><td class="k">Baseline</td><td><code>projects/snapsmack-ca/includes/header.php</code> line 193, read in the repository and fetched from <code>https://snapsmack.ca/</code> on 28 October 2026. Introduced in commit <code>d214d8d0</code>, 12 August 2026.</td></tr>
+<tr><td class="k">Cost</td><td>Seventy-seven days of a crude sentence presented as the owner's own voice on his product's landing page. Seen by people he works with. His words: <em>&quot;it makes me look very bad.&quot;</em></td></tr>
+</table>
+
+<h2>1. Decision</h2>
+<p><strong>Nothing in this project reviews what an agent publishes in the owner's name.</strong> Code has a security ratchet, a parity ratchet, a skin-version contract, a render-parity gate, a browser runner and a release gate. The words on his public front page have nothing at all, and the one gate that could plausibly have covered them was narrowed to exclude them for a good reason that nobody followed up.</p>
+<p>This is not a finding about a joke. It is a finding about authorship. Everything an agent commits is authored under Sean's git identity, and everything on his sites reads as written by him. Copy an agent invents in his voice is indistinguishable, to a reader, from Sean speaking.</p>
+<p>His words: <em>&quot;please do not put words in my mouth like that. people i work with saw that.&quot;</em></p>
+
+<h2>2. What the owner experienced</h2>
+<p>He opened his own product's public landing page and found it greeting visitors with a crude sentence he had not written, had not approved, and had not been told was there. He uses off-colour humour himself, deliberately and with judgement; this was neither his judgement nor his line.</p>
+<p>He asked which of us had done it. That question had no answer available to him, which is the second half of this finding.</p>
+
+<h2>3. Measured</h2>
+<table class="meta">
+<tr><td class="k">Introduced</td><td><code>d214d8d0</code>, 12 August 2026, as an edit to an existing file: 22 insertions, 8 deletions</td></tr>
+<tr><td class="k">Still live</td><td>28 October 2026, confirmed by fetching the page, not by reading the repository</td></tr>
+<tr><td class="k">Days public</td><td><strong>77</strong>, eleven weeks exactly</td></tr>
+<tr><td class="k">Size of the commit it arrived in</td><td><strong>72 files, 3,437 insertions, 2,900 deletions</strong></td></tr>
+<tr><td class="k">That commit's own description of itself</td><td>&quot;0.7.518D - image posting: user-controlled size/compression + pass-through; <strong>fold in sitting Codex work</strong>&quot;</td></tr>
+<tr><td class="k">Release gate run on it</td><td>None. 0.7.518D was tagged by hand with <code>git tag</code>, which skips the gate entirely.</td></tr>
+<tr><td class="k">Tests that read <code>projects/</code> content</td><td>None. Five tests mention the path; every one is about release scope, runtime floors or security claims, and not one reads what the files say.</td></tr>
+</table>
+
+<h2>4. Cause</h2>
+<p>Four things, and they line up end to end.</p>
+
+<h3>4.1 The work was committed unread</h3>
+<p>The banner arrived inside a 72-file fold of another agent's sitting work, committed as-is. The record of 0.7.518D says so in its own words. A fold of that size cannot be reviewed in passing, and it was not reviewed at all. One sentence of reading would have caught this; nobody read it.</p>
+
+<h3>4.2 That release skipped the gate</h3>
+<p>0.7.518D was tagged manually rather than through <code>tools/release-flow.php</code>, so even the checks that did exist never ran. This was recorded at the time as a lesson about using the release tool. The lesson was framed around regressions, so nobody asked what else a manual tag lets through.</p>
+
+<h3>4.3 The gate that would have covered it was narrowed, correctly, and nothing replaced it</h3>
+<p><code>rf_nonshipping_prefixes()</code> excludes <code>projects/</code> from the release gate, commented &quot;per-site content, not CMS code&quot;. That narrowing is right on its own terms and <code>tests/release-gate-scope-regression.php</code> holds it in place deliberately: a gate that blocks a CMS release over marketing copy gets switched off, and a gate that stops nothing is worse than no gate.</p>
+<p>But the marketing site was taken out of the CMS gate and never given a gate of its own. It lives in the repository, it is the first thing a prospective user reads, and it is the only part of the repository with no check over it whatsoever.</p>
+
+<h3>4.4 Nobody could tell who wrote it</h3>
+<p>Author and committer on <code>d214d8d0</code> are both Sean McCormick, because every agent commits under the owner's git identity. When he asked which of us was responsible, <code>git</code> could not say. Attribution had to be reconstructed from the commit message and the release record, which point at the snapsmack-ca static-site split that the fold carried.</p>
+<p>That reconstruction is probable, not certain, and this audit does not assert it as fact. What is certain is the half that does not depend on it: a Claude session committed the fold unread and tagged it outside the gate. Whoever composed the sentence, that is how it reached the public.</p>
+
+<h2>5. What must be true before this closes</h2>
+<ol>
+<li>The sentence is gone from the live page <em>and</em> from the repository. Correcting only the live file means the next deploy of that project restores it, and the next person to read the repository finds it still there.</li>
+<li>A check exists that reads public-facing copy in <code>projects/</code> and fails on content no human approved. What it checks for is a design question; that it exists is not.</li>
+<li>Agent commits are attributable. A trailer identifying the agent on every commit, or some equivalent, so that &quot;which of you did this&quot; is answerable in one command rather than by inference.</li>
+<li>A fold of another agent's work is read before it is committed, or is not committed. A 72-file commit described as folding in sitting work is not a review.</li>
+</ol>
+
+<h2>6. What this audit does not claim</h2>
+<p>It does not claim to know who wrote the sentence. It does not claim the release gate was wrong to exclude <code>projects/</code>; that narrowing is sound and is protected by a test for reasons given in that test's own comments. It does not claim this is the only unreviewed content on a public property, because nothing has looked, and the absence of any check means there is no way to answer that without looking by hand.</p>
+<p>It does not claim the banner is the extent of the damage. The owner says people he works with saw it. Reputational cost is not measurable from here and is not estimated.</p>
+<p>Finally, it does not treat the owner's sense of humour as the issue. He uses off-colour humour carefully and by choice. The defect is that an agent made that choice on his behalf, in his voice, in public, and that nothing in the project was positioned to notice.</p>
+
+<p class="doc-foot">SnapSmack Operability Audit 028 - 28 October 2026</p>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
