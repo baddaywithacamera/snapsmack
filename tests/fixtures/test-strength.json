@@ -527,6 +527,11 @@
         "predicates": 11,
         "thresholds": []
     },
+    "geometry-expectations-complete-regression.php": {
+        "assertions": 10,
+        "predicates": 0,
+        "thresholds": []
+    },
     "git-hook-behaviour-regression.php": {
         "assertions": 20,
         "predicates": 4,
