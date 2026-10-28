@@ -144,7 +144,29 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
 
     foreach ($kinds as $name => $response) {
         $response['navigation'] = $nav;
+        // The archive control row renders from crop_circles. With empty
+        // filters it draws [ SHOW ALL ] and nothing else, which LOOKS like a
+        // broken row in a screenshot. Give it real groups so a picture shows
+        // the row a site actually gets, and so the row I wired into TRUE GRIT
+        // is tested rather than assumed.
         $view = snapsmack_build_skin_view($response, [
+            'crop_circles' => [
+                // Shape taken from the component, not guessed: each group
+                // needs a `type` and `items`, and each item an `id`. My first
+                // attempt used `options` and no type, every group was skipped,
+                // and the row rendered as a lonely [ SHOW ALL ] -- which in a
+                // screenshot looks exactly like the fault I had just repaired.
+                'filters' => [
+                    ['label' => 'Registry', 'type' => 'category', 'items' => [
+                        ['id' => 'walls', 'label' => 'Walls'],
+                        ['id' => 'rust', 'label' => 'Rust'],
+                    ]],
+                    ['label' => 'Albums', 'type' => 'album', 'items' => [
+                        ['id' => 'strathmore', 'label' => 'Strathmore'],
+                    ]],
+                ],
+                'search' => ['placeholder' => 'SEARCH OR #TAG', 'name' => 'q'],
+            ],
             'site_name' => 'found textures', 'language' => 'en', 'direction' => 'ltr',
             'skin_style_url' => '', 'base_style_url' => '', 'skin_variant_url' => '',
             'registered_assets' => [], 'owner_custom_code' => '', 'search_dock' => [],
