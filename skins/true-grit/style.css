@@ -67,6 +67,28 @@ body::before {
    LAYOUT STRUCTURE (SNAPPING ENGINE)
    ========================================================================= */
 
+/* THE OVERLAY PAINTS OVER THE WORDS ON EVERY PAGE THAT IS NOT THE ARCHIVE.
+   body::before above is position:fixed at z-index 0. #page-wrapper below is
+   the only thing that lifts content above it -- and the CMS emits that
+   wrapper on archive and hashtag pages ONLY. On the home page and on every
+   static page the main column is position:static with z-index:auto, so the
+   overlay is painted on top of the headings and paragraphs while a photograph,
+   which creates its own stacking context, is painted above the overlay.
+
+   That is why the owner's home page showed a pale, washed-out title over a
+   perfectly sharp photograph, and why it read as a lost font colour: the text
+   computes black at opacity 1 and is simply covered. Diagnosed live by Codex
+   on foundtextures.ca, where the overlay is rgb(245,245,245) at 0.85.
+
+   Lifting the main column is the whole repair. It moves nothing: the element
+   is already in normal flow, and on the archive it sits inside #page-wrapper,
+   which is lifted the same way. */
+main.public-content,
+#scroll-stage {
+    position: relative;
+    z-index: 1;
+}
+
 #page-wrapper {
     display: flex;
     flex-direction: column;
