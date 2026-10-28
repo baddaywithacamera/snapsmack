@@ -1692,6 +1692,11 @@
             4
         ]
     },
+    "wall-tile-dimensions-regression.php": {
+        "assertions": 11,
+        "predicates": 12,
+        "thresholds": []
+    },
     "webcron-cli-heartbeat-regression.php": {
         "assertions": 1,
         "predicates": 10,

@@ -436,8 +436,13 @@ final class SnapPublicRepository
         $offset = max(0, $offset);
         return [
             'photographs' => $this->all(
+                // img_width and img_height are NOT optional here. A wall tile
+                // that arrives without them is given 3:2 by the renderer, so
+                // every search result was cropped to landscape and portraits
+                // came back on their side. Every other tile query in this file
+                // already selects them; this one did not. (SS-1029, SS-1030.)
                 "SELECT DISTINCT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,
-                        i.img_file,i.img_thumb_square,i.img_thumb_aspect
+                        i.img_file,i.img_thumb_square,i.img_thumb_aspect,i.img_width,i.img_height
                  FROM snap_images i
                  LEFT JOIN snap_image_tags it ON it.image_id=i.id
                  LEFT JOIN snap_tags t ON t.id=it.tag_id

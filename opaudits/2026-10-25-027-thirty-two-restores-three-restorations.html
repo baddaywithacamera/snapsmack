@@ -206,6 +206,28 @@
 <h3>13.4 Still open, and deliberately not changed</h3>
 <p>Twenty-one skins still discard <code>$view['site']['body_class']</code>: 52 CARD PICKUP, ALFRED, AURORA, FULL MONTY, GAME ON, GLIDE, HEURISTIC, INSTANT CAMERA, JIVE TURKEY, PARADE, PHOTOGRAM, SCROLL, SHOW N TELL, SLICKR, SLIDERS, STANLEY, SUDDEN IMPACT, TELEGRAM, THE GRID, TILEZ, WRITING WITH IMPACT. None of them writes <code>.static-transmission</code> rules today, so nothing of theirs is currently dead and none was changed. They are listed because the next skin rule written under any of those class names will silently fail in exactly the same way, and because a contract that twenty-one of thirty consumers ignore is a contract in name only. Whether the body class should be emitted by the CMS rather than left to each skin to remember is a design question this audit raises and does not answer.</p>
 
+<h2>14. Supplement, 28 October 2026: one invented number put every search result on its side</h2>
+
+<h3>14.1 What the owner saw</h3>
+<p>Searching his own archive, the owner reported two things at once: &quot;there are portrait images in there as landscape in results&quot;, and separately that &quot;sizing of last row is inconsistent and sloppy&quot;. They read as two complaints, one about cropping and one about grid tidiness. They are one fault.</p>
+
+<h3>14.2 Measured</h3>
+<p>Eight results, measured in a browser at 1920 on the live site, each image's real file dimensions against the box it was rendered in: 400x600 (aspect 0.667) rendered 266x177; 526x600 (0.877) rendered 330x220; 600x305 (1.967) rendered 266x177; 600x457 (1.313) rendered 266x177. Every tile computed to aspect 1.500 with <code>object-fit: cover</code>. The thumbnail files themselves still carried their true proportions, which is how the comparison was possible &mdash; the crop was entirely in the display box.</p>
+<p>The boxes are not set by any stylesheet. Each tile is positioned by JavaScript with inline geometry, and every tile in the rendered page carried <code>data-w=&quot;3&quot; data-h=&quot;2&quot;</code> &mdash; the literal strings, identical on all eight photographs.</p>
+<p>Grid geometry at the same moment, container width 1400: row one five tiles of 266x177 totalling 1330; row two three tiles of 330x220 totalling 990. Two different tile sizes on one page, the last row 410px short of the container. Because every tile claimed the same shape, the masonry engine had no widths to vary, which is what a justified grid exists to do.</p>
+
+<h3>14.3 Cause</h3>
+<p><code>core/skin-render-helpers.php</code>, the <code>wall-tile</code> component, emitted <code>data-w</code> and <code>data-h</code> with a fallback of <code>3</code> and <code>2</code>. That is not a safe default. It is an assertion that every photograph is landscape, made on behalf of data that was absent.</p>
+<p>The data was absent because <code>PublicRepository::search()</code> selected nine columns and <code>img_width</code> and <code>img_height</code> were not among them. Every other tile query in that same file selects them. Only search did not, which is why the archive looked correct and only search results were wrong &mdash; and why this survived every check that rendered an archive.</p>
+<p><code>assets/js/ss-engine-masonry.js</code> was never at fault. It already reads the image's own <code>naturalWidth</code> and <code>naturalHeight</code> when the attributes are missing, and it handles portrait, square and panoramic tiles deliberately. The 3:2 default defeated that fallback by supplying a value that was never true. A real missing value would have been handled correctly; an invented one could not be.</p>
+
+<h3>14.4 Repair</h3>
+<p>The query now selects the dimensions, like every other tile query. The renderer now emits nothing when a dimension is unknown or zero, so the engine measures the photograph rather than trusting an invention. <code>tests/wall-tile-dimensions-regression.php</code> fails five ways against the shipping files, including on a zero-width item, which the previous code would have emitted as a 1px tile rather than treating as unknown.</p>
+
+<h3>14.5 What this does not claim</h3>
+<p>The repair is committed to <code>dev</code>. It has NOT been built, NOT been deployed, and has NOT been verified on the live site. The numbers above are from the site as it stands with the fault present. Nothing here may be read as evidence that search results are now correct for the owner; that requires a build, a deploy, and the same measurement repeated. The owner's standing objection applies directly to this entry: he is told things are done and finds they are not, and the only cure is the measurement after the deploy, not the one before it.</p>
+<p>Two further questions raised by the same report are open and not addressed here: whether the fields covered by the public search should match those covered by the search engine, and whether captions attached to photographs inside collections should be searchable at all. They are recorded as SS-1031.</p>
+
 <p class="doc-foot">SnapSmack Operability Audit 027 - 25 October 2026; evidence supplements 26 and 27 October 2026</p>
 </body>
 </html>
