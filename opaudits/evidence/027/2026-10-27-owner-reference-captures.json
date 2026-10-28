@@ -259,5 +259,16 @@
   "unverified": "Every other capture has been checked only for its pixel dimensions, not read. Read it before treating its pixels as absolute.",
   "why_it_matters": "A scrollbar, or any chrome, shifts every horizontal measurement. The difference is small and is exactly the size of the faults being chased."
  },
- "note_gameon": "gameon-landing.png is 1920x1032; the others are 1920x1080. Treat its vertical figures with care."
+ "note_gameon": "gameon-landing.png is 1920x1032; the others are 1920x1080. Treat its vertical figures with care.",
+ "invariants": {
+  "stated_by_owner": "Sean, 2026-10-27: \"the tiles are always the same size and the gutters normally.\"",
+  "use": "Tile size and gutter are the per-skin constants, and they are the expectation to measure. They do not move when a capture includes a scrollbar or was framed differently, so they survive exactly the inconsistency that makes page-level widths unreliable.",
+  "implication_for_gameon": "gameon-landing.png can still be used. Its ~15px scrollbar shifts page-level horizontal figures but not tile size or gutter.",
+  "order_of_preference": [
+   "tile size",
+   "gutter",
+   "content column width",
+   "page-level left edges"
+  ]
+ }
 }
