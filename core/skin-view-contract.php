@@ -78,11 +78,45 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         'page_title', 'rendered_content', 'signature', 'previous', 'next', 'categories',
         'albums', 'categories_label', 'albums_label', 'author', 'colophon', 'published_post_count', 'photo_count', 'photo_count_display', 'comment_count', 'comment_count_display', 'like_count', 'like_count_display', 'word_count', 'comments_enabled',
         'show_titles', 'blogroll_groups', 'taxonomy', 'groups', 'puzzle_items', 'fragment', 'autoopen',
-        'first', 'last', 'next_page', 'is_homepage', 'sort', 'sort_options', 'album', 'filmstrip', 'community', 'mosaic_blocks', 'about_url'];
+        'first', 'last', 'next_page', 'is_homepage', 'sort', 'sort_options', 'album', 'filmstrip', 'community', 'mosaic_blocks', 'about_url', 'archive_controls'];
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'base_style_url', 'skin_variant_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',
         'favicon_url', 'footer', 'slickr_profile', 'crop_circles', 'archive_layout', 'archive_thumb_style', 'archive_grid', 'body_class'];
+    // THE ARCHIVE'S OWN CONTROL ROW -- SHOW ALL, the filter panel, the search
+    // field and the layout toggles.
+    //
+    // It used to live inside archive.php. When strict skins stopped rendering
+    // through that file the whole row vanished from their archives: no select
+    // and no input on the page, while the switch engine stayed loaded with
+    // nothing to bind to. core/skin-render-helpers.php rebuilt it as the
+    // 'archive-filters' component "to give it back to every skin at once",
+    // and then exactly one skin -- 50 SHADES -- was ever wired to it.
+    //
+    // It is built HERE, not in a layout, because a strict skin may hold no
+    // executable code: the security ratchet blocks a function call, BASE_URL
+    // and a cast inside a layout, and it is right to. Measured on Sean's
+    // foundtextures.ca, where the row has been missing since the conversion.
+    // A skin that wants the row prints this one value and carries no logic;
+    // a skin that does not print it is completely unchanged.
+    if ($kind === 'archive' || $kind === 'hashtag') {
+        $response['archive_controls'] = snap_render_component('archive-filters', [
+            'content_width' => (string)($presentation['skin_presentation']['options']['main_canvas_width'] ?? ''),
+            // Not snap_route_url('archive'): that returns the literal /archive,
+            // the unregistered path that sent six sites into a redirect loop.
+            'show_all_url'  => snapsmack_legacy_archive_target(
+                defined('BASE_URL') ? (string)BASE_URL : '/',
+                (array)($presentation['route_aliases'] ?? []),
+                (string)($presentation['site_mode'] ?? '')
+            ),
+            'query'         => (string)($response['query'] ?? ''),
+            'selected'      => (array)($response['active_filters'] ?? []),
+            'filters'       => (array)($presentation['crop_circles']['filters'] ?? []),
+            'search'        => (array)($presentation['crop_circles']['search'] ?? []),
+            'layouts'       => (array)($response['archive_layouts'] ?? []),
+        ]);
+    }
+
     // Hand the CMS-rendered community block to the comments component. It
     // travels outside the view because every skin already renders that
     // component in the right place, which makes this a CMS-only change: no
