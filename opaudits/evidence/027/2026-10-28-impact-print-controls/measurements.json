@@ -1,0 +1,518 @@
+[
+  {
+    "width": 1920,
+    "families": [
+      {
+        "tag": "BUTTON",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      }
+    ],
+    "fonts": [
+      {
+        "family": "DotMatrix-VarDuo",
+        "status": "loaded"
+      },
+      {
+        "family": "DotMatrix",
+        "status": "loaded"
+      },
+      {
+        "family": "DotMatrix-Bold",
+        "status": "unloaded"
+      }
+    ],
+    "panel": {
+      "x": 758,
+      "y": 139.59375,
+      "width": 332,
+      "height": 398
+    },
+    "photoGeometryUnchanged": true,
+    "keyboard": true,
+    "touch": false
+  },
+  {
+    "width": 1440,
+    "families": [
+      {
+        "tag": "BUTTON",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      }
+    ],
+    "fonts": [
+      {
+        "family": "DotMatrix-VarDuo",
+        "status": "loaded"
+      },
+      {
+        "family": "DotMatrix",
+        "status": "loaded"
+      },
+      {
+        "family": "DotMatrix-Bold",
+        "status": "unloaded"
+      }
+    ],
+    "panel": {
+      "x": 518,
+      "y": 139.59375,
+      "width": 332,
+      "height": 398
+    },
+    "photoGeometryUnchanged": true,
+    "keyboard": true,
+    "touch": false
+  },
+  {
+    "width": 1024,
+    "families": [
+      {
+        "tag": "BUTTON",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "LABEL",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "SPAN",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      },
+      {
+        "tag": "INPUT",
+        "font": "DotMatrix, \"Courier New\", monospace"
+      }
+    ],
+    "fonts": [
+      {
+        "family": "DotMatrix-VarDuo",
+        "status": "loaded"
+      },
+      {
+        "family": "DotMatrix",
+        "status": "loaded"
+      },
+      {
+        "family": "DotMatrix-Bold",
+        "status": "unloaded"
+      }
+    ],
+    "panel": {
+      "x": 310,
+      "y": 139.59375,
+      "width": 332,
+      "height": 398
+    },
+    "photoGeometryUnchanged": true,
+    "keyboard": true,
+    "touch": true
+  }
+]

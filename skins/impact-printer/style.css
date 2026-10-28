@@ -1385,6 +1385,59 @@ time.dt-published,
 .cropped-grid.archive-thumbs-xl { --thumb-width: 375px; }
 
 /* The restored archive controls use this skin's paper and ink. */
+.impact-printer-v2 :is(button, input, textarea, select, option, code, pre, kbd, samp),
+.impact-printer-v2 .archive-search-status {
+    font-family: 'DotMatrix', 'Courier New', monospace;
+}
+
+.impact-printer-v2 :is(button, input, textarea, select)::placeholder {
+    font-family: inherit;
+    color: var(--text-dim);
+    opacity: 1;
+}
+
+.impact-printer-v2 #infobox.archive-filter-row .center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+}
+
+.impact-printer-v2 .archive-filter-row :is(button, select, .archive-search-input, .saf-search) {
+    appearance: none;
+    border: 1px dashed var(--border);
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    padding: 6px 10px;
+    box-sizing: border-box;
+    text-transform: uppercase;
+}
+
+.impact-printer-v2 .archive-filter-row :is(button, input, select):focus-visible {
+    outline: 2px dashed currentColor;
+    outline-offset: 3px;
+}
+
+.impact-printer-v2 .archive-filter-row .saf-checkbox {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1px dashed currentColor;
+    border-radius: 0;
+    background: transparent;
+    margin: 0;
+    display: grid;
+    place-content: center;
+}
+
+.impact-printer-v2 .archive-filter-row .saf-checkbox:checked::after {
+    content: 'X';
+    font: 12px/1 'DotMatrix', monospace;
+}
+
 .archive-filter-row .saf-panel {
     background: var(--bg-primary);
     color: var(--text-primary);
