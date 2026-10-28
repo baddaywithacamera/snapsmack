@@ -12,6 +12,7 @@ const checks = [
   [process.execPath, 'tests/jive-border-geometry-browser.cjs'],
   [process.execPath, 'tests/engine-config-csp-browser.cjs'],
   [process.execPath, 'tests/tag-infinite-paging-browser.cjs'],
+  [process.execPath, 'tests/impact-archive-controls-browser.cjs'],
   [process.execPath, 'tests/scrolltime-beacon-regression.cjs'],
 ];
 let failed = false;
