@@ -41,6 +41,11 @@ him the month.
 - **Never a remote lockout.** The hub informs; the site owner decides.
 - **Do not remove audit evidence.** `opaudits/` and its `evidence/` folders
   are the record, including the parts that are unflattering.
+- **Skins are for desktop and large tablet.** PHOTOGRAM and TELEGRAM are the
+  only two phone skins. This is throwback software; a phone layout is an
+  anachronism everywhere else. Measure at 1920, 1440 and 1024. A finding at
+  390px on any other skin is not a defect, and chasing one has already cost
+  two published skin versions.
 - **Every archive page is endless scroll.** Pagination is never correct
   anywhere in this product. An archive stuck on page one is a defect.
 - **No static `style="..."` attributes.** Generated CSS is fine.
