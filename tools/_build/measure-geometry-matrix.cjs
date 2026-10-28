@@ -36,9 +36,32 @@ const shots = !process.argv.includes('--no-shots');
 // were taken at. Confirmed: every capture is 1920 wide and shows no browser
 // chrome, so a pixel in a capture and a pixel measured here are the same
 // pixel. Without that, only proportions would be comparable.
-const WIDTHS = [
+//
+// WHAT WIDTH IS A DEFECT AT is not the same question as what width a browser
+// can be set to. SnapSmack is throwback software. Every skin is built for
+// desktop and large tablet except PHOTOGRAM and TELEGRAM, which are the only
+// two phone skins. Sean, 2026-10-28, after this harness and a visual review
+// had each spent a day reporting phone faults: "all skins are for desktop and
+// large tablet except for PHOTOGRAM and TELEGRAM."
+//
+// Measuring a desktop skin at 390 and printing OVERFLOWS VIEWPORT does not
+// find a fault, it invents one. Those inventions became tickets, and one of
+// them became two shipped GALLERIA versions repairing a phone layout that no
+// skin but two is meant to have.
+//
+// The manifest already has the right home for this: "incompatible": ["mobile",
+// "tablet"]. Only AURORA, JIVE TURKEY and PARADE fill it in, so it cannot be
+// the source of truth yet. Until the other 27 declare themselves the two phone
+// skins are named here, rather than inferred from a field that is absent in
+// 27 of 30 manifests and therefore means nothing.
+const MOBILE_SKINS = new Set(['photogram', 'telegram']);
+
+const DESKTOP_WIDTHS = [
   { name: 'reference', width: 1920, height: 1080 },
   { name: 'desktop', width: 1440, height: 900 },
+  { name: 'tablet', width: 1024, height: 768 },
+];
+const PHONE_WIDTHS = [
   { name: 'phone', width: 390, height: 844 },
 ];
 
@@ -70,6 +93,8 @@ function fail(message) {
       unmeasurable++;
       continue;
     }
+    // A phone skin is measured at phone width and a desktop skin is not.
+    const WIDTHS = MOBILE_SKINS.has(entry.skin) ? PHONE_WIDTHS : DESKTOP_WIDTHS;
     for (const vp of WIDTHS) {
       const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
       try {
