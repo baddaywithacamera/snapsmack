@@ -9,11 +9,13 @@ foreach ([
     'gap-resistant region overscan' => 'var WORLD_MARGIN = 500',
     'original scattered region placement' => 'ensureRegionsFor(visibleWorldRect())',
     'coherent whole-wall drift' => 'view.x += driftVX',
-    'fixed print warp' => "rotateX('",
+    'interactive print warp' => "!ambient && budget.warp",
+    'historical ambient coverage' => 'function buildAmbientCoverage()',
+    'bounded background drift' => 'if (coverageMode)',
 ] as $rule => $needle) if (!str_contains($mayhem, $needle)) throw new RuntimeException("Organized Mayhem lost {$rule}.");
 if (!str_contains($endpoint, 'img_thumb_aspect')) throw new RuntimeException('Mayhem endpoint lost its 400px aspect thumbnails.');
-foreach (['buildAmbientCoverage', 'om-wobble', 'setAlive('] as $forbidden) {
-    if (str_contains($mayhem, $forbidden)) throw new RuntimeException('Organized Mayhem reintroduced reconstructed coverage or independent print motion.');
+foreach (['om-wobble', 'setAlive('] as $forbidden) {
+    if (str_contains($mayhem, $forbidden)) throw new RuntimeException('Organized Mayhem reintroduced independent print motion.');
 }
 echo "PASS: instant-camera behavior is CMS-owned and its presentation contract is strict.
 ";

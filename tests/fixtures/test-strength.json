@@ -1522,6 +1522,11 @@
             20
         ]
     },
+    "strict-scrolltime-regression.php": {
+        "assertions": 2,
+        "predicates": 3,
+        "thresholds": []
+    },
     "strict-stats-logging-regression.php": {
         "assertions": 10,
         "predicates": 9,
