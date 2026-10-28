@@ -2135,8 +2135,24 @@ if ($resource === 'skins' && $sub_action === 'reinstall-all' && $method === 'POS
     $installed  = 0;
     $failed     = 0;
 
+    // The version that is ACTUALLY on disk for one skin, read from the same
+    // manifest the fleet heartbeat reads. A reinstall of a stale package
+    // succeeds and reports success, so "installed" alone cannot tell the hub
+    // whether the package it just published is the one now running here. Only
+    // the resulting version can. (SS-1023.)
+    $ms_skin_version_on_disk = static function (string $slug): string {
+        if (!defined('SKINS_DIR')) return '';
+        $manifest = SKINS_DIR . '/' . $slug . '/manifest.json';
+        if (!is_file($manifest)) return '';
+        $meta = json_decode((string)@file_get_contents($manifest), true);
+        return is_array($meta) ? trim((string)($meta['version'] ?? '')) : '';
+    };
+
     foreach ($packages as $package) {
         $slug         = trim((string)($package['skin_slug'] ?? ''));
+        // Carried by hubs from 0.7.964D. An older hub sends nothing, and the
+        // empty string travels back so that hub can see it was not verified.
+        $version_want = trim((string)($package['version'] ?? ''));
         $download_url = trim((string)($package['download_url'] ?? ''));
         $signature    = trim((string)($package['signature'] ?? ''));
         $download_size = (int)($package['download_size'] ?? 0);
@@ -2154,13 +2170,23 @@ if ($resource === 'skins' && $sub_action === 'reinstall-all' && $method === 'POS
 
         $result = skin_registry_install($slug, $download_url, $signature, $public_key, $download_size);
         $ok     = !empty($result['success']);
-        $results[] = ['skin' => $slug, 'ok' => $ok, 'message' => $result['message'] ?? ''];
+        $results[] = [
+            'skin'              => $slug,
+            'ok'                => $ok,
+            'message'           => $result['message'] ?? '',
+            'version_requested' => $version_want,
+            'version_installed' => $ms_skin_version_on_disk($slug),
+        ];
         if ($ok) $installed++; else $failed++;
     }
 
     ms_ok([
         'installed' => $installed,
         'failed'    => $failed,
+        // Tells a hub that this spoke reports resulting versions at all, so a
+        // hub talking to an older spoke can say "not verified" instead of
+        // quietly counting it as a success.
+        'reports_versions' => true,
         'results'   => $results,
     ]);
 }
