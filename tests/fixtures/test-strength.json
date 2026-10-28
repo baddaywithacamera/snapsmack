@@ -810,6 +810,11 @@
             3
         ]
     },
+    "multisite-bulk-push-version-verified-regression.php": {
+        "assertions": 18,
+        "predicates": 12,
+        "thresholds": []
+    },
     "multisite-spoke-count-regression.php": {
         "assertions": 0,
         "predicates": 4,
@@ -841,8 +846,8 @@
         "thresholds": []
     },
     "organized-mayhem-restoration-regression.php": {
-        "assertions": 2,
-        "predicates": 2,
+        "assertions": 3,
+        "predicates": 4,
         "thresholds": []
     },
     "overlay-contract-regression.php": {

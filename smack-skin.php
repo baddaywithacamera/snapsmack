@@ -1687,7 +1687,14 @@ if (!empty($google_families)) {
 
     // Fetch registry and local skin data
     $registry_url = SKIN_REGISTRY_DEFAULT_URL;
-    $registry     = skin_registry_fetch($registry_url);
+    // FRESH. The cards rendered below carry the download URL and signature
+    // that the install buttons post back, so this is not a display read --
+    // whatever is rendered here is what gets installed. The ten-minute
+    // session cache is for public page loads, and this is an admin screen
+    // the owner opens immediately after publishing a package. Serving him a
+    // cached registry here installs the previous package and says it worked,
+    // which is the single-site half of SS-1023.
+    $registry     = skin_registry_fetch($registry_url, true);
     $local_skins  = skin_registry_local();
 
     // Service skins (features.fedistructure_only) belong to a FEDISTRUCTURE

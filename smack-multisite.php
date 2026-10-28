@@ -798,7 +798,11 @@ if (isset($_POST['push_all_skins_all_spokes'])) {
         $err = "Only a hub can push skin reinstalls.";
     } else {
         $registry_url = $settings['skin_registry_url'] ?? SKIN_REGISTRY_DEFAULT_URL;
-        $reg          = skin_registry_fetch($registry_url);
+        // FRESH, never the session cache. Publishing a package warms that
+        // cache, and publishing then pushing is the owner's actual sequence,
+        // so a cached registry handed every spoke the PREVIOUS download URL
+        // and signature while the hub reported a clean push. (SS-1023.)
+        $reg          = skin_registry_fetch($registry_url, true);
         $bulk_registry = $reg['skins'] ?? [];
 
         if (empty($bulk_registry)) {
@@ -833,6 +837,11 @@ if (isset($_POST['push_all_skins_all_spokes'])) {
                         'skin_slug'    => $slug,
                         'download_url' => $rskin['download_url'],
                         'signature'    => $rskin['signature'] ?? '',
+                        // What this push is FOR. The spoke echoes it back
+                        // beside the version it actually ended up running, so
+                        // the hub can tell a real update from a reinstall of
+                        // the same old package.
+                        'version'      => (string)($rskin['version'] ?? ''),
                         // Carried so a spoke can tell a half-published
                         // package from a network fault it does not have.
                         'download_size' => (int)($rskin['download_size'] ?? 0),
@@ -877,9 +886,42 @@ if (isset($_POST['push_all_skins_all_spokes'])) {
                     $data     = json_decode($raw, true) ?? [];
                     $ok_count = (int)($data['installed'] ?? 0);
                     $fail_count = (int)($data['failed'] ?? 0);
-                    $result['ok'] = $fail_count === 0 && $ok_count === count($packages);
+
+                    // A COUNT IS NOT A VERIFICATION. A spoke that reinstalled
+                    // last week's package answers installed=N, failed=0 --
+                    // byte for byte the same answer as one that took the
+                    // package published a minute ago. That is what let the
+                    // owner push the fleet, be told it worked, and then find
+                    // sites still on the old skin and install them by hand.
+                    // So compare what came back against what was asked for,
+                    // and where a spoke cannot say, report NOT VERIFIED
+                    // rather than counting it as done. (SS-1023.)
+                    $stale = [];
+                    $unverified = [];
+                    foreach ((array)($data['results'] ?? []) as $sr) {
+                        if (!is_array($sr) || empty($sr['ok'])) continue;
+                        $slug_got = (string)($sr['skin'] ?? '?');
+                        $want     = trim((string)($sr['version_requested'] ?? ''));
+                        $got      = trim((string)($sr['version_installed'] ?? ''));
+                        if ($want === '' || $got === '') { $unverified[] = $slug_got; continue; }
+                        if ($want !== $got) $stale[] = $slug_got . ' wanted ' . $want . ', has ' . $got;
+                    }
+
+                    $result['stale']      = $stale;
+                    $result['unverified'] = $unverified;
+                    $result['ok'] = $fail_count === 0
+                        && $ok_count === count($packages)
+                        && empty($stale)
+                        && empty($unverified);
                     $result['detail'] = $ok_count . ' skin' . ($ok_count === 1 ? '' : 's') . ' installed'
                         . ($fail_count ? '; ' . $fail_count . ' failed' : '') . '.';
+                    if ($stale) {
+                        $result['detail'] .= ' STILL ON THE OLD PACKAGE: ' . implode('; ', $stale) . '.';
+                    }
+                    if ($unverified) {
+                        $result['detail'] .= ' NOT VERIFIED (this site did not report which version it ended up on): '
+                            . implode(', ', $unverified) . '.';
+                    }
                     if ($fail_count && !empty($data['results']) && is_array($data['results'])) {
                         $first_failure = null;
                         foreach ($data['results'] as $skin_result) {

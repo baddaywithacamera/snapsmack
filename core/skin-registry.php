@@ -236,16 +236,26 @@ function snapsmack_skins_for_distribution(array $skins): array {
  * on success, or ['error' => 'message'] on failure. Results are cached in
  * the session for 10 minutes to avoid hammering the server on every page load.
  *
+ * $force_fresh SKIPS that cache, and every caller that is about to ACT on the
+ * registry must pass it. The cache is correct for a page that merely displays
+ * what is available; it is wrong for a push. The owner's real sequence is to
+ * publish a package in Smack Central and then immediately push it to the
+ * fleet, and publishing warms this cache, so a ten-minute-old registry was
+ * being used to pick the download URL and signature. Every spoke then
+ * reinstalled the PREVIOUS package and reported success, which is SS-1023:
+ * the hub says the push worked and the sites stay on the old skin.
+ *
  * @param string $registry_url  URL to the registry JSON
+ * @param bool   $force_fresh   Ignore the session cache and re-fetch now
  * @return array  Decoded registry or ['error' => '...']
  */
-function skin_registry_fetch(string $registry_url): array {
+function skin_registry_fetch(string $registry_url, bool $force_fresh = false): array {
 
     // Session cache: avoid re-fetching on every page load
     $cache_key = 'skin_registry_cache';
     $cache_ttl = 600; // 10 minutes
 
-    if (isset($_SESSION[$cache_key]) && ($_SESSION[$cache_key]['fetched'] ?? 0) > time() - $cache_ttl) {
+    if (!$force_fresh && isset($_SESSION[$cache_key]) && ($_SESSION[$cache_key]['fetched'] ?? 0) > time() - $cache_ttl) {
         return $_SESSION[$cache_key]['data'];
     }
 
