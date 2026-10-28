@@ -4199,7 +4199,11 @@ class App(tk.Tk):
         )
 
         if not files:
-            messagebox.showinfo("Nothing found", "No JPG / PNG / WebP files found in that folder.")
+            messagebox.showinfo(
+                "Nothing found",
+                f"No JPG / JPEG / PNG / WebP files found directly in:\n{image_folder}\n\n"
+                "Check the selected image folder. Subfolders are not scanned."
+            )
             return
 
         default_cat    = self._def_cat_cb.get()  if hasattr(self, '_def_cat_cb')    else ''

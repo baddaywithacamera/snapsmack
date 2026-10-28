@@ -414,7 +414,10 @@ class Engine:
             if os.path.splitext(f)[1].lower() in IMAGE_EXTS
         )
         if not files:
-            raise RuntimeError("No JPG / PNG / WebP files found in that folder.")
+            raise RuntimeError(
+                f"No JPG / JPEG / PNG / WebP files found directly in:\n{image_folder}\n\n"
+                "Check the selected image folder. Subfolders are not scanned."
+            )
         orient_api = _orient_to_api(def_orient)
         entries = []
         for fname in files:
