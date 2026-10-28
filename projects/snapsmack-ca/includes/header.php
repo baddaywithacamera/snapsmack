@@ -189,8 +189,4 @@ echo json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     </div>
 </header>
 
-<aside class="mobile-shame" aria-label="A note for mobile visitors">
-    <strong>WELCOME TO THE ALL-YOU-CAN-EAT BAG OF DICKS.</strong>
-    <span>The site works on phones. Dignity remains a desktop feature.</span>
-</aside>
 <?php // ===== SNAPSMACK EOF =====
