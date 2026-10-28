@@ -42,7 +42,7 @@ $images = json_decode(html_entity_decode($match[1] !== '' ? $match[1] : $match[2
 if (count($images ?? []) !== 5) throw new RuntimeException('Preview lost mosaic members');
 if (!str_contains($html, '<dt>Photos</dt><dd>5</dd>')) throw new RuntimeException('Post photo count does not include the mosaic');
 if (str_contains($html, 'max-width: 900px')) throw new RuntimeException('Fake preview wrapper survived');
-$output = dirname(__DIR__) . '/.codex-temp/desktop-cli';
+$output = getenv('SNAPSMACK_BROWSER_OUTPUT') ?: dirname(__DIR__) . '/.codex-temp/desktop-cli';
 if (!is_dir($output)) mkdir($output, 0777, true);
 file_put_contents($output . '/actual-post-preview.html', $html);
 echo "Actual TILEZ post template, unsaved title/body, five-photo mosaic, registered engines and read-only rendering verified.\n";

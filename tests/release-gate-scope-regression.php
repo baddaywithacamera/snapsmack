@@ -41,6 +41,8 @@ $blocks = [
     ' M tests/skin-render-snapshot-regression.php' => 'a regression test',
     ' M tools/_build/build-release.php'      => 'the release builder',
     ' M tools/release-flow.php'              => 'the release flow itself',
+    ' M tools/browser-tests/run-regressions.cjs' => 'required browser gate runner',
+    ' M tools/browser-tests/package-lock.json' => 'pinned browser dependencies',
     ' M CHANGELOG.md'                        => 'the changelog',
     ' M assets/css/public-base.css'          => 'shipped CSS',
 ];
@@ -86,6 +88,10 @@ rgs_check(rf_classify_dirt([''])['shipping'] === [] && rf_classify_dirt([''])['i
 // --- the sign-off is still a human judgement --------------------------------
 
 $flow = (string)file_get_contents(dirname(__DIR__) . '/tools/release-flow.php');
+rgs_check(str_contains($flow, "'browser_regressions' => 'pass'"),
+    'release notes no longer require browser evidence');
+rgs_check((bool)preg_match('/rf_browser_tests\(\);.*?notes[^;]*release-gates[^;]*add/s', $flow),
+    'gate-note no longer executes browser tests before writing its evidence');
 foreach (['security', 'parity', 'skin-render-parity', 'authority'] as $judgement) {
     rgs_check(str_contains($flow, "'{$judgement}' => '"),
         "gate-note no longer demands the {$judgement} judgement outright");

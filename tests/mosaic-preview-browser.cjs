@@ -1,9 +1,9 @@
 /** SNAPSMACK_EOF_HEADER: browser geometry check of actual editor-preview HTML and mosaic engine. */
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const {chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),out=path.join(root,'.codex-temp/desktop-cli');
+const {chromium}=require('../tools/browser-tests/runtime.cjs');
+const root=path.resolve(__dirname,'..'),out=process.env.SNAPSMACK_BROWSER_OUTPUT||path.join(root,'.codex-temp/desktop-cli');
 (async()=>{
-    const browser=await chromium.launch({headless:true,channel:'msedge'});
+    const browser=await chromium.launch({headless:true});
     try{
         const page=await browser.newPage({viewport:{width:1440,height:1100}});
         const errors=[];page.on('pageerror',error=>errors.push(error.message));

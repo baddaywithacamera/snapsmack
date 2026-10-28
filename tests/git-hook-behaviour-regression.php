@@ -239,10 +239,20 @@ if ($python === null) {
         'parity' => 'pass',
         'skin_render_parity' => 'pass',
         'authority_review' => 'approved',
+        'browser_regressions' => 'pass',
         'skin_count' => 1,
         'skin_inventory_sha256' => hash('sha256', 'testskin'),
         'skin_render_changes' => [],
     ]);
+    foreach (['missing', 'fail'] as $browserResult) {
+        $badBrowser = json_decode($passing, true);
+        if ($browserResult === 'missing') unset($badBrowser['browser_regressions']);
+        else $badBrowser['browser_regressions'] = 'fail';
+        hook_note($tmp, $head, json_encode($badBrowser));
+        [$code, $out] = hook_prepush($python, $hook, $tmp, $refs('refs/tags/v0.7.946D', $head));
+        $check($code !== 0 && str_contains($out, 'browser_regressions'),
+            'pre-push accepted missing/failed browser evidence or refused for the wrong reason: ' . $out);
+    }
     hook_note($tmp, $head, $passing);
     [$code, $out] = hook_prepush($python, $hook, $tmp, $refs('refs/tags/v0.7.946D', $head));
     $check($code === 0, 'pre-push refused a tag whose commit carries a passing gate note: ' . $out);

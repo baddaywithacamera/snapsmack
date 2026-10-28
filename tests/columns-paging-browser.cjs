@@ -1,8 +1,8 @@
 // SNAPSMACK_EOF_HEADER
 // Browser regression: archive paging must follow the actual scroll container.
-const {chromium}=require('playwright');
+const {chromium}=require('../tools/browser-tests/runtime.cjs');
 const fs=require('node:fs');const path=require('node:path');const assert=require('node:assert/strict');
-(async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});const failures=[];
+(async()=>{const browser=await chromium.launch({headless:true});const failures=[];
 for(const mode of ['document','body','panel'])for(const observer of [true,false])for(const short of [false,true]){
  const page=await browser.newPage({viewport:{width:900,height:600}});let requests=[];
  if(!observer)await page.addInitScript(()=>{window.IntersectionObserver=undefined;});
