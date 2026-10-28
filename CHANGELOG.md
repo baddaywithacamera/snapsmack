@@ -11,6 +11,20 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.963D - 2026-10-28 - LOOK AT IT
+
+- **Five skins repaired, every one measured against the owner's own reference capture rather than against taste.** Sean asked whether skins were being verified by looking at screenshots or only by reading code, and said he thought that was how the problems were being missed. He was right, and the first screenshot taken afterwards found a fault shipped an hour earlier.
+
+- **TRUE GRIT 1.3.20** — the archive control row reached the skin without the engine that operates it or the stylesheet that styles it, so the filter panel rendered OPEN and UNSTYLED across the photographs. `core/manifest-inventory.php` describes that exact outcome in a comment. The skin now declares `asset:public:page-archive` and `asset:public:ss-engine-archive-filter`, the same way IMPACT PRINTER does, and the row renders closed as `[ SHOW ALL ] / FILTER`.
+
+- **GALLERIA 1.3.20** — the navigation ran 285px past the right edge of a phone. Measured live at 390px: `nav.navigation` from x=239 to x=675, `document.scrollWidth` 675, the whole page scrolling sideways with most of the menu unreachable. `ul.nav-menu` computed `flex-wrap: nowrap` and the skin had no narrow-width rule. Wrapping, inside the 480px block it already had, so desktop is untouched.
+
+- **AURORA 1.0.54 and THE GRID 1.3.56** — the static page title and hero are siblings of the reading column, not children of it, so the column applied to the body text and nothing else. AURORA: hero 311px wider than the text and 155px to its left. THE GRID: the same, plus the title at 0px below the navigation. Both derived from the owner's captures and reconciled to within a pixel — his captures carry a scrollbar, so their usable width is 1905, and the column arithmetic lands exactly where his photographs sit.
+
+- **IMPACT PRINTER 2.1.19** — the archive control row, with browser checks at 1920 and 390 proving the filter and search work and the photograph geometry does not move.
+
+- **The geometry harness that found most of this.** `tools/_build/render-geometry-fixtures.php` renders every skin with its real resolved stylesheets; `tools/_build/measure-geometry-matrix.cjs` measures 180 points across 30 skins in a browser and writes a screenshot of each. Five false alarms were taken out of it before it judged anything: nav gaps measured the anchor instead of the list item, nav gaps spanned two separate navigations, "all gaps equal" was not a rule, SMACKTALK skins were reported for having no photograph archive, and every hero was failing to load because the fixture gave it a path that resolved to the drive root.
+
 ## 0.7.962D - 2026-10-27 - A HERO IS NOT A PHOTOGRAPH PAGE
 
 - **The static-page hero keeps the photograph page's fixed height, so NEW HORIZON left dead space under the picture.** `#photobox` is the photograph page's box and is locked to `calc(100dvh - 140px)` so one photograph fills the screen. A static-page hero is not that -- it is an image in a column of text. The `.static-transmission` override released `min-height` and never released `height`, so with 0.7.960D's body-class fix in place the black band went but the space stayed. Measured on curbappeal.photoblogs.fyi: a square 2655x2655 photograph rendering at 722x722 inside an 860px box, 138px of it empty. With `height: auto` the box is 802px -- the photograph plus the 40px `.main-photo` frame above and below it, even on both sides. NEW HORIZON 1.3.26.
