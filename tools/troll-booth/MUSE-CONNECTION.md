@@ -3,27 +3,41 @@
 
 ## Readiness
 
-Prepared on `codex/muse-member-access`, not deployed. The existing HTTPS bridge
-at `https://trollbooth.photoblogs.fyi/health` answered on 27 October 2026 with
-version 0.1.8. The matching committed source is `501f3b92` in
-`C:/dev/snapsmack-troll-bridge`; this branch now builds on that source, reusing
-its identity fix. That worktree also has uncommitted 0.1.9 changes which were
-not copied or altered. Reconcile those with its owner before deployment.
-The main dev checkout still carries the older 0.1.4 adapter.
+Partial activation, 28 October 2026 UTC: the existing adapter in CT101 was
+backed up, patched and restarted using `deploy/prepare-member-adapter.py` and
+the changes from commit `249ce602`. Live health still reports version 0.1.8;
+the package version was not bumped. Live discovery advertises both conversation
+scopes. The live BRAIN TRUST branding and public-PKCE metadata override were
+preserved. This is a narrow patch over the inspected 0.1.8 deployment, not a
+deployment of the uncommitted 0.1.9 worktree. That worktree remains untouched;
+dev still carries 0.1.4, and source consolidation remains outstanding.
+
+The new worker completed one authenticated heartbeat/claim cycle against the
+live adapter with the laptop's SQLite history. Starting the continuous worker
+was rejected by the execution approval system; it is NOT running continuously.
+Do not start member acceptance until that worker is running.
 No Muse credential has been issued. No remote Muse round trip has been tested.
 
 ## Transport and identity
 
 Use the existing OAuth-authenticated Streamable HTTP MCP endpoint:
-`https://trollbooth.photoblogs.fyi/mcp`. This is a proposed reuse of the existing
+`https://trollbooth.photoblogs.fyi/mcp`. This reuses the existing
 HTTPS bridge, not a new public listener or direct database connection. Tailscale
 is not installed on the inspected laptop. Its tailnet route is not configured.
 
-On the adapter host, after deployment and verification, the owner runs:
+With the updated CLI installed, the owner can run on the adapter host:
 
 ```text
 troll-booth pair-code --actor muse --member
 ```
+
+The live narrow patch did not update the host CLI. For this deployment, the
+existing worker-authenticated `POST /owner/pair-code` route accepts
+`{"actor":"muse","write":false}` and forces the two conversation scopes.
+The code stays private and is entered only at the adapter's OAuth approval
+form. `/authorize` leads into `/approve`, which accepts that pairing code.
+Muse reports its platform supports hosted PKCE and vault custody; this has
+not yet been demonstrated with a completed authorization request.
 
 Run this only in a private owner terminal: it prints a single-use pairing code,
 valid for five minutes. Enter it in the OAuth approval flow; do not paste it into
