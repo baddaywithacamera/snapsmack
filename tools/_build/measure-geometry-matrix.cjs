@@ -49,12 +49,29 @@ const shots = !process.argv.includes('--no-shots');
 // them became two shipped GALLERIA versions repairing a phone layout that no
 // skin but two is meant to have.
 //
-// The manifest already has the right home for this: "incompatible": ["mobile",
-// "tablet"]. Only AURORA, JIVE TURKEY and PARADE fill it in, so it cannot be
-// the source of truth yet. Until the other 27 declare themselves the two phone
-// skins are named here, rather than inferred from a field that is absent in
-// 27 of 30 manifests and therefore means nothing.
-const MOBILE_SKINS = new Set(['photogram', 'telegram']);
+// WHICH SKINS ARE PHONE SKINS IS ALREADY IN THE DATA, and this used to name
+// them in a hardcoded set here, which is the wrong place: a thirty-first skin
+// would have been measured against whatever this list happened to say.
+// manifest features.mobile_only is the existing, load-bearing declaration --
+// the Skin Packager, the install manifest, the updater and the Skins screen
+// all read it, every one of them with an !empty() check, so an absent field
+// means a desktop skin. It is true for exactly photogram and telegram.
+//
+// Note it is NOT the "incompatible": ["mobile", "tablet"] field. That one is
+// allowed by the manifest normalizer and read by nothing at all; only AURORA,
+// JIVE TURKEY and PARADE carry it, and it additionally claims tablet, which
+// contradicts large tablet being a target. mobile_only is the field with
+// consumers, so it is the field this trusts.
+function isPhoneSkin(slug) {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'skins', slug, 'manifest.json'), 'utf8'));
+    return !!(manifest.features && manifest.features.mobile_only);
+  } catch {
+    // A skin whose manifest cannot be read is not quietly treated as a phone
+    // skin; it is measured at the widths 28 of 30 skins are built for.
+    return false;
+  }
+}
 
 const DESKTOP_WIDTHS = [
   { name: 'reference', width: 1920, height: 1080 },
@@ -94,7 +111,7 @@ function fail(message) {
       continue;
     }
     // A phone skin is measured at phone width and a desktop skin is not.
-    const WIDTHS = MOBILE_SKINS.has(entry.skin) ? PHONE_WIDTHS : DESKTOP_WIDTHS;
+    const WIDTHS = isPhoneSkin(entry.skin) ? PHONE_WIDTHS : DESKTOP_WIDTHS;
     for (const vp of WIDTHS) {
       const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
       try {
