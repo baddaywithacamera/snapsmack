@@ -185,6 +185,15 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
         // them and inline the resolved set instead, so the page is complete on
         // disk and a missing file can never masquerade as a passing layout.
         $html = preg_replace('#<link[^>]+rel=["\']stylesheet["\'][^>]*>#i', '', $html) ?? $html;
+
+        // The CMS builds a hero's src as BASE_URL . path, and BASE_URL is '/'
+        // here, so every hero came out as "/photo-1600x1067.svg". Under a
+        // file:// URL that resolves to the DRIVE ROOT, the image never loads,
+        // and an image that never loads leaves a 21px box. I read that as a
+        // collapsed hero on THE GRID and was one commit from repairing a fault
+        // that existed only in this fixture. Make it relative so the
+        // photograph beside the page is the photograph that loads.
+        $html = str_replace('src="/photo-', 'src="photo-', $html);
         $style = '<style>' . $css . '</style>';
         $html = str_contains($html, '</head>')
             ? str_replace('</head>', $style . '</head>', $html)
