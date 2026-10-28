@@ -268,7 +268,7 @@ class WorkerTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            registry = CapabilityRegistry(config)
+            registry = CapabilityRegistry(config, root / "test-history.sqlite3")
             result = registry.execute(
                 "apps.run", {"app": "test-app", "action": "status", "argv": ["--limit", "2"]}
             )
@@ -301,7 +301,7 @@ class WorkerTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            registry = CapabilityRegistry(config)
+            registry = CapabilityRegistry(config, root / "test-history.sqlite3")
             with self.assertRaises(PermissionError):
                 registry.execute("apps.run", {"app": "test-app", "action": "update"})
             result = registry.execute(
@@ -330,7 +330,7 @@ class WorkerTests(unittest.TestCase):
             with mock.patch.dict(
                 os.environ, {"TEST_ALLOWED": "yes", "TEST_SECRET": "must-not-cross"}
             ):
-                result = CapabilityRegistry(config).execute(
+                result = CapabilityRegistry(config, root / "test-history.sqlite3").execute(
                     "apps.run", {"app": "test-app", "action": "status", "argv": []}
                 )
             self.assertEqual(result["result"], {"allowed": "yes", "secret": None})

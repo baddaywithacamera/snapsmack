@@ -5,8 +5,11 @@
 
 Prepared on `codex/muse-member-access`, not deployed. The existing HTTPS bridge
 at `https://trollbooth.photoblogs.fyi/health` answered on 27 October 2026 with
-version 0.1.8; this checkout declares 0.1.4. Compare deployed source before
-updating it. Do not replace the newer installation with this checkout wholesale.
+version 0.1.8. The matching committed source is `501f3b92` in
+`C:/dev/snapsmack-troll-bridge`; this branch now builds on that source, reusing
+its identity fix. That worktree also has uncommitted 0.1.9 changes which were
+not copied or altered. Reconcile those with its owner before deployment.
+The main dev checkout still carries the older 0.1.4 adapter.
 No Muse credential has been issued. No remote Muse round trip has been tested.
 
 ## Transport and identity
