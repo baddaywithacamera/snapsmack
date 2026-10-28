@@ -1726,12 +1726,25 @@ footer a:hover {
        scrolled sideways and most of the menu could not be reached. The only
        rule it had was display:flex with no wrap.
 
-       Wrapping is the whole repair. Desktop is untouched: this rule exists
-       only below 480px, where the row cannot fit by definition. */
-    .nav-menu {
+       Wrap the menu and give it its own row with room to grow. Desktop is
+       untouched: these rules exist only below 480px. */
+    .htbs-header .nav-menu {
         flex-wrap: wrap;
         justify-content: center;
         row-gap: 4px;
+    }
+
+    /* The logo cannot share a 390px row with the menu. Let the header grow
+       with its wrapped links so they stay inside the header and viewport. */
+    .htbs-header .inside {
+        flex-direction: column;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .htbs-header .navigation {
+        width: 100%;
+        min-width: 0;
     }
 
     /* A separator belongs BETWEEN two items on a line, never at the start of
@@ -1745,8 +1758,9 @@ footer a:hover {
     }
 
     .htbs-header {
-        height: 45px;
-        padding: 0 12px;
+        height: auto;
+        min-height: 45px;
+        padding: 8px 12px;
     }
 
     .htbs-header-logo {
