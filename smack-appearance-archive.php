@@ -289,9 +289,9 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>MASONRY IMAGE SIZE <span class="field-tip" data-tip="Full size loads original images — sharpest quality, slower on large archives. Medium uses pre-generated ~600px thumbnails — faster load, recommended for most sites.">ⓘ</span></label>
+                    <label>MASONRY IMAGE SIZE <span class="field-tip" data-tip="Full size loads original images — sharpest quality, slower on large archives. Medium uses the pre-generated aspect thumbnails — faster load, recommended for most sites.">ⓘ</span></label>
                     <select name="settings[masonry_use_thumbs]">
-                        <option value="1" <?php echo  $masonry_use_thumbs ? 'selected' : ''; ?>>MEDIUM (~600px THUMBNAILS) — RECOMMENDED</option>
+                        <option value="1" <?php echo  $masonry_use_thumbs ? 'selected' : ''; ?>>MEDIUM (~<?php echo (int)(defined('SNAPSMACK_THUMB_ASPECT_LONG') ? SNAPSMACK_THUMB_ASPECT_LONG : 900); ?>px THUMBNAILS) — RECOMMENDED</option>
                         <option value="0" <?php echo !$masonry_use_thumbs ? 'selected' : ''; ?>>FULL SIZE (ORIGINAL FILES)</option>
                     </select>
                 </div>

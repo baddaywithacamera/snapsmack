@@ -1601,6 +1601,14 @@
             2
         ]
     },
+    "thumbnail-dimensions-single-source-regression.php": {
+        "assertions": 14,
+        "predicates": 11,
+        "thresholds": [
+            400,
+            900
+        ]
+    },
     "tilez-columns-regression.php": {
         "assertions": 4,
         "predicates": 9,

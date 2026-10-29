@@ -145,7 +145,15 @@ if (!function_exists('mayhem_image_pool')) {
                 'title' => $r['img_title'],
                 'src'   => $src,
                 'url'   => BASE_URL . htmlspecialchars($r['img_slug']),
-                'aspect'=> ((int)$r['img_width'] > 0 && (int)$r['img_height'] > 0)
+                // A row drawn at random may predate the dimension columns, or
+                // have been written by a path that never filled them. Reading
+                // them unguarded raised a PHP warning and made
+                // tests/skin-min-images-regression.php fail INTERMITTENTLY --
+                // five consecutive runs passed, the sixth did not, because
+                // whether it fails depends on which photographs the random
+                // draw returns. An intermittent failure in the release gate is
+                // worse than a steady one: it teaches everyone to re-run.
+                'aspect'=> ((int)($r['img_width'] ?? 0) > 0 && (int)($r['img_height'] ?? 0) > 0)
                     ? round((int)$r['img_width'] / (int)$r['img_height'], 6)
                     : 1.0,
             ];
