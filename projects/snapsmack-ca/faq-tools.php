@@ -55,7 +55,7 @@ $faq_qas = <<<'HTML'
 
             <div class="qa" id="q-tools-download">
                 <h3>Where do I download them?</h3>
-                <p>Through SNAP HQ, which also keeps them updated. SNAP HQ itself comes with the closed beta &mdash; <a href="index.php#beta">apply</a> and it's in the welcome pack. Releases are signed; if a download doesn't verify, don't run it, and <a href="bugger.php">tell us</a>.</p>
+                <p>Through SNAP HQ, which also keeps them updated. SNAP HQ itself comes with the closed beta. Releases are signed; if a download doesn't verify, don't run it, and <a href="bugger.php">tell us</a>.</p>
             </div>
 
 HTML;
