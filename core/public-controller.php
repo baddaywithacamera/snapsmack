@@ -490,18 +490,29 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         // so BLOG and HOME were the same page. Everything below this line is
         // the landing contract unchanged; only the static-page branch is
         // skipped, because serving the homepage here is the whole defect.
-        // The condition below stays literally as it was. Changing it to
-        // "&& !$isBlogRoute" is the obvious edit and it breaks
-        // tests/photofri-presentation-recovery-regression.php, which asserts
-        // that exact string because strict routing honouring the configured
-        // static homepage is a contract somebody already had to recover once.
-        // That test is right. The blog route declines to LOOK UP the homepage
-        // instead, which leaves the contract and its check untouched.
+        // BLOG IS THE LATEST-POST HOMEPAGE, MOVED.
+        //
+        // When the owner puts a static page on the front door, the image feed
+        // does not become a grid -- it becomes whatever that skin's home view
+        // always was, at a different address. For a skin with no landing
+        // template of its own that is the SOLO newest photograph, which is the
+        // SMACKONEOUT contract: one image, one post. Sean: "blog is supposed
+        // to bring up the landing page which is a solo page."
+        //
+        // My first repair sent the blog route down the feed path and gave him
+        // a grid of thumbnails on foundtextures.ca, which runs TRUE GRIT
+        // (features.has_landing false). Saying latest_post here hands the
+        // decision back to the two branches below, which already know how each
+        // skin opens: TRUE GRIT gets the solo page, CHAPLIN gets its landing
+        // feed because it declares a landing. No skin list, no second contract.
+        //
+        // It also means the static_page condition below is left literally as it
+        // was, which tests/photofri-presentation-recovery-regression.php
+        // asserts because that contract was recovered once already.
         $isBlogRoute = ($route === 'blog');
+        if ($isBlogRoute) $homepageMode = 'latest_post';
         if ($homepageMode === 'static_page') {
-            $homepage = $isBlogRoute
-                ? null
-                : $repository->activePageById((int)($settings['homepage_page_id'] ?? 0));
+            $homepage = $repository->activePageById((int)($settings['homepage_page_id'] ?? 0));
             if ($homepage !== null) {
                 return ['status' => 200, 'kind' => 'page', 'item' => $homepage,
                     'navigation' => $navigation, 'is_homepage' => true];
