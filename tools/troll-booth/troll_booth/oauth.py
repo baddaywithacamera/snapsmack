@@ -80,9 +80,10 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
             return None
         identity = self.store.consume_pair_code(pair_code)
         if not identity:
-            # Wrong, already used, or expired. Note that issuing a fresh pair
-            # code deletes the previous one, so a second code requested while
-            # a first attempt is still in flight lands here.
+            # Wrong, already used, or already expired. A code that has been
+            # used is also swept away the next time one is issued. Issuing a
+            # second code does NOT affect a live unused first one -- an
+            # earlier note here said it did, and a test disproved it.
             self.pending[request_id] = pending
             self.store.audit("unknown", "oauth.approve_denied", {"reason": "pair_code_rejected"})
             return None
