@@ -15,8 +15,8 @@
             "files_sha256": "1fa238fcc790e494ef7dfd7ea5cb46e07fd67b7d66cbab1ad5350de9cc8865e5"
         },
         "aurora": {
-            "version": "1.0.54",
-            "files_sha256": "d804dcb1c60e290501231f744b973e2b942ea18d4d5354dc496e0ab49de717fe"
+            "version": "1.0.55",
+            "files_sha256": "c91a65ca41826a85cc5064c8c157903ac4225d405d9221b8e0950f4a77b93700"
         },
         "chaplin": {
             "version": "0.2.27",
@@ -31,8 +31,8 @@
             "files_sha256": "ef2302b0e065b1a594bf3a3e08e4a85ba96caa984dc016d0c7a615f3bb2ac64a"
         },
         "game-on": {
-            "version": "0.1.39",
-            "files_sha256": "691c59bbb2cb3629bbb685a5e2b10db5023ef0f64dc4b9e3cd871838ea6b5bad"
+            "version": "0.1.40",
+            "files_sha256": "648f28da67a17bf36870014f5b2617a1d0d81d72000dd8daa039d417a7216c62"
         },
         "glide": {
             "version": "0.1.13",
@@ -67,8 +67,8 @@
             "files_sha256": "31fcf8c590065603dbe625142dcdec459c8e74b08ad059cee24c6137a6fa796b"
         },
         "parade": {
-            "version": "1.2.52",
-            "files_sha256": "0460cb36d7c39ccaf9914cf9d9fc14c08048455361b6210f94d31ce5d7feb9f2"
+            "version": "1.2.53",
+            "files_sha256": "2ae5e3ff6b65a9bd42be1107b787587c54c2f0e232eb55efc0fe044b6f132882"
         },
         "photogram": {
             "version": "2.0.31",
@@ -99,16 +99,16 @@
             "files_sha256": "c007fafeda1e52d32a668628e7adb01c518929bffb59816d8d8504fb77ab0eab"
         },
         "sudden-impact": {
-            "version": "1.0.21",
-            "files_sha256": "5961734e2f69064c2f857e80732729b77026858849185171272e12b318f11e41"
+            "version": "1.0.22",
+            "files_sha256": "3117e9a9e7ffbda85aa74cdc7ece6b6e764b27cdcf0bd25ef70bf2deb3ab914d"
         },
         "telegram": {
             "version": "0.1.6",
             "files_sha256": "ee2eb3372487d014cd69e047fea6b118dcdbc892bb5d805f05dbe1945ede9445"
         },
         "the-grid": {
-            "version": "1.3.56",
-            "files_sha256": "c8ca1f9caf36f6288c5095b491e9c52a9cac93695396daa65f227497b53fd2e7"
+            "version": "1.3.57",
+            "files_sha256": "c43597ee2e0b4664a50d15d0fbbc4283355062619a6b3d90f21dd026bea684b8"
         },
         "tilez": {
             "version": "0.2.73",
