@@ -115,8 +115,10 @@ if (isset($_POST['gen_reg_token'])) {
         // write it straight into snap_settings, which made the row BOTH the
         // registration state AND the only evidence that this step-up had
         // happened. Writing that row by hand therefore manufactured the
-        // authorization, and on 2026-10-19 it did: a site joined the fleet
-        // with no password and no TOTP code.
+        // authorization. SECAUDIT 061 reports that on 2026-10-19 a site
+        // joined the fleet exactly that way; that event is REPORTED AND
+        // UNCONFIRMED and the fix does not rest on it. The gap in the code
+        // was verified by reading it.
         //
         // Now the step-up mints a SIGNED, SCOPED grant whose key lives in a
         // file and never in MariaDB, and snap_settings keeps only its digest.

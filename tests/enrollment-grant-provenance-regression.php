@@ -7,13 +7,18 @@ declare(strict_types=1);
 /**
  * SECAUDIT 061: database-write authority must not be able to enroll a spoke.
  *
- * WHAT HAPPENED. On 2026-10-19 a site joined the fleet with no password and no
- * TOTP code. The admin page did require step-up before generating a
- * registration token, and the handshake did consume the token exactly once.
- * The hole was that the token was a bare random string in
+ * THE GAP, VERIFIED IN SOURCE. The admin page did require step-up before
+ * generating a registration token, and the handshake did consume it exactly
+ * once. The hole was that the token was a bare random string in
  * snap_settings.multisite_reg_token, so the row was BOTH the registration
- * state AND the only evidence that an administrator had authenticated.
- * Writing that row directly manufactured the authorization.
+ * state AND the only evidence that an administrator had authenticated. Writing
+ * that row produced something the handshake accepted.
+ *
+ * THE HISTORY, REPORTED AND UNCONFIRMED. SECAUDIT 061 says a fleet member was
+ * joined this way on 2026-10-19. I repeated that as fact in several places and
+ * should not have: Sean does not recall it and it could not be corroborated.
+ * The assertions below test the code, not the story, and would be worth having
+ * either way.
  *
  * This is a MUTATION test, which is what Sean asked for: every check below is
  * proved to FIRE by feeding it the thing it is supposed to refuse. A test that
@@ -24,7 +29,8 @@ declare(strict_types=1);
  * filesystem can read the MAC key and mint a grant, exactly as they could read
  * core/db.php and take the database. SECAUDIT 061 section 4 names that as the
  * host trust boundary. What is closed here is section 4 layer one: DATABASE-
- * WRITE RESISTANCE, which is the path that was actually demonstrated.
+ * WRITE RESISTANCE, which is the path the report describes and the one I
+ * confirmed by reading the handshake.
  *
  * The verifier is pure and is EXECUTED below. The handshake and the audit
  * insert need a live database, so those are asserted against the SOURCE and
@@ -94,7 +100,8 @@ eg_test((string)($v['claims']['act'] ?? '') === 'fleet.enroll',
     'and it permits exactly one action, fleet.enroll');
 
 echo "\nREQUIREMENTS 1 and 9: database-write authority alone manufactures nothing\n";
-// This is the demonstrated attack, reproduced. An operator with MariaDB access
+// The reported path, exercised here against the verifier. An operator with
+// MariaDB access
 // writes whatever they like into the settings row. None of it is a grant.
 $writable = [
     'a fresh random token of the old shape' => bin2hex(random_bytes(16)),
