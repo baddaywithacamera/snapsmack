@@ -89,6 +89,11 @@
         "predicates": 9,
         "thresholds": []
     },
+    "asset-refetch-control-regression.php": {
+        "assertions": 20,
+        "predicates": 18,
+        "thresholds": []
+    },
     "asset-security-inventory-regression.php": {
         "assertions": 18,
         "predicates": 9,
