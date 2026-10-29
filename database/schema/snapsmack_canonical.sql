@@ -1709,4 +1709,30 @@ CREATE TABLE IF NOT EXISTS `snap_game_scores` (
   KEY `idx_game_session` (`game_key`,`session_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- SECAUDIT 061 finding C. Binds the two authorization events an enrollment
+-- depends on -- the administrator's step-up and the handshake that consumed
+-- its grant -- so after-the-fact review can tell a legitimate UI enrollment
+-- from one constructed with database access. SECRET-FREE BY CONSTRUCTION:
+-- there is no column for a grant, a token or an API key. grant_digest
+-- identifies an attempt without being usable to perform one.
+CREATE TABLE IF NOT EXISTS `snap_enrollment_audit` (
+  `id`            int unsigned NOT NULL AUTO_INCREMENT,
+  `event`         varchar(40)  COLLATE utf8mb4_unicode_ci NOT NULL
+                  COMMENT 'issued | consumed | rejected | revoked',
+  `reason`        varchar(40)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
+                  COMMENT 'machine-readable rejection reason; empty on success',
+  `grant_digest`  varchar(80)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
+                  COMMENT 'sha256 of the grant. NOT the grant: identifies, cannot enroll.',
+  `nonce`         varchar(32)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `spoke_origin`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `hub_origin`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `admin_id`      int unsigned NOT NULL DEFAULT 0,
+  `stepup_at`     datetime     DEFAULT NULL,
+  `remote_addr`   varchar(64)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `created_at`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_enroll_digest` (`grant_digest`),
+  KEY `idx_enroll_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ===== SNAPSMACK EOF =====

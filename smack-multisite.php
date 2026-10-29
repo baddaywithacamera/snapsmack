@@ -111,22 +111,59 @@ if (isset($_POST['gen_reg_token'])) {
     if (!$ra['ok']) {
         $err = 'Token generation blocked: ' . $ra['error'];
     } else {
-        $token = bin2hex(random_bytes(16)); // 32-char hex
-        $expires = time() + 900; // 15 minutes
+        // SECAUDIT 061 finding A. This used to mint a bare random token and
+        // write it straight into snap_settings, which made the row BOTH the
+        // registration state AND the only evidence that this step-up had
+        // happened. Writing that row by hand therefore manufactured the
+        // authorization, and on 2026-10-19 it did: a site joined the fleet
+        // with no password and no TOTP code.
+        //
+        // Now the step-up mints a SIGNED, SCOPED grant whose key lives in a
+        // file and never in MariaDB, and snap_settings keeps only its digest.
+        // See core/enrollment-grant.php, including what this does not protect
+        // against.
+        require_once 'core/enrollment-grant.php';
+        $_grant_hub = trim((string)($_POST['grant_hub_url'] ?? ''));
+        $_issued = snap_enrollment_grant_issue(
+            BASE_URL, $_grant_hub, (int)($_SESSION['user_id'] ?? 0), time());
 
-        $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
-        $stmt->execute(['multisite_reg_token', $token, $token]);
-        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
-            ->execute(['multisite_reg_token_expires', $expires, $expires]);
+        if (!$_issued['ok']) {
+            $err = 'Token generation blocked: ' . $_issued['error'];
+        } else {
+            $expires = (int)$_issued['expires'];
 
-        // Update in-memory $settings so the token display is correct on this same page load.
-        // $settings was loaded before this POST handler ran, so it's stale without this.
-        $settings['multisite_reg_token']         = $token;
-        $settings['multisite_reg_token_expires'] = (string)$expires;
+            // The DIGEST goes in the row, never the grant. A reader of this
+            // table cannot enroll with what they find there.
+            $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
+            $stmt->execute(['multisite_reg_token', $_issued['digest'], $_issued['digest']]);
+            $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
+                ->execute(['multisite_reg_token_expires', $expires, $expires]);
 
-        $_SESSION['multisite_reg_token'] = $token;
-        $_SESSION['multisite_reg_token_expires'] = $expires;
-        $msg = "Registration token generated. Valid for 15 minutes.";
+            // Update in-memory $settings so the display below is correct on
+            // this same page load. $settings was loaded before this handler
+            // ran, so it is stale without this.
+            $settings['multisite_reg_token']         = $_issued['digest'];
+            $settings['multisite_reg_token_expires'] = (string)$expires;
+
+            // The grant itself exists ONLY here, in the session of the admin
+            // who just authenticated, and is shown once.
+            $_SESSION['multisite_reg_token'] = $_issued['grant'];
+            $_SESSION['multisite_reg_token_expires'] = $expires;
+
+            snap_enrollment_audit($pdo, 'issued', [
+                'grant_digest' => $_issued['digest'],
+                'nonce'        => (string)($_issued['claims']['nonce'] ?? ''),
+                'spoke_origin' => (string)($_issued['claims']['spoke'] ?? ''),
+                'hub_origin'   => (string)($_issued['claims']['hub'] ?? ''),
+                'admin_id'     => (int)($_issued['claims']['admin'] ?? 0),
+                'stepup_at'    => (int)($_issued['claims']['stepup_at'] ?? 0),
+                'remote_addr'  => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+            ]);
+
+            $msg = 'Enrollment grant generated for '
+                . htmlspecialchars((string)($_issued['claims']['hub'] ?? ''))
+                . '. Valid for 15 minutes, usable only by that hub, and shown once.';
+        }
     }
 }
 
@@ -1382,9 +1419,22 @@ $skin_status_for_node = function (array $node) use ($registry_skins) {
 };
 
 // Get registration token if it exists and is still valid (read from DB, not session)
-$reg_token         = $settings['multisite_reg_token']         ?? '';
-$reg_token_expires = (int)($settings['multisite_reg_token_expires'] ?? 0);
-$reg_token_valid   = $reg_token && time() < $reg_token_expires;
+// SECAUDIT 061: snap_settings holds only the grant's DIGEST now, so the
+// bearer value can come from exactly one place -- the session of the admin who
+// passed step-up to mint it. A page opened in another session, or after this
+// one ends, shows no grant and the owner mints a new one. That is correct
+// behaviour for a one-time value, not a regression: it should not be
+// re-readable out of storage for fifteen minutes.
+require_once 'core/enrollment-grant.php';
+$reg_token         = (string)($_SESSION['multisite_reg_token'] ?? '');
+$reg_token_expires = (int)($_SESSION['multisite_reg_token_expires'] ?? 0);
+$_reg_digest       = (string)($settings['multisite_reg_token'] ?? '');
+// And it is only shown while the stored digest still matches, so a grant that
+// has already been consumed, replaced or cleared stops being displayed.
+$reg_token_valid   = $reg_token !== ''
+    && time() < $reg_token_expires
+    && $_reg_digest !== ''
+    && hash_equals($_reg_digest, snap_enrollment_grant_digest($reg_token));
 
 $page_title = "Multisite Management";
 include 'core/admin-header.php';
@@ -2271,8 +2321,19 @@ include 'core/sidebar.php';
                         <p class="dim" style="font-size:0.82rem; margin-bottom:12px;">
                             Joining a hub grants it admin-level access to this site, so it needs your password
                             (plus your 2FA code if you use it). Leaving a hub never needs a password.
+                            The grant is issued for the one hub you name and expires in 15 minutes.
                         </p>
                         <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px;">
+                            <div>
+                                <?php /* SECAUDIT 061 5.1: the grant names the hub it is for, so
+                                         a grant intended for one hub cannot be presented to
+                                         another. Required, because a grant that does not say
+                                         where it may be used is only a password with extra
+                                         steps. */ ?>
+                                <label class="overline">HUB ADDRESS</label>
+                                <input type="text" name="grant_hub_url" autocomplete="off"
+                                       placeholder="hub.example.com" class="field-input">
+                            </div>
                             <div>
                                 <label class="overline">PASSWORD</label>
                                 <input type="password" name="reauth_password" autocomplete="off"

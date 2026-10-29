@@ -276,3 +276,8 @@ tools/smackpress/visible30-*.json
 # OH SNAP build output: installers, source zips and verification runs.
 outputs/oh-snap-*/
 .geometry-fixtures/
+
+# SECAUDIT 061: the fleet enrollment MAC key. Per-install, generated on first
+# use, and the whole point is that it is NOT a database value and NOT shipped.
+# Committing it would hand every site the same signing authority.
+core/enrollment-key.php
