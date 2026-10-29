@@ -138,6 +138,11 @@
         "predicates": 0,
         "thresholds": []
     },
+    "chaplin-frame-ornament-regression.php": {
+        "assertions": 18,
+        "predicates": 19,
+        "thresholds": []
+    },
     "client-ip-regression.php": {
         "assertions": 33,
         "predicates": 14,

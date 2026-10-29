@@ -766,11 +766,53 @@ function snapsmack_chaplin_presentation(array $options): array
     $ornament = (string)($options['chap_ornament_style'] ?? '');
     $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
     $assetBase = $base . 'skins/chaplin/assets/svg/' . (in_array($ornament, ['A','B','C','D'], true) ? $ornament : 'A');
+
+    // NATURAL ORNAMENT SIZES, and the line insets that depend on them.
+    //
+    // Copied unchanged from skins/chaplin/skin-header.php as it stood at
+    // b61fa6aa^, the commit that converted CHAPLIN to a strict skin and
+    // deleted that file along with frame-deco.php and frame-lines.php. The
+    // rule for a strict skin is that the logic moves to core and the skin
+    // prints the result. The files were deleted; the logic never moved. So
+    // style.css has gone on positioning ornaments with var(--chap-orn-*)
+    // and insetting lines with var(--chap-line-h-inset) ever since, against
+    // variables nothing emitted.
+    //
+    // --chap-line-h-inset and --chap-line-v-inset falling back to 0px is why
+    // the frame reads as ONE CONTINUOUS RECTANGLE on every live CHAPLIN site:
+    // the four rules run corner to corner, straight under the corner
+    // ornaments, instead of stopping at them. Codex, measuring the live page
+    // at 1920 on 28 October: "continuous rectangle, tiny corner ornaments, no
+    // centre ornaments". Sean's own reference capture
+    // (projects/snapsmack-ca/img/chaplin-landing.png) shows separated rules
+    // with a clear gap at each corner.
+    //
+    // The sizes are each SVG's designed dimensions, so the art renders 1:1
+    // rather than scaled into a fixed box. Do not round them to a common
+    // value: style C's corner really is 64 and style D's top really is 24
+    // high.
+    $ornDims = [
+        'A' => ['corner' => 56, 'top_w' => 120, 'top_h' => 36, 'side_w' => 36, 'side_h' => 120],
+        'B' => ['corner' => 48, 'top_w' => 120, 'top_h' => 28, 'side_w' => 28, 'side_h' => 120],
+        'C' => ['corner' => 64, 'top_w' => 140, 'top_h' => 40, 'side_w' => 40, 'side_h' => 140],
+        'D' => ['corner' => 48, 'top_w' => 120, 'top_h' => 24, 'side_w' => 24, 'side_h' => 120],
+    ];
+    $dim = $ornDims[$ornament] ?? $ornDims['A'];
+    // Insets = corner ornament size when corners are visible, 0 otherwise.
+    // Lines must never run under a corner ornament.
+    $cornersOn = (string)($options['chap_corner_ornaments'] ?? '1') === '1' && $ornament !== 'none';
+    $lineInset = $cornersOn ? $dim['corner'] : 0;
     $result = ['chaplin'=>[
         'line_count'=>$count,
         'ornament_style'=>$ornament,
         'corner_asset'=>$assetBase . '-corner.svg', 'top_asset'=>$assetBase . '-top.svg', 'side_asset'=>$assetBase . '-side.svg',
-        'corners'=>(string)($options['chap_corner_ornaments'] ?? '') === '1',
+        // DEFAULT ON, as skins/chaplin/frame-deco.php had it at b61fa6aa^
+        // ("$settings['chap_corner_ornaments'] ?? '1'") and as the manifest
+        // still declares. Rebuilt here as ?? '' it defaulted OFF, so a site
+        // whose options array does not carry the key loses all four corner
+        // ornaments silently and the frame becomes a bare rectangle. The
+        // other three switches really do default off, and keep doing so.
+        'corners'=>(string)($options['chap_corner_ornaments'] ?? '1') === '1',
         'mid_tb'=>(string)($options['chap_mid_top_bot'] ?? '') === '1',
         'mid_lr'=>(string)($options['chap_mid_left_right'] ?? '') === '1',
         'title_position'=>(string)($options['chap_title_position'] ?? ''),
@@ -785,6 +827,10 @@ function snapsmack_chaplin_presentation(array $options): array
         '--chap-line-1'=>snapsmack_declared_option_int($options, 'chap_line_1_width', 1, 20).'px',
         '--chap-line-2'=>snapsmack_declared_option_int($options, 'chap_line_2_width', 1, 20).'px',
         '--chap-line-3'=>snapsmack_declared_option_int($options, 'chap_line_3_width', 1, 20).'px',
+        '--chap-orn-corner-size'=>$dim['corner'].'px',
+        '--chap-orn-top-w'=>$dim['top_w'].'px', '--chap-orn-top-h'=>$dim['top_h'].'px',
+        '--chap-orn-side-w'=>$dim['side_w'].'px', '--chap-orn-side-h'=>$dim['side_h'].'px',
+        '--chap-line-h-inset'=>$lineInset.'px', '--chap-line-v-inset'=>$lineInset.'px',
     ]);
     return $result;
 }
