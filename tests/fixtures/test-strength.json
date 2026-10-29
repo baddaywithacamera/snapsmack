@@ -811,8 +811,8 @@
         ]
     },
     "multisite-bulk-push-version-verified-regression.php": {
-        "assertions": 18,
-        "predicates": 12,
+        "assertions": 27,
+        "predicates": 22,
         "thresholds": []
     },
     "multisite-spoke-count-regression.php": {
@@ -1281,6 +1281,14 @@
         "assertions": 4,
         "predicates": 1,
         "thresholds": []
+    },
+    "skin-provenance-recovery-regression.php": {
+        "assertions": 28,
+        "predicates": 26,
+        "thresholds": [
+            2,
+            5
+        ]
     },
     "skin-registry-transaction-regression.php": {
         "assertions": 1,
