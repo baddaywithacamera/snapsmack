@@ -15,8 +15,8 @@
         ]
     },
     "agreed-rules-gate.php": {
-        "assertions": 12,
-        "predicates": 8,
+        "assertions": 14,
+        "predicates": 15,
         "thresholds": [
             2,
             2,

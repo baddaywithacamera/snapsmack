@@ -11,6 +11,26 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.969D - 2026-10-29 - RESERVE THE BOX
+
+- **The masonry archive stopped collapsing to nothing and then snapping into place.** Sean: *"the archive page loads everything large and then resizes. can a small JS preload in the background and then fade in gracefully so stuff doesn't jump all over as the page draws?"*
+
+- **No preloader was needed. The dimensions were already in the page.** Measured on photowalk.ing/archive-view, 50 SHADES, masonry view: every one of the 24 tile images already carried its true size as `data-w` and `data-h` — 1233×1850, 2500×1667 and so on. `ss-engine-rows.js` reads those and its own comment explains that it deliberately never consults `naturalWidth`, because the lazy loader swaps `src` for a 1×1 GIF. **The engine never waits for an image.**
+
+- **What was missing is that a browser cannot read `data-w`.** Only JavaScript can. So until the engine ran, every tile anchor computed to **0×0** and the wall had no height at all — the archive occupied no vertical space, everything below it sat at the top of the page, and the whole lot snapped down the moment the engine laid out. On a slow connection that window is long enough to watch.
+
+- **The tile now carries a box from the numbers already in hand.** `wall-tile` generates `aspect-ratio` on the anchor from the photograph's own width and height — never a typed default, the same reasoning that already governs `data-w` and `data-h`, where falling back to 3:2 was found to be a lie about every portrait.
+
+- **And the wall lays out at parse time, in the shape it will end up in.** `assets/css/ss-engine-scroll-wall.css` gains a fallback scoped to `:not([data-wall-ready])`: a wrapping flex row at `--ss-row-height`, which is the **same** custom property `ss-engine-rows.js` targets, written from the owner's JUSTIFIED ROW HEIGHT control. Fixing the height and letting `aspect-ratio` supply the width is what a justified row *is*, so those boxes land close to the engine's own. `ss-engine-rows.js` sets `data-wall-ready` at the moment it takes over, which switches the fallback off — so the container is **never** flex or grid while the engine owns geometry, which is what that stylesheet's own header requires.
+
+- **MEASURED IN A BROWSER, both states, 24 tiles at 1200px.** Before any script: every tile a real box, portraits 0.67, landscapes 1.5, squares 1.00, and the wall reserving 1360px instead of nothing. After the engine: `data-wall-ready` set, container back to `block`, tiles absolutely positioned, wall 996px. **The content below the archive now moves 364px when the engine runs instead of the full 996px it used to travel from zero.**
+
+- **The first attempt was worse and the test caught it.** A four-column grid fallback reserved 890px where the engine produced 176, moving the page *up* by 714px — a jump in the other direction, no improvement at all. The second attempt was measured on six tiles, which is an edge case: with so few, the engine squeezes them all into one compressed row while flex-wrap makes two, so the fixture was measuring that difference rather than the repair. The fixture is 24 tiles now, which is what an archive actually renders.
+
+- `tests/wall-reserved-space-browser.cjs`, 13 assertions, loads the real stylesheet and the real engine over http and measures the page **in both states** — scripts blocked, then engine running — because the defect only exists in the gap between them and no markup check can see it.
+
+- **Not done, and named:** `assets/js/ss-engine-image-fade-load.js` still touches zero of the wall's images; none of its five selectors match them. Adding one would set an inline opacity that defeats 50 SHADES' hover-dim rule, so it wants doing properly rather than obviously. The wall no longer needs it to avoid the jump. TRUE GRIT feels smooth for two unrelated reasons: its square grid sets `aspect-ratio: 1/1` in CSS, and its images carry `.tg-image`, which that engine does match. (SS-1046.)
+
 ## 0.7.968D - 2026-10-29 - THE ROW THAT WAS NEVER THERE
 
 - **The archive's thumbs, masonry and calendar controls are back, and bound.** Sean, on 28 October: *"Where are my thumbs, masonry, and calendar controls i had?"* and then *"have thumbs, masonry, and calendar been removed from other skins?"* Measured across all thirty skins the same night: **yes, from every one of them.** The control row existed in exactly one place, the `archive-filters` component, and the T/M toggle inside it had never rendered on any skin at all.
