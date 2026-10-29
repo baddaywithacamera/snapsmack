@@ -8,7 +8,8 @@ const root = path.resolve(__dirname, '../..');
 const out = process.env.SNAPSMACK_BROWSER_OUTPUT || path.join(root, 'opaudits/evidence/027/2026-10-29-galleria-blogroll-title');
 const cssPath = path.join(root, 'skins/galleria/style.css');
 const candidate = fs.readFileSync(cssPath, 'utf8');
-const previous = execFileSync('git', ['show', 'HEAD:skins/galleria/style.css'], { cwd: root, encoding: 'utf8' });
+// Pin the pre-repair stylesheet so committing the repair cannot erase the mutation.
+const previous = execFileSync('git', ['show', 'ea97f6dd^:skins/galleria/style.css'], { cwd: root, encoding: 'utf8' });
 fs.mkdirSync(out, { recursive: true });
 
 async function geometry(page) {
