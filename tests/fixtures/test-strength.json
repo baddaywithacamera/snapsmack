@@ -101,9 +101,10 @@
         "thresholds": []
     },
     "archive-thumb-style-reaches-every-skin-regression.php": {
-        "assertions": 41,
-        "predicates": 29,
+        "assertions": 47,
+        "predicates": 37,
         "thresholds": [
+            2,
             2
         ]
     },
@@ -1140,6 +1141,11 @@
         "thresholds": [
             2
         ]
+    },
+    "release-tag-rules-regression.php": {
+        "assertions": 25,
+        "predicates": 16,
+        "thresholds": []
     },
     "remaining-public-control-authority-regression.php": {
         "assertions": 16,

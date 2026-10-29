@@ -585,7 +585,7 @@ include 'core/sidebar.php';
 
                         <?php $show_thumb_style = ($settings['archive_layout'] ?? 'masonry') === 'thumbs'; ?>
                         <div class="lens-input-wrapper<?php echo $show_thumb_style ? '' : ' d-none'; ?> mt-10" id="archive-thumb-style-wrap">
-                            <label>THUMB STYLE <span class="field-tip" data-tip="How thumbnails are cropped in the thumbs grid. Cropped fills the tile; Square forces a 1:1 ratio.">ⓘ</span></label>
+                            <label>THUMB STYLE <span class="field-tip" data-tip="In the Thumbs layout: NATURAL ASPECT keeps each photograph&#039;s own proportions, so tiles differ in height. SQUARE CROP crops every photograph to a 1:1 tile, so the grid is even. Applies to whichever skin is active.">ⓘ</span></label>
                             <select name="settings[archive_thumb_style]">
                                 <option value="cropped" <?php echo (($settings['archive_thumb_style'] ?? 'cropped') === 'cropped') ? 'selected' : ''; ?>>NATURAL ASPECT (DEFAULT)</option>
                                 <option value="square"  <?php echo (($settings['archive_thumb_style'] ?? 'cropped') === 'square')  ? 'selected' : ''; ?>>SQUARE CROP (1:1)</option>

@@ -200,11 +200,27 @@ if ($declared !== '') {
                 'the source declares ' . $declared . ', which is IN SERVICE on the fleet. '
                 . 'A deployed tag must never move. Open the next number.');
         }
-        $check($tagCommit === $headCommit,
-            'the source declares ' . $declared . ', already tagged at '
-            . substr($tagCommit, 0, 8) . ' while HEAD is ' . substr($headCommit, 0, 8)
-            . '. If that version is DEPLOYED, open the next number -- never move it. '
-            . 'If it is not deployed, move the tag deliberately and re-run.');
+        // PUBLISHED, NOT JUST DEPLOYED. The line that used to stand here said
+        // "If it is not deployed, move the tag deliberately and re-run", and on
+        // 29 October an agent followed it and re-pointed v0.7.970D -- a tag
+        // that was already on origin. The advice was sound for a tag that had
+        // never left the machine and wrong for one that had, and this check
+        // could not tell the two apart because it only ever asked the fleet
+        // what it was SERVING. A tag is immutable the moment it exists on
+        // origin, built or not: anyone may have fetched it.
+        //
+        // The reasoning lives in tools/_build/release-tag-rules.php so it can
+        // be mutation-tested; including this file runs it, so a test cannot
+        // reach inside it. See tests/release-tag-rules-regression.php.
+        require_once $root . '/tools/_build/release-tag-rules.php';
+        $verdict = snap_gate_tag_move_verdict(
+            $declared, $tagCommit, $headCommit,
+            snap_gate_origin_tag_state($root, $tagged));
+        $check($verdict['ok'], 'the source declares ' . $declared . '. ' . $verdict['message']);
+        if ($verdict['ok'] && $verdict['note'] !== '') {
+            echo '  note  ' . $verdict['note'] . "
+";
+        }
     }
 }
 

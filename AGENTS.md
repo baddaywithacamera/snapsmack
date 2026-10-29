@@ -37,6 +37,11 @@ him the month.
 - **One open build number until it is deployed.** New work folds into the
   tagged-but-unbuilt version — it does not get a fresh number. Shipped truth
   is `https://snapsmack.ca/releases/latest-dev.json`, not `git tag`.
+- **A tag is immutable once on origin.** Published, not just deployed: the
+  fold rule is about build NUMBERS and never licence to rewrite a ref others
+  may have fetched. A tag that has never left the machine may be re-pointed,
+  with the move recorded in its message. If you cannot reach origin to find
+  out, you do not move it.
 - **Never FTP to a SnapSmack install.** Ever. SMACKBACK will see it.
 - **Never a remote lockout.** The hub informs; the site owner decides.
 - **Do not remove audit evidence.** `opaudits/` and its `evidence/` folders
