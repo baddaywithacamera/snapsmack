@@ -718,32 +718,16 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             </div>
             <?php endif; ?>
         </div>
-        <script>
-        // 0.7.79 archive layout/calendar persistence.
-        // Server reads cookies before rendering — no JS redirect, no flash.
-        // localStorage mirror is kept for cross-tab sync.
-        (function() {
-            var layout      = <?php echo json_encode($archive_layout); ?>;
-            var calOpen     = <?php echo $archive_calendar_open ? 'true' : 'false'; ?>;
-            var calEnabled  = <?php echo $archive_calendar_enabled ? 'true' : 'false'; ?>;
-            try {
-                localStorage.setItem('smack_archive_layout', layout);
-                localStorage.setItem('smack_archive_calendar', calOpen ? 'open' : 'closed');
-            } catch (e) {}
-            // Cookies: 1 year, root path, lax-same-site.
-            document.cookie = 'smack_archive_layout=' + encodeURIComponent(layout) +
-                              '; path=/; max-age=31536000; SameSite=Lax';
-            if (calEnabled) {
-                document.cookie = 'smack_archive_calendar=' + (calOpen ? 'open' : 'closed') +
-                                  '; path=/; max-age=31536000; SameSite=Lax';
-            }
-            // Body attributes drive CSS visibility for the calendar panel.
-            // ss-engine-archive-toggle.js reads/writes these to do in-place
-            // toggling without page reload.
-            document.documentElement.setAttribute('data-archive-layout', layout);
-            document.documentElement.setAttribute('data-archive-calendar', calOpen ? 'open' : 'closed');
-        }());
-        </script>
+        <?php // 0.7.79 archive layout/calendar persistence, extracted to its own
+              // file 29 October 2026 (SS-1041). The server reads the cookie before
+              // rendering, so there is no redirect and no flash; this only mirrors
+              // the resolved state into the cookie, localStorage and the <html>
+              // attributes the CSS and the toggle engine read. The three values
+              // travel as data-* attributes, never interpolated into JavaScript. ?>
+        <script src="<?php echo BASE_URL; ?>assets/js/ss-archive-state.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"
+                data-layout="<?php echo htmlspecialchars((string)$archive_layout, ENT_QUOTES); ?>"
+                data-calendar-enabled="<?php echo $archive_calendar_enabled ? '1' : '0'; ?>"
+                data-calendar-open="<?php echo $archive_calendar_open ? '1' : '0'; ?>"></script>
 
         <?php if ($search_query !== ''): ?>
         <div class="archive-search-status">

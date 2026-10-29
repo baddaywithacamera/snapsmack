@@ -330,6 +330,40 @@
             "purpose": "AI spending-cap modal"
         },
         {
+            "file": "assets/js/ss-archive-state.js",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-archive-state",
+            "legacy_handle": null,
+            "callers": [
+                "archive.php"
+            ],
+            "security_signals": [],
+            "security_review": null,
+            "enable": "loaded by the CMS where needed",
+            "family": "Shared front-end helpers (ss-*)",
+            "vendor": false,
+            "requires": [],
+            "purpose": "Archive layout / calendar state persistence Was 24 lines of JavaScript written inline in archive.php since 0.7.159."
+        },
+        {
+            "file": "assets/js/ss-config-bootstrap.js",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-config-bootstrap",
+            "legacy_handle": null,
+            "callers": [
+                "core/meta.php"
+            ],
+            "security_signals": [],
+            "security_review": null,
+            "enable": "loaded by the CMS where needed",
+            "family": "Shared front-end helpers (ss-*)",
+            "vendor": false,
+            "requires": [],
+            "purpose": "Public config bootstrap Was two one-line inline scripts in core/meta.php: window.SNAP_BASE_URL = <?php echo json_encode(BASE_URL); ?>; window.SNAP_SITE_MODE = <?php echo json_encode($settings['site..."
+        },
+        {
             "file": "assets/js/ss-engine-52-pickup.js",
             "owner": "cms",
             "scope": "public",
@@ -518,6 +552,7 @@
                 "archive.php",
                 "core/skin-render-helpers.php",
                 "skins/impact-printer/manifest.json",
+                "skins/true-grit/manifest.json",
                 "scroll"
             ],
             "security_signals": [],
@@ -557,6 +592,8 @@
             "callers": [
                 "archive.php",
                 "core/asset-security-reviews.php",
+                "core/public-runtime.php",
+                "core/skin-render-helpers.php",
                 "skins/chaplin/manifest.json",
                 "skins/rational-geo/manifest.json",
                 "skins/slickr/manifest.json",
@@ -637,6 +674,7 @@
                 "api-calendar.php",
                 "archive.php",
                 "core/asset-security-reviews.php",
+                "core/skin-render-helpers.php",
                 "tools/_build/build-spec-080.js",
                 "50-shades-of-noah-grey",
                 "rational-geo",
@@ -801,6 +839,7 @@
             "callers": [
                 "core/asset-security-reviews.php",
                 "core/footer-scripts.php",
+                "core/meta.php",
                 "50-shades-of-noah-grey",
                 "52-card-pickup",
                 "aurora",
@@ -2518,6 +2557,40 @@
             "purpose": "Wall Engine Physics-driven horizontal gallery wall."
         },
         {
+            "file": "assets/js/ss-install-forms.js",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-install-forms",
+            "legacy_handle": null,
+            "callers": [
+                "install.php"
+            ],
+            "security_signals": [],
+            "security_review": null,
+            "enable": "loaded by the CMS where needed",
+            "family": "Shared front-end helpers (ss-*)",
+            "vendor": false,
+            "requires": [],
+            "purpose": "Installer form helpers Was three inline scripts in install.php: the SHOW/HIDE password toggle, the password-match check, and the gate that keeps the Log In link dead until the Break-Glass Card has ..."
+        },
+        {
+            "file": "assets/js/ss-pixel-theme.js",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-pixel-theme",
+            "legacy_handle": null,
+            "callers": [
+                "pixel.php"
+            ],
+            "security_signals": [],
+            "security_review": null,
+            "enable": "loaded by the CMS where needed",
+            "family": "Shared front-end helpers (ss-*)",
+            "vendor": false,
+            "requires": [],
+            "purpose": "Fediverse reader light/dark theme bootstrap Was a one-line inline script in pixel.php's <head>."
+        },
+        {
             "file": "assets/js/ss-pixel.js",
             "owner": "cms",
             "scope": "public",
@@ -2575,6 +2648,57 @@
             "vendor": false,
             "requires": [],
             "purpose": "FEDIVERSE Pixelfed Client"
+        },
+        {
+            "file": "assets/js/ss-profile-theme.js",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-profile-theme",
+            "legacy_handle": null,
+            "callers": [
+                "core/public-profile.php"
+            ],
+            "security_signals": [],
+            "security_review": null,
+            "enable": "loaded by the CMS where needed",
+            "family": "Shared front-end helpers (ss-*)",
+            "vendor": false,
+            "requires": [],
+            "purpose": "Fediverse profile page light/dark theme Was two inline scripts in core/public-profile.php, one in <head> and one at the end of <body>."
+        },
+        {
+            "file": "assets/js/ss-snap-in-tabs.js",
+            "owner": "cms",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-snap-in-tabs",
+            "legacy_handle": null,
+            "callers": [
+                "snap-in.php"
+            ],
+            "security_signals": [],
+            "security_review": null,
+            "enable": "loaded by the CMS where needed",
+            "family": "Shared front-end helpers (ss-*)",
+            "vendor": false,
+            "requires": [],
+            "purpose": "Sign-in page tab switching Was an inline script at the end of snap-in.php."
+        },
+        {
+            "file": "assets/js/ss-wall-mobile-gate.js",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-wall-mobile-gate",
+            "legacy_handle": null,
+            "callers": [
+                "gallery-wall.php"
+            ],
+            "security_signals": [],
+            "security_review": null,
+            "enable": "loaded by the CMS where needed",
+            "family": "Shared front-end helpers (ss-*)",
+            "vendor": false,
+            "requires": [],
+            "purpose": "Gallery wall mobile gate Was an inline script in gallery-wall.php's <head>."
         }
     ],
     "fonts": [
@@ -2860,8 +2984,12 @@
             "legacy_handle": "smack-archive-toggle:css",
             "callers": [
                 "core/asset-security-reviews.php",
+                "core/chaplin-page-component.php",
                 "core/meta.php",
+                "core/public-runtime.php",
                 "skins/impact-printer/manifest.json",
+                "skins/true-grit/manifest.json",
+                "tools/_build/render-geometry-fixtures.php",
                 "chaplin",
                 "rational-geo",
                 "slickr"
@@ -3209,8 +3337,10 @@
             "callers": [
                 "archive.php",
                 "smack-help.php",
+                "core/archive-controls.php",
                 "core/asset-security-reviews.php",
                 "core/meta.php",
+                "core/public-runtime.php",
                 "skins/50-shades-of-noah-grey/manifest.json",
                 "skins/rational-geo/manifest.json",
                 "skins/slickr/manifest.json",

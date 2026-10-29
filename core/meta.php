@@ -161,7 +161,11 @@ $keywords_str = implode(', ', $page_keywords);
 <meta name="theme-color" content="#0b0c0d">
 <link rel="manifest" href="<?php echo BASE_URL; ?>pwa-manifest.php">
 <link rel="apple-touch-icon" href="<?php echo BASE_URL; ?>assets/pwa/apple-touch-icon.png">
-<script>window.SNAP_BASE_URL=<?php echo json_encode(BASE_URL); ?>;</script>
+<?php // window.SNAP_BASE_URL and window.SNAP_SITE_MODE, which smack-pwa.js and
+      // ss-engine-comms.js read. They were two inline one-liners; extracted
+      // 29 October 2026 (SS-1041). No defer, so this runs before the deferred
+      // pwa script below. ?>
+<script src="<?php echo BASE_URL; ?>assets/js/ss-config-bootstrap.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" data-base-url="<?php echo htmlspecialchars((string)BASE_URL, ENT_QUOTES); ?>" data-site-mode="<?php echo htmlspecialchars((string)($settings['site_mode'] ?? 'photoblog'), ENT_QUOTES); ?>"></script>
 <script src="<?php echo BASE_URL; ?>assets/js/smack-pwa.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 <?php
 // --- AI TRAINING META DIRECTIVE ---
@@ -300,7 +304,6 @@ if (in_array($_snap_page, ['page', 'blog', 'index'])): ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/columns.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-lightbox.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 <?php endif; ?>
-<script>window.SNAP_SITE_MODE = <?php echo json_encode($settings['site_mode'] ?? 'photoblog'); ?>;</script>
 <?php
 // MOSAIC ([mosaic:ID]) is a POST-BODY shortcode engine (SMACKTALK longform +
 // static Pages): it renders inside parseContent() output and can never appear

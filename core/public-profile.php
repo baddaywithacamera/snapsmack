@@ -132,7 +132,7 @@ header('Pragma: no-cache');
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?php echo pp_e($pp_name); ?> (<?php echo pp_e($pp_full_handle); ?>)</title>
 <link rel="alternate" type="application/activity+json" href="<?php echo pp_e(sv_actor_url($settings)); ?>">
-<script>try{var _t=localStorage.getItem('pp-theme');if(_t)document.documentElement.setAttribute('data-theme',_t);}catch(e){}</script>
+<script src="<?php echo pp_e((defined('BASE_URL') ? BASE_URL : '/') . 'assets/js/ss-profile-theme.js'); ?>"></script>
 <style>
   /* WHITE (light) is the base palette; BLACK (dark) overrides via [data-theme].
      Toggle in the top bar; choice persists per-visitor. Accent stays Pixelfed
@@ -290,17 +290,6 @@ header('Pragma: no-cache');
       <?php endif; ?>
     </main>
   </div>
-  <script>
-  (function(){
-    var K='pp-theme', root=document.documentElement, btn=document.getElementById('pp-theme');
-    if(!root.getAttribute('data-theme')) root.setAttribute('data-theme','dark');
-    if(btn) btn.addEventListener('click',function(){
-      var next = root.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
-      root.setAttribute('data-theme', next);
-      try{ localStorage.setItem(K, next); }catch(e){}
-    });
-  })();
-  </script>
 </body>
 </html>
 <?php // ===== SNAPSMACK EOF =====
