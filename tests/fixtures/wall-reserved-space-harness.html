@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wall reserved space</title>
+<link rel="stylesheet" href="/assets/css/ss-engine-scroll-wall.css">
+<style>
+  /* Only what a page needs to exist. Everything that decides tile geometry
+     comes from the real stylesheet above, which is the point of the test. */
+  body { margin: 0; font: 14px sans-serif; }
+  /* A real archive carries these from the owner's Archive Appearance
+     controls. --ss-row-height is JUSTIFIED ROW HEIGHT, which BOTH the
+     parse-time fallback and ss-engine-rows.js target. Without it the
+     engine falls back to deriving a height from --ss-cols, and the two
+     would be aiming at different numbers. */
+  #justified-grid { width: 1200px; --ss-row-height: 220px; --ss-gap: 8px; }
+  /* The marker whose top edge tells us whether the wall reserved any height.
+     If the wall collapses, this sits at the top of the page and then snaps
+     down when the engine runs -- which is the defect being measured. */
+  #below { height: 20px; background: #c00; }
+</style>
+</head>
+<body>
+
+<!-- Six tiles, shapes a real archive has: portrait, landscape, square.
+     Each anchor carries the aspect-ratio the wall-tile component generates
+     from the photograph's own dimensions, and each image carries the same
+     numbers as data-w / data-h for the engine to read. The src is a data URI
+     so the test never depends on a network image or on load timing. -->
+<section id="justified-grid" class="ss-scroll-wall">
+  <a class="ss-masonry-item" href="#1" style="aspect-ratio:1233/1850"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="1233" data-h="1850"></a>
+  <a class="ss-masonry-item" href="#2" style="aspect-ratio:2500/1667"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2500" data-h="1667"></a>
+  <a class="ss-masonry-item" href="#3" style="aspect-ratio:2000/2000"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2000" data-h="2000"></a>
+  <a class="ss-masonry-item" href="#4" style="aspect-ratio:2500/1875"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2500" data-h="1875"></a>
+  <a class="ss-masonry-item" href="#5" style="aspect-ratio:1200/1800"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="1200" data-h="1800"></a>
+  <a class="ss-masonry-item" href="#6" style="aspect-ratio:2500/1667"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2500" data-h="1667"></a>
+  <a class="ss-masonry-item" href="#7" style="aspect-ratio:1667/2500"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="1667" data-h="2500"></a>
+  <a class="ss-masonry-item" href="#8" style="aspect-ratio:2500/1406"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2500" data-h="1406"></a>
+  <a class="ss-masonry-item" href="#9" style="aspect-ratio:1800/1200"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="1800" data-h="1200"></a>
+  <a class="ss-masonry-item" href="#10" style="aspect-ratio:2048/2048"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2048" data-h="2048"></a>
+  <a class="ss-masonry-item" href="#11" style="aspect-ratio:2500/1667"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2500" data-h="1667"></a>
+  <a class="ss-masonry-item" href="#12" style="aspect-ratio:1500/2000"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="1500" data-h="2000"></a>
+  <a class="ss-masonry-item" href="#13" style="aspect-ratio:2500/1667"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2500" data-h="1667"></a>
+  <a class="ss-masonry-item" href="#14" style="aspect-ratio:1333/2000"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="1333" data-h="2000"></a>
+  <a class="ss-masonry-item" href="#15" style="aspect-ratio:2500/1875"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2500" data-h="1875"></a>
+  <a class="ss-masonry-item" href="#16" style="aspect-ratio:2000/1333"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2000" data-h="1333"></a>
+  <a class="ss-masonry-item" href="#17" style="aspect-ratio:1850/1233"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="1850" data-h="1233"></a>
+  <a class="ss-masonry-item" href="#18" style="aspect-ratio:2500/1667"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2500" data-h="1667"></a>
+  <a class="ss-masonry-item" href="#19" style="aspect-ratio:2000/2500"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2000" data-h="2500"></a>
+  <a class="ss-masonry-item" href="#20" style="aspect-ratio:2500/1667"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2500" data-h="1667"></a>
+  <a class="ss-masonry-item" href="#21" style="aspect-ratio:1600/1600"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="1600" data-h="1600"></a>
+  <a class="ss-masonry-item" href="#22" style="aspect-ratio:2400/1600"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2400" data-h="1600"></a>
+  <a class="ss-masonry-item" href="#23" style="aspect-ratio:1200/1600"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="1200" data-h="1600"></a>
+  <a class="ss-masonry-item" href="#24" style="aspect-ratio:2500/1667"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" data-w="2500" data-h="1667"></a>
+</section>
+
+<div id="below"></div>
+
+</body>
+</html>

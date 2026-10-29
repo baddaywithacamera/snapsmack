@@ -273,8 +273,24 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             ? (string)$item['img_thumb_aspect'] : (string)($item['img_file'] ?? '');
         $href = (string)($item['url'] ?? '');
         if ($href === '') $href = snap_route_url('photo', ['slug' => $item['img_slug'] ?? '']);
+        // RESERVE THE BOX BEFORE ANY SCRIPT RUNS. The dimensions are already
+        // known here and already travel as data-w and data-h, but a browser
+        // cannot read those: only JavaScript can. Until ss-engine-rows.js ran,
+        // every tile computed to 0x0, the wall had no height, and the whole
+        // page below it sat at the top and then snapped down when the engine
+        // laid out. Measured on photowalk.ing at 24 tiles, all 0x0 (SS-1046).
+        //
+        // aspect-ratio is generated from the photograph's own shape, never a
+        // typed default: the same reasoning as data-w and data-h below, where
+        // falling back to 3:2 was found to be a lie about portraits.
+        $tileW = (int)($item['img_width'] ?? 0);
+        $tileH = (int)($item['img_height'] ?? 0);
         $html = '<a class="ss-masonry-item" href="' . snap_escape_url($href) . '" title="'
-            . snap_escape_attr($item['img_title'] ?? '') . '">';
+            . snap_escape_attr($item['img_title'] ?? '') . '"'
+            . ($tileW > 0 && $tileH > 0
+                ? ' style="aspect-ratio:' . $tileW . '/' . $tileH . '"'
+                : '')
+            . '>';
         if ($thumb !== '') {
             $html .= (string)snap_render_component('image', [
                 'url' => $thumb,

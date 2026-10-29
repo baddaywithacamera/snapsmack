@@ -25,6 +25,37 @@
     display: block;
     width: 100%;
 }
+/* BEFORE THE ENGINE HAS RUN, AND ONLY THEN.
+ *
+ * The rule above says the container must not be flex or grid, because gap is
+ * arithmetic the engine performs. That holds from the moment the engine owns
+ * geometry, which it announces by setting data-wall-ready. Until it does, the
+ * container had no height and every tile computed to 0x0, so the archive
+ * occupied no space at all and the whole page snapped down when the engine
+ * laid out. Measured on photowalk.ing: 24 tiles, all 0x0 (SS-1046).
+ *
+ * This reserves approximately the right space during parse, using the
+ * aspect-ratio each tile carries from its own photograph. The engine then
+ * refines approximate boxes into justified rows instead of creating them from
+ * nothing, and this selector stops matching the instant it does. */
+.ss-scroll-wall:not([data-wall-ready]) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ss-gap, 8px);
+    align-content: flex-start;
+}
+.ss-scroll-wall:not([data-wall-ready]) .ss-masonry-item {
+    /* The SAME row height the engine targets: ss-engine-rows.js reads
+     * --ss-row-height, written from the owner's JUSTIFIED ROW HEIGHT control.
+     * Fixing the height and letting aspect-ratio supply the width is what a
+     * justified row IS, so these boxes land close to the engine's own and the
+     * correction when it runs is small. A four-column grid was tried first
+     * and reserved 890px where the engine produced 176, which moved the page
+     * UP by 714px -- a jump in the other direction, no better than before. */
+    height: var(--ss-row-height, 220px);
+    width: auto;
+    flex: 0 0 auto;
+}
 .ss-scroll-wall .ss-masonry-item {
     position: relative;
     display: block;

@@ -151,6 +151,11 @@
 
         grid.style.position = 'relative';
         grid.style.display = 'block';
+        // From here the ENGINE owns geometry, which is what the partner
+        // stylesheet requires. The attribute turns OFF the parse-time grid
+        // fallback that reserved space before this ran (SS-1046); the
+        // container is therefore never grid while the engine owns it.
+        grid.setAttribute('data-wall-ready', '1');
         grid.style.height = total + 'px';
         grid.setAttribute('data-ss-rows-ready', '1');
 
