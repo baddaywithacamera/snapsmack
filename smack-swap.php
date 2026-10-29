@@ -89,7 +89,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['new_image'])) {
 
         // --- REPLACEMENT THUMBNAIL ENGINE ---
         list($orig_w, $orig_h) = getimagesize($tmp);
-        $thumb_size = 400;
+        // The constants block in core/constants.php exists because the old
+        // 400/600 split made a thumbnail's size depend on which code path
+        // created it. This was the last path still typing the number in.
+        $thumb_size = defined('SNAPSMACK_THUMB_SQUARE') ? (int)SNAPSMACK_THUMB_SQUARE : 400;
         $crop_size = min($orig_w, $orig_h);
         $cx = ($orig_w - $crop_size) / 2;
         $cy = ($orig_h - $crop_size) / 2;
