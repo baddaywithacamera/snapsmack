@@ -429,6 +429,41 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . snap_escape_attr($content) . '">';
         }
         $html .= '</head>';
+    } elseif ($name === 'frame-ornaments') {
+        // DECORATIVE FRAME ORNAMENTS, named by what they ARE, not by the skin
+        // that asks for them.
+        //
+        // EACH ORNAMENT IS A DIV WITH THE IMAGE INSIDE IT. The div carries the
+        // size; the image fills the div and nothing else can resize it.
+        //
+        // Why the wrapper matters. Rebuilt as a bare <img class="chap-orn ...">
+        // the ornaments became content photographs as far as every static-page
+        // image rule was concerned. Codex measured acolourlesslife.ca/about at
+        // 1920: corner ornament 734x734, SIDE ornament 734x3145.7 spanning
+        // y -1010 to 2135, laying strokes straight across the heading and the
+        // owner's text. The div restores the shape skins/chaplin/style.css was
+        // written against, where .chap-orn-tl sizes the BOX.
+        //
+        // Why the image is still a URL and not an inlined SVG. e18cd233,
+        // "Restore secure Chaplin frame presentation", deliberately moved these
+        // to same-origin asset URLs, and an SVG fetched through <img> cannot
+        // execute. The deleted frame-deco.php inlined the file and rewrote its
+        // colours; that is NOT reinstated here, because overturning a commit
+        // titled "secure" is not a rendering decision. The consequence is
+        // recorded rather than hidden: the art's own colours reach the page.
+        $model = is_array($data['model'] ?? null) ? $data['model'] : [];
+        $pieces = is_array($model['pieces'] ?? null) ? $model['pieces'] : [];
+        $body = '';
+        foreach ($pieces as $piece) {
+            if (!is_array($piece)) continue;
+            $position = trim((string)($piece['position'] ?? ''));
+            $url = trim((string)($piece['url'] ?? ''));
+            if ($position === '' || $url === '') continue;
+            $body .= '<div class="chap-orn chap-orn-masked ' . snap_escape_attr($position) . '">'
+                . '<img src="' . snap_escape_url($url) . '" alt="" aria-hidden="true">'
+                . '</div>';
+        }
+        $html = $body === '' ? '' : '<div class="chap-frame-deco" aria-hidden="true">' . $body . '</div>';
     } elseif ($name === 'registered-assets') {
         $assets=is_array($data['assets']??null)?$data['assets']:[];
         foreach(($assets['styles']??[]) as $url)$html.='<link rel="stylesheet" href="'.snap_escape_url($url).'">';
