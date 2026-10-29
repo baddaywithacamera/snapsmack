@@ -121,7 +121,7 @@ if (!function_exists('_snap_nav_resolve_url')) {
             case 'wall':       return $base . 'gallery-wall.php';
             case 'blogroll':   return $base . 'blogroll.php';
             case 'challenge_feed': return (($settings['photochallenge_feed_enabled'] ?? '0') === '1') ? $base . 'challenge-feed' : '';
-            case 'blog':       return $base . 'blog.php';
+            case 'blog':       return $base . 'blog';
             case 'page':
                 if (!empty($item['target_id'])) {
                     static $_pc = [];
@@ -205,7 +205,7 @@ $_use_json_nav = is_array($_nav_items) && count($_nav_items) > 0;
 
         <?php if ($homepage_mode === 'static_page'): ?>
             <?php echo $sep; ?>
-            <a href="<?php echo BASE_URL; ?>blog.php">BLOG</a>
+            <a href="<?php echo BASE_URL; ?>blog">BLOG</a>
         <?php endif; ?>
 
         <?php if ($archive_enabled): ?>

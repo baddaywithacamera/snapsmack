@@ -119,8 +119,8 @@
         ]
     },
     "blog-route-reaches-the-feed-regression.php": {
-        "assertions": 17,
-        "predicates": 15,
+        "assertions": 19,
+        "predicates": 18,
         "thresholds": [
             2
         ]

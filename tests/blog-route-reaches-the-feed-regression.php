@@ -28,9 +28,17 @@ declare(strict_types=1);
  * fell through to 'resolve', found no page or photograph of that name, and
  * 404ed.
  *
- * The repair is a real route rather than a flag: 'blog' is the landing route
- * with the static-homepage override skipped, so one code path serves both and
- * neither render path has to be guessed at.
+ * The repair is a real route rather than a flag, and "the feed" here means
+ * WHATEVER THAT SKIN'S HOME VIEW IS, not a grid. The first repair got this
+ * wrong and sent the blog route down the feed path, which handed Sean a grid
+ * of thumbnails on foundtextures.ca -- TRUE GRIT, features.has_landing false.
+ * His words: "blog is supposed to bring up the landing page which is a solo
+ * page." That is the SMACKONEOUT contract: one image, one post.
+ *
+ * So the blog route says latest_post and hands the decision back to the two
+ * branches that already know how each skin opens. A skin with no landing
+ * template gets the SOLO newest photograph; a skin that declares a landing,
+ * like CHAPLIN, gets its landing. No skin list and no second contract.
  */
 
 $root = dirname(__DIR__);
@@ -63,8 +71,10 @@ br_test(str_contains($controller, "'blog', 'resolve'") || preg_match("/\\\$allow
     'blog is in the controller allowlist, so it is not rejected as an unknown route');
 br_test(preg_match("/if \(\\\$route === 'landing' \|\| \\\$route === 'blog'\)/", $controller) === 1,
     'blog enters the landing handler, so it serves the same feed by the same contract');
-br_test(preg_match('/\$isBlogRoute\s*\?\s*null\s*:\s*\$repository->activePageById/', $controller) === 1,
-    'and the blog route declines to look the homepage up, which is the ONE difference');
+br_test(str_contains($controller, 'if ($isBlogRoute) $homepageMode = ' . "'latest_post';"),
+    'the blog route opens the way that skin opens, by saying latest_post');
+br_test(preg_match('/\$isBlogRoute\s*\?\s*null\s*:/', $controller) !== 1,
+    'and it does NOT special-case the homepage lookup, which was the wrong first repair');
 br_test(str_contains($controller, "if (\$homepageMode === 'static_page') {"),
     "the string photofri-presentation-recovery asserts is left exactly as it was");
 
@@ -72,15 +82,18 @@ br_test(str_contains($controller, "if (\$homepageMode === 'static_page') {"),
 // skipped the latest_post branch too it would quietly change what a
 // latest_post site serves, which is not the fault being repaired.
 $landingAt = strpos($controller, "if (\$route === 'landing' || \$route === 'blog')");
-$block = $landingAt === false ? '' : substr($controller, $landingAt, 1600);
+$block = $landingAt === false ? '' : substr($controller, $landingAt, 3200);
 // Strip comments before counting, so prose about the flag is not mistaken
 // for code that acts on it.
-$blockCode = preg_replace('#//[^
-]*#', '', $block);
+$blockCode = preg_replace('#//.*#', '', $block);
 br_test($blockCode !== ''
         && substr_count($blockCode, '$isBlogRoute = ') === 1
         && substr_count($blockCode, '$isBlogRoute') === 2,
     'the flag is set once and read once: nothing else about landing changes');
+
+br_test(str_contains($controller, '$homepageMode === ' . "'static_page'")
+        && str_contains($controller, '$homepageMode === ' . "'latest_post' && !" . '$skinHasLanding'),
+    'both original branches are intact, so a skin without a landing still gets its solo page');
 
 echo "\nblog.php hands the intent to BOTH render paths\n";
 $blog = (string) file_get_contents($root . '/blog.php');
