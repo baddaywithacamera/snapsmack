@@ -1618,4 +1618,31 @@ html[data-archive-layout="thumbs"]  #justified-grid { display: none  !important;
 html[data-archive-layout="masonry"] #browse-grid    { display: none  !important; }
 html[data-archive-layout="masonry"] #justified-grid { display: block !important; }
 
+/* Ornaments mask the rules, while the photograph covers inward mask spill.
+   Explicit stacking is necessary: the runtime prints the rules last. */
+body:not(.archive-page):not(.static-transmission) .rg-photo-wrap {
+  padding-inline: max(3vw, calc(var(--chap-frame-gap, 8px) + 8px));
+}
+.chap-img-frame > .chap-frame-lines { z-index: 0; }
+.chap-img-frame > .chap-frame-deco { z-index: 1; }
+.chap-img-frame > img.post-image { z-index: 2; }
+
+/* Leave the owner's ornament gap between each corner and its rule.
+   The runtime's zero-inset fallback must not join them into a rectangle. */
+body:not(.archive-page) .chap-img-frame:has(.chap-orn-tl) > .chap-frame-lines > .chap-line-top,
+body:not(.archive-page) .chap-img-frame:has(.chap-orn-bl) > .chap-frame-lines > .chap-line-bot {
+  left: calc(var(--chap-orn-corner-size, 56px) + var(--chap-orn-gap, 8px));
+  right: calc(var(--chap-orn-corner-size, 56px) + var(--chap-orn-gap, 8px));
+}
+body:not(.archive-page) .chap-img-frame:has(.chap-orn-tl) > .chap-frame-lines > .chap-line-lft,
+body:not(.archive-page) .chap-img-frame:has(.chap-orn-tr) > .chap-frame-lines > .chap-line-rgt {
+  top: calc(var(--chap-orn-corner-size, 56px) + var(--chap-orn-gap, 8px));
+  bottom: calc(var(--chap-orn-corner-size, 56px) + var(--chap-orn-gap, 8px));
+}
+
+/* Owner reference: static-page portraits have no photograph ornament frame.
+   Keep this scoped to the page hero; landing and archive frames remain. */
+.static-transmission #photobox.page-hero .chap-frame-deco,
+.static-transmission #photobox.page-hero .chap-frame-lines { display: none; }
+
 /* ===== SNAPSMACK EOF ===== */
