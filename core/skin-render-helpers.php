@@ -702,10 +702,27 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             ? (string)$data['prefix'] : 'archive';
         $url = snap_escape_url($item['url'] ?? snap_route_url('photo', ['slug' => $item['img_slug'] ?? '']));
         $title = (string)($item['img_title'] ?? $item['title'] ?? $item['name'] ?? '');
-        $thumb = (string)($item['img_thumb_aspect'] ?? $item['img_file'] ?? '');
+        // Honours THUMB STYLE instead of taking the aspect thumb whatever
+        // the owner picked. ONYX renders through this component, so ONYX
+        // ignored the setting as well -- a third affected skin, in core's own
+        // lane. The prepared field from the view is preferred, so the choice
+        // is made in exactly one place; the fallback is here for the callers
+        // that build an item array themselves. Default 'cropped' leaves ONYX
+        // exactly as it was unless the owner picks square. SS-1043.
+        $style = ((string)($data['thumb_style'] ?? $item['thumb_style'] ?? 'cropped')) === 'square'
+            ? 'square' : 'cropped';
+        $thumb = (string)($item['thumb_url'] ?? '');
+        if ($thumb === '') {
+            $thumb = $style === 'square'
+                ? (string)($item['img_thumb_square'] ?? $item['img_thumb_aspect'] ?? $item['img_file'] ?? '')
+                : (string)($item['img_thumb_aspect'] ?? $item['img_thumb_square'] ?? $item['img_file'] ?? '');
+        }
         $w = max(1, (int)($item['img_width'] ?? 1));
         $h = max(1, (int)($item['img_height'] ?? 1));
-        $ratio = max(2 / 3, min(3 / 2, $w / $h));
+        // Square means square. Clamping the natural ratio to 2/3..3/2 is the
+        // right answer for the aspect style and the wrong one for a 1:1 tile,
+        // which is the visible half of the setting.
+        $ratio = $style === 'square' ? 1.0 : max(2 / 3, min(3 / 2, $w / $h));
         $html = '<a class="' . $prefix . '-archive-item" href="' . $url
             . '" title="' . snap_escape_attr($title) . '">';
         if ($thumb !== '') {
