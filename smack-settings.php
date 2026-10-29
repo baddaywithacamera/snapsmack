@@ -587,8 +587,8 @@ include 'core/sidebar.php';
                         <div class="lens-input-wrapper<?php echo $show_thumb_style ? '' : ' d-none'; ?> mt-10" id="archive-thumb-style-wrap">
                             <label>THUMB STYLE <span class="field-tip" data-tip="How thumbnails are cropped in the thumbs grid. Cropped fills the tile; Square forces a 1:1 ratio.">ⓘ</span></label>
                             <select name="settings[archive_thumb_style]">
-                                <option value="cropped" <?php echo (($settings['archive_thumb_style'] ?? 'cropped') === 'cropped') ? 'selected' : ''; ?>>CROPPED (DEFAULT)</option>
-                                <option value="square"  <?php echo (($settings['archive_thumb_style'] ?? 'cropped') === 'square')  ? 'selected' : ''; ?>>SQUARE</option>
+                                <option value="cropped" <?php echo (($settings['archive_thumb_style'] ?? 'cropped') === 'cropped') ? 'selected' : ''; ?>>NATURAL ASPECT (DEFAULT)</option>
+                                <option value="square"  <?php echo (($settings['archive_thumb_style'] ?? 'cropped') === 'square')  ? 'selected' : ''; ?>>SQUARE CROP (1:1)</option>
                             </select>
                         </div>
                     </div>

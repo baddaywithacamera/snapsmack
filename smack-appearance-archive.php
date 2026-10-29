@@ -220,8 +220,8 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                 <div class="lens-input-wrapper">
                     <label>THUMB STYLE <span class="field-tip" data-tip="When layout is Thumbs, render images as square (1:1 cropped) or cropped (natural aspect). Pick one — applies to whichever skin is active.">ⓘ</span></label>
                     <select name="settings[archive_thumb_style]">
-                        <option value="cropped" <?php echo $thumb_style === 'cropped' ? 'selected' : ''; ?>>CROPPED (NATURAL ASPECT)</option>
-                        <option value="square"  <?php echo $thumb_style === 'square'  ? 'selected' : ''; ?>>SQUARE (1:1 CROPPED)</option>
+                        <option value="cropped" <?php echo $thumb_style === 'cropped' ? 'selected' : ''; ?>>NATURAL ASPECT (DEFAULT)</option>
+                        <option value="square"  <?php echo $thumb_style === 'square'  ? 'selected' : ''; ?>>SQUARE CROP (1:1)</option>
                     </select>
                 </div>
 

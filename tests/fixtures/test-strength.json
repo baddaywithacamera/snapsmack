@@ -100,6 +100,13 @@
         "predicates": 9,
         "thresholds": []
     },
+    "archive-thumb-style-reaches-every-skin-regression.php": {
+        "assertions": 36,
+        "predicates": 25,
+        "thresholds": [
+            2
+        ]
+    },
     "asset-refetch-control-regression.php": {
         "assertions": 20,
         "predicates": 18,
@@ -1318,8 +1325,8 @@
         "thresholds": []
     },
     "skin-provenance-recovery-regression.php": {
-        "assertions": 28,
-        "predicates": 26,
+        "assertions": 36,
+        "predicates": 34,
         "thresholds": [
             2,
             5
