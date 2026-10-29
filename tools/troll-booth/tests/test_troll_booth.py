@@ -4,8 +4,10 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -334,6 +336,157 @@ class WorkerTests(unittest.TestCase):
                     "apps.run", {"app": "test-app", "action": "status", "argv": []}
                 )
             self.assertEqual(result["result"], {"allowed": "yes", "secret": None})
+
+
+
+class ApproveRefusalAuditTests(unittest.TestCase):
+    """Every refusal to pair must say WHY, to the audit log and nowhere else.
+
+    A real pairing failed on 29 October with a 403 three minutes after the
+    code was issued. Five different refusals in BoothOAuthProvider.approve()
+    all returned None, the route answered one deliberately vague sentence for
+    every one of them, and the audit log recorded only successes -- so nobody
+    could say which had fired. These tests pin each refusal to a named reason
+    and, just as importantly, pin what must NEVER be written down.
+    """
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.store = BoothStore(Path(self.temp.name) / "booth.sqlite3")
+        self.provider = BoothOAuthProvider(self.store, "https://booth.example")
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def _client(self, client_id: str = "claude-test", scope: str = "booth:read"):
+        return OAuthClientInformationFull(
+            client_id=client_id,
+            redirect_uris=[AnyUrl("https://claude.ai/api/mcp/auth_callback")],
+            token_endpoint_auth_method="none",
+            grant_types=["authorization_code", "refresh_token"],
+            response_types=["code"],
+            scope=scope,
+        )
+
+    def _params(self, scopes):
+        return AuthorizationParams(
+            state="state",
+            scopes=list(scopes),
+            code_challenge="challenge",
+            redirect_uri=AnyUrl("https://claude.ai/api/mcp/auth_callback"),
+            redirect_uri_provided_explicitly=True,
+            resource="https://booth.example/mcp",
+        )
+
+    def _authorize(self, client=None, scopes=("booth:read",)) -> str:
+        url = asyncio.run(self.provider.authorize(client or self._client(), self._params(scopes)))
+        return url.rsplit("=", 1)[1]
+
+    def _audit(self):
+        with self.store._connect() as db:
+            return [
+                (row["actor"], row["event"], json.loads(row["detail_json"]))
+                for row in db.execute("SELECT * FROM audit ORDER BY id").fetchall()
+            ]
+
+    def _reasons(self):
+        return [d.get("reason") for _, event, d in self._audit() if event == "oauth.approve_denied"]
+
+    def test_an_unknown_request_is_recorded_as_such(self) -> None:
+        # The in-memory pending map is lost on restart, which lands here.
+        self.assertIsNone(self.provider.approve("never-issued", "AAAA-BBBB-CCCC"))
+        self.assertEqual(self.reasons_tail(), "pending_unknown")
+
+    def test_an_expired_approval_window_is_distinguished_from_an_unknown_one(self) -> None:
+        request_id = self._authorize()
+        self.provider.pending[request_id].expires_at = time.time() - 1
+        code = self.store.issue_pair_code("claude", ["booth:read"], ttl=60)
+        self.assertIsNone(self.provider.approve(request_id, code))
+        self.assertEqual(self.reasons_tail(), "pending_expired")
+
+    def test_a_rejected_pair_code_is_named_and_the_request_survives(self) -> None:
+        request_id = self._authorize()
+        self.assertIsNone(self.provider.approve(request_id, "WRONG-WRONG-WRONG"))
+        self.assertEqual(self.reasons_tail(), "pair_code_rejected")
+        # The pending request is put back, so the owner may try again with the
+        # right code. That behaviour predates this change; it is pinned here
+        # because the audit line sits beside it.
+        good = self.store.issue_pair_code("claude", ["booth:read"], ttl=60)
+        self.assertIsNotNone(self.provider.approve(request_id, good))
+
+    def test_a_second_code_does_NOT_kill_a_live_first_code(self) -> None:
+        # I told the room the opposite and I was wrong; this test is what
+        # caught it. issue_pair_code runs
+        #     DELETE FROM pair_codes WHERE expires_at < ? OR used_at IS NOT NULL
+        # which removes codes already USED or already EXPIRED. That is
+        # housekeeping. A live, unused, unexpired code is not touched, so
+        # asking for a second code does not sabotage an attempt in flight.
+        request_id = self._authorize()
+        first = self.store.issue_pair_code("claude", ["booth:read"], ttl=60)
+        self.store.issue_pair_code("claude", ["booth:read"], ttl=60)
+        self.assertIsNotNone(self.provider.approve(request_id, first))
+        self.assertEqual(self._reasons(), [])
+
+    def test_a_used_code_is_swept_and_refused_by_name(self) -> None:
+        # What the DELETE really governs: once a code has been used, a later
+        # issue sweeps it away, and presenting it again is refused.
+        request_id = self._authorize()
+        code = self.store.issue_pair_code("claude", ["booth:read"], ttl=60)
+        self.assertIsNotNone(self.provider.approve(request_id, code))
+        second_request = self._authorize()
+        self.store.issue_pair_code("claude", ["booth:read"], ttl=60)
+        self.assertIsNone(self.provider.approve(second_request, code))
+        self.assertEqual(self.reasons_tail(), "pair_code_rejected")
+
+    def test_a_scope_mismatch_names_both_lists_and_the_actor(self) -> None:
+        request_id = self._authorize(self._client(scope="booth:write"), scopes=("booth:write",))
+        code = self.store.issue_pair_code("claude", ["booth:write"], ttl=60)
+        self.assertIsNone(self.provider.approve(request_id, code))
+        actor, event, detail = [row for row in self._audit() if row[1] == "oauth.approve_denied"][-1]
+        self.assertEqual(detail["reason"], "no_usable_scope")
+        self.assertEqual(actor, "claude")
+        self.assertEqual(detail["requested"], ["booth:write"])
+        self.assertEqual(detail["granted"], ["booth:write"])
+
+    def test_muse_scopes_are_usable_and_do_not_land_in_a_refusal(self) -> None:
+        # Muse pairs with conversation:read and conversation:post. The code
+        # reads as correct and this pins it, so that branch can be ruled out
+        # of the live investigation rather than argued about.
+        client = self._client(client_id="muse-test", scope="conversation:read")
+        request_id = self._authorize(client, scopes=("conversation:read",))
+        code = self.store.issue_pair_code("muse", ["conversation:read", "conversation:post"], ttl=60)
+        self.assertIsNotNone(self.provider.approve(request_id, code))
+        self.assertEqual(self._reasons(), [])
+
+    def test_no_refusal_ever_writes_a_code_a_token_or_a_request_id(self) -> None:
+        secret_code = self.store.issue_pair_code("claude", ["booth:read"], ttl=60)
+        request_id = self._authorize()
+        self.provider.approve("never-issued", secret_code)
+        self.provider.approve(request_id, "WRONG-WRONG-WRONG")
+        expired = self._authorize()
+        self.provider.pending[expired].expires_at = time.time() - 1
+        self.provider.approve(expired, secret_code)
+        written = json.dumps(self._audit())
+        self.assertNotIn(secret_code, written)
+        self.assertNotIn("WRONG-WRONG-WRONG", written)
+        self.assertNotIn(request_id, written)
+        self.assertNotIn(expired, written)
+        self.assertNotIn("challenge", written)
+        # And something WAS written, or the test above proves nothing.
+        self.assertTrue(self._reasons())
+
+    def test_every_refusal_has_a_distinct_name(self) -> None:
+        # If two branches ever share a reason string the log stops answering
+        # the question it was added for.
+        source = Path(__file__).resolve().parents[1] / "troll_booth" / "oauth.py"
+        text = source.read_text(encoding="utf-8")
+        names = re.findall(r'"reason": "([a-z_]+)"', text)
+        self.assertEqual(len(names), 5, names)
+        self.assertEqual(len(set(names)), 5, names)
+
+    def reasons_tail(self) -> str:
+        reasons = self._reasons()
+        return reasons[-1] if reasons else ""
 
 
 if __name__ == "__main__":
