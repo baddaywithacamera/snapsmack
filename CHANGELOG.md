@@ -13,6 +13,26 @@
 
 ## 0.7.966D - 2026-10-29 - NO WAY TO ASK AGAIN
 
+## Unreleased — CHAPLIN restoration, in progress
+
+- **CHAPLIN's frame has been a plain rectangle since it became a strict skin, and three separate things caused it.** Sean's own reference capture, `projects/snapsmack-ca/img/chaplin-landing.png`, shows large crosshatch corner ornaments, four rules that STOP at those corners with a clear gap, and a diamond centred on the top rule and on the bottom rule. Codex measured the live page at 1920 on 28 October and got the opposite: "continuous rectangle, tiny corner ornaments, no centre ornaments, blank bottom photo nav."
+
+- **The commit that did it was `b61fa6aa`, converting CHAPLIN to a strict skin.** It deleted `skins/chaplin/frame-deco.php`, `frame-lines.php` and `skin-header.php`, which is correct — a strict skin holds presentation and no executable code. The rule is that the logic moves to `core/` and the skin prints the result. The files went and **the logic never moved**, and because `style.css` still carried every rule for ornaments and insets, nothing looked broken in the source.
+
+- **1. The rules ran under the corners.** `skin-header.php` emitted `--chap-line-h-inset` and `--chap-line-v-inset`, set to the corner ornament's size so a rule stops where the ornament starts. Nothing emitted them afterwards, `style.css` falls back to `0px`, and the four rules ran corner to corner. That is the continuous rectangle, exactly. Now emitted again, measured in a browser at 1920: inset 56px on both axes, each rule starting 48px in from the frame edge.
+
+- **2. Every ornament lost its masking plate.** `frame-deco.php` gave each one `chap-orn chap-orn-masked`; the rebuilt markup emitted only `chap-orn`. `.chap-orn-masked` paints a canvas-coloured plate with a box-shadow spread, and that plate **is** the visible gap around each ornament. Restored, and the test refuses any ornament emitted without it.
+
+- **3. Two owner switches were connected to nothing.** `frame-deco.php` emitted eight ornaments; the rebuild emitted four. `mid_tb` and `mid_lr` have been prepared in `snapsmack_chaplin_presentation()` the whole time and read by no markup, so MID TOP & BOTTOM and MID LEFT & RIGHT did nothing when turned on. The four centre ornaments are emitted again, gated on those values.
+
+- **Corner ornaments defaulted OFF after the rebuild.** `frame-deco.php` read `chap_corner_ornaments ?? '1'` and the manifest still declares `1`; the rebuilt reader used `?? ''`, so a site whose options array lacks the key loses all four corners silently. Restored to the original default. The other three switches genuinely default off and still do.
+
+- **Ornament sizes are each SVG's designed dimensions, per style, not a common value.** Style C's corner is 64px and style D's top ornament is 24px high. Copied unchanged from `skin-header.php` at `b61fa6aa^` rather than re-derived.
+
+- `tests/chaplin-frame-ornament-regression.php`, 35 assertions, calls the real presentation function rather than reading the file, and fails 20 ways when both core files are reverted. 282 PHP regression tests pass.
+
+- **NOT DONE in this commit, and CHAPLIN is not restored until it is:** the bottom photo navigation is still absent from the landing view — the reference shows PREV / FIRST / INFO / COMMENTS / LAST / NEXT under the frame and the landing branch of the component renders no `photo-navigation` component at all. The admin save and reload path has not been exercised either. Neither is claimed.
+
 - **The GRAMOFSMACK separator fix reached four skins. Nine skins run that mode.** 0.7.964D recorded the 20-and-20 pipe as done and called those four "the GRAMOFSMACK skins". They are not; nine skins declare carousel mode. The other five still carried `margin-right: 0.5em` on the separator pseudo-element, so every pipe on them sat 20px from the word in front and 7px from the word behind — the exact fault the entry above says was fixed. Sean asked when he would see it, having already been told it was finished. AURORA 1.0.55, GAME ON 0.1.40, PARADE 1.2.53, SUDDEN IMPACT 1.0.22, THE GRID 1.3.57. SS-1009.
 
 - **Measured in a browser, and the measurement was proved before it was trusted.** All nine carousel skins measured at 1920 off the generated fixtures: 20px left and 20px right on every one of 27 separators, three per skin. The probe was then mutated twice — forcing `margin-right: 60px` reads 60, and forcing the pre-fix `0.5em` back reads 7, which is the lopsided figure Sean was looking at. A check that cannot reproduce the old wrong number is not evidence that the new one is right.
