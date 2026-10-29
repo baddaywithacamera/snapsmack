@@ -14,7 +14,7 @@ require_once __DIR__ . '/public-repository.php';
 function snapsmack_public_parse_request(array $input): array
 {
     $route = is_string($input['route'] ?? null) ? strtolower(trim($input['route'])) : 'landing';
-    $allowed = ['landing', 'resolve', 'photo', 'post', 'archive', 'page', 'blogroll', 'search', 'hashtag', 'albums', 'collections', 'collection'];
+    $allowed = ['landing', 'blog', 'resolve', 'photo', 'post', 'archive', 'page', 'blogroll', 'search', 'hashtag', 'albums', 'collections', 'collection'];
     if (!in_array($route, $allowed, true)) $route = 'not_found';
     $slug = is_string($input['slug'] ?? null) ? trim($input['slug']) : '';
     if ($slug !== '' && !preg_match('/^[a-z0-9][a-z0-9_-]{0,199}$/i', $slug)) $slug = '';
@@ -478,12 +478,30 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             : ['status' => 200, 'kind' => 'page', 'item' => $pageItem, 'navigation' => $navigation];
     }
 
-    if ($route === 'landing') {
+    if ($route === 'landing' || $route === 'blog') {
         $mode = (string)($settings['site_mode'] ?? 'photoblog');
         $homepageMode = (string)($settings['homepage_mode'] ?? 'latest_post');
         $skinHasLanding = !empty($settings['skin_has_landing']);
+        // THE BLOG ROUTE IS THE LANDING ROUTE WITHOUT THE HOMEPAGE OVERRIDE.
+        // When the owner moves the homepage to a static page, the image feed
+        // needs somewhere to live, and the navigation adds a BLOG link saying
+        // so (core/skin-view-model.php adds it on exactly that setting). That
+        // link pointed at a route which then served the static homepage back,
+        // so BLOG and HOME were the same page. Everything below this line is
+        // the landing contract unchanged; only the static-page branch is
+        // skipped, because serving the homepage here is the whole defect.
+        // The condition below stays literally as it was. Changing it to
+        // "&& !$isBlogRoute" is the obvious edit and it breaks
+        // tests/photofri-presentation-recovery-regression.php, which asserts
+        // that exact string because strict routing honouring the configured
+        // static homepage is a contract somebody already had to recover once.
+        // That test is right. The blog route declines to LOOK UP the homepage
+        // instead, which leaves the contract and its check untouched.
+        $isBlogRoute = ($route === 'blog');
         if ($homepageMode === 'static_page') {
-            $homepage = $repository->activePageById((int)($settings['homepage_page_id'] ?? 0));
+            $homepage = $isBlogRoute
+                ? null
+                : $repository->activePageById((int)($settings['homepage_page_id'] ?? 0));
             if ($homepage !== null) {
                 return ['status' => 200, 'kind' => 'page', 'item' => $homepage,
                     'navigation' => $navigation, 'is_homepage' => true];

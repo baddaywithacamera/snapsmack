@@ -53,7 +53,16 @@ function snapsmack_public_runtime_request(array $input): array
     ];
     if (trim((string)($input['tag'] ?? '')) !== '') return ['route' => 'hashtag', 'slug' => $input['tag'], 'page' => $input['page'] ?? 1];
     $view = strtolower(trim((string)($input['view'] ?? '')));
-    $routes = ['archive', 'albums', 'collections', 'collection', 'photo', 'post', 'page', 'blogroll'];
+    // 'blog' is here so that the image feed has an address of its own on a
+    // site whose homepage is a static page. Without it, /blog fell through to
+    // 'resolve', found no page or photograph with that slug, and returned 404,
+    // while /blog.php rendered the static homepage -- the strict controller
+    // never saw blog.php's $_SERVER['SNAPSMACK_FORCE_BLOG'] flag, which only
+    // the legacy render path in index.php reads. Measured on foundtextures.ca:
+    // / and /blog.php returned the same <h1> and the same body classes
+    // (homepage-static page-slug-home), and /blog returned 404. Sean: "blog
+    // link goes to landing page."
+    $routes = ['archive', 'albums', 'collections', 'collection', 'photo', 'post', 'page', 'blogroll', 'blog'];
     // 'sort' belongs here with the rest. index.php has been passing it since
     // 0.7.903D and this function dropped it on the floor, so the collections
     // sort a visitor picked never reached the controller that honours it.

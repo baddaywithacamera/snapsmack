@@ -39,8 +39,16 @@ if ($homepage_mode === 'latest_post') {
     exit;
 }
 
-// Force the image feed by overriding homepage_mode for this request
+// Force the image feed by overriding homepage_mode for this request.
+//
+// $_SERVER['SNAPSMACK_FORCE_BLOG'] is read ONLY by the legacy render path in
+// index.php, which a strict skin never reaches -- it is dispatched to
+// snapsmack_public_runtime() hundreds of lines earlier and exits. So on every
+// strict skin this flag did nothing and /blog.php served the static homepage.
+// The view input is what the strict controller actually reads, so set that
+// too. Both are kept: one route, two render paths, neither guessed at.
 $_SERVER['SNAPSMACK_FORCE_BLOG'] = true;
+$_GET['view'] = 'blog';
 
 include __DIR__ . '/index.php';
 // ===== SNAPSMACK EOF =====

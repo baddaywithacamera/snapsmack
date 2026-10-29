@@ -118,6 +118,13 @@
             2
         ]
     },
+    "blog-route-reaches-the-feed-regression.php": {
+        "assertions": 17,
+        "predicates": 15,
+        "thresholds": [
+            2
+        ]
+    },
     "blogroll-page-regression.php": {
         "assertions": 30,
         "predicates": 30,
