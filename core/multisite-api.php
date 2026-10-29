@@ -108,21 +108,64 @@ if ($resource === 'handshake' && $method === 'POST') {
         ms_err('site_url and token are required');
     }
 
-    $stored_token   = $settings['multisite_reg_token']         ?? '';
-    $token_expires  = (int)($settings['multisite_reg_token_expires'] ?? 0);
+    // SECAUDIT 061 finding A. This endpoint used to ask one question -- does
+    // the submitted value equal snap_settings.multisite_reg_token, and is it
+    // unexpired -- which meant database-write authority was enough to
+    // manufacture an enrollment. On 2026-10-19 a site joined the fleet that
+    // way, with no password and no TOTP code.
+    //
+    // The MAC is now checked FIRST, against a key that lives in a file and
+    // never in MariaDB, and the grant must name this spoke, the calling hub,
+    // and the single action fleet.enroll. A row written by hand fails on
+    // format before any comparison with the database happens. See
+    // core/enrollment-grant.php for what this does and does not protect
+    // against; it is not root-proof and is not described as such.
+    require_once __DIR__ . '/enrollment-grant.php';
 
-    if (!$stored_token || !hash_equals($stored_token, $token) || time() > $token_expires) {
+    $_verdict = snap_enrollment_grant_verify($token, [
+        'spoke' => BASE_URL,
+        'hub'   => $remote_url,
+    ]);
+    if (!$_verdict['ok']) {
+        snap_enrollment_audit($pdo, 'rejected', [
+            'reason'       => (string)$_verdict['reason'],
+            'grant_digest' => snap_enrollment_grant_digest($token),
+            'spoke_origin' => (string)BASE_URL,
+            'hub_origin'   => $remote_url,
+            'remote_addr'  => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+        ]);
+        // One message for every failure. A prober must not be able to tell a
+        // wrong MAC from an expired grant from no grant at all.
         ms_err('Invalid or expired registration token', 401);
     }
+    $_claims = (array)$_verdict['claims'];
+    $_digest = snap_enrollment_grant_digest($token);
 
-    // SECAUDIT: atomically claim the one-time token BEFORE issuing keys, so two
-    // concurrent handshakes can't both pass the check above and both register.
-    // The conditional UPDATE matches for exactly one racer; the loser sees 0 rows.
+    // The stored row is the one-time STATE, and it is now a digest. Claiming
+    // it atomically BEFORE issuing keys still does the job it always did: two
+    // concurrent handshakes cannot both pass and both register, because the
+    // conditional UPDATE matches for exactly one racer and the loser sees 0
+    // rows. A valid grant whose digest is not the outstanding one -- replayed,
+    // superseded, or already consumed -- fails here.
     $claim = $pdo->prepare("UPDATE snap_settings SET setting_val = '' WHERE setting_key = 'multisite_reg_token' AND setting_val = ?");
-    $claim->execute([$token]);
+    $claim->execute([$_digest]);
     if ($claim->rowCount() < 1) {
+        snap_enrollment_audit($pdo, 'rejected', [
+            'reason'       => 'not_outstanding',
+            'grant_digest' => $_digest,
+            'nonce'        => (string)($_claims['nonce'] ?? ''),
+            'spoke_origin' => (string)BASE_URL,
+            'hub_origin'   => $remote_url,
+            'admin_id'     => (int)($_claims['admin'] ?? 0),
+            'remote_addr'  => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+        ]);
         ms_err('Registration token already used', 401);
     }
+
+    // Expiry is carried INSIDE the signed grant and was already checked, so
+    // the settings expiry row is no longer load-bearing for authorization.
+    // It is left in place and still written, because the admin page reads it
+    // to show how long is left.
 
     // Generate a persistent key pair: hub calls us with api_key_local,
     // we call the hub with api_key_remote.
@@ -157,6 +200,16 @@ if ($resource === 'handshake' && $method === 'POST') {
         // Burn the one-time token
         $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, '') ON DUPLICATE KEY UPDATE setting_val = ''")->execute(['multisite_reg_token']);
         $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, '0') ON DUPLICATE KEY UPDATE setting_val = '0'")->execute(['multisite_reg_token_expires']);
+
+        snap_enrollment_audit($pdo, 'consumed', [
+            'grant_digest' => $_digest,
+            'nonce'        => (string)($_claims['nonce'] ?? ''),
+            'spoke_origin' => (string)BASE_URL,
+            'hub_origin'   => $remote_url,
+            'admin_id'     => (int)($_claims['admin'] ?? 0),
+            'stepup_at'    => (int)($_claims['stepup_at'] ?? 0),
+            'remote_addr'  => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+        ]);
 
         ms_ok([
             'api_key'          => $api_key_local,   // hub presents this when calling us (hub→spoke, FULL)

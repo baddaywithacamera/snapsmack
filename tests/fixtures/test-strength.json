@@ -315,6 +315,13 @@
         "predicates": 8,
         "thresholds": []
     },
+    "enrollment-grant-provenance-regression.php": {
+        "assertions": 49,
+        "predicates": 23,
+        "thresholds": [
+            3
+        ]
+    },
     "every-skin-every-page-regression.php": {
         "assertions": 16,
         "predicates": 16,
