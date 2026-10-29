@@ -108,6 +108,56 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     // A skin that wants the row prints this one value and carries no logic;
     // a skin that does not print it is completely unchanged.
     if ($kind === 'archive' || $kind === 'hashtag') {
+        // THE THUMB STYLE, RESOLVED ONCE, PER ITEM.
+        //
+        // Sean, on a deployed build: "cropped natural still not being passed
+        // through." THUMB STYLE was reaching two skins out of thirty.
+        //
+        // 20 of the 30 layouts draw their own thumbs grid and NOT ONE of them
+        // reads archive_thumb_style. TRUE GRIT's line 7 hardcodes both halves
+        // of the answer -- class="square-grid" and img_thumb_square first --
+        // so the setting could not win whatever the owner picked. CHAPLIN and
+        // IMPACT PRINTER honour it only because they render through core page
+        // components, where executable code is allowed.
+        //
+        // A strict skin may hold no executable code: the ratchet refuses a
+        // function call, BASE_URL or a cast inside a layout, and it is right
+        // to. Choosing between two derivatives is a conditional, so a layout
+        // CANNOT honour this setting on its own. Core never prepared the
+        // answer, so twenty layouts hardcoded one. The hardcoding is the
+        // symptom; this absence was the fault.
+        //
+        // Prepared here, a layout prints thumb_url and carries no logic.
+        // Stored values are 'cropped' (img_thumb_aspect, the photograph's own
+        // aspect ratio) and 'square' (img_thumb_square, 1:1). 'cropped' is
+        // the default in every other reader and in both save handlers, so it
+        // is the default here too. SS-1043.
+        $_thumbStyle = (string)($presentation['archive_thumb_style'] ?? 'cropped');
+        if (!in_array($_thumbStyle, ['square', 'cropped'], true)) $_thumbStyle = 'cropped';
+        if (is_array($response['items'] ?? null)) {
+            foreach ($response['items'] as $_i => $_it) {
+                if (!is_array($_it)) continue;
+                $_square = (string)($_it['img_thumb_square'] ?? '');
+                $_aspect = (string)($_it['img_thumb_aspect'] ?? '');
+                $_full   = (string)($_it['img_file'] ?? '');
+                // Each style states its own preference and falls back to the
+                // other derivative before the full-size file, so a site whose
+                // square thumbs were never generated still shows a photograph
+                // instead of an empty tile.
+                $response['items'][$_i]['thumb_url'] = $_thumbStyle === 'square'
+                    ? ($_square !== '' ? $_square : ($_aspect !== '' ? $_aspect : $_full))
+                    : ($_aspect !== '' ? $_aspect : ($_square !== '' ? $_square : $_full));
+                $response['items'][$_i]['thumb_style'] = $_thumbStyle;
+                // 1 portrait, 2 square, anything else landscape -- the same
+                // orientation classes IMPACT PRINTER's component already
+                // emits, so a layout gets the class rather than the integer.
+                $_orient = (int)($_it['img_orientation'] ?? 0);
+                $response['items'][$_i]['thumb_orientation'] = $_orient === 1
+                    ? 'orient-portrait'
+                    : ($_orient === 2 ? 'orient-square' : 'orient-landscape');
+            }
+        }
+        unset($_thumbStyle, $_i, $_it, $_square, $_aspect, $_full, $_orient);
         $_archiveBase = defined('BASE_URL') ? (string)BASE_URL : '/';
         $_archiveAliases = (array)($presentation['route_aliases'] ?? []);
         $_archiveMode = (string)($presentation['site_mode'] ?? '');

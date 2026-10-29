@@ -684,10 +684,21 @@ function snapsmack_archive_grid_metrics(array $settings, string $grid_layout): a
     if (!in_array($step, ['xs', 's', 'm', 'l', 'xl'], true)) $step = 'm';
     if (!isset($map[$grid_layout])) $grid_layout = 'square';
 
+    $cols = max(1, min(12, (int)($settings['browse_cols'] ?? 4)));
+
     return [
-        'cols' => max(1, min(12, (int)($settings['browse_cols'] ?? 4))),
+        'cols' => $cols,
         'step' => $step,
         'thumb_width' => $map[$grid_layout][$step] ?? $map['square']['m'],
+        // The complete grid class for the resolved style, so a layout prints
+        // one value instead of hardcoding one. TRUE GRIT's layout carries
+        // class="square-grid archive-grid h-feed tg-grid" written in by hand,
+        // which is why THUMB STYLE did nothing on it. Twenty layouts draw
+        // their own thumbs grid and not one reads the setting; a strict skin
+        // may not compute, so core computes. Same class list IMPACT PRINTER's
+        // page component already assembles. SS-1043.
+        'class' => $grid_layout . '-grid archive-grid archive-layout-' . $grid_layout
+            . ' archive-cols-' . $cols . ' archive-thumbs-' . $step,
     ];
 }
 
