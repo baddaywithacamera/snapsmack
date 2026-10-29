@@ -620,11 +620,17 @@ function snapsmack_sliders_presentation(array $options): array
 }
 
 /** Append a bounded, CMS-created custom-property block to a strict presentation. */
-function snapsmack_presentation_style(array &$presentation, string $id, array $vars): void
+function snapsmack_presentation_style(array &$presentation, string $id, array $vars, string $scopedRules = ''): void
 {
     $css = ':root{';
     foreach ($vars as $name => $value) $css .= $name . ':' . $value . ';';
     $css .= '}';
+    // A variable on :root reaches EVERY element that reads it. Some of these
+    // are frame geometry, and the same frame class is used at two completely
+    // different sizes, so a value that is right for one is ruinous for the
+    // other. $scopedRules is generated CSS from the CMS for exactly that case;
+    // it is not a way to style a skin, and it never contains owner content.
+    $css .= $scopedRules;
     $existing = isset($presentation['style']) ? (string)$presentation['style'] : '';
     $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly(
         $existing . '<style id="' . $id . '">' . str_replace('<', '\\3C ', $css) . '</style>'
@@ -831,7 +837,24 @@ function snapsmack_chaplin_presentation(array $options): array
         '--chap-orn-top-w'=>$dim['top_w'].'px', '--chap-orn-top-h'=>$dim['top_h'].'px',
         '--chap-orn-side-w'=>$dim['side_w'].'px', '--chap-orn-side-h'=>$dim['side_h'].'px',
         '--chap-line-h-inset'=>$lineInset.'px', '--chap-line-v-inset'=>$lineInset.'px',
-    ]);
+    ],
+        // THE INSET BELONGS TO THE ORNAMENTED FRAME ONLY.
+        //
+        // .chap-img-frame is used twice at wildly different sizes: once around
+        // the solo photograph, where the corner ornaments are 56px and the
+        // rules must stop at them, and once around every ARCHIVE THUMBNAIL,
+        // which has frame lines and NO ornaments at all. Insetting a ~200px
+        // thumbnail's rules by 56px at each end leaves a stub floating in the
+        // middle of each edge instead of a border. Sean, on his live archive
+        // the moment 967D deployed: "what the actual fuck happened to my
+        // archive."
+        //
+        // That was mine. The inset was correct and I put it on :root, where it
+        // reached a frame it was never measured against. The archive tiles get
+        // it back to zero, which is the full-length border they had before and
+        // the one in his 0.7.188D reference.
+        '#browse-grid .chap-img-frame,#justified-grid .chap-img-frame'
+        . '{--chap-line-h-inset:0px;--chap-line-v-inset:0px;}');
     return $result;
 }
 
