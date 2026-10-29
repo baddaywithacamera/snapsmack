@@ -873,6 +873,14 @@
         "predicates": 22,
         "thresholds": []
     },
+    "multisite-endpoint-role-contract.php": {
+        "assertions": 17,
+        "predicates": 13,
+        "thresholds": [
+            3,
+            35
+        ]
+    },
     "multisite-spoke-count-regression.php": {
         "assertions": 0,
         "predicates": 4,
