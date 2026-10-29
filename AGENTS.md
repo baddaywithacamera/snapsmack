@@ -44,6 +44,14 @@ him the month.
   out, you do not move it.
 - **Never FTP to a SnapSmack install.** Ever. SMACKBACK will see it.
 - **Never a remote lockout.** The hub informs; the site owner decides.
+- **No site joins a hub without authentication.** Sean's rule, stated on
+  29 October 2026 after an agent joined one without a password or a 2FA code:
+  *"sites aren't supposed to join a hub without authentication."* Never join a
+  site to a hub, in test or otherwise, without his explicit say-so **in that
+  conversation** and a fresh password and 2FA. Root, database, deployment or
+  agent access is not authorisation — it describes what you *can* do, not what
+  you *may*. This is SECAUDIT 061 finding D, and it had no written rule until
+  now, which is part of why it happened.
 - **Do not remove audit evidence.** `opaudits/` and its `evidence/` folders
   are the record, including the parts that are unflattering.
 - **Skins are for desktop and large tablet.** PHOTOGRAM and TELEGRAM are the

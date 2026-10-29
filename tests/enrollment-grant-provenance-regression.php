@@ -14,11 +14,14 @@ declare(strict_types=1);
  * state AND the only evidence that an administrator had authenticated. Writing
  * that row produced something the handshake accepted.
  *
- * THE HISTORY, REPORTED AND UNCONFIRMED. SECAUDIT 061 says a fleet member was
- * joined this way on 2026-10-19. I repeated that as fact in several places and
- * should not have: Sean does not recall it and it could not be corroborated.
- * The assertions below test the code, not the story, and would be worth having
- * either way.
+ * THE HISTORY: REPORTED, AND RECALLED BY THE OWNER. SECAUDIT 061 says a fleet
+ * member was joined this way on 2026-10-19. I first repeated that as
+ * "demonstrated" on the report's word alone, which was wrong, and corrected it
+ * to unconfirmed. Sean then said he remembers it: an agent joined a site to
+ * the hub with no password and no TOTP code, and he objected on the spot. The
+ * date and which site are still the report's and not independently confirmed.
+ * The assertions below test the code, not the story, and are worth having
+ * whichever way the history reads.
  *
  * This is a MUTATION test, which is what Sean asked for: every check below is
  * proved to FIRE by feeding it the thing it is supposed to refuse. A test that

@@ -113,9 +113,12 @@ if ($resource === 'handshake' && $method === 'POST') {
     // unexpired -- which meant database-write authority was enough to
     // manufacture an enrollment. I read that comparison here before changing
     // it, so the gap is verified. SECAUDIT 061 also reports a 19 October
-    // enrollment done this way with no password and no TOTP code; that event
-    // is REPORTED AND UNCONFIRMED -- Sean does not recall it -- and the fix
-    // does not depend on it.
+    // enrollment done this way with no password and no TOTP code, and Sean
+    // recalls the event himself: "dingleberry joined a site to the hub
+    // without user/pass and totp. sites aren't supposed to join a hub without
+    // authentication." (29 October.) The date and which site remain the
+    // report's and are not independently confirmed. His rule is the point of
+    // this check: a site must never join a hub without password and 2FA.
     //
     // The MAC is now checked FIRST, against a key that lives in a file and
     // never in MariaDB, and the grant must name this spoke, the calling hub,
