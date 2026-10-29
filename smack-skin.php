@@ -108,6 +108,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
             } else {
                 $gallery_err = (string)$recovery_message;
             }
+        } elseif ($action === 'refetch_assets') {
+            // A font published to Smack Central could not reach a site for up
+            // to an hour, and the owner had no way to ask for it.
+            //
+            // asset_sync_get_manifest() caches the remote manifest on disk for
+            // ASSET_SYNC_CACHE_TTL, deliberately, so that every skin save does
+            // not hit the network -- its own comment says so. But the only
+            // calls to asset_sync_bust_cache() are in smack-update.php, after
+            // a core update. So when an asset was added at the other end, this
+            // site kept answering from an hour-old copy that did not list it,
+            // reported "not in remote repo" on every save, and never tried.
+            //
+            // Sean, after pressing RESCAN DISK on Smack Central and watching
+            // the same banner come back: "i pressed rescan disk. font still
+            // not found." The manifest was already correct. His site was not
+            // allowed to look.
+            //
+            // So this busts the cache and retries, and it is a control rather
+            // than something done on every load, because the cache is there
+            // for a good reason and clearing it automatically would undo it.
+            require_once __DIR__ . '/core/asset-sync.php';
+            asset_sync_bust_cache();
+            $refetch_msg = asset_sync_run();
+            if ($refetch_msg === null) {
+                $gallery_msg = 'Checked the remote asset repository fresh: nothing is missing. Every file this skin needs is on the site.';
+            } elseif (str_contains($refetch_msg, 'not in remote repo')) {
+                $gallery_err = 'Checked the remote asset repository fresh and it still does not list everything: ' . $refetch_msg
+                             . '. The file has to be registered on Smack Central (Assets, then RESCAN DISK) before this site can fetch it.';
+            } else {
+                $gallery_msg = 'Assets: ' . $refetch_msg;
+            }
         } elseif ($action === 'remove') {
             if (in_array($slug, $protected_skins, true)) {
                 $gallery_err = 'This skin is required by SnapSmack and cannot be removed.';
@@ -1147,6 +1178,35 @@ if (!empty($google_families)) {
     $_skin_provenance_reason = null;
     $_skin_provenance_ok = skin_registry_verify_installed_provenance($pdo, (string)$target_skin, $_skin_provenance_reason);
     ?>
+    <?php
+    // A missing asset is read on every load, not only after a save. The
+    // banner that told Sean a font was "not in remote repo" appeared once,
+    // in a flash message, after pressing Save -- so the state that explains
+    // a wrong-looking page was only visible at the moment he happened to
+    // save, and said nothing about what to do next.
+    require_once __DIR__ . '/core/asset-sync.php';
+    $_missing_assets = function_exists('asset_sync_check_all') ? asset_sync_check_all() : [];
+    ?>
+    <?php if (!empty($_missing_assets)): ?>
+        <div class="gallery-alert error" role="alert">
+            <p><strong>THIS SITE IS MISSING <?php echo count($_missing_assets); ?> FILE<?php echo count($_missing_assets) === 1 ? '' : 'S'; ?> A SKIN NEEDS.</strong>
+               A font that is not on the site cannot be served, so the page falls back to a default face
+               whatever the font setting says.</p>
+            <ul>
+            <?php foreach (array_slice($_missing_assets, 0, 12) as $_m): ?>
+                <li><?php echo htmlspecialchars(basename((string)($_m['rel_path'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></li>
+            <?php endforeach; ?>
+            </ul>
+            <p>The site keeps a copy of the remote asset list for an hour, so a file registered on
+               Smack Central in the last hour will not be found yet. This checks again now.</p>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                <input type="hidden" name="gallery_action" value="refetch_assets">
+                <button type="submit" class="gallery-btn update">FETCH MISSING ASSETS NOW</button>
+            </form>
+        </div>
+    <?php endif; ?>
+
     <?php if (!$_skin_provenance_ok): ?>
         <div class="gallery-alert error" role="alert">
             <p><strong>NO SETTING ON THIS SKIN WILL SAVE.</strong>
