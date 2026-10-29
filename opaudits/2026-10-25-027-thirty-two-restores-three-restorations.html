@@ -291,7 +291,141 @@ not a measurement.</li>
 gate must answer is &quot;does this control work&quot;, not &quot;did this fix land&quot;.</li>
 </ol>
 
-<p class="doc-foot">SnapSmack Operability Audit 027 - 25 October 2026; evidence supplements 26 and 27 October 2026</p>
+<h2>16. Supplement, 29 October 2026: the control row that was wired to nothing on all thirty skins</h2>
+
+<p>The owner, 28 October: <em>&quot;Where are my thumbs, masonry, and calendar controls i had?&quot;</em> and, when
+told the archive row had been restored, <em>&quot;have thumbs, masonry, and calendar been removed from other
+skins?&quot;</em> and <em>&quot;why aren't you checking for this.?&quot;</em></p>
+
+<p>The answer to the second question is yes, from every one of the thirty. This section records that, and
+it belongs in 027 because it is the same fault as section 15: a control that exists in the admin panel,
+a check that proves a repair landed, and nothing anywhere that asks whether the control works.</p>
+
+<h3>16.1 Measured</h3>
+<p>Across all thirty skins on 28 and 29 October:</p>
+<ul>
+<li>The archive control row &mdash; SHOW ALL, the FILTER panel, the search field, the thumbs/masonry
+toggle, the calendar button &mdash; existed in exactly <strong>one</strong> place in the product: the
+<code>archive-filters</code> component in <code>core/skin-render-helpers.php</code>.</li>
+<li>Three skins printed that component. Twenty-seven printed nothing.</li>
+<li>The thumbs/masonry toggle inside it had <strong>never rendered on any skin at all</strong>, including
+the three that printed the row.</li>
+<li>The calendar reached the strict render path in no form whatever: no button, no flags, no markup.</li>
+<li><code>assets/css/page-archive.css</code>, which styles the entire row, was delivered to five skins.
+On a skin that printed the row without it, the row rendered unstyled and the docked control group
+measured from the window rather than the content column.</li>
+</ul>
+
+<h3>16.2 Cause, in four parts and a fifth nobody had named</h3>
+<ol>
+<li><code>response.archive_layouts</code> was read by the component and <strong>assigned by nothing</strong>.
+There was no toggle to draw because there were no layouts to draw it from.</li>
+<li>The view-model allowlist in <code>core/skin-view-contract.php</code> did not carry that key, so it
+would have been stripped out of the view even once something assigned it.</li>
+<li>The links the component did draw carried no <code>data-layout</code> attribute.
+<code>ss-engine-archive-toggle.js</code> selects <code>.archive-layout-toggle [data-layout]</code> and
+<strong>returns early when it finds none</strong>: no in-place switch, no T/M hotkeys, no active-state
+update, and the mode it reads back on <code>popstate</code> was never the link's.</li>
+<li>The calendar's two owner switches, <code>archive_calendar_enabled</code> and
+<code>archive_calendar_default_open</code>, were read only inside <code>archive.php</code>.</li>
+<li><strong>The fifth, and the reason the stylesheet was missing:</strong> the engines that make the row
+work were hardcoded in <code>&lt;script&gt;</code> tags at the bottom of <code>archive.php</code> &mdash;
+the filter engine, the toggle engine, and the calendar engine when the owner had enabled it. Twenty-eight
+of the thirty skins are strict and never run that file: <code>index.php</code> dispatches them to
+<code>snapsmack_public_runtime()</code> hundreds of lines earlier and exits. The stylesheet rides on those
+engines, so it arrived only for the five skins whose manifests happen to name one by hand.</li>
+</ol>
+
+<p>All of the resolution &mdash; the skin locks, the four-way-to-two-way normalisation, the
+<code>?layout=</code> override with its legacy values, the cookie, the thumb style and the skin's override
+of it, both calendar flags &mdash; lived inside <code>archive.php</code>, between its redirects and its
+thumbnail arithmetic. This is the same shape as every other fault found in the week of 25&ndash;29
+October: the 28 September strict-runtime conversion moved rendering into core and left whole features
+behind in the legacy path, and nothing compares what one path renders against what the other does.</p>
+
+<h3>16.3 Repair</h3>
+<ul>
+<li><code>core/archive-controls.php</code> is <code>archive.php</code>'s resolution lifted out whole.
+<code>archive.php</code> now calls it and keeps no copy, so there is one answer to &quot;which layout is
+showing and what may the visitor switch to&quot; and both paths read it.</li>
+<li><code>snapsmack_public_runtime()</code> assigns the resolved layouts and calendar flags to the
+response, and the allowlist carries them.</li>
+<li>The component emits <code>data-layout</code> on each toggle link and
+<code>data-calendar-toggle</code> on the calendar button &mdash; the two selectors the engines actually
+bind, rather than the markup a test would like to see.</li>
+<li>The runtime <strong>declares the archive engine as a required asset</strong> on every archive page, so
+the stylesheet and the behaviour travel with the row that needs them. No manifest bump, no repackage, no
+per-site skin install: a CMS deploy is the whole delivery, the same route the community block and the
+shortcode stylesheets already take.</li>
+<li>Three skins that already received the stylesheet but printed no row &mdash; CHAPLIN and ONYX through
+their CMS page components, plus 50 SHADES which was already wired &mdash; now print it. Five skins render
+the row in total.</li>
+</ul>
+
+<h3>16.4 What the browser found that the markup could not</h3>
+<p>Measured at 1920 on the geometry fixtures, after the repair and before anything was claimed:</p>
+<table>
+<tr><th>skin</th><th>row height</th><th>T/M buttons</th><th>button box</th><th>calendar</th><th>stylesheet</th><th>group inside the grid</th></tr>
+<tr><td>50 SHADES</td><td>60px</td><td>2</td><td>62&times;26</td><td>39&times;26</td><td>yes</td><td>yes</td></tr>
+<tr><td>CHAPLIN</td><td>54px</td><td>2</td><td>38&times;26</td><td>39&times;26</td><td>yes</td><td>yes, after the repair below</td></tr>
+<tr><td>IMPACT PRINTER</td><td>50px</td><td>2</td><td>62&times;26</td><td>32&times;31</td><td>yes</td><td>yes</td></tr>
+<tr><td>ONYX</td><td>27px</td><td>2</td><td>38&times;26</td><td>39&times;27</td><td>yes</td><td>yes</td></tr>
+<tr><td>TRUE GRIT</td><td>60px</td><td>2</td><td>62&times;26</td><td>39&times;26</td><td>yes</td><td>yes</td></tr>
+</table>
+
+<p>CHAPLIN's docked control group first measured at <strong>1751..1880 while its photographs end at
+1760</strong> &mdash; 120px of control hanging past the archive. The row caps itself with
+<code>--archive-content-width</code>, the component took that from <code>main_canvas_width</code>, and
+CHAPLIN has no such option: its control is <code>chap_photo_max_width</code>, labelled &quot;Content Max
+Width (px)&quot;, default 1600, which is the 1600 its grid measures. With no cap the group fell back to
+<code>right:40px</code> against the <strong>window</strong>.</p>
+
+<p>Seven skins use <code>main_canvas_width</code>. The other twenty-three each named their own, and there
+is nothing to infer from: a pattern over the option names picks up <code>masonry_border_width</code> and
+<code>chap_line_1_width</code> just as readily, and a 2px cap on the row would be worse than no cap. So
+the skin nominates it in its manifest, <code>features.canvas_width_option</code>. The first repair put a
+per-skin table in the CMS and <code>tests/agreed-rules-gate.php</code> refused it &mdash; &quot;Core must
+not learn about another individual skin&quot; &mdash; which is what that gate is for. Re-measured after
+the nomination: <strong>1591..1720, inside a 160..1760 grid.</strong></p>
+
+<p>The geometry harness itself was part of the finding. Before this it rendered the archive row with
+SHOW ALL and a search field and no controls at all, because it built the view without the runtime that
+assigns them &mdash; which is exactly what the live archives looked like, so any screenshot of it proved
+nothing. It now resolves the controls the way a real request does.</p>
+
+<h3>16.5 Why no check saw any of this</h3>
+<p>Section 15 recorded a gate written to prove a repair being counted as coverage of the control it
+touched. This is the same failure one level deeper. <code>tests/archive-filter-row-regression.php</code>
+rendered the <code>archive-filters</code> component and asserted its parts were present &mdash; and
+passed, every time, while the component was printed by three skins out of thirty and its toggle was
+rendered by none. The test asked &quot;does the component emit the row&quot;. Nobody asked &quot;does any
+page a visitor can open contain it&quot;.</p>
+
+<p><code>tests/archive-controls-reach-the-page-regression.php</code> asks the second question. It compares
+the shared resolver against the arithmetic deleted from <code>archive.php</code> over 3,528 input
+combinations; asserts the engines' own selectors rather than chosen markup; renders three real skin
+archives end to end with the response shaped the way the runtime shapes it; and checks that a skin which
+prints no row still has none, so the repair cannot grow a row nobody asked for. It also found a fault in
+its own repair: a nominated width option that was not a plausible width was being passed straight
+through, so a 2px border width would have capped the row at 2px.</p>
+
+<h3>16.6 What must be true before this closes</h3>
+<ol>
+<li>Twenty-three strict skins still print no control row. Each needs one line in its
+<code>skins/&lt;skin&gt;/layout.php</code>. Until then those archives have no SHOW ALL, no FILTER, no
+search, no layout toggle and no calendar, and this section is not closed by the CMS work alone.</li>
+<li>Every skin whose width control is not <code>main_canvas_width</code> nominates it in its manifest
+before it is packaged. CHAPLIN's is done (0.2.27 &rarr; 0.2.28, needs repackaging). Any skin that prints
+the row without a nomination will hang its control group off the window, and that is a measurement, not a
+guess.</li>
+<li>The row is confirmed on a live site at 1920 after deployment, not only on the fixtures. The fixtures
+inline the real resolved stylesheets, which is close, but a live page is the only place the owner's
+actual settings are read.</li>
+<li>No check that renders a component in isolation is counted as coverage of a control. The question is
+whether a page a visitor can open contains it.</li>
+</ol>
+
+<p class="doc-foot">SnapSmack Operability Audit 027 - 25 October 2026; evidence supplements 26, 27, 28 and 29 October 2026</p>
 </body>
 </html>
 <!-- ===== SNAPSMACK EOF ===== -->
