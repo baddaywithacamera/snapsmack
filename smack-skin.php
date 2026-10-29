@@ -85,6 +85,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                     $gallery_err = $result['message'];
                 }
             }
+        } elseif ($action === 'recover_provenance') {
+            // SS-1038. A skin with no snap_file_manifest rows has every
+            // setting, upload, mode and active-skin change refused, which the
+            // owner experiences as a skin that cannot be configured at all --
+            // on a skin that is visibly working on the public page. The gate
+            // is right; it just had no door. This is the door, and it opens
+            // only by reinstalling the signed package from the registry.
+            //
+            // The download URL is NOT taken from the POST. Every other action
+            // on this page accepts the URL the card was rendered with, which
+            // is fine for installing what the gallery offered; recovery is a
+            // repair of a trust record, so the package has to be the one the
+            // registry names for this slug, looked up here, server side.
+            $registry_url_for_recovery = (string)($settings['skin_registry_url'] ?? '');
+            if ($registry_url_for_recovery === '') {
+                $registry_url_for_recovery = defined('SKIN_REGISTRY_DEFAULT_URL') ? SKIN_REGISTRY_DEFAULT_URL : '';
+            }
+            $recovery_message = null;
+            if (skin_registry_recover_provenance($pdo, $slug, $registry_url_for_recovery, $recovery_message)) {
+                $gallery_msg = (string)$recovery_message;
+            } else {
+                $gallery_err = (string)$recovery_message;
+            }
         } elseif ($action === 'remove') {
             if (in_array($slug, $protected_skins, true)) {
                 $gallery_err = 'This skin is required by SnapSmack and cannot be removed.';
@@ -1105,6 +1128,43 @@ if (!empty($google_families)) {
         <div class="alert" role="alert"><?php echo htmlspecialchars($gallery_msg, ENT_QUOTES, 'UTF-8'); ?></div>
     <?php elseif (isset($_GET['msg'])): ?>
         <div class="alert alert-success">> SKIN ARCHITECTURE CALIBRATED</div>
+    <?php endif; ?>
+
+    <?php if (!empty($gallery_err)): ?>
+        <div class="gallery-alert error" role="alert">> <?php echo htmlspecialchars($gallery_err, ENT_QUOTES, 'UTF-8'); ?></div>
+    <?php endif; ?>
+
+    <?php
+    // SS-1038. Tell the owner BEFORE they touch a control, not after they
+    // press Save. Without this the refusal arrived as "that skin cannot be
+    // activated" on a skin that is plainly working on the public page, with
+    // no statement of what was wrong and nothing to press. Sean, on TRUE
+    // GRIT: "can't change the font on true grit."
+    //
+    // This is a read, every page load, of the same function the save path
+    // gates on -- not a cached flag -- so the notice cannot disagree with the
+    // refusal it is explaining.
+    $_skin_provenance_reason = null;
+    $_skin_provenance_ok = skin_registry_verify_installed_provenance($pdo, (string)$target_skin, $_skin_provenance_reason);
+    ?>
+    <?php if (!$_skin_provenance_ok): ?>
+        <div class="gallery-alert error" role="alert">
+            <p><strong>NO SETTING ON THIS SKIN WILL SAVE.</strong>
+               <?php echo htmlspecialchars(strtoupper((string)$target_skin), ENT_QUOTES, 'UTF-8'); ?>
+               has no signed-package integrity record on this site, so every setting, upload, mode
+               and active-skin change for it is refused before it is written.</p>
+            <p>What is wrong: <?php echo htmlspecialchars((string)$_skin_provenance_reason, ENT_QUOTES, 'UTF-8'); ?>.</p>
+            <p>The skin itself is fine on the public page. What is missing is this site's record of
+               which exact signed package it came from, which is what lets a changed file be noticed.
+               Recovery reinstalls that package from the registry and writes the record. Your saved
+               choices for this skin are not stored in the skin's files and are not touched.</p>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                <input type="hidden" name="gallery_action" value="recover_provenance">
+                <input type="hidden" name="skin_slug" value="<?php echo htmlspecialchars((string)$target_skin, ENT_QUOTES, 'UTF-8'); ?>">
+                <button type="submit" class="gallery-btn update">RECOVER THE INTEGRITY RECORD</button>
+            </form>
+        </div>
     <?php endif; ?>
 
     <form method="POST" enctype="multipart/form-data">

@@ -143,6 +143,144 @@ function skin_registry_verify_installed_provenance(PDO $pdo, string $slug, ?stri
 }
 
 /**
+ * Re-establish a skin's signed-package integrity record from the registry.
+ *
+ * WHY THIS EXISTS. skin_registry_verify_installed_provenance() above refuses
+ * every setting, upload, mode and active-skin change for a skin with no
+ * snap_file_manifest rows, and that refusal is right: a directory on disk is
+ * not an installed skin. But a site whose rows were never written, or whose
+ * rows a prior update deleted, has a skin the owner installed, is looking at,
+ * and silently cannot configure. What the owner gets is "that skin cannot be
+ * activated: no signed-package integrity record exists" after pressing Save,
+ * on a skin that is plainly working on the public page. Sean, on TRUE GRIT:
+ * "can't change the font on true grit."
+ *
+ * The record was unrecoverable because every path that writes it runs inside
+ * an install, and the owner had no install to run -- the skin was already
+ * there. So the gate was a trap with no door.
+ *
+ * WHAT RECOVERY IS, AND WHAT IT DELIBERATELY IS NOT. This reinstalls the
+ * exact signed package from the registry and lets the ordinary install path
+ * write the record, atomically, with its existing rollback. It does NOT hash
+ * whatever happens to be in skins/<slug>/ and write that down as trusted.
+ * Baselining the disk would turn a tampered file into the reference copy,
+ * which is the single thing this record exists to prevent, and it would make
+ * the gate decorative. Codex, agreeing the design: "do not baseline arbitrary
+ * disk."
+ *
+ * IF THE REGISTRY DOES NOT CARRY THE SKIN there is nothing to recover from,
+ * and this says so instead of inventing a record. A locally developed skin
+ * that never came through the registry cannot be given provenance it never
+ * had; it has to be packaged and published first.
+ *
+ * THE OWNER DECIDES. This is called from a visible control, not from page
+ * load. The hub informs; the site owner acts. An automatic backfill would be
+ * quieter and would also mean any site could acquire provenance it was never
+ * granted, without anyone choosing it.
+ *
+ * Skin settings are untouched: they live in snap_settings, keyed by setting,
+ * and nothing here reads or writes that table. The reinstall replaces files.
+ *
+ * @param string|null $message  Set to what happened, for the owner to read.
+ * @return bool True only when provenance verifies AFTER the reinstall.
+ */
+function skin_registry_recover_provenance(PDO $pdo, string $slug, string $registry_url = '', ?string &$message = null): bool {
+    $message = null;
+
+    if (!preg_match('/^[a-z0-9_-]+$/', $slug)) {
+        $message = 'Invalid skin identifier. Nothing was changed.';
+        return false;
+    }
+
+    // Already sound: say so and change nothing. Reinstalling a skin whose
+    // record is intact would be a download and a file replacement for no
+    // reason, and it would hide a different fault behind a reinstall.
+    if (skin_registry_verify_installed_provenance($pdo, $slug, $_already)) {
+        $message = 'That skin already has a valid signed-package integrity record. Nothing was changed.';
+        return true;
+    }
+
+    $before_reason = $_already;
+
+    if ($registry_url === '') {
+        $registry_url = defined('SKIN_REGISTRY_DEFAULT_URL') ? SKIN_REGISTRY_DEFAULT_URL : '';
+    }
+    if ($registry_url === '') {
+        $message = 'No skin registry is configured, so there is no signed package to recover from. Nothing was changed.';
+        return false;
+    }
+
+    // FRESH. A cached registry is how a stale version gets reinstalled, and
+    // recovery is exactly the moment to be reading the current truth.
+    $registry = skin_registry_fetch($registry_url, true);
+    if (!empty($registry['error'])) {
+        $message = 'The skin registry could not be read (' . (string)$registry['error'] . '), so the signed package is '
+                 . 'not available right now. Nothing was changed. Try again when Smack Central is reachable.';
+        return false;
+    }
+
+    // registry.json carries `skins` as a MAP keyed by slug (see
+    // skin_registry_compare and the fleet push, which both index it that
+    // way). An older list-shaped feed is still read, because guessing wrong
+    // here would report "not in the registry" for a skin that is in it.
+    $entry = null;
+    $catalogue = $registry['skins'] ?? [];
+    if (is_array($catalogue)) {
+        if (isset($catalogue[$slug]) && is_array($catalogue[$slug])) {
+            $entry = $catalogue[$slug];
+        } else {
+            foreach ($catalogue as $key => $candidate) {
+                if (!is_array($candidate)) continue;
+                if ((string)($candidate['slug'] ?? $key) === $slug) { $entry = $candidate; break; }
+            }
+        }
+    }
+
+    if ($entry === null) {
+        $message = 'The skin registry does not list ' . $slug . ', so there is no signed package to recover from. '
+                 . 'The reason settings are refused is: ' . (string)$before_reason . '. Nothing was changed.';
+        return false;
+    }
+    $download_url = trim((string)($entry['download_url'] ?? ''));
+    if ($download_url === '') {
+        $message = 'The registry lists ' . $slug . ' with no download URL, so there is no signed package to recover from. Nothing was changed.';
+        return false;
+    }
+
+    require_once __DIR__ . '/release-pubkey.php';
+    $public_key = defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : '';
+
+    $result = skin_registry_install(
+        $slug,
+        $download_url,
+        (string)($entry['signature'] ?? ''),
+        $public_key,
+        (int)($entry['size'] ?? 0)
+    );
+
+    if (empty($result['success'])) {
+        $message = 'Recovery failed and nothing was changed: ' . (string)($result['message'] ?? 'the signed package could not be installed.');
+        return false;
+    }
+
+    skin_registry_clear_cache();
+
+    // Prove it, rather than trusting that the install path did its job. A
+    // successful install that still leaves the gate closed is the fault we
+    // are repairing, so the only acceptable evidence is the gate opening.
+    if (!skin_registry_verify_installed_provenance($pdo, $slug, $after_reason)) {
+        $message = 'The signed package was reinstalled but the integrity record still does not verify: '
+                 . (string)$after_reason . '. Settings will still be refused. Do not retry; report this.';
+        return false;
+    }
+
+    $message = 'Recovered. ' . $slug . ' now has a signed-package integrity record from the registry'
+             . (isset($entry['version']) && $entry['version'] !== '' ? ' at version ' . (string)$entry['version'] : '')
+             . ', and its settings will save again. The previous refusal was: ' . (string)$before_reason . '.';
+    return true;
+}
+
+/**
  * May this skin be offered on THIS install?
  *
  * A service skin (`features.fedistructure_only`) belongs to a FEDISTRUCTURE
