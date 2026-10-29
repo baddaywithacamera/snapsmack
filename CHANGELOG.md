@@ -11,6 +11,24 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.970D - 2026-10-29 - THE FRAME, BY MEASUREMENT
+
+- **CHAPLIN's frame matches the reference again: the rules sit behind the ornaments, the corners have their gaps, and the static page keeps its portrait.** Codex's repair, measured in a browser at 1920, 1440 and 1024 rather than described: `skins/chaplin/style.css` restores the centre masking so a rule passes *behind* its ornament instead of through it, takes the corner-to-rule gaps from the owner's existing gap setting rather than a new number, and hides the frame only on the static About hero, which is where the reference has no frame.
+
+- **1024 exposed a fault the wider widths hid.** The frame overflowed the viewport. The padding now reserves the existing frame gap, and the outer frame measures x8..1016 with document overflow 0.
+
+- `tools/browser-tests/chaplin-frame-layer-regression.cjs` — a mutation check that reproduces the original three failures, so the repair is pinned rather than trusted. Seven opened candidate screenshots are committed beside it in `opaudits/evidence/027/2026-10-29-chaplin-live-969d/`, including the before state at 1920, so the comparison is on the record and not in a chat log.
+
+- **CHAPLIN 0.2.29.** A skin file changed, so the version moved and the baseline was regenerated with it; the skin-version contract refuses a changed skin at an unchanged version, and it refused this one until the bump landed. That refusal is the gate doing its job: a skin edited without a version bump is a fix that exists in the repository and on no site at all.
+
+### What this build does NOT fix, named so nobody reads it as done
+
+- **The ornament colour.** The SVG art is cream (#ece6d4) where the reference reads white. Recorded by Codex, deliberately not recoloured, and not addressed here.
+- **Exact colour and static title size.** Explicitly left UNVERIFIED by the person who made the change.
+- **The archive control row** is still absent from 25 of the 30 skins. The CMS side has been complete since 968D; each of those skins needs one line in its own layout.
+- **Fonts are not certified by this build.** The candidate was measured on localhost, where font delivery is origin-sensitive, so no font claim rides on these captures.
+- **SS-1038 is not closed.** The recovery path shipped in 966D and Codex exercised it on a real install today, which is the first time it has been used in anger. What remains open is the other 29 skins and the other sites, unswept; the message that says "cannot be activated" while every setting is frozen; and whether an install path fails to write the record in the first place, which recovery treats rather than prevents.
+
 ## 0.7.969D - 2026-10-29 - RESERVE THE BOX
 
 - **The masonry archive stopped collapsing to nothing and then snapping into place.** Sean: *"the archive page loads everything large and then resizes. can a small JS preload in the background and then fade in gracefully so stuff doesn't jump all over as the page draws?"*
