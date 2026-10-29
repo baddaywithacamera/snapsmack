@@ -504,12 +504,19 @@ function snapsmack_attach_local_font_faces(array &$presentation): void
 {
     $inventory = include __DIR__ . '/manifest-inventory.php';
     $localFonts = is_array($inventory['local_fonts'] ?? null) ? $inventory['local_fonts'] : [];
+    // The Google catalogue: 99 families the owner can pick. Only three of them
+    // are also self-hosted, which is why removing the Google stylesheet took
+    // the other ninety-six off every public page at once.
+    $googleFonts = is_array($inventory['fonts'] ?? null) ? $inventory['fonts'] : [];
     $selected = [];
+    $remote = [];
     foreach (($presentation['options'] ?? []) as $value) {
         $family = trim((string)$value);
-        if ($family !== '' && isset($localFonts[$family])) $selected[$family] = $localFonts[$family];
+        if ($family === '') continue;
+        if (isset($localFonts[$family])) { $selected[$family] = $localFonts[$family]; continue; }
+        if (isset($googleFonts[$family])) $remote[$family] = true;
     }
-    if (!$selected) return;
+    if (!$selected && !$remote) return;
 
     $css = '';
     foreach ($selected as $family => $font) {
@@ -521,10 +528,41 @@ function snapsmack_attach_local_font_faces(array &$presentation): void
         $css .= "@font-face{font-family:'{$safeFamily}';src:url('{$url}') format('{$font['format']}');"
             . "font-weight:{$font['weight']};font-style:{$font['style']};font-display:swap;}";
     }
+    // THE GOOGLE FAMILIES COME FROM GOOGLE.
+    //
+    // 576fc6aa, "Remove public telemetry and remote font loads" on 29
+    // September, deleted the fonts.googleapis.com stylesheet and both
+    // preconnects from core/font-loader.php inside a TELEMETRY cleanup, with a
+    // one-line message and no stated reason. Font delivery was never the
+    // subject of that commit. Only three of the ninety-nine Google families
+    // are also self-hosted, so the other ninety-six stopped rendering
+    // anywhere: the picker still offered them, the admin still previewed them
+    // from Google, and only the public page went blank. Measured on
+    // acolourlesslife, which serves --chap-title-font: Poiret One and ZERO
+    // @font-face declarations.
+    //
+    // Sean, 29 October: "i wanted them to be pulled down from google and not
+    // hosted by me. google is always available, the blog should just install
+    // from there. the asset repository was only intended for the handful not
+    // available from Google."
+    //
+    // So catalogue families load from Google and font.php keeps serving the
+    // handful that are genuinely only ours. The weight list is the one the
+    // original emitted, copied rather than re-chosen.
+    $links = '';
+    if ($remote) {
+        $parts = [];
+        foreach (array_keys($remote) as $family) {
+            $parts[] = 'family=' . urlencode($family) . ':wght@300;400;500;600;700;900';
+        }
+        $href = 'https://fonts.googleapis.com/css2?' . implode('&', $parts) . '&display=swap';
+        $links = '<link rel="preconnect" href="https://fonts.googleapis.com">'
+               . '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+               . '<link rel="stylesheet" href="' . htmlspecialchars($href, ENT_QUOTES, 'UTF-8') . '">';
+    }
     $existing = isset($presentation['style']) ? (string)$presentation['style'] : '';
-    $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly(
-        $existing . '<style id="snapsmack-local-fonts">' . str_replace('<', '\\3C ', $css) . '</style>'
-    );
+    $block = $css === '' ? '' : '<style id="snapsmack-local-fonts">' . str_replace('<', '\3C ', $css) . '</style>';
+    $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly($existing . $links . $block);
 }
 
 /** Bind the common grid-family controls without granting skins authority. */
