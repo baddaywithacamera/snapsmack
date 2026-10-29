@@ -236,6 +236,35 @@ ts_test(array_keys($appearance) === array_keys($settings_p)
         && array_keys($appearance) !== [],
     'and both write the same two stored values');
 
+// THE TOOLTIPS, approved by Sean on 29 October after the labels.
+// One of them was not merely awkward, it was BACKWARDS: Settings said
+// "Cropped fills the tile; Square forces a 1:1 ratio", and filling the tile
+// is what SQUARE does. A tip that states the opposite of the behaviour is
+// worse than no tip, because the owner believes it. The other repeated the
+// contradiction the labels had just lost. Both now carry one identical
+// string. SS-1043.
+$tips = [];
+foreach (['smack-appearance-archive.php', 'smack-settings.php'] as $_page) {
+    $_src = (string) file_get_contents($root . '/' . $_page);
+    $_at = strpos($_src, "settings[archive_thumb_style]");
+    // The tip sits in the label ABOVE the select, so look behind the select.
+    $_win = $_at === false ? '' : substr($_src, max(0, $_at - 700), 700);
+    if (preg_match('/data-tip="([^"]*)"/', $_win, $_m)) $tips[$_page] = $_m[1];
+}
+ts_test(count($tips) === 2, 'both pages carry a tooltip on this control');
+ts_test(count(array_unique($tips)) === 1,
+    'and it is the IDENTICAL string on both, like the labels');
+$tip = (string) reset($tips);
+ts_test(stripos($tip, 'fills the tile') === false
+        || stripos($tip, 'SQUARE CROP crops') !== false,
+    'the tip no longer claims the natural-aspect option fills the tile');
+ts_test(stripos($tip, 'NATURAL ASPECT') !== false && stripos($tip, 'SQUARE CROP') !== false,
+    'it names both options by the labels the owner now sees');
+ts_test(stripos($tip, 'cropped (natural aspect)') === false,
+    'and it does not repeat the self-contradiction the labels lost');
+ts_test(stripos($tip, 'differ in height') !== false,
+    'it says what natural aspect DOES to the grid, which is the part he was choosing between');
+
 // The point of relabelling was to leave the data alone. If a label change
 // ever reaches the value attribute, every saved setting on the fleet breaks.
 ts_test(isset($appearance['cropped'], $appearance['square']),
