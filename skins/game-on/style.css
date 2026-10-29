@@ -1519,7 +1519,7 @@ body:has(.go-puzzle-field) {
  * position can be changed without a CMS release. */
 .go-sticky-nav-links > li + li::before {
     content: "|";
-    margin-right: 0.5em;
+    margin-right: 20px;
 }
 
 /* ===== SNAPSMACK EOF ===== */
