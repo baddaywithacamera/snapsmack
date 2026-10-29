@@ -57,15 +57,38 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
         return f"{self.public_url}/approve?request={request_id}"
 
     def approve(self, request_id: str, pair_code: str) -> str | None:
+        # EVERY REFUSAL BELOW LOOKS IDENTICAL FROM OUTSIDE, and must: the
+        # approve route answers one deliberately vague sentence with a 403 so
+        # a stranger learns nothing about which part they got wrong. That is
+        # correct, and it left the OWNER equally blind. A real pairing failed
+        # on 29 October with a 403 three minutes after the code was issued,
+        # and nobody could say which of the five refusals fired, because the
+        # audit log only recorded success.
+        #
+        # So each one now says why, to the audit log only. No pair code, no
+        # token, no client secret and no request id is ever written: the
+        # reason is a fixed string this file chooses, and the only variable
+        # detail is scope NAMES, which the success record already carries.
         pending = self.pending.pop(request_id, None)
-        if not pending or pending.expires_at < time.time():
+        if not pending:
+            # Unknown or already-consumed request. self.pending is in memory,
+            # so a restart loses every approval in flight and lands here.
+            self.store.audit("unknown", "oauth.approve_denied", {"reason": "pending_unknown"})
+            return None
+        if pending.expires_at < time.time():
+            self.store.audit("unknown", "oauth.approve_denied", {"reason": "pending_expired"})
             return None
         identity = self.store.consume_pair_code(pair_code)
         if not identity:
+            # Wrong, already used, or expired. Note that issuing a fresh pair
+            # code deletes the previous one, so a second code requested while
+            # a first attempt is still in flight lands here.
             self.pending[request_id] = pending
+            self.store.audit("unknown", "oauth.approve_denied", {"reason": "pair_code_rejected"})
             return None
         client_id = pending.client.client_id
         if not client_id:
+            self.store.audit(identity["actor"], "oauth.approve_denied", {"reason": "client_id_missing"})
             return None
         params = pending.params
         requested = params.scopes or ["booth:read"]
@@ -81,6 +104,13 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
             if scope in identity["scopes"] and scope not in allowed:
                 allowed.append(scope)
         if not {"booth:read", "conversation:read"}.intersection(allowed):
+            # Scope names only. Both lists are already in the success record.
+            self.store.audit(identity["actor"], "oauth.approve_denied", {
+                "reason": "no_usable_scope",
+                "client_id": client_id,
+                "requested": list(requested),
+                "granted": list(identity["scopes"]),
+            })
             return None
         code_value = f"code_{secrets.token_urlsafe(24)}"
         code = AuthorizationCode(
