@@ -98,9 +98,9 @@ ts_test(array_key_exists('thumb_url', $cropped['response']['items'][0] ?? []),
     'thumb_url reaches the skin rather than being filtered out');
 ts_test(($cropped['response']['items'][0]['thumb_style'] ?? '') === 'cropped',
     'the item states which style produced it, so a layout need not ask twice');
-ts_test(($cropped['response']['items'][0]['thumb_orientation'] ?? '') === 'orient-portrait',
+ts_test(($cropped['response']['items'][0]['orientation_class'] ?? '') === 'orient-portrait',
     'a portrait photograph carries orient-portrait, computed in core');
-ts_test(($cropped['response']['items'][1]['thumb_orientation'] ?? '') === 'orient-landscape',
+ts_test(($cropped['response']['items'][1]['orientation_class'] ?? '') === 'orient-landscape',
     'a landscape photograph carries orient-landscape');
 
 echo "\nA photograph with only one derivative still shows a photograph\n";

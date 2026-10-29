@@ -152,7 +152,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
                 // orientation classes IMPACT PRINTER's component already
                 // emits, so a layout gets the class rather than the integer.
                 $_orient = (int)($_it['img_orientation'] ?? 0);
-                $response['items'][$_i]['thumb_orientation'] = $_orient === 1
+                $response['items'][$_i]['orientation_class'] = $_orient === 1
                     ? 'orient-portrait'
                     : ($_orient === 2 ? 'orient-square' : 'orient-landscape');
             }
