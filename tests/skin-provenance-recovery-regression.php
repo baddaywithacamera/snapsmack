@@ -127,6 +127,36 @@ pr_test($notice !== '' && preg_match('/style\s*=\s*"[^"]/', $notice) !== 1,
     'the notice carries no static style attribute');
 
 echo "\n";
+echo "\nThe refusal says what is actually blocked, not what the owner was not doing\n";
+// Sean, on a live site: "can't change the font on true grit." This gate refuses
+// EVERY setting, upload and mode change for an unprovenanced skin, and it used
+// to answer "that skin cannot be activated" -- an activation he was not
+// attempting -- so he went looking in the wrong place. The refusal is correct
+// and is unchanged; only its wording is. SS-1038.
+$mutation_at = strpos($page, 'skin_registry_verify_installed_provenance($pdo, $_requested_skin');
+$mutation    = $mutation_at === false ? '' : substr($page, $mutation_at, 1000);
+pr_test($mutation !== '', 'the mutation gate was located');
+pr_test(stripos($mutation, 'cannot be activated') === false,
+    'the SETTINGS refusal no longer claims the skin cannot be activated');
+pr_test(stripos($mutation, 'No setting, upload or mode change can be saved') !== false,
+    'it names what is actually blocked: every setting, upload and mode change');
+pr_test(strpos($mutation, '$_requested_skin') !== false,
+    'and it names WHICH skin, so the owner is not left guessing');
+pr_test(stripos($mutation, 'RECOVER THE INTEGRITY RECORD') !== false,
+    'and points at the control that fixes it, which has existed since 966D');
+pr_test(stripos($mutation, 'Nothing was changed') !== false,
+    'it still says nothing was changed, which was the one true part of the old message');
+
+// The gallery's own activate action is a DIFFERENT refusal and must keep the
+// activation wording, because there the owner really is activating.
+// Single-quoted on purpose. Double quotes interpolate $action, so the first
+// version of this line searched for " === 'activate'" and passed by matching
+// something else. A test that passes for the wrong reason is worse than none.
+$activate_at = strpos($page, '$action === \'activate\'');
+$activate    = $activate_at === false ? '' : substr($page, $activate_at, 700);
+pr_test($activate !== '' && stripos($activate, 'cannot be activated') !== false,
+    'the gallery activate path still says "cannot be activated", because there it is true');
+
 echo "  {$pass} passed, {$fail} failed\n";
 if ($fail > 0) {
     echo "Skin provenance recovery: FAIL ({$fail}).\n";

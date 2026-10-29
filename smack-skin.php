@@ -453,8 +453,23 @@ if (isset($_POST['save_skin_settings'])) {
     // A directory on disk is not an installed skin. Require the exact package
     // accepted through the signed registry before any setting, upload, mode, or
     // active-skin mutation is allowed.
+    //
+    // SAY WHAT IS ACTUALLY BLOCKED. This gate refuses EVERY setting, upload and
+    // mode change for the skin, not only activation -- but it used to answer
+    // "that skin cannot be activated", so an owner changing a font was told
+    // about an activation they were not attempting and went looking in the
+    // wrong place. The owner's words, on a live site: "can't change the font on
+    // true grit." The refusal is right and is unchanged; only what it says is.
+    // The gallery's own activate action keeps the activation wording, because
+    // there the owner IS activating. SS-1038.
+    //
+    // $_requested_skin is already reduced to [a-z0-9_-] above, so naming it
+    // here cannot carry anything into the flash message.
     if (!skin_registry_verify_installed_provenance($pdo, $_requested_skin, $_provenance_reason)) {
-        $_SESSION['gallery_flash'] = 'That skin cannot be activated: ' . $_provenance_reason . '. No skin or setting was changed.';
+        $_SESSION['gallery_flash'] = 'No setting, upload or mode change can be saved for the '
+            . $_requested_skin . ' skin: ' . $_provenance_reason
+            . '. Nothing was changed. Use RECOVER THE INTEGRITY RECORD on that skin to reinstall its '
+            . 'signed package and restore the record.';
         header('Location: smack-skin.php?s=' . urlencode((string)($settings['active_skin'] ?? '')));
         exit;
     }
