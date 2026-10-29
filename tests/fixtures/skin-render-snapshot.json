@@ -321,10 +321,10 @@
             "/skins/chaplin/style.css"
         ],
         "paragraphs": 1,
-        "links": 2,
+        "links": 4,
         "headings": 0,
-        "words": 5,
-        "text_sha256": "e36fefd61111732ce6d03d304e9a0c4e1d3ea3dd385fd9005b69a92da5a05463"
+        "words": 11,
+        "text_sha256": "d55ea870248f13ed3bc19b750a4e93a765ff733e1e9b7c1df230fd88e0338282"
     },
     "chaplin/not_found": {
         "images": [],

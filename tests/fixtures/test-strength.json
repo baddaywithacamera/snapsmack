@@ -150,6 +150,13 @@
         "predicates": 19,
         "thresholds": []
     },
+    "chaplin-landing-photo-nav-regression.php": {
+        "assertions": 15,
+        "predicates": 12,
+        "thresholds": [
+            2
+        ]
+    },
     "client-ip-regression.php": {
         "assertions": 33,
         "predicates": 14,
