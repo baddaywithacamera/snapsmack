@@ -116,9 +116,11 @@ if (isset($_POST['gen_reg_token'])) {
         // registration state AND the only evidence that this step-up had
         // happened. Writing that row by hand therefore manufactured the
         // authorization. SECAUDIT 061 reports that on 2026-10-19 a site
-        // joined the fleet exactly that way; that event is REPORTED AND
-        // UNCONFIRMED and the fix does not rest on it. The gap in the code
-        // was verified by reading it.
+        // joined the fleet exactly that way, and Sean recalls it: an agent
+        // joined a site to the hub without a password and a 2FA code, and he
+        // objected at the time. The date and which site are still the
+        // report's. The gap in the code was verified by reading it, and his
+        // rule is why this gate exists: no site joins a hub unauthenticated.
         //
         // Now the step-up mints a SIGNED, SCOPED grant whose key lives in a
         // file and never in MariaDB, and snap_settings keeps only its digest.

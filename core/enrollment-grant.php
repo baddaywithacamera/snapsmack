@@ -15,14 +15,24 @@ declare(strict_types=1);
  * that comparison in core/multisite-api.php before changing it; that part is
  * mine and it stands on its own.
  *
- * WHAT I DID NOT VERIFY, and must not be read as established. SECAUDIT 061
- * reports that on 2026-10-19 a fleet member was joined this way, with no
- * password and no TOTP code. I took that history from the report and repeated
- * it as fact. I should not have: Sean does not recall any such demonstration,
- * and the coordinator could not corroborate it either. The only artefact I
- * found is the report itself. So treat the 19 October event as REPORTED AND
- * UNCONFIRMED. It does not matter to this fix -- the gap above was real in the
- * code whether or not anyone ever walked through it.
+ * THE HISTORY: REPORTED, AND RECALLED BY THE OWNER. SECAUDIT 061 says a
+ * fleet member was joined this way on 2026-10-19 with no password and no TOTP
+ * code. I first repeated that as "demonstrated" on the report's word alone,
+ * which was wrong of me, and corrected it to unconfirmed. Then Sean said, in
+ * chat on 2026-10-29: "dingleberry joined a site to the hub without user/pass
+ * and totp. sites aren't supposed to join a hub without authentication." He
+ * also says he objected on the spot -- "that should not be possible" -- and
+ * left the site connected afterwards only because other outages were burning:
+ * a TRIAGE DEFERRAL, not approval and not an accepted risk.
+ *
+ * So the core claim is corroborated by the owner's own memory. The DATE and
+ * WHICH SITE are still the report's, not independently confirmed, and the
+ * sentence claiming he approved the site staying connected was retracted by
+ * its author. None of that changes this fix: the gap was real in the code
+ * whichever way the history reads.
+ *
+ * AND THE OWNER'S RULE, which this file exists to enforce: a site must never
+ * join a hub without authentication -- password and 2FA.
  *
  * WHAT THIS FILE CHANGES. The stored row now holds only a DIGEST of a signed,
  * scoped grant. The grant itself is minted here, authenticated with a key that
