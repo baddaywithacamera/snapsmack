@@ -69,7 +69,7 @@ function ts_items(): array {
     ];
 }
 
-function ts_view(string $style, array $items = null): array {
+function ts_view(string $style, ?array $items = null): array {
     return snapsmack_build_skin_view(
         ['status' => 200, 'kind' => 'archive', 'items' => $items ?? ts_items()],
         // TRUE GRIT on purpose: the skin Sean reported, and one of the twenty
@@ -189,6 +189,63 @@ $cPrepared = (string)snap_render_component('archive-thumb',
     ['item' => $cropped['response']['items'][0], 'prefix' => 'pfd']);
 ts_test(str_contains($cPrepared, 'a-aspect.jpg'),
     'an item that already carries thumb_url is trusted, so the choice is made in one place');
+
+echo "\nBoth admin pages label the one setting with the one vocabulary\n";
+// The option read "CROPPED (NATURAL ASPECT)" -- a label that contradicts
+// itself, because the stored value named 'cropped' IS the natural-aspect
+// option. And a SECOND page wrote the same key with its own words:
+// smack-settings.php said "CROPPED (DEFAULT)" / "SQUARE". An owner who met
+// both screens had no way to know they were one control. Sean approved new
+// display text on 29 October; the stored values were deliberately NOT
+// renamed, so nothing saved on 25 sites had to migrate. SS-1043.
+$thumbSelects = [];
+foreach (['smack-appearance-archive.php', 'smack-settings.php'] as $_page) {
+    $_src = (string) file_get_contents($root . '/' . $_page);
+    // Scope to this one select: smack-settings.php holds dozens of others.
+    $_at = strpos($_src, "settings[archive_thumb_style]");
+    $_end = $_at === false ? false : strpos($_src, '</select>', $_at);
+    $_chunk = ($_at === false || $_end === false) ? '' : substr($_src, $_at, $_end - $_at);
+    // [^<>]+ on the label, not [^<]+: the option tag carries an inline PHP
+    // block, and that block's own closing bracket would otherwise be taken
+    // for the option tag's, so the label came back with a stray leading
+    // bracket. (Writing that two-character sequence in this comment ended
+    // PHP mode and broke the file, which is its own small lesson.)
+    preg_match_all('/<option value="(square|cropped)"[\s\S]*?>([^<>]+)<\/option>/', $_chunk, $_m, PREG_SET_ORDER);
+    $labels = [];
+    foreach ($_m as $_o) { $labels[$_o[1]] = trim($_o[2]); }
+    $thumbSelects[$_page] = $labels;
+    ts_test(count($labels) === 2, "{$_page} offers exactly the two stored values and no third");
+}
+
+$appearance = $thumbSelects['smack-appearance-archive.php'] ?? [];
+$settings_p = $thumbSelects['smack-settings.php'] ?? [];
+
+ts_test(($appearance['cropped'] ?? '') === 'NATURAL ASPECT (DEFAULT)',
+    'Archive Appearance labels the cropped value NATURAL ASPECT (DEFAULT)');
+ts_test(($appearance['square'] ?? '') === 'SQUARE CROP (1:1)',
+    'Archive Appearance labels the square value SQUARE CROP (1:1)');
+ts_test($appearance === $settings_p,
+    'BOTH pages show the identical strings, so one control cannot read as two');
+ts_test(array_keys($appearance) === array_keys($settings_p)
+        && array_keys($appearance) !== [],
+    'and both write the same two stored values');
+
+// The point of relabelling was to leave the data alone. If a label change
+// ever reaches the value attribute, every saved setting on the fleet breaks.
+ts_test(isset($appearance['cropped'], $appearance['square']),
+    "the stored values are still 'cropped' and 'square', so no site has to migrate");
+foreach (array_merge($appearance, $settings_p) as $_lbl) {
+    ts_test(stripos($_lbl, 'CROPPED (NATURAL ASPECT)') === false,
+        'the self-contradicting label is gone: ' . $_lbl);
+}
+
+// Both save handlers must still accept exactly the two values. A relabel that
+// quietly widened or narrowed validation would be worse than the bad label.
+foreach (['smack-appearance-archive.php', 'smack-settings.php'] as $_page) {
+    $_src = (string) file_get_contents($root . '/' . $_page);
+    ts_test(preg_match("/archive_thumb_style'\], \['square', 'cropped'\], true\)/", $_src) === 1,
+        "{$_page} still validates the save against exactly square|cropped");
+}
 
 echo "\nThe CMS side is complete; the skins are not, and that is stated\n";
 // Named plainly so nobody reads a green run as "TRUE GRIT is fixed".
