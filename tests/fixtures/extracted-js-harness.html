@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Extracted JS behaviour check</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; padding: 24px; }
+  .hint { display: block; }
+  .hint--ok  { color: #0a7a2a; }
+  .hint--bad { color: #b00020; }
+  #install-login-link { pointer-events: none; opacity: .35; }
+  #install-login-link.is-armed { pointer-events: auto; opacity: 1; }
+  #out { white-space: pre; font-family: ui-monospace, monospace; margin-top: 18px; }
+</style>
+<!-- The archive state script: three server values as data attributes. -->
+<script src="/assets/js/ss-archive-state.js"
+        data-layout="masonry" data-calendar-enabled="1" data-calendar-open="1"></script>
+<script src="/assets/js/ss-config-bootstrap.js"
+        data-base-url="https://example.test/" data-site-mode="carousel"></script>
+</head>
+<body>
+
+<!-- install.php's password match + break-glass gate markup, as it now stands -->
+<input type="password" id="admin_pass">
+<button type="button" data-toggle-pass="admin_pass">SHOW</button>
+<input type="password" id="admin_pass2">
+<div id="pass-match-msg" class="hint" hidden></div>
+<button type="submit" id="btn-finish">Finish</button>
+<button type="button" id="break-glass-download">Download card</button>
+<input type="checkbox" id="break-glass-saved" disabled>
+<a href="snap-in" id="install-login-link">Log In</a>
+
+<div id="out"></div>
+
+<script src="/assets/js/ss-install-forms.js"></script>
+
+</body>
+</html>

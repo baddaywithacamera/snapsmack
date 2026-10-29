@@ -242,8 +242,197 @@ $check($n >= $COUPLING_BUDGET,
     'core/skin coupling fell to ' . $n . ' -- lower $COUPLING_BUDGET to ' . $n
     . ' so it cannot climb back');
 
-printf("agreed rules: %d inline styles (budget %d), %d CSS-in-PHP (budget %d), version %s.\n",
-    $inline, $INLINE_STYLE_BUDGET, count($cssInPhp), $CSS_IN_PHP_BUDGET, $declared);
+/* ── RULE 6 ───────────────────────────────────────────────────────────────
+ * JavaScript is NEVER written inline in a PHP file. It lives in its own file
+ * that the page loads.
+ *
+ * Sean, 29 October 2026: "JS script is never inline in a PHP file for any
+ * reason in the CMS... I've been clear for a long time that we keep JS out of
+ * PHP and it goes into separate files that are called. I am upset to find out
+ * that this is a continuing issue."
+ *
+ * MEASURED the same day across every root and core PHP file and every skin
+ * layout: 53 script blocks with a body and no src.
+ *   - ONE is DATA: the schema.org JSON-LD in core/meta.php. It is exempt
+ *     below BY TYPE, never by allowlist, because it is not JavaScript and it
+ *     belongs in the document.
+ *   - 52 were executable JavaScript: 3,178 lines. 8 blocks / 56 lines on
+ *     pages a visitor loads, 3 blocks / 39 lines in the installer, and 41
+ *     blocks / 3,083 lines in the admin.
+ *
+ * The 11 public and installer blocks were extracted the same day into
+ * assets/js/ss-archive-state.js, ss-config-bootstrap.js, ss-profile-theme.js,
+ * ss-pixel-theme.js, ss-wall-mobile-gate.js, ss-snap-in-tabs.js and
+ * ss-install-forms.js, and their rows deleted. 41 admin blocks remain.
+ *
+ * THE LIMIT IS ZERO. Every block still inline is named in the allowlist with
+ * its ticket, so the debt is visible and does not fail the build while it is
+ * being paid down. A block that is not on the list fails on its first commit.
+ *
+ * The key is the file plus a hash of the block's contents, which makes the
+ * list a one-way ratchet three ways over:
+ *   - a NEW block has no row and fails;
+ *   - an EXTRACTED block leaves its row matching nothing, and the gate tells
+ *     you to delete the row, so the list can only shrink;
+ *   - an EDITED block changes its hash and fails. That is intended. These
+ *     blocks are not maintained in place; they are moved out.
+ *
+ * Server values travel to the moved file as data-* attributes. They are never
+ * PHP interpolated into JavaScript: a value echoed into a script body is a
+ * string that has to be escaped for a language the PHP escapers do not know,
+ * which is how an XSS gets written by accident.
+ *
+ * WHY THIS TOKENIZES INSTEAD OF GREPPING. A regex over the file text counts
+ * a <script> written in a DOCBLOCK. core/stats-logger.php says in prose "Emit
+ * the Scroll Time tracker <script> tag", and the printf below it emits a tag
+ * that carries src=, so a regex matched from the comment to the closing tag
+ * and reported 35 lines of inline JS in a file whose own comment says
+ * "Config passes via data-* attributes (no inline JS)". The file was right
+ * and the first version of this gate was wrong. It now drops comment tokens
+ * and keeps what can actually reach a browser: literal markup outside PHP
+ * tags, and the string and heredoc literals that get echoed, because
+ * core/network-alert.php builds its banner in a heredoc.
+ *
+ * Found while measuring, and recorded on SS-1041: the public CSP is
+ * script-src 'self' unless the site owner has custom code enabled, so an
+ * inline block on a public page is REFUSED BY THE BROWSER. Confirmed in a
+ * browser on two live sites. Moving these out is not only a tidiness rule; on
+ * the public side it is the difference between code that runs and code that
+ * does not.
+ */
+$JS_DATA_TYPES = ['application/ld+json', 'application/json', 'application/schema+json',
+                  'text/template', 'text/x-template', 'text/html'];
+// One row per block still inline. DELETE a row the moment its block moves.
+$JS_IN_PHP_ALLOWLIST = [
+    // smack-lt-gram.php -- 1 block(s), 503 lines
+    'smack-lt-gram.php#d7fe6016d3cc15d9' => 'SS-1041 (503 lines, was line 762)',
+    // smack-mosaics.php -- 2 block(s), 489 lines
+    'smack-mosaics.php#ac56c92ee3e52060' => 'SS-1041 (480 lines, was line 491)',
+    'smack-mosaics.php#b3c8589fdd90507c' => 'SS-1041 (9 lines, was line 1028)',
+    // smack-fingerprints.php -- 1 block(s), 399 lines
+    'smack-fingerprints.php#2f2e8144e77fe197' => 'SS-1041 (399 lines, was line 424)',
+    // smack-post-long.php -- 1 block(s), 332 lines
+    'smack-post-long.php#9f449e2a2c968bfc' => 'SS-1041 (332 lines, was line 912)',
+    // smack-collections.php -- 1 block(s), 223 lines
+    'smack-collections.php#a9d844c5ac182b4c' => 'SS-1041 (223 lines, was line 496)',
+    // smack-skin.php -- 3 block(s), 174 lines
+    'smack-skin.php#1ceffd47446f70f8' => 'SS-1041 (42 lines, was line 1512)',
+    'smack-skin.php#470d5f1e36ff67c4' => 'SS-1041 (108 lines, was line 2277)',
+    'smack-skin.php#cf40d7af525c1ee4' => 'SS-1041 (24 lines, was line 2409)',
+    // smack-update.php -- 2 block(s), 158 lines
+    'smack-update.php#6c4f2241a24882a1' => 'SS-1041 (118 lines, was line 2054)',
+    'smack-update.php#8834460c0891fea1' => 'SS-1041 (40 lines, was line 2546)',
+    // smack-multisite.php -- 2 block(s), 157 lines
+    'smack-multisite.php#9a13d58dd2b3cfb5' => 'SS-1041 (59 lines, was line 1563)',
+    'smack-multisite.php#3f5912a9bf2a2412' => 'SS-1041 (98 lines, was line 1625)',
+    // smack-settings.php -- 3 block(s), 107 lines
+    'smack-settings.php#c21c2f77b86f83fb' => 'SS-1041 (38 lines, was line 1225)',
+    'smack-settings.php#53316a828540bd68' => 'SS-1041 (26 lines, was line 1266)',
+    'smack-settings.php#b8a2761c1fabe7f5' => 'SS-1041 (43 lines, was line 1295)',
+    // smack-manage.php -- 2 block(s), 89 lines
+    'smack-manage.php#e9fe414864852768' => 'SS-1041 (40 lines, was line 977)',
+    'smack-manage.php#2660b59d5f9cb8af' => 'SS-1041 (49 lines, was line 1023)',
+    // smack-ftp.php -- 1 block(s), 79 lines
+    'smack-ftp.php#d9f8e4e4fc33b943' => 'SS-1041 (79 lines, was line 341)',
+    // smack-appearance-archive.php -- 1 block(s), 48 lines
+    'smack-appearance-archive.php#e2bf1362ea966e7f' => 'SS-1041 (48 lines, was line 417)',
+    // smack-help.php -- 1 block(s), 43 lines
+    'smack-help.php#8681192426ff9674' => 'SS-1041 (43 lines, was line 4668)',
+    // smack-albums.php -- 1 block(s), 42 lines
+    'smack-albums.php#2faf048283039362' => 'SS-1041 (42 lines, was line 253)',
+    // smack-photochallenge.php -- 1 block(s), 39 lines
+    'smack-photochallenge.php#70245d0b7d7e1ebe' => 'SS-1041 (39 lines, was line 572)',
+    // smack-community-settings.php -- 1 block(s), 37 lines
+    'smack-community-settings.php#32e925174c8b47a7' => 'SS-1041 (37 lines, was line 445)',
+    // smack-cats.php -- 1 block(s), 32 lines
+    'smack-cats.php#670d60642e6b8c46' => 'SS-1041 (32 lines, was line 246)',
+    // smack-2fa.php -- 2 block(s), 20 lines
+    'smack-2fa.php#916186016be347b6' => 'SS-1041 (1 lines, was line 446)',
+    'smack-2fa.php#52e4a432ba83eaaa' => 'SS-1041 (19 lines, was line 448)',
+    // smack-back.php -- 2 block(s), 20 lines
+    'smack-back.php#b435db3e212e1bdc' => 'SS-1041 (11 lines, was line 828)',
+    'smack-back.php#da9ba71b46603980' => 'SS-1041 (9 lines, was line 841)',
+    // smack-shortcodes.php -- 1 block(s), 17 lines
+    'smack-shortcodes.php#71e419fdde3d6ef5' => 'SS-1041 (17 lines, was line 184)',
+    // smack-edit-carousel.php -- 1 block(s), 16 lines
+    'smack-edit-carousel.php#e84e68403798cacb' => 'SS-1041 (16 lines, was line 1136)',
+    // smack-edit.php -- 2 block(s), 15 lines
+    'smack-edit.php#17fda85c483b0213' => 'SS-1041 (7 lines, was line 668)',
+    'smack-edit.php#ad27f2a3ec91e96d' => 'SS-1041 (8 lines, was line 678)',
+    // smack-forum.php -- 1 block(s), 11 lines
+    'smack-forum.php#909fa345668519d7' => 'SS-1041 (11 lines, was line 1074)',
+    // smack-privacy.php -- 1 block(s), 10 lines
+    'smack-privacy.php#bd6c1f47d020ed03' => 'SS-1041 (10 lines, was line 145)',
+    // smack-menu.php -- 1 block(s), 7 lines
+    'smack-menu.php#47c7b317b79f334b' => 'SS-1041 (7 lines, was line 586)',
+    // smack-post-solo.php -- 1 block(s), 7 lines
+    'smack-post-solo.php#17fda85c483b0213' => 'SS-1041 (7 lines, was line 1026)',
+    // smack-globalvibe.php -- 1 block(s), 6 lines
+    'smack-globalvibe.php#6253d0c2d6c3199b' => 'SS-1041 (6 lines, was line 571)',
+    // core/admin-footer.php -- 1 block(s), 1 lines
+    'core/admin-footer.php#c51b145e3fdddc58' => 'SS-1041 (1 lines, was line 44)',
+    // core/admin-header.php -- 1 block(s), 1 lines
+    'core/admin-header.php#e53efbaa5d334bca' => 'SS-1041 (1 lines, was line 135)',
+    // core/network-alert.php -- 1 block(s), 1 lines
+    'core/network-alert.php#329734de50fb9998' => 'SS-1041 (1 lines, was line 513)',
+];
+
+$jsScan = array_merge(
+    glob($root . '/*.php') ?: [],
+    glob($root . '/core/*.php') ?: [],
+    glob($root . '/skins/*/layout.php') ?: []
+);
+$jsOffenders = [];
+$jsSeen = [];
+$jsDataBlocks = 0;
+foreach ($jsScan as $file) {
+    $src = (string)file_get_contents($file);
+    $rel = str_replace(chr(92), '/', $file);
+    $jsPrefix = rtrim(str_replace(chr(92), '/', $root), '/') . '/';
+    if ($jsPrefix !== '/' && str_starts_with($rel, $jsPrefix)) $rel = substr($rel, strlen($jsPrefix));
+    $tokens = @token_get_all($src);
+    if (!is_array($tokens)) continue;
+    // Blank the comments, keeping their newlines so line numbers stay real.
+    $text = '';
+    foreach ($tokens as $t) {
+        if (is_string($t)) { $text .= $t; continue; }
+        if ($t[0] === T_COMMENT || $t[0] === T_DOC_COMMENT) {
+            $text .= str_repeat("\n", substr_count($t[1], "\n"));
+            continue;
+        }
+        $text .= $t[1];
+    }
+    // A <script> carrying src= is the sanctioned form and never matches.
+    if (!preg_match_all('/<script(?![^>]*\bsrc=)([^>]*)>(.*?)<\/script>/s', $text, $m, PREG_SET_ORDER)) continue;
+    foreach ($m as $hit) {
+        $body = trim($hit[2]);
+        if ($body === '') continue;
+        $type = '';
+        if (preg_match('/type\s*=\s*["\']([^"\']+)["\']/i', $hit[1], $t)) {
+            $type = strtolower(trim($t[1]));
+        }
+        if (in_array($type, $JS_DATA_TYPES, true)) { $jsDataBlocks++; continue; }
+        $key = $rel . '#' . substr(hash('sha256', $body), 0, 16);
+        if (isset($JS_IN_PHP_ALLOWLIST[$key])) { $jsSeen[$key] = true; continue; }
+        $jsOffenders[] = $rel . ' (' . (substr_count($body, "\n") + 1) . ' lines, key ' . $key . ')';
+    }
+}
+$jsStale = array_diff(array_keys($JS_IN_PHP_ALLOWLIST), array_keys($jsSeen));
+$check($jsOffenders === [],
+    'INLINE JAVASCRIPT IN A PHP FILE, and it is not on the allowlist (' . count($jsOffenders)
+    . '). JavaScript goes in its own file under assets/js/ and the page loads it with a '
+    . 'script src; server values travel as data-* attributes. THE LIMIT IS ZERO. '
+    . 'Offenders: ' . implode(' | ', array_slice($jsOffenders, 0, 6)));
+$check($jsStale === [],
+    'the JS-in-PHP allowlist has ' . count($jsStale) . ' row(s) matching nothing. A block that '
+    . 'has moved must have its row DELETED so the list can only shrink: '
+    . implode(' | ', array_slice($jsStale, 0, 6)));
+
+
+printf("agreed rules: %d inline styles (budget %d), %d CSS-in-PHP (budget %d), %d inline JS blocks left on the allowlist (limit 0 for any new one), %d data blocks exempt, version %s.
+",
+    $inline, $INLINE_STYLE_BUDGET, count($cssInPhp), $CSS_IN_PHP_BUDGET,
+    count($JS_IN_PHP_ALLOWLIST), $jsDataBlocks, $declared);
 
 if ($failures) {
     fwrite(STDERR, "AGREED RULES GATE FAILED:\n");

@@ -2344,14 +2344,18 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         .install-flat-path-label {
             margin-top: 16px;
         }
+        /* The password-match hint and the Break-Glass gate. These were set from
+           JavaScript as element.style; the JavaScript moved to its own file and
+           the appearance belongs here. */
+        .hint--ok  { color: #a0ff90; }
+        .hint--bad { color: #ff6b6b; }
+        #install-login-link { pointer-events: none; opacity: .35; }
+        #install-login-link.is-armed { pointer-events: auto; opacity: 1; }
     </style>
-    <script>
-    function togglePass(id, btn) {
-        var f = document.getElementById(id);
-        if (f.type === 'password') { f.type = 'text'; btn.textContent = 'HIDE'; }
-        else { f.type = 'password'; btn.textContent = 'SHOW'; }
-    }
-    </script>
+    <?php // Installer form helpers, extracted to their own file 29 October 2026
+          // (SS-1041): the SHOW/HIDE password toggles, the password-match check and
+          // the Break-Glass gate. Wired by data attribute, so no onclick= either. ?>
+    <script src="assets/js/ss-install-forms.js" defer></script>
 </head>
 <body>
 <div class="installer">
@@ -2628,7 +2632,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <label for="db_pass">Database Password</label>
             <div class="pass-wrap">
                 <input type="password" id="db_pass" name="db_pass" autocomplete="current-password">
-                <button type="button" class="pass-toggle" onclick="togglePass('db_pass', this)">SHOW</button>
+                <button type="button" class="pass-toggle" data-toggle-pass="db_pass">SHOW</button>
             </div>
 
             <label for="db_prefix">Table Prefix</label>
@@ -2689,42 +2693,18 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <label for="admin_pass">Password</label>
             <div class="pass-wrap">
                 <input type="password" id="admin_pass" name="admin_pass" autocomplete="new-password">
-                <button type="button" class="pass-toggle" onclick="togglePass('admin_pass', this)">SHOW</button>
+                <button type="button" class="pass-toggle" data-toggle-pass="admin_pass">SHOW</button>
             </div>
             <div class="hint">Minimum 12 characters. Length is security.</div>
 
             <label for="admin_pass2">Confirm Password</label>
             <div class="pass-wrap">
                 <input type="password" id="admin_pass2" name="admin_pass2" autocomplete="new-password">
-                <button type="button" class="pass-toggle" onclick="togglePass('admin_pass2', this)">SHOW</button>
+                <button type="button" class="pass-toggle" data-toggle-pass="admin_pass2">SHOW</button>
             </div>
-            <div id="pass-match-msg" class="hint" style="display:none;"></div>
+            <div id="pass-match-msg" class="hint" hidden></div>
 
             <button type="submit" id="btn-finish">Create Account &amp; Continue &rarr;</button>
-            <script>
-            (function() {
-                var p1 = document.getElementById('admin_pass');
-                var p2 = document.getElementById('admin_pass2');
-                var msg = document.getElementById('pass-match-msg');
-                var btn = document.getElementById('btn-finish');
-                function check() {
-                    if (!p2.value) { msg.style.display = 'none'; return; }
-                    if (p1.value === p2.value) {
-                        msg.style.display = 'block';
-                        msg.style.color = '#a0ff90';
-                        msg.textContent = '✓ Passwords match.';
-                        btn.disabled = false;
-                    } else {
-                        msg.style.display = 'block';
-                        msg.style.color = '#ff6b6b';
-                        msg.textContent = '✗ Passwords do not match.';
-                        btn.disabled = true;
-                    }
-                }
-                p1.addEventListener('input', check);
-                p2.addEventListener('input', check);
-            })();
-            </script>
         </form>
 
     <?php endif; ?>
@@ -2846,22 +2826,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                     <input type="checkbox" id="break-glass-saved" disabled>
                     I downloaded the card and put it somewhere offline.
                 </label>
-                <a href="snap-in" id="install-login-link"
-                   style="pointer-events:none;opacity:.35;">Log In</a>
-                <script>
-                (function () {
-                    var download = document.getElementById('break-glass-download');
-                    var saved = document.getElementById('break-glass-saved');
-                    var login = document.getElementById('install-login-link');
-                    download.addEventListener('click', function () {
-                        saved.disabled = false;
-                    });
-                    saved.addEventListener('change', function () {
-                        login.style.pointerEvents = this.checked ? 'auto' : 'none';
-                        login.style.opacity = this.checked ? '1' : '.35';
-                    });
-                }());
-                </script>
+                <a href="snap-in" id="install-login-link">Log In</a>
             <?php else: ?>
                 <div class="warn-box">
                     <strong>The required Break-Glass Card was not generated.</strong><br>
@@ -2930,7 +2895,7 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
             <label for="db_pass">Database Password</label>
             <div class="pass-wrap">
                 <input type="password" id="db_pass" name="db_pass" autocomplete="current-password">
-                <button type="button" class="pass-toggle" onclick="togglePass('db_pass', this)">SHOW</button>
+                <button type="button" class="pass-toggle" data-toggle-pass="db_pass">SHOW</button>
             </div>
 
             <label for="sql_dump" class="install-divider-label">SQL Dump File</label>

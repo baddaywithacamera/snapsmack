@@ -126,14 +126,11 @@ try {
 
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-wall.css?v=<?php echo time(); ?>">
 
-    <script>
-    // Mobile gate: Redirect touch devices or small screens to archive.
-    // Runs in <head> before body render as a client-side fallback for the PHP
-    // user-agent check (some devices slip through server-side sniffing).
-    if (window.innerWidth < 768 || ('ontouchstart' in window && window.innerWidth < 1024)) {
-        window.location.replace('archive.php');
-    }
-    </script>
+    <?php // Mobile gate. The wall is a desktop and large-tablet page; the server
+          // already refuses phones by user agent and this is the fallback for the
+          // devices that get past it. No defer: the redirect must happen before
+          // the wall is seen. ?>
+    <script src="<?php echo BASE_URL; ?>assets/js/ss-wall-mobile-gate.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" data-fallback="archive.php"></script>
 </head>
 <body class="is-wall<?php echo $wall_reflect ? ' wall-reflect' : ''; ?>"
       style="--wall-bg:<?php echo htmlspecialchars($wall_theme); ?>; --wall-gap:<?php echo $wall_gap; ?>px; --wall-rows:<?php echo $wall_rows; ?>;">
