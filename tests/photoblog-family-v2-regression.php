@@ -89,7 +89,12 @@ foreach(['50-shades-of-noah-grey','52-card-pickup','full-monty','galleria','glid
 $trueGritPresentation=snapsmack_skin_presentation(['header_font_family'=>'Special Elite'],'true-grit');
 $trueGritView=snapsmack_build_skin_view($landingResponse,['site_name'=>'Found Textures','language'=>'en','direction'=>'ltr','skin_style_url'=>'/skins/true-grit/style.css','skin_presentation'=>$trueGritPresentation]);
 ob_start();$trueGritOk=snapsmack_render_strict_skin_template($root.'/skins/true-grit','layout.php',$trueGritView);$trueGritHtml=(string)ob_get_clean();
-foreach(["font-family:'Special Elite'",'/font.php?family=Special%20Elite','class="site-title-text"'] as $hook){
+// DELIVERY, NOT A PARTICULAR HOST: Special Elite is in both the Google
+// catalogue and the local inventory, and the owner's rule is that Google
+// carries what Google has. The face must arrive; which route it arrives by is
+// not this test's business.
+if(!(str_contains($trueGritHtml,'/font.php?family=Special%20Elite')||(str_contains($trueGritHtml,'fonts.googleapis.com')&&str_contains($trueGritHtml,'family=Special'))))throw new RuntimeException('The selected masthead face is not delivered at all.');
+foreach(['font-family:"Special Elite"','class="site-title-text"'] as $hook){
  if(!$trueGritOk||!str_contains($trueGritHtml,$hook))throw new RuntimeException("true-grit masthead lost {$hook}.");
 }
 echo "Photoblog schema-v2 family regression passed.\n";

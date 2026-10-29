@@ -26,9 +26,15 @@ if (!isset($inventory['local_fonts']['Marcellus'])
     || ($inventory['local_fonts']['Marcellus']['file'] ?? '') !== 'assets/fonts/Marcellus/Marcellus-Regular.ttf') {
     throw new RuntimeException('Marcellus is absent from the bounded local font inventory.');
 }
-if (!str_contains($style, "font-family:'Marcellus'")
-    || !str_contains($style, '/font.php?family=Marcellus')) {
-    throw new RuntimeException('The selected RATIONAL GEO masthead face is not delivered through the same-origin provider.');
+// The single-quoted form came from the @font-face block, which Marcellus no
+// longer needs: it is in Google's catalogue, and the owner's rule is that the
+// asset repository holds only what Google does not carry. The rule that styles
+// the masthead is double-quoted and still emitted; delivery is asserted
+// separately and by either route.
+if (!str_contains($style, 'font-family:"Marcellus"')
+    || !(str_contains($style, '/font.php?family=Marcellus')
+         || (str_contains($style, 'fonts.googleapis.com') && str_contains($style, 'family=Marcellus')))) {
+    throw new RuntimeException('The selected RATIONAL GEO masthead face is not delivered at all.');
 }
 if (!str_contains($style, '--rg-map-pct:30')
     || !str_contains($css, "background-image: url('assets/topo-map.png')")

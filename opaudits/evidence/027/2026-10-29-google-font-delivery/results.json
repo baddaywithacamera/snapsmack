@@ -1,0 +1,14 @@
+[
+  {
+    "mutation": false,
+    "loaded": 1,
+    "errors": []
+  },
+  {
+    "mutation": true,
+    "loaded": 0,
+    "errors": [
+      "Loading the stylesheet 'https://fonts.googleapis.com/css2?family=Poiret+One:wght@300;400;500;600;700;900&display=swap' violates the following Content Security Policy directive: \"style-src 'self' 'unsafe-inline'\". Note that 'style-src-elem' was not explicitly set, so 'style-src' is used as a fallback. The action has been blocked."
+    ]
+  }
+]

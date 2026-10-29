@@ -1,0 +1,158 @@
+[
+  {
+    "skin": "52-card-pickup",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "alfred",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "aurora",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "chaplin",
+    "explicit_blogroll_title_selector_in_skin_css": true,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "full-monty",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "galleria",
+    "explicit_blogroll_title_selector_in_skin_css": true,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "glide",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "heuristic",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "hip-to-be-square",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "impact-printer",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "instant-camera",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "jive-turkey",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "new-horizon",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "onyx",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "parade",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "photogram",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "rational-geo",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "scroll",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "show-n-tell",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "sliders",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "stanley",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "sudden-impact",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "telegram",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "the-grid",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "true-grit",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  },
+  {
+    "skin": "writing-with-impact",
+    "explicit_blogroll_title_selector_in_skin_css": false,
+    "status": "NOT CHECKED",
+    "scope": "Source-only inventory; broad element selectors may style the heading. Absence of explicit selector is not itself proof of a defect."
+  }
+]

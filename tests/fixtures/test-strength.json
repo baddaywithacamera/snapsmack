@@ -428,7 +428,7 @@
     },
     "fifty-shades-masthead-font-regression.php": {
         "assertions": 10,
-        "predicates": 15,
+        "predicates": 18,
         "thresholds": []
     },
     "filmstrip-reaches-both-solo-routes-regression.php": {
@@ -899,8 +899,8 @@
         ]
     },
     "photoblog-family-v2-regression.php": {
-        "assertions": 10,
-        "predicates": 9,
+        "assertions": 11,
+        "predicates": 12,
         "thresholds": [
             2,
             2
@@ -1024,8 +1024,8 @@
         "thresholds": []
     },
     "public-asset-privacy-regression.php": {
-        "assertions": 2,
-        "predicates": 2,
+        "assertions": 5,
+        "predicates": 9,
         "thresholds": []
     },
     "public-controller-boundary-regression.php": {
@@ -1082,7 +1082,7 @@
     },
     "rational-geo-presentation-regression.php": {
         "assertions": 14,
-        "predicates": 26,
+        "predicates": 28,
         "thresholds": []
     },
     "rational-geo-solo-viewport-regression.php": {
@@ -1157,7 +1157,7 @@
     },
     "scroll-square-layout-regression.php": {
         "assertions": 8,
-        "predicates": 11,
+        "predicates": 12,
         "thresholds": []
     },
     "secaudit-055-dev-dirs-regression.php": {

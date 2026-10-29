@@ -54,11 +54,34 @@ function snapsmack_skin_custom_style(array $settings): SnapTrustedHtml
     return SnapTrustedHtml::__snapsmackCmsOnly('<style id="snapsmack-dynamic-css">' . $css . '</style>');
 }
 
+/**
+ * The two Google font hosts, and only those two.
+ *
+ * The owner's font pickers offer 99 families from Google's catalogue, and the
+ * owner's decision is that those load FROM Google: "i wanted them to be pulled
+ * down from google and not hosted by me... the asset repository was only
+ * intended for the handful not available from Google" (29 October).
+ *
+ * 79233b91 restored the stylesheet link and the page still showed nothing,
+ * because this policy said style-src 'self' and font-src 'self' data:. The
+ * browser refused the request and loaded zero faces. Codex caught it with a
+ * real browser against the real header, which is the only thing that can catch
+ * it -- the markup was correct and every source-reading test passed.
+ *
+ * Named hosts, not a wildcard: the stylesheet comes from fonts.googleapis.com
+ * and the face files from fonts.gstatic.com. Nothing else is added, and
+ * script-src, connect-src and the rest are untouched.
+ */
+const SNAPSMACK_FONT_STYLE_HOST = 'https://fonts.googleapis.com';
+const SNAPSMACK_FONT_FILE_HOST  = 'https://fonts.gstatic.com';
+
 function snapsmack_public_csp(bool $ownerCustomCode=false): string
 {
     $script=$ownerCustomCode?"'self' 'unsafe-inline' https:":"'self'";
     $connect=$ownerCustomCode?"'self' https:":"'self'";
-    return "default-src 'self'; script-src {$script}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src {$connect}; media-src 'self' https:; frame-src https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'";
+    $style="'self' 'unsafe-inline' " . SNAPSMACK_FONT_STYLE_HOST;
+    $font="'self' data: " . SNAPSMACK_FONT_FILE_HOST;
+    return "default-src 'self'; script-src {$script}; style-src {$style}; img-src 'self' data: https:; font-src {$font}; connect-src {$connect}; media-src 'self' https:; frame-src https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'";
 }
 
 function snapsmack_emit_public_csp(bool $ownerCustomCode=false): void

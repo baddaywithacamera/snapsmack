@@ -18,7 +18,16 @@ $photo=snapsmack_build_skin_view(['status'=>200,'kind'=>'photo','item'=>['img_ti
 ob_start();$ok=snapsmack_render_strict_skin_template($dir,'layout.php',$photo);$html=(string)ob_get_clean();foreach(['scroll-solo-header','scroll-solo-stage','scroll-solo-photobox','scroll-infobox'] as $hook)if(!$ok||!str_contains($html,$hook))throw new RuntimeException("SCROLL photo route lost {$hook}.");
 $fontPresentation=snapsmack_skin_presentation(['scroll_masthead_font'=>'Special Elite','scroll_solo_name_font'=>''],'scroll');
 $fontStyle=(string)($fontPresentation['style']??'');
-if(!str_contains($fontStyle,"font-family:'Special Elite'")||!str_contains($fontStyle,'/font.php?family=Special%20Elite'))throw new RuntimeException('SCROLL lost its same-origin selected masthead font.');
+// DELIVERY, NOT A PARTICULAR HOST.
+// This asserted /font.php, the same-origin provider. That encoded the
+// 29 September decision the owner has since reversed: "the asset repository
+// was only intended for the handful not available from Google." Merriweather,
+// Marcellus and Special Elite are in BOTH lists, so they now come from Google
+// and the same-origin route no longer carries them. The contract that matters
+// is that the chosen face is DELIVERED, by whichever route owns it -- this
+// still fails if neither does.
+$__fontStyle=$fontStyle;
+if(!(str_contains($__fontStyle, '/font.php?family=Special') || (str_contains($__fontStyle, 'fonts.googleapis.com') && str_contains($__fontStyle, 'family=Special'))))throw new RuntimeException('SCROLL lost its selected masthead font entirely.');
 if(str_contains($fontStyle,'font-family:""')||str_contains($fontStyle,"font-family:''"))throw new RuntimeException('An empty optional SCROLL font overrode the selected masthead font.');
 $scrollCss=(string)file_get_contents($dir.'/style.css');
 if(!str_contains($scrollCss,'font-size: max(2rem, var(--scroll-solo-name-size, 2rem))'))throw new RuntimeException('SCROLL lost the known-good desktop solo masthead scale.');

@@ -1,0 +1,551 @@
+{
+  "note": "Actual live markup, candidate skin stylesheet intercepted locally. Not deployed verification or admin save-path evidence.",
+  "results": [
+    {
+      "width": 1920,
+      "route": "blogroll",
+      "previous": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1920,
+          "height": 38.390625
+        },
+        "canvas": {
+          "x": 560,
+          "y": 110.390625,
+          "width": 800,
+          "height": 3372.140625
+        },
+        "firstGroup": {
+          "x": 580,
+          "y": 150.390625,
+          "width": 760,
+          "height": 248.140625
+        },
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1920,
+          "height": 3422.53125
+        },
+        "images": [],
+        "overflow": false
+      },
+      "candidate": {
+        "title": {
+          "x": 580,
+          "y": 120,
+          "width": 760,
+          "height": 65.796875
+        },
+        "canvas": {
+          "x": 580,
+          "y": 245.796875,
+          "width": 760,
+          "height": 3292.140625
+        },
+        "firstGroup": {
+          "x": 580,
+          "y": 245.796875,
+          "width": 760,
+          "height": 248.140625
+        },
+        "titleStyle": {
+          "font": "Georgia, \"Times New Roman\", serif",
+          "size": "28px",
+          "weight": "400",
+          "spacing": "6px",
+          "border": "1px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1920,
+          "height": 3557.9375
+        },
+        "images": [],
+        "overflow": false
+      }
+    },
+    {
+      "width": 1920,
+      "route": "about",
+      "previous": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1920,
+          "height": 38.390625
+        },
+        "canvas": null,
+        "firstGroup": null,
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1920,
+          "height": 968
+        },
+        "images": [],
+        "overflow": false
+      },
+      "candidate": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1920,
+          "height": 38.390625
+        },
+        "canvas": null,
+        "firstGroup": null,
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1920,
+          "height": 968
+        },
+        "images": [],
+        "overflow": false
+      }
+    },
+    {
+      "width": 1920,
+      "route": "archive-view",
+      "previous": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1920,
+          "height": 38.390625
+        },
+        "canvas": null,
+        "firstGroup": null,
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1920,
+          "height": 968
+        },
+        "images": [],
+        "overflow": false
+      },
+      "candidate": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1920,
+          "height": 38.390625
+        },
+        "canvas": null,
+        "firstGroup": null,
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1920,
+          "height": 968
+        },
+        "images": [],
+        "overflow": false
+      }
+    },
+    {
+      "width": 1440,
+      "route": "blogroll",
+      "previous": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1440,
+          "height": 38.390625
+        },
+        "canvas": {
+          "x": 320,
+          "y": 110.390625,
+          "width": 800,
+          "height": 3372.140625
+        },
+        "firstGroup": {
+          "x": 340,
+          "y": 150.390625,
+          "width": 760,
+          "height": 248.140625
+        },
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1440,
+          "height": 3422.53125
+        },
+        "images": [],
+        "overflow": false
+      },
+      "candidate": {
+        "title": {
+          "x": 340,
+          "y": 120,
+          "width": 760,
+          "height": 65.796875
+        },
+        "canvas": {
+          "x": 340,
+          "y": 245.796875,
+          "width": 760,
+          "height": 3292.140625
+        },
+        "firstGroup": {
+          "x": 340,
+          "y": 245.796875,
+          "width": 760,
+          "height": 248.140625
+        },
+        "titleStyle": {
+          "font": "Georgia, \"Times New Roman\", serif",
+          "size": "28px",
+          "weight": "400",
+          "spacing": "6px",
+          "border": "1px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1440,
+          "height": 3557.9375
+        },
+        "images": [],
+        "overflow": false
+      }
+    },
+    {
+      "width": 1440,
+      "route": "about",
+      "previous": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1440,
+          "height": 38.390625
+        },
+        "canvas": null,
+        "firstGroup": null,
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1440,
+          "height": 968
+        },
+        "images": [],
+        "overflow": false
+      },
+      "candidate": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1440,
+          "height": 38.390625
+        },
+        "canvas": null,
+        "firstGroup": null,
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1440,
+          "height": 968
+        },
+        "images": [],
+        "overflow": false
+      }
+    },
+    {
+      "width": 1440,
+      "route": "archive-view",
+      "previous": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1440,
+          "height": 38.390625
+        },
+        "canvas": null,
+        "firstGroup": null,
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1440,
+          "height": 968
+        },
+        "images": [],
+        "overflow": false
+      },
+      "candidate": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1440,
+          "height": 38.390625
+        },
+        "canvas": null,
+        "firstGroup": null,
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1440,
+          "height": 968
+        },
+        "images": [],
+        "overflow": false
+      }
+    },
+    {
+      "width": 1024,
+      "route": "blogroll",
+      "previous": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1024,
+          "height": 38.390625
+        },
+        "canvas": {
+          "x": 112,
+          "y": 110.390625,
+          "width": 800,
+          "height": 3372.140625
+        },
+        "firstGroup": {
+          "x": 132,
+          "y": 150.390625,
+          "width": 760,
+          "height": 248.140625
+        },
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1024,
+          "height": 3422.53125
+        },
+        "images": [],
+        "overflow": false
+      },
+      "candidate": {
+        "title": {
+          "x": 132,
+          "y": 120,
+          "width": 760,
+          "height": 65.796875
+        },
+        "canvas": {
+          "x": 132,
+          "y": 245.796875,
+          "width": 760,
+          "height": 3292.140625
+        },
+        "firstGroup": {
+          "x": 132,
+          "y": 245.796875,
+          "width": 760,
+          "height": 248.140625
+        },
+        "titleStyle": {
+          "font": "Georgia, \"Times New Roman\", serif",
+          "size": "28px",
+          "weight": "400",
+          "spacing": "6px",
+          "border": "1px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1024,
+          "height": 3557.9375
+        },
+        "images": [],
+        "overflow": false
+      }
+    },
+    {
+      "width": 1024,
+      "route": "about",
+      "previous": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1024,
+          "height": 38.390625
+        },
+        "canvas": null,
+        "firstGroup": null,
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1024,
+          "height": 968
+        },
+        "images": [],
+        "overflow": false
+      },
+      "candidate": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1024,
+          "height": 38.390625
+        },
+        "canvas": null,
+        "firstGroup": null,
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1024,
+          "height": 968
+        },
+        "images": [],
+        "overflow": false
+      }
+    },
+    {
+      "width": 1024,
+      "route": "archive-view",
+      "previous": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1024,
+          "height": 38.390625
+        },
+        "canvas": null,
+        "firstGroup": null,
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1024,
+          "height": 968
+        },
+        "images": [],
+        "overflow": false
+      },
+      "candidate": {
+        "title": {
+          "x": 0,
+          "y": 60,
+          "width": 1024,
+          "height": 38.390625
+        },
+        "canvas": null,
+        "firstGroup": null,
+        "titleStyle": {
+          "font": "\"DM Sans\", sans-serif",
+          "size": "24px",
+          "weight": "500",
+          "spacing": "normal",
+          "border": "0px"
+        },
+        "main": {
+          "x": 0,
+          "y": 60,
+          "width": 1024,
+          "height": 968
+        },
+        "images": [],
+        "overflow": false
+      }
+    }
+  ]
+}
