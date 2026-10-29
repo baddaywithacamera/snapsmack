@@ -11,9 +11,7 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.966D - 2026-10-29 - NO WAY TO ASK AGAIN
-
-## Unreleased — CHAPLIN restoration, in progress
+## 0.7.967D - 2026-10-29 - WIRED TO NOTHING
 
 - **CHAPLIN's landing page has the bottom photo navigation back.** Sean's reference capture shows it under the frame — PREV | FIRST | INFO | COMMENTS (0) | LAST | NEXT, with LAST and NEXT greyed because the newest photograph is on screen. Codex measured the live page at 1920: "blank bottom photo nav persist." Two things had to be true and neither was.
 
@@ -61,8 +59,9 @@
 
 - `tests/chaplin-frame-ornament-regression.php`, 35 assertions, calls the real presentation function rather than reading the file, and fails 20 ways when both core files are reverted. 282 PHP regression tests pass.
 
-- **NOT DONE in this commit, and CHAPLIN is not restored until it is:** the bottom photo navigation is still absent from the landing view — the reference shows PREV / FIRST / INFO / COMMENTS / LAST / NEXT under the frame and the landing branch of the component renders no `photo-navigation` component at all. The admin save and reload path has not been exercised either. Neither is claimed.
+- **STILL NOT DONE, and CHAPLIN is not restored until it is:** the admin save and reload path has not been exercised. That needs a real site and a real POST, and no amount of rendering here substitutes for it. The bottom photo navigation, missing when the ornaments landed, is repaired further up this same version.
 
+## 0.7.966D - 2026-10-29 - NO WAY TO ASK AGAIN
 - **The GRAMOFSMACK separator fix reached four skins. Nine skins run that mode.** 0.7.964D recorded the 20-and-20 pipe as done and called those four "the GRAMOFSMACK skins". They are not; nine skins declare carousel mode. The other five still carried `margin-right: 0.5em` on the separator pseudo-element, so every pipe on them sat 20px from the word in front and 7px from the word behind — the exact fault the entry above says was fixed. Sean asked when he would see it, having already been told it was finished. AURORA 1.0.55, GAME ON 0.1.40, PARADE 1.2.53, SUDDEN IMPACT 1.0.22, THE GRID 1.3.57. SS-1009.
 
 - **Measured in a browser, and the measurement was proved before it was trusted.** All nine carousel skins measured at 1920 off the generated fixtures: 20px left and 20px right on every one of 27 separators, three per skin. The probe was then mutated twice — forcing `margin-right: 60px` reads 60, and forcing the pre-fix `0.5em` back reads 7, which is the lopsided figure Sean was looking at. A check that cannot reproduce the old wrong number is not evidence that the new one is right.
