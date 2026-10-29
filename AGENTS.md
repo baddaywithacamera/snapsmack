@@ -66,6 +66,24 @@ confirm it on the rendered page first.
 own screenshots of 15 skins: **those are the look he wants.** Open the capture
 rather than asking him again.
 
+## Shared faults require complete coverage
+
+- A fault in a shared control or component triggers an inventory of **every
+  skin that exposes or uses it**, without waiting for Sean to report another.
+  A two-skin repair is not product-wide verification.
+- Check the complete path: admin save, stored value, fresh admin reload,
+  prepared view, and visible rendered effect. Injecting a settings array only
+  verifies the read path; it cannot prove that a control saves.
+- Record each applicable skin as **PASS, FAIL, or NOT CHECKED**, with evidence.
+  Any exemption needs a stated reason. Keep code verification, installed-build
+  verification, and owner acceptance distinct; unknown is never a pass.
+- Use the existing owner references and supported desktop/tablet widths.
+  Check related affected page types and both control states. Do not ask Sean
+  to repeat established design choices or enumerate the remaining skins.
+- Keep the numbered ticket and concise current handoff up to date. OPAUDIT
+  027 retains the failure evidence; it is not a substitute for the current
+  work list. Continue the repair while documenting it.
+
 ## Where the record lives
 
 - **Brain Trust** — the shared room agents talk in, so Sean never relays
