@@ -65,7 +65,6 @@ require_once __DIR__ . '/header.php';
             <p class="seo-sub">What&rsquo;s new is old again. Nothing here is an invention: the single-photo blog, long-form posting, classic Insta, Picasa-style albums &mdash; all of it used to belong to photographers. We&rsquo;re giving it back, on hardware you control, where nobody can take it again.</p>
             <p class="seo-never">Your photos. Your voice. Your style. <em>Your dignity.</em></p>
             <div class="seo-actions">
-                <a href="index.php#beta">Try the Beta</a>
                 <a href="features.php">What it does</a>
             </div>
         </div>
@@ -87,7 +86,6 @@ require_once __DIR__ . '/header.php';
         <div class="wrap">
 <?php echo $landing_closer; ?>
             <div class="seo-actions">
-                <a href="index.php#beta">Try the Beta</a>
                 <a href="brass-tacks.php">Read the honest FAQ</a>
             </div>
             <p class="seo-ps">Built by a photographer, not a company. <a href="oi.php">Ask him anything</a> &mdash; he&rsquo;s rude but he answers.</p>

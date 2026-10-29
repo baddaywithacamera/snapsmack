@@ -19,11 +19,6 @@ $page_social_description = 'Self-hosted photo blogging that brings back the gall
 $nav_active       = 'index';
 
 $page_css = <<<'CSS'
-.beta-banner { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 20px; padding: 12px max(32px, calc((100vw - var(--max)) / 2 + 32px)); background: var(--black); color: var(--white); font: .76rem/1.35 Arial, sans-serif; }
-.beta-banner:hover { color: var(--white); text-decoration: none; background: #222; }
-.beta-banner-flag { padding: 5px 8px; background: var(--red); font-weight: 900; letter-spacing: .06em; }
-.beta-banner-cta { font-weight: 900; text-transform: uppercase; }
-
 /* --- THE DOOR: one thing wins --- */
 #door { padding: 88px 0 72px; }
 .door-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 40%); gap: 48px; align-items: center; max-width: var(--max); margin: 0 auto; padding: 0 32px; }
@@ -125,10 +120,6 @@ $page_css = <<<'CSS'
 .whodat-bio { font-size: .83rem; line-height: 1.55; }
 .whodat-honest { max-width: 820px; margin-bottom: 30px; }
 
-#beta { background: var(--red); color: var(--white); border-top: 8px solid var(--black); }
-#beta h2, #beta .lede { color: var(--white); }
-#beta .wrap { max-width: 820px; }
-
 @media (max-width: 1100px) {
     /* Two, not three: with four cards a three-across row strands the fourth one
        alone on a second row anywhere from ~700px to 1100px wide. Two gives a
@@ -147,8 +138,6 @@ $page_css = <<<'CSS'
     .whodat-portrait img { height: 100%; }
 }
 @media (max-width: 700px) {
-    .beta-banner { grid-template-columns: 1fr auto; }
-    .beta-banner-text { display: none; }
     #door { padding: 56px 0 44px; }
     .door-inner { grid-template-columns: 1fr; gap: 32px; }
     .featured-skin-grid { grid-template-columns: 1fr; }
@@ -161,12 +150,6 @@ CSS;
 require_once __DIR__ . '/includes/header.php';
 ?>
 
-<a href="#beta" class="beta-banner">
-    <span class="beta-banner-flag">CLOSED BETA</span>
-    <span class="beta-banner-text"><strong>Applications are open.</strong> First wave opens November 4 for twenty photographers with real archives.</span>
-    <span class="beta-banner-cta">Apply &rarr;</span>
-</a>
-
 <main>
     <section id="door">
         <div class="door-inner">
@@ -177,7 +160,6 @@ require_once __DIR__ . '/includes/header.php';
             <p class="door-editor">And a free, powerful <a href="tool-snap-slapper.php">photo editor and organizer</a> because we remember when photographers were given good software for no charge rather than being told they needed to pay monthly rent for it.</p>
             <p class="door-never">Your photos. Your voice.<br>Your style. <em>Your dignity.</em></p>
             <div class="door-actions">
-                <a href="#beta" class="btn btn-primary">Try the Beta</a>
                 <a href="features.php" class="btn btn-secondary">What it does</a>
             </div>
             </div>
@@ -321,13 +303,6 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section id="beta">
-        <div class="wrap">
-            <h2>Apply for the Closed Beta</h2>
-            <p class="lede">The first wave opens <strong>November 4, 2026</strong> for twenty photographers. It is built for real back-catalogues, so you will want at least 500 images ready to post. Flickr and Instagram refugees are particularly welcome.</p>
-            <div class="ml-embedded" data-form="Z4oY86"></div>
-        </div>
-    </section>
 </main>
 
 <div class="ss-lightbox" id="ss-lightbox" hidden role="dialog" aria-modal="true" aria-label="Enlarged screenshot">
@@ -335,10 +310,6 @@ require_once __DIR__ . '/includes/header.php';
     <img src="" alt="">
 </div>
 
-<script>
-(function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[]).push(arguments);},l=d.createElement(e),l.async=1,l.src=u,n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})(window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
-ml('account', '2243616');
-</script>
 <link rel="stylesheet" href="assets/css/ss-engine-thomas.css">
 <script src="assets/js/ss-engine-thomas.js"></script>
 <script>
