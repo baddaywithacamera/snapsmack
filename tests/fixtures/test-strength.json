@@ -1671,6 +1671,11 @@
         "predicates": 3,
         "thresholds": []
     },
+    "true-grit-photo-page-regression.php": {
+        "assertions": 8,
+        "predicates": 5,
+        "thresholds": []
+    },
     "trusted-html-regression.php": {
         "assertions": 16,
         "predicates": 13,
