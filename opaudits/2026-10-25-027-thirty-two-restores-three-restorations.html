@@ -228,6 +228,69 @@
 <p>The repair is committed to <code>dev</code>. It has NOT been built, NOT been deployed, and has NOT been verified on the live site. The numbers above are from the site as it stands with the fault present. Nothing here may be read as evidence that search results are now correct for the owner; that requires a build, a deploy, and the same measurement repeated. The owner's standing objection applies directly to this entry: he is told things are done and finds they are not, and the only cure is the measurement after the deploy, not the one before it.</p>
 <p>Two further questions raised by the same report are open and not addressed here: whether the fields covered by the public search should match those covered by the search engine, and whether captions attached to photographs inside collections should be searchable at all. They are recorded as SS-1031.</p>
 
+<h2>15. Supplement, 29 October 2026: the gate that proves the repair and nothing else</h2>
+
+<p><strong>The owner asked a fair question and it has a specific answer: the gate was supposed to catch
+this, and it does not, because it only looks at the two skins that were being repaired when it was
+written.</strong></p>
+
+<p>On 29 October Sean set ARCHIVE APPEARANCE &rarr; THUMB STYLE to <em>CROPPED (NATURAL ASPECT)</em> on
+foundtextures.ca, saved it, and the archive came back square. Measured from the live page the same
+minute:</p>
+
+<table class="meta">
+<tr><td class="k">Owner's saved choice</td><td>CROPPED (NATURAL ASPECT), confirmed in the admin: <code>ARCHIVE APPEARANCE SAVED</code></td></tr>
+<tr><td class="k">Grid class served</td><td><code>class="square-grid archive-grid h-feed tg-grid"</code></td></tr>
+<tr><td class="k">Thumbnail served</td><td><code>t_bright-paint-on-stone-&hellip;.jpg</code>, fetched and measured: <strong>400 &times; 400</strong></td></tr>
+<tr><td class="k">Skin</td><td>TRUE GRIT 1.3.21 on 0.7.966D</td></tr>
+</table>
+
+<p><strong>Only two page components in the whole product read <code>archive_thumb_style</code>:</strong>
+<code>core/chaplin-page-component.php</code> and <code>core/impact-printer-page-component.php</code>.
+Every other skin chooses its thumbnail without consulting the setting. TRUE GRIT's layout names
+<code>square-grid</code> and reaches for <code>img_thumb_square</code> directly. So the control is
+connected to two skins out of thirty, and on the other twenty-eight it is a dropdown that saves a value
+nothing reads.</p>
+
+<h3>15.1 Why the gate did not catch it</h3>
+
+<p><code>tests/archive-settings-reach-the-page-regression.php</code> exists for exactly this fault. Its
+own comment states the rule: <em>&quot;A setting the owner picks must change the page. Flip it and
+look.&quot;</em> It checks <code>archive_thumb_style</code> four times. It checks it on
+<strong><code>chaplin</code></strong> and <strong><code>impact-printer</code></strong> &mdash; the two
+components that had just been repaired when it was written, and the only two that honour the setting.</p>
+
+<p><strong>A gate scoped to the repair proves the repair. It says nothing about the product.</strong> It
+passed every run while twenty-eight skins ignored the same control, and it will keep passing. The defect
+is not that the check is weak; each assertion is sound. The defect is the boundary: the skin list was
+drawn around what was being fixed rather than around what the setting claims to govern.</p>
+
+<p>This is the same shape as the other failures recorded in this audit and in OPAUDIT 028. The geometry
+harness measured the right things at widths the product is not for. The control audits began after the
+setting already existed and never went through the save path. Here the audit goes through the right path,
+on the wrong two-thirtieths of the fleet.</p>
+
+<h3>15.2 A second, smaller finding in the same panel</h3>
+
+<p>MASONRY IMAGE SIZE offers <em>MEDIUM (~600px THUMBNAILS) &mdash; RECOMMENDED</em>. That text is a
+hardcoded string at <code>smack-appearance-archive.php:294</code>; it is not read from the image
+pipeline. The thumbnail the live site actually serves measures <strong>400 &times; 400</strong>. The
+owner's recollection was 900. Three numbers, no agreement, and the label is the only one a site owner
+can see. Not yet traced to the generator; recorded, not fixed.</p>
+
+<h3>15.3 What must be true before this closes</h3>
+<ol>
+<li>Every skin that renders an archive honours THUMB STYLE, or the control states which skins it governs.
+A dropdown that silently does nothing on twenty-eight of thirty skins is worse than no dropdown.</li>
+<li>The archive-settings gate runs against every skin that declares an archive, not against the skins a
+past repair touched. Where a skin legitimately cannot honour a setting, that is an explicit exemption in
+the test with its reason, not an absence.</li>
+<li>The MASONRY IMAGE SIZE label is derived from the pipeline or removed. A number typed into a label is
+not a measurement.</li>
+<li>No gate written to prove a repair is counted as coverage of the control it touched. The question a
+gate must answer is &quot;does this control work&quot;, not &quot;did this fix land&quot;.</li>
+</ol>
+
 <p class="doc-foot">SnapSmack Operability Audit 027 - 25 October 2026; evidence supplements 26 and 27 October 2026</p>
 </body>
 </html>
