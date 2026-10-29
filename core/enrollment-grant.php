@@ -4,16 +4,25 @@ declare(strict_types=1);
 /**
  * SNAPSMACK - Fleet enrollment grant (SECAUDIT 061, finding A)
  *
- * WHAT WENT WRONG. On 2026-10-19 a fleet member was joined without a password
- * or a TOTP code. Nothing was broken: the admin page did require step-up
- * before it generated a registration token, and the handshake did verify the
- * token and consume it once. But the token was a bare random string sitting in
- * snap_settings.multisite_reg_token, and the handshake could only ask "does the
- * submitted value equal the stored value, and is it unexpired?" Writing that
- * row directly -- with database access, a migration, a compromised database
- * account or privileged automation -- manufactured the authorization. The row
- * was both the registration STATE and the PROOF that an administrator had
- * authenticated, and those two things must never be the same thing.
+ * WHAT WAS WRONG, VERIFIED IN SOURCE BY ME. The admin page did require
+ * step-up before it generated a registration token, and the handshake did
+ * consume that token once. But the token was a bare random string sitting in
+ * snap_settings.multisite_reg_token, and the handshake could only ask "does
+ * the submitted value equal the stored value, and is it unexpired?" So writing
+ * that row -- by any means -- produced something the handshake accepted. The
+ * row was both the registration STATE and the PROOF that an administrator had
+ * authenticated, and those two things must never be the same thing. I read
+ * that comparison in core/multisite-api.php before changing it; that part is
+ * mine and it stands on its own.
+ *
+ * WHAT I DID NOT VERIFY, and must not be read as established. SECAUDIT 061
+ * reports that on 2026-10-19 a fleet member was joined this way, with no
+ * password and no TOTP code. I took that history from the report and repeated
+ * it as fact. I should not have: Sean does not recall any such demonstration,
+ * and the coordinator could not corroborate it either. The only artefact I
+ * found is the report itself. So treat the 19 October event as REPORTED AND
+ * UNCONFIRMED. It does not matter to this fix -- the gap above was real in the
+ * code whether or not anyone ever walked through it.
  *
  * WHAT THIS FILE CHANGES. The stored row now holds only a DIGEST of a signed,
  * scoped grant. The grant itself is minted here, authenticated with a key that
@@ -29,7 +38,8 @@ declare(strict_types=1);
  * grant, exactly as they could read db.php and take the database. SECAUDIT 061
  * section 4 names that honestly as the host trust boundary and asks for two
  * layers; this is layer one, DATABASE-WRITE RESISTANCE, and it closes the path
- * that was actually demonstrated plus any database-only compromise. Layer two
+ * the report describes, and the one I confirmed in source, plus any
+ * database-only compromise. Layer two
  * -- an approval signature from an authority whose private key is NOT on this
  * host -- is section 5.5, is a new enrollment ceremony, and is deliberately
  * NOT built here: Sean asked that the authority and user-presence choice be

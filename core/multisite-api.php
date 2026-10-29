@@ -111,8 +111,11 @@ if ($resource === 'handshake' && $method === 'POST') {
     // SECAUDIT 061 finding A. This endpoint used to ask one question -- does
     // the submitted value equal snap_settings.multisite_reg_token, and is it
     // unexpired -- which meant database-write authority was enough to
-    // manufacture an enrollment. On 2026-10-19 a site joined the fleet that
-    // way, with no password and no TOTP code.
+    // manufacture an enrollment. I read that comparison here before changing
+    // it, so the gap is verified. SECAUDIT 061 also reports a 19 October
+    // enrollment done this way with no password and no TOTP code; that event
+    // is REPORTED AND UNCONFIRMED -- Sean does not recall it -- and the fix
+    // does not depend on it.
     //
     // The MAC is now checked FIRST, against a key that lives in a file and
     // never in MariaDB, and the grant must name this spoke, the calling hub,
