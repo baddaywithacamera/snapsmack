@@ -685,6 +685,14 @@
         "predicates": 5,
         "thresholds": []
     },
+    "hub-spoke-registration-stepup-regression.php": {
+        "assertions": 31,
+        "predicates": 27,
+        "thresholds": [
+            2,
+            3
+        ]
+    },
     "image-fade-resume-regression.php": {
         "assertions": 5,
         "predicates": 4,
