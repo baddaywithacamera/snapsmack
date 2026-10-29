@@ -375,22 +375,52 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . ' value="' . snap_escape_attr($query) . '"></form></div>';
         }
         $html .= '</div></div>';
-        if ($layouts) {
+        // The calendar is independent of the layout: its own owner switch, its
+        // own open state, and it overlays either grid. Its button is only worth
+        // drawing where the engine that builds the panel is actually loaded --
+        // the flags carry that, so this does not guess.
+        $calendar = is_array($data['calendar'] ?? null) ? $data['calendar'] : [];
+        $calendarOn = !empty($calendar['enabled']);
+        if ($layouts || $calendarOn) {
             // Docked inside this row, which is why the row is the positioning
             // context: the shipped fallback is right:40px against whatever is
             // positioned above it, and it relied on a runtime JS correction
             // that a skin not loading the toggle engine never receives.
-            $html .= '<div class="archive-controls archive-controls--docked" role="group" aria-label="Archive controls">'
-                . '<div class="archive-layout-toggle" role="group" aria-label="Layout">';
-            foreach ($layouts as $layout) {
-                if (!is_array($layout) || empty($layout['url'])) continue;
-                $html .= '<a href="' . snap_escape_url($layout['url']) . '" class="alt-btn'
-                    . (!empty($layout['active']) ? ' alt-btn--active' : '') . '"'
-                    . (!empty($layout['active']) ? ' aria-current="true"' : '')
-                    . ' title="' . snap_escape_attr($layout['label'] ?? '') . '">'
-                    . snap_escape_html($layout['label'] ?? '') . '</a>';
+            $html .= '<div class="archive-controls archive-controls--docked" role="group" aria-label="Archive controls">';
+            if ($layouts) {
+                $html .= '<div class="archive-layout-toggle" role="group" aria-label="Layout">';
+                foreach ($layouts as $layout) {
+                    if (!is_array($layout) || empty($layout['url'])) continue;
+                    // data-layout is not decoration. ss-engine-archive-toggle.js
+                    // selects '.archive-layout-toggle [data-layout]' and returns
+                    // early when it finds none, so without this attribute the
+                    // engine binds nothing: no in-place switch, no T/M hotkeys,
+                    // no active-state update, and the mode it reads back on
+                    // popstate is never this link's. The legacy row in
+                    // archive.php has always carried it; the rebuilt component
+                    // did not, which is the whole of why the toggle was inert.
+                    $mode = (string)($layout['mode'] ?? '');
+                    $html .= '<a href="' . snap_escape_url($layout['url']) . '" class="alt-btn'
+                        . (!empty($layout['active']) ? ' alt-btn--active' : '') . '"'
+                        . ($mode !== '' ? ' data-layout="' . snap_escape_attr($mode) . '"' : '')
+                        . (!empty($layout['active']) ? ' aria-current="true"' : '')
+                        . ' title="' . snap_escape_attr($layout['title'] ?? $layout['label'] ?? '') . '"'
+                        . ' aria-label="' . snap_escape_attr($layout['title'] ?? $layout['label'] ?? '') . '">'
+                        . snap_escape_html($layout['label'] ?? '') . '</a>';
+                }
+                $html .= '</div>';
             }
-            $html .= '</div></div>';
+            if ($calendarOn) {
+                // ss-engine-calendar.js builds the whole sliding panel itself
+                // and binds '[data-calendar-toggle]'. This button is the only
+                // markup it needs, and the strict path emitted none of it.
+                $html .= '<button type="button" class="alt-btn archive-calendar-toggle'
+                    . (!empty($calendar['open']) ? ' alt-btn--active' : '') . '"'
+                    . ' aria-pressed="' . (!empty($calendar['open']) ? 'true' : 'false') . '"'
+                    . ' aria-label="Toggle calendar panel" title="Toggle Calendar Panel"'
+                    . ' data-calendar-toggle="1">C</button>';
+            }
+            $html .= '</div>';
         }
         $html .= '</div></div>';
     } elseif ($name === 'document-head') {

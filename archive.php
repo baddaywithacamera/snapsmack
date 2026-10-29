@@ -126,12 +126,17 @@ try {
     // Owner sets the default in Archive Appearance. Visitor can override via ?layout=
     // URL param if the owner has enabled multiple modes. Preference persists via JS/localStorage.
     // Skin manifest may declare a preferred default via features.archive_layout_default.
+    //
+    // 0.7.968D: the resolution that used to be written out below now lives in
+    // core/archive-controls.php, because a strict skin never runs this file
+    // and so had no layout, no toggle and no calendar at all. This file is now
+    // one of two callers of that one resolver. Nothing about the answers
+    // changed; tests/archive-controls-reach-the-page-regression.php asserts
+    // that, input for input, against the arithmetic this block used to do.
     $skin_layout_fallback = 'square';
     $skin_has_calendar = false;
-    $skin_masonry_locked = false;
-    $skin_thumbs_locked  = false;
-    $skin_force_thumb_style = null;
     $_manifest_path = __DIR__ . '/skins/' . $active_skin . '/manifest.json';
+    $_archive_manifest = [];
     $skin_show_archive_filter = true;
     if (file_exists($_manifest_path)) {
         try {
@@ -149,20 +154,11 @@ try {
         if (isset($_m['features']['archive_filter']) && $_m['features']['archive_filter'] === false) {
             $skin_show_archive_filter = false;
         }
-        // Locked skins (e.g. Photogram, The Grid) set masonry_supported => false to
-        // prevent the CMS from offering or rendering masonry for that skin.
-        $skin_masonry_locked = (isset($_m['features']['masonry_supported']) && $_m['features']['masonry_supported'] === false);
-        // Symmetric to masonry_supported: a skin can declare it renders ONLY the
-        // justified/masonry grid (no square/cropped thumbs), collapsing the toggle
-        // to masonry-only (e.g. GALLERIA). (0.7.405)
-        $skin_thumbs_locked = (isset($_m['features']['thumbs_supported']) && $_m['features']['thumbs_supported'] === false);
-        // A skin may FORCE the thumb aspect (square|cropped) regardless of the
-        // per-site archive_thumb_style setting — set-and-forget for square-identity
-        // skins so the owner never has to re-select it (e.g. HIP TO BE SQUARE). (0.7.405)
-        if (!empty($_m['features']['archive_thumb_style'])
-            && in_array($_m['features']['archive_thumb_style'], ['square', 'cropped'], true)) {
-            $skin_force_thumb_style = $_m['features']['archive_thumb_style'];
-        }
+        // masonry_supported, thumbs_supported and archive_thumb_style are read
+        // from this manifest by snapsmack_archive_controls() below, which both
+        // render paths call. They were read twice, here and nowhere else, and
+        // the strict path read them not at all.
+        $_archive_manifest = is_array($_m) ? $_m : [];
         unset($_m, $_manifest_path);
     }
     $archive_layout_default = $settings['archive_layout'] ?? $skin_layout_fallback;
@@ -181,86 +177,35 @@ try {
     // Pre-0.7.79 settings still exist in DB as fallbacks; migration 056
     // populates the new keys. Old ?layout= URL params are backwards-compat'd
     // below.
-    $archive_thumb_style          = $settings['archive_thumb_style']          ?? 'cropped';
-    $archive_calendar_enabled     = !empty($settings['archive_calendar_enabled']);
-    $archive_calendar_default_open = !empty($settings['archive_calendar_default_open']);
-    $archive_show_layout_toggle   = isset($settings['archive_show_layout_toggle'])
-                                    ? !empty($settings['archive_show_layout_toggle'])
-                                    : true;
-    if (!in_array($archive_thumb_style, ['square', 'cropped'], true)) {
-        $archive_thumb_style = 'cropped';
-    }
-    // Skin-forced thumb aspect wins over the per-site setting (locked square-
-    // identity skins never drift back to cropped). (0.7.405)
-    if ($skin_force_thumb_style !== null) {
-        $archive_thumb_style = $skin_force_thumb_style;
-    }
-
-    // Normalise default layout to thumbs|masonry.
-    if (in_array($archive_layout_default, ['square', 'cropped', 'croppedwithcalendar'], true)) {
-        $archive_layout_default = 'thumbs';
-    }
-    if (!in_array($archive_layout_default, ['thumbs', 'masonry'], true)) {
-        $archive_layout_default = 'thumbs';
-    }
-
-    // Available layouts. A skin may lock itself to a single grid via
-    // masonry_supported=>false (thumbs-only) or thumbs_supported=>false
-    // (masonry-only); a single-mode skin then shows no T/M toggle. (0.7.405)
-    $available_modes = [];
-    if (!$skin_thumbs_locked)  $available_modes[] = 'thumbs';
-    if (!$skin_masonry_locked) $available_modes[] = 'masonry';
-    if (empty($available_modes)) $available_modes = ['thumbs']; // never zero
-    // Snap the default into what this skin actually offers (a masonry-only skin
-    // defaults to masonry rather than an unavailable 'thumbs'). (0.7.405)
-    if (!in_array($archive_layout_default, $available_modes, true)) {
-        $archive_layout_default = $available_modes[0];
-    }
-
-    // Resolve current layout from URL → cookie → default.
-    // Backwards-compat: old ?layout=square / cropped → thumbs.
-    //                  old ?layout=croppedwithcalendar → thumbs + force calendar open.
-    $layout_override = $_GET['layout'] ?? '';
-    $force_calendar_open = false;
-    if ($layout_override === 'croppedwithcalendar') {
-        $layout_override = 'thumbs';
-        $force_calendar_open = true;
-    } elseif (in_array($layout_override, ['square', 'cropped'], true)) {
-        $layout_override = 'thumbs';
-    }
-    if ($layout_override === '' && isset($_COOKIE['smack_archive_layout'])) {
-        $cookie_val = $_COOKIE['smack_archive_layout'];
-        // Tolerate legacy cookie values from pre-0.7.79.
-        if (in_array($cookie_val, ['square', 'cropped', 'croppedwithcalendar'], true)) {
-            $cookie_val = 'thumbs';
-        }
-        if (in_array($cookie_val, ['thumbs', 'masonry'], true)) {
-            $layout_override = $cookie_val;
-        }
-    }
-    $archive_layout = in_array($layout_override, $available_modes, true)
-                      ? $layout_override
-                      : $archive_layout_default;
-
-    // Resolve calendar open state. Disabled outright if admin off.
-    $archive_calendar_open = false;
-    if ($archive_calendar_enabled) {
-        if ($force_calendar_open) {
-            $archive_calendar_open = true;
-        } elseif (isset($_COOKIE['smack_archive_calendar'])) {
-            $archive_calendar_open = ($_COOKIE['smack_archive_calendar'] === 'open');
-        } else {
-            $archive_calendar_open = $archive_calendar_default_open;
-        }
-    }
-
-    // 0.7.79: core archive.php always renders the T/M toggle and the C
-    // button when the admin enables them. Skins with their own archive-layout.php
-    // render the photo grids only — they no longer render their own toggle UI.
-    // (Eliminates the duplicate-toggle problem visible in 0.7.79's first cut.)
-    // Only offer the T/M toggle when the skin actually has two layouts to switch
-    // between; single-layout skins (square-only / masonry-only) show none. (0.7.405)
-    $offer_toggle = $archive_show_layout_toggle && count($available_modes) > 1;
+    // THE SHARED RESOLVER. Everything this block used to write out by hand --
+    // the thumb style and the skin's override of it, the four-way to two-way
+    // normalisation, the skin locks, the ?layout= override with its legacy
+    // values, the cookie, and the calendar's enable and open states -- is now
+    // core/archive-controls.php, which the strict path reads too. The
+    // regression compares the two answers across a grid of inputs.
+    //
+    // 0.7.79: this file always renders the T/M toggle and the C button when
+    // the admin enables them. Skins with their own archive-layout.php render
+    // the photo grids only. Only offer the T/M toggle when the skin actually
+    // has two layouts to switch between; single-layout skins show none.
+    require_once __DIR__ . '/core/archive-controls.php';
+    $_archive_controls = snapsmack_archive_controls(
+        $settings,
+        $_archive_manifest,
+        ['layout' => $_GET['layout'] ?? ''],
+        [
+            'smack_archive_layout'   => $_COOKIE['smack_archive_layout'] ?? '',
+            'smack_archive_calendar' => $_COOKIE['smack_archive_calendar'] ?? '',
+        ]
+    );
+    $archive_thumb_style      = $_archive_controls['thumb_style'];
+    $archive_calendar_enabled = $_archive_controls['calendar']['enabled'];
+    $archive_calendar_open    = $_archive_controls['calendar']['open'];
+    $available_modes          = $_archive_controls['modes'];
+    $archive_layout           = $_archive_controls['active'];
+    $archive_layout_default   = $_archive_controls['default'];
+    $offer_toggle             = $_archive_controls['offer_toggle'];
+    unset($_archive_controls);
 
     // --- THUMBNAIL SIZE RESOLUTION ---
     // Maps abstract 5-step scale (xs, s, m, l, xl) to pixel values.

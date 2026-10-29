@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/public-controller.php';
 require_once __DIR__ . '/parser.php';
+require_once __DIR__ . '/archive-controls.php';
 
 /** Expand CMS-owned static-page shortcodes before the presentation-only skin sees them. */
 function snapsmack_public_parse_page_content(PDO $pdo, array $response): array
@@ -158,6 +159,54 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
             is_array($input['skin_manifest'] ?? null) ? $input['skin_manifest'] : []
         );
         if ($_community !== null) $response['community'] = $_community;
+    }
+    // THE ARCHIVE'S CONTROLS. Resolved by the one shared resolver, so the
+    // strict path and archive.php cannot disagree about which layout is
+    // showing. The component already read response.archive_layouts; this is
+    // the line that assigns it, which is why the T/M toggle has never rendered
+    // on any skin.
+    //
+    // The engines that make the row work were HARDCODED AT THE BOTTOM OF
+    // archive.php -- the filter engine, the toggle engine, and the calendar
+    // engine when the owner enabled it. A strict skin runs none of that file,
+    // so the row's stylesheet and its behaviour arrived only for the five
+    // skins whose manifests happen to require those engines by name. Declaring
+    // them here delivers both with the row that needs them: no manifest bump,
+    // no repackage, no per-site skin update, exactly as the community block
+    // and the shortcode stylesheets are delivered.
+    if (in_array(($response['kind'] ?? ''), ['archive', 'hashtag'], true)) {
+        $_archiveControls = snapsmack_archive_controls(
+            $settings,
+            is_array($input['skin_manifest'] ?? null) ? $input['skin_manifest'] : [],
+            ['layout' => (string)($input['archive_layout_choice'] ?? '')],
+            [
+                'smack_archive_layout'   => (string)($input['archive_layout_cookie'] ?? ''),
+                'smack_archive_calendar' => (string)($input['archive_calendar_cookie'] ?? ''),
+            ]
+        );
+        $response['archive_layouts'] = snapsmack_archive_layout_links(
+            $_archiveControls['layouts'],
+            defined('BASE_URL') ? (string)BASE_URL : '/',
+            is_array($input['route_aliases'] ?? null) ? $input['route_aliases'] : [],
+            (string)($settings['site_mode'] ?? '')
+        );
+        $response['archive_calendar'] = $_archiveControls['calendar'];
+        $response['archive_layout_active'] = $_archiveControls['active'];
+        $response['required_assets']['scripts'] = array_values(array_unique(array_merge(
+            (array)($response['required_assets']['scripts'] ?? []),
+            // smack-archive-toggle carries page-archive.css and the filter
+            // engine as companions, which is the whole row: the panel that
+            // opens, the search field, and the docked T/M group measuring
+            // from the content column instead of the window.
+            ['smack-archive-toggle']
+        )));
+        if (!empty($_archiveControls['calendar']['enabled'])) {
+            $response['required_assets']['scripts'] = array_values(array_unique(array_merge(
+                $response['required_assets']['scripts'],
+                ['smack-calendar']
+            )));
+        }
+        unset($_archiveControls);
     }
     // Profile chrome is shared across every strict public page, not just the
     // landing response. GAME ON also needs its puzzle field on About,

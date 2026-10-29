@@ -40,6 +40,7 @@ require_once $root . '/core/skin-render-helpers.php';
 require_once $root . '/core/skin-view-contract.php';
 require_once $root . '/core/skin-presentation.php';
 require_once $root . '/core/asset-registry.php';
+require_once $root . '/core/archive-controls.php';
 
 if (!is_dir($out) && !@mkdir($out, 0777, true) && !is_dir($out)) {
     fwrite(STDERR, "Cannot create {$out}\n");
@@ -66,8 +67,15 @@ function gf_photo(string $out, int $w, int $h): string {
 }
 
 /** The stylesheets this skin's page really receives, as repo paths. */
-function gf_stylesheets(string $root, string $skin, array $manifest): array {
+function gf_stylesheets(string $root, string $skin, array $manifest, string $kind = ''): array {
     $paths = ['assets/css/public-base.css', 'skins/' . $skin . '/style.css'];
+    // The archive control row's stylesheet. Every archive page now receives
+    // it from the CMS, declared as a required asset by the runtime, because
+    // the engine that used to carry it was hardcoded in a <script> tag at the
+    // bottom of archive.php -- a file no strict skin runs, so twenty-five
+    // skins got no archive CSS at all. The harness delivers it the same way,
+    // or its pictures show an unstyled row the live site does not have.
+    if ($kind === 'archive') $paths[] = 'assets/css/page-archive.css';
     if (function_exists('snapsmack_skin_declared_assets')) {
         $declared = snapsmack_skin_declared_assets($manifest);
         foreach (($declared['styles'] ?? []) as $url) {
@@ -136,13 +144,27 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
     if (!is_file($manifestFile)) continue;
     $manifest = json_decode((string)file_get_contents($manifestFile), true) ?: [];
 
-    $sheets = gf_stylesheets($root, $skin, $manifest);
-    $css = '';
-    foreach ($sheets as $p) {
-        $css .= "\n/* ===== " . $p . " ===== */\n" . (string)file_get_contents($root . '/' . $p);
-    }
-
     foreach ($kinds as $name => $response) {
+        $sheets = gf_stylesheets($root, $skin, $manifest, $name);
+        $css = '';
+        foreach ($sheets as $p) {
+            $css .= "\n/* ===== " . $p . " ===== */\n" . (string)file_get_contents($root . '/' . $p);
+        }
+        // The resolved T/M toggle and the calendar button, exactly as
+        // snapsmack_public_runtime() puts them on an archive response.
+        // Without them the harness drew the row with [ SHOW ALL ] and a
+        // search field and no controls at all -- which is what the live
+        // archives looked like, so a picture of it proved nothing.
+        if ($name === 'archive') {
+            $gfControls = snapsmack_archive_controls(
+                ['archive_layout' => 'thumbs', 'archive_calendar_enabled' => '1'],
+                $manifest
+            );
+            $response['archive_layouts'] = snapsmack_archive_layout_links(
+                $gfControls['layouts'], 'https://example.test/', ['archive' => 'archive'], '');
+            $response['archive_calendar'] = $gfControls['calendar'];
+            $response['archive_layout_active'] = $gfControls['active'];
+        }
         $response['navigation'] = $nav;
         // The archive control row renders from crop_circles. With empty
         // filters it draws [ SHOW ALL ] and nothing else, which LOOKS like a
@@ -170,6 +192,13 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
             'site_name' => 'found textures', 'language' => 'en', 'direction' => 'ltr',
             'skin_style_url' => '', 'base_style_url' => '', 'skin_variant_url' => '',
             'registered_assets' => [], 'owner_custom_code' => '', 'search_dock' => [],
+            // The CMS needs to know which skin it is resolving for: the
+            // archive row's width cap is nominated per skin, and without
+            // the slug every fixture fell back to main_canvas_width.
+            'skin_slug' => $skin,
+            // The skin nominates which of its own options is the content
+            // width; the archive row caps itself with it.
+            'skin_canvas_width_option' => (string)($manifest['features']['canvas_width_option'] ?? ''),
             'skin_presentation' => snapsmack_skin_presentation([], $skin),
             'footer' => [
                 'site_name' => 'found textures', 'site_url' => 'https://example.test/',

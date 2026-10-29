@@ -80,7 +80,13 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         'page_title', 'rendered_content', 'signature', 'previous', 'next', 'categories',
         'albums', 'categories_label', 'albums_label', 'author', 'colophon', 'published_post_count', 'photo_count', 'photo_count_display', 'comment_count', 'comment_count_display', 'like_count', 'like_count_display', 'word_count', 'comments_enabled',
         'show_titles', 'blogroll_groups', 'taxonomy', 'groups', 'puzzle_items', 'fragment', 'autoopen',
-        'first', 'last', 'next_page', 'is_homepage', 'sort', 'sort_options', 'album', 'filmstrip', 'community', 'mosaic_blocks', 'about_url', 'archive_controls'];
+        'first', 'last', 'next_page', 'is_homepage', 'sort', 'sort_options', 'album', 'filmstrip', 'community', 'mosaic_blocks', 'about_url', 'archive_controls',
+        // The resolved archive controls. archive_controls is the rendered row;
+        // these three are the same answer as data, for the components that
+        // assemble their own row. 50 SHADES already read archive_layouts and
+        // the allowlist stripped it, so even once it was assigned the toggle
+        // would still not have reached that skin.
+        'archive_layouts', 'archive_calendar', 'archive_layout_active'];
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'base_style_url', 'skin_variant_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',
@@ -102,21 +108,56 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     // A skin that wants the row prints this one value and carries no logic;
     // a skin that does not print it is completely unchanged.
     if ($kind === 'archive' || $kind === 'hashtag') {
+        $_archiveBase = defined('BASE_URL') ? (string)BASE_URL : '/';
+        $_archiveAliases = (array)($presentation['route_aliases'] ?? []);
+        $_archiveMode = (string)($presentation['site_mode'] ?? '');
+        // WHICH OPTION IS THE CONTENT WIDTH. Seven skins call it
+        // main_canvas_width; the others each named their own, and there is no
+        // convention to infer from -- a pattern match over the option names
+        // picks up masonry_border_width and chap_line_1_width just as
+        // happily. So the skin nominates it, and main_canvas_width stays the
+        // default for the seven that already work.
+        //
+        // MEASURED in a browser at 1920 on 29 October: with no width to cap
+        // it, .archive-filter-inner takes the full window and the docked T/M
+        // group falls back to right:40px against the WINDOW. On CHAPLIN that
+        // put the group at 1751..1880 while its photographs end at 1760 --
+        // 120px of control sticking out past the archive. CHAPLIN's own width
+        // control is chap_photo_max_width, and nothing told the CMS that.
+        // A nominated option that is not a plausible canvas width is refused
+        // rather than passed on: skins keep border widths and line widths
+        // under similar names, and a 2px cap on the row would be worse than
+        // no cap at all. Same bound the component applies.
+        $_archiveOptions = is_array($presentation['skin_presentation']['options'] ?? null)
+            ? $presentation['skin_presentation']['options'] : [];
+        $_archiveWidth = '';
+        // The SKIN nominates it, in its manifest, because core must not
+        // learn about an individual skin -- tests/agreed-rules-gate.php
+        // refused the first repair for exactly that, and was right to.
+        foreach ([
+            (string)($presentation['skin_canvas_width_option'] ?? ''),
+            'main_canvas_width',
+        ] as $_opt) {
+            if ($_opt === '') continue;
+            $_candidate = trim((string)($_archiveOptions[$_opt] ?? ''));
+            if (preg_match('/^\d{3,5}(px)?$/', $_candidate)) { $_archiveWidth = $_candidate; break; }
+        }
         $response['archive_controls'] = snap_render_component('archive-filters', [
-            'content_width' => (string)($presentation['skin_presentation']['options']['main_canvas_width'] ?? ''),
+            'content_width' => $_archiveWidth,
             // Not snap_route_url('archive'): that returns the literal /archive,
             // the unregistered path that sent six sites into a redirect loop.
-            'show_all_url'  => snapsmack_legacy_archive_target(
-                defined('BASE_URL') ? (string)BASE_URL : '/',
-                (array)($presentation['route_aliases'] ?? []),
-                (string)($presentation['site_mode'] ?? '')
-            ),
+            'show_all_url'  => snapsmack_legacy_archive_target($_archiveBase, $_archiveAliases, $_archiveMode),
             'query'         => (string)($response['query'] ?? ''),
             'selected'      => (array)($response['active_filters'] ?? []),
             'filters'       => (array)($presentation['crop_circles']['filters'] ?? []),
             'search'        => (array)($presentation['crop_circles']['search'] ?? []),
+            // Both resolved upstream by snapsmack_archive_controls(), the one
+            // resolver archive.php's own resolution was lifted into. The
+            // layouts already carry the address each one switches to.
             'layouts'       => (array)($response['archive_layouts'] ?? []),
+            'calendar'      => (array)($response['archive_calendar'] ?? []),
         ]);
+        unset($_archiveBase, $_archiveAliases, $_archiveMode, $_archiveOptions, $_archiveWidth, $_opt, $_candidate);
     }
 
     // Hand the CMS-rendered community block to the comments component. It

@@ -351,6 +351,13 @@ try {
             // _reactions from the skin manifest before falling back to the
             // global settings, so the manifest has to reach it.
             'skin_manifest' => is_array($_active_manifest) ? $_active_manifest : [],
+            // The archive's layout choice and the two states the visitor's
+            // last visit left behind. Named one at a time rather than handing
+            // the runtime all of $_COOKIE: these three are the whole surface
+            // the archive controls read.
+            'archive_layout_choice'   => $_GET['layout'] ?? '',
+            'archive_layout_cookie'   => $_COOKIE['smack_archive_layout'] ?? '',
+            'archive_calendar_cookie' => $_COOKIE['smack_archive_calendar'] ?? '',
         ], $_public_settings);
         if (!empty($skin_view['navigation']) && is_array($skin_view['navigation'])) {
             $_public['navigation'] = $skin_view['navigation'];
@@ -379,6 +386,12 @@ try {
             'skin_variant_url' => $_active_skin_variant_url,
             'skin_custom_style' => snapsmack_skin_custom_style($settings),
             'skin_presentation' => snapsmack_skin_presentation($settings, (string)$active_skin),
+            // Which of this skin's own options is its main content width.
+            // The archive control row caps itself with it; without it the
+            // docked T/M group measures from the window and hangs past the
+            // photographs. Seven skins call it main_canvas_width, which
+            // stays the default, and the rest each named their own.
+            'skin_canvas_width_option' => (string)($_active_manifest['features']['canvas_width_option'] ?? ''),
             'archive_layout' => (string)($settings['archive_layout'] ?? 'square'),
             'archive_thumb_style' => (string)($settings['archive_thumb_style'] ?? 'cropped'),
             'archive_grid' => snapsmack_archive_grid_metrics(
