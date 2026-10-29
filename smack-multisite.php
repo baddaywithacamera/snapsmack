@@ -175,7 +175,36 @@ if (isset($_POST['register_spoke'])) {
     $spoke_token = trim($_POST['spoke_token'] ?? '');
     $spoke_name = trim($_POST['spoke_name'] ?? '');
 
-    if (empty($spoke_url) || empty($spoke_token)) {
+    // SS-1053. ADDING A SPOKE HAD NO STEP-UP GATE AT ALL. In this same file
+    // gen_reg_token calls reauth_verify() and the hub permissions block calls
+    // reauth_verify(); this path called nothing, so an authenticated admin
+    // session could add a fleet member without re-entering a password or a
+    // 2FA code. Found while verifying SECAUDIT 061 finding B against source
+    // rather than trusting the report, which had not noticed it.
+    //
+    // It is the same class of action as generating a token, in the other
+    // direction: joining a hub grants that hub admin-level access to a site,
+    // and adding a spoke grants THIS hub admin-level access to another one.
+    // Both are fleet blast-radius actions by 061's own definition.
+    //
+    // Sean ruled on 29 October that his laptop is assumed to be him -- see
+    // the trust-boundary note in secaudits/2026-10-29-061-remediation-status
+    // -- and asked for this gate anyway: a password and 2FA prompt still
+    // applies on his own laptop. The assumption is about PRESENCE, not about
+    // skipping the ceremony.
+    //
+    // Setting $err here is enough to block the write: the handshake call and
+    // the snap_multisite_nodes insert below both sit inside the existing
+    // `if (!isset($err))` guard, so a failed step-up never reaches the spoke
+    // and never touches the table.
+    require_once 'core/reauth.php';
+    $_spoke_auth = reauth_verify($pdo,
+        (string)($_POST['reauth_password'] ?? ''),
+        (string)($_POST['reauth_totp'] ?? ''));
+
+    if (!$_spoke_auth['ok']) {
+        $err = 'Spoke registration blocked: ' . $_spoke_auth['error'];
+    } elseif (empty($spoke_url) || empty($spoke_token)) {
         $err = "Spoke URL and registration token are required.";
     } else {
         // Normalize URL
@@ -2002,6 +2031,21 @@ include 'core/sidebar.php';
 
                 <p style="font-size:0.85rem; color:var(--text-muted,#888); margin:10px 0;">
                     Ask the spoke admin to generate a token at their Multisite Management page and give it to you.
+                    They will be asked which hub the grant is for &mdash; that is this site's address.
+                </p>
+
+                <?php /* SS-1053: adding a spoke grants this hub admin-level access to
+                         another site, so it needs the same step-up the token generator
+                         has always had. It had none at all. */ ?>
+                <label>YOUR PASSWORD</label>
+                <input type="password" name="reauth_password" autocomplete="off" required>
+
+                <label>YOUR 2FA CODE</label>
+                <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" required>
+
+                <p style="font-size:0.85rem; color:var(--text-muted,#888); margin:10px 0;">
+                    Adding a spoke gives this hub admin-level access to that site, so it
+                    asks for your password and 2FA code even on your own laptop.
                 </p>
 
                 <button type="submit" name="register_spoke" class="master-update-btn">REGISTER SPOKE</button>
