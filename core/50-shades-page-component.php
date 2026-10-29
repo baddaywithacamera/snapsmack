@@ -89,6 +89,9 @@ echo snap_render_html(snap_render_component('archive-filters', [
     'filters'       => (array)($view['site']['crop_circles']['filters'] ?? []),
     'search'        => (array)($view['site']['crop_circles']['search'] ?? []),
     'layouts'       => (array)($view['response']['archive_layouts'] ?? []),
+    // The two calendar flags, which reached no strict skin in any form until
+    // the shared resolver put them on the response.
+    'calendar'      => (array)($view['response']['archive_calendar'] ?? []),
 ]));
 ?>
 <section id="browse-grid" class="fsog-archive-grid archive-grid h-feed"<?php if ($archivePane !== 'thumbs'): ?> data-pane-hidden="1"<?php endif; ?>><?php foreach (($view['response']['items'] ?? []) as $archiveItem): ?><?php $archiveWidth = max(1, (int)($archiveItem['img_width'] ?? 1)); $archiveHeight = max(1, (int)($archiveItem['img_height'] ?? 1)); $archiveRatio = max(2 / 3, min(3 / 2, $archiveWidth / $archiveHeight)); $archiveThumb = !empty($archiveItem['img_thumb_aspect']) ? $archiveItem['img_thumb_aspect'] : ($archiveItem['img_file'] ?? ''); ?><a class="fsog-archive-item" href="<?php echo snap_escape_url($archiveItem['url'] ?? snap_route_url('photo', ['slug' => $archiveItem['img_slug'] ?? ''])); ?>" title="<?php echo snap_escape_attr($archiveItem['img_title'] ?? ''); ?>"><?php if ($archiveThumb !== ''): ?><div class="fsog-thumb<?php if ($archiveRatio < 1): ?> fsog-thumb-portrait<?php endif; ?>" style="aspect-ratio:<?php echo snap_escape_attr(round($archiveRatio, 4)); ?>"><?php echo snap_render_html(snap_render_component('image', ['url' => $archiveThumb, 'alt' => $archiveItem['img_alt'] ?? $archiveItem['img_title'] ?? ''])); ?></div><?php endif; ?><div class="fsog-archive-title"><?php echo snap_escape_html($archiveItem['img_title'] ?? $archiveItem['title'] ?? $archiveItem['name'] ?? ''); ?></div></a><?php endforeach; ?></section>

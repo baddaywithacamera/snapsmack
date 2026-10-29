@@ -57,6 +57,17 @@
         "predicates": 6,
         "thresholds": []
     },
+    "archive-controls-reach-the-page-regression.php": {
+        "assertions": 52,
+        "predicates": 54,
+        "thresholds": [
+            2,
+            2,
+            2,
+            6,
+            3528
+        ]
+    },
     "archive-filter-row-regression.php": {
         "assertions": 28,
         "predicates": 26,

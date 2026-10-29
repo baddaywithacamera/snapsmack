@@ -314,10 +314,10 @@
             "https://fonts.googleapis.com/css2?family=Cinzel:wght@300;400;500;600;700;900&amp;family=Cormorant+Garamond:wght@300;400;500;600;700;900&amp;display=swap"
         ],
         "paragraphs": 1,
-        "links": 5,
+        "links": 6,
         "headings": 2,
-        "words": 3,
-        "text_sha256": "272a90989f9a7ec41dbae4e70d6e741a69f9c7af4b3e78e83cf4d1b25bc15399"
+        "words": 5,
+        "text_sha256": "33869435a957983f663b71582c6c0fd9306dd5eb5c60afc9c2ed6489c5afc232"
     },
     "chaplin/landing": {
         "images": [
@@ -1427,10 +1427,10 @@
             "/skins/onyx/style.css"
         ],
         "paragraphs": 1,
-        "links": 5,
+        "links": 6,
         "headings": 1,
-        "words": 3,
-        "text_sha256": "272a90989f9a7ec41dbae4e70d6e741a69f9c7af4b3e78e83cf4d1b25bc15399"
+        "words": 5,
+        "text_sha256": "33869435a957983f663b71582c6c0fd9306dd5eb5c60afc9c2ed6489c5afc232"
     },
     "onyx/landing": {
         "images": [
