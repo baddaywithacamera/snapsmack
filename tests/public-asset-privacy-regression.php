@@ -50,4 +50,30 @@ foreach (['thomas_uid', 'window.ssUid', 'INSERT INTO', '<script>'] as $forbidden
     }
 }
 
+// AND THE POLICY MUST ACTUALLY PERMIT THEM.
+//
+// 79233b91 emitted a correct Google stylesheet link and the page still loaded
+// ZERO faces, because snapsmack_public_csp() said style-src 'self' and
+// font-src 'self' data:. Every source-reading test passed. Codex caught it
+// with a real browser against the real header. A link the policy forbids is
+// not font delivery, so the policy is asserted here beside the markup.
+require_once $root . '/core/trusted-html.php';
+require_once $root . '/core/custom-code-policy.php';
+$csp = snapsmack_public_csp(false);
+foreach (['style-src' => 'https://fonts.googleapis.com', 'font-src' => 'https://fonts.gstatic.com'] as $directive => $host) {
+    if (!preg_match('~' . preg_quote($directive, '~') . ' ([^;]*)~', $csp, $m) || !str_contains($m[1], $host)) {
+        throw new RuntimeException("Public CSP no longer permits {$host} in {$directive}: the stylesheet is blocked and no face loads.");
+    }
+}
+// And nothing WIDER crept in alongside them.
+foreach (['style-src', 'font-src'] as $directive) {
+    preg_match('~' . preg_quote($directive, '~') . ' ([^;]*)~', $csp, $m);
+    preg_match_all('~https?://([a-z0-9.*-]+)~i', $m[1] ?? '', $hosts);
+    foreach (array_unique($hosts[1] ?? []) as $host) {
+        if (!in_array(strtolower($host), $permittedFontHosts, true)) {
+            throw new RuntimeException("Public CSP {$directive} widened to an unapproved host: {$host}");
+        }
+    }
+}
+
 echo "Public asset privacy regression passed.\n";

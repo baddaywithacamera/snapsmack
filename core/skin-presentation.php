@@ -513,8 +513,14 @@ function snapsmack_attach_local_font_faces(array &$presentation): void
     foreach (($presentation['options'] ?? []) as $value) {
         $family = trim((string)$value);
         if ($family === '') continue;
-        if (isset($localFonts[$family])) { $selected[$family] = $localFonts[$family]; continue; }
-        if (isset($googleFonts[$family])) $remote[$family] = true;
+        // GOOGLE FIRST. Three families sit in both lists, and before this they
+        // stayed self-hosted because the local check came first. The owner's
+        // rule is the other way round: "the asset repository was only intended
+        // for the handful not available from Google." So a family Google
+        // carries comes from Google, and font.php serves only what Google does
+        // not have.
+        if (isset($googleFonts[$family])) { $remote[$family] = true; continue; }
+        if (isset($localFonts[$family])) $selected[$family] = $localFonts[$family];
     }
     if (!$selected && !$remote) return;
 

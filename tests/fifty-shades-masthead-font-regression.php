@@ -26,10 +26,18 @@ if (!isset($inventory['local_fonts']['Merriweather'])
     || ($inventory['local_fonts']['Merriweather']['file'] ?? '') !== 'assets/fonts/Merriweather/Merriweather-Regular.ttf') {
     throw new RuntimeException('Merriweather is absent from the bounded local font inventory.');
 }
+// DELIVERY, NOT A PARTICULAR HOST.
+// This asserted /font.php, the same-origin provider. That encoded the
+// 29 September decision the owner has since reversed: "the asset repository
+// was only intended for the handful not available from Google." Merriweather,
+// Marcellus and Special Elite are in BOTH lists, so they now come from Google
+// and the same-origin route no longer carries them. The contract that matters
+// is that the chosen face is DELIVERED, by whichever route owns it -- this
+// still fails if neither does.
+$__fontStyle = $style;
 if (!str_contains($style, 'font-family:"Merriweather", sans-serif')
-    || !str_contains($style, "font-family:'Merriweather'")
-    || !str_contains($style, '/font.php?family=Merriweather')) {
-    throw new RuntimeException('The selected 50 SHADES masthead face is not delivered through the same-origin provider.');
+    || !(str_contains($__fontStyle, '/font.php?family=Merriweather') || (str_contains($__fontStyle, 'fonts.googleapis.com') && str_contains($__fontStyle, 'family=Merriweather')))) {
+    throw new RuntimeException('The selected 50 SHADES masthead face is not delivered at all.');
 }
 if (!is_file($root . '/assets/fonts/Merriweather/Merriweather-Regular.ttf')
     || !is_file($root . '/assets/fonts/Merriweather/OFL.txt')) {
@@ -44,7 +52,8 @@ ob_start();
 $rendered = snapsmack_render_strict_skin_template($root . '/skins/50-shades-of-noah-grey', 'layout.php', $view);
 $html = (string)ob_get_clean();
 if (!$rendered || !str_contains($html, 'font-family:"Merriweather", sans-serif')
-    || !str_contains($html, '/font.php?family=Merriweather')
+    || !(str_contains($html, '/font.php?family=Merriweather')
+         || (str_contains($html, 'fonts.googleapis.com') && str_contains($html, 'family=Merriweather')))
     || !str_contains($html, 'variant-light.css')
     || !str_contains($html, 'archive-page')) {
     throw new RuntimeException('The 50 SHADES layout does not emit its generated masthead font presentation.');

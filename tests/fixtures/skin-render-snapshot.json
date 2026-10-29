@@ -1725,7 +1725,7 @@
         "stylesheets": [
             "",
             "/skins/rational-geo/style.css",
-            "https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
+            "https://fonts.googleapis.com/css2?family=Marcellus:wght@300;400;500;600;700;900&amp;family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
         ],
         "paragraphs": 1,
         "links": 3,
@@ -1741,7 +1741,7 @@
         "stylesheets": [
             "",
             "/skins/rational-geo/style.css",
-            "https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
+            "https://fonts.googleapis.com/css2?family=Marcellus:wght@300;400;500;600;700;900&amp;family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
         ],
         "paragraphs": 1,
         "links": 3,
@@ -1754,7 +1754,7 @@
         "stylesheets": [
             "",
             "/skins/rational-geo/style.css",
-            "https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
+            "https://fonts.googleapis.com/css2?family=Marcellus:wght@300;400;500;600;700;900&amp;family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
         ],
         "paragraphs": 1,
         "links": 1,
@@ -1769,7 +1769,7 @@
         "stylesheets": [
             "",
             "/skins/rational-geo/style.css",
-            "https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
+            "https://fonts.googleapis.com/css2?family=Marcellus:wght@300;400;500;600;700;900&amp;family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
         ],
         "paragraphs": 2,
         "links": 1,
@@ -1784,7 +1784,7 @@
         "stylesheets": [
             "",
             "/skins/rational-geo/style.css",
-            "https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
+            "https://fonts.googleapis.com/css2?family=Marcellus:wght@300;400;500;600;700;900&amp;family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
         ],
         "paragraphs": 2,
         "links": 3,
@@ -1797,7 +1797,7 @@
         "stylesheets": [
             "",
             "/skins/rational-geo/style.css",
-            "https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
+            "https://fonts.googleapis.com/css2?family=Marcellus:wght@300;400;500;600;700;900&amp;family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
         ],
         "paragraphs": 3,
         "links": 3,
@@ -1812,7 +1812,7 @@
         "stylesheets": [
             "",
             "/skins/rational-geo/style.css",
-            "https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
+            "https://fonts.googleapis.com/css2?family=Marcellus:wght@300;400;500;600;700;900&amp;family=DM+Mono:wght@300;400;500;600;700;900&amp;display=swap"
         ],
         "paragraphs": 5,
         "links": 3,

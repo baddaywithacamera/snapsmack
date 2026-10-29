@@ -1855,7 +1855,8 @@ body.static-transmission #scroll-stage {
 }
 
 /* Page title — big, airy, gallery-catalog feel */
-.static-page-title {
+.static-page-title,
+.blogroll-page-title {
     font-family: Georgia, 'Times New Roman', serif;
     font-size: 28px;
     font-weight: 400;
@@ -1865,6 +1866,23 @@ body.static-transmission #scroll-stage {
     margin: 0 0 60px 0;
     padding-bottom: 20px;
     border-bottom: 1px solid #d5d0cb;
+}
+
+/* The shared blogroll renderer supplies the links' canvas, while its page
+   heading is a sibling. Keep both inside one reading column. */
+.blogroll-page {
+    width: 100%;
+    max-width: 800px;
+    margin: 60px auto 80px;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+.blogroll-page > .blogroll-canvas {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
 }
 
 /* Blogroll canvas — generous centered content lane */
