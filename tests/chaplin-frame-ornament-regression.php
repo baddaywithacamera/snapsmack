@@ -105,9 +105,25 @@ cf_test(str_contains($component, "\$chapOrn['mid_tb']") && str_contains($compone
     'and gates them on the prepared values rather than always drawing them');
 cf_test(str_contains($component, 'chap-orn chap-orn-masked'),
     'every ornament carries chap-orn-masked, the plate that makes the gap around it');
-cf_test(substr_count($component, 'class="chap-orn chap-orn-masked') >= 1
-        && !preg_match('/class="chap-orn chap-orn-(tl|tr|bl|br)"/', $component),
-    'no ornament is emitted without the masking class, as the rebuilt markup did');
+// The markup moved to the component layer, which is where a component's
+// markup belongs. The contract did not move with it by accident -- these
+// assert it at its new address, and add the one that was missing when the
+// About page was destroyed.
+$helpers = (string) file_get_contents($root . '/core/skin-render-helpers.php');
+// Strip // comments before asserting on markup, so prose describing the old
+// broken shape is never mistaken for the shape being emitted.
+$helpersCode = (string) preg_replace('#//.*#', '', $helpers);
+cf_test(str_contains($helpers, "'frame-ornaments'"),
+    'the renderer has a frame-ornaments component, named by function not by skin');
+cf_test(str_contains($helpersCode, 'chap-orn chap-orn-masked '),
+    'every ornament it emits carries the masking class that makes the gap');
+cf_test(str_contains($helpers, '<div class="chap-orn chap-orn-masked ')
+        && str_contains($helpers, '<img src='),
+    'EACH ORNAMENT IS A DIV WITH THE IMAGE INSIDE IT, so the box carries the size');
+cf_test(!str_contains($helpersCode, '<img class="chap-orn'),
+    'no ornament is a bare img: that is what let a static-page image rule blow one to 734x3145 across the owner text');
+cf_test(stripos($helpers, 'secure') !== false,
+    'and the record says why the image is still a same-origin URL rather than an inlined SVG');
 
 echo "\nCorner ornaments default ON, as the deleted partial and the manifest both have it\n";
 $bare = snapsmack_chaplin_presentation(['chap_ornament_style' => 'A']);

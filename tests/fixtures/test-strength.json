@@ -146,8 +146,8 @@
         "thresholds": []
     },
     "chaplin-frame-ornament-regression.php": {
-        "assertions": 18,
-        "predicates": 19,
+        "assertions": 22,
+        "predicates": 23,
         "thresholds": []
     },
     "chaplin-landing-photo-nav-regression.php": {
