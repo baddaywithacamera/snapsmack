@@ -15,6 +15,16 @@
 
 ## Unreleased — CHAPLIN restoration, in progress
 
+- **CHAPLIN's landing page has the bottom photo navigation back.** Sean's reference capture shows it under the frame — PREV | FIRST | INFO | COMMENTS (0) | LAST | NEXT, with LAST and NEXT greyed because the newest photograph is on screen. Codex measured the live page at 1920: "blank bottom photo nav persist." Two things had to be true and neither was.
+
+- **The feed response carried no neighbours.** CHAPLIN declares `features.has_landing`, so the controller hands it the FEED response rather than the photo response — and the feed response had `items`, `rows`, `navigation` and a photo count, with no `previous`, `next`, `first` or `last`. There was nothing to draw a photo navigation from. The hero's neighbours are now computed with the **same four repository calls** `snapsmack_photo_response()` uses, so the landing and the solo page cannot disagree about what "next" means, and only when there is a hero photograph to be adjacent to.
+
+- **The landing branch rendered an empty box.** `<div id="infobox" aria-hidden="true"></div>` — empty, and marked hidden from assistive technology, which is the right marking for an empty box and the wrong box entirely. It renders the `photo-navigation` component now, exactly as the solo branch already did.
+
+- `tests/chaplin-landing-photo-nav-regression.php`, 20 assertions, **renders the component** with a synthetic landing view and reads the markup rather than grepping the source — a component that emitted the right nav on the wrong branch would pass a grep. Reverting both files fails it 15 ways; reverting only the component, so the data is there and nothing draws it, fails it 9 ways.
+
+- **The render-snapshot gate caught this change before the suite did, which is what it is for.** `chaplin/landing` went from 2 links to 4 and 5 words to 11. Intended, so the fixture is updated deliberately and the diff is that one skin and that one view. 285 PHP regression tests pass.
+
 - **The only wrong thumbnail number was the one a site owner could read.** Sean: *"when we developed SCROLL and modified MOSAIC to create the STACKER engine it uses, we discovered that 600px images were too small. Medium images got moved to 900px on the long side. Small is 400px."* The generators were already right — `core/constants.php` carries `SNAPSMACK_THUMB_SQUARE = 400` and `SNAPSMACK_THUMB_ASPECT_LONG = 900`, and its comment explains that the constants exist precisely to end the old 400/600 split where a thumbnail's size depended on which code path made it. But ARCHIVE APPEARANCE offered **"MEDIUM (~600px THUMBNAILS) — RECOMMENDED"** with a tooltip saying the same, both typed into the page. The label is now derived from the constant and carries no literal figure at all.
 
 - **One generator had drifted back to a typed number.** `smack-swap.php` still had `$thumb_size = 400;`. The value agrees with the constant today, which is exactly the condition that makes drift invisible: swap a photograph and its thumbnail size came from somewhere other than every other path. It reads the constant now.

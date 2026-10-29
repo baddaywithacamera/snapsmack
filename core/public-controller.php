@@ -565,7 +565,36 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         // end. This follows the actual filtered landing query instead of a
         // broader site-wide count that can include posts without usable covers.
         $nextLandingPage = count($items) === $perPage ? $page + 1 : 0;
+        // THE HERO'S NEIGHBOURS, so a landing skin can draw the bottom photo
+        // navigation. A skin that declares has_landing gets the feed response
+        // instead of the photo response, and the feed response carried no
+        // previous / next / first / last -- so CHAPLIN's landing rendered an
+        // empty <div id="infobox" aria-hidden="true"></div> where the owner's
+        // reference capture shows PREV | FIRST | INFO | COMMENTS | LAST |
+        // NEXT. Codex, measuring the live page at 1920: "blank bottom photo
+        // nav persist."
+        //
+        // Computed with the SAME four repository calls snapsmack_photo_response
+        // uses, so the two paths cannot disagree about what "next" means, and
+        // only when there is a hero to be adjacent to. Four indexed lookups on
+        // a page that already ran a feed query; the keys are additive and inert
+        // for any skin that does not read them.
+        $heroId = (int)($items[0]['id'] ?? 0);
+        $heroNav = ['previous' => [], 'next' => [], 'first' => [], 'last' => [],
+                    'comments' => [], 'comments_enabled' => false];
+        if ($heroId > 0) {
+            $heroNav['previous'] = snapsmack_photo_destination($repository->adjacentPhotograph($heroId, false));
+            $heroNav['next']     = snapsmack_photo_destination($repository->adjacentPhotograph($heroId, true));
+            $heroNav['first']    = snapsmack_photo_destination($repository->photographBoundary(false));
+            $heroNav['last']     = snapsmack_photo_destination($repository->photographBoundary(true));
+            $heroNav['comments'] = $repository->approvedComments($heroId, null);
+            $heroNav['comments_enabled'] = !empty($items[0]['allow_comments']);
+        }
+
         return ['status' => 200, 'kind' => 'landing', 'mode' => $mode, 'items' => $items,
+            'previous' => $heroNav['previous'], 'next' => $heroNav['next'],
+            'first' => $heroNav['first'], 'last' => $heroNav['last'],
+            'comments' => $heroNav['comments'], 'comments_enabled' => $heroNav['comments_enabled'],
             'puzzle_items' => $skin === 'game-on' ? array_map('snapsmack_game_on_focus_item', $repository->gameOnPuzzlePhotographs()) : [],
             'rows' => $rows, 'total_pages' => 1, 'next_page' => $nextLandingPage,
             'slider_items' => $sliderItems, 'navigation' => $navigation, 'page' => $page,
