@@ -101,8 +101,8 @@
         "thresholds": []
     },
     "archive-thumb-style-reaches-every-skin-regression.php": {
-        "assertions": 36,
-        "predicates": 25,
+        "assertions": 41,
+        "predicates": 29,
         "thresholds": [
             2
         ]

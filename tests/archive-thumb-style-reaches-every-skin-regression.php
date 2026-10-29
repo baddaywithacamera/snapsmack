@@ -35,10 +35,16 @@ declare(strict_types=1);
  */
 
 $root = dirname(__DIR__);
+if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
 require_once $root . '/core/trusted-html.php';
 require_once $root . '/core/skin-render-helpers.php';
 require_once $root . '/core/skin-view-contract.php';
 require_once $root . '/core/skin-view-model.php';
+// Without this, snapsmack_skin_presentation() is missing and the per-skin
+// render below hands every layout an empty options array. Five skins then
+// rendered no readable thumbnail and were reported NOT CHECKED, which read
+// as a property of those skins and was really a gap in this harness.
+require_once $root . '/core/skin-presentation.php';
 
 $pass = 0;
 $fail = 0;
@@ -247,13 +253,111 @@ foreach (['smack-appearance-archive.php', 'smack-settings.php'] as $_page) {
         "{$_page} still validates the save against exactly square|cropped");
 }
 
-echo "\nThe CMS side is complete; the skins are not, and that is stated\n";
-// Named plainly so nobody reads a green run as "TRUE GRIT is fixed".
-$tg = (string) file_get_contents($root . '/skins/true-grit/layout.php');
-$stillHardcoded = str_contains($tg, 'square-grid archive-grid');
-echo $stillHardcoded
-    ? "  note  skins/true-grit/layout.php still hardcodes square-grid: core is ready, the layout is not (Codex's lane)\n"
-    : "  note  skins/true-grit/layout.php no longer hardcodes square-grid\n";
+echo "\nMEASURED ON RENDERED OUTPUT, not on a substring in a layout file\n";
+// Codex asked for this and he was right. The note here used to grep
+// skins/true-grit/layout.php for the hardcoded class, which reports what the
+// FILE says, not what the PAGE does -- the same mistake as trusting a code
+// comment. So render each skin both ways and compare the output.
+//
+// A skin is only reported, never asserted, EXCEPT where the archive is drawn
+// by a core page component: that is core's own lane, so it must flip, and a
+// failure there is mine. For a skin that draws its own grid in its layout,
+// the fix is one line in Codex's lane and this prints what it finds.
+function ts_render(string $root, string $skin, string $style): string {
+    $item = [
+        'id' => 1, 'img_slug' => 'a-photo', 'img_title' => 'A Photo', 'img_alt' => 'A Photo',
+        'img_file' => '/media/photo.jpg', 'img_thumb_aspect' => '/media/aspect.jpg',
+        'img_thumb_square' => '/media/square.jpg', 'img_width' => 1200, 'img_height' => 800,
+        'url' => '/a-photo',
+    ];
+    $response = ['status' => 200, 'kind' => 'archive', 'items' => [$item, $item], 'navigation' => []];
+    $site = [
+        'site_name' => 'Example', 'language' => 'en', 'direction' => 'ltr',
+        'skin_slug' => $skin,
+        'skin_style_url' => "/skins/{$skin}/style.css",
+        'skin_presentation' => function_exists('snapsmack_skin_presentation')
+            ? snapsmack_skin_presentation([], $skin) : [],
+        'archive_layout' => 'thumbs',
+        'archive_thumb_style' => $style,
+        'archive_grid' => snapsmack_archive_grid_metrics(['browse_cols' => 4, 'thumb_size' => 'm'], $style),
+    ];
+    $view = snapsmack_build_skin_view($response, $site);
+    ob_start();
+    snapsmack_render_strict_skin_template($root . '/skins/' . $skin, 'layout.php', $view);
+    return (string) ob_get_clean();
+}
+
+// Which thumbnail file the rendered page actually asks for. That is the fact
+// Sean reported: "every thumbnail in that grid is the t_ prefixed file".
+function ts_thumbs(string $html): array {
+    preg_match_all('/src="([^"]*(?:aspect|square|photo)[^"]*)"/', $html, $m);
+    return array_values(array_unique($m[1] ?? []));
+}
+
+// CORE'S OWN LANE: 50 SHADES draws its thumbs pane inside
+// core/50-shades-page-component.php, so nothing in a skin file can excuse it.
+// Muse's count correction is what turned this one up.
+$fsogCropped = ts_render($root, '50-shades-of-noah-grey', 'cropped');
+$fsogSquare  = ts_render($root, '50-shades-of-noah-grey', 'square');
+$fsogC = ts_thumbs($fsogCropped);
+$fsogS = ts_thumbs($fsogSquare);
+ts_test($fsogC !== [] && $fsogS !== [],
+    '50 SHADES renders thumbnails at all, so the comparison below means something');
+ts_test($fsogC !== $fsogS,
+    '50 SHADES asks for a DIFFERENT file when the setting flips (its grid is in core)');
+ts_test(in_array('/media/square.jpg', $fsogS, true),
+    'and in square mode it asks for the square derivative by name');
+ts_test(in_array('/media/aspect.jpg', $fsogC, true),
+    'and in natural-aspect mode it asks for the aspect derivative by name');
+ts_test(str_contains($fsogSquare, 'aspect-ratio:1'),
+    'a 50 SHADES square tile is given a 1:1 box, so the setting is visible');
+
+// EVERY SKIN THAT DRAWS ITS OWN THUMBS GRID: reported, not asserted.
+// PASS / FAIL as AGENTS.md requires, with the reason stated.
+echo "\n  Per-skin, measured from rendered output (reported, not asserted --\n";
+echo "  these layouts are Codex's lane and the prepared fields are new):\n";
+$ownGrid = ['52-card-pickup', 'alfred', 'aurora', 'game-on', 'glide', 'heuristic',
+    'hip-to-be-square', 'instant-camera', 'jive-turkey', 'new-horizon', 'parade',
+    'show-n-tell', 'slickr', 'sliders', 'stanley', 'sudden-impact', 'the-grid',
+    'tilez', 'true-grit', 'writing-with-impact'];
+$honours = 0;
+$ignores = [];
+$unrendered = [];
+$warned = [];
+$warnSkin = '';
+// A layout that reads a missing option key without a guard is a real finding,
+// but it is not this test's subject and the noise buried the result. Counted
+// and named below rather than silenced.
+set_error_handler(function ($no, $str) use (&$warned, &$warnSkin) {
+    if ($warnSkin !== '' && !in_array($warnSkin, $warned, true)) { $warned[] = $warnSkin; }
+    return true;
+}, E_WARNING | E_NOTICE | E_DEPRECATED);
+foreach ($ownGrid as $skinSlug) {
+    $warnSkin = $skinSlug;
+    if (!is_file($root . '/skins/' . $skinSlug . '/layout.php')) { $unrendered[] = $skinSlug; continue; }
+    try {
+        $c = ts_thumbs(ts_render($root, $skinSlug, 'cropped'));
+        $s = ts_thumbs(ts_render($root, $skinSlug, 'square'));
+    } catch (Throwable $e) { $unrendered[] = $skinSlug; continue; }
+    if ($c === [] && $s === []) { $unrendered[] = $skinSlug; continue; }
+    if ($c !== $s) { $honours++; } else { $ignores[] = $skinSlug; }
+}
+printf("    PASS        %d of %d honour the setting in rendered output\n", $honours, count($ownGrid));
+printf("    FAIL        %d still render the same file both ways: %s\n",
+    count($ignores), $ignores === [] ? 'none' : implode(', ', $ignores));
+printf("    NOT CHECKED %d could not be rendered here: %s\n",
+    count($unrendered), $unrendered === [] ? 'none' : implode(', ', $unrendered));
+restore_error_handler();
+$warnSkin = '';
+printf("    WARNED      %d emitted a PHP warning when rendered with no saved",
+    count($warned));
+printf(" options, which is a layout reading a missing option key without a
+");
+printf("                guard, not a thumb-style fault: %s
+",
+    $warned === [] ? 'none' : implode(', ', $warned));
+echo "    A FAIL above is not a defect in this build. Core prepares the answer;\n";
+echo "    printing it is one line per layout, and that work is Codex's.\n";
 
 echo "\n  {$pass} passed, {$fail} failed\n";
 if ($fail > 0) {
