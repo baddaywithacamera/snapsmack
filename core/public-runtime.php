@@ -227,6 +227,40 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
         unset($item['img_exif']);
         return $item;
     };
+    // THE DOWNLOAD LINK, PREPARED HERE BECAUSE THIS IS WHERE THE DATABASE IS.
+    //
+    // core/download-overlay.php has not been run by anything since 592f1ae4,
+    // "Complete photoblog strict runtime conversion" on 28 September, which
+    // removed the include from every skin layout. The only occurrence left in
+    // the repository is the usage example in that file's own header comment.
+    // Measured on two live sites, two different skins: the word "download"
+    // appears zero times on a photo page. foundtextures.ca is a free texture
+    // library whose front page tells visitors to use a download link.
+    //
+    // It is prepared HERE rather than in a render helper because
+    // tests/skin-render-helpers-regression.php refuses a helper that reaches
+    // $pdo -- "Render helper owns forbidden authority" -- and the URL needs the
+    // database for its HMAC salt (SECAUDIT 047). That guard is right, so the
+    // runtime, which already holds $pdo, does the work and the renderer is
+    // handed a finished link.
+    //
+    // The audited file is INCLUDED, not reimplemented: it rewrites Google
+    // Drive, OneDrive and SharePoint share links and signs the local route.
+    // Rewriting that from memory is how the token stops matching.
+    if (is_array($response['item'] ?? null) && !empty($response['item']['id'])) {
+        $img = $response['item'];
+        $download_button = '';
+        $download_url = '';
+        $target = '';
+        include __DIR__ . '/download-overlay.php';
+        if ($download_button !== '' && $download_url !== '') {
+            $response['item']['download_link'] = [
+                'url' => (string)$download_url,
+                'external' => $target !== '',
+            ];
+        }
+    }
+
     if (is_array($response['item'] ?? null)) $response['item'] = $trustItem($response['item']);
     foreach (['items', 'photographs'] as $group) {
         if (!is_array($response[$group] ?? null)) continue;

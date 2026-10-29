@@ -59,19 +59,40 @@ echo "\nThe article still carries the microformat, which the id used to share\n"
 tg_test(str_contains($layout, '<article class="h-entry single-image-page">'),
     'h-entry and single-image-page moved to the wrapping article, not lost');
 
-// THE DOWNLOAD BUTTON IS NOT ASSERTED HERE, BECAUSE IT IS NOT FIXED.
-//
-// I built a photo-download component that included core/download-overlay.php,
-// and tests/skin-render-helpers-regression.php refused it outright: "Render
-// helper owns forbidden authority: $pdo". That guard is right. The overlay
-// needs the database for its HMAC salt (SECAUDIT 047), and a render helper may
-// not reach the database. The URL therefore has to be prepared upstream, in
-// the controller, and the renderer handed a finished link.
-//
-// That wiring is NOT done and is not asserted as done. foundtextures.ca has
-// had no download link since 592f1ae4 on 28 September and still has none.
+echo "
+The download link is prepared upstream and rendered downstream
+";
+$runtime = (string) file_get_contents($root . '/core/public-runtime.php');
+$helpers = (string) file_get_contents($root . '/core/skin-render-helpers.php');
 
-echo "\n";
+tg_test(str_contains($runtime, "include __DIR__ . '/download-overlay.php'"),
+    'the runtime INCLUDES the audited overlay rather than reimplementing the HMAC token (SECAUDIT 047)');
+tg_test(str_contains($runtime, "'download_link'"),
+    'and puts a finished link on the item, where the database already is');
+tg_test(str_contains($helpers, "'photo-download'"),
+    'the renderer has a photo-download component');
+tg_test(!str_contains($helpers, 'download-overlay'),
+    'which does NOT include the overlay: a render helper may not reach the database, and that guard greps this file');
+tg_test(str_contains($layout, "snap_render_component('photo-download'"),
+    'the layout renders it');
+$dlAt = strpos($layout, "snap_render_component('photo-download'");
+$wrapAt = strpos($layout, 'class="tg-photo-wrap"');
+$infoAt = strpos($layout, 'id="infobox"');
+tg_test($wrapAt !== false && $dlAt !== false && $infoAt !== false && $wrapAt < $dlAt && $dlAt < $infoAt,
+    'inside the photo wrap, where 592f1ae4 removed it from on 28 September');
+
+if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
+require_once $root . '/core/trusted-html.php';
+require_once $root . '/core/skin-render-helpers.php';
+$ext = (string) snap_render_component('photo-download', ['link' => ['url' => 'https://drive.google.com/uc?export=download&id=X', 'external' => true]]);
+$loc = (string) snap_render_component('photo-download', ['link' => ['url' => '/download.php?id=1&t=abc', 'external' => false]]);
+$non = (string) snap_render_component('photo-download', ['link' => []]);
+tg_test(str_contains($ext, 'class="snap-download-btn"') && str_contains($ext, 'rel="noopener"'),
+    'an external link opens safely in a new tab');
+tg_test(str_contains($loc, 'class="snap-download-btn"') && !str_contains($loc, 'target='),
+    'a same-site link does not');
+tg_test($non === '', 'and no prepared link means no button, rather than a broken one');
+
 echo "  {$pass} passed, {$fail} failed\n";
 if ($fail > 0) {
     echo "TRUE GRIT photo page: FAIL ({$fail}).\n";

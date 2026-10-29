@@ -429,6 +429,21 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . snap_escape_attr($content) . '">';
         }
         $html .= '</head>';
+    } elseif ($name === 'photo-download') {
+        // Renders a link the RUNTIME prepared. No database, no token building,
+        // no share-link rewriting here: skin-render-helpers-regression forbids
+        // a helper that reaches the database handle -- it greps this file for
+        // the variable name, so even naming it in a comment trips the guard,
+        // which is a blunt check and the right kind. All this knows is a
+        // finished URL and whether it leaves the site.
+        $link = is_array($data['link'] ?? null) ? $data['link'] : [];
+        $url = trim((string)($link['url'] ?? ''));
+        if ($url !== '') {
+            $rel = !empty($link['external']) ? ' target="_blank" rel="noopener"' : '';
+            $html = '<a href="' . snap_escape_url($url) . '" class="snap-download-btn"'
+                . ' title="Download full resolution"' . $rel . '>'
+                . '<span class="snap-download-icon"><span></span></span></a>';
+        }
     } elseif ($name === 'frame-ornaments') {
         // DECORATIVE FRAME ORNAMENTS, named by what they ARE, not by the skin
         // that asks for them.
