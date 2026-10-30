@@ -332,14 +332,26 @@ class StorageMode(QWidget):
         return ((self.app_config() or {}).get("url") or "").strip()
 
     def _asset_site(self, asset: dict) -> str:
-        """The site to resolve one row's files against. Tagged rows carry it;
-        an untagged row (an older code path) belongs to the current shelf."""
-        return (asset or {}).get("site") or self._site()
+        """The site to resolve one row's files against.
+
+        Tagged rows carry it, and every row from assets_for() is tagged. The
+        fallback is the CONNECTED site, deliberately, not the picker's choice:
+        with the picker on All, the choice is a sentinel and not a host, so
+        falling back to it would hand a sentinel to a file path. An untagged
+        row can only come from an older code path, and that path only ever
+        held the connected site's rows.
+        """
+        return (asset or {}).get("site") or self._connected_site()
 
     def _row_site(self, item) -> str:
-        """The site of the grid row an item stands for."""
+        """The site of the grid row an item stands for.
+
+        No item means no row to resolve, so the connected site is the only
+        honest answer -- and, as in _asset_site, never the picker's choice,
+        which may be the All sentinel rather than a host.
+        """
         if item is None:
-            return self._site()
+            return self._connected_site()
         aid = item.data(Qt.UserRole)
         return self._asset_site(
             next((a for a in self._assets if a["asset_id"] == aid), None))
@@ -347,13 +359,19 @@ class StorageMode(QWidget):
     def _refresh_sites(self):
         """Fill the picker from the catalogues on disk, keeping the choice.
 
-        DEFAULT IS THE CONNECTED SITE, which is exactly what this panel showed
-        before the picker existed, so nothing changes until he chooses. The
-        instruction was "default All"; I am not following it and I said so in
-        the room rather than quietly. All means reading every catalogue -- on
-        the owner's machine that is 4,629 rows against the 3,642 of the site
-        he called unusable, so the default that was asked for would make the
-        shelf bigger. One line here reverses it if that is overruled.
+        DEFAULT IS ALL SITES. Every shelf on the machine, in one grid, with
+        each row carrying its own site so its files still resolve.
+
+        I argued for defaulting to the connected site instead -- All means
+        reading every catalogue, which on the owner's machine is 4,629 rows
+        against the 3,642 of the one site he called unusable, so it opens
+        bigger than what he complained about. That was considered and
+        overruled, and All is what the panel does. Recorded here because the
+        reasoning is worth having if it ever comes up again, not as an
+        objection still standing.
+
+        The choice is restored across reloads, so the default applies on first
+        open and never fights a choice he has already made.
         """
         combo = self.site_combo
         was = combo.currentData()
@@ -366,14 +384,11 @@ class StorageMode(QWidget):
             combo.addItem(f"{cat['site']}  ({cat['rows']})", cat["site"])
         if len(cats) > 1:
             combo.addItem(f"All sites  ({total})", self.ALL_SITES)
-        # Restore the previous choice; otherwise pick the connected site.
-        want = was
-        if want is None:
-            try:
-                want = snap_home.site_key(self._connected_site())
-            except ValueError:
-                want = None
-        at = combo.findData(want) if want else -1
+        # Restore the previous choice; on first open, All. With only one
+        # catalogue there is no All entry, so findData misses and index 0 --
+        # that single site -- is both the fallback and the right answer.
+        want = was if was is not None else self.ALL_SITES
+        at = combo.findData(want)
         combo.setCurrentIndex(at if at >= 0 else 0)
         combo.blockSignals(False)
         combo.setEnabled(combo.count() > 1)
