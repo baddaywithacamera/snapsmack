@@ -640,6 +640,23 @@ main.public-content,
     opacity: 0.7;
 }
 
+/* The prepared archive class chooses the derivative and its geometry together.
+   Natural thumbnails keep their own height through the inner image wrapper. */
+#browse-grid.cropped-grid .tg-thumb,
+#browse-grid.cropped-grid .thumb-link {
+    aspect-ratio: auto;
+    height: auto;
+}
+#browse-grid.cropped-grid .tg-thumb img {
+    width: 100%;
+    height: auto;
+}
+#browse-grid.square-grid .tg-thumb {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1 / 1;
+}
+
 /* --- Justified item hover --- */
 #justified-grid .justified-item img {
     transition: opacity 0.3s ease;
@@ -1384,4 +1401,90 @@ a.logo-area,
     color: inherit;
     text-decoration: none;
 }
+/* Temporary skin-local download presentation; remove after SS-1059 core asset delivery ships. */
+.snap-download-btn {
+    position: fixed;
+    bottom: 80px;
+    right: 30px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    transition: opacity 0.25s ease;
+    cursor: pointer;
+    text-decoration: none;
+    z-index: 100;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Full opacity on hover */
+.snap-download-btn:hover {
+    background-color: rgba(0, 0, 0, 0.9);
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: scale(1.1);
+    transition: opacity 0.25s ease, transform 0.15s ease, background-color 0.15s ease;
+}
+
+/* Pure CSS download arrow icon */
+.snap-download-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    position: relative;
+}
+
+/* Downward arrow shaft */
+.snap-download-icon::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 2px;
+    height: 12px;
+    background: #fff;
+    transform: translateX(-50%);
+}
+
+/* Arrowhead */
+.snap-download-icon::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 7px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: translateX(-50%) rotate(45deg);
+}
+
+/* Tray/base line under the arrow */
+.snap-download-icon span {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #fff;
+}
+
+/* Keep the archive toggle in this skin's filter flow, clear of search. */
+.true-grit-v2 .archive-filter-inner { flex-wrap: wrap; gap: 16px; }
+.true-grit-v2 .archive-controls--docked {
+    position: static !important;
+    transform: none !important;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+.tg-search-page { max-width: 1200px; margin: 48px auto; padding: 0 30px; }
+.tg-search-result { display: inline-block; vertical-align: top; width: 28%; margin: 2%; }
+.tg-search-link { display: block; color: inherit; text-decoration: none; }
+.tg-search-link img { display: block; max-width: 100%; height: auto; box-shadow: 3px 3px 8px rgba(0,0,0,.2); }
+.tg-search-link h2 { font: inherit; margin-top: 16px; }
+.tg-search-link:focus-visible { outline: 2px solid currentColor; outline-offset: 6px; }
+
 /* ===== SNAPSMACK EOF ===== */
