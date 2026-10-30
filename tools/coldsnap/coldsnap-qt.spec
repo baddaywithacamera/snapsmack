@@ -3,10 +3,39 @@
 # Same self-bundling discipline as coldsnap.spec: every local .py and every
 # shared module is bundled AND force-imported, so a new module can never be
 # silently dropped from the exe (the bug that once hid whole tabs).
-import os, glob, sys
+import os, glob, sys, ast
+from PyInstaller.utils.win32.versioninfo import (
+    VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable, StringStruct,
+    VarFileInfo, VarStruct,
+)
 sys.setrecursionlimit(sys.getrecursionlimit() * 5)
 
 _src = SPECPATH
+
+# Read the same literal the app imports; never maintain a second version.
+with open(os.path.join(_src, '_version.py'), encoding='utf-8') as _vf:
+    _version_tree = ast.parse(_vf.read())
+_build_version = next(
+    ast.literal_eval(node.value) for node in _version_tree.body
+    if isinstance(node, ast.Assign)
+    and any(isinstance(target, ast.Name) and target.id == 'BUILD_VERSION'
+            for target in node.targets)
+)
+_version_tuple = tuple(int(part) for part in _build_version.split('.')) + (0,)
+if len(_version_tuple) != 4 or any(part < 0 or part > 65535 for part in _version_tuple):
+    raise ValueError('BUILD_VERSION must contain three Windows-compatible integers')
+_windows_version = VSVersionInfo(
+    ffi=FixedFileInfo(filevers=_version_tuple, prodvers=_version_tuple,
+                      mask=0x3f, flags=0, OS=0x40004, fileType=1, subtype=0, date=(0, 0)),
+    kids=[StringFileInfo([StringTable('040904B0', [
+        StringStruct('FileVersion', _build_version),
+        StringStruct('ProductVersion', _build_version),
+        StringStruct('FileDescription', 'COLD SNAP'),
+        StringStruct('ProductName', 'COLD SNAP'),
+        StringStruct('CompanyName', 'Sean McCormick'),
+        StringStruct('OriginalFilename', 'coldsnap.exe'),
+    ])]), VarFileInfo([VarStruct('Translation', [0x0409, 1200])])],
+)
 
 # --- engine modules, bundled flat (sumna_* import each other by bare name) ---
 _py_files   = glob.glob(os.path.join(_src, '*.py'))
@@ -70,6 +99,7 @@ exe = EXE(
     a.datas,
     [],
     name='coldsnap',
+    version=_windows_version,
     icon=os.path.join(_src, 'assets', 'coldsnap.ico'),
     debug=False,
     bootloader_ignore_signals=False,
