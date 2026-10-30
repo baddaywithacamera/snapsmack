@@ -1,7 +1,7 @@
 <?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
-<?php /* A 'blogroll' branch used to sit HERE, first, emitting <main> and <footer>
-   and nothing else -- so it short-circuited before the <!doctype> below and the
-   page went to the browser with no <head> and no stylesheet (SS-1068). This is
+<?php /* A 'blogroll' branch used to sit HERE, first, emitting a main element and a footer
+   and nothing else -- so it short-circuited before the doctype below and the
+   page went to the browser with no document head and no stylesheet (SS-1068). This is
    the skin the owner caught it on. The blogroll case now lives in the kind
    chain inside the document, where it inherits the head, the wrappers and the
    footer. Only a genuine fragment belongs above the doctype, next line. */ ?>

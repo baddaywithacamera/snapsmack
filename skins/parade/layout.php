@@ -1,7 +1,7 @@
 <?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
-<?php /* A 'blogroll' branch used to sit HERE, first, emitting <main> and <footer>
-   and nothing else -- so it short-circuited before the <!doctype> below and the
-   page went to the browser with no <head> and no stylesheet. It rendered as
+<?php /* A 'blogroll' branch used to sit HERE, first, emitting a main element and a footer
+   and nothing else -- so it short-circuited before the doctype below and the
+   page went to the browser with no document head and no stylesheet. It rendered as
    unstyled default text on every live site using this skin (SS-1068). The
    blogroll case now lives in the kind chain inside the document, next to
    'page', where it inherits the head, the wrappers, the nav and the footer.
