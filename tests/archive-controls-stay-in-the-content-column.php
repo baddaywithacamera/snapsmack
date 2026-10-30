@@ -145,17 +145,43 @@ a_ok(str_contains($code, 'dock.appendChild(ctrls)'),
     'the engine can no longer dock controls at all — a legacy archive page that renders '
     . 'them outside the filter row now never gets them moved into it');
 
-// ── 3. THE RUNTIME ALIGNMENT IS STILL THERE AND STILL BOUNDED ──────────────
+// ── 3. NOTHING WRITES AN INLINE POSITION ANY MORE ──────────────────────────
 //
-// Not removed by this repair, deliberately: it only runs on controls that
-// carry the docked class and it is what positions them on a legacy page that
-// really was moved. What it must NOT do is run against a control the server
-// already placed, which it cannot now, because that control is never moved and
-// never gains the class at runtime.
+// The server renders the controls WITH the docked class, so the old runtime
+// aligner ran on them whether or not they had been moved, and its inline
+// right: beat the stylesheet. Measured on 50-SHADES at 1440 after the
+// parentage fix: stylesheet only put the controls at 1141..1313, the 40px
+// inset the stylesheet asks for; the aligner moved them to 1181..1353, flush
+// against the content column's edge. So it was not neutral and it is gone.
+//
+// If it comes back, the stylesheet stops being the thing that positions this
+// control, and that is the condition the whole ticket is about.
 
-a_ok(str_contains($code, 'alignDockedControls'),
-    'the alignment function is gone; a legacy page whose controls really were moved now '
-    . 'has nothing positioning them');
+// ANY inline write, under ANY variable name. The first version of this check
+// looked for the literal 'ctrls.style.right', and a mutation that wrote the
+// same inline style through a differently named variable sailed past it. A
+// check that pins a variable name tests the spelling, not the behaviour.
+a_ok(!preg_match('/\.\s*style\s*\.\s*right\s*=/', $code)
+     && !preg_match('~setProperty\(\s*.right.~', $code),
+    'something writes an inline right: on the controls again. An inline style beats the '
+    . 'stylesheet, and the stylesheet is what keeps the control in the content column at '
+    . 'the intended inset.');
+
+a_ok(!preg_match('/function\s+alignDockedControls/', $code),
+    'the runtime aligner is back. It measured against #infobox, which is full-bleed, and '
+    . 'applied the answer to an element positioned against the content column -- two '
+    . 'different reference frames -- and clamped to zero, which means flush.');
+
+a_ok(!preg_match("/addEventListener\(\s*'resize'/", $code),
+    'a resize listener is back in this engine. The only one it ever had existed to '
+    . 're-run the aligner; the stylesheet needs no help on resize.');
+
+// The stylesheet must actually carry the rule that does the positioning now,
+// or removing the JavaScript leaves nothing doing the job.
+$css = (string) file_get_contents($root . '/assets/css/page-archive.css');
+a_ok((bool) preg_match('/\.archive-filter-row\s+\.archive-controls--docked\s*\{[^}]*right:\s*var\(--archive-content-padding/', $css),
+    'the stylesheet no longer positions the docked controls against the content padding, '
+    . 'and nothing else does either now the aligner is gone');
 
 if ($failures) {
     fwrite(STDERR, "FAIL\n- " . implode("\n- ", $failures) . "\n");
