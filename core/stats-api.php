@@ -8,9 +8,34 @@
  *
  * Endpoint:
  *   POST stats/dwell   { "hit": <snap_stats.id>, "ms": <engaged milliseconds> }
- *     Records engaged Scroll Time against a prior hit. Bot-excluded, set-once,
+ *     Records engaged Scroll Time against a prior hit. Bot-excluded,
  *     recent-window-only and capped inside snapsmack_record_dwell(). Always
  *     answers 204 so navigator.sendBeacon() never blocks page unload.
+ *
+ *     NOT SET-ONCE. This said "set-once" and the code has never behaved that
+ *     way: snapsmack_record_dwell writes
+ *     GREATEST(COALESCE(dwell_ms, 0), ?), which CONVERGES ON THE MAXIMUM, and
+ *     that is deliberate -- repeated beacons over one visit must not freeze at
+ *     the first short tab-away sample. The function's own comment explains the
+ *     maximum; this header contradicted it. Corrected rather than left, because
+ *     the next reader checking whether a second beacon can overwrite the first
+ *     would have got the wrong answer from the wrong place.
+ *
+ *     WHAT IS NOT GUARDED, named here because the word "capped" reads like
+ *     more protection than it is (Muse, security audit, 30 October). The route
+ *     is unauthenticated by design and takes the hit id from the request body.
+ *     snap_stats.id is an auto-increment record id AND it is published to every
+ *     visitor -- core/stats-logger.php emits data-hit="<id>" so the engine can
+ *     use it -- so a caller does not have to guess: it can read its own id off
+ *     the page and walk neighbouring ids. Within the 6-hour window, on a
+ *     non-bot hit, that sets dwell_ms to the 30-minute cap.
+ *
+ *     The blast radius is the owner's own Scroll Time figures. No data is
+ *     exposed, no other column or row is writable, and no other table is
+ *     reachable from here. So this is analytics integrity, not a breach -- but
+ *     it means a Scroll Time number is not evidence of anything if someone
+ *     cared to inflate it. NOT FIXED: binding the beacon to its hit needs a
+ *     decision and this is a comment, not a repair.
  */
 
 /**
