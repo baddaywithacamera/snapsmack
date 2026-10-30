@@ -221,6 +221,37 @@ try {
     }
     if (($_active_manifest['cms_controller'] ?? '') === 'smacktalk') {
         require_once __DIR__ . '/core/smacktalk-public-controller.php';
+
+        // THE ENGINES EVERY PUBLIC PAGE GETS, which this branch never had.
+        //
+        // snapsmack_public_runtime() declares Thomas, the F1 help modal, the
+        // cookie notice and the keyboard engine at its common exit. A
+        // SMACKTALK site does not go through that function -- it goes through
+        // snapsmack_smacktalk_request() below -- so on the five skins that set
+        // cms_controller=smacktalk (ALFRED, STANLEY, TELEGRAM, TILEZ,
+        // WRITING-WITH-IMPACT) all four were simply absent.
+        //
+        // Measured on the owner's own live sites, both already running
+        // 0.7.972D: baddaywithacamera.ca (TILEZ) served ss-engine-thomas.js
+        // ZERO times; acolourlesslife.ca (CHAPLIN) served it once. The 972D
+        // note said these reached "all 30 skins" -- that was measured through
+        // the public-runtime path for all 30, which is not the same as
+        // measuring the path each skin actually uses.
+        //
+        // The list is snapsmack_public_engine_assets() so there is ONE
+        // declaration and two callers. Do not inline it here again.
+        require_once __DIR__ . '/core/public-runtime.php';
+        $_registered_skin_assets = snapsmack_merge_registered_assets(
+            $_registered_skin_assets,
+            snapsmack_public_engine_assets()
+        );
+
+        // The consent banner needs its decision worked out while the database
+        // is still in hand; the component that prints it has none. Same call
+        // public-runtime makes, for the same reason.
+        require_once __DIR__ . '/core/consent-runtime.php';
+        $GLOBALS['snapsmack_consent'] = snapsmack_consent_prepare($pdo, $settings);
+
         $_smacktalk = snapsmack_smacktalk_request($pdo, $settings, [
             'view' => $_GET['view'] ?? '',
             'post_slug' => $_GET['post'] ?? '',
