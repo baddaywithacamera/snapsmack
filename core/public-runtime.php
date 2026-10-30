@@ -351,7 +351,21 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
         (array)($response['required_assets']['scripts'] ?? []),
         ['smack-thomas',
          'asset:public:ss-engine-public-help',
-         'asset:public:ss-engine-consent']
+         'asset:public:ss-engine-consent',
+         // THE KEYBOARD ENGINE, which core/meta.php shipped to every skin
+         // before the conversion. Afterwards only the 24 skins that happened
+         // to declare smack-keyboard in their own manifest had it, so six lost
+         // it outright: alfred, photogram, stanley, telegram, tilez,
+         // writing-with-impact. Same fault as Thomas and the same cure.
+         //
+         // It is also the other half of the F1 chain -- ss-engine-comms.js:77
+         // is what BINDS the key and hands off to window.snapPublicHelp -- so
+         // on those six skins F1 did nothing at all, not even the fallback
+         // modal. Restoring what was already shipped; no new behaviour.
+         //
+         // The 24 manifests that declare it stay as they are and collapse on
+         // array_unique, exactly as the three Thomas manifests do.
+         'smack-keyboard']
     )));
     $response['required_assets']['styles'] = array_values(array_unique(array_merge(
         (array)($response['required_assets']['styles'] ?? []),

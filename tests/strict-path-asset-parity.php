@@ -245,15 +245,6 @@ $SKIN_DEPENDENT = [
         . 'to be a CMS behaviour it belongs on the strict path like Thomas now '
         . 'is; if it is one skin\'s own, the legacy emitter should stop '
         . 'claiming it. Needs a decision, not a repair.',
-    'assets/js/ss-engine-comms.js' =>
-        'The keyboard engine, handle smack-keyboard, declared by 24 of 30 '
-        . 'skins. core/meta.php shipped it to every skin, so SIX lost it: '
-        . 'alfred, photogram, stanley, telegram, tilez, writing-with-impact. '
-        . 'Exactly the shape Thomas was in, just less far gone. Whether '
-        . 'keyboard shortcuts are meant to be fleet-wide is the owner\'s call.',
-    'assets/css/ss-engine-comms.css' =>
-        'The keyboard engine stylesheet, carried by the same smack-keyboard '
-        . 'handle and missing from the same six skins.',
     'assets/js/ss-engine-rows.js' =>
         'Handle smack-rows, declared by 7 of 30. This one is EXPECTED and is '
         . 'not a stranding: the rows engine belongs to the SCROLL wall family '
@@ -340,9 +331,12 @@ sp_test(count($STRANDED) <= 6,
 // detector was wrong, not the product. Three of these were invisible while the
 // container-key fault was handing every catalogued asset a name that matched
 // everywhere.
-sp_test(count($SKIN_DEPENDENT) <= 4,
-    'the skin-dependent set is no larger than the corrected count (now '
-    . count($SKIN_DEPENDENT) . ', corrected to 4 from a wrong 1)');
+// 2, down from 4. The keyboard engine was restored to all 30 skins in core on
+// 29 October after the owner lost the F1 help on six of them, so its script and
+// stylesheet leave this list. Second time this ratchet has shrunk.
+sp_test(count($SKIN_DEPENDENT) <= 2,
+    'the skin-dependent set is no larger than it was after the keyboard repair '
+    . '(now ' . count($SKIN_DEPENDENT) . ', was 2)');
 foreach (array_merge($STRANDED, $SKIN_DEPENDENT) as $asset => $reason) {
     sp_test(trim($reason) !== '' && strlen($reason) > 30,
         "{$asset} carries a stated reason rather than just a filename");

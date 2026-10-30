@@ -681,9 +681,10 @@
         "thresholds": []
     },
     "help-and-consent-reach-every-skin.php": {
-        "assertions": 21,
-        "predicates": 18,
+        "assertions": 23,
+        "predicates": 19,
         "thresholds": [
+            6,
             30
         ]
     },
@@ -1639,7 +1640,7 @@
         "assertions": 14,
         "predicates": 16,
         "thresholds": [
-            4,
+            2,
             6,
             20,
             30
@@ -1679,7 +1680,7 @@
     },
     "thomas-the-bear-reaches-every-skin.php": {
         "assertions": 21,
-        "predicates": 16,
+        "predicates": 15,
         "thresholds": [
             2,
             4,

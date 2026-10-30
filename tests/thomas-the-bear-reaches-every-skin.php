@@ -87,12 +87,30 @@ $fnAt = strpos($runtime, 'function snapsmack_public_runtime(');
 $at = $fnAt === false ? false : strrpos($runtime, $marker);
 if ($at !== false && $at < $fnAt) $at = false;
 if ($at !== false) {
-    $stmt = substr($runtime, $at, 500);
-    $semi = strpos($stmt, ';');
-    if ($semi !== false) $stmt = substr($stmt, 0, $semi);
-    if (preg_match("/\[\s*('[^\[\]]*)\]\s*\)\s*\)\s*\)/s", $stmt, $m)) {
-        preg_match_all("/'([A-Za-z0-9:_-]+)'/", $m[1], $hm);
-        $declaredHandles = $hm[1];
+    $stmt = substr($runtime, $at, 20000);
+    // THE ARRAY LITERAL, found by walking back from the statement's own
+    // terminator rather than by reading a fixed number of characters.
+    //
+    // The earlier version read 500 characters from the marker, which stopped
+    // working the moment a comment was added INSIDE the array: the window
+    // ended before the closing bracket, the regex matched nothing, and the
+    // test reported every skin as missing Thomas. A parse that depends on how
+    // much prose sits beside the code is not a parse. ')))' is the statement's
+    // real end and there is exactly one of them.
+    //
+    // No `return` in here either. This runs at script scope, so a return would
+    // END THE TEST SILENTLY with a zero exit -- a check that passes by not
+    // running, which is the whole family of fault this file exists to stop.
+    $tail = strpos($stmt, ')))');
+    if ($tail !== false) {
+        $stmt = substr($stmt, 0, $tail);
+        $close = strrpos($stmt, ']');
+        $head = $close === false ? false : strrpos(substr($stmt, 0, $close), '[');
+        if ($head !== false) {
+            $inner = substr($stmt, $head + 1, $close - $head - 1);
+            preg_match_all("/'([A-Za-z0-9:_-]+)'/", $inner, $hits);
+            $declaredHandles = $hits[1];
+        }
     }
 }
 $check($at !== false,

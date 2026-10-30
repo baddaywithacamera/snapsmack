@@ -48,14 +48,25 @@ function hc_declared(string $runtime, string $group): array {
     $fnAt = strpos($runtime, 'function snapsmack_public_runtime(');
     $at = $fnAt === false ? false : strrpos($runtime, $marker);
     if ($at === false || $at < $fnAt) return [];
-    $stmt = substr($runtime, $at, 900);
-    $semi = strpos($stmt, ';');
-    if ($semi !== false) $stmt = substr($stmt, 0, $semi);
-    // THE ARRAY IMMEDIATELY BEFORE THE THREE CLOSING PARENS, not the first
-    // bracketed thing in the statement -- which is ['required_assets'] and
-    // which is exactly what the earlier version of this parse captured.
-    if (!preg_match("/\[\s*('[^\[\]]*)\]\s*\)\s*\)\s*\)/s", $stmt, $m)) return [];
-    preg_match_all("/'([A-Za-z0-9:_-]+)'/", $m[1], $hits);
+    $stmt = substr($runtime, $at, 20000);
+    // THE ARRAY LITERAL, found by walking back from the statement's own
+    // terminator rather than by reading a fixed number of characters.
+    //
+    // Both earlier versions of this used a window -- 500 characters in the
+    // Thomas test, 900 here -- and both broke the moment a comment was added
+    // INSIDE the array. The window ended before the closing bracket, the regex
+    // matched nothing, and the test reported every skin as missing everything.
+    // A parse that depends on how much prose sits next to the code is not a
+    // parse. ')))' is the statement's real end and there is exactly one.
+    $tail = strpos($stmt, ')))');
+    if ($tail === false) return [];
+    $stmt = substr($stmt, 0, $tail);
+    $close = strrpos($stmt, ']');
+    if ($close === false) return [];
+    $head = strrpos(substr($stmt, 0, $close), '[');
+    if ($head === false) return [];
+    $inner = substr($stmt, $head + 1, $close - $head - 1);
+    preg_match_all("/'([A-Za-z0-9:_-]+)'/", $inner, $hits);
     return $hits[1];
 }
 
@@ -72,6 +83,8 @@ hc_test(in_array('asset:public:ss-engine-consent', $scripts, true),
     'the consent engine is declared');
 hc_test(in_array('asset:public:ss-engine-consent', $styles, true),
     'the consent stylesheet is declared, or the banner would be unstyled');
+hc_test(in_array('smack-keyboard', $scripts, true),
+    'the keyboard engine is declared, so F1 has something listening on it');
 
 echo "\nEvery renderable skin gets all three files\n";
 $skins = [];
@@ -93,6 +106,15 @@ $need = [
     'assets/js/ss-engine-public-help.js' => 'the F1 help modal',
     'assets/js/ss-engine-consent.js'     => 'the consent engine',
     'assets/css/ss-engine-consent.css'   => 'the consent stylesheet',
+    // The keyboard engine belongs in this check rather than its own: it is the
+    // half of the F1 chain that BINDS the key (ss-engine-comms.js:77) and hands
+    // off to window.snapPublicHelp. core/meta.php shipped it to every skin
+    // before the conversion; afterwards only the 24 skins declaring
+    // smack-keyboard had it, so six had no F1 at all -- not even the fallback
+    // modal the comms engine falls back to. A help modal nothing can open is
+    // the same defect as a help modal that is absent.
+    'assets/js/ss-engine-comms.js'       => 'the keyboard engine that binds F1',
+    'assets/css/ss-engine-comms.css'     => 'the keyboard engine stylesheet',
 ];
 $missing = [];
 $manifests = [];
@@ -115,10 +137,12 @@ foreach ($need as $file => $what) {
 echo "\nMUTATION PROOF: remove the declaration and the skins go red\n";
 $withoutHelp = 0;
 $withoutConsent = 0;
+$withoutKeyboard = 0;
 foreach ($skins as $slug => $dir) {
     $html = $emit($manifests[$slug], []);
     if (!str_contains($html, 'assets/js/ss-engine-public-help.js')) $withoutHelp++;
     if (!str_contains($html, 'assets/js/ss-engine-consent.js')) $withoutConsent++;
+    if (!str_contains($html, 'assets/js/ss-engine-comms.js')) $withoutKeyboard++;
 }
 hc_test($withoutHelp >= count($skins) - 1,
     'without the declaration the help engine is absent from ' . $withoutHelp
@@ -126,6 +150,12 @@ hc_test($withoutHelp >= count($skins) - 1,
 hc_test($withoutConsent >= count($skins) - 1,
     'without the declaration the consent engine is absent from ' . $withoutConsent
     . ' of ' . count($skins) . ' skins');
+// The keyboard engine is the one case where the manifests carry real cover:
+// 24 of 30 declare it themselves, so removing the core declaration should
+// leave exactly the six that lost it. That number is the fault Sean hit.
+hc_test($withoutKeyboard === 6,
+    'without the declaration the keyboard engine is absent from exactly 6 skins '
+    . '(got ' . $withoutKeyboard . ') -- the six whose manifests never declared it');
 
 echo "\nThe banner markup is the one the engine can actually drive\n";
 // ss-engine-consent.js binds these two by id. Renaming either silently breaks
