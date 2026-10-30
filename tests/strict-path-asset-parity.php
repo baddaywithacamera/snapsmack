@@ -103,14 +103,52 @@ function sp_names_for(string $root): array {
     }
 
     // Inventory keys such as smack-thomas carry a script AND its stylesheet.
+    //
+    // BRACKET-MATCHED, not a fixed window. The first version took 700
+    // characters from the key and read whatever fell inside, so it ran past the
+    // end of short entries and attributed the NEXT entry's files to this key --
+    // it had Thomas's stylesheet belonging to smack-keyboard. An asset credited
+    // to the wrong handle reads as reachable whenever that wrong handle is
+    // declared somewhere, which is a false clean. Same window-bleed mistake I
+    // made earlier the same evening in an unrelated scan, which is why it is
+    // spelled out here rather than just fixed.
     $inv = sp_read($root . '/core/manifest-inventory.php');
     if (preg_match_all("/'([a-z0-9-]+)'\s*=>\s*\[/", $inv, $keys, PREG_OFFSET_CAPTURE)) {
         foreach ($keys[1] as $i => $hit) {
             $key = $hit[0];
-            $start = $keys[0][$i][1];
-            $block = substr($inv, $start, 700);
-            if (preg_match_all('#assets/(?:js|css)/[A-Za-z0-9._-]+\.(?:js|css)#', $block, $m)) {
-                foreach ($m[0] as $path) $names[$path][] = $key;
+            $open = strpos($inv, '[', $keys[0][$i][1]);
+            if ($open === false) continue;
+            $depth = 0;
+            $end = $open;
+            for ($p = $open, $n = strlen($inv); $p < $n; $p++) {
+                if ($inv[$p] === '[') $depth++;
+                elseif ($inv[$p] === ']') {
+                    $depth--;
+                    if ($depth === 0) { $end = $p; break; }
+                }
+            }
+            // SKIP THE CONTAINERS, and read FIELDS rather than any path in the
+            // block. This is the fourth fault I found in my own detector and
+            // by far the worst. manifest-inventory.php is
+            // ['scripts' => [ ...every entry... ], 'styles' => [ ... ]], so the
+            // key regex matched 'scripts', bracket-matched the WHOLE catalogue,
+            // and handed every asset in it the name "scripts" -- a word that
+            // appears in nearly every PHP file and every manifest. Every
+            // catalogued asset therefore read as reachable no matter what, and
+            // the generic arm of this test was dead for all of them. It passed
+            // green while proving nothing, which is the exact fault this file
+            // was written to stop happening to somebody else.
+            if ($key === 'scripts' || $key === 'styles') continue;
+            $block = substr($inv, $open, $end - $open + 1);
+            foreach (["'path'", "'css'"] as $field) {
+                if (preg_match('#' . $field . '\s*=>\s*\'(assets/(?:js|css)/[A-Za-z0-9._-]+\.(?:js|css))\'#', $block, $m)) {
+                    $names[$m[1]][] = $key;
+                }
+            }
+            if (preg_match('#\'companions\'\s*=>\s*\[(.*?)\]#s', $block, $cm)) {
+                if (preg_match_all('#assets/(?:js|css)/[A-Za-z0-9._-]+\.(?:js|css)#', $cm[1], $m2)) {
+                    foreach ($m2[0] as $path) $names[$path][] = $key;
+                }
             }
         }
     }
@@ -121,9 +159,29 @@ function sp_names_for(string $root): array {
     return $names;
 }
 
-/** Everything a strict request can execute: core minus the four legacy files. */
+/**
+ * Everything a strict request can execute: core minus the four legacy files,
+ * AND minus the catalogues.
+ *
+ * THE CATALOGUE EXCLUSION IS THE WHOLE CORRECTNESS OF THIS FILE, and I got it
+ * wrong first. core/manifest-inventory.php and core/asset-security-reviews.php
+ * are data tables: they `return [...]` keyed BY ASSET PATH, and they emit
+ * nothing. Counting them as strict-path source makes every asset that is
+ * merely CATALOGUED read as REACHABLE -- a false clean, in the one direction
+ * that hides the fault.
+ *
+ * The first version of this file included them, which meant it would have
+ * called Thomas reachable purely because manifest-inventory.php lists his
+ * filename. It could not have detected the fault it exists to detect. I found
+ * that by checking one specific claim -- the sticky header -- rather than by
+ * trusting a green run, and the green run was wrong.
+ *
+ * Being catalogued is not being requested. Only code that ASKS for an asset
+ * puts it on a page.
+ */
 function sp_strict_blob(string $root): string {
     $legacy = ['meta.php', 'footer-scripts.php', 'header.php', 'footer.php'];
+    $catalogues = ['manifest-inventory.php', 'asset-security-reviews.php'];
     $files = array_merge(
         glob($root . '/core/*.php') ?: [],
         glob($root . '/core/*/*.php') ?: [],
@@ -131,7 +189,9 @@ function sp_strict_blob(string $root): string {
     );
     $blob = '';
     foreach ($files as $file) {
-        if (in_array(basename($file), $legacy, true)) continue;
+        $name = basename($file);
+        if (in_array($name, $legacy, true)) continue;
+        if (in_array($name, $catalogues, true)) continue;
         $blob .= sp_read($file) . "\n";
     }
     return $blob;
@@ -157,10 +217,19 @@ $STRANDED = [
         . 'config on the page, so both have to land together: declaring one '
         . 'without the other would leave a reader with no writer.',
     'assets/js/ss-engine-sticky-header.js' =>
-        'Its STYLESHEET reaches every strict page and its BEHAVIOUR does not, '
-        . 'so a sticky header is pinned by CSS with nothing reading the '
-        . 'setting. Candidate cause of SS-1028 (CHAPLIN pins its header '
-        . 'regardless of the sticky header setting) -- NOT CONFIRMED on a page.',
+        'The sticky-header BEHAVIOUR. core/footer-scripts.php loaded it only '
+        . 'when the admin had switched the setting on; on a strict page it is '
+        . 'never loaded at all, so the setting is read by nothing. Strict page '
+        . 'components still emit data-sticky-header on the header element, so '
+        . 'the markup advertises a behaviour that cannot arrive.',
+    'assets/css/ss-engine-sticky-header.css' =>
+        'The sticky-header STYLESHEET, stranded with its script. I first wrote '
+        . 'that this one DID reach strict pages and that it therefore pinned '
+        . 'CHAPLIN header unconditionally (SS-1028). That was wrong: the only '
+        . 'strict-path file naming it was core/asset-security-reviews.php, a '
+        . 'SECAUDIT data table that emits nothing. Both halves are stranded, '
+        . 'so this engine does nothing at all on a strict page and is NOT an '
+        . 'explanation for SS-1028. Whatever pins that header is elsewhere.',
     'assets/js/ss-engine-consent.js' =>
         'The consent engine. No strict page loads it. NOT CHECKED whether a '
         . 'consent banner is required on these sites or handled elsewhere; '
@@ -180,9 +249,25 @@ $STRANDED = [
  */
 $SKIN_DEPENDENT = [
     'assets/js/ss-engine-nav-dropdown.js' =>
-        'Declared by 1 skin of 30. If the dropdown is meant to be a CMS '
-        . 'behaviour it belongs on the strict path like Thomas now is; if it '
-        . 'is one skin\'s own, the legacy emitter should stop claiming it.',
+        'Declared by 1 skin of 30 (instant-camera). If the dropdown is meant '
+        . 'to be a CMS behaviour it belongs on the strict path like Thomas now '
+        . 'is; if it is one skin\'s own, the legacy emitter should stop '
+        . 'claiming it. Needs a decision, not a repair.',
+    'assets/js/ss-engine-comms.js' =>
+        'The keyboard engine, handle smack-keyboard, declared by 24 of 30 '
+        . 'skins. core/meta.php shipped it to every skin, so SIX lost it: '
+        . 'alfred, photogram, stanley, telegram, tilez, writing-with-impact. '
+        . 'Exactly the shape Thomas was in, just less far gone. Whether '
+        . 'keyboard shortcuts are meant to be fleet-wide is the owner\'s call.',
+    'assets/css/ss-engine-comms.css' =>
+        'The keyboard engine stylesheet, carried by the same smack-keyboard '
+        . 'handle and missing from the same six skins.',
+    'assets/js/ss-engine-rows.js' =>
+        'Handle smack-rows, declared by 7 of 30. This one is EXPECTED and is '
+        . 'not a stranding: the rows engine belongs to the SCROLL wall family '
+        . 'and the other skins run a different gallery engine entirely. Listed '
+        . 'so the scan stays quiet about it for a stated reason rather than '
+        . 'because nobody looked.',
 ];
 
 $legacy = sp_legacy_assets($root);
@@ -246,11 +331,22 @@ sp_test($wrongly_listed === [],
     . ($wrongly_listed === [] ? '' : ', so delete these rows: ' . implode(', ', $wrongly_listed)));
 
 echo "\nThe lists only shrink\n";
-sp_test(count($STRANDED) <= 8,
-    'the stranded set is no larger than when this was written (now ' . count($STRANDED) . ', was 8)');
-sp_test(count($SKIN_DEPENDENT) <= 1,
-    'the skin-dependent set is no larger than when this was written (now '
-    . count($SKIN_DEPENDENT) . ', was 1)');
+// The ceiling is 9, and it went UP from 8 after this file was first written.
+// Saying why, because a bar moving up is exactly what the strength record
+// exists to make somebody explain: the 8 was WRONG, not regressed. The first
+// version counted two catalogue files as strict-path source and mis-attributed
+// inventory entries with a fixed-width window, and both faults hid stranded
+// assets by calling them reachable. 9 is what the corrected scan finds. It may
+// only shrink from here.
+sp_test(count($STRANDED) <= 9,
+    'the stranded set is no larger than the corrected count (now ' . count($STRANDED) . ', corrected to 9 from a wrong 8)');
+// 4, corrected upward from 1 for the same reason as the stranded ceiling: the
+// detector was wrong, not the product. Three of these were invisible while the
+// container-key fault was handing every catalogued asset a name that matched
+// everywhere.
+sp_test(count($SKIN_DEPENDENT) <= 4,
+    'the skin-dependent set is no larger than the corrected count (now '
+    . count($SKIN_DEPENDENT) . ', corrected to 4 from a wrong 1)');
 foreach (array_merge($STRANDED, $SKIN_DEPENDENT) as $asset => $reason) {
     sp_test(trim($reason) !== '' && strlen($reason) > 30,
         "{$asset} carries a stated reason rather than just a filename");
