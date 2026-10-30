@@ -891,6 +891,11 @@
         "predicates": 5,
         "thresholds": []
     },
+    "nav-landing-is-archive-regression.php": {
+        "assertions": 22,
+        "predicates": 15,
+        "thresholds": []
+    },
     "new-horizon-variant-regression.php": {
         "assertions": 2,
         "predicates": 3,

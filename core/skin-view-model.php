@@ -252,7 +252,23 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
         if ((string)($settings['homepage_mode'] ?? '') === 'static_page') {
             $items[] = ['type' => 'blog', 'label' => 'Blog'];
         }
-        if ((string)($settings['archive_layout'] ?? 'square') !== 'none') {
+        // A SKIN MAY SAY ITS LANDING IS ALREADY THE ARCHIVE.
+        //
+        // The gate below it is archive_layout, a SITE setting, and that was
+        // the wrong question: whether an Archive View link makes sense is a
+        // SKIN fact. On SCROLL the landing page IS the archive, so this item
+        // pointed visitors at the page they were already standing on, and it
+        // appeared in a header the owner had not asked to change. He counted
+        // the icons: nine before, ten after.
+        //
+        // The skin declares it and core honours it, the same way
+        // canvas_width_option works. Core must NOT learn about individual
+        // skins -- tests/agreed-rules-gate.php refuses a skin slug named in
+        // core and is right to -- so a feature flag is the only legal shape
+        // for this, not a slug check.
+        $_landing_is_archive = !empty($manifest['features']['landing_is_archive']);
+        if ((string)($settings['archive_layout'] ?? 'square') !== 'none'
+            && !$_landing_is_archive) {
             $items[] = ['type' => 'image_archive', 'label' => 'Archive View'];
         }
         if ((string)($settings['albums_link_enabled'] ?? '0') === '1') {
