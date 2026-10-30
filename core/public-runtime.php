@@ -347,9 +347,56 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     // storage. That fails CLOSED, so the missing engine did not leak anything
     // -- it switched the preferences off permanently with no way to turn them
     // on. See core/consent-runtime.php for the whole trace.
+    $engines = snapsmack_public_engine_assets();
     $response['required_assets']['scripts'] = array_values(array_unique(array_merge(
         (array)($response['required_assets']['scripts'] ?? []),
-        ['smack-thomas',
+        $engines['scripts']
+    )));
+    $response['required_assets']['styles'] = array_values(array_unique(array_merge(
+        (array)($response['required_assets']['styles'] ?? []),
+        $engines['styles']
+    )));
+
+    // Worked out here because this is the last point that still has the
+    // database. The component that prints it has neither.
+    $GLOBALS['snapsmack_consent'] = snapsmack_consent_prepare($pdo, $settings);
+
+    if (is_array($response['item'] ?? null)) $response['item'] = $trustItem($response['item']);
+    foreach (['items', 'photographs'] as $group) {
+        if (!is_array($response[$group] ?? null)) continue;
+        $response[$group] = array_map(static fn($item) => is_array($item) ? $trustItem($item) : $item, $response[$group]);
+    }
+    return $response;
+}
+
+/**
+ * The engines EVERY public page gets, whichever controller rendered it.
+ *
+ * THIS IS A FUNCTION BECAUSE THE LIST USED TO LIVE INLINE ABOVE, AND ONE
+ * CONTROLLER NEVER SAW IT. index.php has two render branches: a SMACKTALK
+ * site goes through snapsmack_smacktalk_request() and everything else through
+ * snapsmack_public_runtime(). Only the second one declared these, so on the
+ * five skins whose manifest sets cms_controller=smacktalk -- ALFRED, STANLEY,
+ * TELEGRAM, TILEZ, WRITING-WITH-IMPACT -- Thomas, the F1 help modal, the
+ * cookie notice AND the keyboard engine were all absent.
+ *
+ * Measured on the owner's own live sites on 30 October 2026, both already on
+ * 0.7.972D: baddaywithacamera.ca (TILEZ) served ss-engine-thomas.js ZERO
+ * times, acolourlesslife.ca (CHAPLIN) served it once.
+ *
+ * The 972D claim that these reached "all 30 skins" was measured through this
+ * function's path for all 30, which is not the same thing as measuring the
+ * path each skin actually uses. That is the same mistake as a test that reads
+ * markup the page never renders, and it is why this is now ONE list with TWO
+ * callers instead of one list and one forgotten branch.
+ *
+ * Add an engine here and both controllers get it. Add one to a controller and
+ * only that controller gets it -- which is how this happened.
+ */
+function snapsmack_public_engine_assets(): array
+{
+    return [
+        'scripts' => ['smack-thomas',
          'asset:public:ss-engine-public-help',
          'asset:public:ss-engine-consent',
          // THE KEYBOARD ENGINE, which core/meta.php shipped to every skin
@@ -365,24 +412,10 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
          //
          // The 24 manifests that declare it stay as they are and collapse on
          // array_unique, exactly as the three Thomas manifests do.
-         'smack-keyboard']
-    )));
-    $response['required_assets']['styles'] = array_values(array_unique(array_merge(
-        (array)($response['required_assets']['styles'] ?? []),
+         'smack-keyboard'],
         // The consent script and stylesheet share one registry handle, and the
         // style resolver falls through to the ':css' variant on its own.
-        ['asset:public:ss-engine-consent']
-    )));
-
-    // Worked out here because this is the last point that still has the
-    // database. The component that prints it has neither.
-    $GLOBALS['snapsmack_consent'] = snapsmack_consent_prepare($pdo, $settings);
-
-    if (is_array($response['item'] ?? null)) $response['item'] = $trustItem($response['item']);
-    foreach (['items', 'photographs'] as $group) {
-        if (!is_array($response[$group] ?? null)) continue;
-        $response[$group] = array_map(static fn($item) => is_array($item) ? $trustItem($item) : $item, $response[$group]);
-    }
-    return $response;
+        'styles' => ['asset:public:ss-engine-consent'],
+    ];
 }
 // ===== SNAPSMACK EOF =====
