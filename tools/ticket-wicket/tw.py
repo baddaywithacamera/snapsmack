@@ -145,6 +145,30 @@ def cmd_post(args):
                 "Rewrite the body about the problem, not the person.", file=sys.stderr)
         return 1
 
+    # ALREADY ON THE BOARD? THEN THIS WOULD BE A SECOND COPY.
+    #
+    # On 29 October 2026 this command created three duplicate threads in one
+    # evening -- SS-1006 (48 and 89), SS-1033 (71 and 87) and SS-1064 (86 and
+    # 93) -- because it posts unconditionally and then OVERWRITES forum_thread
+    # with the new id. So the ticket stopped pointing at the thread that had
+    # the reply history, and the board showed the same ticket twice. The owner
+    # noticed the board before anyone noticed the duplicates.
+    #
+    # I wrote down that this needed a guard and then did it once more an hour
+    # later, which is the argument for the guard rather than for being careful.
+    # `reply` is what updates a ticket that is already published.
+    existing = getattr(t, "forum_thread", 0) or 0
+    if existing and not args.again:
+        print(f"REFUSING TO POST — {t.id} is already forum thread {existing}.\n"
+              f"\nPosting again creates a SECOND thread for the same ticket and "
+              f"repoints the ticket at the copy, leaving the original and its "
+              f"replies orphaned.\n"
+              f"\nTo add to the existing thread:\n"
+              f"    tw.py --as <you> reply {t.id} --text \"...\"\n"
+              f"\nIf a second thread is genuinely wanted, pass --again.",
+              file=sys.stderr)
+        return 1
+
     if args.dry_run or not args.forum_url:
         _out(args, {"would_post": body, "posted": False},
              "DRY RUN — would post:\n\n" + body
@@ -152,12 +176,46 @@ def cmd_post(args):
         return 0
 
     f = forummod.Forum(args.forum_url, args.forum_key)
-    cat = f.ensure_board(args.board, "Tickets. One per problem. Nobody's name.")
+    cat = _board_id(f, args.board)
+    if not cat:
+        message = [
+            "REFUSING TO POST - there is no board called "
+            + repr(args.board) + ".",
+            "",
+            "This command LOOKS UP the board and never creates one. On",
+            "17 October it defaulted to a board named 'Tickets', the forum",
+            "did not have one, and ensure_board invented it: a board nobody",
+            "asked for, sorted above every real board because it was created",
+            "without a sort order. The owner found it on his own board list",
+            "twelve days later.",
+            "",
+            "Creating a board is a deliberate act someone types:",
+            "    fc.py board-new " + repr(args.board) + " --sort N",
+            "",
+            "Or pass --board with the name of a board that exists.",
+        ]
+        print("\n".join(message), file=sys.stderr)
+        return 1
     thread_id = f.post_ticket(cat, f"{t.id} · {t.title}", body)
     s.update(t.id, forum_thread=thread_id)
     s.add_entry(t.id, "post", f"posted to forum thread {thread_id}", "forum")
     _out(args, {"thread": thread_id, "posted": True},
          f"Posted {t.id} as forum thread {thread_id}")
+    return 0
+
+
+def _board_id(forum, name: str) -> int:
+    """The id of an EXISTING board, or 0.
+
+    Deliberately not snap_forum.ensure_board, which creates on a miss. A
+    publishing tool must not be able to invent a board: AGENTS.md names one
+    board for tickets, and anything else is a typo or a drifted default, not an
+    instruction to make somewhere new to put things.
+    """
+    wanted = (name or "").strip().lower()
+    for cat in forum.categories():
+        if (cat.get("name") or "").strip().lower() == wanted:
+            return int(cat.get("id") or 0)
     return 0
 
 
@@ -332,7 +390,12 @@ def build_parser():
     tr.set_defaults(func=cmd_triage)
 
     po = sub.add_parser("post"); po.add_argument("id")
-    po.add_argument("--board", default="Tickets")
+    # AGENTS.md: "tickets are published to the ROACH MOTEL board". The
+    # default was "Tickets" from the day this tool was written, which is
+    # how a board nobody asked for came to exist.
+    po.add_argument("--board", default="Roach Motel")
+    po.add_argument("--again", action="store_true",
+                    help="post a SECOND thread for a ticket that already has one")
     po.add_argument("--dry-run", action="store_true")
     po.set_defaults(func=cmd_post)
 
