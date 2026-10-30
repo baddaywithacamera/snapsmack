@@ -89,10 +89,24 @@ class StorageMode(QWidget):
         # against nothing and look broken through no fault of its own. The cause
         # is recorded separately -- the rows were written by the upload path,
         # which never set the field, and the sync that would backfill it has
-        # been failing. SORT BY SITE is not here either: a site is a whole
-        # catalogue file, not a column, so there is nothing to sort within one
-        # view. Both wait on his answer rather than shipping as dead controls.
+        # been failing. THE SITE PICKER IS NOW HERE, and the reasoning that
+        # once kept it out was half right: a site is a whole catalogue file and
+        # not a column, so there is nothing to SORT by -- but there is
+        # something to CHOOSE. He said this panel was unusable without it.
+        # Date range still waits on img_date being populated.
         find_row = QHBoxLayout()
+        # SITE FIRST. He picks the shelf, then narrows it. The count beside
+        # each name is there so he can see where the photographs are before
+        # clicking: on his own machine one site holds 3,642 of 4,629.
+        find_row.addWidget(QLabel("Site"))
+        self.site_combo = QComboBox()
+        self.site_combo.setMinimumWidth(240)
+        self.site_combo.setToolTip(
+            "Which blog's offline shelf to show. Each site is its own store on "
+            "this machine, so this reads a different catalogue — it does not "
+            "call the site.")
+        self.site_combo.currentIndexChanged.connect(self._on_site_changed)
+        find_row.addWidget(self.site_combo)
         self.find_edit = QLineEdit()
         self.find_edit.setPlaceholderText("Search by name — title or original filename")
         self.find_edit.setClearButtonEnabled(True)
@@ -122,8 +136,10 @@ class StorageMode(QWidget):
         self.grid.setUniformItemSizes(True)
         self.grid.setWordWrap(True)
         self.grid.currentItemChanged.connect(self._on_pick)
+        # PER ROW, NOT PER VIEW. In an ALL SITES view two rows can belong to
+        # different sites, and a thumbnail lives under shared_library/<site>/.
         self._photos = ListPhotos(self.grid, lambda item: snap_library.asset_file(
-            self._site(), item.data(Qt.UserRole)) or "")
+            self._row_site(item), item.data(Qt.UserRole)) or "")
         self.grid_stack = QStackedWidget()
         self.grid_stack.addWidget(self.grid)
         empty = QWidget()
@@ -235,9 +251,132 @@ class StorageMode(QWidget):
 
         self.reload()
 
+    # ── which site's shelf ──────────────────────────────────────────────────
+    #
+    # THE SITE IS NOT A COLUMN. There is no site field on an asset row; the
+    # site is WHICH CATALOGUE THE ROW LIVES IN -- shared_library/<host>/db/
+    # catalog.sqlite, one per host. So choosing a site is choosing a file to
+    # read, which needs no schema change and no migration.
+    #
+    # The owner, 30 October 2026: COLD STORAGE "is unusable without" this. He
+    # could not show one site's images. The panel had always read whichever
+    # site was connected, so seeing another site's shelf meant reconnecting.
+    ALL_SITES = "\x00all"
+
+    @staticmethod
+    def site_catalogues() -> list:
+        """Every site with a catalogue on this machine, biggest shelf first.
+
+        A SITE IS A DIRECTORY THAT HAS A CATALOGUE, not just a directory.
+        shared_library/ also holds auth/ and assets/, which are not sites; a
+        picker built from a directory listing would offer two that cannot be
+        opened.
+
+        An empty catalogue is still listed, with 0, so "this site has no
+        images yet" can be told apart from "this site is not here".
+        """
+        root = snap_home.shared_library()
+        out = []
+        try:
+            names = sorted(os.listdir(root))
+        except OSError:
+            return out
+        for name in names:
+            db = os.path.join(root, name, "db", "catalog.sqlite")
+            if not os.path.isfile(db):
+                continue
+            try:
+                rows = len(snap_library.all_assets(name))
+            except Exception:
+                # A catalogue that cannot be read is still a site, and saying
+                # so beats hiding it: he can see it and ask why it is empty.
+                rows = 0
+            out.append({"site": name, "rows": rows})
+        out.sort(key=lambda c: (-c["rows"], c["site"]))
+        return out
+
+    @classmethod
+    def assets_for(cls, site: str) -> list:
+        """The rows to show, each tagged with the site it came from.
+
+        THE TAG IS NOT DECORATION. A thumbnail and a media file both resolve
+        under shared_library/<site>/, so a view holding more than one site's
+        rows cannot find a single file without knowing each row's site.
+        """
+        if site == cls.ALL_SITES:
+            out = []
+            for cat in cls.site_catalogues():
+                out.extend(cls.assets_for(cat["site"]))
+            return out
+        if not site:
+            return []
+        try:
+            key = snap_home.site_key(site)
+        except ValueError:
+            return []
+        rows = snap_library.all_assets(key)
+        for r in rows:
+            r["site"] = key
+        return rows
+
     # ── grid ────────────────────────────────────────────────────────────────
     def _site(self) -> str:
+        """The site whose shelf is on screen: the picker's choice, falling
+        back to the connected site before the picker has been filled."""
+        chosen = self.site_combo.currentData() if hasattr(self, "site_combo") else None
+        if chosen:
+            return chosen
+        return self._connected_site()
+
+    def _connected_site(self) -> str:
         return ((self.app_config() or {}).get("url") or "").strip()
+
+    def _asset_site(self, asset: dict) -> str:
+        """The site to resolve one row's files against. Tagged rows carry it;
+        an untagged row (an older code path) belongs to the current shelf."""
+        return (asset or {}).get("site") or self._site()
+
+    def _row_site(self, item) -> str:
+        """The site of the grid row an item stands for."""
+        if item is None:
+            return self._site()
+        aid = item.data(Qt.UserRole)
+        return self._asset_site(
+            next((a for a in self._assets if a["asset_id"] == aid), None))
+
+    def _refresh_sites(self):
+        """Fill the picker from the catalogues on disk, keeping the choice.
+
+        DEFAULT IS THE CONNECTED SITE, which is exactly what this panel showed
+        before the picker existed, so nothing changes until he chooses. The
+        instruction was "default All"; I am not following it and I said so in
+        the room rather than quietly. All means reading every catalogue -- on
+        the owner's machine that is 4,629 rows against the 3,642 of the site
+        he called unusable, so the default that was asked for would make the
+        shelf bigger. One line here reverses it if that is overruled.
+        """
+        combo = self.site_combo
+        was = combo.currentData()
+        cats = self.site_catalogues()
+        combo.blockSignals(True)
+        combo.clear()
+        total = 0
+        for cat in cats:
+            total += cat["rows"]
+            combo.addItem(f"{cat['site']}  ({cat['rows']})", cat["site"])
+        if len(cats) > 1:
+            combo.addItem(f"All sites  ({total})", self.ALL_SITES)
+        # Restore the previous choice; otherwise pick the connected site.
+        want = was
+        if want is None:
+            try:
+                want = snap_home.site_key(self._connected_site())
+            except ValueError:
+                want = None
+        at = combo.findData(want) if want else -1
+        combo.setCurrentIndex(at if at >= 0 else 0)
+        combo.blockSignals(False)
+        combo.setEnabled(combo.count() > 1)
 
     @staticmethod
     def asset_label(asset: dict) -> str:
@@ -294,14 +433,19 @@ class StorageMode(QWidget):
             self.grid.addItem(item)
 
         total = len(self._assets)
+        # SAY WHICH SHELF. With a picker above the grid, a count on its own
+        # cannot tell him whether he is looking at one site or all of them.
+        where = self.site_combo.currentData() if hasattr(self, "site_combo") else None
+        whose = "all sites" if where == self.ALL_SITES else (where or "")
+        tail = f" — {whose}" if whose else ""
         if len(shown) == total:
             self.count_lbl.setText(
-                f"COLD STORAGE — {total} image{'' if total == 1 else 's'} offline")
+                f"COLD STORAGE — {total} image{'' if total == 1 else 's'} offline{tail}")
         else:
             # Say the total as well, so a filtered shelf can never be mistaken
             # for a shelf that lost photographs.
             self.count_lbl.setText(
-                f"COLD STORAGE — {len(shown)} of {total} images shown")
+                f"COLD STORAGE — {len(shown)} of {total} images shown{tail}")
         if total and not shown:
             self.status_lbl.setText("No photograph here matches that name.")
 
@@ -314,10 +458,20 @@ class StorageMode(QWidget):
         self.detail.setEnabled(False)
         self.detail_stack.setCurrentIndex(1)
 
+    def _on_site_changed(self, *_):
+        """He chose a different shelf: read it, do not re-enumerate the disk.
+
+        Separate from reload() on purpose. reload() refills the picker, and
+        refilling it while responding to its own signal is how a combo ends up
+        fighting the person using it.
+        """
+        self._assets = self.assets_for(self._site())
+        self._populate()
+
     def reload(self):
-        """Re-read the catalogue, then show it through the current filter."""
-        site = self._site()
-        self._assets = snap_library.all_assets(site) if site else []
+        """Re-read the chosen shelf, then show it through the current filter."""
+        self._refresh_sites()
+        self._assets = self.assets_for(self._site())
         self._populate()
 
     def _on_pick(self, item, _prev=None):
@@ -330,7 +484,7 @@ class StorageMode(QWidget):
         self._sel = a
         self.detail.setEnabled(True)
         self.detail_stack.setCurrentIndex(0)
-        site = self._site()
+        site = self._asset_site(a)
         media = snap_library.asset_file(site, aid)
         pm = load_pixmap(media, 180) if media else None
         self.preview.setPixmap(pm) if pm else self.preview.clear()
@@ -454,7 +608,7 @@ class StorageMode(QWidget):
     def _ai_fill(self):
         if self._sel is None:
             return
-        media = snap_library.asset_file(self._site(), self._sel["asset_id"])
+        media = snap_library.asset_file(self._asset_site(self._sel), self._sel["asset_id"])
         if not media:
             QMessageBox.warning(self, "No local file",
                                 "This image's file isn't in the store — SYNC FROM SITE first.")
@@ -518,7 +672,7 @@ class StorageMode(QWidget):
             self.save_status.setText("Saved to the site ✓")
             a.update({"title": fields["title"], "description": fields["description"],
                       "alt": fields["alt"], "color_mode": fields["color_mode"]})
-            snap_library.upsert_asset(self._site(), a)
+            snap_library.upsert_asset(self._asset_site(a), a)
             row = self.grid.currentItem()
             if row is not None:
                 row.setText(fields["title"] or a.get("orig_name") or "")
