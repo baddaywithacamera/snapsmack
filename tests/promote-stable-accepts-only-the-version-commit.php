@@ -79,12 +79,29 @@ function fx_constants(string $version): string {
         . "// ===== SNAPSMACK EOF =====\n";
 }
 
-function fx_changelog(array $sections): string {
-    $out = "# Changelog\n\n";
-    foreach ($sections as $s) {
-        $out .= "## {$s}\n\nsomething happened\n\n";
+/**
+ * The changelog as the DEV CUT has it.
+ *
+ * EVERY CASE BUILDS ITS CANDIDATE CHANGELOG FROM THIS, by inserting a section
+ * and changing nothing else. The first version of this file wrote each case's
+ * changelog from scratch with slightly different headings, so almost every
+ * case was being refused by the removed-lines rule rather than by the rule it
+ * was written to test. The mutation run caught that for the parent check;
+ * instrumenting two more cases found the same thing again. A fixture that
+ * breaks two rules at once proves nothing about either.
+ */
+function fx_base_changelog(string $version): string {
+    return "# Changelog\n\n"
+        . "## {$version}D - 2026-10-30 - FIXTURE\n\nsomething happened\n\n";
+}
+
+/** The dev cut's changelog with a stable section added above it. Additive. */
+function fx_candidate_changelog(string $version, string $base = ''): string {
+    if ($base === '') {
+        $base = fx_base_changelog($version);
     }
-    return $out;
+    $added = "## {$version} - 2026-10-30 - FIXTURE STABLE\n\nstable\n\n";
+    return str_replace("# Changelog\n\n", "# Changelog\n\n" . $added, $base);
 }
 
 /**
@@ -107,7 +124,7 @@ function fx_repo_at_dev_tag(string $version): string {
     fx_git($dir, ['commit', '--quiet', '-m', 'base']);
 
     fx_write($dir, 'core/constants.php', fx_constants($version . 'D'));
-    fx_write($dir, 'CHANGELOG.md', fx_changelog([$version . 'D - 2026-10-30 - FIXTURE']));
+    fx_write($dir, 'CHANGELOG.md', fx_base_changelog($version));
     fx_git($dir, ['add', '-A']);
     fx_git($dir, ['commit', '--quiet', '-m', "cut {$version}D"]);
     fx_git($dir, ['tag', 'v' . $version . 'D']);
@@ -118,10 +135,7 @@ function fx_repo_at_dev_tag(string $version): string {
 /** The correct candidate commit: the two version lines, plus an ADDED section. */
 function fx_add_good_candidate(string $dir, string $version): void {
     fx_write($dir, 'core/constants.php', fx_constants($version));
-    fx_write($dir, 'CHANGELOG.md', fx_changelog([
-        $version . ' - 2026-10-30 - FIXTURE STABLE',
-        $version . 'D - 2026-10-30 - FIXTURE',
-    ]));
+    fx_write($dir, 'CHANGELOG.md', fx_candidate_changelog($version));
     fx_git($dir, ['add', '-A']);
     fx_git($dir, ['commit', '--quiet', '-m', "stable candidate {$version}"]);
 }
@@ -135,7 +149,9 @@ function fx_refusals(string $dir, string $version, string $devRef = 'refs/heads/
     $cwd = getcwd();
     chdir($dir);
     try {
-        return rfc_stable_candidate_refusals($version, 'HEAD', $devRef);
+        // The fourth argument is the fixture declaration. Production callers
+        // leave it false, which refuses any dev ref but the real remote one.
+        return rfc_stable_candidate_refusals($version, 'HEAD', $devRef, true);
     } finally {
         chdir($cwd);
     }
@@ -172,7 +188,7 @@ p_ok($refusals === [],
 $dir = fx_repo_at_dev_tag($V);
 $made[] = $dir;
 fx_write($dir, 'core/constants.php', fx_constants($V));
-fx_write($dir, 'CHANGELOG.md', fx_changelog([$V . ' - FIXTURE STABLE', $V . 'D - FIXTURE']));
+fx_write($dir, 'CHANGELOG.md', fx_candidate_changelog($V));
 fx_write($dir, 'core/db.php', "<?php // slipped in\n");
 fx_git($dir, ['add', '-A']);
 fx_git($dir, ['commit', '--quiet', '-m', 'version bump and one more thing']);
@@ -200,7 +216,7 @@ $sneaky = str_replace(
     "define('SNAPSMACK_THUMB_LONG_EDGE', 4000);",
     fx_constants($V));
 fx_write($dir, 'core/constants.php', $sneaky);
-fx_write($dir, 'CHANGELOG.md', fx_changelog([$V . ' - FIXTURE STABLE', $V . 'D - FIXTURE']));
+fx_write($dir, 'CHANGELOG.md', fx_candidate_changelog($V));
 fx_git($dir, ['add', '-A']);
 fx_git($dir, ['commit', '--quiet', '-m', 'version bump plus a constant']);
 p_ok(fx_refusals($dir, $V) !== [],
@@ -212,7 +228,7 @@ p_ok(fx_refusals($dir, $V) !== [],
 $dir = fx_repo_at_dev_tag($V);
 $made[] = $dir;
 fx_write($dir, 'core/constants.php', fx_constants('0.7.998'));
-fx_write($dir, 'CHANGELOG.md', fx_changelog([$V . ' - FIXTURE STABLE', $V . 'D - FIXTURE']));
+fx_write($dir, 'CHANGELOG.md', fx_candidate_changelog($V));
 fx_git($dir, ['add', '-A']);
 fx_git($dir, ['commit', '--quiet', '-m', 'wrong number']);
 p_ok(fx_refusals($dir, $V) !== [],
@@ -223,7 +239,7 @@ p_ok(fx_refusals($dir, $V) !== [],
 
 $dir = fx_repo_at_dev_tag($V);
 $made[] = $dir;
-fx_write($dir, 'CHANGELOG.md', fx_changelog([$V . ' - FIXTURE STABLE', $V . 'D - FIXTURE']));
+fx_write($dir, 'CHANGELOG.md', fx_candidate_changelog($V));
 fx_git($dir, ['add', '-A']);
 fx_git($dir, ['commit', '--quiet', '-m', 'notes only, D still on']);
 p_ok(fx_refusals($dir, $V) !== [],
@@ -236,10 +252,13 @@ p_ok(fx_refusals($dir, $V) !== [],
 $dir = fx_repo_at_dev_tag($V);
 $made[] = $dir;
 fx_write($dir, 'core/constants.php', fx_constants($V));
-// The D section's body is rewritten rather than added to.
-fx_write($dir, 'CHANGELOG.md',
-    "# Changelog\n\n## {$V} - FIXTURE STABLE\n\nsomething happened\n\n"
-    . "## {$V}D - 2026-10-30 - FIXTURE\n\nTHIS REPLACED THE ORIGINAL LINE\n\n");
+// A correct candidate changelog, with ONE line of the existing section
+// rewritten. That single rewrite is the whole violation, so nothing else can
+// be what refuses it.
+fx_write($dir, 'CHANGELOG.md', str_replace(
+    'something happened',
+    'THIS REPLACED THE ORIGINAL LINE',
+    fx_candidate_changelog($V)));
 fx_git($dir, ['add', '-A']);
 fx_git($dir, ['commit', '--quiet', '-m', 'version bump and history rewritten']);
 p_ok(fx_refusals($dir, $V) !== [],
@@ -307,7 +326,7 @@ p_ok(fx_refusals($dir, $V) !== [],
 $dir = fx_repo_at_dev_tag($V);
 $made[] = $dir;
 fx_write($dir, 'core/constants.php', fx_constants($V));
-fx_write($dir, 'CHANGELOG.md', fx_changelog([$V . ' - FIXTURE STABLE', $V . 'D - FIXTURE']));
+fx_write($dir, 'CHANGELOG.md', fx_candidate_changelog($V));
 fx_write($dir, 'index.php', "<?php // slipped in\n");
 fx_git($dir, ['add', '-A']);
 fx_git($dir, ['commit', '--quiet', '-m', 'with an extra file']);
@@ -315,6 +334,77 @@ $named = fx_refusals($dir, $V);
 p_ok($named !== [] && str_contains(implode(' ', $named), 'index.php'),
     'the refusal does not name the offending path, so the operator cannot tell '
     . 'what to remove: ' . implode(' | ', $named));
+
+// -- 13. A DELETED MARKDOWN RULE LINE ------------------------------------
+//
+// From the independent read of this rule: counting diff lines that start with
+// '-' has to skip the '--- a/path' header, and skipping anything starting
+// '---' throws away real deletions too. A changelog line of '---' -- an
+// ordinary Markdown thematic break -- becomes '----' in the diff once the
+// removal marker is prepended, and a prefix test for '---' silently discards
+// it. So a '---' line could be deleted with the rule none the wiser.
+
+$dir = fx_repo_at_dev_tag($V);
+$made[] = $dir;
+// Put a Markdown thematic break into the TAGGED file, and nothing else unusual.
+$withRule = str_replace(
+    "something happened\n",
+    "something happened\n\n---\n",
+    fx_base_changelog($V));
+fx_write($dir, 'CHANGELOG.md', $withRule);
+fx_git($dir, ['add', '-A']);
+fx_git($dir, ['commit', '--quiet', '--amend', '--no-edit']);
+fx_git($dir, ['tag', '-f', 'v' . $V . 'D']);
+fx_git($dir, ['branch', '-f', 'dev', 'HEAD']);
+// The candidate is correct in every way EXCEPT that the '---' line is gone.
+// Its surrounding blank lines are kept, so the deletion of that one line is
+// the only difference the rule has to notice. Nothing else can refuse it.
+fx_write($dir, 'core/constants.php', fx_constants($V));
+fx_write($dir, 'CHANGELOG.md', str_replace(
+    "\n---\n",
+    "\n",
+    fx_candidate_changelog($V, $withRule)));
+fx_git($dir, ['add', '-A']);
+fx_git($dir, ['commit', '--quiet', '-m', 'version bump, and one dashed line quietly dropped']);
+p_ok(fx_refusals($dir, $V) !== [],
+    'a candidate that deletes a changelog line beginning with dashes is accepted - '
+    . 'the additive-only guarantee can be stepped around with a Markdown rule');
+
+// -- 14. EXTRA CODE ON A VERSION LINE ------------------------------------
+//
+// Also from that read: a regex that finds the define inside the line rather
+// than matching the WHOLE line lets anything ride along after the semicolon.
+
+$dir = fx_repo_at_dev_tag($V);
+$made[] = $dir;
+$tail = str_replace(
+    "define('SNAPSMACK_VERSION_SHORT', '{$V}');",
+    "define('SNAPSMACK_VERSION_SHORT', '{$V}'); @unlink('/etc/passwd');",
+    fx_constants($V));
+fx_write($dir, 'core/constants.php', $tail);
+fx_write($dir, 'CHANGELOG.md', fx_candidate_changelog($V));
+fx_git($dir, ['add', '-A']);
+fx_git($dir, ['commit', '--quiet', '-m', 'version bump with a passenger']);
+p_ok(fx_refusals($dir, $V) !== [],
+    'a candidate smuggling code onto the end of a version line is accepted — the '
+    . 'line-level check reads the define and ignores what follows it');
+
+// -- 15. THE TEST SEAM MUST NOT BE USABLE IN PRODUCTION ------------------
+//
+// $devRef exists so a fixture can stand in for refs/remotes/Github/dev. A
+// comment saying "nothing else may pass anything else" does not enforce it.
+// A caller that has not declared itself a fixture must be refused.
+
+$dir = fx_repo_at_dev_tag($V);
+$made[] = $dir;
+fx_add_good_candidate($dir, $V);
+$cwd = getcwd();
+chdir($dir);
+$seam = rfc_stable_candidate_refusals($V, 'HEAD', 'refs/heads/dev', false);
+chdir($cwd);
+p_ok($seam !== [],
+    'a non-production dev ref is accepted without the caller declaring itself a '
+    . 'fixture — the test seam is a way to weaken the rule silently');
 
 foreach ($made as $d) {
     fx_cleanup($d);

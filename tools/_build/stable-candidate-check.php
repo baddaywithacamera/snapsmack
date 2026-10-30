@@ -74,18 +74,37 @@ function rfc_show(string $ref, string $path): ?string {
  * counted as changes by a naive reader of the diff.
  */
 function rfc_changed_lines(string $from, string $to, string $path): array {
+    // THE MARKERS ARE RENAMED SO THE HEADERS CANNOT BE CONFUSED WITH CONTENT.
+    //
+    // The first version of this read the ordinary diff and skipped any line
+    // starting '---' or '+++' as a header. An independent read pointed out
+    // that this cuts both ways, and it was right: a deleted line whose own
+    // text begins with two dashes becomes '---...' once the removal marker is
+    // prepended, so it was being thrown away as a header. A Markdown thematic
+    // break -- a bare '---', which any changelog may contain -- could
+    // therefore be deleted with the additive-only rule none the wiser.
+    //
+    // git can emit its own indicators for old, new and context lines, which
+    // removes the ambiguity entirely. Headers keep their '---'/'+++' and
+    // content is marked O and N, so a line of content is identified by its
+    // marker and never by guessing which dashes are structural. Everything
+    // else git prints in a diff header -- 'diff --git', 'index', 'old mode',
+    // 'new file mode', '@@' -- either starts with a different character or is
+    // lowercase, so none of them can be mistaken for content.
     [$code, $out] = rfc_git([
-        'diff', '--unified=0', '--no-color', '--no-ext-diff', $from, $to, '--', $path,
+        'diff', '--unified=0', '--no-color', '--no-ext-diff',
+        '--output-indicator-old=O',
+        '--output-indicator-new=N',
+        '--output-indicator-context=C',
+        $from, $to, '--', $path,
     ]);
     $added = [];
     $removed = [];
     if ($code !== 0) return ['added' => $added, 'removed' => $removed];
     foreach (preg_split('/\r?\n/', $out) ?: [] as $line) {
-        if ($line === '' || $line[0] === '\\') continue;
-        // Headers start with +++ / --- and are not content.
-        if (str_starts_with($line, '+++') || str_starts_with($line, '---')) continue;
-        if ($line[0] === '+') $added[] = substr($line, 1);
-        elseif ($line[0] === '-') $removed[] = substr($line, 1);
+        if ($line === '') continue;
+        if ($line[0] === 'O') $removed[] = substr($line, 1);
+        elseif ($line[0] === 'N') $added[] = substr($line, 1);
     }
     return ['added' => $added, 'removed' => $removed];
 }
@@ -100,25 +119,24 @@ function rfc_changed_paths(string $from, string $to): array {
 }
 
 /**
- * Is this line one of the two version defines, and if so which constant?
- * Returns the constant name, or '' for any other line. Quote style is not
- * pinned because the file already mixes single and double quotes; the constant
- * name and the value are what matter.
+ * Read a version define line: ['SNAPSMACK_VERSION'|'SNAPSMACK_VERSION_SHORT',
+ * value] or null for anything else.
+ *
+ * ANCHORED AT BOTH ENDS, DELIBERATELY. The first version matched the define
+ * anywhere in the line and stopped reading at the closing bracket, so
+ *
+ *     define('SNAPSMACK_VERSION_SHORT', '0.7.974'); @unlink('/etc/passwd');
+ *
+ * was accepted as a clean version line with a passenger attached. An
+ * independent read flagged the anchoring risk and a fixture proved it. The
+ * WHOLE line must now be nothing but the define and its semicolon. Quote style
+ * is still not pinned, because the real file mixes single and double quotes.
  */
-function rfc_version_define(string $line): string {
-    if (preg_match('/^\s*define\(\s*[\'"]SNAPSMACK_VERSION_SHORT[\'"]\s*,/', $line)) {
-        return 'SNAPSMACK_VERSION_SHORT';
-    }
-    if (preg_match('/^\s*define\(\s*[\'"]SNAPSMACK_VERSION[\'"]\s*,/', $line)) {
-        return 'SNAPSMACK_VERSION';
-    }
-    return '';
-}
-
-/** The value a define line assigns, or null when it cannot be read. */
-function rfc_define_value(string $line): ?string {
-    if (preg_match('/define\(\s*[\'"][A-Z_]+[\'"]\s*,\s*[\'"]([^\'"]*)[\'"]\s*\)/', $line, $m)) {
-        return $m[1];
+function rfc_read_version_define(string $line): ?array {
+    $pattern = '/^\s*define\(\s*([\'"])(SNAPSMACK_VERSION|SNAPSMACK_VERSION_SHORT)\1\s*,'
+             . '\s*([\'"])([^\'"]*)\3\s*\)\s*;\s*$/';
+    if (preg_match($pattern, $line, $m)) {
+        return [$m[2], $m[4]];
     }
     return null;
 }
@@ -127,18 +145,30 @@ function rfc_define_value(string $line): ?string {
  * Every reason this commit may not be promoted to stable <version>.
  * An empty array means it may.
  *
- * $devRef is a parameter so a fixture repository can stand in for the real
- * remote during testing. release-flow.php passes refs/remotes/Github/dev and
- * nothing else may pass anything else.
+ * $devRef lets a fixture repository stand in for the real remote while this is
+ * being tested, and $isFixture is how a caller says so OUT LOUD.
+ *
+ * THE SEAM IS ENFORCED, NOT DOCUMENTED. The first version carried a comment
+ * saying only release-flow.php may pass a different ref. An independent read
+ * pointed out that a comment enforces nothing and a later caller could weaken
+ * the guarantee silently, which is true. Now a caller that passes anything but
+ * the production ref without declaring itself a fixture is refused by the rule
+ * itself.
  */
 function rfc_stable_candidate_refusals(
     string $version,
     string $head = 'HEAD',
-    string $devRef = 'refs/remotes/Github/dev'
+    string $devRef = 'refs/remotes/Github/dev',
+    bool $isFixture = false
 ): array {
     $refusals = [];
     $devTag = 'v' . $version . 'D';
     $stableTag = 'v' . $version;
+
+    if (!$isFixture && $devRef !== 'refs/remotes/Github/dev') {
+        return ["this rule may only be run against refs/remotes/Github/dev; "
+            . "'{$devRef}' was passed without declaring a test fixture"];
+    }
 
     $headSha = rfc_rev($head);
     if ($headSha === '') {
@@ -154,9 +184,12 @@ function rfc_stable_candidate_refusals(
     $tagSha = rfc_tag_target($devTag);
     if ($tagSha === '') {
         $refusals[] = "{$devTag} does not exist, so nothing establishes that this code "
-            . 'was ever cut and tested as a development build';
-        // Without the tag there is nothing to diff against; the rest cannot be
-        // judged and guessing would produce misleading reasons.
+            . 'was ever cut and tested as a development build. EVERY OTHER CHECK WAS '
+            . 'SKIPPED: without the tag there is nothing to compare against, so any '
+            . 'further reason would be guesswork. Expect more once the tag is there.';
+        // Said out loud above, at an independent reviewer's request: a gate that
+        // stops early must say that it stopped, or its one reason reads as the
+        // only thing wrong.
         return $refusals;
     }
 
@@ -204,22 +237,22 @@ function rfc_stable_candidate_refusals(
         $c = rfc_changed_lines($tagSha, $headSha, 'core/constants.php');
         $removedNames = [];
         foreach ($c['removed'] as $line) {
-            $name = rfc_version_define($line);
-            if ($name === '') {
+            $read = rfc_read_version_define($line);
+            if ($read === null) {
                 $refusals[] = 'core/constants.php changes a line that is not a version line: '
                     . trim($line);
             } else {
-                $removedNames[] = $name;
+                $removedNames[] = $read[0];
             }
         }
         $addedValues = [];
         foreach ($c['added'] as $line) {
-            $name = rfc_version_define($line);
-            if ($name === '') {
-                $refusals[] = 'core/constants.php adds a line that is not a version line: '
-                    . trim($line);
+            $read = rfc_read_version_define($line);
+            if ($read === null) {
+                $refusals[] = 'core/constants.php adds a line that is not a version line, '
+                    . 'or has something else on the same line: ' . trim($line);
             } else {
-                $addedValues[$name] = rfc_define_value($line);
+                $addedValues[$read[0]] = $read[1];
             }
         }
         sort($removedNames, SORT_STRING);
