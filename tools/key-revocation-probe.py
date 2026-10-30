@@ -62,6 +62,13 @@ try:
 except ImportError:
     snap_site_scope = None
 
+# A real browser's UA. Not deception: the request is authenticated with the
+# site owner's own key against the owner's own site, and this only stops an
+# edge rule turning a valid answer into a misleading one.
+BROWSER_UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+              'AppleWebKit/537.36 (KHTML, like Gecko) '
+              'Chrome/131.0.0.0 Safari/537.36')
+
 # Read-only, behind the generic gate, no credential fallback.
 DEFAULT_ROUTE = 'multisite/posts/recent'
 
@@ -112,9 +119,16 @@ def probe(site_url: str, key: str, route: str, timeout: int = 15) -> int:
         print('  transport: ' + ' '.join(reason.split()))
         return 3
 
+    # A BROWSER USER-AGENT, because the answer has to come from the API and not
+    # from the edge. Codex measured this: the same request got 403 from a Python
+    # user-agent and 200 from PowerShell, and this project already knows its
+    # forum API refuses a default Python UA. Without this a WAF block can be
+    # read as the API refusing the credential -- which on a revocation test
+    # means reporting a LIVE key as dead, and a disconnect decided on it.
     headers = {
         'Authorization': 'Bearer ' + key,
         'Accept': 'application/json',
+        'User-Agent': BROWSER_UA,
     }
     if snap_site_scope:
         headers.update(snap_site_scope.header(site_url))
@@ -137,15 +151,44 @@ def probe(site_url: str, key: str, route: str, timeout: int = 15) -> int:
         return 3
 
     status = resp.status_code
+    ctype = (resp.headers.get('Content-Type') or '').lower()
+
+    # IS THIS THE API ANSWERING, OR SOMETHING IN FRONT OF IT?
+    #
+    # Every verdict below is about what the GATE in core/multisite-api.php did
+    # with the credential. A WAF, a proxy or an error page can produce the same
+    # status codes without the gate ever seeing the request, and reading one of
+    # those as "the key was refused" is the single worst thing this tool could
+    # do: it would report a LIVE key as revoked and a disconnect would follow.
+    #
+    # So the body must parse as JSON and be a JSON object before any verdict is
+    # given. Anything else is INCONCLUSIVE by construction, never a revocation.
     api_error = ''
+    is_json = False
+    body = None
     try:
         body = resp.json()
-        if isinstance(body, dict):
-            api_error = str(body.get('error') or body.get('message') or '')
+        is_json = isinstance(body, dict)
     except ValueError:
-        api_error = ''
+        is_json = False
+    if is_json:
+        api_error = str(body.get('error') or body.get('message') or '')
 
-    print('RESULT   HTTP %d%s' % (status, ('  "%s"' % api_error) if api_error else ''))
+    print('RESULT   HTTP %d   content-type: %s' % (status, ctype or '(none)'))
+    if api_error:
+        print('         API said: "%s"' % api_error[:200])
+
+    if not is_json:
+        preview = ' '.join((resp.text or '')[:160].split())
+        print('VERDICT  INCONCLUSIVE. The response is not a JSON object, so it did')
+        print('         not come from the API and says nothing about the key.')
+        print('         This is what a WAF or proxy block looks like. A Python')
+        print('         user-agent has been seen getting 403 here where a browser')
+        print('         got 200, which is why this check exists.')
+        if preview:
+            print('         first bytes: %s' % preview)
+        print('         Do NOT treat this as a revocation.')
+        return 3
 
     if status == 401:
         print('VERDICT  NOT ACCEPTED. This credential no longer passes the gate.')
