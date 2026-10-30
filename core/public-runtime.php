@@ -310,6 +310,27 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
         }
     }
 
+    // THOMAS, ON EVERY SKIN, FROM ONE PLACE.
+    //
+    // He was emitted by core/meta.php and core/footer-scripts.php. Both are
+    // the legacy render path, and a strict skin reaches neither -- so he has
+    // been absent from 28 of the 31 skins since the September conversion.
+    // The three that still had him are the three that happen to declare him
+    // in their own manifest, which was luck rather than design.
+    //
+    // Worse, the check meant to catch this read core/meta.php, a file strict
+    // pages never load, so it passed the whole time he was gone. The test is
+    // replaced with one that renders every skin.
+    //
+    // Declared HERE, at the one exit every kind passes through, so no skin
+    // has to ask for him and no skin can forget. The inventory handle carries
+    // his stylesheet with it, and the three manifests that already name him
+    // collapse on array_unique.
+    $response['required_assets']['scripts'] = array_values(array_unique(array_merge(
+        (array)($response['required_assets']['scripts'] ?? []),
+        ['smack-thomas']
+    )));
+
     if (is_array($response['item'] ?? null)) $response['item'] = $trustItem($response['item']);
     foreach (['items', 'photographs'] as $group) {
         if (!is_array($response[$group] ?? null)) continue;
