@@ -232,6 +232,8 @@ class OAuthTests(unittest.TestCase):
                 self.assertIsNone(renewed.expires_in)
                 self.assertEqual(renewed.scope, "conversation:read")
                 asyncio.run(provider.revoke_token(access))
+                self.assertIsNone(asyncio.run(provider.load_access_token(renewed.access_token)))
+                self.assertIsNone(asyncio.run(provider.load_refresh_token(client, result.refresh_token)))
                 asyncio.run(provider.revoke_token(refresh))
                 self.assertIsNone(asyncio.run(provider.load_access_token(result.access_token)))
                 self.assertIsNone(asyncio.run(provider.load_refresh_token(client, result.refresh_token)))
