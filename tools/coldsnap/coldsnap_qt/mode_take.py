@@ -17,8 +17,8 @@ import uuid
 
 import requests
 
-from PySide6.QtCore import Qt, QRect, Signal, QTimer
-from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen
+from PySide6.QtCore import Qt, QRect, QSize, Signal, QTimer
+from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
@@ -31,7 +31,7 @@ from sumna_post import SmacktalkPoster
 
 from . import theme, biggie
 from .widgets import (Accordion, Card, build_rail, hint, field_label,
-                      big_button, thumb_label)
+                      big_button, thumb_label, load_pixmap)
 from .body_editor import BodyEditor
 from .drafts_panel import BatchRail, default_draft_row
 from .mosaic_layout import tile_rects as _tile_rects
@@ -70,7 +70,24 @@ class MosaicPreview(QWidget):
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
         for position, ((row, path), cell) in enumerate(zip(self._tiles, cells), 1):
             rect = cell.translated(inner.topLeft())
-            pix = QPixmap(path)
+            # THIS LINE WAS THE FREEZE. It was QPixmap(path): a full-resolution
+            # decode from disk, uncached, for EVERY tile on EVERY paint event.
+            # paintEvent runs on every repaint -- ticking a photo, resizing,
+            # dragging a tile, the window regaining focus -- so a mosaic of 53
+            # SNAP SLAPPER originals re-decoded all 53 at full size each time,
+            # on the GUI thread. That is why the mosaic step stopped responding.
+            #
+            # load_pixmap caches by (path, mtime, size) and scales once, so
+            # repaints after the first are free. The size is quantised to 64px
+            # steps because the cache key includes it, and without that a slow
+            # drag-resize would fill the 400-entry cache with one entry per
+            # pixel width and start thrashing instead of caching.
+            #
+            # Deliberately NOT thumb_square, which the lists use: that is a
+            # square crop, and this preview exists to show the whole
+            # photograph -- see the comment below, which predates me.
+            edge = max(64, -(-max(rect.width(), rect.height()) // 64) * 64)
+            pix = load_pixmap(path, edge) or QPixmap()
             if not pix.isNull():
                 # Preview the whole photograph.  Cropping here made the composer
                 # imply a crop the photographer had never chosen.
@@ -394,6 +411,9 @@ class TakeMode(QWidget):
         preview_hint.setAlignment(Qt.AlignCenter)
         layout.addWidget(preview_hint)
         photos = QListWidget()
+        # Without this the thumbnails above are drawn at the ~16px default and
+        # are no more use than the filename was.
+        photos.setIconSize(QSize(96, 96))
         photos.setDragDropMode(QListWidget.InternalMove)
         # Checkboxes own inclusion. Row selection is only the current photo for
         # move/rotate controls, avoiding Windows Ctrl-click multi-select rules.
@@ -408,6 +428,22 @@ class TakeMode(QWidget):
             shape, ratio = self._image_shape(image)
             name = image.filename or os.path.basename(image.local_path)
             item = QListWidgetItem(f"{name}    {shape} · {ratio:.2f}:1")
+            # A thumbnail, because a filename is not how a photographer knows
+            # which photograph is which. This list was name + shape + ratio and
+            # nothing else, which is SS-1033: with 53 in the bucket the operator
+            # could not tell them apart, and that is what stopped the post.
+            # thumb_square is the pre-made small file every other list in this
+            # app already uses for its icons -- see the bucket rail below, which
+            # does exactly this. Falling back to the original only when there is
+            # no thumbnail yet.
+            icon = load_pixmap(image.thumb_square or image.local_path, 96)
+            if icon:
+                item.setIcon(QIcon(icon))
+            else:
+                # An explicit state rather than a silently blank row, so a
+                # photograph that will not decode is visible as a problem.
+                item.setToolTip("This photograph could not be previewed: "
+                                + (image.local_path or name))
             item.setData(Qt.UserRole, bucket_index)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsDragEnabled)
             item.setCheckState(Qt.Checked if existing and bucket_index in existing_order
