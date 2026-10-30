@@ -15,8 +15,31 @@
  *                               NOT run here (an edited caption's #tags do not
  *                               add/remove snap_tags rows from this door).
  *
- * Authentication: 'sybu' scoped Bearer key (or admin session), photoblog +
- * carousel modes — the same gate as sybu-data.php.
+ * Authentication: 'sybu' scoped Bearer key (or admin session), photoblog,
+ * carousel and smacktalk modes — the same list as sybu-data.php.
+ *
+ * WHY smacktalk IS ON THAT LIST, and what it costs, because this is the one
+ * door in this file that widened. Until 30 October 2026 the list was
+ * ['photoblog', 'carousel'] and a smacktalk site answered 409 — which is
+ * api-auth.php working exactly as designed, not a bug. The owner was running
+ * COLD STORAGE against a longform site with 3,423 images and every sync
+ * failed on it (SS-1019).
+ *
+ * The 409 was right to exist and the reason is at api-auth.php:58-66: on
+ * 6 August 2026 a tool changed fauxlaroid.fyi's mode, every gram skin then
+ * hid itself from the gallery, and activating a gram skin was the only
+ * supported way back, so the site locked itself out of its own repair path.
+ * That guard is untouched here. The mode is still never auto-flipped on a
+ * site with content; only the list of modes a key-holder may work on grew.
+ *
+ * NOT THE SAME CASE AS sybu-data.php, said plainly rather than leaning on it
+ * as precedent. That endpoint's own comment justifies smacktalk by being
+ * "read-only metadata". This one is not read-only: the POST branch below
+ * updates title, description, alt and colour on an image row. So this widens
+ * a WRITE surface, and the control that remains is the scoped sybu Bearer
+ * key plus the field list — not the mode. A key-holder can now edit image
+ * metadata on a longform site. That is the trade, it was the owner's call,
+ * and it is written here so nobody has to reconstruct it later.
  */
 
 /**
@@ -27,7 +50,7 @@
  */
 
 $GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
-$GLOBALS['SNAP_API_REQUIRE_MODE'] = ['photoblog', 'carousel'];
+$GLOBALS['SNAP_API_REQUIRE_MODE'] = ['photoblog', 'carousel', 'smacktalk'];
 require_once 'core/api-auth.php';
 require_once 'core/alt-text.php';
 
