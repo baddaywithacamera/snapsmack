@@ -1621,6 +1621,15 @@
             20
         ]
     },
+    "strict-path-asset-parity.php": {
+        "assertions": 14,
+        "predicates": 12,
+        "thresholds": [
+            8,
+            20,
+            30
+        ]
+    },
     "strict-scrolltime-regression.php": {
         "assertions": 2,
         "predicates": 3,
