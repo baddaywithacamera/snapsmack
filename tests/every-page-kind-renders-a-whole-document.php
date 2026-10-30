@@ -68,8 +68,16 @@ function d_ok(bool $cond, string $why): void {
  * on one of these skins has the defect the owner reported.
  */
 const BLOGROLL_FRAGMENT_SKINS = [
-    'aurora', 'heuristic', 'instant-camera', 'jive-turkey',
-    'parade', 'sliders', 'sudden-impact', 'the-grid',
+    // EMPTY, 30 October 2026. All eight were repaired the same day they were
+    // found: aurora, heuristic, instant-camera, jive-turkey, parade, sliders,
+    // sudden-impact, the-grid. Each had a byte-identical 787-character
+    // blogroll branch ahead of its doctype -- one copy-paste across the gram
+    // family, not eight mistakes -- and each now handles the kind inside the
+    // document, the way GAME ON always did.
+    //
+    // The list stays here rather than being deleted because an empty list that
+    // the suite still enforces is the thing that stops this coming back. Do
+    // not add a skin to it to make a failure go away; fix the layout.
 ];
 
 /** Kinds that are whole pages. 'photo' is excluded ONLY when it is explicitly

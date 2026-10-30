@@ -11,6 +11,24 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.973D - 2026-10-30 - THE PAGE WITH NO HEAD
+
+- **v0.7.972D is TAGGED AND PUSHED to origin at `6dc4e8fb`**, signed `--authority-by="Sean McCormick"` on his direct approval in conversation. The full suite and all ten browser checks ran inside `gate-note` and again inside `tag-dev`. It is tagged, **not built and not deployed** — building is SMACK CENTRAL's BITCHIN' panel and the owner's alone. The source version therefore moves to 0.7.973D here: 972D is published, and a published tag never moves, so everything below is 973D.
+
+- **One thing had to be resolved to tag at all, and it is worth recording.** `tag-dev`'s `git fetch --tags` was refused: local `v0.7.970D` "would clobber existing tag". Inspected rather than forced — the local tag was an **annotated** object peeling to `ce084d52`, origin's a **lightweight** tag pointing straight at `ce084d52`. Same commit; only the object type differed. Its annotation recorded an earlier correction (a tag moved to fold work in, then restored because a pushed tag never moves). The annotation was saved to the session scratchpad first, then the **local** tag deleted and re-fetched from origin. Origin was never touched.
+
+### The blogroll fault, found by the owner and fixed the same day (SS-1068)
+
+- **All 8 affected skins now send a whole document: AURORA, HEURISTIC, INSTANT-CAMERA, JIVE-TURKEY, PARADE, SLIDERS, SUDDEN-IMPACT, THE-GRID.** Each had a blogroll branch ahead of its `<!doctype>` that emitted `<main>` and `<footer>` and stopped, so the page reached the browser with no `<head>` and no stylesheet and rendered as unstyled default text. The branch was **byte-identical in all eight** — 787 characters, same MD5 — which makes it one copy-paste across the gram family rather than eight mistakes. Each now handles the kind inside the document, next to `page`, where it inherits the head, wrappers, nav and footer. That is how GAME ON, the one gram skin that was always right, has always done it; it was copied rather than reinvented.
+
+- **The duplicated `<footer>` went with it.** The old branch emitted its own footer because it had no document to inherit one from; the document branch already renders the same `footer` component, so the copy is gone rather than left to drift.
+
+- **Measured, not asserted: 30 of 30 skins render blogroll as a whole document with its stylesheets, and the exemption list is empty.** `tests/every-page-kind-renders-a-whole-document.php` passes at 153 checks with `BLOGROLL_FRAGMENT_SKINS` empty — the list is kept, still enforced, so re-adding a skin to silence a failure fails the suite. `skin-render-snapshot-regression` passes unchanged at 175 pages across 25 skins, so no other page type moved.
+
+- **All 8 skin manifest versions bumped**, because sites install from the registry by version and an unchanged version would never reach them: PARADE 1.2.53→1.2.54, AURORA 1.0.55→1.0.56, INSTANT-CAMERA 1.0.57→1.0.58, THE-GRID 1.3.57→1.3.58, JIVE-TURKEY 0.1.43→0.1.44, HEURISTIC 0.1.17→0.1.18, SLIDERS 0.1.16→0.1.17, SUDDEN-IMPACT 1.0.22→1.0.23. **Packaging and publishing those eight is the owner's step, not done here.**
+
+- **Lane note, recorded because it is the rule that cost a month.** `skins/*/layout.php` is not this agent's lane. The owner instructed the repair directly; the eight files were claimed in Brain Trust first so the other agent could not collide, and nothing else under `skins/` was touched.
+
 - **The blogroll page is sent to the browser with no stylesheet on 8 of 30 skins. Reported by the owner on a live site; NOT FIXED here, because the repair is in the skin lane.** He saw plain serif text on white with default blue links. Fetched, the live response begins `<main class="blogroll-page">` — **no `<!doctype>`, no `<html>`, no `<head>`, and not one `<link rel="stylesheet">`**. The markup is perfect and the page is naked. In `skins/parade/layout.php` the first branch tests `kind === 'blogroll'`, emits `<main>` and `<footer>`, and stops; the `<!doctype>` lives in the `else` branch that branch never reaches. It reads as though the fragment branch beside it was copied — and a fragment is correct for the infinite-scroll photo case, which is why it was easy to miss.
 
 - **Measured across the fleet rather than waiting for the next report: 8 broken, 22 fine, 0 not checked.** Broken on blogroll: **AURORA, HEURISTIC, INSTANT-CAMERA, JIVE-TURKEY, PARADE, SLIDERS, SUDDEN-IMPACT, THE-GRID**. Any live site on one of those eight has this defect. The other 22 send a whole document with its stylesheets. The fault is blogroll-only: `page`, `collection`, `collections` and `albums` were rendered through all 30 skins and every one came back a whole document.
