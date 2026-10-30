@@ -205,41 +205,39 @@
             ctrls.classList.add('archive-controls--docked');
             dock.appendChild(ctrls);
         }
-        alignDockedControls(ctrls);
     }
 
-    // Align the docked controls to the right inner edge of the photo grid.
-    function alignDockedControls(ctrls) {
-        if (!ctrls || !ctrls.classList.contains('archive-controls--docked')) return;
-        // Find the first visible grid — skip display:none elements (zero-width rect).
-        var gridSelectors = ['.fsog-archive-grid', '#browse-grid', '#justified-grid'];
-        var grid = null;
-        for (var i = 0; i < gridSelectors.length; i++) {
-            var el = document.querySelector(gridSelectors[i]);
-            if (el && el.getBoundingClientRect().width > 0) { grid = el; break; }
-        }
-        var infobox = document.getElementById('infobox');
-        if (!grid || !infobox) return;
-        var infoboxRect = infobox.getBoundingClientRect();
-        var gridRect    = grid.getBoundingClientRect();
-        var gridStyle   = window.getComputedStyle(grid);
-        var padRight    = parseFloat(gridStyle.paddingRight) || 0;
-        // Right edge of grid inner content area, measured from right of infobox.
-        var offset = infoboxRect.right - (gridRect.right - padRight);
-        ctrls.style.right = Math.max(0, offset) + 'px';
-    }
-
-    window.addEventListener('resize', function () {
-        alignDockedControls(document.querySelector('.archive-controls--docked'));
-    });
+    // THE RUNTIME ALIGNER IS GONE. SS-1057.
+    //
+    // There used to be an alignDockedControls() here, called on load and on
+    // every resize, which wrote ctrls.style.right -- an INLINE style, so it
+    // beat the stylesheet. Three things were wrong with it:
+    //
+    //   1. It measured against #infobox, which is FULL-BLEED, and applied the
+    //      result to an element positioned against .archive-filter-inner,
+    //      which is the content column. Two different reference frames.
+    //   2. Math.max(0, offset) clamped to zero whenever the infobox edge sat
+    //      at or left of the grid's inner edge, and right:0 means flush
+    //      against the positioned ancestor.
+    //   3. The stylesheet above it already says, in a comment, "the inner
+    //      wrapper is the positioning context, so no JavaScript is needed" --
+    //      and then this ran anyway and undid it.
+    //
+    // MEASURED before removing it, 50-SHADES at 1440, after the parentage fix:
+    //      stylesheet only   controls 1141..1313   the intended 40px inset
+    //      with the aligner  controls 1181..1353   flush to the column edge
+    // The content column is 73..1353, so the aligner's only remaining effect
+    // was to take away the inset the stylesheet asks for. It is not needed and
+    // it is not neutral, so it goes rather than staying as dead weight.
+    //
+    // The stylesheet positions the control: right: var(--archive-content-padding).
+    // Nothing needs to run for that to be true, which is what the comment
+    // claimed all along.
 
     document.addEventListener('DOMContentLoaded', function () {
         wireToggle();
         wireHotkeys();
         dockControls();
-        // Controls may already be server-rendered inside #infobox (no move needed),
-        // so alignDockedControls must also run unconditionally on load.
-        alignDockedControls(document.querySelector('.archive-controls--docked'));
     });
 }());
 // ===== SNAPSMACK EOF =====
