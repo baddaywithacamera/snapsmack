@@ -34,9 +34,11 @@ declare(strict_types=1);
  * approved -- the list only shrinks, and anything new fails immediately.
  *
  * WHAT IT CANNOT SEE, said rather than discovered later: the write detector
- * matches direct SQL on snap_ tables inside the endpoint body. An endpoint
- * that changes state through a helper function reads as "reads" here. So
- * "reads" means "no direct SQL in this block", not "has no effect".
+ * matches direct SQL on snap_ tables inside the endpoint body -- DML and now
+ * ALTER/CREATE, after Muse's review found a schema change this pattern had
+ * called a read. An endpoint that changes state through a HELPER FUNCTION
+ * still reads as "reads" here. So "reads" means "no direct SQL in this
+ * block", not "has no effect".
  */
 
 $root = dirname(__DIR__);
@@ -85,7 +87,13 @@ function ep_parse(string $src): array {
             'line'       => $line,
             'behindGate' => $line > $gateLine,
             'hasRole'    => (bool) preg_match('/\$node\[\'role\'\]/', $body),
-            'writes'     => (bool) preg_match('/\b(INSERT|UPDATE|DELETE|REPLACE)\s+(INTO\s+)?`?snap_/i', $body),
+            // ALTER and CREATE are in here because Muse's review caught what
+            // this pattern could not see: the 'comments' preamble runs an
+            // ALTER TABLE, and a detector matching only row changes called it
+            // a read. An endpoint that migrates SCHEMA is a writer.
+            'writes'     => (bool) preg_match(
+                '/\b(INSERT|UPDATE|DELETE|REPLACE)\s+(INTO\s+)?`?snap_|\b(ALTER|CREATE)\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?`?snap_/i',
+                $body),
         ];
     }
     return $out;
@@ -137,7 +145,7 @@ $OPEN_BY_OMISSION = [
     'fediverse/relay-join#POST'  => 'WRITES snap_settings. Sets the relay URL and joins signed with the target key. Hub->spoke; gateable.',
     'fediverse/relay-admit#POST' => 'no direct SQL in the block, which is not the same as no effect',
     'heartbeat#GET'              => 'reads. DIRECTION NOT ESTABLISHED -- do not gate until it is.',
-    'comments#ANY'               => 'reads. The umbrella block; its sub-actions are gated individually.',
+    'comments#ANY'               => 'NOT AN ENDPOINT: a schema preamble that runs an ALTER TABLE to add snap_comments.is_spam. Reachable by any authenticated caller with no role check. All five real comment routes -- pending, list, action, get, reply -- ARE hub-gated, writers included.',
     'posts/recent#GET'           => 'reads. Hub->spoke; gateable.',
     'stats/daily#GET'            => 'reads. Hub->spoke; gateable.',
     'updates/status#GET'         => 'reads',
