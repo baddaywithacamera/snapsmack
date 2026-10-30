@@ -1,5 +1,11 @@
 <?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
-<?php if (($view['response']['kind'] ?? '') === 'blogroll'): ?><main class="blogroll-page" role="main"><div class="blogroll-canvas"><h1 class="static-page-title blogroll-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Blogroll'); ?></h1><?php echo snap_render_html(snap_render_component('blogroll', ['groups' => $view['response']['blogroll_groups'] ?? []])); ?></div></main><footer id="system-footer" class="site-footer<?php if (!empty($view['site']['footer']['lowercase'])): ?> footer-lowercase<?php endif; ?>"><div id="footer"><?php echo snap_render_html(snap_render_component('footer', ['footer' => $view['site']['footer'] ?? []])); ?></div></footer><?php elseif (!empty($view['response']['fragment']) && ($view['response']['kind'] ?? '') === 'photo'): ?>
+<?php /* A 'blogroll' branch used to sit HERE, first, emitting <main> and <footer>
+   and nothing else -- so it short-circuited before the <!doctype> below and the
+   page went to the browser with no <head> and no stylesheet (SS-1068). This is
+   the skin the owner caught it on. The blogroll case now lives in the kind
+   chain inside the document, where it inherits the head, the wrappers and the
+   footer. Only a genuine fragment belongs above the doctype, next line. */ ?>
+<?php if (!empty($view['response']['fragment']) && ($view['response']['kind'] ?? '') === 'photo'): ?>
 <article class="tg-post-ig">
 <div class="tg-post-ig-image"><?php if (!empty($view['response']['item']['img_file'])): ?><?php echo snap_render_html(snap_render_component('image', ['url' => $view['response']['item']['img_file'], 'alt' => $view['response']['item']['img_alt'] ?? $view['response']['item']['img_title'] ?? '', 'class' => 'tg-single-img', 'attributes' => ['data-lightbox-src' => $view['response']['item']['img_file']]])); ?><?php endif; ?></div>
 <div class="tg-post-ig-info">
@@ -65,6 +71,7 @@
 </div><div class="tg-post-ig-info"><div class="tg-post-ig-body"><h1><?php echo snap_escape_html($view['response']['item']['img_title'] ?? $view['response']['item']['title'] ?? ''); ?></h1><div class="tg-post-caption-block"><?php echo snap_render_html($view['response']['item']['content'] ?? $view['response']['item']['description'] ?? $view['response']['item']['img_description'] ?? ''); ?></div></div></div></article></main>
 <?php elseif (($view['response']['kind'] ?? '') === 'page'): ?>
 <main><article class="tg-static-page"><h1 class="tg-static-title"><?php echo snap_escape_html($view['response']['item']['title'] ?? ''); ?></h1><?php echo snap_render_html(snap_render_component('page-hero', ['item' => $view['response']['item'] ?? []])); ?><div class="tg-static-content"><div class="tg-static-body description"><?php echo snap_render_html($view['response']['item']['content'] ?? ''); ?></div></div></article></main>
+<?php elseif (($view['response']['kind'] ?? '') === 'blogroll'): ?><main class="blogroll-page" role="main"><div class="blogroll-canvas"><h1 class="static-page-title blogroll-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Blogroll'); ?></h1><?php echo snap_render_html(snap_render_component('blogroll', ['groups' => $view['response']['blogroll_groups'] ?? []])); ?></div></main>
 <?php else: ?><main><section class="tg-grid-empty"><h1>Not found</h1></section></main><?php endif; ?>
 <?php if (($view['response']['kind'] ?? '') === 'post' && !empty($view['response']['photographs'])): ?><div class="ss-slider-dots" data-slider-indicators><?php foreach ($view['response']['photographs'] as $slideIndex => $photograph): ?><button type="button" class="ss-slider-dot<?php if ($slideIndex === 0): ?> is-active<?php endif; ?>" data-slide-index="<?php echo snap_escape_attr($slideIndex); ?>" aria-label="<?php echo snap_escape_attr($photograph['img_title'] ?? 'Photograph'); ?>"></button><?php endforeach; ?></div><?php endif; ?>
 <?php echo snap_render_html(snap_render_component('gram-search-dock', ['dock' => $view['site']['search_dock'] ?? []])); ?>
