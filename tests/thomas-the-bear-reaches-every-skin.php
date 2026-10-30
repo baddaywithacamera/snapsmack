@@ -90,7 +90,7 @@ if ($at !== false) {
     $stmt = substr($runtime, $at, 500);
     $semi = strpos($stmt, ';');
     if ($semi !== false) $stmt = substr($stmt, 0, $semi);
-    if (preg_match("/\[('[^\]]*)\]\s*\)\s*\)\s*\)/", $stmt, $m)) {
+    if (preg_match("/\[\s*('[^\[\]]*)\]\s*\)\s*\)\s*\)/s", $stmt, $m)) {
         preg_match_all("/'([A-Za-z0-9:_-]+)'/", $m[1], $hm);
         $declaredHandles = $hm[1];
     }

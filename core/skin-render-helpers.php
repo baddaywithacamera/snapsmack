@@ -536,6 +536,16 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             snapsmack_scrolltime_tag($GLOBALS['settings'] ?? []);
             $html .= (string)ob_get_clean();
         }
+        // And the consent banner, for the same reason and in the same place:
+        // its markup was in core/consent-banner.php, included only from the
+        // legacy core/footer-scripts.php, so no strict page has shown it since
+        // September. The owner asked for it back. Printed AFTER the engine's
+        // own script tag above, which is how the legacy order ran too.
+        if (function_exists('snapsmack_consent_banner_tag')) {
+            ob_start();
+            snapsmack_consent_banner_tag();
+            $html .= (string)ob_get_clean();
+        }
     } elseif ($name === 'navigation') {
         $html = '<nav class="navigation" aria-label="Primary"><ul class="nav-menu">';
         foreach (($data['items'] ?? []) as $item) {

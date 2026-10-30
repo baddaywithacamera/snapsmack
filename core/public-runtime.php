@@ -11,6 +11,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/public-controller.php';
 require_once __DIR__ . '/parser.php';
 require_once __DIR__ . '/archive-controls.php';
+require_once __DIR__ . '/consent-runtime.php';
 
 /** Expand CMS-owned static-page shortcodes before the presentation-only skin sees them. */
 function snapsmack_public_parse_page_content(PDO $pdo, array $response): array
@@ -326,10 +327,42 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     // has to ask for him and no skin can forget. The inventory handle carries
     // his stylesheet with it, and the three manifests that already name him
     // collapse on array_unique.
+    // THE F1 HELP MODAL AND THE CONSENT BANNER, same place and same reason.
+    //
+    // The owner, 29 October, first-hand on a live site: the F1 help modal is
+    // gone and the accept-cookies notice is gone. Both were emitted only from
+    // the legacy path -- core/footer.php:194 for the help engine,
+    // core/footer-scripts.php:28-30 for the consent engine, stylesheet and
+    // banner -- so no strict page has had either since September.
+    //
+    // THE F1 CHAIN NEEDS BOTH HALVES. ss-engine-comms.js:77 binds F1 and
+    // delegates to window.snapPublicHelp when it exists, falling back to its
+    // own smaller modal when it does not; ss-engine-public-help.js:186 states
+    // plainly that it must NOT bind F1 itself, because binding it twice made
+    // one press open and immediately close the modal. So the engine is
+    // declared here and the key binding stays where it already is.
+    //
+    // ss-engine-consent.js publishes window.snapConsent, and every consumer
+    // tests `window.snapConsent && window.snapConsent.ok()` before touching
+    // storage. That fails CLOSED, so the missing engine did not leak anything
+    // -- it switched the preferences off permanently with no way to turn them
+    // on. See core/consent-runtime.php for the whole trace.
     $response['required_assets']['scripts'] = array_values(array_unique(array_merge(
         (array)($response['required_assets']['scripts'] ?? []),
-        ['smack-thomas']
+        ['smack-thomas',
+         'asset:public:ss-engine-public-help',
+         'asset:public:ss-engine-consent']
     )));
+    $response['required_assets']['styles'] = array_values(array_unique(array_merge(
+        (array)($response['required_assets']['styles'] ?? []),
+        // The consent script and stylesheet share one registry handle, and the
+        // style resolver falls through to the ':css' variant on its own.
+        ['asset:public:ss-engine-consent']
+    )));
+
+    // Worked out here because this is the last point that still has the
+    // database. The component that prints it has neither.
+    $GLOBALS['snapsmack_consent'] = snapsmack_consent_prepare($pdo, $settings);
 
     if (is_array($response['item'] ?? null)) $response['item'] = $trustItem($response['item']);
     foreach (['items', 'photographs'] as $group) {
