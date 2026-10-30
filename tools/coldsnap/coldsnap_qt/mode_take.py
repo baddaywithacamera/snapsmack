@@ -393,6 +393,72 @@ class TakeMode(QWidget):
         else:
             self.body.canvas.insert_mosaic(stable, layout_name)
 
+    def _mosaic_used_indices(self, keep):
+        """0-based bucket indices already spoken for by OTHER mosaics in this post.
+
+        SS-1049. With 53 photographs in a post's bucket and several mosaics,
+        remembering which have been used is not something a person should be
+        asked to do. The owner's words: he will not double-use or miss images.
+
+        DERIVED, NEVER STORED. The post body already records every mosaic's
+        membership -- {"type": "mosaic", "order": [...]} in the authoring model,
+        which is the same thing as a [mosaic=1,4,7 layout=rows] marker. So this
+        reads the answer out of the body each time instead of keeping a
+        used-images list that could drift from the post, and nothing is written,
+        nothing is marked, and nothing leaves the bucket or the archive. That
+        was the explicit worry on the ticket: hiding from a picker and deleting
+        from an archive are very different things, and only one is reversible.
+
+        `keep` is the mosaic being edited. Its own photographs stay available,
+        because the dialog shows them already ticked -- so the set returned is
+        every other mosaic's membership minus this one's. That formulation also
+        means it does not matter which marker is which, and two mosaics sharing
+        a photograph does not strand it.
+
+        BOTH EDITOR FACES, one implementation. body.authoring_blocks() is the
+        canonical model for TWIGGY and BIGGIE alike; TWIGGY's markers are parsed
+        into it and BIGGIE's canvas objects are serialised into it. The order
+        entries are 1-based bucket positions from the text face and asset UUIDs
+        from the canvas, so both are resolved here the same way _canvas_mosaic
+        already resolves them.
+        """
+        uuid_to_index = {str(image.asset_uuid): index
+                         for index, image in enumerate(self._bucket)}
+        used = set()
+
+        def walk(node):
+            """Mosaics can sit inside a columns block, so this recurses rather
+            than reading only the top level."""
+            if isinstance(node, dict):
+                if node.get("type") == "mosaic":
+                    order = node.get("order") or []
+                    if not order:
+                        # A BARE [mosaic] MEANS EVERY PHOTOGRAPH IN THE BUCKET
+                        # (biggie.py:46). Treating that as "all used" would hand
+                        # him an empty picker and no way forward, so it counts
+                        # as claiming nothing and the pool stays whole.
+                        return
+                    for identity in order:
+                        key = str(identity)
+                        if key in uuid_to_index:
+                            used.add(uuid_to_index[key])
+                        elif key.isdigit() and 1 <= int(key) <= len(self._bucket):
+                            used.add(int(key) - 1)
+                for value in node.values():
+                    walk(value)
+            elif isinstance(node, (list, tuple)):
+                for value in node:
+                    walk(value)
+
+        try:
+            walk(self.body.authoring_blocks())
+        except Exception:
+            # A body that cannot be parsed must not block mosaic building. The
+            # worst case of returning nothing is the old behaviour.
+            return set()
+
+        return used - set(keep or [])
+
     def _mosaic_dialog(self, existing_order, existing_layout):
         """The one mosaic builder (live preview, tick photos, drag order, layout,
         rotate). Returns (chosen 1-based bucket positions, layout) or None."""
@@ -418,8 +484,23 @@ class TakeMode(QWidget):
         # Checkboxes own inclusion. Row selection is only the current photo for
         # move/rotate controls, avoiding Windows Ctrl-click multi-select rules.
         photos.setSelectionMode(QAbstractItemView.SingleSelection)
+        # SS-1049: photographs already used by OTHER mosaics in this post are
+        # not offered again. The ones belonging to the mosaic being edited stay,
+        # ticked, which is what existing_order is doing here.
+        _used = self._mosaic_used_indices(existing_order)
         display_order = existing_order + [i for i in range(len(self._bucket))
-                                          if i not in existing_order]
+                                          if i not in existing_order
+                                          and i not in _used]
+        if not display_order:
+            QMessageBox.information(
+                self, "Every photo is already in a mosaic",
+                "All %d photographs in this post's bucket are already used in a "
+                "mosaic, so there are none left to build a new one from.\n\n"
+                "Nothing has been removed: they are all still in the bucket and "
+                "in your archive. Add more photos, or edit an existing mosaic "
+                "instead of starting another."
+                % len(self._bucket))
+            return None
         for bucket_index in display_order:
             image = self._bucket[bucket_index]
             if bucket_index not in rotation_originals:
@@ -502,7 +583,17 @@ class TakeMode(QWidget):
             old = preset.findData(previous)
             preset.setCurrentIndex(old if old >= 0 else 0)
             preset.blockSignals(False)
-            selected_count.setText(f"{count} of {photos.count()} included")
+            # SS-1049 acceptance (c), the coordinator's suggestion: say how many
+            # of the bucket are still unused, so he can see he has not missed
+            # any. Only shown once something IS used -- on a first mosaic
+            # "53 of 53 unused" is noise.
+            if _used:
+                selected_count.setText(
+                    f"{count} of {photos.count()} included "
+                    f"— {len(self._bucket) - len(_used)} of "
+                    f"{len(self._bucket)} unused in this post")
+            else:
+                selected_count.setText(f"{count} of {photos.count()} included")
             refresh_preview()
 
         def set_all(state):
