@@ -43,6 +43,7 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
         self.tokens: dict[str, AccessToken] = {}
         self.refresh_tokens: dict[str, RefreshToken] = {}
         self.refresh_subjects: dict[str, str] = {}
+        self.token_families: dict[str, set[str]] = {}
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         return self.clients.get(client_id)
@@ -156,6 +157,9 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
         )
         self.tokens[access_value] = access
         self.refresh_tokens[refresh_value] = refresh
+        family = {access_value, refresh_value}
+        for value in family:
+            self.token_families[value] = family
         self.refresh_subjects[refresh_value] = subject
         return OAuthToken(
             access_token=access_value,
@@ -190,11 +194,18 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
             subject=self.refresh_subjects.get(refresh_token.token, "authenticated-agent"),
         )
         self.tokens[access_value] = access
+        family = self.token_families.setdefault(refresh_token.token, {refresh_token.token})
+        family.add(access_value)
+        self.token_families[access_value] = family
         return OAuthToken(access_token=access_value, token_type="Bearer", expires_in=None, scope=" ".join(granted))
 
     async def revoke_token(self, token: AccessToken | RefreshToken) -> None:
-        self.tokens.pop(token.token, None)
-        self.refresh_tokens.pop(token.token, None)
-        self.refresh_subjects.pop(token.token, None)
+        # Revoking either credential revokes the entire approved connector grant.
+        family = self.token_families.get(token.token, {token.token}).copy()
+        for value in family:
+            self.tokens.pop(value, None)
+            self.refresh_tokens.pop(value, None)
+            self.refresh_subjects.pop(value, None)
+            self.token_families.pop(value, None)
 
 # ===== SNAPSMACK EOF =====
