@@ -1219,6 +1219,13 @@
         "predicates": 12,
         "thresholds": []
     },
+    "scrolltime-covers-every-site-mode.php": {
+        "assertions": 15,
+        "predicates": 4,
+        "thresholds": [
+            4
+        ]
+    },
     "secaudit-055-dev-dirs-regression.php": {
         "assertions": 24,
         "predicates": 32,

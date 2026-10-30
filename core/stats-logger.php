@@ -493,8 +493,24 @@ function snapsmack_scrolltime_tag($settings) {
     // zero. The rollup already counts page_type IN ('landing','archive').
     // SMACKTHEMUP shows the same GRAMOFSMACK-family landing feed as carousel, so
     // its landing gets the same scroll tracking (spec §6).
+    // SMACKTALK WAS MISSING FROM THIS LIST, so a text-mode site recorded no
+    // scroll time on any page at all. Four site modes are valid --
+    // core/app-mode.php:20, core/mode-guard.php:132 and install.php:303 all
+    // agree on photoblog, carousel, smacktalk, smackthemup -- and only three
+    // were here. It was not a conversion stranding; the mode was simply never
+    // added, and there is no other route to the tracker: the only callers are
+    // core/footer-scripts.php:59, archive.php:935 and
+    // core/skin-render-helpers.php:536, all through this one condition.
+    //
+    // A text-mode site gets the same statistics a photo site does. It is the
+    // same question either way -- did a reader stay on the page -- and a long
+    // written post is exactly where the answer is worth having.
+    //
+    // Treated like photoblog rather than like carousel: both its landing feed
+    // and its archive are scrollable lists of posts, so both are eligible.
     $ok = (in_array($mode, ['carousel', 'smackthemup'], true) && $type === 'landing')
-       || ($mode === 'photoblog' && ($type === 'landing' || $type === 'archive'));
+       || (in_array($mode, ['photoblog', 'smacktalk'], true)
+           && ($type === 'landing' || $type === 'archive'));
     if (!$ok) return;
 
     $emitted = true;
