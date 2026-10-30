@@ -16,8 +16,8 @@ status, never deletion.
 import os
 import threading
 
-from PySide6.QtCore import QObject, QSize, Qt, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QObject, QSettings, QSize, Qt, Signal
+from PySide6.QtGui import QFontMetrics, QIcon
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QListWidget, QListWidgetItem, QMessageBox,
@@ -127,11 +127,28 @@ class StorageMode(QWidget):
             "title. Newest added is the order they arrived on this machine.")
         self.sort_combo.currentIndexChanged.connect(self._populate)
         find_row.addWidget(self.sort_combo)
+
+        # SIZE. He asked for "choices for different sizes"; this is that, and
+        # it is also what fixes the squashing, because the cell is computed
+        # from whatever size is chosen here.
+        find_row.addWidget(QLabel("Size"))
+        self.size_combo = QComboBox()
+        for _label, _px in self.THUMB_SIZES:
+            self.size_combo.addItem(_label, _px)
+        self.size_combo.setToolTip(
+            "How large the photographs are drawn. Remembered for next time.")
+        self._thumb_settings = QSettings(self.SETTINGS_ORG, self.SETTINGS_APP)
+        _want = self.valid_thumb_size(
+            self._thumb_settings.value(self.THUMB_SETTING_KEY, None))
+        _at = self.size_combo.findData(_want)
+        self.size_combo.setCurrentIndex(_at if _at >= 0 else 1)
+        self.size_combo.currentIndexChanged.connect(self._on_thumb_size_changed)
+        find_row.addWidget(self.size_combo)
         left.addLayout(find_row)
 
         self.grid = QListWidget()
         self.grid.setViewMode(QListWidget.IconMode)
-        self.grid.setIconSize(QSize(96, 96))
+        self.grid.setIconSize(QSize(self._thumb_px(), self._thumb_px()))
         self.grid.setResizeMode(QListWidget.Adjust)
         self.grid.setUniformItemSizes(True)
         self.grid.setWordWrap(True)
@@ -263,6 +280,75 @@ class StorageMode(QWidget):
     # site was connected, so seeing another site's shelf meant reconnecting.
     ALL_SITES = "\x00all"
 
+    # ── how big the photographs are ─────────────────────────────────────────
+    #
+    # THE OWNER, 30 October 2026, on a 368-image shelf: "thumbs display weird.
+    # no choices for different sizes and they are all square so why
+    # compressed."
+    #
+    # Nothing was compressing them. The grid had setUniformItemSizes(True) and
+    # every row was created with TEXT ONLY -- the photographs decode off-thread
+    # and their icons arrive later. Qt fixed the uniform cell size from that
+    # text-only state and never recomputed it, so a 96px photograph was
+    # squashed into a cell sized for one line of type, inside a tile as wide as
+    # the filename.
+    #
+    # Measured, same widget configuration, same construction order:
+    #     uniform alone            234x12 before an icon -> 234x12 after
+    #     uniform + setGridSize    112x12 before         -> 112x12 after
+    #     uniform + setSizeHint    112x128 before        -> 112x128 after
+    #     non-uniform              234x12 before         -> 234x111 after
+    #
+    # SO THE SIZE HINT IS THE MECHANISM, and setGridSize is not: it narrows the
+    # tile and leaves the photograph crushed. The hint also makes the cell
+    # correct BEFORE anything decodes, so a 3,642-image shelf does not reflow
+    # as the photographs land. That, not speed, is why uniform stays on.
+    THUMB_SIZES = (("Small", 96), ("Medium", 160), ("Large", 240))
+
+    # 96 is what the grid shipped with, so it becomes the SMALLEST option
+    # rather than the only one. The default is the middle: defaulting to 96
+    # again would ship the complaint.
+    DEFAULT_THUMB = 160
+
+    # A view preference, so it lives where the window geometry lives rather
+    # than in the application config, which holds the site credentials and
+    # would be rewritten wholesale to store a thumbnail size.
+    SETTINGS_ORG = "SnapSmack"
+    SETTINGS_APP = "COLD SNAP"
+    THUMB_SETTING_KEY = "cold_storage/thumb_size"
+
+    @classmethod
+    def valid_thumb_size(cls, stored) -> int:
+        """One of ours, or the default.
+
+        A settings store is a file a person can edit and it survives upgrades,
+        so a value out of it is input and not truth. QSettings also hands back
+        strings for numbers it wrote, which is why this coerces before it
+        compares.
+        """
+        try:
+            px = int(stored)
+        except (TypeError, ValueError):
+            return cls.DEFAULT_THUMB
+        return px if px in [size for _label, size in cls.THUMB_SIZES] else cls.DEFAULT_THUMB
+
+    @staticmethod
+    def cell_for_icon(icon_px: int, label_height: int) -> tuple:
+        """The cell a photograph of this size needs, as (width, height).
+
+        Width is the photograph plus a margin and NOTHING ELSE -- deliberately
+        independent of the label. Letting the text set the width is what made
+        the tiles 234px wide and mostly empty, because Qt sized them to
+        '20260624_200003.jpg'. The label elides instead.
+
+        Height is the photograph, one line of type, and the room Qt puts around
+        both. A zero label height has come back from a headless run, so the
+        line is floored rather than trusted.
+        """
+        icon = max(16, int(icon_px))
+        line = max(12, int(label_height or 0))
+        return (icon + 16, icon + line + 20)
+
     @staticmethod
     def site_catalogues() -> list:
         """Every site with a catalogue on this machine, biggest shelf first.
@@ -342,6 +428,31 @@ class StorageMode(QWidget):
         held the connected site's rows.
         """
         return (asset or {}).get("site") or self._connected_site()
+
+    def _thumb_px(self) -> int:
+        """The chosen photograph size, or the default before the control
+        exists (the grid is built after it, but order should not be load
+        bearing)."""
+        if hasattr(self, "size_combo"):
+            return self.valid_thumb_size(self.size_combo.currentData())
+        return self.DEFAULT_THUMB
+
+    def _thumb_cell(self) -> QSize:
+        """The cell for the current size, measured against THIS widget's font
+        rather than an assumed one -- his system font is not the test's."""
+        line = QFontMetrics(self.grid.font()).height()
+        w, h = self.cell_for_icon(self._thumb_px(), line)
+        return QSize(w, h)
+
+    def _on_thumb_size_changed(self, *_):
+        """Remember it, then redraw. Saved immediately rather than on close,
+        so a crash does not lose the choice."""
+        px = self._thumb_px()
+        self._thumb_settings.setValue(self.THUMB_SETTING_KEY, px)
+        self._thumb_settings.sync()
+        self.grid.setIconSize(QSize(px, px))
+        self._photos.reset()          # the cached pixmaps are the wrong size now
+        self._populate()
 
     def _row_site(self, item) -> str:
         """The site of the grid row an item stands for.
@@ -442,9 +553,16 @@ class StorageMode(QWidget):
 
         self._photos.reset()
         self.grid.clear()
+        cell = self._thumb_cell()
         for a in shown:
             item = QListWidgetItem(self.asset_label(a))
             item.setData(Qt.UserRole, a["asset_id"])
+            # THE FIX. Without a size hint, uniform sizing measures this row
+            # while it still has only text and never measures it again, so the
+            # photograph that arrives later is squashed into a cell built for
+            # one line of type. Stating the cell here makes it right before
+            # anything decodes.
+            item.setSizeHint(cell)
             self.grid.addItem(item)
 
         total = len(self._assets)
