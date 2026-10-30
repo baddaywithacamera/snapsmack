@@ -73,8 +73,20 @@ $check(str_contains($engine, "a[rel=\"' + rel + '\"][href]"),
     'the hotkey engine must take the addresses from the page it is on');
 $check(!preg_match('/if \(window\.SNAP_DATA && !sliderActive\)/', $engine),
     'arrow navigation must not be gated on a global nothing sets');
-$check(str_contains($engine, 'window.SNAP_DATA && window.SNAP_DATA.prevUrl'),
+// SNAP_DATA is still honoured where something does set it. This used to pin
+// the literal 'window.SNAP_DATA && window.SNAP_DATA.prevUrl', which lived
+// inline in the keydown handler. The three address sources were factored out
+// into ssNavUrl() so the F1 help modal could report exactly what the handler
+// binds instead of guessing at it, and the literal moved with them. The
+// guarantee is unchanged and is what is checked here: the resolver consults
+// SNAP_DATA, and it is the resolver the arrows actually call.
+$check((bool)preg_match('/function ssNavUrl\b/', $engine),
+    'the three address sources must stay in one resolver, or the help modal starts guessing again');
+$check((bool)preg_match('/ssNavUrl[\s\S]{0,400}window\.SNAP_DATA\s*&&\s*window\.SNAP_DATA\[/', $engine),
     'SNAP_DATA is still honoured where something does set it');
+$check(str_contains($engine, "var prevUrl = ssNavUrl('prev')")
+    && str_contains($engine, "var nextUrl = ssNavUrl('next')"),
+    'the arrow keys must read their addresses through that resolver, not a second copy');
 foreach (["e.key === 'ArrowLeft'", "e.key === 'ArrowRight'", "e.key === ' '"] as $key) {
     $check(str_contains($engine, $key), 'the engine must still bind ' . $key);
 }
