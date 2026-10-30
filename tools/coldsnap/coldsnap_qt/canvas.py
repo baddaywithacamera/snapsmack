@@ -201,8 +201,29 @@ def _data(fmt) -> dict:
 
 
 def _pixmap(path: str, width: int) -> QPixmap:
-    """Bucket photo, decoded once and cached at a sane size."""
-    key = f"biggie:{path}"
+    """Bucket photo, decoded once and cached at a sane size.
+
+    THE MODIFICATION TIME IS PART OF THE KEY, and it was not. Keyed on the path
+    alone, this drew whatever it had cached first and kept drawing it: edit or
+    rotate a photograph and the editor kept showing the old version until COLD
+    SNAP was restarted. Measured, not theorised -- wrote a red file, drew it,
+    replaced the file with a green one at the same path, drew it again, and got
+    red.
+
+    That is this owner's actual workflow. SNAP SLAPPER is his only image source
+    and the mosaic dialog has Rotate left / Rotate right, so a photograph being
+    rewritten at the same path is the normal case, not an edge one. An editor
+    that shows the wrong version of a photograph is worse than a slow one,
+    because he would only find out after the post was published.
+
+    widgets.load_pixmap already keys on (path, mtime, size) and
+    photo_loader.PhotoLoader on st_mtime_ns. This now matches them.
+    """
+    try:
+        stamp = os.stat(path).st_mtime_ns if path else 0
+    except OSError:
+        stamp = 0
+    key = f"biggie:{path}:{stamp}"
     pix = QPixmap()
     if QPixmapCache.find(key, pix) and not pix.isNull():
         return pix
