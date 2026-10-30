@@ -680,6 +680,13 @@
         "predicates": 8,
         "thresholds": []
     },
+    "help-and-consent-reach-every-skin.php": {
+        "assertions": 21,
+        "predicates": 18,
+        "thresholds": [
+            30
+        ]
+    },
     "hotkey-navigation-regression.php": {
         "assertions": 4,
         "predicates": 5,
@@ -1626,7 +1633,7 @@
         "predicates": 16,
         "thresholds": [
             4,
-            9,
+            6,
             20,
             30
         ]

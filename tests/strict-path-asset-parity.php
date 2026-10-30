@@ -230,14 +230,6 @@ $STRANDED = [
         . 'SECAUDIT data table that emits nothing. Both halves are stranded, '
         . 'so this engine does nothing at all on a strict page and is NOT an '
         . 'explanation for SS-1028. Whatever pins that header is elsewhere.',
-    'assets/js/ss-engine-consent.js' =>
-        'The consent engine. No strict page loads it. NOT CHECKED whether a '
-        . 'consent banner is required on these sites or handled elsewhere; '
-        . 'that is the owners decision and it needs asking before any repair.',
-    'assets/css/ss-engine-consent.css' =>
-        'The consent engine stylesheet, same as above.',
-    'assets/js/ss-engine-public-help.js' =>
-        'Public help, 8.6KB of it. NOT CHECKED whether it is still wanted.',
     'assets/js/ss-engine-public-share.js' =>
         'Public share buttons. NOT CHECKED whether they are still wanted.',
 ];
@@ -288,8 +280,8 @@ echo "\nMUTATION PROOF: the reachability test distinguishes reachable from not\n
 // A check that calls everything reachable passes everything.
 sp_test(strpos($strict, 'smack-thomas') !== false,
     'an asset core DOES declare (smack-thomas) is seen on the strict path');
-sp_test(strpos($strict, 'asset:public:ss-engine-consent') === false,
-    'and one it does not (asset:public:ss-engine-consent) is NOT');
+sp_test(strpos($strict, 'asset:public:ss-engine-public-share') === false,
+    'and one it does not (asset:public:ss-engine-public-share) is NOT');
 
 echo "\nEvery legacy asset is reachable, named as stranded, or named as skin-dependent\n";
 $unaccounted = [];
@@ -338,8 +330,12 @@ echo "\nThe lists only shrink\n";
 // inventory entries with a fixed-width window, and both faults hid stranded
 // assets by calling them reachable. 9 is what the corrected scan finds. It may
 // only shrink from here.
-sp_test(count($STRANDED) <= 9,
-    'the stranded set is no larger than the corrected count (now ' . count($STRANDED) . ', corrected to 9 from a wrong 8)');
+// 6, DOWN from 9. The consent engine, its stylesheet and the F1 help engine
+// were repaired on 29 October after the owner found both missing himself, so
+// they leave this list. It only shrinks, and this is it shrinking.
+sp_test(count($STRANDED) <= 6,
+    'the stranded set is no larger than it was after the help/consent repair (now '
+    . count($STRANDED) . ', was 6)');
 // 4, corrected upward from 1 for the same reason as the stranded ceiling: the
 // detector was wrong, not the product. Three of these were invisible while the
 // container-key fault was handing every catalogued asset a name that matched
