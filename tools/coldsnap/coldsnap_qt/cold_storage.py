@@ -80,6 +80,41 @@ class StorageMode(QWidget):
         head.addWidget(self.sync_btn)
         left.addLayout(head)
 
+        # SEARCH AND SORT. Sean, on a 3423-image shelf: "need to be able to
+        # sort by site and date range. search by name."
+        #
+        # Name search and name/usage/insertion sort are here. DATE RANGE IS NOT,
+        # deliberately: img_date is empty on every one of the 3480 rows across
+        # all four catalogues on this machine, so a date control would filter
+        # against nothing and look broken through no fault of its own. The cause
+        # is recorded separately -- the rows were written by the upload path,
+        # which never set the field, and the sync that would backfill it has
+        # been failing. SORT BY SITE is not here either: a site is a whole
+        # catalogue file, not a column, so there is nothing to sort within one
+        # view. Both wait on his answer rather than shipping as dead controls.
+        find_row = QHBoxLayout()
+        self.find_edit = QLineEdit()
+        self.find_edit.setPlaceholderText("Search by name — title or original filename")
+        self.find_edit.setClearButtonEnabled(True)
+        self.find_edit.setToolTip(
+            "Matches anywhere in the title OR the original filename, ignoring case. "
+            "Filters what is already on this machine; it does not call the site.")
+        self.find_edit.textChanged.connect(self._populate)
+        find_row.addWidget(self.find_edit, 1)
+        find_row.addWidget(QLabel("Sort"))
+        self.sort_combo = QComboBox()
+        # (label, key) — the label is what he reads, the key is what sorts.
+        for _label, _key in (("Name", "name"),
+                             ("Most used", "used"),
+                             ("Newest added", "added")):
+            self.sort_combo.addItem(_label, _key)
+        self.sort_combo.setToolTip(
+            "Name sorts by title, or by original filename when a photograph has no "
+            "title. Newest added is the order they arrived on this machine.")
+        self.sort_combo.currentIndexChanged.connect(self._populate)
+        find_row.addWidget(self.sort_combo)
+        left.addLayout(find_row)
+
         self.grid = QListWidget()
         self.grid.setViewMode(QListWidget.IconMode)
         self.grid.setIconSize(QSize(96, 96))
@@ -204,19 +239,73 @@ class StorageMode(QWidget):
     def _site(self) -> str:
         return ((self.app_config() or {}).get("url") or "").strip()
 
-    def reload(self):
-        site = self._site()
+    @staticmethod
+    def asset_label(asset: dict) -> str:
+        """What the operator reads under a tile, and what Name sorts on.
+
+        Title first, then the original filename. The filename matters as much
+        as the title here: an image recorded by the upload path carries no
+        title at all, and the filename is the only thing he could type.
+        """
+        return (asset.get("title") or asset.get("orig_name")
+                or str(asset.get("asset_id", ""))[:12])
+
+    @staticmethod
+    def filter_assets(assets: list, needle: str) -> list:
+        """Assets whose title OR original filename contains `needle`.
+
+        Case-insensitive substring, over the list already in memory. reload()
+        holds every row, so searching never re-queries and never calls the
+        site. An empty needle returns everything rather than nothing.
+        """
+        needle = (needle or "").strip().lower()
+        if not needle:
+            return list(assets)
+        return [a for a in assets
+                if needle in str(a.get("title") or "").lower()
+                or needle in str(a.get("orig_name") or "").lower()]
+
+    @classmethod
+    def sort_assets(cls, assets: list, key: str) -> list:
+        """Sorted for display. `assets` arrives newest-added first.
+
+        all_assets() returns ORDER BY rowid DESC, so 'added' is the order it
+        already has and is left alone -- sorting it again would only risk
+        changing it.
+        """
+        if key == "name":
+            return sorted(assets, key=lambda a: cls.asset_label(a).lower())
+        if key == "used":
+            return sorted(assets, key=lambda a: (-int(a.get("used_in") or 0),
+                                                 cls.asset_label(a).lower()))
+        return list(assets)
+
+    def _populate(self, *_):
+        """Fill the grid from what is already loaded. No query, no site call."""
+        shown = self.sort_assets(
+            self.filter_assets(self._assets, self.find_edit.text()),
+            self.sort_combo.currentData() or "name")
+
         self._photos.reset()
         self.grid.clear()
-        self._assets = snap_library.all_assets(site) if site else []
-        for a in self._assets:
-            label = a.get("title") or a.get("orig_name") or a.get("asset_id", "")[:12]
-            item = QListWidgetItem(label)
+        for a in shown:
+            item = QListWidgetItem(self.asset_label(a))
             item.setData(Qt.UserRole, a["asset_id"])
             self.grid.addItem(item)
-        n = len(self._assets)
-        self.count_lbl.setText(f"COLD STORAGE — {n} image{'' if n == 1 else 's'} offline")
-        if not n:
+
+        total = len(self._assets)
+        if len(shown) == total:
+            self.count_lbl.setText(
+                f"COLD STORAGE — {total} image{'' if total == 1 else 's'} offline")
+        else:
+            # Say the total as well, so a filtered shelf can never be mistaken
+            # for a shelf that lost photographs.
+            self.count_lbl.setText(
+                f"COLD STORAGE — {len(shown)} of {total} images shown")
+        if total and not shown:
+            self.status_lbl.setText("No photograph here matches that name.")
+
+        if not total:
             self.status_lbl.setText("Nothing stored yet — SYNC FROM SITE, or post something.")
             self.grid_stack.setCurrentIndex(1)
         else:
@@ -224,6 +313,12 @@ class StorageMode(QWidget):
         self._sel = None
         self.detail.setEnabled(False)
         self.detail_stack.setCurrentIndex(1)
+
+    def reload(self):
+        """Re-read the catalogue, then show it through the current filter."""
+        site = self._site()
+        self._assets = snap_library.all_assets(site) if site else []
+        self._populate()
 
     def _on_pick(self, item, _prev=None):
         if item is None:
