@@ -213,6 +213,30 @@ class OAuthTests(unittest.TestCase):
             self.assertEqual(asyncio.run(provider.load_access_token(token.access_token)).subject, "codex")
 
 
+    def test_connector_grants_do_not_expire_but_remain_revocable(self) -> None:
+        from mcp.server.auth.provider import AuthorizationCode
+        with tempfile.TemporaryDirectory() as directory:
+            provider = BoothOAuthProvider(BoothStore(Path(directory) / "booth.sqlite3"), "https://booth.example")
+            client = OAuthClientInformationFull(client_id="durable", redirect_uris=[AnyUrl("http://127.0.0.1/callback")])
+            code = AuthorizationCode(code="test-code", client_id="durable", scopes=["conversation:read"],
+                expires_at=time.time() + 60, code_challenge="challenge",
+                redirect_uri=AnyUrl("http://127.0.0.1/callback"), redirect_uri_provided_explicitly=True)
+            result = asyncio.run(provider.exchange_authorization_code(client, code))
+            self.assertIsNone(result.expires_in)
+            with mock.patch("troll_booth.oauth.time.time", return_value=time.time() + 10 * 365 * 86400):
+                access = asyncio.run(provider.load_access_token(result.access_token))
+                refresh = asyncio.run(provider.load_refresh_token(client, result.refresh_token))
+                self.assertIsNotNone(access)
+                self.assertIsNotNone(refresh)
+                renewed = asyncio.run(provider.exchange_refresh_token(client, refresh, ["conversation:read", "booth:write"]))
+                self.assertIsNone(renewed.expires_in)
+                self.assertEqual(renewed.scope, "conversation:read")
+                asyncio.run(provider.revoke_token(access))
+                asyncio.run(provider.revoke_token(refresh))
+                self.assertIsNone(asyncio.run(provider.load_access_token(result.access_token)))
+                self.assertIsNone(asyncio.run(provider.load_refresh_token(client, result.refresh_token)))
+
+
 class WorkerTests(unittest.TestCase):
     def test_only_declared_capability_command_runs(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

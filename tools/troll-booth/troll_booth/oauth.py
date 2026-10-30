@@ -32,6 +32,7 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
     session. Pairing codes are hashed, single-use and stored in SQLite.
     """
 
+    # Approved connector grants do not expire by age; explicit revocation remains.
     def __init__(self, store: BoothStore, public_url: str):
         self.store = store
         self.public_url = public_url.rstrip("/")
@@ -142,7 +143,7 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
             token=access_value,
             client_id=authorization_code.client_id,
             scopes=authorization_code.scopes,
-            expires_at=int(time.time()) + 3600,
+            expires_at=None,
             resource=authorization_code.resource,
             subject=subject,
         )
@@ -150,7 +151,7 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
             token=refresh_value,
             client_id=authorization_code.client_id,
             scopes=authorization_code.scopes,
-            expires_at=int(time.time()) + 86400,
+            expires_at=None,
             resource=authorization_code.resource,
         )
         self.tokens[access_value] = access
@@ -159,7 +160,7 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
         return OAuthToken(
             access_token=access_value,
             token_type="Bearer",
-            expires_in=3600,
+            expires_in=None,
             refresh_token=refresh_value,
             scope=" ".join(authorization_code.scopes),
         )
@@ -184,12 +185,12 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
             token=access_value,
             client_id=refresh_token.client_id,
             scopes=granted,
-            expires_at=int(time.time()) + 3600,
+            expires_at=None,
             resource=refresh_token.resource,
             subject=self.refresh_subjects.get(refresh_token.token, "authenticated-agent"),
         )
         self.tokens[access_value] = access
-        return OAuthToken(access_token=access_value, token_type="Bearer", expires_in=3600, scope=" ".join(granted))
+        return OAuthToken(access_token=access_value, token_type="Bearer", expires_in=None, scope=" ".join(granted))
 
     async def revoke_token(self, token: AccessToken | RefreshToken) -> None:
         self.tokens.pop(token.token, None)
