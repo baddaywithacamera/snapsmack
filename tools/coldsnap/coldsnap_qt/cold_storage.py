@@ -30,6 +30,7 @@ from sumna_post import SumnaConnection, InsecureTransportError
 
 from . import theme
 from .widgets import Card, hint, field_label, big_button, load_pixmap
+from .photo_loader import ListPhotos
 
 _COLOUR_LABELS = ["—", "Colour", "B&W"]
 _COLOUR_TO_VAL = {"Colour": "color", "B&W": "bw"}
@@ -86,6 +87,8 @@ class StorageMode(QWidget):
         self.grid.setUniformItemSizes(True)
         self.grid.setWordWrap(True)
         self.grid.currentItemChanged.connect(self._on_pick)
+        self._photos = ListPhotos(self.grid, lambda item: snap_library.asset_file(
+            self._site(), item.data(Qt.UserRole)) or "")
         self.grid_stack = QStackedWidget()
         self.grid_stack.addWidget(self.grid)
         empty = QWidget()
@@ -203,15 +206,12 @@ class StorageMode(QWidget):
 
     def reload(self):
         site = self._site()
+        self._photos.reset()
         self.grid.clear()
         self._assets = snap_library.all_assets(site) if site else []
         for a in self._assets:
             label = a.get("title") or a.get("orig_name") or a.get("asset_id", "")[:12]
             item = QListWidgetItem(label)
-            media = snap_library.asset_file(site, a["asset_id"])
-            pm = load_pixmap(media, 96) if media else None
-            if pm:
-                item.setIcon(QIcon(pm))
             item.setData(Qt.UserRole, a["asset_id"])
             self.grid.addItem(item)
         n = len(self._assets)
@@ -295,6 +295,14 @@ class StorageMode(QWidget):
                     if r.status_code == 404:
                         bridge.failed.emit("This site doesn't have the image endpoint "
                                            "yet — update it to 0.7.651+.")
+                        return
+                    if not r.ok:
+                        try:
+                            reason = r.json().get("error", "")
+                        except (ValueError, AttributeError):
+                            reason = ""
+                        bridge.failed.emit(f"Site sync refused ({r.status_code}): "
+                                           + (str(reason)[:500] or "The site could not return its image library."))
                         return
                     r.raise_for_status()
                     data = r.json()
