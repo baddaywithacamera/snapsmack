@@ -32,6 +32,7 @@ from sumna_post import SmacktalkPoster
 from . import theme, biggie
 from .widgets import (Accordion, Card, build_rail, hint, field_label,
                       big_button, thumb_label, load_pixmap)
+from .photo_loader import PhotoLoader
 from .body_editor import BodyEditor
 from .drafts_panel import BatchRail, default_draft_row
 from .mosaic_layout import tile_rects as _tile_rects
@@ -48,11 +49,47 @@ class MosaicPreview(QWidget):
         self.setToolTip("Drag one preview tile onto another to swap them.")
         self._tiles, self._rects = [], []
         self._layout_name, self._drag_from = "asymmetric", None
+        # Codex's loader, c0b621f3. Decoding happens off the GUI thread with
+        # QImageReader.setScaledSize, so a photograph is never decoded at full
+        # resolution at all -- which is the part caching alone could not fix.
+        self._photos = PhotoLoader(self)
+        self._ready = {}
 
     def set_mosaic(self, tiles, layout_name):
         self._tiles = list(tiles)  # (row-in-list, local-path), in mosaic order
         self._layout_name = str(layout_name or "asymmetric")
+        # Keep what is already decoded: ticking a 54th photograph must not make
+        # the other 53 reload. The loader's own cache is keyed on
+        # (path, mtime, size) and is the real store; this is just the widget's
+        # view of it, bounded below.
         self.update()
+
+    def _tile_pixmap(self, path, edge):
+        """The decoded tile, or None while it is still being read.
+
+        paintEvent cannot block, so this returns what is in hand and asks for
+        anything missing. The loader answers on a 40ms timer and the callback
+        repaints. A cache hit answers immediately, inside this call.
+        """
+        key = (path, edge)
+        if key in self._ready:
+            return self._ready[key]
+
+        def arrived(pixmap, key=key):
+            # Bounded so a slow drag-resize cannot grow this without limit;
+            # every entry is recoverable from the loader's own cache.
+            if len(self._ready) > 192:
+                self._ready.clear()
+            self._ready[key] = pixmap
+            # Safe from inside paintEvent: update() SCHEDULES a repaint rather
+            # than recursing, and the next paint finds the pixmap here and does
+            # not ask again.
+            self.update()
+
+        # False means the loader already has four decodes in flight. Nothing to
+        # do: those will finish, call their callbacks, and repaint us.
+        self._photos.request(path, edge, arrived)
+        return self._ready.get(key)
 
     @staticmethod
     def tile_rects(width, height, count, layout_name, gap=5):
@@ -77,17 +114,22 @@ class MosaicPreview(QWidget):
             # SNAP SLAPPER originals re-decoded all 53 at full size each time,
             # on the GUI thread. That is why the mosaic step stopped responding.
             #
-            # load_pixmap caches by (path, mtime, size) and scales once, so
-            # repaints after the first are free. The size is quantised to 64px
-            # steps because the cache key includes it, and without that a slow
-            # drag-resize would fill the 400-entry cache with one entry per
-            # pixel width and start thrashing instead of caching.
+            # It now goes through Codex's PhotoLoader (c0b621f3), which decodes
+            # OFF the GUI thread and at reduced size via
+            # QImageReader.setScaledSize -- so these photographs are never
+            # decoded at full resolution at all. Caching alone fixed the
+            # repaints but left the first paint doing 53 full decodes, about
+            # 2.8 seconds; this removes that too.
+            #
+            # The size is still quantised to 64px steps because it is part of
+            # the cache key, and without that a slow drag-resize would ask for
+            # a size it had never seen on every single frame.
             #
             # Deliberately NOT thumb_square, which the lists use: that is a
             # square crop, and this preview exists to show the whole
             # photograph -- see the comment below, which predates me.
             edge = max(64, -(-max(rect.width(), rect.height()) // 64) * 64)
-            pix = load_pixmap(path, edge) or QPixmap()
+            pix = self._tile_pixmap(path, edge) or QPixmap()
             if not pix.isNull():
                 # Preview the whole photograph.  Cropping here made the composer
                 # imply a crop the photographer had never chosen.
