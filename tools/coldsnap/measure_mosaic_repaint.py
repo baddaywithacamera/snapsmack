@@ -91,30 +91,62 @@ def main(argv):
     now.resize(900, 600)
     now.set_mosaic(tiles, 'rows')
     first = time_paints(now, 1)[0]
+
+    # HOW LONG UNTIL EVERY TILE IS ACTUALLY THERE.
+    #
+    # Decoding is off-thread now, so a fast first paint is not the whole story:
+    # the tiles arrive over the following moments and the widget repaints as
+    # they do. This pumps the event loop until nothing is outstanding, which is
+    # the number that corresponds to what the operator sees settle.
+    # The widget must be REPAINTED for the next wave to be requested: the
+    # loader holds four decodes at a time and each paint asks for what is
+    # still missing. A visible widget gets that from update(); an offscreen
+    # one never repaints at all, so the harness has to drive it. Without this
+    # the measurement stalls at four tiles for ever and reports a 30-second
+    # settle that says nothing about the product -- which is exactly what the
+    # first version of this did.
+    settle_start = time.perf_counter()
+    deadline = settle_start + 60.0
+    waves = 0
+    while time.perf_counter() < deadline:
+        QApplication.processEvents()
+        decoded = sum(1 for v in now._ready.values() if v is not None)
+        if decoded >= count:
+            break
+        target = QImage(now.size(), QImage.Format_RGB32)
+        now.render(target)
+        waves += 1
+        time.sleep(0.01)
+    settled = time.perf_counter() - settle_start
+    arrived = sum(1 for v in now._ready.values() if v is not None)
+
     after = time_paints(now, 5)
     after_mean = sum(after) / len(after)
 
-    # The ONLY thing that changed in the repair is the decode and its cache, so
-    # putting the old expression back measures the old behaviour through the
-    # same paint path. This is the line that used to be in paintEvent.
-    original = mode_take.load_pixmap
-    mode_take.load_pixmap = lambda path, size: QPixmap(path)
+    # THE ORIGINAL LINE, measured through the same paint path. The only thing
+    # that changed is how a tile is obtained, so replacing _tile_pixmap with
+    # the expression that used to be inline -- a raw full-resolution QPixmap,
+    # uncached -- measures the behaviour that froze the mosaic step.
+    original = MosaicPreview._tile_pixmap
+    MosaicPreview._tile_pixmap = lambda self, path, edge: QPixmap(path)
     try:
         before = MosaicPreview()
         before.resize(900, 600)
         before.set_mosaic(tiles, 'rows')
         before_runs = time_paints(before, 4)
     finally:
-        mode_take.load_pixmap = original
+        MosaicPreview._tile_pixmap = original
     before_mean = sum(before_runs) / len(before_runs)
 
     print()
-    print('BEFORE  raw QPixmap(path), full resolution, no cache')
+    print('BEFORE  raw QPixmap(path), full resolution, uncached, on the GUI thread')
     print('  every paint   %s' % ', '.join('%.3fs' % r for r in before_runs))
     print('  mean          %.3fs   (%.1f ms per photograph)'
           % (before_mean, before_mean * 1000 / count))
-    print('AFTER   load_pixmap, cached by (path, mtime, size), size quantised')
-    print('  first paint   %.3fs   (the decode still happens once)' % first)
+    print('AFTER   PhotoLoader: off-thread, decoded at reduced size')
+    print('  FIRST paint   %.3fs   (it no longer waits for any decode)' % first)
+    print('  all %2d tiles  %.3fs   to arrive, %d of %d decoded, %d repaints'
+          % (count, settled, arrived, count, waves))
     print('  repaints      %s' % ', '.join('%.3fs' % r for r in after))
     print('  mean          %.3fs   (%.1f ms per photograph)'
           % (after_mean, after_mean * 1000 / count))
@@ -122,15 +154,13 @@ def main(argv):
     print('  repaint of a 53-photograph mosaic: %.1fs -> %.3fs'
           % (before_mean / count * 53, after_mean / count * 53))
 
-    # A repaint that still costs like a fresh decode means the cache is not
-    # being hit -- most likely the size is no longer quantised, so every
-    # repaint asks for a size it has never seen.
-    if after_mean < before_mean / 10:
-        print()
-        print('PASS  repaints are served from cache')
+    # The first paint is the one that used to block the GUI thread for seconds
+    # on a large mosaic. If it is still expensive, the decode is back on the
+    # paint path.
+    if first < before_mean / 5 and after_mean < before_mean / 10:
+        print('PASS  neither the first paint nor a repaint decodes on the GUI thread')
         return 0
-    print()
-    print('FAIL  a repaint still costs like a fresh decode')
+    print('FAIL  painting still costs like a fresh decode')
     return 1
 
 
