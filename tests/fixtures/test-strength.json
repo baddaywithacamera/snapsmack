@@ -1623,9 +1623,10 @@
     },
     "strict-path-asset-parity.php": {
         "assertions": 14,
-        "predicates": 12,
+        "predicates": 16,
         "thresholds": [
-            8,
+            4,
+            9,
             20,
             30
         ]
