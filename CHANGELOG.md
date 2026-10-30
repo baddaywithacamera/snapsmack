@@ -13,6 +13,20 @@
 
 ## 0.7.973D - 2026-10-30 - THE PAGE WITH NO HEAD
 
+### Thomas was still missing from five skins, and so were the other three engines
+
+- **THE 972D CLAIM THAT THESE REACHED "ALL 30 SKINS" WAS WRONG, and it was my claim.** They reached all 30 skins *along one route*. `index.php` has two public render branches — a SMACKTALK site goes through `snapsmack_smacktalk_request()`, everything else through `snapsmack_public_runtime()` — and only the second declared the engines. So on the five skins whose manifest sets `cms_controller=smacktalk` (**ALFRED, STANLEY, TELEGRAM, TILEZ, WRITING-WITH-IMPACT**) Thomas the Bear, the F1 help modal, the cookie notice **and** the keyboard engine were all absent.
+
+- **Confirmed on the owner's own live sites, both already running 0.7.972D**, not inferred from code: `baddaywithacamera.ca` (TILEZ) served `ss-engine-thomas.js` **zero** times; `acolourlesslife.ca` (CHAPLIN) served it once.
+
+- **Why every existing check stayed green.** `tests/thomas-the-bear-reaches-every-skin.php` renders all 30 skins through the public-runtime asset set. That is a true statement about a component and a false one about the product. The browser run behind the 972D note did the same. Testing one route for thirty skins is not the same as testing the route each skin actually uses — the same shape as the blogroll fault, where the markup was perfect and the document around it was missing.
+
+- **The fix is one list with two callers.** `snapsmack_public_engine_assets()` now holds the engine declarations and both branches merge it; the smacktalk branch also prepares the consent decision, which needs the database the printing component does not have. Add an engine to the shared list and both controllers get it — add one to a controller and only that controller gets it, which is exactly how this happened.
+
+- **`tests/engines-reach-every-controller.php` (new, 135 checks)** reads each skin's own `cms_controller` and builds the asset set the way `index.php` builds it *for that branch*, then asserts both branches are actually represented (25 public, 5 smacktalk) so the sweep cannot quietly cover one again. Every smacktalk skin was also rendered against all nine page kinds its controller serves — 45 renders, no gaps.
+
+- **The first version of that test passed its own mutation proof, and that was the instructive failure.** Deleting the repair left the function's name in the *comment* above it, a substring search found it, and the check reported the call present. A comment is not evidence. The test now strips comments with `token_get_all` before searching, matches the actual assignment, and drives its render half from what the source really does — so it fails, by name, when the repair is removed.
+
 - **v0.7.972D is TAGGED AND PUSHED to origin at `6dc4e8fb`**, signed `--authority-by="Sean McCormick"` on his direct approval in conversation. The full suite and all ten browser checks ran inside `gate-note` and again inside `tag-dev`. It is tagged, **not built and not deployed** — building is SMACK CENTRAL's BITCHIN' panel and the owner's alone. The source version therefore moves to 0.7.973D here: 972D is published, and a published tag never moves, so everything below is 973D.
 
 - **One thing had to be resolved to tag at all, and it is worth recording.** `tag-dev`'s `git fetch --tags` was refused: local `v0.7.970D` "would clobber existing tag". Inspected rather than forced — the local tag was an **annotated** object peeling to `ce084d52`, origin's a **lightweight** tag pointing straight at `ce084d52`. Same commit; only the object type differed. Its annotation recorded an earlier correction (a tag moved to fold work in, then restored because a pushed tag never moves). The annotation was saved to the session scratchpad first, then the **local** tag deleted and re-fetched from origin. Origin was never touched.

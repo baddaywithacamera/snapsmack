@@ -316,6 +316,14 @@
         "predicates": 8,
         "thresholds": []
     },
+    "engines-reach-every-controller.php": {
+        "assertions": 2,
+        "predicates": 11,
+        "thresholds": [
+            5,
+            20
+        ]
+    },
     "enrollment-grant-provenance-regression.php": {
         "assertions": 49,
         "predicates": 23,
@@ -1581,8 +1589,8 @@
         "thresholds": []
     },
     "solo-page-hotkeys-regression.php": {
-        "assertions": 24,
-        "predicates": 23,
+        "assertions": 26,
+        "predicates": 26,
         "thresholds": [
             20
         ]
