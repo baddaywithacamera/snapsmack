@@ -276,6 +276,7 @@ tools/smackpress/visible30-*.json
 # OH SNAP build output: installers, source zips and verification runs.
 outputs/oh-snap-*/
 .geometry-fixtures/
+.engine-fixtures/
 
 # SECAUDIT 061: the fleet enrollment MAC key. Per-install, generated on first
 # use, and the whole point is that it is NOT a database value and NOT shipped.
