@@ -181,7 +181,27 @@
                 || document.querySelector('.archive-filter-bar')
                 || document.querySelector('.archive-toolbar')
                 || document.querySelector('.archive-search-row');
-        if (dock && dock !== ctrls.parentNode) {
+        // ALREADY INSIDE THE DOCK MEANS LEAVE IT ALONE. SS-1057.
+        //
+        // This used to ask `dock !== ctrls.parentNode`, which is only true when
+        // the controls are the dock's DIRECT child. The server renders them one
+        // level deeper -- #infobox > .archive-filter-inner > .archive-controls --
+        // so the test passed and the engine MOVED them up to #infobox itself.
+        //
+        // That is the whole fault. .archive-filter-row is full-bleed: it carries
+        // the bar's background across the window, while .archive-filter-inner is
+        // the content column with the max-width and the padding. Moving the
+        // controls out of the inner wrapper and into the row takes them out of
+        // the content column, so they end up flush against the window edge past
+        // where the grid ends. Measured in the geometry harness on TRUE GRIT at
+        // 1440: controls 770..942 before the move, 1268..1440 after it, with the
+        // grid's inner right edge at 1117.
+        //
+        // contains() asks the question the old test meant to ask -- is this
+        // control already inside the dock, at any depth -- so a server-rendered
+        // control stays where the server put it and only a legacy page that
+        // renders it elsewhere gets moved.
+        if (dock && !dock.contains(ctrls)) {
             ctrls.classList.add('archive-controls--docked');
             dock.appendChild(ctrls);
         }
