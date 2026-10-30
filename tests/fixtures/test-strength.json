@@ -1654,10 +1654,12 @@
         "thresholds": []
     },
     "thomas-the-bear-reaches-every-skin.php": {
-        "assertions": 11,
-        "predicates": 9,
+        "assertions": 21,
+        "predicates": 16,
         "thresholds": [
-            2
+            2,
+            4,
+            30
         ]
     },
     "thumbnail-dimensions-single-source-regression.php": {
