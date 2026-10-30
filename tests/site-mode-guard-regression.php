@@ -93,6 +93,62 @@ m_ok(count($single_mode) <= 1,
      'more endpoints now declare a single required mode (' . implode(', ', array_keys($single_mode))
      . ') — each one can set the mode on an empty site, so confirm that is intended');
 
+// ── Which endpoints a smacktalk (longform) site may be worked on through ───
+//
+// SS-1019: COLD STORAGE could not sync a longform site because sybu-images.php
+// answered 409 on it. Added 30 October 2026 on the owner's decision. These
+// checks exist because the two SYBU endpoints are NOT the same case and the
+// next reader will assume they are:
+//
+//   sybu-data.php   read-only metadata. Its own comment justifies smacktalk
+//                   on exactly that ground.
+//   sybu-images.php has a POST branch that writes title/description/alt/colour
+//                   onto an image row. Allowing smacktalk here widened a
+//                   WRITE surface, so the remaining control is the scoped
+//                   sybu Bearer key, not the mode.
+//
+// So this is recorded, not generalised. Any further endpoint that adds
+// smacktalk fails the last check below and has to say why in the ticket.
+$mode_lists = [];
+foreach (glob(__DIR__ . '/../*.php') as $f) {
+    $s = file_get_contents($f);
+    if (preg_match("/SNAP_API_REQUIRE_MODE'\]\s*=\s*\[([^\]]*)\]/", $s, $m)) {
+        $mode_lists[basename($f)] = array_map(
+            static fn (string $v): string => trim($v, " \t'\""),
+            explode(',', $m[1])
+        );
+    }
+}
+
+m_ok(isset($mode_lists['sybu-images.php'])
+     && in_array('smacktalk', $mode_lists['sybu-images.php'], true),
+     'sybu-images.php no longer accepts smacktalk — COLD STORAGE goes back to 409 on a longform site (SS-1019)');
+
+m_ok(isset($mode_lists['sybu-images.php'])
+     && in_array('photoblog', $mode_lists['sybu-images.php'], true)
+     && in_array('carousel', $mode_lists['sybu-images.php'], true),
+     'sybu-images.php dropped photoblog or carousel while adding smacktalk — that is a narrowing, not the widening that was asked for');
+
+m_ok(isset($mode_lists['sybu-data.php'])
+     && in_array('smacktalk', $mode_lists['sybu-data.php'], true),
+     'sybu-data.php no longer accepts smacktalk — the read side has to work for the write side to be useful');
+
+// The mode guard itself is what must never be loosened, and it is the thing
+// that keeps a site from flipping its own mode under a tool.
+$guard_src = file_get_contents(__DIR__ . '/../core/api-auth.php');
+m_ok(str_contains($guard_src, 'http_response_code(409)'),
+     'api-auth.php no longer answers 409 on a mode mismatch — the fauxlaroid.fyi lockout guard is gone');
+
+$smacktalk_endpoints = [];
+foreach ($mode_lists as $name => $modes) {
+    if (in_array('smacktalk', $modes, true)) $smacktalk_endpoints[] = $name;
+}
+sort($smacktalk_endpoints);
+m_ok($smacktalk_endpoints === ['sybu-data.php', 'sybu-images.php'],
+     'the set of endpoints a longform site can be worked on through changed to ('
+     . implode(', ', $smacktalk_endpoints)
+     . ') — only those two were decided, so a new one needs its own say-so and its own reason');
+
 if ($failures) {
     fwrite(STDERR, "FAIL\n- " . implode("\n- ", $failures) . "\n");
     exit(1);
