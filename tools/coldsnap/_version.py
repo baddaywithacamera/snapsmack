@@ -11,7 +11,7 @@ it and bump_version.py increments it. No imports — safe to load from anywhere,
 frozen or not, with no risk of an import cycle.
 """
 
-BUILD_VERSION = "0.7.28"
+BUILD_VERSION = "0.7.29"
 
 # WHAT IS ACTUALLY ON THE OWNER'S MACHINE. A floor, not a target.
 #
