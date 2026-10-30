@@ -323,6 +323,14 @@
             3
         ]
     },
+    "every-page-kind-renders-a-whole-document.php": {
+        "assertions": 2,
+        "predicates": 4,
+        "thresholds": [
+            8,
+            30
+        ]
+    },
     "every-skin-every-page-regression.php": {
         "assertions": 16,
         "predicates": 16,
@@ -1256,7 +1264,7 @@
     },
     "site-mode-guard-regression.php": {
         "assertions": 2,
-        "predicates": 19,
+        "predicates": 29,
         "thresholds": [
             2
         ]

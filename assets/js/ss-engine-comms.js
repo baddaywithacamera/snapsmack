@@ -61,6 +61,95 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// --- WHAT IS BOUND RIGHT NOW ---
+//
+// These were expressions inlined in the handler below, and the help modal
+// re-derived the same facts with DIFFERENT expressions of its own. They
+// drifted. This handler gained a rel="prev"/rel="next" fallback for the
+// arrows at 0.7.875D and an #show-details fallback for [1]; the help modal
+// kept asking only for window.smackdown and #snap-nav-data, which 18 of the
+// 31 skins never set. So the keys worked and the help list stopped naming
+// them -- which is exactly how it was reported: "there used to be more help
+// options".
+//
+// Now there is one set of functions. The handler acts on them and
+// ssShortcuts() reports them, so a key cannot work without being listed and
+// cannot be listed without working. Add a shortcut here and the help modal
+// gains a row for free; add one straight into the handler and it will not.
+
+function ssGram()   { return window.SNAP_SITE_MODE === 'carousel'; }
+function ssSlider() { return !!document.querySelector('.ss-slider'); }
+function ssWall()   { return !!document.getElementById('wall-canvas'); }
+
+function ssRelLink(rel) {
+    var el = document.querySelector('a[rel="' + rel + '"][href]');
+    return el ? el.getAttribute('href') : '';
+}
+
+// Three sources, in the order the handler has trusted them since 875D. The
+// page's own prev/next links are last but most durable: a link that is on
+// the page cannot drift out of step with the page.
+function ssNavUrl(which) {
+    var navEl = document.getElementById('snap-nav-data');
+    var attr  = which === 'prev' ? 'data-prev' : 'data-next';
+    var key   = which === 'prev' ? 'prevUrl'   : 'nextUrl';
+    return (window.SNAP_DATA && window.SNAP_DATA[key])
+        || (navEl && navEl.getAttribute(attr))
+        || ssRelLink(which);
+}
+
+// [1] acts through a footer engine when one is loaded, otherwise it clicks
+// the skin's own details button. Either one counts as bound.
+function ssInfoBound() {
+    return !!((window.smackdown && window.smackdown.toggleFooter)
+        || document.getElementById('show-details'));
+}
+
+// [2] needs the comments button either way: the handler returns early
+// without it even when a footer engine is present.
+function ssCommentsBound() {
+    return !!document.getElementById('show-comments');
+}
+
+function ssDownloadBound() {
+    return !!document.querySelector('.snap-download-btn');
+}
+
+// The live shortcut list, as [key, description] rows in reading order.
+// ss-engine-public-help.js renders this verbatim.
+function ssShortcuts() {
+    // A wall canvas swallows every key: the handler returns below before it
+    // reads e.key at all, so nothing is bound on that page.
+    if (ssWall()) return [];
+
+    var rows = [];
+    var gram = ssGram();
+
+    if (ssSlider()) {
+        rows.push(['LEFT',  'Previous slide']);
+        rows.push(['RIGHT', 'Next slide']);
+    } else {
+        var prev = ssNavUrl('prev');
+        if (prev)             rows.push(['LEFT',  'Previous photo']);
+        if (ssNavUrl('next')) rows.push(['RIGHT', 'Next photo']);
+        if (prev)             rows.push(['SPACE', 'Previous photo']);
+    }
+
+    // Skipped on gram by the handler, so skipped here.
+    if (!gram) {
+        if (ssInfoBound())     rows.push(['1', 'Toggle info']);
+        if (ssCommentsBound()) rows.push(['2', 'Toggle comments']);
+        if (ssDownloadBound()) rows.push(['D', 'Download']);
+        rows.push(['F1', 'Show this help']);
+    }
+
+    // ESC has no gram check in the handler, so it has none here.
+    rows.push(['ESC', 'Close overlays']);
+    return rows;
+}
+
+window.snapKeyboard = { shortcuts: ssShortcuts };
+
 // --- KEYBOARD SHORTCUTS ---
 
 document.addEventListener('keydown', function(e) {
@@ -71,7 +160,7 @@ document.addEventListener('keydown', function(e) {
     // arrow-key navigation + ESC. F1 help and the [1]/[2]/[D] shortcuts are
     // solo-photoblog features, skipped here (Sean: "nothing but standard cursor
     // controls" — the IG paradigm needs no help layer).
-    var gram = (window.SNAP_SITE_MODE === 'carousel');
+    var gram = ssGram();
 
     // Help menu — delegate to public-help engine if loaded, else own modal.
     if (e.key === 'F1') {
@@ -93,7 +182,7 @@ document.addEventListener('keydown', function(e) {
 
     // Slider detection: if a slider is active on the page, arrow keys and
     // spacebar should control the slider, not navigate between posts.
-    var sliderActive = !!document.querySelector('.ss-slider');
+    var sliderActive = ssSlider();
 
     // Spacebar must never scroll the page — preventDefault fires regardless
     // of whether SNAP_DATA is populated or a slider is active.
@@ -109,19 +198,14 @@ document.addEventListener('keydown', function(e) {
     // that is on the page cannot drift out of step with the page the way a
     // parallel global did. SNAP_DATA is still honoured if anything sets it.
     if (!sliderActive) {
-        var relLink = function (rel) {
-            var el = document.querySelector('a[rel="' + rel + '"][href]');
-            return el ? el.getAttribute('href') : '';
-        };
         // Some skins load this engine after DOMContentLoaded. In that case the
         // initializer above never ran, but the CMS navigation element is still
-        // authoritative and already present. Read it at key time as a durable
-        // fallback so solo-page arrows work regardless of script load order.
-        var navEl = document.getElementById('snap-nav-data');
-        var prevUrl = (window.SNAP_DATA && window.SNAP_DATA.prevUrl)
-            || (navEl && navEl.getAttribute('data-prev')) || relLink('prev');
-        var nextUrl = (window.SNAP_DATA && window.SNAP_DATA.nextUrl)
-            || (navEl && navEl.getAttribute('data-next')) || relLink('next');
+        // authoritative and already present. ssNavUrl reads it at key time as
+        // a durable fallback so solo-page arrows work regardless of script
+        // load order -- and the help modal reads the same function, so the
+        // list cannot disagree with the keys again.
+        var prevUrl = ssNavUrl('prev');
+        var nextUrl = ssNavUrl('next');
 
         if (e.key === 'ArrowLeft' && prevUrl) {
             window.location.href = prevUrl;
