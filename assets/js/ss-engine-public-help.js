@@ -4,10 +4,17 @@
  * F1 (or click the footer "?" link) opens a modal listing exactly the
  * keyboard shortcuts and controls available on the current page.
  *
- * Page-aware via DOM feature detection — only shows hints for controls that
- * actually exist. Same pattern as the admin help modal in ss-engine-comms.js
- * but ported to the public side and styled to match whatever skin is active
- * by reading CSS custom properties off documentElement.
+ * The keyboard rows are REPORTED BY ss-engine-comms.js, the engine that
+ * binds those keys, through window.snapKeyboard.shortcuts(). This file used
+ * to re-derive them with DOM probes of its own and the two drifted, so keys
+ * that worked stopped being listed. Archive-page rows are still probed here,
+ * because those controls belong to other engines and the presence of the
+ * control is itself the condition.
+ *
+ * Colours follow the skin: the conventional CSS custom properties when a
+ * skin sets them, otherwise the background the page actually renders, with
+ * text and accent derived from its luminance so a light skin gets a light
+ * panel. Rebuilt on every open, never cached.
  *
  * Triggers:
  *   F1 keydown
@@ -32,68 +39,203 @@
     var modal = null;
     var isOpen = false;
 
-    // Read theme colours from active skin's CSS variables, with sensible
-    // dark/light fallbacks. Skins set --bg-primary and --text-primary by
-    // convention; the calendar engine extends this fallback chain too.
+    // --- THEME ---
+    //
+    // This used to read --bg-primary / --text-primary and fall back to a
+    // hardcoded near-black when they were absent. Measured on 30 October
+    // 2026: only 13 of the 31 skins set --bg-primary, so 18 of them got the
+    // dark fallback regardless of how they actually look -- and two of those
+    // are light. 52-CARD-PICKUP is #F5F0E8 and SHOW-N-TELL is #ffffff, so
+    // both were handed a black panel on a pale page.
+    //
+    // Eight more name their background in a bespoke variable of their own
+    // (--chap-bg, --wall-bg, --pfd-canvas, --rg-bg-page, --sl-bg,
+    // --stanley-body-bg, --pg-outer-bg, --bg-page). Extending the name list
+    // would have fixed those eight and broken on the ninth, so it does not
+    // guess names any more: a skin that states the conventional variables
+    // still wins, and otherwise this reads the background the page ACTUALLY
+    // renders and derives a readable palette from its luminance. That covers
+    // all 31 and anything added later.
+
+    function parseColor(value) {
+        if (!value) return null;
+        var v = String(value).trim();
+
+        var m = v.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:\s*[,/]\s*([\d.]+%?))?/i);
+        if (m) {
+            var a = 1;
+            if (m[4] !== undefined) {
+                a = m[4].indexOf('%') > -1 ? parseFloat(m[4]) / 100 : parseFloat(m[4]);
+            }
+            return { r: +m[1], g: +m[2], b: +m[3], a: a };
+        }
+
+        m = v.match(/^#([0-9a-f]+)$/i);
+        if (m) {
+            var h = m[1];
+            if (h.length === 3 || h.length === 4) {
+                h = h.split('').map(function (x) { return x + x; }).join('');
+            }
+            if (h.length !== 6 && h.length !== 8) return null;
+            return {
+                r: parseInt(h.slice(0, 2), 16),
+                g: parseInt(h.slice(2, 4), 16),
+                b: parseInt(h.slice(4, 6), 16),
+                a: h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1
+            };
+        }
+
+        // A named colour, or any syntax this function does not know. Let the
+        // browser resolve it rather than maintaining a colour table.
+        var probe = document.createElement('span');
+        probe.style.cssText = 'display:none;color:' + v;
+        document.body.appendChild(probe);
+        var resolved = getComputedStyle(probe).color;
+        document.body.removeChild(probe);
+        if (!resolved || resolved === v) return null;
+        return parseColor(resolved);
+    }
+
+    // WCAG relative luminance.
+    function luminance(c) {
+        var channel = function (x) {
+            x = x / 255;
+            return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b);
+    }
+
+    function contrast(a, b) {
+        var la = luminance(a), lb = luminance(b);
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    }
+
+    function rgb(c) {
+        return 'rgb(' + Math.round(c.r) + ',' + Math.round(c.g) + ',' + Math.round(c.b) + ')';
+    }
+
+    // The colour a viewer actually sees behind the page. body is often
+    // transparent with html carrying the fill, so walk up until something
+    // is opaque enough to count.
+    //
+    // When NOTHING in the chain is opaque the page is painted on the
+    // browser's default canvas, which is white -- so that is what the viewer
+    // sees and what this returns. Measured 30 October 2026: GLIDE,
+    // 50-SHADES-OF-NOAH-GREY, IMPACT-PRINTER and NEW-HORIZON set no body or
+    // html background at all, so they render white. Falling back to a dark
+    // colour here put a black panel on all four.
+    function renderedBackground() {
+        var el = document.body;
+        while (el) {
+            var c = parseColor(getComputedStyle(el).backgroundColor);
+            if (c && c.a > 0.5) return c;
+            el = el.parentElement;
+        }
+        return { r: 255, g: 255, b: 255, a: 1 };
+    }
+
     function getThemeColors() {
         var s = getComputedStyle(document.documentElement);
-        var pickFirst = function (names, fb) {
+        var pickFirst = function (names) {
             for (var i = 0; i < names.length; i++) {
                 var v = s.getPropertyValue(names[i]).trim();
                 if (v) return v;
             }
-            return fb;
+            return '';
         };
+
+        // renderedBackground() always answers, so there is no third fallback
+        // and no hardcoded colour standing in for a page nobody looked at.
+        var bg = parseColor(pickFirst(['--bg-primary', '--page-bg', '--bg']))
+              || renderedBackground();
+
+        var dark = luminance(bg) < 0.4;
+
+        // A skin's own text colour is used only if it is legible against the
+        // background we resolved. Taking the variable on trust is how a white
+        // panel ended up with #cccccc text.
+        var text = parseColor(pickFirst(['--text-primary', '--text', '--text-main']));
+        if (!text || contrast(text, bg) < 4) {
+            text = dark ? { r: 235, g: 235, b: 235, a: 1 } : { r: 26, g: 26, b: 26, a: 1 };
+        }
+
+        var dim = parseColor(pickFirst(['--text-secondary', '--text-dim', '--dim']));
+        if (!dim || contrast(dim, bg) < 2) {
+            dim = dark ? { r: 119, g: 119, b: 119, a: 1 } : { r: 90, g: 90, b: 90, a: 1 };
+        }
+
+        // #39FF14 on a dark panel is the established look and is kept exactly.
+        // It fails badly on a pale one, so a light skin that offers no usable
+        // accent gets a dark green instead of an unreadable neon.
+        var accent = parseColor(pickFirst(['--accent-color', '--accent']));
+        if (!accent || contrast(accent, bg) < 3) {
+            accent = dark ? { r: 57, g: 255, b: 20, a: 1 } : { r: 10, g: 107, b: 45, a: 1 };
+        }
+
         return {
-            bg:     pickFirst(['--bg-primary', '--page-bg', '--bg'], '#0a0a0a'),
-            text:   pickFirst(['--text-primary', '--text', '--text-main'], '#cccccc'),
-            accent: pickFirst(['--accent-color', '--accent'], '#39FF14'),
-            dim:    pickFirst(['--text-secondary', '--text-dim', '--dim'], '#777777'),
+            bg: rgb(bg),
+            text: rgb(text),
+            accent: rgb(accent),
+            dim: rgb(dim),
+            dark: dark,
+            // A black veil over a pale page reads as a fault rather than a
+            // modal, so the scrim follows the page too.
+            scrim: dark ? 'rgba(0,0,0,0.78)' : 'rgba(0,0,0,0.45)',
+            shadow: dark ? '0 20px 60px rgba(0,0,0,0.85)' : '0 20px 60px rgba(0,0,0,0.25)'
         };
     }
 
-    function buildShortcutList() {
-        var sliderPresent  = !!document.querySelector('.ss-slider');
-        var singleImage    = !!document.getElementById('snap-nav-data')
-                          || !!(window.SNAP_DATA && (window.SNAP_DATA.prevUrl || window.SNAP_DATA.nextUrl))
-                          || !!document.querySelector('.image-stage, .single-image-page');
-        var commentsBlock  = document.getElementById('show-comments') !== null
-                          || document.querySelector('.comments-section, #snap-comments') !== null;
-        var downloadAvail  = document.querySelector('.snap-download-btn, [data-download]') !== null;
-        var layoutToggle   = !!document.querySelector('.archive-layout-toggle');
-        var calendarBtn    = !!document.querySelector('.archive-calendar-toggle');
-        var sortToggle     = !!document.querySelector('.collections-sort-toggle');
-        var searchField    = !!document.querySelector('input[type="search"], input[name="q"]');
-        var lightboxAvail  = !!document.querySelector('[data-lightbox], .lightbox-trigger');
+    // --- THE LIST ---
+    //
+    // The keyboard rows come from ss-engine-comms.js, which is the engine
+    // that binds them. This file used to re-derive them from its own DOM
+    // probes, and the two drifted apart: the handler learned to read
+    // rel="prev"/rel="next" and #show-details, while these probes went on
+    // demanding #snap-nav-data and window.smackdown. The keys kept working
+    // and the rows quietly disappeared.
+    //
+    // The archive rows below are different and stay here: those controls
+    // belong to other engines, and the presence of the control IS the
+    // condition, so probing for the button is reading the real thing rather
+    // than guessing at it.
 
+    function buildShortcutList() {
         var rows = [];
 
-        // Image / slider navigation (single-image, slideshow, lightbox)
-        if (singleImage || sliderPresent || lightboxAvail) {
-            rows.push(['LEFT', sliderPresent ? 'Previous slide' : 'Previous image']);
-            rows.push(['RIGHT', sliderPresent ? 'Next slide' : 'Next image']);
-            if (!sliderPresent) rows.push(['SPACE', 'Previous image']);
-            if (window.smackdown && window.smackdown.toggleFooter) {
-                rows.push(['[ 1 ]', 'Toggle info']);
-                if (commentsBlock) rows.push(['[ 2 ]', 'Toggle comments']);
+        if (window.snapKeyboard && window.snapKeyboard.shortcuts) {
+            rows = window.snapKeyboard.shortcuts().slice();
+        }
+
+        var layoutToggle = !!document.querySelector('.archive-layout-toggle');
+        var calendarBtn  = !!document.querySelector('.archive-calendar-toggle');
+        var sortToggle   = !!document.querySelector('.collections-sort-toggle');
+        var searchField  = !!document.querySelector('input[type="search"], input[name="q"]');
+
+        // Archive page controls, inserted before the universal F1/ESC pair so
+        // those two stay last however many rows appear above them.
+        var extra = [];
+        if (layoutToggle) extra.push(['T', 'Thumbs layout']);
+        if (layoutToggle) extra.push(['M', 'Masonry layout']);
+        if (calendarBtn)  extra.push(['C', 'Toggle calendar panel']);
+        if (searchField)  extra.push(['/', 'Focus search']);
+        if (sortToggle)   extra.push(['CLICK', 'Sort: Manual / A→Z / Newest / Oldest']);
+
+        if (extra.length) {
+            var tail = 0;
+            for (var i = rows.length - 1; i >= 0; i--) {
+                if (rows[i][0] === 'F1' || rows[i][0] === 'ESC') tail++;
+                else break;
             }
-            if (downloadAvail) rows.push(['[ D ]', 'Download']);
+            rows = rows.slice(0, rows.length - tail)
+                       .concat(extra, rows.slice(rows.length - tail));
         }
 
-        // Archive page
-        if (layoutToggle)  rows.push(['[ T ]', 'Thumbs layout']);
-        if (layoutToggle)  rows.push(['[ M ]', 'Masonry layout']);
-        if (calendarBtn)   rows.push(['[ C ]', 'Toggle calendar panel']);
-        if (searchField)   rows.push(['/', 'Focus search']);
-
-        // Collections index sort hint (no hotkeys but worth surfacing)
-        if (sortToggle) {
-            rows.push(['CLICK', 'Sort: Manual / A→Z / Newest / Oldest']);
+        // The comms engine is declared for every skin, so an empty list means
+        // the page genuinely binds nothing (a wall canvas swallows the keys)
+        // or that engine failed to load. Say so rather than show a bare box.
+        if (!rows.length) {
+            rows.push(['--', 'No keyboard shortcuts on this page']);
         }
-
-        // Universal
-        rows.push(['[ F1 ]', 'Show this help']);
-        rows.push(['[ ESC ]', 'Close overlays']);
 
         return rows;
     }
@@ -105,14 +247,14 @@
         backdrop.id = 'snap-public-help-backdrop';
         backdrop.style.cssText =
             'position:fixed;inset:0;z-index:2147483647;display:none;' +
-            'background:rgba(0,0,0,0.78);align-items:center;justify-content:center;cursor:pointer;';
+            'background:' + c.scrim + ';align-items:center;justify-content:center;cursor:pointer;';
 
         var panel = document.createElement('div');
         panel.id = 'snap-public-help-panel';
         panel.style.cssText =
             'background:' + c.bg + ';color:' + c.text + ';border:1px solid ' + c.dim + ';' +
             'border-radius:6px;padding:32px 36px;min-width:340px;max-width:520px;' +
-            'box-shadow:0 20px 60px rgba(0,0,0,0.85);' +
+            'box-shadow:' + c.shadow + ';' +
             'font-family:"Courier Prime","Courier New",monospace;cursor:default;';
         panel.addEventListener('click', function (e) { e.stopPropagation(); });
 
@@ -125,6 +267,7 @@
 
         var rows = buildShortcutList();
         var grid = document.createElement('div');
+        grid.id = 'snap-public-help-rows';
         grid.style.cssText =
             'display:grid;grid-template-columns:auto 1fr;gap:8px 18px;' +
             'font-size:13px;line-height:1.5;';
@@ -168,7 +311,12 @@
     }
 
     function open() {
-        if (!modal) modal = buildModal();
+        // Rebuilt every time, not cached. The old version built the panel on
+        // first open and kept it: a skin whose footer or lightbox engine
+        // loaded after the first F1 press was then stuck with the list and
+        // the colours from that moment for the rest of the page view.
+        if (modal && modal.parentNode) modal.parentNode.removeChild(modal);
+        modal = buildModal();
         modal.style.display = 'flex';
         isOpen = true;
     }
