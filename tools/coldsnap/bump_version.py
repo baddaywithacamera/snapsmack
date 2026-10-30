@@ -75,9 +75,57 @@ def stub_changelog(new: str) -> None:
         sys.stderr.write(f"bump_version: changelog stub skipped ({e})\n")
 
 
+def _parts(ver: str) -> "tuple[int, int, int] | None":
+    m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", ver.strip())
+    return tuple(int(x) for x in m.groups()) if m else None
+
+
+def read_installed(text: str) -> str:
+    """The version the owner actually has, recorded in _version.py. '' if none."""
+    m = re.search(r'INSTALLED_VERSION\s*=\s*"([^"]+)"', text)
+    return m.group(1) if m else ""
+
+
+def check_not_backward(new: str, installed: str) -> None:
+    """Refuse to build a number at or below what is already installed.
+
+    THE FAULT THIS EXISTS FOR. bump_version writes the new number into
+    _version.py, so every build leaves a change that has to be COMMITTED.
+    Twice it was not: the committed history runs 0.7.21, .22, .23, .25, .26 and
+    stopped on 6 October while 0.7.28 was running on the owner's machine. The
+    next build would have produced 0.7.27 and installed it OVER 0.7.28 -- a
+    silent rollback, with the newer features disappearing and the version
+    number going down. Codex caught it in preflight; nothing in the tooling
+    would have.
+
+    A stale checkout now fails here, loudly, instead of shipping backwards.
+    """
+    if not installed:
+        return
+    want, floor = _parts(new), _parts(installed)
+    if want is None or floor is None:
+        return
+    if want > floor:
+        return
+    _fail(
+        f"REFUSING TO BUILD {new}: {installed} is already installed.\n"
+        f"\n"
+        f"  _version.py BUILD_VERSION    {new} (after the bump)\n"
+        f"  _version.py INSTALLED_VERSION {installed}\n"
+        f"\n"
+        f"This checkout is behind what the owner is running, which happens when\n"
+        f"a previous build's version bump was never committed. Building now\n"
+        f"would install an older number over a newer one.\n"
+        f"\n"
+        f"Set BUILD_VERSION to the installed version, commit it, and build\n"
+        f"again -- or raise INSTALLED_VERSION if it is the thing that is stale."
+    )
+
+
 def main() -> None:
     old, text = read_version()
     new = next_version(old)
+    check_not_backward(new, read_installed(text))
     bump_main(old, new, text)
     stub_changelog(new)
     print(new)
