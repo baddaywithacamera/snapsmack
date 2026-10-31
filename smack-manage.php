@@ -779,7 +779,7 @@ include 'core/sidebar.php';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>MISSION (ALBUM)</label>
+                    <label>ALBUM</label>
                     <select name="album_id">
                         <option value="">ALL ALBUMS</option>
                         <?php foreach($albums as $a): ?>
@@ -891,8 +891,8 @@ include 'core/sidebar.php';
 
                                 <div class="item-meta">
                                     <?php echo date("M j, Y - H:i", strtotime($p['img_date'])); ?>
-                                    <span class="meta-reg">[ REG: <?php echo htmlspecialchars($p['category_list'] ?: 'NONE'); ?> ]</span>
-                                    <span class="meta-mission">[ MISSION: <?php echo htmlspecialchars($p['album_list'] ?: 'NONE'); ?> ]</span>
+                                    <span class="meta-reg">[ CATEGORY: <?php echo htmlspecialchars($p['category_list'] ?: 'NONE'); ?> ]</span>
+                                    <span class="meta-mission">[ ALBUM: <?php echo htmlspecialchars($p['album_list'] ?: 'NONE'); ?> ]</span>
                                     <?php if (!empty($p['collection_list'])): ?>
                                     <span class="meta-collection">[ COLLECTION: <?php echo htmlspecialchars($p['collection_list']); ?> ]</span>
                                     <?php endif; ?>
