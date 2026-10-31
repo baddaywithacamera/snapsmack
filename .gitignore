@@ -282,3 +282,12 @@ outputs/oh-snap-*/
 # use, and the whole point is that it is NOT a database value and NOT shipped.
 # Committing it would hand every site the same signing authority.
 core/enrollment-key.php
+
+# Repo hygiene, SS-1130. These were TRACKED and read as abandonment to anyone
+# browsing the repository: a tarball inside a directory literally named
+# _to_delete, a DRAFT file, and a package-lock.json that locked nothing
+# ("packages": {}) with no package.json beside it. The files stay on disk;
+# they just stop being part of what the project ships and shows.
+projects/_to_delete/
+outputs/*-DRAFT.md
+/package-lock.json
