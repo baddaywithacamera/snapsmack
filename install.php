@@ -49,10 +49,29 @@ if (version_compare(PHP_VERSION, INSTALL_PHP_MINIMUM, '<')) {
 }
 
 // --- CONFIGURATION ---
-// Version is read from core/constants.php (always present in the release package).
-// Fallback hardcoded value is a safety net only — should never be needed.
-$installer_version       = '0.7.191';
-$installer_version_label = 'Alpha 0.7.191';
+// The version is READ from core/constants.php. There is deliberately no
+// fallback any more.
+//
+// SS-1078. This carried a hardcoded 0.7.191 -- a February 2026 number -- as a
+// "safety net" with a comment saying it should never be needed. That was an
+// assumption about the package enforced nowhere: the codebase gate below
+// checked core/parser.php and not this file, so an incomplete extraction
+// passed, kept the fallback, and the installer then GENERATED a new
+// core/constants.php declaring the site to be 0.7.191 on top of whatever code
+// was actually on disk.
+//
+// The worst of what followed was not the wrong number on screen. An update is
+// offered whenever the remote version is greater than the installed one, and
+// 0.7.670 is greater than 0.7.191 -- so a site running current code would be
+// told the old stable build was NEWER and would take it. The updater's one
+// protection, never going backwards, defeated by a version string that lies.
+//
+// Raising the number would have hidden the symptom and kept the fault: the
+// installer would still be guessing its own version. It cannot know what it is
+// installing without this file, so if the file is not there it stops. The gate
+// below now names it.
+$installer_version       = '';
+$installer_version_label = '';
 if (file_exists(__DIR__ . '/core/constants.php') && !defined('SNAPSMACK_VERSION_SHORT')) {
     require_once __DIR__ . '/core/constants.php';
 }
@@ -142,7 +161,31 @@ register_shutdown_function(static function () use ($installer_state_path): void 
 // --- CODEBASE CHECK ---
 // The installer configures an existing codebase — it doesn't deploy one.
 // If key files are missing, redirect to setup.php (the bootstrap deployer).
-if (!file_exists(__DIR__ . '/core/parser.php') || !is_dir(__DIR__ . '/core')) {
+// SS-1078: core/constants.php is checked HERE, beside core/parser.php, because
+// it is the file the installer reads its own version from. A tree without it
+// is an incomplete extraction, and the installer must say so rather than
+// invent a version and write it to disk.
+if (!file_exists(__DIR__ . '/core/parser.php') || !is_dir(__DIR__ . '/core')
+    || !file_exists(__DIR__ . '/core/constants.php') || $installer_version === '') {
+    // A tree WITH core/ but missing constants.php is not a missing codebase,
+    // it is a broken one. Sending it to the bootstrap deployer would be wrong
+    // twice over: the deployer refuses outright when core/ exists, so the
+    // operator would bounce between two files, neither of which explains it.
+    if (is_dir(__DIR__ . '/core')
+        && (!file_exists(__DIR__ . '/core/constants.php') || $installer_version === '')) {
+        die('<!DOCTYPE html><html><head><meta charset="utf-8"><title>SnapSmack</title></head>'
+          . '<body style="background:#111;color:#eee;font-family:monospace;padding:60px;text-align:center;">'
+          . '<h1>INCOMPLETE EXTRACTION</h1>'
+          . '<p><code>core/constants.php</code> is missing or unreadable, so this installer '
+          . 'cannot tell which version of SnapSmack it is installing.</p>'
+          . '<p>Nothing has been installed and nothing has been written. '
+          . 'Delete this directory, extract the release package again, and open '
+          . '<code>install.php</code>.</p>'
+          . '<p style="color:#888">The installer will not guess a version: a wrong one '
+          . 'would be published to the fediverse and to your hub, and would make the '
+          . 'updater offer an older build as an upgrade.</p>'
+          . '</body></html>');
+    }
     if (file_exists(__DIR__ . '/setup.php')) {
         header('Location: setup.php');
         exit;
@@ -1367,6 +1410,13 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
             };
             $default_variant  = '';
 
+            // SS-1076. For updater_track_for_version(). Pulled in here the way
+            // the installer pulls in mode-guard above, rather than duplicating
+            // the rule -- two copies of "what counts as a dev package" is how
+            // a rule drifts. Including the updater also self-heals .htaccess
+            // and .user.ini, which the installer writes anyway.
+            require_once __DIR__ . '/core/updater.php';
+
             $defaults = [
                 'site_name'                 => $_SESSION['site_name'] ?? 'My SnapSmack Site',
                 'site_tagline'              => $_SESSION['site_tagline'] ?? '',
@@ -1475,6 +1525,18 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 // never ship a shared default (the old code fell back to a public
                 // constant, letting anyone forge download tokens).
                 'download_salt'                => bin2hex(random_bytes(32)),
+
+                // SS-1076. This row did not exist, and updater_get_track()
+                // answers 'stable' when it is missing -- so every new site was
+                // born subscribed to stable whatever it was installed from. A
+                // site installed from a dev package was then never offered
+                // anything at all, because the updater only offers a NEWER
+                // remote version and stable is older than what it is running.
+                // Stranded from install day, with nothing to say so.
+                //
+                // No new question is asked: the installer already knows which
+                // package this is. See updater_track_for_version().
+                'update_track'                 => updater_track_for_version($installer_version),
             ];
 
             $stmt = $pdo->prepare("INSERT INTO `{$prefix}settings` (setting_key, setting_val) VALUES (?, ?)");
@@ -2794,6 +2856,18 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         <div class="complete-box">
             <h2>INSTALLATION COMPLETE</h2>
             <p>SnapSmack <?php echo $installer_version_label; ?> is ready.</p>
+
+            <?php /* SS-1076, acceptance point 3. The track decides what this
+            site will ever be OFFERED, and until now nothing anywhere stated
+            it -- which is how a wrong value could sit unnoticed for weeks.
+            Said once, in plain words, at the only moment the operator is
+            certainly looking. */ ?>
+            <p class="dim">This site follows the
+                <strong><?php echo (function_exists('updater_track_for_version')
+                    && updater_track_for_version($installer_version) === 'dev')
+                    ? 'BITCHIN&rsquo; (dev)' : 'BORING (stable)'; ?></strong>
+                update track, because that is the package it was installed from.
+                You can change it later in Settings.</p>
 
             <?php if (!empty($skin_warning)): ?>
                 <div class="warn-box"><?php echo $skin_warning; ?></div>
