@@ -34,6 +34,54 @@ declare(strict_types=1);
 $root = dirname(__DIR__, 2);
 $out  = $argv[1] ?? ($root . '/.geometry-fixtures');
 
+/* ── OPTIONAL FLAGS, added 31 October 2026 for the settings-wiring audit ───
+ *
+ *   --settings=k=v,k=v   values the archive-control builder sees, merged over
+ *                        the defaults below. So a control can be varied
+ *                        through the REAL builder instead of a final view
+ *                        value being injected, which would only test CSS.
+ *   --smack-config       ALSO emit window.SMACK_CONFIG.calendar in the head.
+ *
+ * WHY --smack-config IS A FLAG AND NOT THE DEFAULT, because this is the
+ * subtlety the audit turns on. The calendar PANEL is not markup: it is built
+ * at runtime by assets/js/ss-engine-calendar.js, which reads side, months and
+ * postCount from window.SMACK_CONFIG.calendar. That object is emitted in ONE
+ * place in the whole repository -- core/meta.php:558 -- and core/meta.php is
+ * included by gallery-wall.php alone. core/public-runtime.php:21 says it
+ * plainly: strict public skins do not include core/meta.php, and all 30
+ * renderable skins are strict.
+ *
+ * So TODAY A STRICT PAGE EMITS NO SMACK_CONFIG AT ALL, and the engine falls
+ * back to its own defaults -- cfg.endpoint || '/api-calendar.php' at
+ * ss-engine-calendar.js:44, and its own month count at :150-155. The panel
+ * still opens and still loads; the owner's three Archive Appearance settings
+ * are simply ignored. (The root-relative endpoint fallback would also miss on
+ * a site installed in a subdirectory, which is a separate thing nobody has
+ * measured.)
+ *
+ * Without the flag this renders TODAY'S page: no SMACK_CONFIG, which is the
+ * truth and is why a fixture contains no calendar panel however the settings
+ * are set. With the flag it renders the page a strict skin WOULD serve if
+ * those settings reached it, so the fix can be proved before it is written.
+ * A fixture that emitted it unconditionally would be a picture of a page
+ * SnapSmack does not serve.
+ */
+$gfSettingsOverride = [];
+$gfEmitSmackConfig  = false;
+foreach (array_slice($argv, 1) as $gfArg) {
+    if (str_starts_with($gfArg, '--settings=')) {
+        foreach (explode(',', substr($gfArg, 11)) as $pair) {
+            if (!str_contains($pair, '=')) continue;
+            [$k, $v] = explode('=', $pair, 2);
+            $k = trim($k);
+            if ($k !== '') $gfSettingsOverride[$k] = trim($v);
+        }
+    } elseif ($gfArg === '--smack-config') {
+        $gfEmitSmackConfig = true;
+    }
+}
+if (str_starts_with((string)$out, '--')) $out = $root . '/.geometry-fixtures';
+
 if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
 require_once $root . '/core/trusted-html.php';
 require_once $root . '/core/skin-render-helpers.php';
@@ -156,10 +204,14 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
         // search field and no controls at all -- which is what the live
         // archives looked like, so a picture of it proved nothing.
         if ($name === 'archive') {
-            $gfControls = snapsmack_archive_controls(
+            // Defaults first, then whatever --settings asked for, so a
+            // caller varies ONE control and everything else stays as the
+            // harness has always had it.
+            $gfArchiveSettings = array_merge(
                 ['archive_layout' => 'thumbs', 'archive_calendar_enabled' => '1'],
-                $manifest
+                $gfSettingsOverride
             );
+            $gfControls = snapsmack_archive_controls($gfArchiveSettings, $manifest);
             $response['archive_layouts'] = snapsmack_archive_layout_links(
                 $gfControls['layouts'], 'https://example.test/', ['archive' => 'archive'], '');
             $response['archive_calendar'] = $gfControls['calendar'];
@@ -224,6 +276,21 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
         // photograph beside the page is the photograph that loads.
         $html = str_replace('src="/photo-', 'src="photo-', $html);
         $style = '<style>' . $css . '</style>';
+        if ($gfEmitSmackConfig && $name === 'archive') {
+            // The same four keys core/meta.php:558-563 writes, read from the
+            // same settings the control builder saw. The endpoint is relative
+            // here because the fixture is opened from disk.
+            $gfCfg = ['calendar' => [
+                'side'      => (string)($gfArchiveSettings['calendar_side'] ?? 'right'),
+                'months'    => (int)($gfArchiveSettings['calendar_months'] ?? 1),
+                'postCount' => (int)($gfArchiveSettings['calendar_post_count'] ?? 10),
+                'endpoint'  => 'api-calendar.php',
+            ]];
+            $style .= '<script>/* NOT what a strict page emits today: see the'
+                . ' --smack-config note in render-geometry-fixtures.php */'
+                . 'window.SMACK_CONFIG = '
+                . json_encode($gfCfg, JSON_UNESCAPED_SLASHES) . ';</script>';
+        }
         $html = str_contains($html, '</head>')
             ? str_replace('</head>', $style . '</head>', $html)
             : $style . $html;
@@ -244,5 +311,11 @@ file_put_contents($out . '/index.json', json_encode([
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
 printf("%d pages written to %s\n", $written, $out);
+if ($gfSettingsOverride) {
+    printf("  settings override: %s\n", json_encode($gfSettingsOverride, JSON_UNESCAPED_SLASHES));
+}
+printf("  SMACK_CONFIG: %s\n", $gfEmitSmackConfig
+    ? 'EMITTED (the post-fix page; no strict page emits it today)'
+    : 'not emitted (today\'s strict page)');
 
 // ===== SNAPSMACK EOF =====
