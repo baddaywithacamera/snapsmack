@@ -21,7 +21,7 @@ async function main(){
     const argv=process.argv.slice(2),opts={};let command=argv.shift(),resultFile=null,browser,server;
     let envelope,code=0;
     try{
-        if(command==='--help'||!command){console.log('OH SNAP CLI: capabilities | new | inspect | edit | validate | render | export\nOptions: --project FILE --input JSON --output FILE --overwrite --mode MODE --view post|archive|landing|page --width 1280 --height 1000 --result JSON\nRender size: integer width 320..3840, height 240..2160');return;}
+        if(command==='--help'||!command){console.log('OH SNAP CLI: capabilities | new | inspect | edit | validate | render | export\nOptions: --project FILE --input JSON --output FILE --overwrite --mode MODE --view post|archive|landing|page --width 1920 --height 1080 --result JSON\nRender size: integer width 320..3840, height 240..2160');return;}
         for(let i=0;i<argv.length;i++){
             const key=argv[i];if(!key.startsWith('--')||!['--project','--input','--output','--mode','--view','--width','--height','--result','--overwrite'].includes(key))throw Error('Unknown option '+key);
             if(key==='--overwrite'){opts.overwrite=true;continue;}
@@ -95,7 +95,7 @@ async function main(){
             if(validation.errors.length)throw Error(validation.errors.join('\n'));
             let data;
             if(command==='render'){
-                const view=opts.view||'post',width=Number(opts.width??1280),height=Number(opts.height??1000);
+                const view=opts.view||'post',width=Number(opts.width??1920),height=Number(opts.height??1080);
                 if(!['post','archive','landing','page'].includes(view))throw Error('Unsupported preview view');
                 if(!Number.isInteger(width)||width<320||width>3840||!Number.isInteger(height)||height<240||height>2160)throw Error('Render dimensions must be integer width 320..3840 and height 240..2160');
                 await page.setViewportSize({width:width+1000,height:height+300});
