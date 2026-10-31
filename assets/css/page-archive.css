@@ -295,7 +295,12 @@
 
 .archive-controls.archive-controls--docked {
     position: absolute;
-    right: 40px; /* JS alignDockedControls() overrides this at runtime */
+    /* The more specific .archive-filter-row rule below sets this to 0 when the
+     * control is docked in the filter row. This 40px is the undocked fallback,
+     * for a page that renders the controls outside that row. It used to say
+     * "JS alignDockedControls() overrides this at runtime"; that function was
+     * removed in SS-1057 and nothing writes an inline right any more. */
+    right: 40px;
     top: 50%;
     transform: translateY(-50%);
     padding: 0;
@@ -377,7 +382,25 @@
     box-sizing: border-box;
 }
 .archive-filter-row .archive-controls--docked {
-    right: var(--archive-content-padding, 40px);
+    /* FLUSH WITH THE COLUMN, not inset by its padding.
+     *
+     * The positioning context is .archive-filter-inner, which IS the content
+     * column, so right:0 puts the control's right edge exactly on the column's
+     * right edge -- and, being the column, it cannot put it anywhere else. The
+     * escape in SS-1057 was only possible while the control was positioned
+     * against something wider than the column.
+     *
+     * Why 0 and not the padding: the runtime aligner that ran from the start
+     * put the control flush, and that is the position the owner has looked at
+     * and accepted on every live site. Measured in a browser on 50-SHADES at
+     * 1440 before the aligner was removed: with it, controls 1181..1353 against
+     * a column of 73..1353 -- flush. Stylesheet only, 1141..1313 -- inset 40.
+     * So inheriting the padding here is a 40px leftward move on every skin,
+     * which is the regression this replaces.
+     *
+     * The padding still does its job on the wrapper: the LINKS stay inside it.
+     * Only this one absolutely positioned control sits on the edge. */
+    right: 0;
 }
 
 /* Breathing room between the control row and the photographs. The grids are
