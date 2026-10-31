@@ -55,7 +55,12 @@ Point a PHP/MySQL host at the code and run the setup. Full instructions at **[sn
 
 ## Status
 
-**Alpha 0.7.407 — "Griffon the Brush Off."** Actively developed, and in production on live photoblogs right now.
+**Alpha — actively developed, and in production on live photoblogs right now.**
+
+No version number here on purpose: it went stale by several hundred releases
+once already, which read as abandonment to anyone who looked. The current
+version is in [CHANGELOG.md](CHANGELOG.md) and in the release manifest, both
+of which move when the product does.
 
 ---
 
