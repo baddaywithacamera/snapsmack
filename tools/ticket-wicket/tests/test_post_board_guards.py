@@ -184,4 +184,68 @@ def test_again_is_there_for_the_rare_real_second_thread(store, monkeypatch):
     assert code == 0
     assert len(forum.posted) == 1
 
+
+# --- THE OTHER CALLER ------------------------------------------------------
+#
+# Everything above this line tests tw.py. The desktop interface posts tickets
+# too, and it was NOT covered: ui.py called ensure_board("Tickets", ...) with
+# no sort order, which is precisely the call that created an unwanted board
+# above every real one in October. The guard was written, tested, and applied
+# to one of the two callers.
+#
+# So the lookup now lives in ONE place that both import, and these tests hold
+# the second caller down as well.
+
+def test_the_shared_lookup_exists_and_never_creates():
+    """One copy of 'find the board', imported by both callers."""
+    from ticketwicket import forum as forummod
+
+    assert hasattr(forummod, "board_id"), (
+        "there is no shared board_id(); each caller is free to find a board its "
+        "own way again, which is how the interface kept creating one")
+
+    forum = FakeForum({"Roach Motel": 3})
+    assert forummod.board_id(forum, "roach motel") == 3
+    assert forummod.board_id(forum, "  Roach Motel  ") == 3
+    # The miss is the case that matters, and FakeForum.ensure_board RAISES --
+    # so an implementation that creates on a miss fails this line rather than
+    # returning a new id. No separate "did it create?" assertion is needed,
+    # and the one I wrote first referenced an attribute the stand-in does not
+    # have, which failed for the wrong reason entirely.
+    assert forummod.board_id(forum, "Tickets") == 0
+    assert forummod.board_id(forum, "") == 0
+
+
+def test_the_command_line_uses_the_shared_lookup():
+    from ticketwicket import forum as forummod
+
+    forum = FakeForum({"Roach Motel": 3})
+    assert tw._board_id(forum, "Roach Motel") == forummod.board_id(forum, "Roach Motel")
+
+
+def test_the_desktop_interface_cannot_invent_a_board():
+    """ui.py must not call ensure_board, and must say so rather than fail mute.
+
+    Read as SOURCE rather than driven, because driving it needs a Qt event
+    loop and a window. That is a weaker check than the ones above and it is
+    named as such -- but it is the exact line that caused the incident, and a
+    source check that fails when the line comes back is worth more than no
+    check at all.
+    """
+    import os
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    src = open(os.path.join(here, "ticketwicket", "ui.py"), encoding="utf-8").read()
+    code = "\n".join(l for l in src.splitlines() if not l.lstrip().startswith("#"))
+
+    assert "ensure_board" not in code, (
+        "the desktop interface still calls ensure_board, which creates a board "
+        "when the name is missing. That is how board 94 appeared.")
+    assert "board_id" in code, (
+        "the desktop interface does not use the shared lookup")
+    # And it has to tell the person why nothing happened.
+    assert "board" in code.lower() and (
+        "QMessageBox" in code), (
+        "the interface refuses silently; a refusal the operator cannot see is "
+        "indistinguishable from the tool being broken")
+
 # ===== SNAPSMACK EOF =====

@@ -66,6 +66,16 @@ CLAUDE = "claude"
 CHATGPT = "chatgpt"
 ASSISTANT = "assistant"     # the local model. NOT Claude, NOT ChatGPT.
 
+# The ONE board tickets are published to. AGENTS.md names it: "tickets are
+# published to the ROACH MOTEL board."
+#
+# Named here because the two callers disagreed. The command line defaulted to
+# this; the desktop interface asked for a board called "Tickets" and created
+# it when the forum did not have one, which is how an unwanted board appeared
+# at the top of the owner's list in October. A board name written down twice
+# is a board name that drifts, and this one drifted into a live forum.
+TICKET_BOARD = "Roach Motel"
+
 SIGNATURES = {
     SEAN: "— Sean",
     CLAUDE: "— Claude",

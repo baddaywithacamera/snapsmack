@@ -24,5 +24,7 @@ from snap_forum import (  # noqa: F401
     ForumError,
 )
 
-__all__ = ["Forum", "ForumError", "AFFECTED", "DISCLOSURE_FLOOR"]
+from snap_forum import board_id  # noqa: F401,E402
+
+__all__ = ["Forum", "ForumError", "AFFECTED", "DISCLOSURE_FLOOR", "board_id"]
 # ===== SNAPSMACK EOF =====
