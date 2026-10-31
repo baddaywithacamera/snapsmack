@@ -129,15 +129,96 @@ def test_a_body_edit_counts_as_drift_even_with_no_state_change(
     assert rows[0]["changes"] >= 1
 
 
-def test_a_forum_reply_counts_as_the_board_having_heard(store, monkeypatch, capsys):
+def test_a_forum_reply_does_not_reset_the_board_state(store, monkeypatch, capsys):
+    """THIS TEST USED TO ASSERT THE OPPOSITE AND IT WAS WRONG.
+
+    It was named test_a_forum_reply_counts_as_the_board_having_heard and it
+    asserted that a forum reply after a state change left nothing drifted. The
+    reasoning was that a reply is an update the board carries. Codex's review
+    of 31 October 2026 showed that conflates two separate things, and the
+    coordinator accepted it as a blocker: the board's STATE lives in the FIRST
+    LINE of the published body, and the listing excerpt is the first 300
+    characters of that body. A REPLY TOUCHES NEITHER. It appends a post to the
+    thread and leaves the first line saying exactly what it said.
+
+    So a thread whose ticket moved new -> triaged and then got a reply still
+    shows "new" at the top. That is drift, and the old test certified it as
+    clean. A passing test defending the fault is the worst case of the family
+    recorded on SS-1114, which is why this one is rewritten rather than
+    deleted: the comment is the evidence.
+    """
     t = store.create(title="Replied on the board", body="A thing.", reporter="")
     store.update(t.id, forum_thread=45)
     store.add_entry(t.id, "post", "posted to forum thread 45")
     store.update(t.id, state=model.TRIAGED)
     store.add_entry(t.id, "reply", "an update", channel="forum")
 
-    # Everything before the forum reply is published; nothing after it.
+    rows = gap(store, monkeypatch, capsys)
+    assert len(rows) == 1
+    assert rows[0]["board_state"] == model.NEW, (
+        "the thread's first line still says new; a reply does not rewrite it")
+
+
+def test_a_queued_forum_reply_is_not_the_board_having_heard(
+        store, monkeypatch, capsys):
+    """Queued is not sent, and the ticket log cannot tell the difference.
+
+    store.enqueue() writes the outbox row and audits "queued for forum" as
+    kind 'reply' in the same transaction, so a reply that never left the
+    machine is indistinguishable in the log from one that went out.
+    store.mark_sent() audits nothing at all. SS-1099: the sender does not
+    exist, so everything in that outbox is undelivered -- and every one of
+    those replies was being counted as the board having heard.
+    """
+    t = store.create(title="Reply still in the outbox", body="A thing.",
+                     reporter="")
+    store.update(t.id, forum_thread=47)
+    store.add_entry(t.id, "post", "posted to forum thread 47")
+    store.enqueue(t.id, "forum", "An answer nobody has seen.")
+
+    rows = gap(store, monkeypatch, capsys)
+    assert len(rows) == 1, "an undelivered reply leaves the thread unchanged"
+    assert rows[0]["queued"] == 1
+
+
+def test_a_delivered_forum_reply_is_carried_by_the_board(
+        store, monkeypatch, capsys):
+    """The counterpart: once the sender has sent it, the thread shows it.
+
+    A delivered forum reply is not drift, so a ticket whose only post-
+    publication event is a delivered reply does not appear at all. This is the
+    mutation partner of the test above -- together they prove the command reads
+    outbox.state rather than assuming.
+    """
+    t = store.create(title="Reply actually sent", body="A thing.", reporter="")
+    store.update(t.id, forum_thread=48)
+    store.add_entry(t.id, "post", "posted to forum thread 48")
+    rowid = store.enqueue(t.id, "forum", "An answer the reader can see.")
+    store.mark_sent(rowid, note="sent in test")
+
     assert gap(store, monkeypatch, capsys) == []
+
+
+def test_a_delivered_reply_still_does_not_fix_a_wrong_board_state(
+        store, monkeypatch, capsys):
+    """Delivery is not the same as correcting the first line.
+
+    Even a reply that really went out leaves the state at the top of the
+    thread untouched. This is the case the two fixes meet: the reply is
+    carried, AND the state is still wrong.
+    """
+    t = store.create(title="Answered but mislabelled", body="A thing.",
+                     reporter="")
+    store.update(t.id, forum_thread=49)
+    store.add_entry(t.id, "post", "posted to forum thread 49")
+    store.update(t.id, state=model.RESOLVED)
+    rowid = store.enqueue(t.id, "forum", "Here is the fix.")
+    store.mark_sent(rowid)
+
+    rows = gap(store, monkeypatch, capsys)
+    assert len(rows) == 1
+    assert rows[0]["board_state"] == model.NEW
+    assert rows[0]["queued"] == 0
 
 
 def test_an_email_reply_does_not_count_as_the_board_having_heard(
