@@ -1683,7 +1683,16 @@ if (!empty($google_families)) {
     ?>
     <div class="box">
         <h3>MOBILE SKINS</h3>
-        <p class="dim field-hint">MOBILE-ONLY SKINS ARE SERVED AUTOMATICALLY ON PHONES AND ARE HIDDEN FROM THE GALLERY. SET EACH ONE'S PROFILE AVATAR HERE. MORE MOBILE OPTIONS COMING.</p>
+        <?php /* The old sentence promised that these skins are served
+        automatically on phones. Hidden from the gallery is true; the serving
+        is not. NOTHING IN THE SERVING PATH READS features.mobile_only -- the
+        phone skin is a constant, with one hard-coded exception for text-mode
+        sites -- so a skin that declares itself a phone skin is accepted,
+        listed here, and never served. Two skins declare it today and they
+        happen to be the two the constant names, so the promise and the
+        reality agreed by coincidence and nobody noticed. SS-1090 carries the
+        repair; until it lands this box says what actually happens. */ ?>
+        <p class="dim field-hint">MOBILE-ONLY SKINS ARE HIDDEN FROM THE GALLERY AND CONFIGURED HERE. A PHONE VISITOR IS SERVED THE PHONE SKIN THIS INSTALL WAS BUILT WITH -- INSTALLING ANOTHER ONE DOES NOT MAKE IT THE PHONE SKIN, AND THAT CHOICE IS NOT YET YOURS TO CHANGE. SET EACH ONE'S PROFILE AVATAR HERE.</p>
     </div>
     <?php if (empty($mobile_skins)): ?>
         <div class="box"><p class="dim">No mobile-only skins are installed.</p></div>
