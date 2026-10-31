@@ -94,16 +94,22 @@ $check(rtrim($target, '/') !== $base . '/archive',
 // Either /archive-view renders the archive itself (no redirect), or it is sent
 // to another address that resolves to the archive. What it may never do is
 // point at the owner's page or nowhere.
-if ($target === '') {
-    $check(true, 'unused');  // no redirect: /archive-view renders the archive
-} else {
-    $path = trim((string)parse_url($target, PHP_URL_PATH), '/');
-    $resolved = snapsmack_public_runtime_request([
-        'slug' => $path, 'route_aliases' => $aliases, 'owner_slug_taken' => true,
-    ]);
-    $check(($resolved['route'] ?? '') === 'archive',
-        'if /archive-view redirects, the destination must still reach the archive, got ' . $path);
-}
+// ONE ASSERTION, NO PLACEHOLDER. This was written as an if/else whose empty
+// branch held $check(true, 'unused') -- a check that asserts nothing, inflates
+// the count and reads as coverage. Muse caught it in review. The property is
+// single and should be stated once: whichever way the alias behaves, it has to
+// end up at the archive.
+$_reaches_archive = $target === ''
+    // No redirect: the alias renders the archive itself, which is correct here.
+    ? true
+    : (snapsmack_public_runtime_request([
+          'slug' => trim((string)parse_url($target, PHP_URL_PATH), '/'),
+          'route_aliases' => $aliases, 'owner_slug_taken' => true,
+      ])['route'] ?? '') === 'archive';
+$check($_reaches_archive,
+    '/archive-view must reach the archive, by rendering it or by redirecting somewhere that '
+    . 'resolves to it -- never the owner page and never nowhere; got '
+    . ($target === '' ? 'no redirect' : $target));
 
 // --- 4b. NOW the direct questions, which also prime the memo -----------
 // Safe to ask only after the measurement above.
