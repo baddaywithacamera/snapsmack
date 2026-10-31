@@ -212,11 +212,7 @@ def _board_id(forum, name: str) -> int:
     board for tickets, and anything else is a typo or a drifted default, not an
     instruction to make somewhere new to put things.
     """
-    wanted = (name or "").strip().lower()
-    for cat in forum.categories():
-        if (cat.get("name") or "").strip().lower() == wanted:
-            return int(cat.get("id") or 0)
-    return 0
+    return forummod.board_id(forum, name)
 
 
 def cmd_reply(args):
@@ -393,7 +389,7 @@ def build_parser():
     # AGENTS.md: "tickets are published to the ROACH MOTEL board". The
     # default was "Tickets" from the day this tool was written, which is
     # how a board nobody asked for came to exist.
-    po.add_argument("--board", default="Roach Motel")
+    po.add_argument("--board", default=model.TICKET_BOARD)
     po.add_argument("--again", action="store_true",
                     help="post a SECOND thread for a ticket that already has one")
     po.add_argument("--dry-run", action="store_true")
