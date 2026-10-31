@@ -25,6 +25,8 @@
 - Stable promotion checks that the candidate changes only the permitted version fields. This release does not itself promote a stable build.
 - Scroll Time beacons carry proof of the page hit they belong to, and new readings are capped against elapsed time. This does not add long SMACKTALK article pages to the reported Scroll Time figure. SS-1083; SS-1129 remains separate.
 
+Because new readings are capped against elapsed time, the reported Scroll Time figure may fall after this release as lower readings replace inflated ones in the selected window. That is correct measurement rather than evidence of lost engagement. Existing stored readings are not rewritten, so this effect is gradual. This does not establish the cause of a drop observed before the release.
+
 ### Forum, archive and administration
 
 - Forum post newlines render once. The forum and ticket tools refuse body forms known to render incorrectly.
