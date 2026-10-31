@@ -20,8 +20,31 @@
 
 
 // --- CONFIGURATION ---
-$api_url    = 'https://snapsmack.ca/releases/latest.json';
-$target_dir = __DIR__;
+//
+// SS-1075. This was one hardcoded line pointing at the stable manifest, so the
+// documented one-file path -- upload this file, open it in a browser -- could
+// only ever produce a stable site, and the current stable build is one the
+// strict security model refuses on all thirty skins.
+//
+// THE DEFAULT IS DELIBERATELY STILL STABLE. The FEDISTRUCTURE bootstrap
+// defaults to dev; copying that here would change what every public installer
+// user receives without anybody deciding to. That is a product decision, not a
+// repair, so this adds the switch and nothing else: ?track=dev opts in.
+$setup_track = (($_GET['track'] ?? '') === 'dev') ? 'dev' : 'stable';
+$api_url     = $setup_track === 'dev'
+    ? 'https://snapsmack.ca/releases/latest-dev.json'
+    : 'https://snapsmack.ca/releases/latest.json';
+$target_dir  = __DIR__;
+
+// A floor, so the dev switch cannot be aimed at an ancient D tag and quietly
+// install it. Same guard the FEDISTRUCTURE bootstrap carries.
+define('SETUP_MINIMUM_DEV_VERSION', '0.7.899D');
+
+// The release host refuses a request that does not say who it is: measured on
+// 30 October, the public feed answered 403 to a default client and 200 to a
+// named one. Without this the one-file path would die at the first fetch with
+// a message the operator cannot act on.
+define('SETUP_USER_AGENT', 'SnapSmack-Setup/1');
 
 // Ed25519 public key — must match core/release-pubkey.php in the release package.
 // If the installed key ever differs, smack-update.php has a repair tool.
@@ -93,15 +116,45 @@ function setup_fetch_url($url) {
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         curl_setopt($ch, CURLOPT_ENCODING, '');  // decompress any Content-Encoding so we hash raw bytes
+        curl_setopt($ch, CURLOPT_USERAGENT, SETUP_USER_AGENT);
         $data = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         return ($code === 200 && $data !== false) ? $data : false;
     }
     if ($has_fopen) {
-        return @file_get_contents($url);
+        // The fallback has to identify itself too, or a host without cURL is
+        // refused for a reason nobody can see. PHP otherwise sends its own
+        // default agent, which the release host does not accept.
+        $context = stream_context_create(['http' => [
+            'user_agent' => SETUP_USER_AGENT,
+            'timeout'    => 30,
+            'follow_location' => 1,
+        ]]);
+        return @file_get_contents($url, false, $context);
     }
     return false;
+}
+
+// --- DEV FEED FLOOR ---
+/**
+ * Is the development feed too old to install from?
+ *
+ * SS-1075. A named function rather than four lines inside the deploy handler,
+ * so the rule can be CALLED and proved. The first version of this was inline
+ * and a check that only looked for the words "version_compare" in the file
+ * stayed green when the comparison was replaced with if(false) -- which is
+ * exactly the kind of guard that rots without anyone noticing.
+ *
+ * No version, or anything below the floor, is stale. The trailing D is
+ * stripped from both sides before comparing, because version_compare does not
+ * understand it.
+ */
+function setup_dev_feed_is_stale(string $manifest_version): bool {
+    $manifest_numeric = (string)preg_replace('/D$/i', '', trim($manifest_version));
+    $minimum_numeric  = (string)preg_replace('/D$/i', '', SETUP_MINIMUM_DEV_VERSION);
+    if ($manifest_numeric === '') return true;
+    return version_compare($manifest_numeric, $minimum_numeric, '<');
 }
 
 // --- VERIFY PACKAGE ---
@@ -154,6 +207,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
             $release = json_decode($manifest_raw, true);
             if (empty($release['download_url']) || empty($release['checksum_sha256'])) {
                 $error = 'Release manifest is missing required fields. Try again or contact support.';
+            }
+            // SS-1075. A floor on the dev feed, so the switch cannot be aimed
+            // at an ancient D tag and quietly install it. Checked BEFORE
+            // anything is downloaded, so a stale feed costs nothing but a
+            // message. Stable needs no floor: it is whatever was published.
+            if (!$error && $setup_track === 'dev') {
+                $manifest_version = (string)($release['version'] ?? '');
+                if (setup_dev_feed_is_stale($manifest_version)) {
+                    $error = 'The development release feed is stale. Required '
+                        . SETUP_MINIMUM_DEV_VERSION . ' or newer; received '
+                        . ($manifest_version !== '' ? htmlspecialchars($manifest_version) : 'no version')
+                        . '. Nothing has been installed.';
+                }
             }
         }
 
@@ -366,6 +432,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
 
     <h1>SNAPSMACK <span>SETUP</span></h1>
     <p class="subtitle">Release Deployer</p>
+
+    <?php /* SS-1075. Say which channel this is about to install, before the
+    button rather than after the fact. The FEDISTRUCTURE bootstrap does the
+    same, and it is the only way an operator can tell that ?track=dev took
+    effect -- or that it did not. */ ?>
+    <p class="subtitle">Channel:
+        <strong><?php echo $setup_track === 'dev' ? 'DEV' : 'STABLE'; ?></strong>
+        <?php echo $setup_track === 'dev'
+            ? '&mdash; current development build'
+            : '&mdash; published stable release'; ?></p>
 
     <?php if (!empty($error)): ?>
         <div class="error-box"><?php echo htmlspecialchars($error); ?></div>
