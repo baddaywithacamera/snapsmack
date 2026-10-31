@@ -42,41 +42,59 @@ function hc_test(bool $ok, string $what): void {
     else     { $fail++; echo "  FAIL  {$what}\n"; }
 }
 
-/** Handles out of a required_assets declaration in the runtime, by group. */
-function hc_declared(string $runtime, string $group): array {
-    $marker = "['required_assets']['" . $group . "'] = array_values(array_unique(array_merge(";
-    $fnAt = strpos($runtime, 'function snapsmack_public_runtime(');
-    $at = $fnAt === false ? false : strrpos($runtime, $marker);
-    if ($at === false || $at < $fnAt) return [];
-    $stmt = substr($runtime, $at, 20000);
-    // THE ARRAY LITERAL, found by walking back from the statement's own
-    // terminator rather than by reading a fixed number of characters.
-    //
-    // Both earlier versions of this used a window -- 500 characters in the
-    // Thomas test, 900 here -- and both broke the moment a comment was added
-    // INSIDE the array. The window ended before the closing bracket, the regex
-    // matched nothing, and the test reported every skin as missing everything.
-    // A parse that depends on how much prose sits next to the code is not a
-    // parse. ')))' is the statement's real end and there is exactly one.
-    $tail = strpos($stmt, ')))');
-    if ($tail === false) return [];
-    $stmt = substr($stmt, 0, $tail);
-    $close = strrpos($stmt, ']');
-    if ($close === false) return [];
-    $head = strrpos(substr($stmt, 0, $close), '[');
-    if ($head === false) return [];
-    $inner = substr($stmt, $head + 1, $close - $head - 1);
-    preg_match_all("/'([A-Za-z0-9:_-]+)'/", $inner, $hits);
-    return $hits[1];
+// WHY THERE IS NO LONGER A PARSER HERE.
+//
+// This read core/public-runtime.php as TEXT and pulled quoted handles out of
+// the array_merge(...) that assigns required_assets. The declaration moved
+// into snapsmack_public_engine_assets(), so the statement now reads
+//
+//     $engines = snapsmack_public_engine_assets();
+//     $response['required_assets']['scripts'] = array_values(array_unique(
+//         array_merge((array)($response['required_assets']['scripts'] ?? []),
+//                     $engines['scripts'])));
+//
+// and the parser walked back from ')))' to the nearest bracket pair, which is
+// $engines['scripts']. So it returned the single handle 'scripts'. Non-empty,
+// so "handles were parsed" PASSED, while every real handle was gone and all
+// thirty skins were reported as missing the consent banner. That reads as a
+// fleet-wide privacy fault and it was this file being wrong.
+//
+// It had already been patched once for the same class of problem -- a fixed
+// character window that broke when a comment was added inside the array. Two
+// repairs to a parser that should not exist is the argument for asking the
+// runtime instead. It is a function; call it.
+
+require_once $root . '/core/public-runtime.php';
+
+$engines = snapsmack_public_engine_assets();
+$scripts = $engines['scripts'] ?? [];
+$styles  = $engines['styles'] ?? [];
+
+echo "The declaration comes from core itself, so this check is coupled to it\n";
+hc_test($scripts !== [], 'snapsmack_public_engine_assets() declares no scripts at all');
+hc_test($styles !== [], 'snapsmack_public_engine_assets() declares no styles at all');
+
+// A function that exists and is never called declares nothing. The runtime
+// source is read with comments stripped, because the prose above explains the
+// fault by quoting the code, and a check that can match its own explanation
+// proves nothing -- which is exactly how this file went green while broken.
+$runtimeCode = '';
+foreach (token_get_all((string) file_get_contents($root . '/core/public-runtime.php')) as $t) {
+    if (is_array($t) && in_array($t[0], [T_COMMENT, T_DOC_COMMENT], true)) continue;
+    $runtimeCode .= is_array($t) ? $t[1] : $t;
 }
-
-$runtime = (string) file_get_contents($root . '/core/public-runtime.php');
-$scripts = hc_declared($runtime, 'scripts');
-$styles  = hc_declared($runtime, 'styles');
-
-echo "The declaration is read out of core, so this check is coupled to it\n";
-hc_test($scripts !== [], 'script handles were parsed from snapsmack_public_runtime()');
-hc_test($styles !== [], 'style handles were parsed from snapsmack_public_runtime()');
+hc_test((bool) preg_match('/=\\s*snapsmack_public_engine_assets\\s*\\(/', $runtimeCode),
+    'nothing in core/public-runtime.php CALLS snapsmack_public_engine_assets(), '
+  . 'so the handles it returns never reach a page. Checked as an assignment from '
+  . 'the call, because the name on its own also matches the function definition '
+  . 'and this check passed on that for its first run.');
+hc_test((bool) preg_match('/required_assets[^;]*\$engines\s*\[\s*.scripts/s', $runtimeCode),
+    'the engine scripts are no longer merged into required_assets, so whatever '
+  . 'snapsmack_public_engine_assets() returns goes nowhere. What is checked: the '
+  . 'engines variable is subscripted with scripts INSIDE a required_assets '
+  . 'statement, with no semicolon between the two.');
+hc_test((bool) preg_match('/required_assets[^;]*\$engines\s*\[\s*.styles/s', $runtimeCode),
+    'the engine styles are no longer merged into required_assets, so the consent banner would render unstyled');
 hc_test(in_array('asset:public:ss-engine-public-help', $scripts, true),
     'the F1 help engine is declared');
 hc_test(in_array('asset:public:ss-engine-consent', $scripts, true),
@@ -144,12 +162,21 @@ foreach ($skins as $slug => $dir) {
     if (!str_contains($html, 'assets/js/ss-engine-consent.js')) $withoutConsent++;
     if (!str_contains($html, 'assets/js/ss-engine-comms.js')) $withoutKeyboard++;
 }
-hc_test($withoutHelp >= count($skins) - 1,
-    'without the declaration the help engine is absent from ' . $withoutHelp
-    . ' of ' . count($skins) . ' skins, so the check is measuring core');
-hc_test($withoutConsent >= count($skins) - 1,
-    'without the declaration the consent engine is absent from ' . $withoutConsent
-    . ' of ' . count($skins) . ' skins');
+// EXACTLY all of them, not "at least all but one".
+//
+// While the parser above was broken these two assertions passed for the wrong
+// reason: the engines were missing from 30 of 30 WITH the declaration as well
+// as without it, so the mutation changed nothing and the control proved
+// nothing. A control that cannot fail is decoration. Measured with the
+// declaration restored: 0 of 30 missing with it, 30 of 30 without.
+hc_test($withoutHelp === count($skins),
+    'without the declaration the help engine should be absent from all '
+    . count($skins) . ' skins and was absent from ' . $withoutHelp
+    . '. If that is not all of them, something other than the core declaration '
+    . 'is putting it on a page and this check is not measuring core.');
+hc_test($withoutConsent === count($skins),
+    'without the declaration the consent engine should be absent from all '
+    . count($skins) . ' skins and was absent from ' . $withoutConsent . '.');
 // The keyboard engine is the one case where the manifests carry real cover:
 // 24 of 30 declare it themselves, so removing the core declaration should
 // leave exactly the six that lost it. That number is the fault Sean hit.

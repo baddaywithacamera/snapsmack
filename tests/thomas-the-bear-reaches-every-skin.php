@@ -67,60 +67,56 @@ require_once $root . '/core/asset-registry.php';
 require_once $root . '/core/skin-render-helpers.php';
 
 /**
- * READ THE DECLARATION OUT OF CORE, so this check is COUPLED to it.
+ * ASK CORE FOR THE DECLARATION, so this check is COUPLED to it.
  *
- * snapsmack_public_runtime() needs a database and cannot be executed here, but
- * a test that passes its own handle to the renderer would pass with the core
+ * snapsmack_public_runtime() needs a database and cannot be executed here, and
+ * a test that passed its own handle to the renderer would pass with the core
  * declaration deleted -- the same shape of uselessness as the meta.php check
- * it replaces. So the handles below are PARSED from the runtime and fed to the
- * real resolver. Delete the declaration and every skin below goes red.
+ * this file replaced. So the handles come from core.
+ *
+ * THEY USED TO BE PARSED OUT OF THE SOURCE, AND THAT BROKE TWICE.
+ *
+ * First a fixed 500-character window from the marker, which stopped working
+ * the moment a comment was added inside the array. Then a walk back from the
+ * statement's own ')))' terminator, which stopped working when the declaration
+ * moved into snapsmack_public_engine_assets(): the statement became
+ *
+ *     $response['required_assets']['scripts'] = array_values(array_unique(
+ *         array_merge((array)($response['required_assets']['scripts'] ?? []),
+ *                     $engines['scripts'])));
+ *
+ * so the nearest bracket pair before ')))' is $engines['scripts'] and the parse
+ * returned the single handle 'scripts'. Non-empty, so the "handles were read"
+ * check passed, while Thomas was reported missing from every skin.
+ *
+ * Two repairs to a parser that should not exist. The declaration is a function
+ * now, so it is CALLED. What that cannot cover -- the function existing and
+ * never being called -- is covered by reading the call site below, with
+ * comments stripped so it cannot match the prose you are reading.
  */
-$runtime = (string)@file_get_contents($root . '/core/public-runtime.php');
-$marker = "['required_assets']['scripts'] = array_values(array_unique(array_merge(";
-// There are several such statements. The page-kind helper near the top of the
-// file declares the shortcode parser's assets; the ones in the middle belong to
-// individual branches. The COMMON EXIT is the last one inside
-// snapsmack_public_runtime(), which is the only one every request kind reaches,
-// so this takes the last match at or after that function and nothing earlier.
-$declaredHandles = [];
-$fnAt = strpos($runtime, 'function snapsmack_public_runtime(');
-$at = $fnAt === false ? false : strrpos($runtime, $marker);
-if ($at !== false && $at < $fnAt) $at = false;
-if ($at !== false) {
-    $stmt = substr($runtime, $at, 20000);
-    // THE ARRAY LITERAL, found by walking back from the statement's own
-    // terminator rather than by reading a fixed number of characters.
-    //
-    // The earlier version read 500 characters from the marker, which stopped
-    // working the moment a comment was added INSIDE the array: the window
-    // ended before the closing bracket, the regex matched nothing, and the
-    // test reported every skin as missing Thomas. A parse that depends on how
-    // much prose sits beside the code is not a parse. ')))' is the statement's
-    // real end and there is exactly one of them.
-    //
-    // No `return` in here either. This runs at script scope, so a return would
-    // END THE TEST SILENTLY with a zero exit -- a check that passes by not
-    // running, which is the whole family of fault this file exists to stop.
-    $tail = strpos($stmt, ')))');
-    if ($tail !== false) {
-        $stmt = substr($stmt, 0, $tail);
-        $close = strrpos($stmt, ']');
-        $head = $close === false ? false : strrpos(substr($stmt, 0, $close), '[');
-        if ($head !== false) {
-            $inner = substr($stmt, $head + 1, $close - $head - 1);
-            preg_match_all("/'([A-Za-z0-9:_-]+)'/", $inner, $hits);
-            $declaredHandles = $hits[1];
-        }
-    }
+require_once $root . '/core/public-runtime.php';
+
+$engines = snapsmack_public_engine_assets();
+$declaredHandles = $engines['scripts'] ?? [];
+
+$runtimeCode = '';
+foreach (token_get_all((string)@file_get_contents($root . '/core/public-runtime.php')) as $t) {
+    if (is_array($t) && in_array($t[0], [T_COMMENT, T_DOC_COMMENT], true)) continue;
+    $runtimeCode .= is_array($t) ? $t[1] : $t;
 }
-$check($at !== false,
-    'No required_assets declaration was found inside snapsmack_public_runtime() '
-    . 'in the shape this check reads. Either Thomas is no longer shipped from '
-    . 'there, or the statement was reshaped -- in which case update this parse '
-    . 'rather than deleting the check, or it goes quiet the way the old one did.');
+$check((bool) preg_match('/=\\s*snapsmack_public_engine_assets\\s*\\(/', $runtimeCode),
+    'Nothing in core/public-runtime.php CALLS snapsmack_public_engine_assets(), '
+    . 'so the handles it returns never reach a page and Thomas ships from nowhere. '
+    . 'Checked as an assignment from the call: the bare name also matches the '
+    . 'function definition.');
+$check((bool) preg_match('/required_assets[^;]*\$engines\s*\[\s*.scripts/s', $runtimeCode),
+    'The engine scripts are not merged into required_assets inside any single '
+    . 'statement, so whatever snapsmack_public_engine_assets() returns goes '
+    . 'nowhere. Checked as: the engines variable subscripted with scripts, with '
+    . 'no semicolon between it and required_assets.');
 $check($declaredHandles !== [],
-    'The declaration was found but no asset handle could be read out of it, so '
-    . 'the render below would prove nothing.');
+    'snapsmack_public_engine_assets() returned no script handles at all, so the '
+    . 'render below would prove nothing.');
 
 $skinDirs = [];
 foreach (glob($root . '/skins/*', GLOB_ONLYDIR) ?: [] as $dir) {
@@ -199,9 +195,14 @@ $check(count($withoutHim) <= 4,
 $check(in_array('smack-thomas', $declaredHandles, true),
     'core/public-runtime.php declares assets at its exit but Thomas is not '
     . 'among them: ' . implode(', ', $declaredHandles));
-$check(substr_count($runtime, "'smack-thomas'") === 1,
-    'smack-thomas does not appear exactly once in core/public-runtime.php (found '
-    . substr_count($runtime, "'smack-thomas'") . '). It belongs at the single '
+// Counted in the CODE, not the file: the comments around the declaration name
+// the handle while explaining the fault, and counting those would make the
+// number depend on how much prose sits next to it -- the same mistake the
+// deleted parser made.
+$check(substr_count($runtimeCode, "'smack-thomas'") === 1,
+    'smack-thomas does not appear exactly once in the code of '
+    . 'core/public-runtime.php (found '
+    . substr_count($runtimeCode, "'smack-thomas'") . '). It belongs at the single '
     . 'common exit, not on individual branches and not nowhere.');
 
 // 6. Loading him twice must stay harmless. He is shipped by the CMS AND
