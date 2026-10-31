@@ -14,6 +14,59 @@
 (function () {
     'use strict';
 
+    // ── THE ARROW KEYS, AND WHY THE GRID IS THE LIST (SS-1095) ──────────────
+    //
+    // The owner reported that the arrows and the spacebar do nothing in this
+    // overlay. ss-engine-comms.js looks for #snap-nav-data or a rel="prev"
+    // link; the overlay is a FRAGMENT and emits neither, and every one of
+    // those sources is read from the document AS LOADED -- which belongs to
+    // the grid, not to the photograph now showing. Nothing re-reads them when
+    // an overlay opens, so on all nine Grid-family skins the keys were dead.
+    //
+    // This engine already knows every tile, because it intercepts their
+    // clicks. So the neighbour of the open photograph is simply the tile
+    // beside it in DOM ORDER -- which is also the order the reader is looking
+    // at, and on a filtered or searched grid that is not the archive order a
+    // server-side prev/next would have given.
+    //
+    // Exposed BEFORE the overlay lookup below, deliberately, so the choice can
+    // be tested without a page -- the same shape as ss-engine-glide.js.
+
+    /**
+     * The href beside currentHref among hrefs, or '' when there is not one.
+     *
+     * Pure. '' means DO NOTHING, and it is returned for every case where the
+     * honest answer is unknown rather than guessed:
+     *   - the last loaded tile going forward, or the first going back. The
+     *     grid is a window onto the archive under endless scroll, so wrapping
+     *     round would lie about where the reader is.
+     *   - a photograph that is not in the loaded grid at all, which is what a
+     *     deep link into a page that has not loaded looks like.
+     */
+    function neighbourHref(hrefs, currentHref, step) {
+        if (!hrefs || !hrefs.length || !currentHref || !step) return '';
+        var at = hrefs.indexOf(currentHref);
+        if (at < 0) return '';
+        var to = at + step;
+        if (to < 0 || to >= hrefs.length) return '';
+        return hrefs[to] || '';
+    }
+
+    /**
+     * Is this keystroke going somewhere the reader is typing?
+     *
+     * The overlay carries a comment box. A space typed into it must reach the
+     * box and not move to another photograph.
+     */
+    function isTypingTarget(el) {
+        if (!el) return false;
+        if (el.isContentEditable) return true;
+        var tag = (el.tagName || '').toUpperCase();
+        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    }
+
+    window.SSGridModal = { neighbourHref: neighbourHref, isTypingTarget: isTypingTarget };
+
     var overlay = document.querySelector('[data-grid-url][id$="-modal-overlay"]');
     if (!overlay) return;
     var P = overlay.id.replace(/-modal-overlay$/, '');
@@ -136,7 +189,40 @@
     if (backdrop) backdrop.addEventListener('click', closeModal);
 
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeModal();
+        // Nothing here acts unless the overlay is open. Without this the
+        // arrows and the spacebar would fire on the grid page too, where
+        // space is how a reader scrolls.
+        if (overlay.hasAttribute('hidden')) return;
+
+        if (e.key === 'Escape') { closeModal(); return; }
+
+        // A modified arrow belongs to the browser: ctrl/cmd-left is history.
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+
+        // e.target is where the event began; activeElement catches the case
+        // where focus is in a field but the event was retargeted.
+        if (isTypingTarget(e.target) || isTypingTarget(document.activeElement)) return;
+
+        // SPACE GOES BACKWARD, the same direction as ArrowLeft, because that
+        // is what ss-engine-comms.js:219 already does on a solo page and one
+        // product should not disagree with itself. It is also the one choice
+        // here that is a preference rather than a fact, so it is written down
+        // as a question for the owner rather than buried.
+        var step = e.key === 'ArrowRight' ? 1
+                 : (e.key === 'ArrowLeft' || e.key === ' ') ? -1 : 0;
+        if (!step) return;
+
+        var hrefs = Array.prototype.map.call(
+            document.querySelectorAll('.' + P + '-tile a[href]'),
+            function (a) { return a.href; });
+
+        var to = neighbourHref(hrefs, location.href, step);
+        if (!to) return;
+
+        // Only now, so an unhandled key and a refused move both leave the
+        // page exactly as the browser would.
+        e.preventDefault();
+        openModal(to);
     });
 
     window.addEventListener('popstate', function () {
