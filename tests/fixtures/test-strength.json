@@ -166,6 +166,11 @@
             2
         ]
     },
+    "bootstrap-signature-refusal-regression.php": {
+        "assertions": 26,
+        "predicates": 14,
+        "thresholds": []
+    },
     "brevo-test-send-regression.php": {
         "assertions": 9,
         "predicates": 0,
@@ -547,6 +552,11 @@
     "forum-board-counter-regression.php": {
         "assertions": 11,
         "predicates": 8,
+        "thresholds": []
+    },
+    "forum-body-newline-regression.php": {
+        "assertions": 15,
+        "predicates": 15,
         "thresholds": []
     },
     "forum-inline-images-regression.php": {
@@ -1125,6 +1135,14 @@
         "assertions": 4,
         "predicates": 2,
         "thresholds": []
+    },
+    "promote-stable-accepts-only-the-version-commit.php": {
+        "assertions": 2,
+        "predicates": 1,
+        "thresholds": [
+            2,
+            2
+        ]
     },
     "provision-shared-key-regression.php": {
         "assertions": 9,
