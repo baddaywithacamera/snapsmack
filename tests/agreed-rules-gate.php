@@ -213,9 +213,11 @@ if ($declared !== '') {
         // be mutation-tested; including this file runs it, so a test cannot
         // reach inside it. See tests/release-tag-rules-regression.php.
         require_once $root . '/tools/_build/release-tag-rules.php';
+        $remote = snap_gate_choose_remote(
+            (string)@shell_exec('git -C ' . escapeshellarg($root) . ' remote 2>&1'));
         $verdict = snap_gate_tag_move_verdict(
             $declared, $tagCommit, $headCommit,
-            snap_gate_origin_tag_state($root, $tagged));
+            snap_gate_origin_tag_state($root, $tagged), $remote);
         $check($verdict['ok'], 'the source declares ' . $declared . '. ' . $verdict['message']);
         if ($verdict['ok'] && $verdict['note'] !== '') {
             echo '  note  ' . $verdict['note'] . "
