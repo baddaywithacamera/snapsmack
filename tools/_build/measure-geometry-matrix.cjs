@@ -185,9 +185,21 @@ function fail(message) {
             .filter((i) => { const v = i.getAttribute('src') || ''; return v.endsWith(srcs.land) || v.endsWith(srcs.port); })
             .map((i) => { const r = i.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; });
 
+          // THE OWNER'S STATIC-PAGE WIDTH, as the page actually resolves it.
+          // Recorded here because reading the stylesheets cannot answer it: a
+          // skin writes var(--static-content-width, 850px) and you cannot tell
+          // from that whether the owner's number arrived or the fallback did.
+          // Only the computed value says. SS-1121: with the admin value set to
+          // 620 it resolved on 1 of 30 skins and to the owner's number on none.
+          const rootStyle = getComputedStyle(document.documentElement);
+          const staticColumn = document.querySelector('.static-content, .go-static-content');
+
           return {
             viewportWidth: window.innerWidth,
             documentWidth: Math.round(document.documentElement.scrollWidth),
+            staticContentWidthProp: rootStyle.getPropertyValue('--static-content-width').trim() || null,
+            staticContentGutterProp: rootStyle.getPropertyValue('--static-content-gutter').trim() || null,
+            staticColumn: box(staticColumn),
             title: box(title), body: box(body), hero: box(hero),
             nav: box(navRow), navGaps: gaps, navGapsByNav: gapsByNav,
             tiles: tiles.length,
