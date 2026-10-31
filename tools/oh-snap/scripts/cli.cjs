@@ -21,9 +21,9 @@ async function main(){
     const argv=process.argv.slice(2),opts={};let command=argv.shift(),resultFile=null,browser,server;
     let envelope,code=0;
     try{
-        if(command==='--help'||!command){console.log('OH SNAP CLI: capabilities | new | inspect | edit | validate | render | export\nOptions: --project FILE --input JSON --output FILE --overwrite --mode MODE --view post|archive|landing|page --width 1280 --result JSON');return;}
+        if(command==='--help'||!command){console.log('OH SNAP CLI: capabilities | new | inspect | edit | validate | render | export\nOptions: --project FILE --input JSON --output FILE --overwrite --mode MODE --view post|archive|landing|page --width 1280 --height 1000 --result JSON\nRender size: integer width 320..3840, height 240..2160');return;}
         for(let i=0;i<argv.length;i++){
-            const key=argv[i];if(!key.startsWith('--')||!['--project','--input','--output','--mode','--view','--width','--result','--overwrite'].includes(key))throw Error('Unknown option '+key);
+            const key=argv[i];if(!key.startsWith('--')||!['--project','--input','--output','--mode','--view','--width','--height','--result','--overwrite'].includes(key))throw Error('Unknown option '+key);
             if(key==='--overwrite'){opts.overwrite=true;continue;}
             if(!argv[i+1]||argv[i+1].startsWith('--'))throw Error('Missing value for '+key);
             opts[key.slice(2)]=argv[++i];
@@ -95,12 +95,14 @@ async function main(){
             if(validation.errors.length)throw Error(validation.errors.join('\n'));
             let data;
             if(command==='render'){
-                const view=opts.view||'post',width=Number(opts.width||1280);
-                if(!['post','archive','landing','page'].includes(view)||![390,768,1280].includes(width))throw Error('Unsupported preview view or width');
-                await page.evaluate(({view,width})=>{OhSnapPreview.switchView(view);const frame=document.querySelector('#preview-frame');frame.style.width=width+'px';frame.style.height='1000px';},{view,width});
+                const view=opts.view||'post',width=Number(opts.width??1280),height=Number(opts.height??1000);
+                if(!['post','archive','landing','page'].includes(view))throw Error('Unsupported preview view');
+                if(!Number.isInteger(width)||width<320||width>3840||!Number.isInteger(height)||height<240||height>2160)throw Error('Render dimensions must be integer width 320..3840 and height 240..2160');
+                await page.setViewportSize({width:width+1000,height:height+300});
+                await page.evaluate(({view,width,height})=>{OhSnapPreview.switchView(view);const frame=document.querySelector('#preview-frame');frame.style.width=width+'px';frame.style.height=height+'px';frame.style.border='0';},{view,width,height});
                 await page.waitForFunction(()=>document.querySelector('#preview-frame').contentDocument?.querySelector('[data-preview-site]'));
                 fs.mkdirSync(path.dirname(path.resolve(opts.output)),{recursive:true});
-                await page.locator('#preview-frame').screenshot({path:opts.output,type:'png'});data={output:path.resolve(opts.output),view,width};
+                await page.locator('#preview-frame').screenshot({path:opts.output,type:'png'});data={output:path.resolve(opts.output),view,width,height};
             }else if(command==='export'){
                 await page.evaluate(()=>OhSnapProject.exportPackage());
                 const pack=await page.evaluate(()=>window.__cli.pack);
