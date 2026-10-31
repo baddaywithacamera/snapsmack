@@ -103,6 +103,137 @@ def cmd_board_new(args):
     return 0
 
 
+ROLES = {"user": 0, "power": 1, "moderator": 2, "admin": 3}
+ROLE_NAMES = {v: k for k, v in ROLES.items()}
+
+
+def _role_value(text):
+    """A role as a number, given either the number or the name.
+
+    Both are accepted because both get typed: the API speaks 0-3 and a person
+    promoting a moderator thinks "moderator", not "2".
+    """
+    text = (text or "").strip().lower()
+    if text in ROLES:
+        return ROLES[text]
+    if text.isdigit() and int(text) in ROLE_NAMES:
+        return int(text)
+    raise ForumError(
+        "Unknown role " + repr(text) + ". One of: "
+        + ", ".join(k + " (" + str(v) + ")" for k, v in ROLES.items()) + ".")
+
+
+def _install_id(forum, needle):
+    """An install id, from the id or from the domain.
+
+    Nobody knows a blog by its number, and a wrong number here promotes the
+    wrong site. So a domain is resolved against the roster and an ambiguous
+    one refuses rather than picking the first match.
+    """
+    needle = (needle or "").strip()
+    if needle.isdigit():
+        return int(needle)
+    rows = forum.installs()
+    low = needle.lower()
+    exact = [r for r in rows if str(r.get("domain", "")).strip().lower() == low]
+    hits = exact or [r for r in rows if low in str(r.get("domain", "")).lower()]
+    if not hits:
+        raise ForumError(
+            "No blog on the forum matches " + repr(needle)
+            + ". `fc installs` lists them.")
+    if len(hits) > 1:
+        names = ", ".join(str(r.get("domain")) for r in hits[:6])
+        raise ForumError(
+            repr(needle) + " matches " + str(len(hits)) + " blogs (" + names
+            + "). Nothing sent — name one exactly, or give its id.")
+    return int(hits[0].get("id") or 0)
+
+
+def cmd_installs(args):
+    rows = _forum(args).installs()
+    lines = [str(len(rows)) + " blog(s) on the forum", ""]
+    for r in rows:
+        role = int(r.get("role") or 0)
+        flags = " BANNED" if r.get("is_banned") else ""
+        lines.append("  [" + str(r.get("id")) + "] " + str(r.get("domain", ""))
+                     + "  " + ROLE_NAMES.get(role, str(role))
+                     + " (" + str(role) + ")" + flags
+                     + "  last seen " + str(r.get("last_seen_at", "?")))
+    _out(args, rows, "\n".join(lines))
+    return 0
+
+
+def cmd_role(args):
+    f = _forum(args)
+    if not f.am_i_admin():
+        print("This key cannot set roles: that needs role 3 (admin) or the "
+              "Smack Central key. Check with `fc whoami`.", file=sys.stderr)
+        return 3
+    level = _role_value(args.level)
+    target = _install_id(f, args.install)
+    res = f.set_role(target, level)
+    _out(args, res, "Install " + str(target) + " is now "
+         + ROLE_NAMES.get(level, str(level)) + " (role " + str(level) + ").")
+    return 0
+
+
+def cmd_board_set(args):
+    """Rename, reorder, or hide a board.
+
+    The hide guard is the reason this refuses anything at all. is_active=0
+    takes the board out of every listing, and the threads in it go with it --
+    there is no delete here, so hiding is what gets used instead, and a board
+    with 40 threads in it looks exactly like an empty one on the command line.
+    """
+    f = _forum(args)
+    if not f.am_i_admin():
+        print("This key cannot manage boards: that needs role 3 (admin) or "
+              "the Smack Central key. Check with `fc whoami`.", file=sys.stderr)
+        return 3
+
+    fields = {}
+    if args.name:
+        fields["name"] = args.name
+    if args.description is not None:
+        fields["description"] = args.description
+    if args.sort is not None:
+        fields["sort_order"] = args.sort
+    if args.hide:
+        fields["is_active"] = False
+    elif args.show:
+        fields["is_active"] = True
+
+    if not fields:
+        print("Nothing to change. Give --name, --description, --sort, --hide "
+              "or --show.", file=sys.stderr)
+        return 2
+
+    if args.hide:
+        board = None
+        for cat in f.categories():
+            if int(cat.get("id") or 0) == args.id:
+                board = cat
+                break
+        if board is None:
+            print("Board " + str(args.id) + " is not in the active board list: "
+                  "it is already hidden, or there is no such board. Nothing "
+                  "sent.", file=sys.stderr)
+            return 1
+        count = int(board.get("thread_count") or 0)
+        if count and not args.even_with_threads:
+            print("Board " + str(args.id) + " (" + str(board.get("name"))
+                  + ") holds " + str(count) + " thread(s), and hiding it takes "
+                  "them out of every listing with it. There is no delete here, "
+                  "so nothing undoes that but --show. Move the threads first, "
+                  "or pass --even-with-threads. Nothing sent.", file=sys.stderr)
+            return 1
+
+    res = f.update_board(args.id, **fields)
+    _out(args, res, "Board " + str(args.id) + " updated: "
+         + ", ".join(k + "=" + repr(v) for k, v in sorted(fields.items())) + ".")
+    return 0
+
+
 def _byline(row):
     """Author name, with MOD after it when the account carries moderator power.
 
@@ -293,6 +424,27 @@ def build_parser():
     bn.add_argument("--description", default="")
     bn.add_argument("--sort", type=int, default=0)
     bn.set_defaults(func=cmd_board_new)
+
+    bs = sub.add_parser("board-set")
+    bs.add_argument("id", type=int)
+    bs.add_argument("--name", default="")
+    bs.add_argument("--description", default=None)
+    bs.add_argument("--sort", type=int, default=None)
+    # --hide and --show cannot both be meant, and whichever won silently
+    # would be the wrong one half the time.
+    vis = bs.add_mutually_exclusive_group()
+    vis.add_argument("--hide", action="store_true")
+    vis.add_argument("--show", action="store_true")
+    bs.add_argument("--even-with-threads", dest="even_with_threads",
+                    action="store_true")
+    bs.set_defaults(func=cmd_board_set)
+
+    sub.add_parser("installs").set_defaults(func=cmd_installs)
+
+    ro = sub.add_parser("role")
+    ro.add_argument("install")
+    ro.add_argument("--level", required=True)
+    ro.set_defaults(func=cmd_role)
 
     th = sub.add_parser("threads")
     th.add_argument("--board", type=int, default=0)

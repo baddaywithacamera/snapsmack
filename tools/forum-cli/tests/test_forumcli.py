@@ -297,6 +297,29 @@ class AdminFake(FakeForum):
         self._record("ensure_board", name, description, sort_order)
         return 6
 
+    def categories(self):
+        self._record("categories")
+        # 3 has threads in it, 94 is the board nobody asked for. Both cases
+        # matter: hiding the first takes two threads with it.
+        return [{"id": 3, "name": "Roach Motel", "thread_count": 2, "reply_count": 5},
+                {"id": 94, "name": "Tickets", "thread_count": 0, "reply_count": 0}]
+
+    def installs(self):
+        self._record("installs")
+        # Two domains where one is a suffix of the other, because that is the
+        # shape that makes a substring match promote the wrong site.
+        return [{"id": 1, "domain": "snapsmack.ca", "role": 3, "last_seen_at": "2026-10-30"},
+                {"id": 7, "domain": "photowalk.ing", "role": 0, "last_seen_at": "2026-10-30"},
+                {"id": 8, "domain": "walk.photowalk.ing", "role": 0, "last_seen_at": "2026-10-29"}]
+
+    def set_role(self, install_id, role):
+        self._record("set_role", install_id, role)
+        return {"status": "updated", "install_id": install_id, "role": role}
+
+    def update_board(self, category_id, **fields):
+        self._record("update_board", category_id, fields)
+        return {"status": "updated", "id": category_id}
+
 
 def test_board_new_passes_the_sort_order_through(monkeypatch):
     monkeypatch.setattr(fc, "Forum", AdminFake)
@@ -345,5 +368,157 @@ def test_a_byline_falls_back_to_the_flag_then_to_the_plain_name():
     # nothing about status, and above all do not fail.
     assert fc._byline({"display_name": "Sean"}) == "Sean"
     assert fc._byline({}) == ""
+
+# -- promoting a blog: the roster, and the two ways to name one --------------
+#
+# PATCH installs/{id}/role has existed since 17 October and nothing could
+# reach it. Granting a moderator meant a database UPDATE by hand, which is
+# also how the forum ended up with its roles set by whoever had the password.
+
+
+@pytest.fixture()
+def admin(monkeypatch):
+    monkeypatch.setattr(fc, "Forum", AdminFake)
+    return AdminFake
+
+
+def test_role_needs_a_level_spelled_out(admin):
+    """There is no sensible default rank to hand somebody."""
+    with pytest.raises(SystemExit) as exc:
+        run(["role", "photowalk.ing"])
+    assert exc.value.code == 2
+
+
+def test_role_takes_the_name_or_the_number(admin):
+    assert run(["role", "7", "--level", "moderator"]) == 0
+    assert ("set_role", (7, 2), {}) in AdminFake.last.calls
+    assert run(["role", "7", "--level", "2"]) == 0
+    assert ("set_role", (7, 2), {}) in AdminFake.last.calls
+
+
+def test_role_resolves_a_domain_against_the_roster(admin):
+    assert run(["role", "photowalk.ing", "--level", "power"]) == 0
+    assert ("set_role", (7, 1), {}) in AdminFake.last.calls
+
+
+def test_an_ambiguous_domain_promotes_nobody(admin, capsys):
+    """"photowalk" matches photowalk.ing and walk.photowalk.ing. Picking the
+    first match would hand moderator powers to whichever row sorted first."""
+    assert run(["role", "photowalk", "--level", "moderator"]) == 1
+    assert not [c for c in AdminFake.last.calls if c[0] == "set_role"]
+    err = capsys.readouterr().err
+    assert "matches 2 blogs" in err
+    assert "Nothing sent" in err
+
+
+def test_a_domain_nobody_has_promotes_nobody(admin, capsys):
+    assert run(["role", "nosuch.example", "--level", "moderator"]) == 1
+    assert not [c for c in AdminFake.last.calls if c[0] == "set_role"]
+    assert "No blog on the forum matches" in capsys.readouterr().err
+
+
+def test_an_unknown_level_is_refused_and_promotes_nobody(admin, capsys):
+    assert run(["role", "photowalk.ing", "--level", "superuser"]) == 1
+    assert not [c for c in AdminFake.last.calls if c[0] == "set_role"]
+    assert "Unknown role" in capsys.readouterr().err
+
+
+def test_role_refuses_on_a_key_that_is_not_admin(capsys):
+    """FakeForum is role 2. The API would 403; saying so first costs nothing
+    and tells the caller which question to ask."""
+    assert run(["role", "7", "--level", "moderator"]) == 3
+    assert not [c for c in FakeForum.last.calls if c[0] == "set_role"]
+    assert "fc whoami" in capsys.readouterr().err
+
+
+# -- hiding a board: the only way back, and what it takes with it -----------
+
+
+def test_board_set_with_nothing_to_set_is_refused(admin, capsys):
+    assert run(["board-set", "94"]) == 2
+    assert not [c for c in AdminFake.last.calls if c[0] == "update_board"]
+    assert "Nothing to change" in capsys.readouterr().err
+
+
+def test_board_set_sends_only_the_fields_given(admin):
+    """PATCH /categories falls back to the stored value for every absent key,
+    so sending all four would overwrite three of them with a guess."""
+    assert run(["board-set", "94", "--name", "Roach Motel Archive"]) == 0
+    sent = [c for c in AdminFake.last.calls if c[0] == "update_board"][-1]
+    assert sent[1] == (94, {"name": "Roach Motel Archive"})
+
+
+def test_hiding_an_empty_board_goes_through(admin):
+    assert run(["board-set", "94", "--hide"]) == 0
+    sent = [c for c in AdminFake.last.calls if c[0] == "update_board"][-1]
+    assert sent[1] == (94, {"is_active": False})
+
+
+def test_hiding_a_board_that_still_has_threads_is_refused(admin, capsys):
+    """There is no delete here, so hiding is what gets used instead -- and on
+    the command line a board with two threads in it looks exactly like an
+    empty one."""
+    assert run(["board-set", "3", "--hide"]) == 1
+    assert not [c for c in AdminFake.last.calls if c[0] == "update_board"]
+    err = capsys.readouterr().err
+    assert "2 thread(s)" in err
+    assert "--even-with-threads" in err
+
+
+def test_the_threads_guard_can_be_overridden_on_purpose(admin):
+    assert run(["board-set", "3", "--hide", "--even-with-threads"]) == 0
+    sent = [c for c in AdminFake.last.calls if c[0] == "update_board"][-1]
+    assert sent[1] == (3, {"is_active": False})
+
+
+def test_hiding_a_board_that_is_not_in_the_active_list_is_refused(admin, capsys):
+    """categories() lists ACTIVE boards only, so a board missing from it is
+    already hidden -- or was never there, and the id is a typo."""
+    assert run(["board-set", "404", "--hide"]) == 1
+    assert not [c for c in AdminFake.last.calls if c[0] == "update_board"]
+    assert "not in the active board list" in capsys.readouterr().err
+
+
+def test_showing_a_hidden_board_does_not_need_it_to_be_listed(admin):
+    """The reverse: --show must work on exactly the boards categories()
+    cannot see, which is the whole point of it."""
+    assert run(["board-set", "404", "--show"]) == 0
+    sent = [c for c in AdminFake.last.calls if c[0] == "update_board"][-1]
+    assert sent[1] == (404, {"is_active": True})
+
+
+def test_hide_and_show_together_is_an_error(admin):
+    with pytest.raises(SystemExit) as exc:
+        run(["board-set", "94", "--hide", "--show"])
+    assert exc.value.code == 2
+
+
+def test_board_set_refuses_on_a_key_that_is_not_admin(capsys):
+    assert run(["board-set", "94", "--hide"]) == 3
+    assert not [c for c in FakeForum.last.calls if c[0] == "update_board"]
+    assert "fc whoami" in capsys.readouterr().err
+
+
+# -- the client itself, where the payload is built --------------------------
+
+
+def test_update_board_will_not_send_a_field_the_api_cannot_read():
+    """slug is immutable there and anything unrecognised falls through every
+    branch, so it is caught here rather than answered with a 400."""
+    f = snap_forum.Forum("https://forum.invalid/api", "k")
+    with pytest.raises(snap_forum.ForumError) as exc:
+        f.update_board(94, slug="tickets")
+    assert "slug" in str(exc.value)
+
+
+def test_update_board_refuses_an_empty_change():
+    f = snap_forum.Forum("https://forum.invalid/api", "k")
+    with pytest.raises(snap_forum.ForumError) as exc:
+        f.update_board(94)
+    assert "Nothing to change" in str(exc.value)
+
+
+def test_the_sheet_warns_that_hiding_takes_the_threads_with_it():
+    assert any("--even-with-threads" in r for r in agent.REFUSALS)
 
 # ===== SNAPSMACK EOF =====

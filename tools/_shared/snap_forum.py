@@ -208,6 +208,33 @@ class Forum:
         made = self._call("POST", "categories", payload)
         return _created_id(made, "category")
 
+    def update_board(self, category_id: int, **fields) -> dict:
+        """Rename, reorder, or hide a board. Admin or mod key.
+
+        Sends ONLY the fields given. PATCH /categories/{id} falls back to the
+        stored value for every key that is absent, so a caller that helpfully
+        sent all four would overwrite three of them with whatever it had
+        guessed. The slug is immutable there and so is not accepted here: the
+        URL of a board stays the URL of that board.
+
+        is_active=False hides the board everywhere, including from
+        categories() -- which lists active boards only. That is the one way
+        back from a board nobody asked for, since there is no delete.
+        """
+        allowed = ("name", "description", "sort_order", "is_active")
+        payload = {k: fields[k] for k in allowed if k in fields}
+        unknown = sorted(set(fields) - set(allowed))
+        if unknown:
+            raise ForumError(
+                "PATCH /categories reads name, description, sort_order and "
+                "is_active, and nothing else: " + ", ".join(unknown)
+                + " would fall through every branch. Not sent.")
+        if not payload:
+            raise ForumError(
+                "Nothing to change. An empty PATCH would answer 'updated' "
+                "having written each stored value back over itself.")
+        return self._call("PATCH", f"categories/{int(category_id)}", payload)
+
     def post_ticket(self, category_id: int, title: str, body: str) -> int:
         made = self._call("POST", "threads",
                           {"category_id": category_id, "title": title, "body": body})
@@ -267,6 +294,27 @@ class Forum:
             return bool((self.me().get("can") or {}).get("administer"))
         except ForumError:
             return False
+
+    # ── the roster, and granting power on it ─────────────────────────────────
+    def installs(self) -> list:
+        """Every blog with its role. Admin or God key.
+
+        This is how an install id is found. set_role() takes a number and
+        nobody knows a blog by its number, so without this the only way to
+        promote a moderator was to read the database.
+        """
+        return self._call("GET", "installs").get("installs", [])
+
+    def set_role(self, install_id: int, role: int) -> dict:
+        """0 user, 1 power, 2 moderator, 3 admin. Admin or God key.
+
+        The API caps this strictly below the caller: an admin blog may set
+        roles below its own, on blogs below its own, and may not touch its
+        own. Only the God key can make an admin. That cap is enforced there,
+        not here -- this client does not get to decide who may be promoted.
+        """
+        return self._call("PATCH", f"installs/{int(install_id)}/role",
+                          {"role": int(role)})
 
     # ── the gap that is still a gap, named rather than faked ─────────────────
     def move_thread(self, thread_id: int, category_id: int) -> dict:
