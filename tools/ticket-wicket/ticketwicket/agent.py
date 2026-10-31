@@ -87,6 +87,17 @@ COMMANDS = [
      "example": ENTRY + " stale --json",
      "notes": "The keep-me-honest mechanism. It states a fact; it does not nag, "
               "chase or editorialise."},
+    {"name": "forum-gap", "does": "Published tickets the board has not heard about since.",
+     "args": [],
+     "returns": "id, thread, board_state, state, changes, security, note",
+     "example": ENTRY + " forum-gap",
+     "notes": "READ ONLY and offline: it reads the audit trail, never the "
+              "forum, so it needs no key and cannot touch a live board. "
+              "board_state is what the thread STILL SAYS, recovered from "
+              "the 'state: old -> new' audit line. Security-flagged rows "
+              "are marked and must never be swept up: disclosure timing is "
+              "the owner's, every time."},
+
     {"name": "outbox", "does": "What is waiting to go out.",
      "returns": "queued rows", "args": ["--state queued|sent"],
      "example": ENTRY + " outbox --json",
