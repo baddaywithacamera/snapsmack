@@ -10,8 +10,9 @@ assert.equal(call('edit','--project',project,'--input',edit,'--output',edited).c
 const info=call('inspect','--project',edited);assert.equal(info.result.data.overrides['--bg-page'],'#17212b');
 assert.ok(info.result.data.user_css.includes('border: 2px'));assert.equal(info.result.data.mode,'GRAMOFSMACK');
 assert.equal(call('validate','--project',edited).code,0);
-const png=path.join(tmp,'preview.png');assert.equal(call('render','--project',edited,'--view','archive','--width','390','--output',png).code,0);
+const png=path.join(tmp,'preview.png');assert.equal(call('render','--project',edited,'--view','archive','--width','390','--height','1000','--output',png).code,0);
 const bytes=fs.readFileSync(png);assert.equal(bytes.readUInt32BE(16),390);assert.equal(bytes.readUInt32BE(20),1000);
+const defaultPng=path.join(tmp,'default.png');assert.equal(call('render','--project',edited,'--output',defaultPng).code,0);const defaultBytes=fs.readFileSync(defaultPng);assert.equal(defaultBytes.readUInt32BE(16),1920);assert.equal(defaultBytes.readUInt32BE(20),1080);
 for(const [width,height] of [[768,1000],[1280,1000],[1024,768],[1440,1080],[1920,1080],[2560,1440]]){
  const target=path.join(tmp,`preview-${width}-${height}.png`);
  const rendered=call('render','--project',edited,'--width',String(width),'--height',String(height),'--output',target);
@@ -34,5 +35,5 @@ assert.notEqual(call('edit','--project',project,'--input',edit,'--output',path.j
 assert.ok(!fs.existsSync(path.join(tmp,'bad.ohsnap')));
 const before=fs.readFileSync(project);assert.notEqual(call('edit','--project',project,'--input',edit,'--output',project,'--overwrite').code,0);assert.deepEqual(fs.readFileSync(project),before);
 assert.notEqual(call('inspect','--project',project,'--result',project).code,0);assert.deepEqual(fs.readFileSync(project),before);
-console.log(JSON.stringify({passed:23,evidence:tmp,commands:['new','edit','inspect','validate','render','export'],files:Object.keys(files)}));
+console.log(JSON.stringify({passed:24,evidence:tmp,commands:['new','edit','inspect','validate','render','export'],files:Object.keys(files)}));
 // ===== SNAPSMACK EOF =====
