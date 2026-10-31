@@ -8,6 +8,72 @@
  */
 (function () {
     'use strict';
+
+    // ---- the arithmetic, kept pure and exposed so it can be MEASURED -------
+    //
+    // SS-1093. This used to wrap at scrollWidth / 4, which was right only
+    // while the markup repeated each row four times -- the way the wall was
+    // first built. The markup stopped doing that, the divisor stayed, and the
+    // modulus became a quarter of a single-copy track: a row travelled through
+    // a quarter of its own photographs and snapped back. Roughly half of each
+    // long row could never be brought on screen, and rows with more portraits
+    // wrapped sooner than the others, so no two rows agreed.
+    //
+    // The period is now MEASURED from what is actually in the track, and the
+    // engine makes its own copies, so the two can never disagree again.
+
+    /** Translate a running offset into one period. Never divides by zero. */
+    function glideWrap(current, period) {
+        if (!(period > 0)) return 0;
+        return (((current % period) + period) % period) - period;
+    }
+
+    /**
+     * The distance after which the pattern repeats.
+     *
+     * NOT the measured width of one copy. A flex gap sits BETWEEN items, so
+     * one copy of n tiles measures sum + (n-1) gaps -- but the copy that
+     * follows it starts one further gap along, so the period is sum + n gaps.
+     * Getting this wrong by one gap is a slow drift at every wrap, and it is
+     * the second thing the old divisor got wrong.
+     */
+    function glidePeriodFrom(widths, gap) {
+        if (!widths || !widths.length) return 0;
+        var sum = 0;
+        for (var i = 0; i < widths.length; i++) sum += (parseFloat(widths[i]) || 0);
+        return sum + (widths.length * (parseFloat(gap) || 0));
+    }
+
+    /**
+     * Repeat the track's own children until the wrap point is off screen.
+     *
+     * The engine does this itself rather than asking the skin to emit copies:
+     * a strict skin's layout is presentation only, and a count agreed between
+     * two files is a count that drifts. Returns how many copies it added.
+     */
+    function glideFill(track, period, minWidth, gap) {
+        if (!track || !track.children || !track.children.length) return 0;
+        if (!(period > 0)) return 0;
+        var originals = Array.prototype.slice.call(track.children);
+        var copies = 0;
+        while (track.scrollWidth < period + minWidth && copies < 8) {
+            for (var i = 0; i < originals.length; i++) {
+                var clone = originals[i].cloneNode(true);
+                // A copy is scenery. The 3 August design note left open
+                // whether duplicated links should be hidden from assistive
+                // technology; they must be, or a screen reader reads the same
+                // wall several times and every copy is a tab stop.
+                clone.setAttribute('aria-hidden', 'true');
+                clone.tabIndex = -1;
+                track.appendChild(clone);
+            }
+            copies++;
+        }
+        return copies;
+    }
+
+    window.SSGlide = { wrap: glideWrap, periodFrom: glidePeriodFrom, fill: glideFill };
+
     var wall = document.querySelector('[data-glide-wall]');
     if (!wall) return;
     var rows = Array.prototype.slice.call(wall.querySelectorAll('[data-glide-row]'));
@@ -20,8 +86,43 @@
     var radians = ((baseAngles[axis] || 0) + fine) * Math.PI / 180;
     var axisX = Math.cos(radians);
     var axisY = Math.sin(radians);
+    /** The flex gap actually in force on this track, in pixels. */
+    function trackGap(track) {
+        if (!window.getComputedStyle) return 0;
+        var cs = window.getComputedStyle(track);
+        if (!cs) return 0;
+        var g = parseFloat(cs.columnGap);
+        if (!isFinite(g)) g = parseFloat(cs.gap);
+        return isFinite(g) ? g : 0;
+    }
+
+    /** The widths of the ORIGINAL tiles, ignoring any copies behind them. */
+    function originalWidths(state) {
+        var out = [], kids = state.track.children;
+        for (var i = 0; i < state.originals && i < kids.length; i++) out.push(kids[i].offsetWidth);
+        return out;
+    }
+
+    /** Measure the period and make sure the track is long enough to hide the seam. */
+    function measure(state) {
+        var gap = trackGap(state.track);
+        state.period = glidePeriodFrom(originalWidths(state), gap);
+        glideFill(state.track, state.period, window.innerWidth || 0, gap);
+    }
+
     var states = rows.map(function (row, index) {
-        return { row: row, track: row.firstElementChild, current: index * -90, target: index * -90, dragging: false, moved: false, x: 0, y: 0 };
+        var track = row.firstElementChild;
+        var state = {
+            row: row, track: track,
+            // How many tiles the SKIN emitted. Everything past this is a copy
+            // this engine made, and the period is measured from these only.
+            originals: track && track.children ? track.children.length : 0,
+            period: 0,
+            current: index * -90, target: index * -90,
+            dragging: false, moved: false, x: 0, y: 0
+        };
+        measure(state);
+        return state;
     });
 
     function paint() {
@@ -29,9 +130,7 @@
         for (var i = 0; i < states.length; i++) {
             var state = states[i];
             state.current += (state.target - state.current) * (reduced ? 1 : 0.18);
-            var cycle = state.track.scrollWidth / 4;
-            var raw = state.current;
-            var x = cycle > 0 ? (((raw % cycle) + cycle) % cycle) - cycle : 0;
+            var x = glideWrap(state.current, state.period);
             state.track.style.transform = 'translate3d(' + x + 'px,0,0)';
             if (Math.abs(state.target - state.current) > 0.1) moving = true;
         }
@@ -85,6 +184,10 @@
         radians = ((baseAngles[axis] || 0) + fine) * Math.PI / 180;
         axisX = Math.cos(radians);
         axisY = Math.sin(radians);
+        // The row height changes at the 720px breakpoint, so the tiles change
+        // width and the period changes with them. Re-measure rather than keep
+        // wrapping at a distance that was true at the old size.
+        for (var i = 0; i < states.length; i++) measure(states[i]);
         requestPaint();
     });
     if ('ResizeObserver' in window) {
