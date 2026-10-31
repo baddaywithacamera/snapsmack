@@ -62,7 +62,9 @@ $nasty = '<script>alert(1)</script> <img src=x onerror=alert(1)> <b>bold</b>';
 $out = snapsmack_forum_post_body($nasty, $atts);
 // The words survive as TEXT -- "onerror" reading back is correct and safe.
 // What must not survive is a tag. The only '<' this renderer may emit is its
-// own: the <br> from nl2br and the <a>/<img> it builds from an attachment.
+// own: the <a>/<img> it builds from an attachment. (It used to emit <br> from
+// nl2br as well; that doubled every newline under white-space: pre-wrap and is
+// gone -- tests/forum-body-newline-regression.php holds that contract.)
 $tags = [];
 preg_match_all('/<([a-zA-Z\/][^>]*)>/', $out, $tagMatches);
 foreach ($tagMatches[0] as $tag) $tags[] = $tag;
