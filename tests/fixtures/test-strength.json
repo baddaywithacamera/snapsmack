@@ -886,6 +886,11 @@
             22
         ]
     },
+    "mobile-tab-says-what-the-code-does.php": {
+        "assertions": 7,
+        "predicates": 6,
+        "thresholds": []
+    },
     "mode4-onyx-only-visibility.php": {
         "assertions": 2,
         "predicates": 0,
