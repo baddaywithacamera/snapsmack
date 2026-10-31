@@ -1367,6 +1367,13 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
             };
             $default_variant  = '';
 
+            // SS-1076. For updater_track_for_version(). Pulled in here the way
+            // the installer pulls in mode-guard above, rather than duplicating
+            // the rule -- two copies of "what counts as a dev package" is how
+            // a rule drifts. Including the updater also self-heals .htaccess
+            // and .user.ini, which the installer writes anyway.
+            require_once __DIR__ . '/core/updater.php';
+
             $defaults = [
                 'site_name'                 => $_SESSION['site_name'] ?? 'My SnapSmack Site',
                 'site_tagline'              => $_SESSION['site_tagline'] ?? '',
@@ -1475,6 +1482,18 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 // never ship a shared default (the old code fell back to a public
                 // constant, letting anyone forge download tokens).
                 'download_salt'                => bin2hex(random_bytes(32)),
+
+                // SS-1076. This row did not exist, and updater_get_track()
+                // answers 'stable' when it is missing -- so every new site was
+                // born subscribed to stable whatever it was installed from. A
+                // site installed from a dev package was then never offered
+                // anything at all, because the updater only offers a NEWER
+                // remote version and stable is older than what it is running.
+                // Stranded from install day, with nothing to say so.
+                //
+                // No new question is asked: the installer already knows which
+                // package this is. See updater_track_for_version().
+                'update_track'                 => updater_track_for_version($installer_version),
             ];
 
             $stmt = $pdo->prepare("INSERT INTO `{$prefix}settings` (setting_key, setting_val) VALUES (?, ?)");
@@ -2794,6 +2813,18 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         <div class="complete-box">
             <h2>INSTALLATION COMPLETE</h2>
             <p>SnapSmack <?php echo $installer_version_label; ?> is ready.</p>
+
+            <?php /* SS-1076, acceptance point 3. The track decides what this
+            site will ever be OFFERED, and until now nothing anywhere stated
+            it -- which is how a wrong value could sit unnoticed for weeks.
+            Said once, in plain words, at the only moment the operator is
+            certainly looking. */ ?>
+            <p class="dim">This site follows the
+                <strong><?php echo (function_exists('updater_track_for_version')
+                    && updater_track_for_version($installer_version) === 'dev')
+                    ? 'BITCHIN&rsquo; (dev)' : 'BORING (stable)'; ?></strong>
+                update track, because that is the package it was installed from.
+                You can change it later in Settings.</p>
 
             <?php if (!empty($skin_warning)): ?>
                 <div class="warn-box"><?php echo $skin_warning; ?></div>

@@ -752,6 +752,11 @@
             2
         ]
     },
+    "install-records-its-update-track.php": {
+        "assertions": 15,
+        "predicates": 10,
+        "thresholds": []
+    },
     "installer-schema-regression.php": {
         "assertions": 3,
         "predicates": 2,
