@@ -64,6 +64,46 @@ function snap_gate_parse_ls_remote(string $output, string $tag): string {
 }
 
 /**
+ * Which remote is "origin" on THIS clone?
+ *
+ * Pure: it takes the output of `git remote` so the choice can be proved.
+ *
+ * This existed as the literal string 'origin' and it was wrong here. This
+ * repository has exactly one remote and it is called Github, so
+ * `git ls-remote --tags origin` answered "fatal: 'origin' does not appear to
+ * be a git repository" on every single run. The parser read that as 'unknown'
+ * and the gate refused, which is the right instinct and a permanent dead end:
+ * it could never tell, so the refusal said nothing about the tag. On 31
+ * October 2026 it was refusing to confirm v0.7.973D while the tag was sitting
+ * on the remote the whole time, at 2691221f.
+ *
+ * THE POLICY, and why each branch:
+ *   'origin' exists        use it. The conventional name wins when it is there,
+ *                          so a normal clone behaves exactly as before.
+ *   exactly one remote     use it, whatever it is called. One remote cannot be
+ *                          the wrong one.
+ *   several, none 'origin' return ''. Which of them is authoritative is a guess,
+ *                          and the caller must treat that as 'unknown' and
+ *                          refuse -- the same rule this file already applies to
+ *                          a remote it cannot reach.
+ */
+function snap_gate_choose_remote(string $remoteListing): string {
+    $names = [];
+    foreach (preg_split('/\R/', trim($remoteListing)) ?: [] as $line) {
+        $name = trim($line);
+        // A remote name, not anything git happened to print. Without this a
+        // failure -- "fatal: not a git repository" -- is one non-empty line,
+        // so the single-remote branch would hand that sentence back AS the
+        // remote name. The end state was still a refusal, but by accident:
+        // ls-remote would fail on the nonsense and the parser would call it
+        // unknown. Accidentally right is not right.
+        if ($name !== '' && preg_match('/^[A-Za-z0-9._-]+$/', $name)) $names[] = $name;
+    }
+    if (in_array('origin', $names, true)) return 'origin';
+    return count($names) === 1 ? $names[0] : '';
+}
+
+/**
  * Ask origin whether it has the tag.
  *
  * SNAPSMACK_GATE_ORIGIN_TAG overrides the answer. That seam exists so the
@@ -77,8 +117,12 @@ function snap_gate_origin_tag_state(string $root, string $tag): string {
     if (is_string($override) && in_array($override, ['present', 'absent', 'unknown'], true)) {
         return $override;
     }
+    $remote = snap_gate_choose_remote(
+        (string)@shell_exec('git -C ' . escapeshellarg($root) . ' remote 2>&1'));
+    if ($remote === '') return 'unknown';
     $out = (string)@shell_exec('git -C ' . escapeshellarg($root)
-        . ' ls-remote --tags origin ' . escapeshellarg('refs/tags/' . $tag) . ' 2>&1');
+        . ' ls-remote --tags ' . escapeshellarg($remote) . ' '
+        . escapeshellarg('refs/tags/' . $tag) . ' 2>&1');
     return snap_gate_parse_ls_remote($out, $tag);
 }
 
@@ -91,7 +135,8 @@ function snap_gate_origin_tag_state(string $root, string $tag): string {
  * the origin state does not matter.
  */
 function snap_gate_tag_move_verdict(string $version, string $tagCommit,
-                                    string $headCommit, string $originState): array {
+                                    string $headCommit, string $originState,
+                                    string $remote = 'origin'): array {
     $short = static function (string $sha): string {
         return $sha === '' ? '(unknown)' : substr($sha, 0, 8);
     };
@@ -115,7 +160,8 @@ function snap_gate_tag_move_verdict(string $version, string $tagCommit,
             . 'COULD NOT CHECK ORIGIN for v' . $version . ', so whether it is published is '
             . 'unknown. Refusing the move rather than assuming the tag is local: a gate '
             . 'that passes when it cannot tell is worse than no gate. Check by hand with '
-            . 'git ls-remote --tags origin, then re-run.'];
+            . 'git ls-remote --tags ' . ($remote !== '' ? $remote : '<your remote>')
+            . ', then re-run.'];
     }
     // absent: origin answered and does not have it, so it has never left this
     // machine. Sean's fold rule applies and re-pointing is the correct act.
