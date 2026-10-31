@@ -49,13 +49,14 @@ COMMANDS = [
      "notes": "--pulse is one-way in practice: once set, no agent may queue a reply."},
     {"name": "post", "does": "Put the ticket in the tickets board, anonymised.",
      "returns": "thread id, or the refusal and what still identifies someone",
-     "args": ["ID", "--board NAME", "--dry-run"],
+     "args": ["ID", "--board NAME", "--dry-run", "--unwrap"],
      "example": ENTRY + " post SS-1042 --dry-run",
      "notes": "REFUSES and exits 1 if the body still identifies anyone. Always "
               "--dry-run first; it prints exactly what would be published."},
     {"name": "reply", "does": "QUEUE a reply. Does not send.",
      "returns": "outbox row id",
-     "args": ["ID", "--text T | --text-file F", "--channel email|forum"],
+     "args": ["ID", "--text T | --text-file F", "--channel email|forum",
+              "--unwrap"],
      "example": ENTRY + " reply SS-1042 --text '...' --as claude",
      "notes": "Signed with YOUR signature automatically. Fails on a pulse ticket."},
     {"name": "ack", "does": "Queue the fixed acknowledgement.",
@@ -102,6 +103,12 @@ REFUSALS = [
     "THERE IS NO send. Replies queue; a separate armed sender holds the only "
     "credential. A bad draft can be written and cannot be delivered.",
     "THERE IS NO delete. close, withdraw, merge. The record survives all three.",
+    "post and reply REFUSE a hard-wrapped body, and refuse markdown. The "
+    "forum honours every newline and reads no markdown, so a body wrapped at "
+    "72 columns arrives as a stack of short lines and **bold** arrives as "
+    "asterisks. One paragraph per line, blank line between paragraphs, "
+    "CAPITALS for emphasis. --unwrap joins the lines for this post only and "
+    "leaves the stored ticket alone; nothing strips markdown for you.",
     "post REFUSES a ticket whose body still identifies anyone, and tells you "
     "what it found. Rewrite the body about the problem; do not work around it.",
     "reply REFUSES on a ticket flagged --pulse. Anything with a pulse reaches "

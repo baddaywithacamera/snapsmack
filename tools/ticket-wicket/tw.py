@@ -41,6 +41,7 @@ if BASE not in sys.path:
     sys.path.insert(0, BASE)
 
 from ticketwicket import agent, anonymise, forum as forummod, model, store as storemod
+import snap_forum                      # noqa: E402  (forum.py put it on the path)
 
 
 def _store(args):
@@ -157,6 +158,28 @@ def cmd_post(args):
     # I wrote down that this needed a guard and then did it once more an hour
     # later, which is the argument for the guard rather than for being careful.
     # `reply` is what updates a ticket that is already published.
+    # WILL THE FORUM RENDER IT THE WAY IT READS HERE?
+    #
+    # Thread 94 answered that. It went up hard-wrapped at ~72 columns, the
+    # renderer honours every newline, and Sean's screenshot showed a stack of
+    # short ragged lines with a gap under each. 21 of the 49 threads already on
+    # the board are like that. Checked on the COMPOSED post, because the
+    # template contributes to it as much as the ticket body does.
+    shape = snap_forum.body_shape_complaints(body)
+    if shape and args.unwrap:
+        body = snap_forum.unwrap_body(body)
+        shape = snap_forum.body_shape_complaints(body)
+    if shape:
+        print("REFUSING TO POST — the forum would not render this the way it "
+              "reads here:\n\n  " + "\n\n  ".join(shape)
+              + "\n\nNothing has been posted. The stored ticket is unchanged."
+              + ("" if args.unwrap else
+                 "\n\nPass --unwrap to join the wrapped lines for this post, "
+                 "or rewrite the body properly:\n"
+                 "    tw.py --as <you> triage " + str(t.id) + " --body-file draft.txt"),
+              file=sys.stderr)
+        return 1
+
     existing = getattr(t, "forum_thread", 0) or 0
     if existing and not args.again:
         print(f"REFUSING TO POST — {t.id} is already forum thread {existing}.\n"
@@ -225,6 +248,21 @@ def cmd_reply(args):
         print("Nothing to say. --text or --text-file.", file=sys.stderr); return 2
     sig = model.SIGNATURES[args.as_who]
     body = f"{text.rstrip()}\n\n{sig}"
+    # A queued reply is not sent from here, but it is written to be published,
+    # and a wrapped draft that sits in the outbox gets published wrapped. 3 of
+    # the 7 rows in there are hard-wrapped right now.
+    shape = snap_forum.body_shape_complaints(body)
+    if shape and args.unwrap:
+        body = snap_forum.unwrap_body(body)
+        shape = snap_forum.body_shape_complaints(body)
+    if shape:
+        print("REFUSING TO QUEUE — the forum would not render this the way it "
+              "reads here:\n\n  " + "\n\n  ".join(shape)
+              + "\n\nNothing has been queued."
+              + ("" if args.unwrap else "\n\nPass --unwrap to join the "
+                 "wrapped lines for you."),
+              file=sys.stderr)
+        return 1
     try:
         row = s.enqueue(args.id, args.channel, body)
     except PermissionError as exc:
@@ -393,11 +431,16 @@ def build_parser():
     po.add_argument("--again", action="store_true",
                     help="post a SECOND thread for a ticket that already has one")
     po.add_argument("--dry-run", action="store_true")
+    po.add_argument("--unwrap", action="store_true",
+                    help="join hard-wrapped lines in this post; the stored "
+                         "ticket is not changed")
     po.set_defaults(func=cmd_post)
 
     rp = sub.add_parser("reply"); rp.add_argument("id")
     rp.add_argument("--text", default=""); rp.add_argument("--text-file", default="")
     rp.add_argument("--channel", default="email", choices=["email", "forum"])
+    rp.add_argument("--unwrap", action="store_true",
+                    help="join hard-wrapped lines before queueing")
     rp.set_defaults(func=cmd_reply)
 
     ak = sub.add_parser("ack"); ak.add_argument("id")

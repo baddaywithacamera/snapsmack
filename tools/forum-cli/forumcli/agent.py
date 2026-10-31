@@ -18,6 +18,17 @@ REFUSALS = [
     "the key has less.",
     "Breadcrumbs when a thread moves do not exist yet. `move` moves the "
     "thread and leaves nothing behind in the old board.",
+    "`board-set --hide` will not hide a board that still has threads in it "
+    "unless you add --even-with-threads. Hiding takes the threads with it.",
+    "`role` cannot promote anyone to or above the key's own rank, and cannot "
+    "change the key's own rank. The API enforces that, not this tool.",
+    "post, reply and edit REFUSE a hard-wrapped body, and refuse markdown. "
+    "The forum honours every newline and reads no markdown at all, so a body "
+    "wrapped at 72 columns arrives as a stack of short lines and **bold** "
+    "arrives as asterisks. One paragraph per line, blank line between "
+    "paragraphs, CAPITALS for emphasis. --unwrap joins the lines for you; "
+    "nothing will strip markdown for you, because taking ** out of a "
+    "sentence can change what the sentence says.",
 ]
 
 COMMANDS = [
@@ -37,6 +48,30 @@ COMMANDS = [
               "Without --sort the board sorts 0 and lands ABOVE every existing "
               "board; the seeded five are 1..5."},
 
+    {"name": "board-set", "does": "Rename, reorder, or hide a board.",
+     "returns": "status, id, name, is_active",
+     "args": ["ID", "--name N", "--description D", "--sort N",
+              "--hide | --show", "--even-with-threads"],
+     "example": ENTRY + " board-set 94 --hide",
+     "notes": "Role 3. The slug never changes, so a board's URL stays put. "
+              "--hide is the only way back from a board nobody asked for: "
+              "there is no delete. It sends ONLY the fields you give; the rest "
+              "keep their stored values."},
+
+    {"name": "installs", "does": "The roster of blogs with their roles.",
+     "returns": "id, domain, role, is_banned, ss_version, last_seen_at",
+     "args": [], "example": ENTRY + " installs --json",
+     "notes": "Role 3. This is where an install id comes from."},
+
+    {"name": "role", "does": "Promote or demote a blog.",
+     "returns": "status, install_id, role",
+     "args": ["ID|DOMAIN", "--level user|power|moderator|admin"],
+     "example": ENTRY + " role photowalk.ing --level moderator",
+     "notes": "Role 3; only the Smack Central key can make an admin. A domain "
+              "is resolved against the roster and an ambiguous one refuses "
+              "rather than guessing. --level is required: there is no default "
+              "rank to hand somebody."},
+
     {"name": "threads", "does": "List threads, pinned first then by activity.",
      "returns": "id, title, excerpt, flag, reply_count, last reply, unread",
      "args": ["--board N", "--tag SLUG", "--page N"],
@@ -49,17 +84,17 @@ COMMANDS = [
 
     {"name": "post", "does": "Start a thread.", "returns": "thread id",
      "args": ["--board N", "--title T", "--body B | --body-file F",
-              "--flag none|chat|support|question|brag"],
+              "--flag none|chat|support|question|brag", "--unwrap"],
      "example": ENTRY + " post --board 3 --title 'Upload fails' --body-file bug.txt",
      "notes": "Rate limited: 3/hour ordinary, 12/hour role>=1, mods exempt."},
 
     {"name": "reply", "does": "Reply to a thread.", "returns": "reply id",
-     "args": ["ID", "--body B | --body-file F"],
+     "args": ["ID", "--body B | --body-file F", "--unwrap"],
      "example": ENTRY + " reply 42 --body 'Fixed in 0.7.903D.'",
      "notes": "Notifies the author and everyone following. 10/hour ordinary."},
 
     {"name": "edit", "does": "Rewrite a thread's body.", "returns": "status",
-     "args": ["ID", "--body B | --body-file F"],
+     "args": ["ID", "--body B | --body-file F", "--unwrap"],
      "example": ENTRY + " edit 42 --body-file corrected.txt",
      "notes": "Own thread, or role 2 for anyone's. Replaces the body entirely; "
               "there is no delete, so this is how a mistake gets corrected."},
