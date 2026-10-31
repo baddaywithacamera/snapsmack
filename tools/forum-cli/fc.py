@@ -38,6 +38,7 @@ for _p in (BASE, os.path.abspath(os.path.join(BASE, "..", "_shared"))):
         sys.path.insert(0, _p)
 
 from forumcli import agent                      # noqa: E402
+import snap_forum                               # noqa: E402
 from snap_forum import Forum, ForumError        # noqa: E402
 
 DEFAULT_URL = "https://snapsmack.ca/api/forum/"
@@ -63,6 +64,38 @@ def _body(args):
         with open(args.body_file, encoding="utf-8", errors="replace") as fh:
             return fh.read().strip()
     return (getattr(args, "body", None) or "").strip()
+
+
+def _shaped_body(args):
+    """The body, checked against what the forum will actually render.
+
+    Returns (body, exit_code). A non-zero code means nothing was sent and the
+    reason is already on stderr.
+
+    This exists because of a screenshot. Thread 94 went up hard-wrapped at ~72
+    columns and the forum honours every newline, so it arrived as a stack of
+    short ragged lines; the same post said **affected** and showed the
+    asterisks. Neither tool wrapped anything -- the wrapping was typed -- so
+    the check belongs here, at the moment before it becomes public.
+    """
+    body = _body(args)
+    if not body:
+        return body, 0
+    if getattr(args, "unwrap", False):
+        body = snap_forum.unwrap_body(body)
+    complaints = snap_forum.body_shape_complaints(body)
+    if complaints:
+        print("REFUSING — the forum would not render this the way it reads "
+              "here:\n\n  " + "\n\n  ".join(complaints)
+              + "\n\nNothing has been sent."
+              + ("" if getattr(args, "unwrap", False) else
+                 "\n\nPass --unwrap to join the wrapped lines for you. It "
+                 "leaves bullets, numbered items, quotes, [img:N] and indented "
+                 "blocks alone, and it will not touch markdown: taking ** out "
+                 "of a sentence can change what the sentence says."),
+              file=sys.stderr)
+        return body, 1
+    return body, 0
 
 
 # ── commands ─────────────────────────────────────────────────────────────────
@@ -279,7 +312,9 @@ def cmd_thread(args):
 
 
 def cmd_post(args):
-    body = _body(args)
+    body, bad = _shaped_body(args)
+    if bad:
+        return bad
     if not body or not args.title:
         print("--title and --body (or --body-file) are both required.", file=sys.stderr)
         return 2
@@ -292,7 +327,9 @@ def cmd_post(args):
 
 
 def cmd_reply(args):
-    body = _body(args)
+    body, bad = _shaped_body(args)
+    if bad:
+        return bad
     if not body:
         print("--body or --body-file is required.", file=sys.stderr)
         return 2
@@ -303,7 +340,9 @@ def cmd_reply(args):
 
 
 def cmd_edit(args):
-    body = _body(args)
+    body, bad = _shaped_body(args)
+    if bad:
+        return bad
     if not body:
         print("--body or --body-file is required.", file=sys.stderr)
         return 2
@@ -463,18 +502,21 @@ def build_parser():
     po.add_argument("--body-file", dest="body_file", default="")
     po.add_argument("--flag", default="none",
                     choices=["none", "chat", "support", "question", "brag"])
+    po.add_argument("--unwrap", action="store_true")
     po.set_defaults(func=cmd_post)
 
     rp = sub.add_parser("reply")
     rp.add_argument("id", type=int)
     rp.add_argument("--body", default="")
     rp.add_argument("--body-file", dest="body_file", default="")
+    rp.add_argument("--unwrap", action="store_true")
     rp.set_defaults(func=cmd_reply)
 
     ed = sub.add_parser("edit")
     ed.add_argument("id", type=int)
     ed.add_argument("--body", default="")
     ed.add_argument("--body-file", dest="body_file", default="")
+    ed.add_argument("--unwrap", action="store_true")
     ed.set_defaults(func=cmd_edit)
 
     rc = sub.add_parser("react")

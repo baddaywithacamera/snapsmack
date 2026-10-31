@@ -97,8 +97,13 @@ def forum_post(ticket) -> str:
     Written about the problem. The reporter, their channel and the original
     message are in the store and are not here.
     """
+    # NO MARKDOWN. The forum renderer escapes the body and honours newlines
+    # and [img:N]; it has never read markdown, so "**SS-1067**" put the
+    # asterisks on the page. This template is why all 49 ticket threads on the
+    # board show them, not just the two whose bodies happened to contain any.
+    # The id is distinctive enough on its own; emphasis goes in CAPITALS.
     lines = [
-        f"**{ticket.id}** · {ticket.band} · {ticket.state}",
+        f"{ticket.id} · {ticket.band} · {ticket.state}",
         "",
         ticket.body or ticket.title,
         "",
@@ -110,7 +115,7 @@ def forum_post(ticket) -> str:
             lines.append(f"{k}: {v}")
         lines.append("")
     lines.append(
-        "Press **affected** if this is happening to you as well, and follow the "
+        "Press AFFECTED if this is happening to you as well, and follow the "
         "thread for updates. Nothing on this ticket identifies who reported it.")
     return "\n".join(lines)
 

@@ -22,6 +22,13 @@ REFUSALS = [
     "unless you add --even-with-threads. Hiding takes the threads with it.",
     "`role` cannot promote anyone to or above the key's own rank, and cannot "
     "change the key's own rank. The API enforces that, not this tool.",
+    "post, reply and edit REFUSE a hard-wrapped body, and refuse markdown. "
+    "The forum honours every newline and reads no markdown at all, so a body "
+    "wrapped at 72 columns arrives as a stack of short lines and **bold** "
+    "arrives as asterisks. One paragraph per line, blank line between "
+    "paragraphs, CAPITALS for emphasis. --unwrap joins the lines for you; "
+    "nothing will strip markdown for you, because taking ** out of a "
+    "sentence can change what the sentence says.",
 ]
 
 COMMANDS = [
@@ -77,17 +84,17 @@ COMMANDS = [
 
     {"name": "post", "does": "Start a thread.", "returns": "thread id",
      "args": ["--board N", "--title T", "--body B | --body-file F",
-              "--flag none|chat|support|question|brag"],
+              "--flag none|chat|support|question|brag", "--unwrap"],
      "example": ENTRY + " post --board 3 --title 'Upload fails' --body-file bug.txt",
      "notes": "Rate limited: 3/hour ordinary, 12/hour role>=1, mods exempt."},
 
     {"name": "reply", "does": "Reply to a thread.", "returns": "reply id",
-     "args": ["ID", "--body B | --body-file F"],
+     "args": ["ID", "--body B | --body-file F", "--unwrap"],
      "example": ENTRY + " reply 42 --body 'Fixed in 0.7.903D.'",
      "notes": "Notifies the author and everyone following. 10/hour ordinary."},
 
     {"name": "edit", "does": "Rewrite a thread's body.", "returns": "status",
-     "args": ["ID", "--body B | --body-file F"],
+     "args": ["ID", "--body B | --body-file F", "--unwrap"],
      "example": ENTRY + " edit 42 --body-file corrected.txt",
      "notes": "Own thread, or role 2 for anyone's. Replaces the body entirely; "
               "there is no delete, so this is how a mistake gets corrected."},
