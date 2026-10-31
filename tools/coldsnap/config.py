@@ -426,9 +426,20 @@ def save(data: dict) -> None:
             return _sealed(plain) or stored
         return '' if allow_clear else stored
 
-    # The password is cleared by turning "remember" off, and only that way.
+    # The password is cleared by turning "remember" OFF EXPLICITLY, and only
+    # that way.
+    #
+    # This first read `not data.get('remember')`, which clears when a caller
+    # omits the key entirely -- a DEFAULT THAT DELETES, and the same class of
+    # fault as the one this whole change exists to fix. No current caller omits
+    # it: all three pass a dict from load(), which always sets it. But the
+    # guard's value is that it reasons about the VALUE rather than about who
+    # called, and leaving one provenance-dependent default contradicts that --
+    # the next caller to build a dict by hand would silently lose his password.
+    # Absent now means KEEP; only an explicit false clears.
+    _asked_to_forget = 'remember' in data and not data.get('remember')
     password_enc = _seal_or_keep('password', password_plain,
-                                 allow_clear=not data.get('remember'))
+                                 allow_clear=_asked_to_forget)
     # API key is the primary credential now (Bearer auth). Persist it regardless
     # of "remember" — it's a generated, reusable token the CMS shows only once.
     # There is no "forget the key" control, so an empty one is always a failed

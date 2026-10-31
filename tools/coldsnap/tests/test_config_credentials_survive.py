@@ -55,6 +55,29 @@ STORED = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _never_the_real_install(tmp_path, monkeypatch):
+    """EVERY test in this file gets a scratch SNAPSMACK_HOME, whether it asks
+    or not.
+
+    This is here because one test in this file did NOT ask. It called a helper
+    that imported config with no scratch home, ran against the real
+    configuration on this machine, and overwrote the owner's COLD SNAP
+    connection with its own test values. The tests that destroy credentials to
+    prove credentials are safe are exactly the ones that must not be able to
+    reach a live install, and relying on each author to remember the fixture is
+    how that happened.
+
+    autouse means a new test cannot get it wrong by omission.
+    """
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path / "scratch-home"))
+    for mod in ("snap_home", "config"):
+        sys.modules.pop(mod, None)
+    yield
+    for mod in ("snap_home", "config"):
+        sys.modules.pop(mod, None)
+
+
 @pytest.fixture()
 def cfg(tmp_path, monkeypatch):
     """A scratch home with a configuration holding all three credentials."""
@@ -216,6 +239,34 @@ def test_the_url_and_username_still_save_with_the_vault_broken(cfg, monkeypatch)
     data["url"] = "https://craptasti.ca"
     cfg.save(data)
     assert cfg.load()["url"] == "https://craptasti.ca"
+
+def test_a_caller_that_omits_remember_does_not_lose_the_password(cfg):
+    """A DEFAULT THAT DELETES is the same class of fault as SS-1084 itself.
+
+    No current caller omits 'remember' -- all three pass a dict from load(),
+    which always sets it -- so this is not reachable today. It is pinned
+    because the guard's whole value is reasoning about the VALUE rather than
+    about who called, and a caller building a dict by hand is exactly the case
+    nobody enumerates in advance.
+
+    TAKES THE `cfg` FIXTURE, like every other test here, and the first version
+    of it did not. It called a module-level helper that imported config with no
+    scratch SNAPSMACK_HOME, so it ran against the REAL configuration on this
+    machine and overwrote it with these test values. Any test in this file that
+    does not take `cfg` is writing to a live install.
+    """
+    before = raw_auth(cfg)
+    cfg.save({"url": "https://example.test", "api_key": "KEY-abc123-sybu"})
+    assert raw_auth(cfg)["password"] == before["password"]
+
+
+def test_an_explicit_remember_false_still_forgets_it(cfg):
+    """Clearing has to stay possible, or the guard has broken a real control."""
+    data = cfg.load()
+    data["remember"] = False
+    cfg.save(data)
+    assert raw_auth(cfg)["password"] == ""
+
 
 # -- CONDITION 3: the view toggle cannot reach a credential at all --------
 
