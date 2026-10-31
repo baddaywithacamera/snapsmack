@@ -101,6 +101,33 @@ def _seal_secret(value: str) -> str:
     return sc.seal_local(value)
 
 
+def _open_secret_checked(blob: str) -> tuple:
+    """(value, readable). SS-1084.
+
+    The plain _open_secret() below returns '' both for "there is no secret" and
+    for "I could not open the secret", and that single fact destroyed every
+    credential on this machine: a caller loaded the config, changed one
+    unrelated boolean, saved it, and wrote those empties over the sealed
+    values. Nothing threw.
+
+    So a reader that needs to tell the difference asks here. readable is False
+    ONLY when there was something stored and it could not be opened -- an
+    absent secret is readable and empty, because a fresh install is not broken.
+    """
+    if not blob:
+        return ('', True)
+    sc = _shared_creds()
+    if sc is not None:
+        try:
+            return (sc.open_local(blob), True)
+        except Exception:
+            pass
+    try:
+        return (base64.b64decode(str(blob).encode()).decode(), True)
+    except Exception:
+        return ('', False)
+
+
 def _open_secret(blob: str) -> str:
     sc = _shared_creds()
     if sc is not None:
@@ -276,12 +303,21 @@ def load() -> dict:
     cfg = configparser.ConfigParser()
     cfg.read(_config_path())
 
-    password = _open_secret(cfg.get('auth', 'password', fallback=''))
-    api_key  = _open_secret(cfg.get('auth', 'api_key', fallback=''))
+    # SS-1084: read the secrets with their readability, and carry the list of
+    # ones that could not be opened in the returned dict. A caller that writes
+    # this dict back must be able to tell an absent credential from one it
+    # simply could not see; before this it could not, and a view toggle
+    # destroyed all three.
+    password, _pw_ok = _open_secret_checked(cfg.get('auth', 'password', fallback=''))
+    api_key,  _ak_ok = _open_secret_checked(cfg.get('auth', 'api_key', fallback=''))
 
     # Separate key for SMACKTALK posting: smackpress/* endpoints require a
     # key_type='smackpress' Bearer, which the normal 'sybu' api_key can't satisfy.
-    smackpress_key = _open_secret(cfg.get('auth', 'smackpress_key', fallback=''))
+    smackpress_key, _sp_ok = _open_secret_checked(
+        cfg.get('auth', 'smackpress_key', fallback=''))
+    _unreadable = [name for name, ok in (('password', _pw_ok),
+                                         ('api_key', _ak_ok),
+                                         ('smackpress_key', _sp_ok)) if not ok]
 
     _data = {
         'url':                cfg.get('site', 'url', fallback='https://foundtextures.ca'),
@@ -289,6 +325,7 @@ def load() -> dict:
         'password':           password,
         'api_key':            api_key,
         'smackpress_key':     smackpress_key,
+        'secrets_unreadable': _unreadable,
         'remember':           cfg.getboolean('auth', 'remember', fallback=False),
         'default_category':   cfg.get('defaults', 'category', fallback=''),
         'default_album':      cfg.get('defaults', 'album', fallback=''),
@@ -362,11 +399,53 @@ def save(data: dict) -> None:
         except Exception as e:
             data['vault_warning'] = str(e)
             return ''
-    password_enc = _sealed(password_plain)
+    # SS-1084. AN EMPTY VALUE NEVER REPLACES A SEALED ONE UNLESS THE CLEAR WAS
+    # ASKED FOR.
+    #
+    # This used to seal whatever it was handed and write the result. Two ways
+    # that destroyed credentials, and the quieter one had nothing failing at
+    # all: load() returned '' for a secret it could not open, a caller changed
+    # one unrelated setting, saved the dict back, and '' was faithfully sealed
+    # to '' and written over the sealed value. The second way is a sealing
+    # failure, which returns '' just above.
+    #
+    # So the rule is about the VALUE, not where it came from, and therefore
+    # holds for callers that never went through load(): if there is nothing to
+    # write and something is already stored, keep what is stored. Clearing
+    # stays possible but has to be requested -- for the password that request
+    # is "remember" being off, which is what that control has always meant.
+    _previous = configparser.ConfigParser()
+    _previous.read(_config_path())
+
+    def _seal_or_keep(name: str, plain: str, allow_clear: bool = False) -> str:
+        stored = (_previous.get('auth', name, fallback='')
+                  if _previous.has_section('auth') else '')
+        if plain:
+            # Sealing failed: the warning is set above, and the stored value is
+            # left alone rather than replaced with nothing.
+            return _sealed(plain) or stored
+        return '' if allow_clear else stored
+
+    # The password is cleared by turning "remember" OFF EXPLICITLY, and only
+    # that way.
+    #
+    # This first read `not data.get('remember')`, which clears when a caller
+    # omits the key entirely -- a DEFAULT THAT DELETES, and the same class of
+    # fault as the one this whole change exists to fix. No current caller omits
+    # it: all three pass a dict from load(), which always sets it. But the
+    # guard's value is that it reasons about the VALUE rather than about who
+    # called, and leaving one provenance-dependent default contradicts that --
+    # the next caller to build a dict by hand would silently lose his password.
+    # Absent now means KEEP; only an explicit false clears.
+    _asked_to_forget = 'remember' in data and not data.get('remember')
+    password_enc = _seal_or_keep('password', password_plain,
+                                 allow_clear=_asked_to_forget)
     # API key is the primary credential now (Bearer auth). Persist it regardless
     # of "remember" — it's a generated, reusable token the CMS shows only once.
-    api_key_enc = _sealed(data.get('api_key', ''))
-    smackpress_key_enc = _sealed(data.get('smackpress_key', ''))
+    # There is no "forget the key" control, so an empty one is always a failed
+    # read rather than an instruction.
+    api_key_enc = _seal_or_keep('api_key', data.get('api_key', ''))
+    smackpress_key_enc = _seal_or_keep('smackpress_key', data.get('smackpress_key', ''))
     cfg['auth'] = {
         'username': data.get('username', '') if data.get('remember') else '',
         'password': password_enc,
