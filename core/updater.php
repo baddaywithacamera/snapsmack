@@ -1650,9 +1650,10 @@ function updater_set_version(PDO $pdo, string $version_short, string $version_fu
                 $content
             );
             // Update codename if present, or add it after VERSION_SHORT
-            if (preg_match("/define\('SNAPSMACK_VERSION_CODENAME'/", $content)) {
+            $codename_pattern = '/define\s*\(\s*([\'"])SNAPSMACK_VERSION_CODENAME\1\s*,\s*([\'"])(?:\\\\.|(?!\2).)*\2\s*\)\s*;/s';
+            if (preg_match($codename_pattern, $content)) {
                 $content = preg_replace(
-                    "/define\('SNAPSMACK_VERSION_CODENAME',\s*'[^']*'\);/",
+                    $codename_pattern,
                     "define('SNAPSMACK_VERSION_CODENAME', '{$safe_codename}');",
                     $content
                 );
