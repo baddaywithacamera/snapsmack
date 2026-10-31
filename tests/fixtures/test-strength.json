@@ -281,11 +281,18 @@
         "predicates": 16,
         "thresholds": []
     },
+    "declared-controls-gate-known-limits.php": {
+        "assertions": 2,
+        "predicates": 1,
+        "thresholds": []
+    },
     "declared-controls-have-a-consumer-regression.php": {
         "assertions": 2,
-        "predicates": 12,
+        "predicates": 15,
         "thresholds": [
             5,
+            5,
+            30,
             200
         ]
     },

@@ -1,7 +1,31 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/lib/declared-controls-predicates.php';
 /**
- * A control the admin offers is consumed by something a skin actually reaches.
+ * CANDIDATE-REFERENCE INVENTORY: every control the admin offers is REFERRED TO
+ * by something a skin reaches.
+ *
+ * WHAT IT PROVES AND WHAT IT DOES NOT, stated first because the earlier
+ * wording promised more than it delivers and Codex's review of 31 October
+ * 2026 was right about it twice over.
+ *
+ *   IT PROVES   a declared control has a plausible consumer: a reference to
+ *               the key, outside comments and outside the control's own
+ *               declaration, in a file on a path a strict skin runs.
+ *   IT DOES NOT PROVE that the owner's VALUE reaches the page. It does not
+ *               follow the value anywhere. A reference that reads the key and
+ *               then throws the result away passes. So does a page that reads
+ *               the key, validates it, and then builds its CSS from a
+ *               constant.
+ *
+ * Those are not oversights; they are the documented limits, and they are
+ * asserted as limits in tests/declared-controls-gate-known-limits.php so that
+ * anyone who later deepens this is told which claims were never being made.
+ * Functional save-and-render verification is a separate job and is not here.
+ *
+ * The coordinator's ruling of 31 October 09:50Z: take the cheap honest route,
+ * name the thing for what it is, make the limits visible, do not build deeper
+ * flow analysis with a beta ahead.
  *
  * WHY THIS EXISTS. The owner reported Archive Appearance > THUMBNAIL FRAME
  * reading "1px Outside - Grey" while his archive showed thick white mats, and
@@ -199,91 +223,6 @@ foreach ($candidates as $rel) {
     $stripped[$rel] = dc_strip_comments($contents[$rel], $ext);
 }
 
-/* ── Is this key actually READ here, or merely mentioned? ─────────────────
- *
- * CODEX'S REVIEW, 31 October 2026, and it is the second time this gate has
- * been too generous. It decided "consumed" with strpos($body, $key), which
- * matches a COMMENT, a DECLARATION and a WRITE exactly as readily as a read.
- * So a comment saying "we used to read archive_thumb_frame here" marked the
- * control WIRED, and the gate would have reported a dead control as live --
- * the same class of mistake as the search space being too small, which is
- * recorded as instance nine on SS-1114. The predicate was too loose rather
- * than the corpus too narrow, but the output is the same: a confident wrong
- * answer in front of Sean.
- *
- * Comments are stripped WITH THE STRING LITERALS LEFT ALONE, because '//' and
- * '/*' occur inside ordinary strings here -- URLs, CSS selectors, regexes --
- * and a naive strip would silently delete half a file and turn real reads
- * into no reads. This walks the text instead of using a regex.
- */
-function dc_strip_comments(string $body, string $ext): string
-{
-    $out = '';
-    $n = strlen($body);
-    $i = 0;
-    $quote = '';
-    while ($i < $n) {
-        $c = $body[$i];
-        $next = $i + 1 < $n ? $body[$i + 1] : '';
-        if ($quote !== '') {
-            // Inside a string: copy through, honouring backslash escapes so a
-            // quote that is escaped does not end the literal.
-            if ($c === '\\' && $next !== '') { $out .= '  '; $i += 2; continue; }
-            if ($c === $quote) $quote = '';
-            $out .= $c;
-            $i++;
-            continue;
-        }
-        if ($c === '"' || $c === "'") { $quote = $c; $out .= $c; $i++; continue; }
-        if ($c === '/' && $next === '*') {
-            $end = strpos($body, '*/', $i + 2);
-            $end = $end === false ? $n : $end + 2;
-            $out .= str_repeat(' ', $end - $i);
-            $i = $end;
-            continue;
-        }
-        $lineComment = ($c === '/' && $next === '/')
-            || ($ext === 'php' && $c === '#');
-        if ($lineComment) {
-            $end = strpos($body, "\n", $i);
-            $end = $end === false ? $n : $end;
-            $out .= str_repeat(' ', $end - $i);
-            $i = $end;
-            continue;
-        }
-        $out .= $c;
-        $i++;
-    }
-    return $out;
-}
-
-/* Does the stripped body READ this key, rather than declare or write it?
- *
- * Rejected, each for a stated reason:
- *   name="settings[key]"      the DECLARATION. The admin page offering the
- *                             control is not evidence that anything uses it;
- *                             this is the whole point of the gate.
- *   $settings['key'] = ...    a WRITE. Storing a value proves nothing reads
- *                             it. "= ..." only, never "==" or "=>".
- * Everything else counts. A defaults table entry ('key' => 850) is kept
- * deliberately: it is how several real consumers reach their value, and
- * excluding it would manufacture the false DEAD verdicts this gate exists to
- * avoid. */
-function dc_reads_key(string $stripped, string $key): bool
-{
-    $len = strlen($key);
-    $offset = 0;
-    while (($at = strpos($stripped, $key, $offset)) !== false) {
-        $offset = $at + $len;
-        $before = substr($stripped, max(0, $at - 20), min(20, $at));
-        $after = substr($stripped, $at + $len, 12);
-        if (strpos($before, 'name="settings[') !== false) continue;
-        // A write: the subscript closes and is assigned to.
-        if (preg_match('/^[\x27"]\s*\]\s*=[^=>]/', $after) === 1) continue;
-        return true;
-    }
-    return false;
-}
 
 /* ── Audit each page ────────────────────────────────────────────────────── */
 $report = [];
@@ -403,60 +342,12 @@ foreach ($rowsPerPage as $page => $n) {
 }
 
 /* ── The declarations themselves must stay honest ───────────────────────── */
-/* CODEX'S SECOND FINDING, 31 October 2026. This asked two INDEPENDENT
- * questions -- does the key appear anywhere in the file, and does
- * custom_css_public appear anywhere in the file -- and called a pair of yeses
- * a proof. It is not one. Delete the whole archive_thumb_frame rule-building
- * block and both answers stay yes, because the key is still in the page's own
- * <select name="settings[archive_thumb_frame]"> and custom_css_public is still
- * written for every other generated rule. The claim "this control acts through
- * generated CSS" would survive the generation being removed.
- *
- * So the two facts have to be tied together: the key must be READ, and the
- * rule must be generated and stored, IN ONE REGION of the file, with the
- * key's own value flowing into it. The region is from where the key is read
- * to where custom_css_public is written, and everything the claim asserts has
- * to be inside it. */
 foreach ($generatesCss as $key => $where) {
     [$file] = explode(':', $where, 2);
     $body = (string) @file_get_contents($root . '/' . $file);
-    if ($body === '') { dc_fail("\$generatesCss names {$file}, which cannot be read"); continue; }
-    $clean = dc_strip_comments($body, strtolower(pathinfo($file, PATHINFO_EXTENSION)));
-
-    // Where the key's VALUE is taken from the submitted form.
-    if (preg_match('/\$(\w+)\s*=\s*\$_POST\s*\[\s*[\x27"]settings[\x27"]\s*\]'
-        . '\s*\[\s*[\x27"]' . preg_quote($key, '/') . '[\x27"]\s*\]/', $clean, $km,
-        PREG_OFFSET_CAPTURE) !== 1) {
-        dc_fail("\$generatesCss claims {$key} is turned into CSS in {$file}, and "
-            . "{$file} never takes that key's value out of \$_POST['settings']. "
-            . 'Either the generation is gone or the claim was never true. A '
-            . 'mention of the key somewhere in the file is not evidence: the '
-            . 'page also DECLARES the control, so that mention is always there.');
-        continue;
+    foreach (dc_css_at_save_complaints($body, $key, $file) as $complaint) {
+        dc_fail($complaint);
     }
-    $var = $km[1][0];
-    $readAt = $km[0][1];
-
-    $storeAt = strpos($clean, 'custom_css_public', $readAt);
-    if ($storeAt === false) {
-        dc_fail("\$generatesCss claims {$key} writes generated CSS in {$file}, and "
-            . 'nothing writes custom_css_public after the key is read. The '
-            . 'generated rule is not stored.');
-        continue;
-    }
-    $region = substr($clean, $readAt, $storeAt - $readAt);
-
-    // The value has to be USED between being read and being stored, and it
-    // has to reach an actual rule upsert. Either half alone proves nothing.
-    dc_fail(substr_count($region, '$' . $var) >= 2 ? ''
-        : "\$generatesCss claims {$key} is turned into CSS in {$file}: the key is "
-        . "read into \${$var} and \${$var} is then never used again before "
-        . 'custom_css_public is written. The value goes nowhere.');
-    dc_fail(strpos($region, 'upsert_rule') !== false ? ''
-        : "\$generatesCss claims {$key} is turned into CSS in {$file}, and between "
-        . 'reading the key and storing custom_css_public there is no rule '
-        . 'upsert at all. Something else on that page writes the CSS blob; '
-        . "this key's rule is not being generated.");
 }
 foreach ($knownDead as $key => $ticket) {
     dc_fail(preg_match('/SS-\d{3,}/', $ticket) === 1 ? ''
@@ -488,8 +379,11 @@ echo "  NOT AUDITED YET: "
    . ($notAuditedYet ? implode(', ', $notAuditedYet) : 'nothing; all four screens are traced') . ".\n";
 echo "  WALL ONLY means the Photo Wall and nothing else. Right for a wall "
    . "control, a fault for any other (SS-1121).\n";
-echo "  THIS IS A FLOOR, NOT A CEILING: it proves a control has a consumer, "
-   . "never that it works.\n";
+echo "  THIS IS AN INVENTORY OF REFERENCES, NOT A PROOF THAT ANYTHING WORKS. "
+   . "It shows each control is referred to on a reachable path; it does not "
+   . "follow the owner's value to the page, and it passes a page that reads a "
+   . "key and then builds its CSS from a constant. Known limits are asserted "
+   . "in tests/declared-controls-gate-known-limits.php.\n";
 foreach ($notices as $n) echo "  NOTE: {$n}\n";
 
 if ($failures) {
@@ -497,5 +391,6 @@ if ($failures) {
         . implode("\n  - ", $failures) . "\n");
     exit(1);
 }
-echo "\nPASS every declared control has a consumer, or a ticket saying why not\n";
+echo "\nPASS every declared control is REFERRED TO on a reachable path, or has a ticket saying why not.\n"
+   . "     This is a reference inventory. It is not evidence that any control works.\n";
 // ===== SNAPSMACK EOF =====
