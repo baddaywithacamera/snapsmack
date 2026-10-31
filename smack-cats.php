@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $cat_slug = strtolower(trim(preg_replace('/[^a-z0-9]+/i', '-', $name), '-'));
         $pdo->prepare("INSERT INTO snap_categories (cat_name, cat_slug, cat_description, featured_post_id) VALUES (?, ?, ?, ?)")
             ->execute([$name, $cat_slug, $description, $featured_post_id]);
-        header("Location: smack-cats.php?msg=REGISTRY+ENTRY+ADDED");
+        header("Location: smack-cats.php?msg=CATEGORY+ADDED");
         exit;
     }
 
@@ -89,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $show_in_archive = isset($_POST['show_in_archive']) ? 1 : 0;
         $pdo->prepare("UPDATE snap_categories SET cat_name=?, cat_description=?, show_in_archive=?, featured_post_id=? WHERE id=?")
             ->execute([$name, $description, $show_in_archive, $featured_post_id, $id]);
-        header("Location: smack-cats.php?msg=REGISTRY+ENTRY+MODIFIED");
+        header("Location: smack-cats.php?msg=CATEGORY+MODIFIED");
         exit;
     }
 }
@@ -100,7 +100,7 @@ if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
     $pdo->prepare("DELETE FROM snap_image_cat_map WHERE cat_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_categories WHERE id = ?")->execute([$id]);
-    header("Location: smack-cats.php?msg=REGISTRY+ENTRY+PURGED");
+    header("Location: smack-cats.php?msg=CATEGORY+PURGED");
     exit;
 }
 
@@ -155,7 +155,7 @@ include 'core/sidebar.php';
         <div class="post-layout-grid">
             <div class="post-col-left">
                 <div class="box">
-                    <h3><?php echo $edit_mode ? "MODIFY REGISTRY ENTRY" : "NEW REGISTRY ENTRY"; ?></h3>
+                    <h3><?php echo $edit_mode ? "MODIFY CATEGORY" : "NEW CATEGORY"; ?></h3>
 
                     <input type="hidden" name="<?php echo $edit_mode ? 'update_cat' : 'new_cat'; ?>" value="1">
                     <?php if ($edit_mode): ?>
@@ -194,7 +194,7 @@ include 'core/sidebar.php';
 
                     <div class="lens-input-wrapper mt-20">
                         <button type="submit" class="master-update-btn">
-                            <?php echo $edit_mode ? "UPDATE CATEGORY" : "ADD TO REGISTRY"; ?>
+                            <?php echo $edit_mode ? "UPDATE CATEGORY" : "ADD CATEGORY"; ?>
                         </button>
                     </div>
 
@@ -208,7 +208,7 @@ include 'core/sidebar.php';
 
             <div class="flex-1">
                 <div class="box">
-                    <h3>ACTIVE REGISTRY</h3>
+                    <h3>ACTIVE CATEGORIES</h3>
 
                     <?php if (empty($cats)): ?>
                         <p class="dim empty-notice">No categories registered.</p>
