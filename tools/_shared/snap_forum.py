@@ -43,6 +43,7 @@ API, not a trick.
 """
 
 import json
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -61,6 +62,128 @@ _UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 
 class ForumError(RuntimeError):
     pass
+
+
+# ── What the renderer actually honours ───────────────────────────────────────
+#
+# core/forum-post-body.php escapes the body and places [img:N]; everything
+# else arrives as text. The element around it carries white-space: pre-wrap,
+# so a newline IS a line break and a run of spaces is kept. There is no
+# markdown anywhere: **bold** shows its asterisks, a # heading shows its hash,
+# a [label](url) shows both halves. The server strips markdown when it builds
+# the LISTING excerpt, which is why it looked supported -- the list view is
+# clean and the thread view is not.
+#
+# Hard wrapping is the one that bit. A body wrapped at 72 columns gets a line
+# break every 72 characters inside a column several hundred pixels wide, so a
+# paragraph arrives as a stack of short ragged lines. 21 of the 49 ticket
+# threads on the board are like that, and Sean found it, not us.
+#
+# Nothing in these tools ever wrapped anything: the wrapping came from whoever
+# typed the body. So this is a check at the publishing boundary rather than a
+# formatter, because the thing to change is the draft.
+
+WRAP_SUSPECT_LENGTH = 55
+
+# A line that was meant to stand alone: a bullet, a numbered item, a quote, an
+# image placeholder, or anything indented. Joining one of these into its
+# neighbour would be the tool breaking the author's formatting rather than
+# fixing it.
+#
+# The (\s|$) at the end is load-bearing: [img:2] alone on a line is the
+# documented way to place an image (core/forum-post-body.php), and requiring
+# whitespace after the token read it as the continuation of the paragraph
+# above it instead -- so unwrapping a post would have pulled the placeholder
+# up into the sentence. Same for a bare "-" bullet or a bare "1.".
+_STANDS_ALONE = re.compile(r"^(\s+|\s*([-*\u2022>]|\d{1,3}[.)]|\[img:\d{1,2}\])(\s|$))")
+
+# Markdown the renderer shows as characters. The label is what a person needs
+# to hear, so it is carried next to the pattern rather than derived from it.
+_DEAD_MARKDOWN = (
+    ("**bold**", re.compile(r"\*\*[^*\n]+\*\*")),
+    ("a # heading", re.compile(r"^#{1,6}\s+\S", re.M)),
+    ("`code`", re.compile(r"`[^`\n]+`")),
+    ("a ``` fence", re.compile(r"```")),
+    ("a [label](link)", re.compile(r"\[[^\]\n]+\]\([^)\n]+\)")),
+)
+
+
+def hard_wrapped_lines(body: str) -> list:
+    """The 1-based line numbers that were hard-wrapped into the next line.
+
+    A line counts when it is long enough to look like a wrap, the line after
+    it carries text, and neither of them is a list item, a quote, an image
+    placeholder or indented.
+    """
+    lines = (body or "").split("\n")
+    out = []
+    for i in range(len(lines) - 1):
+        here, nxt = lines[i], lines[i + 1]
+        if len(here) < WRAP_SUSPECT_LENGTH:
+            continue
+        if not nxt.strip():
+            continue
+        if _STANDS_ALONE.match(here) or _STANDS_ALONE.match(nxt):
+            continue
+        out.append(i + 1)
+    return out
+
+
+def dead_markdown(body: str) -> list:
+    """The markdown in this body that will arrive as literal characters."""
+    return [label for label, rx in _DEAD_MARKDOWN if rx.search(body or "")]
+
+
+def body_shape_complaints(body: str) -> list:
+    """Everything about this body that the forum will render wrongly.
+
+    Empty list means it is safe to publish. Each entry is a whole sentence
+    meant to be shown to whoever is posting.
+    """
+    out = []
+    wrapped = hard_wrapped_lines(body)
+    if wrapped:
+        shown = ", ".join(str(n) for n in wrapped[:8])
+        more = "" if len(wrapped) <= 8 else " and " + str(len(wrapped) - 8) + " more"
+        out.append(
+            "The body is hard-wrapped: " + str(len(wrapped)) + " line(s) run on "
+            "into the next one (line " + shown + more + "). The forum honours "
+            "every newline, so each of those becomes a line break inside a "
+            "wide column and the paragraph arrives as a stack of short lines. "
+            "One paragraph per line, blank line between paragraphs.")
+    dead = dead_markdown(body)
+    if dead:
+        out.append(
+            "The body contains markdown the forum does not render: "
+            + ", ".join(dead) + ". It will show the characters themselves. Use "
+            "plain CAPITALS or plain words for emphasis.")
+    return out
+
+
+def unwrap_body(body: str) -> str:
+    """Join the hard-wrapped lines, and change nothing else.
+
+    Only the lines hard_wrapped_lines() names are joined, so blank lines,
+    bullets, numbered items, quotes, image placeholders and indented blocks
+    survive exactly as they were. It does not touch markdown: stripping ** out
+    of someone's sentence can change what the sentence says, so that stays a
+    refusal for a person to fix.
+    """
+    wrapped = set(hard_wrapped_lines(body))
+    if not wrapped:
+        return body
+    lines = (body or "").split("\n")
+    out = []
+    for i, line in enumerate(lines):
+        # hard_wrapped_lines() numbers lines from 1, and line number N runs on
+        # into the line after it. The line after N is at 0-based index N. So
+        # index i is a continuation exactly when i is in the set -- which looks
+        # like an off-by-one and is not.
+        if out and i in wrapped:
+            out[-1] = out[-1].rstrip() + " " + line.lstrip()
+        else:
+            out.append(line)
+    return "\n".join(out)
 
 
 def _created_id(made: dict, kind: str) -> int:

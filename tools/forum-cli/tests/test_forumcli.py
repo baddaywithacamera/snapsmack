@@ -122,6 +122,11 @@ def fake(monkeypatch):
     monkeypatch.setattr(fc, "Forum", FakeForum)
     monkeypatch.delenv("SNAPSMACK_FORUM_KEY", raising=False)
     monkeypatch.delenv("SNAPSMACK_FORUM_URL", raising=False)
+    # A fresh recorder for every test. Some commands refuse BEFORE they build
+    # a client, so without this FakeForum.last still holds the calls the
+    # previous test made, and "nothing was sent" passes on test order rather
+    # than on behaviour. That is how one of these tests first went green.
+    FakeForum()
     return FakeForum
 
 
@@ -520,5 +525,139 @@ def test_update_board_refuses_an_empty_change():
 
 def test_the_sheet_warns_that_hiding_takes_the_threads_with_it():
     assert any("--even-with-threads" in r for r in agent.REFUSALS)
+
+# -- the shape a body has to be in before it is published -------------------
+#
+# Thread 94, 30 October 2026: hard-wrapped at ~72 columns, and the forum
+# honours every newline, so Sean's screenshot showed a stack of short ragged
+# lines. The same post said **affected** and printed the asterisks. 21 of the
+# 49 ticket threads on the board are hard-wrapped. No tool here ever wrapped
+# anything -- the wrapping was typed -- so this is a refusal at the moment
+# before a body becomes public, not a formatter.
+
+WRAPPED = (
+    "The desktop test files are scripts that pytest collects nothing from,\n"
+    "so a green run over that directory means much less than it looks like\n"
+    "it does.\n"
+    "\n"
+    "Running it reports twenty-one tests collected and all of them passing,\n"
+    "and only two files contribute any of them.\n"
+)
+
+
+def test_a_wrapped_paragraph_is_found_and_the_line_numbers_are_right():
+    assert snap_forum.hard_wrapped_lines(WRAPPED) == [1, 2, 5]
+
+
+def test_a_body_written_one_paragraph_per_line_is_not_flagged():
+    body = ("A paragraph long enough to be suspicious if it were wrapped, and "
+            "it is not wrapped at all.\n\nAnd a second one, also long enough "
+            "to be a candidate for the check above.\n")
+    assert snap_forum.hard_wrapped_lines(body) == []
+    assert snap_forum.body_shape_complaints(body) == []
+
+
+def test_the_shapes_an_author_meant_are_left_alone():
+    """A bullet, a numbered item, a quote, an image placeholder and an indented
+    block are all line breaks somebody chose. Joining them would be the tool
+    breaking the formatting rather than fixing it."""
+    for kept in [
+        "A line long enough to look like a wrap, every bit of it, yes\n- a bullet after it",
+        "A line long enough to look like a wrap, every bit of it, yes\n1. a numbered item",
+        "A line long enough to look like a wrap, every bit of it, yes\n> a quoted line",
+        "A line long enough to look like a wrap, every bit of it, yes\n[img:2]",
+        "A line long enough to look like a wrap, every bit of it, yes\n    indented code",
+        "- a bullet long enough to look like a wrap, every bit of it, truly\nand text under it",
+    ]:
+        assert snap_forum.hard_wrapped_lines(kept) == [], kept
+
+
+def test_a_short_line_is_not_a_wrap():
+    assert snap_forum.hard_wrapped_lines("short\nlines\nhere") == []
+
+
+def test_unwrap_joins_only_the_wrapped_lines():
+    out = snap_forum.unwrap_body(WRAPPED)
+    assert snap_forum.hard_wrapped_lines(out) == []
+    assert out.count("\n\n") == 1              # the paragraph break survives
+    assert "nothing from, so a green run" in out  # joined with one space
+    assert len(out.split("\n")) < len(WRAPPED.split("\n"))
+
+
+def test_unwrap_is_idempotent_and_leaves_a_good_body_untouched():
+    once = snap_forum.unwrap_body(WRAPPED)
+    assert snap_forum.unwrap_body(once) == once
+    good = "One line, one paragraph, and long enough to be a candidate.\n"
+    assert snap_forum.unwrap_body(good) == good
+
+
+def test_unwrap_keeps_a_list_as_a_list():
+    body = ("Here is a list of the things that are wrong with this, at length:\n"
+            "- the first thing, which is a long enough line to be suspicious\n"
+            "- the second thing, which is also a long enough line to be so\n")
+    assert snap_forum.unwrap_body(body) == body
+
+
+def test_the_markdown_the_renderer_ignores_is_named():
+    assert snap_forum.dead_markdown("this is **bold**") == ["**bold**"]
+    assert snap_forum.dead_markdown("# A heading\ntext") == ["a # heading"]
+    assert snap_forum.dead_markdown("run `pytest` now") == ["`code`"]
+    # Only the fence: the inline pattern needs content between two
+    # backticks on ONE line, and a fenced block has none.
+    assert snap_forum.dead_markdown("```\ncode\n```") == ["a ``` fence"]
+    assert snap_forum.dead_markdown("see [the docs](https://x.test)") == ["a [label](link)"]
+
+
+def test_a_bullet_list_is_not_mistaken_for_markdown():
+    """The renderer shows "* item" as "* item", which is what a reader expects
+    a bullet to look like. Only the forms that LOOK like formatting and arrive
+    as punctuation are worth refusing."""
+    assert snap_forum.dead_markdown("* one\n* two") == []
+    assert snap_forum.dead_markdown("2 * 3 is 6") == []
+
+
+# -- and the three commands that publish one -------------------------------
+
+
+def test_post_refuses_a_hard_wrapped_body_and_sends_nothing(capsys):
+    assert run(["post", "--board", "3", "--title", "T", "--body", WRAPPED]) == 1
+    assert not [c for c in FakeForum.last.calls if c[0] == "post_ticket"]
+    err = capsys.readouterr().err
+    assert "hard-wrapped" in err
+    assert "--unwrap" in err
+
+
+def test_post_with_unwrap_sends_the_joined_body():
+    assert run(["post", "--board", "3", "--title", "T", "--body", WRAPPED,
+                "--unwrap"]) == 0
+    sent = [c for c in FakeForum.last.calls if c[0] == "post_ticket"][-1]
+    assert snap_forum.hard_wrapped_lines(sent[1][2]) == []
+
+
+def test_unwrap_will_not_quietly_strip_markdown(capsys):
+    assert run(["post", "--board", "3", "--title", "T",
+                "--body", "This is **important** and it is.", "--unwrap"]) == 1
+    assert not [c for c in FakeForum.last.calls if c[0] == "post_ticket"]
+    assert "does not render" in capsys.readouterr().err
+
+
+def test_reply_refuses_a_hard_wrapped_body_too(capsys):
+    assert run(["reply", "42", "--body", WRAPPED]) == 1
+    assert not [c for c in FakeForum.last.calls if c[0] == "reply"]
+    assert "hard-wrapped" in capsys.readouterr().err
+
+
+def test_edit_refuses_a_hard_wrapped_body_too(capsys):
+    """An edit is the only way to correct something already posted, so a
+    wrapped replacement would be fixing one fault with another."""
+    assert run(["edit", "42", "--body", WRAPPED]) == 1
+    assert not [c for c in FakeForum.last.calls if c[0] == "edit_thread"]
+    assert "hard-wrapped" in capsys.readouterr().err
+
+
+def test_a_good_body_still_posts():
+    body = "One paragraph on one line, long enough to be a candidate for it.\n"
+    assert run(["post", "--board", "3", "--title", "T", "--body", body]) == 0
+    assert [c for c in FakeForum.last.calls if c[0] == "post_ticket"]
 
 # ===== SNAPSMACK EOF =====
