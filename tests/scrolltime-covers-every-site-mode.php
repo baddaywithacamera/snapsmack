@@ -98,7 +98,7 @@ echo "\nAnd the deliberate exclusions are still excluded\n";
 st_test(!st_emits($root, 'carousel', 'archive'),
     'carousel archive still does not emit');
 st_test(!st_emits($root, 'smacktalk', 'image'),
-    'a single post page does not emit');
+    'a single photograph does not emit, in any mode (this case tests page_type image; a POST is page_type page and is covered below)');
 st_test(!st_emits($root, 'photoblog', 'search'),
     'a search results page does not emit');
 
@@ -131,6 +131,43 @@ st_test($uncovered === [],
     . ($uncovered === [] ? '' : ': ' . implode(', ', $uncovered)
         . ' does not -- add it to the condition in core/stats-logger.php, or '
         . 'list it in $EXCLUDED here with the reason'));
+
+echo "\nA SMACKTALK post is tracked, and the reported figure does not move\n";
+// SS-1129. The comment above the condition argued that a long written post is
+// where "did the reader stay" is worth asking, and the condition then excluded
+// page_type 'page' -- so the one page that mattered on a text site was the one
+// with no tracker.
+//
+// AND THE ASSERTION THAT SHOULD HAVE CAUGHT THAT WAS MISLABELLED. Above, the
+// case described as "a single post page does not emit" actually tests
+// smacktalk + 'image', which is a photograph. A post is 'page'. So the list
+// read as though post pages were a deliberate exclusion when nothing had
+// tested them. The description is corrected there; this is the real case.
+st_test(st_emits($root, 'smacktalk', 'page'),
+    "a smacktalk post (page_type 'page') records scroll time");
+
+// THE BOUNDARIES, because widening a gate is only safe if it stays narrow.
+st_test(!st_emits($root, 'photoblog', 'page'),
+    "a photoblog static page still does NOT -- on a photo site 'page' is a "
+    . 'static page, not an article, and nothing has asked for those');
+st_test(!st_emits($root, 'carousel', 'page'),
+    'a carousel page still does NOT');
+
+// AND THE REPORTED FIGURE MUST NOT MOVE. This change is COLLECTION ONLY:
+// every reader of dwell_ms still filters landing/archive, so Sean's SCROLL
+// TIME tile reads exactly what it read before. If someone widens a reader
+// without settling the product question, this fails and says why.
+$readers = ['smack-multisite-stats.php' => 1, 'core/multisite-api.php' => 2];
+foreach ($readers as $rel => $expected) {
+    $body = (string) @file_get_contents($root . '/' . $rel);
+    $n = substr_count($body, "page_type IN ('landing','archive')");
+    st_test($n === $expected,
+        "{$rel} still restricts the REPORTED figure to landing and archive "
+        . "({$expected} expected, {$n} found). Widening a reader changes what "
+        . 'Scroll Time MEANS, and whether article reading belongs in the same '
+        . 'number as feed browsing is SS-1131 and the owner decision, not a '
+        . 'side effect of fixing collection');
+}
 
 echo "\n  {$pass} passed, {$fail} failed\n";
 if ($fail > 0) {
