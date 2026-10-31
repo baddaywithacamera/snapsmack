@@ -63,6 +63,13 @@
         "predicates": 6,
         "thresholds": []
     },
+    "archive-canonical-url-regression.php": {
+        "assertions": 20,
+        "predicates": 6,
+        "thresholds": [
+            301
+        ]
+    },
     "archive-controls-reach-the-page-regression.php": {
         "assertions": 52,
         "predicates": 54,
@@ -80,7 +87,7 @@
         "thresholds": []
     },
     "archive-pagination-loop-regression.php": {
-        "assertions": 10,
+        "assertions": 11,
         "predicates": 2,
         "thresholds": []
     },
@@ -842,8 +849,8 @@
         ]
     },
     "legacy-archive-redirect-loop-regression.php": {
-        "assertions": 29,
-        "predicates": 12,
+        "assertions": 34,
+        "predicates": 14,
         "thresholds": []
     },
     "llmstxt-agent-safety-regression.php": {
