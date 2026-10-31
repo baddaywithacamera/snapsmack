@@ -180,7 +180,27 @@ class Wicket(QMainWindow):
             return
         f = forummod.Forum(url, key)
         try:
-            cat = f.ensure_board("Tickets", "Tickets. One per problem. Nobody's name.")
+            # LOOKS THE BOARD UP AND REFUSES TO MAKE ONE.
+            #
+            # This called ensure_board("Tickets", ...) with no sort order. In
+            # October that exact call met a forum with no such board, created
+            # it, and -- because a board created without a sort order lands
+            # above every board already there -- put it at the top of the
+            # owner's list. He found it himself and asked for it to go.
+            #
+            # The command line was repaired at the time. THIS WAS NOT, so the
+            # interface could put it straight back. Both now call one lookup
+            # that cannot create anything.
+            cat = forummod.board_id(f, model.TICKET_BOARD)
+            if not cat:
+                QMessageBox.warning(
+                    self, "No board to post to",
+                    f"This forum has no board called “{model.TICKET_BOARD}”, "
+                    "and TICKET WICKET will not create one.\n\n"
+                    "A board appearing on its own is how an unwanted one turned "
+                    "up at the top of the list before. Create the board "
+                    "deliberately in the forum first, then post this ticket.")
+                return
             thread = f.post_ticket(cat, f"{tk.id} · {tk.title}",
                                    anonymise.forum_post(tk))
         except forummod.ForumError as exc:
