@@ -14,10 +14,9 @@ toPlainText / setPlainText / clear so the modes barely change.
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QSettings, Signal
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPlainTextEdit, QPushButton
 
-import config as cfg_module
 
 from . import biggie
 from . import canvas as canvas_mod
@@ -118,12 +117,20 @@ class BodyEditor(QWidget):
         else:
             self.editor.setPlainText(biggie.serialize_blocks(self.biggie.to_blocks()))
         self._apply_face(on)
-        try:
-            data = cfg_module.load() or {}
-            data["biggie_enabled"] = bool(on)
-            cfg_module.save(data)
-        except Exception:  # noqa: BLE001 — remembering the face is best-effort
-            pass
+        # SS-1084. THIS USED TO REWRITE THE WHOLE CONFIGURATION TO REMEMBER ONE
+        # BOOLEAN, and that is how every stored credential on this machine got
+        # destroyed: load() returned '' for secrets it could not open, this
+        # handed the dict straight back to save(), and the empties were written
+        # over the sealed password, API key and SMACKPRESS key. Nothing threw,
+        # and the `except Exception: pass` below it meant nothing would have
+        # been reported if it had.
+        #
+        # Remembering which face was last used is a VIEW preference, so it goes
+        # where the other view state goes -- QSettings, the same store the
+        # window geometry uses -- and it writes ONE KEY. It cannot reach a
+        # credential from here.
+        QSettings("SnapSmack", "COLD SNAP").setValue(
+            "body_editor/biggie_enabled", bool(on))
 
     def is_biggie(self) -> bool:
         return self._biggie_on
