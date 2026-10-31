@@ -316,6 +316,17 @@
         "predicates": 8,
         "thresholds": []
     },
+    "dwell-beacon-is-bound-to-its-hit.php": {
+        "assertions": 31,
+        "predicates": 18,
+        "thresholds": [
+            32,
+            45000,
+            45000,
+            120000,
+            640000
+        ]
+    },
     "engines-reach-every-controller.php": {
         "assertions": 2,
         "predicates": 11,
