@@ -25,6 +25,15 @@
  *
  * @param PDO $pdo
  */
+// The beacon token is signed with the per-install salt, and the helper that
+// mints that salt lives next door. Required here rather than assumed: nothing
+// on a public page render loaded it before, so snapsmack_dwell_token() would
+// have returned '' on every page, the engine would have refused to send, and
+// Scroll Time would have gone silently to zero fleet-wide -- a worse fault
+// than the one SS-1083 reports. require_once is cheap and the salt is
+// static-cached after the first read.
+require_once __DIR__ . '/secret-store.php';
+
 function snapsmack_maybe_rollup($pdo) {
     $yesterday = date('Y-m-d', strtotime('-1 day'));
     try {
@@ -458,13 +467,79 @@ function snapsmack_record_dwell($pdo, $hit_id, $ms) {
     try {
         // Keep the MAX engaged time for this hit (humans only, recent window).
         // GREATEST means repeated beacons over a visit converge on the true total
-        // instead of freezing at the first (short) tab-away sample. Capped at
-        // 30 min upstream, so this can't be inflated unbounded.
-        $stmt = $pdo->prepare("UPDATE snap_stats SET dwell_ms = GREATEST(COALESCE(dwell_ms, 0), ?)
+        // instead of freezing at the first (short) tab-away sample.
+        //
+        // AND IT CANNOT OUTRUN THE CLOCK. SS-1083: the 30-minute cap is not a
+        // guard, it is a ceiling, and any caller could reach it instantly. A
+        // page cannot have been read for longer than it has existed, so the
+        // reported time is clamped to the seconds actually elapsed since the
+        // hit was logged, plus 30s of grace for clock skew between the
+        // visitor's machine and this one. A hit ten seconds old can no longer
+        // carry half an hour of engagement.
+        //
+        // LEAST, not a refusal: an honest beacon is always under the elapsed
+        // time, and clamping an implausible one keeps whatever was plausible
+        // about it instead of discarding the row's whole reading.
+        $stmt = $pdo->prepare("UPDATE snap_stats
+                                  SET dwell_ms = GREATEST(COALESCE(dwell_ms, 0),
+                                      LEAST(?, (TIMESTAMPDIFF(SECOND, hit_at, NOW()) + 30) * 1000))
                                WHERE id = ? AND is_bot = 0
                                  AND hit_at >= DATE_SUB(NOW(), INTERVAL 6 HOUR)");
-        $stmt->execute([$ms, $hit_id]);
+        // BOUND AS INTEGERS, not by the default string binding. The clamp
+        // compares the reading against a computed number of milliseconds, and
+        // a value bound as text is compared as text -- which is how the first
+        // run of the regression saw a 45-second reading clamped UP to the
+        // elapsed bound instead of kept. MySQL coerces either way; being
+        // explicit is free and the test is only faithful when it does not have
+        // to cast on the way past.
+        $stmt->bindValue(1, $ms, PDO::PARAM_INT);
+        $stmt->bindValue(2, $hit_id, PDO::PARAM_INT);
+        $stmt->execute();
     } catch (PDOException $e) { /* never break the beacon */ }
+}
+
+/**
+ * Sign a hit id so a beacon can only write to the hit it was served for.
+ *
+ * SS-1083. The dwell route is unauthenticated BY DESIGN -- a beacon has to
+ * survive page unload, so it cannot carry a session -- and snap_stats.id is an
+ * auto-increment record id that is PUBLISHED to every visitor in data-hit. A
+ * caller therefore did not have to guess: it read its own id off the page and
+ * could walk its neighbours, setting any recent non-bot hit to the cap.
+ *
+ * WHAT THIS DOES AND DOES NOT DO, stated plainly because the distinction
+ * matters: the token is printed on the page NEXT TO the id, so a visitor who
+ * was served the page holds both. It stops one caller writing to ANOTHER
+ * caller's hit. It does NOT stop a visitor inflating their OWN hit -- the
+ * elapsed-time clamp in snapsmack_record_dwell() is what addresses that, and
+ * neither guard is rate limiting.
+ *
+ * Signed with the per-install salt the download links already use
+ * (snap_ensure_download_salt, SECAUDIT 047) rather than a new secret, and
+ * domain-separated by a prefix so a dwell token can never be replayed as a
+ * download token or the reverse. The same pattern smack-media-proxy.php uses.
+ *
+ * @return string the hex signature, or '' when there is nothing to sign
+ */
+function snapsmack_dwell_token(int $hit_id, ?PDO $pdo = null): string {
+    if ($hit_id <= 0) return '';
+    if (!function_exists('snap_ensure_download_salt')) return '';
+    $salt = (string)snap_ensure_download_salt($pdo instanceof PDO ? $pdo : null);
+    if ($salt === '') return '';
+    return hash_hmac('sha256', "snapsmack-dwell\n" . $hit_id, $salt);
+}
+
+/**
+ * Does this token belong to this hit?
+ *
+ * A separate function rather than four lines inside the route, so the decision
+ * can be tested directly instead of only through an HTTP request. Compared
+ * with hash_equals so the comparison does not leak timing.
+ */
+function snapsmack_dwell_token_ok(int $hit_id, string $token, ?PDO $pdo = null): bool {
+    $expected = snapsmack_dwell_token($hit_id, $pdo);
+    if ($expected === '' || $token === '') return false;
+    return hash_equals($expected, $token);
 }
 
 /**
@@ -518,10 +593,11 @@ function snapsmack_scrolltime_tag($settings) {
     $ver  = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';
     $base = defined('BASE_URL') ? BASE_URL : '/';
     printf(
-        '<script id="ss-scrolltime" src="%sassets/js/ss-engine-scrolltime.js?v=%s" data-hit="%d" data-endpoint="%sapi.php?route=stats/dwell"></script>' . "\n",
+        '<script id="ss-scrolltime" src="%sassets/js/ss-engine-scrolltime.js?v=%s" data-hit="%d" data-token="%s" data-endpoint="%sapi.php?route=stats/dwell"></script>' . "\n",
         htmlspecialchars($base, ENT_QUOTES),
         htmlspecialchars((string)$ver, ENT_QUOTES),
         (int)$hit['id'],
+        htmlspecialchars(snapsmack_dwell_token((int)$hit['id']), ENT_QUOTES),
         htmlspecialchars($base, ENT_QUOTES)
     );
 }
