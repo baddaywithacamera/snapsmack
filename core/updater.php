@@ -370,6 +370,34 @@ function updater_is_dev_version(string $v): bool {
  * Read the update track ('stable'|'dev') from snap_settings.
  * Returns 'stable' if the setting is missing or DB is unavailable.
  */
+/**
+ * Which line does a package of this version belong to?
+ *
+ * SS-1076. A fresh install recorded NO track at all, so updater_get_track()
+ * fell through to 'stable' -- not a decision anybody made, just an absent row.
+ * A site installed from a dev package then sat on the stable line and was
+ * never offered anything, because the updater only offers a NEWER remote
+ * version and stable is older. Stranded, silently, from install day.
+ *
+ * The installer does not need to ask. It already reads the package version,
+ * and a dev package's version ends in D. Asking would turn a known fact into a
+ * guess, and the question cannot be answered by somebody who has just unzipped
+ * a file they were handed.
+ *
+ * CASE IS SIGNIFICANT. An uppercase D marks a dev build. A lowercase d does
+ * not: 0.7.9d and 0.7.9e are early stable tags that exist on origin to this
+ * day, and reading them as dev builds would subscribe an old site to the wrong
+ * line.
+ *
+ * Anything unrecognised answers 'stable', because that is what every existing
+ * install already is and a wrong guess there changes nothing.
+ */
+function updater_track_for_version(string $version): string {
+    $v = trim($version);
+    if ($v === '') return 'stable';
+    return substr($v, -1) === 'D' ? 'dev' : 'stable';
+}
+
 function updater_get_track(PDO $pdo): string {
     try {
         $val = $pdo->query(
