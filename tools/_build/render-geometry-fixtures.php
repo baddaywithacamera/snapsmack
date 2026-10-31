@@ -112,7 +112,34 @@ $sqre = gf_photo($out, 1000, 1000);
  * 196 photographs, because that is what the site this was asked about holds.
  * Only four SVG files are written; the items reference them by name.
  */
-function gf_glide_wall(string $tile, string $port, string $sqre): array {
+/**
+ * A numbered plate, so a screenshot says WHICH photograph it is showing.
+ *
+ * The first version of the wall fixture used four shared grey rectangles.
+ * Every plate looked like every other plate, so a picture of the wall could
+ * not certify which photographs the wrap had skipped -- which is the whole
+ * question SS-1093 asks. Codex said so after rendering it, and he was right:
+ * the engine invocation was proven and the behaviour was not.
+ *
+ * One file per plate, a few hundred bytes each, with the index drawn large
+ * enough to read in a screenshot of a 375px-wide tile. The shape still varies
+ * so the aspect interlocking is unchanged.
+ */
+function gf_numbered_photo(string $out, int $w, int $h, int $n): string {
+    $name = 'plate-' . $n . '-' . $w . 'x' . $h . '.svg';
+    if (!is_file($out . '/' . $name)) {
+        $font = (int)round(min($w, $h) * 0.42);
+        file_put_contents($out . '/' . $name,
+            '<svg xmlns="http://www.w3.org/2000/svg" width="' . $w . '" height="' . $h . '">'
+          . '<rect width="100%" height="100%" fill="#888"/>'
+          . '<text x="50%" y="50%" fill="#111" font-family="monospace" font-weight="bold"'
+          . ' font-size="' . $font . '" text-anchor="middle" dominant-baseline="central">'
+          . $n . '</text></svg>');
+    }
+    return $name;
+}
+
+function gf_glide_wall(string $out): array {
     $items = [];
     foreach (range(1, 196) as $n) {
         // A FEW WITH NO STORED DIMENSIONS, on purpose. The controller falls
@@ -121,9 +148,12 @@ function gf_glide_wall(string $tile, string $port, string $sqre): array {
         // recorded size is cropped hard. That is the same fault repaired in
         // the search results in 964D, and it has to be visible here.
         $missing = ($n % 7 === 0);
-        if ($n % 3 === 0)      { $src = $port; $w = 800;  $h = 1200; }
-        elseif ($n % 5 === 0)  { $src = $sqre; $w = 1000; $h = 1000; }
-        else                   { $src = $tile; $w = 1200; $h = 800;  }
+        if ($n % 3 === 0)      { $w = 800;  $h = 1200; }
+        elseif ($n % 5 === 0)  { $w = 1000; $h = 1000; }
+        else                   { $w = 1200; $h = 800;  }
+        // NUMBERED, so a screenshot of the wall says which plates the wrap
+        // reached and which it never showed.
+        $src = gf_numbered_photo($out, $w, $h, $n);
 
         $item = [
             'id' => $n, 'img_slug' => 'photograph-' . $n,
@@ -146,7 +176,7 @@ function gf_glide_wall(string $tile, string $port, string $sqre): array {
     return ['items' => $items, 'rows' => $rows];
 }
 
-$gfWall = gf_glide_wall($tile, $port, $sqre);
+$gfWall = gf_glide_wall($out);
 
 $items = [];
 foreach (range(1, 8) as $n) {
