@@ -11,15 +11,13 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.974D - unreleased
+## 0.7.974D - unreleased - HEISENBERG DECOMPENSATOR
 
 973D is deployed and published, so it cannot absorb new work. This number is
 open; nothing is tagged or built. SS-1108.
 
-### Not yet named
-The codename constant in core/constants.php still reads THE PAGE WITH NO HEAD,
-which is 973D's name. Naming a release is Sean's, so it is deliberately left
-alone here rather than invented.
+### Named by Sean, 31 October 2026
+HEISENBERG DECOMPENSATOR.
 
 ### Nothing in this section yet
 The 31 October controls-and-forum audit work is NOT part of this candidate

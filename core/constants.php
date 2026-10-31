@@ -69,7 +69,7 @@ if (PHP_SAPI !== 'cli' && !defined('SNAPSMACK_IS_UPDATER')) {
 
 define('SNAPSMACK_VERSION', 'Alpha 0.7.974D');
 define('SNAPSMACK_VERSION_SHORT', '0.7.974D');
-define("SNAPSMACK_VERSION_CODENAME", "THE PAGE WITH NO HEAD");
+define("SNAPSMACK_VERSION_CODENAME", "HEISENBERG DECOMPENSATOR");
 
 // --- THUMBNAIL DIMENSIONS (single source of truth) ---
 // Every display-thumbnail generator reads these so the a_ (aspect) and t_
