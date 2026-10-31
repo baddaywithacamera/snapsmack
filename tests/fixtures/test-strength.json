@@ -1334,8 +1334,8 @@
         "thresholds": []
     },
     "scrolltime-covers-every-site-mode.php": {
-        "assertions": 15,
-        "predicates": 4,
+        "assertions": 19,
+        "predicates": 5,
         "thresholds": [
             4
         ]

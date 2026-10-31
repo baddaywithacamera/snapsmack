@@ -583,9 +583,26 @@ function snapsmack_scrolltime_tag($settings) {
     //
     // Treated like photoblog rather than like carousel: both its landing feed
     // and its archive are scrollable lists of posts, so both are eligible.
+    // AND A SMACKTALK POST IS TRACKED TOO, which is what the paragraph above
+    // argued for and the condition did not deliver. A long written post is
+    // page_type 'page', and 'page' was not in this list, so the one page on a
+    // text site where "did the reader stay" actually means something was the
+    // one page with no tracker. SS-1129.
+    //
+    // COLLECTION ONLY. The reported SCROLL TIME figure does NOT change: every
+    // reader still filters page_type IN ('landing','archive') --
+    // smack-multisite-stats.php:221 and core/multisite-api.php:1289 and :1291.
+    // So this starts WRITING dwell_ms for text posts and reports nothing new,
+    // which is deliberate: whether article reading belongs in the same number
+    // as feed browsing is Sean's decision (SS-1131), and the data has to exist
+    // before he can be shown what the answer would look like.
+    //
+    // Deliberately NOT extended to photoblog. On a photo site 'page' is a
+    // static page, not an article, and nothing has argued for tracking those.
     $ok = (in_array($mode, ['carousel', 'smackthemup'], true) && $type === 'landing')
        || (in_array($mode, ['photoblog', 'smacktalk'], true)
-           && ($type === 'landing' || $type === 'archive'));
+           && ($type === 'landing' || $type === 'archive'))
+       || ($mode === 'smacktalk' && $type === 'page');
     if (!$ok) return;
 
     $emitted = true;
