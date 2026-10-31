@@ -178,10 +178,36 @@ a_ok(!preg_match("/addEventListener\(\s*'resize'/", $code),
 
 // The stylesheet must actually carry the rule that does the positioning now,
 // or removing the JavaScript leaves nothing doing the job.
+//
+// IT IS right:0, NOT THE CONTENT PADDING, and this assertion used to demand
+// the padding. The aligner that ran from the start put the control FLUSH with
+// the column, which is the position the owner has looked at and accepted on
+// every live site; inheriting the wrapper's padding moved it 40px left on
+// every skin that prints the row. Measured in a browser on the archive
+// fixtures at 1920, 1440 and 1024: with the padding, 50-SHADES sat
+// 1388.203..1560 inside a column ending at 1600; with right:0, 1428.203..1600.
+// The vertical did not move at any width.
+//
+// The assertion is written as "positioned at the column's right edge" rather
+// than as a literal value, because what matters is that the control cannot
+// leave the column -- the positioning context IS the column -- not which
+// spelling achieves it.
 $css = (string) file_get_contents($root . '/assets/css/page-archive.css');
-a_ok((bool) preg_match('/\.archive-filter-row\s+\.archive-controls--docked\s*\{[^}]*right:\s*var\(--archive-content-padding/', $css),
-    'the stylesheet no longer positions the docked controls against the content padding, '
+if (preg_match('/\.archive-filter-row\s+\.archive-controls--docked\s*\{([^}]*)\}/', $css, $dockedRule)) {
+    $declared = preg_replace('#/\*.*?\*/#s', '', $dockedRule[1]);
+    a_ok((bool) preg_match('/right:\s*0\s*;/', $declared),
+        'the docked rule no longer puts the control on the column edge. It declares: '
+      . trim(preg_replace('/\s+/', ' ', $declared)) . '. right:0 against '
+      . '.archive-filter-inner IS the column edge; the content padding would '
+      . 'move it 40px inside, which is the regression this replaced.');
+    a_ok(!preg_match('/right:\s*var\(--archive-content-padding/', $declared),
+        'the docked rule is back on the content padding, which moves the control '
+      . '40px left of where the owner accepted it.');
+} else {
+    a_ok(false,
+        'the stylesheet no longer positions the docked controls at all, '
     . 'and nothing else does either now the aligner is gone');
+}
 
 if ($failures) {
     fwrite(STDERR, "FAIL\n- " . implode("\n- ", $failures) . "\n");
