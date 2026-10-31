@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['new_album']) && !empty($name)) {
         $pdo->prepare("INSERT INTO snap_albums (album_name, album_description, featured_post_id) VALUES (?, ?, ?)")
             ->execute([$name, $desc, $featured_post_id]);
-        header("Location: smack-albums.php?msg=MISSION+INITIALIZED");
+        header("Location: smack-albums.php?msg=ALBUM+INITIALIZED");
         exit;
     }
 
@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)$_POST['album_id'];
         $pdo->prepare("UPDATE snap_albums SET album_name=?, album_description=?, featured_post_id=? WHERE id=?")
             ->execute([$name, $desc, $featured_post_id, $id]);
-        header("Location: smack-albums.php?msg=MISSION+MODIFIED");
+        header("Location: smack-albums.php?msg=ALBUM+MODIFIED");
         exit;
     }
 }
@@ -115,7 +115,7 @@ if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
     $pdo->prepare("DELETE FROM snap_image_album_map WHERE album_id = ?")->execute([$id]);
     $pdo->prepare("DELETE FROM snap_albums WHERE id = ?")->execute([$id]);
-    header("Location: smack-albums.php?msg=MISSION+PURGED");
+    header("Location: smack-albums.php?msg=ALBUM+PURGED");
     exit;
 }
 
@@ -164,7 +164,7 @@ include 'core/sidebar.php';
 
 <div class="main">
     <div class="header-row header-row--ruled">
-        <h2>MISSION REGISTRY (ALBUMS)</h2>
+        <h2>ALBUMS</h2>
     </div>
 
     <?php if (isset($_GET['msg'])): ?>
@@ -175,7 +175,7 @@ include 'core/sidebar.php';
         <div class="post-layout-grid">
             <div class="post-col-left">
                 <div class="box">
-                    <h3><?php echo $edit_mode ? "MODIFY MISSION" : "INITIALIZE MISSION"; ?></h3>
+                    <h3><?php echo $edit_mode ? "MODIFY ALBUM" : "INITIALIZE ALBUM"; ?></h3>
 
                     <input type="hidden" name="<?php echo $edit_mode ? 'update_album' : 'new_album'; ?>" value="1">
                     <?php if ($edit_mode): ?>
@@ -183,14 +183,14 @@ include 'core/sidebar.php';
                     <?php endif; ?>
 
                     <div class="lens-input-wrapper">
-                        <label>MISSION NAME</label>
+                        <label>ALBUM NAME</label>
                         <input type="text" name="album_name"
                                value="<?php echo $edit_mode ? htmlspecialchars($edit_data['album_name']) : ''; ?>"
                                placeholder="E.G. PROJECT 365, SUMMER 2025" required autofocus>
                     </div>
 
                     <div class="lens-input-wrapper mt-20">
-                        <label>MISSION BRIEFING (DESCRIPTION)</label>
+                        <label>ALBUM DESCRIPTION</label>
                         <textarea name="album_description" placeholder="Technical or artistic intent..." rows="8"><?php echo $edit_mode ? htmlspecialchars($edit_data['album_description'] ?? '') : ''; ?></textarea>
                     </div>
 
@@ -204,7 +204,7 @@ include 'core/sidebar.php';
 
                     <div class="lens-input-wrapper mt-20">
                         <button type="submit" class="master-update-btn">
-                            <?php echo $edit_mode ? "UPDATE MISSION" : "ADD TO REGISTRY"; ?>
+                            <?php echo $edit_mode ? "UPDATE ALBUM" : "ADD ALBUM"; ?>
                         </button>
                     </div>
 
@@ -237,7 +237,7 @@ include 'core/sidebar.php';
                                 <div class="item-actions">
                                     <a href="?edit=<?php echo $a['id']; ?>" class="action-edit">EDIT</a>
                                     <a href="?delete=<?php echo $a['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete"
-                                       onclick="return confirm('PURGE MISSION?')">DELETE</a>
+                                       onclick="return confirm('PURGE ALBUM?')">DELETE</a>
                                 </div>
                             </div>
                         <?php endforeach; ?>
