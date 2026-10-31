@@ -23,7 +23,13 @@
 
     var hit      = parseInt(cfg.getAttribute('data-hit'), 10) || 0;
     var endpoint = cfg.getAttribute('data-endpoint') || '';
-    if (!hit || !endpoint) return;
+    // SS-1083. The hit id is public -- it is right there in data-hit -- so the
+    // server needs proof the beacon came from the page it was served with. The
+    // token is an HMAC of this hit id, minted server-side; the engine only
+    // carries it back. Without it the reading is refused, so send it or the
+    // report is wasted.
+    var token    = cfg.getAttribute('data-token') || '';
+    if (!hit || !endpoint || !token) return;
 
     // Idle grace: how long stillness still counts as engaged reading after the
     // last scroll/move. On a PHOTO blog, lingering on one image without touching
@@ -86,7 +92,7 @@
         // No client set-once: report the LATEST engaged time on every hidden /
         // pagehide / unload. The server keeps the MAX, so a mid-visit tab switch
         // (or phone lock) no longer freezes the number at a few seconds.
-        var payload = JSON.stringify({ hit: hit, ms: ms });
+        var payload = JSON.stringify({ hit: hit, ms: ms, token: token });
         if (navigator.sendBeacon) {
             navigator.sendBeacon(endpoint, new Blob([payload], { type: 'application/json' }));
         } else {

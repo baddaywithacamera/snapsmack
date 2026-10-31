@@ -21,21 +21,30 @@
  *     the next reader checking whether a second beacon can overwrite the first
  *     would have got the wrong answer from the wrong place.
  *
- *     WHAT IS NOT GUARDED, named here because the word "capped" reads like
- *     more protection than it is (Muse, security audit, 30 October). The route
- *     is unauthenticated by design and takes the hit id from the request body.
- *     snap_stats.id is an auto-increment record id AND it is published to every
- *     visitor -- core/stats-logger.php emits data-hit="<id>" so the engine can
- *     use it -- so a caller does not have to guess: it can read its own id off
- *     the page and walk neighbouring ids. Within the 6-hour window, on a
- *     non-bot hit, that sets dwell_ms to the 30-minute cap.
+ *     HOW THE BEACON IS BOUND TO ITS HIT (SS-1083, reported by Muse in the
+ *     security audit of 30 October and repaired here). The route stays
+ *     unauthenticated -- a beacon has to survive page unload, so it cannot
+ *     carry a session -- so the binding is a signature instead:
  *
- *     The blast radius is the owner's own Scroll Time figures. No data is
- *     exposed, no other column or row is writable, and no other table is
- *     reachable from here. So this is analytics integrity, not a breach -- but
- *     it means a Scroll Time number is not evidence of anything if someone
- *     cared to inflate it. NOT FIXED: binding the beacon to its hit needs a
- *     decision and this is a comment, not a repair.
+ *       - the tracker tag carries data-token, an HMAC of the hit id under the
+ *         per-install salt (snapsmack_dwell_token);
+ *       - the engine sends it back with the reading;
+ *       - this route refuses anything whose token does not match the hit
+ *         (snapsmack_dwell_token_ok), and still answers 204, because a beacon
+ *         cannot read a response and a caller learns nothing from the refusal.
+ *
+ *     That is what stops one caller writing to ANOTHER hit. It deliberately
+ *     does NOT stop a visitor inflating their own, because the token is on the
+ *     page beside the id and anyone served the page holds both. The second
+ *     guard is in snapsmack_record_dwell(): the reading is clamped to the time
+ *     that has actually elapsed since the hit was logged, so a page cannot
+ *     report having been read for longer than it has existed.
+ *
+ *     STILL NOT GUARDED, so nobody reads more into this than it says: there is
+ *     no rate limiting, and a visitor who stays on their own page can still
+ *     report their own real time, which is the point of the feature. The blast
+ *     radius was always the owner's own Scroll Time figures -- no data exposed,
+ *     no other column, row or table reachable from here.
  */
 
 /**
@@ -60,10 +69,16 @@ if ($sub === 'dwell' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if ($raw !== '' && ($raw[0] ?? '') === '{') {
         $data = json_decode($raw, true) ?: [];
     }
-    $hit = (int)($data['hit'] ?? $_POST['hit'] ?? 0);
-    $ms  = (int)($data['ms']  ?? $_POST['ms']  ?? 0);
+    $hit   = (int)($data['hit'] ?? $_POST['hit'] ?? 0);
+    $ms    = (int)($data['ms']  ?? $_POST['ms']  ?? 0);
+    $token = (string)($data['token'] ?? $_POST['token'] ?? '');
 
-    if (isset($pdo) && $pdo instanceof PDO) {
+    // SS-1083. The hit id is published to every visitor in data-hit, so it is
+    // not a secret and never was. The token proves the caller was served THIS
+    // hit's page, which is what stops one visitor writing to another's hit or
+    // walking neighbouring ids. Still answers 204 either way: a beacon cannot
+    // read a response and telling a caller its token was wrong helps nobody.
+    if (isset($pdo) && $pdo instanceof PDO && snapsmack_dwell_token_ok($hit, $token, $pdo)) {
         snapsmack_record_dwell($pdo, $hit, $ms);
     }
 
