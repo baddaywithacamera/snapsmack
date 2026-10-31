@@ -346,8 +346,8 @@ def _entry_field(entry, name):
     return getattr(entry, name, '') or ''
 
 
-def _last_published_index(ticket):
-    """Where in the log this ticket was last PUT on the board, or -1 if never.
+def _last_post_index(ticket):
+    """Where in the log this ticket was last PUT ON THE BOARD, or -1 if never.
 
     AN INDEX, NOT A TIMESTAMP, and that is a correctness fix rather than a
     style choice. store._audit() stamps every entry with
@@ -361,16 +361,78 @@ def _last_published_index(ticket):
     store.get() reads entries ORDER BY rowid_ and the log is append-only, so
     the position in the list IS the order things happened. That cannot tie.
 
-    A forum REPLY counts as publication: it is an update the board carries. An
-    EMAIL reply must not, or a ticket answered privately would look published
-    while the thread still shows the original.
+    ONLY A 'post' ENTRY COUNTS, AND THE FIRST VERSION OF THIS GOT IT WRONG.
+    It treated a forum reply as publication, reasoning that a reply is an
+    update the board carries. That conflates two different things, which is
+    Codex's finding of 31 October, accepted by the coordinator as a blocker:
+
+      THE BOARD'S STATE LIVES IN THE FIRST LINE of the published body --
+      "SS-1006 - DOOR OPEN - resolved" -- and the listing excerpt is built
+      from the first 300 characters of that body (make_excerpt,
+      api/forum/index.php:217). A REPLY DOES NOT TOUCH EITHER. It appends a
+      post to the thread; the first line and the excerpt keep saying whatever
+      they said. So a reply can never be evidence that the board's STATE was
+      brought up to date, and counting it as such made a drifted thread look
+      current.
+
+    Only publication of the original post, or an edit that rewrites that first
+    line, resets the board state. Both are recorded as kind 'post'.
     """
     last = -1
     for i, e in enumerate(ticket.entries or []):
-        kind = _entry_field(e, 'kind')
-        if kind == 'post' or (kind == 'reply' and _entry_field(e, 'channel') == 'forum'):
+        if _entry_field(e, 'kind') == 'post':
             last = i
     return last
+
+
+def _delivered_forum_replies(store, ticket):
+    """Which of this ticket's forum-reply log entries were actually DELIVERED.
+
+    Returns the set of log indexes that are forum replies the sender has sent.
+
+    QUEUED IS NOT SENT, and treating the two alike was the second half of
+    Codex's finding. store.enqueue() writes the outbox row and audits
+    "queued for <channel>" as kind 'reply' IN THE SAME TRANSACTION -- so a
+    reply that never left the machine produces a log entry identical to one
+    that went out. store.mark_sent() updates the outbox row and audits
+    NOTHING, so the ticket's own log cannot tell delivered from queued at all.
+    The only record of delivery is outbox.state.
+
+    THIS IS NOT HYPOTHETICAL. SS-1099: the sender does not exist, so nothing
+    in that outbox has been delivered, and every reply in it was being counted
+    as the board having heard.
+
+    Pairing: a log entry carries no outbox id, so match by ORDER. Both the
+    audit log and the outbox are append-only and both rows are written in the
+    same transaction, so the Nth forum reply entry for a ticket is the Nth
+    forum outbox row for that ticket. Same argument as the index-not-timestamp
+    one above, and it cannot tie.
+    """
+    try:
+        rows = list(store.outbox(state='queued')) + list(store.outbox(state='sent'))
+    except Exception:
+        return set()
+    rows = [r for r in rows if (r.get('ticket') or '') == ticket.id]
+    rows.sort(key=lambda r: r.get('rowid_') or 0)
+    sent_by_channel = {}
+    for r in rows:
+        sent_by_channel.setdefault(r.get('channel') or '', []).append(
+            (r.get('state') or '') == 'sent')
+
+    seen = {}
+    delivered = set()
+    for i, e in enumerate(ticket.entries or []):
+        if _entry_field(e, 'kind') != 'reply':
+            continue
+        ch = _entry_field(e, 'channel')
+        n = seen.get(ch, 0)
+        seen[ch] = n + 1
+        if ch != 'forum':
+            continue
+        flags = sent_by_channel.get(ch) or []
+        if n < len(flags) and flags[n]:
+            delivered.add(i)
+    return delivered
 
 
 def _board_state(ticket, after_index):
@@ -380,6 +442,10 @@ def _board_state(ticket, after_index):
     state as published is the OLD half of the FIRST state change after the last
     publication. If nothing changed it, the board is current on that point and
     this returns ''. No network, no re-fetch of the thread.
+
+    after_index MUST be the last 'post' index, never a reply's. A reply does
+    not rewrite the first line the state lives in, so feeding it a reply's
+    index reads the state as of a moment the board never published.
     """
     for e in (ticket.entries or [])[after_index + 1:]:
         m = re.search(r"state: '([a-z]+)' -> '([a-z]+)'", _entry_field(e, 'text'))
@@ -402,21 +468,33 @@ def cmd_forum_gap(args):
         if not (t.forum_thread or 0):
             continue
         full = s.get(t.id) or t
-        at = _last_published_index(full)
+        at = _last_post_index(full)
         if at < 0:
             rows.append({'id': full.id, 'thread': full.forum_thread,
                          'published': '', 'board_state': '', 'state': full.state,
-                         'changes': 0, 'security': bool(full.security),
+                         'changes': 0, 'queued': 0,
+                         'security': bool(full.security),
                          'note': 'carries a thread number but no post entry'})
             continue
-        since = (full.entries or [])[at + 1:]
+        delivered = _delivered_forum_replies(s, full)
+        # What the board DOES NOT already carry. A delivered forum reply is on
+        # the thread, so it is not drift. Everything else after the last post
+        # is: state changes, body edits, links, merges, email replies, and a
+        # forum reply still sitting in the outbox.
+        since = [e for i, e in enumerate(full.entries or [])
+                 if i > at and i not in delivered]
+        queued = len([1 for i, e in enumerate(full.entries or [])
+                      if i > at and i not in delivered
+                      and _entry_field(e, 'kind') == 'reply'
+                      and _entry_field(e, 'channel') == 'forum'])
         if not since:
             continue
         rows.append({
             'id': full.id, 'thread': full.forum_thread,
             'published': _entry_field((full.entries or [])[at], 'at'),
             'board_state': _board_state(full, at), 'state': full.state,
-            'changes': len(since), 'security': bool(full.security), 'note': '',
+            'changes': len(since), 'queued': queued,
+            'security': bool(full.security), 'note': '',
         })
 
     rows.sort(key=lambda r: (-r['changes'], r['id']))
@@ -435,6 +513,14 @@ def cmd_forum_gap(args):
             r['id'], r['thread'], r['board_state'] or '(same)', r['state'],
             r['changes'], (r['published'] or '-')[:16],
             '   SECURITY' if r['security'] else ''))
+    stuck = [r for r in rows if r.get('queued')]
+    if stuck:
+        lines += ["", f"{len(stuck)} of these have a forum reply WRITTEN AND "
+                      "NEVER DELIVERED, still in the outbox. Those threads show "
+                      "no reply at all. The sender is armed separately and "
+                      "SS-1099 says it does not exist, so this is the expected "
+                      "state rather than a surprise -- but a queued reply is "
+                      "not an answer the reader can see."]
     if sec:
         lines += ["", f"{len(sec)} of these are security-flagged. They are NOT "
                       "candidates for any standing permission: when a hole is "
