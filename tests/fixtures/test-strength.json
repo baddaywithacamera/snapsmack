@@ -757,6 +757,15 @@
         "predicates": 10,
         "thresholds": []
     },
+    "installer-refuses-to-invent-its-version.php": {
+        "assertions": 16,
+        "predicates": 13,
+        "thresholds": [
+            2,
+            2,
+            2
+        ]
+    },
     "installer-schema-regression.php": {
         "assertions": 3,
         "predicates": 2,
