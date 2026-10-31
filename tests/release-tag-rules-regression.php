@@ -147,6 +147,74 @@ $agents = (string) @file_get_contents($root . '/AGENTS.md');
 rt_test($agents !== '' && stripos($agents, 'immutable once on origin') !== false,
     'AGENTS.md states that a tag is immutable once on origin');
 
+echo "\nWhich remote is asked, on a clone that does not call it origin\n";
+
+// THE DEFECT THIS COVERS. The remote name was the literal string 'origin'.
+// This repository has one remote and it is called Github, so every run
+// answered "fatal: 'origin' does not appear to be a git repository", the
+// parser read that as 'unknown', and the gate refused -- permanently, and
+// without ever learning anything about the tag. On 31 October 2026 it was
+// refusing to confirm v0.7.973D while the tag sat on the remote at 2691221f.
+
+rt_test(snap_gate_choose_remote("origin\n") === 'origin',
+    'the ordinary case still picks origin');
+rt_test(snap_gate_choose_remote("Github\n") === 'Github',
+    'a single remote is used whatever it is called -- this clone calls it Github');
+rt_test(snap_gate_choose_remote("upstream\norigin\nfork\n") === 'origin',
+    'origin wins when it is one of several, so a normal clone is unchanged');
+rt_test(snap_gate_choose_remote("upstream\nfork\n") === '',
+    'several remotes and none called origin is a GUESS, so it returns nothing '
+  . 'and the caller must treat it as unknown and refuse');
+rt_test(snap_gate_choose_remote("") === '',
+    'no remotes at all returns nothing');
+rt_test(snap_gate_choose_remote("fatal: not a git repository\n") === '',
+    'a git failure is not a remote name. Without this check that sentence is '
+  . 'one non-empty line, so the single-remote branch would hand it back as the '
+  . 'remote and the refusal would be right only by accident');
+rt_test(snap_gate_choose_remote("  Github  \n\n") === 'Github',
+    'surrounding whitespace and blank lines are ignored');
+
+echo "\nAnd the refusal tells the operator a command that works here\n";
+
+$vr = snap_gate_tag_move_verdict('0.7.973D', '2691221f', '4757cb15', 'unknown', 'Github');
+rt_test(strpos($vr['message'], 'git ls-remote --tags Github') !== false,
+    'the advice names the remote that exists on this clone, not one that does not: '
+  . $vr['message']);
+$vr = snap_gate_tag_move_verdict('0.7.973D', '2691221f', '4757cb15', 'unknown');
+rt_test(strpos($vr['message'], 'git ls-remote --tags origin') !== false,
+    'and it still says origin when nothing better is known, so the default is unchanged');
+$vr = snap_gate_tag_move_verdict('0.7.973D', '2691221f', '4757cb15', 'unknown', '');
+rt_test(strpos($vr['message'], '<your remote>') !== false,
+    'with no usable remote it says so rather than naming one that is not there');
+
+echo "\nAnd the asking function actually uses the chooser\n";
+
+// Everything above tests a PURE function. Reverting the one line that calls
+// it -- back to a hardcoded "origin" -- would leave every assertion above
+// green while the defect returned in full. So the call site is read here,
+// with comments stripped, because the explanation of the fault quotes the
+// old string and a check that matched its own prose would prove nothing.
+$rules = (string) file_get_contents($root . '/tools/_build/release-tag-rules.php');
+$code = '';
+foreach (token_get_all($rules) as $t) {
+    if (is_array($t) && in_array($t[0], [T_COMMENT, T_DOC_COMMENT], true)) continue;
+    $code .= is_array($t) ? $t[1] : $t;
+}
+if (preg_match('/function\s+snap_gate_origin_tag_state\s*\([^{]*\{(.+?)\n\}/s', $code, $fn)) {
+    rt_test(strpos($fn[1], 'snap_gate_choose_remote(') !== false,
+        'snap_gate_origin_tag_state no longer asks snap_gate_choose_remote which '
+      . 'remote to use, so the remote name is hardcoded again');
+    rt_test(!preg_match('/--tags\s+origin/', $fn[1]),
+        'the literal \'--tags origin\' is back in the command. That is the whole '
+      . 'defect: this clone has no remote called origin, so the gate could never '
+      . 'tell whether a tag was published');
+    rt_test(preg_match('/escapeshellarg\s*\(\s*\$remote\s*\)/', $fn[1]) === 1,
+        'the chosen remote is no longer passed through escapeshellarg, so a remote '
+      . 'name with a shell character in it would reach the shell');
+} else {
+    rt_test(false, 'could not find snap_gate_origin_tag_state to read its body');
+}
+
 echo "\n  {$pass} passed, {$fail} failed\n";
 if ($fail > 0) {
     echo "Release tag rules: FAIL ({$fail}).\n";
