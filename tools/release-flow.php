@@ -422,24 +422,77 @@ if ($command === 'tag-dev') {
 }
 
 if ($command === 'promote-stable') {
-    rf_require_dev();
+    // SS-1077. THIS COMMAND COULD NOT RUN FOR ANY VERSION, and had never run.
+    //
+    // tag-dev requires SNAPSMACK_VERSION_SHORT to read <version>D at the
+    // commit it tags. This command required it to read <version> at that same
+    // commit, because it required the dev tag to point at HEAD. One constant
+    // cannot hold both values, so no commit satisfied both and the stable
+    // channel sat on 0.7.670 from 9 September to 30 October 2026 with no way
+    // off it. The old checks are replaced by a rule about the shape of a
+    // CANDIDATE COMMIT: one commit above the dev tag whose entire difference
+    // from that tag is the two version lines and an added changelog section.
+    //
+    // The rule itself lives in tools/_build/stable-candidate-check.php as pure
+    // functions, so it can be proved against throwaway repositories in
+    // tests/promote-stable-accepts-only-the-version-commit.php. A gate tested
+    // against this repository's own refs would pass by agreeing with today's
+    // state and keep passing after the rule was deleted.
+    require_once __DIR__ . '/_build/stable-candidate-check.php';
+
     rf_require_clean();
     $version = rf_version($argv[2] ?? '');
     if (($argv[3] ?? '') !== '--yes') rf_fail('promotion requires the explicit --yes argument');
-    if (rf_source_version() !== $version) {
-        rf_fail("source version is " . rf_source_version() . "; expected {$version}");
+
+    // NOT rf_require_dev(). The candidate cannot be on dev: dev has to stay at
+    // the dev tag, which the rule below checks. Standing on dev with the
+    // candidate committed to it would leave a commit on the local dev branch
+    // that must never be pushed there, so refuse it by name rather than let
+    // somebody find out later.
+    if (rf_branch() === 'dev') {
+        rf_fail('promote-stable runs from the candidate branch, not from dev. '
+            . 'dev must stay at the dev tag; a candidate commit on dev would be a '
+            . 'commit that must never be pushed to dev.');
     }
-    rf_require_changelog($version);
+
     rf_git(['fetch', 'Github', '--tags', '--prune'], false);
-    $head = rf_git(['rev-parse', 'HEAD']);
-    if (rf_git(['rev-parse', 'refs/remotes/Github/dev']) !== $head) {
-        rf_fail('current commit is not the commit published on Github/dev');
+
+    $refusals = rfc_stable_candidate_refusals($version, 'HEAD', 'refs/remotes/Github/dev');
+    if ($refusals !== []) {
+        rf_fail("this is not a stable candidate for {$version}:\n      "
+            . implode("\n      ", $refusals)
+            . "\n  A candidate is ONE commit on top of v{$version}D changing only the two "
+            . 'version lines in core/constants.php and adding a CHANGELOG.md section.');
     }
-    $dev_tag = 'v' . $version . 'D';
-    if (rf_tag_target($dev_tag) !== $head) rf_fail("{$dev_tag} does not point to the current tested commit");
+
+    $head = rf_git(['rev-parse', 'HEAD']);
     $stable_tag = 'v' . $version;
-    if (rf_tag_target($stable_tag) !== '') rf_fail("stable tag {$stable_tag} already exists");
-    rf_git(['merge-base', '--is-ancestor', 'master', 'HEAD']);
+
+    // THE MASTER LINE IS A SEPARATE, UNRESOLVED PROBLEM. SS-1079.
+    //
+    // This command finishes by pushing HEAD to master. That cannot fast-forward
+    // today: master and the dev line have diverged, so master is not an
+    // ancestor of any dev commit and the remote would refuse the push. The old
+    // code tested this with `merge-base --is-ancestor master HEAD` through
+    // rf_git, which dies on a non-zero exit with git's own message and no
+    // explanation -- and it tested the LOCAL master, which in this checkout is
+    // seven weeks behind the remote one.
+    //
+    // Refuse here, before anything is tagged, and say what the actual problem
+    // is. Creating a tag and then failing at the push leaves a published tag
+    // behind for a promotion that did not happen.
+    [$ancestor_code] = rfc_git([
+        'merge-base', '--is-ancestor', 'refs/remotes/Github/master', 'HEAD',
+    ]);
+    if ($ancestor_code !== 0) {
+        rf_fail('Github/master is not an ancestor of this commit, so pushing the '
+            . "promotion to master cannot fast-forward and the remote will refuse it.\n"
+            . "  master and the development line have diverged; the current stable tag\n"
+            . "  sits on master and is not an ancestor of dev. What master is for has to\n"
+            . "  be decided before a stable release can be cut from the dev line --\n"
+            . "  Smack Central's skin packager still offers master as the BORING ref, so\n"
+            . "  it is not vestigial. SS-1079. Nothing has been tagged.");
+    }
     rf_tests();
     rf_require_release_gate();
     rf_git(['push', 'Github', 'HEAD:master'], false);
