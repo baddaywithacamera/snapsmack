@@ -53,6 +53,19 @@ FEDISTRUCTURE uses the same channels:
    redesign opportunity, and the changed output must not be described as
    "authoritative." A release that changes any skin render without an explicit,
    reviewed reason in its release-gate evidence fails. Silence is not approval.
+10. **A review branch is deleted when it merges**, by whoever merges it, on the
+   remote and locally. A merged branch holds nothing its merge does not -- the
+   commits are on `dev` -- so only the name is lost, and leaving it is how the
+   branch list grows into something the owner has to ask about. Sean, 2026-10-31,
+   asked for a tidy-up and said he asks for it constantly; this is so he does
+   not have to. Before deleting, confirm the tip is reachable from `dev`
+   (`git branch -r --merged Github/dev`). Anything NOT merged is listed with its
+   SHA for a decision, never deleted. Never delete `dev`, `main`, `master`,
+   `history`, any tag, or a branch still waiting on review.
+11. **A merge gets a written subject.** `git merge` without `-m` leaves
+   "Merge remote-tracking branch '...'", and `dev` carries both those and
+   real ones; the contrast is what reads as careless to a stranger. Say what
+   the merge brings in.
 
 **On `dev`, EVERYTHING carries the `D`** — the source constant
 (`SNAPSMACK_VERSION` / `SNAPSMACK_VERSION_SHORT` = `X.Y.ZD`), the changelog
