@@ -7,8 +7,11 @@ record why so nobody adds them later thinking they were forgotten.
 
 DATE RANGE is absent because img_date is empty on every one of the 3480 rows
 across all four catalogues on this machine. A date filter would match nothing.
-SITE is absent because a site is a whole catalogue file, not a column on a row,
-so there is nothing to sort within one view.
+SITE was absent because a site is a whole catalogue file, not a column on a
+row, so there is nothing to SORT by within one view. That half still holds; the
+conclusion drawn from it did not. On 30 October 2026 the owner said COLD
+STORAGE "is unusable without" a site filter, and choosing WHICH CATALOGUE to
+read needs no column at all. See test_cold_storage_site_filter.py.
 
 The two functions under test are deliberately STATIC on StorageMode, so the
 filtering and ordering can be tested without constructing a Qt widget. The
