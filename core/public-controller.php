@@ -293,8 +293,13 @@ function snapsmack_grid_landing_items(SnapPublicRepository $repository, array $s
         $item['presentation_title'] = (string)($item['title'] ?? $item['img_title'] ?? '');
         // Layout engines need the photograph's native shape, but strict skins
         // may only print bounded presentation values prepared by the CMS.
-        $item['presentation_width'] = max(1, (int)($item['img_width'] ?? 3));
-        $item['presentation_height'] = max(1, (int)($item['img_height'] ?? 2));
+        //
+        // A THIRD SITE WITH THE SAME FAULT, found by the test for the other
+        // two rather than by reading: the same max(1, ... ?? 3) shape, so a
+        // stored 0 became one pixel here as well and every grid-frame skin got
+        // a square where this line asks for 3/2.
+        [$item['presentation_width'], $item['presentation_height']] =
+            snapsmack_layout_dimensions($item, 3, 2);
         $item['is_carousel'] = (int)($item['image_count'] ?? 0) > 1;
     }
     unset($item);
@@ -312,6 +317,41 @@ function snapsmack_grid_presentation_image(array $item, string $skin): string
 }
 
 /** Pack a complete photograph inventory into bounded justified-layout pages. */
+/**
+ * The pixel dimensions to lay a photograph out at, and what to do when there
+ * are none.
+ *
+ * ONE PLACE, because there were two and they disagreed with a third. The two
+ * layout paths below each read the stored size as
+ *
+ *     max(1, (int)($item['img_width'] ?? <fallback>))
+ *
+ * and ?? is null-coalescing while the schema says img_width int DEFAULT '0'
+ * (database/schema/snapsmack_canonical.sql:111). So on a real install the key
+ * is PRESENT and holds 0, the ?? never fires, max(1, 0) gives 1, and the tile
+ * is laid out 1/1. The fallback each path asked for was unreachable code.
+ * Measured: 24 published photographs on photowalk.ing hold 0x0 (SS-1046), and
+ * every one of them drew as a square.
+ *
+ * Meanwhile core/skin-render-helpers.php:313 and core/mayhem-data.php:156
+ * already treated a non-positive value as UNKNOWN and emitted nothing. This
+ * makes the layout paths agree with that: unknown means the caller's declared
+ * fallback, not one pixel.
+ *
+ * A HALF-KNOWN PAIR IS UNKNOWN TOO. A width with no height gives no ratio, so
+ * it takes the fallback rather than being combined with a 1.
+ *
+ * @return array{0:int,1:int} width and height, both guaranteed > 0 as long as
+ *                            the caller's fallback is.
+ */
+function snapsmack_layout_dimensions(array $item, int $fallbackWidth, int $fallbackHeight): array
+{
+    $width  = (int)($item['img_width'] ?? 0);
+    $height = (int)($item['img_height'] ?? 0);
+    if ($width > 0 && $height > 0) return [$width, $height];
+    return [$fallbackWidth, $fallbackHeight];
+}
+
 function snapsmack_justified_rows(array $items, array $settings, int $page): array
 {
     $targetHeight = max(80, min(600, (int)($settings['justified_row_height'] ?? 240)));
@@ -321,8 +361,10 @@ function snapsmack_justified_rows(array $items, array $settings, int $page): arr
     $row = [];
     $scaledWidth = 0.0;
     foreach ($items as $item) {
-        $width = max(1, (int)($item['img_width'] ?? 400));
-        $height = max(1, (int)($item['img_height'] ?? 400));
+        // 400/400 is square, so this path looked the same before and after the
+        // repair; it goes through the shared rule anyway, or a fallback changed
+        // later would bring the fault back here in silence.
+        [$width, $height] = snapsmack_layout_dimensions($item, 400, 400);
         $item['presentation_aspect'] = $width / $height;
         $item['presentation_flex'] = (int)round($item['presentation_aspect'] * 100);
         $row[] = $item;
@@ -546,8 +588,8 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         if ($skin === 'glide') {
             $rows = array_fill(0, 9, []);
             foreach ($items as $index => $item) {
-                $width = max(1, (int)($item['img_width'] ?? 3));
-                $height = max(1, (int)($item['img_height'] ?? 2));
+                // 3/2 is what this branch has always asked for and never got.
+                [$width, $height] = snapsmack_layout_dimensions($item, 3, 2);
                 $item['presentation_aspect'] = $width . '/' . $height;
                 $items[$index] = $item;
                 $rows[$index % 9][] = $item;
