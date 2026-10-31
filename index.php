@@ -340,6 +340,11 @@ try {
         require_once __DIR__ . '/core/skin-view-contract.php';
         require_once __DIR__ . '/core/skin-presentation.php';
         $_public_aliases = $skin_view['route_aliases'] ?? [];
+        // Ask the owner-content question BEFORE the canonicalizer below, not
+        // after. snapsmack_public_runtime() further down also asks it, but it
+        // runs AFTER this block, so the redirect was being decided on the
+        // default answer. Muse caught the same shape on the SMACKTALK path.
+        snapsmack_public_archive_slug_taken($pdo);
         $_legacy_public_view = strtolower(trim((string)($_GET['view'] ?? '')));
         if ($_legacy_public_view !== '' && !defined('SNAPSMACK_INTERNAL_ARCHIVE_DISPATCH')) {
             if (($settings['site_mode'] ?? '') === 'carousel' && $_legacy_public_view === 'archive') {

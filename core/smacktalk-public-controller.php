@@ -21,6 +21,20 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     $requested_slug = trim((string)($request['requested_slug'] ?? ''));
     $route_aliases = is_array($request['route_aliases'] ?? null) ? $request['route_aliases'] : [];
 
+    // OWNER CONTENT WINS HERE TOO. Muse caught this in review and he was
+    // right: the canonicalization below asks for the canonical archive slug,
+    // and that answer depends on whether owner content owns the word
+    // 'archive'. This function is reached straight from index.php and NEVER
+    // goes through snapsmack_public_runtime(), which was the only place that
+    // asked the question -- so on this path the answer defaulted to "nothing
+    // in the way" and an old address could be sent to /archive, which on a
+    // colliding site serves the OWNER'S PAGE. The archive would then be
+    // reachable at no address at all.
+    // That is the mirror image of the fault the guard was added to prevent,
+    // and just as bad: neither the owner's page nor his archive may vanish.
+    // Asked once here, with the handle this function already receives.
+    snapsmack_public_archive_slug_taken($pdo);
+
     // Public navigation uses readable paths. Query-string controller routes
     // remain accepted only as compatibility entrances and canonicalize once.
     if ($requested_slug !== '' && isset($route_aliases[$requested_slug])) {
