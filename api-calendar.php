@@ -68,7 +68,18 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', $protocol . '://' . $host . '/');
 }
 
-$archive_url = BASE_URL . 'archive.php';
+// The calendar JSON hands this base out to every month link, so a legacy
+// value here put archive.php addresses on the public page no matter what the
+// rest of the CMS called canonical. Ask the one function that decides.
+// snapsmack_legacy_archive_target also keeps the carousel rule: a carousel
+// landing page already IS its archive, so it answers at the site root.
+require_once __DIR__ . '/core/public-route-aliases.php';
+snapsmack_public_archive_slug_taken($pdo);   // one answer for the whole request
+$archive_url = snapsmack_legacy_archive_target(
+    BASE_URL,
+    snapsmack_public_route_aliases($settings),
+    (string)($settings['site_mode'] ?? '')
+);
 
 // --- BUILD MONTH DATA ---
 $month_names = [

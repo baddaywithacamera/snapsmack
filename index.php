@@ -346,7 +346,11 @@ try {
                 header('Location: ' . BASE_URL, true, 301);
                 exit;
             }
-            $_public_alias_slug = array_search($_legacy_public_view, $_public_aliases, true);
+            // Ask the canonical function rather than the alias table directly,
+            // so ?view=archive lands on /archive like every other emitter.
+            // Fallback '' keeps the old guard: a view with no alias at all is
+            // still not redirected anywhere.
+            $_public_alias_slug = snapsmack_public_canonical_slug($_legacy_public_view, $_public_aliases, '');
             if (is_string($_public_alias_slug) && $_public_alias_slug !== '') {
                 header('Location: ' . rtrim(BASE_URL, '/') . '/' . rawurlencode($_public_alias_slug), true, 301);
                 exit;

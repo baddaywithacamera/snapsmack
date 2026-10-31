@@ -59,16 +59,34 @@ archive_loop_check(
     'Address comparison depends on query parameter order, so a reordered query reads as a different page.'
 );
 
-// A real redirect must still happen. A renamed menu item means a different
-// path, and that is the case this block exists to serve.
+// A real redirect must still happen, and this block exists to prove the guard
+// has not gone so far that it suppresses one.
+//
+// SS-1135 CHANGED WHICH ADDRESS IS CANONICAL, so it changed the fixture this
+// needs, not the property. The target used to be the label-derived slug, so a
+// site whose menu said "Gallery" gave /gallery and differed from /archive by
+// the PATH. Sean's ruling, 31 October 2026: the canonical archive address is
+// /archive on every site, whatever the menu says. So the legitimate redirect
+// to measure is the one FROM THE LEGACY FILE: /archive.php asks for the target
+// and must be carried to /archive, query intact.
 $aliased = snapsmack_legacy_archive_target($base, ['gallery' => 'archive'], '', 'page=2');
 archive_loop_check(
-    $aliased === 'https://example.test/gallery?page=2',
-    'A renamed archive menu item no longer carries the reader to its clean address.'
+    $aliased === 'https://example.test/archive?page=2',
+    'The canonical archive address is no longer /archive, or the page was dropped on the way.'
 );
 archive_loop_check(
-    !snapsmack_is_same_address($aliased, '/archive', 'page=2'),
-    'A redirect to a DIFFERENT path is being suppressed as a loop; the guard has gone too far.'
+    !snapsmack_is_same_address($aliased, '/archive.php', 'page=2'),
+    'A redirect from the legacy file to the canonical address is being suppressed as a loop; '
+    . 'the guard has gone too far.'
+);
+// AND THE SELF-REDIRECT IS STILL REFUSED, which is the actual loop. An
+// /archive request that reaches archive.php on a site whose .htaccess still
+// carries the old rewrite must RENDER, never bounce to itself. Six live sites
+// answered /archive.php with an endless 301 in October because this held the
+// other way.
+archive_loop_check(
+    snapsmack_is_same_address($aliased, '/archive', 'page=2'),
+    'An /archive request reaching the legacy file would redirect to itself.'
 );
 
 // And a differing query is still a real move.
