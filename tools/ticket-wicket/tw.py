@@ -101,9 +101,38 @@ def cmd_show(args):
     return 0
 
 
+def _body_from_args(args):
+    """The body text, from --body or --body-file.
+
+    SS-1133. --body puts the WHOLE body on the command line, and Windows caps
+    a command line near 32767 characters. SS-1013's body is 30149 and was
+    already unamendable: the attempt raised an OS exception part-way through,
+    which is worse than a refusal, because a caller that does not check its
+    exit status loses the text and reports success. On a record-keeping tool a
+    silent loss is the worst available failure -- the ticket looks updated, the
+    evidence is gone, and nobody knows to look.
+
+    The tickets that most need updating are the longest ones: the audit tickets
+    where evidence accumulates. Those are exactly the ones the limit refuses.
+
+    --body-file was already documented before it existed: the wrapped-line
+    refusal in cmd_triage tells the reader to run `--body-file draft.txt`. This
+    makes that true. `tw reply` has carried --text-file all along, so the
+    pattern is the tool's own.
+    """
+    path = getattr(args, "body_file", "") or ""
+    if path:
+        if getattr(args, "body", ""):
+            print("Pass --body or --body-file, not both.", file=sys.stderr)
+            raise SystemExit(2)
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    return getattr(args, "body", "") or ""
+
+
 def cmd_new(args):
     s = _store(args)
-    t = s.create(title=args.title, body=args.body, reporter=args.reporter,
+    t = s.create(title=args.title, body=_body_from_args(args), reporter=args.reporter,
                  reporter_channel=args.channel, original=args.original,
                  security=args.security, data_at_risk=args.data_at_risk,
                  usability=args.usability, affected=args.affected, pulse=args.pulse)
@@ -119,7 +148,8 @@ def cmd_triage(args):
     if args.usability: fields["usability"] = args.usability
     if args.affected is not None: fields["affected"] = args.affected
     if args.pulse: fields["pulse"] = True
-    if args.body: fields["body"] = args.body
+    _triage_body = _body_from_args(args)
+    if _triage_body: fields["body"] = _triage_body
     fields["state"] = model.TRIAGED
     t = s.update(args.id, **fields)
     note = f"{t.id} is {t.band}"
@@ -581,6 +611,8 @@ def build_parser():
 
     n = sub.add_parser("new")
     n.add_argument("--title", required=True); n.add_argument("--body", default="")
+    n.add_argument("--body-file", default="",
+                   help="read the body from a file instead of the command line (SS-1133)")
     n.add_argument("--reporter", default=""); n.add_argument("--channel", default="")
     n.add_argument("--original", default="")
     n.add_argument("--security", action="store_true")
@@ -599,6 +631,8 @@ def build_parser():
     tr.add_argument("--affected", type=int, default=None)
     tr.add_argument("--pulse", action="store_true")
     tr.add_argument("--body", default="", help="the anonymised public description")
+    tr.add_argument("--body-file", default="",
+                    help="read the body from a file; the only safe way to amend a long ticket (SS-1133)")
     tr.set_defaults(func=cmd_triage)
 
     po = sub.add_parser("post"); po.add_argument("id")
