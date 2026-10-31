@@ -9,7 +9,9 @@ declare(strict_types=1);
  *
  * A forum post could carry up to eight images and had no way to say where any
  * of them belonged. The body was rendered as nl2br(htmlspecialchars($body))
- * and every picture was stacked underneath it, in upload order. Fine for "here
+ * and every picture was stacked underneath it, in upload order. (The nl2br is
+ * gone now -- see snapsmack_forum_post_body below for why it doubled every
+ * newline -- but the escaping is unchanged.) Fine for "here
  * is what I see". Useless for three steps with a picture after each one, which
  * is most of what a support board is for.
  *
@@ -61,8 +63,24 @@ if (!function_exists('snapsmack_forum_post_body')) {
      *
      * The body is escaped FIRST and the placeholders are substituted into the
      * escaped text, so nothing an author types can become markup. The only
-     * HTML this function emits is the <br> from nl2br and the figure it builds
-     * itself from an attachment the API already validated.
+     * HTML this function emits is the figure it builds itself from an
+     * attachment the API already validated.
+     *
+     * NEWLINES ARE NOT TOUCHED, and that is a change. This used to wrap the
+     * escaped text in nl2br(). Both screens that show a post body set
+     * white-space: pre-wrap on the element around it -- .forum-post__body in
+     * assets/css/admin-theme-geometry-master.css and .scf-post__body in
+     * smack-central/sc-forum.php -- and pre-wrap already honours the newline.
+     * So every newline was rendered TWICE: once by the CSS, once by the <br>.
+     *
+     * Measured in a browser at a 760px column, with the production rule read
+     * out of the stylesheet: a body of 6 source lines rendered as 12 line
+     * boxes. With nl2br gone it renders as 6. That doubling is what a reader
+     * sees as a blank line after every wrapped line, which made a hard-wrapped
+     * post look like one-line paragraphs with gaps between them.
+     *
+     * It also means the fix reaches the posts that are already on the board.
+     * Nothing has to be edited; they render correctly the moment this ships.
      *
      * @param array $attachments The post's attachments as the API returns
      *                           them: a list of ['url' => ..., 'alt' => ...].
@@ -70,7 +88,7 @@ if (!function_exists('snapsmack_forum_post_body')) {
     function snapsmack_forum_post_body(string $body, array $attachments): string
     {
         $attachments = array_values($attachments);
-        $escaped = nl2br(htmlspecialchars($body, ENT_QUOTES, 'UTF-8'));
+        $escaped = htmlspecialchars($body, ENT_QUOTES, 'UTF-8');
 
         return (string)preg_replace_callback(
             '/\[img:(\d{1,2})\]/',
