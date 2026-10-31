@@ -8,6 +8,9 @@
  * install.php for database setup.
  *
  * Requirements: PHP 8.3+, cURL or allow_url_fopen, ZipArchive, sodium.
+ * sodium is REQUIRED, not preferred: without it the Ed25519 signature
+ * cannot be checked, and this deployer refuses rather than installing a
+ * package it cannot prove came from us. Manual installation still works.
  * This file self-deletes after a successful deploy.
  */
 
@@ -96,10 +99,23 @@ if (is_dir($target_dir . '/core')
 }
 
 // --- DETECT CAPABILITIES ---
+/**
+ * Is the sodium extension here?
+ *
+ * A function rather than function_exists() at each call site, for one reason:
+ * without it the refusal below cannot be exercised. Every machine this is
+ * written and tested on HAS sodium, so the branch that decides what happens
+ * on a host without it was unreachable from a test and went unverified for
+ * the whole life of this file. One seam, and the refusal can be run.
+ */
+function setup_has_sodium(): bool {
+    return function_exists('sodium_crypto_sign_verify_detached');
+}
+
 $has_curl   = function_exists('curl_init');
 $has_fopen  = ini_get('allow_url_fopen');
 $has_zip    = class_exists('ZipArchive');
-$has_sodium = function_exists('sodium_crypto_sign_verify_detached');
+$has_sodium = setup_has_sodium();
 
 $error   = '';
 $success = false;
@@ -168,8 +184,26 @@ function setup_verify(string $file_path, string $expected_sha256, string $signat
         return 'SHA-256 checksum mismatch — the download may be corrupt or tampered with.';
     }
 
-    if (!function_exists('sodium_crypto_sign_verify_detached')) {
-        return true; // sodium unavailable — checksum passed, skip signature
+    // The checksum passing is not verification. The expected hash arrives in
+    // the release manifest, over the network, from the same host as the
+    // download: anyone able to serve a tampered package can serve the hash
+    // that matches it, and the comparison above then passes. The Ed25519
+    // signature is the only part of this that proves the package came from
+    // whoever holds the release key, because that public key is pinned in
+    // this file and does not travel with the manifest.
+    //
+    // So a missing sodium extension does not weaken verification slightly --
+    // it removes it. This used to return true here, which installed an
+    // unverified package and said nothing. The deployer's whole job is to put
+    // unknown code from the network onto a server; if it cannot prove where
+    // that code came from, it stops.
+    if (!setup_has_sodium()) {
+        return 'This server has no sodium PHP extension, so the Ed25519 '
+             . 'signature on this package cannot be checked. The SHA-256 '
+             . 'checksum matched, but it arrives from the same place as the '
+             . 'download and so proves nothing on its own. Nothing has been '
+             . 'installed. Ask your host to enable the sodium extension, or '
+             . 'install the release by hand from snapsmack.ca/releases.';
     }
 
     if (empty($signature_hex) || strlen($signature_hex) !== 128) {
@@ -197,6 +231,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
         $error = 'ZipArchive is not available on this server. Contact your host to enable the zip PHP extension.';
     } elseif (!$has_curl && !$has_fopen) {
         $error = 'No HTTP fetch method available. This server has no cURL and allow_url_fopen is disabled.';
+    } elseif (!setup_has_sodium()) {
+        // Checked here as well as in setup_verify, so a host that cannot
+        // verify a package never downloads one in the first place.
+        $error = 'This server has no sodium PHP extension, so a downloaded release cannot have its Ed25519 signature verified — and SnapSmack will not install code it cannot prove came from us. Nothing has been downloaded. Ask your host to enable the sodium extension, or install by hand from snapsmack.ca/releases.';
     } else {
 
         // Step 1: Fetch release manifest
@@ -470,7 +508,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
         </li>
         <li>
             <span>Sodium (signature verification)</span>
-            <span class="<?php echo $has_sodium ? 'pass' : 'warn'; ?>"><?php echo $has_sodium ? 'AVAILABLE' : 'NOT FOUND — checksum only'; ?></span>
+            <span class="<?php echo $has_sodium ? 'pass' : 'fail'; ?>"><?php echo $has_sodium ? 'AVAILABLE' : 'REQUIRED — NOT FOUND'; ?></span>
         </li>
     </ul>
 
@@ -482,10 +520,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
         self-hosted site gets broken into.</p>
 
     <?php if (!$has_sodium): ?>
-        <div class="warn-box">Sodium extension not found. The release package will be verified by SHA-256 checksum only — Ed25519 signature verification will be skipped. Ask your host to enable the sodium PHP extension for full verification.</div>
+        <div class="error-box">Sodium extension not found, so automatic installation is switched off. SnapSmack will not install a release whose signature it cannot check: the SHA-256 checksum arrives from the same place as the download, so on its own it proves nothing, and the Ed25519 signature is the part that proves where the package came from. Ask your host to enable the sodium PHP extension &mdash; or install by hand from snapsmack.ca/releases, below.</div>
     <?php endif; ?>
 
-    <?php if (($has_curl || $has_fopen) && $has_zip): ?>
+    <?php if (($has_curl || $has_fopen) && $has_zip && $has_sodium): ?>
         <form method="post">
             <input type="hidden" name="deploy" value="1">
             <button type="submit">Install SnapSmack</button>
