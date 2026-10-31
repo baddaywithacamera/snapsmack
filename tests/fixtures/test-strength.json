@@ -28,6 +28,7 @@
             2,
             2,
             2,
+            2,
             2
         ]
     },
@@ -1235,6 +1236,11 @@
             2
         ]
     },
+    "release-gate-remote-advice-regression.php": {
+        "assertions": 3,
+        "predicates": 6,
+        "thresholds": []
+    },
     "release-gate-scope-regression.php": {
         "assertions": 16,
         "predicates": 12,
@@ -1248,8 +1254,8 @@
         ]
     },
     "release-tag-rules-regression.php": {
-        "assertions": 25,
-        "predicates": 16,
+        "assertions": 39,
+        "predicates": 24,
         "thresholds": []
     },
     "remaining-public-control-authority-regression.php": {
@@ -1866,6 +1872,11 @@
     "updater-bounded-backup-regression.php": {
         "assertions": 1,
         "predicates": 9,
+        "thresholds": []
+    },
+    "updater-codename-quotes-regression.php": {
+        "assertions": 7,
+        "predicates": 6,
         "thresholds": []
     },
     "updater-opcache-invalidation-regression.php": {
