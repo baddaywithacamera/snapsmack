@@ -49,10 +49,29 @@ if (version_compare(PHP_VERSION, INSTALL_PHP_MINIMUM, '<')) {
 }
 
 // --- CONFIGURATION ---
-// Version is read from core/constants.php (always present in the release package).
-// Fallback hardcoded value is a safety net only — should never be needed.
-$installer_version       = '0.7.191';
-$installer_version_label = 'Alpha 0.7.191';
+// The version is READ from core/constants.php. There is deliberately no
+// fallback any more.
+//
+// SS-1078. This carried a hardcoded 0.7.191 -- a February 2026 number -- as a
+// "safety net" with a comment saying it should never be needed. That was an
+// assumption about the package enforced nowhere: the codebase gate below
+// checked core/parser.php and not this file, so an incomplete extraction
+// passed, kept the fallback, and the installer then GENERATED a new
+// core/constants.php declaring the site to be 0.7.191 on top of whatever code
+// was actually on disk.
+//
+// The worst of what followed was not the wrong number on screen. An update is
+// offered whenever the remote version is greater than the installed one, and
+// 0.7.670 is greater than 0.7.191 -- so a site running current code would be
+// told the old stable build was NEWER and would take it. The updater's one
+// protection, never going backwards, defeated by a version string that lies.
+//
+// Raising the number would have hidden the symptom and kept the fault: the
+// installer would still be guessing its own version. It cannot know what it is
+// installing without this file, so if the file is not there it stops. The gate
+// below now names it.
+$installer_version       = '';
+$installer_version_label = '';
 if (file_exists(__DIR__ . '/core/constants.php') && !defined('SNAPSMACK_VERSION_SHORT')) {
     require_once __DIR__ . '/core/constants.php';
 }
@@ -142,7 +161,31 @@ register_shutdown_function(static function () use ($installer_state_path): void 
 // --- CODEBASE CHECK ---
 // The installer configures an existing codebase — it doesn't deploy one.
 // If key files are missing, redirect to setup.php (the bootstrap deployer).
-if (!file_exists(__DIR__ . '/core/parser.php') || !is_dir(__DIR__ . '/core')) {
+// SS-1078: core/constants.php is checked HERE, beside core/parser.php, because
+// it is the file the installer reads its own version from. A tree without it
+// is an incomplete extraction, and the installer must say so rather than
+// invent a version and write it to disk.
+if (!file_exists(__DIR__ . '/core/parser.php') || !is_dir(__DIR__ . '/core')
+    || !file_exists(__DIR__ . '/core/constants.php') || $installer_version === '') {
+    // A tree WITH core/ but missing constants.php is not a missing codebase,
+    // it is a broken one. Sending it to the bootstrap deployer would be wrong
+    // twice over: the deployer refuses outright when core/ exists, so the
+    // operator would bounce between two files, neither of which explains it.
+    if (is_dir(__DIR__ . '/core')
+        && (!file_exists(__DIR__ . '/core/constants.php') || $installer_version === '')) {
+        die('<!DOCTYPE html><html><head><meta charset="utf-8"><title>SnapSmack</title></head>'
+          . '<body style="background:#111;color:#eee;font-family:monospace;padding:60px;text-align:center;">'
+          . '<h1>INCOMPLETE EXTRACTION</h1>'
+          . '<p><code>core/constants.php</code> is missing or unreadable, so this installer '
+          . 'cannot tell which version of SnapSmack it is installing.</p>'
+          . '<p>Nothing has been installed and nothing has been written. '
+          . 'Delete this directory, extract the release package again, and open '
+          . '<code>install.php</code>.</p>'
+          . '<p style="color:#888">The installer will not guess a version: a wrong one '
+          . 'would be published to the fediverse and to your hub, and would make the '
+          . 'updater offer an older build as an upgrade.</p>'
+          . '</body></html>');
+    }
     if (file_exists(__DIR__ . '/setup.php')) {
         header('Location: setup.php');
         exit;
