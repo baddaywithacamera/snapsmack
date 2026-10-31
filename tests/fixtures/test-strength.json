@@ -159,6 +159,13 @@
         "predicates": 2,
         "thresholds": []
     },
+    "bootstrap-can-install-the-dev-channel.php": {
+        "assertions": 26,
+        "predicates": 25,
+        "thresholds": [
+            2
+        ]
+    },
     "brevo-test-send-regression.php": {
         "assertions": 9,
         "predicates": 0,
