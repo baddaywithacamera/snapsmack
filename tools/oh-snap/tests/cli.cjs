@@ -12,6 +12,18 @@ assert.ok(info.result.data.user_css.includes('border: 2px'));assert.equal(info.r
 assert.equal(call('validate','--project',edited).code,0);
 const png=path.join(tmp,'preview.png');assert.equal(call('render','--project',edited,'--view','archive','--width','390','--output',png).code,0);
 const bytes=fs.readFileSync(png);assert.equal(bytes.readUInt32BE(16),390);assert.equal(bytes.readUInt32BE(20),1000);
+for(const [width,height] of [[768,1000],[1280,1000],[1024,768],[1440,1080],[1920,1080],[2560,1440]]){
+ const target=path.join(tmp,`preview-${width}-${height}.png`);
+ const rendered=call('render','--project',edited,'--width',String(width),'--height',String(height),'--output',target);
+ assert.equal(rendered.code,0,JSON.stringify(rendered));
+ const image=fs.readFileSync(target);assert.equal(image.readUInt32BE(16),width);assert.equal(image.readUInt32BE(20),height);
+ assert.equal(rendered.result.data.height,height);
+}
+for(const [width,height] of [['319','1000'],['3841','1000'],['1920','239'],['1920','2161'],['1920.5','1080'],['NaN','1080'],['1920','Infinity']]){
+ const target=path.join(tmp,'invalid-size.png');
+ assert.notEqual(call('render','--project',edited,'--width',width,'--height',height,'--output',target).code,0);
+ assert.ok(!fs.existsSync(target));
+}
 const zip=path.join(tmp,'skin.zip');assert.equal(call('export','--project',edited,'--output',zip).code,0);assert.equal(fs.readFileSync(zip).readUInt32LE(),0x04034b50);
 // Stored ZIP entries can be independently decoded without trusting the writer.
 const archive=fs.readFileSync(zip);let offset=0;const files={};
@@ -22,5 +34,5 @@ assert.notEqual(call('edit','--project',project,'--input',edit,'--output',path.j
 assert.ok(!fs.existsSync(path.join(tmp,'bad.ohsnap')));
 const before=fs.readFileSync(project);assert.notEqual(call('edit','--project',project,'--input',edit,'--output',project,'--overwrite').code,0);assert.deepEqual(fs.readFileSync(project),before);
 assert.notEqual(call('inspect','--project',project,'--result',project).code,0);assert.deepEqual(fs.readFileSync(project),before);
-console.log(JSON.stringify({passed:10,evidence:tmp,commands:['new','edit','inspect','validate','render','export'],files:Object.keys(files)}));
+console.log(JSON.stringify({passed:23,evidence:tmp,commands:['new','edit','inspect','validate','render','export'],files:Object.keys(files)}));
 // ===== SNAPSMACK EOF =====
