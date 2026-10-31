@@ -90,6 +90,63 @@ function gf_stylesheets(string $root, string $skin, array $manifest, string $kin
 $hero = gf_photo($out, 1600, 1067);
 $tile = gf_photo($out, 1200, 800);
 $port = gf_photo($out, 800, 1200);
+$sqre = gf_photo($out, 1000, 1000);
+
+/**
+ * GLIDE's landing wall, built the way the controller builds it.
+ *
+ * WHY THIS EXISTS. The harness rendered every skin's archive and static page
+ * and NO skin's landing, so the one page GLIDE actually is -- a full-window
+ * wall of drifting rows -- was never measured. SS-1093 lived there unseen: the
+ * engine wraps each row at a quarter of the track's real width, which was
+ * correct when the markup repeated each row four times and has been wrong
+ * since it stopped. No check could see it because no fixture drew the wall.
+ *
+ * The row dealing and the per-tile aspect are deliberately a MIRROR of
+ * core/public-controller.php, not an invention: nine rows, photographs dealt
+ * round-robin, and presentation_aspect written as width/height with a 3/2
+ * fallback when a dimension is missing. If the controller changes, this has to
+ * change with it, and a fixture that quietly disagrees with the runtime is
+ * worse than no fixture.
+ *
+ * 196 photographs, because that is what the site this was asked about holds.
+ * Only four SVG files are written; the items reference them by name.
+ */
+function gf_glide_wall(string $tile, string $port, string $sqre): array {
+    $items = [];
+    foreach (range(1, 196) as $n) {
+        // A FEW WITH NO STORED DIMENSIONS, on purpose. The controller falls
+        // back to 3/2 for those, and the stylesheet then object-fit covers the
+        // photograph into a box that is not its shape -- so a portrait with no
+        // recorded size is cropped hard. That is the same fault repaired in
+        // the search results in 964D, and it has to be visible here.
+        $missing = ($n % 7 === 0);
+        if ($n % 3 === 0)      { $src = $port; $w = 800;  $h = 1200; }
+        elseif ($n % 5 === 0)  { $src = $sqre; $w = 1000; $h = 1000; }
+        else                   { $src = $tile; $w = 1200; $h = 800;  }
+
+        $item = [
+            'id' => $n, 'img_slug' => 'photograph-' . $n,
+            'img_title' => 'Photograph ' . $n,
+            'img_alt' => 'Photograph ' . $n,
+            'img_file' => $src, 'img_thumb_aspect' => $src, 'img_thumb_square' => $src,
+            'url' => '/photograph-' . $n,
+        ];
+        if (!$missing) { $item['img_width'] = $w; $item['img_height'] = $h; }
+
+        // EXACTLY core/public-controller.php: max(1, (int)(width ?? 3)) over
+        // max(1, (int)(height ?? 2)), printed as "w/h".
+        $aw = max(1, (int)($item['img_width'] ?? 3));
+        $ah = max(1, (int)($item['img_height'] ?? 2));
+        $item['presentation_aspect'] = $aw . '/' . $ah;
+        $items[] = $item;
+    }
+    $rows = array_fill(0, 9, []);
+    foreach ($items as $index => $item) $rows[$index % 9][] = $item;
+    return ['items' => $items, 'rows' => $rows];
+}
+
+$gfWall = gf_glide_wall($tile, $port, $sqre);
 
 $items = [];
 foreach (range(1, 8) as $n) {
@@ -127,6 +184,17 @@ $kinds = [
         'next_page' => 2, 'has_more' => true, 'total_count' => 60, 'total_pages' => 3,
         'rendered_content' => snapsmack_trusted_html('<p>Some words.</p>'),
     ],
+    // Rendered ONLY for skins whose manifest declares features.has_landing --
+    // see the skip in the loop below. Every other skin would fall into its
+    // layout's catch-all branch and write a page that looks like a landing and
+    // is not one, which is exactly the kind of fixture that teaches a wrong
+    // lesson.
+    'landing' => [
+        'kind' => 'landing', 'page_title' => '',
+        'rows' => $gfWall['rows'], 'items' => $gfWall['items'], 'item' => [],
+        'total_count' => 196,
+        'rendered_content' => snapsmack_trusted_html(''),
+    ],
 ];
 
 $nav = [
@@ -145,6 +213,10 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
     $manifest = json_decode((string)file_get_contents($manifestFile), true) ?: [];
 
     foreach ($kinds as $name => $response) {
+        // A landing page belongs only to a skin that declares one. The flag is
+        // the same one core/public-controller.php reads to decide whether to
+        // give the site a landing feed at all, so this matches the runtime.
+        if ($name === 'landing' && empty($manifest['features']['has_landing'])) continue;
         $sheets = gf_stylesheets($root, $skin, $manifest, $name);
         $css = '';
         foreach ($sheets as $p) {
