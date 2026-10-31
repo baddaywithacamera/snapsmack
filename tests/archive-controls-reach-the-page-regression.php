@@ -259,8 +259,18 @@ ac_test(str_contains($row, 'aria-pressed="false"'),
 ac_test(substr_count($row, 'aria-label="Thumbs Layout"') === 1
     && substr_count($row, 'aria-label="Masonry / Justified Layout"') === 1,
     'each button is named, not left as a bare letter');
-ac_test(str_contains($row, 'href="https://example.test/pictures?layout=thumbs"'),
-    "the link is the site's own archive alias, not the literal /archive that caused the redirect loop");
+// SS-1135, Sean's ruling of 31 October 2026: the canonical archive address is
+// /archive on every site, whatever the menu item is labelled -- here
+// "Pictures". This assertion used to require the label-derived alias and to
+// treat a literal /archive as the thing that caused the October redirect loop.
+// THAT PREMISE NO LONGER HOLDS, and the reason is worth keeping: the loop came
+// from /archive being handed back to archive.php by a rewrite rule while no
+// alias mapped it. Both halves are now fixed -- the front controller resolves
+// a bare /archive with or without an alias (core/public-runtime.php), and
+// neither install.php nor core/htaccess-template routes it to the legacy file.
+// The site's own alias still resolves, so no existing link breaks.
+ac_test(str_contains($row, 'href="https://example.test/archive?layout=thumbs"'),
+    'the link is the canonical /archive, which the front controller resolves on every site');
 foreach (snapsmack_archive_layout_link_drops() as $drop) {
     ac_test(!preg_match('/layout=[a-z]+&(amp;)?' . preg_quote($drop, '/') . '=/', $row),
         "a layout link carries no {$drop}=: switching grids does not keep you inside a filter");

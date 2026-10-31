@@ -25,6 +25,34 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     // remain accepted only as compatibility entrances and canonicalize once.
     if ($requested_slug !== '' && isset($route_aliases[$requested_slug])) {
         $view = (string)$route_aliases[$requested_slug];
+        // AN OLD ADDRESS KEEPS WORKING AND ARRIVES AT THE CANONICAL ONE.
+        // /archive-view and /images are real aliases and still resolve; they
+        // now send the visitor on to /archive rather than being the
+        // destination. Sean's requirement is that an old URL must NEVER 404,
+        // and a 301 is how a bookmark, an old post and a federated reference
+        // all keep working once the canonical form moves.
+        //
+        // LOOP-SAFE BY CONSTRUCTION, which this file has to care about: six
+        // live sites answered /archive.php with an endless 301 in October. The
+        // canonical slug is a FIXED POINT -- asking for the canonical returns
+        // itself -- so this fires at most once, and on a default-label site
+        // /archive is not an alias key at all, so it never enters this branch.
+        //
+        // ARCHIVE ONLY, DELIBERATELY. The same reasoning would redirect
+        // /albums to a site's label-derived /galleries, which nobody asked
+        // for and which would change four other views at a release tip. The
+        // ruling was about the archive; the blast radius matches the ruling.
+        if ($view === 'archive') {
+            $_canonical = snapsmack_public_canonical_slug($view, $route_aliases, $view);
+            if ($_canonical !== $requested_slug) {
+                $target = rtrim($base, '/') . '/' . rawurlencode($_canonical);
+                $query = [];
+                if (!empty($request['category'])) $query['category'] = max(0, (int)$request['category']);
+                if (!empty($request['album'])) $query['album'] = max(0, (int)$request['album']);
+                if ($query) $target .= '?' . http_build_query($query);
+                return ['handled' => true, 'redirect' => $target, 'redirect_status' => 301];
+            }
+        }
         $requested_slug = '';
     } elseif ($view !== '' && $requested_slug === '' && in_array($view, $route_aliases, true)) {
         $target = snapsmack_public_route_url($base, $route_aliases, $view, $view);

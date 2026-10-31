@@ -103,10 +103,97 @@ function snapsmack_public_route_aliases(array $settings, array $manifest = []): 
     return $aliases;
 }
 
-function snapsmack_public_route_url(string $base, array $aliases, string $view, string $fallback): string
+/**
+ * The canonical public segment for a view.
+ *
+ * SEAN'S RULING, 31 October 2026: the archive's public address is /archive, on
+ * every site and every skin. He had asked more than once and been told it was
+ * not possible, which was wrong -- it was never a decision at all. The segment
+ * is the navigation LABEL slugified (see the walk below), and the label the CMS
+ * itself supplies by default is the words "Archive View"
+ * (core/skin-view-model.php), so the automatic result was /archive-view.
+ * Nobody chose that URL and nobody refused him the short one.
+ *
+ * ONLY THE DIRECTION WAS WRONG. /archive already RESOLVES everywhere, because
+ * core/public-runtime.php honours a bare path that is the name of a route with
+ * or without a menu alias. The label-derived alias was merely emitted as the
+ * canonical one, so every link pointed at the long form and the short form
+ * redirected away to it. This function is the one place that decides which
+ * form is canonical, so it is the one place that had to change.
+ *
+ * THREE THINGS IT DELIBERATELY DOES NOT DO.
+ *   It does not claim /archive on a site with no archive view. The alias table
+ *   is built from the menu, and the builder skips archive items on a carousel
+ *   landing page because that page already IS its archive, so those sites keep
+ *   their existing behaviour untouched.
+ *   It does not take a segment OWNER CONTENT already owns. $owner_slug_taken
+ *   is answered by the caller, which has the database. Owner content wins:
+ *   making a page the owner wrote unreachable is worse than a long URL, and
+ *   that is Sean's standing instruction, not an inference.
+ *   It does not touch the SMACKTALK diary. A smacktalk site maps its 'archive'
+ *   menu type to the 'diary' view; only the photograph wall is view 'archive'.
+ */
+/**
+ * Does owner content already own the segment 'archive' on this site?
+ *
+ * ANSWERED ONCE PER REQUEST AND REMEMBERED, because several emitters each need
+ * the same answer and they must not disagree: a sitemap that advertises
+ * /archive while the router hands /archive to the owner's page would be worse
+ * than either behaviour on its own.
+ *
+ * The first caller that has a database primes it; later callers may ask with
+ * no handle and get the remembered answer. With no handle and nothing
+ * remembered it answers false -- "nothing known to be in the way" -- which is
+ * the right default for an emitter, and is never the value the ROUTER acts on,
+ * because core/public-runtime.php primes this with a real handle before it
+ * resolves anything.
+ */
+function snapsmack_public_archive_slug_taken(?PDO $pdo = null): bool
 {
+    static $taken = null;
+    if ($taken !== null) return $taken;
+    if ($pdo === null) return false;
+    $taken = false;
+    try {
+        // A page the owner wrote, a photograph, or a post. Any of the three
+        // owning this word is enough to stand aside.
+        // ONE indexed lookup per request, not two, and not one per emitter.
+        // is_active = 1 on the page matches activePageBySlug: a page the owner
+        // has switched off is not reachable, so it is not in the way.
+        // The cost is stated plainly rather than hidden: this is one extra
+        // query on a page load, and it buys the guarantee that a page the
+        // owner wrote is never made unreachable by a reserved word.
+        $stmt = $pdo->prepare(
+            'SELECT 1 FROM snap_pages  WHERE slug     = ? AND is_active = 1
+             UNION ALL
+             SELECT 1 FROM snap_images WHERE img_slug = ?
+             LIMIT 1'
+        );
+        $stmt->execute(['archive', 'archive']);
+        $taken = ($stmt->fetchColumn() !== false);
+    } catch (\Throwable $e) {
+        // An older install missing a column must not lose its archive link.
+        $taken = false;
+    }
+    return $taken;
+}
+
+function snapsmack_public_canonical_slug(string $view, array $aliases, string $fallback,
+                                         ?bool $owner_slug_taken = null): string
+{
+    if ($owner_slug_taken === null) $owner_slug_taken = snapsmack_public_archive_slug_taken();
+    if ($view === 'archive' && !$owner_slug_taken && in_array('archive', $aliases, true)) {
+        return 'archive';
+    }
     $slug = array_search($view, $aliases, true);
     if (!is_string($slug) || $slug === '') $slug = $fallback;
+    return $slug;
+}
+
+function snapsmack_public_route_url(string $base, array $aliases, string $view, string $fallback,
+                                    ?bool $owner_slug_taken = null): string
+{
+    $slug = snapsmack_public_canonical_slug($view, $aliases, $fallback, $owner_slug_taken);
     return rtrim($base, '/') . '/' . rawurlencode($slug);
 }
 
@@ -154,10 +241,13 @@ function snapsmack_legacy_archive_target(string $base, array $aliases, string $s
 {
     // A carousel landing page already IS its archive.
     if ($site_mode === 'carousel') return $base;
-    $slug = array_search('archive', $aliases, true);
-    $target = (is_string($slug) && $slug !== '')
-        ? rtrim($base, '/') . '/' . rawurlencode($slug)
-        : rtrim($base, '/') . '/archive';
+    // ONE DEFINITION OF CANONICAL. This used to pick the label-derived alias
+    // itself, so archive.php could send a visitor somewhere the rest of the
+    // CMS no longer called canonical. It now asks the same function every
+    // other emitter asks, which is what makes /archive true everywhere rather
+    // than true in most places.
+    $target = rtrim($base, '/') . '/'
+        . rawurlencode(snapsmack_public_canonical_slug('archive', $aliases, 'archive'));
 
     // CARRY THE QUESTION. An album card links to /archive?album=232, and a
     // redirect that keeps only the path answers with the whole archive

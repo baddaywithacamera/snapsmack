@@ -79,9 +79,25 @@ function snapsmack_public_runtime_request(array $input): array
     // item had nothing mapping /archive to the archive -- which is why the
     // address fell back to a query string. The route names are a fixed, closed
     // list above; honouring them costs nothing and gives every site the plain
-    // address. A real page whose slug collides keeps winning, because 'resolve'
-    // below still runs for anything not in that list.
-    if ($slug !== '' && in_array(strtolower($slug), $routes, true)) {
+    // address.
+    //
+    // THE SENTENCE THAT USED TO END THIS COMMENT WAS FALSE. It claimed "a real
+    // page whose slug collides keeps winning, because 'resolve' below still
+    // runs for anything not in that list". It does not: this branch RETURNS
+    // before the 'resolve' branch, so a page or photograph slugged with a
+    // route name was already unreachable on every site -- silently, since
+    // nothing 404s and the route simply answers instead. Corrected rather
+    // than left, because the next reader would have trusted it.
+    //
+    // OWNER CONTENT WINS, which is Sean's standing instruction and the reason
+    // this is a guard and not a new feature. $input['owner_slug_taken'] is
+    // answered by snapsmack_public_runtime() below, which has the database.
+    // Scoped to the archive deliberately: that is the view the ruling was
+    // about, and widening it to albums, photo, post, page, blog, blogroll,
+    // collection and collections would change eight more routes at a release
+    // tip. The rest are logged, not quietly altered.
+    if ($slug !== '' && in_array(strtolower($slug), $routes, true)
+        && !(strtolower($slug) === 'archive' && !empty($input['owner_slug_taken']))) {
         return ['route' => strtolower($slug), 'page' => $input['page'] ?? 1,
             'category_id' => $input['category_id'] ?? 0, 'album_id' => $input['album_id'] ?? 0,
             'sort' => $input['sort'] ?? '', 'fragment' => $input['fragment'] ?? false];
@@ -128,6 +144,14 @@ function snapsmack_public_community_block(PDO $pdo, array $settings, array $item
 
 function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): array
 {
+    // OWNER CONTENT WINS over the reserved word 'archive'. Asked ONCE here,
+    // with a real database handle, before anything is resolved or emitted --
+    // and remembered for the rest of the request, so the router and the links
+    // it prints cannot disagree about which address the archive owns. A
+    // sitemap advertising /archive while /archive served the owner's page
+    // would be worse than either behaviour alone.
+    require_once __DIR__ . '/public-route-aliases.php';
+    $input['owner_slug_taken'] = snapsmack_public_archive_slug_taken($pdo);
     $request = snapsmack_public_parse_request(snapsmack_public_runtime_request($input));
     $repository = new SnapPublicRepository($pdo);
     $response = snapsmack_public_controller($repository, $request, $settings);
