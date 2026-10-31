@@ -70,6 +70,11 @@
             301
         ]
     },
+    "archive-collision-canonical-regression.php": {
+        "assertions": 14,
+        "predicates": 6,
+        "thresholds": []
+    },
     "archive-controls-reach-the-page-regression.php": {
         "assertions": 52,
         "predicates": 54,
