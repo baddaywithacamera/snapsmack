@@ -34,6 +34,7 @@ THERE IS NO `tw delete`. close, withdraw, merge. (GL-6.)
 import argparse
 import json
 import os
+import re
 import sys
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -338,6 +339,113 @@ def cmd_stale(args):
     return 0
 
 
+def _entry_field(entry, name):
+    """One field of an entry, whether it arrived as an Entry or a dict."""
+    if isinstance(entry, dict):
+        return entry.get(name) or ''
+    return getattr(entry, name, '') or ''
+
+
+def _last_published_index(ticket):
+    """Where in the log this ticket was last PUT on the board, or -1 if never.
+
+    AN INDEX, NOT A TIMESTAMP, and that is a correctness fix rather than a
+    style choice. store._audit() stamps every entry with
+    datetime.now().isoformat(timespec="seconds"), so a ticket posted and then
+    changed inside the SAME SECOND has two entries carrying the identical
+    time, and "changed after publication" asked as at > published is false.
+    Scripted work does exactly that: tw post followed by tw triage in one
+    shell line. The first version of this command compared timestamps and
+    silently reported such a ticket as up to date; its own tests caught it.
+
+    store.get() reads entries ORDER BY rowid_ and the log is append-only, so
+    the position in the list IS the order things happened. That cannot tie.
+
+    A forum REPLY counts as publication: it is an update the board carries. An
+    EMAIL reply must not, or a ticket answered privately would look published
+    while the thread still shows the original.
+    """
+    last = -1
+    for i, e in enumerate(ticket.entries or []):
+        kind = _entry_field(e, 'kind')
+        if kind == 'post' or (kind == 'reply' and _entry_field(e, 'channel') == 'forum'):
+            last = i
+    return last
+
+
+def _board_state(ticket, after_index):
+    """The state the BOARD still shows, read out of the audit trail.
+
+    store.update() records a change as "state: 'triaged' -> 'resolved'", so the
+    state as published is the OLD half of the FIRST state change after the last
+    publication. If nothing changed it, the board is current on that point and
+    this returns ''. No network, no re-fetch of the thread.
+    """
+    for e in (ticket.entries or [])[after_index + 1:]:
+        m = re.search(r"state: '([a-z]+)' -> '([a-z]+)'", _entry_field(e, 'text'))
+        if m:
+            return m.group(1)
+    return ''
+
+
+def cmd_forum_gap(args):
+    """Published tickets that have changed since the board last heard.
+
+    A ticket is published once and then keeps changing; nothing re-publishes
+    it, so the public board drifts away from the record. This counts the drift
+    rather than estimating it, and it is READ ONLY -- it builds no forum
+    client, reaches no network and posts nothing.
+    """
+    s = _store(args)
+    rows = []
+    for t in s.queue(open_only=False):
+        if not (t.forum_thread or 0):
+            continue
+        full = s.get(t.id) or t
+        at = _last_published_index(full)
+        if at < 0:
+            rows.append({'id': full.id, 'thread': full.forum_thread,
+                         'published': '', 'board_state': '', 'state': full.state,
+                         'changes': 0, 'security': bool(full.security),
+                         'note': 'carries a thread number but no post entry'})
+            continue
+        since = (full.entries or [])[at + 1:]
+        if not since:
+            continue
+        rows.append({
+            'id': full.id, 'thread': full.forum_thread,
+            'published': _entry_field((full.entries or [])[at], 'at'),
+            'board_state': _board_state(full, at), 'state': full.state,
+            'changes': len(since), 'security': bool(full.security), 'note': '',
+        })
+
+    rows.sort(key=lambda r: (-r['changes'], r['id']))
+    wrong = [r for r in rows if r['board_state'] and r['board_state'] != r['state']]
+    sec = [r for r in rows if r['security']]
+
+    lines = [
+        f"{len(rows)} published tickets have changed since the board last heard.",
+        f"{len(wrong)} of them show a STATE on the board that is no longer true.",
+        "",
+        "  %-9s %-7s %-11s %-10s %-8s %s" % (
+            'TICKET', 'THREAD', 'BOARD SAYS', 'NOW', 'CHANGES', 'LAST PUBLISHED'),
+    ]
+    for r in rows:
+        lines.append("  %-9s %-7s %-11s %-10s %-8s %s%s" % (
+            r['id'], r['thread'], r['board_state'] or '(same)', r['state'],
+            r['changes'], (r['published'] or '-')[:16],
+            '   SECURITY' if r['security'] else ''))
+    if sec:
+        lines += ["", f"{len(sec)} of these are security-flagged. They are NOT "
+                      "candidates for any standing permission: when a hole is "
+                      "disclosed is the owner's decision, every time."]
+    if not rows:
+        lines = ["Nothing has drifted. Every published ticket matches its thread."]
+
+    _out(args, rows, "\n".join(lines))
+    return 0
+
+
 def cmd_outbox(args):
     s = _store(args)
     rows = s.outbox(state=args.state)
@@ -463,6 +571,7 @@ def build_parser():
     mg = sub.add_parser("merge"); mg.add_argument("id")
     mg.add_argument("--into", required=True); mg.set_defaults(func=cmd_merge)
 
+    sub.add_parser("forum-gap").set_defaults(func=cmd_forum_gap)
     sub.add_parser("stale").set_defaults(func=cmd_stale)
 
     ob = sub.add_parser("outbox")
