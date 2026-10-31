@@ -13,16 +13,34 @@
 
 ## 0.7.974D - unreleased - HEISENBERG DECOMPENSATOR
 
-973D is deployed and published, so it cannot absorb new work. This number is
-open; nothing is tagged or built. SS-1108.
+### Update and release bookkeeping
 
-### Named by Sean, 31 October 2026
-HEISENBERG DECOMPENSATOR.
+- The updater replaces an existing release codename whether its definition uses single or double quotes, instead of adding a second definition. SS-1127.
+- The release gate checks the remote configured in this clone and names that same remote in its refusal advice. An unknown publication state still refuses a tag move. SS-1103.
+- This development version is 0.7.974D, named HEISENBERG DECOMPENSATOR by Sean. SS-1108. A merged review branch is cleaned up after its tip is verified on dev; merges receive descriptive subjects.
 
-### Nothing in this section yet
-The 31 October controls-and-forum audit work is NOT part of this candidate
-(coordinator's ruling): the declared-controls reference inventory and the
-forum-gap fix stay on their own branches pending review.
+### Installer and release hardening
+
+- The bootstrap supports the development channel and labels it, and fresh installs retain their selected update channel. An unavailable version or signature verifier causes installation to refuse rather than invent a version or continue without verification.
+- Stable promotion checks that the candidate changes only the permitted version fields. This release does not itself promote a stable build.
+- Scroll Time beacons carry proof of the page hit they belong to, and new readings are capped against elapsed time. This does not add long SMACKTALK article pages to the reported Scroll Time figure. SS-1083; SS-1129 remains separate.
+
+### Forum, archive and administration
+
+- Forum post newlines render once. The forum and ticket tools refuse body forms known to render incorrectly.
+- Forum administration tools can change a moderator role and hide a board. Ticket Wicket's desktop board picker uses the configured board list instead of inventing a board name.
+- Category and album controls consistently say CATEGORY and ALBUM on the affected administration screens. SS-1126.
+- The GLIDE photo wall wraps at its measured period and prepares its own repeated content. Its owner-selected angle and orientation defaults are unchanged.
+- The Mobile tab no longer promises behaviour that has not been implemented.
+
+### Desktop source changes included in the repository
+
+- COLD STORAGE can filter one site or all sites, starts on All sites, and offers thumbnail size selection with photographs filling their tiles.
+- Stored desktop credentials survive a view change and remain stored when an absent remember setting previously removed them. The related tests use isolated settings and storage. These are source changes; this CMS release does not establish which desktop executables have been rebuilt.
+
+### Not included
+
+The declared-controls reference inventory, forum-gap repair, and SMACKTALK long-post Scroll Time candidate remain separate review work. The dead presentation controls are not claimed repaired by this release.
 
 ## 0.7.973D - 2026-10-30 - THE PAGE WITH NO HEAD
 
