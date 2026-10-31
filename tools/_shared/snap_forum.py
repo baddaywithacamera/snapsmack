@@ -92,6 +92,33 @@ def _created_id(made: dict, kind: str) -> int:
         "posting again, in case it was created after all.")
 
 
+def board_id(forum, name: str) -> int:
+    """The id of an EXISTING board of this name, or 0. NEVER creates one.
+
+    The counterpart to Forum.ensure_board, and the one almost every caller
+    actually wants. A publishing tool must not be able to invent a board: in
+    October a default of "Tickets" met a forum that had none, ensure_board
+    made it, and because it was created without a sort order it landed ABOVE
+    every real board on the owner's list. He found it himself.
+
+    That was repaired in the command-line tool and NOT in the desktop
+    interface, which went on calling ensure_board afterwards. Two callers, one
+    guard. So the lookup lives here, where both already import from.
+
+    Takes any object with categories() rather than a Forum, so a test can hand
+    it a stand-in. The first version of this was a method, which quietly
+    demanded a real client and broke five tests that had been passing for
+    weeks -- a helper that only works with the real thing cannot be proved.
+    """
+    wanted = (name or "").strip().lower()
+    if not wanted:
+        return 0
+    for cat in forum.categories():
+        if (cat.get("name") or "").strip().lower() == wanted:
+            return int(cat.get("id") or 0)
+    return 0
+
+
 class Forum:
     """Thin client. Read methods work with any key. Posting, locking and
     pinning need role >= 2; creating the Tickets board needs role >= 3, which is
@@ -186,6 +213,10 @@ class Forum:
 
     def unfollow(self, thread_id: int) -> None:
         self._call("DELETE", f"threads/{thread_id}/follow")
+
+    def find_board(self, name: str) -> int:
+        """The id of an EXISTING board of this name, or 0. Never creates one."""
+        return board_id(self, name)
 
     def ensure_board(self, name: str, description: str = "",
                      sort_order: int = 0) -> int:
