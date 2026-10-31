@@ -11,6 +11,21 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.974D - unreleased
+
+973D is deployed and published, so it cannot absorb new work. This number is
+open; nothing is tagged or built. SS-1108.
+
+### Not yet named
+The codename constant in core/constants.php still reads THE PAGE WITH NO HEAD,
+which is 973D's name. Naming a release is Sean's, so it is deliberately left
+alone here rather than invented.
+
+### Nothing in this section yet
+The 31 October controls-and-forum audit work is NOT part of this candidate
+(coordinator's ruling): the declared-controls reference inventory and the
+forum-gap fix stay on their own branches pending review.
+
 ## 0.7.973D - 2026-10-30 - THE PAGE WITH NO HEAD
 
 ### Thomas was still missing from five skins, and so were the other three engines
