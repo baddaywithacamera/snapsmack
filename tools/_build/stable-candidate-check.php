@@ -53,6 +53,30 @@ function rfc_tag_target(string $tag): string {
     return rfc_rev('refs/tags/' . $tag);
 }
 
+/**
+ * The commit whose release gate authorises promoting <version> to stable.
+ *
+ * THE DEV TAG, NOT HEAD, AND THIS IS THE WHOLE POINT. promote-stable used to
+ * call rf_require_release_gate() with no argument, which asks about HEAD. HEAD
+ * during a promotion is the CANDIDATE commit, and a candidate can never carry a
+ * gate note: gate-note refuses to run off the dev branch (release-flow.php
+ * rf_require_dev), promote-stable refuses to run ON dev, and this file already
+ * requires Github/dev to still sit at the dev tag -- so no commit could satisfy
+ * all three and promote-stable could not pass for ANY version. That is the same
+ * shape of fault as SS-1077, left behind inside the function SS-1077 fixed.
+ *
+ * Asking the dev tag is not a relaxation. The candidate's entire difference
+ * from that tag is the two version lines and an added changelog section, which
+ * is what this file exists to enforce, so the tested tree IS the tag's tree.
+ * The gate was earned there and it is read from there.
+ *
+ * Returns '' when the dev tag does not exist, so the caller refuses rather than
+ * promoting something nothing ever tested.
+ */
+function rfc_promotion_gate_commit(string $version): string {
+    return rfc_tag_target('v' . $version . 'D');
+}
+
 /** A commit's parent shas, in order. */
 function rfc_parents(string $ref): array {
     [$code, $out] = rfc_git(['rev-list', '--parents', '-n', '1', $ref]);
