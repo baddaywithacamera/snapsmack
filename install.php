@@ -17,6 +17,14 @@
  */
 
 
+// A configured site never runs this one-shot entry point, even when its
+// database is unavailable. Refuse before includes, sessions or state writers.
+// URL decoding is the web server's job; every path resolving here gets this gate.
+if (file_exists(__DIR__ . '/core/db.php')) {
+    http_response_code(404);
+    exit;
+}
+
 // --- PHP VERSION GATE ---
 // Step 1 shows an environment check and hides the Continue button when PHP is
 // too old. That is the UI only: $step comes from the request, so a POST of
