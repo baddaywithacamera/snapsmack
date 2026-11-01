@@ -11,6 +11,7 @@ require $scratch . '/core/updater.php';
 $pdo = new PDO('sqlite::memory:');
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $pdo->exec('CREATE TABLE snap_smackback_log (id INTEGER PRIMARY KEY, detected_at TEXT, resolved_at TEXT, affected_files TEXT, file_count INTEGER, resolution TEXT)');
+$pdo->exec('CREATE TABLE snap_file_manifest (file_path TEXT)');
 $zipPath = $scratch . '/update.zip';
 $zip = new ZipArchive();
 $zip->open($zipPath, ZipArchive::CREATE);
@@ -41,7 +42,21 @@ try {
             throw new RuntimeException('Missing completed cleanup audit record: ' . $mode);
         }
     }
-    echo "Installer extraction/cleanup: PASS (fresh, full, chunked, audit records)\n";
+    // Model the old updater dropping an installer and the state file already
+    // trusted by a previous update, then run the NEW finalization cleanup.
+    file_put_contents($scratch . '/install.php', 'old extractor re-shipped me');
+    file_put_contents($scratch . '/core/.snapsmack-installer-state.php', 'old state');
+    $pdo->exec("INSERT INTO snap_file_manifest VALUES ('core/.snapsmack-installer-state.php')");
+    if (snapsmack_cleanup_installers($scratch, $pdo) || snapsmack_installer_artifacts($scratch)
+        || (int)$pdo->query('SELECT COUNT(*) FROM snap_file_manifest')->fetchColumn() !== 0) {
+        throw new RuntimeException('Old-extractor finalization left an artifact or manifest row.');
+    }
+    $count = (int)$pdo->query('SELECT COUNT(*) FROM snap_smackback_log')->fetchColumn();
+    snapsmack_cleanup_installers($scratch, $pdo);
+    if ((int)$pdo->query('SELECT COUNT(*) FROM snap_smackback_log')->fetchColumn() !== $count) {
+        throw new RuntimeException('Cleanup was not idempotent.');
+    }
+    echo "Installer extraction/cleanup: PASS (fresh, full, chunked, old-extractor cleanup, manifest pruning, idempotence, audit records)\n";
 } finally {
     $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($scratch, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
     foreach ($it as $entry) $entry->isDir() ? rmdir($entry->getPathname()) : unlink($entry->getPathname());

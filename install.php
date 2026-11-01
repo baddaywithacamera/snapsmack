@@ -1950,7 +1950,8 @@ HTACCESS;
     // an Ed25519-verified package, so this is a trusted baseline.
     if (empty($errors)) {
         require_once __DIR__ . '/core/smackback.php';
-        smackback_init_from_disk();
+        // The active fresh installer owns its completion/self-delete response.
+        smackback_init_from_disk(false);
     }
 
     // --- SELF-DELETE ---

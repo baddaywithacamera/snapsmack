@@ -361,6 +361,12 @@ if (isset($_SESSION['user_login']) && !smack_is_admin()) {
 // utilities (grab a backup BEFORE replacing files). Everything else redirects
 // to the breach screen, forcing the owner to deal with the tampering.
 $_smack_current = basename($_SERVER['SCRIPT_FILENAME'] ?? '');
+// Idempotent first authenticated owner request after an interrupted update.
+// Advisory failures remain visible; this does not resolve any existing breach.
+if (smack_is_admin()) {
+    require_once __DIR__ . '/installer-cleanup.php';
+    snapsmack_cleanup_installers(dirname(__DIR__), $pdo);
+}
 $_smack_exempt  = [
     'smack-back.php',             // breach detail + silence-flash
     'smack-update.php',           // updater — replace bad files
