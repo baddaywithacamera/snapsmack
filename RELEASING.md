@@ -40,9 +40,14 @@ FEDISTRUCTURE uses the same channels:
 4. A tag becomes immutable when Smack Central publishes that build. Fixes found
    after publication go back to `dev` and receive the next sequential `D` tag.
    An unbuilt mistaken tag may be corrected or removed before publication.
-5. Stable promotion uses the exact commit that was tested under its matching
-   `D` tag. `master` must fast-forward to that commit; no release-only code
-   changes are allowed during promotion.
+5. Stable promotion carries the TESTED TREE forward with no code change. The
+   stable candidate is exactly one commit above its matching `D` tag, and that
+   commit's entire diff is the two version constants plus an added changelog
+   section, verified by `tools/_build/stable-candidate-check.php` (SS-1077).
+   "The exact commit that was tested" means that tree: the candidate introduces
+   no code difference from the commit the `D` tag was tested on. `master` must
+   fast-forward to the candidate; no release-only code changes are allowed
+   during promotion.
 6. Only after promotion is the plain stable tag created and the stable
    manifests published.
 7. Never create the plain and `D` tags together at the start of testing.
