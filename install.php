@@ -1651,6 +1651,26 @@ php_value post_max_size 64M
 php_value memory_limit 128M
 php_value max_execution_time 120
 </IfModule>
+# The three blocks above name mod_php by SOURCE FILENAME. The two below name it
+# by MODULE IDENTIFIER, which is what Apache actually reports: measured on the
+# live fleet 1 November 2026, CT101 through CT106 all run Apache with
+# "php_module (shared)". A source-filename guard that does not match would skip
+# these limits silently, and .user.ini cannot cover it because only the CGI and
+# FastCGI SAPIs read .user.ini -- mod_php ignores it. The upload limit would
+# have fallen back to the host default fleet-wide, which a 4K photograph
+# exceeds. Only one PHP module is ever loaded, so only one block ever applies.
+<IfModule php_module>
+php_value upload_max_filesize 64M
+php_value post_max_size 64M
+php_value memory_limit 128M
+php_value max_execution_time 120
+</IfModule>
+<IfModule php7_module>
+php_value upload_max_filesize 64M
+php_value post_max_size 64M
+php_value memory_limit 128M
+php_value max_execution_time 120
+</IfModule>
 
 # ─── CLEAN URL ROUTER ────────────────────────────────────────
 RewriteBase /
