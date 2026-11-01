@@ -1042,6 +1042,14 @@ function updater_extract(string $zip_path): array {
             continue;
         }
 
+        // One-shot bootstrap files must not return on an existing installation.
+        if (is_file($root . '/core/db.php')
+            && in_array(strtolower($relative), ['install.php', 'setup.php', 'fedup.php'], true)) {
+            $result['files_skipped']++;
+            snap_diaglog('updater', 'skip_one_shot', ['path' => $relative]);
+            continue;
+        }
+
         // Skip protected paths
         if (updater_is_protected($relative, $protected)) {
             $result['files_skipped']++;
@@ -1073,6 +1081,11 @@ function updater_extract(string $zip_path): array {
     }
 
     $zip->close();
+    if ($result['success'] && !$result['errors']) {
+        require_once __DIR__ . '/installer-cleanup.php';
+        $result['errors'] = snapsmack_cleanup_installers($root, $GLOBALS['pdo'] ?? null);
+        $result['success'] = !$result['errors'];
+    }
     snap_diaglog('updater', 'extract_full', [
         'files_updated' => $result['files_updated'],
         'files_skipped' => $result['files_skipped'],
@@ -1175,6 +1188,14 @@ function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_se
             continue;
         }
 
+        // Apply the same rule to shared-host chunked updates.
+        if (is_file($root . '/core/db.php')
+            && in_array(strtolower($relative), ['install.php', 'setup.php', 'fedup.php'], true)) {
+            $result['files_skipped']++;
+            snap_diaglog('updater', 'skip_one_shot', ['path' => $relative]);
+            continue;
+        }
+
         // Skip protected paths
         if (updater_is_protected($relative, $protected)) {
             $result['files_skipped']++;
@@ -1209,6 +1230,11 @@ function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_se
     $zip->close();
     $result['done']        = true;
     $result['next_offset'] = $total;
+    if ($result['success'] && !$result['errors']) {
+        require_once __DIR__ . '/installer-cleanup.php';
+        $result['errors'] = snapsmack_cleanup_installers($root, $GLOBALS['pdo'] ?? null);
+        $result['success'] = !$result['errors'];
+    }
     snap_diaglog('updater', 'extract_chunk', [
         'from_offset'   => $offset,
         'next_offset'   => $total,
