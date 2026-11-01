@@ -62,8 +62,16 @@ $check(snapsmack_public_route_url($base, $aliases_none, 'archive', 'archive')
 // --- the legacy target must never be an unregistered path ----------------
 $check(snapsmack_legacy_archive_target($base, $aliases_archive) === $base . '/archive',
     'a site that really has /archive keeps its pretty URL');
-$check(snapsmack_legacy_archive_target($base, $aliases_images) === $base . '/images',
-    'a site that labelled it Images is sent to /images');
+// SEAN'S RULING, 31 October 2026: /archive is the canonical archive address on
+// every site and skin, whatever the menu item is labelled. This assertion used
+// to require /images, which was the label-derived slug. The GUARANTEE this test
+// exists to protect is unchanged and still asserted below -- the target must be
+// an address the CMS can answer, and it is: the front controller resolves a
+// bare /archive with no alias at all. Only which registered address we call
+// canonical has changed. It also matches what he said when the fallback became
+// a plain address: "no goddamn slugs. they're bad for usability for visitors."
+$check(snapsmack_legacy_archive_target($base, $aliases_images) === $base . '/archive',
+    'a site that labelled it Images is still sent to the canonical /archive');
 // 0.7.908D: the fallback is the plain address again, and this is only safe
 // because BOTH halves below now hold. Sean: "no goddamn slugs. they're bad
 // for usability for visitors." He is right; a query string is a poor thing to
@@ -146,9 +154,11 @@ $check(($q['album'] ?? '') === '232', 'an album must survive the redirect');
 $check(trim((string)parse_url($carried, PHP_URL_PATH), '/') === 'archive',
     'and the destination must still be the archive');
 
+// The album is the thing under test here, not the slug: whatever the canonical
+// path is, the QUESTION has to survive the redirect. It is now /archive.
 $aliased = snapsmack_legacy_archive_target('https://example.test/', ['images' => 'archive'], '', 'album=232');
-$check($aliased === 'https://example.test/images?album=232',
-    'a site with a real archive slug keeps the album too, got ' . $aliased);
+$check($aliased === 'https://example.test/archive?album=232',
+    'a site with an aliased archive keeps the album too, got ' . $aliased);
 
 // A crafted query cannot send the reader anywhere else: the archive is in
 // the path, and a stray ?view= in the query cannot move it.
@@ -161,7 +171,57 @@ $check(($hq['album'] ?? '') === '7', 'and the rest of the query still rides alon
 $check(snapsmack_legacy_archive_target('https://example.test/', [], '', '')
     === 'https://example.test/archive', 'no query, no stray question mark');
 $check(snapsmack_legacy_archive_target('https://example.test/', ['images' => 'archive'], '', '')
-    === 'https://example.test/images', 'no query and a real slug, no stray question mark');
+    === 'https://example.test/archive', 'no query and an aliased archive, no stray question mark');
+
+// === SS-1135: /archive IS THE CANONICAL ADDRESS, AND THE OLD ONES SURVIVE ===
+// Sean asked for this more than once and was told it was not possible. It was
+// never a decision: the address was the navigation LABEL slugified, and the
+// label the CMS itself ships is the words "Archive View".
+
+// 1. CANONICAL, on every menu shape, including the default label.
+$aliases_default = snapsmack_public_route_aliases(
+    ['nav_menu_json' => json_encode([['type' => 'image_archive', 'label' => 'Archive View', 'active' => true]])],
+    $manifest
+);
+foreach (['default' => $aliases_default, 'images' => $aliases_images,
+          'archive' => $aliases_archive, 'none' => $aliases_none] as $shape => $table) {
+    $check(snapsmack_public_canonical_slug('archive', $table, 'archive') === 'archive',
+        'the canonical archive slug on a ' . $shape . '-label site must be archive');
+}
+
+// 2. AND THE OLD ADDRESSES MUST NEVER 404. They are still registered aliases
+// on a default-label site, so they still resolve to the archive route; the
+// controller sends them on to the canonical one.
+$check(isset($aliases_default['archive-view']) && $aliases_default['archive-view'] === 'archive',
+    '/archive-view must remain a registered alias so an old link never 404s');
+foreach (['archive-view', 'images'] as $old) {
+    $check((snapsmack_public_runtime_request(['slug' => $old, 'route_aliases' => $aliases_default])['route'] ?? '')
+            === 'archive',
+        '/' . $old . ' must still resolve to the archive, not 404');
+}
+
+// 3. NO LOOP, which is what this file is for. The canonical slug is a FIXED
+// POINT: asking for the canonical returns the canonical, so a redirect to it
+// cannot be redirected again. Six sites looped in October; this is the
+// property that makes it impossible rather than unlikely.
+foreach ([$aliases_default, $aliases_images, $aliases_archive, $aliases_none, []] as $i => $table) {
+    $once = snapsmack_public_canonical_slug('archive', $table, 'archive');
+    $twice = snapsmack_public_canonical_slug('archive', [$once => 'archive'] + $table, 'archive');
+    $check($once === $twice, 'the canonical archive slug must be a fixed point, case ' . $i);
+}
+
+// 4. THE REWRITE TEMPLATE MUST AGREE WITH install.php. This is the fault that
+// kept /archive on the legacy file: install.php commented the rule out in
+// October and core/htaccess-template did NOT, and updater_reconcile_htaccess()
+// replaces the whole marked block FROM THE TEMPLATE -- so every site that
+// updated had the disabled rule put back. Measured 31 October: photowalk.ing,
+// acolourlesslife.ca and curbappeal.photoblogs.fyi answered /archive with a
+// 302 from archive.php while /images answered 200 through the controller.
+// A fresh install and an updated install must not route one address to two
+// different handlers.
+$check(!preg_match('/^\s*RewriteRule \^archive\$ archive\.php/m',
+        (string)file_get_contents(dirname(__DIR__) . '/core/htaccess-template')),
+    'core/htaccess-template must not send /archive back to the legacy file either');
 
 if ($failures) {
     fwrite(STDERR, "Legacy archive redirect regression FAILED:\n");

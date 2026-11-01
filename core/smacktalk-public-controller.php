@@ -21,10 +21,52 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     $requested_slug = trim((string)($request['requested_slug'] ?? ''));
     $route_aliases = is_array($request['route_aliases'] ?? null) ? $request['route_aliases'] : [];
 
+    // OWNER CONTENT WINS HERE TOO. Muse caught this in review and he was
+    // right: the canonicalization below asks for the canonical archive slug,
+    // and that answer depends on whether owner content owns the word
+    // 'archive'. This function is reached straight from index.php and NEVER
+    // goes through snapsmack_public_runtime(), which was the only place that
+    // asked the question -- so on this path the answer defaulted to "nothing
+    // in the way" and an old address could be sent to /archive, which on a
+    // colliding site serves the OWNER'S PAGE. The archive would then be
+    // reachable at no address at all.
+    // That is the mirror image of the fault the guard was added to prevent,
+    // and just as bad: neither the owner's page nor his archive may vanish.
+    // Asked once here, with the handle this function already receives.
+    snapsmack_public_archive_slug_taken($pdo);
+
     // Public navigation uses readable paths. Query-string controller routes
     // remain accepted only as compatibility entrances and canonicalize once.
     if ($requested_slug !== '' && isset($route_aliases[$requested_slug])) {
         $view = (string)$route_aliases[$requested_slug];
+        // AN OLD ADDRESS KEEPS WORKING AND ARRIVES AT THE CANONICAL ONE.
+        // /archive-view and /images are real aliases and still resolve; they
+        // now send the visitor on to /archive rather than being the
+        // destination. Sean's requirement is that an old URL must NEVER 404,
+        // and a 301 is how a bookmark, an old post and a federated reference
+        // all keep working once the canonical form moves.
+        //
+        // LOOP-SAFE BY CONSTRUCTION, which this file has to care about: six
+        // live sites answered /archive.php with an endless 301 in October. The
+        // canonical slug is a FIXED POINT -- asking for the canonical returns
+        // itself -- so this fires at most once, and on a default-label site
+        // /archive is not an alias key at all, so it never enters this branch.
+        //
+        // ARCHIVE ONLY, DELIBERATELY. The same reasoning would redirect
+        // /albums to a site's label-derived /galleries, which nobody asked
+        // for and which would change four other views at a release tip. The
+        // ruling was about the archive; the blast radius matches the ruling.
+        if ($view === 'archive') {
+            $_canonical = snapsmack_public_canonical_slug($view, $route_aliases, $view);
+            if ($_canonical !== $requested_slug) {
+                $target = rtrim($base, '/') . '/' . rawurlencode($_canonical);
+                $query = [];
+                if (!empty($request['category'])) $query['category'] = max(0, (int)$request['category']);
+                if (!empty($request['album'])) $query['album'] = max(0, (int)$request['album']);
+                if ($query) $target .= '?' . http_build_query($query);
+                return ['handled' => true, 'redirect' => $target, 'redirect_status' => 301];
+            }
+        }
         $requested_slug = '';
     } elseif ($view !== '' && $requested_slug === '' && in_array($view, $route_aliases, true)) {
         $target = snapsmack_public_route_url($base, $route_aliases, $view, $view);
