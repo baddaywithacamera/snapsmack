@@ -1,7 +1,7 @@
 <?php
 /**
  * 721D: a skin can declare "min_images" and refuse to become active below it.
- * GLIDE and SLIDERS (the moving photo wall) declare 200 — under that the wall
+ * GLIDE and SLIDERS (the moving photo wall) declare a minimum — under it the wall
  * is rows of one tile and reads as broken. Sean, 2026-09-17: "make that skin
  * refuse to install with less than 200 images."
  *
@@ -32,9 +32,23 @@ $check('exactly the minimum passes', snap_skin_min_images_conflict(new MinImgFak
 $check('above passes', snap_skin_min_images_conflict(new MinImgFakePDO(250), $glide, 'glide') === null);
 $check('a skin with no minimum never refuses', snap_skin_min_images_conflict(new MinImgFakePDO(0), ['name' => 'PARADE'], 'parade') === null);
 
+// THE THRESHOLD IS THE OWNER'S NUMBER, SO THIS ASSERTS THE MECHANISM, NOT 200.
+// GLIDE dropped from 200 to 50 on 1 November 2026 at Sean's request, to launch
+// portalproject on a set of about 50 portraits. A test that pins the literal
+// turns an owner decision into a build failure and teaches the next person to
+// edit the test to make the number go away. What must not change is that each
+// of these skins DECLARES a positive minimum and that the guard refuses below
+// whatever it declares -- so a skin silently losing its threshold still fails
+// here, which is the thing worth guarding.
 foreach (['glide', 'sliders'] as $slug) {
     $m = json_decode(file_get_contents(dirname(__DIR__) . "/skins/$slug/manifest.json"), true);
-    $check("$slug manifest declares min_images 200", (int)($m['min_images'] ?? 0) === 200);
+    $declared = (int)($m['min_images'] ?? 0);
+    $check("$slug manifest still declares a positive min_images", $declared > 0);
+    $skin = ['name' => strtoupper($slug), 'min_images' => $declared];
+    $check("$slug refuses one photograph below its own declared minimum",
+        snap_skin_min_images_conflict(new MinImgFakePDO($declared - 1), $skin, $slug) !== null);
+    $check("$slug accepts exactly its own declared minimum",
+        snap_skin_min_images_conflict(new MinImgFakePDO($declared), $skin, $slug) === null);
 }
 $src = file_get_contents(dirname(__DIR__) . '/smack-skin.php');
 $check('gallery ACTIVATE path checks the minimum', substr_count($src, 'snap_skin_min_images_conflict(') >= 2);
@@ -84,10 +98,14 @@ $check('mayhem: spread across the archive (top half represented)', count(array_f
 $small = mayhem_image_pool(new MayhemFakePDO(40), 90);
 $check('mayhem: archive smaller than the quota returns the whole archive once', count($small) === 40 && count(array_unique(array_column($small, 'id'))) === 40);
 $ic = json_decode(file_get_contents(dirname(__DIR__) . '/skins/instant-camera/manifest.json'), true);
-$check('INSTANT CAMERA declares min_images 200', (int)($ic['min_images'] ?? 0) === 200);
+$ic_declared = (int)($ic['min_images'] ?? 0);
+$check('INSTANT CAMERA still declares a positive min_images', $ic_declared > 0);
+$check('INSTANT CAMERA refuses one below its own declared minimum',
+    snap_skin_min_images_conflict(new MinImgFakePDO($ic_declared - 1),
+        ['name' => 'INSTANT CAMERA', 'min_images' => $ic_declared], 'instant-camera') !== null);
 
 foreach ($fails as $f) fwrite(STDERR, "FAIL: {$f}\n");
 if ($fails) exit(1);
-echo "PASS: GLIDE/SLIDERS/INSTANT CAMERA refuse under 200 photographs; the wall and the mayhem table draw at random from the whole archive.
+echo "PASS: GLIDE/SLIDERS/INSTANT CAMERA refuse below their own declared minimum; the wall and the mayhem table draw at random from the whole archive.
 ";
 // ===== SNAPSMACK EOF =====

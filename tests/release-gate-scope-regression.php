@@ -102,8 +102,15 @@ foreach (['tag-dev', 'promote-stable'] as $gated) {
     $start = strpos($flow, "if (\$command === '{$gated}')");
     $next = $start === false ? false : strpos($flow, "if (\$command === '", $start + 10);
     $block = $start === false ? '' : ($next === false ? substr($flow, $start) : substr($flow, $start, $next - $start));
-    rgs_check(str_contains($block, 'rf_require_release_gate();'),
+    rgs_check(str_contains($block, 'rf_require_release_gate('),
         "{$gated} no longer checks the release gate note");
+    // And on the right commit. tag-dev asks about HEAD; a promotion asks about
+    // the dev tag, because its own HEAD is a candidate that can never hold a
+    // note. See rfc_promotion_gate_commit().
+    rgs_check(str_contains($block, $gated === 'promote-stable'
+        ? 'rf_require_release_gate($gate_commit)'
+        : 'rf_require_release_gate();'),
+        "{$gated} checks the gate note on the wrong commit");
     rgs_check(str_contains($block, 'rf_require_clean();'),
         "{$gated} no longer requires a clean release tree");
 }

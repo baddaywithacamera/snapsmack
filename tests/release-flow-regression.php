@@ -69,13 +69,28 @@ $rel_command_block = static function (string $source, string $command): string {
 foreach (['tag-dev', 'promote-stable'] as $rel_gated) {
     $rel_block = $rel_command_block($guard, $rel_gated);
     rel_expect($rel_block !== '', "the release guard no longer provides {$rel_gated}");
-    rel_expect(str_contains($rel_block, 'rf_require_release_gate();'),
-        "{$rel_gated} no longer requires the exact-commit release gate");
+    rel_expect(str_contains($rel_block, 'rf_require_release_gate('),
+        "{$rel_gated} no longer requires a release gate at all");
+    // WHICH COMMIT each one asks about, because that is the whole distinction.
+    // tag-dev tags the commit in hand, so it asks about HEAD. A promotion's HEAD
+    // is the CANDIDATE, which can never carry a note (gate-note refuses off dev,
+    // promote-stable refuses on dev, and dev may not move in between), so it
+    // asks the DEV TAG. Asserting the bare no-argument form for both is what
+    // made this test demand the deadlock.
+    if ($rel_gated === 'promote-stable') {
+        rel_expect(str_contains($rel_block, 'rfc_promotion_gate_commit($version)'),
+            'promote-stable no longer derives its gate commit from the dev tag');
+        rel_expect(str_contains($rel_block, 'rf_require_release_gate($gate_commit)'),
+            'promote-stable no longer passes the dev tag commit to the gate check');
+    } else {
+        rel_expect(str_contains($rel_block, 'rf_require_release_gate();'),
+            "{$rel_gated} no longer asks about the commit in hand");
+    }
     rel_expect(str_contains($rel_block, 'rf_tests();'),
         "{$rel_gated} no longer runs the regression suite");
 }
-rel_expect(substr_count($guard, 'rf_require_release_gate();') >= 2,
-    'the exact-commit release gate is required by fewer than two commands');
+rel_expect(substr_count($guard, 'rf_require_release_gate(') >= 2,
+    'the release gate is required by fewer than two commands');
 rel_expect(str_contains($guard, "glob(dirname(__DIR__) . '/skins/*/manifest.json')"),
     'release gate must derive the complete packaged skin inventory');
 rel_expect(str_contains($guard, "['skin_inventory_sha256']"),
