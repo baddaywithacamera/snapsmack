@@ -513,7 +513,14 @@ function smackback_should_monitor(string $abs_path): bool {
     // immediately after (install.php @unlink(__FILE__); setup.php likewise). If they
     // get baselined, the very next scan sees them gone → false MISSING breach →
     // lockout on every fresh install. Never monitor them.
-    if (in_array($basename, ['install.php', 'setup.php'], true)) {
+    // .snapsmack-installer-state.php belongs to this same family and was MISSED
+    // when it was added (it is the reverse-proxy session workaround, written at
+    // step 2 and unlinked four lines BEFORE install.php deletes itself, but AFTER
+    // smackback_init_from_disk() has already hashed it). Measured 1 November 2026
+    // on a fresh 974D install: first admin login showed
+    // "core/.snapsmack-installer-state.php  MISSING  RESTORE" and restricted admin
+    // access. Never monitor it. SS-1149.
+    if (in_array($basename, ['install.php', 'setup.php', '.snapsmack-installer-state.php'], true)) {
         return false;
     }
 
@@ -2014,7 +2021,10 @@ function smackback_send_alert(array $tampered, array $missing, array $truncated 
     $site_name  = $settings['site_name']  ?? 'Your SnapSmack Site';
     $site_url   = $settings['site_url']   ?? '';
     $admin_mail = $settings['admin_email'] ?? '';
-    $to         = $settings['smackback_alert_email'] ?: $admin_mail;
+    // ?: does not suppress an undefined key the way ?? does, and a fresh install
+    // never seeds smackback_alert_email -- so the breach-alert path emitted a PHP
+    // warning into the response before any header was sent. SS-1156.
+    $to         = ($settings['smackback_alert_email'] ?? '') ?: $admin_mail;
 
     if (empty($to)) {
         error_log('SMACKBACK: No alert email configured — breach alert not sent.');
