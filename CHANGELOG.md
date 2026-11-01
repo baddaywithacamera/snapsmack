@@ -23,12 +23,14 @@
 
 - The bootstrap supports the development channel and labels it, and fresh installs retain their selected update channel. An unavailable version or signature verifier causes installation to refuse rather than invent a version or continue without verification.
 - Stable promotion checks that the candidate changes only the permitted version fields. This release does not itself promote a stable build.
+- The installer is removed when it finishes, and an update no longer restores it to a site that is already installed. If an installer file is present on an installed site, requesting it now refuses immediately without starting a session or writing any file, and the dashboard shows a warning until the file is gone. This matters because an automated scanner requesting the installer on a finished site made it write a session file, which the integrity monitor then reported as an unexpected file and held the public site down until the owner cleared it. SS-1149, SS-1150.
 - Scroll Time beacons carry proof of the page hit they belong to, and new readings are capped against elapsed time. This does not add long SMACKTALK article pages to the reported Scroll Time figure. SS-1083; SS-1129 remains separate.
 
 Because new readings are capped against elapsed time, the reported Scroll Time figure may fall after this release as lower readings replace inflated ones in the selected window. That is correct measurement rather than evidence of lost engagement. Existing stored readings are not rewritten, so this effect is gradual. This does not establish the cause of a drop observed before the release.
 
 ### Forum, archive and administration
 
+- The photograph archive answers at /archive on every site and skin. Older addresses keep working and redirect there, so existing links, bookmarks and shared URLs are unaffected. On a site whose landing page is itself the archive, /archive continues to lead to that landing page. If you have a page or photograph of your own using the address /archive, it keeps it and the archive stands aside. Previously the address came from whatever the archive menu item was labelled, so a site using the default label answered at /archive-view instead. SS-1135.
 - Forum post newlines render once. The forum and ticket tools refuse body forms known to render incorrectly.
 - Forum administration tools can change a moderator role and hide a board. Ticket Wicket's desktop board picker uses the configured board list instead of inventing a board name.
 - Category and album controls consistently say CATEGORY and ALBUM on the affected administration screens. SS-1126.
@@ -41,6 +43,8 @@ Because new readings are capped against elapsed time, the reported Scroll Time f
 - Stored desktop credentials survive a view change and remain stored when an absent remember setting previously removed them. The related tests use isolated settings and storage. These are source changes; this CMS release does not establish which desktop executables have been rebuilt.
 
 ### Not included
+
+Skin appearance has not been compared against owner-approved reference captures for this release, and 15 skins have no such reference to compare against. A rendering comparison between this release and 0.7.973D was run across all 30 skins: 388 of 460 page captures were identical and 72 differed, but 153 of those pairs had incomplete page content, so the comparison is recorded as partial and is not a parity pass. Nothing in this release changes a skin or a public template.
 
 The declared-controls reference inventory, forum-gap repair, and SMACKTALK long-post Scroll Time candidate remain separate review work. The dead presentation controls are not claimed repaired by this release.
 
