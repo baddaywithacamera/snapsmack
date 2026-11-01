@@ -11,7 +11,7 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.974D - unreleased - HEISENBERG DECOMPENSATOR
+## 0.7.974D - 2026-11-01 - HEISENBERG DECOMPENSATOR
 
 ### Update and release bookkeeping
 
