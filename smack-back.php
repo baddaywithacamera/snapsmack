@@ -431,6 +431,7 @@ include 'core/sidebar.php';
 
 <div class="main">
     <h2>SMACKBACK — FILE INTEGRITY MONITOR</h2>
+    <?php require_once __DIR__ . '/core/installer-cleanup.php'; snapsmack_render_installer_warning(); ?>
 
     <?php if ($flash_msg): ?>
         <div class="alert alert-success">> <?php echo htmlspecialchars($flash_msg); ?></div>
