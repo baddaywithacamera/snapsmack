@@ -1174,6 +1174,13 @@
             2
         ]
     },
+    "promote-stable-reads-the-gate-on-the-dev-tag.php": {
+        "assertions": 2,
+        "predicates": 3,
+        "thresholds": [
+            2
+        ]
+    },
     "provision-shared-key-regression.php": {
         "assertions": 9,
         "predicates": 8,
