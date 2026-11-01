@@ -329,8 +329,11 @@ function rf_release_gate_problem(string $head): string {
     return '';
 }
 
-function rf_require_release_gate(): void {
-    $problem = rf_release_gate_problem(rf_git(['rev-parse', 'HEAD']));
+function rf_require_release_gate(?string $commit = null): void {
+    // HEAD stays the default: tag-dev and the pre-push hook both ask about the
+    // commit in hand. A promotion asks about the DEV TAG instead -- see
+    // rfc_promotion_gate_commit() for why it cannot be HEAD there.
+    $problem = rf_release_gate_problem($commit ?? rf_git(['rev-parse', 'HEAD']));
     if ($problem !== '') rf_fail($problem);
 }
 
@@ -494,7 +497,12 @@ if ($command === 'promote-stable') {
             . "  it is not vestigial. SS-1079. Nothing has been tagged.");
     }
     rf_tests();
-    rf_require_release_gate();
+    $gate_commit = rfc_promotion_gate_commit($version);
+    if ($gate_commit === '') {
+        rf_fail("v{$version}D does not exist, so no release gate authorises this "
+            . 'promotion. Nothing has been tagged.');
+    }
+    rf_require_release_gate($gate_commit);
     rf_git(['push', 'Github', 'HEAD:master'], false);
     rf_git(['tag', $stable_tag]);
     rf_git(['push', 'Github', $stable_tag], false);
