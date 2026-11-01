@@ -323,6 +323,7 @@ include 'core/sidebar.php';
 
 <div class="main">
     <h2>SYSTEM DASHBOARD</h2>
+    <?php require_once __DIR__ . '/core/installer-cleanup.php'; snapsmack_render_installer_warning(); ?>
 
     <?php if ($_pimpmobile_offer): ?>
     <div class="pimpmobile-offer">
