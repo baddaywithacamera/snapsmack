@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.974 - 2026-11-01 - HEISENBERG DECOMPENSATOR
+
+- **The tested BITCHIN' development line is promoted to the BORING stable track.** This is the first stable package since 0.7.670 on 8 September 2026. It carries the same verified source as 0.7.974D and nothing else: the only difference between the two is this section and the two version constants.
+- Everything listed under 0.7.974D below is in this release. The fresh-install repairs matter most to a new site: a newly installed site now serves on hosts where PHP is not an Apache module, the first administrator login no longer reports a tampered file and locks the owner out, and the administration dashboard loads on servers that cannot report a system load average.
+- **Known gaps, stated rather than omitted.** Skin appearance was not compared against owner-approved reference captures for this release: of 460 pairs, 388 are identical, 72 differ, 153 pairs have unloaded or incomplete images, and 15 skins have no owner reference at all. The 973D-to-974D update finaliser was not exercised before the tag. Neither is a measured pass and neither should be read as one.
+
 ## 0.7.974D - unreleased - HEISENBERG DECOMPENSATOR
 
 ### Update and release bookkeeping
