@@ -704,6 +704,9 @@ body.is-photo-page:has(.scroll-solo-stage) #page-wrapper {
     width: var(--scroll-canvas-pct, 90%);
     margin: 0 auto;
 }
+.scroll-secondary-header {
+    min-height: var(--scroll-solo-header-h, 80px);
+}
 .scroll-solo-header .site-title-text,
 .scroll-solo-header .logo-area a {
     color: inherit;
