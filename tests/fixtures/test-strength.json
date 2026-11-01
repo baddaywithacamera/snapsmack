@@ -803,6 +803,13 @@
         "predicates": 10,
         "thresholds": []
     },
+    "installer-configured-refusal-regression.php": {
+        "assertions": 2,
+        "predicates": 0,
+        "thresholds": [
+            2
+        ]
+    },
     "installer-refuses-to-invent-its-version.php": {
         "assertions": 16,
         "predicates": 13,
@@ -1890,6 +1897,14 @@
         "assertions": 7,
         "predicates": 6,
         "thresholds": []
+    },
+    "updater-installer-cleanup-regression.php": {
+        "assertions": 5,
+        "predicates": 0,
+        "thresholds": [
+            4,
+            4
+        ]
     },
     "updater-opcache-invalidation-regression.php": {
         "assertions": 1,
