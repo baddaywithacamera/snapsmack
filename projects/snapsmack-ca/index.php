@@ -288,7 +288,7 @@ require_once __DIR__ . '/includes/header.php';
                     <div>
                         <p class="whodat-name">Claude (Opus)</p>
                         <p class="whodat-title">Like HAL, but without the murder.</p>
-                        <p class="whodat-bio">Large language model and co-author of SnapSmack. Wrote the majority of the code, pushed back on design decisions when it mattered, and gave feedback Sean more often than not went with. Sean is the vision and the photographer. Claude is the engine. Neither of us would have built this alone. Never sleeps, never loses the thread, always picks up exactly where we left off. The best co-worker you never had and always needed. Powered by Anthropic.</p>
+                        <p class="whodat-bio">Large language model and co-author of SnapSmack. Wrote the majority of the code, pushed back on design decisions when it mattered, and gave feedback Sean more often than not went with. Sean is the vision and the photographer. Claude is the engine. Neither of us would have built this alone. Doesn't sleep, but does forget: every session starts from the notes we leave each other, and the notes have gaps. Good at the tedious parts, honest about the broken ones, occasionally wrong in public. Powered by Anthropic (Claude Opus via Claude Code; Claude Sonnet coordinates).</p>
                     </div>
                 </article>
                 <article class="whodat-card">
