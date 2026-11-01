@@ -52,7 +52,25 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
 # Named routes
-RewriteRule ^archive$ archive.php [L,QSA]
+# /archive belongs to the front controller, which resolves it by name.
+#
+# THIS LINE WAS DISABLED IN install.php IN OCTOBER AND LEFT ACTIVE HERE, and
+# the two have disagreed ever since. install.php:1636-1643 commented it out
+# after six live sites answered /archive.php with an endless 301 loop; this
+# template did not get the same edit, and updater_reconcile_htaccess()
+# (core/updater.php:1689) REPLACES the whole marked block from this file. So
+# every site that updated had the disabled rule PUT BACK, and /archive kept
+# being served by the legacy archive.php instead of the controller.
+# Measured 31 October 2026: photowalk.ing, acolourlesslife.ca and
+# curbappeal.photoblogs.fyi all answered /archive with a 302 to /archive-view
+# (archive.php:109), while /images answered 200 through the front controller
+# on the same sites -- two different handlers for the same view.
+#
+# A fresh install and an updated install must not route the same address to
+# different code. The front controller honours a bare route name with or
+# without a menu alias (core/public-runtime.php:84), so /archive resolves on
+# every site without this rule. Keep it commented; do not restore it.
+# RewriteRule ^archive$ archive.php [L,QSA]
 RewriteRule ^sitemap\.xml$ sitemap.php [L,QSA]
 RewriteRule ^rss$ rss.php [L,QSA]
 RewriteRule ^feed$ feed.php [L,QSA]
