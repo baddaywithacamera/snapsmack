@@ -39,6 +39,14 @@ function snapsmack_cleanup_installers(string $root, ?PDO $pdo): array {
         } elseif (function_exists('opcache_invalidate')) {
             @opcache_invalidate($absolute, true);
         }
+        if (!file_exists($absolute) && !is_link($absolute)) {
+            try {
+                $pdo->prepare('DELETE FROM snap_file_manifest WHERE file_path = ?')->execute([$path]);
+            } catch (Throwable $e) {
+                $errors[] = 'Could not remove obsolete installer manifest row: ' . $path;
+                error_log($e->getMessage());
+            }
+        }
     }
     try {
         $pdo->prepare('UPDATE snap_smackback_log SET resolved_at = ?, resolution = ? WHERE id = ?')

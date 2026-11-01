@@ -1035,8 +1035,14 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
  *
  * @return bool
  */
-function smackback_init_from_disk(): bool {
+function smackback_init_from_disk(bool $cleanup_installers = true): bool {
     global $pdo;
+
+    // This library is freshly loaded by update finalization even when an old
+    // extractor ran in memory. Never baseline installer artifacts or hide a
+    // cleanup failure by blessing them as trusted files.
+    require_once __DIR__ . '/installer-cleanup.php';
+    if ($cleanup_installers && snapsmack_cleanup_installers(dirname(__DIR__), $pdo)) return false;
 
     $files = smackback_get_monitored_files();
     if (empty($files)) {
