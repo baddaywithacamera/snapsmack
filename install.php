@@ -1630,10 +1630,27 @@ RewriteCond %{HTTPS} !=on
 RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
 # ─── PHP LIMITS ──────────────────────────────────────────────
+# Only mod_php understands php_value; on php-fpm / CGI it is a FATAL .htaccess
+# error and Apache 500s every request. .user.ini carries the same limits there.
+# SS-1154.
+<IfModule mod_php.c>
 php_value upload_max_filesize 64M
 php_value post_max_size 64M
 php_value memory_limit 128M
 php_value max_execution_time 120
+</IfModule>
+<IfModule mod_php7.c>
+php_value upload_max_filesize 64M
+php_value post_max_size 64M
+php_value memory_limit 128M
+php_value max_execution_time 120
+</IfModule>
+<IfModule mod_php5.c>
+php_value upload_max_filesize 64M
+php_value post_max_size 64M
+php_value memory_limit 128M
+php_value max_execution_time 120
+</IfModule>
 
 # ─── CLEAN URL ROUTER ────────────────────────────────────────
 RewriteBase /
@@ -1676,13 +1693,23 @@ RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
 
 # ─── BLOCK SENSITIVE FILES ───────────────────────────────────
 <FilesMatch "(^\.ht|\.sql$|\.log$|\.bak$|\.inc$|\.sh$|\.env$|\.sbc$)">
-    Order Allow,Deny
-    Deny from all
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
 </FilesMatch>
 
 <FilesMatch "^(db|auth|constants|release-pubkey|updater|skin-registry|manifest-inventory)\.php$">
-    Order Allow,Deny
-    Deny from all
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
 </FilesMatch>
 
 # ─── NO DIRECTORY LISTINGS ───────────────────────────────────

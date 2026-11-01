@@ -197,7 +197,12 @@ $latest_img = $pdo->query("SELECT * FROM snap_images ORDER BY id DESC LIMIT 1")-
 $server_soft = $_SERVER['SERVER_SOFTWARE'] ?? 'N/A';
 $php_ver     = phpversion();
 $mem_limit   = ini_get('memory_limit');
-$load        = sys_getloadavg() ?: [0,0,0];
+// sys_getloadavg() does not exist on Windows, and an unguarded call is a FATAL
+// error that takes the whole admin dashboard down -- measured 1 November 2026 on
+// PHP 8.5.3/Windows: "Uncaught Error: Call to undefined function sys_getloadavg()
+// in smack-admin.php:200". core/mayhem-data.php:54 already guards it and its
+// comment says the vitals mirror this file; this is that same guard. SS-1155.
+$load        = function_exists('sys_getloadavg') ? (sys_getloadavg() ?: [0, 0, 0]) : [0, 0, 0];
 $disk_free   = disk_free_space("/") ?: 0;
 $disk_total  = disk_total_space("/") ?: 1;
 $disk_used_pct = ($disk_total > 0) ? round((($disk_total - $disk_free) / $disk_total) * 100, 1) : 0;

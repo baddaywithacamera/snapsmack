@@ -589,6 +589,11 @@
         "predicates": 24,
         "thresholds": []
     },
+    "fresh-install-serves-and-unlocks-regression.php": {
+        "assertions": 10,
+        "predicates": 8,
+        "thresholds": []
+    },
     "fsog-masonry-layout-select-regression.php": {
         "assertions": 1,
         "predicates": 0,

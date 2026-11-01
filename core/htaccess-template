@@ -25,10 +25,31 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 # ─── PHP LIMITS ──────────────────────────────────────────────
 # 64MB uploads for high-res photography, 128MB memory for
 # image processing and backup operations.
+# Only mod_php understands php_value. On php-fpm / CGI / FastCGI hosts the
+# directive is not merely ignored -- it is a FATAL .htaccess error and Apache
+# returns 500 for every request on the site, including the installer. Guard it,
+# and let .user.ini (written by updater_reconcile_user_ini) carry the same
+# limits on those hosts. Measured 1 November 2026 on Apache 2.4.69 + PHP 8.5.3
+# FastCGI: a fresh install served 500 on every URL until these four lines were
+# wrapped. SS-1154.
+<IfModule mod_php.c>
 php_value upload_max_filesize 64M
 php_value post_max_size 64M
 php_value memory_limit 128M
 php_value max_execution_time 120
+</IfModule>
+<IfModule mod_php7.c>
+php_value upload_max_filesize 64M
+php_value post_max_size 64M
+php_value memory_limit 128M
+php_value max_execution_time 120
+</IfModule>
+<IfModule mod_php5.c>
+php_value upload_max_filesize 64M
+php_value post_max_size 64M
+php_value memory_limit 128M
+php_value max_execution_time 120
+</IfModule>
 
 # ─── DEV DIRECTORIES — NEVER WEB-SERVED (SECAUDIT 055) ──────
 # Regression tests, dev scratch, and release-packaging tooling
@@ -126,8 +147,13 @@ RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
 
 # ─── BLOCK SENSITIVE FILES ───────────────────────────────────
 <FilesMatch "(^\.ht|\.sql$|\.log$|\.bak$|\.inc$|\.sh$|\.env$|\.sbc$|^smackback-manifest\.json$)">
-    Order Allow,Deny
-    Deny from all
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
 </FilesMatch>
 
 # Block direct access to core PHP includes (SECAUDIT 050-B — reconciled to real
@@ -136,8 +162,13 @@ RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
 # belt; each of these files also carries a server-agnostic PHP direct-access guard
 # (the suspenders), so protection no longer depends on Apache alone.
 <FilesMatch "^(db|auth-smack|constants|release-pubkey|updater|skin-registry|manifest-inventory)\.php$">
-    Order Allow,Deny
-    Deny from all
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
 </FilesMatch>
 
 # ─── NO DIRECTORY LISTINGS ───────────────────────────────────
