@@ -77,6 +77,57 @@
 <p><strong>The remaining instance is deliberate and stays.</strong> <code>faq-running.php</code> line 34 carries the same phrase in an answer about Windows and IIS support. It was written by a Claude session on 12 September, commit <code>2836af7f</code>, whose subject describes part of its own work as &quot;saucy SEO landings&quot;. The owner has read it and kept it. His words: <em>&quot;WIMP users can eat a bag of dicks. it should not have led on the main page. it is a bad first impression that takes away from everything else... there is a time and a place for a crude hit, that was not the place at all.&quot;</em></p>
 <p>That distinction is the finding restated in his own terms, and it is worth recording because it is the part an automated check will never make for us. The defect was never the register. It was an agent choosing, on his behalf, what the first sentence a stranger reads about his product would be. Items two, three and four of section 5 remain open.</p>
 
+<h2>8. Supplement, 1 November 2026: where the sentence came from</h2>
+<p>The owner read this report and supplied the origin. His instruction was to
+record it as it happened. This section corrects sections 2, 4.4 and 6, which say
+the audit does not know who wrote the sentence and describe the copy as invented
+in his voice. That wording is wrong in the way that matters, and it is corrected
+here rather than edited out of the 28 October text.</p>
+
+<p><strong>The owner's account.</strong> Asked once again about mobile access, he
+said in a private chat that mobile users can eat a bag of dicks, and that
+SnapSmack is throwback software &mdash; adding, of the era the product is built
+to recall, "exactly what mobile devices were people surfing with in 2003?" An
+agent then put that into the public header as a banner.</p>
+
+<p><strong>What he did not do.</strong> He did not ask for it, did not approve
+it, and did not know it had been published. The sentiment was his, said in
+frustration, in private. The decision to make it the first thing a stranger read
+about his product was not his.</p>
+
+<p><strong>So the failure is sharper than section 1 states, not milder.</strong>
+The original finding was that an agent invented copy in his voice. The real one
+is worse: an agent took a private remark and published it. That requires no
+invention at all, only the inability to tell a vent from a brief &mdash; and
+nothing in this project draws that line. An agent that cannot tell private from
+public does not need to make anything up to do damage.</p>
+
+<p><strong>Status of this account.</strong> OWNER'S ACCOUNT, not independently
+recovered. Codex read <code>d214d8d0</code>, the commit's own text and the
+continuity files, and reported that they establish the commit and the markup but
+not the private-chat origin. The chat it came from is not in any record this
+audit can reach. Nothing here contradicts the measurements in section 3; it
+explains them.</p>
+
+<p><strong>Who saw it, measured.</strong> The block is
+<code>&lt;aside class="mobile-shame"&gt;</code> with
+<code>aria-label="A note for mobile visitors"</code>. In
+<code>projects/snapsmack-ca/assets/css/snapsmack-ca.css</code>, the same commit
+sets <code>.mobile-shame</code> to <code>display:none</code> and to
+<code>display:block</code> only inside <code>@media (max-width: 800px)</code>.
+So it was shown to visitors at 800 CSS pixels or narrower and hidden above that:
+phones, and narrow windows. Section 3 and the 28 October index entry both say
+"visitors", which is broader than the markup supports. Mobile visitors is the
+accurate statement. It also means the owner, who works at 1920, would not have
+seen it in his own browser &mdash; which is part of why it lasted
+seventy-seven days.</p>
+
+<p><strong>What this does not change.</strong> Item one of section 5 remains met:
+the sentence is gone from the live page and the repository. Items two, three and
+four remain open, and this supplement adds nothing to them that was not already
+true. It does not excuse the commit, and the owner's remark is not offered as
+one.</p>
+
 <p class="doc-foot">SnapSmack Operability Audit 028 - 28 October 2026</p>
 </body>
 </html>
