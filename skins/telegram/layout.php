@@ -1,4 +1,4 @@
-<?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit; /* SNAPSMACK_EOF_HEADER: final line must contain SNAPSMACK EOF. */ ?>
 <!doctype html>
 <html lang="<?php echo snap_escape_attr($view['site']['language']); ?>" dir="<?php echo snap_escape_attr($view['site']['direction']); ?>">
 <head>
@@ -48,7 +48,7 @@
         <?php endforeach; ?>
     </section>
 <?php elseif ($view['response']['kind'] === 'archive'): ?>
-    <section class="telegram-archive">
+    <?php echo snap_render_html(snap_render_component('search-summary', ['term' => $view['response']['search_term'] ?? '', 'posts' => $view['response']['search_posts'] ?? [], 'tiles' => $view['response']['tiles'] ?? []])); ?><section class="telegram-archive">
         <h1><?php echo snap_escape_html($view['response']['page_title']); ?></h1>
         <?php foreach (($view['response']['tiles'] ?? []) as $tile): ?>
             <a href="<?php echo snap_escape_url($tile['full']); ?>">
@@ -66,4 +66,4 @@
 <?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?>
 </body>
 </html>
-
+<?php // ===== SNAPSMACK EOF =====

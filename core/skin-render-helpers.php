@@ -824,6 +824,25 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                     . '" alt="' . snap_escape_attr($title) . '"></figure>';
             }
         }
+    } elseif ($name === 'search-summary') {
+        $term = trim((string)($data['term'] ?? ''));
+        if ($term !== '') {
+            $posts = is_array($data['posts'] ?? null) ? $data['posts'] : [];
+            $photoCount = count(is_array($data['tiles'] ?? null) ? $data['tiles'] : []);
+            $html = '<section class="ss-search-summary"><h1>Search results for &ldquo;'
+                . snap_escape_html($term) . '&rdquo;</h1>';
+            if (!$posts && $photoCount === 0) $html .= '<p>No results found.</p>';
+            if ($posts) {
+                $html .= '<h2>Posts</h2><ul>';
+                foreach ($posts as $post) {
+                    $html .= '<li><a href="' . snap_escape_url((string)($post['url'] ?? '')) . '">'
+                        . snap_escape_html((string)($post['title'] ?? '')) . '</a></li>';
+                }
+                $html .= '</ul>';
+            }
+            if ($photoCount > 0) $html .= '<h2>Photographs</h2>';
+            $html .= '</section>';
+        }
     } elseif ($name === 'blogroll') {
         // The markup blogroll.php has always emitted, class for class. The
         // skins already style .blogroll-canvas, .blogroll-category-block,
