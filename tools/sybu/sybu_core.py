@@ -907,6 +907,35 @@ class Engine:
     def drive_status(self) -> dict:
         return {'connected': self.drive_service is not None}
 
+    def drive_check(self, drive_folder_id: str = '') -> dict:
+        """Is Drive actually usable? NO SITE, NO QUEUE, NO IMAGES REQUIRED.
+
+        SS-1171, the owner's words: Validate refuses an empty queue. It did --
+        validate() raises "Connect first." without a site and "Load or scan
+        images first." without entries, and then only checks the MANIFEST. It
+        never asked Drive anything. So the one button next to "Attach Google
+        Drive originals" could not tell him whether Drive worked, and
+        drive_status() only reported that authenticate() had returned an object.
+
+        This is deliberately independent of everything else: it needs no blog
+        connection, no scanned folder and no queue, because the question "will
+        my originals upload" is not a question about the queue. Read-only --
+        one files().get on the folder, no upload and no write.
+
+        Falls back to the configured folder id when none is passed, so the
+        check uses what a publish would actually use rather than whatever is
+        typed in the box at the time.
+        """
+        folder_id = (drive_folder_id or '').strip() or str(
+            self.config.get('drive_folder_id', '') or '').strip()
+        if not self.config.get('drive_enabled'):
+            return {'ok': False, 'reason': 'disabled', 'folder_id': folder_id,
+                    'detail': 'Google Drive attachment is switched off, so nothing '
+                              'would be uploaded.', 'name': ''}
+        out = _drive().probe_folder(self.drive_service, folder_id)
+        out['folder_id'] = folder_id
+        return out
+
     # ────────────────────────────────────────────────────────────────────────
     # AUDIT
     # ────────────────────────────────────────────────────────────────────────
