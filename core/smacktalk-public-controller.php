@@ -1,5 +1,6 @@
 <?php
 /**
+ * SNAPSMACK_EOF_HEADER — last non-empty line: // ===== SNAPSMACK EOF =====
  * SNAPSMACK - Public SMACKTALK Controller
  *
  * Owns request interpretation, publication policy, data access and derived
@@ -33,7 +34,18 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     // That is the mirror image of the fault the guard was added to prevent,
     // and just as bad: neither the owner's page nor his archive may vanish.
     // Asked once here, with the handle this function already receives.
-    snapsmack_public_archive_slug_taken($pdo);
+    $canonicalArchiveRequest = false;
+    $archiveSlugTaken = snapsmack_public_archive_slug_taken($pdo);
+
+    // The search form always emits the canonical archive path, even when
+    // the owner has hidden or removed its menu entry (SS-1175).
+    if ($requested_slug === snapsmack_public_canonical_slug(
+            'archive', $route_aliases, 'archive', $archiveSlugTaken)
+        && !($archiveSlugTaken && $requested_slug === 'archive')) {
+        $view = 'archive';
+        $requested_slug = '';
+        $canonicalArchiveRequest = true;
+    }
 
     // Public navigation uses readable paths. Query-string controller routes
     // remain accepted only as compatibility entrances and canonicalize once.
@@ -63,17 +75,19 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
                 $query = [];
                 if (!empty($request['category'])) $query['category'] = max(0, (int)$request['category']);
                 if (!empty($request['album'])) $query['album'] = max(0, (int)$request['album']);
+                if (trim((string)($request['search'] ?? '')) !== '') $query['q'] = trim((string)$request['search']);
                 if ($query) $target .= '?' . http_build_query($query);
                 return ['handled' => true, 'redirect' => $target, 'redirect_status' => 301];
             }
         }
         $requested_slug = '';
-    } elseif ($view !== '' && $requested_slug === '' && in_array($view, $route_aliases, true)) {
+    } elseif (!$canonicalArchiveRequest && $view !== '' && $requested_slug === '' && in_array($view, $route_aliases, true)) {
         $target = snapsmack_public_route_url($base, $route_aliases, $view, $view);
         $query = [];
         if ($view === 'archive') {
             if (!empty($request['category'])) $query['category'] = max(0, (int)$request['category']);
             if (!empty($request['album'])) $query['album'] = max(0, (int)$request['album']);
+                if (trim((string)($request['search'] ?? '')) !== '') $query['q'] = trim((string)$request['search']);
         }
         if ($query) $target .= '?' . http_build_query($query);
         return ['handled' => true, 'redirect' => $target, 'redirect_status' => 301];
@@ -127,9 +141,18 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
         // nothing here had ever read it, so the archive answered every search
         // with the whole library.
         $archiveSearch = trim((string)($request['search'] ?? ''));
+        $searchPosts = [];
+        if ($archiveSearch !== '') {
+            $searchPosts = (new SnapPublicRepository($pdo))->archiveSearchPosts($archiveSearch);
+            foreach ($searchPosts as &$searchPost) {
+                $searchPost['url'] = snapsmack_smacktalk_slug_url($base, (string)$searchPost['slug']);
+            }
+            unset($searchPost);
+        }
         return ['handled' => true, 'kind' => 'archive',
             'page_title' => $archiveSearch === '' ? 'ARCHIVE' : 'SEARCH',
             'search_term' => $archiveSearch === '' ? null : $archiveSearch,
+            'search_posts' => $searchPosts,
             'tiles' => snapsmack_smacktalk_archive_tiles(
                 $pdo, $base, max(0, (int)($request['category'] ?? 0)), max(0, (int)($request['album'] ?? 0)),
                 $archiveSearch

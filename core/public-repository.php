@@ -272,6 +272,23 @@ final class SnapPublicRepository
         );
     }
 
+    /** Published writing matches accompanying the photograph search wall. */
+    public function archiveSearchPosts(string $search): array {
+        $terms = preg_split('/\s+/', trim($search), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if (!$terms) return [];
+        $scope = '';
+        $params = [];
+        foreach (array_slice($terms, 0, 8) as $term) {
+            $scope .= ' AND (title LIKE ? OR description LIKE ? OR content LIKE ?)';
+            array_push($params, '%' . $term . '%', '%' . $term . '%', '%' . $term . '%');
+        }
+        return $this->all(
+            "SELECT id,title,slug,description FROM snap_posts
+             WHERE status='published' AND created_at <= NOW(){$scope}
+             ORDER BY created_at DESC,id DESC", $params
+        );
+    }
+
     public function publishedPostCount(?string $type = null): int {
         $typeSql = $type === null ? '' : ' AND post_type=?';
         $stmt = $this->pdo->prepare(
