@@ -144,7 +144,7 @@ class GateTests(unittest.TestCase):
         self.sleep.stop()
 
     def _upload(self, svc, response):
-        with mock.patch("requests.get", return_value=response):
+        with mock.patch("drive._anonymous_get", return_value=response):
             return drive.upload(service=svc, file_path=self.src,
                                 filename="texture.jpg")
 
@@ -236,7 +236,7 @@ class GateTests(unittest.TestCase):
         this hands the probe a body that WOULD pass validation and leaves only
         the content-type able to object.
         """
-        with mock.patch("requests.get",
+        with mock.patch("drive._anonymous_get",
                         return_value=FakeResponse(ctype="text/html", body=JPEG)):
             out = drive.probe_public_download("https://x.test/f", self.src)
         self.assertFalse(out["ok"])
@@ -248,7 +248,7 @@ class GateTests(unittest.TestCase):
         Asserting the REASON, not just the refusal, is what makes the guard
         observable: without it this comes back as md5_mismatch.
         """
-        with mock.patch("requests.get",
+        with mock.patch("drive._anonymous_get",
                         return_value=FakeResponse(body=JPEG + b"\x00" * 64)):
             out = drive.probe_public_download("https://x.test/f", self.src)
         self.assertFalse(out["ok"])
@@ -260,7 +260,7 @@ class GateTests(unittest.TestCase):
         This is the case that matters for an existing post being re-probed,
         where the original may not be to hand.
         """
-        with mock.patch("requests.get",
+        with mock.patch("drive._anonymous_get",
                         return_value=FakeResponse(body=b"x" * 512)):
             out = drive.probe_public_download("https://x.test/f", "")
         self.assertFalse(out["ok"])
@@ -279,7 +279,7 @@ class GateTests(unittest.TestCase):
         self.assertEqual("no_url", out["reason"])
 
     def test_an_md5_mismatch_is_caught_when_drive_supplies_the_hash(self):
-        with mock.patch("requests.get", return_value=FakeResponse()):
+        with mock.patch("drive._anonymous_get", return_value=FakeResponse()):
             out = drive.probe_public_download(
                 "https://x.test/f", self.src,
                 expected_md5=hashlib.md5(b"something else").hexdigest())
@@ -294,7 +294,7 @@ class GateTests(unittest.TestCase):
             seen.update(kw)
             return FakeResponse()
 
-        with mock.patch("requests.get", fake_get):
+        with mock.patch("drive._anonymous_get", fake_get):
             drive.probe_public_download("https://x.test/f", self.src)
         self.assertEqual({}, seen.get("cookies"),
                          "the probe must not carry cookies")
@@ -333,3 +333,4 @@ class NothingIsPublishedTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+# ===== SNAPSMACK EOF =====

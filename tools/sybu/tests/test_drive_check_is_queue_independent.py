@@ -72,7 +72,17 @@ class _Files:
 
 class _Service:
     def __init__(self, outcome):
+        if isinstance(outcome, dict) and outcome.get('mimeType') == 'application/vnd.google-apps.folder':
+            outcome = dict(outcome)
+            outcome.setdefault('capabilities', {'canAddChildren': True})
         self._files = _Files(outcome)
+
+    def about(self):
+        class About:
+            def get(self, fields=None):
+                return _Get({'user': {'emailAddress': 'owner@example.test'},
+                             'storageQuota': {'limit': '1000', 'usage': '200'}})
+        return About()
 
     def files(self):
         return self._files

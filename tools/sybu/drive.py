@@ -17,6 +17,7 @@ handles it silently — no browser, no fuss.
 import hashlib
 import os
 import sys
+from contextlib import contextmanager
 from typing import Optional
 
 from google.auth.transport.requests import Request
@@ -107,11 +108,14 @@ def upload(service, file_path: str, filename: str,
         resumable=True,
     )
 
-    file = service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields='id',
-    ).execute(num_retries=0)
+    try:
+        file = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id',
+        ).execute(num_retries=0)
+    finally:
+        media.stream().close()  # Windows must be able to move the completed source
 
     file_id = file.get('id')
     if not file_id:
@@ -278,7 +282,7 @@ def probe_folder(service, folder_id: str) -> dict:
     try:
         meta = service.files().get(
             fileId=folder_id,
-            fields='id,name,mimeType,trashed',
+            fields='id,name,mimeType,trashed,capabilities(canAddChildren)',
         ).execute(num_retries=0)
     except Exception as exc:                      # googleapiclient.errors.HttpError and friends
         status = getattr(getattr(exc, 'resp', None), 'status', None)
@@ -305,7 +309,23 @@ def probe_folder(service, folder_id: str) -> dict:
     if meta.get('mimeType') != 'application/vnd.google-apps.folder':
         return {'ok': False, 'reason': 'not_a_folder', 'detail':
                 'That id is a file, not a folder.', 'name': str(meta.get('name') or '')}
-    return {'ok': True, 'reason': '', 'detail': '', 'name': str(meta.get('name') or '')}
+    if not meta.get('capabilities', {}).get('canAddChildren'):
+        return {'ok': False, 'reason': 'not_writable', 'detail':
+                'This account can see the folder but cannot upload into it.',
+                'name': str(meta.get('name') or '')}
+    try:
+        account = service.about().get(fields='user(emailAddress),storageQuota').execute(num_retries=0)
+        quota = account.get('storageQuota', {})
+        free = max(0, int(quota['limit']) - int(quota.get('usage', 0))) if quota.get('limit') else None
+    except Exception:
+        return {'ok': False, 'reason': 'account', 'detail':
+                'Could not verify the Drive account and storage quota.',
+                'name': str(meta.get('name') or '')}
+    if free == 0:
+        return {'ok': False, 'reason': 'quota', 'detail': 'This Drive account has no free storage.',
+                'name': str(meta.get('name') or '')}
+    return {'ok': True, 'reason': '', 'detail': '', 'name': str(meta.get('name') or ''),
+            'account': account.get('user', {}).get('emailAddress', ''), 'free_bytes': free}
 
 
 def revoke_token() -> None:
@@ -358,6 +378,17 @@ def _imgsafe():
             return None
 
 
+@contextmanager
+def _anonymous_get(url, **kwargs):
+    """A fresh session without ambient .netrc, proxy credentials, or saved cookies."""
+    import requests
+    with requests.Session() as session:
+        session.trust_env = False
+        session.cookies.clear()
+        with session.get(url, **kwargs) as response:
+            yield response
+
+
 def probe_public_download(url: str, local_path: str = '', *,
                           expected_md5: str = '',
                           timeout: int = 30) -> dict:
@@ -408,8 +439,8 @@ def probe_public_download(url: str, local_path: str = '', *,
                  (want_size + 1024 * 1024) if want_size else 128 * 1024 * 1024)
 
     try:
-        with requests.get(url, timeout=timeout, stream=True,
-                          allow_redirects=True, cookies={}) as r:
+        with _anonymous_get(url, timeout=timeout, stream=True,
+                            allow_redirects=True, cookies={}) as r:
             status = r.status_code
             ctype = (r.headers.get('Content-Type') or '').split(';')[0].strip().lower()
             body = bytearray()

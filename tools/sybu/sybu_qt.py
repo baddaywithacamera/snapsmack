@@ -307,6 +307,11 @@ class Window(QMainWindow):
 
     def _task_done(self,name,result,error):
         self.pending.pop(name,None)
+        if name == 'drive_check':
+            self.drive_check_btn.setEnabled(True)
+            if error: self._error(str(error))
+            else: self._drive_check_done(result)
+            return
         if error: self.status.setText("● Needs attention"); self._error(str(error)); return
         if name=="connect":
             if result.get('needs_insecure_ack'):
@@ -465,14 +470,25 @@ class Window(QMainWindow):
         load images first, because that button validates the MANIFEST and never
         asked Drive anything. This asks Drive, and names which half failed.
         """
+        if 'drive_check' in self.pending:
+            return
+        if 'post' in self.poll_seen:
+            self._error('Wait for the current publishing batch before checking Drive.')
+            return
+        folder_id = self.drive_folder.text()
+        self.drive_check_btn.setEnabled(False)
+        self._say('Checking Google Drive account and folder…')
+        self._async('drive_check', lambda: self.engine.drive_check(folder_id))
+
+    def _drive_check_done(self, out):
         try:
-            out = self.engine.drive_check(self.drive_folder.text())
             if out.get('ok'):
                 QMessageBox.information(
                     self, "Google Drive",
-                    "Drive is reachable and this account can see the folder.\n\n"
-                    "Folder: %s\nId: %s"
-                    % (out.get('name') or '(unnamed)', out.get('folder_id', '')))
+                    "Drive is reachable and this account can upload into the folder.\n\n"
+                    "Folder: %s\nAccount: %s\nFree storage: %s"
+                    % (out.get('name') or '(unnamed)', out.get('account') or '(not reported)',
+                       ('%.2f GB' % (out['free_bytes'] / 1024**3)) if out.get('free_bytes') is not None else '(not reported)'))
                 return
             head = {
                 'disabled': "Drive attachment is switched off.",
@@ -481,6 +497,9 @@ class Window(QMainWindow):
                 'auth': "Google refused the saved token.",
                 'folder': "That folder cannot be reached.",
                 'not_a_folder': "That id is a file, not a folder.",
+                'not_writable': "This account cannot upload into the folder.",
+                'account': "The Drive account and storage could not be verified.",
+                'quota': "The Drive account has no free storage.",
             }.get(out.get('reason', ''), "Drive check failed.")
             QMessageBox.warning(self, "Google Drive",
                                 "%s\n\n%s" % (head, out.get('detail', '')))
@@ -498,6 +517,9 @@ class Window(QMainWindow):
         for b in (self.post_solo,self.post_gram,self.qpost_solo,self.qpost_gram): b.setVisible(not known)
 
     def _post(self,grams):
+        if 'drive_check' in self.pending:
+            self._error('Wait for the Drive check to finish before publishing.')
+            return
         if grams is None:
             grams=getattr(self,'_site_grams',None)
             if grams is None: self._error("Connect to the blog first — it decides solo or gram."); return
