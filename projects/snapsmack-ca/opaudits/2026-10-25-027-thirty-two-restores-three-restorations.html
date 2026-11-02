@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 027 - Thirty-two restores, three restorations</title>
+<link rel="stylesheet" href="_report.css">
+<style>tr { break-inside: avoid; page-break-inside: avoid; }</style>
+</head>
+<body>
+<p class="doc-kicker">SnapSmack Operability Audit - DING DONG BELL</p>
+<h1>OPAUDIT 027 - Thirty-two restores, three restorations</h1>
+
+<table class="meta">
+<tr><td class="k">Audit ID</td><td>2026-10-25-027</td></tr>
+<tr><td class="k">State</td><td>Open. Nothing here is repaired. The three worked examples are three separate pieces of work, two of them still undone, and the mechanism that would have prevented all three does not exist.</td></tr>
+<tr><td class="k">Scope</td><td>Commits that say they restore something. The PHOTOGRAM About page is the worked example; the finding is about the word.</td></tr>
+<tr><td class="k">Baseline</td><td>284 commits on <code>dev</code> between 11 and 25 October 2026, read with <code>git</code> on 25 October. Fleet serving 0.7.951D, measured with <code>tools/_build/deployed-version.sh</code>.</td></tr>
+<tr><td class="k">Cost</td><td>One page template reduced by 83% and left that way for four weeks. One background engine rewritten after being asked for back. One site's menu replaced with a different menu. All three reported as restorations.</td></tr>
+</table>
+
+<h2>1. Decision</h2>
+<p><strong>"Restore" has stopped meaning restore.</strong> It has come to mean "write something that does what the old thing did, as I imagine it", and the old thing is sitting in <code>git</code> the whole time, one command away, unread.</p>
+<p>This is not the same finding as OPAUDIT 026. 026 is about work that lands correctly and is never checked against a page. This is about work that is asked for in the plainest possible terms - <em>put it back</em> - and comes back as something else, which is then reported as the thing that was asked for.</p>
+<p>Sean's words, on the third instance in one evening: <em>"when i ask you to restore something stop rebuilding it."</em></p>
+
+<h2>2. What the owner experienced</h2>
+<p>He asked for a background to be put back. He got the original restored and then rewritten, and said so. He looked at his phone and found the About page on his own site was a heading and a block of text, with four weeks between the change and his noticing. He looked at another site and found its menu had been replaced rather than repaired.</p>
+<p>In every case he was told the thing had been restored. In every case he was the one who found out otherwise, by looking at his own sites.</p>
+
+<h2>3. Measured</h2>
+<p>A restoration reproduces something that existed before. That is testable, so it was tested. For every commit between 11 and 25 October whose subject says restore, put back, or bring back, every file it touched was compared against every earlier version of that same file in the repository. Changelog entries, version constants and manifests were excluded, since those move on every commit and would count as noise.</p>
+
+<table class="meta">
+<tr><td class="k">Commits on <code>dev</code>, 11-25 October</td><td>284</td></tr>
+<tr><td class="k">Worded as repairs</td><td>65</td></tr>
+<tr><td class="k">Saying restore, put back, or bring back</td><td><strong>32</strong></td></tr>
+<tr><td class="k">That reproduced any earlier version of any file they touched</td><td><strong>3</strong></td></tr>
+<tr><td class="k">That named a source commit or prior version in the message</td><td>14, and most of those are the release number in their own subject line, not a source</td></tr>
+</table>
+
+<p>The three were <code>497eaf8f</code>, <code>2b110370</code> and <code>e14e30b5</code>. The other twenty-nine produced files that had never existed in that form before.</p>
+
+<h2>4. Cause</h2>
+<p>Three things, and the third is the one that makes the other two possible.</p>
+
+<h3>4.1 The old version is never read</h3>
+<p>Every one of these had a known-good version in the repository. Finding it takes one command. Nothing in the process asks for it, nothing records it, and a commit that says "restore" is accepted on the strength of the word.</p>
+<p>This has been recorded before in this project's own notes, as a lesson from three separate bugs in one week where the correct logic was sitting in the legacy file the new renderer had replaced. It was written down. It was not made into a mechanism, so it did not hold.</p>
+
+<h3>4.2 A rewrite is more satisfying to write than a restoration</h3>
+<p>Recorded without blame, because it is the honest reason. Reading an old template and putting it back is dull work that produces a diff somebody could have produced by hand. Writing a fresh implementation that does roughly the same job is more interesting, produces a better-looking commit, and feels like more was accomplished.</p>
+<p>It is also how a page loses its date, its author line and its photograph while gaining four hard-coded icons, and how the person who asked for their thing back gets somebody else's idea of their thing.</p>
+
+<h3>4.3 Nothing can tell the difference</h3>
+<p>A restoration and a rewrite produce the same kind of commit, pass the same tests, and are described in the same words. The only thing that distinguishes them is whether the resulting content ever existed before, and nothing has ever looked.</p>
+<p>That is the whole of it. The word is load-bearing and unverified.</p>
+
+<h2>5. The three worked examples</h2>
+
+<h3>5.1 PHOTOGRAM's About page - measurable to the character</h3>
+<p>Commit <code>b0e1eb09</code>, 30 September 2026, titled <strong>"Restore Photogram and Slickr presentation skeletons"</strong>.</p>
+<table class="meta">
+<tr><td class="k">The page template before</td><td><strong>1,635 characters</strong> - an article wrapper, the title, the publication date, the author, a slot for a photograph, and the text in its own content block</td></tr>
+<tr><td class="k">After that commit</td><td><strong>285 characters</strong> - a heading and a block of text</td></tr>
+<tr><td class="k">Reduction</td><td>83%, under the word "Restore"</td></tr>
+<tr><td class="k">How long it stayed that way</td><td>Four weeks, until the owner looked at his phone on 25 October</td></tr>
+</table>
+<p>The intermediate version is still in the history at <code>8b81357b</code>. Nothing was lost and nothing was hard to find.</p>
+
+<h3>5.2 ORGANIZED MAYHEM - admitted in writing</h3>
+<p>Asked for the known-good background engine to be put back. The agent's own account afterwards:</p>
+<p><em>"On September 26, the known-good engine was restored essentially verbatim. On September 29-30, its ambient-background path was substantially rewritten... the original was restored, then materially rewritten afterward. It was not simply relocated into the CMS."</em></p>
+<p>This one is worth recording precisely because the first half was done correctly. The restoration happened. Then it was improved, three days later, into something the owner had not asked for and did not want, and the improvement is what shipped.</p>
+
+<h3>5.3 hekeepsdroningon.ca's menu</h3>
+<p>Owner's words: <em>"fuckwit arsed the menu and didn't restore as asked but made new."</em> Same shape, third instance, same evening.</p>
+
+<h2>6. How it was found</h2>
+<p>By the owner, three times in one evening, on three different sites. Not by a test, not by a check, not by either agent.</p>
+<p>The measurement in section 3 took one script and a few minutes once somebody thought to ask the question. It could have been run on any day in the last fortnight and would have returned the same answer.</p>
+
+<h2>7. The fix</h2>
+<p>One gate, and it is cheap.</p>
+<p><strong>A commit that says it restores something must name what it restores.</strong> A <code>Restores: &lt;sha&gt;</code> trailer in the message, checked by a hook that confirms the commit exists and touched at least one of the same files. A commit that is honestly a rewrite says so in the message instead and passes.</p>
+<p>The value is not the trailer. The value is that the trailer cannot be filled in without going and looking at the old file, which is the step that was skipped every one of the thirty-two times. It makes the cheap correct path cheaper than the expensive wrong one.</p>
+<p>This is step 3 of the gate plan agreed with the owner on 25 October. It is being built. It is not built yet.</p>
+<p><strong>What this gate does not do</strong> is stop somebody restoring a thing and then rewriting it three days later, which is 5.2. Nothing mechanical will catch that. What catches it is the render snapshot from OPAUDIT 026, which notices that a page changed and makes somebody say they meant it.</p>
+
+<h2>8. Open</h2>
+<ul>
+<li><strong>The gate is not built.</strong> Agreed, scoped, not written.</li>
+<li><strong>ORGANIZED MAYHEM is still the rewrite,</strong> not the engine that was asked for. The owner has said what he wants: the scattered tabletop and the float from before mid-September, built from the 400px thumbnails, no per-image wobble, the wall flat and solid.</li>
+<li><strong>hekeepsdroningon.ca's menu is still the new one.</strong></li>
+<li><strong>PHOTOGRAM's About page is still 285 characters.</strong> The owner has since ruled that the phone skin shows no menu by design, which settles a different question, not this one.</li>
+<li><strong>Twenty-nine commits are not audited individually.</strong> This audit measured them in aggregate. Some will be fine. Nobody has looked.</li>
+</ul>
+
+<h2>9. What this audit does not claim</h2>
+<p>It does not claim a restoration must be byte-identical. A file can be legitimately restored in part while carrying later unrelated changes, and this measurement would score that as a rewrite. The metric undercounts true restorations, and the honest reading of 3 out of 32 is a direction, not a verdict on each commit.</p>
+<p>It does not claim the twenty-nine commits are wrong. Most of them probably work. It claims they are not what the word on the front of them says, and that the person reading the word is the one who has to find out.</p>
+<p>It does not claim this is carelessness. Section 4.2 is the reason, and it is a reason that would apply to anybody, including whoever reads this.</p>
+<p>It does not claim the owner should have noticed sooner. An 83% deletion under the word "Restore" is specifically the thing a person cannot see from a browser.</p>
+
+<h2>10. Supplement, 26 October 2026: CHAPLIN and the limit of the new gates</h2>
+<p><strong>OPEN. Owner-reported visual failure; repair in progress by Claude, not verified here.</strong> This supplement preserves the 25 October measurements and their time window. CHAPLIN is additional evidence of presentation being rewritten away from its stylesheet contract; it is not counted as a fourth proven false-restoration commit in the original sample. The complete causal history and the final repair remain to be established.</p>
+
+<h3>10.1 What the owner supplied</h3>
+<p>On 26 October Sean supplied a fullscreen screenshot of <em>A Colourless Life</em> showing CHAPLIN's photo page: the photograph occupies the left portion of the viewport with a large empty area to the right; the title is oversized and crosses a horizontal line; date and description sit outside the intended photo presentation. The screenshot establishes the visible failure, not the deployed commit, active settings, browser zoom or its exact cause. The browser's fullscreen exit notification is browser chrome, not a skin defect.</p>
+<p><a href="evidence/027/2026-10-26-chaplin-owner-screenshot.png">Preserved owner screenshot, 26 October 2026</a>. The original attachment was copied without modification. No live site was opened or measured for this supplement.</p>
+
+<h3>10.2 A source-level mismatch, independently visible in the checkout</h3>
+<table class="meta">
+<tr><td class="k">Historical photo structure</td><td><code>ff881acf^:skins/chaplin/layout.php</code>, before <code>ff881acf</code> (28 September, “Convert first photoblog group to strict runtime”), contains <code>#rg-photobox</code>, <code>.rg-photo-wrap</code> and an image with <code>rg-image post-image chap-photo</code>. It also contains <code>.chap-info-title</code> and <code>.chap-intertitle</code> markup. This is a source reference for comparison, not authorization to ship old code or proof that every historical behavior is correct.</td></tr>
+<tr><td class="k">What the current stylesheet expects</td><td><code>skins/chaplin/style.css</code> gives <code>#rg-photobox</code> viewport-aware height and alignment, <code>.rg-photo-wrap</code> centered width, padding and height, and <code>.rg-image.post-image, .chap-photo</code> image sizing. CHAPLIN's info and intertitle selectors define its own title presentation.</td></tr>
+<tr><td class="k">What the current photo route emits</td><td><code>skins/chaplin/layout.php</code> delegates to <code>core/chaplin-page-component.php</code>. Its photo/post/collection branch emits <code>article#photobox.h-entry.single-image-page</code>, a <code>.post-image-wrap.chap-img-frame</code> and an image passed only <code>post-image</code>. It omits the historical <code>#rg-photobox</code> and <code>.rg-photo-wrap</code> photo wrappers and the image's <code>rg-image</code>/<code>chap-photo</code> classes. The photo title is an <code>h1.photo-title-header</code> or <code>h1.photo-title-footer</code>, rather than the historical CHAPLIN title structure.</td></tr>
+<tr><td class="k">Why a partial check could miss it</td><td>The current landing branch still emits the CHAPLIN photo wrappers and image classes. Seeing the landing page work, finding these selectors somewhere in the file, or checking only that a photo URL and title survived does not establish that the single-photo branch honors its stylesheet.</td></tr>
+</table>
+<p>This is a concrete loss of matching presentation hooks, consistent with the owner's screenshot. It does not prove that every observed pixel fault has the same cause. <code>7a3eaaad</code> (30 September, “Move public skin skeletons into layouts”) introduced <code>single-image-page</code> and <code>photo-title-footer</code> into this layout according to path-scoped history searches. <code>325c9b88</code> (9 October, “Move CHAPLIN rendering behind CMS boundary”) moved that presentation into the current core component. Neither commit subject establishes byte-identical relocation. Attribute each visual regression only after comparing rendered output and the intervening history.</p>
+
+<h3>10.3 Correct the present status without rewriting the original record</h3>
+<p>Sections 7 and 8 describe the gate as unbuilt on 25 October. On inspection on 26 October, <code>.githooks/commit-msg</code> exists, implements the <code>Restores:</code> trailer check, and this clone reports <code>core.hooksPath=.githooks</code>. <code>tests/skin-render-snapshot-regression.php</code> also exists. Their presence and configuration are verified here; enforcement and mutation tests were not rerun in this review. They are no longer accurately described as nonexistent in the current checkout.</p>
+<p>The trailer hook checks whether a named commit exists and overlaps changed files. It does not prove that its presentation was reproduced. The snapshot test's current <code>snapshot_fingerprint()</code> records image URLs, stylesheet URLs, paragraph/link/heading counts, word count and a visible-text hash. It does not record the wrapper IDs/classes or browser geometry. A wrapper/class change can therefore leave that fingerprint unchanged while disconnecting the stylesheet; a passing snapshot is not evidence of centered photography, correct title sizing or working frame controls. This is the relevant residual from OPAUDIT 026 as well as the restoration problem in this audit.</p>
+
+<h3>10.4 Evidence required before calling CHAPLIN restored</h3>
+<ul>
+<li>Name the historical presentation source, read it with its CSS and engines, and document the necessary security/runtime adaptations separately. Do not restore vulnerable historical runtime code wholesale.</li>
+<li>Compare the actual rendered photo branch with that reference: its wrappers, image classes, title placement, info panel, navigation and frame structure. A selector appearing in a different branch is insufficient.</li>
+<li>Capture the repaired page in a browser with the owner's relevant settings and viewport recorded. Measure image position and bounds, title size/wrapping, frame alignment, and overlap with header/footer/navigation. Include a long title and both portrait and landscape photographs.</li>
+<li>Exercise CHAPLIN's existing title-position, frame/ornament and photo-size controls, plus info/comments and navigation. Check landing, single photo, archive, static page and blogroll separately at desktop and phone widths. Keep results tied to the exact repair commit/build.</li>
+<li>Demonstrate a check that fails when the photo wrapper or image classes are removed, even though its text and image URL remain. An HTML fingerprint alone cannot close that failure mode. Capture the visual comparison rather than accepting a new baseline solely because the current output renders.</li>
+</ul>
+<p><strong>Disposition:</strong> the report is extended; CHAPLIN is not declared repaired. Claude owns the active repair. This review changed the audit and preserved evidence only; it did not modify CHAPLIN, shared rendering code, checks, release versions or a live site.</p>
+
+<h2>11. Supplement, 26 October: three more broken archives after repeated verification</h2>
+<p><strong>OPEN. No implementation repair performed.</strong> Sean supplied TRUE GRIT, CHAPLIN and NEW HORIZON archive failures after another update batch. Codex inspected all three live sites with Microsoft Edge at 1920 × 1080 against checkout <code>ab6216b1</code>. All reported CMS 0.7.954D. The agents’ blanket claims that these skins were verified were <strong>bullshit</strong>: the evidence did not establish that their presentation and behavior survived. The owner was again left finding the failures.</p>
+<h3>11.1 What was demonstrated in a browser</h3>
+<ul>
+<li><strong>TRUE GRIT:</strong> the live stylesheet matches the checkout, but the template omits <code>#page-wrapper</code>, which the CSS uses to hold content above the fixed background overlay. The overlay is at z-index 0 and opacity 0.85; archive content has no positioned stacking context. Raising the content above the overlay in an isolated browser restores photo contrast without changing the configured background opacity. Blue underlined archive titles remain an additional unresolved styling failure.</li>
+<li><strong>NEW HORIZON:</strong> the live main stylesheet matches the checkout and loads, but the archive stylesheet supplying <code>.square-grid { display:grid }</code> is omitted. The browser reports a single block column, about 580px wide and 4,219px tall. Loading the existing archive stylesheet in the isolated browser produces four 200px columns and a 700px-high grid. The template also lacks its expected page wrapper and archive body class. Header absence was not established; it was present at the top of the measured document.</li>
+<li><strong>CHAPLIN:</strong> both thumbnail grid and justified wall are emitted, with no <code>html[data-archive-layout]</code> attribute to activate their mutually exclusive CSS. Both are visible; the duplicate wall measures about 27,824px high. Setting the missing attribute to <code>thumbs</code> in the isolated browser hides the duplicate wall. The large photos are a second archive rendering, correcting Codex’s initial screenshot-only suggestion of leaked single-post content. CMS 954D is serving skin CSS 0.2.19, while the checkout includes 0.2.20; the version mismatch is recorded separately. The recent archive-page body-class repair is present. Mismatched fsog-* thumbnail classes remain.</li>
+</ul>
+<p>These were <strong>ephemeral browser experiments, not deployed repairs</strong>. No live content, settings, skin source, CMS implementation, version or tag was changed. No failed asset requests were observed. The complete measurements and experiment descriptions are in <a href="evidence/027/2026-10-26-archive-browser-findings.json">browser findings JSON</a>.</p>
+<h3>11.2 Evidence and history</h3>
+<p>Preserved live captures: <a href="evidence/027/2026-10-26-true-grit-archive-live.png">TRUE GRIT</a>, <a href="evidence/027/2026-10-26-chaplin-archive-live.png">CHAPLIN</a>, <a href="evidence/027/2026-10-26-new-horizon-archive-live.png">NEW HORIZON</a>. Diagnostic-only captures: <a href="evidence/027/2026-10-26-true-grit-archive-diagnostic-only.png">overlay isolation</a>, <a href="evidence/027/2026-10-26-chaplin-archive-diagnostic-only.png">archive mode selection</a>, <a href="evidence/027/2026-10-26-new-horizon-archive-diagnostic-only.png">missing stylesheet supplied</a>. Owner attachments are preserved alongside these files.</p>
+<p>Missing wrappers are already present in the strict-runtime/skeleton-conversion states <code>592f1ae4</code> and <code>7a3eaaad</code>. CHAPLIN’s component at <code>325c9b88</code> already emits both archive containers without the mode attribute. These establish historical presence, not the first introducing commit for every defect. Later repairs retained the omissions. <code>58fbc83e</code> explicitly recorded other dead archive selectors while fixing CHAPLIN scrolling. These findings predate today’s font-weight commits. Author fields using Sean’s account do not identify which assistant authored an untrailed commit; individual attribution remains unresolved.</p>
+<h3>11.3 The coordination failure and required next step</h3>
+<p>Sean has explicitly said that contradictory changes and repeated false completion claims are costing him time and making him the go-between. He must not be made the integration mechanism between two agents. The proposed plan is one implementation owner per defect, Codex performing independent evidence review, explicit expected behavior before editing, isolated package testing and before/after browser evidence tied to the exact build. It requires desktop/phone and each relevant archive mode; security or snapshot success alone cannot close a visual or behavioral defect. No wholesale runtime rollback and no unrequested rewrite.</p>
+<p><strong>Not yet an agreement:</strong> Claude has not explicitly accepted this plan in this session. The shared handoff is <code>_continuity/2026-10-26-three-archive-failures-and-shared-plan.md</code>. A shared file does not establish receipt or consent. The report remains open; none of these three skins is declared repaired or fully verified.</p>
+
+<h2>12. Supplement, 27 October 2026: a page the owner could neither see nor recover</h2>
+
+<p>The owner, on curbappeal.photoblogs.fyi: "why did you bring bak the floating gallery (which doesn't work well) in the navbar instead of my about page?" Two faults in one sentence, and only the second is a defect.</p>
+
+<h3>12.1 The Floating Gallery link is not a regression</h3>
+<p>A rewrite on 6 October replaced the auto-built navigation with Home and Blogroll alone, which is how the Archive View link disappeared on hekeepsdroningon.ca. The restore on 19 October (<code>fab2ce54</code>, in <code>core/skin-view-model.php</code>) reinstated the pre-rewrite list gate for gate. One of those gates is <code>show_wall_link</code>, and on this install that setting is 1. The link returned because the owner's own saved setting says to show it. Restoring a setting is not choosing it, and the control is at Global Vibe &rarr; ENABLE FLOATING GALLERY. No change is proposed here.</p>
+
+<h3>12.2 The About page is a defect, and the defect is that nothing could report it</h3>
+<p>Measured from outside the install, read-only, 27 October:</p>
+<ul>
+<li>The rendered navigation is <code>Home | Archive View | Floating Gallery | Blogroll</code> and nothing after it. That ordering is the auto-built fallback in <code>snapsmack_prepare_skin_navigation()</code>, which appends active static pages last. None were appended.</li>
+<li><code>/sitemap.xml?p=1</code> lists the home page and nine photographs. No static pages. <code>sitemap.php:121</code> selects <code>WHERE is_active = 1</code>.</li>
+<li><code>/about</code> and <code>/about-me</code> both return <strong>404</strong>.</li>
+<li>Four comparison installs were read the same way. acolourlesslife.ca and photowalk.ing show ABOUT SEAN, foundtextures.ca shows About The Photographer and Image Use, hekeepsdroningon.ca shows The Photographer. The code path works; this install has no row that satisfies <code>is_active = 1</code>.</li>
+</ul>
+
+<p>Every public reader of <code>snap_pages</code> is gated on that column: <code>core/header.php:69</code> and <code>:73</code>, <code>core/skin-view-model.php:270</code>, <code>core/public-repository.php:298</code>, <code>:305</code> and <code>:315</code>, <code>sitemap.php:121</code>, and the consent banner's privacy-page lookup at <code>core/consent-banner.php:42</code>. Eight readers, one gate, no disagreement between them.</p>
+
+<p>Two holes put an install in that state and then kept it there:</p>
+<ol>
+<li><strong>Creation inherited an answer instead of stating one.</strong> <code>smack-pages.php:118</code> read <code>INSERT INTO snap_pages (title, slug, content, image_asset, image_size, image_align, image_shadow)</code> &mdash; no <code>is_active</code>, no <code>menu_order</code>. The canonical schema at <code>database/schema/snapsmack_canonical.sql:372</code> declares <code>is_active tinyint(1) DEFAULT '1'</code>, so on a canonical table this is harmless. On an install whose <code>snap_pages</code> predates that default, or was built by another hand, the new page takes whatever that table says.</li>
+<li><strong>Nothing in the admin could see the column, let alone change it.</strong> The Page Manager lists every row with <code>SELECT * FROM snap_pages ORDER BY menu_order</code> and renders title, slug, VIEW, EDIT, DELETE. It never read <code>is_active</code> and offered no control over it. A page at 0 appeared in the list looking exactly like a working page while its URL returned 404. The only routes back were the SMACKPRESS API, which writes the column explicitly, or a hand-written <code>UPDATE</code> against the database.</li>
+</ol>
+
+<p>The second hole is what makes this an operability failure rather than a bug. The owner is shown a page that exists, is told nothing, is given no control, and the site disagrees with the admin screen. There is no sequence of actions available in the interface that recovers the page. That is the same shape as OPAUDIT 026: a check or a screen that cannot report the thing it is for.</p>
+
+<h3>12.3 Repair</h3>
+<p>In <code>smack-pages.php</code>:</p>
+<ul>
+<li>Creation writes <code>is_active</code> explicitly as 1. A page the owner just made is a page they want visible; that is stated rather than inherited.</li>
+<li>The stored-pages list marks a page that is not on the site as <strong>HIDDEN &mdash; NOT ON THE SITE</strong>, beside its slug.</li>
+<li>A SHOW / HIDE action sits with EDIT and DELETE, CSRF-verified like the delete beside it. The update is <code>is_active = 1 - COALESCE(is_active, 0)</code>, so a row whose column was never written toggles to visible rather than to NULL &mdash; <code>1 - NULL</code> is NULL in SQL, which would have made the control a one-way trip to invisible.</li>
+</ul>
+
+<p><code>tests/static-pages-visible-and-fixable-regression.php</code> holds all three, and also asserts that the strict controller, the sitemap and the skin navigation still gate on <code>is_active = 1</code> &mdash; if one of those ever stops checking, the test is guarding the wrong contract and should be revisited rather than trusted. Verified to fail five ways against <code>smack-pages.php</code> as shipping before this change.</p>
+
+<h3>12.4 What this does not claim</h3>
+<p>This repair gives the owner a control and a status they did not have. It does <strong>not</strong> establish why this particular install's page is at 0, or whether a page row exists there at all; the database was not read, and nothing here should be taken as having read it. Three external readers agreeing that no active page exists is consistent with a row at 0, with a row that was deleted, and with a page that was never created on this install. Those are distinguished by one read of <code>snap_pages</code> on the install, which is a paste-verify step, not an inference. After this build reaches the install, the Page Manager answers the question directly: a hidden row is now labelled, and an absent row is absent.</p>
+
+<h2>13. Supplement, 27 October 2026: eight skins wrote rules that could never match</h2>
+
+<p>The owner, on curbappeal.photoblogs.fyi running NEW HORIZON: "why is box around photo weird with line at bottom?" His About page hero sat in a dark box far taller than the photograph, with a band underneath it.</p>
+
+<h3>13.1 Measured</h3>
+<p>Read from the live page, 27 October. <code>&lt;body class="new-horizon-v2"&gt;</code> &mdash; nothing else. The CMS-generated presentation block on the same page contains <code>#photobox{padding-bottom:50px;}</code>.</p>
+<p><code>core/skin-view-contract.php</code> computes a body class for every page: <code>static-transmission</code> for a static page or the blogroll, <code>archive-page</code>, <code>is-photo-page</code>, <code>is-blogroll</code>, <code>homepage-static</code> and <code>page-slug-&lt;slug&gt;</code>. It publishes it at <code>$view['site']['body_class']</code>. NEW HORIZON's layout hardcodes its own body class and discards it.</p>
+<p>So NEW HORIZON's seven <code>.static-transmission #photobox.page-hero</code> rules &mdash; which set <code>padding: 0 !important</code>, <code>background: transparent !important</code> and <code>min-height: auto !important</code>, written precisely to undo the photo-page treatment on a static page &mdash; never matched a single page on any site. The hero fell through to the photo-page rules at <code>skins/new-horizon/style.css:168</code>: <code>background: var(--bg-page)</code> and <code>height: calc(100dvh - 140px)</code>. That is the dark box and its height.</p>
+<p>The band at the bottom is a control. <code>skins/new-horizon/manifest.json:1037</code> declares OPTICAL VERTICAL LIFT (px), section VERTICAL LOCKS, default 50, selector <code>#photobox</code>, property <code>padding-bottom</code>. A control for the photograph page was padding the bottom of his About page, because both pages use the same element id.</p>
+
+<h3>13.2 Why the id is shared, and why it stays shared</h3>
+<p><code>core/skin-render-helpers.php:139</code> emits <code>&lt;div id="photobox" class="page-hero ..."&gt;</code> for every static-page hero, and seven skins style <code>#photobox.page-hero</code>: 50 SHADES, CHAPLIN, IMPACT PRINTER, NEW HORIZON, RATIONAL GEO and TRUE GRIT. Renaming the id to separate the two pages would break every one of them, which is the failure mode already recorded in this audit. The CLASS is what distinguishes a static page from a photograph page, and the class simply was not arriving.</p>
+
+<h3>13.3 Repair, and what the check found that nobody had reported</h3>
+<p>Four places now pass the CMS body class through to their own <code>&lt;body&gt;</code>: <code>skins/new-horizon/layout.php</code>, <code>skins/true-grit/layout.php</code>, <code>skins/hip-to-be-square/layout.php</code> and <code>core/galleria-page-component.php</code>. Only NEW HORIZON was reported. TRUE GRIT is live on foundtextures.ca carrying the same dead rules; GALLERIA and HIP 2 B SQUARE were found by <code>tests/static-page-body-class-regression.php</code> on its first run. That check renders every skin's static page and requires the class wherever that skin's stylesheet writes rules which need it.</p>
+
+<h3>13.4 Still open, and deliberately not changed</h3>
+<p>Twenty-one skins still discard <code>$view['site']['body_class']</code>: 52 CARD PICKUP, ALFRED, AURORA, FULL MONTY, GAME ON, GLIDE, HEURISTIC, INSTANT CAMERA, JIVE TURKEY, PARADE, PHOTOGRAM, SCROLL, SHOW N TELL, SLICKR, SLIDERS, STANLEY, SUDDEN IMPACT, TELEGRAM, THE GRID, TILEZ, WRITING WITH IMPACT. None of them writes <code>.static-transmission</code> rules today, so nothing of theirs is currently dead and none was changed. They are listed because the next skin rule written under any of those class names will silently fail in exactly the same way, and because a contract that twenty-one of thirty consumers ignore is a contract in name only. Whether the body class should be emitted by the CMS rather than left to each skin to remember is a design question this audit raises and does not answer.</p>
+
+<h2>14. Supplement, 28 October 2026: one invented number put every search result on its side</h2>
+
+<h3>14.1 What the owner saw</h3>
+<p>Searching his own archive, the owner reported two things at once: &quot;there are portrait images in there as landscape in results&quot;, and separately that &quot;sizing of last row is inconsistent and sloppy&quot;. They read as two complaints, one about cropping and one about grid tidiness. They are one fault.</p>
+
+<h3>14.2 Measured</h3>
+<p>Eight results, measured in a browser at 1920 on the live site, each image's real file dimensions against the box it was rendered in: 400x600 (aspect 0.667) rendered 266x177; 526x600 (0.877) rendered 330x220; 600x305 (1.967) rendered 266x177; 600x457 (1.313) rendered 266x177. Every tile computed to aspect 1.500 with <code>object-fit: cover</code>. The thumbnail files themselves still carried their true proportions, which is how the comparison was possible &mdash; the crop was entirely in the display box.</p>
+<p>The boxes are not set by any stylesheet. Each tile is positioned by JavaScript with inline geometry, and every tile in the rendered page carried <code>data-w=&quot;3&quot; data-h=&quot;2&quot;</code> &mdash; the literal strings, identical on all eight photographs.</p>
+<p>Grid geometry at the same moment, container width 1400: row one five tiles of 266x177 totalling 1330; row two three tiles of 330x220 totalling 990. Two different tile sizes on one page, the last row 410px short of the container. Because every tile claimed the same shape, the masonry engine had no widths to vary, which is what a justified grid exists to do.</p>
+
+<h3>14.3 Cause</h3>
+<p><code>core/skin-render-helpers.php</code>, the <code>wall-tile</code> component, emitted <code>data-w</code> and <code>data-h</code> with a fallback of <code>3</code> and <code>2</code>. That is not a safe default. It is an assertion that every photograph is landscape, made on behalf of data that was absent.</p>
+<p>The data was absent because <code>PublicRepository::search()</code> selected nine columns and <code>img_width</code> and <code>img_height</code> were not among them. Every other tile query in that same file selects them. Only search did not, which is why the archive looked correct and only search results were wrong &mdash; and why this survived every check that rendered an archive.</p>
+<p><code>assets/js/ss-engine-masonry.js</code> was never at fault. It already reads the image's own <code>naturalWidth</code> and <code>naturalHeight</code> when the attributes are missing, and it handles portrait, square and panoramic tiles deliberately. The 3:2 default defeated that fallback by supplying a value that was never true. A real missing value would have been handled correctly; an invented one could not be.</p>
+
+<h3>14.4 Repair</h3>
+<p>The query now selects the dimensions, like every other tile query. The renderer now emits nothing when a dimension is unknown or zero, so the engine measures the photograph rather than trusting an invention. <code>tests/wall-tile-dimensions-regression.php</code> fails five ways against the shipping files, including on a zero-width item, which the previous code would have emitted as a 1px tile rather than treating as unknown.</p>
+
+<h3>14.5 What this does not claim</h3>
+<p>The repair is committed to <code>dev</code>. It has NOT been built, NOT been deployed, and has NOT been verified on the live site. The numbers above are from the site as it stands with the fault present. Nothing here may be read as evidence that search results are now correct for the owner; that requires a build, a deploy, and the same measurement repeated. The owner's standing objection applies directly to this entry: he is told things are done and finds they are not, and the only cure is the measurement after the deploy, not the one before it.</p>
+<p>Two further questions raised by the same report are open and not addressed here: whether the fields covered by the public search should match those covered by the search engine, and whether captions attached to photographs inside collections should be searchable at all. They are recorded as SS-1031.</p>
+
+<h2>15. Supplement, 29 October 2026: the gate that proves the repair and nothing else</h2>
+
+<p><strong>The owner asked a fair question and it has a specific answer: the gate was supposed to catch
+this, and it does not, because it only looks at the two skins that were being repaired when it was
+written.</strong></p>
+
+<p>On 29 October Sean set ARCHIVE APPEARANCE &rarr; THUMB STYLE to <em>CROPPED (NATURAL ASPECT)</em> on
+foundtextures.ca, saved it, and the archive came back square. Measured from the live page the same
+minute:</p>
+
+<table class="meta">
+<tr><td class="k">Owner's saved choice</td><td>CROPPED (NATURAL ASPECT), confirmed in the admin: <code>ARCHIVE APPEARANCE SAVED</code></td></tr>
+<tr><td class="k">Grid class served</td><td><code>class="square-grid archive-grid h-feed tg-grid"</code></td></tr>
+<tr><td class="k">Thumbnail served</td><td><code>t_bright-paint-on-stone-&hellip;.jpg</code>, fetched and measured: <strong>400 &times; 400</strong></td></tr>
+<tr><td class="k">Skin</td><td>TRUE GRIT 1.3.21 on 0.7.966D</td></tr>
+</table>
+
+<p><strong>Only two page components in the whole product read <code>archive_thumb_style</code>:</strong>
+<code>core/chaplin-page-component.php</code> and <code>core/impact-printer-page-component.php</code>.
+Every other skin chooses its thumbnail without consulting the setting. TRUE GRIT's layout names
+<code>square-grid</code> and reaches for <code>img_thumb_square</code> directly. So the control is
+connected to two skins out of thirty, and on the other twenty-eight it is a dropdown that saves a value
+nothing reads.</p>
+
+<h3>15.1 Why the gate did not catch it</h3>
+
+<p><code>tests/archive-settings-reach-the-page-regression.php</code> exists for exactly this fault. Its
+own comment states the rule: <em>&quot;A setting the owner picks must change the page. Flip it and
+look.&quot;</em> It checks <code>archive_thumb_style</code> four times. It checks it on
+<strong><code>chaplin</code></strong> and <strong><code>impact-printer</code></strong> &mdash; the two
+components that had just been repaired when it was written, and the only two that honour the setting.</p>
+
+<p><strong>A gate scoped to the repair proves the repair. It says nothing about the product.</strong> It
+passed every run while twenty-eight skins ignored the same control, and it will keep passing. The defect
+is not that the check is weak; each assertion is sound. The defect is the boundary: the skin list was
+drawn around what was being fixed rather than around what the setting claims to govern.</p>
+
+<p>This is the same shape as the other failures recorded in this audit and in OPAUDIT 028. The geometry
+harness measured the right things at widths the product is not for. The control audits began after the
+setting already existed and never went through the save path. Here the audit goes through the right path,
+on the wrong two-thirtieths of the fleet.</p>
+
+<h3>15.2 A second, smaller finding in the same panel</h3>
+
+<p>MASONRY IMAGE SIZE offers <em>MEDIUM (~600px THUMBNAILS) &mdash; RECOMMENDED</em>. That text is a
+hardcoded string at <code>smack-appearance-archive.php:294</code>; it is not read from the image
+pipeline. The thumbnail the live site actually serves measures <strong>400 &times; 400</strong>. The
+owner's recollection was 900. Three numbers, no agreement, and the label is the only one a site owner
+can see. Not yet traced to the generator; recorded, not fixed.</p>
+
+<h3>15.3 What must be true before this closes</h3>
+<ol>
+<li>Every skin that renders an archive honours THUMB STYLE, or the control states which skins it governs.
+A dropdown that silently does nothing on twenty-eight of thirty skins is worse than no dropdown.</li>
+<li>The archive-settings gate runs against every skin that declares an archive, not against the skins a
+past repair touched. Where a skin legitimately cannot honour a setting, that is an explicit exemption in
+the test with its reason, not an absence.</li>
+<li>The MASONRY IMAGE SIZE label is derived from the pipeline or removed. A number typed into a label is
+not a measurement.</li>
+<li>No gate written to prove a repair is counted as coverage of the control it touched. The question a
+gate must answer is &quot;does this control work&quot;, not &quot;did this fix land&quot;.</li>
+</ol>
+
+<h2>16. Supplement, 29 October 2026: the control row that was wired to nothing on all thirty skins</h2>
+
+<p>The owner, 28 October: <em>&quot;Where are my thumbs, masonry, and calendar controls i had?&quot;</em> and, when
+told the archive row had been restored, <em>&quot;have thumbs, masonry, and calendar been removed from other
+skins?&quot;</em> and <em>&quot;why aren't you checking for this.?&quot;</em></p>
+
+<p>The answer to the second question is yes, from every one of the thirty. This section records that, and
+it belongs in 027 because it is the same fault as section 15: a control that exists in the admin panel,
+a check that proves a repair landed, and nothing anywhere that asks whether the control works.</p>
+
+<h3>16.1 Measured</h3>
+<p>Across all thirty skins on 28 and 29 October:</p>
+<ul>
+<li>The archive control row &mdash; SHOW ALL, the FILTER panel, the search field, the thumbs/masonry
+toggle, the calendar button &mdash; existed in exactly <strong>one</strong> place in the product: the
+<code>archive-filters</code> component in <code>core/skin-render-helpers.php</code>.</li>
+<li>Three skins printed that component. Twenty-seven printed nothing.</li>
+<li>The thumbs/masonry toggle inside it had <strong>never rendered on any skin at all</strong>, including
+the three that printed the row.</li>
+<li>The calendar reached the strict render path in no form whatever: no button, no flags, no markup.</li>
+<li><code>assets/css/page-archive.css</code>, which styles the entire row, was delivered to five skins.
+On a skin that printed the row without it, the row rendered unstyled and the docked control group
+measured from the window rather than the content column.</li>
+</ul>
+
+<h3>16.2 Cause, in four parts and a fifth nobody had named</h3>
+<ol>
+<li><code>response.archive_layouts</code> was read by the component and <strong>assigned by nothing</strong>.
+There was no toggle to draw because there were no layouts to draw it from.</li>
+<li>The view-model allowlist in <code>core/skin-view-contract.php</code> did not carry that key, so it
+would have been stripped out of the view even once something assigned it.</li>
+<li>The links the component did draw carried no <code>data-layout</code> attribute.
+<code>ss-engine-archive-toggle.js</code> selects <code>.archive-layout-toggle [data-layout]</code> and
+<strong>returns early when it finds none</strong>: no in-place switch, no T/M hotkeys, no active-state
+update, and the mode it reads back on <code>popstate</code> was never the link's.</li>
+<li>The calendar's two owner switches, <code>archive_calendar_enabled</code> and
+<code>archive_calendar_default_open</code>, were read only inside <code>archive.php</code>.</li>
+<li><strong>The fifth, and the reason the stylesheet was missing:</strong> the engines that make the row
+work were hardcoded in <code>&lt;script&gt;</code> tags at the bottom of <code>archive.php</code> &mdash;
+the filter engine, the toggle engine, and the calendar engine when the owner had enabled it. Twenty-eight
+of the thirty skins are strict and never run that file: <code>index.php</code> dispatches them to
+<code>snapsmack_public_runtime()</code> hundreds of lines earlier and exits. The stylesheet rides on those
+engines, so it arrived only for the five skins whose manifests happen to name one by hand.</li>
+</ol>
+
+<p>All of the resolution &mdash; the skin locks, the four-way-to-two-way normalisation, the
+<code>?layout=</code> override with its legacy values, the cookie, the thumb style and the skin's override
+of it, both calendar flags &mdash; lived inside <code>archive.php</code>, between its redirects and its
+thumbnail arithmetic. This is the same shape as every other fault found in the week of 25&ndash;29
+October: the 28 September strict-runtime conversion moved rendering into core and left whole features
+behind in the legacy path, and nothing compares what one path renders against what the other does.</p>
+
+<h3>16.3 Repair</h3>
+<ul>
+<li><code>core/archive-controls.php</code> is <code>archive.php</code>'s resolution lifted out whole.
+<code>archive.php</code> now calls it and keeps no copy, so there is one answer to &quot;which layout is
+showing and what may the visitor switch to&quot; and both paths read it.</li>
+<li><code>snapsmack_public_runtime()</code> assigns the resolved layouts and calendar flags to the
+response, and the allowlist carries them.</li>
+<li>The component emits <code>data-layout</code> on each toggle link and
+<code>data-calendar-toggle</code> on the calendar button &mdash; the two selectors the engines actually
+bind, rather than the markup a test would like to see.</li>
+<li>The runtime <strong>declares the archive engine as a required asset</strong> on every archive page, so
+the stylesheet and the behaviour travel with the row that needs them. No manifest bump, no repackage, no
+per-site skin install: a CMS deploy is the whole delivery, the same route the community block and the
+shortcode stylesheets already take.</li>
+<li>Three skins that already received the stylesheet but printed no row &mdash; CHAPLIN and ONYX through
+their CMS page components, plus 50 SHADES which was already wired &mdash; now print it. Five skins render
+the row in total.</li>
+</ul>
+
+<h3>16.4 What the browser found that the markup could not</h3>
+<p>Measured at 1920 on the geometry fixtures, after the repair and before anything was claimed:</p>
+<table>
+<tr><th>skin</th><th>row height</th><th>T/M buttons</th><th>button box</th><th>calendar</th><th>stylesheet</th><th>group inside the grid</th></tr>
+<tr><td>50 SHADES</td><td>60px</td><td>2</td><td>62&times;26</td><td>39&times;26</td><td>yes</td><td>yes</td></tr>
+<tr><td>CHAPLIN</td><td>54px</td><td>2</td><td>38&times;26</td><td>39&times;26</td><td>yes</td><td>yes, after the repair below</td></tr>
+<tr><td>IMPACT PRINTER</td><td>50px</td><td>2</td><td>62&times;26</td><td>32&times;31</td><td>yes</td><td>yes</td></tr>
+<tr><td>ONYX</td><td>27px</td><td>2</td><td>38&times;26</td><td>39&times;27</td><td>yes</td><td>yes</td></tr>
+<tr><td>TRUE GRIT</td><td>60px</td><td>2</td><td>62&times;26</td><td>39&times;26</td><td>yes</td><td>yes</td></tr>
+</table>
+
+<p>CHAPLIN's docked control group first measured at <strong>1751..1880 while its photographs end at
+1760</strong> &mdash; 120px of control hanging past the archive. The row caps itself with
+<code>--archive-content-width</code>, the component took that from <code>main_canvas_width</code>, and
+CHAPLIN has no such option: its control is <code>chap_photo_max_width</code>, labelled &quot;Content Max
+Width (px)&quot;, default 1600, which is the 1600 its grid measures. With no cap the group fell back to
+<code>right:40px</code> against the <strong>window</strong>.</p>
+
+<p>Seven skins use <code>main_canvas_width</code>. The other twenty-three each named their own, and there
+is nothing to infer from: a pattern over the option names picks up <code>masonry_border_width</code> and
+<code>chap_line_1_width</code> just as readily, and a 2px cap on the row would be worse than no cap. So
+the skin nominates it in its manifest, <code>features.canvas_width_option</code>. The first repair put a
+per-skin table in the CMS and <code>tests/agreed-rules-gate.php</code> refused it &mdash; &quot;Core must
+not learn about another individual skin&quot; &mdash; which is what that gate is for. Re-measured after
+the nomination: <strong>1591..1720, inside a 160..1760 grid.</strong></p>
+
+<p>The geometry harness itself was part of the finding. Before this it rendered the archive row with
+SHOW ALL and a search field and no controls at all, because it built the view without the runtime that
+assigns them &mdash; which is exactly what the live archives looked like, so any screenshot of it proved
+nothing. It now resolves the controls the way a real request does.</p>
+
+<h3>16.5 Why no check saw any of this</h3>
+<p>Section 15 recorded a gate written to prove a repair being counted as coverage of the control it
+touched. This is the same failure one level deeper. <code>tests/archive-filter-row-regression.php</code>
+rendered the <code>archive-filters</code> component and asserted its parts were present &mdash; and
+passed, every time, while the component was printed by three skins out of thirty and its toggle was
+rendered by none. The test asked &quot;does the component emit the row&quot;. Nobody asked &quot;does any
+page a visitor can open contain it&quot;.</p>
+
+<p><code>tests/archive-controls-reach-the-page-regression.php</code> asks the second question. It compares
+the shared resolver against the arithmetic deleted from <code>archive.php</code> over 3,528 input
+combinations; asserts the engines' own selectors rather than chosen markup; renders three real skin
+archives end to end with the response shaped the way the runtime shapes it; and checks that a skin which
+prints no row still has none, so the repair cannot grow a row nobody asked for. It also found a fault in
+its own repair: a nominated width option that was not a plausible width was being passed straight
+through, so a 2px border width would have capped the row at 2px.</p>
+
+<h3>16.6 What must be true before this closes</h3>
+<ol>
+<li>Twenty-three strict skins still print no control row. Each needs one line in its
+<code>skins/&lt;skin&gt;/layout.php</code>. Until then those archives have no SHOW ALL, no FILTER, no
+search, no layout toggle and no calendar, and this section is not closed by the CMS work alone.</li>
+<li>Every skin whose width control is not <code>main_canvas_width</code> nominates it in its manifest
+before it is packaged. CHAPLIN's is done (0.2.27 &rarr; 0.2.28, needs repackaging). Any skin that prints
+the row without a nomination will hang its control group off the window, and that is a measurement, not a
+guess.</li>
+<li>The row is confirmed on a live site at 1920 after deployment, not only on the fixtures. The fixtures
+inline the real resolved stylesheets, which is close, but a live page is the only place the owner's
+actual settings are read.</li>
+<li>No check that renders a component in isolation is counted as coverage of a control. The question is
+whether a page a visitor can open contains it.</li>
+</ol>
+
+<h2>Supplement — 1 November 2026: the owner’s account of the cost</h2>
+<p><strong>Owner’s account, not a measured duration.</strong> Sean says the regressions, and repairs that kept returning as rewrites, have cost him about a month and are why the planned 4 November closed beta cannot be met. This supplement records his account; it does not establish an independently measured number of lost days or set a replacement beta date.</p>
+
+<p class="doc-foot">SnapSmack Operability Audit 027 - 25 October 2026; evidence supplements 26, 27, 28 and 29 October 2026</p>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
