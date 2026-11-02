@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.975 - 2026-11-02 - HEISENBERG DECOMPENSATOR
+
+- Stable promotion of the matching tested 0.7.975D source; retires 0.7.670, whose CMS is incompatible with current strict skins.
+
+
 ## 0.7.975D - 2026-11-02 - HEISENBERG DECOMPENSATOR
 
 - Repair SMACKTALK search routing when archive navigation is hidden or absent; retain search terms through archive redirects.
