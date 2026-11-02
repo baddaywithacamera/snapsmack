@@ -21,6 +21,7 @@ from contextlib import contextmanager
 from typing import Optional
 
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -58,8 +59,17 @@ def authenticate(credentials_path: str):
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
+            try:
+                creds.refresh(Request())
+            except RefreshError as error:
+                # A revoked/expired grant needs consent again, not another refresh.
+                # Other failures (including transient service errors) must surface.
+                rejected = any(isinstance(arg, dict) and arg.get('error') == 'invalid_grant'
+                               for arg in error.args)
+                if not rejected:
+                    raise
+                creds = None
+        if not creds or not creds.valid:
             try:
                 flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
             except Exception as e:
