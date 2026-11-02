@@ -11,6 +11,14 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.975D - 2026-11-02 - HEISENBERG DECOMPENSATOR
+
+- Repair SMACKTALK search routing when archive navigation is hidden or absent; retain search terms through archive redirects.
+- Include published post titles and body text alongside photograph search results, with explicit empty-search feedback across the five SMACKTALK skins.
+- Retain GLIDE 0.1.14 activation at 50 photographs and the prepared ALFRED presentation recovery.
+- Stable promotion replaces the obsolete 0.7.670 core, which is incompatible with current strict skins requiring CMS-owned rendering code.
+
+
 ## 0.7.974D - 2026-11-01 - HEISENBERG DECOMPENSATOR
 
 ### Update and release bookkeeping
