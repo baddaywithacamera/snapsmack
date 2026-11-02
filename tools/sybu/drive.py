@@ -201,6 +201,64 @@ def search(service, folder_id: str, title_query: str) -> list:
     ]
 
 
+def probe_folder(service, folder_id: str) -> dict:
+    """Read-only: can THIS token reach THIS folder? No upload, no write, no queue.
+
+    SS-1171. SYBU's only Drive signal was `drive_service is not None`, which is
+    true the moment authenticate() returns an object -- so a dead token or a
+    folder id that no longer exists both read as "connected", and the owner
+    found out at publish time. This asks Drive one question and reports which
+    of the two failed, because "it does not work" is not a diagnosis.
+
+    Returns {'ok': bool, 'reason': str, 'detail': str, 'name': str}:
+      reason 'no_service'   authenticate() has not run in this session
+      reason 'no_folder'    no folder id was given to check
+      reason 'auth'         the token is refused (401/403) -- re-authenticate
+      reason 'folder'       the folder is missing, trashed, or not shared (404)
+      reason 'not_a_folder' the id resolves to a file, not a folder
+      reason 'api'          Drive answered with something else; detail carries it
+      reason ''             ok
+    """
+    if service is None:
+        return {'ok': False, 'reason': 'no_service', 'detail':
+                'Google Drive is not connected in this session.', 'name': ''}
+    folder_id = (folder_id or '').strip()
+    if not folder_id:
+        return {'ok': False, 'reason': 'no_folder', 'detail':
+                'No Drive folder id is set, so there is nothing to check.', 'name': ''}
+    try:
+        meta = service.files().get(
+            fileId=folder_id,
+            fields='id,name,mimeType,trashed',
+        ).execute(num_retries=0)
+    except Exception as exc:                      # googleapiclient.errors.HttpError and friends
+        status = getattr(getattr(exc, 'resp', None), 'status', None)
+        if status is None:
+            status = getattr(exc, 'status_code', None)
+        try:
+            status = int(status) if status is not None else None
+        except (TypeError, ValueError):
+            status = None
+        text = str(exc)
+        if status in (401, 403) or 'invalid_grant' in text or 'insufficient' in text.lower():
+            return {'ok': False, 'reason': 'auth', 'detail':
+                    'Google refused the saved token. Re-authenticate Drive. (%s)' % text,
+                    'name': ''}
+        if status == 404 or 'notFound' in text or 'not found' in text.lower():
+            return {'ok': False, 'reason': 'folder', 'detail':
+                    'Drive has no folder with that id, or it is not shared with '
+                    'this account. (%s)' % text, 'name': ''}
+        return {'ok': False, 'reason': 'api', 'detail': text, 'name': ''}
+
+    if meta.get('trashed'):
+        return {'ok': False, 'reason': 'folder', 'detail':
+                'That folder is in the Drive trash.', 'name': str(meta.get('name') or '')}
+    if meta.get('mimeType') != 'application/vnd.google-apps.folder':
+        return {'ok': False, 'reason': 'not_a_folder', 'detail':
+                'That id is a file, not a folder.', 'name': str(meta.get('name') or '')}
+    return {'ok': True, 'reason': '', 'detail': '', 'name': str(meta.get('name') or '')}
+
+
 def revoke_token() -> None:
     """Delete the saved token, forcing re-authentication next time."""
     token_path = _token_path()

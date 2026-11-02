@@ -223,7 +223,7 @@ class Window(QMainWindow):
         ai,al=card("2 · Enrich","Generate titles, tags, captions and alt text for selected images. Existing work is preserved.")
         r=QHBoxLayout(); self.prompt=QLineEdit(); self.prompt.setReadOnly(True); self.prompt.setPlaceholderText("Built-in enrichment prompt"); r.addWidget(self.prompt,1); review=QPushButton("REVIEW PROMPT…"); review.clicked.connect(self._review_prompt); r.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.clicked.connect(self._enrich); r.addWidget(enrich); al.addLayout(r); l.addWidget(ai)
         send,pl=card("3 · Publish","SOLO posts individual photographs. GRAM creates carousel posts. The site mode is checked before anything is sent.")
-        r=QHBoxLayout(); self.drive=QCheckBox("Attach Google Drive originals"); r.addWidget(self.drive); r.addStretch(1); validate=QPushButton("Validate"); validate.clicked.connect(self._validate); r.addWidget(validate); self.post_btn=QPushButton("POST"); self.post_btn.setObjectName("Primary"); self.post_btn.clicked.connect(lambda:self._post(None)); r.addWidget(self.post_btn); self.post_solo=QPushButton("POST SOLO"); self.post_solo.clicked.connect(lambda:self._post(False)); r.addWidget(self.post_solo); self.post_gram=QPushButton("POST GRAM"); self.post_gram.clicked.connect(lambda:self._post(True)); r.addWidget(self.post_gram); pl.addLayout(r)
+        r=QHBoxLayout(); self.drive=QCheckBox("Attach Google Drive originals"); r.addWidget(self.drive); self.drive_check_btn=QPushButton("Check Drive"); self.drive_check_btn.setToolTip("Ask Google Drive whether this token and folder work. Needs no queue, no images and no blog connection."); self.drive_check_btn.clicked.connect(self._drive_check); r.addWidget(self.drive_check_btn); r.addStretch(1); validate=QPushButton("Validate queue"); validate.setToolTip("Check the queue titles, categories and albums. Does not check Google Drive."); validate.clicked.connect(self._validate); r.addWidget(validate); self.post_btn=QPushButton("POST"); self.post_btn.setObjectName("Primary"); self.post_btn.clicked.connect(lambda:self._post(None)); r.addWidget(self.post_btn); self.post_solo=QPushButton("POST SOLO"); self.post_solo.clicked.connect(lambda:self._post(False)); r.addWidget(self.post_solo); self.post_gram=QPushButton("POST GRAM"); self.post_gram.clicked.connect(lambda:self._post(True)); r.addWidget(self.post_gram); pl.addLayout(r)
         l.addWidget(send)
         act,aa=card("Activity"); self.activity_card=act; self.log=QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(72); aa.addWidget(self.log); l.addWidget(act,1); return page
 
@@ -457,6 +457,35 @@ class Window(QMainWindow):
         try:
             self._sync_queue(); out=self.engine.validate(self.cat.currentText(),self.album.currentText()); QMessageBox.information(self,"Queue validation","Ready to post." if out['ok'] else "\n".join(out['issues'][:20]))
         except Exception as e:self._error(str(e))
+
+    def _drive_check(self):
+        """SS-1171. Answer "does Drive work" with no queue, no scan and no blog.
+
+        The owner pressed Validate beside the Drive checkbox and was told to
+        load images first, because that button validates the MANIFEST and never
+        asked Drive anything. This asks Drive, and names which half failed.
+        """
+        try:
+            out = self.engine.drive_check(self.drive_folder.text())
+            if out.get('ok'):
+                QMessageBox.information(
+                    self, "Google Drive",
+                    "Drive is reachable and this account can see the folder.\n\n"
+                    "Folder: %s\nId: %s"
+                    % (out.get('name') or '(unnamed)', out.get('folder_id', '')))
+                return
+            head = {
+                'disabled': "Drive attachment is switched off.",
+                'no_service': "Drive is not connected in this session.",
+                'no_folder': "No Drive folder id is set.",
+                'auth': "Google refused the saved token.",
+                'folder': "That folder cannot be reached.",
+                'not_a_folder': "That id is a file, not a folder.",
+            }.get(out.get('reason', ''), "Drive check failed.")
+            QMessageBox.warning(self, "Google Drive",
+                                "%s\n\n%s" % (head, out.get('detail', '')))
+        except Exception as e:
+            self._error(str(e))
 
     def _apply_site_mode(self,mode):
         """The blog decides solo vs gram (photoblog → SOLO, carousel → GRAM). One POST
