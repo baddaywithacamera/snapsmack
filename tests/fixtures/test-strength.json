@@ -1655,6 +1655,13 @@
         "predicates": 10,
         "thresholds": []
     },
+    "smacktalk-search-route-regression.php": {
+        "assertions": 12,
+        "predicates": 6,
+        "thresholds": [
+            6
+        ]
+    },
     "smackthemup-contract-regression.php": {
         "assertions": 23,
         "predicates": 44,
