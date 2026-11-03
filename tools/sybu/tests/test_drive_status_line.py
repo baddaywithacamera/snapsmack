@@ -25,4 +25,19 @@ def test_empty_queue_drive_status_is_visible_and_invalidated(monkeypatch):
     assert 'cannot upload' in w.drive_status_line.text()
     assert 'fixture denial' in w.drive_status_line.text()
     w.close()
+def test_check_drive_uses_visible_checkbox_without_saving(monkeypatch):
+    from PySide6.QtWidgets import QApplication
+    import sybu_qt
+    app = QApplication.instance() or QApplication([])
+    w = sybu_qt.Window()
+    w.engine.config['drive_enabled'] = False
+    w.drive.setChecked(True)
+    called = []
+    monkeypatch.setattr(w, '_async', lambda name, operation: called.append(name))
+    w._drive_check()
+    assert w.engine.config['drive_enabled'] is True
+    assert called == ['drive_check']
+    assert w.table.rowCount() == 0
+    w.close()
+
 # ===== SNAPSMACK EOF =====
