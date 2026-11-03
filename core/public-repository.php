@@ -24,6 +24,163 @@ final class SnapPublicRepository
         return is_array($row) ? $row : null;
     }
 
+    // ─── PORTFOLIO VISIBILITY ────────────────────────────────────────────────
+    //
+    // ONE definition of each exclusion, shared by every surface, because a
+    // listing and the count beside it MUST carry the identical predicate. When
+    // they drift the count says 100, the list yields 80, and endless scroll
+    // never completes -- an archive stuck part-way is the same defect as one
+    // stuck on page one.
+    //
+    // WHY THESE TOLERATE A MISSING COLUMN. Only core/updater.php calls
+    // snap_schema_sync(); no public bootstrap does. So a site can be running
+    // updated core files against a database that has not gained these columns
+    // yet, and an unconditional `AND p.exclude_from_archive = 0` would be an
+    // "Unknown column" fatal on a public page. That is not hypothetical: it is
+    // recorded at core/threeacross-api.php:907 as the cause of fleet-wide
+    // "Unknown column 'fedi_enabled'" 500s on sites that never ran FEDIVERSE.
+    // So each helper returns an EMPTY STRING when the column is absent.
+    //
+    // Absent means NOT FILTERED, deliberately. Hiding nothing is a visible,
+    // reversible cosmetic regression; a 500 takes the site down. But absence is
+    // never silent -- visibilityFlagsPresent() reports it so an admin or health
+    // page can say so out loud, and a test asserts the fallback rather than
+    // leaving it to be discovered.
+    //
+    // NO DDL HERE. These run on unauthenticated page views. ALTER needs DDL
+    // rights, implicit-commits, and has no business on a reader's request.
+    // The sync path (login, SMACKBACK, update) owns adding the columns.
+
+    /** The visibility flags, so the admin side validates against this list
+     *  rather than keeping its own copy to drift. portfolio_post is NOT here:
+     *  it is a designation and filters nothing. */
+    public const VISIBILITY_FLAGS = [
+        'exclude_from_archive',
+        'exclude_from_search',
+        'exclude_from_feed',
+        'exclude_from_sitemap',
+    ];
+
+    /** Per-request cache of which flags the live database actually has. */
+    private ?array $flagsPresent = null;
+
+    /**
+     * Measured, not assumed: which VISIBILITY_FLAGS exist on snap_posts.
+     *
+     * Asked by SELECTING the columns with a false WHERE, not by reading
+     * INFORMATION_SCHEMA. The first version of this used INFORMATION_SCHEMA and
+     * its own regression test caught it: that view is MySQL/MariaDB only, so on
+     * any other engine the probe threw and silently reported every column
+     * absent -- a feature that would have appeared to work and filtered
+     * nothing. A SELECT ... WHERE 0 is answered by every engine, returns no
+     * rows, and asks the question that actually matters, which is whether a
+     * query naming these columns can be prepared at all.
+     *
+     * One statement in the normal case. Only a failure costs a second pass, and
+     * then only to find which subset exists, so a half-applied schema still
+     * filters on the flags it does have.
+     */
+    public function visibilityFlagsPresent(): array {
+        if ($this->flagsPresent !== null) return $this->flagsPresent;
+
+        $cols = implode(', ', array_map(
+            static fn(string $f): string => "`{$f}`",
+            self::VISIBILITY_FLAGS
+        ));
+        if ($this->columnsSelectable($cols)) {
+            return $this->flagsPresent = self::VISIBILITY_FLAGS;
+        }
+
+        $present = [];
+        foreach (self::VISIBILITY_FLAGS as $flag) {
+            if ($this->columnsSelectable("`{$flag}`")) $present[] = $flag;
+        }
+        return $this->flagsPresent = $present;
+    }
+
+    /** Can a query naming these snap_posts columns be run at all? */
+    private function columnsSelectable(string $columnList): bool {
+        try {
+            $stmt = $this->pdo->prepare("SELECT {$columnList} FROM snap_posts WHERE 0");
+            $stmt->execute();
+            $stmt->fetchAll();
+            return true;
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    /** True when every flag is present, i.e. the feature is fully applied. */
+    public function visibilityFlagsComplete(): bool {
+        return count($this->visibilityFlagsPresent()) === count(self::VISIBILITY_FLAGS);
+    }
+
+    /**
+     * POST-KEYED surfaces: the listing already selects FROM snap_posts, so the
+     * flag is a column on the row being listed. Returns '' when unsupported.
+     *
+     * $alias is the snap_posts alias in the caller's query ('' for an
+     * unaliased `FROM snap_posts`).
+     */
+    public function postFilter(string $flag, string $alias = 'p'): string {
+        if (!in_array($flag, $this->visibilityFlagsPresent(), true)) return '';
+        $col = $this->qualify($alias, $flag);
+        return " AND {$col} = 0";
+    }
+
+    /**
+     * IMAGE-KEYED surfaces: the archive, the taxonomy counts and the images
+     * half of search all select FROM snap_images. A post-level flag cannot
+     * reach them except through the snap_post_images pivot.
+     *
+     * THE QUALIFYING-OWNER RULE, which is not the obvious one. An image can
+     * belong to several posts. Hiding it because ANY owner is excluded would
+     * make a photograph vanish from the archive merely because it also appears
+     * on a portfolio page. And counting a DRAFT owner as a reason to keep it
+     * visible would let unpublished content decide what the public sees.
+     *
+     * So: only a PUBLISHED, CURRENTLY VISIBLE post counts as an owner at all.
+     * The image is hidden when it has at least one such owner and EVERY one of
+     * them is excluded. An image with no qualifying owner is never touched by
+     * this feature, which leaves orphan and legacy photographs exactly as they
+     * are today.
+     *
+     * Both ownership routes are considered: the snap_post_images pivot and the
+     * legacy nullable snap_images.post_id. Considering only the pivot would let
+     * a legacy-linked image slip through.
+     *
+     * This is ANDed on top of the existing img_status / img_date filters. It
+     * never replaces them.
+     */
+    public function imageFilter(string $flag, string $imageAlias = 'i'): string {
+        if (!in_array($flag, $this->visibilityFlagsPresent(), true)) return '';
+        $img = $imageAlias === '' ? 'snap_images' : $imageAlias;
+        $owner = "(
+                      EXISTS (SELECT 1 FROM snap_post_images vpi
+                               WHERE vpi.image_id = {$img}.id AND vpi.post_id = vp.id)
+                   OR {$img}.post_id = vp.id
+                  )";
+        // Hidden only if a qualifying owner exists AND none of them is visible.
+        return "
+               AND NOT (
+                    EXISTS (
+                        SELECT 1 FROM snap_posts vp
+                         WHERE vp.status = 'published' AND vp.created_at <= NOW()
+                           AND {$owner}
+                    )
+                AND NOT EXISTS (
+                        SELECT 1 FROM snap_posts vp
+                         WHERE vp.status = 'published' AND vp.created_at <= NOW()
+                           AND vp.{$flag} = 0
+                           AND {$owner}
+                    )
+               )";
+    }
+
+    private function qualify(string $alias, string $column): string {
+        return $alias === '' ? "`{$column}`" : "{$alias}.`{$column}`";
+    }
+
     public function photographBySlug(string $slug): ?array {
         return $this->one(
             "SELECT id,img_title,img_slug,img_description,img_alt,img_film,img_license,img_date,
