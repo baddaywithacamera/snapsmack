@@ -158,6 +158,34 @@ px(str_contains($hook, 'agreed-rules-gate.php'),
 px(str_contains($hook, "p.startswith('core/')"),
    'on staged core/ paths -- the old hook only ever looked at skins/');
 
+// ── TWO SEVERITIES ──────────────────────────────────────────────────────────
+// Codex's review of 85239f9c: a legitimately open build number must not turn a
+// UTF-8 or boundary violation into a non-blocking warning. The first version of
+// this hook blocked on nothing for exactly that reason, which meant release
+// bookkeeping was silencing a source-security rule.
+px(str_contains($hook, "'--commit'"),
+   'the commit path asks for COMMIT severity explicitly');
+px(str_contains($hook, 'blocked = blocked or bool(agreed_rules_block)'),
+   'and a source-rule failure BLOCKS the commit');
+px(!str_contains($flow, "--commit"),
+   'while the release path passes no flag, so every rule is fatal there');
+
+// Behaviour, not just source: run the real gate both ways and compare.
+$relOut = run_gate($gate, $root);
+$cmdCommit = 'php ' . escapeshellarg($gate) . ' --commit 2>&1';
+$cwd = getcwd(); chdir($root); $comOut = (string)shell_exec($cmdCommit); chdir($cwd !== false ? $cwd : $root);
+
+px(str_contains($relOut, 'AGREED RULES GATE FAILED')
+   && str_contains($relOut, 'IN SERVICE on the fleet'),
+   'at RELEASE severity the version finding is fatal');
+px(str_contains($comOut, 'RELEASE-READINESS')
+   && str_contains($comOut, 'IN SERVICE on the fleet'),
+   'at COMMIT severity it is deferred -- and still PRINTED, not silenced');
+px(str_contains($comOut, 'are NOT valid UTF-8'),
+   'while the UTF-8 rule is reported at commit severity too');
+px(preg_match('/AGREED RULES GATE FAILED:\s*\n\s*- 1 tracked source file/', $comOut) === 1,
+   'and it is the FATAL one at commit severity: an open build number is no excuse');
+
 echo $fail === 0
     ? "\nPASS - the gate catches a planted violation and releases it again\n"
     : "\n$fail CHECK(S) FAILED\n";
