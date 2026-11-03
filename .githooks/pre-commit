@@ -86,10 +86,23 @@ blocked = blocked or bool(skin_policy_dirty)
 #             not block, because they are the expected state of an open build.
 #   release   tools/release-flow.php RF_NAMED_GATES runs it with no flag, so
 #             everything is fatal there.
+# TRIGGERED BY ANY STAGED FILE, not by a path prefix or an extension list.
+#
+# It first triggered on staged core/ or skins/ paths only, which is what Sean
+# specified. Measuring it showed the mismatch: rule 7 scans 2,205 tracked
+# text-source files and only 333 of them are under core/ or skins/, so 1,872
+# files were covered by a rule that could not trigger the check enforcing it. A
+# bad byte in tools/, tests/ or a root file sailed past commit. Sean widened it
+# on 3 November 2026.
+#
+# AND IT IS "ANY STAGED FILE" RATHER THAN "ANY STAGED SOURCE FILE" ON PURPOSE.
+# Matching the gate's own extension list would mean a SECOND COPY of that list,
+# in a different language, which is the drift that this repository keeps paying
+# for -- the same fault as a rule defined once in PHP and once in SQL. The gate
+# already decides what it scans; the hook only has to avoid MISSING. A commit
+# of nothing but images costs one extra gate run, which is the cheaper mistake.
 agreed_rules_block = ''
-needs_agreed_rules = any(
-    p.startswith('core/') or p.startswith('skins/') for p in staged
-)
+needs_agreed_rules = bool(staged)
 if needs_agreed_rules and php_available:
     ar = subprocess.run(['php', 'tests/agreed-rules-gate.php', '--commit'],
                         capture_output=True, text=True)
