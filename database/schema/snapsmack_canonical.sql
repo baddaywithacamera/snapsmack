@@ -215,6 +215,16 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'FEDIVERSE (0.7.393): 1 = mark the federated Note sensitive (blurred behind a CW).',
   `content_warning`   varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                       COMMENT 'FEDIVERSE (0.7.393): Note.summary content-warning text shown before a sensitive post.',
+  `portfolio_post`    tinyint(1)     NOT NULL DEFAULT 0
+                      COMMENT 'PORTFOLIO: 1 = this post is a standing portfolio page rather than a dated entry. DESIGNATION ONLY — it hides nothing by itself. Visibility is the three exclude_* flags, so a page can be marked now and its visibility decided later without a schema change.',
+  `exclude_from_archive` tinyint(1)  NOT NULL DEFAULT 0
+                      COMMENT 'PORTFOLIO: 1 = keep out of archive and landing listings, and out of the photograph archive and taxonomy counts via snap_post_images. Never affects the post own URL.',
+  `exclude_from_search` tinyint(1)   NOT NULL DEFAULT 0
+                      COMMENT 'PORTFOLIO: 1 = keep out of both halves of site search.',
+  `exclude_from_feed`  tinyint(1)    NOT NULL DEFAULT 0
+                      COMMENT 'PORTFOLIO: 1 = keep out of the RSS feed and the public profile listing. FEDIVERSE IS NOT THIS FLAG — use fedi_enabled, which already gates delivery and every outbox listing. Two switches for one surface would drift.',
+  `exclude_from_sitemap` tinyint(1)  NOT NULL DEFAULT 0
+                      COMMENT 'PORTFOLIO: 1 = omit from sitemap.xml. SEPARATE from exclude_from_feed on purpose: a portfolio page usually SHOULD be indexable while staying out of a dated feed.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_slug` (`slug`),
   KEY `idx_status` (`status`),
