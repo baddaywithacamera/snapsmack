@@ -40,4 +40,25 @@ def test_check_drive_uses_visible_checkbox_without_saving(monkeypatch):
     assert w.table.rowCount() == 0
     w.close()
 
+def test_separate_header_connection_indicators():
+    from PySide6.QtWidgets import QApplication
+    import sybu_qt
+    app = QApplication.instance() or QApplication([])
+    w = sybu_qt.Window()
+    w._set_link_indicator(w.status, 'CMS', True)
+    w.engine.drive_service = None
+    w._drive_status_changed()
+    assert w.status.text() == '● CMS Connected'
+    assert w.status.objectName() == 'LinkOn'
+    assert w.drive_indicator.text() == '● Drive Disconnected'
+    assert w.drive_indicator.objectName() == 'LinkOff'
+    w.engine.drive_service = object()
+    w.drive.setChecked(True); w._drive_status_changed()
+    assert w.drive_indicator.text() == '● Drive Connected'
+    assert w.drive_indicator.objectName() == 'LinkOn'
+    w.drive.setChecked(False)
+    assert w.drive_indicator.objectName() == 'LinkOff'
+    assert w.status.objectName() == 'LinkOn'
+    w.close()
+
 # ===== SNAPSMACK EOF =====
