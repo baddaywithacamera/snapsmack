@@ -40,6 +40,8 @@ QLabel#PageTitle {{ font-size:24px; font-weight:750; }}
 QLabel#CardTitle {{ font-size:16px; font-weight:700; }}
 QLabel#Muted {{ color:{DIM}; }}
 QLabel#Good {{ color:{GREEN}; background:#142611; border:1px solid #315d25; border-radius:10px; padding:6px 11px; font-weight:700; }}
+QLabel#LinkOn {{ color:#091006; background:{GREEN}; border:1px solid {GREEN}; border-radius:10px; padding:6px 11px; font-weight:700; }}
+QLabel#LinkOff {{ color:#969c98; background:#242a26; border:1px solid #343c36; border-radius:10px; padding:6px 11px; font-weight:700; }}
 QLabel#Warn {{ color:#ffbf47; background:#271f0f; border:1px solid #5f4821; border-radius:10px; padding:6px 11px; font-weight:700; }}
 QPushButton {{ background:#202c24; border:1px solid #34463a; border-radius:8px; padding:9px 14px; font-weight:650; min-height:18px; }}
 QPushButton:hover {{ border-color:{GREEN}; background:#26372b; }}
@@ -200,7 +202,8 @@ class Window(QMainWindow):
         head=QFrame(); head.setObjectName("Header"); hl=QHBoxLayout(head); hl.setContentsMargins(24,13,24,13)
         hl.addWidget(label("SITE","Eyebrow")); self.profile=QComboBox(); self.profile.setMinimumWidth(260); self.profile.currentTextChanged.connect(self._profile); hl.addWidget(self.profile)
         hl.addSpacing(12); hl.addWidget(label("PROMPT","Eyebrow")); self.prompt_preset=QComboBox(); self.prompt_preset.setMinimumWidth(210); self.prompt_preset.currentTextChanged.connect(self._prompt_preset_changed); hl.addWidget(self.prompt_preset); hl.addStretch(1)
-        self.status=label("● Ready to connect","Warn"); self.status.setWordWrap(False); hl.addWidget(self.status)
+        self.status=label("● CMS Disconnected","LinkOff"); self.status.setWordWrap(False); hl.addWidget(self.status)
+        self.drive_indicator=label("● Drive Disconnected","LinkOff"); self.drive_indicator.setWordWrap(False); hl.addWidget(self.drive_indicator)
         self.connect_btn=QPushButton("Connect"); self.connect_btn.clicked.connect(self._connect); hl.addWidget(self.connect_btn)
         # Progress strip: under every page, so a post started from the queue is
         # seen from the queue. Bar + words + STOP. (Was inside the Post page only —
@@ -305,7 +308,7 @@ class Window(QMainWindow):
         threading.Thread(target=go,daemon=True).start()
 
     def _connect(self):
-        self.status.setText("● Connecting…"); self.status.setObjectName("Warn"); self.status.style().unpolish(self.status); self.status.style().polish(self.status)
+        self.status.setText("● CMS Connecting…"); self.status.setObjectName("LinkOff"); self.status.style().unpolish(self.status); self.status.style().polish(self.status)
         self._async("connect",lambda:self.engine.connect(self.url.text(),self.key.text(),True))
 
     def _task_done(self,name,result,error):
@@ -313,16 +316,19 @@ class Window(QMainWindow):
         if name == 'drive_check':
             self.drive_check_btn.setEnabled(True)
             if error:
+                self._set_link_indicator(self.drive_indicator, 'Drive', False)
                 self.drive_status_line.setText('Drive: Check failed · ' + str(error))
                 self._error(str(error))
             else: self._drive_check_done(result)
             return
-        if error: self.status.setText("● Needs attention"); self._error(str(error)); return
+        if error:
+            if name == "connect": self._set_link_indicator(self.status, "CMS", False)
+            self._error(str(error)); return
         if name=="connect":
             if result.get('needs_insecure_ack'):
                 if QMessageBox.warning(self,"Insecure connection",result['reason'],QMessageBox.Ok|QMessageBox.Cancel)==QMessageBox.Ok: self._async("connect",lambda:self.engine.connect(self.url.text(),self.key.text(),True,True))
                 return
-            self._apply_site_mode(result.get('site_mode','')); self.status.setText("● Connected · ready to post"); self.status.setObjectName("Good"); self.status.style().unpolish(self.status); self.status.style().polish(self.status); self.cat.clear(); self.cat.addItems(result['categories']); self.cat.setEditable(True); self.album.clear(); self.album.addItems(result['albums']); self.album.setEditable(True); self._say(f"Connected to {result['base_url']} · {result['site_mode'] or 'site mode unknown'}")
+            self._apply_site_mode(result.get('site_mode','')); self._set_link_indicator(self.status, "CMS", True); self.cat.clear(); self.cat.addItems(result['categories']); self.cat.setEditable(True); self.album.clear(); self.album.addItems(result['albums']); self.album.setEditable(True); self._say(f"Connected to {result['base_url']} · {result['site_mode'] or 'site mode unknown'}")
         elif name in ("scan","manifest"):
             # Saved enrichment for this folder comes back on its own (the Tk window asked
             # first; the Qt window never called apply_resume at all, so a re-scan looked
@@ -481,9 +487,15 @@ class Window(QMainWindow):
             self._sync_queue(); out=self.engine.validate(self.cat.currentText(),self.album.currentText()); QMessageBox.information(self,"Queue validation","Ready to post." if out['ok'] else "\n".join(out['issues'][:20]))
         except Exception as e:self._error(str(e))
 
+    def _set_link_indicator(self, indicator, service, connected):
+        indicator.setText("● %s %s" % (service, "Connected" if connected else "Disconnected"))
+        indicator.setObjectName("LinkOn" if connected else "LinkOff")
+        indicator.style().unpolish(indicator); indicator.style().polish(indicator)
+
     def _drive_status_changed(self, *_):
         enabled = self.drive.isChecked()
         connected = self.engine.drive_service is not None
+        self._set_link_indicator(self.drive_indicator, "Drive", enabled and connected)
         state = "Connected; folder not verified" if connected else "Not connected"
         self.drive_status_line.setText("Drive: %s · %s" % ("Enabled" if enabled else "Disabled", state))
 
@@ -509,6 +521,7 @@ class Window(QMainWindow):
     def _drive_check_done(self, out):
         try:
             if out.get('ok'):
+                self._set_link_indicator(self.drive_indicator, 'Drive', self.drive.isChecked())
                 from datetime import datetime
                 self.drive_status_line.setText('Drive: %s · Connected as %s · Folder %s · Last verified %s' % ('Enabled' if self.drive.isChecked() else 'Disabled', out.get('account') or '(not reported)', out.get('name') or '(unnamed)', datetime.now().strftime('%H:%M:%S')))
                 QMessageBox.information(
@@ -518,6 +531,7 @@ class Window(QMainWindow):
                     % (out.get('name') or '(unnamed)', out.get('account') or '(not reported)',
                        ('%.2f GB' % (out['free_bytes'] / 1024**3)) if out.get('free_bytes') is not None else '(not reported)'))
                 return
+            self._set_link_indicator(self.drive_indicator, "Drive", False)
             head = {
                 'disabled': "Drive attachment is switched off.",
                 'no_service': "Drive is not connected in this session.",
