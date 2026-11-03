@@ -226,7 +226,29 @@ if ($declared !== '') {
         // The fleet, not one site. On 15 October a single-site guard sampled
         // wateronthebrain.ca, found 0.7.891D, and allowed v0.7.892D to be
         // force-moved -- while twelve other sites were already serving 892D.
-        $deployed = trim((string)@shell_exec('bash ' . escapeshellarg($root . '/tools/_build/deployed-version.sh') . ' 2>/dev/null'));
+        // NO NETWORK ON A COMMIT. deployed-version.sh:57 curls the live fleet
+        // with a 10-second timeout. Measured: 5.2 of the gate's 8.5 seconds,
+        // every single run. Three reasons not to do that on a commit hook:
+        //
+        //   1. 5 seconds per commit is friction, and a hook people route
+        //      around is the exact failure this gate exists to stop.
+        //   2. It makes the hook NON-DETERMINISTIC OFFLINE. With no network the
+        //      lookup returns empty, this check silently does not run, and the
+        //      hook quietly behaves differently depending on the wifi. A gate
+        //      whose behaviour depends on connectivity is not a gate.
+        //   3. It puts traffic on Sean's own live sites on every commit.
+        //
+        // "Is the declared version in service on the fleet" is release
+        // readiness, which is already $release_check and already deferred at
+        // commit severity. So at commit severity the question is not asked at
+        // all, rather than asked and ignored.
+        $deployed = $commit_scope
+            ? ''
+            : trim((string)@shell_exec('bash ' . escapeshellarg($root . '/tools/_build/deployed-version.sh') . ' 2>/dev/null'));
+        if ($commit_scope) {
+            $deferred[] = 'the fleet was NOT asked what it is serving (no network on a commit). '
+                . 'The release run checks it.';
+        }
         if ($deployed !== '' && $deployed !== 'UNKNOWN') {
             $release_check($declared !== $deployed,
                 'the source declares ' . $declared . ', which is IN SERVICE on the fleet. '
@@ -502,8 +524,24 @@ $check($jsStale === [],
 $TEXT_SOURCE_EXT = ['php', 'phtml', 'inc', 'js', 'cjs', 'mjs', 'css', 'json',
                     'sql', 'md', 'txt', 'html', 'htm', 'svg', 'yml', 'yaml',
                     'py', 'sh', 'cfg', 'ini'];
+// SCOPE BY SEVERITY, and it is not a shortcut -- it is the correct question.
+//
+// At COMMIT severity the question is "does what I am ADDING carry a bad byte",
+// so only the staged files are read. At RELEASE severity the question is "is
+// this tree clean", so everything tracked is read.
+//
+// Measured: the whole-tree scan is 2,205 files and the gate took 8.5 SECONDS.
+// On every commit that is friction people route around -- and a hook that gets
+// switched off is the failure this whole exercise is about. Scoping the commit
+// run to staged files keeps the rule fatal on commit without taxing every
+// commit, and loses nothing: a pre-existing bad byte is the RELEASE run's job,
+// which is also what stopped the deadlock where one byte already in the tree
+// blocked every commit in the repository.
 $notUtf8 = [];
-$tracked = (string)@shell_exec('git -C ' . escapeshellarg($root) . ' ls-files -z 2>/dev/null');
+$listCmd = $commit_scope
+    ? 'git -C ' . escapeshellarg($root) . ' diff --cached --name-only -z --diff-filter=ACMR 2>/dev/null'
+    : 'git -C ' . escapeshellarg($root) . ' ls-files -z 2>/dev/null';
+$tracked = (string)@shell_exec($listCmd);
 foreach (explode("\0", $tracked) as $rel) {
     if ($rel === '') continue;
     $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
