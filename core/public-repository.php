@@ -64,7 +64,6 @@ final class SnapPublicRepository
         'exclude_from_archive',
         'exclude_from_search',
         'exclude_from_feed',
-        'exclude_from_sitemap',
     ];
 
     /** Per-request cache of which flags the live database actually has. */
