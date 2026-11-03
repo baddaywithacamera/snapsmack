@@ -166,9 +166,36 @@ final class SnapPublicRepository
         return $this->columnsSelectable('`portfolio_post`') === true;
     }
 
-    /** Everything an admin save of all five columns needs. */
+    /**
+     * Are the primary album and category columns available?
+     *
+     * Separate again, and for the same reason the designation is separate: they
+     * are not exclusions and never appear in an exclusion WHERE clause. They
+     * exist so a post can build ONE canonical album/category/slug URL when a
+     * photograph belongs to several albums.
+     *
+     * The owner picks them. SS-1185 requires the choice to be deterministic,
+     * and an automatic choice -- lowest id, alphabetical -- is only
+     * deterministic until somebody adds an album, at which point a live URL
+     * changes by itself and a shared link breaks.
+     */
+    public function primaryTaxonomyAvailable(): bool {
+        return $this->columnsSelectable('`primary_album_id`, `primary_category_id`') === true;
+    }
+
+    /**
+     * Everything an admin save of the portfolio controls needs: the three
+     * exclusion flags, the designation, and the two primary-taxonomy columns.
+     *
+     * It grew from four columns to six as the feature did, which is exactly why
+     * Codex asked for a single gate rather than checking columns himself -- a
+     * form that writes six columns must not be certified by an answer about
+     * four. Gate the save on THIS, and nothing finer.
+     */
     public function portfolioSchemaReady(): bool {
-        return $this->visibilityFlagsComplete() && $this->designationAvailable();
+        return $this->visibilityFlagsComplete()
+            && $this->designationAvailable()
+            && $this->primaryTaxonomyAvailable();
     }
 
     /**
