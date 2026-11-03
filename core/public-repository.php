@@ -289,6 +289,7 @@ final class SnapPublicRepository
      * landing query; returning photographs here would split carousels apart.
      */
     public function carouselPostLanding(int $limit = 5000, int $offset = 0): array {
+        $px = $this->postFilter('exclude_from_archive', 'p');
         return $this->all(
             "SELECT p.id AS post_id,p.title,p.slug AS post_slug,p.post_type,p.trigram_id,
                     p.created_at,p.sort_order,p.post_img_size_pct,p.post_border_px,
@@ -306,7 +307,7 @@ final class SnapPublicRepository
              JOIN snap_post_images pi ON pi.post_id=p.id AND pi.is_cover=1
              JOIN snap_images i ON i.id=pi.image_id
              LEFT JOIN snap_trigrams tg ON tg.id=p.trigram_id
-             WHERE p.status='published' AND p.created_at<=NOW()
+             WHERE p.status='published' AND p.created_at<=NOW(){$px}
                AND i.img_status='published' AND i.img_date<=NOW()
              ORDER BY CASE WHEN p.sort_order>0 THEN 1 ELSE 0 END ASC,
                       p.sort_order ASC,p.id DESC
@@ -360,6 +361,7 @@ final class SnapPublicRepository
 
     /** CMS-owned GAME ON pool: no trigram members and no carousel cover images. */
     public function gameOnPuzzlePhotographs(int $limit = 160): array {
+        $px = $this->postFilter('exclude_from_archive', 'p');
         return $this->all(
             "SELECT i.id,i.img_title,i.img_slug,i.img_file,i.img_thumb_square,i.img_thumb_aspect,
                     pi.img_focus_x,pi.img_focus_y,pi.img_zoom,p.id AS post_id,p.title AS post_title,
@@ -369,7 +371,7 @@ final class SnapPublicRepository
              JOIN snap_images i ON i.id=pi.image_id
              LEFT JOIN snap_post_images cpi ON cpi.post_id=p.id AND cpi.is_cover=1
              LEFT JOIN snap_images ci ON ci.id=cpi.image_id
-             WHERE p.status='published' AND p.created_at <= NOW() AND p.trigram_id IS NULL
+             WHERE p.status='published' AND p.created_at <= NOW() AND p.trigram_id IS NULL{$px}
                AND i.img_status='published' AND i.img_date <= NOW()
                AND i.img_thumb_square IS NOT NULL AND i.img_thumb_square <> ''
                AND NOT (pi.is_cover=1 AND (SELECT COUNT(*) FROM snap_post_images spi WHERE spi.post_id=p.id AND spi.sort_position >= 0)>1)
@@ -417,13 +419,14 @@ final class SnapPublicRepository
     }
 
     public function longformLanding(int $limit, int $offset = 0): array {
+        $px = $this->postFilter('exclude_from_archive', 'p');
         return $this->all(
             "SELECT p.id,p.title,p.slug,p.description,p.created_at,p.updated_at,p.featured_image_id,
                     i.img_file AS featured_image_path,i.img_thumb_aspect AS featured_thumb,
                     i.img_width AS featured_width,i.img_height AS featured_height
              FROM snap_posts p LEFT JOIN snap_images i ON i.id=p.featured_image_id
                AND i.img_status='published' AND i.img_date <= NOW()
-             WHERE p.post_type='longform' AND p.status='published' AND p.created_at <= NOW()
+             WHERE p.post_type='longform' AND p.status='published' AND p.created_at <= NOW(){$px}
              ORDER BY p.created_at DESC, p.id DESC LIMIT ? OFFSET ?",
             [max(1, min(100, $limit)), max(0, $offset)]
         );
@@ -431,6 +434,7 @@ final class SnapPublicRepository
 
     /** Published writing matches accompanying the photograph search wall. */
     public function archiveSearchPosts(string $search): array {
+        $px = $this->postFilter('exclude_from_search', '');
         $terms = preg_split('/\s+/', trim($search), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         if (!$terms) return [];
         $scope = '';
@@ -441,15 +445,16 @@ final class SnapPublicRepository
         }
         return $this->all(
             "SELECT id,title,slug,description FROM snap_posts
-             WHERE status='published' AND created_at <= NOW(){$scope}
+             WHERE status='published' AND created_at <= NOW(){$px}{$scope}
              ORDER BY created_at DESC,id DESC", $params
         );
     }
 
     public function publishedPostCount(?string $type = null): int {
+        $px = $this->postFilter('exclude_from_archive', '');
         $typeSql = $type === null ? '' : ' AND post_type=?';
         $stmt = $this->pdo->prepare(
-            "SELECT COUNT(id) FROM snap_posts WHERE status='published' AND created_at <= NOW(){$typeSql}"
+            "SELECT COUNT(id) FROM snap_posts WHERE status='published' AND created_at <= NOW(){$px}{$typeSql}"
         );
         $stmt->execute($type === null ? [] : [$type]);
         return (int)$stmt->fetchColumn();
@@ -515,6 +520,7 @@ final class SnapPublicRepository
     }
 
     public function archivePhotographs(int $limit, int $offset = 0, int $categoryId = 0, int $albumId = 0, string $search = ''): array {
+        $ix = $this->imageFilter('exclude_from_archive', 'i');
         $scope = '';
         $params = [];
         if ($categoryId > 0) {
@@ -582,7 +588,7 @@ final class SnapPublicRepository
                       ELSE 0
                     END AS img_orientation
              FROM snap_images i
-             WHERE i.img_status='published' AND i.img_date <= NOW()
+             WHERE i.img_status='published' AND i.img_date <= NOW(){$ix}
                AND NOT EXISTS (
                     SELECT 1 FROM snap_posts p
                     WHERE p.signature_image_id=i.id
@@ -595,6 +601,7 @@ final class SnapPublicRepository
     }
 
     public function archivePhotographCount(int $categoryId = 0, int $albumId = 0): int {
+        $ix = $this->imageFilter('exclude_from_archive', 'i');
         $scope = '';
         $params = [];
         if ($categoryId > 0) {
@@ -607,7 +614,7 @@ final class SnapPublicRepository
         }
         $stmt = $this->pdo->prepare(
             "SELECT COUNT(i.id) FROM snap_images i
-             WHERE i.img_status='published' AND i.img_date <= NOW()
+             WHERE i.img_status='published' AND i.img_date <= NOW(){$ix}
                AND NOT EXISTS (
                     SELECT 1 FROM snap_posts p
                     WHERE p.signature_image_id=i.id
@@ -619,18 +626,21 @@ final class SnapPublicRepository
     }
 
     public function publicCategories(): array {
+        $ix = $this->imageFilter('exclude_from_archive', 'i');
         return $this->all(
             "SELECT c.id,c.cat_name,COUNT(DISTINCT i.id) AS photograph_count,
                     SUBSTRING_INDEX(GROUP_CONCAT(i.img_file ORDER BY i.id DESC SEPARATOR '\n'),'\n',1) AS cover_path
              FROM snap_categories c
              JOIN snap_image_cat_map m ON m.cat_id=c.id
              JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW()
-             WHERE c.show_in_archive=1
+             WHERE c.show_in_archive=1{$ix}
              GROUP BY c.id,c.cat_name ORDER BY c.cat_name ASC"
         );
     }
 
     public function search(string $term, int $limit = 50, int $offset = 0): array {
+        $ix = $this->imageFilter('exclude_from_search', 'i');
+        $px = $this->postFilter('exclude_from_search', '');
         $like = '%' . $term . '%';
         $tagLike = '%' . strtolower($term) . '%';
         $limit = max(1, min(100, $limit));
@@ -647,7 +657,7 @@ final class SnapPublicRepository
                  FROM snap_images i
                  LEFT JOIN snap_image_tags it ON it.image_id=i.id
                  LEFT JOIN snap_tags t ON t.id=it.tag_id
-                 WHERE i.img_status='published' AND i.img_date <= NOW()
+                 WHERE i.img_status='published' AND i.img_date <= NOW(){$ix}
                    AND (i.img_title LIKE ? OR i.img_description LIKE ? OR i.img_alt LIKE ? OR t.slug LIKE ?
                         OR EXISTS (SELECT 1 FROM snap_image_album_map sam JOIN snap_albums a ON a.id=sam.album_id
                                    WHERE sam.image_id=i.id AND a.album_name LIKE ?)
@@ -659,7 +669,7 @@ final class SnapPublicRepository
             'posts' => $this->all(
                 "SELECT id,title,slug,description,post_type,created_at,featured_image_id
                  FROM snap_posts
-                 WHERE status='published' AND created_at <= NOW()
+                 WHERE status='published' AND created_at <= NOW(){$px}
                    AND (title LIKE ? OR description LIKE ? OR content LIKE ?)
                  ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?",
                 [$like, $like, $like, $limit, $offset]
@@ -691,11 +701,12 @@ final class SnapPublicRepository
     }
 
     public function adjacentPosts(int $id, string $type, bool $next): ?array {
+        $px = $this->postFilter('exclude_from_archive', '');
         $op = $next ? '>' : '<';
         $direction = $next ? 'ASC' : 'DESC';
         return $this->one(
             "SELECT id,title,slug,created_at FROM snap_posts
-             WHERE post_type=? AND status='published' AND created_at <= NOW() AND id {$op} ?
+             WHERE post_type=? AND status='published' AND created_at <= NOW(){$px} AND id {$op} ?
              ORDER BY id {$direction} LIMIT 1",
             [$type, $id]
         );
@@ -827,13 +838,14 @@ final class SnapPublicRepository
     }
 
     public function publicAlbums(): array {
+        $ix = $this->imageFilter('exclude_from_archive', 'i');
         return $this->all(
             "SELECT a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id,
                     COUNT(DISTINCT i.id) AS photograph_count,
                     COALESCE(ci.img_file,SUBSTRING_INDEX(GROUP_CONCAT(i.img_file ORDER BY i.id DESC SEPARATOR '\n'),'\n',1)) AS cover_path
              FROM snap_albums a
              JOIN snap_image_album_map m ON m.album_id=a.id
-             JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW()
+             JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW(){$ix}
              LEFT JOIN snap_images ci ON ci.id=COALESCE(a.cover_image_id,a.featured_post_id)
              GROUP BY a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id,ci.img_file
              ORDER BY a.album_name ASC,a.id ASC"
