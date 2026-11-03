@@ -447,10 +447,62 @@ $check($jsStale === [],
     . implode(' | ', array_slice($jsStale, 0, 6)));
 
 
-printf("agreed rules: %d inline styles (budget %d), %d CSS-in-PHP (budget %d), %d inline JS blocks left on the allowlist (limit 0 for any new one), %d data blocks exempt, version %s.
+/* ── RULE 7 ───────────────────────────────────────────────────────────────
+ * TRACKED SOURCE IS UTF-8. (SS-1174 family; the ticket is SS-1181.)
+ *
+ * core/smacktalk-public-controller.php carries byte 0x97 at offset 34 -- a
+ * Windows-1252 em-dash that never became UTF-8. It has been a written rule with
+ * nothing checking it, which is the whole reason this file exists.
+ *
+ * A stray high byte is not cosmetic. It makes the same commit render
+ * differently depending on who reads it, and it is the second time this
+ * repository has lost time to an encoding that no test could see -- the first
+ * was CRLF against LF in generated fixtures, which made one commit pass in one
+ * checkout and fail in another and read as three broken skins.
+ *
+ * THIS RULE IS RED TODAY, ON PURPOSE. Sean's instruction: the gate reports the
+ * file; fixing the file is a separate change he approves separately. A gate
+ * that is only ever written green has not been shown to catch anything.
+ *
+ * Scope is TRACKED TEXT SOURCE. Binary assets are excluded by extension, not
+ * by guessing: a .png is not malformed UTF-8, it is not text.
+ */
+$TEXT_SOURCE_EXT = ['php', 'phtml', 'inc', 'js', 'cjs', 'mjs', 'css', 'json',
+                    'sql', 'md', 'txt', 'html', 'htm', 'svg', 'yml', 'yaml',
+                    'py', 'sh', 'cfg', 'ini'];
+$notUtf8 = [];
+$tracked = (string)@shell_exec('git -C ' . escapeshellarg($root) . ' ls-files -z 2>/dev/null');
+foreach (explode("\0", $tracked) as $rel) {
+    if ($rel === '') continue;
+    $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
+    if (!in_array($ext, $TEXT_SOURCE_EXT, true)) continue;
+    $path = $root . '/' . $rel;
+    if (!is_file($path)) continue;                   // deleted but still staged
+    $bytes = (string)@file_get_contents($path);
+    if ($bytes === '' || mb_check_encoding($bytes, 'UTF-8')) continue;
+    // Report WHERE, so the fix is a one-line edit and not a hunt.
+    $at = null;
+    for ($i = 0, $n = strlen($bytes); $i < $n; $i++) {
+        if (!mb_check_encoding(substr($bytes, 0, $i + 1) , 'UTF-8')
+            && !mb_check_encoding(substr($bytes, $i, min(4, $n - $i)), 'UTF-8')) {
+            $at = $i;
+            break;
+        }
+    }
+    $notUtf8[] = $at === null
+        ? $rel
+        : sprintf('%s (byte 0x%02x at offset %d)', $rel, ord($bytes[$at]), $at);
+}
+$check($notUtf8 === [],
+    count($notUtf8) . ' tracked source file(s) are NOT valid UTF-8. A stray high byte '
+    . 'makes one commit read differently in two checkouts; this repository has already '
+    . 'lost a build to CRLF-vs-LF for the same reason. Fix the encoding, do not delete '
+    . 'the character: ' . implode(' | ', array_slice($notUtf8, 0, 6)));
+
+printf("agreed rules: %d inline styles (budget %d), %d CSS-in-PHP (budget %d), %d inline JS blocks left on the allowlist (limit 0 for any new one), %d data blocks exempt, %d non-UTF-8 source file(s), version %s.
 ",
     $inline, $INLINE_STYLE_BUDGET, count($cssInPhp), $CSS_IN_PHP_BUDGET,
-    count($JS_IN_PHP_ALLOWLIST), $jsDataBlocks, $declared);
+    count($JS_IN_PHP_ALLOWLIST), $jsDataBlocks, count($notUtf8), $declared);
 
 if ($failures) {
     fwrite(STDERR, "AGREED RULES GATE FAILED:\n");

@@ -65,6 +65,29 @@ if needs_skin_gate:
                 skin_policy_dirty.append(gate.stderr.strip() or gate.stdout.strip())
 blocked = blocked or bool(skin_policy_dirty)
 
+# The agreed-rules gate, on staged core/ and skins/ paths.
+#
+# It was written for Sean's "you two keep doing things we have agreed not to
+# over and over" and then wired to nothing: not here, and not in the release
+# flow, whose glob wanted *regression.php. It had been red since 0.7.933D
+# without failing a build. A mechanism nobody runs is a note.
+#
+# It is reported but NOT BLOCKING on commit, deliberately. The gate also
+# enforces the release-version rules, so it is legitimately red for the whole
+# time a build number is open -- and a hook that refuses every commit until a
+# release lands would be turned off within a day, which is how the last one
+# stopped being obeyed. The RELEASE path blocks (tools/release-flow.php
+# RF_NAMED_GATES); the commit path tells you now so it is not a surprise later.
+agreed_rules_note = ''
+needs_agreed_rules = any(
+    p.startswith('core/') or p.startswith('skins/') for p in staged
+)
+if needs_agreed_rules and php_available:
+    ar = subprocess.run(['php', 'tests/agreed-rules-gate.php'],
+                        capture_output=True, text=True)
+    if ar.returncode != 0:
+        agreed_rules_note = (ar.stderr.strip() or ar.stdout.strip())
+
 if null_dirty:
     print('\n\033[31m[pre-commit] NULL BYTES DETECTED — commit blocked\033[0m')
     print('Files with null bytes (Cowork VM edit artifact):')
@@ -89,6 +112,12 @@ if skin_policy_dirty:
 
 if not php_available:
     print('\n\033[33m[pre-commit] php not found in PATH — syntax check skipped\033[0m')
+
+if agreed_rules_note:
+    print('\n\033[33m[pre-commit] AGREED RULES GATE IS RED — not blocking this commit\033[0m')
+    print(agreed_rules_note)
+    print('\nThe RELEASE path refuses this (tools/release-flow.php RF_NAMED_GATES).')
+    print('If the only complaint is the version, open the next build number.\n')
 
 if blocked:
     print('\nFix the issues above, re-stage, and commit.\n')

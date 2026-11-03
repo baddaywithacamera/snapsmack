@@ -342,7 +342,32 @@ function rf_browser_tests(): void {
     rf_run(['node', __DIR__ . '/browser-tests/run-regressions.cjs']);
 }
 
+/**
+ * Gates that must run on every release but whose filenames do not end in
+ * "regression.php", so the glob below never reached them.
+ *
+ * tests/agreed-rules-gate.php was written FOR Sean's 15 October 2026 words --
+ * "you two keep doing things we have agreed not to over and over" -- and its own
+ * header says that a rule depending on an agent remembering is not a mechanism.
+ * It was then wired to NOTHING. Not here, because its name does not match
+ * *regression.php; not in .githooks/pre-commit, which runs three skin programs
+ * and only when a staged path starts with skins/. So the mechanism built to stop
+ * rules depending on somebody remembering ran only when somebody remembered to
+ * type it. It had been red since 0.7.933D without failing a single build.
+ *
+ * Named EXPLICITLY rather than fixed by renaming the file, because wiring that
+ * depends on a filename is how this fell out in the first place.
+ */
+const RF_NAMED_GATES = [
+    'tests/agreed-rules-gate.php',
+];
+
 function rf_tests(): void {
+    foreach (RF_NAMED_GATES as $gate) {
+        $path = __DIR__ . '/../' . $gate;
+        if (!is_file($path)) rf_fail("a named release gate is missing: {$gate}");
+        rf_run([PHP_BINARY, $path]);
+    }
     foreach (glob(__DIR__ . '/../tests/*regression.php') ?: [] as $test) {
         rf_run([PHP_BINARY, $test]);
     }
