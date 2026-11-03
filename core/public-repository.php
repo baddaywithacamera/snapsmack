@@ -714,9 +714,29 @@ final class SnapPublicRepository
 
     public function publicCategories(): array {
         $ix = $this->imageFilter('exclude_from_archive', 'i');
+        // The cover used to be picked with
+        //   SUBSTRING_INDEX(GROUP_CONCAT(i.img_file ORDER BY i.id DESC SEPARATOR ..),..,1)
+        // which is MySQL-only: SQLite cannot parse GROUP_CONCAT's SEPARATOR
+        // clause at all, so this query could not be exercised in any harness on
+        // this machine and its behaviour went untested. A query testable on one
+        // engine is a query that mostly does not get tested.
+        //
+        // The correlated subquery below asks the SAME question -- the img_file
+        // of the highest-id qualifying image in this category -- and runs on
+        // both engines. ORDER BY i2.id is a UNIQUE key, so there are no ties to
+        // break and no tie-breaking behaviour can differ between the two forms.
+        //
+        // It carries the SAME exclusion predicate as the COUNT beside it. A
+        // cover drawn from an excluded photograph while the count excludes it is
+        // exactly the drift this feature keeps tripping over.
+        $ix2 = $this->imageFilter('exclude_from_archive', 'i2');
         return $this->all(
             "SELECT c.id,c.cat_name,COUNT(DISTINCT i.id) AS photograph_count,
-                    SUBSTRING_INDEX(GROUP_CONCAT(i.img_file ORDER BY i.id DESC SEPARATOR '\n'),'\n',1) AS cover_path
+                    (SELECT i2.img_file
+                       FROM snap_images i2
+                       JOIN snap_image_cat_map m2 ON m2.image_id=i2.id AND m2.cat_id=c.id
+                      WHERE i2.img_status='published' AND i2.img_date <= NOW(){$ix2}
+                      ORDER BY i2.id DESC LIMIT 1) AS cover_path
              FROM snap_categories c
              JOIN snap_image_cat_map m ON m.cat_id=c.id
              JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW()
@@ -887,10 +907,20 @@ final class SnapPublicRepository
 
     public function publicAlbums(): array {
         $ix = $this->imageFilter('exclude_from_archive', 'i');
+        // Same rewrite as publicCategories and for the same reason. The MANUAL
+        // cover still wins through COALESCE exactly as before; only the
+        // FALLBACK changed, from the MySQL-only GROUP_CONCAT trick to the
+        // correlated subquery that asks the same question.
+        $ix2 = $this->imageFilter('exclude_from_archive', 'i2');
         return $this->all(
             "SELECT a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id,
                     COUNT(DISTINCT i.id) AS photograph_count,
-                    COALESCE(ci.img_file,SUBSTRING_INDEX(GROUP_CONCAT(i.img_file ORDER BY i.id DESC SEPARATOR '\n'),'\n',1)) AS cover_path
+                    COALESCE(ci.img_file,
+                             (SELECT i2.img_file
+                                FROM snap_images i2
+                                JOIN snap_image_album_map m2 ON m2.image_id=i2.id AND m2.album_id=a.id
+                               WHERE i2.img_status='published' AND i2.img_date <= NOW(){$ix2}
+                               ORDER BY i2.id DESC LIMIT 1)) AS cover_path
              FROM snap_albums a
              JOIN snap_image_album_map m ON m.album_id=a.id
              JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW(){$ix}
