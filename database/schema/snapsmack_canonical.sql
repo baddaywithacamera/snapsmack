@@ -223,6 +223,10 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'PORTFOLIO: 1 = keep out of both halves of site search.',
   `exclude_from_feed`  tinyint(1)    NOT NULL DEFAULT 0
                       COMMENT 'PORTFOLIO: 1 = keep out of the RSS feed and the public profile listing. FEDIVERSE IS NOT THIS FLAG — use fedi_enabled, which already gates delivery and every outbox listing. Two switches for one surface would drift.',
+  `primary_album_id`  int unsigned   DEFAULT NULL
+                      COMMENT 'PORTFOLIO: FK to snap_albums.id. The ONE album used to build this post canonical album/category/slug URL. A photograph may belong to many albums, so something must choose deterministically and SS-1185 requires that the choice be explicit — the owner picks it rather than the system guessing by id or alphabet, because an automatic choice changes a live URL by itself the moment a membership changes. NULL = not designated, and the post keeps its flat /slug.',
+  `primary_category_id` int unsigned DEFAULT NULL
+                      COMMENT 'PORTFOLIO: FK to snap_categories.id. The ONE category used in the canonical URL, for the same reason as primary_album_id. NULL = not designated.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_slug` (`slug`),
   KEY `idx_status` (`status`),

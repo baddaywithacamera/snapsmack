@@ -73,7 +73,9 @@ function make_db(): PDO {
         portfolio_post       INTEGER NOT NULL DEFAULT 0,
         exclude_from_archive INTEGER NOT NULL DEFAULT 0,
         exclude_from_search  INTEGER NOT NULL DEFAULT 0,
-        exclude_from_feed    INTEGER NOT NULL DEFAULT 0)");
+        exclude_from_feed    INTEGER NOT NULL DEFAULT 0,
+        primary_album_id     INTEGER NULL,
+        primary_category_id  INTEGER NULL)");
     $pdo->exec("CREATE TABLE snap_images (
         id INTEGER PRIMARY KEY, img_slug TEXT, img_title TEXT, img_description TEXT,
         img_alt TEXT, img_file TEXT, img_date TEXT NOT NULL DEFAULT '2020-01-01 00:00:00',
