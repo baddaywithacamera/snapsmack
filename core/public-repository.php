@@ -32,8 +32,14 @@ final class SnapPublicRepository
     // never completes -- an archive stuck part-way is the same defect as one
     // stuck on page one.
     //
-    // WHY THESE TOLERATE A MISSING COLUMN. Only core/updater.php calls
-    // snap_schema_sync(); no public bootstrap does. So a site can be running
+    // WHY THESE TOLERATE A MISSING COLUMN. snap_schema_sync() is called from
+    // exactly one place: core/updater.php:1588, inside
+    // updater_run_migrations(), which is reached only from smack-update.php
+    // and core/multisite-api.php. So the columns arrive when an UPDATE is RUN
+    // -- not on login, and not on a SMACKBACK pass. (I told Codex otherwise
+    // and he asked me to trace it; login and SMACKBACK call
+    // core/installer-cleanup.php, which is a different chain entirely.) So a
+    // site can be running
     // updated core files against a database that has not gained these columns
     // yet, and an unconditional `AND p.exclude_from_archive = 0` would be an
     // "Unknown column" fatal on a public page. That is not hypothetical: it is
@@ -64,6 +70,9 @@ final class SnapPublicRepository
     /** Per-request cache of which flags the live database actually has. */
     private ?array $flagsPresent = null;
 
+    /** complete | partial | absent | undetermined. See schemaState(). */
+    private ?string $schemaState = null;
+
     /**
      * Measured, not assumed: which VISIBILITY_FLAGS exist on snap_posts.
      *
@@ -87,32 +96,103 @@ final class SnapPublicRepository
             static fn(string $f): string => "`{$f}`",
             self::VISIBILITY_FLAGS
         ));
-        if ($this->columnsSelectable($cols)) {
+        if ($this->columnsSelectable($cols) === true) {
+            $this->schemaState = 'complete';
             return $this->flagsPresent = self::VISIBILITY_FLAGS;
         }
 
         $present = [];
+        $undetermined = 0;
         foreach (self::VISIBILITY_FLAGS as $flag) {
-            if ($this->columnsSelectable("`{$flag}`")) $present[] = $flag;
+            $answer = $this->columnsSelectable("`{$flag}`");
+            if ($answer === true)      $present[] = $flag;
+            elseif ($answer === null)  $undetermined++;
         }
+        $this->schemaState = $undetermined > 0
+            ? ($present ? 'partial' : 'undetermined')
+            : ($present ? 'partial' : 'absent');
         return $this->flagsPresent = $present;
     }
 
-    /** Can a query naming these snap_posts columns be run at all? */
-    private function columnsSelectable(string $columnList): bool {
+    /**
+     * Three answers, not two: TRUE selectable, FALSE genuinely unknown-column,
+     * NULL the database could not tell us.
+     *
+     * Only an unknown-column error is evidence that a column is missing. A
+     * connection failure or a revoked privilege is a different fact and gets
+     * NULL, so nothing downstream can report "schema not applied" when what
+     * actually happened was "the database would not answer".
+     *
+     * MySQL/MariaDB unknown column is SQLSTATE 42S22 (errno 1054). SQLite
+     * reports HY000 with "no such column". Anything else is not a schema
+     * answer.
+     */
+    private function columnsSelectable(string $columnList): ?bool {
         try {
             $stmt = $this->pdo->prepare("SELECT {$columnList} FROM snap_posts WHERE 0");
             $stmt->execute();
             $stmt->fetchAll();
             return true;
         } catch (Throwable $e) {
-            return false;
+            return $this->looksLikeUnknownColumn($e) ? false : null;
         }
     }
 
-    /** True when every flag is present, i.e. the feature is fully applied. */
+    private function looksLikeUnknownColumn(Throwable $e): bool {
+        $state = $e instanceof PDOException ? (string)$e->getCode() : '';
+        if ($state === '42S22') return true;
+        $msg = strtolower($e->getMessage());
+        if (str_contains($msg, 'no such column')) return true;      // SQLite
+        if (str_contains($msg, 'unknown column')) return true;      // MySQL text
+        return false;
+    }
+
+    /**
+     * True when every EXCLUSION flag is present.
+     *
+     * This does NOT certify that the admin save path is ready: portfolio_post
+     * is a fifth column and is not in VISIBILITY_FLAGS, because it filters
+     * nothing. Codex raised that in review -- a save form writing five columns
+     * cannot take a four-column answer as its go-ahead. Use
+     * designationAvailable() for the fifth, or portfolioSchemaReady() for both.
+     */
     public function visibilityFlagsComplete(): bool {
-        return count($this->visibilityFlagsPresent()) === count(self::VISIBILITY_FLAGS);
+        return $this->schemaState() === 'complete'
+            && count($this->visibilityFlagsPresent()) === count(self::VISIBILITY_FLAGS);
+    }
+
+    /** Is the portfolio_post DESIGNATION column available? Asked separately
+     *  because it is not an exclusion and never appears in a WHERE clause. */
+    public function designationAvailable(): bool {
+        return $this->columnsSelectable('`portfolio_post`') === true;
+    }
+
+    /** Everything an admin save of all five columns needs. */
+    public function portfolioSchemaReady(): bool {
+        return $this->visibilityFlagsComplete() && $this->designationAvailable();
+    }
+
+    /**
+     * WHY THERE IS A THIRD STATE. The first version of columnsSelectable()
+     * caught every Throwable and reported "absent". Codex's review caught it:
+     * a connection drop, a revoked SELECT privilege or any other query failure
+     * is NOT evidence that a column is missing, and silently treating it as
+     * such would turn filtering off across a whole site while reporting a
+     * tidy, wrong answer about why.
+     *
+     *   'complete'     every exclusion column answered a query
+     *   'partial'      some did, some are genuinely unknown-column
+     *   'absent'       all genuinely unknown-column: schema not applied yet
+     *   'undetermined' the database could not answer at all
+     *
+     * All four behave the same way at the query boundary -- no filtering,
+     * never a fatal on a reader's page -- but they must not be CONFUSED, and
+     * 'undetermined' must never be read as "the feature is not installed" or
+     * allow anything to claim a save succeeded.
+     */
+    public function schemaState(): string {
+        $this->visibilityFlagsPresent();
+        return $this->schemaState ?? 'undetermined';
     }
 
     /**
