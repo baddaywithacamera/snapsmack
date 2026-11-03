@@ -49,7 +49,7 @@ function tx(bool $ok, string $what): void {
 }
 
 /** SQLite stand-in for the MySQL schema, with and without the flag columns. */
-function make_db(bool $withFlags, bool $withDesignation = true): PDO {
+function make_db(bool $withFlags, bool $withDesignation = true, bool $withPrimary = true): PDO {
     $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     // $withDesignation separates the four EXCLUSION columns from the fifth
     // DESIGNATION column. Added after mutation proof: with the five always
@@ -62,6 +62,7 @@ function make_db(bool $withFlags, bool $withDesignation = true): PDO {
              exclude_from_search  INTEGER NOT NULL DEFAULT 0,
              exclude_from_feed    INTEGER NOT NULL DEFAULT 0'
           . ($withDesignation ? ', portfolio_post INTEGER NOT NULL DEFAULT 0' : '')
+          . ($withPrimary ? ', primary_album_id INTEGER NULL, primary_category_id INTEGER NULL' : '')
         : '';
     $pdo->exec("CREATE TABLE snap_posts (
         id INTEGER PRIMARY KEY, title TEXT, slug TEXT,
@@ -232,8 +233,25 @@ tx((new SnapPublicRepository(make_db(true)))->schemaState() === 'complete',
 $full = new SnapPublicRepository(make_db(true));
 tx($full->designationAvailable() === true,
    'designationAvailable() sees portfolio_post when it exists');
+tx($full->primaryTaxonomyAvailable() === true,
+   'primaryTaxonomyAvailable() sees the two primary columns');
 tx($full->portfolioSchemaReady() === true,
-   'portfolioSchemaReady() certifies all five columns for the admin save');
+   'portfolioSchemaReady() certifies all SIX columns for the admin save');
+
+// THE DISCRIMINATING CASE for the primary columns, added at the same time as
+// the columns rather than after a mutant found it missing: everything present
+// EXCEPT the two primary ones. Without this row, dropping
+// primaryTaxonomyAvailable() from the gate would change nothing observable --
+// the same hole the designation check had.
+$noPrimary = new SnapPublicRepository(make_db(true, true, false));
+tx($noPrimary->visibilityFlagsComplete() === true,
+   'the exclusions alone still report complete');
+tx($noPrimary->designationAvailable() === true,
+   'and the designation is present');
+tx($noPrimary->primaryTaxonomyAvailable() === false,
+   'but the primary columns are correctly seen as missing');
+tx($noPrimary->portfolioSchemaReady() === false,
+   'so a six-column save is NOT certified without them');
 $nd = new SnapPublicRepository(make_db(false));
 tx($nd->designationAvailable() === false,
    'and reports it missing when it is');
