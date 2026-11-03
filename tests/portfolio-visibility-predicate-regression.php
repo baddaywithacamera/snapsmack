@@ -49,14 +49,20 @@ function tx(bool $ok, string $what): void {
 }
 
 /** SQLite stand-in for the MySQL schema, with and without the flag columns. */
-function make_db(bool $withFlags): PDO {
+function make_db(bool $withFlags, bool $withDesignation = true): PDO {
     $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    // $withDesignation separates the four EXCLUSION columns from the fifth
+    // DESIGNATION column. Added after mutation proof: with the five always
+    // arriving together, dropping the designation check from
+    // portfolioSchemaReady() changed nothing observable and the suite passed.
+    // A five-column save must not be certified by a four-column answer, which
+    // is the exact readiness gap Codex raised.
     $flagCols = $withFlags
         ? ', exclude_from_archive INTEGER NOT NULL DEFAULT 0,
              exclude_from_search  INTEGER NOT NULL DEFAULT 0,
              exclude_from_feed    INTEGER NOT NULL DEFAULT 0,
-             exclude_from_sitemap INTEGER NOT NULL DEFAULT 0,
-             portfolio_post       INTEGER NOT NULL DEFAULT 0'
+             exclude_from_sitemap INTEGER NOT NULL DEFAULT 0'
+          . ($withDesignation ? ', portfolio_post INTEGER NOT NULL DEFAULT 0' : '')
         : '';
     $pdo->exec("CREATE TABLE snap_posts (
         id INTEGER PRIMARY KEY, title TEXT, slug TEXT,
@@ -214,6 +220,52 @@ tx($ran, 'a public query still RUNS against a database without the columns');
 
 tx((new SnapPublicRepository(make_db(true)))->visibilityFlagsComplete() === true,
    'with all four columns present the feature reports itself complete');
+
+// ── 7. THE THREE STATES, all from Codex's review of the helper ──────────────
+tx($bareRepo->schemaState() === 'absent',
+   'a database genuinely missing the columns reports absent');
+tx((new SnapPublicRepository(make_db(true)))->schemaState() === 'complete',
+   'a database with them reports complete');
+
+// 7a. DESIGNATION IS ASKED SEPARATELY. visibilityFlagsComplete() covers four
+// exclusion columns; portfolio_post is a fifth and filters nothing, so a
+// five-column admin save cannot take a four-column answer as its go-ahead.
+$full = new SnapPublicRepository(make_db(true));
+tx($full->designationAvailable() === true,
+   'designationAvailable() sees portfolio_post when it exists');
+tx($full->portfolioSchemaReady() === true,
+   'portfolioSchemaReady() certifies all five columns for the admin save');
+$nd = new SnapPublicRepository(make_db(false));
+tx($nd->designationAvailable() === false,
+   'and reports it missing when it is');
+tx($nd->portfolioSchemaReady() === false,
+   'so the admin save is NOT certified on an unapplied schema');
+
+// THE DISCRIMINATING CASE for readiness: all four EXCLUSIONS present, the
+// DESIGNATION absent. Without this row the suite could not tell
+// portfolioSchemaReady() from visibilityFlagsComplete() at all.
+$half = new SnapPublicRepository(make_db(true, false));
+tx($half->visibilityFlagsComplete() === true,
+   'four exclusions alone DO satisfy visibilityFlagsComplete()');
+tx($half->designationAvailable() === false,
+   'while the designation column is correctly seen as missing');
+tx($half->portfolioSchemaReady() === false,
+   'so a five-column save is NOT certified by a four-column answer');
+
+// 7b. A FAILING DATABASE IS NOT AN ABSENT SCHEMA. The first version caught
+// every Throwable and called it "absent", which would have turned filtering
+// off site-wide while reporting a tidy, wrong reason. A dropped table stands
+// in for any non-schema failure here.
+$broken = make_db(true);
+$broken->exec("DROP TABLE snap_posts");
+$brokenRepo = new SnapPublicRepository($broken);
+tx($brokenRepo->visibilityFlagsPresent() === [],
+   'an unanswerable database yields no flags, so nothing is filtered');
+tx($brokenRepo->schemaState() === 'undetermined',
+   'and it reports UNDETERMINED, never absent -- the two must not be confused');
+tx($brokenRepo->visibilityFlagsComplete() === false
+   && $brokenRepo->portfolioSchemaReady() === false,
+   'an undetermined schema never certifies a save as supported');
 
 echo $fail === 0
     ? "\nPASS - predicates decide correctly and degrade without filtering\n"
