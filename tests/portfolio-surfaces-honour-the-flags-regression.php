@@ -217,28 +217,31 @@ $game = array_map('intval', array_column($repo->gameOnPuzzlePhotographs(100), 'p
 sx(!in_array(1, $game, true), 'GAME: the excluded post is gone');
 sx(in_array(2, $game, true),  'GAME: the ordinary post remains');
 
-// ── F. TAXONOMY COUNTS — NOT PROVED HERE, AND SAYING SO ─────────────────────
-// publicCategories() and publicAlbums() use MySQL's
-// GROUP_CONCAT with a SEPARATOR clause, which SQLite cannot parse at all -- the
-// query dies before any predicate matters. So their BEHAVIOUR cannot be
-// exercised in this harness, and pretending otherwise would be the exact fault
-// this file exists to catch.
-//
-// What can be checked here is that the predicate is WIRED INTO those two
-// methods. That is a source check, not a behaviour check, and it is labelled as
-// one. Their behaviour needs MySQL, and it is listed as NOT PROVED in the
-// report to the room.
-$src = (string)file_get_contents(dirname(__DIR__) . '/core/public-repository.php');
-foreach (['publicCategories', 'publicAlbums'] as $method) {
-    if (!preg_match('/    public function ' . $method . '\(.*?\n    \}/s', $src, $m)) {
-        sx(false, "TAXONOMY: $method could not be located");
-        continue;
-    }
-    sx(str_contains($m[0], "imageFilter('exclude_from_archive'"),
-       "TAXONOMY $method: calls imageFilter (SOURCE check -- behaviour needs MySQL)");
-    sx(str_contains($m[0], '{$ix}'),
-       "TAXONOMY $method: and interpolates it into its SQL");
-}
+// ── F. TAXONOMY COUNTS — NOW A REAL BEHAVIOUR CHECK ────────────────────────
+// This was a SOURCE check, because publicCategories and publicAlbums used
+// MySQL's GROUP_CONCAT with a SEPARATOR clause that SQLite cannot parse, so the
+// query died before any predicate mattered. Those two queries have since been
+// rewritten to a correlated subquery that runs on both engines, so the
+// behaviour can be exercised and the source check has been upgraded rather than
+// left as the weaker thing. Equivalence of the rewrite has its own proof in
+// tests/taxonomy-cover-selection-regression.php.
+$cats = $repo->publicCategories();
+$catById = [];
+foreach ($cats as $row) $catById[(int)$row['id']] = $row;
+sx(isset($catById[1]), 'CATEGORY: publicCategories returns the category at all');
+sx((int)($catById[1]['photograph_count'] ?? 0) === 1,
+   'CATEGORY count: 1 photograph, not both ('
+   . ($catById[1]['photograph_count'] ?? 'none') . ')');
+
+$albums = $repo->publicAlbums();
+$albById = [];
+foreach ($albums as $row) $albById[(int)$row['id']] = $row;
+sx(isset($albById[1]), 'ALBUM: publicAlbums returns the album at all');
+sx((int)($albById[1]['photograph_count'] ?? 0) === 1,
+   'ALBUM count: 1 photograph, not both ('
+   . ($albById[1]['photograph_count'] ?? 'none') . ')');
+sx(($albById[1]['cover_path'] ?? null) === 'b.jpg',
+   'ALBUM cover: comes from the ORDINARY photograph, not the excluded one');
 
 // ── G. THE POINT OF THE WHOLE FEATURE: it still opens on its own URL ────────
 $bySlug = $repo->postBySlug('excluded-carousel');
