@@ -219,6 +219,14 @@ final class SnapPublicRepository
      * on a portfolio page. And counting a DRAFT owner as a reason to keep it
      * visible would let unpublished content decide what the public sees.
      *
+     * "Published, currently visible" here is the SAME definition
+     * core/public-visibility.php:12-17 applies to an already-fetched post row
+     * (status = 'published' and created_at <= now). That one judges a row in
+     * PHP; this one has to decide inside SQL, so the two state the rule in two
+     * languages. They must not drift: if the canonical definition of a visible
+     * post ever changes, snapsmack_public_row_visible() and this predicate both
+     * change, and neither is the junior copy.
+     *
      * So: only a PUBLISHED, CURRENTLY VISIBLE post counts as an owner at all.
      * The image is hidden when it has at least one such owner and EVERY one of
      * them is excluded. An image with no qualifying owner is never touched by
