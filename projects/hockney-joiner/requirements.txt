@@ -1,0 +1,25 @@
+# Hockney Joiner Assembly Tool
+# Core requirements
+
+# GUI
+PySide6==6.9.3        # LGPL. SPL forbids GPL; PyQt6 is GPL-or-commercial.
+
+# Image I/O and processing
+Pillow>=10.0.0
+opencv-python>=4.8.0
+
+# AI feature matching
+torch>=2.0.0           # CPU-only fine; CUDA detected at runtime
+lightglue @ git+https://github.com/cvg/LightGlue.git
+
+# Vision-language model (BLIP-VQA by Salesforce, via transformers)
+transformers>=4.38.0
+
+# Model delivery
+huggingface_hub>=0.20.0
+
+# RAW support (optional - tool works without this)
+# rawpy>=0.19.0        # Uncomment to enable RAW input
+
+# Utilities
+numpy>=1.24.0
