@@ -55,7 +55,6 @@ function make_db(bool $withFlags): PDO {
         ? ', exclude_from_archive INTEGER NOT NULL DEFAULT 0,
              exclude_from_search  INTEGER NOT NULL DEFAULT 0,
              exclude_from_feed    INTEGER NOT NULL DEFAULT 0,
-             exclude_from_sitemap INTEGER NOT NULL DEFAULT 0,
              portfolio_post       INTEGER NOT NULL DEFAULT 0'
         : '';
     $pdo->exec("CREATE TABLE snap_posts (

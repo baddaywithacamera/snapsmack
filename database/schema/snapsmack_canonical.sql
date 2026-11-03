@@ -223,8 +223,6 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'PORTFOLIO: 1 = keep out of both halves of site search.',
   `exclude_from_feed`  tinyint(1)    NOT NULL DEFAULT 0
                       COMMENT 'PORTFOLIO: 1 = keep out of the RSS feed and the public profile listing. FEDIVERSE IS NOT THIS FLAG — use fedi_enabled, which already gates delivery and every outbox listing. Two switches for one surface would drift.',
-  `exclude_from_sitemap` tinyint(1)  NOT NULL DEFAULT 0
-                      COMMENT 'PORTFOLIO: 1 = omit from sitemap.xml. SEPARATE from exclude_from_feed on purpose: a portfolio page usually SHOULD be indexable while staying out of a dated feed.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_slug` (`slug`),
   KEY `idx_status` (`status`),
