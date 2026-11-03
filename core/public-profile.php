@@ -42,13 +42,20 @@ try {
     // posts (GRAMOFSMACK: single/carousel/panorama). The old query counted ONLY
     // snap_posts, so a photoblog whose content lives entirely in snap_images
     // reported 0 here while its outbox — and every remote — showed them all.
+    // The profile is a listing surface. One definition of exclude_from_feed,
+    // shared with rss.php and the archive, so the COUNT and the GRID below
+    // cannot drift apart -- which is the defect that makes a count say N while
+    // the list shows fewer.
+    require_once __DIR__ . '/public-repository.php';
+    $pp_feed_filter = (new SnapPublicRepository($pdo))->postFilter('exclude_from_feed', '');
+    $pp_feed_filter_p = (new SnapPublicRepository($pdo))->postFilter('exclude_from_feed', 'p');
     $pp_posts  = (int)$pdo->query(
         "SELECT COUNT(*) FROM snap_images
          WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL"
     )->fetchColumn();
     $pp_posts += (int)$pdo->query(
         "SELECT COUNT(*) FROM snap_posts
-         WHERE status = 'published' AND created_at <= NOW()
+         WHERE status = 'published' AND created_at <= NOW(){$pp_feed_filter}
            AND post_type IN ('single','carousel','panorama')"
     )->fetchColumn();
 } catch (Throwable $e) {}
@@ -78,7 +85,7 @@ try {
                                     WHERE post_id = p.id
                                     ORDER BY is_cover DESC, sort_position ASC LIMIT 1)
               JOIN snap_images i ON i.id = pi.image_id AND i.img_status = 'published'
-             WHERE p.status = 'published' AND p.created_at <= NOW()
+             WHERE p.status = 'published' AND p.created_at <= NOW(){$pp_feed_filter_p}
                AND p.post_type IN ('single','carousel','panorama')
             UNION ALL
             SELECT i.id, i.post_id, i.img_file, i.img_slug, i.img_alt, i.img_title,
