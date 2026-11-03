@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK_EOF_HEADER — last non-empty line: // ===== SNAPSMACK EOF =====
+ * SNAPSMACK_EOF_HEADER â€” last non-empty line: // ===== SNAPSMACK EOF =====
  * SNAPSMACK - Public SMACKTALK Controller
  *
  * Owns request interpretation, publication policy, data access and derived
