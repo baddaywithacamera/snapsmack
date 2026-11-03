@@ -224,6 +224,8 @@ class Window(QMainWindow):
         r=QHBoxLayout(); self.prompt=QLineEdit(); self.prompt.setReadOnly(True); self.prompt.setPlaceholderText("Built-in enrichment prompt"); r.addWidget(self.prompt,1); review=QPushButton("REVIEW PROMPT…"); review.clicked.connect(self._review_prompt); r.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.clicked.connect(self._enrich); r.addWidget(enrich); al.addLayout(r); l.addWidget(ai)
         send,pl=card("3 · Publish","SOLO posts individual photographs. GRAM creates carousel posts. The site mode is checked before anything is sent.")
         r=QHBoxLayout(); self.drive=QCheckBox("Attach Google Drive originals"); r.addWidget(self.drive); self.drive_check_btn=QPushButton("Check Drive"); self.drive_check_btn.setToolTip("Ask Google Drive whether this token and folder work. Needs no queue, no images and no blog connection."); self.drive_check_btn.clicked.connect(self._drive_check); r.addWidget(self.drive_check_btn); r.addStretch(1); validate=QPushButton("Validate queue"); validate.setToolTip("Check the queue titles, categories and albums. Does not check Google Drive."); validate.clicked.connect(self._validate); r.addWidget(validate); self.post_btn=QPushButton("POST"); self.post_btn.setObjectName("Primary"); self.post_btn.clicked.connect(lambda:self._post(None)); r.addWidget(self.post_btn); self.post_solo=QPushButton("POST SOLO"); self.post_solo.clicked.connect(lambda:self._post(False)); r.addWidget(self.post_solo); self.post_gram=QPushButton("POST GRAM"); self.post_gram.clicked.connect(lambda:self._post(True)); r.addWidget(self.post_gram); pl.addLayout(r)
+        self.drive_status_line=label("Drive: Not connected", "Muted"); self.drive_status_line.setWordWrap(True); pl.addWidget(self.drive_status_line)
+        self.drive.toggled.connect(self._drive_status_changed)
         l.addWidget(send)
         act,aa=card("Activity"); self.activity_card=act; self.log=QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(72); aa.addWidget(self.log); l.addWidget(act,1); return page
 
@@ -259,7 +261,7 @@ class Window(QMainWindow):
         site,sl=card("Selected site")
         self.url=QLineEdit(); self.url.setPlaceholderText("https://your-site.example"); self.key=QLineEdit(); self.key.setEchoMode(QLineEdit.Password); self.key.setPlaceholderText("Scoped API key"); sl.addWidget(self.url); sl.addWidget(self.key); l.addWidget(site)
         svc,vl=card("AI and Google Drive")
-        self.gemini=QLineEdit(); self.gemini.setEchoMode(QLineEdit.Password); self.gemini.setPlaceholderText("Gemini API key"); self.gemini.textEdited.connect(lambda _text:setattr(self,'_gemini_manually_edited',True)); self.gcreds=QLineEdit(); self.gcreds.setPlaceholderText("Google credentials JSON"); self.drive_folder=QLineEdit(); self.drive_folder.setPlaceholderText("Google Drive folder ID"); vl.addWidget(self.gemini); vl.addWidget(self.gcreds); vl.addWidget(self.drive_folder)
+        self.gemini=QLineEdit(); self.gemini.setEchoMode(QLineEdit.Password); self.gemini.setPlaceholderText("Gemini API key"); self.gemini.textEdited.connect(lambda _text:setattr(self,'_gemini_manually_edited',True)); self.gcreds=QLineEdit(); self.gcreds.setPlaceholderText("Google credentials JSON"); self.drive_folder=QLineEdit(); self.drive_folder.setPlaceholderText("Google Drive folder ID"); self.drive_folder.textChanged.connect(self._drive_status_changed); vl.addWidget(self.gemini); vl.addWidget(self.gcreds); vl.addWidget(self.drive_folder)
         self.gemini_source=label("Gemini key source: SNAP HQ shared store", "Muted"); vl.addWidget(self.gemini_source)
         row=QHBoxLayout(); choose=QPushButton("Choose credentials"); choose.clicked.connect(self._choose_creds); row.addWidget(choose)
         drive_auth=QPushButton("Connect Drive"); drive_auth.clicked.connect(self._auth_drive); row.addWidget(drive_auth)
@@ -310,7 +312,9 @@ class Window(QMainWindow):
         self.pending.pop(name,None)
         if name == 'drive_check':
             self.drive_check_btn.setEnabled(True)
-            if error: self._error(str(error))
+            if error:
+                self.drive_status_line.setText('Drive: Check failed · ' + str(error))
+                self._error(str(error))
             else: self._drive_check_done(result)
             return
         if error: self.status.setText("● Needs attention"); self._error(str(error)); return
@@ -477,6 +481,12 @@ class Window(QMainWindow):
             self._sync_queue(); out=self.engine.validate(self.cat.currentText(),self.album.currentText()); QMessageBox.information(self,"Queue validation","Ready to post." if out['ok'] else "\n".join(out['issues'][:20]))
         except Exception as e:self._error(str(e))
 
+    def _drive_status_changed(self, *_):
+        enabled = self.drive.isChecked()
+        connected = self.engine.drive_service is not None
+        state = "Connected; folder not verified" if connected else "Not connected"
+        self.drive_status_line.setText("Drive: %s · %s" % ("Enabled" if enabled else "Disabled", state))
+
     def _drive_check(self):
         """SS-1171. Answer "does Drive work" with no queue, no scan and no blog.
 
@@ -491,12 +501,15 @@ class Window(QMainWindow):
             return
         folder_id = self.drive_folder.text()
         self.drive_check_btn.setEnabled(False)
+        self.drive_status_line.setText('Drive: Checking account and folder…')
         self._say('Checking Google Drive account and folder…')
         self._async('drive_check', lambda: self.engine.drive_check(folder_id))
 
     def _drive_check_done(self, out):
         try:
             if out.get('ok'):
+                from datetime import datetime
+                self.drive_status_line.setText('Drive: %s · Connected as %s · Folder %s · Last verified %s' % ('Enabled' if self.drive.isChecked() else 'Disabled', out.get('account') or '(not reported)', out.get('name') or '(unnamed)', datetime.now().strftime('%H:%M:%S')))
                 QMessageBox.information(
                     self, "Google Drive",
                     "Drive is reachable and this account can upload into the folder.\n\n"
@@ -515,6 +528,7 @@ class Window(QMainWindow):
                 'account': "The Drive account and storage could not be verified.",
                 'quota': "The Drive account has no free storage.",
             }.get(out.get('reason', ''), "Drive check failed.")
+            self.drive_status_line.setText("Drive: %s · %s" % (head, out.get('detail', '')))
             QMessageBox.warning(self, "Google Drive",
                                 "%s\n\n%s" % (head, out.get('detail', '')))
         except Exception as e:
