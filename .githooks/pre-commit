@@ -72,21 +72,34 @@ blocked = blocked or bool(skin_policy_dirty)
 # flow, whose glob wanted *regression.php. It had been red since 0.7.933D
 # without failing a build. A mechanism nobody runs is a note.
 #
-# It is reported but NOT BLOCKING on commit, deliberately. The gate also
-# enforces the release-version rules, so it is legitimately red for the whole
-# time a build number is open -- and a hook that refuses every commit until a
-# release lands would be turned off within a day, which is how the last one
-# stopped being obeyed. The RELEASE path blocks (tools/release-flow.php
-# RF_NAMED_GATES); the commit path tells you now so it is not a surprise later.
-agreed_rules_note = ''
+# --commit asks for TWO SEVERITIES, and this hook BLOCKS on the source rules.
+#
+# The first version of this ran the whole gate and blocked on nothing, because
+# the gate is legitimately red for the whole time a build number is open and a
+# hook that refuses every commit until a release lands gets switched off inside
+# a day. Codex's review of 85239f9c showed that reasoning only covers the
+# VERSION checks: it was letting a release-bookkeeping complaint silence a
+# stray-byte one. Severity is now split in the gate itself.
+#
+#   --commit  source rules (UTF-8, and the boundary rules as they land) are
+#             FATAL and block the commit; release-readiness items print but do
+#             not block, because they are the expected state of an open build.
+#   release   tools/release-flow.php RF_NAMED_GATES runs it with no flag, so
+#             everything is fatal there.
+agreed_rules_block = ''
 needs_agreed_rules = any(
     p.startswith('core/') or p.startswith('skins/') for p in staged
 )
 if needs_agreed_rules and php_available:
-    ar = subprocess.run(['php', 'tests/agreed-rules-gate.php'],
+    ar = subprocess.run(['php', 'tests/agreed-rules-gate.php', '--commit'],
                         capture_output=True, text=True)
     if ar.returncode != 0:
-        agreed_rules_note = (ar.stderr.strip() or ar.stdout.strip())
+        agreed_rules_block = (ar.stderr.strip() or ar.stdout.strip())
+    elif ar.stderr.strip():
+        # Release-readiness notes on a passing commit: show them, do not block.
+        print('\n\033[33m[pre-commit] release-readiness, not blocking this commit\033[0m')
+        print(ar.stderr.strip())
+blocked = blocked or bool(agreed_rules_block)
 
 if null_dirty:
     print('\n\033[31m[pre-commit] NULL BYTES DETECTED — commit blocked\033[0m')
@@ -113,11 +126,11 @@ if skin_policy_dirty:
 if not php_available:
     print('\n\033[33m[pre-commit] php not found in PATH — syntax check skipped\033[0m')
 
-if agreed_rules_note:
-    print('\n\033[33m[pre-commit] AGREED RULES GATE IS RED — not blocking this commit\033[0m')
-    print(agreed_rules_note)
-    print('\nThe RELEASE path refuses this (tools/release-flow.php RF_NAMED_GATES).')
-    print('If the only complaint is the version, open the next build number.\n')
+if agreed_rules_block:
+    print('\n\033[31m[pre-commit] AGREED RULES GATE FAILED — commit blocked\033[0m')
+    print(agreed_rules_block)
+    print('\nThese are SOURCE rules, not release bookkeeping. An open build')
+    print('number is not an excuse for them.\n')
 
 if blocked:
     print('\nFix the issues above, re-stage, and commit.\n')

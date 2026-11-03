@@ -25,9 +25,41 @@ declare(strict_types=1);
  */
 
 $root = dirname(__DIR__);
+
+/* ── TWO SEVERITIES, and the reason, because the first version had one ───────
+ *
+ * Codex's review of 85239f9c: "version-readiness and source-security gates need
+ * separate severity; a legitimately open version should not turn UTF8/boundary
+ * violations into nonblocking warnings."
+ *
+ * He is right, and it unpicks my own justification. I made the commit hook
+ * non-blocking because the gate is legitimately red for the whole time a build
+ * number is open -- and a hook that refuses every commit until a release lands
+ * gets switched off inside a day. That reasoning holds for the VERSION checks.
+ * It has no business excusing a stray byte or a boundary violation, and lumping
+ * them together meant a release-bookkeeping complaint was silencing a security
+ * one.
+ *
+ * So:
+ *   $check()         SOURCE rules. Always fatal, on commit and on release.
+ *   $release_check() RELEASE-READINESS rules -- the version is in service, the
+ *                    tag is published, a skin changed without a version bump.
+ *                    Fatal at RELEASE. Reported but not fatal with --commit,
+ *                    because they are the expected state of an open build.
+ *
+ * Without --commit nothing changes: every rule is fatal, which is what the
+ * release path runs.
+ */
+$commit_scope = in_array('--commit', $argv ?? [], true);
 $failures = [];
+$deferred = [];
 $check = static function (bool $ok, string $what) use (&$failures): void {
     if (!$ok) $failures[] = $what;
+};
+$release_check = static function (bool $ok, string $what)
+        use (&$failures, &$deferred, $commit_scope): void {
+    if ($ok) return;
+    if ($commit_scope) $deferred[] = $what; else $failures[] = $what;
 };
 
 /* ── RULE 1 ───────────────────────────────────────────────────────────────
@@ -155,7 +187,7 @@ if ($lastTag !== '') {
         // has no manifest and was flagged for two fleet-wide security
         // commits from 29 September that touched every skin at once.
         if (!is_file($root . '/skins/' . $slug . '/manifest.json')) continue;
-        $check(false, $slug . ' has changed files since ' . $lastTag . ' ('
+        $release_check(false, $slug . ' has changed files since ' . $lastTag . ' ('
             . implode(', ', $files) . ') but its manifest.json was not touched. '
             . 'Skins install by version: without a bump this change reaches no site.');
     }
@@ -196,7 +228,7 @@ if ($declared !== '') {
         // force-moved -- while twelve other sites were already serving 892D.
         $deployed = trim((string)@shell_exec('bash ' . escapeshellarg($root . '/tools/_build/deployed-version.sh') . ' 2>/dev/null'));
         if ($deployed !== '' && $deployed !== 'UNKNOWN') {
-            $check($declared !== $deployed,
+            $release_check($declared !== $deployed,
                 'the source declares ' . $declared . ', which is IN SERVICE on the fleet. '
                 . 'A deployed tag must never move. Open the next number.');
         }
@@ -218,7 +250,7 @@ if ($declared !== '') {
         $verdict = snap_gate_tag_move_verdict(
             $declared, $tagCommit, $headCommit,
             snap_gate_origin_tag_state($root, $tagged), $remote);
-        $check($verdict['ok'], 'the source declares ' . $declared . '. ' . $verdict['message']);
+        $release_check($verdict['ok'], 'the source declares ' . $declared . '. ' . $verdict['message']);
         if ($verdict['ok'] && $verdict['note'] !== '') {
             echo '  note  ' . $verdict['note'] . "
 ";
@@ -504,11 +536,21 @@ printf("agreed rules: %d inline styles (budget %d), %d CSS-in-PHP (budget %d), %
     $inline, $INLINE_STYLE_BUDGET, count($cssInPhp), $CSS_IN_PHP_BUDGET,
     count($JS_IN_PHP_ALLOWLIST), $jsDataBlocks, count($notUtf8), $declared);
 
+// Deferred items are PRINTED even when they are not fatal. A rule that goes
+// quiet is a rule nobody acts on, and the whole fault being fixed here is gates
+// that say nothing.
+if ($deferred) {
+    fwrite(STDERR, "RELEASE-READINESS (not fatal with --commit; fatal at release):\n");
+    foreach ($deferred as $item) fwrite(STDERR, '  - ' . $item . "\n");
+}
 if ($failures) {
     fwrite(STDERR, "AGREED RULES GATE FAILED:\n");
     foreach ($failures as $failure) fwrite(STDERR, '  - ' . $failure . "\n");
     exit(1);
 }
-echo "Agreed rules gate passed.\n";
+echo $commit_scope && $deferred
+    ? "Agreed rules gate passed for a commit; " . count($deferred)
+      . " release-readiness item(s) above must be clear before a release.\n"
+    : "Agreed rules gate passed.\n";
 
 // ===== SNAPSMACK EOF =====
