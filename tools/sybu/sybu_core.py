@@ -114,6 +114,24 @@ def _orient_to_api(value: str) -> str:
     return ORIENT_DISPLAY_TO_API.get((value or 'auto').strip().lower(), 'auto')
 
 
+def merge_additional_hashtags(existing: str, additional: str) -> str:
+    """Append temporary batch hashtags without duplicating existing tags."""
+    current = (existing or '').strip()
+    seen = {
+        token.lstrip('#').casefold()
+        for token in re.split(r'[\s,;]+', current)
+        if token.strip().lstrip('#')
+    }
+    added = []
+    for token in re.split(r'[\s,;]+', additional or ''):
+        tag = token.strip().lstrip('#')
+        if not tag or tag.casefold() in seen:
+            continue
+        seen.add(tag.casefold())
+        added.append('#' + tag)
+    return ' '.join(part for part in (current, ' '.join(added)) if part)
+
+
 # ---------------------------------------------------------------------------
 # Background op record — one active long job per key
 # ---------------------------------------------------------------------------
@@ -770,7 +788,7 @@ class Engine:
     def post_start(self, as_grams: bool, def_cat: str, def_album: str, def_orient: str,
                    def_color: str, copyright_text: str, drive_folder_id: str,
                    ack_no_drive: bool = False, ack_unknown_mode: bool = False,
-                   drive_enabled: bool = True) -> dict:
+                   drive_enabled: bool = True, additional_tags: str = '') -> dict:
         pf = self.post_preflight(as_grams, drive_enabled)
         if pf['blocked_enrichment']:
             raise RuntimeError("Posting blocked — %d image(s) failed enrichment. "
@@ -792,6 +810,8 @@ class Engine:
         sel = [(i, self.entries[i]) for i in range(len(self.entries)) if self.rowstate[i]['selected']]
         id_to_index = {id(e): i for i, e in enumerate(self.entries)}
         sel_entries = [e for _, e in sel]
+        for entry in sel_entries:
+            entry.tags = merge_additional_hashtags(entry.tags, additional_tags)
         image_folder = self.image_folder
         self.ensure_recovery(image_folder)
         # Managed SNAP HQ workflow: a file posted from `...\\upload` moves to its sibling

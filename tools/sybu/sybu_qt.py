@@ -230,6 +230,7 @@ class Window(QMainWindow):
     def _queue_page(self):
         page,l=self._page("Your posting queue","Edit the fields that matter. Selection, enrichment and posting all operate on this table.")
         tools=FlowLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); up=QPushButton("▲ Move up"); up.setToolTip("Move the highlighted row up one. You can also drag a row."); up.clicked.connect(lambda:self._move_row(-1)); tools.addWidget(up); down=QPushButton("▼ Move down"); down.setToolTip("Move the highlighted row down one. You can also drag a row."); down.clicked.connect(lambda:self._move_row(1)); tools.addWidget(down); rnd=QPushButton("Randomize"); rnd.setToolTip("Shuffle the posting order."); rnd.clicked.connect(self._randomize); tools.addWidget(rnd); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); self.qpost_btn=QPushButton("POST"); self.qpost_btn.clicked.connect(lambda:self._post(None)); tools.addWidget(self.qpost_btn); self.qpost_solo=QPushButton("POST SOLO"); self.qpost_solo.clicked.connect(lambda:self._post(False)); tools.addWidget(self.qpost_solo); self.qpost_gram=QPushButton("POST GRAM"); self.qpost_gram.clicked.connect(lambda:self._post(True)); tools.addWidget(self.qpost_gram); self.queue_count=label("0 images","Muted"); self.queue_count.setWordWrap(False); tools.addWidget(self.queue_count); l.addLayout(tools)
+        batch_tags=QHBoxLayout(); batch_tags.addWidget(label("ADDITIONAL HASHTAGS FOR THIS IMPORT", "Eyebrow")); self.additional_tags=QLineEdit(); self.additional_tags.setPlaceholderText("e.g. #photofrifall #horsconcours"); self.additional_tags.setToolTip("Appended to every selected image when this queue is published. Not saved to the site profile or enrichment prompt."); batch_tags.addWidget(self.additional_tags,1); l.addLayout(batch_tags)
         self.table=QueueTable(0,12); self.table.moved.connect(self._reorder); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         # Text columns SHARE the width the window has; nothing dictates it. FILE
         # used to size to its longest filename and squeeze title/caption/alt to
@@ -328,7 +329,7 @@ class Window(QMainWindow):
                     restored = self.engine.recovery.enriched_count_for(self.engine.entries)
                     if restored: result = self.engine.apply_resume()
             except Exception as e: self._say(f"Saved enrichment not restored: {e}")
-            self._fill_queue(result); self._show(1)
+            self.additional_tags.clear(); self._fill_queue(result); self._show(1)
             self._say(f"Loaded {result['count']} images." + (f" Restored saved enrichment for {restored} of them from the last run - no Gemini cost." if restored else ""))
             if restored: self.progress_text.setText(f"{restored} of {result['count']} images already enriched (restored from the last run).")
 
@@ -351,15 +352,11 @@ class Window(QMainWindow):
         for r,row in enumerate(rows):
             use=QTableWidgetItem(); use.setFlags(Qt.ItemIsEnabled|Qt.ItemIsUserCheckable); use.setCheckState(Qt.Checked if row['selected'] else Qt.Unchecked); self.table.setItem(r,0,use)
             preview=QLabel(); preview.setAlignment(Qt.AlignCenter)
-            try:
-                encoded=self.engine.thumb(r,108).partition(',')[2]
-                pix=QPixmap(); pix.loadFromData(base64.b64decode(encoded)); preview.setPixmap(pix)
-            except Exception:
-                preview.setText("No preview")
+            preview.setText("Loading…")
             self.table.setCellWidget(r,1,preview); self.table.setRowHeight(r,118)
             for c,k in ((2,'file'),(3,'title'),(4,'caption'),(5,'alt'),(6,'tags'),(9,'category'),(10,'album'),(11,'status')):
                 text=str(row.get(k,""))
-                if k=='status': text={'pending':'pending','enriched':'enriched','posting':'posting…','ok':'POSTED','warning':'POSTED (no EXIF)','error':'ERROR'}.get(row.get('status',''),row.get('status',''))
+                if k=='status': text={'pending':'pending','enriched':'enriched','posting':'','ok':'POSTED','warning':'POSTED (no EXIF)','error':'ERROR'}.get(row.get('status',''),row.get('status',''))
                 if k=='status' and row.get('status')=='error' and row.get('message'): text=f"ERROR: {row['message']}"
                 item=QTableWidgetItem(text)
                 if k in ('file','status'): item.setFlags(item.flags() & ~Qt.ItemIsEditable)
@@ -369,8 +366,23 @@ class Window(QMainWindow):
             orient=QComboBox()
             for text,value in (("Auto","auto"),("Landscape","0"),("Portrait","1"),("Square","2")): orient.addItem(text,value)
             orient.setFixedHeight(36); orient.setCurrentIndex(max(0,orient.findData(row.get('orientation','auto')))); self.table.setCellWidget(r,8,self._centred_control(orient))
+        self._thumb_generation = getattr(self, '_thumb_generation', 0) + 1
+        self._load_thumbnails(self._thumb_generation, len(rows))
         self._fit_rows(); self._row_fit.start()
         self.queue_count.setText(f"{data['selected']} selected · {data['count']} images")
+
+    def _load_thumbnails(self, generation, count, row=0):
+        if generation != getattr(self, '_thumb_generation', None) or row >= count:
+            return
+        preview = self.table.cellWidget(row, 1)
+        if preview is not None:
+            try:
+                encoded = self.engine.thumb(row, 108).partition(',')[2]
+                pix = QPixmap(); pix.loadFromData(base64.b64decode(encoded))
+                preview.setPixmap(pix)
+            except Exception:
+                preview.setText("No preview")
+        QTimer.singleShot(0, lambda: self._load_thumbnails(generation, count, row + 1))
 
     def _centred_control(self, control):
         host=QWidget(); host._control=control; host.setAttribute(Qt.WA_TranslucentBackground); host.setStyleSheet("background:transparent")
@@ -408,7 +420,9 @@ class Window(QMainWindow):
 
     def _select_all(self,on):
         for r in range(self.table.rowCount()):self.table.item(r,0).setCheckState(Qt.Checked if on else Qt.Unchecked)
-        self.engine.set_all_selected(on); self._fill_queue()
+        self.engine.set_all_selected(on)
+        count = self.table.rowCount()
+        self.queue_count.setText(f"{count if on else 0} selected · {count} images")
 
     def _reorder(self,src,dst):
         try:
@@ -430,7 +444,7 @@ class Window(QMainWindow):
     def _clear_queue(self):
         if not self.table.rowCount(): return
         if QMessageBox.question(self,"Clear posting queue","Remove the images from this posting queue?\n\nThe image files themselves will not be deleted. Failed rows are retained so an upload problem cannot be lost.",QMessageBox.Yes|QMessageBox.Cancel,QMessageBox.Cancel)!=QMessageBox.Yes:return
-        self._fill_queue(self.engine.clear_queue()); self._say("Posting queue cleared.")
+        self._fill_queue(self.engine.clear_queue()); self.additional_tags.clear(); self._say("Posting queue cleared.")
 
     def _enrich(self):
         try:
@@ -525,8 +539,10 @@ class Window(QMainWindow):
             if grams is None: self._error("Connect to the blog first — it decides solo or gram."); return
         try:
             self._sync_queue(); pf=self.engine.post_preflight(grams,self.drive.isChecked())
-            if QMessageBox.question(self,"Confirm publish",f"Post {pf['count']} selected image(s) to {pf['dest']} as {'GRAM' if grams else 'SOLO'}?",QMessageBox.Yes|QMessageBox.No)!=QMessageBox.Yes:return
-            out=self.engine.post_start(grams,self.cat.currentText(),self.album.currentText(),self.orient.currentText(),"",self.engine.config.get('copyright_text',''),self.drive_folder.text(),ack_no_drive=True,ack_unknown_mode=True,drive_enabled=self.drive.isChecked())
+            extra=self.additional_tags.text().strip()
+            tag_note=f"\n\nAdditional hashtags: {extra}" if extra else ""
+            if QMessageBox.question(self,"Confirm publish",f"Post {pf['count']} selected image(s) to {pf['dest']} as {'GRAM' if grams else 'SOLO'}?{tag_note}",QMessageBox.Yes|QMessageBox.No)!=QMessageBox.Yes:return
+            out=self.engine.post_start(grams,self.cat.currentText(),self.album.currentText(),self.orient.currentText(),"",self.engine.config.get('copyright_text',''),self.drive_folder.text(),ack_no_drive=True,ack_unknown_mode=True,drive_enabled=self.drive.isChecked(),additional_tags=extra)
             if out.get('needs_ack'): self._error("Google Drive is not connected."); return
             self.poll_seen['post']=0; self.progress.setValue(0); self.progress_text.setText(f"Publishing {pf['count']} image(s) to {pf['dest']}…"); self.stop_btn.setEnabled(True); self._fill_queue()
         except Exception as e:self._error(str(e))
