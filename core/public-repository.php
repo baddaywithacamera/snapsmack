@@ -726,6 +726,16 @@ final class SnapPublicRepository
         // both engines. ORDER BY i2.id is a UNIQUE key, so there are no ties to
         // break and no tie-breaking behaviour can differ between the two forms.
         //
+        // AND IT SKIPS NULL img_file, which GROUP_CONCAT did for free and a
+        // scalar lookup does not. Codex found this: GROUP_CONCAT ignores NULL
+        // values, so the old form returned the highest-id row WITH A FILE while
+        // ORDER BY ... LIMIT 1 would return the highest-id row even if its file
+        // were NULL. The canonical schema declares img_file NOT NULL, so a
+        // canonical database cannot hit it -- but the 25 live databases are not
+        // something I can check for a legacy nullable column, and depending on
+        // a constraint I cannot verify is the habit that keeps costing us. The
+        // guard costs nothing and makes the two forms equivalent unconditionally.
+        //
         // It carries the SAME exclusion predicate as the COUNT beside it. A
         // cover drawn from an excluded photograph while the count excludes it is
         // exactly the drift this feature keeps tripping over.
@@ -736,6 +746,7 @@ final class SnapPublicRepository
                        FROM snap_images i2
                        JOIN snap_image_cat_map m2 ON m2.image_id=i2.id AND m2.cat_id=c.id
                       WHERE i2.img_status='published' AND i2.img_date <= NOW(){$ix2}
+                        AND i2.img_file IS NOT NULL
                       ORDER BY i2.id DESC LIMIT 1) AS cover_path
              FROM snap_categories c
              JOIN snap_image_cat_map m ON m.cat_id=c.id
@@ -920,6 +931,7 @@ final class SnapPublicRepository
                                 FROM snap_images i2
                                 JOIN snap_image_album_map m2 ON m2.image_id=i2.id AND m2.album_id=a.id
                                WHERE i2.img_status='published' AND i2.img_date <= NOW(){$ix2}
+                                 AND i2.img_file IS NOT NULL
                                ORDER BY i2.id DESC LIMIT 1)) AS cover_path
              FROM snap_albums a
              JOIN snap_image_album_map m ON m.album_id=a.id

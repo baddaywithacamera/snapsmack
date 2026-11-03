@@ -100,6 +100,11 @@ function oracle_cover(PDO $pdo, string $mapTable, string $fkColumn, int $groupId
     $rows->execute([':g' => $groupId]);
     $best = null;
     foreach ($rows->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        // GROUP_CONCAT IGNORES NULL values, so the old form skipped a row whose
+        // img_file was NULL and took the next one down. Codex caught that the
+        // scalar rewrite would not. The oracle models the OLD behaviour, so it
+        // skips them here too.
+        if ($r['img_file'] === null) continue;
         if ($best === null || (int)$r['id'] > (int)$best['id']) $best = $r;
     }
     return $best === null ? null : (string)$best['img_file'];
@@ -132,6 +137,17 @@ $pdo->exec("INSERT INTO snap_images (id,img_file,img_status) VALUES
     -- so dropping the COALESCE produced the SAME answer and the mutant
     -- that removes the manual cover passed. Found by mutation proof.
     (30,'newer-than-manual.jpg','published')");
+// THE NULL img_file CASE, from Codex's review. Image 40 has the highest id in
+// category 3 and album 5, and NO file. GROUP_CONCAT skipped such a row; a bare
+// ORDER BY ... LIMIT 1 would return NULL. The canonical schema says img_file is
+// NOT NULL, so this fixture inserts it explicitly to exercise a legacy database
+// that predates that constraint -- which is the case I cannot check on the
+// fleet and therefore must not assume away.
+$pdo->exec("INSERT INTO snap_images (id,img_file,img_status) VALUES (40,NULL,'published')");
+$pdo->exec("INSERT INTO snap_categories (id,cat_name) VALUES (4,'NullTop')");
+$pdo->exec("INSERT INTO snap_albums (id,album_name) VALUES (5,'NullTop')");
+$pdo->exec("INSERT INTO snap_image_cat_map VALUES (11,4),(40,4)");
+$pdo->exec("INSERT INTO snap_image_album_map VALUES (11,5),(40,5)");
 // Category 1: three published plus one draft, so the highest PUBLISHED id wins
 // and the draft must not. Category 2: one image. Category 3: NONE.
 $pdo->exec("INSERT INTO snap_image_cat_map VALUES (10,1),(11,1),(12,1),(13,1),(10,2)");
@@ -196,6 +212,20 @@ foreach ([1, 2, 3, 4] as $aid) {
     cx(($row['cover_path'] ?? null) === $expected,
        "ALBUM $aid matches COALESCE(manual, highest-id): expected "
        . var_export($expected, true));
+}
+
+// ── 2b. A NULL img_file ON THE HIGHEST ID — Codex's finding ────────────────
+cx(($cats[4]['cover_path'] ?? null) === 'mid.jpg',
+   'CATEGORY 4: the highest-id image has a NULL file, so the cover skips it and '
+   . 'takes the next one down -- what GROUP_CONCAT did for free');
+cx(($cats[4]['cover_path'] ?? null) !== null,
+   'and the cover is not NULL, which a bare ORDER BY ... LIMIT 1 would have given');
+cx(($albums[5]['cover_path'] ?? null) === 'mid.jpg',
+   'ALBUM 5: same, on the album side');
+foreach ([[4, 'snap_image_cat_map', 'cat_id', $cats], [5, 'snap_image_album_map', 'album_id', $albums]] as [$gid, $map, $fk, $set]) {
+    $expectedN = oracle_cover($pdo, $map, $fk, $gid);
+    cx(($set[$gid]['cover_path'] ?? null) === $expectedN,
+       "group $gid agrees with the NULL-skipping oracle: " . var_export($expectedN, true));
 }
 
 // ── 3. THE EXCLUSION PREDICATE REACHES THE COVER, NOT JUST THE COUNT ───────
