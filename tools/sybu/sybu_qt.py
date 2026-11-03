@@ -500,6 +500,7 @@ class Window(QMainWindow):
             self._error('Wait for the current publishing batch before checking Drive.')
             return
         folder_id = self.drive_folder.text()
+        self.engine.config['drive_enabled'] = self.drive.isChecked()
         self.drive_check_btn.setEnabled(False)
         self.drive_status_line.setText('Drive: Checking account and folder…')
         self._say('Checking Google Drive account and folder…')
@@ -602,7 +603,9 @@ class Window(QMainWindow):
                 if key=='gemini_test':
                     ok=bool(result.get('ok')) and not out.get('error'); message=result.get('message') or out.get('error') or "No response."
                     self.gemini_source.setText(("Gemini key accepted by Google: " if ok else "Gemini key rejected by Google: ")+message)
-                if key=='drive_auth' and not out.get('error'):self._say("Google Drive connected.")
+                if key=='drive_auth' and not out.get('error'):
+                    self._drive_status_changed()
+                    self._say("Google Drive connected.")
                 if out.get('error'):self._error(out['error'])
 
     def _save(self):
