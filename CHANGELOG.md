@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.976D - 2026-11-04 - HEISENBERG DECOMPENSATOR
+
+- Separate the spoke enrollment hub address from the username, password and 2FA fields. Give password managers an explicit username field and require a full hub URL.
+- Explain enrollment token rejections on the hub, including where to obtain the correct token.
+
 ## 0.7.975D - 2026-11-02 - HEISENBERG DECOMPENSATOR
 
 - Repair SMACKTALK search routing when archive navigation is hidden or absent; retain search terms through archive redirects.
