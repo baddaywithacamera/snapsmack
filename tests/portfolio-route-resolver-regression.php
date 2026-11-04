@@ -238,6 +238,53 @@ cx(str_contains($index, "require_once __DIR__ . '/core/portfolio-route.php'"),
    'index.php requires the resolver');
 cx(str_contains($index, 'snap_portfolio_route_for_request($pdo, $requested_slug)'),
    'index.php calls it with the parsed path');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE ORDER, WHICH I GOT WRONG AND WHICH KILLED THE WHOLE FEATURE.
+//
+// The resolver first sat between the PATH_INFO read and the ?name / ?s
+// fallback. On every live site PATH_INFO IS EMPTY -- the rewrite hands the path
+// over in ?name -- so the resolver was asked about an empty string on every
+// request and the feature was dead. Reading the code, the order looked right.
+// Serving it over HTTP showed PATH_INFO unset, which is what sent me to the
+// rewrite rules.
+//
+// So the fallback must come BEFORE the call. Asserted by POSITION, because that
+// is the thing that was wrong; a presence check could not see it.
+// ─────────────────────────────────────────────────────────────────────────────
+$posFallback = strpos($index, "\$requested_slug = \$_GET['s'] ?? \$_GET['name']");
+$posResolver = strpos($index, 'snap_portfolio_route_for_request(');
+cx($posFallback !== false && $posResolver !== false && $posFallback < $posResolver,
+   'ORDER: the ?name / ?s fallback runs BEFORE the resolver, or the resolver '
+   . 'only ever sees an empty PATH_INFO');
+cx(substr_count($index, "\$requested_slug = \$_GET['s'] ?? \$_GET['name']") === 1,
+   'and that fallback exists exactly once (moving it left a duplicate first time)');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE REWRITE, IN BOTH COPIES. A three-segment path matched NO rule, so Apache
+// 404'd it before PHP ran and the resolver was unreachable in production. The
+// catch-all is single-segment: ^([a-zA-Z0-9_-]+)$ has no slash in its class.
+//
+// Two files carry these rules, and core/htaccess-template's own comment records
+// them having diverged before -- install.php disabled an /archive rule in
+// October and left this file's copy active, and six live sites answered with an
+// endless 301 loop. So both are checked, the same drift shape as idx_icm_cat.
+// ─────────────────────────────────────────────────────────────────────────────
+$THREE_SEGMENT_RULE =
+    'RewriteRule ^([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)$ index.php?name=$1/$2/$3 [L,QSA]';
+foreach (['core/htaccess-template', 'install.php'] as $rel) {
+    $src = (string)file_get_contents($root . '/' . $rel);
+    cx(str_contains($src, $THREE_SEGMENT_RULE),
+       "REWRITE: $rel routes a three-segment path to index.php");
+    // It must come BEFORE the single-segment catch-all, or that rule's [L]
+    // never lets it run... actually the catch-all cannot match a slashed path
+    // at all, but order still matters for the next person who widens either
+    // one, and it costs nothing to pin it.
+    $posThree = strpos($src, $THREE_SEGMENT_RULE);
+    $posOne   = strpos($src, 'RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]');
+    cx($posOne !== false && $posThree < $posOne,
+       "and in $rel it sits before the single-segment catch-all");
+}
 // THE WHOLE LINE, not "contains 301". Mutation proof found a looser version of
 // this check blind: index.php already contains '301' in three other redirects,
 // so gutting THIS one left the substring in place and the assertion passed. The
@@ -273,10 +320,16 @@ foreach (glob_php($root) as $file) {
     $rel = str_replace('\\', '/', substr($file, strlen($root) + 1));
     if (str_starts_with($rel, 'tests/') || str_starts_with($rel, 'tools/')) continue;
     if ($rel === 'index.php' || $rel === 'api.php' || $rel === 'core/portfolio-route.php') continue;
-    if (str_contains((string)file_get_contents($file), 'PATH_INFO')) $parsers[] = $rel;
+    // A READ, NOT THE WORD. The first version matched the string 'PATH_INFO'
+    // and failed on my own explanatory comment in install.php -- the second
+    // time in one session a comment describing a rule tripped that rule. What
+    // matters is a file that actually reads the variable.
+    if (preg_match('/\$_SERVER\s*\[\s*[\'"]PATH_INFO[\'"]\s*\]/', (string)file_get_contents($file))) {
+        $parsers[] = $rel;
+    }
 }
 cx($parsers === [],
-   'no new reader of PATH_INFO has appeared'
+   'no new READER of $_SERVER[PATH_INFO] has appeared'
    . ($parsers === [] ? '' : ': ' . implode(', ', $parsers)));
 
 function glob_php(string $root): array {

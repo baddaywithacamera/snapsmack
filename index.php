@@ -140,6 +140,8 @@ try {
     $path_info = $_SERVER['PATH_INFO'] ?? '';
     $requested_slug = trim($path_info, '/');
 
+    if (empty($requested_slug)) $requested_slug = $_GET['s'] ?? $_GET['name'] ?? null;
+
     // --- PORTFOLIO PATHS: /<album>/<category>/<slug> (SS-1185) ---
     // THE ONLY PLACE IN THE PRODUCT WHERE A URL PATH BECOMES A SLUG, which is
     // why the resolver is called here and nowhere else. The three public
@@ -150,13 +152,21 @@ try {
     // let the SMACKTALK search fix land on one path while another served the
     // site.
     //
+    // IT MUST RUN AFTER THE ?name / ?s FALLBACK ABOVE, AND IT DID NOT. I first
+    // put this block between the PATH_INFO read and that fallback, which made
+    // the whole feature dead on every live site: the rewrite in
+    // core/htaccess-template hands the path over in ?name, NOT in PATH_INFO, so
+    // PATH_INFO is empty here and the resolver was being asked about an empty
+    // string every time. Found by serving the thing over real HTTP, where
+    // php -S showed PATH_INFO unset; reading the code, the order looked right.
+    //
     // A one- or two-segment path gets a verdict of 'none' without a single
     // query, so every existing URL on every site costs exactly what it cost
     // before. core/portfolio-route.php holds the WHOLE decision; this block
     // only applies it. There is deliberately no "has a slash in it" shortcut
     // here -- a cheap test at the call site is still a copy of the decision,
     // and a copy is the thing being avoided.
-    if ($requested_slug !== '') {
+    if ($requested_slug !== null && $requested_slug !== '') {
         require_once __DIR__ . '/core/portfolio-route.php';
         $_pf_route = snap_portfolio_route_for_request($pdo, $requested_slug);
         if (($_pf_route['action'] ?? 'none') === 'redirect') {
@@ -168,8 +178,6 @@ try {
         }
         unset($_pf_route);
     }
-
-    if (empty($requested_slug)) $requested_slug = $_GET['s'] ?? $_GET['name'] ?? null;
 
     // --- FEDIVERSE public profile (fediverse actor page at instance/username) ---
     // The address a Pixelfed user expects. Content-negotiate: a fediverse server
