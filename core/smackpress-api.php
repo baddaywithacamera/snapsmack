@@ -159,6 +159,31 @@ if (!function_exists('smackpress_reject_migration_residue')) {
 }
 
 if (!function_exists('smackpress_import_date')) {
+    /**
+     * Does this site have the portfolio designation columns yet? (SS-1185)
+     *
+     * ASKED WITH A SELECT, NOT INFORMATION_SCHEMA, and that is deliberate: the
+     * INFORMATION_SCHEMA form is MySQL-only and reported every column absent on
+     * any other engine, which is the exact mistake this codebase already paid
+     * for once in the public read path. "SELECT <cols> ... WHERE 0" asks the
+     * engine the same question in a way every engine answers.
+     *
+     * Answered once per request: an import posts many times and the schema
+     * cannot change underneath it mid-run.
+     */
+    function smackpress_portfolio_ready(PDO $pdo): bool {
+        static $ready = null;
+        if ($ready !== null) return $ready;
+        try {
+            $pdo->query('SELECT portfolio_post, primary_album_id, primary_category_id
+                           FROM snap_posts WHERE 0');
+            $ready = true;
+        } catch (\Throwable $e) {
+            $ready = false;
+        }
+        return $ready;
+    }
+
     function smackpress_import_date(PDO $pdo, $value): ?string {
         $value = trim((string)$value);
         if ($value === '') return null;
@@ -562,6 +587,54 @@ if ($sub === 'posts' && $method === 'POST') {
     $selected_albums= array_map('intval', $body['album_ids'] ?? []);
     $custom_date    = smackpress_import_date($pdo, $body['created_at'] ?? ($body['date'] ?? null));
 
+    // ── PORTFOLIO DESIGNATION (SS-1185) ──────────────────────────────────
+    // What turns an imported post into /<album>/<category>/<slug>. Without it
+    // a migrated portfolio page arrives undesignated and keeps a flat /slug,
+    // which is what the whole three-segment URL scheme was built to avoid.
+    //
+    // ONLY WHAT THE CALLER SENT IS TOUCHED. Each field is keyed on
+    // array_key_exists, not on being truthy, so re-pulling a post to fix its
+    // text cannot silently clear a designation somebody set in the admin --
+    // and sending an explicit null CAN clear it on purpose. Same shape the
+    // colophon and signature image already use here.
+    $has_portfolio_flag = array_key_exists('portfolio_post', $body);
+    $has_primary_album  = array_key_exists('primary_album_id', $body);
+    $has_primary_cat    = array_key_exists('primary_category_id', $body);
+    $portfolio_flag     = !empty($body['portfolio_post']) ? 1 : 0;
+    $primary_album      = !empty($body['primary_album_id'])    ? (int)$body['primary_album_id']    : null;
+    $primary_cat        = !empty($body['primary_category_id']) ? (int)$body['primary_category_id'] : null;
+    $wants_portfolio    = $has_portfolio_flag || $has_primary_album || $has_primary_cat;
+
+    if ($wants_portfolio) {
+        // REFUSED LOUDLY ON AN OLD SCHEMA RATHER THAN DROPPED QUIETLY. A site
+        // that has not run the updater has no such columns. Accepting the post
+        // and discarding the designation would import a whole portfolio that
+        // silently has no portfolio addresses, and nobody would find out until
+        // they clicked one.
+        if (!smackpress_portfolio_ready($pdo)) {
+            smackpress_error(409, 'This site does not have the portfolio columns yet. '
+                . 'Run the updater on it, then import again. Nothing was saved.');
+        }
+        // AN ID THAT DOES NOT EXIST IS REFUSED, not stored. A primary album or
+        // category pointing at nothing produces a post whose canonical path
+        // cannot be built, so the resolver falls back to the flat slug and the
+        // designation is a lie told quietly.
+        if ($primary_album !== null) {
+            $check = $pdo->prepare('SELECT id FROM snap_albums WHERE id = ? LIMIT 1');
+            $check->execute([$primary_album]);
+            if (!$check->fetchColumn()) {
+                smackpress_error(422, 'primary_album_id ' . $primary_album . ' is not an album on this site.');
+            }
+        }
+        if ($primary_cat !== null) {
+            $check = $pdo->prepare('SELECT id FROM snap_categories WHERE id = ? LIMIT 1');
+            $check->execute([$primary_cat]);
+            if (!$check->fetchColumn()) {
+                smackpress_error(422, 'primary_category_id ' . $primary_cat . ' is not a category on this site.');
+            }
+        }
+    }
+
     if ($title === '') smackpress_error(422, 'Title is required.');
 
     $slug = $slug !== '' ? long_slugify($slug) : long_slugify($title);
@@ -593,10 +666,22 @@ if ($sub === 'posts' && $method === 'POST') {
         if (!$has_colophon) $colophon_html = $existing_post['colophon'];
         if (!$has_signature_image) $signature_image = $existing_post['signature_image_id'];
 
+        // Only the designation fields the caller actually sent are written, so
+        // a re-pull of the text leaves an existing designation alone. (SS-1185)
+        $portfolio_sql = '';
+        $portfolio_params = [];
+        if ($wants_portfolio) {
+            if ($has_portfolio_flag) { $portfolio_sql .= ', portfolio_post=?';      $portfolio_params[] = $portfolio_flag; }
+            if ($has_primary_album)  { $portfolio_sql .= ', primary_album_id=?';    $portfolio_params[] = $primary_album; }
+            if ($has_primary_cat)    { $portfolio_sql .= ', primary_category_id=?'; $portfolio_params[] = $primary_cat; }
+        }
+
         $sql = "UPDATE snap_posts SET title=?, slug=?, content=?, colophon=?, signature_image_id=?, status=?, allow_comments=?, featured_image_id=?, user_id=?"
+             . $portfolio_sql
              . ($custom_date ? ", created_at=?" : "")
              . " WHERE id=? AND post_type='longform'";
         $params = [$title, $slug, $content_html, $colophon_html, $signature_image, $status, $allow_comments, $featured_image, $actor_user_id];
+        foreach ($portfolio_params as $p) $params[] = $p;
         if ($custom_date) $params[] = $custom_date;
         $params[] = $post_id;
         $pdo->prepare($sql)->execute($params);
@@ -619,11 +704,25 @@ if ($sub === 'posts' && $method === 'POST') {
             if (!$check->fetch()) break;
             $slug = $base_slug . '-' . (++$n);
         }
+        // The designation travels with the insert rather than a follow-up
+        // UPDATE, so a post is never briefly live without it. (SS-1185)
+        $portfolio_cols = '';
+        $portfolio_marks = '';
+        $portfolio_params = [];
+        if ($wants_portfolio) {
+            if ($has_portfolio_flag) { $portfolio_cols .= ',portfolio_post';      $portfolio_marks .= ',?'; $portfolio_params[] = $portfolio_flag; }
+            if ($has_primary_album)  { $portfolio_cols .= ',primary_album_id';    $portfolio_marks .= ',?'; $portfolio_params[] = $primary_album; }
+            if ($has_primary_cat)    { $portfolio_cols .= ',primary_category_id'; $portfolio_marks .= ',?'; $portfolio_params[] = $primary_cat; }
+        }
+
         $sql = "INSERT INTO snap_posts (title,slug,content,colophon,signature_image_id,post_type,status,allow_comments,featured_image_id,user_id"
+             . $portfolio_cols
              . ($custom_date ? ",created_at" : "")
              . ") VALUES(?,?,?,?,?,'longform',?,?,?,?"
+             . $portfolio_marks
              . ($custom_date ? ",?" : "") . ")";
         $params = [$title, $slug, $content_html, $colophon_html, $signature_image, $status, $allow_comments, $featured_image, $actor_user_id];
+        foreach ($portfolio_params as $p) $params[] = $p;
         if ($custom_date) $params[] = $custom_date;
         $pdo->prepare($sql)->execute($params);
         $new_id = (int)$pdo->lastInsertId();
