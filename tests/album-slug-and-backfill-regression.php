@@ -198,6 +198,82 @@ $canon = (string)file_get_contents(dirname(__DIR__) . '/database/schema/snapsmac
 ax(str_contains($canon, '`album_slug`'),
    'the canonical schema declares album_slug, so fresh installs get it');
 
+// ─────────────────────────────────────────────────────────────────────────────
+// THE CHECK THAT WAS MISSING, AND ITS ABSENCE WAS A REAL DEFECT.
+//
+// A clean pre-flight was treated as sufficient to add the UNIQUE key. It is
+// not. album_slug is NOT NULL DEFAULT '', so an insert that does not name the
+// column leaves an album with an EMPTY slug — and with the key present the
+// second such album fails on a duplicate empty string. That would break album
+// creation everywhere, and break a Flickr import part way through, with albums
+// already made.
+//
+// This asserts the BEHAVIOUR, not the comment: it builds the table as it would
+// be WITH the key, runs the admin form's own INSERT shape twice, and requires
+// the second one to fail. That is what makes the hazard real rather than
+// argued. Then it requires that the key is not added while any insert path can
+// still omit the slug.
+// ─────────────────────────────────────────────────────────────────────────────
+
+$keyed = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+$keyed->exec("CREATE TABLE snap_albums (id INTEGER PRIMARY KEY, album_name TEXT NOT NULL,
+    album_description TEXT, featured_post_id INTEGER NULL,
+    album_slug TEXT NOT NULL DEFAULT '', UNIQUE (album_slug))");
+$slugless = $keyed->prepare(
+    'INSERT INTO snap_albums (album_name, album_description, featured_post_id) VALUES (?, ?, ?)');
+$slugless->execute(['First', '', null]);
+$secondFailed = false;
+try { $slugless->execute(['Second', '', null]); }
+catch (Throwable $e) { $secondFailed = true; }
+ax($secondFailed,
+   'HAZARD: with the UNIQUE key present, a SECOND album inserted without a '
+   . 'slug fails — which is why a clean pre-flight is not enough on its own');
+
+// And the same two inserts through the helper must both succeed, which is the
+// shape every insert path has to use.
+$helped = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+$helped->exec("CREATE TABLE snap_albums (id INTEGER PRIMARY KEY, album_name TEXT NOT NULL,
+    album_slug TEXT NOT NULL DEFAULT '', UNIQUE (album_slug))");
+$withSlug = $helped->prepare('INSERT INTO snap_albums (album_name, album_slug) VALUES (?, ?)');
+$bothOk = true;
+try {
+    foreach (['Portfolio', 'Portfolio'] as $name) {   // the SAME name twice
+        $withSlug->execute([$name,
+            snap_unique_slug($helped, 'snap_albums', 'album_slug', $name, null, 'album')]);
+    }
+} catch (Throwable $e) { $bothOk = false; }
+ax($bothOk,
+   'and two albums with the SAME NAME both insert when the slug comes from '
+   . 'snap_unique_slug (the second takes -2)');
+
+// Every insert path in the product must name album_slug. A new one that does
+// not is exactly how this hazard comes back.
+$albumInserts = [];
+foreach (['core/flkrfckr-api.php', 'core/smackthemup-api.php', 'smack-albums.php'] as $rel) {
+    $src = (string)file_get_contents(dirname(__DIR__) . '/' . $rel);
+    if (preg_match_all('/INSERT\s+INTO\s+snap_albums\s*\(([^)]*)\)/i', $src, $m)) {
+        foreach ($m[1] as $cols) {
+            if (stripos($cols, 'album_slug') === false) $albumInserts[] = $rel;
+        }
+    }
+}
+// smack-albums.php is the admin form and is NOT mine to edit, so it is named
+// here as an EXPECTED outstanding item rather than silently tolerated. When it
+// starts minting a slug this list is empty and the key can be turned on.
+$expectedOutstanding = ['smack-albums.php'];
+sort($albumInserts);
+ax($albumInserts === $expectedOutstanding,
+   'INSERT PATHS: only the admin form still omits album_slug (found: '
+   . ($albumInserts === [] ? 'none' : implode(', ', $albumInserts)) . ')');
+
+ax(preg_match('/\$album_slug_inserts_mint_a_slug\s*=\s*false/', $sync) === 1,
+   'so the UNIQUE key stays HELD, by a flag that has to be changed on purpose');
+ax(preg_match('/if\s*\(\s*\$album_slug_ready\s*&&\s*\$album_slug_inserts_mint_a_slug\s*\)/', $sync) === 1,
+   'and the gate tests BOTH conditions, not just the pre-flight');
+ax(!str_contains($canon, 'uq_album_slug'),
+   'and the canonical schema does NOT declare it either, so a fresh install '
+   . 'cannot get a key that breaks its second album');
+
 echo $fail === 0
     ? "\nPASS - one helper, deterministic backfill, and a key that refuses to break a site\n"
     : "\n$fail CHECK(S) FAILED\n";
