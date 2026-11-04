@@ -139,6 +139,36 @@ try {
     // chosen page using the same pattern as page.php instead of the image feed.
     $path_info = $_SERVER['PATH_INFO'] ?? '';
     $requested_slug = trim($path_info, '/');
+
+    // --- PORTFOLIO PATHS: /<album>/<category>/<slug> (SS-1185) ---
+    // THE ONLY PLACE IN THE PRODUCT WHERE A URL PATH BECOMES A SLUG, which is
+    // why the resolver is called here and nowhere else. The three public
+    // controllers below (SMACKTALK, strict, legacy) all read $requested_slug
+    // and all understand a flat post slug already, so turning the three
+    // segments into that slug here reaches all three without touching any of
+    // them -- and without three copies of the decision, which is the shape that
+    // let the SMACKTALK search fix land on one path while another served the
+    // site.
+    //
+    // A one- or two-segment path gets a verdict of 'none' without a single
+    // query, so every existing URL on every site costs exactly what it cost
+    // before. core/portfolio-route.php holds the WHOLE decision; this block
+    // only applies it. There is deliberately no "has a slash in it" shortcut
+    // here -- a cheap test at the call site is still a copy of the decision,
+    // and a copy is the thing being avoided.
+    if ($requested_slug !== '') {
+        require_once __DIR__ . '/core/portfolio-route.php';
+        $_pf_route = snap_portfolio_route_for_request($pdo, $requested_slug);
+        if (($_pf_route['action'] ?? 'none') === 'redirect') {
+            header('Location: ' . rtrim(BASE_URL, '/') . $_pf_route['path'], true, 301);
+            exit;
+        }
+        if (($_pf_route['action'] ?? 'none') === 'serve') {
+            $requested_slug = $_pf_route['slug'];
+        }
+        unset($_pf_route);
+    }
+
     if (empty($requested_slug)) $requested_slug = $_GET['s'] ?? $_GET['name'] ?? null;
 
     // --- FEDIVERSE public profile (fediverse actor page at instance/username) ---
