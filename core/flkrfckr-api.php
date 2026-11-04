@@ -395,10 +395,20 @@ if ($sub === 'albums' && $method === 'POST') {
     }
 
     // NOTE: snap_albums has no created_at column (canonical) — do not insert one.
+    //
+    // album_slug IS SET HERE, and it has to be. The column is NOT NULL DEFAULT
+    // '', so an insert that omits it leaves the album with an empty slug: it
+    // has no address under /<album>/<category>/<slug>, and once snap_albums
+    // carries a UNIQUE key on that column the SECOND album this importer
+    // creates fails on a duplicate empty string — part way through somebody's
+    // migration, with albums already made. snap_unique_slug is the one place a
+    // slug is minted (core/slug.php).
+    require_once __DIR__ . '/slug.php';
+    $album_slug = snap_unique_slug($pdo, 'snap_albums', 'album_slug', $name, null, 'album');
     $pdo->prepare("
-        INSERT INTO snap_albums (album_name, album_description, view_count)
-        VALUES (?, ?, ?)
-    ")->execute([$name, $desc, $views]);
+        INSERT INTO snap_albums (album_name, album_description, view_count, album_slug)
+        VALUES (?, ?, ?, ?)
+    ")->execute([$name, $desc, $views, $album_slug]);
 
     $album_id = (int)$pdo->lastInsertId();
     flkrfckr_ok(['album_id' => $album_id, 'created' => true]);
