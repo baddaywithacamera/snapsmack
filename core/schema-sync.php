@@ -574,9 +574,42 @@ function snap_schema_sync(PDO $pdo): array {
     // is appended rather than listed: an unconditional entry here would try the
     // ALTER on a database the backfill could not clean, which is the exact
     // failure the pre-flight exists to prevent.
-    if ($album_slug_ready) {
+    // ─────────────────────────────────────────────────────────────────────────
+    // THE UNIQUE KEY IS HELD, AND THIS IS A DEFECT IN MY OWN EARLIER COMMIT.
+    //
+    // A clean pre-flight is NOT sufficient. album_slug is NOT NULL DEFAULT '',
+    // and THREE insert paths create an album without naming the column, so
+    // every album they make starts with the same empty slug:
+    //
+    //   smack-albums.php:97          the admin "new album" form
+    //   core/flkrfckr-api.php:399    the Flickr importer, which creates albums
+    //                                as it runs
+    //   core/smackthemup-api.php:83  the SMACK THEM UP album endpoint
+    //
+    // With the key present the FIRST such album inserts and the SECOND fails on
+    // a duplicate key. Proved rather than reasoned about: two inserts in that
+    // exact shape against a table carrying the key, and the second one raises
+    // an integrity-constraint violation. So adding the key would break album
+    // creation everywhere, and would break a Flickr import PART WAY THROUGH.
+    //
+    // Nothing is broken in the field: this sync pass is only reached from
+    // smack-update.php and core/multisite-api.php, and the commit that added
+    // the backfill has never been pushed, built or deployed. The key simply
+    // must not ship before the inserts mint a slug.
+    //
+    // THE TWO CORE INSERTS NOW CALL snap_unique_slug(). The admin form is not
+    // mine to edit, so the key stays held until that one does too -- a half
+    // repair would still break the page a person actually uses. Turning this on
+    // is a deliberate act with a one-line change, not something a clean
+    // pre-flight should decide by itself.
+    $album_slug_inserts_mint_a_slug = false;   // smack-albums.php:97 outstanding
+    if ($album_slug_ready && $album_slug_inserts_mint_a_slug) {
         $index_additions[] = ['snap_albums', 'uq_album_slug',
             "ALTER TABLE `snap_albums` ADD UNIQUE KEY `uq_album_slug` (`album_slug`)"];
+    } elseif ($album_slug_ready) {
+        $report['skipped'][] = 'INDEX snap_albums.uq_album_slug (held: an album '
+            . 'can still be created without a slug, so a second one would '
+            . 'collide on the empty string — see the comment at this gate)';
     }
 
     $idx_check = $pdo->prepare(
