@@ -464,6 +464,62 @@ function snap_schema_sync(PDO $pdo): array {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // 2b. ALBUM SLUG BACKFILL — must run BEFORE the UNIQUE key below
+    //
+    // snap_albums gained album_slug for /<album>/<category>/<slug>. Existing
+    // albums have '' and need a slug derived from their name.
+    //
+    // ORDER MATTERS AND IS THE WHOLE POINT. The UNIQUE key cannot be added
+    // before the backfill, because every unset row holds '' and the second one
+    // would collide. And it must not be added after a backfill that left
+    // duplicates, because a failing ALTER on a live site is a worse outcome
+    // than a missing index -- WEB's ruling, and he is right. So: backfill
+    // first, then PRE-FLIGHT for duplicates, then add the key only if the
+    // pre-flight is clean. If it is not, the key is skipped and SAID OUT LOUD
+    // in the report rather than failing the pass.
+    //
+    // NEVER OVERWRITES A SLUG THE OWNER HAS SET: the WHERE only ever matches
+    // the empty string.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    $album_slug_ready = false;
+    try {
+        $has_album_slug = $pdo->prepare(
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_albums'
+                AND COLUMN_NAME = 'album_slug'"
+        );
+        $has_album_slug->execute();
+        if ((int)$has_album_slug->fetchColumn() === 1) {
+            require_once __DIR__ . '/slug.php';
+
+            // The backfill itself lives in core/slug.php as
+            // snap_backfill_album_slugs() rather than inline here, so the test
+            // can CALL it instead of reading this file's source text. It was
+            // inline first, and mutation proof found three mutants the test
+            // could not see -- see that function's docblock.
+            $bf = snap_backfill_album_slugs($pdo);
+            foreach ($bf['assigned'] as $aid => $aslug) {
+                $report['columns_added'][] = "album_slug #{$aid} = {$aslug}";
+            }
+
+            if ($bf['unique_ok']) {
+                $album_slug_ready = true;
+            } else {
+                $report['errors'][] = 'album_slug UNIQUE key NOT added: '
+                    . count($bf['duplicates']) . ' duplicate slug(s) and ' . $bf['unset']
+                    . ' unset row(s) remain. The index is skipped on purpose -- a '
+                    . 'failing ALTER on a live site is worse than a missing key. '
+                    . 'Duplicates: ' . implode(', ', array_map(
+                        static fn(array $d): string => $d['album_slug'] . ' x' . $d['n'],
+                        array_slice($bf['duplicates'], 0, 5)));
+            }
+        }
+    } catch (\PDOException $e) {
+        $report['errors'][] = 'album_slug backfill: ' . $e->getMessage();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // 3. INDEX ADDITIONS — idempotent via INFORMATION_SCHEMA.STATISTICS
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -479,6 +535,15 @@ function snap_schema_sync(PDO $pdo): array {
         ['snap_images', 'idx_images_status_date',
             "ALTER TABLE `snap_images` ADD INDEX `idx_images_status_date` (`img_status`, `img_date`)"],
     ];
+
+    // The album_slug UNIQUE key is conditional on the pre-flight above, so it
+    // is appended rather than listed: an unconditional entry here would try the
+    // ALTER on a database the backfill could not clean, which is the exact
+    // failure the pre-flight exists to prevent.
+    if ($album_slug_ready) {
+        $index_additions[] = ['snap_albums', 'uq_album_slug',
+            "ALTER TABLE `snap_albums` ADD UNIQUE KEY `uq_album_slug` (`album_slug`)"];
+    }
 
     $idx_check = $pdo->prepare(
         "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
