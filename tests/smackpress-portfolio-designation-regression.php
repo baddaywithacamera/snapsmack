@@ -136,9 +136,67 @@ $plainId = (int)$pdo->lastInsertId();
 cx(snap_portfolio_canonical_path($pdo, $plainId) === null,
    'an UNDESIGNATED import has no canonical path, so it keeps its flat /slug');
 
+echo "\nPHOTOGRAPHS INTO THE ALBUMS AND CATEGORIES (SS-1185 gallery mappings)\n";
+
+// The archive, the album covers and the category covers are all IMAGE-keyed.
+// Mapping only the POST left a migrated site with every post in place and an
+// empty archive, which is exactly what the import did before.
+//
+// The function lives in a procedural route handler that reads $_POST, sends
+// headers and exits, so it cannot be included. It is EXTRACTED and evaluated,
+// with an assertion that there is exactly ONE copy, so a rename or a second
+// copy fails here rather than passing against a stale one.
+$api = (string)file_get_contents(dirname(__DIR__) . '/core/smackpress-api.php');
+cx(substr_count($api, 'function smackpress_map_images_to_taxonomy') === 1,
+   'exactly one copy of the mapping function');
+$matched = preg_match(
+    '/\Rfunction smackpress_map_images_to_taxonomy\(.*?\R\}\R/s', $api, $fn);
+cx($matched === 1, 'extracted the real mapping function');
+if ($matched === 1) { eval($fn[0]); }
+
+if (function_exists('smackpress_map_images_to_taxonomy')) {
+    $g = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $g->exec("CREATE TABLE snap_image_album_map (image_id INTEGER, album_id INTEGER)");
+    $g->exec("CREATE TABLE snap_image_cat_map (image_id INTEGER, cat_id INTEGER)");
+
+    $added = smackpress_map_images_to_taxonomy($g, [10, 11, 12], [1], [1, 2]);
+    cx($added['albums'] === 3, 'three photographs mapped into one album');
+    cx($added['categories'] === 6, 'and into two categories (three images x two)');
+    cx((int)$g->query("SELECT COUNT(*) FROM snap_image_album_map")->fetchColumn() === 3,
+       'the album map rows exist');
+    cx((int)$g->query("SELECT COUNT(*) FROM snap_image_cat_map")->fetchColumn() === 6,
+       'the category map rows exist');
+
+    // A RE-PULL MUST NOT DOUBLE THE ROWS. Re-importing a post to fix its text
+    // runs this again, and snap_image_album_map has no unique key to save us.
+    $again = smackpress_map_images_to_taxonomy($g, [10, 11, 12], [1], [1, 2]);
+    cx($again['albums'] === 0 && $again['categories'] === 0,
+       'a second run adds NOTHING -- a re-pull cannot duplicate the mappings');
+    cx((int)$g->query("SELECT COUNT(*) FROM snap_image_album_map")->fetchColumn() === 3,
+       'and the row count is unchanged');
+
+    cx(smackpress_map_images_to_taxonomy($g, [], [1], [1])['albums'] === 0,
+       'a post with no photographs maps nothing');
+    cx(smackpress_map_images_to_taxonomy($g, [20], [], [])['albums'] === 0,
+       'a post in no album and no category maps nothing');
+
+    // THAT IT RAN AT ALL ON SQLITE IS THE PROOF OF THE NEXT ONE: "INSERT
+    // IGNORE" is MySQL-only and would have thrown here. That is precisely how
+    // MySQL-only SQL survived in the taxonomy covers until somebody measured.
+    cx(stripos($fn[0], 'INSERT IGNORE') === false,
+       'the mapping uses no MySQL-only INSERT IGNORE');
+}
+
+// SINGLE-QUOTED ON PURPOSE: in a double-quoted PHP string $body['...'] is
+// interpolated and the quotes inside it are a parse error.
+cx(str_contains($api, 'empty($body[\'map_images_to_taxonomy\'])'),
+   'it is OPT-IN, so an ordinary import still files nothing into the archive');
+cx(substr_count($api, 'smackpress_map_images_to_taxonomy(') === 3,
+   'the definition plus BOTH the insert and update call sites (found '
+   . substr_count($api, 'smackpress_map_images_to_taxonomy(') . ' of 3)');
+
 echo "\nTHE HANDLER IS WIRED (source assertions — the route file cannot be included)\n";
 
-$api = (string)file_get_contents(dirname(__DIR__) . '/core/smackpress-api.php');
 foreach ([
     "array_key_exists('portfolio_post', \$body)"      => 'reads portfolio_post by key, not by truthiness',
     "array_key_exists('primary_album_id', \$body)"    => 'reads primary_album_id by key',

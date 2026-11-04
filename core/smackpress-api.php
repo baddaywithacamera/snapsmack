@@ -515,6 +515,59 @@ function smackpress_bucket_ids(array $body, string $content_html, ?int $featured
     return [$clean, $explicit !== null];
 }
 
+/**
+ * Put an imported post's photographs into its albums and categories. (SS-1185)
+ *
+ * WHY AN IMPORTED PORTFOLIO LOOKED EMPTY. SMACKPRESS mapped the POST into
+ * albums and categories (snap_post_album_map / snap_post_cat_map) and stopped
+ * there. The archive, the album covers and the category covers are all
+ * IMAGE-keyed: they read snap_image_album_map and snap_image_cat_map. Nothing
+ * in the import path ever wrote either, so a migrated site could have every
+ * post in place and an archive with nothing in it. The sibling importers do
+ * this already -- core/flkrfckr-api.php:577 is the shape copied here rather
+ * than invented.
+ *
+ * OPT-IN, DEFAULT OFF. A longform essay's inline pictures are not always
+ * gallery photographs, and silently filing every imported image into the
+ * owner's archive is not a decision an importer should make for him. The
+ * caller asks for it with map_images_to_taxonomy.
+ *
+ * NO "INSERT IGNORE". That is MySQL-only, and this codebase has already paid
+ * once for MySQL-only SQL in a path that had to run on another engine: it
+ * cannot be exercised in a test here, which is how the fault survived. An
+ * existence check and a plain insert say the same thing on every engine and
+ * can actually be proved.
+ *
+ * Returns counts so the caller can report what happened instead of assuming.
+ */
+function smackpress_map_images_to_taxonomy(PDO $pdo, array $image_ids,
+                                           array $album_ids, array $cat_ids): array {
+    $added = ['albums' => 0, 'categories' => 0];
+    if (!$image_ids) return $added;
+
+    foreach ([
+        ['snap_image_album_map', 'album_id', $album_ids, 'albums'],
+        ['snap_image_cat_map',   'cat_id',   $cat_ids,   'categories'],
+    ] as [$table, $column, $ids, $key]) {
+        if (!$ids) continue;
+        $have = $pdo->prepare("SELECT 1 FROM `{$table}` WHERE image_id = ? AND `{$column}` = ? LIMIT 1");
+        $put  = $pdo->prepare("INSERT INTO `{$table}` (image_id, `{$column}`) VALUES (?, ?)");
+        foreach ($image_ids as $image_id) {
+            $image_id = (int)$image_id;
+            if ($image_id <= 0) continue;
+            foreach ($ids as $id) {
+                $id = (int)$id;
+                if ($id <= 0) continue;
+                $have->execute([$image_id, $id]);
+                if ($have->fetchColumn()) continue;      // already mapped
+                $put->execute([$image_id, $id]);
+                $added[$key]++;
+            }
+        }
+    }
+    return $added;
+}
+
 function smackpress_save_bucket(PDO $pdo, int $post_id, array $body, string $content_html, ?int $featured): void {
     if ($post_id <= 0) return;
     require_once __DIR__ . '/bucket.php';
@@ -693,8 +746,20 @@ if ($sub === 'posts' && $method === 'POST') {
         snap_sync_tags($pdo, $post_id, $title . ' ' . $manual_tags);
         smackpress_save_bucket($pdo, $post_id, $body, $content_html, $featured_image);
 
+        // Photographs into the post's albums and categories, when the caller
+        // asked for it. The archive and the album/category covers are
+        // image-keyed, so without this an imported portfolio has every post in
+        // place and an empty archive. (SS-1185)
+        $image_map = ['albums' => 0, 'categories' => 0];
+        if (!empty($body['map_images_to_taxonomy'])) {
+            require_once __DIR__ . '/bucket.php';
+            $image_map = smackpress_map_images_to_taxonomy(
+                $pdo, snap_bucket_ids($pdo, $post_id), $selected_albums, $selected_cats);
+        }
+
         $post_url = $base_url . 'post/' . $slug;
-        smackpress_ok(['post_id' => $post_id, 'slug' => $slug, 'url' => $post_url]);
+        smackpress_ok(['post_id' => $post_id, 'slug' => $slug, 'url' => $post_url,
+                       'images_mapped' => $image_map]);
     } else {
         // INSERT — ensure unique slug
         $base_slug = $slug; $n = 0;
@@ -737,8 +802,20 @@ if ($sub === 'posts' && $method === 'POST') {
             bloggerflogger_finish($pdo);
         }
 
+        // Photographs into the post's albums and categories, when the caller
+        // asked for it. The archive and the album/category covers are
+        // image-keyed, so without this an imported portfolio has every post in
+        // place and an empty archive. (SS-1185)
+        $image_map = ['albums' => 0, 'categories' => 0];
+        if (!empty($body['map_images_to_taxonomy'])) {
+            require_once __DIR__ . '/bucket.php';
+            $image_map = smackpress_map_images_to_taxonomy(
+                $pdo, snap_bucket_ids($pdo, $new_id), $selected_albums, $selected_cats);
+        }
+
         $post_url = $base_url . 'post/' . $slug;
-        smackpress_ok(['post_id' => $new_id, 'slug' => $slug, 'url' => $post_url]);
+        smackpress_ok(['post_id' => $new_id, 'slug' => $slug, 'url' => $post_url,
+                       'images_mapped' => $image_map]);
     }
 }
 
