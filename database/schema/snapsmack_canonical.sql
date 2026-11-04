@@ -336,7 +336,17 @@ CREATE TABLE IF NOT EXISTS `snap_tags` (
 CREATE TABLE IF NOT EXISTS `snap_image_cat_map` (
   `image_id` int NOT NULL,
   `cat_id`   int NOT NULL,
-  PRIMARY KEY (`image_id`, `cat_id`)
+  -- PRIMARY KEY (image_id, cat_id) serves a lookup BY IMAGE, because image_id
+  -- is its leftmost column. It cannot serve a lookup BY CATEGORY: "which
+  -- images are in category N" has no usable index without this one, so it
+  -- scans the whole pivot. snap_image_album_map has carried the matching
+  -- idx_iam_album since it was written; this table was simply missed.
+  --
+  -- Every category cover and every category photograph count goes through that
+  -- lookup, which means the public archive does on any site with categories.
+  -- Pure performance: no query's RESULT changes, only what it costs.
+  PRIMARY KEY (`image_id`, `cat_id`),
+  KEY `idx_icm_cat` (`cat_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `snap_image_album_map` (

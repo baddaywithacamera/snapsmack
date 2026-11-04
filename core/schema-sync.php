@@ -36,6 +36,51 @@
 
 
 /**
+ * The indexes an EXISTING install needs retrofitted, as [table, index, ddl].
+ *
+ * WHY THIS IS A FUNCTION AND NOT A LITERAL INSIDE snap_schema_sync(). Index
+ * additions are a HAND-MAINTAINED LIST, and the canonical CREATE TABLE
+ * statements are a separate hand-maintained file. An index added to only one of
+ * them is silent and asymmetric in the worst way: canonical-only reaches fresh
+ * installs and never the 25 live sites; additions-only reaches the live sites
+ * and never a fresh install. Neither shows up as an error anywhere.
+ *
+ * tests/schema-index-drift-regression.php CALLS this and compares it against
+ * the parsed canonical schema, so the two lists cannot drift apart. It calls it
+ * rather than reading this file's source text, which is the fix this repository
+ * has now had to make three times -- rel_is_dev_path() in the release builder,
+ * snap_backfill_album_slugs() in core/slug.php, and here. A test that reads
+ * source proves a string is present, not that a decision is right.
+ *
+ * The album_slug UNIQUE key is NOT in this list: it is conditional on a
+ * pre-flight and snap_schema_sync() appends it. See the comment at its append.
+ */
+function snap_schema_index_additions(): array {
+    return [
+        ['snap_tags', 'idx_tags_color_family',
+            "ALTER TABLE `snap_tags` ADD INDEX `idx_tags_color_family` (`color_family`)"],
+        // 0.7.469 — snap_images shipped with ONLY a PRIMARY KEY, so the feed query
+        // (WHERE img_status='published' AND img_date <= ? ORDER BY sort_order, id)
+        // full-scanned and filesorted on every render. Existing installs need these
+        // retrofitted; fresh installs get them from the canonical schema.
+        ['snap_images', 'idx_images_status_sort',
+            "ALTER TABLE `snap_images` ADD INDEX `idx_images_status_sort` (`img_status`, `sort_order`, `id`)"],
+        ['snap_images', 'idx_images_status_date',
+            "ALTER TABLE `snap_images` ADD INDEX `idx_images_status_date` (`img_status`, `img_date`)"],
+        // snap_image_cat_map's PRIMARY KEY (image_id, cat_id) cannot serve a
+        // lookup BY CATEGORY -- cat_id is not its leftmost column -- so "which
+        // images are in category N" scans the whole pivot. Every category cover
+        // and every category photograph count asks exactly that, which means
+        // the public archive does on any site with categories.
+        // snap_image_album_map has carried the matching idx_iam_album since it
+        // was written; this table was missed. Pure performance: no query's
+        // RESULT changes, only what it costs.
+        ['snap_image_cat_map', 'idx_icm_cat',
+            "ALTER TABLE `snap_image_cat_map` ADD INDEX `idx_icm_cat` (`cat_id`)"],
+    ];
+}
+
+/**
  * Parse CREATE TABLE statements from the canonical schema SQL file.
  * Returns an associative array: table_name => CREATE TABLE DDL string.
  */
@@ -523,18 +568,7 @@ function snap_schema_sync(PDO $pdo): array {
     // 3. INDEX ADDITIONS — idempotent via INFORMATION_SCHEMA.STATISTICS
     // ─────────────────────────────────────────────────────────────────────────
 
-    $index_additions = [
-        ['snap_tags', 'idx_tags_color_family',
-            "ALTER TABLE `snap_tags` ADD INDEX `idx_tags_color_family` (`color_family`)"],
-        // 0.7.469 — snap_images shipped with ONLY a PRIMARY KEY, so the feed query
-        // (WHERE img_status='published' AND img_date <= ? ORDER BY sort_order, id)
-        // full-scanned and filesorted on every render. Existing installs need these
-        // retrofitted; fresh installs get them from the canonical schema.
-        ['snap_images', 'idx_images_status_sort',
-            "ALTER TABLE `snap_images` ADD INDEX `idx_images_status_sort` (`img_status`, `sort_order`, `id`)"],
-        ['snap_images', 'idx_images_status_date',
-            "ALTER TABLE `snap_images` ADD INDEX `idx_images_status_date` (`img_status`, `img_date`)"],
-    ];
+    $index_additions = snap_schema_index_additions();
 
     // The album_slug UNIQUE key is conditional on the pre-flight above, so it
     // is appended rather than listed: an unconditional entry here would try the
