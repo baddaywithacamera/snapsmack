@@ -145,6 +145,14 @@ $pdo->exec("INSERT INTO snap_images (id,img_file,img_status) VALUES
 // fleet and therefore must not assume away.
 $pdo->exec("INSERT INTO snap_images (id,img_file,img_status) VALUES (40,NULL,'published')");
 $pdo->exec("INSERT INTO snap_categories (id,cat_name) VALUES (4,'NullTop')");
+// MUSE'S FINDING: a MANUAL COVER ROW WHOSE OWN img_file IS NULL. He noted this
+// path follows from unchanged code -- the LEFT JOIN plus COALESCE falls through
+// to the fallback identically in the old and new forms -- but that there was no
+// fixture for it, so nothing proved it. Album 6's manual cover is image 50,
+// which exists but has no file.
+$pdo->exec("INSERT INTO snap_images (id,img_file,img_status) VALUES (50,NULL,'published')");
+$pdo->exec("INSERT INTO snap_albums (id,album_name,cover_image_id) VALUES (6,'NullManualCover',50)");
+$pdo->exec("INSERT INTO snap_image_album_map VALUES (11,6),(50,6)");
 $pdo->exec("INSERT INTO snap_albums (id,album_name) VALUES (5,'NullTop')");
 $pdo->exec("INSERT INTO snap_image_cat_map VALUES (11,4),(40,4)");
 $pdo->exec("INSERT INTO snap_image_album_map VALUES (11,5),(40,5)");
@@ -222,6 +230,13 @@ cx(($cats[4]['cover_path'] ?? null) !== null,
    'and the cover is not NULL, which a bare ORDER BY ... LIMIT 1 would have given');
 cx(($albums[5]['cover_path'] ?? null) === 'mid.jpg',
    'ALBUM 5: same, on the album side');
+// Muse's path: the manual cover EXISTS but its file is NULL, so COALESCE must
+// fall through to the fallback rather than returning NULL.
+cx(($albums[6]['cover_path'] ?? null) === 'mid.jpg',
+   'ALBUM 6: a manual cover row whose OWN img_file is NULL falls through to the '
+   . 'fallback -- the path Muse found had no fixture');
+cx(($albums[6]['cover_path'] ?? null) !== null,
+   'and does not leave the album with no cover at all');
 foreach ([[4, 'snap_image_cat_map', 'cat_id', $cats], [5, 'snap_image_album_map', 'album_id', $albums]] as [$gid, $map, $fk, $set]) {
     $expectedN = oracle_cover($pdo, $map, $fk, $gid);
     cx(($set[$gid]['cover_path'] ?? null) === $expectedN,
