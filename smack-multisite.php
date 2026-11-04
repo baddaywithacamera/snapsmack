@@ -105,9 +105,13 @@ if (isset($_POST['gen_reg_token'])) {
     // deliberately NOT gated — see disconnect_hub — because it only reduces
     // access and may be needed in an emergency.
     require_once 'core/reauth.php';
-    $ra = reauth_verify($pdo,
-        (string)($_POST['reauth_password'] ?? ''),
-        (string)($_POST['reauth_totp'] ?? ''));
+    $username = trim((string)($_POST['reauth_username'] ?? ''));
+    $session_username = (string)($_SESSION['user_login'] ?? '');
+    $ra = $username !== '' && strcasecmp($username, $session_username) === 0
+        ? reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''),
+            (string)($_POST['reauth_totp'] ?? ''))
+        : ['ok' => false, 'error' => 'Enter the username you signed in with.'];
+
     if (!$ra['ok']) {
         $err = 'Token generation blocked: ' . $ra['error'];
     } else {
@@ -246,7 +250,9 @@ if (isset($_POST['register_spoke'])) {
         $curl_err = curl_error($ch);
         curl_close($ch);
 
-        if (!$response || $http_code !== 200) {
+        if ($http_code === 401) {
+            $err = 'The spoke rejected the registration token. Generate a fresh token in Multisite Management on the spoke for this hub address.';
+        } elseif (!$response || $http_code !== 200) {
             $err = "Failed to contact spoke: " . ($curl_err ?: "HTTP $http_code");
         } else {
             $response_data = json_decode($response, true);
@@ -2368,29 +2374,29 @@ include 'core/sidebar.php';
                     <form method="POST" class="mb-20">
                         <p class="dim" style="font-size:0.82rem; margin-bottom:12px;">
                             Joining a hub grants it admin-level access to this site, so it needs your password
-                            (plus your 2FA code if you use it). Leaving a hub never needs a password.
+                            and a current 2FA code. Leaving a hub never needs a password.
                             The grant is issued for the one hub you name and expires in 15 minutes.
                         </p>
-                        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px;">
-                            <div>
-                                <?php /* SECAUDIT 061 5.1: the grant names the hub it is for, so
-                                         a grant intended for one hub cannot be presented to
-                                         another. Required, because a grant that does not say
-                                         where it may be used is only a password with extra
-                                         steps. */ ?>
-                                <label class="overline">HUB ADDRESS</label>
-                                <input type="text" name="grant_hub_url" autocomplete="off"
-                                       placeholder="hub.example.com" class="field-input">
+                        <div class="lens-input-wrapper">
+                            <label for="enrollment-hub"><strong>HUB ADDRESS</strong></label>
+                            <input id="enrollment-hub" type="url" name="grant_hub_url" autocomplete="off"
+                                   placeholder="https://hub.example.com" class="field-input" required>
+                        </div>
+                        <div class="reauth-row">
+                            <div class="lens-input-wrapper">
+                                <label for="enrollment-username">USERNAME</label>
+                                <input id="enrollment-username" type="text" name="reauth_username" autocomplete="username"
+                                       value="<?php echo htmlspecialchars((string)($_SESSION['user_login'] ?? '')); ?>" required>
                             </div>
-                            <div>
-                                <label class="overline">PASSWORD</label>
-                                <input type="password" name="reauth_password" autocomplete="off"
-                                       class="field-input">
+                            <div class="lens-input-wrapper">
+                                <label for="enrollment-password">PASSWORD</label>
+                                <input id="enrollment-password" type="password" name="reauth_password"
+                                       autocomplete="current-password" required>
                             </div>
-                            <div>
-                                <label class="overline">2FA CODE (if enabled)</label>
-                                <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
-                                       class="field-input-120">
+                            <div class="lens-input-wrapper">
+                                <label for="enrollment-totp">2FA CODE</label>
+                                <input id="enrollment-totp" type="text" name="reauth_totp" inputmode="numeric"
+                                       autocomplete="one-time-code" class="input-code" required>
                             </div>
                         </div>
                         <button type="submit" name="gen_reg_token" class="master-update-btn">
