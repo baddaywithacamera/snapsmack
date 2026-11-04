@@ -569,10 +569,131 @@ $check($notUtf8 === [],
     . 'lost a build to CRLF-vs-LF for the same reason. Fix the encoding, do not delete '
     . 'the character: ' . implode(' | ', array_slice($notUtf8, 0, 6)));
 
-printf("agreed rules: %d inline styles (budget %d), %d CSS-in-PHP (budget %d), %d inline JS blocks left on the allowlist (limit 0 for any new one), %d data blocks exempt, %d non-UTF-8 source file(s), version %s.
+/* ── RULE 10 ──────────────────────────────────────────────────────────────
+ * CORE IS NAMED BY FUNCTION, NEVER BY SKIN.
+ *
+ * Sean, 3 November 2026: "we'll have to do the renames. I am sure annoyed how
+ * that keeps creeping through." His standard, in his own words: someone
+ * building a 15-puzzle skin should be able to keep or drop an engine by what it
+ * DOES -- a name like 15p-primary-game -- never by the skin it came from.
+ *
+ * RULE 5 ABOVE DOES NOT COVER THIS, and I claimed it did. Rule 5 counts QUOTED
+ * SKIN SLUGS in core file CONTENTS -- a coupling ratchet, and a good one. It
+ * never looks at a FILENAME or an IDENTIFIER. Tested: five of the six
+ * skin-named page components are invisible to it, and the one it does catch is
+ * an accident of that file quoting its own slug. So a new
+ * core/<newskin>-page-component.php with no quoted slug inside passed cleanly.
+ *
+ * WHY PREFIXES AND NOT WHOLE SLUGS, which is the part that nearly shipped
+ * broken. My first matcher compared core names against the slugs from the
+ * manifests and found FIVE files, not six. It missed
+ * 50-shades-page-component.php, because the slug is "50-shades-of-noah-grey"
+ * and the file says "50-shades". CORE USES SHORTHAND. A rule matching whole
+ * slugs waves through exactly the names it exists to stop, while reporting a
+ * tidy count -- the same fault as every other gate in this file's history. So
+ * multi-segment prefixes count too, and 50-shades is the fixture in
+ * tests/agreed-rules-gate-catches-its-plants-regression.php for that reason.
+ *
+ * THE BASELINE IS DEBT, NOT PERMISSION. The existing names are listed and
+ * ratcheted: the count may shrink, never grow. That keeps the gate from
+ * blocking every core/ commit on faults nobody has had a chance to fix, while
+ * refusing the next one. Codex is drafting the rename contract; this is what
+ * pays it down, and the renames themselves are Sean's to approve.
+ */
+$skinSlugs10 = [];
+foreach (glob($root . '/skins/*/manifest.json') ?: [] as $mf) {
+    $skinSlugs10[] = basename(dirname($mf));
+}
+/** Every form a skin name can wear in an identifier or a filename. */
+$skinNameForms = static function (array $slugs): array {
+    $forms = [];
+    foreach ($slugs as $slug) {
+        $candidates = [$slug];
+        // Multi-segment PREFIXES: "50-shades-of-noah-grey" yields "50-shades".
+        // Two segments minimum and 8 characters minimum, so single short words
+        // like "the" (the-grid) or "hip" (hip-to-be-square) cannot match half
+        // the repository.
+        $parts = explode('-', $slug);
+        for ($n = 2; $n < count($parts); $n++) {
+            $prefix = implode('-', array_slice($parts, 0, $n));
+            if (strlen($prefix) >= 8) $candidates[] = $prefix;
+        }
+        foreach ($candidates as $c) {
+            $forms[$c] = $slug;                        // hyphenated: 50-shades
+            $forms[str_replace('-', '_', $c)] = $slug; // snake_case: game_on
+            // AND THE COLLAPSED FORM, for camelCase. Found by calibrating this
+            // rule against the count I had measured by hand: the gate said 21
+            // and the measurement said 22, and the missing one was
+            // gameOnPuzzlePhotographs -- camelCase has NO separator, so neither
+            // "game-on" nor "game_on" is a substring of "gameonpuzzle...".
+            // A third naming style, missed because I only thought of two.
+            $forms[str_replace('-', '', $c)] = $slug;  // collapsed: gameon
+        }
+    }
+    return $forms;
+};
+$forms10 = $skinNameForms($skinSlugs10);
+
+$skinNamed = [];
+foreach (glob($root . '/core/*.php') ?: [] as $file) {
+    $base = strtolower(basename($file));
+    foreach ($forms10 as $form => $slug) {
+        if (str_contains($base, (string)$form)) {
+            $skinNamed[] = 'file ' . basename($file);
+            break;
+        }
+    }
+    $src10 = (string)file_get_contents($file);
+    // Identifiers only: a function, class or const NAME. A quoted slug inside
+    // the body is rule 5's subject, not this rule's.
+    if (preg_match_all('/(?:function|class|const)\s+([A-Za-z_][A-Za-z0-9_]*)/', $src10, $m10)) {
+        foreach (array_unique($m10[1]) as $ident) {
+            $low = strtolower($ident);
+            foreach ($forms10 as $form => $slug) {
+                if (str_contains($low, (string)$form)) {
+                    $skinNamed[] = 'identifier ' . basename($file) . '::' . $ident;
+                    break;
+                }
+            }
+        }
+    }
+}
+// The component dispatch keys map 1:1 onto the skin-named files, so they are
+// the same debt wearing a second coat. Counted separately because renaming a
+// file without its key breaks the dispatch and both must move together.
+$dispatch10 = [];
+$helpers10 = (string)@file_get_contents($root . '/core/skin-render-helpers.php');
+if (preg_match_all("/'([a-z0-9][a-z0-9\-]*)-page'\s*=>/", $helpers10, $m11)) {
+    foreach (array_unique($m11[1]) as $key) $dispatch10[] = 'dispatch ' . $key . '-page';
+}
+$skinNamed = array_values(array_unique($skinNamed));
+sort($skinNamed);
+sort($dispatch10);
+
+// Measured at f31c816b: 6 files + 16 identifiers = 22, plus 6 dispatch keys.
+$SKIN_NAME_BUDGET     = 22;
+$SKIN_DISPATCH_BUDGET = 6;
+$check(count($skinNamed) <= $SKIN_NAME_BUDGET,
+    'CORE NOW CARRIES ' . count($skinNamed) . ' SKIN-NAMED files or identifiers, budget '
+    . $SKIN_NAME_BUDGET . '. Core is named by FUNCTION, never by skin: a 15-puzzle skin '
+    . 'must be keepable or droppable by what the code DOES. Name it for the job: '
+    . implode(' | ', array_slice(array_diff($skinNamed, []), -4)));
+$check(count($skinNamed) >= $SKIN_NAME_BUDGET,
+    'skin-named core items fell to ' . count($skinNamed) . ' -- lower $SKIN_NAME_BUDGET to '
+    . count($skinNamed) . ' so it cannot climb back.');
+$check(count($dispatch10) <= $SKIN_DISPATCH_BUDGET,
+    'core/skin-render-helpers.php now dispatches ' . count($dispatch10)
+    . ' skin-named component keys, budget ' . $SKIN_DISPATCH_BUDGET
+    . '. A key and its file rename together or the dispatch breaks.');
+$check(count($dispatch10) >= $SKIN_DISPATCH_BUDGET,
+    'skin-named dispatch keys fell to ' . count($dispatch10)
+    . ' -- lower $SKIN_DISPATCH_BUDGET to ' . count($dispatch10) . '.');
+
+printf("agreed rules: %d inline styles (budget %d), %d CSS-in-PHP (budget %d), %d inline JS blocks left on the allowlist (limit 0 for any new one), %d data blocks exempt, %d non-UTF-8 source file(s), %d skin-named core items (budget %d) + %d dispatch keys, version %s.
 ",
     $inline, $INLINE_STYLE_BUDGET, count($cssInPhp), $CSS_IN_PHP_BUDGET,
-    count($JS_IN_PHP_ALLOWLIST), $jsDataBlocks, count($notUtf8), $declared);
+    count($JS_IN_PHP_ALLOWLIST), $jsDataBlocks, count($notUtf8),
+    count($skinNamed), $SKIN_NAME_BUDGET, count($dispatch10), $declared);
 
 // Deferred items are PRINTED even when they are not fatal. A rule that goes
 // quiet is a rule nobody acts on, and the whole fault being fixed here is gates

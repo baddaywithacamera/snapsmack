@@ -134,6 +134,46 @@ px(str_contains($src, 'mb_check_encoding'),
 px(str_contains($src, 'TEXT_SOURCE_EXT'),
    'and scopes itself to text source by extension, not by guessing at binaries');
 
+// ── RULE 10: skin names in core/, and the shorthand case ───────────────────
+// PLANTED, not asserted from the baseline. Two plants, because the second is
+// the one a naive matcher gets wrong:
+//   a FULL slug in a new core/ filename        -- any matcher catches this
+//   a SHORTHAND prefix, as 50-shades already is -- a whole-slug matcher MISSES
+//     it, because the slug is "50-shades-of-noah-grey"
+$planted = [];
+foreach ([
+    'core/chaplin-grid-plant.php'   => 'a FULL skin slug in a core/ filename',
+    'core/50-shades-plant.php'      => 'a SHORTHAND skin prefix (the case a whole-slug matcher misses)',
+] as $rel => $why) {
+    $abs = $root . '/' . $rel;
+    file_put_contents($abs, "<?php
+// temporary plant; removed in the same run
+");
+    $planted[] = $abs;
+    $out = run_gate($gate, $root);
+    px(str_contains($out, 'SKIN-NAMED'),
+       "RULE 10 catches $why");
+    px(str_contains($out, basename($rel)) || str_contains($out, 'budget'),
+       "and reports it rather than only counting it: " . basename($rel));
+    @unlink($abs);
+    clearstatcache(true, $abs);
+}
+foreach ($planted as $abs) {
+    px(!file_exists($abs), 'the plant is removed: ' . basename($abs));
+}
+$afterPlants = run_gate($gate, $root);
+px(!str_contains($afterPlants, 'SKIN-NAMED'),
+   'and rule 10 goes quiet again once the plants are gone');
+px(str_contains($afterPlants, '22 skin-named core items'),
+   'the baseline is back to its measured 22, so the ratchet did not drift');
+// The DISPATCH keys need their own assertion. Found by mutation proof: zeroing
+// the dispatch scan changed nothing this test could see, because every check
+// above was about the item count. The gate did go red -- but this file
+// deliberately never reads the exit code, so a red for an unasserted reason is
+// invisible to it. An assertion on the count is the only thing that sees it.
+px(str_contains($afterPlants, '+ 6 dispatch keys'),
+   'and the 6 skin-named dispatch keys are still counted, not silently dropped');
+
 // ── THE WIRING, which is the thing that actually failed ─────────────────────
 // The gate was correct and unwired for weeks. So the wiring gets its own
 // checks, and they are deliberately NOT satisfied by the glob: a gate reachable
