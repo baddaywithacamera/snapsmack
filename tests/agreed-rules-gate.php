@@ -582,7 +582,23 @@ foreach (explode("\0", $tracked) as $rel) {
     // and CR (0x0d) are legitimate; every other C0 byte and DEL (0x7f) is
     // corruption. Reported WITH the offset, because an invisible byte is
     // otherwise a hunt.
-    if ($bytes !== '' && preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/', $bytes, $m, PREG_OFFSET_CAPTURE)) {
+    //
+    // licenses/ IS EXEMPT, AND THIS EXEMPTION HAS A MEASUREMENT BEHIND IT.
+    // Rule 7b was wired at 68322218 and produced its first false positive
+    // within the hour: licenses/LGPL-2.1.txt, copied byte for byte out of the
+    // installed paramiko package, contains NINE 0x0c FORM FEEDS. They are page
+    // breaks -- the FSF's own licence texts have always carried them. That file
+    // is a verbatim third-party legal document and must not be edited to suit a
+    // gate of ours; a licence we have altered is worse than a lint failure.
+    //
+    // The exemption is as narrow as it can be: this directory only, and it was
+    // measured before being written. Of every .txt in licenses/, exactly ONE
+    // carries a control byte and they are all 0x0c in that one file. So this
+    // does not hide corruption in any other licence file today, and a future
+    // one would have to be a deliberate addition to this directory.
+    if (strpos(str_replace('\\', '/', $rel), 'licenses/') === 0) {
+        // skip rule 7b only; rule 7's encoding check below still applies
+    } elseif ($bytes !== '' && preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/', $bytes, $m, PREG_OFFSET_CAPTURE)) {
         $hasControl[] = sprintf('%s (byte 0x%02x at offset %d)',
                                 $rel, ord($m[0][0]), $m[0][1]);
     }
