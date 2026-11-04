@@ -81,6 +81,40 @@ function ssGram()   { return window.SNAP_SITE_MODE === 'carousel'; }
 function ssSlider() { return !!document.querySelector('.ss-slider'); }
 function ssWall()   { return !!document.getElementById('wall-canvas'); }
 
+/**
+ * Is a full-screen photo viewer open? (SS-1202)
+ *
+ * THE BUG THIS EXISTS TO STOP. The arrow keys and the spacebar below set
+ * window.location.href. The lightbox engines bind the SAME keys and move
+ * within the open viewer. Nothing told this engine to stand down, so with a
+ * lightbox open ONE key press did BOTH: the viewer advanced, and then the
+ * whole page navigated to the previous/next photograph. The page load tore the
+ * viewer down, which is why the lightbox "dropped back to the single
+ * photograph on every move" on every skin that has one.
+ *
+ * ASKED OF THE DOM, NOT OF A FLAG, AND THAT IS DELIBERATE. There is a
+ * window.smackdown.closeLightbox global that looks like an open-state signal
+ * and would have been one line. It is not trustworthy: the carousel-family
+ * viewer sets it on open and NEVER clears it on close (see the close function
+ * in the photogram engine, which nulls its own overlay and removes the element
+ * but leaves the global pointing at itself). Guarding on that flag would have
+ * killed the arrow keys permanently after the first time a visitor opened and
+ * closed a lightbox -- turning one bug into a worse one, on the keys the owner
+ * explicitly said work today and must keep working. The DOM cannot lie about
+ * whether an overlay is on screen.
+ *
+ * Two viewers, two ways of leaving: the shared lightbox keeps its overlay in
+ * the document and hides it (so visibility has to be tested), while the
+ * carousel viewer removes its element entirely (so presence is enough).
+ */
+function ssViewerOpen() {
+    var shared = document.getElementById('ss-lightbox-overlay');
+    if (shared && shared.style.display !== 'none' && shared.style.opacity !== '0') return true;
+    // Removed from the document on close, so being here means open.
+    if (document.getElementById('pg-lightbox')) return true;
+    return false;
+}
+
 function ssRelLink(rel) {
     var el = document.querySelector('a[rel="' + rel + '"][href]');
     return el ? el.getAttribute('href') : '';
@@ -197,7 +231,12 @@ document.addEventListener('keydown', function(e) {
     // photo navigation renders and marks rel="prev" / rel="next". A link
     // that is on the page cannot drift out of step with the page the way a
     // parallel global did. SNAP_DATA is still honoured if anything sets it.
-    if (!sliderActive) {
+    // A VIEWER IS OPEN: IT OWNS THE ARROWS AND THE SPACEBAR. (SS-1202)
+    // The lightbox moves within itself and stays open; this engine must not
+    // also navigate the page out from under it. Note the spacebar's
+    // preventDefault above still ran, so the page does not scroll behind the
+    // viewer either.
+    if (!sliderActive && !ssViewerOpen()) {
         // Some skins load this engine after DOMContentLoaded. In that case the
         // initializer above never ran, but the CMS navigation element is still
         // authoritative and already present. ssNavUrl reads it at key time as
