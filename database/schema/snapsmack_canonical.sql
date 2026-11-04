@@ -313,6 +313,8 @@ CREATE TABLE IF NOT EXISTS `snap_albums` (
                       COMMENT 'Hero image source for album gallery views — migration 039',
   `view_count`        int NOT NULL DEFAULT 0
                       COMMENT 'Album page-view tally — incremented on archive.php?album=N',
+  `album_slug`        varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
+                      COMMENT 'URL token for the album segment of /<album>/<category>/<slug>. Minted by snap_unique_slug() in core/slug.php — the ONE place slugs are made. Set once and never changed by a rename, so a shared link survives the album being retitled. Backfilled from album_name by core/schema-sync.php, which deduplicates with -2/-3 and never overwrites a slug the owner has set. DEFAULT is empty rather than NULL so the backfill can find unset rows with one predicate on either engine; an empty slug means not yet backfilled, and the album keeps its ?album=N address until it is.',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
