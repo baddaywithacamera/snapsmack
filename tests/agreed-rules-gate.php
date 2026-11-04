@@ -521,9 +521,36 @@ $check($jsStale === [],
  * Scope is TRACKED TEXT SOURCE. Binary assets are excluded by extension, not
  * by guessing: a .png is not malformed UTF-8, it is not text.
  */
+// 'spec', 'bat' and 'ps1' added 3 November 2026. They are text source that
+// nothing was reading: a PyInstaller .spec IS Python, and a build .bat is the
+// script that ships a desktop tool. Measured before widening the list -- zero
+// tracked file with any of those extensions is non-UTF-8 or carries a control
+// character, so this cannot deadlock a commit or a release on something that
+// was already there.
 $TEXT_SOURCE_EXT = ['php', 'phtml', 'inc', 'js', 'cjs', 'mjs', 'css', 'json',
                     'sql', 'md', 'txt', 'html', 'htm', 'svg', 'yml', 'yaml',
-                    'py', 'sh', 'cfg', 'ini'];
+                    'py', 'sh', 'cfg', 'ini', 'spec', 'bat', 'ps1'];
+
+/* ── RULE 7b ──────────────────────────────────────────────────────────────
+ * NO C0 CONTROL CHARACTERS IN TEXT SOURCE.
+ *
+ * WHY THIS EXISTS, and it is my own mistake rather than a hypothetical. I
+ * patched two build specs through a shell heredoc whose Python string contained
+ * Windows paths. "C:\snapsmack\fed-up" put a 0x0c FORM FEED where the \f was,
+ * and "\blogger-flogger" put 0x08 BACKSPACE bytes in another file. Three form
+ * feeds reached a commit. The text LOOKS right in a terminal, because a
+ * backspace is invisible and a form feed just moves the cursor, so nothing
+ * showed until the bytes were counted.
+ *
+ * Rule 7 could not catch it: those bytes are PERFECTLY VALID UTF-8. The
+ * encoding was never wrong. A control character in source is corruption all the
+ * same, and the same class of damage as the CRLF-vs-LF fault that cost this
+ * repository a build -- a file that reads one way to a human and another way to
+ * a tool.
+ *
+ * TAB, LF and CR are excluded because they are legitimate text. Everything else
+ * below 0x20, plus DEL, is not.
+ */
 // SCOPE BY SEVERITY, and it is not a shortcut -- it is the correct question.
 //
 // At COMMIT severity the question is "does what I am ADDING carry a bad byte",
@@ -538,6 +565,7 @@ $TEXT_SOURCE_EXT = ['php', 'phtml', 'inc', 'js', 'cjs', 'mjs', 'css', 'json',
 // which is also what stopped the deadlock where one byte already in the tree
 // blocked every commit in the repository.
 $notUtf8 = [];
+$hasControl = [];
 $listCmd = $commit_scope
     ? 'git -C ' . escapeshellarg($root) . ' diff --cached --name-only -z --diff-filter=ACMR 2>/dev/null'
     : 'git -C ' . escapeshellarg($root) . ' ls-files -z 2>/dev/null';
@@ -549,6 +577,16 @@ foreach (explode("\0", $tracked) as $rel) {
     $path = $root . '/' . $rel;
     if (!is_file($path)) continue;                   // deleted but still staged
     $bytes = (string)@file_get_contents($path);
+
+    // RULE 7b, in the same pass so the file is read once. TAB (0x09), LF (0x0a)
+    // and CR (0x0d) are legitimate; every other C0 byte and DEL (0x7f) is
+    // corruption. Reported WITH the offset, because an invisible byte is
+    // otherwise a hunt.
+    if ($bytes !== '' && preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/', $bytes, $m, PREG_OFFSET_CAPTURE)) {
+        $hasControl[] = sprintf('%s (byte 0x%02x at offset %d)',
+                                $rel, ord($m[0][0]), $m[0][1]);
+    }
+
     if ($bytes === '' || mb_check_encoding($bytes, 'UTF-8')) continue;
     // Report WHERE, so the fix is a one-line edit and not a hunt.
     $at = null;
@@ -568,6 +606,14 @@ $check($notUtf8 === [],
     . 'makes one commit read differently in two checkouts; this repository has already '
     . 'lost a build to CRLF-vs-LF for the same reason. Fix the encoding, do not delete '
     . 'the character: ' . implode(' | ', array_slice($notUtf8, 0, 6)));
+
+$check($hasControl === [],
+    count($hasControl) . ' tracked source file(s) contain a C0 control character. '
+    . 'These are VALID UTF-8, which is why rule 7 cannot see them, and they are '
+    . 'invisible in a terminal -- a form feed or a backspace from a mangled '
+    . 'Windows path in a shell heredoc. Three reached a commit on 3 November 2026 '
+    . 'before this check existed. Delete the byte, and write paths in comments '
+    . 'with forward slashes: ' . implode(' | ', array_slice($hasControl, 0, 6)));
 
 /* ── RULE 10 ──────────────────────────────────────────────────────────────
  * CORE IS NAMED BY FUNCTION, NEVER BY SKIN.

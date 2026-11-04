@@ -88,8 +88,8 @@ pyz = PYZ(a.pure)
 # COLLECT DIRECTORY, not onefile (SS-1195) — see the licence block above.
 #
 # LAUNCHER CHECK, done before changing the name: tools/hub/qt_main.py's
-# MIGRATION_ROSTER launches C:\snapsmacked-uped-up.exe, and build.bat
-# copied disted-up.exe there WITHOUT renaming it. So the exe keeps the name
+# MIGRATION_ROSTER launches C:/snapsmack/fed-up/fed-up.exe, and build.bat
+# copied dist/fed-up.exe there WITHOUT renaming it. So the exe keeps the name
 # 'fed-up' and lands at exactly the same path once build.bat copies the whole
 # directory. No rename step to trip over, unlike FLKR FCKR.
 exe = EXE(
