@@ -36,6 +36,18 @@ _ride_files = [f for f in _unz_files + _suyb_files if os.path.isfile(f)]
 _ride_data  = [(f, '.') for f in _ride_files]
 _ride_mods  = [os.path.splitext(os.path.basename(f))[0] for f in _ride_files]
 
+# ─── Qt LGPLv3: licences must travel, and the build refuses without them ─────
+# SS-1195. Qt is used under the LGPLv3, which obliges whoever distributes the
+# combined work to let a recipient replace the Qt libraries with their own
+# build. That is why this is a COLLECT directory and not a onefile exe: a
+# onefile exe unpacks to a temporary directory at run time and cannot be
+# relinked. Same guard as tools/unzucker/unzucker.spec.
+_license_dir = os.path.normpath(os.path.join(_src, '..', '..', 'licenses'))
+for _required in ('LGPL-3.0.txt', 'Qt-PySide6-LGPLv3-NOTICE.txt'):
+    if not os.path.isfile(os.path.join(_license_dir, _required)):
+        raise SystemExit('fed-up.spec: licenses/%s is missing. Refusing to '
+                         'build a Qt application without it.' % _required)
+
 a = Analysis(
     ['app.py'],
     pathex=[_src, _shared_dir, _unz_dir, _suyb_dir],
@@ -43,7 +55,7 @@ a = Analysis(
     # Bundle an assets/ folder only if this tool actually has one. FED UP has
     # no assets dir yet, and an unconditional entry makes PyInstaller abort with
     # "Unable to find …\assets" on a clean build.
-    datas=_local_data + _shared_data + _ride_data + (
+    datas=_local_data + _shared_data + _ride_data + [(_license_dir, 'licenses')] + (
         [(os.path.join(_src, 'assets'), 'assets')]
         if os.path.isdir(os.path.join(_src, 'assets')) else []),
     hiddenimports=_local_mods + _shared_mods + _ride_mods + [
@@ -73,13 +85,19 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
-# Onefile GUI build (single .exe, no console, UPX off — matches the family recipe).
+# COLLECT DIRECTORY, not onefile (SS-1195) — see the licence block above.
+#
+# LAUNCHER CHECK, done before changing the name: tools/hub/qt_main.py's
+# MIGRATION_ROSTER launches C:\snapsmacked-uped-up.exe, and build.bat
+# copied disted-up.exe there WITHOUT renaming it. So the exe keeps the name
+# 'fed-up' and lands at exactly the same path once build.bat copies the whole
+# directory. No rename step to trip over, unlike FLKR FCKR.
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
+    contents_directory='.',
     name='fed-up',
     debug=False,
     bootloader_ignore_signals=False,
@@ -94,4 +112,9 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
+# Never collapse this back to onefile: the dynamic Qt libraries must stay
+# separately inspectable and relinkable in the distributed directory, which is
+# what the LGPLv3 asks of us. licenses/ ships beside them.
+app = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name='fed-up')
 # ===== SNAPSMACK EOF =====
