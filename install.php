@@ -1701,6 +1701,27 @@ RewriteRule ^\.well-known/nodeinfo$ fediverse.php?ap=nodeinfo [L,QSA]
 RewriteRule ^nodeinfo/2\.0$ fediverse.php?ap=nodeinfo2 [L,QSA]
 RewriteRule ^ap/(.+)$ fediverse.php?appath=$1 [L,QSA]
 
+# PORTFOLIO PATHS: /<album>/<category>/<slug>  (SS-1185)
+#
+# THREE SEGMENTS ONLY, AND IT HAS TO BE HERE. The catch-all below matches a
+# SINGLE segment -- no slash in its character class -- so a three-segment path
+# matched nothing at all and Apache 404'd it before PHP ever ran. The resolver
+# in core/portfolio-route.php was therefore unreachable on every live site.
+# Measured, not assumed: php -S showed PATH_INFO unset, which sent me to look
+# at what actually routes these addresses.
+#
+# It passes the joined path in ?name, the SAME mechanism the single-segment
+# rule uses, because index.php reads $_GET['name'] on these installs
+# (PATH_INFO is empty here -- the rewrite does not produce one). Reusing the
+# existing mechanism beats introducing a second one.
+#
+# TWO SEGMENTS ARE DELIBERATELY NOT ROUTED. Nothing serves them today, so
+# adding them would turn an Apache 404 into a PHP 404 for addresses that have
+# never meant anything -- a behaviour change nobody asked for. The resolver
+# falls through for one and two segments anyway.
+RewriteRule ^([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)$ index.php?name=$1/$2/$3 [L,QSA]
+
+
 RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
 
 # ─── SECURITY HEADERS ────────────────────────────────────────
