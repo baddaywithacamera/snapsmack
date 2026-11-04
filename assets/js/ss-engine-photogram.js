@@ -171,6 +171,20 @@
         if (!lbOverlay) return;
         var el = lbOverlay;
         lbOverlay = null;
+
+        // CLEAR THE GLOBAL THIS VIEWER SET ON OPEN. (SS-1202)
+        // openLightbox sets window.smackdown.closeLightbox so the hotkey engine
+        // can close this viewer with ESC. Closing never cleared it, so the
+        // global went on pointing at a closed lightbox for the rest of the
+        // page's life. Harmless while it was only used to close something --
+        // the guard at the top of this function makes a second call a no-op --
+        // but it makes that global useless as an "is a viewer open" signal, and
+        // anything that trusted it would have disabled the arrow keys for good
+        // after one open. The shared lightbox engine already nulls it; this one
+        // now matches.
+        if (window.smackdown && window.smackdown.closeLightbox === closeLightbox) {
+            window.smackdown.closeLightbox = null;
+        }
         el.style.transition = 'opacity 0.15s ease';
         el.style.opacity    = '0';
 
