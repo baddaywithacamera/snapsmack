@@ -72,10 +72,19 @@ THROTTLE_OPTIONS = [
 # live OUTSIDE the served web dir — the Blink server only serves web_dir).
 # ---------------------------------------------------------------------------
 
-def _img_data_uri(pil_img: Image.Image) -> str:
+def _img_bytes(pil_img: Image.Image) -> bytes:
+    """JPEG bytes. The one place the encode settings live."""
     buf = io.BytesIO()
     pil_img.convert('RGB').save(buf, 'JPEG', quality=82)
-    return 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode('ascii')
+    return buf.getvalue()
+
+
+def _as_data_uri(raw: bytes) -> str:
+    return 'data:image/jpeg;base64,' + base64.b64encode(raw).decode('ascii')
+
+
+def _img_data_uri(pil_img: Image.Image) -> str:
+    return _as_data_uri(_img_bytes(pil_img))
 
 
 # ---------------------------------------------------------------------------
@@ -647,7 +656,27 @@ class Session:
             raise RuntimeError("Refused: path is not part of the loaded export.")
         return real
 
-    def thumb(self, path: str, size: int = 160) -> str:
+    # THE BYTES FORM IS THE REAL ONE; the data: URI wraps it.
+    #
+    # The Linux port renders in a Chromium window and needs a data: URI. The
+    # Windows Qt port needs raw JPEG for QPixmap.loadFromData, and base64 is
+    # pure overhead in between -- about a third more bytes, encoded and then
+    # decoded again, for every tile on a 3,000-post export.
+    #
+    # So the crop, the resize and the path guard live ONCE, in the _bytes
+    # methods, and the URI methods are two-line wrappers. The alternative was a
+    # second crop-and-resize in the Qt file, which is how two surfaces end up
+    # showing subtly different thumbnails of the same photograph. The sibling
+    # tool already settled this shape: FLKR FCKR's Session exposes
+    # thumbnail_bytes() and its Qt grid calls it.
+    #
+    # NOTHING ABOUT THE LINUX PATH CHANGES. thumb() and preview() return
+    # exactly what they returned before, from exactly the same pixels;
+    # tests/test_qt_shell.py asserts that the URI form is the base64 of the
+    # bytes form so the two cannot drift.
+
+    def thumb_bytes(self, path: str, size: int = 160) -> bytes:
+        """A centre-cropped square JPEG, as bytes. Guarded by _guard_path."""
         real = self._guard_path(path)
         size = max(32, min(512, int(size)))
         with Image.open(real) as img:
@@ -657,14 +686,21 @@ class Session:
             top = (h - side) // 2
             img = img.crop((left, top, left + side, top + side))
             img = img.resize((size, size), Image.LANCZOS)
-            return _img_data_uri(img)
+            return _img_bytes(img)
 
-    def preview(self, path: str, max_w: int = 640, max_h: int = 520) -> str:
+    def preview_bytes(self, path: str, max_w: int = 640, max_h: int = 520) -> bytes:
+        """An aspect-preserving JPEG that fits the box, as bytes."""
         real = self._guard_path(path)
         with Image.open(real) as img:
             img = img.copy()
             img.thumbnail((max(64, int(max_w)), max(64, int(max_h))), Image.LANCZOS)
-            return _img_data_uri(img)
+            return _img_bytes(img)
+
+    def thumb(self, path: str, size: int = 160) -> str:
+        return _as_data_uri(self.thumb_bytes(path, size))
+
+    def preview(self, path: str, max_w: int = 640, max_h: int = 520) -> str:
+        return _as_data_uri(self.preview_bytes(path, max_w, max_h))
 
 
 # ===== SNAPSMACK EOF =====
