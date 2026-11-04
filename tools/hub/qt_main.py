@@ -67,6 +67,10 @@ def _icon_path(name: str) -> str:
 class DiscoveryWorker(QObject):
     finished = Signal(dict)
     failed = Signal(str)
+    # Sean: "would be nice if it counted the sites as discovered or displayed
+    # names or both." The bar used to spin with one unchanging sentence under
+    # it, so a slow discovery and a hung one looked identical.
+    progress = Signal(dict)
 
     def __init__(self, hub_url: str, hub_key: str):
         super().__init__()
@@ -77,7 +81,11 @@ class DiscoveryWorker(QObject):
     def run(self):
         try:
             self.finished.emit(snap_discovery.discover_and_save(
-                self.hub_url, api_key=self.hub_key))
+                self.hub_url, api_key=self.hub_key,
+                # Emitted from the worker thread; Qt queues it to the GUI
+                # thread because the receiver lives there. Never touch a widget
+                # from here directly.
+                progress=self.progress.emit))
         except Exception as exc:
             self.failed.emit(str(exc))
 
@@ -279,6 +287,7 @@ class SettingsDialog(QDialog):
             self.fields["hub_url"].text().strip(), self.fields["hub_key"].text().strip())
         self.discovery_worker.moveToThread(self.discovery_thread)
         self.discovery_thread.started.connect(self.discovery_worker.run)
+        self.discovery_worker.progress.connect(self._discovery_progress)
         self.discovery_worker.finished.connect(self._discovery_finished)
         self.discovery_worker.failed.connect(self._discovery_failed)
         self.discovery_worker.finished.connect(self.discovery_thread.quit)
@@ -286,6 +295,37 @@ class SettingsDialog(QDialog):
         self.discovery_thread.finished.connect(self.discovery_worker.deleteLater)
         self.discovery_thread.finished.connect(self._discovery_cleanup)
         self.discovery_thread.start()
+
+    @Slot(dict)
+    def _discovery_progress(self, event):
+        """Say what is happening, with a count once there is one to give.
+
+        The phases are not a single countable crawl, so this does not pretend
+        they are: discovery is ONE request to the hub that returns every node
+        at once, and only the key push afterwards is per-site. Showing "1 of
+        25" while the hub request was still in flight would be an invented
+        number.
+        """
+        phase = event.get("phase")
+        if phase == "hub":
+            self.status.setText("Asking the hub for the fleet…")
+        elif phase == "found":
+            count = event.get("count", 0)
+            names = event.get("names", []) or []
+            # The names are the useful part; the list is short enough to read
+            # and long enough that it needs a tail rather than a wall of text.
+            shown = ", ".join(names[:6])
+            if len(names) > 6:
+                shown += f", and {len(names) - 6} more"
+            self.status.setText(
+                f"Found {count} site{'s' if count != 1 else ''}: {shown}")
+        elif phase == "saved":
+            self.status.setText(
+                f"Saved {event.get('count', 0)} profiles. Pushing the shared backup key…")
+        elif phase == "key":
+            done, total = event.get("done", 0), event.get("total", 0)
+            site = (event.get("site") or "").replace("https://", "").replace("http://", "")
+            self.status.setText(f"Backup key {done} of {total} — {site}")
 
     @Slot(dict)
     def _discovery_finished(self, result):

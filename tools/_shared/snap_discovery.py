@@ -372,7 +372,8 @@ def save_to_shared(hub_info, spokes, hub_api_key="") -> dict:
             "native_credential_failures": native_credential_failures}
 
 
-def discover_and_save(hub_url, api_key="", admin_user="", admin_pass="", timeout=30) -> dict:
+def discover_and_save(hub_url, api_key="", admin_user="", admin_pass="", timeout=30,
+                      progress=None) -> dict:
     """One call: discover the fleet from the hub and write the shared stores.
 
     Also pushes the ONE shared backup key to every site INCLUDING the hub. The
@@ -381,18 +382,61 @@ def discover_and_save(hub_url, api_key="", admin_user="", admin_pass="", timeout
     the shared-key push into Discover fixes that in a single action. It is
     idempotent and best-effort: a failure here never aborts the discovery, it is
     just reported under 'backup_key' so the caller can surface it.
+
+    progress: optional callable(dict) for a caller that wants to SAY what is
+    happening instead of showing a bar that only spins. Sean, looking at the
+    SNAP HQ settings dialog: "would be nice if it counted the sites as
+    discovered or displayed names or both."
+
+    WHAT THE PHASES ACTUALLY ARE, because the obvious guess is wrong and would
+    produce a fake progress bar. Discovery is NOT a per-site crawl: discover()
+    makes ONE request to the hub's suyb-data.php and every node comes back in
+    that single response. So there is nothing to count while it runs — the
+    honest report is "asking the hub", and then the whole list at once.
+    The genuinely per-site phase is the backup-key push afterwards, which POSTs
+    to each site in turn, and that is where a running count means something.
+
+    Events, each a dict with 'phase':
+      {'phase':'hub',     'url':...}                     asking the hub
+      {'phase':'found',   'count':N, 'names':[...]}      the fleet, all at once
+      {'phase':'saved',   'count':N}                     profiles written
+      {'phase':'key',     'done':i, 'total':N, 'site':…} pushing the shared key
+    A caller that passes nothing gets exactly the behaviour it had before.
     """
+    def _say(**event):
+        if progress is None:
+            return
+        try:
+            progress(event)
+        except Exception:
+            # A reporting callback must never be able to fail a discovery.
+            pass
+
+    _say(phase='hub', url=hub_url)
     hub_info, spokes = discover(hub_url, api_key, admin_user, admin_pass, timeout)
+
+    # Names are known the moment the hub answers, so say them all at once
+    # rather than dribbling them out to imitate progress that is not happening.
+    names = []
+    for node in [hub_info] + list(spokes):
+        label = (node.get("site_name") or "").strip() or (node.get("site_url") or "").strip()
+        if label:
+            names.append(label)
+    _say(phase='found', count=len(names), names=names)
+
     summary = save_to_shared(hub_info, spokes, hub_api_key=api_key)
+    _say(phase='saved', count=summary.get("count", len(names)))
+
     try:
-        summary["backup_key"] = provision_shared_backup_key(hub_url, api_key, timeout=timeout)
+        summary["backup_key"] = provision_shared_backup_key(
+            hub_url, api_key, timeout=timeout, progress=progress)
     except Exception as e:
         summary["backup_key"] = {"error": str(e)}
     return summary
 
 
 def provision_shared_backup_key(hub_url="", api_key="", key_value="",
-                                key_type="suyb", timeout=30) -> dict:
+                                key_type="suyb", timeout=30, progress=None) -> dict:
     """Give the WHOLE fleet ONE backup key — the fix for per-site key drift.
 
     This is the Hub 'mint-and-push' half of the one-key backup design. It:
@@ -445,10 +489,26 @@ def provision_shared_backup_key(hub_url="", api_key="", key_value="",
         if su and akl:
             targets.append({"site_url": su, "api_key_local": akl})
 
-    for tgt in targets:
+    # THIS is the per-site phase, so this is where a running count is honest.
+    # The hub above is one of the targets too, hence total = spokes + 1.
+    total = len(targets) + 1
+    if progress is not None:
+        try:
+            progress({'phase': 'key', 'done': 1, 'total': total, 'site': hub_site})
+        except Exception:
+            pass
+
+    for index, tgt in enumerate(targets, start=2):
         res = _provision_spoke_key(tgt["site_url"], tgt["api_key_local"],
                                    key_type=key_type, key_value=shared, timeout=timeout)
         (ok if res else failed).append(tgt["site_url"])
+        if progress is not None:
+            try:
+                progress({'phase': 'key', 'done': index, 'total': total,
+                          'site': tgt["site_url"]})
+            except Exception:
+                # Reporting must never be able to fail a provisioning run.
+                pass
 
     # Rollout order is a security and availability boundary: every target must
     # accept the key before SUYB begins preferring it fleet-wide. Never publish a
