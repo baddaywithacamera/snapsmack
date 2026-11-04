@@ -39,19 +39,43 @@ echo Building %EXE_NAME% using smackupyourbackup.spec...
 pyinstaller --clean smackupyourbackup.spec
 
 echo.
-if exist dist\%EXE_NAME% (
-    echo Build successful: dist\%EXE_NAME%
+if exist dist\smackupyourbackup-%BUILD_VER%\suyb.exe (
+    echo Build successful: dist\smackupyourbackup-%BUILD_VER%\suyb.exe
     echo.
+
+    REM THE HOT SWAP IS GONE, AND THAT IS A REAL CHANGE (SS-1195).
+    REM
+    REM This used to copy the new exe to suyb.exe.new and MOVE it over the live
+    REM suyb.exe, so the tool could be replaced while running. A COLLECT build
+    REM is a DIRECTORY of a hundred-odd files and Windows cannot swap a
+    REM directory atomically while a file inside it is open, so there is no
+    REM equivalent. Copying over a running install would half-replace it: new
+    REM DLLs beside the old locked exe. Refusing is better than that.
+    tasklist /FI "IMAGENAME eq suyb.exe" 2>nul | find /I "suyb.exe" >nul
+    if not errorlevel 1 (
+        echo SMACK UP YOUR BACKUP is RUNNING. Close it and build again.
+        echo The install was NOT touched.
+        exit /b 1
+    )
+
     echo Deploying to C:\snapsmack\suyb...
     if not exist C:\snapsmack\suyb mkdir C:\snapsmack\suyb
-    copy /Y dist\%EXE_NAME% C:\snapsmack\suyb\%EXE_NAME%
-    copy /B /Y dist\%EXE_NAME% C:\snapsmack\suyb\suyb.exe.new >nul
+    REM /E copies the whole directory - Qt, pystray and paramiko libraries and
+    REM licenses\ included. Copying only the exe leaves something that cannot
+    REM start. suyb.exe lands at C:\snapsmack\suyb\suyb.exe, which is the path
+    REM tools\hub\main.py launches.
+    xcopy /E /I /Y "dist\smackupyourbackup-%BUILD_VER%\*" "C:\snapsmack\suyb\"
     if errorlevel 1 exit /b 1
-    move /Y C:\snapsmack\suyb\suyb.exe.new C:\snapsmack\suyb\suyb.exe >nul
+
+    REM The version-named ARCHIVE the old version-named exe used to provide, now
+    REM a sibling directory - the shape COLD SNAP already uses on this machine.
+    REM NOTE: that is about 90 MB per build rather than one 90 MB file, so prune
+    REM old ones when the disk gets tight.
+    xcopy /E /I /Y "dist\smackupyourbackup-%BUILD_VER%\*" "C:\snapsmack\suyb-%BUILD_VER%\"
     if errorlevel 1 exit /b 1
     C:\dev\snapsmack\.python-build\python.exe ..\hub\trust-installed-exe.py C:\snapsmack\suyb\suyb.exe
     if errorlevel 1 exit /b 1
-    echo Done. Launch: C:\snapsmack\suyb\%EXE_NAME%
+    echo Done. Launch: C:\snapsmack\suyb\suyb.exe
 ) else (
     echo Build FAILED. Check output above for errors.
 )

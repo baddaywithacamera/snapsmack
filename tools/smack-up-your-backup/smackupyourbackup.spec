@@ -29,12 +29,40 @@ _tyswy_data  = [(f, 'tyswy') for f in _glob.glob(os.path.join(_tyswy_dir, '*.py'
 if os.path.isdir(os.path.join(_tyswy_dir, 'schema')):
     _tyswy_data.append((os.path.join(_tyswy_dir, 'schema'), 'tyswy/schema'))
 
+# --- LGPL: licence texts must travel, and the build refuses without them ----
+# SS-1195. THREE LGPL LIBRARIES RIDE IN THIS ONE, not just Qt:
+#   PySide6   LGPLv3      the window
+#   pystray   LGPLv3      the tray icon
+#   paramiko  LGPL-2.1    SFTP
+# All three oblige whoever distributes the combined work to let a recipient
+# replace that library with their own build. That is why this is a COLLECT
+# directory and not a onefile exe: a onefile exe unpacks to a temporary
+# directory at run time and cannot be relinked.
+#
+# LGPL-2.1 IS NOT IN licenses/ YET. The build refuses rather than shipping
+# paramiko without its terms, and rather than me writing a legal text from
+# memory. Put the canonical LGPL-2.1 text in licenses/LGPL-2.1.txt and this
+# clears. LGPL-3.0.txt covers PySide6 and pystray, and both are already there.
+_license_dir = os.path.normpath(os.path.join(_src, '..', '..', 'licenses'))
+_needed = {
+    'LGPL-3.0.txt': 'PySide6 and pystray (LGPLv3)',
+    'Qt-PySide6-LGPLv3-NOTICE.txt': 'the Qt notice',
+    'LGPL-2.1.txt': 'paramiko (LGPL-2.1) -- NOT PRESENT YET; fetch the '
+                    'canonical text and save it there',
+}
+for _required, _why in _needed.items():
+    if not os.path.isfile(os.path.join(_license_dir, _required)):
+        raise SystemExit('smackupyourbackup.spec: licenses/%s is missing, and '
+                         'it covers %s. Refusing to build without it.'
+                         % (_required, _why))
+
 a = Analysis(
     ['suyb_launcher.py'],
     pathex=[_src, _shared_dir],
     binaries=[],
     # Explicitly bundle every local .py file so PyInstaller cannot miss them.
     datas=[
+        (_license_dir, 'licenses'),
         (os.path.join(_src, '..', 'hub', 'icons', 'suyb.ico'), 'assets'),
         (os.path.join(_src, 'audit_engine.py'),       '.'),
         (os.path.join(_src, 'exit_package.py'),       '.'),
@@ -199,17 +227,38 @@ VSVersionInfo(
 )
 """)
 
+# COLLECT DIRECTORY, not onefile (SS-1195) -- see the licence block above.
+#
+# LAUNCHER CHECK, done before changing the name, and this tool had BOTH traps:
+#   SNAP HQ       tools/hub/main.py launches C:/snapsmack/suyb/suyb.exe
+#   build.bat     built dist/smackupyourbackup-<ver>.exe, kept a
+#                 version-named copy in the install directory, AND copied it
+#                 to suyb.exe.new before MOVING it over the live suyb.exe
+#   spec name     was 'smackupyourbackup-' + _ver, so the version lived in the
+#                 FILENAME and the rename produced the name the launcher wants
+#
+# So the exe is named 'suyb' here and the VERSION MOVES TO THE DIRECTORY NAME
+# below. Nothing renames a file inside a COLLECT directory, so had the versioned
+# name stayed, the install would have had no suyb.exe at all and SNAP HQ would
+# have stopped launching the tool. The versioned build directory keeps the
+# archive that the version-named exe used to provide, and it matches what is
+# already on disk, where COLD SNAP keeps coldsnap-0.7.31 and friends as sibling
+# directories.
+#
+# UPX IS OFF NOW. It was on. Survivable for one packed exe, a known way to
+# produce Qt DLLs that will not load once they are separate files in a
+# directory -- which is what this commit makes them.
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
-    name='smackupyourbackup-' + _ver,
+    exclude_binaries=True,
+    contents_directory='.',
+    name='suyb',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,          # debug output goes to suyb-debug.log next to the exe
@@ -221,3 +270,12 @@ exe = EXE(
     icon=os.path.join(_src, '..', 'hub', 'icons', 'suyb.ico'),
     version=_version_file,
 )
+
+# Never collapse this back to onefile: the dynamic Qt, pystray and paramiko
+# libraries must stay separately inspectable and relinkable in the
+# distributed directory, which is what the LGPL asks of us. licenses/ ships
+# beside them. The directory carries the version; the exe inside is suyb.exe.
+app = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False,
+              name='smackupyourbackup-' + _ver)
+
+# ===== SNAPSMACK EOF =====
