@@ -58,11 +58,22 @@ _shared_files = glob.glob(os.path.join(_shared_dir, '*.py'))
 _shared_data  = [(f, '.') for f in _shared_files]
 _shared_mods  = [os.path.splitext(os.path.basename(f))[0] for f in _shared_files]
 
+# --- Qt LGPLv3: licences must travel, and the build refuses without them ----
+# SS-1195. Qt under the LGPLv3 obliges whoever distributes the combined work to
+# let a recipient replace the Qt libraries with their own build. That is why
+# this is a COLLECT directory and not a onefile exe: a onefile exe unpacks to a
+# temporary directory at run time and cannot be relinked.
+_license_dir = os.path.normpath(os.path.join(_src, '..', '..', 'licenses'))
+for _required in ('LGPL-3.0.txt', 'Qt-PySide6-LGPLv3-NOTICE.txt'):
+    if not os.path.isfile(os.path.join(_license_dir, _required)):
+        raise SystemExit('coldsnap-qt.spec: licenses/%s is missing. Refusing '
+                         'to build a Qt application without it.' % _required)
+
 a = Analysis(
     ['coldsnap_qt_launcher.py'],
     pathex=[_src, _shared_dir],
     binaries=[],
-    datas=_local_data + _pkg_data + _shared_data + (
+    datas=_local_data + _pkg_data + _shared_data + [(_license_dir, 'licenses')] + (
         [(os.path.join(_src, 'assets'), 'assets')]
         if os.path.isdir(os.path.join(_src, 'assets')) else []),
     hiddenimports=_local_mods + _pkg_mods + _shared_mods + [
@@ -92,12 +103,30 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+# COLLECT DIRECTORY, not onefile (SS-1195) -- see the licence block above.
+#
+# LAUNCHER CHECK, done before changing anything:
+#   SNAP HQ       tools/hub/main.py launches
+#                 C:/snapsmack/coldsnap/coldsnap.exe
+#   build.bat     had NO copy step at all -- it passed
+#                 --distpath "C:/snapsmack/coldsnap" and built STRAIGHT INTO
+#                 the install directory
+#   spec name     already 'coldsnap', so the onefile landed exactly there
+#
+# THAT IS THE TRAP HERE, and it is not a rename. PyInstaller writes a COLLECT
+# build to <distpath>/<COLLECT name>/, so building into the install directory
+# would have produced C:/snapsmack/coldsnap/coldsnap/coldsnap.exe -- one level
+# too deep, and SNAP HQ would no longer find it. build.bat builds to a local
+# dist/ and copies the directory across instead, which also means a failed
+# build can no longer half-overwrite a working install. Its own comment already
+# claimed "the existing executable was NOT replaced" on failure; now that is
+# actually true.
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
+    contents_directory='.',
     name='coldsnap',
     version=_windows_version,
     icon=os.path.join(_src, 'assets', 'coldsnap.ico'),
@@ -113,4 +142,10 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+# Never collapse this back to onefile: the dynamic Qt libraries must stay
+# separately inspectable and relinkable in the distributed directory, which
+# is what the LGPLv3 asks of us. licenses/ ships beside them.
+app = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False,
+              name='coldsnap')
+
 # ===== SNAPSMACK EOF =====

@@ -56,8 +56,14 @@ pip install -r requirements.txt
 
 echo.
 echo Building %EXE_NAME%...
-if not exist C:\snapsmack\coldsnap mkdir C:\snapsmack\coldsnap
-pyinstaller --clean %SPEC_FILE% --distpath "C:\snapsmack\coldsnap"
+REM COLLECT DIRECTORY now, not a single exe (SS-1195). It is built LOCALLY and
+REM copied, not written straight into the install directory: PyInstaller puts a
+REM COLLECT build in <distpath>\<name>\, so the old --distpath would have made
+REM C:\snapsmack\coldsnap\coldsnap\coldsnap.exe and SNAP HQ (tools\hub\main.py)
+REM would no longer find it. Building locally first also means a failed build
+REM cannot half-overwrite a working install, which this script's own message
+REM already claimed.
+pyinstaller --clean %SPEC_FILE%
 if errorlevel 1 (
     echo ERROR: PyInstaller failed. The existing executable was NOT replaced.
     popd
@@ -65,6 +71,21 @@ if errorlevel 1 (
 )
 
 echo.
+if not exist "dist\coldsnap\%EXE_NAME%" (
+    echo Build FAILED - no exe in dist\coldsnap. Install NOT touched.
+    pause
+    exit /b 1
+)
+if not exist C:\snapsmack\coldsnap mkdir C:\snapsmack\coldsnap
+REM /E copies the whole directory - Qt DLLs and licenses\ included. Copying
+REM only the exe would leave something that cannot start.
+xcopy /E /I /Y "dist\coldsnap\*" "C:\snapsmack\coldsnap\"
+if errorlevel 1 (
+    echo Deploy FAILED.
+    pause
+    exit /b 1
+)
+
 if exist "C:\snapsmack\coldsnap\%EXE_NAME%" (
     echo Build successful: C:\snapsmack\coldsnap\%EXE_NAME%
     echo Done. Launch: C:\snapsmack\coldsnap\%EXE_NAME%
