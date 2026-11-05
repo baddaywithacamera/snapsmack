@@ -195,7 +195,18 @@
             state.startX = event.clientX;
             state.startY = event.clientY;
             state.captured = false;
-            state.row.classList.add('is-dragging');
+            // THE is-dragging CLASS IS NOT ADDED HERE EITHER. Codex found the
+            // fourth independent cause of Sean's dead clicks in GLIDE's CSS:
+            //     .glide-row.is-dragging .glide-tile { pointer-events: none }
+            // Because this engine announced "dragging" on pointerdown, that
+            // rule disabled the tile before any click could land, so the click
+            // hit the row instead of the photograph -- defeating even the
+            // deferred pointer capture above.
+            // He has removed the rule. But the engine should not have been
+            // making the claim: it is not dragging until it is. The class now
+            // appears at the same moment as the capture, which makes a rule
+            // like that harmless if anyone writes one again, because by then a
+            // drag really is under way and no click is owed.
             // CAPTURE IS NOT TAKEN HERE. Capturing on pointerdown retargets the
             // events that follow to the ROW, so a plain click never reached the
             // photograph inside it and the lightbox was never offered the
@@ -219,6 +230,8 @@
             if (Math.abs(event.clientX - state.startX)
                 + Math.abs(event.clientY - state.startY) > GLIDE_DRAG_SLOP) {
                 state.moved = true;
+                // Only now is it honest to say so. See the note in pointerdown.
+                state.row.classList.add('is-dragging');
                 if (!state.captured) {
                     // Now it IS a drag, so take the pointer. In a try: capture
                     // throws if the pointer is no longer active, and losing the
