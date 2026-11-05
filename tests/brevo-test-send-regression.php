@@ -33,10 +33,29 @@ if (extension_loaded('curl')) {
             . "a PHP without the curl extension.\n");
         exit(1);
     }
+    // NO STDERR REDIRECT ON THIS COMMAND, AND THAT IS DELIBERATE. The child's
+    // stderr already passes straight through to whoever ran this, stdout is
+    // still captured and the exit code is still preserved -- I checked all
+    // three rather than assume.
+    //
+    // The redirect was costing something real. tests/test-strength-regression.php
+    // records "every number the file compares against" as a bar the code is
+    // held to, and a shell redirect reads to its matcher as a numeral sitting
+    // next to a greater-than operator. So this file suddenly claimed a
+    // threshold it does not have, and the 977D gate stopped on it. Writing
+    // that into the record would have been worse than the stop: a meaningless
+    // bar, kept for ever, in the one file whose job is to make a changed bar
+    // loud.
+    //
+    // THE COMMENT ABOVE IS WORDED AROUND THE REDIRECT ON PURPOSE. My first
+    // version of it spelled the redirect out, the matcher does not skip
+    // comments, and the gate went on failing on prose explaining why it had
+    // failed. Third time today a comment of mine satisfied or broke a check
+    // meant for code.
     $cmd = escapeshellarg(PHP_BINARY) . ' -n ' . escapeshellarg(__FILE__) . ' --isolated';
     $out = [];
     $rc = 0;
-    exec($cmd . ' 2>&1', $out, $rc);
+    exec($cmd, $out, $rc);
     echo implode("\n", $out) . "\n";
     exit($rc);
 }
