@@ -79,6 +79,12 @@
     // intended clicks from an unsteady hand.
     var GLIDE_DRAG_SLOP = 10;
 
+    // How a released drag comes to rest. Friction is per frame, so at
+    // ~60fps 0.94 is about a second of travel; the floor is where the
+    // remaining motion is below one pixel a frame and not worth painting.
+    var GLIDE_FRICTION = 0.94;
+    var GLIDE_VEL_FLOOR = 0.4;
+
     var wall = document.querySelector('[data-glide-wall]');
     if (!wall) return;
     var rows = Array.prototype.slice.call(wall.querySelectorAll('[data-glide-row]'));
@@ -125,6 +131,9 @@
             period: 0,
             current: index * -90, target: index * -90,
             dragging: false, moved: false, captured: false,
+            // vel is the recent speed of the drag, carried past release;
+            // flinging says the wall is still coasting on it.
+            vel: 0, flinging: false,
             x: 0, y: 0, startX: 0, startY: 0
         };
         measure(state);
@@ -135,10 +144,22 @@
         var moving = false;
         for (var i = 0; i < states.length; i++) {
             var state = states[i];
+            if (state.flinging) {
+                state.target += state.vel;
+                state.vel *= GLIDE_FRICTION;
+                if (Math.abs(state.vel) < GLIDE_VEL_FLOOR) {
+                    state.flinging = false;
+                    state.vel = 0;
+                }
+            }
             state.current += (state.target - state.current) * (reduced ? 1 : 0.18);
             var x = glideWrap(state.current, state.period);
             state.track.style.transform = 'translate3d(' + x + 'px,0,0)';
-            if (Math.abs(state.target - state.current) > 0.1) moving = true;
+            // Without the flinging term the loop could stop while the wall
+            // still had speed left, because target and current can be close
+            // together at the moment of release.
+            if (state.flinging
+                || Math.abs(state.target - state.current) > 0.1) moving = true;
         }
         raf = moving ? requestAnimationFrame(paint) : 0;
     }
@@ -156,6 +177,17 @@
             if (event.button !== 0 && event.pointerType === 'mouse') return;
             state.dragging = true;
             state.moved = false;
+            // PUTTING A FINGER ON A COASTING WALL STOPS IT, which is what
+            // every touch surface does and what makes a wall feel like an
+            // object rather than a video.
+            //
+            // Clearing the fling is not enough on its own: the fling has
+            // already pushed `target` far ahead, and `current` eases toward it,
+            // so the wall went on gliding 233px out from under the finger.
+            // Measured, not guessed. Grabbing it means taking it WHERE IT IS.
+            state.flinging = false;
+            state.vel = 0;
+            state.target = state.current;
             state.x = event.clientX;
             state.y = event.clientY;
             // Where the press STARTED, kept separate from the running x/y that
@@ -198,6 +230,10 @@
                 }
             }
             state.target += projected * sensitivity;
+            // A smoothed recent speed, not the last sample: one twitchy
+            // pointermove at the end of a slow drag should not fling the
+            // wall across the screen.
+            state.vel = (state.vel * 0.6) + (projected * sensitivity * 0.4);
             state.x = event.clientX;
             state.y = event.clientY;
             requestPaint();
@@ -214,7 +250,21 @@
             // to consume it and stayed true -- swallowing the NEXT genuine
             // click on that row. pointerup is left alone, because its click
             // has not fired yet and still needs the flag.
-            if (cancelled) state.moved = false;
+            if (cancelled) {
+                state.moved = false;
+                state.vel = 0;
+                state.flinging = false;
+                return;
+            }
+            // Let go of a moving wall and it keeps going. Only after a real
+            // drag, never on a click, and never under prefers-reduced-motion
+            // -- somebody who asked for less movement should not be handed
+            // a second of it after every touch.
+            if (state.moved && !reduced
+                && Math.abs(state.vel) > GLIDE_VEL_FLOOR) {
+                state.flinging = true;
+                requestPaint();
+            }
         }
         state.row.addEventListener('pointerup', function (event) { release(event, false); });
         state.row.addEventListener('pointercancel', function (event) { release(event, true); });

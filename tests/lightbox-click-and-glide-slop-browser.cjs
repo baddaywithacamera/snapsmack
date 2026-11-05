@@ -180,6 +180,125 @@ const GLIDE_PAGE = `<!doctype html><meta charset="utf-8">
     await page.close();
   }
 
+
+  // ---- the fling -------------------------------------------------------
+  // Inertia is the one thing here that genuinely needs frames: it lives in
+  // the paint loop. requestAnimationFrame does fire in headless Chromium
+  // (checked), which is why this can be tested at all -- it cannot be tested
+  // in the desktop app's browser pane, which never paints.
+  for (const reduced of [false, true]) {
+    const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
+    if (reduced) await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setContent(GLIDE_PAGE);
+    await page.addScriptTag({ content: GLIDE });
+    await page.waitForTimeout(200);
+
+    const r = await page.evaluate(async () => {
+      const row = document.querySelector('[data-glide-row]');
+      const track = row.firstElementChild;
+      const b = row.getBoundingClientRect();
+      const y = Math.round(b.top + b.height / 2);
+      const x0 = Math.round(b.left + 400);
+      const o = (x) => ({ bubbles: true, cancelable: true, clientX: x, clientY: y,
+                          pointerId: 1, pointerType: 'mouse', button: 0, isPrimary: true });
+      // The translate in PIXELS, so distances can be compared. Equality was the
+      // wrong question and it cost me two false failures: releasing a drag
+      // advances `target` and `current` then EASES toward it over many frames,
+      // so the transform keeps changing while the wall settles, caught or not.
+      const at = () => {
+        const m = /translate3d\(([-0-9.]+)px/.exec(track.style.transform || '');
+        return m ? parseFloat(m[1]) : 0;
+      };
+      const frames = (n) => new Promise((res) => {
+        let i = 0;
+        const t = () => (++i >= n ? res() : requestAnimationFrame(t));
+        requestAnimationFrame(t);
+      });
+      const settle = () => frames(60);
+      // THE SAME TOTAL TRAVEL, AT TWO DIFFERENT SPEEDS. This is the only honest
+      // way to measure a fling here: the engine ALREADY coasted after release
+      // before inertia existed, because `current` eases toward a `target` the
+      // drag pushed far ahead. "Did it keep moving?" cannot tell the two apart
+      // -- a mutant that removed the fling entirely passed that check. Both
+      // drags below commit the same distance to `target`, so the settle is the
+      // same; only the release velocity differs, so only the fling differs.
+      const drag = (steps) => {
+        const step = 300 / steps;
+        row.dispatchEvent(new PointerEvent('pointerdown', o(x0)));
+        for (let i = 1; i <= steps; i++) {
+          row.dispatchEvent(new PointerEvent('pointermove', o(x0 - Math.round(i * step))));
+        }
+        row.dispatchEvent(new PointerEvent('pointerup', o(x0 - 300)));
+      };
+      const fling = () => drag(5);          // 60px a move: fast, flings
+      const crawl = () => drag(300);        // 1px a move: below the floor
+
+      // 1. a fast release carries further than a slow one of the same length
+      await settle();
+      fling();
+      await frames(3);
+      const a1 = at();
+      await frames(15);
+      const coastDistance = Math.abs(at() - a1);
+
+      await settle();
+      crawl();
+      await frames(3);
+      const c1 = at();
+      await frames(15);
+      const crawlDistance = Math.abs(at() - c1);
+
+      // 2. the same measurement, interrupted by a press partway through
+      await settle();
+      fling();
+      await frames(3);
+      const a2 = at();
+      row.dispatchEvent(new PointerEvent('pointerdown', o(x0)));
+      await frames(15);
+      const caughtDistance = Math.abs(at() - a2);
+      row.dispatchEvent(new PointerEvent('pointerup', o(x0)));
+
+      // 3. a tap, from a wall that is genuinely at rest.
+      // MEASURED AFTER THE RELEASE, not across the whole gesture: a 3px
+      // pointermove legitimately nudges the wall ~3px, because the wall tracks
+      // the finger 1:1 while it is down. The question here is only whether a
+      // tap leaves the wall COASTING, which it must not.
+      await settle();
+      row.dispatchEvent(new PointerEvent('pointerdown', o(x0)));
+      row.dispatchEvent(new PointerEvent('pointermove', o(x0 + 3)));
+      row.dispatchEvent(new PointerEvent('pointerup', o(x0 + 3)));
+      await frames(2);
+      const a3 = at();
+      await frames(20);
+      const tapDistance = Math.abs(at() - a3);
+
+      return { coastDistance, crawlDistance, caughtDistance, tapDistance };
+    });
+
+    if (!reduced) {
+      console.log('THE WALL COASTS AFTER A DRAG');
+      cx(r.coastDistance > r.crawlDistance * 1.3,
+        `a fast release carries further than a slow one of the same length: `
+        + `${Math.round(r.coastDistance)}px vs ${Math.round(r.crawlDistance)}px`);
+      cx(r.caughtDistance * 3 < r.coastDistance,
+        `a press on the coasting wall arrests it: ${Math.round(r.caughtDistance)}px instead of `
+        + `${Math.round(r.coastDistance)}px`);
+      // Bounded by the pointer's OWN 3px of travel settling out, against 551px
+      // for a real fling. Two orders of magnitude apart, so this still catches
+      // a regression that starts flinging on taps; asserting near-zero would
+      // only be asserting that easing does not exist.
+      cx(r.tapDistance < 5 && r.tapDistance < r.coastDistance / 50,
+        `a tap leaves no coast: ${r.tapDistance.toFixed(2)}px after release, `
+        + `against ${Math.round(r.coastDistance)}px for a fling`);
+    } else {
+      console.log('AND NOT FOR SOMEBODY WHO ASKED FOR LESS MOTION');
+      cx(Math.abs(r.coastDistance - r.crawlDistance) < 2,
+        `under prefers-reduced-motion speed makes no difference: `
+        + `${r.coastDistance.toFixed(1)}px vs ${r.crawlDistance.toFixed(1)}px`);
+    }
+    await page.close();
+  }
+
   await browser.close();
   console.log(`\n${pass + fail} checks, ${fail} failed`);
   process.exit(fail ? 1 : 0);
