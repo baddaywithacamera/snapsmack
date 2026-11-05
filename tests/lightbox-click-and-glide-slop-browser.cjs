@@ -134,12 +134,33 @@ const GLIDE_PAGE = `<!doctype html><meta charset="utf-8">
         return click.defaultPrevented;   // true = treated as a drag
       };
 
-      return {
-        tremor4px: await press([2, 3, 4, 3, 2]),          // wobble, never past 10
-        tremor9px: await press([4, 7, 9, 8]),             // still under the slop
-        slowDrag20px: await press([2, 4, 6, 8, 12, 16, 20]), // slow, 2px at a time
-        fastDrag40px: await press([40]),                  // one big jump
-      };
+      // Count capture calls: "capture only once it is a drag" is a claim about
+      // WHEN setPointerCapture happens, which no amount of reading proves.
+      let captures = 0;
+      const realCapture = row.setPointerCapture.bind(row);
+      row.setPointerCapture = function (id) { captures++; try { realCapture(id); } catch (e) {} };
+      row.hasPointerCapture = function () { return captures > 0; };
+      row.releasePointerCapture = function () {};
+
+      const out = {};
+      captures = 0; out.tremor4px = await press([2, 3, 4, 3, 2]);
+      out.capturesAfterWobble = captures;
+      captures = 0; out.tremor9px = await press([4, 7, 9, 8]);
+      captures = 0; out.slowDrag20px = await press([2, 4, 6, 8, 12, 16, 20]);
+      out.capturesAfterDrag = captures;
+      captures = 0; out.fastDrag40px = await press([40]);
+
+      // A cancelled drag must not swallow the click that comes after it.
+      const o = (x) => ({ bubbles: true, cancelable: true, clientX: x, clientY: y,
+                          pointerId: 1, pointerType: 'mouse', button: 0, isPrimary: true });
+      row.dispatchEvent(new PointerEvent('pointerdown', o(x0)));
+      row.dispatchEvent(new PointerEvent('pointermove', o(x0 + 40)));
+      row.dispatchEvent(new PointerEvent('pointercancel', o(x0 + 40)));
+      const nextClick = new MouseEvent('click', {bubbles: true, cancelable: true, button: 0});
+      row.dispatchEvent(nextClick);
+      out.clickAfterCancelSwallowed = nextClick.defaultPrevented;
+
+      return out;
     });
 
     console.log('THE PRESS THAT WOBBLES vs THE PRESS THAT DRAGS');
@@ -148,6 +169,14 @@ const GLIDE_PAGE = `<!doctype html><meta charset="utf-8">
     cx(r.slowDrag20px === true,
       'a SLOW drag of 20px in 2px steps IS a drag -- the old per-move test missed this entirely');
     cx(r.fastDrag40px === true, 'a fast 40px drag is a drag');
+
+    console.log('WHO OWNS THE POINTER, AND WHEN');
+    cx(r.capturesAfterWobble === 0,
+      'a press that stays under the slop NEVER captures the pointer, so a real click keeps its own target');
+    cx(r.capturesAfterDrag === 1,
+      'a genuine drag captures exactly once, when travel crosses the slop');
+    cx(r.clickAfterCancelSwallowed === false,
+      'a CANCELLED drag does not swallow the next click on that row');
     await page.close();
   }
 

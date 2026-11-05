@@ -124,7 +124,8 @@
             originals: track && track.children ? track.children.length : 0,
             period: 0,
             current: index * -90, target: index * -90,
-            dragging: false, moved: false, x: 0, y: 0, startX: 0, startY: 0
+            dragging: false, moved: false, captured: false,
+            x: 0, y: 0, startX: 0, startY: 0
         };
         measure(state);
         return state;
@@ -161,8 +162,13 @@
             // the per-move delta uses. Travel is measured from here.
             state.startX = event.clientX;
             state.startY = event.clientY;
+            state.captured = false;
             state.row.classList.add('is-dragging');
-            state.row.setPointerCapture(event.pointerId);
+            // CAPTURE IS NOT TAKEN HERE. Capturing on pointerdown retargets the
+            // events that follow to the ROW, so a plain click never reached the
+            // photograph inside it and the lightbox was never offered the
+            // event. Capture is taken in pointermove, once travel says this is
+            // actually a drag -- so a real click keeps its own target.
         });
         state.row.addEventListener('pointermove', function (event) {
             if (!state.dragging) return;
@@ -181,20 +187,37 @@
             if (Math.abs(event.clientX - state.startX)
                 + Math.abs(event.clientY - state.startY) > GLIDE_DRAG_SLOP) {
                 state.moved = true;
+                if (!state.captured) {
+                    // Now it IS a drag, so take the pointer. In a try: capture
+                    // throws if the pointer is no longer active, and losing the
+                    // capture must not abort the drag.
+                    try {
+                        state.row.setPointerCapture(event.pointerId);
+                        state.captured = true;
+                    } catch (e) { state.captured = false; }
+                }
             }
             state.target += projected * sensitivity;
             state.x = event.clientX;
             state.y = event.clientY;
             requestPaint();
         });
-        function release(event) {
+        function release(event, cancelled) {
             if (!state.dragging) return;
             state.dragging = false;
             state.row.classList.remove('is-dragging');
-            if (state.row.hasPointerCapture(event.pointerId)) state.row.releasePointerCapture(event.pointerId);
+            if (state.captured && state.row.hasPointerCapture(event.pointerId)) {
+                state.row.releasePointerCapture(event.pointerId);
+            }
+            state.captured = false;
+            // A CANCEL IS FOLLOWED BY NO CLICK, so the moved flag had nothing
+            // to consume it and stayed true -- swallowing the NEXT genuine
+            // click on that row. pointerup is left alone, because its click
+            // has not fired yet and still needs the flag.
+            if (cancelled) state.moved = false;
         }
-        state.row.addEventListener('pointerup', release);
-        state.row.addEventListener('pointercancel', release);
+        state.row.addEventListener('pointerup', function (event) { release(event, false); });
+        state.row.addEventListener('pointercancel', function (event) { release(event, true); });
         state.row.addEventListener('click', function (event) {
             if (state.moved) { event.preventDefault(); event.stopPropagation(); state.moved = false; }
         }, true);
