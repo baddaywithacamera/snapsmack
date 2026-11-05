@@ -32,7 +32,8 @@ body:has(.glide-page) { margin: 0; }
 }
 .glide-row { width: 100%; height: var(--glide-row-height); overflow: visible; cursor: grab; touch-action: none; user-select: none; }
 .glide-row.is-dragging { cursor: grabbing; }
-.glide-row.is-dragging .glide-tile { pointer-events: none; }
+/* The engine suppresses real drags after its travel threshold. Keep tiles
+   hit-testable during a press so a click can still reach its photograph. */
 .glide-track { display: flex; width: max-content; height: 100%; gap: var(--glide-gap); will-change: transform; }
 .glide-tile {
     display: block;
