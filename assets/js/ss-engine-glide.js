@@ -74,6 +74,11 @@
 
     window.SSGlide = { wrap: glideWrap, periodFrom: glidePeriodFrom, fill: glideFill };
 
+    // How far the pointer may travel before a press counts as a drag
+    // rather than a click. 10px on Sean's instruction: 3px discarded
+    // intended clicks from an unsteady hand.
+    var GLIDE_DRAG_SLOP = 10;
+
     var wall = document.querySelector('[data-glide-wall]');
     if (!wall) return;
     var rows = Array.prototype.slice.call(wall.querySelectorAll('[data-glide-row]'));
@@ -119,7 +124,7 @@
             originals: track && track.children ? track.children.length : 0,
             period: 0,
             current: index * -90, target: index * -90,
-            dragging: false, moved: false, x: 0, y: 0
+            dragging: false, moved: false, x: 0, y: 0, startX: 0, startY: 0
         };
         measure(state);
         return state;
@@ -152,6 +157,10 @@
             state.moved = false;
             state.x = event.clientX;
             state.y = event.clientY;
+            // Where the press STARTED, kept separate from the running x/y that
+            // the per-move delta uses. Travel is measured from here.
+            state.startX = event.clientX;
+            state.startY = event.clientY;
             state.row.classList.add('is-dragging');
             state.row.setPointerCapture(event.pointerId);
         });
@@ -160,7 +169,19 @@
             var dx = event.clientX - state.x;
             var dy = event.clientY - state.y;
             var projected = (dx * axisX) + (dy * axisY);
-            if (Math.abs(dx) + Math.abs(dy) > 3) state.moved = true;
+            // TOTAL TRAVEL SINCE THE PRESS, not the size of one pointermove.
+            // dx/dy above are per-move deltas because x/y are rewritten each
+            // move, so the old test "dx + dy > 3" asked whether the pointer
+            // JUMPED 3px between two events -- a velocity test wearing a
+            // displacement test's clothes. A slow, deliberate drag never
+            // tripped it, and a single twitch always did. Sean has a tremor, so
+            // he got the worst of both: wobble during an intended click threw
+            // the click away, and a careful drag still counted as a click.
+            // Raising the old number alone would have made it worse.
+            if (Math.abs(event.clientX - state.startX)
+                + Math.abs(event.clientY - state.startY) > GLIDE_DRAG_SLOP) {
+                state.moved = true;
+            }
             state.target += projected * sensitivity;
             state.x = event.clientX;
             state.y = event.clientY;
