@@ -190,7 +190,7 @@
         "thresholds": []
     },
     "brevo-test-send-regression.php": {
-        "assertions": 9,
+        "assertions": 11,
         "predicates": 0,
         "thresholds": []
     },
@@ -926,6 +926,11 @@
             22
         ]
     },
+    "min-images-reaches-the-guard-regression.php": {
+        "assertions": 0,
+        "predicates": 7,
+        "thresholds": []
+    },
     "mobile-tab-says-what-the-code-does.php": {
         "assertions": 7,
         "predicates": 6,
@@ -1223,7 +1228,7 @@
     },
     "public-skin-css-self-heal-regression.php": {
         "assertions": 1,
-        "predicates": 9,
+        "predicates": 11,
         "thresholds": []
     },
     "public-skin-route-coverage-audit-regression.php": {
@@ -1333,12 +1338,24 @@
         "predicates": 12,
         "thresholds": []
     },
+    "scrolltime-component-regression.php": {
+        "assertions": 1,
+        "predicates": 3,
+        "thresholds": [
+            2
+        ]
+    },
     "scrolltime-covers-every-site-mode.php": {
         "assertions": 19,
         "predicates": 5,
         "thresholds": [
             4
         ]
+    },
+    "scrolltime-declaration-matches-calls-regression.php": {
+        "assertions": 0,
+        "predicates": 8,
+        "thresholds": []
     },
     "secaudit-055-dev-dirs-regression.php": {
         "assertions": 24,
@@ -1491,6 +1508,16 @@
             2,
             5
         ]
+    },
+    "skin-registry-default-fallback-regression.php": {
+        "assertions": 1,
+        "predicates": 16,
+        "thresholds": []
+    },
+    "skin-registry-failure-says-why-regression.php": {
+        "assertions": 0,
+        "predicates": 9,
+        "thresholds": []
     },
     "skin-registry-transaction-regression.php": {
         "assertions": 1,
@@ -1650,6 +1677,13 @@
         "predicates": 22,
         "thresholds": []
     },
+    "smacktalk-hit-kinds-reach-the-logger-regression.php": {
+        "assertions": 0,
+        "predicates": 18,
+        "thresholds": [
+            8
+        ]
+    },
     "smacktalk-image-interaction-regression.php": {
         "assertions": 1,
         "predicates": 10,
@@ -1768,6 +1802,15 @@
         "assertions": 2,
         "predicates": 3,
         "thresholds": []
+    },
+    "strict-skin-css-self-heal-regression.php": {
+        "assertions": 1,
+        "predicates": 10,
+        "thresholds": [
+            2,
+            2,
+            2
+        ]
     },
     "strict-stats-logging-regression.php": {
         "assertions": 10,
@@ -1957,6 +2000,13 @@
         "predicates": 10,
         "thresholds": [
             5400
+        ]
+    },
+    "wrapper-skin-before-assets-slot-regression.php": {
+        "assertions": 0,
+        "predicates": 22,
+        "thresholds": [
+            400
         ]
     },
     "youtube-embed-regression.php": {
