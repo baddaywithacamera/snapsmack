@@ -36,5 +36,5 @@
         <svg class="pg-icon-filled" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     </a><?php endif; ?>
 </nav>
-<?php echo snap_render_html(snap_render_component('registered-assets',['assets'=>$view['site']['registered_assets'] ?? []])); ?><?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?></body></html>
+<?php if (($view['response']['kind'] ?? '') === 'landing'): ?><?php echo snap_render_html(snap_render_component('scroll-time', $view)); ?><?php endif; ?><?php echo snap_render_html(snap_render_component('registered-assets',['assets'=>$view['site']['registered_assets'] ?? []])); ?><?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?></body></html>
 
