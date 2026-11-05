@@ -525,6 +525,39 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . '</div>';
         }
         $html = $body === '' ? '' : '<div class="chap-frame-deco" aria-hidden="true">' . $body . '</div>';
+    } elseif ($name === 'scroll-time') {
+        // THE SKIN ASKS; THE CMS PROVIDES IF IT IS SAFE.
+        //
+        // Sean's model: a skin requests a function in its manifest, the
+        // function lives in the CMS, and the CMS hands it over if it exists and
+        // is safe. A skin CANNOT call snapsmack_scrolltime_tag() itself --
+        // core/skin-security-policy.php allows exactly eight function names
+        // inside a strict layout and that is not one of them -- so the request
+        // arrives through the component registry, which is already allowlisted
+        // and is how the dock, the footer and registered-assets reach a skin.
+        //
+        // THE GRANT: the skin must list the page in scrolltime_pages in its own
+        // manifest. Core reads that to decide WHETHER this skin gets the
+        // capability at all, never WHERE to emit -- the template decides where
+        // by choosing to call this. So there is no per-skin placement logic in
+        // core, and a skin that asks for nothing gets nothing.
+        //
+        // Named by function, not by skin.
+        $slug = (string)($data['site']['skin_slug'] ?? '');
+        $granted = false;
+        if ($slug !== '' && function_exists('load_skin_manifest')) {
+            $mf = load_skin_manifest($slug);
+            $pages = is_array($mf['scrolltime_pages'] ?? null) ? $mf['scrolltime_pages'] : [];
+            $granted = $pages !== [];
+        }
+        // snapsmack_scrolltime_tag() keeps every safety check it already had:
+        // a real logged hit, the site-mode sanity test, and its one-shot guard
+        // so two calls in one request cannot emit two tags.
+        if ($granted && function_exists('snapsmack_scrolltime_tag')) {
+            ob_start();
+            snapsmack_scrolltime_tag($GLOBALS['settings'] ?? []);
+            $html .= (string)ob_get_clean();
+        }
     } elseif ($name === 'registered-assets') {
         $assets=is_array($data['assets']??null)?$data['assets']:[];
         foreach(($assets['styles']??[]) as $url)$html.='<link rel="stylesheet" href="'.snap_escape_url($url).'">';

@@ -165,6 +165,13 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
         'hide_controls', 'options', 'admin_styling', 'css_variables',
         'incompatible', 'modes', 'social_dock', 'cms_media_slots', 'cms_navigation',
         'templates', 'capabilities', 'require_styles',
+        // WHICH PAGES A SKIN ASKS THE CMS FOR SCROLL-TIME ON. This is a
+        // capability REQUEST, not placement logic: the CMS grants the
+        // function if it exists and is safe, and the skin's own template
+        // decides where to call it. Core never reads this to decide where
+        // to emit. Without it here the normalizer drops the key with only
+        // an error_log, and the declaration would be dead on arrival.
+        'scrolltime_pages',
         // A skin's own colour packs. They used to be PHP arrays inside
         // core/skin-presentation.php, which meant a new flag or colourway was
         // a CMS release and the CMS held 114 hex colours belonging to three
