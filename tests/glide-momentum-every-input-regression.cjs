@@ -147,9 +147,14 @@ console.log('\nTHE START-OF-DRAG WEIGHT: REPORTED, NOT ASSERTED, BECAUSE IT DOES
 // he starts moving a row" -- IS NOT IMPLEMENTED, and I am not going to invent
 // a resistance curve and call it his request. What exists instead:
 //
-//   a DEAD ZONE: the wall does not move until the pointer has travelled
-//   GLIDE_DRAG_SLOP px. That reads as sticky, not heavy, and its purpose is
-//   telling a tap from a drag for somebody with a tremor.
+//   a DRAG-RECOGNITION THRESHOLD, which I FIRST DESCRIBED WRONG. I said the
+//   wall does not move until the pointer has travelled GLIDE_DRAG_SLOP px.
+//   It is not a dead zone: `state.target += projected * sensitivity` sits
+//   OUTSIDE that if-block and runs on every pointermove, so the wall tracks
+//   the pointer from the first pixel. What the threshold gates is whether the
+//   gesture COUNTS as a drag -- `moved`, the is-dragging class and pointer
+//   capture -- which is what tells a tap from a drag for somebody with a
+//   tremor. Corrected here because I stated the wrong version in the room.
 //
 //   a LAG: current eases toward target by a fixed fraction each frame, so the
 //   wall trails the pointer. That is weight of a kind, but it is constant
@@ -157,7 +162,8 @@ console.log('\nTHE START-OF-DRAG WEIGHT: REPORTED, NOT ASSERTED, BECAUSE IT DOES
 //
 // Named here so it cannot be quietly counted as delivered.
 const ease = code.match(/state\.current\s*\+=\s*\(state\.target\s*-\s*state\.current\)\s*\*\s*\(?\s*reduced\s*\?\s*1\s*:\s*([\d.]+)/);
-console.log('  --    dead zone: ' + SLOP + 'px before the wall moves at all');
+console.log('  --    drag-recognition threshold: ' + SLOP + 'px before the gesture counts');
+console.log('        as a drag. The wall itself tracks the pointer from the first pixel.');
 console.log('  --    lag: current closes ' + (ease ? ease[1] : '?') + ' of the gap per frame');
 console.log('  --    NO start-of-drag resistance ramp exists. Sean asked for one;');
 console.log('        it is not built, and tuning a feel curve is his call, not mine.');
