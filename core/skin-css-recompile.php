@@ -213,4 +213,57 @@ function snapsmack_public_css_target_stamp(string $active_skin, ?array $manifest
     $cms = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0';
     return $active_skin . '@' . (string)($manifest['version'] ?? '0') . '+cms@' . $cms;
 }
+/**
+ * Repair the compiled public option CSS if it has gone stale, and hand the
+ * caller the repaired values.
+ *
+ * WHY THIS IS A FUNCTION AND NOT A BLOCK IN THE HEAD. This logic lived inline
+ * in core/meta.php. core/meta.php is the LEGACY head, and strict public skins
+ * do not include it -- core/public-runtime.php:21 says so, and index.php's
+ * strict branches exit before the first skin-meta include. So on the entire
+ * strict fleet the repair could never run: the blob was refreshed only when an
+ * admin happened to press Save on the appearance screen.
+ *
+ * Four skins print ONLY this blob (STANLEY, TELEGRAM, TILEZ, WRITING WITH
+ * IMPACT, per Muse's control-consumption scan), so while it was stale every
+ * declared CSS control on them silently did nothing. That is one of the shapes
+ * of Sean's "I smell disconnected controls".
+ *
+ * $settings is taken BY REFERENCE because the caller is about to print from it
+ * on this same request. Repairing the database and leaving the caller holding
+ * the stale copy would fix nothing a visitor can see.
+ *
+ * @return bool true if it recompiled; false if there was nothing to do, the
+ *              skin is unknown, or the repair failed.
+ */
+function snapsmack_public_css_refresh_if_stale(PDO $pdo, string $active_skin, array &$settings): bool
+{
+    $target = snapsmack_public_css_target_stamp($active_skin);
+    if ($target === '') return false;      // no manifest or no options: nothing to compile
+
+    $blob     = (string)($settings['custom_css_public'] ?? '');
+    $stamp    = (string)($settings['custom_css_public_stamp'] ?? '');
+    $identity = '/* SKIN_ID ' . $target . ' */';
+
+    // Three ways to be stale: the stamp moved, there is no blob at all, or the
+    // blob was compiled for a different skin or version and still carries that
+    // identity. The third is what happens after a skin switch.
+    if ($stamp === $target && $blob !== '' && str_contains($blob, $identity)) return false;
+
+    try {
+        snapsmack_recompile_public_skin_css($pdo, $active_skin);
+        $rows = $pdo->query(
+            "SELECT setting_key, setting_val FROM snap_settings
+             WHERE setting_key IN ('custom_css_public', 'custom_css_public_stamp')"
+        )->fetchAll(PDO::FETCH_KEY_PAIR);
+        $settings['custom_css_public'] = $rows['custom_css_public'] ?? '';
+        $settings['custom_css_public_stamp'] = $rows['custom_css_public_stamp'] ?? $target;
+        return true;
+    } catch (Throwable $e) {
+        // A page must never fail over a cache. The controls stay stale for this
+        // request, which is the situation we were already in.
+        return false;
+    }
+}
+
 // ===== SNAPSMACK EOF =====

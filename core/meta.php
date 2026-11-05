@@ -464,24 +464,13 @@ if (!empty($skin_variant_url)): ?>
 <?php
 // The compiled option blob is a cache. Rebuild it once when a CMS or skin
 // update makes it stale, then emit the repaired value on this same request.
+// The staleness test and the repair now live in ONE place,
+// snapsmack_public_css_refresh_if_stale(), because this head is the LEGACY
+// one: strict skins never include it, so while the repair existed only here
+// the whole strict fleet could never run it.
 if (isset($pdo) && !empty($active_skin)) {
     require_once __DIR__ . '/skin-css-recompile.php';
-    $_pub_target = snapsmack_public_css_target_stamp((string)$active_skin);
-    $_pub_blob_id = '/* SKIN_ID ' . $_pub_target . ' */';
-    if ($_pub_target !== '' && (($settings['custom_css_public_stamp'] ?? '') !== $_pub_target
-                                || ($settings['custom_css_public'] ?? '') === ''
-                                || !str_contains((string)($settings['custom_css_public'] ?? ''), $_pub_blob_id))) {
-        try {
-            snapsmack_recompile_public_skin_css($pdo, (string)$active_skin);
-            $_pub_rows = $pdo->query(
-                "SELECT setting_key, setting_val FROM snap_settings
-                 WHERE setting_key IN ('custom_css_public', 'custom_css_public_stamp')"
-            )->fetchAll(PDO::FETCH_KEY_PAIR);
-            $settings['custom_css_public'] = $_pub_rows['custom_css_public'] ?? '';
-            $settings['custom_css_public_stamp'] = $_pub_rows['custom_css_public_stamp'] ?? $_pub_target;
-        } catch (Throwable $e) { /* rendering must not fail over cached option CSS */ }
-    }
-    unset($_pub_target, $_pub_blob_id, $_pub_rows);
+    snapsmack_public_css_refresh_if_stale($pdo, (string)$active_skin, $settings);
 }
 ?>
 
