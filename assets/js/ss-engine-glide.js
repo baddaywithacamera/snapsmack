@@ -94,12 +94,36 @@
     var baseAngles = { horizontal: 0, vertical: 90, diagonal_down: 45, diagonal_up: -45 };
     var axis = wall.dataset.flowAxis || 'horizontal';
     var fine = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glide-angle')) || 0;
-    var radians = ((baseAngles[axis] || 0) + fine) * Math.PI / 180;
-    var axisX = Math.cos(radians);
-    var axisY = Math.sin(radians);
+    // TWO VECTORS, AND CONFLATING THEM WAS THE BUG.
+    //
+    // The pointer moves in SCREEN space. The track translates in its OWN
+    // space, inside a field the skin has already rotated by the lean. Those
+    // are different frames, so they need different vectors:
+    //
+    //   WORLD, base + lean -- for reading the pointer. On screen the wall
+    //   travels along the LEANED direction, because the field is tilted, so a
+    //   drag is projected onto that direction.
+    //
+    //   LOCAL, base ONLY -- for writing the translate. The field's own
+    //   rotate() already applies the lean to whatever the track does. Putting
+    //   the lean in the translate as well applies it TWICE: the track creeps
+    //   across its row as it travels, which is the sideways drift Codex
+    //   measured. Excluding it leaves local X at zero for a vertical wall and
+    //   lets the field supply the whole visible tilt.
+    //
+    // I GOT THIS WRONG IN PUBLIC AND IT IS WORTH WRITING DOWN. When Codex
+    // reported the translation was "mostly Y" I read the small X term as proof
+    // the lean was composing correctly. It was the defect. A leaned vertical
+    // wall must paint PURE Y locally; anything else is the double-counting.
+    var worldRadians = ((baseAngles[axis] || 0) + fine) * Math.PI / 180;
+    var worldX = Math.cos(worldRadians);
+    var worldY = Math.sin(worldRadians);
+    var localRadians = (baseAngles[axis] || 0) * Math.PI / 180;
+    var localX = Math.cos(localRadians);
+    var localY = Math.sin(localRadians);
     // MOVING ALONG THE AXIS IS OPT-IN, and it has to be.
     //
-    // Until now axisX/axisY only PROJECTED THE POINTER: they decided which
+    // Until now the axis vector only PROJECTED THE POINTER: it decided which
     // drag direction drives the wall. The wall itself always moved on X, and
     // the apparent direction came from the SKIN rotating the whole field --
     // skins/glide/style.css:29 rotates .glide-field by --glide-axis-angle plus
@@ -119,7 +143,13 @@
     // With the flag absent, every expression below reduces to exactly what it
     // computed before. That is asserted, not assumed.
     var alongAxis = wall.dataset.flowMotion === 'axis';
-    var vertical = alongAxis && Math.abs(axisY) > Math.abs(axisX);
+    // DERIVED FROM THE LOCAL AXIS, not the leaned one. Which edge of a tile is
+    // the direction of travel is a fact about the track's own box, and the
+    // lean is not in that box's frame. It also removes a wart: with the lean
+    // in play a 45deg diagonal was resolved by whichever way -7deg tipped it.
+    // Now a diagonal is an exact tie and the tie goes to horizontal, which is
+    // arbitrary but FIXED, and a fixed arbitrary answer is a decision.
+    var vertical = alongAxis && Math.abs(localY) > Math.abs(localX);
     /** The flex gap actually in force on this track, in pixels. */
     function trackGap(track) {
         if (!window.getComputedStyle) return 0;
@@ -186,12 +216,14 @@
             }
             state.current += (state.target - state.current) * (reduced ? 1 : 0.18);
             var x = glideWrap(state.current, state.period);
-            // For a horizontal axis axisX is 1 and axisY is 0, so the opted-in
-            // form is the same translation as the original. The branch is kept
-            // anyway so a skin that has not asked for this gets the original
-            // expression, not a computed one that happens to agree.
+            // THE LOCAL VECTOR, because this is the track's own frame and the
+            // field's rotate() adds the lean on top. For a horizontal axis
+            // localX is 1 and localY is 0, so the opted-in form is the same
+            // translation as the original. The branch is kept anyway so a skin
+            // that has not asked for this gets the original expression, not a
+            // computed one that happens to agree.
             state.track.style.transform = alongAxis
-                ? 'translate3d(' + (x * axisX) + 'px,' + (x * axisY) + 'px,0)'
+                ? 'translate3d(' + (x * localX) + 'px,' + (x * localY) + 'px,0)'
                 : 'translate3d(' + x + 'px,0,0)';
             // Without the flinging term the loop could stop while the wall
             // still had speed left, because target and current can be close
@@ -255,7 +287,9 @@
             if (!state.dragging) return;
             var dx = event.clientX - state.x;
             var dy = event.clientY - state.y;
-            var projected = (dx * axisX) + (dy * axisY);
+            // THE WORLD VECTOR: dx/dy are screen pixels, and on screen the
+            // wall travels along the leaned direction.
+            var projected = (dx * worldX) + (dy * worldY);
             // TOTAL TRAVEL SINCE THE PRESS, not the size of one pointermove.
             // dx/dy above are per-move deltas because x/y are rewritten each
             // move, so the old test "dx + dy > 3" asked whether the pointer
@@ -326,13 +360,19 @@
 
     window.addEventListener('resize', function () {
         fine = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glide-angle')) || 0;
-        radians = ((baseAngles[axis] || 0) + fine) * Math.PI / 180;
-        axisX = Math.cos(radians);
-        axisY = Math.sin(radians);
+        worldRadians = ((baseAngles[axis] || 0) + fine) * Math.PI / 180;
+        worldX = Math.cos(worldRadians);
+        worldY = Math.sin(worldRadians);
+        // The local vector carries no lean, so a changed --glide-angle cannot
+        // move it. Recomputed anyway: the axis attribute is read once, but if
+        // that ever changes the two must not drift apart.
+        localRadians = (baseAngles[axis] || 0) * Math.PI / 180;
+        localX = Math.cos(localRadians);
+        localY = Math.sin(localRadians);
         // vertical is DERIVED from the vector, so it has to be recomputed with
         // it. --glide-angle can move the fine angle across the diagonal at a
         // new viewport size, and a stale flag would measure the wrong edge.
-        vertical = alongAxis && Math.abs(axisY) > Math.abs(axisX);
+        vertical = alongAxis && Math.abs(localY) > Math.abs(localX);
         // The row height changes at the 720px breakpoint, so the tiles change
         // width and the period changes with them. Re-measure rather than keep
         // wrapping at a distance that was true at the old size.
