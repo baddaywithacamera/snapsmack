@@ -98,6 +98,33 @@ cx(/state\.vel\s*=/.test(move),
 cx(/state\.flinging\s*=\s*true/.test(code),
    'DRAG: release arms the fling');
 
+console.log('\nTHE BROWSER OWN DRAG-AND-DROP CANNOT EAT THE FLING');
+// This was the other half of "the inertia is missing", and the worse half. A
+// tile is a link wrapped round a photograph, both natively draggable, so a
+// mouse drag started a NATIVE drag and the browser fired pointercancel. The
+// cancel path correctly clears velocity and returns, so the wall never coasted
+// at all -- the fling was not weak, it was never reached.
+//
+// Measured by Codex in a headed browser: cancelled=true on all four
+// orientations with velocity 4.32 and 9.00 sitting unused and an 11-22px
+// easing tail. With native dragstart suppressed, the same gestures released at
+// velocity 10.62 and 22.12 and travelled 206-209px and 441-443px, which is the
+// 170px and 362px this file's own arithmetic predicted.
+cx(/addEventListener\('dragstart'/.test(code),
+   'the engine suppresses native drag-and-drop');
+const dragstart = handler('dragstart');
+cx(/preventDefault\(\)/.test(dragstart),
+   'by preventing the default, which is what stops the browser taking the gesture');
+cx(/closest\('\[data-glide-row\]'\)/.test(dragstart),
+   'SCOPED to a row the engine actually drives, not the document or the whole wall');
+cx(!/stopPropagation/.test(dragstart),
+   'and it does not stop propagation, so nothing else listening is broken');
+// The cancel path must KEEP clearing velocity. A genuine pointercancel -- a
+// touch interrupted by the system -- still has to kill the fling. Suppressing
+// the native drag removes the FALSE cancels; it must not weaken the real ones.
+cx(/if \(cancelled\) \{[\s\S]{0,200}state\.vel = 0;[\s\S]{0,120}state\.flinging = false;/.test(code),
+   'and a real pointercancel still clears velocity and the fling');
+
 console.log('\nTOUCH GOES DOWN THE SAME PATH, AND NOTHING EXCLUDES IT');
 // Touch reaches pointerdown/move/up only if the browser is not handling the
 // gesture itself, which is what touch-action: none buys.

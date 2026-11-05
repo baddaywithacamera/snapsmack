@@ -88,6 +88,39 @@
     var wall = document.querySelector('[data-glide-wall]');
     if (!wall) return;
     var rows = Array.prototype.slice.call(wall.querySelectorAll('[data-glide-row]'));
+
+    // THE BROWSER'S OWN DRAG-AND-DROP WAS EATING EVERY FLING.
+    //
+    // A tile is a link wrapped round a photograph, and both are natively
+    // draggable. So a mouse drag on a tile started a native drag, the browser
+    // took the gesture, and it fired POINTERCANCEL after the first move.
+    // release(event, true) then does exactly what it should on a cancel --
+    // clears moved, clears vel, clears flinging and returns -- so the wall
+    // never coasted. Sean reported the inertia missing; the wheel half was one
+    // cause and this was the other, and this one swallowed the drag entirely.
+    //
+    // Codex measured it in a headed browser: cancelled=true on all four
+    // orientations with velocity 4.32 and 9.00 sitting unused and only an
+    // 11-22px easing tail. With native dragstart suppressed on the tile, the
+    // same gestures released normally at velocity 10.62 and 22.12 and travelled
+    // 206-209px and 441-443px -- which is the 170px and 362px the arithmetic
+    // predicted. Nothing was wrong with the fling; it was never reached.
+    //
+    // SCOPED TO A ROW WE ACTUALLY DRIVE, not the document and not the whole
+    // wall. preventDefault on dragstart stops only native drag-and-drop:
+    // clicks, links and the lightbox are untouched, and a drag that begins
+    // outside a row keeps the browser's normal behaviour.
+    //
+    // It lives in the engine rather than in markup because every skin using
+    // [data-glide-wall] has the same gesture, and draggable="false" would have
+    // to be added to each one and would be a presentation file carrying a
+    // behaviour fix.
+    wall.addEventListener('dragstart', function (event) {
+        var target = event.target;
+        if (target && target.closest && target.closest('[data-glide-row]')) {
+            event.preventDefault();
+        }
+    });
     var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var sensitivity = parseFloat(wall.dataset.travel || '0.9');
     var raf = 0;
