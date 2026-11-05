@@ -11,6 +11,18 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.977D - 2026-11-05 - HEISENBERG DECOMPENSATOR
+
+- Linked photographs open the lightbox without navigating away. GLIDE waits for actual dragging before capturing the pointer, distinguishes taps from drags, and coasts after release.
+- Strict skin pages repair stale generated option CSS before rendering, including after a skin switch.
+- Add a manifest-granted scroll-time component for skin templates. Existing automatic callers remain during the transition.
+- Include GLIDE 0.1.15 hit-target repairs and IMPACT PRINTER 2.1.22 archive width and scrollbar repairs in the source bundle; installed skins still update through the Skin Packager.
+- The admin skin picker enforces each skin's minimum published-photograph count when activating a skin.
+- A stale configured skin registry URL falls back to the built-in default for that request without changing the saved setting. Failures name the requested URL and the transport error.
+- SMACKTALK records scroll time on written posts and the diary front page. Front-page visits enter the reported Scroll Time figure from this build forward; historical figures are not revised.
+- Whole-page skin components provide an internal placement slot for template-requested scroll-time tracking.
+- Opt-in wall motion follows the local track axis while pointer input uses the screen axis, keeping vertical columns in place beneath the skin's visual lean.
+
 ## 0.7.976D - 2026-11-04 - HEISENBERG DECOMPENSATOR
 
 - Separate the spoke enrollment hub address from the username, password and 2FA fields. Give password managers an explicit username field and require a full hub URL.
