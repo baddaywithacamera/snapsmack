@@ -74,7 +74,7 @@ if ($below !== null) echo "        -> {$below}\n";
 cx(snap_skin_min_images_conflict(new MinImgRealFakePDO(50), $glide, 'glide') === null,
    'exactly 50 is allowed');
 cx(snap_skin_min_images_conflict(new MinImgRealFakePDO(132), $glide, 'glide') === null,
-   'and 132, which is what the Portal Project actually has, is allowed');
+   'and 132 is allowed -- the Portal Project was at 132 published images when this was written and Codex measured 152 on 5 Nov, so the figure is an example of a real site above the line, not a fixed fact');
 
 $sliders = load_skin_manifest('sliders');
 cx(snap_skin_min_images_conflict(new MinImgRealFakePDO(199), $sliders, 'sliders') !== null,
