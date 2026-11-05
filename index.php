@@ -311,9 +311,29 @@ try {
                 // The SMACKTALK controller exits here too, so it had the same
                 // silent hole: a converted SMACKTALK site recorded nothing.
                 $_hit_kind = (string)($_smacktalk['kind'] ?? '');
+                // AND 'single' IS A SMACKTALK KIND, which this table did not know.
+                // SS-1129 made snapsmack_scrolltime_tag() eligible for a written
+                // post on the reasoning that "a long written post is page_type
+                // 'page'". On this path it was not: the SMACKTALK controller calls
+                // one post 'single', 'single' was not a key here, so no hit was
+                // logged at all and the gate SS-1129 added could never be reached.
+                // The fix was necessary and, by itself, did nothing.
+                //
+                // COLLECTION ONLY, on the same terms SS-1129 set out: every reader
+                // of dwell_ms filters page_type IN ('landing','archive'), so mapping
+                // a post to 'page' starts recording it and moves no reported figure.
+                //
+                // 'feed' AND 'taxonomy' ARE STILL ABSENT, DELIBERATELY. They are
+                // also uncounted, and tests/smacktalk-hit-kinds-reach-the-logger-
+                // regression.php says so out loud. 'feed' is the SMACKTALK landing
+                // page, so mapping it to 'landing' would put new rows into a bucket
+                // Sean's SCROLL TIME tile already reports and change what that
+                // number means mid-flight. That is his decision, not a side effect
+                // of unblocking an article. Raised rather than guessed.
                 $_hit_types = [
                     'landing' => 'landing', 'photo' => 'image', 'post' => 'image',
                     'page' => 'page', 'collection' => 'page', 'blogroll' => 'page',
+                    'single' => 'page',
                     'hashtag' => 'hashtag', 'search' => 'search',
                     'archive' => 'archive', 'albums' => 'archive', 'collections' => 'archive',
                 ];
