@@ -145,7 +145,24 @@ const GLIDE_PAGE = `<!doctype html><meta charset="utf-8">
       const out = {};
       captures = 0; out.tremor4px = await press([2, 3, 4, 3, 2]);
       out.capturesAfterWobble = captures;
+      // The class is a promise the engine makes to CSS. GLIDE had
+      // .is-dragging .glide-tile { pointer-events: none }, so claiming it on
+      // pointerdown killed the click before it could land.
+      out.classAfterWobble = row.classList.contains('is-dragging');
       captures = 0; out.tremor9px = await press([4, 7, 9, 8]);
+      captures = 0;
+      row.dispatchEvent(new PointerEvent('pointerdown',
+        {bubbles: true, cancelable: true, clientX: x0, clientY: y,
+         pointerId: 1, pointerType: 'mouse', button: 0, isPrimary: true}));
+      out.classOnPressAlone = row.classList.contains('is-dragging');
+      row.dispatchEvent(new PointerEvent('pointermove',
+        {bubbles: true, cancelable: true, clientX: x0 - 40, clientY: y,
+         pointerId: 1, pointerType: 'mouse', button: 0, isPrimary: true}));
+      out.classOnceDragging = row.classList.contains('is-dragging');
+      row.dispatchEvent(new PointerEvent('pointerup',
+        {bubbles: true, cancelable: true, clientX: x0 - 40, clientY: y,
+         pointerId: 1, pointerType: 'mouse', button: 0, isPrimary: true}));
+
       captures = 0; out.slowDrag20px = await press([2, 4, 6, 8, 12, 16, 20]);
       out.capturesAfterDrag = captures;
       captures = 0; out.fastDrag40px = await press([40]);
@@ -177,6 +194,10 @@ const GLIDE_PAGE = `<!doctype html><meta charset="utf-8">
       'a genuine drag captures exactly once, when travel crosses the slop');
     cx(r.clickAfterCancelSwallowed === false,
       'a CANCELLED drag does not swallow the next click on that row');
+    cx(r.classAfterWobble === false && r.classOnPressAlone === false,
+      'the row does NOT claim is-dragging on a press alone -- the CSS that killed the click keyed off that');
+    cx(r.classOnceDragging === true,
+      'and it does claim it the moment travel makes it a real drag');
     await page.close();
   }
 
