@@ -595,7 +595,12 @@ body.archive-page #scroll-stage {
 #browse-grid.square-grid,
 #browse-grid.cropped-grid {
     display: grid;
-    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
+    /* minmax, not a bare width: a fixed track cannot shrink, so at 1024 the
+       four 250px columns plus their gaps needed 1240px in a 937px box and
+       ran 108px off BOTH edges -- and html has overflow:hidden, so there
+       was no scrolling sideways to reach the cut-off photographs. The max
+       is unchanged, so 1920 and 1440 look exactly as they did. */
+    grid-template-columns: repeat(var(--grid-cols, 4), minmax(0, var(--thumb-width, 200px)));
     gap: var(--grid-gap, 80px);
     max-width: 95%;
     margin: 60px auto;
@@ -610,7 +615,12 @@ body.archive-page #scroll-stage {
    CMS update path. Newer CMS releases use .square-grid or .cropped-grid above. */
 #browse-grid.archive-grid:not(.square-grid):not(.cropped-grid) {
     display: grid;
-    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
+    /* minmax, not a bare width: a fixed track cannot shrink, so at 1024 the
+       four 250px columns plus their gaps needed 1240px in a 937px box and
+       ran 108px off BOTH edges -- and html has overflow:hidden, so there
+       was no scrolling sideways to reach the cut-off photographs. The max
+       is unchanged, so 1920 and 1440 look exactly as they did. */
+    grid-template-columns: repeat(var(--grid-cols, 4), minmax(0, var(--thumb-width, 200px)));
     gap: var(--grid-gap, 80px);
     max-width: 95%;
     margin: 60px auto;
