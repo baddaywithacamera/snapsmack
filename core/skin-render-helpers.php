@@ -144,6 +144,36 @@ function snap_page_hero_html(array $item, string $title = ''): string {
         . '</div></div>';
 }
 
+/**
+ * THE 'before_assets' SLOT ON A COMPLETE-PAGE WRAPPER.
+ *
+ * Five of these components render a WHOLE document, doctype through </html>:
+ * 50-shades-page, chaplin-page, galleria-page, impact-printer-page, onyx-page.
+ * A skin that uses one has a layout.php containing nothing but the call, so it
+ * has no seam of its own to print anything into. Emitting before the call puts
+ * markup ahead of the doctype; emitting after puts it outside </html>. Codex
+ * raised this in Brain Trust for the three wrappers he had reached; galleria
+ * and onyx are the same shape, so all five carry the slot rather than leaving
+ * two to be found later.
+ *
+ * Each of the five echoes $view['before_assets'] immediately BEFORE it renders
+ * the 'registered-assets' component. A skin fills it by passing the key in the
+ * same array it already passes:
+ *
+ *     $view['before_assets'] = snap_render_component('scroll-time', $view);
+ *     echo snap_render_html(snap_render_component('impact-printer-page', $view));
+ *
+ * IT IS GENERIC ON PURPOSE AND IT IS NOT A GRANT. The slot knows nothing about
+ * scroll time; it is a placement seam for any trusted fragment a wrapper skin
+ * needs inside the document before the asset tags. Nothing is auto-requested
+ * by skin name -- the contract stays what it was, a manifest that declares the
+ * capability and a skin that asks for it. An unfilled slot prints the empty
+ * string and adds no whitespace, so a wrapper that never uses it renders
+ * byte-identically to before.
+ *
+ * rational-geo-page is deliberately NOT in that list: despite the name it is a
+ * fragment, with no doctype and no </html>, so it has no such seam to offer.
+ */
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
     if (in_array($name, ['50-shades-page', 'chaplin-page', 'galleria-page', 'impact-printer-page', 'onyx-page', 'rational-geo-page'], true)) {

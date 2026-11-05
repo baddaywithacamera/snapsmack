@@ -20,5 +20,5 @@ $footer = $view['site']['footer'] ?? [];
 <?php elseif ($kind === 'search'): ?><section class="static-content search-results"><h1 class="static-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Search'); ?></h1></section>
 <?php else: ?><section class="static-content not-found"><h1 class="static-page-title">Not found</h1></section><?php endif; ?>
 <footer id="system-footer" class="site-footer<?php if (!empty($footer['lowercase'])): ?> footer-lowercase<?php endif; ?>"><div class="inside"><?php echo snap_render_html(snap_render_component('footer', ['footer' => $footer])); ?></div></footer>
-</div></div><?php echo snap_render_html(snap_render_component('registered-assets', ['assets' => $view['site']['registered_assets'] ?? []])); ?><?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?></body></html>
+</div></div><?php echo snap_render_html($view['before_assets'] ?? ''); ?><?php echo snap_render_html(snap_render_component('registered-assets', ['assets' => $view['site']['registered_assets'] ?? []])); ?><?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?></body></html>
 <?php // ===== SNAPSMACK EOF =====
