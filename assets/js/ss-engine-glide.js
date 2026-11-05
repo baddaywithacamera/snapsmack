@@ -51,12 +51,12 @@
      * a strict skin's layout is presentation only, and a count agreed between
      * two files is a count that drifts. Returns how many copies it added.
      */
-    function glideFill(track, period, minWidth, gap) {
+    function glideFill(track, period, minExtent, gap, downPage) {
         if (!track || !track.children || !track.children.length) return 0;
         if (!(period > 0)) return 0;
         var originals = Array.prototype.slice.call(track.children);
         var copies = 0;
-        while (track.scrollWidth < period + minWidth && copies < 8) {
+        while ((downPage ? track.scrollHeight : track.scrollWidth) < period + minExtent && copies < 8) {
             for (var i = 0; i < originals.length; i++) {
                 var clone = originals[i].cloneNode(true);
                 // A copy is scenery. The 3 August design note left open
@@ -97,28 +97,60 @@
     var radians = ((baseAngles[axis] || 0) + fine) * Math.PI / 180;
     var axisX = Math.cos(radians);
     var axisY = Math.sin(radians);
+    // MOVING ALONG THE AXIS IS OPT-IN, and it has to be.
+    //
+    // Until now axisX/axisY only PROJECTED THE POINTER: they decided which
+    // drag direction drives the wall. The wall itself always moved on X, and
+    // the apparent direction came from the SKIN rotating the whole field --
+    // skins/glide/style.css:29 rotates .glide-field by --glide-axis-angle plus
+    // the -7deg lean, and skins/sliders/style.css:1373 does the same to
+    // .sl-glide-field with its axis angle DEFAULTING TO -45deg. That is a
+    // coherent design and its cost is the one Codex reported: a vertical axis
+    // turns the photographs sideways with the field.
+    //
+    // So a skin can ask for the motion itself to run along the axis, which
+    // lets it drop the axis term from its rotate() and keep only the lean,
+    // leaving photographs upright. It is OPT-IN because switching every
+    // consumer at once would double-transform any site whose owner has chosen
+    // a non-horizontal axis -- the field would still be rotated AND the motion
+    // would now follow the axis. Both GLIDE and SLIDERS expose the axis as an
+    // owner setting, so those sites exist and I cannot see them from here.
+    //
+    // With the flag absent, every expression below reduces to exactly what it
+    // computed before. That is asserted, not assumed.
+    var alongAxis = wall.dataset.flowMotion === 'axis';
+    var vertical = alongAxis && Math.abs(axisY) > Math.abs(axisX);
     /** The flex gap actually in force on this track, in pixels. */
     function trackGap(track) {
         if (!window.getComputedStyle) return 0;
         var cs = window.getComputedStyle(track);
         if (!cs) return 0;
-        var g = parseFloat(cs.columnGap);
+        // A column track spaces its children with row-gap, not column-gap.
+        var g = parseFloat(vertical ? cs.rowGap : cs.columnGap);
         if (!isFinite(g)) g = parseFloat(cs.gap);
         return isFinite(g) ? g : 0;
     }
 
-    /** The widths of the ORIGINAL tiles, ignoring any copies behind them. */
-    function originalWidths(state) {
+    /**
+     * The sizes of the ORIGINAL tiles along the direction of travel, ignoring
+     * any copies behind them. Width for a horizontal wall, height for a
+     * vertical one -- the period is a distance in the direction the wall
+     * actually moves, and measuring the wrong edge wraps at the wrong place.
+     */
+    function originalExtents(state) {
         var out = [], kids = state.track.children;
-        for (var i = 0; i < state.originals && i < kids.length; i++) out.push(kids[i].offsetWidth);
+        for (var i = 0; i < state.originals && i < kids.length; i++) {
+            out.push(vertical ? kids[i].offsetHeight : kids[i].offsetWidth);
+        }
         return out;
     }
 
     /** Measure the period and make sure the track is long enough to hide the seam. */
     function measure(state) {
         var gap = trackGap(state.track);
-        state.period = glidePeriodFrom(originalWidths(state), gap);
-        glideFill(state.track, state.period, window.innerWidth || 0, gap);
+        state.period = glidePeriodFrom(originalExtents(state), gap);
+        glideFill(state.track, state.period,
+                  (vertical ? window.innerHeight : window.innerWidth) || 0, gap, vertical);
     }
 
     var states = rows.map(function (row, index) {
@@ -154,7 +186,13 @@
             }
             state.current += (state.target - state.current) * (reduced ? 1 : 0.18);
             var x = glideWrap(state.current, state.period);
-            state.track.style.transform = 'translate3d(' + x + 'px,0,0)';
+            // For a horizontal axis axisX is 1 and axisY is 0, so the opted-in
+            // form is the same translation as the original. The branch is kept
+            // anyway so a skin that has not asked for this gets the original
+            // expression, not a computed one that happens to agree.
+            state.track.style.transform = alongAxis
+                ? 'translate3d(' + (x * axisX) + 'px,' + (x * axisY) + 'px,0)'
+                : 'translate3d(' + x + 'px,0,0)';
             // Without the flinging term the loop could stop while the wall
             // still had speed left, because target and current can be close
             // together at the moment of release.
@@ -291,6 +329,10 @@
         radians = ((baseAngles[axis] || 0) + fine) * Math.PI / 180;
         axisX = Math.cos(radians);
         axisY = Math.sin(radians);
+        // vertical is DERIVED from the vector, so it has to be recomputed with
+        // it. --glide-angle can move the fine angle across the diagonal at a
+        // new viewport size, and a stale flag would measure the wrong edge.
+        vertical = alongAxis && Math.abs(axisY) > Math.abs(axisX);
         // The row height changes at the 720px breakpoint, so the tiles change
         // width and the period changes with them. Re-measure rather than keep
         // wrapping at a distance that was true at the old size.
