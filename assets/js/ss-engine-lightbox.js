@@ -151,6 +151,19 @@ function _lbWire(el, src) {
     el.style.cursor = 'zoom-in';
     el.addEventListener('click', function (e) {
         if (e.target.closest && e.target.closest('a, button') && e.target !== el) return;
+        // A PHOTOGRAPH WRAPPED IN A LINK OPENED THE LIGHTBOX AND NAVIGATED AWAY.
+        // touchend called preventDefault; click never did. So on a mouse the
+        // overlay opened and the browser immediately left for the solo page,
+        // which reads as "clicking does not open a lightbox". Every skin that
+        // wraps its photographs in an anchor had this, not just GLIDE.
+        //
+        // Only the PLAIN left click is suppressed. ctrl/cmd/shift/alt and
+        // middle-click still reach the anchor, so open-in-new-tab keeps
+        // working and the link stays a real link with no JS at all.
+        var plain = e.button === 0 && !e.ctrlKey && !e.metaKey
+            && !e.shiftKey && !e.altKey;
+        if (!plain) return;
+        if (el.closest && el.closest('a')) e.preventDefault();
         _lbOpen(idx);
     });
     el.addEventListener('touchend', function (e) {
