@@ -138,9 +138,31 @@ const resize = src.slice(src.indexOf("addEventListener('resize'"));
 cx(/vertical = alongAxis && Math\.abs\(axisY\) > Math\.abs\(axisX\)/.test(resize),
    'resize recomputes vertical alongside axisX and axisY');
 
+console.log('\nWHAT A REAL BROWSER HAS CONFIRMED, AND WHAT IT HAS NOT');
+// Updated 5 Nov 2026. This file still cannot run the wall -- rAF does not fire
+// in the browser pane available to me -- so the note below is Codex's
+// measurement, not mine, and is labelled as his.
+//
+// He opted a GLIDE candidate in with data-flow-motion="axis", left the field
+// rotated by the -7deg lean ONLY, and measured a real Chrome fixture at
+// 1920x945: tile offset 500x750, field matrix -7deg, TRACK TRANSLATION MOSTLY Y.
+//
+// That last phrase is worth more than it looks, and it is why it is recorded
+// here rather than taken as a pat on the back. For a vertical axis carrying the
+// -7deg lean the vector is axisX 0.1219, axisY 0.9925 -- mostly Y with a small
+// X term. HAD THE LEAN BEEN DROPPED from the motion vector the translation
+// would have been PURE Y. So an independent reading of "mostly Y" is positive
+// evidence that the lean composes into the motion instead of being discarded,
+// which no amount of reading this file could establish.
+console.log('  --    Codex, real Chrome at 1920x945: tile 500x750, field matrix -7deg,');
+console.log('        track translation mostly Y. Matches axisX 0.1219 / axisY 0.9925');
+console.log('        for a vertical axis carrying the -7deg lean; a dropped lean');
+console.log('        would have read as pure Y, so the lean is composing correctly.');
+console.log('  --    HIS WORDS: "not a completed visual proof". Still open on his side:');
+console.log('        full image load, moving picture, reversal and wrap, other widths.');
+console.log('  --    STILL NOT CHECKED BY ME AT ALL: any of the above. rAF does not fire');
+console.log('        in my pane. Nothing here claims otherwise.');
+
 console.log('\n' + pass + ' checks, ' + fail + ' failed');
-console.log('NOT CHECKED HERE: the wall actually moving. rAF does not fire in my');
-console.log('browser pane, so rendered vertical motion needs Codex\'s runner and a');
-console.log('real install. Stated, not skipped quietly.');
 process.exit(fail > 0 ? 1 : 0);
 // ===== SNAPSMACK EOF =====
