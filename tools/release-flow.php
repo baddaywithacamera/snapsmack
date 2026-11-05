@@ -337,7 +337,50 @@ function rf_require_release_gate(?string $commit = null): void {
     if ($problem !== '') rf_fail($problem);
 }
 
+/**
+ * SS-1206. REFUSE BEFORE THE BROWSER TESTS, NAMING WHAT IS MISSING.
+ *
+ * The browser half of the gate needs @playwright/test from
+ * tools/browser-tests/node_modules. That directory is NOT committed, so it
+ * exists only in whichever checkout somebody has installed it in -- and EVERY
+ * git worktree lacks it. tests/browser-release-runner-regression.cjs also sets
+ * the child's NODE_PATH to that directory inside the checkout under test,
+ * overriding whatever the caller exported, so pointing a shared NODE_PATH at an
+ * installed copy elsewhere does not help.
+ *
+ * The release flow requires a clean tree on dev, and a separate clean worktree
+ * is the sensible way to get one while other work is in flight. So the
+ * RECOMMENDED way to cut a release was also the way that tripped this, and it
+ * cost 977D a full gate restart: the run died on a Node module-resolution
+ * stack trace in the middle of the suite instead of saying what was wrong.
+ *
+ * Needing a dependency installed is reasonable. Finding out as a stack trace is
+ * not. This is the same standard the skin registry now meets -- a failure names
+ * the URL it tried and the transport that failed, instead of blaming the
+ * firewall.
+ *
+ * The check is deliberately for the package's own directory rather than just
+ * node_modules: a half-finished or pruned install has the parent and not the
+ * package, and that fails in exactly the same confusing way.
+ */
+function rf_browser_dependency_problem(): string {
+    $dir = __DIR__ . '/browser-tests';
+    $pkg = $dir . '/node_modules/@playwright/test';
+    if (is_dir($pkg)) return '';
+    $has_parent = is_dir($dir . '/node_modules');
+    return "the browser tests cannot run: @playwright/test is not installed.\n"
+         . '  LOOKED FOR: ' . $pkg . "\n"
+         . '  node_modules ' . ($has_parent ? "exists but does not contain that package\n"
+                                            : "does not exist in that directory\n")
+         . "  FIX IT WITH:  cd " . $dir . " && npm ci\n"
+         . "  This is per-checkout. node_modules is not committed, so a fresh\n"
+         . "  worktree never has it, and exporting NODE_PATH does not help because\n"
+         . "  the runner test sets NODE_PATH itself. SS-1206.";
+}
+
 function rf_browser_tests(): void {
+    $problem = rf_browser_dependency_problem();
+    if ($problem !== '') rf_fail($problem);
     rf_run(['node', __DIR__ . '/../tests/browser-release-runner-regression.cjs']);
     rf_run(['node', __DIR__ . '/browser-tests/run-regressions.cjs']);
 }

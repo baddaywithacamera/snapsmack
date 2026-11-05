@@ -1272,6 +1272,11 @@
             2
         ]
     },
+    "release-gate-names-missing-browser-dependency-regression.php": {
+        "assertions": 3,
+        "predicates": 15,
+        "thresholds": []
+    },
     "release-gate-remote-advice-regression.php": {
         "assertions": 3,
         "predicates": 6,
