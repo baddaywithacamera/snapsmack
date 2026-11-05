@@ -221,7 +221,7 @@ class BoothWindow(QMainWindow):
         access_box.addWidget(QLabel("Pair Claude, Codex, or another MCP agent"))
         self.pair_actor = QComboBox()
         self.pair_actor.setEditable(True)
-        self.pair_actor.addItems(["claude", "codex"])
+        self.pair_actor.addItems(["claude", "codex", "muse"])
         access_box.addWidget(self.pair_actor)
         pair_button = QPushButton("GENERATE 5-MINUTE PAIRING CODE")
         pair_button.clicked.connect(self.generate_pair_code)
@@ -230,6 +230,7 @@ class BoothWindow(QMainWindow):
         self.pair_code.setReadOnly(True)
         self.pair_code.setPlaceholderText("The pairing code will appear here")
         access_box.addWidget(self.pair_code)
+        access_box.addWidget(QLabel("Code stays here for five minutes. Select it to copy when ready."))
         cli = QPlainTextEdit()
         cli.setReadOnly(True)
         cli.setPlainText(
@@ -599,3 +600,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+# ===== SNAPSMACK EOF =====
