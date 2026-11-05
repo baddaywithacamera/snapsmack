@@ -79,44 +79,84 @@ function vec(axis, fine) {
     return { x: Math.cos(rad), y: Math.sin(rad) };
 }
 const EPS = 1e-9;
+const LEAN = -7;   // --glide-angle's default, the aesthetic tilt
+
+console.log('\nTWO FRAMES, TWO VECTORS, AND THEY ARE NOT INTERCHANGEABLE');
+// The whole fix. The pointer arrives in SCREEN pixels; the track translates in
+// its OWN frame, inside a field the skin has already rotated by the lean. Put
+// the lean in both and it is applied twice, and the track creeps sideways as it
+// travels -- the drift Codex measured in a real browser.
+cx(/var worldX = Math\.cos\(worldRadians\)/.test(src) && /var localX = Math\.cos\(localRadians\)/.test(src),
+   'the engine derives a world vector AND a local vector');
+// EVERY ASSIGNMENT, NOT JUST ONE OF THEM. The vectors are set twice -- once at
+// start-up and once on resize -- and my first version of these two checks
+// searched the whole file. A mutant that put the lean into the start-up local
+// vector SURVIVED, because the regex was satisfied by the resize line, which
+// was still correct. A source check that can pass on a different line from the
+// one it is testing is not a check. So: collect every assignment and require
+// all of them to agree.
+const worldLines = src.split(/\r?\n/).filter(function (l) { return /worldRadians\s*=/.test(l); });
+const localLines = src.split(/\r?\n/).filter(function (l) { return /localRadians\s*=/.test(l); });
+cx(worldLines.length >= 2 && localLines.length >= 2,
+   'both vectors are assigned at start-up and on resize (' + worldLines.length
+   + ' world, ' + localLines.length + ' local)');
+cx(worldLines.every(function (l) { return /\+\s*fine/.test(l); }),
+   'EVERY world assignment adds the lean, because on screen the wall travels leaned');
+cx(localLines.every(function (l) { return !/fine/.test(l); }),
+   'and NO local assignment mentions the lean at all, because the field rotate() applies it');
+cx(/\(dx \* worldX\) \+ \(dy \* worldY\)/.test(src),
+   'the POINTER is projected with the world vector');
+cx(/\(x \* localX\) \+ 'px,' \+ \(x \* localY\)/.test(src),
+   'and the TRANSLATE is written with the local vector');
+cx(!/\(dx \* localX\)/.test(src) && !/\(x \* worldX\)/.test(src),
+   'and they are not swapped anywhere');
+
+console.log('\nA LEANED VERTICAL WALL PAINTS PURE Y IN ITS OWN FRAME');
+// THE ASSERTION I SHOULD HAVE MADE THE FIRST TIME. When Codex reported the
+// translation was "mostly Y" I read the small X term as the lean composing
+// correctly. It was the defect: a vertical wall must paint PURE Y locally and
+// let the field's rotate() tilt the result. Had this check existed, the bug
+// would not have reached his browser.
+const vLocal = vec('vertical', 0);
+cx(Math.abs(vLocal.x) < EPS,
+   'local X is 0 for a vertical wall, so no sideways component is painted');
+cx(Math.abs(vLocal.y - 1) < EPS, 'and local Y is 1, so the whole offset goes down the track');
+const vWorld = vec('vertical', LEAN);
+cx(Math.abs(vWorld.x) > 0.1,
+   'while the WORLD vector keeps a real X term (' + vWorld.x.toFixed(4)
+   + '), which is how a leaned drag reads correctly');
+cx(Math.abs(vWorld.x - 0.1219) < 1e-3 && Math.abs(vWorld.y - 0.9925) < 1e-3,
+   'and that world term is the 0.1219/0.9925 Codex measured -- the same number, now in the frame it belongs to');
 
 console.log('\nA HORIZONTAL WALL MOVES EXACTLY AS IT DID');
-// This is the claim that makes the change safe to ship before any skin opts
-// in: for axis 0 the opted-in arithmetic IS the original translation.
+// The claim that makes this safe to ship before any skin opts in: for axis 0
+// the opted-in arithmetic IS the original translation.
 const h = vec('horizontal', 0);
-cx(Math.abs(h.x - 1) < EPS, 'axisX is 1 for the horizontal axis');
-cx(Math.abs(h.y) < EPS, 'axisY is 0, so x*axisY contributes no vertical movement');
+cx(Math.abs(h.x - 1) < EPS, 'local X is 1 for the horizontal axis');
+cx(Math.abs(h.y) < EPS, 'local Y is 0, so x*localY contributes no vertical movement');
 const x = 123.456;
 cx(Math.abs(x * h.x - x) < EPS && Math.abs(x * h.y) < EPS,
-   'so translate3d(x*axisX, x*axisY) equals translate3d(x, 0) for every offset');
+   'so translate3d(x*localX, x*localY) equals translate3d(x, 0) for every offset');
 
-console.log('\nA VERTICAL WALL MOVES DOWN THE PAGE, NOT ACROSS IT');
-const v = vec('vertical', 0);
-cx(Math.abs(v.y - 1) < EPS, 'axisY is 1 for the vertical axis');
-cx(Math.abs(v.x) < EPS, 'and axisX is 0, so no sideways movement remains');
-cx(Math.abs(v.y) > Math.abs(v.x), 'the dominant axis is vertical, which is what selects height measurement');
-
-console.log('\nTHE LEAN DOES NOT FLIP THE MEASURED EDGE');
-// --glide-angle is the aesthetic tilt, -7deg by default. It is ADDED to the
-// axis angle, so a careless implementation could let the lean decide which
-// edge is measured. At -7 on a vertical wall the dominant axis must stay
-// vertical, or the period would suddenly be measured across the tiles.
-const leaned = vec('vertical', -7);
-cx(Math.abs(leaned.y) > Math.abs(leaned.x),
-   'a -7deg lean on a vertical wall is still vertical-dominant');
-const leanedH = vec('horizontal', -7);
-cx(Math.abs(leanedH.x) > Math.abs(leanedH.y),
-   'and a -7deg lean on a horizontal wall is still horizontal-dominant');
-// 45 degrees is the genuine tie. Stated rather than hidden: diagonal_down
-// lands with |x| === |y| before any lean, so the lean breaks the tie. Which
-// way it breaks is arbitrary but it must be DECIDED, not left to a stray
-// floating-point bit.
+console.log('\nTHE MEASURED EDGE IS A FACT ABOUT THE TRACK, NOT ABOUT THE LEAN');
+// vertical now derives from the LOCAL axis. Which edge of a tile is the
+// direction of travel is a property of the track's own box, and the lean is
+// not in that frame. It also removes a wart: the lean used to break the 45deg
+// tie, so the measured edge depended on an aesthetic setting.
+// Same discipline as the vectors: `vertical` is assigned twice, so check every
+// assignment rather than asking whether the file contains one good one.
+const vertLines = src.split(/\r?\n/).filter(function (l) { return /vertical\s*=\s*alongAxis/.test(l); });
+cx(vertLines.length >= 2,
+   'vertical is assigned at start-up and on resize (' + vertLines.length + ' places)');
+cx(vertLines.every(function (l) { return /Math\.abs\(localY\) > Math\.abs\(localX\)/.test(l); }),
+   'EVERY assignment decides it from the local vector');
+cx(vertLines.every(function (l) { return !/world/.test(l); }),
+   'and none of them consults the leaned vector, so --glide-angle cannot change which edge is measured');
 const d = vec('diagonal_down', 0);
 cx(Math.abs(Math.abs(d.x) - Math.abs(d.y)) < 1e-12,
-   'diagonal_down is an exact tie at 45deg (|x| === |y|), so the > test resolves it to horizontal');
-const dLean = vec('diagonal_down', -7);
-cx(Math.abs(dLean.x) > Math.abs(dLean.y),
-   'and with the -7deg lean it is horizontal-dominant, which is the shallower direction');
+   'diagonal_down is an exact tie at 45deg (|x| === |y|)');
+cx(!(Math.abs(d.y) > Math.abs(d.x)),
+   'and the tie resolves to horizontal -- arbitrary, but FIXED, which makes it a decision rather than a stray bit');
 
 console.log('\nEVERY MEASUREMENT FOLLOWS THE SAME DIRECTION');
 // A period measured on one edge and a fill measured on the other is a wall
@@ -135,33 +175,39 @@ console.log('\nTHE DERIVED FLAG IS REFRESHED WHEN THE VECTOR IS');
 // The resize handler recomputes the vector. A stale `vertical` would measure
 // the wrong edge after a breakpoint changed the lean.
 const resize = src.slice(src.indexOf("addEventListener('resize'"));
-cx(/vertical = alongAxis && Math\.abs\(axisY\) > Math\.abs\(axisX\)/.test(resize),
-   'resize recomputes vertical alongside axisX and axisY');
+cx(/vertical = alongAxis && Math\.abs\(localY\) > Math\.abs\(localX\)/.test(resize),
+   'resize recomputes vertical from the local vector');
+cx(/worldX = Math\.cos\(worldRadians\)/.test(resize) && /localX = Math\.cos\(localRadians\)/.test(resize),
+   'and recomputes BOTH vectors, so they cannot drift apart');
 
-console.log('\nWHAT A REAL BROWSER HAS CONFIRMED, AND WHAT IT HAS NOT');
-// Updated 5 Nov 2026. This file still cannot run the wall -- rAF does not fire
-// in the browser pane available to me -- so the note below is Codex's
-// measurement, not mine, and is labelled as his.
+console.log('\nWHAT A REAL BROWSER FOUND, INCLUDING MY MISREADING OF IT');
+// I READ A DEFECT AS A CONFIRMATION, IN PUBLIC, AND THIS IS THE CORRECTION.
 //
-// He opted a GLIDE candidate in with data-flow-motion="axis", left the field
-// rotated by the -7deg lean ONLY, and measured a real Chrome fixture at
-// 1920x945: tile offset 500x750, field matrix -7deg, TRACK TRANSLATION MOSTLY Y.
+// Codex measured a real Chrome fixture at 1920x945 and reported the track
+// translation as "mostly Y". I told him that was positive evidence the lean
+// was composing into the motion, on the reasoning that a dropped lean would
+// have read as pure Y. The reasoning was backwards. A vertical wall must paint
+// PURE Y in its own frame; the field's rotate() is what tilts it on screen.
+// The small X term I welcomed WAS the double-counted lean, and it is the
+// sideways drift he then isolated in his fixture.
 //
-// That last phrase is worth more than it looks, and it is why it is recorded
-// here rather than taken as a pat on the back. For a vertical axis carrying the
-// -7deg lean the vector is axisX 0.1219, axisY 0.9925 -- mostly Y with a small
-// X term. HAD THE LEAN BEEN DROPPED from the motion vector the translation
-// would have been PURE Y. So an independent reading of "mostly Y" is positive
-// evidence that the lean composes into the motion instead of being discarded,
-// which no amount of reading this file could establish.
+// He diagnosed it, asked for an authoritative core fix with separate local and
+// world vectors rather than his fixture's ad hoc trigonometry, and that is
+// what the sections above now assert. The lesson for me is narrower than "be
+// careful": I had no assertion that said what the local vector MUST be, so
+// there was nothing to contradict me when I reasoned my way to the wrong
+// answer. There is now.
 console.log('  --    Codex, real Chrome at 1920x945: tile 500x750, field matrix -7deg,');
-console.log('        track translation mostly Y. Matches axisX 0.1219 / axisY 0.9925');
-console.log('        for a vertical axis carrying the -7deg lean; a dropped lean');
-console.log('        would have read as pure Y, so the lean is composing correctly.');
-console.log('  --    HIS WORDS: "not a completed visual proof". Still open on his side:');
-console.log('        full image load, moving picture, reversal and wrap, other widths.');
-console.log('  --    STILL NOT CHECKED BY ME AT ALL: any of the above. rAF does not fire');
-console.log('        in my pane. Nothing here claims otherwise.');
+console.log('        track translation mostly Y -- which I wrongly called confirmation.');
+console.log('        The X term was the lean counted twice: the sideways drift.');
+console.log('  --    He isolated it in a fixture: excluding the lean from the paint');
+console.log('        vector left local X at ~1e-12 and only Y moving. Wheel over');
+console.log('        900,450 moved only track 2; edge tracks unchanged.');
+console.log('  --    HIS WORDS on his own fixture: "not a completed visual proof".');
+console.log('        Open on his side: other widths, full-period continuous reversal,');
+console.log('        Allow Preferences.');
+console.log('  --    STILL NOT CHECKED BY ME AT ALL: any of it. rAF does not fire in my');
+console.log('        pane, so the moving picture is his measurement, never mine.');
 
 console.log('\n' + pass + ' checks, ' + fail + ' failed');
 process.exit(fail > 0 ? 1 : 0);
