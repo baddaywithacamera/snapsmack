@@ -13,6 +13,38 @@
 
 ## 0.7.976D - 2026-11-04 - HEISENBERG DECOMPENSATOR
 
+### Portfolio addresses for imported photographs (SS-1185)
+
+- A post can be given a portfolio address of its own: an album, a category and
+  a leaf, reachable at `/<album>/<category>/<leaf>`. Addresses of one and two
+  segments are untouched, so every existing link on a live site behaves exactly
+  as it did.
+- Imported photographs now reach the archive and the album and category covers,
+  not only the post. Those surfaces are keyed by image rather than by post, so
+  filing the post alone left them empty while the import reported success. The
+  mapping is asked for explicitly and a second import adds nothing.
+- The import refuses clearly rather than saving a half-designation: 409 when the
+  schema has not been upgraded, 422 when a named album or category does not
+  exist.
+- The archive gains `idx_icm_cat`, and album slugs are minted in one place and
+  backfilled without interrupting a live site.
+- A UNIQUE key on album slugs was proposed, measured and withdrawn: three
+  existing paths create albums with no slug, so it would have broken album
+  creation. The schema sync says out loud that it is held rather than failing
+  silently.
+
+### Lightbox and viewer (SS-1202)
+
+- Opening a photograph from a wall no longer tears down the lightbox the page it
+  sits on had just opened. Keyboard navigation defers while a viewer is open, and
+  the viewer clears the handler it installed when it closes.
+
+### Fleet discovery
+
+- Discovery in SNAP HQ names the sites it found and counts the shared backup key
+  as it is pushed to each one, instead of showing one unchanging line over a bar
+  that only spins.
+
 - Separate the spoke enrollment hub address from the username, password and 2FA fields. Give password managers an explicit username field and require a full hub URL.
 - Explain enrollment token rejections on the hub, including where to obtain the correct token.
 
