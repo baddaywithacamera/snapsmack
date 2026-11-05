@@ -106,7 +106,23 @@ $originalHash = hash('sha256', $originalBytes);
 // Comparing against the COMMITTED blob is the only way to tell the difference.
 $committed = (string)shell_exec('git -C ' . escapeshellarg($root)
     . ' show HEAD:skins/glide/manifest.json 2>&1');
-$cleanToStart = $committed !== '' && hash('sha256', $committed) === $originalHash;
+
+// LINE ENDINGS ARE NORMALISED ON BOTH SIDES BEFORE COMPARING. `git show`
+// hands back the repository's bytes, which are LF; a checkout with
+// core.autocrlf on has CRLF in the working tree. Comparing them raw made this
+// guard refuse to run on Codex's Windows box while `git status` said the tree
+// was clean -- he reported exactly that. The same mismatch cost this project
+// most of a day on 955D, where a generated fixture made one checkout pass and
+// another fail and it read as three broken skins.
+//
+// VERIFIED BY SIMULATION, not just reasoned: this checkout has LF on both
+// sides, so the working file was temporarily rewritten with CRLF endings and
+// the guard still accepted it, then restored. What is NOT verified is Codex's
+// actual box -- if it still refuses there, the next thing to print is both
+// lengths and both CRLF counts.
+$lf = static fn (string $s): string => str_replace("\r\n", "\n", $s);
+$cleanToStart = $committed !== ''
+    && hash('sha256', $lf($committed)) === hash('sha256', $lf($originalBytes));
 cx($cleanToStart, 'glide/manifest.json matches its committed state before this test touches it');
 if (!$cleanToStart) {
     echo "        REFUSING to edit it. Restore it first:\n";
