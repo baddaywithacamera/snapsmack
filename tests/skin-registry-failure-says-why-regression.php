@@ -26,6 +26,24 @@ declare(strict_types=1);
 
 $root = dirname(__DIR__);
 if (!defined('SNAPSMACK_VERSION_SHORT')) define('SNAPSMACK_VERSION_SHORT', '0.7.977D');
+
+// THE DEFAULT IS PINNED TO A DEAD URL FOR THIS FILE, DELIBERATELY.
+//
+// A later change added a fallback: when the configured URL fails and differs
+// from the built-in default, the default is tried once. That is right, and it
+// is what un-strands a site with a stale setting -- but it meant this file's
+// original premise evaporated. Every "unreachable" URL it used now recovers
+// via the real default and returns a registry, so there was no error left to
+// inspect and five of its six checks failed. The behaviour was correct and MY
+// TEST WAS THE THING THAT HAD GONE STALE.
+//
+// skin-registry.php only defines this constant if it is not already defined,
+// so pinning it here makes configured == default, which is the one case with
+// nowhere to fall back to. That is the genuine total-failure path, and it is
+// the only honest way to assert on a failure message now.
+if (!defined('SKIN_REGISTRY_DEFAULT_URL')) {
+    define('SKIN_REGISTRY_DEFAULT_URL', 'https://127.0.0.1:1/registry.json');
+}
 require_once $root . '/core/skin-registry.php';
 
 $pass = 0; $fail = 0;
