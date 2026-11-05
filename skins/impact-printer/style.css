@@ -44,6 +44,14 @@ body {
     color: var(--text-primary);
     font-family: 'DotMatrix', 'Courier New', monospace;
     overflow-y: auto;
+    /* html carries overflow:hidden, so BODY is the scroller and its scrollbar
+       is drawn inside the body box. Everything centred then centres inside a
+       box 15px narrower than the window, which put the archive 15px left of
+       centre on pixhellated.ca -- measured on the live site, where the lean
+       equalled the scrollbar exactly. Reserving the gutter on BOTH edges makes
+       the box symmetric again. It cannot be seen in the offline fixtures:
+       headless Chromium uses overlay scrollbars and reports 0px. */
+    scrollbar-gutter: stable both-edges;
     /* background set by variant CSS */
     /* Ink bleed simulation — controlled by Ink Quality picker */
     text-shadow: var(--ip-ink-bleed, none);

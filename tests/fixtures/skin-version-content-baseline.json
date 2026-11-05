@@ -47,8 +47,8 @@
             "files_sha256": "c9fa2ef1a9062aa04ec8eb28d3a3e0ed1c86e54b09d5fa8ce2838232c6a9c7a5"
         },
         "impact-printer": {
-            "version": "2.1.21",
-            "files_sha256": "8b0ed848716427ccac46f6626ba554cc23853a13fc0b202a49dfb49533dd9de9"
+            "version": "2.1.22",
+            "files_sha256": "9b639f17fb9732362242acaf1479b1409882a46dbb6ed1dd33cf667a2641af8f"
         },
         "instant-camera": {
             "version": "1.0.58",
