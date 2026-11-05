@@ -323,17 +323,27 @@ try {
                 // of dwell_ms filters page_type IN ('landing','archive'), so mapping
                 // a post to 'page' starts recording it and moves no reported figure.
                 //
-                // 'feed' AND 'taxonomy' ARE STILL ABSENT, DELIBERATELY. They are
-                // also uncounted, and tests/smacktalk-hit-kinds-reach-the-logger-
-                // regression.php says so out loud. 'feed' is the SMACKTALK landing
-                // page, so mapping it to 'landing' would put new rows into a bucket
-                // Sean's SCROLL TIME tile already reports and change what that
-                // number means mid-flight. That is his decision, not a side effect
-                // of unblocking an article. Raised rather than guessed.
+                // AND 'feed' IS THE SMACKTALK FRONT PAGE, which was logging nothing
+                // at all: no view, no dwell. The controller calls the landing diary
+                // 'feed' and this table had no such key, so the one page a text site
+                // is read from recorded less than its archive did.
+                //
+                // THIS ONE DOES MOVE A REPORTED NUMBER, which is why I raised it as
+                // SS-1204 instead of mapping it with the rest. Every reader filters
+                // page_type IN ('landing','archive'), so a front-page row reaches
+                // the SCROLL TIME tile and changes what that figure means from this
+                // build on. The coordinator ruled on 5 Nov 2026: Sean's rule already
+                // says a SMACKTALK landing page gets a beacon, and a front page
+                // logging no hits at all is a bug. Ruled, not assumed, and the owner
+                // is being told the tile will start counting front pages.
+                //
+                // 'taxonomy' IS STILL ABSENT, by the same ruling: nobody has asked
+                // for a beacon there. The test keeps reporting it so that held does
+                // not quietly become forgotten.
                 $_hit_types = [
                     'landing' => 'landing', 'photo' => 'image', 'post' => 'image',
                     'page' => 'page', 'collection' => 'page', 'blogroll' => 'page',
-                    'single' => 'page',
+                    'single' => 'page', 'feed' => 'landing',
                     'hashtag' => 'hashtag', 'search' => 'search',
                     'archive' => 'archive', 'albums' => 'archive', 'collections' => 'archive',
                 ];

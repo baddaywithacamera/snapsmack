@@ -97,14 +97,21 @@ echo "\nEVERY RENDERABLE KIND IS COUNTED\n";
 // 'not_found' is excluded because a 404 is not a page view, and the hit block
 // already refuses it on status.
 //
-// 'feed' AND 'taxonomy' ARE REPORTED, NOT ASSERTED, and not because they are
-// acceptable -- they are uncounted too. 'feed' is the SMACKTALK landing page,
-// and every reader of dwell_ms filters page_type IN ('landing','archive'), so
-// mapping it would add rows to a bucket Sean's SCROLL TIME tile already reports
-// and change what that number means mid-flight. Whether it should is his
-// decision. A test of mine is not the place to make it, and a silent pass is
-// not the place to hide it.
-$OPEN = ['feed', 'taxonomy'];
+// 'feed' WAS OPEN AND IS NOW RULED ON. I raised it as SS-1204 rather than
+// mapping it myself, because 'feed' is the SMACKTALK landing page and every
+// reader of dwell_ms filters page_type IN ('landing','archive') -- so mapping
+// it adds rows to a bucket the SCROLL TIME tile already reports, and changes
+// what that number means from that day on. That was not mine to decide inside
+// a fix for something else.
+//
+// The coordinator ruled YES on 5 Nov 2026: Sean's rule already says a SMACKTALK
+// landing page gets a beacon, and a front page logging no hits at all is a bug.
+// So 'feed' is asserted below like any other renderable kind, and the reported
+// consequence is asserted too rather than left as a footnote.
+//
+// 'taxonomy' IS HELD, by the same ruling: nobody has asked for a beacon there.
+// Held is not the same as fine, so it stays reported and visible.
+$OPEN = ['taxonomy'];
 $shouldCount = array_values(array_diff($kinds, ['not_found'], $OPEN));
 foreach ($shouldCount as $k) {
     cx(isset($map[$k]),
@@ -130,13 +137,39 @@ foreach (array_values(array_unique(array_values($map))) as $pt) {
 cx(emits('page'), "page_type 'page' emits, which is what SS-1129 added");
 cx(!emits('image'), "page_type 'image' does NOT emit, so a photo page is still untouched");
 
+echo "\nTHE SMACKTALK FRONT PAGE IS COUNTED, AND IT IS COUNTED IN PUBLIC\n";
+// The point of the ruling was not just that a row gets written. It was that
+// the front page starts appearing in the figure Sean reads. So assert BOTH
+// halves: the kind is mapped, and the page_type it is mapped to is one the
+// readers actually report. A mapping to a collection-only bucket would have
+// satisfied "is it counted" and quietly delivered nothing.
+cx(isset($map['feed']), "the SMACKTALK front page ('feed') is counted at all");
+cx(($map['feed'] ?? '') === 'landing',
+   "and it is counted as 'landing', which is a REPORTED bucket, not collection only (got '"
+   . ($map['feed'] ?? 'nothing') . "')");
+cx(isset($map['feed']) && emits($map['feed']),
+   'and that page_type emits the tracker in smacktalk mode, so dwell is collected too');
+// The readers are named here so the claim "this changes the reported figure"
+// is checkable rather than asserted from memory.
+$readers = [
+    'smack-multisite-stats.php' => $root . '/smack-multisite-stats.php',
+    'core/multisite-api.php'    => $root . '/core/multisite-api.php',
+];
+foreach ($readers as $label => $path) {
+    if (!is_file($path)) { echo "  --    {$label} not present on this tree: NOT CHECKED\n"; continue; }
+    $src = (string)file_get_contents($path);
+    cx(str_contains($src, "'landing'") || str_contains($src, '"landing"'),
+       "{$label} filters on 'landing', so a front-page row now reaches the tile");
+}
+
 echo "\nWHAT THIS MEANS FOR THE ARTICLE REQUEST\n";
 cx(isset($map['single']),
    "a written post ('single') is counted, so SS-1129's gate can be reached at all");
 cx(isset($map['single']) && emits($map['single']),
    'and the page_type it is counted as actually emits the tracker in smacktalk mode');
 if ($uncounted !== []) {
-    echo '  STILL UNCOUNTED, for Sean to decide: ' . implode(', ', $uncounted) . "\n";
+    echo '  STILL UNCOUNTED, held by the 5 Nov ruling rather than undecided: '
+       . implode(', ', $uncounted) . "\n";
 }
 
 echo "\n{$pass} checks, {$fail} failed\n";
