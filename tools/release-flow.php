@@ -402,9 +402,31 @@ if ($command === 'push-dev') {
 }
 
 if ($command === 'tag-dev') {
+    // --no-push: CREATE THE TAG AND STOP, LEAVING THE PUSH TO SEAN.
+    //
+    // This command ran every gate and then pushed dev and the tag
+    // unconditionally, so there was no way to prepare a tag for the owner to
+    // push. Codex hit that preparing 977D under a local-tag-only instruction
+    // and correctly refused to work around it. Pushing a tag is the owner's,
+    // and a tool with no way to express that invites someone to bypass it.
+    //
+    // EVERY GATE STILL RUNS. This is not a shortcut: the branch check, the
+    // clean check, the version and changelog checks, the tag-collision check,
+    // the test suite and the release gate all happen exactly as before, and
+    // the tag is only created if all of them pass. The single difference is
+    // the two pushes at the end. Default behaviour is untouched.
+    $no_push = in_array('--no-push', $argv, true);
+    // The version was $argv[2]. Take the first non-flag argument instead, so
+    // the flag can sit on either side of it.
+    $version_arg = '';
+    for ($i = 2; $i < count($argv); $i++) {
+        if (strncmp((string)$argv[$i], '--', 2) === 0) continue;
+        $version_arg = (string)$argv[$i];
+        break;
+    }
     rf_require_dev();
     rf_require_clean();
-    $version = rf_version($argv[2] ?? '');
+    $version = rf_version($version_arg);
     $dev_version = $version . 'D';
     if (rf_source_version() !== $dev_version) {
         rf_fail("source version is " . rf_source_version() . "; expected {$dev_version}");
@@ -418,6 +440,19 @@ if ($command === 'tag-dev') {
     rf_tests();
     rf_require_release_gate();
     rf_git(['tag', $tag]);
+    if ($no_push) {
+        $sha = rf_git(['rev-parse', $tag . '^{commit}']);
+        echo "BETA TAGGED LOCALLY: {$tag} at {$sha}\n";
+        echo "NOT PUSHED. Nothing has left this machine, so the tag can still be\n";
+        echo "moved or deleted. Once it is pushed it is immutable.\n\n";
+        echo "FOR SEAN, when he is ready:\n";
+        echo "  git push Github dev\n";
+        echo "  git push Github {$tag}\n\n";
+        echo "Both are needed and in that order: pushing the tag without the branch\n";
+        echo "leaves a tag pointing at a commit origin has never seen.\n";
+        echo "Then build it only in Smack Central's BITCHIN' panel.\n";
+        exit(0);
+    }
     rf_git(['push', 'Github', 'dev'], false);
     rf_git(['push', 'Github', $tag], false);
     echo "BETA TAGGED: {$tag}. Build it only in Smack Central's BITCHIN' panel.\n";
@@ -585,5 +620,8 @@ if ($command === 'gate-note') {
     exit(0);
 }
 
-rf_fail('unknown command; use status, gate-check, gate-note, push-dev, tag-dev, or promote-stable');
+rf_fail("unknown command; use status, gate-check, gate-note, push-dev, "
+      . "tag-dev [--no-push], or promote-stable\n"
+      . "  tag-dev --no-push  runs every gate and creates the tag LOCALLY, "
+      . "leaving both pushes to Sean");
 // ===== SNAPSMACK EOF =====
