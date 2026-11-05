@@ -239,7 +239,30 @@
         state.row.addEventListener('wheel', function (event) {
             event.preventDefault();
             var delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-            state.target -= delta * sensitivity;
+            var step = -delta * sensitivity;
+            state.target += step;
+            // THE WHEEL COASTS TOO, AND IT DID NOT BEFORE.
+            //
+            // Inertia was built for the drag: pointermove kept a smoothed
+            // velocity and release handed it to the fling. The wheel never
+            // touched velocity at all -- it moved `target` and stopped. So the
+            // wall eased to a halt the instant scrolling stopped, and on a
+            // desktop skin, where the wheel is the obvious way to move a wall,
+            // there was no momentum to feel anywhere. Sean reported the inertia
+            // missing while the drag path had it all along; this is the input he
+            // was using.
+            //
+            // Same smoothing as the drag, so a slow notch does not fling and a
+            // fast burst builds up. Repeated notches accumulate because each one
+            // adds to a velocity that is still decaying.
+            //
+            // reduced-motion is honoured here as it is on release: somebody who
+            // asked for less movement should not be handed a second of coasting
+            // after every notch.
+            if (!reduced) {
+                state.vel = (state.vel * 0.6) + (step * 0.4);
+                state.flinging = Math.abs(state.vel) > GLIDE_VEL_FLOOR;
+            }
             requestPaint();
         }, { passive: false });
 
