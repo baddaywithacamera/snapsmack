@@ -398,6 +398,18 @@ function skin_registry_fetch(string $registry_url, bool $force_fresh = false): a
     }
 
     $json = false;
+    // WHY THE REQUEST FAILED, collected as it fails. This used to be thrown
+    // away: $code and $err were captured below and then discarded, and every
+    // failure came back as one sentence blaming outbound HTTPS. A 403 from the
+    // CDN, an expired CA bundle, a redirect loop, a DNS failure, a timeout, and
+    // a server with no curl and allow_url_fopen off all produced the SAME
+    // message, and they have nothing in common but the wording. The owner gets
+    // told to check his firewall for a fault that may not be his firewall.
+    $why = [];
+
+    if (!function_exists('curl_init')) {
+        $why[] = 'curl is not installed on this server';
+    }
 
     // Try cURL first
     if (function_exists('curl_init')) {
@@ -415,11 +427,16 @@ function skin_registry_fetch(string $registry_url, bool $force_fresh = false): a
         curl_close($ch);
 
         if ($code !== 200 || $json === false) {
+            $why[] = 'curl reached HTTP ' . (int)$code
+                . ($err !== '' ? ' and reported: ' . $err : ' with no error text');
             $json = false;
         }
     }
 
     // Fallback: file_get_contents
+    if ($json === false && !ini_get('allow_url_fopen')) {
+        $why[] = 'allow_url_fopen is off, so there was no fallback to try';
+    }
     if ($json === false && ini_get('allow_url_fopen')) {
         $ctx = stream_context_create([
             'http' => [
@@ -428,10 +445,19 @@ function skin_registry_fetch(string $registry_url, bool $force_fresh = false): a
             ]
         ]);
         $json = @file_get_contents($registry_url, false, $ctx);
+        if ($json === false) {
+            $e = error_get_last();
+            $why[] = 'the file_get_contents fallback also failed'
+                . (!empty($e['message']) ? ': ' . $e['message'] : '');
+        }
     }
 
     if ($json === false) {
-        return ['error' => 'Could not reach the skin registry. Check your server\'s outbound HTTPS.'];
+        // The URL is named, because "the skin registry" is not something an
+        // owner can go and look at, and a wrong or overridden
+        // snap_settings.skin_registry_url is itself one of the causes.
+        return ['error' => 'Could not reach the skin registry at ' . $registry_url . '. '
+            . ($why === [] ? 'No reason was reported.' : implode('. ', $why) . '.')];
     }
 
     $data = json_decode($json, true);
