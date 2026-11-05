@@ -11,7 +11,7 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.976D - 2026-11-04 - HEISENBERG DECOMPENSATOR
+## 0.7.977D - unreleased - HEISENBERG DECOMPENSATOR
 
 ### Portfolio addresses for imported photographs (SS-1185)
 
@@ -44,6 +44,8 @@
 - Discovery in SNAP HQ names the sites it found and counts the shared backup key
   as it is pushed to each one, instead of showing one unchanging line over a bar
   that only spins.
+
+## 0.7.976D - 2026-11-04 - HEISENBERG DECOMPENSATOR
 
 - Separate the spoke enrollment hub address from the username, password and 2FA fields. Give password managers an explicit username field and require a full hub URL.
 - Explain enrollment token rejections on the hub, including where to obtain the correct token.
