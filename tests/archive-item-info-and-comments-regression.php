@@ -138,6 +138,42 @@ cx(str_contains($runtime, 'approvedCommentCountsFor('),
 cx(str_contains($runtime, 'if ($_siteComments)'),
    'and skips the query entirely when the site-wide switches are off, because then every answer is zero');
 
+echo "\nSEARCH RESULTS GET THE SAME TWO ANSWERS AS AN ARCHIVE TILE\n";
+// Codex found this gap wiring GLIDE's search: "search results lack prepared
+// comment metadata, unlike archive items", and said he would show only a post
+// link when the state was unavailable. He should not have to -- the same
+// photograph in a search deserves the same answers as in an archive.
+//
+// Search is shaped differently: it returns 'results', a map whose rows sit
+// under group keys, not a flat 'items'. So the enrichment walks both shapes,
+// and it has to do that WITHOUT a second copy of the permission test and
+// WITHOUT a query per group.
+//
+// SOURCE CHECK, labelled: the enrichment lives inside
+// snapsmack_public_runtime(), which needs a live site. Bounded on the block
+// itself, not on a character count.
+$enrich = (static function (string $src): string {
+    $at = strpos($src, '$_lists = [];');
+    if ($at === false) return '';
+    $end = strpos($src, 'unset($_lists);', $at);
+    return $end === false ? '' : substr($src, $at, $end - $at);
+})($runtime);
+cx($enrich !== '', 'the comment-enrichment block was found');
+cx($enrich !== '' && str_contains($enrich, "=== 'search'"),
+   'search is one of the kinds it enriches');
+cx($enrich !== '' && str_contains($enrich, "'results'"),
+   "and it reaches into the 'results' map, which is how a search returns rows");
+cx($enrich !== '' && substr_count($enrich, 'approvedCommentCountsFor(') === 1,
+   'the counts are still fetched in exactly ONE call across every list on the '
+   . 'page, so a search with two groups is not two queries');
+cx($enrich !== '' && str_contains($enrich, 'array_unique($_ids)'),
+   'and an id appearing in two groups is asked for once');
+cx($enrich !== '' && substr_count($enrich, "\$_it['allow_comments']") === 1,
+   'the per-item permission test appears ONCE, not once per shape');
+cx($enrich !== '' && substr_count($enrich, "'comments_enabled'") === 1
+   && substr_count($enrich, "'comment_count'") === 1,
+   'and so does each field it stamps');
+
 echo "\n{$pass} checks, {$fail} failed\n";
 exit($fail > 0 ? 1 : 0);
 // ===== SNAPSMACK EOF =====

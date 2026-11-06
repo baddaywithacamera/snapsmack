@@ -88,10 +88,16 @@ cx(is_string($p) && $p !== '', 'and still has a previous');
 
 echo "\nA SEARCH KEEPS ITS QUERY\n";
 [$p, $n] = urls(['kind' => 'search', 'page' => 2, 'next_page' => 3, 'query' => 'blue door']);
-cx(str_contains((string)$n, 'query=blue') , "next keeps the query ({$n})");
+// q=, NOT query=. THIS ASSERTION USED TO REQUIRE query= AND WAS WRONG:
+// index.php:431 reads $_GET['q'] and hands it to the runtime as 'query', so
+// 'query' is an INTERNAL key and a url carrying it loses the search term on
+// page two. Codex found it wiring GLIDE's search. The test asserted the broken
+// shape, which is why nothing caught it.
+cx(str_contains((string)$n, 'q=blue') && !str_contains((string)$n, 'query=blue'),
+   "next keeps the search term under the name the router reads ({$n})");
 cx(str_contains((string)$n, 'blue%20door') || str_contains((string)$n, 'blue+door'),
    'and the space is encoded, so the link is usable');
-cx(is_string($p) && str_contains((string)$p, 'query=blue'),
+cx(is_string($p) && str_contains((string)$p, 'q=blue'),
    'and a previous is DERIVED even though the search response has no previous_page');
 
 echo "\nSEARCH SAYS next_page = 0 AT THE END AND THAT IS NOT PAGE ZERO\n";
@@ -180,7 +186,7 @@ cx($esc($catNext) === '/archive?category=5&amp;page=2',
 
 [, $searchNext] = $chain(['kind' => 'search', 'page' => 2, 'next_page' => 3,
     'previous_page' => 1, 'query' => 'blue door', 'total_pages' => 6]);
-cx(str_contains((string)$esc($searchNext), 'query=blue%20door')
+cx(str_contains((string)$esc($searchNext), 'q=blue%20door')
    && str_contains((string)$esc($searchNext), '&amp;page=3')
    && !str_contains((string)$esc($searchNext), '&amp;amp;'),
    'a search keeps its query (' . $esc($searchNext) . ')');
@@ -196,6 +202,37 @@ cx(str_contains((string)$esc($tagNext), 'tag=street')
    && substr_count((string)$esc($tagNext), '&amp;') === 1
    && !str_contains((string)$esc($tagNext), '&amp;amp;'),
    'a tag page keeps its tag, with one escaped ampersand (' . $esc($tagNext) . ')');
+
+echo "\nTHE SEARCH URL USES THE NAME THE ROUTER ACTUALLY READS\n";
+// The fault Codex found was that these two disagreed and nothing compared
+// them. So compare them: whatever index.php reads for the search term is the
+// parameter the paging url must carry. Bounded on the strict-request array, so
+// it reads the live wiring rather than a name I remember.
+$indexSrc = (string)@file_get_contents($root . '/index.php');
+$strictCall = (static function (string $src): string {
+    $at = strpos($src, 'snapsmack_public_runtime($pdo, [');
+    if ($at === false) return '';
+    $end = strpos($src, '$_public_settings', $at);
+    return $end === false ? '' : substr($src, $at, $end - $at);
+})($indexSrc);
+cx($strictCall !== '', 'the strict request array in index.php was found');
+$qm = [];
+cx(preg_match('/\x27query\x27\s*=>\s*\$_GET\[\x27([a-z_]+)\x27\]/', $strictCall, $qm) === 1,
+   'it maps one GET parameter to the runtime query key'
+   . (isset($qm[1]) ? ' (' . $qm[1] . ')' : ''));
+$routerReads = $qm[1] ?? '';
+[, $searchUrl] = $chain(['kind' => 'search', 'page' => 1, 'next_page' => 2,
+    'query' => 'tulips', 'total_pages' => 3]);
+cx($routerReads !== '' && str_contains((string)$searchUrl, $routerReads . '=tulips'),
+   'and the paging url carries the search term under THAT name (' . $searchUrl . ')');
+cx(!str_contains((string)$searchUrl, '/search'),
+   'the url is not a /search path: core/public-runtime.php resolves paths from '
+   . 'a closed list that does not include search');
+[, $noTerm] = $chain(['kind' => 'search', 'page' => 1, 'next_page' => 2,
+    'query' => '', 'total_pages' => 3]);
+cx($noTerm === null || $noTerm === '',
+   'and no next link is offered when there is no search term (got '
+   . var_export($noTerm, true) . ')');
 
 echo "\nNULL AT BOTH ENDS, AFTER THE CHAIN AS WELL AS BEFORE IT\n";
 [$firstPrev, ] = $chain(['kind' => 'archive', 'page' => 1, 'next_page' => 2, 'total_pages' => 4]);

@@ -189,8 +189,11 @@ function snapsmack_public_paging_urls(array $response): array
         if ($cat > 0)   $state['category'] = $cat;
         if ($album > 0) $state['album'] = $album;
     } elseif ($kind === 'search') {
+        // 'q' is what the router reads -- index.php:431 is
+        // $_GET['q'] -> runtime 'query'. Emitting the internal name produced a
+        // parameter nothing read, so page two lost the search term.
         $q = (string)($response['query'] ?? '');
-        if ($q !== '') $state['query'] = $q;
+        if ($q !== '') $state['q'] = $q;
     } else {
         $tag = (string)($response['slug'] ?? '');
         if ($tag !== '') $state['slug'] = $tag;
@@ -298,26 +301,59 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     // at once; fifty tiles do not mean fifty queries. The counts are only
     // fetched when both site-wide switches are on, because when they are off
     // the answer is zero for everything and the query would be waste.
+    //
+    // SEARCH IS IN THIS LIST NOW, and it is shaped differently: it returns
+    // 'results' (a map, with the photographs under 'photographs') rather than
+    // a flat 'items'. Codex found the gap wiring GLIDE's search -- "search
+    // results lack prepared comment metadata, unlike archive items" -- and
+    // said he would show only a post link when the state was unavailable. He
+    // should not have to: the same tile in a search deserves the same two
+    // answers as the same tile in an archive.
+    //
+    // Both shapes are enriched from ONE query. The ids are collected across
+    // every list first, so a search page is still a single
+    // approvedCommentCountsFor() call, and the permission test exists once --
+    // writing a second, subtly different copy is how one page ends up
+    // disagreeing with another about whether comments are on.
+    $_lists = [];
     if (in_array(($response['kind'] ?? ''), ['archive', 'hashtag', 'albums', 'collections', 'landing'], true)
         && is_array($response['items'] ?? null) && $response['items'] !== []) {
+        $_lists[] = ['items'];
+    }
+    if (($response['kind'] ?? '') === 'search' && is_array($response['results'] ?? null)) {
+        foreach ($response['results'] as $_group => $_rows) {
+            if (is_array($_rows) && $_rows !== []) $_lists[] = ['results', $_group];
+        }
+    }
+    if ($_lists !== []) {
         $_siteComments = ((string)($settings['global_comments_enabled'] ?? '1') !== '0')
                       && ((string)($settings['community_comments_enabled'] ?? '1') !== '0');
         $_counts = [];
         if ($_siteComments) {
             $_ids = [];
-            foreach ($response['items'] as $_it) {
-                if (is_array($_it) && (int)($_it['id'] ?? 0) > 0) $_ids[] = (int)$_it['id'];
+            foreach ($_lists as $_path) {
+                $_rows = count($_path) === 1 ? $response[$_path[0]] : $response[$_path[0]][$_path[1]];
+                foreach ($_rows as $_it) {
+                    if (is_array($_it) && (int)($_it['id'] ?? 0) > 0) $_ids[] = (int)$_it['id'];
+                }
             }
+            $_ids = array_values(array_unique($_ids));
             if ($_ids !== []) $_counts = $repository->approvedCommentCountsFor($_ids);
         }
-        foreach ($response['items'] as $_i => $_it) {
-            if (!is_array($_it)) continue;
-            $_open = $_siteComments && (($_it['allow_comments'] ?? '1') == '1');
-            $response['items'][$_i]['comments_enabled'] = $_open;
-            $response['items'][$_i]['comment_count'] = (int)($_counts[(int)($_it['id'] ?? 0)] ?? 0);
+        foreach ($_lists as $_path) {
+            $_rows = count($_path) === 1 ? $response[$_path[0]] : $response[$_path[0]][$_path[1]];
+            foreach ($_rows as $_i => $_it) {
+                if (!is_array($_it)) continue;
+                $_open = $_siteComments && (($_it['allow_comments'] ?? '1') == '1');
+                $_rows[$_i]['comments_enabled'] = $_open;
+                $_rows[$_i]['comment_count'] = (int)($_counts[(int)($_it['id'] ?? 0)] ?? 0);
+            }
+            if (count($_path) === 1) $response[$_path[0]] = $_rows;
+            else $response[$_path[0]][$_path[1]] = $_rows;
         }
-        unset($_siteComments, $_counts, $_ids, $_i, $_it, $_open);
+        unset($_siteComments, $_counts, $_ids, $_i, $_it, $_open, $_rows, $_path, $_group);
     }
+    unset($_lists);
     // The community block rides along with that gate: same three kinds, same
     // response. A skin renders it wherever its own stylesheet already puts
     // comments, so this reaches all 26 of them without a skin edit -- and so
