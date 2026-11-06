@@ -115,6 +115,34 @@ foreach ([
        $what . ' no longer append the css at the end of the head');
 }
 
+echo "\nHOW FAR THE INVERSION REACHED -- MEASURED, SO THE ALARM IS THE RIGHT SIZE\n";
+// When I found this I wrote that "any conclusion drawn from a fixture needs
+// taking again", which is true and uselessly broad. So I went and checked what
+// actually depends on these generators, because an alarm nobody can bound is
+// one Sean has to re-investigate himself.
+//
+// NO COMMITTED BASELINE PASSES THROUGH EITHER GENERATOR:
+//   skin-geometry-expectations.json is derived from the OWNER'S OWN reference
+//   captures -- its own header says so, and Sean's ruling is that a
+//   disagreement between it and a capture means the file is wrong. It records
+//   no gap figures at all.
+//   skin-render-snapshot.json comes straight from
+//   snapsmack_render_strict_skin_template() and holds no inlined stylesheet.
+//
+// So the blast radius is the two UNTRACKED fixture directories and any ad-hoc
+// headed capture taken from them -- regenerating fixes those. These two
+// assertions keep it that way: if a fixture-derived baseline is ever
+// committed, the same inversion could ride into a tracked file silently.
+$expect = (string)@file_get_contents($root . '/tests/fixtures/skin-geometry-expectations.json');
+fh($expect !== '', 'the geometry expectations baseline was read');
+fh($expect !== '' && !str_contains($expect, 'public-base.css')
+   && !str_contains($expect, '<style'),
+   'it carries no inlined stylesheet, so it was not taken through a fixture');
+$snapshot = (string)@file_get_contents($root . '/tests/fixtures/skin-render-snapshot.json');
+fh($snapshot !== '' && !str_contains($snapshot, 'public-base.css')
+   && !str_contains($snapshot, '<style'),
+   'and neither does the render-snapshot baseline');
+
 echo "\nEDGE CASES THAT MUST NOT CRASH A BUILD TOOL\n";
 $noLink = snapsmack_fixture_inline_styles(
     '<!doctype html><html><head><title>x</title></head><body></body></html>', $skinCss);
@@ -135,8 +163,12 @@ if ($fail > 0) {
 echo "Fixture head cascade: PASS ({$pass} assertions).\n";
 echo "  NOT CHECKED: a browser. This checks the ORDER of the declarations a\n";
 echo "  fixture carries, which is what the cascade is decided by; it does not\n";
-echo "  measure a rendered gap. It also cannot tell whether captures taken\n";
-echo "  BEFORE this repair were affected -- any conclusion drawn from a fixture\n";
-echo "  about owner-versus-skin precedence needs taking again.\n";
+echo "  measure a rendered gap.\n";
+echo "  WHAT IS AFFECTED, now bounded rather than left as a general alarm: the\n";
+echo "  two UNTRACKED fixture directories, which regenerating fixes, and any\n";
+echo "  ad-hoc headed capture taken from them BEFORE this repair that compared\n";
+echo "  an owner setting against a skin's own value on one of the nine skins\n";
+echo "  whose stylesheets set --grid-gap. No committed baseline is affected:\n";
+echo "  both are checked above and neither is fixture-derived.\n";
 
 // ===== SNAPSMACK EOF =====
