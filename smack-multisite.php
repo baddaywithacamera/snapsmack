@@ -1137,6 +1137,72 @@ if (isset($_POST['push_skin']) || isset($_POST['push_skin_all'])) {
                 }
             }
 
+            // SS-1072: THE HUB IS PART OF THE FLEET AND WAS NOT IN THE BATCH.
+            //
+            // Both selects above read role = 'spoke', and the hub is not a row
+            // in snap_multisite_nodes at all, so a fleet-wide skin push has
+            // never touched the site running it. Found Textures is the observed
+            // case: it served TRUE GRIT 1.3.24 while the published package was
+            // 1.3.25, and nothing was broken -- it was simply never a target.
+            // Sean asked twice for fleet updates to include the hub.
+            //
+            // NO HTTP TO ITSELF. A spoke is instructed over its API because it
+            // is a different machine; the hub already has the installer in
+            // process, so it calls skin_registry_install() directly -- the same
+            // function core/multisite-api.php's reinstall endpoint calls, with
+            // the same signature verification against the same release public
+            // key. Pushing to our own URL would add a network round trip, a
+            // second authentication and a new failure mode to do what a
+            // function call does.
+            //
+            // THE TWO GATES ARE THE SPOKE GATES, READ LOCALLY. A spoke's
+            // installed_skins comes from its heartbeat; the hub's own answer is
+            // on disk, so "already has the skin" is its manifest existing and
+            // "is behind" is that manifest's version against the package. The
+            // hub is never freshly given a skin it does not have, exactly as no
+            // spoke is.
+            //
+            // ONLY ON A FLEET PUSH. push_skin names one spoke the operator
+            // chose, and silently adding the hub to a single-site action would
+            // install something they did not ask for.
+            //
+            // The remote-consent flag multisite_allow_skin is deliberately NOT
+            // consulted. It exists because a REMOTE instruction writes files to
+            // a site; this is the owner, authenticated on their own hub admin,
+            // pressing their own button. Requiring a remote-consent setting for
+            // a local action would read as the hub refusing its own operator.
+            if (isset($_POST['push_skin_all'])) {
+                $hub_label    = (string)($settings['site_name'] ?? '') !== ''
+                              ? (string)$settings['site_name'] . ' (this hub)'
+                              : 'This hub';
+                $hub_manifest = __DIR__ . '/skins/' . $skin_slug . '/manifest.json';
+                if (!is_file($hub_manifest)) {
+                    $skin_results[] = ['name' => $hub_label, 'ok' => false, 'skipped' => true,
+                        'detail' => 'Skipped — this skin is not installed on the hub.'];
+                } else {
+                    require_once __DIR__ . '/core/skin-manifest.php';
+                    $hub_mf  = load_skin_manifest($skin_slug);
+                    $hub_ver = (string)($hub_mf['version'] ?? '');
+                    if ($only_stale && $skin_version !== '' && $hub_ver !== ''
+                        && !snap_version_compare($skin_version, $hub_ver, '>')) {
+                        $skin_results[] = ['name' => $hub_label, 'ok' => true, 'skipped' => true,
+                            'detail' => 'Skipped — already up to date (v' . $hub_ver . ').'];
+                    } else {
+                        require_once __DIR__ . '/core/skin-registry.php';
+                        require_once __DIR__ . '/core/release-pubkey.php';
+                        $hub_key = defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : '';
+                        $hub_res = skin_registry_install($skin_slug, $download_url, $signature,
+                                                         $hub_key, $download_size);
+                        $skin_results[] = [
+                            'name'   => $hub_label,
+                            'ok'     => !empty($hub_res['success']),
+                            'detail' => (string)($hub_res['message'] ?? '')
+                                        . ($hub_ver !== '' ? ' (was v' . $hub_ver . ')' : ''),
+                        ];
+                    }
+                }
+            }
+
             foreach ($eligible as $tn) {
                 if (!$tn) continue;
                 $ch = curl_init();
