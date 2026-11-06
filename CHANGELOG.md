@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.980D - 2026-11-06
+
+- GLIDE defaults to 50 archive photos per page. The About overlay restores the demo typography and portrait layout, the About icon uses the information glyph, and the drag cue sits away from search. The viewer fades in and supports the demo Space shortcut.
+
 ## 0.7.979D - 2026-11-06 - HEISENBERG DECOMPENSATOR
 
 - The bulk Multisite skin update ("Update Every Spoke That Is Behind") now updates the hub itself, not only the spokes. SS-1072 fixed the single-skin fleet push to include the hub; this is the sibling bulk handler, which had the same gap. Stale-only and force paths both cover the hub.

@@ -451,19 +451,8 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     $skin = (string)($settings['active_skin'] ?? '');
     $pageSizeKey = ['onyx'=>'onyx_wall_page_size', 'scroll'=>'scroll_page_size',
         'show-n-tell'=>'htbs_grid_per_page', 'glide'=>'glide_page_size'][$skin] ?? 'posts_per_page';
-    // GLIDE ASKED FOR PAGES OF FIFTY, ten rows of five, with its own
-    // Previous/Next. Without a key of its own that means setting the SITE-WIDE
-    // posts_per_page to 50, which changes every other list on the site to get
-    // one skin's archive right.
-    //
-    // ITS KEY FALLS BACK TO posts_per_page, NOT TO 24, and that distinction is
-    // the whole reason this is safe to add now. The other three skins in the
-    // map fall back to 24 when their key is unset, and they keep doing so --
-    // changing that would silently resize their archives on any site whose
-    // posts_per_page is not 24. GLIDE is new to the map, so it inherits
-    // exactly what it had a moment ago and moves only when somebody sets
-    // glide_page_size.
-    $pageSizeDefault = $skin === 'glide' ? (int)($settings['posts_per_page'] ?? 24) : 24;
+    // The GLIDE archive defaults to ten rows of five, with a skin-specific override.
+    $pageSizeDefault = $skin === 'glide' && $route === 'archive' ? 50 : ($skin === 'glide' ? (int)($settings['posts_per_page'] ?? 24) : 24);
     $perPage = max(1, min($perPageCap, (int)($settings[$pageSizeKey] ?? $pageSizeDefault)));
     $offset = ($page - 1) * $perPage;
     $navigation = [['label' => 'Home', 'url' => snap_route_url('home')]];
