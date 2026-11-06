@@ -1886,7 +1886,7 @@
     },
     "thomas-the-bear-reaches-every-skin.php": {
         "assertions": 21,
-        "predicates": 15,
+        "predicates": 12,
         "thresholds": [
             2,
             4,
