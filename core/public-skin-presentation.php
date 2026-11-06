@@ -8,7 +8,7 @@ function snapsmack_public_skin_presentation(string $skin, array $options): array
         && in_array((string)$options[$key], ['1','true','on','yes'], true);
     $media = static fn(string $key): string => snapsmack_declared_media_url($options, $key);
     $out = [];
-    if (in_array($skin, ['alfred','telegram','tilez','stanley','writing-with-impact'], true)) {
+    if (in_array($skin, ['alfred','telegram','tilez','stanley','writing-with-impact','glide'], true)) {
         $out['header_media'] = [
             'image'=>$media('header_image'), 'logo'=>$media('header_logo'),
             'retina'=>$on('retina_logo'), 'show_tagline'=>$on('show_tagline'),

@@ -155,7 +155,7 @@
         var viewer = document.createElement('dialog');
         viewer.className = 'wall-viewer';
         viewer.setAttribute('aria-label', 'Photograph viewer');
-        viewer.innerHTML = '<figure><img alt=""><figcaption></figcaption><button type="button" data-wall-step="-1" aria-label="Previous photograph">‹</button><button type="button" data-wall-step="1" aria-label="Next photograph">›</button><div class="wall-viewer-tools"><button type="button" data-wall-pane="info" aria-label="Post info" aria-pressed="false">ⓘ</button><button type="button" data-wall-pane="comments" aria-label="Comments" aria-pressed="false"><svg width="21" height="21" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a7 7 0 0 1-7 7H8l-4 3v-5a7 7 0 0 1 7-12h2a7 7 0 0 1 7 7Z"/></svg></button></div><section class="wall-viewer-pane" aria-labelledby="wall-viewer-pane-title" inert><h2 id="wall-viewer-pane-title"></h2><p></p><a>Open original post</a></section></figure>';
+        viewer.innerHTML = '<figure><img alt=""><figcaption></figcaption><button type="button" data-wall-step="-1" aria-label="Previous photograph">‹</button><button type="button" data-wall-step="1" aria-label="Next photograph">›</button><div class="wall-viewer-tools"><button type="button" data-wall-pane="info" aria-label="Post info" aria-pressed="false">ⓘ</button><button type="button" data-wall-pane="comments" aria-label="Comments" aria-pressed="false"><svg width="21" height="21" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a7 7 0 0 1-7 7H8l-4 3v-5a7 7 0 0 1 7-12h2a7 7 0 0 1 7 7Z"/></svg></button></div><section class="wall-viewer-pane" aria-labelledby="wall-viewer-pane-title" inert><h2 id="wall-viewer-pane-title"></h2><p></p><div class="wall-comment-body"></div></section></figure>';
         document.body.append(viewer);
         var viewerImage = viewer.querySelector('img');
         var viewerCaption = viewer.querySelector('figcaption');
@@ -165,19 +165,42 @@
         var viewerPane = viewer.querySelector('.wall-viewer-pane');
         var viewerPaneName = '';
         var displayedPhoto;
+        var commentBody = viewerPane.querySelector('.wall-comment-body');
+        var commentRequest;
+
+        async function loadViewerComments(photo, status) {
+            var url = new URL(photo.url, location.href);
+            if (url.origin !== location.origin) return;
+            url.searchParams.set('glide_comments', '1');
+            var request = new AbortController();
+            commentRequest = request;
+            try {
+                var response = await fetch(url, { mode: 'same-origin', signal: request.signal });
+                if (!response.ok) throw new Error('Comments unavailable');
+                var page = new DOMParser().parseFromString(await response.text(), 'text/html');
+                var thread = page.querySelector('.wall-comment-content .ss-community');
+                if (request.signal.aborted) return;
+                if (!thread) throw new Error('Comments unavailable');
+                thread.querySelectorAll('script, iframe, object, embed').forEach(function (node) { node.remove(); });
+                commentBody.replaceChildren(thread);
+                status.textContent = !thread.querySelector('.ss-comment-thread') && thread.querySelector('.ss-comment-form')
+                    ? 'Be the first to comment.' : '';
+                commentBody.dispatchEvent(new CustomEvent('snapsmack:modal:opened', { bubbles: true }));
+            } catch {
+                if (!request.signal.aborted) status.textContent = 'Comments could not be loaded.';
+            }
+        }
 
         function updateViewerPane() {
+            commentRequest?.abort();
+            commentBody.replaceChildren();
             if (!displayedPhoto || !viewerPaneName) return;
             var isInfo = viewerPaneName === 'info';
-            var link = viewerPane.querySelector('a');
             viewerPane.querySelector('h2').textContent = isInfo ? displayedPhoto.title : 'Comments';
-            viewerPane.querySelector('p').textContent = isInfo ? displayedPhoto.alt
-                : displayedPhoto.commentCount === null ? 'See comments on the original post.'
-                : displayedPhoto.commentCount + (displayedPhoto.commentCount === 1 ? ' comment. ' : ' comments. ')
-                    + (displayedPhoto.commentsOpen ? 'Comments are open.' : 'Comments are closed.');
-            link.href = displayedPhoto.url;
-            if (!isInfo) link.hash = 'comments';
-            link.textContent = isInfo ? 'Open original post' : 'Open post comments';
+            var status = viewerPane.querySelector('p');
+            status.textContent = isInfo ? displayedPhoto.alt
+                : displayedPhoto.commentsOpen ? 'Loading comments…' : 'Comments are closed.';
+            if (!isInfo && displayedPhoto.commentsOpen) loadViewerComments(displayedPhoto, status);
         }
 
         function setViewerPane(name) {
@@ -193,7 +216,9 @@
             updateViewerPane();
         }
 
+        var closingViewer = false;
         async function showViewerPhoto(index, direction) {
+            if (closingViewer) return;
             var request = ++viewerRequest;
             viewerIndex = (index + viewerPhotos.length) % viewerPhotos.length;
             var photo = viewerPhotos[viewerIndex];
@@ -254,20 +279,54 @@
         var wallGallery = overlayNav.closest('[data-glide-wall]');
         if (wallGallery) wallGallery.addEventListener('click', openViewer);
         content.addEventListener('click', openViewer);
+        async function closeViewer() {
+            if (!viewer.open || closingViewer) return;
+            closingViewer = true;
+            viewerRequest++;
+            try {
+                if (!reducedOverlayMotion.matches && viewerImage.hasAttribute('src')) {
+                    viewerImage.getAnimations().forEach(function (animation) { animation.cancel(); });
+                    var flip = viewerImage.animate([
+                        { transform: 'perspective(1200px) rotateY(0deg)' },
+                        { transform: 'perspective(1200px) rotateY(-90deg)' }
+                    ], { duration: 240, easing: 'ease-in', fill: 'forwards' });
+                    await flip.finished.catch(function () {});
+                    var fadeOptions = { duration: 180, easing: 'ease-out', fill: 'forwards' };
+                    var fade = viewer.animate([{ opacity: 1 }, { opacity: 0 }], fadeOptions);
+                    var backdrop = viewer.animate([
+                        { backgroundColor: 'rgb(0 0 0 / 80%)' },
+                        { backgroundColor: 'transparent' }
+                    ], { ...fadeOptions, pseudoElement: '::backdrop' });
+                    await Promise.allSettled([fade.finished, backdrop.finished]);
+                    viewer.close();
+                    fade.cancel();
+                    backdrop.cancel();
+                    flip.cancel();
+                } else {
+                    viewer.close();
+                }
+            } finally {
+                closingViewer = false;
+            }
+        }
+
         viewer.addEventListener('click', function (event) {
-            if (event.target === viewer) viewer.close();
+            if (closingViewer) return;
+            if (event.target === viewer) closeViewer();
             var pane = event.target.closest('[data-wall-pane]')?.dataset.wallPane;
             if (pane) setViewerPane(viewerPaneName === pane ? '' : pane);
             var direction = Number(event.target.closest('[data-wall-step]')?.dataset.wallStep);
             if (direction) showViewerPhoto(viewerIndex + direction, direction);
         });
         viewer.addEventListener('cancel', function (event) {
-            if (!viewerPaneName) return;
             event.preventDefault();
-            setViewerPane('');
+            if (closingViewer) return;
+            if (viewerPaneName) setViewerPane('');
+            else closeViewer();
         });
         viewer.addEventListener('keydown', function (event) {
-            if (viewer.classList.contains('wall-viewer-portrait') || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+            if (closingViewer || viewer.classList.contains('wall-viewer-portrait') || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+            if (event.target.closest('input, textarea, select, [contenteditable]') && event.key !== 'Escape') return;
             var pane = event.key === '1' ? 'info' : event.key === '2' ? 'comments' : '';
             if (pane || (event.key === 'Escape' && viewerPaneName)) {
                 event.preventDefault();

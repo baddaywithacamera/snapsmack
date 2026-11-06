@@ -36,7 +36,7 @@
         },
         "glide": {
             "version": "0.1.17",
-            "files_sha256": "511962f855ee17013d56a127ddb7aa1dc9d7d928026319bec963ebe308b84ec1"
+            "files_sha256": "8bccda2bb3cce26ef715d734e2d3256c598da668c474fee3ac1dc04d96b928de"
         },
         "heuristic": {
             "version": "0.1.19",
