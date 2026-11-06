@@ -13,6 +13,8 @@
 
 ## 0.7.978D - 2026-11-06 - HEISENBERG DECOMPENSATOR
 
+- Page two of a search keeps the search term. The paging links carried the term under an internal name the router never reads, and pointed at a path that does not exist, so a second page of results came back as a second page of nothing in particular.
+- Search results now carry the same comment state as archive tiles: whether comments are open and how many there are.
 - THUMB STYLE's help text named the wrong skins. It reaches six, not three: NEW HORIZON and TRUE GRIT honour it as of this build and ONYX was never listed. The text now names all six and is checked against the rendered pages.
 - A short installed-verification list for this build, so each control can be checked on a real site.
 - The geometry and engine fixtures now carry the same stylesheet order as a live page. Both inlined the skin's stylesheet after the CMS presentation block instead of before it, which reversed the cascade and made a fixture show a skin's value winning where a real site shows the owner's.

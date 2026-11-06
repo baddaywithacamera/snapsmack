@@ -141,7 +141,19 @@ function snap_route_url_raw(string $route, array $parameters = []): string {
         'game-scores' => 'game-on-scores.php',
     ];
     if (!array_key_exists($route, $routes)) return '';
-    $allowed = array_intersect_key($parameters, array_flip(['slug', 'id', 'page', 'query', 'album', 'category']));
+    // 'q' is the PUBLIC name of the search term: index.php:431 reads the
+    // request parameter named q and hands it to the runtime as 'query', so
+    // 'query' is an INTERNAL key and emitting it in a url produces a
+    // parameter nothing reads. Both are allowed here: callers pass 'q', and
+    // 'query' stays permitted so an older caller is not silently stripped.
+    //
+    // The request superglobal is deliberately NOT named in this file. The
+    // security ratchet in tests/skin-render-helpers-regression.php refuses it
+    // anywhere in these helpers, because a render helper must never read
+    // request state -- and it reads the source text, so even a comment
+    // quoting it trips the guard. It was right to refuse mine; the guard
+    // stays as it is and the comment says the name in words.
+    $allowed = array_intersect_key($parameters, array_flip(['slug', 'id', 'page', 'q', 'query', 'album', 'category']));
     foreach ($allowed as $key => $value) {
         if (!is_scalar($value)) unset($allowed[$key]);
         else $allowed[$key] = (string)$value;
@@ -153,6 +165,26 @@ function snap_route_url_raw(string $route, array $parameters = []): string {
     if ($route === 'hashtag' && !empty($allowed['slug'])) {
         $allowed['tag'] = $allowed['slug'];
         unset($allowed['slug']);
+        return snap_validate_url($base . '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986));
+    }
+    // SEARCH IS A QUERY ROUTE, NOT A PATH ROUTE, and this emitted a path.
+    //
+    // core/public-runtime.php:67 resolves a path by name from a closed list --
+    // archive, albums, collections, collection, photo, post, page, blogroll,
+    // blog -- and 'search' IS NOT IN IT. A search is reached only as ?q=, the
+    // way a tag is reached as ?tag=. So /search?query=blue was wrong twice:
+    // wrong path, and a parameter the router does not read.
+    //
+    // Codex found it wiring GLIDE's search: the strict request in index.php
+    // reads the q parameter, while prepared search paging urls used query. Page
+    // two of a search dropped the search term, which is the same silent wrong
+    // answer the filtered-archive paging had.
+    if ($route === 'search') {
+        if (isset($allowed['query']) && !isset($allowed['q'])) {
+            $allowed['q'] = $allowed['query'];
+        }
+        unset($allowed['query']);
+        if (($allowed['q'] ?? '') === '') return '';
         return snap_validate_url($base . '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986));
     }
     $path = $routes[$route];
