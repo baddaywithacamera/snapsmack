@@ -91,6 +91,15 @@
         "predicates": 26,
         "thresholds": []
     },
+    "archive-item-info-and-comments-regression.php": {
+        "assertions": 0,
+        "predicates": 6,
+        "thresholds": [
+            2,
+            2,
+            3
+        ]
+    },
     "archive-pagination-loop-regression.php": {
         "assertions": 11,
         "predicates": 2,

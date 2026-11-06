@@ -389,8 +389,14 @@ final class SnapPublicRepository
             // pixhellated.ca came back orient-landscape. COALESCE on the
             // dimensions as well, because a row whose orientation was never
             // computed still knows its own width and height.
+            // allow_comments rides along because GLIDE's archive overlay opens
+            // a comments pane over a tile, and whether comments are OPEN on a
+            // photograph is a property of that photograph. Without it an
+            // archive item reached the skin with no way to answer the question,
+            // so an overlay could only either always offer the pane or never.
+            // One column on a query that already runs; no extra round trip.
             "SELECT i.id,i.img_title,i.img_slug,i.img_alt,i.img_file,i.img_width,i.img_height,
-                    i.img_thumb_square,i.img_thumb_aspect,
+                    i.img_thumb_square,i.img_thumb_aspect,i.allow_comments,
                     CASE
                       WHEN COALESCE(NULLIF(i.img_orientation,0),0) <> 0 THEN i.img_orientation
                       WHEN i.img_height > i.img_width THEN 1
@@ -535,6 +541,45 @@ final class SnapPublicRepository
              WHERE img_status='published' AND img_date <= NOW()
              ORDER BY id {$direction} LIMIT 1"
         );
+    }
+
+    /**
+     * How many approved comments each of these photographs has. ONE QUERY.
+     *
+     * GLIDE's archive overlay shows a comment count on a tile before anybody
+     * opens the pane. Asking approvedComments() per tile would be fifty
+     * queries for a page of fifty, to render fifty numbers, and the obvious
+     * next step after that is somebody deciding the count is not worth having.
+     *
+     * Returns [image_id => count] and only for ids that HAVE approved
+     * comments -- the caller reads it as `?? 0`, so a photograph with none
+     * costs nothing to represent. An empty id list returns an empty array
+     * without touching the database.
+     *
+     * Same three conditions as approvedComments(): approved, not spam, keyed
+     * on img_id. If that filter ever changes there, it has to change here, and
+     * a count that disagreed with the list it previews would be worse than no
+     * count.
+     */
+    public function approvedCommentCountsFor(array $imageIds): array {
+        $ids = [];
+        foreach ($imageIds as $id) {
+            $id = (int)$id;
+            if ($id > 0) $ids[$id] = true;
+        }
+        if ($ids === []) return [];
+        $ids = array_keys($ids);
+        $marks = implode(',', array_fill(0, count($ids), '?'));
+        $rows = $this->all(
+            "SELECT img_id, COUNT(*) AS n
+             FROM snap_comments
+             WHERE img_id IN ({$marks}) AND is_approved=1 AND is_spam=0
+             GROUP BY img_id",
+            $ids
+        );
+        $out = [];
+        foreach ($rows as $row) $out[(int)($row['img_id'] ?? 0)] = (int)($row['n'] ?? 0);
+        return $out;
     }
 
     public function approvedComments(?int $imageId, ?int $postId): array {
