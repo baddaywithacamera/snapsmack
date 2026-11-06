@@ -78,6 +78,7 @@ function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slu
         $about = $pdo->query("SELECT slug FROM snap_pages WHERE is_active = 1 AND slug = 'about' LIMIT 1");
         $aboutSlug = trim((string)($about ? $about->fetchColumn() : ''));
         if ($aboutSlug !== '') {
+            require_once __DIR__ . '/skin-render-helpers.php';
             $view['about_url'] = snap_route_url('page', ['slug' => $aboutSlug]);
         }
     } catch (Throwable $e) {
