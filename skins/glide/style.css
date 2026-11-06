@@ -1453,18 +1453,22 @@ body.glide-v2:has(.archive-grid, .blogroll-page) {
 .wall-panel .blogroll-peer { padding: 10px 0; border-top: 1px solid #ffffff26; }
 .wall-panel .blogroll-peer a { text-decoration: none; text-underline-offset: .2em; }
 .wall-panel .blogroll-peer a:is(:hover, :focus-visible) { text-decoration: underline; }
-.wall-panel[data-wall-panel="About"] { max-width: 760px; font-family: system-ui, sans-serif; }
+.wall-panel[data-wall-panel="About"] { max-width: 760px; padding: 0 36px 36px; font-family: system-ui, sans-serif; }
+.wall-panel[data-wall-panel="About"] > header { margin: 0 -36px 36px; padding-inline: 36px 10px; }
 .wall-panel[data-wall-panel="About"] .static-content:has(> .page-hero) {
     display: grid;
     grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
-    align-items: center;
+    align-items: stretch;
     gap: 36px;
     margin: 0;
-    padding: 12px;
+    padding: 0;
 }
 .wall-panel[data-wall-panel="About"] .page-hero { width: 100%; margin: 0; }
 .wall-panel[data-wall-panel="About"] .wall-portrait img { width: 100%; height: auto; max-height: 65vh; object-fit: contain; }
-.wall-panel[data-wall-panel="About"] .description { font: inherit; line-height: 1.5; }
+.wall-panel[data-wall-panel="About"] .description { display: flex; flex-direction: column; font: inherit; line-height: 1.5; }
+.wall-panel[data-wall-panel="About"] .description h2 { margin: 0; font-size: 1.125rem; }
+.wall-panel[data-wall-panel="About"] .description p { margin: 12px 0 0; }
+.wall-panel[data-wall-panel="About"] .description p:last-child { margin-top: auto; padding-top: 16px; }
 @media (max-width: 640px) {
     .wall-panel[data-wall-panel="About"] .static-content:has(> .page-hero) { grid-template-columns: 1fr; gap: 20px; }
 }
