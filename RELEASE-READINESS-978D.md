@@ -155,6 +155,7 @@ in Brain Trust, at 1920, 1440 and 1024.
 | 52-CARD-PICKUP archive | square cover, 6px card padding, shadow, and a 2px hover lift all **pass** |
 | GALLERIA FORCE SQUARE CROP | **1:1** with it set to Yes, **3:2** with it set to Original — **pass** both ways |
 | NEW HORIZON | 200x133 landscape and 150x225 portrait cropped; 200x200 square |
+| Filtered archive paging | Chrome clicked page 2 to 3 inside the GLIDE overlay; **both requests kept `album=7`** and the wall route stayed open — **pass** |
 
 Captures: `C:/dev/snapsmack-staging/archive-batch-8024` (pickup),
 `galleria-square-8024` and `galleria-original-8024`, `new-horizon-cropped` and
@@ -169,8 +170,11 @@ emits `.htbs-archive-item .frame-image{aspect-ratio: 1;}` and the original set
 emits `aspect-ratio: auto`. So his two runs were driven against the real states
 of the control, not the same page twice.
 
-**Still unchecked on all three, in his words:** real admin save, and installed
-render. Nobody has saved the control in a live admin and reloaded the site.
+**Still unchecked on all of these, in his words:** real admin save, and
+installed render. His paging run was a **CMS-rendered fixture replay**, not a
+live install — a real browser really did click through and keep the filter, but
+it was clicking a fixture. Nobody has saved any of these controls in a live
+admin and reloaded the site.
 
 ## What has to happen, and whose it is
 
