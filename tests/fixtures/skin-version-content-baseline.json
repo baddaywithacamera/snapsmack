@@ -59,8 +59,8 @@
             "files_sha256": "fcdfed16cb2d198c9eb7416ddf5f2089d76661c75e9731089ebe408057a147d2"
         },
         "new-horizon": {
-            "version": "1.3.27",
-            "files_sha256": "df7bacccfb906b5168fe6dd7de59173fce44c3b65ffec4ac145c827a094124e0"
+            "version": "1.3.28",
+            "files_sha256": "cf16d33bfb118905d51ea82176a81f13258449039733f53f775e580c6c47479d"
         },
         "onyx": {
             "version": "0.1.26",
