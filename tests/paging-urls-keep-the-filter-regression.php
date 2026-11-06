@@ -148,6 +148,122 @@ cx(snap_validate_url('javascript:alert(1)') === '' && snap_validate_url('//evil.
    'and the validation raw shares with the escaper still refuses a bad scheme '
    . 'and a protocol-relative url');
 
+echo "\nTHE RULED CONTRACT, RUN AS THE REAL CHAIN ON EVERY PAGED ROUTE\n";
+// The coordinator's ruling: raw, validated, RELATIVE -- same-origin route
+// output, no scheme, no host, no control characters -- and the skin escapes
+// ONCE. The named example is ?album=7&amp;page=4 with a single &amp;, so that
+// exact string is asserted rather than something near it.
+//
+// EVERY CASE BELOW RUNS THE WHOLE CHAIN: build through the runtime, then pass
+// the value through snap_escape_url() the way the template must, then read the
+// result. Asserting on the raw value alone would not have caught the fault
+// this replaces, because the raw value looked fine.
+$chain = static function (array $response): array {
+    $out = snapsmack_public_paging_urls($response);
+    return [
+        array_key_exists('previous_url', $out) ? $out['previous_url'] : 'ABSENT',
+        array_key_exists('next_url', $out) ? $out['next_url'] : 'ABSENT',
+    ];
+};
+$esc = static fn($v) => is_string($v) ? snap_escape_url($v) : $v;
+
+[, $albumNext] = $chain(['kind' => 'archive', 'page' => 3, 'next_page' => 4,
+    'previous_page' => 2, 'taxonomy' => ['album_id' => 7], 'total_pages' => 9]);
+cx($esc($albumNext) === '/archive?album=7&amp;page=4',
+   'the ruled example comes out exactly: /archive?album=7&amp;page=4 (got '
+   . $esc($albumNext) . ')');
+
+[, $catNext] = $chain(['kind' => 'archive', 'page' => 1, 'next_page' => 2,
+    'taxonomy' => ['category_id' => 5], 'total_pages' => 4]);
+cx($esc($catNext) === '/archive?category=5&amp;page=2',
+   'a category archive keeps its category (' . $esc($catNext) . ')');
+
+[, $searchNext] = $chain(['kind' => 'search', 'page' => 2, 'next_page' => 3,
+    'previous_page' => 1, 'query' => 'blue door', 'total_pages' => 6]);
+cx(str_contains((string)$esc($searchNext), 'query=blue%20door')
+   && str_contains((string)$esc($searchNext), '&amp;page=3')
+   && !str_contains((string)$esc($searchNext), '&amp;amp;'),
+   'a search keeps its query (' . $esc($searchNext) . ')');
+
+[, $tagNext] = $chain(['kind' => 'hashtag', 'page' => 1, 'next_page' => 2,
+    'slug' => 'street', 'total_pages' => 3]);
+// Order-independent on purpose: http_build_query emits the parameters in the
+// order the array holds them, and on this route page sorts ahead of tag. An
+// assertion that pinned "&amp;page=2" was testing the parameter ORDER, which
+// nothing promises and no browser cares about.
+cx(str_contains((string)$esc($tagNext), 'tag=street')
+   && str_contains((string)$esc($tagNext), 'page=2')
+   && substr_count((string)$esc($tagNext), '&amp;') === 1
+   && !str_contains((string)$esc($tagNext), '&amp;amp;'),
+   'a tag page keeps its tag, with one escaped ampersand (' . $esc($tagNext) . ')');
+
+echo "\nNULL AT BOTH ENDS, AFTER THE CHAIN AS WELL AS BEFORE IT\n";
+[$firstPrev, ] = $chain(['kind' => 'archive', 'page' => 1, 'next_page' => 2, 'total_pages' => 4]);
+cx($firstPrev === null, 'page one has no previous (got ' . var_export($firstPrev, true) . ')');
+[, $lastNext] = $chain(['kind' => 'archive', 'page' => 4, 'previous_page' => 3,
+    'next_page' => 0, 'total_pages' => 4]);
+cx($lastNext === null, 'the last page has no next (got ' . var_export($lastNext, true) . ')');
+[$backToOne, ] = $chain(['kind' => 'archive', 'page' => 2, 'previous_page' => 1, 'total_pages' => 4]);
+cx($esc($backToOne) === '/archive',
+   'and page two points back at the route with no ?page=1 (' . $esc($backToOne) . ')');
+
+echo "\nRELATIVE, NOT ABSOLUTE -- MEASURED WITH AN ABSOLUTE BASE_URL\n";
+// BASE_URL in this file is '/', so a relativisation fault would be INVISIBLE
+// here. The helper is therefore driven directly with the absolute form a live
+// install actually produces, which is how the gap was found in the first
+// place: index.php builds BASE_URL from site_url, so it is always absolute.
+cx(snap_same_origin_path('https://photowalk.ing/archive?album=7&page=4')
+   === '/archive?album=7&page=4',
+   'scheme and host are removed from a live-shaped url');
+cx(snap_same_origin_path('https://site.test/blog/archive?page=2')
+   === '/blog/archive?page=2',
+   'and a subdirectory install keeps its directory');
+cx(snap_same_origin_path('//evil.test/x') === ''
+   && snap_same_origin_path('javascript:alert(1)') === '',
+   'a protocol-relative or non-http url is refused outright');
+
+// AND THE RUNTIME MUST ACTUALLY USE IT. The three checks above pass even if
+// snapsmack_public_paging_urls() never calls the helper, because BASE_URL in
+// this file is '/' and relativising a relative url changes nothing. I found
+// that by mutating the runtime and watching this file stay green, which is the
+// same blind spot I have been repairing in other people's tests all week.
+//
+// BASE_URL is a constant and cannot be redefined here, so this runs the real
+// runtime in a SUBPROCESS with the absolute BASE_URL a live install produces
+// and reads the value back. Remove the call in the runtime and this goes red.
+$probe = escapeshellarg($root . '/tests/fixtures/paging-absolute-base-probe.php');
+// NO STDERR REDIRECT HERE, deliberately, and this comment does not spell one
+// out either. The test-strength gate records the digits either side of a
+// comparison operator, and a shell stderr redirect looks exactly like a
+// comparison against the number two -- so both the code AND a comment quoting
+// it get recorded as a threshold the file holds the code to. That is SS-1205's
+// artefact class. I removed the redirect, then had to remove it from my own
+// explanation of why: this is the fourth time today a comment of mine has
+// broken a check that reads source.
+//
+// If the probe writes to stderr it prints nothing here, json_decode fails, and
+// the assertion below reports the empty output.
+$raw = (string)shell_exec(escapeshellarg(PHP_BINARY) . ' ' . $probe);
+$probed = json_decode(trim($raw), true);
+cx(is_array($probed), 'the absolute-BASE_URL probe ran (' . trim($raw) . ')');
+cx(is_array($probed) && ($probed['next_url'] ?? null) === '/archive?album=7&page=4',
+   'under an absolute BASE_URL the runtime still hands the skin a RELATIVE url '
+   . '(got ' . var_export($probed['next_url'] ?? null, true) . ')');
+cx(is_array($probed) && !str_contains((string)($probed['next_url'] ?? ''), 'photowalk.ing'),
+   'and no host reaches the skin');
+
+echo "\nCONTROL CHARACTERS ARE REFUSED, NOT SILENTLY EDITED\n";
+// htmlspecialchars does not touch control characters, so a raw value carrying
+// one reaches the attribute intact. Refusing emits no link; stripping would
+// emit a DIFFERENT link while looking like the one asked for.
+foreach ([chr(10) => 'a newline', chr(9) => 'a tab', chr(0) => 'a null byte',
+          chr(13) => 'a carriage return'] as $ch => $what) {
+    cx(snap_same_origin_path('/archive?a=1' . $ch . 'x=2') === '',
+       $what . ' embedded in a url is refused');
+}
+cx(snap_same_origin_path('/archive?a=1') === '/archive?a=1',
+   'and an ordinary url still passes, so the check is not refusing everything');
+
 echo "\n{$pass} checks, {$fail} failed\n";
 exit($fail > 0 ? 1 : 0);
 // ===== SNAPSMACK EOF =====

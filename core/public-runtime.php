@@ -213,12 +213,16 @@ function snapsmack_public_paging_urls(array $response): array
     // with the raw helper and the template's own snap_escape_url() does the
     // single escape. snap_route_url_raw() still applies the same scheme
     // validation, so raw means un-escaped and never means unchecked.
+    // RELATIVE as well as raw, per the coordinator's ruling: same-origin path
+    // and query, no scheme, no host, no control characters. BASE_URL is
+    // absolute on every install, so the raw builder alone would hand a skin
+    // https://site.test/archive?... -- measured, not assumed.
     $response['next_url'] = $next > $pageNow
-        ? snap_route_url_raw($kind, $state + ['page' => $next]) : null;
+        ? snap_same_origin_path(snap_route_url_raw($kind, $state + ['page' => $next])) : null;
     // Page 2's previous is page 1, and page 1 is the route with NO page
     // parameter: a ?page=1 in a link works and still looks like a mistake.
     $response['previous_url'] = $prev >= 1
-        ? snap_route_url_raw($kind, $prev > 1 ? $state + ['page' => $prev] : $state)
+        ? snap_same_origin_path(snap_route_url_raw($kind, $prev > 1 ? $state + ['page' => $prev] : $state))
         : null;
     return $response;
 }

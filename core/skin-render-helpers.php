@@ -33,6 +33,53 @@ function snap_validate_url(mixed $value): string {
     return $url;
 }
 
+/**
+ * A route url reduced to SAME-ORIGIN PATH AND QUERY, or '' if it cannot be.
+ *
+ * The coordinator's ruling on the paging contract: the urls handed to a skin
+ * must be "raw, validated, relative (same-origin route output, no scheme/host,
+ * no control characters)". Raw and validated they already were; relative they
+ * were NOT. BASE_URL is absolute on every install -- index.php builds it from
+ * site_url -- so snap_route_url_raw() returns
+ * https://photowalk.ing/archive?category=7&page=4 on a live site, scheme and
+ * host included. I measured that rather than assuming the fixture's '/' was
+ * what a site sees.
+ *
+ * WHY THE HOST IS WORTH REMOVING from a value a template will print: it cannot
+ * be cross-origin by construction today, but it only stays same-origin while
+ * BASE_URL stays trustworthy, and a host in a paging link is a host that
+ * follows a site to a new domain and sends its own visitors somewhere else.
+ * Path and query is all a paging link needs.
+ *
+ * A SUBDIRECTORY INSTALL KEEPS ITS DIRECTORY: parse_url's path on
+ * https://site.test/blog/archive is /blog/archive, so the base path survives.
+ *
+ * CONTROL CHARACTERS ARE REFUSED, NOT STRIPPED. Stripping edits a url into a
+ * different url and emits it as though it were the one asked for; refusing
+ * emits nothing and the link is simply absent. htmlspecialchars does not
+ * touch control characters, so a raw value carrying one would reach the
+ * attribute intact -- which is the whole reason this is checked here and not
+ * left to the escaper.
+ */
+function snap_same_origin_path(mixed $value): string {
+    $url = snap_validate_url($value);
+    if ($url === '') return '';
+    // Every C0 control byte, plus DEL. Also refuses a literal newline or
+    // tab, which can
+    // break an attribute apart.
+    if (preg_match('/[\x00-\x1F\x7F]/', $url)) return '';
+    if (str_starts_with($url, '//')) return '';
+    $parts = parse_url($url);
+    if ($parts === false) return '';
+    $path = (string)($parts['path'] ?? '');
+    if ($path === '') $path = '/';
+    if (!str_starts_with($path, '/')) $path = '/' . $path;
+    $query = isset($parts['query']) && $parts['query'] !== '' ? '?' . $parts['query'] : '';
+    $out = $path . $query;
+    // Belt and braces: whatever came in, what goes out is one leading slash.
+    return str_starts_with($out, '//') ? '' : $out;
+}
+
 function snap_escape_url(mixed $value): string {
     $url = snap_validate_url($value);
     if ($url === '') return '';
