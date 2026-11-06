@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "GLIDE",
-    "version": "0.1.20",
+    "version": "0.1.21",
     "scrolltime_pages": ["landing", "archive"],
     "min_images": 50,
     "author": "Sean McCormick, OpenAI Codex",
