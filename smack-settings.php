@@ -585,7 +585,7 @@ include 'core/sidebar.php';
 
                         <?php $show_thumb_style = ($settings['archive_layout'] ?? 'masonry') === 'thumbs'; ?>
                         <div class="lens-input-wrapper<?php echo $show_thumb_style ? '' : ' d-none'; ?> mt-10" id="archive-thumb-style-wrap">
-                            <label>THUMB STYLE <span class="field-tip" data-tip="In the Thumbs layout: NATURAL ASPECT keeps each photograph&#039;s own proportions, so tiles differ in height. SQUARE CROP crops every photograph to a 1:1 tile, so the grid is even. Applies to whichever skin is active.">ⓘ</span></label>
+                            <label>THUMB STYLE <span class="field-tip" data-tip="In the Thumbs layout: NATURAL ASPECT keeps each photograph&#039;s own proportions, so tiles differ in height. SQUARE CROP crops every photograph to a 1:1 tile, so the grid is even.&#10;&#10;IT DOES NOT APPLY TO EVERY SKIN. It only changes anything on a skin whose archive draws a thumbs grid that reads this setting. Measured 6 Nov 2026, that is 50 SHADES, CHAPLIN and IMPACT PRINTER. HIP-TO-BE-SQUARE is square by design and ignores it deliberately. NEW HORIZON and TRUE GRIT draw a square grid regardless (SS-1043). The rest do not read it, so changing it will look like nothing happened -- because nothing did.">ⓘ</span></label>
                             <select name="settings[archive_thumb_style]">
                                 <option value="cropped" <?php echo (($settings['archive_thumb_style'] ?? 'cropped') === 'cropped') ? 'selected' : ''; ?>>NATURAL ASPECT (DEFAULT)</option>
                                 <option value="square"  <?php echo (($settings['archive_thumb_style'] ?? 'cropped') === 'square')  ? 'selected' : ''; ?>>SQUARE CROP (1:1)</option>
