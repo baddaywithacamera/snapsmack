@@ -301,11 +301,32 @@ final class SnapPublicRepository
     /** Public blogroll presentation data; provenance and administrative fields stay private. */
     public function blogrollPeers(): array {
         return $this->all(
+            // snap_blogroll HAS CARRIED A sort_order COLUMN ALL ALONG AND
+            // NOTHING HAS EVER READ IT. It is in the canonical schema, int
+            // NOT NULL DEFAULT 0, and a grep of the whole repository finds no
+            // reader and no writer -- so an owner could not put their own
+            // blogroll in their own order, and the column sat there looking
+            // like the feature it was not.
+            //
+            // THE TIEBREAK MAKES THIS A NO-OP UNTIL SOMEBODY USES IT. Every
+            // existing row is 0, so ordering by sort_order and THEN by
+            // peer_name produces exactly the alphabetical order these pages
+            // already show. No live blogroll moves on the day this ships; it
+            // moves when an owner decides it should.
+            //
+            // sort_order comes second, after the category, because the page
+            // groups by category -- ordering by it first would scatter a
+            // group across the page.
+            // sort_order is NOT selected on purpose. It decides the order and
+            // nothing more: the controller rebuilds each item from name, url
+            // and description, so a selected sort_order would travel nowhere
+            // and sit in the result looking like something a skin could read.
+            // That is the exact shape of the fault this change repairs.
             "SELECT b.peer_name,b.peer_url,b.peer_desc,c.cat_name
              FROM snap_blogroll b
              LEFT JOIN snap_blogroll_cats c ON c.id=b.cat_id
              WHERE b.peer_url IS NOT NULL AND b.peer_url<>''
-             ORDER BY c.cat_name,b.peer_name"
+             ORDER BY c.cat_name,b.sort_order,b.peer_name"
         );
     }
 

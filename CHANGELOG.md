@@ -13,6 +13,7 @@
 
 ## 0.7.978D - 2026-11-06 - HEISENBERG DECOMPENSATOR
 
+- The blogroll can be put in the owner's own order. Each peer now has an "Order Within Category" number on the blogroll page; leave them all at 0 and the list stays alphabetical exactly as it is today.
 - The fleet skin update now includes the hub itself, so the site running the push is no longer the one site it never reached.
 - Skin templates can page an archive in both directions, with the active album, category or search already in the links, so paging a filtered archive stays filtered.
 - An archive tile carries its own photograph link, whether comments are open on it and how many there are.
