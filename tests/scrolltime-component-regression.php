@@ -75,12 +75,32 @@ try {
 
 // ---------------------------------------------------------------------------
 echo "\nA SKIN THAT ASKS FOR NOTHING GETS NOTHING\n";
-// No installed skin declares scrolltime_pages yet, so any real slug proves the
-// ungranted path without touching a single file.
+// FOUND, NOT NAMED. I wrote "no installed skin declares scrolltime_pages yet,
+// so any real slug proves the ungranted path" and hardcoded true-grit. Then
+// TRUE GRIT declared 'archive', the assertion became false, and the OFFICIAL
+// RELEASE GATE STOPPED on it -- holding up fourteen skin updates over a skin
+// name I had baked into a test as though it would never change.
+//
+// A test about "a skin that declares nothing" must FIND one. It must also cope
+// with the day every skin declares something: then there is no such skin, the
+// case cannot be observed, and it says so rather than passing on a slug it
+// invented or failing on one that moved on.
 $GLOBALS['settings'] = ['site_mode' => 'photoblog'];
 $GLOBALS['snapsmack_hit'] = ['id' => 11, 'page_type' => 'landing'];
-$out = (string)snap_render_component('scroll-time', ['site' => ['skin_slug' => 'true-grit']]);
-cx($out === '', "TRUE GRIT declares no scrolltime_pages, so it is handed nothing");
+$undeclared = '';
+foreach (glob($root . '/skins/*/manifest.json') ?: [] as $mf) {
+    $slug = basename(dirname($mf));
+    $m = load_skin_manifest($slug);
+    $pages = is_array($m['scrolltime_pages'] ?? null) ? $m['scrolltime_pages'] : [];
+    if ($pages === []) { $undeclared = $slug; break; }
+}
+if ($undeclared === '') {
+    echo "  --    NOT CHECKED: every installed skin now declares scrolltime_pages,\n";
+    echo "        so there is no ungranted skin to observe. Stated, not skipped.\n";
+} else {
+    $out = (string)snap_render_component('scroll-time', ['site' => ['skin_slug' => $undeclared]]);
+    cx($out === '', "{$undeclared} declares no scrolltime_pages, so it is handed nothing");
+}
 
 $out = (string)snap_render_component('scroll-time', ['site' => ['skin_slug' => '']]);
 cx($out === '', 'no skin slug at all is handed nothing rather than erroring');
