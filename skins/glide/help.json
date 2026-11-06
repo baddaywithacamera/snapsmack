@@ -1,0 +1,17 @@
+{
+    "skin_name": "GLIDE",
+    "topics": [
+        {
+            "title": "The Photograph Wall",
+            "body": "<p>Drag or scroll over a band to browse its photographs. Click or tap a photograph to open it in the lightbox. Use the fullscreen icon in the top-right navigation where the browser supports fullscreen.</p><p>In Skin Admin, use Idle Motion and Idle Speed to control how the bands move on their own. Flow Orientation and Fine Angle Adjustment set the direction and tilt of the wall. Photo Row Height, Space Between Photos, and Wheel / Drag Sensitivity control the scale, spacing, and feel.</p>"
+        },
+        {
+            "title": "Archive, Search, Blogroll and About",
+            "body": "<p>Use the Archive icon to browse the photo grid over the wall. Hover over a tile to reveal its title, or select it to open the photo. The magnifying glass at the bottom right of the landing page expands into a search field. Enter a term to browse matching photographs.</p><p>Blogroll opens over the wall. The About icon appears when an About page is available. Set Header Logo in Skin Admin to use an image in place of the site name.</p>"
+        },
+        {
+            "title": "Lightbox and Keyboard Controls",
+            "body": "<p>Use the left and right arrows to flip through photographs. Hover over the photograph to reveal its title and the Info and Comments buttons. Select a button or press <kbd>1</kbd> for Info or <kbd>2</kbd> for Comments. Press the same key again to close its panel. The Comments panel uses the site's comment settings.</p><p>Press <kbd>Esc</kbd> to close an open panel, then press it again to close the lightbox. Use the Photo Title, Photo Title Font, Photo Title Size, and Photo Title Weight settings in Skin Admin to control the title. Press <kbd>F1</kbd> on the public site for keyboard help.</p>"
+        }
+    ]
+}

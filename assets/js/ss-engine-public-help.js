@@ -243,10 +243,10 @@
     function buildModal() {
         var c = getThemeColors();
 
-        var backdrop = document.createElement('div');
+        var backdrop = document.createElement('dialog');
         backdrop.id = 'snap-public-help-backdrop';
         backdrop.style.cssText =
-            'position:fixed;inset:0;z-index:2147483647;display:none;' +
+            'position:fixed;inset:0;z-index:2147483647;display:none;margin:0;border:0;padding:0;width:100vw;height:100vh;max-width:none;max-height:none;' +
             'background:' + c.scrim + ';align-items:center;justify-content:center;cursor:pointer;';
 
         var panel = document.createElement('div');
@@ -306,6 +306,7 @@
             if (e.target === backdrop) close();
         });
 
+        backdrop.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
         document.body.appendChild(backdrop);
         return backdrop;
     }
@@ -317,12 +318,13 @@
         // the colours from that moment for the rest of the page view.
         if (modal && modal.parentNode) modal.parentNode.removeChild(modal);
         modal = buildModal();
+        modal.showModal();
         modal.style.display = 'flex';
         isOpen = true;
     }
 
     function close() {
-        if (modal) modal.style.display = 'none';
+        if (modal) { modal.close(); modal.style.display = 'none'; }
         isOpen = false;
     }
 

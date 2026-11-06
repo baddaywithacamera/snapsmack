@@ -1,5 +1,1099 @@
 /* SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
-@import url('../scroll/style.css');
+/* Shared presentation baseline bundled here so GLIDE installs independently. */
+/**
+ * SCROLL — SMACKONEOUT solo skin
+ * The whole car is somebody else's problem.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+:root {
+    --scroll-canvas-width: 1500px;
+    /* Landing wall/header width as a PERCENTAGE of the window, so it adapts to
+       any screen resolution instead of a fixed pixel cap. Admin: "Wall Width
+       (% of window)". Header, browse-tools and wall all use this one value, so
+       their left/right edges line up. */
+    --scroll-canvas-pct: 90%;
+    --scroll-row-height: 280px;
+    --scroll-row-unit: 10px;
+    --scroll-tile-gap: 0px;
+    --scroll-title-angle: 18deg;
+    --scroll-title-size: 6vw;
+    --scroll-corner-radius: 0;
+    --scroll-border-width: 0;
+    --scroll-border-color: #fff;
+    --scroll-bg: #ffffff;
+    --scroll-text: #3a3a3a;
+    --scroll-footer-text: #3a3a3a;
+    /* Community LIKE chip is VISUALLY IDENTICAL to the top nav icons — it reads the same
+       --dock-* variables the nav chips use (transparent fill, hairline border, dark
+       line-art glyph). On click ONLY the heart turns red (--ss-heart-color's default);
+       the circle's fill and border stay the nav-icon colours, unchanged. No new sliders. */
+    --ss-cdock-bg: transparent;
+    --ss-cdock-border: rgba(26, 26, 26, .3);
+    --ss-cdock-icon: #1a1a1a;
+    --ss-cdock-opacity: 1;
+    --ss-heart-outline: #1a1a1a;
+    /* Solo running-head blog name size (admin: "Blog Name Size" on the solo page). */
+    --scroll-solo-name-size: 1.05rem;
+    /* Keyboard/help overlay + shared core widgets (calendar, search dock, contact form)
+       read these generic theme names. SCROLL never set them, so the help modal fell back
+       to its dark terminal defaults (near-black panel, neon-green accent) and clashed on
+       this light skin. Map them onto SCROLL's palette: the modal now follows the page,
+       and its accent is a settable colour (admin: "Help Overlay Accent"). */
+    --bg-primary: var(--scroll-bg, #ffffff);
+    --page-bg: var(--scroll-bg, #ffffff);
+    --text-primary: var(--scroll-text, #3a3a3a);
+    --text-secondary: #8a8a8a;
+    --accent-color: #1a1a1a;   /* fallback before compile; the "Help Overlay Accent" control overrides this */
+}
+
+* { box-sizing: border-box; }
+/* Reserve the scrollbar gutter so the wall's content width never changes when a
+   vertical scrollbar appears. Without this, the justified engine sizes rows to
+   the wider (no-scrollbar) width, the tall result adds a scrollbar, and every
+   row ends up a hair too wide → the last tile wraps → ragged, under-filled rows
+   that read as "not centred". Stable gutter = the engine measures once, right. */
+html { overflow-y: scroll; scrollbar-gutter: stable; }
+html, body { margin: 0; min-height: 100%; }
+body {
+    background: var(--scroll-bg);
+    color: var(--scroll-text);
+    font-family: "DM Sans", sans-serif;
+}
+a { color: inherit; }
+
+.scroll-profile {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(320px, 1.7fr) minmax(150px, 1fr);
+    align-items: center;
+    /* SAME width + centring as the wall, so the byline (left) and the nav icons
+       (right) line up with the OUTSIDE edges of the photo grid. Horizontal
+       padding is gone — the width does the insetting now. Top and bottom padding
+       are EQUAL, so the masthead has the same space above and below it and stays
+       put when you resize or change the masthead's size/angle. (There used to be a
+       +36px top-ONLY fudge here to offset the old SHOW ALL/FILTER browse bar that
+       sat below the header. That bar is gone; the fudge only made the padding
+       asymmetric and jumpy — verified live it put the masthead 18px low of centre.
+       Do NOT bring it back.)
+       overflow MUST stay `visible` (see the overflow line below). */
+    width: var(--scroll-canvas-pct, 90%);
+    margin: 0 auto;
+    min-height: clamp(140px, 9vw, 200px);
+    /* Symmetric top+bottom via ONE value (admin: "Space Above & Below Masthead")
+       so it can never go asymmetric again. Fallback keeps the old responsive clamp
+       for installs that haven't set the control. */
+    padding: var(--scroll-masthead-pad, clamp(18px, 2vw, 32px)) 0;
+    /* MUST be visible: `hidden` clipped the filter panel + search dropdown (both are
+       position:absolute children that extend below the header), which made the filter
+       unreadable. The tilted masthead's only spill is transparent corners that sit
+       BEHIND the photos, so nothing shows or blocks clicks; verified no h-scroll. */
+    overflow: visible;
+}
+.scroll-photographer {
+    align-self: center;
+    justify-self: start;
+    font-size: .82rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+}
+.scroll-byline-prefix,
+.scroll-byline-name {
+    display: block;
+}
+/* Independent size controls for the two byline lines (admin: Byline Prefix Size
+   / Photographer Name Size). Fall back to the block's .82rem if unset. */
+.scroll-byline-prefix {
+    font-size: var(--scroll-byline-prefix-size, .82rem);
+}
+.scroll-byline-name {
+    margin-top: .32rem;
+    font-weight: 700;
+    font-size: var(--scroll-byline-name-size, .82rem);
+}
+.scroll-masthead {
+    grid-column: 2;
+    margin: 0;
+    font-family: "Archivo Black", sans-serif;
+    font-size: clamp(2.75rem, var(--scroll-title-size), 7.5rem) !important;
+    /* Render at the chosen font's OWN weight so it matches the admin font-picker
+       preview. This must be set explicitly to `normal`: .scroll-masthead is an
+       <h1>, whose default UA weight is bold (700), so merely dropping the old
+       900 would still leave it bold. The default Archivo Black is already an
+       ultra-black face and ignores this; a lighter picked font is no longer
+       faux-bolded (which thickened/smeared any font lacking a real heavy cut). */
+    font-weight: normal;
+    line-height: .78;
+    letter-spacing: -.06em;
+    text-align: center;
+    text-transform: none;   /* respect the case the owner typed (e.g. "Used Car Parts") */
+    transform: rotate(calc(var(--scroll-title-angle) * -1));
+}
+.scroll-masthead span {
+    display: block;
+    white-space: nowrap;
+}
+/* Masthead LOGO mode (admin: "Masthead Logo"). The logo replaces the title text;
+   the real title stays in the <h1> as .scroll-visually-hidden text so the heading
+   keeps its SEO + screen-reader value. Logo sits upright (no tilt) and is sized by
+   the "Masthead Logo Height" control. */
+.scroll-masthead.has-logo { transform: none; }
+.scroll-masthead-logo {
+    display: block;
+    height: var(--scroll-masthead-logo-h, 120px);
+    width: auto;
+    max-width: 100%;
+    margin: 0 auto;
+    object-fit: contain;
+}
+/* In the page source but not on screen — keeps a real, titled <h1> for SEO and
+   assistive tech while the logo image carries the visual. */
+.scroll-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+.scroll-profile > .scroll-sticky-nav {
+    grid-column: 3;
+    justify-self: end;
+    justify-content: flex-end;
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    backdrop-filter: none;
+    color: inherit;
+}
+.scroll-profile > .scroll-sticky-nav .ss-grid-nav-identity {
+    display: none;
+}
+.scroll-profile > .scroll-sticky-nav .ss-grid-nav-link {
+    /* On the landing masthead the nav sits on the page background, but the chip
+       carries its own colour, so the glyph follows the dock icon colour rather
+       than inheriting the page text colour. Always fully opaque. */
+    color: var(--dock-icon, #1a1a1a) !important;
+    opacity: 1 !important;
+}
+.scroll-profile > .scroll-sticky-nav .ss-grid-nav-link svg {
+    display: block;
+    opacity: 1;
+}
+.scroll-nav-search {
+    position: relative;
+}
+.scroll-nav-search > summary {
+    list-style: none;
+    cursor: pointer;
+}
+.scroll-nav-search > summary::-webkit-details-marker {
+    display: none;
+}
+.scroll-nav-search-panel {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 8px);
+    right: 0;
+    display: flex;
+    width: min(360px, calc(100vw - 32px));
+    padding: 8px;
+    color: #181818;
+    background: #fff;
+    border: 1px solid currentColor;
+    box-shadow: 0 10px 30px rgba(0,0,0,.18);
+}
+.scroll-nav-search-panel input {
+    min-width: 0;
+    flex: 1;
+    padding: 9px 10px;
+    color: #181818;
+    background: #fff;
+    border: 1px solid #aaa;
+    font: inherit;
+}
+.scroll-nav-search-panel button {
+    padding: 0 12px;
+    color: #fff;
+    background: #181818;
+    border: 0;
+    font: 700 .72rem/1 "DM Sans", sans-serif;
+    letter-spacing: .1em;
+    cursor: pointer;
+}
+.scroll-profile > .scroll-sticky-nav.profile-hidden {
+    /* FULL-WIDTH FIXED BAR. Pin all three edges and override the inline nav's
+       grid-column:3 / justify-self:end — without the explicit left/right/width a
+       position:fixed element shrinks to its content and parks in the corner it
+       was in, which is the top-right pill this replaces.
+       Background opacity is driven by --scroll-nav-alpha (admin: Sticky Bar
+       Opacity); default 0.94. */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 9000;
+    display: flex;
+    /* Bar background is full-bleed, but its CONTENT insets to the wall's edges so
+       the name (left) and icons (right) line up with the photo grid's outer edges.
+       Inset = half the leftover once the wall takes its --scroll-canvas-pct width. */
+    padding: 8px calc((100% - var(--scroll-canvas-pct, 90%)) / 2);
+    color: inherit;
+    background: rgba(255, 255, 255, var(--scroll-nav-alpha, .94));
+    border-bottom: 1px solid rgba(0, 0, 0, .18);
+    backdrop-filter: blur(14px);
+}
+.scroll-profile > .scroll-sticky-nav.profile-hidden .ss-grid-nav-identity {
+    display: flex;
+    margin-right: auto;   /* identity hard left; links + socials clump right */
+}
+/* Static / photo pages: the header is an ALWAYS-VISIBLE fixed bar (skin-header.php).
+   Give it the same white bar + name-left / icons-right treatment as the landing's
+   scrolled sticky bar, so every page shares one consistent header. */
+.scroll-sticky-nav.ss-grid-nav-always-visible {
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, var(--scroll-nav-alpha, .94));
+    border-bottom: 1px solid rgba(0, 0, 0, .18);
+    backdrop-filter: blur(14px);
+    color: inherit;
+}
+.scroll-sticky-nav.ss-grid-nav-always-visible .ss-grid-nav-identity {
+    display: flex;
+    margin-right: auto;   /* name hard left; links + socials clump right */
+}
+
+.scroll-wall {
+    width: var(--scroll-canvas-pct, 90%);
+    margin: 0 auto;
+    padding-bottom: 0;
+}
+
+/* The wall carries TWO classes -- scroll-wall and, from the layout control,
+   either ss-masonry or ss-square-wall. .ss-masonry below sets width:100% and
+   sits later in this file at equal specificity, so it won the cascade and the
+   side margins disappeared: measured 1585px in a 1600px viewport, where 90%
+   is 1426px. Sean's reference has wide margins either side.
+   Naming both classes raises specificity so the owner's Canvas Width control
+   is honoured again. Measured after: 1426px, 89% of the viewport, centred. */
+.scroll-wall.ss-masonry,
+.scroll-wall.ss-scroll-wall,
+.scroll-wall.ss-square-wall {
+    width: var(--scroll-canvas-pct, 90%);
+    margin: 0 auto;
+}
+.scroll-browse-tools {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    width: var(--scroll-canvas-pct, 90%);
+    min-height: 0;
+    /* the gap above the photos = the wall gutter, matching the spacing between
+       photos rather than a big dead band */
+    margin: 0 auto var(--ss-gap, 12px);
+    padding-top: var(--ss-gap, 12px);
+}
+.scroll-browse-link,
+.scroll-search-label {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-decoration: none;
+    text-transform: uppercase;
+}
+/* ── Four-column photo wall. ss-engine-columns.js positions every tile
+      absolutely: fixed columns, each photograph at its OWN aspect ratio, never
+      cropped. Because every column is the same width, a 2:3 portrait covers
+      2.25x the area of a 3:2 landscape with no special-casing — that ratio IS
+      the portrait emphasis, so do not add a multiplier on top of it.
+
+      The CSS owns the column count, the gutter and the tile chrome. The engine
+      owns every pixel of geometry and writes left/top/width/height inline. If a
+      property here would move or resize a tile, it does not belong in this
+      file — `gap` in particular is arithmetic the engine performs, not a CSS
+      property, so the container must NOT be a flex or grid box. ── */
+.ss-masonry {
+    --ss-cols: 4;              /* columns across. Four. */
+    position: relative;
+    display: block;
+    width: 100%;
+}
+.ss-square-wall {
+    --ss-square-cols: 4;
+    display: grid;
+    grid-template-columns: repeat(var(--ss-square-cols), minmax(0, 1fr));
+    gap: var(--ss-gap, 6px);
+    width: 100%;
+}
+.ss-square-wall .ss-masonry-item {
+    box-sizing: border-box;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+    margin: 0;
+}
+.ss-square-wall .ss-masonry-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.ss-masonry-item {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border: var(--scroll-border-width) solid var(--scroll-border-color);
+    border-radius: var(--scroll-corner-radius);
+    background: #111;
+}
+.ss-masonry-item img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 180ms ease, opacity 180ms ease;
+}
+.scroll-item-title {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    padding: clamp(12px, 3vw, 32px);
+    color: #fff;
+    background: rgba(0, 0, 0, .62);
+    font-size: clamp(.9rem, 1.5vw, 1.35rem);
+    line-height: 1.2;
+    text-align: center;
+    text-wrap: balance;
+    opacity: 0;
+    transition: opacity 180ms ease;
+    pointer-events: none;
+}
+.ss-masonry-item:hover img,
+.ss-masonry-item:focus-visible img { transform: scale(1.015); }
+.ss-masonry-item:hover .scroll-item-title,
+.ss-masonry-item:focus-visible .scroll-item-title { opacity: 1; }
+.scroll-empty { padding: 15vh 0; text-align: center; }
+/* Infinite-scroll tripwire — ss-engine-columns.js observes it and appends the
+   next page into the wall. Near-zero height so it adds no visible gap. */
+.scroll-wall-sentinel { height: 1px; width: 100%; }
+
+/* ── Landing filter modal ─────────────────────────────────────────────────
+   Reuses the core archive filter panel + ss-engine-archive-filter.js; the .saf
+   styles are copied here (light-themed for SCROLL) so the whole archive CSS
+   isn't dragged onto the landing. The funnel is a <button> wearing the nav chip;
+   the panel drops from it and, on selection, the JS reloads the archive masonry
+   filtered. */
+.scroll-nav-filter { position: relative; display: inline-flex; }
+.scroll-nav-filter > button.ss-grid-nav-link { font: inherit; cursor: pointer; }
+.saf-wrap { position: relative; }
+.saf-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 950;
+    min-width: 300px;
+    max-width: 360px;
+    max-height: 70vh;
+    overflow-y: auto;
+    background: #fff;
+    color: #1a1a1a;
+    border: 1px solid rgba(0, 0, 0, .15);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, .22);
+    border-radius: 4px;
+    padding: 8px 0 6px;
+    text-align: left;
+}
+.saf-panel.saf-panel--open { display: block; }
+.saf-search {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 16px;
+    margin-bottom: 4px;
+    background: #f4f4f4;
+    border: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, .12);
+    color: #1a1a1a;
+    font: 600 .72rem/1 "DM Sans", sans-serif;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    outline: none;
+}
+.saf-group-header { padding: 8px 16px 3px; font-size: .64rem; letter-spacing: .18em; color: #999; text-transform: uppercase; }
+.saf-group + .saf-group { margin-top: 4px; border-top: 1px solid rgba(0, 0, 0, .08); padding-top: 4px; }
+.saf-item { display: flex; align-items: center; gap: 10px; padding: 7px 16px; cursor: pointer; font-size: .78rem; color: #222; }
+.saf-item:hover { background: rgba(0, 0, 0, .05); }
+.saf-checkbox { flex-shrink: 0; width: 14px; height: 14px; accent-color: #1a1a1a; cursor: pointer; }
+.saf-label { flex: 1; text-transform: uppercase; letter-spacing: .04em; line-height: 1.3; }
+
+.scroll-sticky-nav {
+    color: inherit;
+    background: rgba(255,255,255,.94);
+    border-bottom: 1px solid rgba(0,0,0,.18);
+    backdrop-filter: blur(14px);
+    /* One gap for the WHOLE row. The nav's three groups (identity | links |
+       dock) each space their own icons at 8px, but nothing sat between the
+       groups — so the last nav icon and the first dock icon butted together
+       while every other pair had 8px. Setting the parent gap to the same 8px
+       makes the entire icon run evenly spaced. */
+    gap: 8px;
+}
+.scroll-sticky-nav .ss-grid-nav-name {
+    /* The blog name as a small running head in the sticky bar — the masthead that
+       scrolled away, shrunk. Font family follows the "Masthead Font" control
+       (its selector includes this element); Archivo Black is the fallback before a
+       pick. Case is respected like the masthead, not force-uppercased. */
+    font-family: "Archivo Black", sans-serif;
+    font-size: var(--scroll-stickyname-size, 1.05rem);
+    letter-spacing: -.02em;
+    text-transform: none;
+    text-decoration: none;
+    /* Optical centring for display faces such as Special Elite. Their metric
+       line box is centred correctly, but the visible ink sits high because of
+       a deep mostly-empty descender area. Keep the correction em-relative so
+       it follows the Sticky Bar Name Size control. */
+    transform: translateY(0.14em);
+}
+/* ── Primary nav icons wear the SOCIAL DOCK chip. ───────────────────────────
+   The social dock (core/social-dock.php + assets/css/ss-engine-social-dock.css)
+   must look identical on every skin, so it is NOT restyled — the nav icons are
+   restyled to match IT. Each nav icon becomes the same filled circular chip:
+   the same --dock-* custom properties (with the dock's light-mode defaults as
+   fallbacks, since the dock sets those variables only on its own element), the
+   same 40px inline size, the same 20px glyph.
+
+   ONE deliberate difference: the dock activates on hover (idle-translucent).
+   This is PRIMARY navigation and is ALWAYS 100% visible — opacity is pinned to
+   1 and there is no idle fade. Only the background/border deepen on hover. ── */
+.scroll-sticky-nav .ss-grid-nav-link {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    /* SCROLL is a light skin, so the chip is a faint hairline ring with a dark
+       line-art glyph — matching the social dock set to "Dark icons (for light
+       sites)" + Outline. Reads the same --dock-* variables the dock uses, with
+       light-site fallbacks, so nav and dock stay one family. */
+    background: var(--dock-bg, transparent);
+    border: 2px solid var(--dock-border, rgba(26, 26, 26, .3));
+    color: var(--dock-icon, #1a1a1a);
+    opacity: 1;
+    transition: background .15s ease, border-color .15s ease;
+}
+.scroll-sticky-nav .ss-grid-nav-link:hover,
+.scroll-sticky-nav .ss-grid-nav-link:focus-visible {
+    background: var(--dock-bg-hover, rgba(255, 255, 255, .95));
+    border-color: var(--dock-border-hover, rgba(26, 26, 26, .7));
+}
+.scroll-sticky-nav .ss-grid-nav-link svg { width: 20px; height: 20px; }
+/* The floating dock pops 1.1x on hover; inline in the nav that enlarged edge
+   icon gets clipped by the profile's overflow:hidden ("cut off on the right").
+   The nav chips don't scale, so neither should the inline dock — drop the pop. */
+.scroll-sticky-nav .social-dock-inline .dock-link:hover,
+.scroll-sticky-nav .social-dock-inline .dock-link:focus-visible {
+    transform: none;
+}
+/* Community LIKE chip reads as one of the nav icons: same 40px size / 20px glyph (not
+   the core dock's 48px). Colours come from the --dock-* mapping in :root; it stays
+   centred (the like count is an absolute corner badge in core). */
+/* High specificity (0,3,0) so it beats core .ss-cdock-btn (0,1,0) regardless of how
+   --ss-cdock-* resolve. Chip = the nav icons' rendered look: transparent fill, hairline
+   dark border, 40px. On click ONLY the heart glyph turns red (core rule); circle stays
+   transparent + hairline. */
+.ss-community-dock .ss-cdock-btn.ss-cdock-heart {
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    border-color: rgba(26, 26, 26, .3);
+    color: #1a1a1a;
+    opacity: 1;
+}
+.ss-community-dock .ss-cdock-btn.ss-cdock-heart.is-active {
+    background: transparent;
+    border-color: rgba(26, 26, 26, .3);
+}
+.ss-community-dock .ss-cdock-heart .ss-cdock-heart-svg svg {
+    width: 20px;
+    height: 20px;
+}
+/* Like-count badge is HIDDEN by default, so it does not sit on the heart on every
+   page load (the old rule faded it in for ~2s each load, which read as "always on"
+   while browsing photo-to-photo). It appears only on hover/focus of the chip — and
+   since you are hovering the heart the instant you like a photo, the count still ticks
+   up right when you click, then tucks away as soon as you move off. */
+.ss-community-dock .ss-cdock-heart .ss-cdock-rx-count {
+    opacity: 0;
+    transition: opacity .18s ease;
+}
+.ss-community-dock .ss-cdock-heart:hover .ss-cdock-rx-count,
+.ss-community-dock .ss-cdock-heart:focus-visible .ss-cdock-rx-count,
+.ss-community-dock:focus-within .ss-cdock-heart .ss-cdock-rx-count,
+.ss-community-dock:hover .ss-cdock-heart .ss-cdock-rx-count {
+    opacity: 1;
+}
+/* Blogroll: never display the raw URL string under an entry — the name stays linked. */
+.blogroll-peer-url { display: none !important; }
+
+.scroll-profile-compact {
+    display: block;
+    min-height: 0;
+    padding: 0;
+    overflow: visible;
+}
+.scroll-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    min-height: 72px;
+    padding: 14px clamp(20px, 7vw, 120px);
+    border-bottom: 1px solid rgba(255,255,255,.2);
+}
+.scroll-horizontal-title {
+    font-family: "Archivo Black", sans-serif;
+    /* Static/blog page title — was clamp(1.2rem,2.4vw,2rem), which read tiny/weak next
+       to the masthead. Bigger and more present. */
+    font-size: clamp(2rem, 4.5vw, 3.4rem);
+    line-height: 1.05;
+    text-decoration: none;
+}
+.scroll-text-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.2rem;
+    font-size: .75rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+.scroll-text-nav a { text-decoration: none; }
+/* Solo/static header icon nav — icons only, matching the landing icon bar
+   (overrides the .scroll-sticky-nav pill background/border it also carries). */
+.scroll-solo-nav {
+    /* Full-width bar: blog name hard-left, nav links + social dock right — the same
+       shape as the landing sticky bar. */
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 8px;   /* nav icons ↔ social dock: same 8px as the landing (was clamp 14–24px,
+                   which left a visible seam between the native nav and the social dock). */
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    backdrop-filter: none;
+    color: inherit;
+}
+/* The always-visible bar is position:fixed by the core engine (that's how the landing
+   sticky bar reuses it). The solo lightbox header is IN-FLOW inside .scroll-solo-header,
+   so keep it static — the .scroll-solo-header-inside wrapper (90% wide, centred) then
+   provides the inset, matching the landing. This is the ONLY solo-specific override. */
+.scroll-solo-nav.ss-grid-nav-always-visible {
+    position: static;
+    width: 100%;
+    background: transparent;
+    border: 0;
+    backdrop-filter: none;
+}
+.scroll-solo-nav .ss-grid-nav-identity {
+    display: flex;
+    align-items: center;
+    margin-right: auto;   /* name left; links + dock clump right */
+}
+/* Blog name on the solo page: size is its own control (admin: "Blog Name Size").
+   Font family still follows the Masthead Font control (its selector covers
+   .scroll-sticky-nav .ss-grid-nav-name, which this element carries) unless the
+   solo-specific "Blog Name Font" is set. */
+.scroll-solo-nav .ss-grid-nav-name {
+    /* The pre-customizer presentation used a full 2rem running head. Keep that
+       known-good desktop floor while still honouring deliberately larger values. */
+    font-size: max(2rem, var(--scroll-solo-name-size, 2rem));
+    /* Optical centring comes from the shared sticky-name rule above. */
+}
+.scroll-solo-nav .ss-grid-nav-actions {
+    display: flex;
+    align-items: center;
+}
+.scroll-solo-nav .ss-grid-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;   /* match the landing nav exactly (was a bespoke clamp) */
+}
+.scroll-solo-nav .ss-grid-nav-link {
+    display: flex;
+    align-items: center;
+    color: inherit;
+}
+.scroll-solo-nav .ss-grid-nav-link svg {
+    display: block;
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+}
+.scroll-solo-nav .ss-grid-nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+.scroll-solo-nav .scroll-nav-search { position: relative; }
+.scroll-solo-nav .scroll-nav-search > summary { list-style: none; cursor: pointer; }
+.scroll-solo-nav .scroll-nav-search > summary::-webkit-details-marker { display: none; }
+/* SOLO PAGE = a viewport-locked lightbox (mirrors 50-Shades). The page never
+   scrolls; only the stage does, and only once the INFO/COMMENTS drawer opens.
+   CRITICAL SCOPING — gate on .scroll-solo-stage, NOT body.is-photo-page alone.
+   index.php renders the LANDING under the same body.is-photo-page as the solo
+   page, but the landing is a scrolling wall. The one marker that separates them
+   is .scroll-solo-stage, which ONLY layout.php (the solo page) emits; the landing
+   emits .scroll-landing. Locking on body.is-photo-page alone froze the landing:
+   with no scroller, the infinite-scroll sentinel stayed permanently in view, so
+   the wall fetched page after page forever and hung the browser. Keep it gated. */
+html:has(.scroll-solo-stage) { overflow: hidden; scrollbar-gutter: auto; }
+body.is-photo-page:has(.scroll-solo-stage) { height: 100dvh; overflow: hidden; }
+body.is-photo-page:has(.scroll-solo-stage) #page-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 0;
+}
+.scroll-solo-stage {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;     /* the ONLY scroller — reveals the drawer when opened */
+    overflow-x: hidden;
+    background: inherit;
+}
+.scroll-solo-header {
+    display: flex;
+    flex: 0 0 var(--scroll-solo-header-h, 80px);
+    align-items: center;
+    width: 100%;
+    color: inherit;
+    background: inherit;
+    /* Solo header has its OWN chrome (admin: SOLO HEADER) — height, background, and an
+       optional bottom border, all independent of the landing sticky bar. */
+    border-bottom: var(--scroll-solo-header-border-w, 0) solid var(--scroll-solo-header-border-c, transparent);
+}
+.scroll-solo-header-inside {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* Match the WALL/landing width (same --scroll-canvas-pct, 90%) so the header's
+       name-left / icons-right line up with the same edges as everywhere else. */
+    width: var(--scroll-canvas-pct, 90%);
+    margin: 0 auto;
+}
+.scroll-secondary-header {
+    min-height: var(--scroll-solo-header-h, 80px);
+}
+.scroll-solo-header .site-title-text,
+.scroll-solo-header .logo-area a {
+    color: inherit;
+    text-decoration: none;
+}
+.scroll-solo-header .nav-menu {
+    display: flex;
+    align-items: center;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+.scroll-solo-header .nav-menu a {
+    color: inherit;
+    text-decoration: none;
+}
+.scroll-solo-header .nav-menu .sep {
+    padding: 0 14px;
+    opacity: .45;
+}
+.scroll-solo-photobox {
+    display: flex;
+    flex: 1 0 calc(100dvh - 140px);
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 0;
+    /* Whitespace above/below the photo is an admin control (SOLO PAGE →
+       "Whitespace Above & Below Photo"). Equal top and bottom keeps the photo
+       centred; sides stay a fixed 30px. */
+    padding: var(--scroll-image-pad, 50px) 30px;
+    overflow: hidden;
+    background: inherit;
+}
+.scroll-photo-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    max-width: var(--scroll-canvas-width);
+}
+.scroll-image {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    cursor: zoom-in;
+    /* Solo image treatment (admin: SOLO IMAGE) — pick your own border width/colour and
+       rounded corners here; the Image Treatment select layers shadow/glow/double-line
+       on top via box-shadow (it references --scroll-solo-img-border-c so they match). */
+    border: var(--scroll-solo-img-border-w, 0) solid var(--scroll-solo-img-border-c, transparent);
+    border-radius: var(--scroll-solo-img-radius, 0);
+}
+.scroll-infobox {
+    display: flex;
+    flex: 0 0 var(--scroll-infobox-h, 60px);
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    background: inherit;
+    /* Solo nav bar has its OWN chrome (admin: SOLO NAV) — height, background, and
+       optional top/bottom borders (shared colour). Off by default so SCROLL stays
+       minimal until the owner turns them on. */
+    border-top: var(--scroll-infobox-top-w, 0) solid var(--scroll-infobox-border-c, transparent);
+    border-bottom: var(--scroll-infobox-bottom-w, 0) solid var(--scroll-infobox-border-c, transparent);
+}
+/* Bottom nav (PREV/FIRST · INFO/COMMENTS · LAST/NEXT) sits as a single centred
+   cluster with even gaps between the three groups — the 50-Shades treatment. */
+.scroll-infobox .nav-links {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;   /* match the inner .left/.center/.right gap (and 50 Shades' model)
+                    so every item + separator is evenly spaced. Was 20px, which made
+                    between-group separators tighter than within-group ones. */
+    margin: 0 auto;
+    padding: 0;
+    font-size: var(--scroll-bottomnav-size, .75rem);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.scroll-infobox .nav-links .left,
+.scroll-infobox .nav-links .center,
+.scroll-infobox .nav-links .right {
+    display: inline-flex;
+    align-items: center;
+    gap: 40px;
+    margin: 0;
+}
+.scroll-infobox .nav-links a {
+    text-decoration: none;
+}
+.scroll-infobox .nav-links .dim {
+    opacity: .35;
+}
+/* Drawer panes stay hidden until the footer engine reveals the clicked one
+   (INFO or COMMENTS) — the 50-Shades #footer model. Without this, opening the
+   drawer would show both panes stacked. */
+.footer-pane { display: none; }
+/* Ultra-minimal solo page: no FLOATING social dock here — it belongs on the
+   landing header, and core injects it site-wide via footer-scripts. The
+   like/reaction dock stays (that's solo functionality, same as 50-Shades). */
+body.is-photo-page .social-dock:not(.social-dock-inline) { display: none; }
+/* THE 50-Shades solo behaviour, verbatim: the system footer lives INSIDE the
+   scrolling stage, so if it's visible you can scroll the photo up to reach it.
+   Hide it on the solo page until a drawer (INFO/COMMENTS) is opened — then the
+   page is pinned to the viewport and nothing scrolls until you ask for it.
+   Measured: this removes exactly the 127px of overflow (79px footer + 48px
+   margin) that was letting the page scroll. Scoped to solo; other pages keep
+   their footer. Same scoping rule as the viewport lock above: gate on
+   .scroll-solo-stage so the LANDING (also body.is-photo-page) keeps its footer. */
+body.is-photo-page:has(.scroll-solo-stage) #system-footer { display: none; }
+body.is-photo-page #footer[style*="display: block"] ~ #system-footer,
+body.is-photo-page #footer[style*="display:block"]  ~ #system-footer { display: block; }
+/* Static & blog pages carry a thin divider level with where the landing photo
+   wall begins. MEASURED on the live site: the header bottom sits at ~155px and
+   the landing's first image row starts at ~195px, so the divider is 40px below
+   the shared header — matching the landing exactly. Equal 40px above and below
+   the line before the content. Colour is the "Top Divider Line Colour" control. */
+.scroll-static-content {
+    /* The thin line is this element's border-top. Anchor it to the SAME reference as the
+       landing photo wall: width = --scroll-canvas-pct (90%, identical var to .scroll-wall)
+       and margin-top = 0 so the line sits at the header bottom, which is exactly the
+       landing photo-top (measured: gap 0). The old 40px margin dropped it 40px low and
+       the 920px cap inset it. */
+    width: var(--scroll-canvas-pct, 90%);
+    margin: 0 auto;
+    border-top: 1px solid var(--scroll-page-divider, #999999);
+    padding: 40px 0 clamp(32px, 6vw, 90px);
+}
+.scroll-static-inner {
+    width: min(
+        calc(100% - 2 * var(--static-content-gutter, 40px)),
+        var(--scroll-static-width, 920px)
+    );
+    margin-inline: auto;
+}
+/* Blogroll: core CSS also targets .blogroll-canvas and was WINNING (its margin/
+   padding overrode ours → divider stuck at the header). Scope to body.is-blogroll
+   so SCROLL's rule has the higher specificity and the divider lands at the same
+   40px as the static pages. */
+body.is-blogroll .blogroll-canvas {
+    /* Same anchor as .scroll-static-content: line = wall width (90%) at the header
+       bottom (photo-top line), not the 920px cap / 40px drop. */
+    width: var(--scroll-canvas-pct, 90%);
+    max-width: none;
+    margin: 0 auto;
+    border-top: 1px solid var(--scroll-page-divider, #999999);
+    padding-top: 40px;
+}
+/* Blogroll is a static page of sorts: the divider LINE stays at wall width (the
+   canvas rule above), but the CONTENT — title + category blocks — must sit in the
+   SAME text column as every other static page, not sprawl to the full 90%. Reuse
+   the identical width formula as .scroll-static-inner so the CONTENT WIDTH / SIDE
+   GUTTERS admin controls drive the blogroll too. Divider consistent, content read-
+   width capped. (Sean's call: A — divider line is consistent.) */
+body.is-blogroll .blogroll-canvas > .static-page-title,
+body.is-blogroll .blogroll-canvas > .dim,
+body.is-blogroll .blogroll-canvas > .blogroll-category-block {
+    width: min(
+        calc(100% - 2 * var(--static-content-gutter, 40px)),
+        var(--scroll-static-width, 920px)
+    );
+    margin-inline: auto;
+}
+.blogroll-category-block { margin-bottom: 3rem; }
+.blogroll-category-block:last-child { margin-bottom: 0; }
+.blogroll-category-heading { margin: 0 0 1.5rem; }
+/* Grid gap is what separates entries — the columns and gap are admin controls
+   (STATIC & BLOG), with these fallbacks so entries never collapse together. */
+.blogroll-grid { display: grid; grid-template-columns: 1fr; gap: 44px; }
+.blogroll-peer { margin: 0; }
+.blogroll-peer-name { margin: 0 0 .4rem; }
+.blogroll-peer-desc { margin: 0; }
+/* URL hidden by default via the "Blogroll URLs" control (the name is the link);
+   when shown, it sits under the description, not jammed against the next entry. */
+.blogroll-peer-url { margin-top: .5rem; word-break: break-word; opacity: .6; }
+/* Static-page hero image. Vertical breathing room is the "Hero Image Spacing"
+   admin control (STATIC & BLOG); display:block so the margins actually apply. */
+.scroll-static-content .post-image {
+    display: block;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    margin-block: var(--scroll-hero-pad, 48px);
+}
+/* Title, hero, and body share .scroll-static-inner, so the SCROLL Text Column
+   Width control resizes the complete page composition. */
+.scroll-static-content .description {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    box-sizing: border-box;
+}
+.scroll-solo-stage > #footer {
+    display: none;
+    width: 100%;
+    padding: 52px 0;
+    color: inherit;
+    background: inherit;
+    border-top: 1px solid currentColor;
+}
+.scroll-solo-stage .footer-pane,
+.scroll-solo-stage .scroll-solo-title,
+.scroll-solo-stage .description {
+    /* Text column width is an admin control (SOLO PAGE → "Text Column Width"). */
+    width: min(calc(100% - 40px), var(--scroll-solo-text-width, 850px));
+    margin-inline: auto;
+}
+.scroll-solo-title {
+    margin-top: 0;
+    margin-bottom: 34px;
+    font-size: 2rem;
+    font-weight: 300;
+    letter-spacing: .06em;
+}
+.scroll-solo-stage .description {
+    line-height: 1.8;
+}
+/* GLOBAL system footer (landing + static pages). Without this the footer is
+   only styled under .scroll-solo-stage (photo pages), so everywhere else it fell
+   back to raw browser defaults — a cramped, left-aligned line. Centred, padded,
+   letter-spaced and uppercased to match the site. Background and text colour are
+   left to the "Footer Background" / "Footer Text" admin controls (which target
+   #system-footer) and otherwise inherit the page. */
+#system-footer {
+    width: 100%;
+    margin-top: 48px;
+    padding: 34px 0;
+    text-align: center;
+    border-top: 1px solid rgba(0, 0, 0, .12);
+    /* Footer Text control now writes :root/--scroll-footer-text (so the heart can
+       reuse it too); consume it here. */
+    color: var(--scroll-footer-text, #3a3a3a);
+}
+#system-footer .inside {
+    width: min(calc(100% - 40px), var(--scroll-canvas-width, 1500px));
+    margin: 0 auto;
+}
+#system-footer p {
+    margin: 0;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .14em;
+    line-height: 1.9;
+    text-transform: uppercase;
+}
+#system-footer a,
+#system-footer .footer-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+.scroll-solo-stage ~ #system-footer,
+.scroll-solo-stage #system-footer {
+    padding: 28px 20px;
+    color: inherit;
+    background: inherit;
+    border-top: 1px solid currentColor;
+    text-align: center;
+}
+
+@media (max-width: 760px) {
+    .scroll-profile {
+        grid-template-columns: 1fr;
+        min-height: 58vh;
+    }
+    .scroll-masthead { grid-column: 1; font-size: clamp(3.6rem, 18vw, 7rem); }
+    .scroll-photographer { grid-column: 1; justify-self: center; align-self: auto; }
+    .scroll-profile > .scroll-sticky-nav {
+        grid-column: 1;
+        justify-content: center;
+    }
+    .scroll-browse-tools {
+        align-items: stretch;
+        flex-wrap: wrap;
+        gap: 12px 18px;
+        padding: 14px 0;
+    }
+    .scroll-search {
+        flex-basis: 100%;
+        margin-left: 0;
+    }
+    .scroll-search-input { flex: 1; width: auto; }
+    .scroll-page-header { align-items: flex-start; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .scroll-feature-item img,
+    .scroll-item-title { transition: none; }
+}
+/* ── Archive page (SCROLL 0.1.49) ───────────────────────────────────────────
+   Core's archive.php emits a plain #infobox (SHOW ALL · T/M toggle), then the
+   search-status line and the tag row, then the grid. SCROLL never styled any of
+   it — .scroll-infobox above is the SOLO page's bottom nav, and the archive's
+   #infobox has no class — so the row sat raw at the left edge. These rules give
+   it the same treatment as the solo nav: one centred cluster in the body font,
+   uppercase, tracked. Core's own FILTER panel is turned off for this skin
+   (manifest archive_filter:false) because the header nav already carries it.
+   Widths follow the canvas (--scroll-canvas-width / -pct) like everything else. */
+#infobox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: min(var(--scroll-canvas-pct, 90%), var(--scroll-canvas-width, 1500px));
+    margin: 0 auto;
+    padding: 18px 0 6px;
+    background: inherit;
+}
+#infobox .nav-links {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    margin: 0;
+    padding: 0;
+    font-size: var(--scroll-bottomnav-size, .75rem);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+#infobox .center {
+    display: inline-flex;
+    align-items: center;
+    gap: 28px;
+}
+#infobox .nav-links a { text-decoration: none; color: inherit; }
+#infobox a.inactive { opacity: .55; }
+#infobox a.active   { opacity: 1; }
+#infobox .sep { opacity: .35; }
+#system-footer .sep { display: inline-block; margin: 0 .7em; opacity: .55; }
+#infobox .filter-group { display: inline-flex; align-items: center; }
+#infobox .archive-search-form { margin: 0; }
+/* Same field as the header nav's search (see .scroll-nav-search-panel input). */
+#infobox .archive-search-input {
+    width: 16rem;
+    max-width: 40vw;
+    padding: 7px 10px;
+    color: #181818;
+    background: #fff;
+    border: 1px solid #aaa;
+    font: inherit;
+    letter-spacing: 0;
+    text-transform: none;
+}
+#infobox .archive-search-input:focus { outline: none; border-color: #181818; }
+/* The T/M layout toggle is docked into #infobox by ss-engine-archive-toggle.js;
+   core positions it absolute at the right edge of the row. Keep it in the flow
+   here so it sits in the cluster instead of floating off to the canvas edge. */
+#infobox .archive-controls.archive-controls--docked {
+    position: static;
+    transform: none;
+    margin: 0 0 0 28px;
+    right: auto !important;   /* the engine writes an inline right: when it docks */
+}
+/* Results line + tag row: centred, on the canvas, same small caps as the row. */
+.archive-search-status,
+.archive-tags-row {
+    width: min(var(--scroll-canvas-pct, 90%), var(--scroll-canvas-width, 1500px));
+    margin: 0 auto;
+    text-align: center;
+    font-size: var(--scroll-bottomnav-size, .75rem);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.archive-search-status { padding: 10px 0 4px; }
+.archive-tags-row { padding: 4px 0 18px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; }
+.archive-tags-row .tg-tag { text-decoration: none; color: inherit; opacity: .75; }
+.archive-tags-row .tg-tag:hover { opacity: 1; }
+@media (max-width: 720px) {
+    #infobox .nav-links, #infobox .center { gap: 16px; }
+}
+
+/* The menu separator. The CMS drew it until 0.7.873D, when a hard-coded
+   pipe in the shared renderer was removed because it reached every skin
+   at once -- including three that already drew their own, which then
+   showed two. The character belongs to the skin. This reuses the colour
+   and spacing this skin's own .sep span already had, so nothing changes
+   but where it comes from. */
+.scroll-solo-header .nav-menu > li + li::before {
+    content: "|";
+    padding: 0 14px;
+    color: inherit;
+    cursor: default;
+}
+
+
 
 :root {
     --glide-angle: -20deg;
@@ -8,6 +1102,11 @@
     --glide-radius: 0px;
     --glide-bg: #0b0b0b;
     --glide-ink: #fff;
+    --bg-primary: var(--glide-bg);
+    --page-bg: var(--glide-bg);
+    --text-primary: var(--glide-ink);
+    --text-secondary: #aaa;
+    --accent-color: #fff;
     --glide-axis-angle: 0deg;
 }
 
@@ -320,7 +1419,7 @@ body.glide-v2:has(.archive-grid, .blogroll-page) {
     .wall-viewer figure, .wall-viewer-tools, .wall-viewer-pane { transition: none; }
 }
 .wall-portrait { display: block; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
-.wall-portrait img { display: block; max-width: 100%; height: auto; }
+.wall-portrait img { display: block; max-width: 100%; height: auto; opacity: 1; }
 .wall-viewer-portrait :is(.wall-viewer-tools, [data-wall-step]) { display: none; }
 .wall-search {
     position: fixed; right: 26px; bottom: 22px; z-index: 6; display: flex; align-items: center; gap: 8px;

@@ -51,10 +51,11 @@ const code = src
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/(^|[^:])\/\/[^\r\n]*/g, '$1 ');
 
-console.log('THE ENGINE ITSELF NEVER ROTATES ANYTHING');
-// The whole advice to Codex rests on this. If the engine ever starts rotating,
-// the division of labour has moved and the advice is stale.
-cx(code.includes('rotate') === false, 'no rotate anywhere in the engine CODE');
+console.log('THE WALL MOTION NEVER ROTATES THE TRACKS');
+// Viewer flips intentionally rotate images. Wall motion must still translate
+// tracks without adding a second rotation to the skin's lean.
+const wallStart = code.indexOf("var wall = document.querySelector('[data-glide-wall]');");
+cx(wallStart >= 0 && !code.slice(wallStart).includes('rotate'), 'no rotation in the wall motion CODE');
 cx(/rotate\s*\(/.test(src), 'and the only mentions are in comments, which is why they are stripped first');
 cx(!/\bstyle\.transform\s*=\s*[^;]*rotate/.test(src), 'and it never writes a rotation into a transform');
 

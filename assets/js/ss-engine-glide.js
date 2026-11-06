@@ -91,6 +91,7 @@
                     if (pageTitle?.textContent.trim()) panel.querySelector('header h2').textContent = pageTitle.textContent.trim();
                     var portrait = region.querySelector('img');
                     if (portrait && !portrait.closest('a, button')) {
+                        portrait.removeAttribute('data-lightbox-src');
                         var enlarge = document.createElement('button');
                         enlarge.type = 'button';
                         enlarge.className = 'wall-portrait';
@@ -105,7 +106,7 @@
                         });
                         if (!reducedOverlayMotion.matches) portrait.animate([
                             { transform: 'perspective(1000px) rotateY(-75deg)', opacity: 0 },
-                            { transform: 'none', opacity: 1 }
+                            { transform: 'perspective(1000px) rotateY(0deg)', opacity: 1 }
                         ], { duration: 420, delay: 220, fill: 'backwards', easing: 'ease-out' });
                     }
                 }
@@ -157,7 +158,7 @@
         var viewer = document.createElement('dialog');
         viewer.className = 'wall-viewer';
         viewer.setAttribute('aria-label', 'Photograph viewer');
-        viewer.innerHTML = '<figure><img alt=""><figcaption></figcaption><button type="button" data-wall-step="-1" aria-label="Previous photograph">‹</button><button type="button" data-wall-step="1" aria-label="Next photograph">›</button><div class="wall-viewer-tools"><button type="button" data-wall-pane="info" aria-label="Post info" aria-pressed="false">ⓘ</button><button type="button" data-wall-pane="comments" aria-label="Comments" aria-pressed="false"><svg width="21" height="21" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a7 7 0 0 1-7 7H8l-4 3v-5a7 7 0 0 1 7-12h2a7 7 0 0 1 7 7Z"/></svg></button></div><section class="wall-viewer-pane" aria-labelledby="wall-viewer-pane-title" inert><h2 id="wall-viewer-pane-title"></h2><p></p><div class="wall-comment-body"></div></section></figure>';
+        viewer.innerHTML = '<figure tabindex="-1" autofocus><img alt=""><figcaption></figcaption><button type="button" data-wall-step="-1" aria-label="Previous photograph">‹</button><button type="button" data-wall-step="1" aria-label="Next photograph">›</button><div class="wall-viewer-tools"><button type="button" data-wall-pane="info" aria-label="Post info" aria-pressed="false">ⓘ</button><button type="button" data-wall-pane="comments" aria-label="Comments" aria-pressed="false"><svg width="21" height="21" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a7 7 0 0 1-7 7H8l-4 3v-5a7 7 0 0 1 7-12h2a7 7 0 0 1 7 7Z"/></svg></button></div><section class="wall-viewer-pane" aria-labelledby="wall-viewer-pane-title" inert><h2 id="wall-viewer-pane-title"></h2><p></p><div class="wall-comment-body"></div></section></figure>';
         document.body.append(viewer);
         var viewerImage = viewer.querySelector('img');
         var viewerCaption = viewer.querySelector('figcaption');
@@ -267,12 +268,6 @@
             var index = Array.from(unique.keys()).indexOf(tile.href);
             if (index < 0) return;
             event.preventDefault();
-            if (tile.classList.contains('glide-tile')) {
-                tile.setAttribute('data-glide-restored-focus', '');
-                tile.addEventListener('focusout', function () {
-                    if (!viewer.open) tile.removeAttribute('data-glide-restored-focus');
-                }, { once: true });
-            }
             viewerPhotos = Array.from(unique.values());
             viewer.showModal();
             if (!reducedOverlayMotion.matches) {
@@ -354,7 +349,8 @@
             setViewerPane('');
             displayedPhoto = undefined;
             viewer.classList.remove('wall-viewer-portrait');
-            var restored = document.activeElement.closest('.glide-tile[data-glide-restored-focus]');
+            var restored = document.activeElement.closest('.glide-tile');
+            if (restored) restored.setAttribute('data-glide-restored-focus', '');
             if (restored) restored.addEventListener('focusout', function () {
                 restored.removeAttribute('data-glide-restored-focus');
             }, { once: true });
