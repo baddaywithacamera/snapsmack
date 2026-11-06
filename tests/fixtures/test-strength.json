@@ -663,6 +663,11 @@
         "predicates": 8,
         "thresholds": []
     },
+    "galleria-square-crop-renders-regression.php": {
+        "assertions": 2,
+        "predicates": 14,
+        "thresholds": []
+    },
     "game-on-browser-load-regression.php": {
         "assertions": 3,
         "predicates": 3,
