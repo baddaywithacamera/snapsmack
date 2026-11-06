@@ -370,7 +370,73 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
         }
     }
     snapsmack_attach_local_font_faces($presentation);
+    // THE OWNER'S GUTTER GOES LAST, so it beats a skin's own value. Appended
+    // after every skin block above on purpose -- see the function below.
+    //
+    // It goes through snapsmack_presentation_style() rather than wrapping its
+    // own markup. That helper already does exactly this, and every
+    // __snapsmackCmsOnly() call site in the product is inventoried by
+    // tests/privileged-wrapper-construction-regression.php: a new privileged
+    // wrap here would have had to be approved into that list for no reason
+    // other than my not having looked for the helper first.
+    $gutter = snapsmack_owner_gutter_px($settings);
+    if ($gutter !== null) {
+        snapsmack_presentation_style($presentation, 'snapsmack-owner-gutter',
+            ['--grid-gap' => $gutter . 'px']);
+    }
     return $presentation;
+}
+
+/**
+ * The owner's GUTTER setting as a pixel count, or null when it is not set.
+ *
+ * WHAT WAS WRONG. smack-appearance-archive.php has had a GUTTER slider since
+ * it was written. Nothing read it. The only thing that ever mapped a setting
+ * to --grid-gap is core/meta.php:35, which reads a DIFFERENT key (browse_gap)
+ * and is the legacy render path -- index.php sends every strict skin to
+ * snapsmack_public_runtime() and exits before meta.php, and all 30 renderable
+ * skins are strict. So the slider moved and nothing happened, on every site.
+ *
+ * Sean set GUTTER to 4px and reported gaps of roughly 50px. That 50px is
+ * literally the fallback in assets/css/page-archive.css -- `gap:
+ * var(--grid-gap, 50px)` at lines 27 and 53. He was measuring the CSS
+ * default, because no value was ever being emitted.
+ *
+ * WHY IT RETURNS NULL WHEN THE KEY IS ABSENT. A site that has never touched
+ * the slider must not change appearance the day this ships, so the caller
+ * emits nothing at all rather than a default. array_key_exists is the test,
+ * not a `??` default: a default would emit on every site and move spacing
+ * everywhere, which is the opposite of the intent. A key that is present but
+ * not numeric is treated as not saved -- emitting 0 there would collapse
+ * every gap on the page.
+ *
+ * ONE THING THIS GUARD DOES NOT COVER, said here because it is easy to miss:
+ * the admin form always posts settings[archive_gutter], so the first save of
+ * the archive appearance page makes the key present at whatever position the
+ * slider is showing -- 4 by default -- even if the owner never dragged it.
+ * The help text on that control says so. Making it genuinely opt-in needs a
+ * sentinel value or a second control, which is a decision, not a repair.
+ *
+ * WHY IT GOES LAST. The owner wins over the skin. Nine skins set --grid-gap
+ * in their own style.css (aurora, game-on, heuristic, instant-camera,
+ * jive-turkey, parade, sliders, sudden-impact, the-grid) and eight of those
+ * also emit it from a declared _gap option through
+ * snapsmack_grid_common_presentation(). A skin's style.css is a <link> ahead
+ * of this inline block in every strict head, and the option block is appended
+ * before this one, so at equal specificity this declaration wins both. That
+ * is the ruling: the owner's saved value beats a skin's default, and a skin's
+ * default stands until the owner touches the control.
+ *
+ * The range matches the slider in the admin -- min 0, max 40 -- so a value
+ * edited in the database cannot emit something the control could not produce.
+ */
+function snapsmack_owner_gutter_px(array $settings): ?int
+{
+    if (!array_key_exists('archive_gutter', $settings)) return null;
+    $raw = $settings['archive_gutter'];
+    if (is_bool($raw) || is_array($raw) || is_null($raw)) return null;
+    if (!is_numeric((string)$raw)) return null;
+    return (int)max(0, min(40, (int)(float)(string)$raw));
 }
 
 /**

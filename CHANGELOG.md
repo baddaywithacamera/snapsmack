@@ -13,6 +13,7 @@
 
 ## 0.7.978D - 2026-11-06 - HEISENBERG DECOMPENSATOR
 
+- The GUTTER slider on the archive appearance page now changes the gaps. It never did: it was read by nothing, and the roughly 50px gaps reported were the stylesheet's own default. The owner's value overrides a skin's spacing on the 12 skins that read it; its help text names them and names the four that fix their own gaps and will not change.
 - The blogroll can be put in the owner's own order. Each peer now has an "Order Within Category" number on the blogroll page; leave them all at 0 and the list stays alphabetical exactly as it is today.
 - The fleet skin update now includes the hub itself, so the site running the push is no longer the one site it never reached.
 - Skin templates can page an archive in both directions, with the active album, category or search already in the links, so paging a filtered archive stays filtered.
