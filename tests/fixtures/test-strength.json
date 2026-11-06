@@ -93,7 +93,7 @@
     },
     "archive-item-info-and-comments-regression.php": {
         "assertions": 0,
-        "predicates": 6,
+        "predicates": 15,
         "thresholds": [
             2,
             2,
@@ -136,8 +136,8 @@
         "thresholds": []
     },
     "archive-thumb-style-reaches-every-skin-regression.php": {
-        "assertions": 47,
-        "predicates": 37,
+        "assertions": 51,
+        "predicates": 41,
         "thresholds": [
             2,
             2
@@ -568,7 +568,7 @@
     },
     "fixture-head-keeps-the-live-cascade-regression.php": {
         "assertions": 2,
-        "predicates": 17,
+        "predicates": 21,
         "thresholds": []
     },
     "flag-wave-palette-contract-regression.php": {
@@ -1105,8 +1105,11 @@
     },
     "paging-urls-keep-the-filter-regression.php": {
         "assertions": 0,
-        "predicates": 35,
-        "thresholds": []
+        "predicates": 42,
+        "thresholds": [
+            2,
+            2
+        ]
     },
     "paragraph-image-boundary-regression.php": {
         "assertions": 4,
