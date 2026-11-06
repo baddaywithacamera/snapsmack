@@ -685,22 +685,50 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         }
         $groups = [];
         $seen = [];
+        // The owner's own sites, by the name the system itself gave that
+        // category -- NOT by matching "MY BLOGS" anywhere. On a hub the key is
+        // set by the My Blogs control; on a spoke it is recorded from the
+        // is_own flag the hub sends with the pushed entries. Blank means no
+        // group is the owner's, which is every standalone site, and nothing
+        // below then changes.
+        $ownCat = strtolower(trim((string)($settings['blogroll_my_blogs_cat'] ?? '')));
+        $ownLabels = [];
         foreach ($repository->blogrollPeers() as $row) {
             $url = trim((string)($row['peer_url'] ?? ''));
             if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $url)) continue;
             $key = strtolower(rtrim($url, '/'));
             if (isset($seen[$key])) continue;
             $seen[$key] = true;
-            $category = preg_replace('/^Hub:\s*/i', '', trim((string)($row['cat_name'] ?? '')));
+            $rawCategory = trim((string)($row['cat_name'] ?? ''));
+            $category = preg_replace('/^Hub:\s*/i', '', $rawCategory);
             if ($category === '' || preg_match('/^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i', $category)) $category = 'THE NETWORK';
+            // Matched on the STORED name, before the anti-fingerprint rewrite
+            // above renames a domain-shaped category to THE NETWORK. Comparing
+            // after the rewrite would miss it, and would also collide if the
+            // owner's category were ever itself domain-shaped.
+            if ($ownCat !== '' && strtolower($rawCategory) === $ownCat) $ownLabels[$category] = true;
             $groups[$category][] = [
                 'name' => trim((string)($row['peer_name'] ?? '')) ?: $url,
                 'url' => $url,
                 'description' => trim((string)($row['peer_desc'] ?? '')),
             ];
         }
+        // THE OWNER'S OWN SITES GO LAST, and every group says whether it is
+        // his. Sean's words: "my blogs should go to bottom". The order is
+        // decided HERE so it is true on every skin the moment this ships --
+        // no skin re-sorts these groups, measured across all 30 layouts, and
+        // the strict-skin policy would refuse a sort inside one anyway.
+        //
+        // is_own rides alongside so a skin that wants to label or style the
+        // group has a boolean and never a string to match on.
         $bounded = [];
-        foreach ($groups as $label => $items) $bounded[] = ['label' => $label, 'items' => $items];
+        $ownGroups = [];
+        foreach ($groups as $label => $items) {
+            $group = ['label' => $label, 'items' => $items,
+                'is_own' => isset($ownLabels[$label])];
+            if ($group['is_own']) $ownGroups[] = $group; else $bounded[] = $group;
+        }
+        foreach ($ownGroups as $group) $bounded[] = $group;
         return ['status' => 200, 'kind' => 'blogroll', 'page_title' => 'BLOGROLL',
             'blogroll_groups' => $bounded, 'navigation' => $navigation];
     }
