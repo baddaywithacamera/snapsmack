@@ -1,4 +1,5 @@
 <?php
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 declare(strict_types=1);
 
 /**
@@ -120,6 +121,48 @@ cx(is_array($mf) && ($mf['version'] ?? '') !== '',
    . var_export($mf['version'] ?? null, true) . ')');
 cx(str_contains($hubBranch, 'load_skin_manifest($skin_slug)'),
    'and the hub branch uses that reader rather than parsing the manifest itself');
+
+echo "\nTHE BULK HANDLER HAS THE SAME FIX -- Update Every Spoke That Is Behind\n";
+// push_skin_all is one skin across the fleet. push_all_skins_all_spokes is the
+// SEPARATE bulk handler behind the "Update Every Spoke That Is Behind" button,
+// and it had the identical SS-1072 gap: its target query is role='spoke' only
+// and nothing installed on the hub, so a bulk update left the hub behind while
+// every spoke moved. A fix to one path is not a fix to the shared fault; the
+// sibling must carry it too.
+$bulkAt = strpos($src, "isset(\$_POST['push_all_skins_all_spokes'])");
+cx($bulkAt !== false, 'the bulk handler was located');
+// Bounded on the bulk handler's own spoke loop, not a character count.
+$bulkEnd  = $bulkAt === false ? false : strpos($src, 'foreach ($target_nodes as $tn)', (int)$bulkAt);
+$bulkHub  = ($bulkAt === false || $bulkEnd === false)
+    ? '' : substr($src, (int)$bulkAt, (int)$bulkEnd - (int)$bulkAt);
+cx($bulkEnd !== false, 'the bulk hub block ends where its spoke loop begins, so it bounds exactly');
+cx(str_contains($bulkHub, 'SS-1072'), 'the bulk hub block cites the ticket');
+cx(str_contains($bulkHub, "role = 'spoke' AND status = 'active'"),
+   'and sits with the spoke-only target query it compensates for');
+
+// It enumerates the hub's OWN installed skins from disk, not a node row.
+cx((bool)preg_match("/glob\(__DIR__ \. '\/skins\/\*\/manifest\.json'\)/", $bulkHub),
+   'the hub block reads the hub\'s own installed skins from disk');
+// Installs in process with the real release key reaching the CALL (mutant M4).
+cx((bool)preg_match('/skin_registry_install\(\s*\$hub_slug,[^;]*\$hub_key,/s', $bulkHub),
+   'it installs each stale skin with skin_registry_install() and the release key reaches the call');
+cx(str_contains($bulkHub, 'SNAPSMACK_RELEASE_PUBKEY'),
+   'and it is the real release key, not a literal');
+cx(!str_contains($bulkHub, 'curl_init('),
+   'and the hub install makes no HTTP request to its own site');
+
+// Both paths through the bulk hub block: force reinstalls all; stale-only
+// compares and skips current. The negation is the decision (mutant M2/M4).
+cx(str_contains($bulkHub, '$bulk_force'),
+   'FORCE reinstalls every registry skin on the hub, matching the spoke force path');
+cx((bool)preg_match('/snap_version_compare\(\$reg_ver, \$hub_ver, .>.\)/', $bulkHub),
+   'STALE-ONLY compares the hub version against the registry before reinstalling');
+cx(str_contains($bulkHub, 'Already current'),
+   'and a hub already on the registry version is reported current, not reinstalled');
+cx(str_contains($bulkHub, "\$skin_results[] ="),
+   'the hub outcome lands in the same results list as the spokes');
+cx(str_contains($bulkHub, '(this hub)') || str_contains($bulkHub, 'This hub'),
+   'labelled as the hub');
 
 echo "\n{$pass} checks, {$fail} failed\n";
 exit($fail > 0 ? 1 : 0);

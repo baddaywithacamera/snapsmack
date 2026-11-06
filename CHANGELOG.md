@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.979D - 2026-11-06 - HEISENBERG DECOMPENSATOR
+
+- The bulk Multisite skin update ("Update Every Spoke That Is Behind") now updates the hub itself, not only the spokes. SS-1072 fixed the single-skin fleet push to include the hub; this is the sibling bulk handler, which had the same gap. Stale-only and force paths both cover the hub.
+
 ## 0.7.978D - 2026-11-06 - HEISENBERG DECOMPENSATOR
 
 - Page two of a search keeps the search term. The paging links carried the term under an internal name the router never reads, and pointed at a path that does not exist, so a second page of results came back as a second page of nothing in particular.
