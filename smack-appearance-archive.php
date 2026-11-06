@@ -305,7 +305,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>GUTTER <span class="field-tip" data-tip="Gap between grid tiles.">ⓘ</span></label>
+                    <label>GUTTER <span class="field-tip" data-tip="Gap between grid tiles. Your value overrides the skin's own spacing on the 12 skins that read it: AURORA, GAME ON, HEURISTIC, IMPACT PRINTER, INSTANT CAMERA, JIVE TURKEY, NEW HORIZON, PARADE, SLIDERS, SUDDEN IMPACT, THE GRID and TRUE GRIT. STANLEY, TELEGRAM, TILEZ and WRITING WITH IMPACT fix their own gaps in their stylesheets, so this will not change them. Saving this page sends the slider's current position, so this takes effect from the first save even if you did not move it.">ⓘ</span></label>
                     <div class="flex-mid gap-12">
                         <input type="range" name="settings[archive_gutter]"
                                min="0" max="40" step="2"
