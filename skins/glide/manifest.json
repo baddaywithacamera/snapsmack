@@ -1,7 +1,8 @@
 {
     "schema_version": 2,
     "name": "GLIDE",
-    "version": "0.1.15",
+    "version": "0.1.16",
+    "scrolltime_pages": ["landing"],
     "min_images": 50,
     "author": "Sean McCormick, OpenAI Codex",
     "description": "A kinetic, full-window photo wall that turns vertical scrolling into angled lateral motion.",
@@ -42,12 +43,69 @@
         "shadow": false
     },
     "options": {
+        "header_logo": {
+            "section": "GLIDE HEADER",
+            "type": "image",
+            "label": "Header Logo",
+            "hint": "Optional image that replaces the site name on the wall."
+        },
+        "glide_viewer_title": {
+            "section": "GLIDE VIEWER",
+            "type": "select",
+            "label": "Photo Title",
+            "default": "block",
+            "options": { "block": "Show on Hover", "none": "Off" },
+            "selector": ":root",
+            "property": "--wall-title-display"
+        },
+        "glide_viewer_title_font": {
+            "section": "GLIDE VIEWER",
+            "type": "select",
+            "label": "Photo Title Font",
+            "default": "system-ui",
+            "options": { "system-ui": "System Sans", "Georgia": "Georgia", "monospace": "Monospace" },
+            "selector": ":root",
+            "property": "--wall-title-font"
+        },
+        "glide_viewer_title_size": {
+            "section": "GLIDE VIEWER",
+            "type": "range",
+            "label": "Photo Title Size (px)",
+            "default": "16",
+            "min": "10",
+            "max": "36",
+            "step": "1",
+            "selector": ":root",
+            "property": "--wall-title-size",
+            "unit": "px"
+        },
+        "glide_idle_motion": {
+            "section": "GLIDE WALL",
+            "type": "select",
+            "label": "Idle Motion",
+            "default": "off",
+            "options": {
+                "off": "Off",
+                "alternating": "Alternating Directions",
+                "together": "Same Direction, Same Speed",
+                "staggered": "Same Direction, Different Speeds"
+            }
+        },
+        "glide_idle_speed": {
+            "section": "GLIDE WALL",
+            "type": "range",
+            "label": "Idle Speed (px per second)",
+            "default": "14",
+            "min": "1",
+            "max": "60",
+            "step": "1"
+        },
         "glide_flow_axis": {
             "section": "GLIDE WALL",
             "type": "select",
             "label": "Flow Orientation",
             "hint": "The wall travels both ways on this axis. Scrolling back reverses its direction.",
-            "default": "horizontal",
+            "default": "vertical",
             "options": {
                 "vertical": "Up / Down",
                 "horizontal": "Left / Right",
@@ -60,9 +118,9 @@
             "type": "range",
             "label": "Fine Angle Adjustment (degrees)",
             "hint": "Adds a little lean to the selected flow orientation.",
-            "default": "-7",
-            "min": "-18",
-            "max": "18",
+            "default": "-20",
+            "min": "-30",
+            "max": "30",
             "step": "1",
             "selector": ":root",
             "property": "--glide-angle",
@@ -72,10 +130,10 @@
             "section": "GLIDE WALL",
             "type": "range",
             "label": "Photo Row Height (px)",
-            "default": "250",
+            "default": "675",
             "min": "130",
-            "max": "420",
-            "step": "10",
+            "max": "1000",
+            "step": "5",
             "selector": ":root",
             "property": "--glide-row-height",
             "unit": "px"
@@ -84,7 +142,7 @@
             "section": "GLIDE WALL",
             "type": "range",
             "label": "Space Between Photos (px)",
-            "default": "12",
+            "default": "28",
             "min": "0",
             "max": "40",
             "step": "1",
