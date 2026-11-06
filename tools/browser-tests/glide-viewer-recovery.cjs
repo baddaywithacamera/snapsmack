@@ -33,6 +33,7 @@ async function check(page, width) {
     await page.locator('.glide-tile img').first().dispatchEvent('click');
     await page.waitForFunction(() => document.querySelector('.wall-viewer[open] img')?.getAttribute('src'));
     assert.equal(await page.locator('#ss-lightbox-overlay').count(), 0);
+    assert.equal(await page.locator('.wall-viewer figure').evaluate(el => getComputedStyle(el).outlineStyle), 'none');
     await page.waitForTimeout(350);
     await page.keyboard.press('ArrowRight');
     await page.waitForFunction(() => document.querySelector('.wall-viewer figcaption').textContent === 'Two');
