@@ -82,6 +82,27 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         'albums', 'categories_label', 'albums_label', 'author', 'colophon', 'published_post_count', 'photo_count', 'photo_count_display', 'comment_count', 'comment_count_display', 'like_count', 'like_count_display', 'word_count', 'comments_enabled',
         'show_titles', 'blogroll_groups', 'taxonomy', 'groups', 'puzzle_items', 'fragment', 'autoopen',
         'first', 'last', 'next_page', 'is_homepage', 'sort', 'sort_options', 'album', 'filmstrip', 'community', 'mosaic_blocks', 'about_url', 'archive_controls',
+        // THE ARCHIVE BUILDS SEVEN PAGING VALUES AND THIS LIST WAS KEEPING
+        // FOUR OF THEM FROM THE SKIN.
+        //
+        // snapsmack_public_response() returns page, per_page, total_count,
+        // total_pages, has_more, previous_page and next_page. Only page,
+        // total_pages and next_page were allowed through, so a strict skin
+        // could render a NEXT link and the page numbers and had no way at all
+        // to render a PREVIOUS one -- previous_page was computed, then dropped
+        // here, one function later. GLIDE's explicit Previous/Next was blocked
+        // on a value the CMS had already worked out.
+        //
+        // next_page was allowed because endless scroll only ever needed the
+        // forward direction: it is what feeds the scroll-wall sentinel. Nothing
+        // decided that backwards paging should be impossible; it just never
+        // came up, so the other half was never listed.
+        //
+        // Adding keys to an allowlist cannot change a skin that does not read
+        // them, which is why this is safe for the other twenty-nine. Proved
+        // rather than asserted: the render snapshot is byte-identical across
+        // 175 pages and 25 skins.
+        'per_page', 'total_count', 'has_more', 'previous_page',
         // The resolved archive controls. archive_controls is the rendered row;
         // these three are the same answer as data, for the components that
         // assemble their own row. 50 SHADES already read archive_layouts and
