@@ -14,7 +14,8 @@ decision.** Sean builds, packages and deploys; the tag is Codex's. This is the
 list of what is in the open build, what is verified and by what, and what is
 not verified — so nobody has to take a claim on trust.
 
-Measured on commit `e018b408`, 6 November 2026.
+Measured on commit `e018b408`, 6 November 2026. Codex's browser results added
+after his 8024a13b run.
 
 ## Where things actually stand
 
@@ -116,15 +117,12 @@ NEW HORIZON moved twice inside this build — 1.3.27 in the scroll-time commit,
 
 - **Nothing in 978D is built, packaged, signed or deployed.** No zip, no
   registry push, no site updated.
-- **No browser measurement of anything in this build, by me.** Every skin and
-  control change above is verified by rendered markup and emitted CSS. I drove
-  no browser. The geometry — square crops, card shadows, gutters, tile sizes —
-  is NOT measured.
-  - Codex has Chrome captures for NEW HORIZON at
-    `C:/dev/snapsmack-staging/new-horizon-cropped` and
-    `new-horizon-thumb-style`.
-  - GALLERIA and 52-CARD-PICKUP are assigned to Codex for headed verification
-    after landing: `b7a20e64` and `f7b69d15`.
+- **No browser measurement by me, of anything in this build.** Every change
+  above is verified by rendered markup and emitted CSS. I drove no browser.
+  Three of them have since been measured by Codex — see the section below — and
+  everything else in this build still has no geometry behind it: the GUTTER
+  slider in particular changes spacing on 12 skins and **nobody has measured a
+  gap**.
 - **The browser half of the release gate cannot run here.**
   `tools/browser-tests/node_modules` is missing, so `rf_browser_tests()` will
   refuse with the `npm ci` line. That refusal is correct and is itself part of
@@ -134,22 +132,54 @@ NEW HORIZON moved twice inside this build — 1.3.27 in the scroll-time commit,
   a live admin and watched a page change.
 - **A spoke learns the blogroll group name on the next hub push**, not before.
 - **HIP TO BE SQUARE still carries the same dead `--force-square` control**
-  GALLERIA had. Not fixed, not mine.
+  GALLERIA had. **HELD by the coordinator** — the skin is square by design, so
+  whether that control should be wired or removed is a product call and he is
+  taking it to Sean. Nobody touches it meanwhile.
 - **A shortlist of other skins may style archive tile classes their pages never
   emit** — alfred, stanley, writing-with-impact, slickr, rational-geo, chaplin,
-  glide, sliders, telegram, tilez. Shortlist only; none verified. My harness
-  renders `layout.php`, so wrapper-component skins may be mis-measured.
+  glide, sliders, telegram, tilez. **Post-launch triage, TICKET WICKET
+  SS-1211.** Shortlist only; none verified. My harness renders `layout.php`, so
+  wrapper-component skins may be mis-measured, and a class may legitimately
+  belong to a page the archive never reaches.
 - **SS-1205** (test-strength threshold artefacts, 11 files), **SS-1206**
   (waiting on a real gate run) and **SS-1207** (THUMB STYLE capability flag,
   and the border-style tooltip claim is still unmeasured) are open.
 
+## Measured in a browser by Codex — the part I could not do
+
+Codex holds the headed runner. These are **his** measurements, reported by him
+in Brain Trust, at 1920, 1440 and 1024.
+
+| What | His result |
+|---|---|
+| 52-CARD-PICKUP archive | square cover, 6px card padding, shadow, and a 2px hover lift all **pass** |
+| GALLERIA FORCE SQUARE CROP | **1:1** with it set to Yes, **3:2** with it set to Original — **pass** both ways |
+| NEW HORIZON | 200x133 landscape and 150x225 portrait cropped; 200x200 square |
+
+Captures: `C:/dev/snapsmack-staging/archive-batch-8024` (pickup),
+`galleria-square-8024` and `galleria-original-8024`, `new-horizon-cropped` and
+`new-horizon-thumb-style`.
+
+**What I checked myself before writing this down**, rather than relaying it: all
+five folders exist; the capture indexes record 52-CARD-PICKUP at **1.4.18** and
+GALLERIA at **1.3.23**, which are the versions in this build; the pickup archive
+fixture carries `pickup-archive-item` four times and `pickup-card` zero times;
+and the two GALLERIA fixture sets really are the two settings — the square set
+emits `.htbs-archive-item .frame-image{aspect-ratio: 1;}` and the original set
+emits `aspect-ratio: auto`. So his two runs were driven against the real states
+of the control, not the same page twice.
+
+**Still unchecked on all three, in his words:** real admin save, and installed
+render. Nobody has saved the control in a live admin and reloaded the site.
+
 ## What has to happen, and whose it is
 
-1. **Codex** — headed-browser verification of GALLERIA `b7a20e64` and
-   52-CARD-PICKUP `f7b69d15`; captures where Sean can see them.
-2. **Codex** — the tag, once the gate passes on a machine where the browser
-   tests can run.
-3. **Sean** — look at the captures, then build, package the 17 skins, sign and
-   deploy. All four are his alone.
+1. **Codex** — the tag, once the gate passes on a machine where the browser
+   tests can run. The browser half cannot run on mine.
+2. **Sean** — look at the captures above, then build, package the 17 skins,
+   sign and deploy. All four are his alone.
+3. **Open, not blocking the build:** a real admin save and an installed render
+   for the three measured skins; the HIP TO BE SQUARE product call; SS-1211
+   triage; SS-1205, SS-1206, SS-1207.
 
 <!-- ===== SNAPSMACK EOF ===== -->
