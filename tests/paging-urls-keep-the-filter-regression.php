@@ -114,15 +114,39 @@ $untouched = snapsmack_public_paging_urls(['kind' => 'photo', 'page' => 1, 'next
 cx(!array_key_exists('next_url', $untouched) && !array_key_exists('previous_url', $untouched),
    'a photo response gets no paging urls');
 
-echo "\nTHE URLS ARE ESCAPED FOR AN href, AND NOT DOUBLE ESCAPED\n";
-// snap_route_url runs snap_escape_url, so these go straight into an attribute.
-// Worth asserting: a skin that escaped them again would show &amp;amp; to a
-// visitor, and that is the sort of thing nobody notices until a photographer
-// does.
+echo "\nTHE URLS ARE RAW. THE SKIN ESCAPES THEM ONCE. CONTRACT REVERSED, ON PURPOSE\n";
+// THIS BLOCK USED TO ASSERT THE OPPOSITE AND IT WAS WRONG. It said the urls
+// arrive pre-escaped and "ready for an href", and its own comment spotted the
+// hazard -- "a skin that escaped them again would show &amp;amp;" -- and then
+// concluded the pre-escaped form was correct anyway. It is not, because a
+// strict skin HAS NO CHOICE about escaping: core/skin-security-policy.php
+// refuses any echo in a layout that does not begin with one of seven output
+// helpers, so the template always writes snap_escape_url(...). Pre-escaped in,
+// double-escaped out, and the FILTER IS LOST on page two.
+//
+// Codex hit it wiring GLIDE's paging and reported it. So core now builds these
+// two with snap_route_url_raw() and the template does the single escape.
+//
+// This is a deliberate contract change, not a check being softened: the
+// assertion below is stronger than the one it replaces, because it performs
+// the escape the skin will perform and checks the RESULT.
 [$p, $n] = urls(['kind' => 'archive', 'page' => 2, 'previous_page' => 1, 'next_page' => 3,
                  'taxonomy' => ['category_id' => 3, 'album_id' => 9]]);
-cx(str_contains((string)$n, '&amp;'), 'ampersands are escaped once, ready for an href');
-cx(!str_contains((string)$n, '&amp;amp;'), 'and not twice');
+cx(str_contains((string)$n, '&') && !str_contains((string)$n, '&amp;'),
+   'core hands over a raw ampersand (' . $n . ')');
+$escaped = snap_escape_url((string)$n);
+cx(str_contains($escaped, '&amp;'), 'the skin\'s own escape makes it an entity (' . $escaped . ')');
+cx(!str_contains($escaped, '&amp;amp;'), 'exactly once, so the link still carries the filter');
+cx(substr_count($escaped, '&amp;') === substr_count((string)$n, '&'),
+   'every ampersand survives the round trip, none doubled and none dropped');
+// Raw must still mean validated. The scheme check is shared with
+// snap_escape_url() via snap_validate_url(), so a raw url cannot be a
+// javascript: or protocol-relative one.
+cx(snap_route_url_raw('archive', ['page' => 2]) !== '',
+   'the raw builder produces a url at all');
+cx(snap_validate_url('javascript:alert(1)') === '' && snap_validate_url('//evil.test/x') === '',
+   'and the validation raw shares with the escaper still refuses a bad scheme '
+   . 'and a protocol-relative url');
 
 echo "\n{$pass} checks, {$fail} failed\n";
 exit($fail > 0 ? 1 : 0);

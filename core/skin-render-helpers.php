@@ -18,10 +18,24 @@ function snap_escape_attr(mixed $value): string {
     return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-function snap_escape_url(mixed $value): string {
+/**
+ * The scheme check, on its own, so the raw and escaped paths share ONE rule.
+ *
+ * Returns the url unchanged when it is safe to emit, or '' when it is not:
+ * anything protocol-relative, and any scheme that is not http or https. This
+ * was inline in snap_escape_url(); it is factored out so snap_route_url_raw()
+ * validates identically rather than carrying a second copy of the rule.
+ */
+function snap_validate_url(mixed $value): string {
     $url = trim((string)$value);
     $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
     if (str_starts_with($url, '//') || ($scheme !== '' && !in_array($scheme, ['http', 'https'], true))) return '';
+    return $url;
+}
+
+function snap_escape_url(mixed $value): string {
+    $url = snap_validate_url($value);
+    if ($url === '') return '';
     return htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
@@ -47,7 +61,31 @@ function snap_asset_url(string $handle): string {
     return snap_escape_url($base . ltrim($path, '/'));
 }
 
-function snap_route_url(string $route, array $parameters = []): string {
+/**
+ * A route URL with NO HTML ESCAPING -- validated, but raw.
+ *
+ * WHY THIS EXISTS. snap_route_url() escapes its own output, so everything it
+ * returns is already HTML-escaped and cannot survive being escaped again. A
+ * strict skin has no choice about escaping: core/skin-security-policy.php
+ * refuses any echo in a layout that does not begin with one of seven output
+ * helpers, so a template MUST write snap_escape_url(...) around a URL it
+ * prints. For a one-parameter route that is harmless, because there is nothing
+ * to escape. For a FILTERED, PAGED archive it breaks the link:
+ *
+ *   core emits    /archive?category=street&amp;page=2
+ *   skin escapes  /archive?category=street&amp;amp;page=2
+ *
+ * and the filter is lost on the second page. Codex hit this wiring GLIDE's
+ * paging to the slices I shipped in ca230aab, and he was right.
+ *
+ * So values that a TEMPLATE will escape are built with this, and values a
+ * template prints directly keep snap_route_url(). Escape once, at output.
+ *
+ * RAW DOES NOT MEAN UNVALIDATED. The scheme check that snap_escape_url()
+ * performs is repeated here, so a route can still never produce a javascript:
+ * or protocol-relative URL. The only thing left out is htmlspecialchars.
+ */
+function snap_route_url_raw(string $route, array $parameters = []): string {
     $routes = [
         'home' => '', 'archive' => 'archive', 'search' => 'search', 'hashtag' => 'tag',
         'post' => 'post', 'photo' => 'photo', 'page' => 'page', 'albums' => 'albums',
@@ -63,15 +101,24 @@ function snap_route_url(string $route, array $parameters = []): string {
     }
     $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
     if (($route === 'page' || $route === 'post' || $route === 'photo') && !empty($allowed['slug'])) {
-        return snap_escape_url($base . rawurlencode($allowed['slug']));
+        return snap_validate_url($base . rawurlencode($allowed['slug']));
     }
     if ($route === 'hashtag' && !empty($allowed['slug'])) {
         $allowed['tag'] = $allowed['slug'];
         unset($allowed['slug']);
-        return snap_escape_url($base . '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986));
+        return snap_validate_url($base . '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986));
     }
     $path = $routes[$route];
-    return snap_escape_url($base . $path . ($allowed ? '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986) : ''));
+    return snap_validate_url($base . $path . ($allowed ? '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986) : ''));
+}
+
+/**
+ * The escaping route helper every skin already calls. One source of truth for
+ * how a route is built: this is the raw builder plus the escape, so the two
+ * can never drift apart the way four copies of the skin-to-prefix map did.
+ */
+function snap_route_url(string $route, array $parameters = []): string {
+    return snap_escape_url(snap_route_url_raw($route, $parameters));
 }
 
 /**

@@ -201,12 +201,24 @@ function snapsmack_public_paging_urls(array $response): array
     $next = (int)($response['next_page'] ?? 0);
     $prev = (int)($response['previous_page'] ?? ($pageNow > 1 ? $pageNow - 1 : 0));
 
+    // RAW, NOT ESCAPED, and that is the contract: a strict skin MUST wrap
+    // every echo in an output helper -- core/skin-security-policy.php refuses
+    // a layout that does not -- so a pre-escaped url arrives at the browser
+    // double-escaped and the FILTER IS LOST on page two:
+    //
+    //   pre-escaped  /archive?category=street&amp;page=2
+    //   skin escapes /archive?category=street&amp;amp;page=2
+    //
+    // These two values exist to be printed by a template, so they are built
+    // with the raw helper and the template's own snap_escape_url() does the
+    // single escape. snap_route_url_raw() still applies the same scheme
+    // validation, so raw means un-escaped and never means unchecked.
     $response['next_url'] = $next > $pageNow
-        ? snap_route_url($kind, $state + ['page' => $next]) : null;
+        ? snap_route_url_raw($kind, $state + ['page' => $next]) : null;
     // Page 2's previous is page 1, and page 1 is the route with NO page
     // parameter: a ?page=1 in a link works and still looks like a mistake.
     $response['previous_url'] = $prev >= 1
-        ? snap_route_url($kind, $prev > 1 ? $state + ['page' => $prev] : $state)
+        ? snap_route_url_raw($kind, $prev > 1 ? $state + ['page' => $prev] : $state)
         : null;
     return $response;
 }
