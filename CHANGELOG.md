@@ -11,6 +11,16 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.978D - 2026-11-06 - HEISENBERG DECOMPENSATOR
+
+- The fleet skin update now includes the hub itself, so the site running the push is no longer the one site it never reached.
+- Skin templates can page an archive in both directions, with the active album, category or search already in the links, so paging a filtered archive stays filtered.
+- An archive tile carries its own photograph link, whether comments are open on it and how many there are.
+- The owner's header logo reaches skins that ask for it. It was an available setting that never arrived.
+- THUMB STYLE no longer claims to apply to every skin; its help text names the skins it changes and says plainly that on the others nothing will happen.
+- A release cut from a clean checkout now refuses with the one command that fixes it, instead of stopping on an unexplained error part way through.
+- Recorded how to put a site back: what is backed up, what is not, and the limits on how far back a release or a skin can be taken.
+
 ## 0.7.977D - 2026-11-05 - HEISENBERG DECOMPENSATOR
 
 - Linked photographs open the lightbox without navigating away. GLIDE waits for actual dragging before capturing the pointer, distinguishes taps from drags, and coasts after release.
