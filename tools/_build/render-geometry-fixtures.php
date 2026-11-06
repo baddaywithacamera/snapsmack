@@ -39,6 +39,7 @@ require_once $root . '/core/trusted-html.php';
 require_once $root . '/core/skin-render-helpers.php';
 require_once $root . '/core/skin-view-contract.php';
 require_once $root . '/core/skin-presentation.php';
+require_once __DIR__ . '/fixture-head.php';
 require_once $root . '/core/asset-registry.php';
 require_once $root . '/core/archive-controls.php';
 
@@ -213,7 +214,10 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
         // The skin's own <link> tags point at a server that is not here. Drop
         // them and inline the resolved set instead, so the page is complete on
         // disk and a missing file can never masquerade as a passing layout.
-        $html = preg_replace('#<link[^>]+rel=["\']stylesheet["\'][^>]*>#i', '', $html) ?? $html;
+        // See tools/_build/fixture-head.php: the inlined css goes WHERE THE
+        // LINKS WERE, not at the end of the head, or the cascade comes out
+        // backwards and a fixture shows the skin winning where a live page
+        // shows the owner winning.
 
         // The CMS builds a hero's src as BASE_URL . path, and BASE_URL is '/'
         // here, so every hero came out as "/photo-1600x1067.svg". Under a
@@ -223,10 +227,7 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
         // that existed only in this fixture. Make it relative so the
         // photograph beside the page is the photograph that loads.
         $html = str_replace('src="/photo-', 'src="photo-', $html);
-        $style = '<style>' . $css . '</style>';
-        $html = str_contains($html, '</head>')
-            ? str_replace('</head>', $style . '</head>', $html)
-            : $style . $html;
+        $html = snapsmack_fixture_inline_styles($html, $css);
 
         $target = $out . '/' . $skin . '--' . $name . '.html';
         file_put_contents($target, $html);
