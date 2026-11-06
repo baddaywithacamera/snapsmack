@@ -1316,8 +1316,8 @@
     },
     "new-horizon/archive": {
         "images": [
-            "/media/first-square-crop.jpg",
-            "/media/second-square-crop.jpg"
+            "/media/first-whole-print.jpg",
+            "/media/second-whole-print.jpg"
         ],
         "stylesheets": [
             "",

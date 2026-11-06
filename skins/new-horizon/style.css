@@ -504,8 +504,9 @@ img.post-image {
 #browse-grid.cropped-grid .thumb-container {
     position: relative;
     overflow: hidden;
-    aspect-ratio: 1 / 1;
 }
+#browse-grid.square-grid .thumb-container { aspect-ratio: 1 / 1; }
+#browse-grid.cropped-grid .thumb-container { width: 100%; }
 @media (max-width: 600px) {
     #browse-grid.square-grid,
     #browse-grid.cropped-grid {
