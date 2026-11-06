@@ -156,10 +156,25 @@ if ($declaring === '') {
         ['kind' => 'landing', 'status' => 200, 'items' => [], 'item' => []],
         ['site_name' => 'Fixture', 'base_url' => '/', 'skin_slug' => $declaring]
     );
-    $frag = (string)snap_render_component('scroll-time', $v);
+    // ONE CALL, REUSED. ASKING TWICE IS THE WHOLE BUG.
+    //
+    // snapsmack_scrolltime_tag() has a one-shot guard per request, so that two
+    // callers cannot emit two trackers. I called the component ONCE to inspect
+    // the fragment and AGAIN to fill the slot -- so the inspection consumed the
+    // one shot and the slot was handed an empty string. Three assertions then
+    // failed and the OFFICIAL RELEASE GATE STOPPED ON THEM, blocking fourteen
+    // skin updates from being packaged.
+    //
+    // It only surfaced now because this section is skipped until some skin
+    // actually declares scrolltime_pages, and until today none did. The code it
+    // tests was never wrong; my test asked for the tracker twice and then
+    // complained it was missing the second time. Codex measured it and named it
+    // precisely before I looked.
+    $fragment = snap_render_component('scroll-time', $v);
+    $frag = (string)$fragment;
     cx(str_contains($frag, '<script') && str_contains($frag, 'ss-scrolltime'),
        "{$declaring}: the skin's own request returns the tracker as a script");
-    $v['before_assets'] = snap_render_component('scroll-time', $v);
+    $v['before_assets'] = $fragment;
     $v['site']['registered_assets'] = ['scripts' => [ASSETMARK], 'styles' => []];
     $doc = (string)snap_render_component('impact-printer-page', $v);
     $tAt = strpos($doc, 'ss-scrolltime');
