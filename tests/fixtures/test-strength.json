@@ -179,6 +179,11 @@
             2
         ]
     },
+    "blogroll-keeps-the-owners-order-regression.php": {
+        "assertions": 2,
+        "predicates": 18,
+        "thresholds": []
+    },
     "blogroll-page-regression.php": {
         "assertions": 30,
         "predicates": 30,
