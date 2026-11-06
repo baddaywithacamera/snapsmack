@@ -11,6 +11,13 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.981D - 2026-11-06
+
+- GLIDE wall photos use its flip viewer without a competing generic lightbox. Space, Info and Comments work from viewer entry, and restored photo focus lets the bands resume after closing.
+- About portraits remain visible after their entrance flip. GLIDE includes its presentation baseline and its CMS User Manual topics in the skin package.
+- F1 help lists GLIDE viewer shortcuts and opens above other dialogs. GLIDE uses a dark help panel with a white accent.
+
+
 ## 0.7.980D - 2026-11-06
 
 - GLIDE defaults to 50 archive photos per page. The About overlay restores the demo typography and portrait layout, the About icon uses the information glyph, and the drag cue sits away from search. The viewer fades in and supports the demo Space shortcut.
