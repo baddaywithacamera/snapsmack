@@ -675,7 +675,7 @@ body.archive-page #scroll-stage {
     box-shadow: none;
     box-sizing: border-box;
 }
-.square-grid .thumb-link img {
+#browse-grid.square-grid .thumb-link img {
     image-rendering: var(--print-image-rendering, pixelated);
     width: calc(100% - 22px);
     height: calc(100% - 22px);
@@ -716,7 +716,7 @@ body.archive-page #scroll-stage {
     width: 90% !important;
     aspect-ratio: 1 / 1 !important;
 }
-.cropped-grid .thumb-link img {
+#browse-grid.cropped-grid .thumb-link img {
     image-rendering: var(--print-image-rendering, pixelated);
     width: calc(100% - 22px) !important;
     height: calc(100% - 22px) !important;
