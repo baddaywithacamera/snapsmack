@@ -1672,9 +1672,26 @@ if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
             VALUES (?, ?, ?, ?, ?)
         ");
     }
+    // WHICH CATEGORY IS THE OWNER'S OWN SITES. The hub knows; a spoke cannot
+    // work it out. These arrive as ordinary rows in an ordinary category, and
+    // source_hub_url marks EVERY hub-synced category, not just this one, so
+    // after the sync the only thing distinguishing "My Blogs" from "Antiques"
+    // is the text of the name -- and the name is configurable on the hub.
+    //
+    // So the hub now sends is_own on the entries it synthesises from the mesh,
+    // and the spoke records their category name under the same settings key
+    // the hub uses for it. A page can then ask "is this the owner's group?"
+    // without any skin matching on a literal string.
+    //
+    // Backward compatible both ways: an older hub sends no is_own and the
+    // spoke simply learns nothing new, keeping whatever it had.
+    $own_cat_seen = '';
     foreach ($entries as $e) {
         $url = trim($e['peer_url'] ?? '');
         if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) continue;
+        if (!empty($e['is_own']) && trim((string)($e['category'] ?? '')) !== '') {
+            $own_cat_seen = trim((string)$e['category']);
+        }
         $entry_cat_id = $resolve_cat((string)($e['category'] ?? ''));
         $row = [
             substr(trim($e['peer_name'] ?? ''), 0, 255) ?: parse_url($url, PHP_URL_HOST),
@@ -1688,7 +1705,15 @@ if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
         $inserted++;
     }
 
-    ms_ok(['inserted' => $inserted, 'hub_url' => $hub_url]);
+    if ($own_cat_seen !== '') {
+        $pdo->prepare(
+            "INSERT INTO snap_settings (setting_key, setting_val)
+             VALUES ('blogroll_my_blogs_cat', ?)
+             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+        )->execute([substr($own_cat_seen, 0, 100)]);
+    }
+
+    ms_ok(['inserted' => $inserted, 'hub_url' => $hub_url, 'own_category' => $own_cat_seen]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

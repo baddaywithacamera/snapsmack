@@ -184,6 +184,15 @@
         "predicates": 18,
         "thresholds": []
     },
+    "blogroll-own-sites-go-last-regression.php": {
+        "assertions": 2,
+        "predicates": 12,
+        "thresholds": [
+            2,
+            2,
+            20
+        ]
+    },
     "blogroll-page-regression.php": {
         "assertions": 30,
         "predicates": 30,

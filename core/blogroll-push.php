@@ -74,6 +74,14 @@ function blogroll_build_entries(PDO $pdo, array $settings): array {
             'peer_rss'  => rtrim($sn['site_url'], '/') . '/rss.php',
             'peer_desc' => $desc,
             'category'  => $my_blogs_cat,
+            // THE ONLY MARK THE SPOKE EVER GETS. A spoke stores these as
+            // ordinary snap_blogroll rows in an ordinary category, so once
+            // they land nothing distinguishes "My Blogs" from "Antiques"
+            // except the text of the name -- and the name is configurable
+            // here. This flag travels with the entry so the spoke can record
+            // WHICH category is the owner's own, without any skin or page
+            // matching on a literal string.
+            'is_own'    => true,
         ];
     }
     // Include the hub itself so spokes see every live network site.
@@ -86,6 +94,7 @@ function blogroll_build_entries(PDO $pdo, array $settings): array {
             'peer_rss'  => rtrim($hub_url, '/') . '/rss.php',
             'peer_desc' => trim($settings['site_tagline'] ?? ''),
             'category'  => $my_blogs_cat,
+            'is_own'    => true,
         ];
     }
     usort($my, fn($a, $b) => strcasecmp($a['peer_name'], $b['peer_name']));
