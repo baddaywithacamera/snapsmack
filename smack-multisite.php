@@ -894,6 +894,67 @@ if (isset($_POST['push_all_skins_all_spokes'])) {
             $target_nodes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $skin_results = [];
 
+            // THE HUB IS PART OF THE FLEET. SS-1072 fixed the single-skin fleet
+            // push (push_skin_all) to install on the hub too; this bulk handler
+            // -- "Update Every Spoke That Is Behind" (push_all_skins_all_spokes)
+            // -- is the sibling path and had the SAME gap: its target query is
+            // role='spoke' only, and nothing installed on the hub, so a bulk
+            // update left the hub on the old skins while every spoke moved. Same
+            // rule as the single push: the hub installs its OWN stale skins
+            // first (all of them under force), from the same fresh registry,
+            // before the spokes. The hub is never freshly given a skin it does
+            // not already have on disk. multisite_allow_skin is not consulted:
+            // this is the owner on their own hub admin, not a remote write.
+            require_once __DIR__ . '/core/skin-manifest.php';
+            require_once __DIR__ . '/core/skin-registry.php';
+            require_once __DIR__ . '/core/release-pubkey.php';
+            $hub_key   = defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : '';
+            $hub_label = (string)($settings['site_name'] ?? '') !== ''
+                       ? (string)$settings['site_name'] . ' (this hub)' : 'This hub';
+            $hub_updated = [];   // slug vX -> vY actually installed
+            $hub_current = [];   // already on the registry version
+            $hub_unknown = [];   // version could not be compared, sent anyway
+            $hub_failed  = [];   // install refused or errored
+            foreach (glob(__DIR__ . '/skins/*/manifest.json') ?: [] as $hub_mf_path) {
+                $hub_slug = basename(dirname($hub_mf_path));
+                $rskin = $bulk_registry[$hub_slug] ?? null;
+                if (!$rskin || empty($rskin['download_url'])) continue;  // not a registry skin
+                $hub_mf  = load_skin_manifest($hub_slug);
+                $hub_ver = trim((string)($hub_mf['version'] ?? ''));
+                $reg_ver = trim((string)($rskin['version'] ?? ''));
+                if (!$bulk_force) {
+                    if ($reg_ver === '' || $hub_ver === '') {
+                        $hub_unknown[] = $hub_slug;        // fall through and install
+                    } elseif (!snap_version_compare($reg_ver, $hub_ver, '>')) {
+                        $hub_current[] = $hub_slug . ' v' . $hub_ver;
+                        continue;
+                    }
+                }
+                $hub_res = skin_registry_install(
+                    $hub_slug, $rskin['download_url'], $rskin['signature'] ?? '',
+                    $hub_key, (int)($rskin['download_size'] ?? 0));
+                if (!empty($hub_res['success'])) {
+                    $hub_updated[] = $hub_slug . ($hub_ver !== '' ? ' (was v' . $hub_ver . ')' : '');
+                } else {
+                    $hub_failed[] = $hub_slug . ': ' . (string)($hub_res['message'] ?? 'install failed');
+                }
+            }
+            if ($hub_updated || $hub_failed || $hub_current || $hub_unknown) {
+                $hub_detail = $hub_updated
+                    ? (count($hub_updated) . ' skin' . (count($hub_updated) === 1 ? '' : 's') . ' updated.')
+                    : 'Nothing to do.';
+                if ($hub_current) $hub_detail .= ' Already current: ' . implode(', ', $hub_current) . '.';
+                if ($hub_unknown) $hub_detail .= ' Version could not be compared, so reinstalled anyway: ' . implode(', ', $hub_unknown) . '.';
+                if ($hub_failed)  $hub_detail .= ' FAILED: ' . implode('; ', $hub_failed) . '.';
+                $skin_results[] = [
+                    'name'    => $hub_label,
+                    'ok'      => empty($hub_failed),
+                    'skipped' => empty($hub_updated) && empty($hub_failed),
+                    'detail'  => $hub_detail,
+                ];
+                if ($hub_updated) skin_registry_clear_cache();
+            }
+
             foreach ($target_nodes as $tn) {
                 $installed_raw = $tn['installed_skins'] ?? '';
                 $installed     = ($installed_raw === '' || $installed_raw === null)
