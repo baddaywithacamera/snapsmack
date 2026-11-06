@@ -121,6 +121,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
         $tfp = $_POST['settings']['archive_thumb_frame'] ?? 'none';
         if (!isset($thumb_frame_presets[$tfp])) $tfp = 'none';
         $tf = $thumb_frame_presets[$tfp];
+        // WHICH ARCHIVES THIS CAN REACH, measured 6 November 2026 by rendering
+        // all 30 skins' archives in square, cropped and masonry and asking the
+        // DOM. It reaches FIVE: 50 SHADES and CHAPLIN via .fsog-archive-item,
+        // CHAPLIN, IMPACT PRINTER, NEW HORIZON and TRUE GRIT via
+        // .square-grid/.cropped-grid .thumb-link. On the other 25 skins this
+        // rule matches nothing, which is why the tip below names them.
+        //
+        // .rg-archive-item .rg-thumb IS KEPT AND MATCHES NOTHING TODAY. No
+        // layout and no page component emits rg-archive-item -- RATIONAL GEO
+        // styles that class in its own stylesheet and does not render it,
+        // which is also on the SS-1211 shortlist. It stays because removing it
+        // would quietly drop the owner's border the day that skin starts
+        // emitting the class again, and a selector that matches nothing costs
+        // nothing. It is recorded here rather than left to be rediscovered.
         $grid_sel = '.square-grid .thumb-link, .cropped-grid .thumb-link, .fsog-archive-item .fsog-thumb, .rg-archive-item .rg-thumb';
         $grid_rule    = "/* arch_opt:grid_border */ {$grid_sel} { {$tf['grid']} }";
         $masonry_rule = "/* arch_opt:masonry_border */ #justified-grid .justified-item { {$tf['just']} }";
@@ -432,7 +446,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
         ];
         ?>
         <div class="box">
-            <h3>THUMBNAIL FRAME <span class="field-tip" data-tip="Border style applied to archive thumbnails in all grid modes and all skins.">ⓘ</span></h3>
+            <h3>THUMBNAIL FRAME <span class="field-tip" data-tip="Border around archive thumbnails on the 5 skins whose archives this can reach: 50 SHADES OF NOAH GREY, CHAPLIN, IMPACT PRINTER, NEW HORIZON and TRUE GRIT. On the other 25 nothing will happen. IMPACT PRINTER is reached in square and cropped but not masonry. Whether it reaches masonry on a live page has not been measured on any skin.">ⓘ</span></h3>
             <div class="dash-grid">
                 <div class="lens-input-wrapper">
                     <label>FRAME STYLE</label>

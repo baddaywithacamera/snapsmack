@@ -13,6 +13,7 @@
 
 ## 0.7.978D - 2026-11-06 - HEISENBERG DECOMPENSATOR
 
+- THUMBNAIL FRAME stops claiming it applies to every skin. It reaches five, and its help text now names them, says plainly that nothing happens on the other twenty-five, and says the masonry case is unmeasured.
 - Paging links on a filtered archive keep their filter. The next and previous URLs arrived already HTML-escaped, and a skin has to escape what it prints, so the ampersand was escaped twice and the category or album was dropped on page two.
 - The release gate now runs every test file. It matched test names against a pattern and so never ran twenty of them, including the two that were failing in the build being served to the fleet.
 - The owner's own sites go last on the blogroll, and every group tells the skin whether it is the owner's, so no skin has to recognise the words "MY BLOGS". Nothing moves on a site that has no such category.

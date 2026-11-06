@@ -1100,7 +1100,7 @@
     },
     "paging-urls-keep-the-filter-regression.php": {
         "assertions": 0,
-        "predicates": 21,
+        "predicates": 35,
         "thresholds": []
     },
     "paragraph-image-boundary-regression.php": {
@@ -1947,6 +1947,13 @@
         "thresholds": [
             400,
             900
+        ]
+    },
+    "thumbnail-frame-names-the-skins-it-reaches-regression.php": {
+        "assertions": 2,
+        "predicates": 16,
+        "thresholds": [
+            30
         ]
     },
     "tilez-columns-regression.php": {
