@@ -933,11 +933,18 @@ if (isset($_POST['push_all_skins_all_spokes'])) {
                 $hub_res = skin_registry_install(
                     $hub_slug, $rskin['download_url'], $rskin['signature'] ?? '',
                     $hub_key, (int)($rskin['download_size'] ?? 0));
-                if (!empty($hub_res['success'])) {
-                    $hub_updated[] = $hub_slug . ($hub_ver !== '' ? ' (was v' . $hub_ver . ')' : '');
-                } else {
+                if (empty($hub_res['success'])) {
                     $hub_failed[] = $hub_slug . ': ' . (string)($hub_res['message'] ?? 'install failed');
+                    continue;
                 }
+                $installed_manifest = json_decode((string)@file_get_contents($hub_mf_path), true);
+                $installed_version = trim((string)($installed_manifest['version'] ?? ''));
+                if ($reg_ver === '' || $reg_ver !== $installed_version) {
+                    $hub_failed[] = $hub_slug . ': version not verified (expected ' . ($reg_ver ?: 'unknown')
+                        . ', found ' . ($installed_version ?: 'unknown') . ')';
+                    continue;
+                }
+                $hub_updated[] = $hub_slug . ' v' . $installed_version;
             }
             if ($hub_updated || $hub_failed || $hub_current || $hub_unknown) {
                 $hub_detail = $hub_updated
@@ -2251,19 +2258,19 @@ include 'core/sidebar.php';
             <?php if (!empty($registry_skins)): ?>
             <div class="skin-deploy-primary">
             <form method="POST"
-                  onsubmit="return confirm('Update every spoke that is behind on any skin? Skins already on the current version are not touched.');">
+                  onsubmit="return confirm('Update this hub and every spoke that is behind on any skin? Skins already on the current version are not touched.');">
                 <button type="submit" name="push_all_skins_all_spokes" class="master-update-btn">
-                    UPDATE EVERY SPOKE THAT IS BEHIND
+                    UPDATE HUB AND SPOKES THAT ARE BEHIND
                 </button>
             </form>
-            <p>One authenticated batch per spoke, carrying only the skins whose
+            <p>The hub updates its own installed skins and sends one authenticated batch per spoke, carrying only the skins whose
                registry version is newer than the version that spoke reports.
                A skin already on the current version is not sent. Custom and
                uninstalled skins are left alone. Each site reports what it
                updated, what was already current, and anything whose version
                could not be compared.</p>
             <form method="POST"
-                  onsubmit="return confirm('REINSTALL every registry skin on every active spoke, including ones already up to date? This downloads every skin again and may take several minutes.');">
+                  onsubmit="return confirm('REINSTALL every installed registry skin on this hub and every active spoke, including ones already up to date? This downloads every skin again and may take several minutes.');">
                 <input type="hidden" name="push_all_skins_force" value="1">
                 <button type="submit" name="push_all_skins_all_spokes" class="secondary-btn">
                     Force a full reinstall instead
