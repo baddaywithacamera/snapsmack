@@ -70,13 +70,34 @@ function hc_declared(string $runtime, string $group): array {
     return $hits[1];
 }
 
-$runtime = (string) file_get_contents($root . '/core/public-runtime.php');
-$scripts = hc_declared($runtime, 'scripts');
-$styles  = hc_declared($runtime, 'styles');
+// STOP PARSING THE SOURCE. CALL THE FUNCTION.
+//
+// This read the handles out of snapsmack_public_runtime() as text. The
+// declaration then MOVED into a function of its own,
+// snapsmack_public_engine_assets(), which snapsmack_public_runtime() calls at
+// its line 506 and index.php merges at its line 246. The parse kept reading the
+// old function, found nothing, and reported the F1 help engine, the consent
+// engine, the consent stylesheet and the keyboard engine as undeclared on EVERY
+// skin -- while all four were shipping perfectly. It has been failing in the
+// build that is in service on the fleet, and it says nothing is reaching
+// anybody, which is alarming and wrong.
+//
+// It had already been broken twice the same way: the comment above this
+// function records a 500-character window and a 900-character one, both
+// defeated by somebody adding prose inside the array. A third text-parsing
+// scheme would be defeated by the next move.
+//
+// snapsmack_public_engine_assets() takes no arguments and returns the array.
+// There was never a reason to read it rather than ask it. hc_declared() stays
+// because the file uses it elsewhere.
+require_once $root . '/core/public-runtime.php';
+$declared = snapsmack_public_engine_assets();
+$scripts = is_array($declared['scripts'] ?? null) ? $declared['scripts'] : [];
+$styles  = is_array($declared['styles'] ?? null) ? $declared['styles'] : [];
 
-echo "The declaration is read out of core, so this check is coupled to it\n";
-hc_test($scripts !== [], 'script handles were parsed from snapsmack_public_runtime()');
-hc_test($styles !== [], 'style handles were parsed from snapsmack_public_runtime()');
+echo "The declaration is CALLED, not read, so moving it cannot fool this check\n";
+hc_test($scripts !== [], 'snapsmack_public_engine_assets() returned script handles');
+hc_test($styles !== [], 'and style handles');
 hc_test(in_array('asset:public:ss-engine-public-help', $scripts, true),
     'the F1 help engine is declared');
 hc_test(in_array('asset:public:ss-engine-consent', $scripts, true),

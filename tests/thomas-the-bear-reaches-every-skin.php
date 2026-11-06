@@ -75,49 +75,40 @@ require_once $root . '/core/skin-render-helpers.php';
  * it replaces. So the handles below are PARSED from the runtime and fed to the
  * real resolver. Delete the declaration and every skin below goes red.
  */
+// STOP PARSING THE SOURCE. CALL THE FUNCTION.
+//
+// This walked snapsmack_public_runtime() looking for a required_assets
+// statement. Thomas's declaration MOVED into a function of its own,
+// snapsmack_public_engine_assets(), which snapsmack_public_runtime() calls at
+// its line 506 and index.php merges at its line 246. So the parse found the
+// wrong statement, read no handles, and reported THOMAS AS MISSING FROM
+// TWENTY-SEVEN SKINS -- while he was reaching all of them.
+//
+// This file's own refusal message said what to do if that happened: "the
+// statement was reshaped -- in which case update this parse rather than
+// deleting the check". This is that update, and it goes one better. The
+// declaration is a function that takes no arguments and returns an array, so
+// asking it cannot be defeated by the next person who moves it, adds a comment
+// inside it, or changes its shape. Two text-window versions and one terminator
+// version have each been defeated in turn; there is no reason for a fourth.
+require_once $root . '/core/public-runtime.php';
+// The source is still read for ONE check further down -- that smack-thomas
+// appears exactly once in this file. That is not a question about the value, it
+// is a question about the TEXT: one shared declaration rather than per-branch
+// ones, which is how he was lost in the first place. A call cannot answer it,
+// so that check keeps reading, and only that one.
 $runtime = (string)@file_get_contents($root . '/core/public-runtime.php');
-$marker = "['required_assets']['scripts'] = array_values(array_unique(array_merge(";
-// There are several such statements. The page-kind helper near the top of the
-// file declares the shortcode parser's assets; the ones in the middle belong to
-// individual branches. The COMMON EXIT is the last one inside
-// snapsmack_public_runtime(), which is the only one every request kind reaches,
-// so this takes the last match at or after that function and nothing earlier.
-$declaredHandles = [];
-$fnAt = strpos($runtime, 'function snapsmack_public_runtime(');
-$at = $fnAt === false ? false : strrpos($runtime, $marker);
-if ($at !== false && $at < $fnAt) $at = false;
-if ($at !== false) {
-    $stmt = substr($runtime, $at, 20000);
-    // THE ARRAY LITERAL, found by walking back from the statement's own
-    // terminator rather than by reading a fixed number of characters.
-    //
-    // The earlier version read 500 characters from the marker, which stopped
-    // working the moment a comment was added INSIDE the array: the window
-    // ended before the closing bracket, the regex matched nothing, and the
-    // test reported every skin as missing Thomas. A parse that depends on how
-    // much prose sits beside the code is not a parse. ')))' is the statement's
-    // real end and there is exactly one of them.
-    //
-    // No `return` in here either. This runs at script scope, so a return would
-    // END THE TEST SILENTLY with a zero exit -- a check that passes by not
-    // running, which is the whole family of fault this file exists to stop.
-    $tail = strpos($stmt, ')))');
-    if ($tail !== false) {
-        $stmt = substr($stmt, 0, $tail);
-        $close = strrpos($stmt, ']');
-        $head = $close === false ? false : strrpos(substr($stmt, 0, $close), '[');
-        if ($head !== false) {
-            $inner = substr($stmt, $head + 1, $close - $head - 1);
-            preg_match_all("/'([A-Za-z0-9:_-]+)'/", $inner, $hits);
-            $declaredHandles = $hits[1];
-        }
-    }
-}
+$declaredAssets = function_exists('snapsmack_public_engine_assets')
+    ? snapsmack_public_engine_assets() : [];
+$declaredHandles = is_array($declaredAssets['scripts'] ?? null)
+    ? $declaredAssets['scripts'] : [];
+$at = $declaredHandles !== [] ? 0 : false;
 $check($at !== false,
-    'No required_assets declaration was found inside snapsmack_public_runtime() '
-    . 'in the shape this check reads. Either Thomas is no longer shipped from '
-    . 'there, or the statement was reshaped -- in which case update this parse '
-    . 'rather than deleting the check, or it goes quiet the way the old one did.');
+    'snapsmack_public_engine_assets() returned no script handles, so nothing is '
+    . 'shipped to every skin from the shared declaration. If that function was '
+    . 'renamed or removed, point this check at wherever the shared declaration '
+    . 'now lives -- do not delete it, or it goes quiet the way three earlier '
+    . 'versions of this parse did.');
 $check($declaredHandles !== [],
     'The declaration was found but no asset handle could be read out of it, so '
     . 'the render below would prove nothing.');
