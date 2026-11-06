@@ -13,6 +13,8 @@
 
 ## 0.7.978D - 2026-11-06 - HEISENBERG DECOMPENSATOR
 
+- THUMB STYLE's help text named the wrong skins. It reaches six, not three: NEW HORIZON and TRUE GRIT honour it as of this build and ONYX was never listed. The text now names all six and is checked against the rendered pages.
+- A short installed-verification list for this build, so each control can be checked on a real site.
 - The geometry and engine fixtures now carry the same stylesheet order as a live page. Both inlined the skin's stylesheet after the CMS presentation block instead of before it, which reversed the cascade and made a fixture show a skin's value winning where a real site shows the owner's.
 - THUMBNAIL FRAME stops claiming it applies to every skin. It reaches five, and its help text now names them, says plainly that nothing happens on the other twenty-five, and says the masonry case is unmeasured.
 - Paging links on a filtered archive keep their filter. The next and previous URLs arrived already HTML-escaped, and a skin has to escape what it prints, so the ampersand was escaped twice and the category or album was dropped on page two.

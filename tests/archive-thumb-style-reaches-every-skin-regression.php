@@ -247,8 +247,17 @@ $tips = [];
 foreach (['smack-appearance-archive.php', 'smack-settings.php'] as $_page) {
     $_src = (string) file_get_contents($root . '/' . $_page);
     $_at = strpos($_src, "settings[archive_thumb_style]");
-    // The tip sits in the label ABOVE the select, so look behind the select.
-    $_win = $_at === false ? '' : substr($_src, max(0, $_at - 700), 700);
+    // The tip sits in the label ABOVE the select, so look behind the select --
+    // but bounded on the LABEL, not on a count of characters.
+    //
+    // This read a 700-character window and broke the moment the tip itself
+    // grew past it: the correction that added three skins to the list pushed
+    // data-tip out of range, and four assertions failed on wording that was
+    // right. That is the fourth fixed-width window I have had to repair, in a
+    // file of my own. The tip belongs to the nearest THUMB STYLE label before
+    // the select, so find that and read forward from it.
+    $_label = $_at === false ? false : strrpos(substr($_src, 0, $_at), 'THUMB STYLE');
+    $_win = $_label === false ? '' : substr($_src, $_label, $_at - $_label);
     if (preg_match('/data-tip="([^"]*)"/', $_win, $_m)) $tips[$_page] = $_m[1];
 }
 ts_test(count($tips) === 2, 'both pages carry a tooltip on this control');
@@ -387,6 +396,83 @@ printf("                guard, not a thumb-style fault: %s
     $warned === [] ? 'none' : implode(', ', $warned));
 echo "    A FAIL above is not a defect in this build. Core prepares the answer;\n";
 echo "    printing it is one line per layout, and that work is Codex's.\n";
+
+echo "\nTHE TIP NAMES EXACTLY THE SKINS THAT HONOUR IT -- PINNED TO THE MEASUREMENT\n";
+// WHY THIS IS HERE. The section above REPORTS which skins honour the setting
+// and asserts only the core-component ones, so when NEW HORIZON and TRUE GRIT
+// started honouring it in this build, the tip went on saying they "draw a
+// square grid regardless" and nothing failed. It also never mentioned ONYX,
+// which honours it through the shared archive-thumb component.
+//
+// A tip that names skins is a claim about the product, so it is now measured
+// against the product. Every skin that honours the setting must be named, and
+// no skin that ignores it may be -- so the wording cannot drift in either
+// direction, the way it just did.
+$honouring = [];
+$ignoring = [];
+foreach (glob($root . '/skins/*', GLOB_ONLYDIR) ?: [] as $_dir) {
+    $_slug = basename($_dir);
+    if (!is_file($_dir . '/layout.php')) continue;
+    try {
+        $_c = ts_render($root, $_slug, 'cropped');
+        $_s = ts_render($root, $_slug, 'square');
+    } catch (Throwable $e) { continue; }
+    if ($_c === '' && $_s === '') continue;
+    if ($_c !== $_s) $honouring[] = $_slug; else $ignoring[] = $_slug;
+}
+sort($honouring);
+ts_test($honouring !== [], count($honouring) . ' skins honour it: ' . implode(', ', $honouring));
+
+/** Slug to the spelling the tip uses: HIP-TO-BE-SQUARE keeps its hyphens. */
+$spoken = static function (string $slug): array {
+    $plain = strtoupper(str_replace('-', ' ', $slug));
+    $names = [$plain, strtoupper($slug)];
+    if ($slug === '50-shades-of-noah-grey') $names[] = '50 SHADES';
+    return $names;
+};
+$tipUpper = strtoupper($tip);
+/**
+ * Is this skin NAMED IN A LIST in the tip, rather than merely appearing as
+ * ordinary words?
+ *
+ * THE GRID is a skin, and "so the grid is even" is a sentence. A bare
+ * substring match reported THE GRID as wrongly named on wording that was
+ * correct. So a name counts only where a list would put it: followed by a
+ * comma, a full stop, " AND", " OR", or the end of the tip.
+ */
+$namedInList = static function (string $tipUpper, array $names): bool {
+    foreach ($names as $name) {
+        if ($name === '') continue;
+        $at = 0;
+        while (($at = strpos($tipUpper, $name, $at)) !== false) {
+            $after = substr($tipUpper, $at + strlen($name));
+            if ($after === '' || preg_match('/^(,|\.|;|:| AND| OR)/', $after)) return true;
+            $at += strlen($name);
+        }
+    }
+    return false;
+};
+$missing = [];
+foreach ($honouring as $_slug) {
+    if (!$namedInList($tipUpper, $spoken($_slug))) $missing[] = $_slug;
+}
+ts_test($missing === [],
+    'every skin that honours it is named in the tip'
+    . ($missing === [] ? '' : ' -- MISSING: ' . implode(', ', $missing)));
+
+// HIP-TO-BE-SQUARE is named deliberately as an exception -- square by design,
+// ignores the setting on purpose -- so it is the one allowed exclusion.
+$wrong = [];
+foreach ($ignoring as $_slug) {
+    if ($_slug === 'hip-to-be-square') continue;
+    if ($namedInList($tipUpper, $spoken($_slug))) $wrong[] = $_slug;
+}
+ts_test($wrong === [],
+    'and no skin that ignores it is named as honouring it'
+    . ($wrong === [] ? '' : ' -- WRONGLY NAMED: ' . implode(', ', $wrong)));
+ts_test(str_contains($tipUpper, strtoupper((string)count($honouring)))
+        || stripos($tip, 'six') !== false,
+    'the tip states how many skins it reaches (' . count($honouring) . ')');
 
 echo "\n  {$pass} passed, {$fail} failed\n";
 if ($fail > 0) {
