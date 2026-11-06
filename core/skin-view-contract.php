@@ -103,6 +103,11 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         // rather than asserted: the render snapshot is byte-identical across
         // 175 pages and 25 skins.
         'per_page', 'total_count', 'has_more', 'previous_page',
+        // Slice 3. The same two pages as links, with the active filter already
+        // in them -- category and album on an archive, the query on a search,
+        // the tag on a hashtag page. A skin assembling its own query string
+        // would drop the filter the moment anybody paged a filtered archive.
+        'previous_url', 'next_url',
         // The resolved archive controls. archive_controls is the rendered row;
         // these three are the same answer as data, for the components that
         // assemble their own row. 50 SHADES already read archive_layouts and
