@@ -1363,6 +1363,13 @@
         "predicates": 6,
         "thresholds": []
     },
+    "release-gate-runs-every-test-regression.php": {
+        "assertions": 8,
+        "predicates": 11,
+        "thresholds": [
+            2
+        ]
+    },
     "release-gate-scope-regression.php": {
         "assertions": 17,
         "predicates": 13,

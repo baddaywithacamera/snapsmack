@@ -386,7 +386,28 @@ function rf_browser_tests(): void {
 }
 
 function rf_tests(): void {
-    foreach (glob(__DIR__ . '/../tests/*regression.php') ?: [] as $test) {
+    // EVERY TEST FILE, NOT THE ONES WHOSE NAMES HAPPEN TO SAY "regression".
+    //
+    // This globbed tests/*regression.php and therefore NEVER RAN TWENTY TEST
+    // FILES, among them the two that were failing in 0.7.977D while it was
+    // being served to the fleet: thomas-the-bear-reaches-every-skin.php and
+    // help-and-consent-reach-every-skin.php. The gate passed because it could
+    // not see them. Also missed: every-page-kind-renders-a-whole-document.php
+    // (the fault that sent eight skins a blogroll page with no <head>),
+    // engines-reach-every-controller.php, strict-path-asset-parity.php,
+    // agreed-rules-gate.php, and both promote-stable gate checks -- the checks
+    // on the release machinery itself.
+    //
+    // A filename pattern is not a test selection. The same narrow pattern hid
+    // two failures from my own sweeps for a whole day, and I was quoting "3 of
+    // 316" when the real number was 3 of 337. The directory is the suite.
+    //
+    // *.php, not *.cjs: the node tests run in rf_browser_tests(). Helper
+    // includes in tests/ use the .inc extension precisely so they are not
+    // picked up here.
+    $tests = glob(__DIR__ . '/../tests/*.php') ?: [];
+    if ($tests === []) rf_fail('no test files found in tests/ -- the suite glob is broken');
+    foreach ($tests as $test) {
         rf_run([PHP_BINARY, $test]);
     }
     rf_run([PHP_BINARY, '-l', __DIR__ . '/../smack-central/sc-release.php']);
