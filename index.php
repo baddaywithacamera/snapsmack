@@ -296,6 +296,29 @@ try {
                     'owner_name' => (string)($settings['site_author'] ?? ''),
                     'site_description' => (string)($settings['site_description'] ?? ''),
                     'avatar_url' => snapsmack_public_avatar_url($settings),
+            // THE HEADER LOGO, WHICH A STRICT SKIN COULD NOT GET.
+            //
+            // site.brand_logo has been in the view-model allowlist all along
+            // and NOTHING EVER POPULATED IT: a skin asking for it received
+            // nothing on every site, and there is no other logo key here --
+            // avatar_url above is the owner's portrait, not the masthead. A
+            // strict skin that wanted the logo had to do without, and GLIDE's
+            // header is the first to ask for it out loud.
+            //
+            // THE PRECEDENCE IS core/header.php's, NOT A NEW ONE. That file
+            // unifies two uploaders -- the Image Engine's HEADER LOGO ASSET
+            // (header_logo_url) and the masthead's Custom Logo Image
+            // (site_logo) -- and header_logo_url wins when both are set. A
+            // second, subtly different answer here is how one page ends up
+            // showing a different logo from another.
+            //
+            // Deliberately NOT applying header.php's header_type rule: that
+            // decides whether the LEGACY masthead draws text or an image,
+            // which is presentation. A strict skin is handed the logo it has
+            // and decides for itself whether to draw it.
+            'brand_logo' => (string)($settings['header_logo_url'] ?? '') !== ''
+                ? (string)$settings['header_logo_url']
+                : (string)($settings['site_logo'] ?? ''),
                     'favicon_url' => !empty($settings['favicon_url']) ? (preg_match('#^https?://#i', (string)$settings['favicon_url']) ? (string)$settings['favicon_url'] : (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['favicon_url'], '/')) : '',
                     'skin_slug' => (string)$active_skin,
                     'skin_style_url' => $_active_skin_style_url,
@@ -464,6 +487,29 @@ try {
             'owner_name' => (string)($settings['site_author'] ?? ''),
             'site_description' => strip_tags((string)($settings['site_description'] ?? '')),
             'avatar_url' => snapsmack_public_avatar_url($settings),
+            // THE HEADER LOGO, WHICH A STRICT SKIN COULD NOT GET.
+            //
+            // site.brand_logo has been in the view-model allowlist all along
+            // and NOTHING EVER POPULATED IT: a skin asking for it received
+            // nothing on every site, and there is no other logo key here --
+            // avatar_url above is the owner's portrait, not the masthead. A
+            // strict skin that wanted the logo had to do without, and GLIDE's
+            // header is the first to ask for it out loud.
+            //
+            // THE PRECEDENCE IS core/header.php's, NOT A NEW ONE. That file
+            // unifies two uploaders -- the Image Engine's HEADER LOGO ASSET
+            // (header_logo_url) and the masthead's Custom Logo Image
+            // (site_logo) -- and header_logo_url wins when both are set. A
+            // second, subtly different answer here is how one page ends up
+            // showing a different logo from another.
+            //
+            // Deliberately NOT applying header.php's header_type rule: that
+            // decides whether the LEGACY masthead draws text or an image,
+            // which is presentation. A strict skin is handed the logo it has
+            // and decides for itself whether to draw it.
+            'brand_logo' => (string)($settings['header_logo_url'] ?? '') !== ''
+                ? (string)$settings['header_logo_url']
+                : (string)($settings['site_logo'] ?? ''),
             'skin_slug' => (string)$active_skin,
             'skin_style_url' => $_active_skin_style_url,
             'base_style_url' => $_base_style_url,
