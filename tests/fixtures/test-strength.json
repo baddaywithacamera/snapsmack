@@ -206,6 +206,15 @@
         "predicates": 14,
         "thresholds": []
     },
+    "brand-logo-reaches-a-strict-skin-regression.php": {
+        "assertions": 0,
+        "predicates": 10,
+        "thresholds": [
+            2,
+            2,
+            2
+        ]
+    },
     "brevo-test-send-regression.php": {
         "assertions": 11,
         "predicates": 0,
