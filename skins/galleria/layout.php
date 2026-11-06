@@ -1,2 +1,2 @@
 <?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
-<?php echo snap_render_html(snap_render_component('galleria-page', $view)); ?>
+<?php if (($view['response']['kind'] ?? '') === 'landing' || ($view['response']['kind'] ?? '') === 'archive'): ?><?php echo snap_render_html(snap_render_component('galleria-page', ['site' => $view['site'], 'response' => $view['response'], 'before_assets' => snap_render_component('scroll-time', $view)])); ?><?php else: ?><?php echo snap_render_html(snap_render_component('galleria-page', $view)); ?><?php endif; ?>

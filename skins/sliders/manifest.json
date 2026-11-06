@@ -1,8 +1,8 @@
 {
     "schema_version": 2,
     "name": "SLIDERS",
-    "version": "0.1.18",
-    "scrolltime_pages": ["landing"],
+    "version": "0.1.19",
+    "scrolltime_pages": ["landing", "archive"],
     "min_images": 200,
     "author": "Sean McCormick, OpenAI Codex",
     "support": "sean@baddaywithacamera.ca",

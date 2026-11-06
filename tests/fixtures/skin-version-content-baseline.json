@@ -27,24 +27,24 @@
             "files_sha256": "a8f62a7e14c62f81512384c5b194305f868d9d4112a40652903b2038c80f6356"
         },
         "galleria": {
-            "version": "1.3.23",
-            "files_sha256": "3bbc031cf86ff3250a28acd3e3980fb31f2a70ff25f137f5bbc715ce0755443f"
+            "version": "1.3.24",
+            "files_sha256": "d091803a7eb5acf03d55f6b5e37641c565f5cefb5983d3c26d7d14297947b0fb"
         },
         "game-on": {
             "version": "0.1.41",
             "files_sha256": "36f333eac7a7d95a967d91d77accefadf3a257bd2bfccaea6d88b2d77518af78"
         },
         "glide": {
-            "version": "0.1.16",
-            "files_sha256": "fcd570429fe1b76d588230b18316cd3b381a16000b57b107fda18167fde54587"
+            "version": "0.1.17",
+            "files_sha256": "511962f855ee17013d56a127ddb7aa1dc9d7d928026319bec963ebe308b84ec1"
         },
         "heuristic": {
             "version": "0.1.19",
             "files_sha256": "dfb574456d09ee36735ed0a3e8fab3c671b05098d89fc2cf9c855e5321386459"
         },
         "hip-to-be-square": {
-            "version": "1.3.20",
-            "files_sha256": "c9fa2ef1a9062aa04ec8eb28d3a3e0ed1c86e54b09d5fa8ce2838232c6a9c7a5"
+            "version": "1.3.21",
+            "files_sha256": "702fd551cd9e0ee59ab41784be02b640c71c3b6346d24464427eb3738359dc45"
         },
         "impact-printer": {
             "version": "2.1.23",
@@ -91,8 +91,8 @@
             "files_sha256": "e2389318630e180e3282f5ab0b257b511309e93ebccd7e136bf105aaa039daab"
         },
         "sliders": {
-            "version": "0.1.18",
-            "files_sha256": "0fd3c4f2546b801007cf65e6293e379b6eff8127f137d7fdb1dc85cdd8402ab2"
+            "version": "0.1.19",
+            "files_sha256": "ff46b69a057e14b69ff0cc6a5c2e7c1abeab58e193ee79e6a3750a6cb3835c97"
         },
         "stanley": {
             "version": "1.1.10",
