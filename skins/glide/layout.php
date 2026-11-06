@@ -10,7 +10,7 @@
     <?php if (!empty($view['response']['next_url'])): ?><a href="<?php echo snap_escape_url($view['response']['next_url']); ?>">Next page</a><?php endif; ?>
 </nav>
 <?php endif; ?><?php endif; ?></main><footer id="system-footer" class="site-footer<?php if (!empty($view['site']['footer']['lowercase'])): ?> footer-lowercase<?php endif; ?>"><div id="footer" class="inside"><?php echo snap_render_html(snap_render_component('footer', ['footer' => $view['site']['footer'] ?? []])); ?></div></footer><?php endif; ?>
-<?php if (($view['response']['kind'] ?? '') === 'landing'): ?><?php echo snap_render_html(snap_render_component('scroll-time', $view)); ?><?php endif; ?>
+<?php if (($view['response']['kind'] ?? '') === 'landing' || ($view['response']['kind'] ?? '') === 'archive'): ?><?php echo snap_render_html(snap_render_component('scroll-time', $view)); ?><?php endif; ?>
 <?php echo snap_render_html(snap_render_component('registered-assets',['assets'=>$view['site']['registered_assets'] ?? []])); ?><?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?></body></html>
 
 
