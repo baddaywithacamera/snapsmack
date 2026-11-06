@@ -76,7 +76,7 @@
         "thresholds": []
     },
     "archive-controls-reach-the-page-regression.php": {
-        "assertions": 52,
+        "assertions": 53,
         "predicates": 54,
         "thresholds": [
             2,
@@ -1056,6 +1056,11 @@
     "overlay-contract-regression.php": {
         "assertions": 14,
         "predicates": 14,
+        "thresholds": []
+    },
+    "paging-urls-keep-the-filter-regression.php": {
+        "assertions": 0,
+        "predicates": 21,
         "thresholds": []
     },
     "paragraph-image-boundary-regression.php": {

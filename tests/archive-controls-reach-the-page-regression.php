@@ -428,7 +428,9 @@ foreach (['archive_layouts', 'archive_calendar', 'archive_layout_active'] as $ke
 $allowProbe = snapsmack_build_skin_view(
     ['kind' => 'archive', 'status' => 200, 'items' => [], 'item' => [],
      'archive_controls' => '', 'archive_layouts' => ['thumbs', 'masonry'],
-     'archive_calendar' => ['enabled' => true]],
+     'archive_calendar' => ['enabled' => true],
+     // Not on the allowlist, on purpose: see the negative check below.
+     'ac_probe_not_allowed' => 'should never reach a skin'],
     ['site_name' => 'Fixture', 'base_url' => '/', 'skin_slug' => 'impact-printer']
 );
 $allowProbeResponse = is_array($allowProbe['response'] ?? null) ? $allowProbe['response'] : [];
@@ -436,6 +438,13 @@ foreach (['archive_controls', 'archive_layouts', 'archive_calendar'] as $key) {
     ac_test(array_key_exists($key, $allowProbeResponse),
         "{$key} survives the view-model and reaches the skin");
 }
+// THE NEGATIVE HALF, which this test never had. Three keys surviving proves
+// nothing on its own: a contract that had stopped filtering and passed
+// EVERYTHING through would satisfy all three checks above, and that is a hole
+// rather than a pass. So the probe carries a key that is deliberately not on
+// the allowlist, and it must not arrive.
+ac_test(!array_key_exists('ac_probe_not_allowed', $allowProbeResponse),
+    'a key that is NOT on the allowlist is stripped, so the filter is still filtering');
 
 echo "\nThe runtime assigns them, which is the line that never existed\n";
 $runtime = (string) file_get_contents($root . '/core/public-runtime.php');

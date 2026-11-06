@@ -142,6 +142,75 @@ function snapsmack_public_community_block(PDO $pdo, array $settings, array $item
     return trim($html) === '' ? null : SnapTrustedHtml::__snapsmackCmsOnly($html);
 }
 
+/**
+ * SLICE 3: THE PREVIOUS AND NEXT PAGE AS LINKS, WITH THE FILTER IN THEM.
+ *
+ * previous_page and next_page are numbers. Turning a number into a link means
+ * knowing which route you are on and which filters are active, and a strict
+ * skin that assembled its own query string would drop the filter the moment
+ * anybody paged a filtered archive -- page 2 of "album: Doors" quietly becoming
+ * page 2 of everything. Codex asked not to assemble query strings in a layout
+ * and he is right: snap_route_url is allowlisted for skins, but the STATE to
+ * put in it is the CMS's to know.
+ *
+ * THREE PAGED ROUTES, THREE DIFFERENT STATES, which is why this is one place
+ * and not three skins:
+ *   archive  -- category and album
+ *   search   -- the query
+ *   hashtag  -- the tag slug
+ *
+ * SEARCH HAS NO previous_page AND SAYS next_page = 0 rather than null when
+ * there is no next. Both are left exactly as they are: a consumer testing
+ * !empty() cannot tell 0 from null, but one testing === 0 would break, and
+ * changing a shipped shape to tidy it is not worth that. The previous page for
+ * search is derived from the page number instead, which is the same arithmetic
+ * archive and hashtag already do for themselves.
+ *
+ * A FUNCTION RATHER THAN A BLOCK INSIDE THE RUNTIME, deliberately: inline, the
+ * only way to test it would have been to read the source and believe it, and I
+ * have spent today finding out what that is worth.
+ */
+function snapsmack_public_paging_urls(array $response): array
+{
+    // snap_route_url lives in skin-render-helpers.php. This file does not
+    // require it and I will not depend on index.php having loaded it first: an
+    // undefined function here is a fatal on every archive page on every site.
+    if (!function_exists('snap_route_url')) {
+        require_once __DIR__ . '/skin-render-helpers.php';
+    }
+    $kind = (string)($response['kind'] ?? '');
+    if (!in_array($kind, ['archive', 'search', 'hashtag'], true)) return $response;
+
+    $pageNow = max(1, (int)($response['page'] ?? 1));
+    $state = [];
+    if ($kind === 'archive') {
+        $cat   = (int)($response['taxonomy']['category_id'] ?? 0);
+        $album = (int)($response['taxonomy']['album_id'] ?? 0);
+        if ($cat > 0)   $state['category'] = $cat;
+        if ($album > 0) $state['album'] = $album;
+    } elseif ($kind === 'search') {
+        $q = (string)($response['query'] ?? '');
+        if ($q !== '') $state['query'] = $q;
+    } else {
+        $tag = (string)($response['slug'] ?? '');
+        if ($tag !== '') $state['slug'] = $tag;
+    }
+
+    // next_page is a page number on archive and hashtag and 0-or-a-number on
+    // search, so read it as "a page after this one" and both shapes answer.
+    $next = (int)($response['next_page'] ?? 0);
+    $prev = (int)($response['previous_page'] ?? ($pageNow > 1 ? $pageNow - 1 : 0));
+
+    $response['next_url'] = $next > $pageNow
+        ? snap_route_url($kind, $state + ['page' => $next]) : null;
+    // Page 2's previous is page 1, and page 1 is the route with NO page
+    // parameter: a ?page=1 in a link works and still looks like a mistake.
+    $response['previous_url'] = $prev >= 1
+        ? snap_route_url($kind, $prev > 1 ? $state + ['page' => $prev] : $state)
+        : null;
+    return $response;
+}
+
 function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): array
 {
     // OWNER CONTENT WINS over the reserved word 'archive'. Asked ONCE here,
@@ -170,6 +239,31 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
             && ((string)($settings['community_comments_enabled'] ?? '1') !== '0')
             && (($response['item']['allow_comments'] ?? '1') == '1');
     }
+    // SLICE 3: PAGING URLS WITH THE FILTER ALREADY IN THEM.
+    //
+    // previous_page and next_page are numbers. Turning a number into a link
+    // means knowing which route you are on and which filters are active, and a
+    // strict skin that assembled its own query string would drop the filter the
+    // moment anybody paged a filtered archive -- page 2 of "album: Doors"
+    // quietly becoming page 2 of everything. Codex asked not to assemble query
+    // strings in a layout and he is right: snap_route_url is allowlisted for
+    // skins, but the STATE to put in it is the CMS's to know.
+    //
+    // THREE PAGED ROUTES, THREE DIFFERENT STATES, and that is why this is one
+    // place rather than three skins:
+    //   archive  -- category and album
+    //   search   -- the query
+    //   hashtag  -- the tag slug
+    //
+    // SEARCH HAD NO previous_page AT ALL and says next_page = 0 rather than
+    // null when there is no next. Both are left exactly as they are: a consumer
+    // testing !empty() cannot tell 0 from null, but one testing === 0 would
+    // break, and changing a shipped shape to tidy it is not worth that. The
+    // previous page for search is derived here instead, from the page number,
+    // which is the same arithmetic archive and hashtag already do for
+    // themselves.
+    $response = snapsmack_public_paging_urls($response);
+
     // AND THE SAME QUESTION, PER TILE, FOR AN ARCHIVE.
     //
     // GLIDE's archive overlay opens an Info/Comments pane over a tile, so it
