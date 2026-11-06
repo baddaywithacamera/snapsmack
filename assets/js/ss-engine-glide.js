@@ -171,7 +171,7 @@
         async function loadViewerComments(photo, status) {
             var url = new URL(photo.url, location.href);
             if (url.origin !== location.origin) return;
-            url.searchParams.set('glide_comments', '1');
+            url.searchParams.set('viewer_comments', '1');
             var request = new AbortController();
             commentRequest = request;
             try {
