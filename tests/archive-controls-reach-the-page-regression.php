@@ -411,11 +411,30 @@ foreach (['archive_layouts', 'archive_calendar', 'archive_layout_active'] as $ke
     ac_test(preg_match("/'{$key}'/", $contract) === 1 || str_contains($contract, "'{$key}'"),
         "{$key} is named in the contract");
 }
-$allowStart = strpos($contract, '$allowedResponse = [');
-$allowBlock = $allowStart === false ? '' : substr($contract, $allowStart, 1600);
+// CALL THE BUILDER, DO NOT MEASURE A WINDOW OF ITS SOURCE.
+//
+// This read substr($contract, $allowStart, 1600) -- a fixed 1600 characters
+// from the start of $allowedResponse -- and checked the key appeared inside
+// it. Then four keys and an explaining comment were added to that array for
+// GLIDE's paging, archive_layouts and archive_calendar moved past the 1600th
+// character, and BOTH ASSERTIONS FAILED ON CODE THAT WAS ENTIRELY CORRECT. I
+// proved the keys still survive by building a view before touching this.
+//
+// The question was never "does this string sit within 1600 characters of that
+// one". It is "does the key reach the skin", and that is answerable by calling
+// the function -- which also catches a key stripped by some later filter, which
+// no amount of reading the array ever would. Fifth fixed-width source window to
+// measure the wrong region today; this one is now behaviour.
+$allowProbe = snapsmack_build_skin_view(
+    ['kind' => 'archive', 'status' => 200, 'items' => [], 'item' => [],
+     'archive_controls' => '', 'archive_layouts' => ['thumbs', 'masonry'],
+     'archive_calendar' => ['enabled' => true]],
+    ['site_name' => 'Fixture', 'base_url' => '/', 'skin_slug' => 'impact-printer']
+);
+$allowProbeResponse = is_array($allowProbe['response'] ?? null) ? $allowProbe['response'] : [];
 foreach (['archive_controls', 'archive_layouts', 'archive_calendar'] as $key) {
-    ac_test(str_contains($allowBlock, "'{$key}'"),
-        "{$key} is in the allowlist, so it is not stripped out of the view");
+    ac_test(array_key_exists($key, $allowProbeResponse),
+        "{$key} survives the view-model and reaches the skin");
 }
 
 echo "\nThe runtime assigns them, which is the line that never existed\n";
