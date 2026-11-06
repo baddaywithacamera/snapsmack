@@ -413,6 +413,22 @@
             });
         }
 
+        var aboutDestination = overlayNav.dataset.wallAbout;
+        if (aboutDestination) {
+            var aboutUrl = new URL(aboutDestination, location.href);
+            var navLinks = overlayNav.querySelector('.ss-grid-nav-links');
+            if (aboutUrl.origin === location.origin && navLinks &&
+                !Array.from(navLinks.querySelectorAll('a[href]')).some(function (link) { return link.href === aboutUrl.href; })) {
+                var aboutLink = document.createElement('a');
+                aboutLink.className = 'ss-grid-nav-link';
+                aboutLink.href = aboutUrl.href;
+                aboutLink.title = 'About';
+                aboutLink.setAttribute('aria-label', 'About');
+                aboutLink.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v2"/></svg>';
+                navLinks.insertBefore(aboutLink, navLinks.querySelector('.wall-fullscreen'));
+            }
+        }
+
         overlayNav.addEventListener('click', function (event) {
             var link = event.target.closest('a[href]');
             if (!link || event.defaultPrevented || event.button || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
