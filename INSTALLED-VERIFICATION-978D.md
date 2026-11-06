@@ -9,7 +9,7 @@
 
 # 0.7.978D — what to check on a real site
 
-Eight things in this build have never been seen on a live install. Each one
+Nine things in this build have never been seen on a live install. Each one
 below is: where to click, what to set, what to look at, and what wrong looks
 like. Stop at the first FAIL and tell me — do not work around it.
 
@@ -100,6 +100,17 @@ On the **hub**: Admin → **Multisite Management** → the skin update row →
 - FAIL: the hub is missing from the results, or is left on the old version.
   That was the fault; the hub was the one site the push never reached.
 
+**9. Page two of a search**
+
+No setting. Search for a word that returns **more than one page** of
+photographs, then click through to page 2.
+
+- PASS: page 2 is still your search — the same word, further down the results —
+  and the address bar still carries your term.
+- FAIL: page 2 shows your newest photographs instead. That is the whole fault:
+  the link dropped the term and the site answered with the front page, with
+  nothing to tell a visitor their search had gone.
+
 ---
 
 ## If something fails
@@ -111,5 +122,10 @@ right — a control that needs persuading is still broken.
 the geometry has been measured in a browser on fixtures, but **no one has
 saved any of these in a real admin and reloaded a real page.** That is what
 this list is for.
+
+**Still to come:** the GLIDE checks. Codex is finishing the skin and the
+engine, and the coordinator has me add them here once he posts the combined
+candidate. So this list will grow by a few items before you start — do not
+treat nine as the final count.
 
 <!-- ===== SNAPSMACK EOF ===== -->
