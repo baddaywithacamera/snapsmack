@@ -87,6 +87,8 @@
                 region.querySelectorAll('script, iframe, object, embed').forEach(function (node) { node.remove(); });
                 content.replaceChildren(region);
                 if (panel.dataset.wallPanel === 'About') {
+                    var pageTitle = region.querySelector('.static-page-title');
+                    if (pageTitle?.textContent.trim()) panel.querySelector('header h2').textContent = pageTitle.textContent.trim();
                     var portrait = region.querySelector('img');
                     if (portrait && !portrait.closest('a, button')) {
                         var enlarge = document.createElement('button');
@@ -273,6 +275,12 @@
             }
             viewerPhotos = Array.from(unique.values());
             viewer.showModal();
+            if (!reducedOverlayMotion.matches) {
+                viewer.animate([
+                    { backgroundColor: 'transparent' },
+                    { backgroundColor: 'rgb(0 0 0 / 80%)' }
+                ], { pseudoElement: '::backdrop', duration: 180, easing: 'ease-out' });
+            }
             showViewerPhoto(index, 1);
         }
 
@@ -334,7 +342,8 @@
                 if (!event.repeat) setViewerPane(viewerPaneName === pane ? '' : pane);
                 return;
             }
-            var direction = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+            if (event.key === ' ' && event.target.closest('button, a')) return;
+            var direction = event.key === 'ArrowRight' ? 1 : (event.key === 'ArrowLeft' || event.key === ' ') ? -1 : 0;
             if (!direction) return;
             event.preventDefault();
             event.stopPropagation();

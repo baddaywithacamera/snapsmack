@@ -128,7 +128,7 @@ body:has(.glide-page) { margin: 0; }
     clip-path: inset(50%);
     white-space: nowrap;
 }
-.glide-scroll-cue { position: fixed; z-index: 5; right: 25px; bottom: 24px; display: flex; align-items: center; gap: 10px; color: var(--glide-ink); mix-blend-mode: difference; font-size: .62rem; letter-spacing: .18em; writing-mode: vertical-rl; }
+.glide-scroll-cue { position: fixed; z-index: 5; left: 25px; bottom: 24px; display: flex; align-items: center; gap: 10px; color: var(--glide-ink); mix-blend-mode: difference; font-size: .62rem; letter-spacing: .18em; writing-mode: vertical-rl; }
 .glide-scroll-cue i { display: block; height: 42px; width: 1px; background: currentColor; transform-origin: top; animation: glide-pulse 1.8s ease-in-out infinite; }
 @keyframes glide-pulse { 0%,100% { transform: scaleY(.35); opacity: .45; } 50% { transform: scaleY(1); opacity: 1; } }
 
@@ -136,7 +136,7 @@ body:has(.glide-page) { margin: 0; }
     :root { --glide-row-height: clamp(125px, 25vh, 210px); }
     .glide-field { width: 210vmax; }
     .glide-overlay { padding: 17px 18px; }
-    .glide-scroll-cue { right: 17px; bottom: 17px; }
+    .glide-scroll-cue { left: 17px; bottom: 17px; }
 }
 @media (prefers-reduced-motion: reduce) {
     .glide-track { transform: none !important; }
@@ -354,7 +354,21 @@ body.glide-v2:has(.archive-grid, .blogroll-page) {
 .wall-panel .blogroll-peer { padding: 10px 0; border-top: 1px solid #ffffff26; }
 .wall-panel .blogroll-peer a { text-decoration: none; text-underline-offset: .2em; }
 .wall-panel .blogroll-peer a:is(:hover, :focus-visible) { text-decoration: underline; }
-.wall-panel[data-wall-panel="About"] { max-width: 760px; }
+.wall-panel[data-wall-panel="About"] { max-width: 760px; font-family: system-ui, sans-serif; }
+.wall-panel[data-wall-panel="About"] .static-content:has(> .page-hero) {
+    display: grid;
+    grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+    align-items: center;
+    gap: 36px;
+    margin: 0;
+    padding: 12px;
+}
+.wall-panel[data-wall-panel="About"] .page-hero { width: 100%; margin: 0; }
+.wall-panel[data-wall-panel="About"] .wall-portrait img { width: 100%; height: auto; max-height: 65vh; object-fit: contain; }
+.wall-panel[data-wall-panel="About"] .description { font: inherit; line-height: 1.5; }
+@media (max-width: 640px) {
+    .wall-panel[data-wall-panel="About"] .static-content:has(> .page-hero) { grid-template-columns: 1fr; gap: 20px; }
+}
 .wall-panel .static-page-title { display: none; }
 @media (hover: none) { .wall-panel .glide-archive-item h2 { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .wall-panel .glide-archive-item h2 { transition: none; } }

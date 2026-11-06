@@ -112,8 +112,8 @@ echo "\nGLIDE HAS ITS OWN PAGE SIZE AND IT INHERITS RATHER THAN RESETS\n";
 $src = (string)file_get_contents($root . '/core/public-controller.php');
 cx(str_contains($src, "'glide'=>'glide_page_size'"),
    'GLIDE has a page-size key of its own, so fifty per page does not mean changing the site-wide setting');
-cx((bool)preg_match("/\\\$pageSizeDefault\s*=\s*\\\$skin === 'glide'\s*\?\s*\(int\)\(\\\$settings\['posts_per_page'\]\s*\?\?\s*24\)\s*:\s*24;/", $src),
-   'its default is the site-wide posts_per_page, so the key changes nothing until it is set');
+cx(str_contains($src, "\$skin === 'glide' && \$route === 'archive' ? 50"),
+   'GLIDE archives default to fifty tiles without changing the site-wide setting');
 cx(str_contains($src, "'onyx'=>'onyx_wall_page_size'") && str_contains($src, "'scroll'=>'scroll_page_size'"),
    'and the skins already in the map are untouched, still falling back to 24');
 

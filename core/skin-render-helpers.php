@@ -798,6 +798,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             'home'      => '<path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8"/>',
             'archive'   => '<path d="M4 7h16v13H4zM3 4h18v3H3zm6 7h6" fill="none" stroke="currentColor" stroke-width="1.8"/>',
             'people'    => '<circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 20c0-4 2-6 6-6s6 2 6 6M16 5a3 3 0 0 1 0 6m1 3c2.7.3 4 2.3 4 6" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+            'about'     => '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 11v6m0-10v2" fill="none" stroke="currentColor" stroke-width="1.8"/>',
         ];
         $fallback = '<circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/>';
         $html = '<div class="ss-grid-nav-links">';
@@ -811,6 +812,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 $probe = strtolower($label);
                 if (str_contains($probe, 'home')) $icon = 'home';
                 elseif (str_contains($probe, 'blogroll') || str_contains($probe, 'friend')) $icon = 'people';
+                elseif (preg_match('/\babout\b/i', $label)) $icon = 'about';
                 elseif (str_contains($probe, 'archive') || str_contains($probe, 'album')) $icon = 'archive';
             }
             $html .= '<a class="ss-grid-nav-link" href="' . snap_escape_url($item['url'] ?? '')
