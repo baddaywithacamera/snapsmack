@@ -170,6 +170,44 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
             && ((string)($settings['community_comments_enabled'] ?? '1') !== '0')
             && (($response['item']['allow_comments'] ?? '1') == '1');
     }
+    // AND THE SAME QUESTION, PER TILE, FOR AN ARCHIVE.
+    //
+    // GLIDE's archive overlay opens an Info/Comments pane over a tile, so it
+    // needs the two answers the single-photograph view has always had --
+    // whether comments are open on THIS photograph, and how many there are --
+    // for every item in the list. An archive item reached the skin with
+    // neither, so an overlay could only always offer the pane or never.
+    //
+    // THE RULE IS NOT RE-DERIVED, IT IS THE SAME THREE CONDITIONS as the block
+    // above: the global switch, the community-engine switch, and the
+    // photograph's own allow_comments. Writing a second, subtly different
+    // version of a permission test is how one page ends up disagreeing with
+    // another about whether comments are on.
+    //
+    // ONE QUERY FOR THE WHOLE PAGE. approvedCommentCountsFor() takes every id
+    // at once; fifty tiles do not mean fifty queries. The counts are only
+    // fetched when both site-wide switches are on, because when they are off
+    // the answer is zero for everything and the query would be waste.
+    if (in_array(($response['kind'] ?? ''), ['archive', 'hashtag', 'albums', 'collections', 'landing'], true)
+        && is_array($response['items'] ?? null) && $response['items'] !== []) {
+        $_siteComments = ((string)($settings['global_comments_enabled'] ?? '1') !== '0')
+                      && ((string)($settings['community_comments_enabled'] ?? '1') !== '0');
+        $_counts = [];
+        if ($_siteComments) {
+            $_ids = [];
+            foreach ($response['items'] as $_it) {
+                if (is_array($_it) && (int)($_it['id'] ?? 0) > 0) $_ids[] = (int)$_it['id'];
+            }
+            if ($_ids !== []) $_counts = $repository->approvedCommentCountsFor($_ids);
+        }
+        foreach ($response['items'] as $_i => $_it) {
+            if (!is_array($_it)) continue;
+            $_open = $_siteComments && (($_it['allow_comments'] ?? '1') == '1');
+            $response['items'][$_i]['comments_enabled'] = $_open;
+            $response['items'][$_i]['comment_count'] = (int)($_counts[(int)($_it['id'] ?? 0)] ?? 0);
+        }
+        unset($_siteComments, $_counts, $_ids, $_i, $_it, $_open);
+    }
     // The community block rides along with that gate: same three kinds, same
     // response. A skin renders it wherever its own stylesheet already puts
     // comments, so this reaches all 26 of them without a skin edit -- and so

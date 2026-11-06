@@ -177,9 +177,22 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
                 $response['items'][$_i]['orientation_class'] = $_orient === 1
                     ? 'orient-portrait'
                     : ($_orient === 2 ? 'orient-square' : 'orient-landscape');
+                // THE LINK TO THE PHOTOGRAPH, PREPARED ONCE.
+                //
+                // Every archive component in core already writes
+                // $item['url'] ?? snap_route_url('photo', ['slug' => ...]) --
+                // the same expression copied into 50 SHADES, CHAPLIN, IMPACT
+                // PRINTER, ONYX and the grid fragment. GLIDE's overlay needs
+                // the same link for its "original post" control, and a sixth
+                // copy of a fallback chain is a sixth place for it to drift.
+                // Prepared here, beside thumb_url, for the same reason.
+                $_slug = (string)($_it['img_slug'] ?? '');
+                $response['items'][$_i]['photo_url'] = (string)($_it['url'] ?? '') !== ''
+                    ? (string)$_it['url']
+                    : ($_slug !== '' ? snap_route_url('photo', ['slug' => $_slug]) : '');
             }
         }
-        unset($_thumbStyle, $_i, $_it, $_square, $_aspect, $_full, $_orient);
+        unset($_thumbStyle, $_i, $_it, $_square, $_aspect, $_full, $_orient, $_slug);
         $_archiveBase = defined('BASE_URL') ? (string)BASE_URL : '/';
         $_archiveAliases = (array)($presentation['route_aliases'] ?? []);
         $_archiveMode = (string)($presentation['site_mode'] ?? '');
