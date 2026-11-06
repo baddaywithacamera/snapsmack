@@ -470,9 +470,13 @@ foreach ($ignoring as $_slug) {
 ts_test($wrong === [],
     'and no skin that ignores it is named as honouring it'
     . ($wrong === [] ? '' : ' -- WRONGLY NAMED: ' . implode(', ', $wrong)));
-ts_test(str_contains($tipUpper, strtoupper((string)count($honouring)))
-        || stripos($tip, 'six') !== false,
-    'the tip states how many skins it reaches (' . count($honouring) . ')');
+// The DIGIT count must appear in the tip. An earlier version also accepted
+// the spelled word 'six', hardcoded -- which went stale the moment GLIDE made
+// it seven. The digit is unambiguous and does not need a spelled-number table,
+// so the tip carries the digit and this checks for it. When the honouring set
+// next changes, this fails until the number is corrected, which is the point.
+ts_test(str_contains($tip, (string)count($honouring)),
+    'the tip states how many skins it reaches, as a digit (' . count($honouring) . ')');
 
 echo "\n  {$pass} passed, {$fail} failed\n";
 if ($fail > 0) {
