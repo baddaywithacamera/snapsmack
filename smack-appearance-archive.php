@@ -218,7 +218,45 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>THUMB STYLE <span class="field-tip" data-tip="In the Thumbs layout: NATURAL ASPECT keeps each photograph&#039;s own proportions, so tiles differ in height. SQUARE CROP crops every photograph to a 1:1 tile, so the grid is even. Applies to whichever skin is active.">ⓘ</span></label>
+                    <?php
+                    /* IT DOES NOT APPLY TO WHICHEVER SKIN IS ACTIVE, AND SAYING SO WAS THE FAULT.
+                     *
+                     * The old tip ended "Applies to whichever skin is active." Measured on
+                     * 6 November 2026 against all thirty installed skins, that is wrong for
+                     * twenty-seven of them.
+                     *
+                     * METHOD, so this can be rechecked rather than believed: every skin is
+                     * schema_version 2, so every skin renders through its own layout or its
+                     * whole-page component and NONE falls through to archive.php -- which
+                     * means archive.php's own thumb-style branch (the `$grid_layout =
+                     * $archive_thumb_style` at archive.php:232) cannot reach any skin in the
+                     * current fleet. A skin therefore honours this setting only if its own
+                     * layout reads the prepared value. Grepping each layout plus the page
+                     * component it calls for `thumb_style` and `archive_grid`:
+                     *
+                     *   HONOUR IT: 50 SHADES, CHAPLIN, IMPACT PRINTER.
+                     *   TRUE GRIT reads archive_grid and then hardcodes square-grid, so the
+                     *     setting does nothing there. That is SS-1043.
+                     *   NEW HORIZON hardcodes square-grid and reads neither value.
+                     *   HIP-TO-BE-SQUARE is square by design -- the owner ruled on
+                     *     6 November that it stays square and is documented, not fixed.
+                     *   The remaining skins do not read it at all.
+                     *
+                     * WHY THIS IS A SENTENCE AND NOT A HIDDEN CONTROL. The coordinator asked
+                     * for either wording or hiding the setting where it does nothing. Hiding
+                     * needs a capability to test, and there is none: features.thumbs_supported
+                     * defaults to true and NO skin sets it false, so the only flag that could
+                     * gate this says all thirty support thumbs. Adding a real flag means
+                     * touching thirty manifests and bumping thirty skin versions, which is a
+                     * release, not a tooltip. Ticketed separately.
+                     *
+                     * The named list will rot the day a skin starts or stops reading the
+                     * value -- I have just spent a day fixing a test that hardcoded a skin
+                     * name -- so the date and the method are in the tip itself, which is the
+                     * best a static string can do.
+                     */
+                    ?>
+                    <label>THUMB STYLE <span class="field-tip" data-tip="In the Thumbs layout: NATURAL ASPECT keeps each photograph&#039;s own proportions, so tiles differ in height. SQUARE CROP crops every photograph to a 1:1 tile, so the grid is even.&#10;&#10;IT DOES NOT APPLY TO EVERY SKIN. It only changes anything on a skin whose archive draws a thumbs grid that reads this setting. Measured 6 Nov 2026, that is 50 SHADES, CHAPLIN and IMPACT PRINTER. HIP-TO-BE-SQUARE is square by design and ignores it deliberately. NEW HORIZON and TRUE GRIT draw a square grid regardless (SS-1043). The rest do not read it, so changing it will look like nothing happened -- because nothing did.">ⓘ</span></label>
                     <select name="settings[archive_thumb_style]">
                         <option value="cropped" <?php echo $thumb_style === 'cropped' ? 'selected' : ''; ?>>NATURAL ASPECT (DEFAULT)</option>
                         <option value="square"  <?php echo $thumb_style === 'square'  ? 'selected' : ''; ?>>SQUARE CROP (1:1)</option>
