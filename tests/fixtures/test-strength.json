@@ -1167,6 +1167,16 @@
             80300
         ]
     },
+    "pickup-archive-tiles-are-styled-regression.php": {
+        "assertions": 3,
+        "predicates": 13,
+        "thresholds": [
+            3,
+            9,
+            9,
+            9
+        ]
+    },
     "pickup-mayhem-presentation-regression.php": {
         "assertions": 5,
         "predicates": 2,
