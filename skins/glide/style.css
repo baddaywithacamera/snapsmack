@@ -54,7 +54,7 @@ body:has(.glide-page) { margin: 0; }
 .glide-tile img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .7s cubic-bezier(.2,.7,.2,1), filter .4s ease; }
 .glide-tile:hover img, .glide-tile:focus-visible img { transform: scale(1.035); filter: brightness(.8); }
 .glide-tile:focus { outline: none; }
-.glide-tile:focus-visible::after {
+.glide-tile:focus-visible:not([data-glide-restored-focus])::after {
     content: "";
     position: absolute;
     inset: 14px auto auto 14px;
@@ -299,9 +299,9 @@ body.glide-v2:has(.archive-grid, .blogroll-page) {
 .wall-viewer figure { transition: transform 200ms ease; }
 .wall-viewer.has-wall-viewer-pane figure { transform: translateX(calc(-50% - 9px)); }
 .wall-viewer.has-wall-viewer-pane img { max-width: calc(50vw - 74px); }
-.wall-viewer-tools { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; opacity: 0; transition: opacity 150ms ease; }
-.wall-viewer figure:is(:hover, :focus-within) .wall-viewer-tools,
-.wall-viewer.has-wall-viewer-pane .wall-viewer-tools { opacity: 1; }
+.wall-viewer-tools { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; opacity: 0; transition: opacity 180ms ease; }
+.wall-viewer figure:has(> img:hover) .wall-viewer-tools,
+.wall-viewer-tools:is(:hover, :has(:focus-visible)) { opacity: 1; }
 .wall-viewer .wall-viewer-tools button {
     position: static; display: grid; place-items: center; transform: none; border-radius: 50%;
     background: #303030; border: 1px solid #777; font-size: 22px; opacity: 1;
@@ -345,7 +345,8 @@ body.glide-v2:has(.archive-grid, .blogroll-page) {
     opacity: 0; transition: opacity 140ms ease;
 }
 .wall-panel .glide-archive-item a:is(:hover, :focus-visible) h2 { opacity: 1; }
-.wall-panel[data-wall-panel="Blogroll"] { max-width: 580px; }
+.wall-panel[data-wall-panel="Blogroll"] { max-width: 580px; font-family: system-ui, sans-serif; }
+.wall-panel[data-wall-panel="Blogroll"] .blogroll-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
 .wall-panel .blogroll-category-block + .blogroll-category-block {
     margin-top: 36px; border-top: 1px solid #ffffff4d; padding-top: 16px;
 }
