@@ -96,6 +96,14 @@
         "predicates": 2,
         "thresholds": []
     },
+    "archive-paging-reaches-the-skin-regression.php": {
+        "assertions": 0,
+        "predicates": 9,
+        "thresholds": [
+            2,
+            4
+        ]
+    },
     "archive-paging-regression.php": {
         "assertions": 10,
         "predicates": 9,
