@@ -566,6 +566,11 @@
         "predicates": 4,
         "thresholds": []
     },
+    "fixture-head-keeps-the-live-cascade-regression.php": {
+        "assertions": 2,
+        "predicates": 17,
+        "thresholds": []
+    },
     "flag-wave-palette-contract-regression.php": {
         "assertions": 1,
         "predicates": 4,

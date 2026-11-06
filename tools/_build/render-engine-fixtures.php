@@ -112,6 +112,7 @@ require_once $root . '/core/skin-view-contract.php';
 require_once $root . '/core/skin-presentation.php';
 require_once $root . '/core/skin-view-model.php';
 require_once $root . '/core/asset-registry.php';
+require_once __DIR__ . '/fixture-head.php';
 require_once $root . '/core/archive-controls.php';
 require_once $root . '/core/consent-runtime.php';
 
@@ -261,7 +262,10 @@ foreach (glob($root . '/skins/*', GLOB_ONLYDIR) ?: [] as $dir) {
         $sheets[] = $rel;
         $css .= "\n/* ==== " . $rel . " ==== */\n" . (string) file_get_contents($local);
     }
-    $html = preg_replace('#<link[^>]+rel=["\']stylesheet["\'][^>]*>#i', '', $html) ?? $html;
+    // See tools/_build/fixture-head.php: the inlined css goes WHERE THE
+    // LINKS WERE, or the cascade comes out backwards and these fixtures --
+    // which the headed runs measure -- show the skin winning where a live
+    // page shows the owner winning.
 
     // INLINE THE ENGINES. A linked src under file:// resolves against the
     // drive root and silently never loads, and a page where the engine never
@@ -300,10 +304,7 @@ foreach (glob($root . '/skins/*', GLOB_ONLYDIR) ?: [] as $dir) {
     }
 
     $html = str_replace('src="/photo-', 'src="photo-', $html);
-    $style = '<style>' . $css . '</style>';
-    $html = str_contains($html, '</head>')
-        ? str_replace('</head>', $style . '</head>', $html)
-        : $style . $html;
+    $html = snapsmack_fixture_inline_styles($html, $css);
 
     $target = $out . '/' . $skin . '--archive.html';
     file_put_contents($target, $html);
