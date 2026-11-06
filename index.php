@@ -459,7 +459,7 @@ try {
             'archive_layout_cookie'   => $_COOKIE['smack_archive_layout'] ?? '',
             'archive_calendar_cookie' => $_COOKIE['smack_archive_calendar'] ?? '',
         ], $_public_settings);
-        if ($active_skin === 'glide' && !empty($_GET['glide_comments'])
+        if (!empty($_GET['viewer_comments'])
             && in_array($_public['kind'] ?? '', ['photo', 'post'], true)) {
             header('Cache-Control: private, no-store');
             echo '<div class="wall-comment-content">'
