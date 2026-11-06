@@ -234,6 +234,50 @@ cx($noTerm === null || $noTerm === '',
    'and no next link is offered when there is no search term (got '
    . var_export($noTerm, true) . ')');
 
+echo "
+THE FULL ROUND TRIP: page 1 -> next_url -> the router reads the term back
+";
+// The coordinator asked for this exact chain, and it is stronger than
+// comparing names: take the url the CMS prepared, pull it apart the way a web
+// server would, hand the parameters to the REAL router mapping, and see
+// whether a search for the same term on page 2 comes back out.
+//
+// snapsmack_public_runtime_request() is pure -- input array to route -- so the
+// whole trip runs here with no database. The q -> query rename is READ from
+// index.php rather than written in by me, so if index.php ever renames it this
+// chain follows instead of lying.
+[, $trip] = $chain(['kind' => 'search', 'page' => 1, 'next_page' => 2,
+    'query' => 'blue door', 'total_pages' => 4]);
+cx(is_string($trip) && $trip !== '', 'page one produced a next url (' . $trip . ')');
+$parsed = [];
+parse_str((string)parse_url((string)$trip, PHP_URL_QUERY), $parsed);
+cx(($parsed[$routerReads] ?? '') === 'blue door',
+   'the url decodes back to the exact search term, spaces and all (got '
+   . var_export($parsed[$routerReads] ?? null, true) . ')');
+cx((int)($parsed['page'] ?? 0) === 2, 'and to page 2');
+// index.php maps that GET name onto the runtime's 'query' key. Mirror only
+// that one rename, then let the real router decide.
+$asRuntime = ['query' => $parsed[$routerReads] ?? '', 'page' => $parsed['page'] ?? 1];
+$routed = snapsmack_public_runtime_request($asRuntime);
+cx(($routed['route'] ?? '') === 'search',
+   'the router resolves it as a SEARCH, not a page or a 404 (got '
+   . var_export($routed['route'] ?? null, true) . ')');
+cx((string)($routed['query'] ?? '') === 'blue door',
+   'with the search term intact -- this is the assertion that would have '
+   . 'caught the fault Codex reported');
+cx((int)($routed['page'] ?? 0) === 2, 'on page 2');
+
+// MUTATION PROOF for the round trip: the old url shape must fail it. ?query=
+// is what the CMS used to emit, and the router reads nothing from it.
+$oldShape = '/search?query=blue%20door&page=2';
+$oldParsed = [];
+parse_str((string)parse_url($oldShape, PHP_URL_QUERY), $oldParsed);
+$oldRouted = snapsmack_public_runtime_request(
+    ['query' => $oldParsed[$routerReads] ?? '', 'page' => $oldParsed['page'] ?? 1]);
+cx(($oldRouted['route'] ?? '') !== 'search',
+   'the url this replaced does NOT resolve as a search, which is exactly how '
+   . 'page two lost the term (got ' . var_export($oldRouted['route'] ?? null, true) . ')');
+
 echo "\nNULL AT BOTH ENDS, AFTER THE CHAIN AS WELL AS BEFORE IT\n";
 [$firstPrev, ] = $chain(['kind' => 'archive', 'page' => 1, 'next_page' => 2, 'total_pages' => 4]);
 cx($firstPrev === null, 'page one has no previous (got ' . var_export($firstPrev, true) . ')');
