@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.984D - 2026-11-07
+
+- GLIDE 0.1.25: footer moved to a faded horizontal bottom-left treatment (no backing strip); and the wall no longer freezes a row when a tile holds a focus left over from a pointer or overlay interaction (SS-1217) -- genuine keyboard focus still pauses the row and stays reachable.
+- SS-1216: Media Library gains an optional per-image Caption, separate from Alt text, shown in the shared image lightbox (empty caption shows nothing; never a page/post title).
+
 ## 0.7.983D - 2026-11-07
 
 - SS-1185: portfolio URLs resolve at /<album>/<category>/<slug>; the resolver falls through harmlessly on any site whose schema migration has not run yet, so no public page can 500 during a deploy.
