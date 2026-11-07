@@ -590,9 +590,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                 // Auto-detect screenshot files and copy them to the releases screenshots directory.
                 // The gallery uses these for multi-screenshot previews of non-installed skins.
                 $screenshot_names  = [
-                    'screenshot-landing.png' => 'Landing',
-                    'screenshot-archive.png' => 'Archive',
-                    'screenshot-page.png'    => 'Text Page',
+                    'screenshot-primary.png' => 'Primary',
+                    'screenshot-secondary.png' => 'Secondary',
+                    'screenshot-tertiary.png' => 'Tertiary',
                     'screenshot.png'         => 'Preview',
                 ];
                 $ss_dest_dir = rtrim(RELEASES_DIR, '/') . '/skins/screenshots/' . $slug;
@@ -604,7 +604,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                         if (!is_dir($ss_dest_dir)) @mkdir($ss_dest_dir, 0755, true);
                         @copy($src_file, $ss_dest_dir . '/' . $filename);
                         $detected_screenshots[] = ['src' => $ss_dest_url . '/' . $filename, 'label' => $label];
-                        // Use the landing shot (or first found) as the legacy single-screenshot field
+                        // Use the primary shot (or first found) as the legacy single-screenshot field
                         if ($screenshot === '') {
                             $screenshot = $ss_dest_url . '/' . $filename;
                         }
