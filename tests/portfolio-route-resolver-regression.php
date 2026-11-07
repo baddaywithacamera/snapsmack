@@ -71,7 +71,8 @@ function seed(PDO $pdo): void {
     $pdo->exec("INSERT INTO snap_posts (id,slug,primary_album_id,primary_category_id) VALUES
         (1,'sports',1,1),
         (2,'undesignated',NULL,NULL),
-        (3,'draft-one',1,1)");
+        (3,'draft-one',1,1),
+        (5,'wedding',1,1)");
     $pdo->exec("UPDATE snap_posts SET status='draft' WHERE id=3");
 }
 
@@ -180,6 +181,21 @@ cx(($undes['redirect'] ?? true) === false, 'and NO redirect, because there is no
 $draft = snap_portfolio_route_resolve($pdo, ['portfolio','people','draft-one']);
 cx(($draft['kind'] ?? '') === 'post',
    'a DRAFT resolves here: visibility is the existing read path\'s job, not a second copy');
+
+echo "\nSEAN'S NAMED EXAMPLES (approved shape, 2026-11-07)\n";
+
+// /portfolio/people/wedding resolves because the album is NAMED Portfolio, not
+// because 'portfolio' is a hard-coded prefix -- any album works the same way.
+$wed = snap_portfolio_route_resolve($pdo, ['portfolio', 'people', 'wedding']);
+cx(($wed['kind'] ?? '') === 'post' && ($wed['slug'] ?? '') === 'wedding'
+   && ($wed['redirect'] ?? true) === false,
+   '/portfolio/people/wedding resolves to the wedding post, canonical, no redirect');
+
+// Selections sits directly under the Portfolio album: /portfolio/selections is a
+// TWO-segment path, so the resolver does not claim it -- it falls through to the
+// existing handling, unchanged, exactly as Sean described it sitting under Portfolio.
+cx(snap_portfolio_route_resolve($pdo, ['portfolio', 'selections'])['kind'] === 'fallthrough',
+   '/portfolio/selections (two segments) falls through -- served by the existing path, not hijacked');
 
 echo "\nDUPLICATE SLUGS - deterministic, because cat_slug has no unique key\n";
 
