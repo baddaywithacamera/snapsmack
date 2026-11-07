@@ -46,6 +46,12 @@ function snapsmack_skin_files_digest(string $dir): string {
         $path = str_replace('\\', '/', $file->getPathname());
         $rel = ltrim(substr($path, strlen($dir)), '/');
         if ($rel === 'manifest.json') continue;
+        // Screenshots are catalog/preview assets (Skin Gallery, admin picker,
+        // the snapsmack.ca showcase), never served to a site's visitors, so a
+        // screenshot change cannot make an installed version render differently --
+        // the same reason manifest.json is skipped. Scoped to the screenshot naming
+        // ONLY; any other image a stylesheet renders stays in the digest.
+        if (preg_match('#^screenshot(-[a-z0-9]+)?\.(png|jpe?g|webp)$#i', $rel)) continue;
         $files[$rel] = $path;
     }
     // One global sort over the relative paths. Per-directory ordering is NOT
