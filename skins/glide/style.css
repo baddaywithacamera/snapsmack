@@ -1118,31 +1118,36 @@ body.is-blogroll .blogroll-canvas > .blogroll-category-block {
 html:has(.glide-page), body:has(.glide-page) { width: 100%; height: 100%; background: var(--glide-bg); overflow: hidden; overscroll-behavior: none; }
 html:has(.glide-page) { scrollbar-gutter: auto; }
 body:has(.glide-page) { margin: 0; }
-/* Use the configured CMS footer in the former left-edge gesture cue. */
+/* Keep the configured CMS links quiet and clear of the wall controls. */
 body:has(.glide-page) > #system-footer {
     position: fixed;
     z-index: 5;
     left: 24px;
-    right: auto;
+    right: 96px;
     bottom: 24px;
-    width: calc(100dvh - 48px);
+    width: auto;
     margin: 0;
-    padding: 4px 10px;
+    padding: 0;
     border: 0;
     color: var(--glide-ink);
-    background: rgb(20 20 20 / 80%);
-    border-radius: 5px;
-    transform: rotate(-90deg) translateY(100%);
-    transform-origin: bottom left;
+    background: transparent;
+    border-radius: 0;
+    transform: none;
+    opacity: .55;
+    text-shadow: 0 1px 3px #000, 0 0 8px rgb(0 0 0 / 55%);
+    transition: opacity 180ms ease;
     text-align: left;
     pointer-events: auto;
 }
+body:has(.glide-page) > #system-footer:hover,
+body:has(.glide-page) > #system-footer:focus-within { opacity: 1; }
 body:has(.glide-page) > #system-footer .inside { width: 100%; }
 body:has(.glide-page) > #system-footer p {
     font-family: "DM Sans", sans-serif;
-    font-size: .62rem;
-    letter-spacing: .1em;
+    font-size: clamp(.52rem, .52vw, .62rem);
+    letter-spacing: .04em;
     line-height: 1.4;
+    white-space: nowrap;
 }
 body:has(.glide-page) > #system-footer a {
     display: inline-block;
