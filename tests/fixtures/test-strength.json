@@ -37,6 +37,11 @@
         "predicates": 7,
         "thresholds": []
     },
+    "album-slug-and-backfill-regression.php": {
+        "assertions": 1,
+        "predicates": 16,
+        "thresholds": []
+    },
     "api-input-safety-regression.php": {
         "assertions": 19,
         "predicates": 8,
@@ -598,7 +603,7 @@
     },
     "fleet-skin-push-includes-the-hub-regression.php": {
         "assertions": 0,
-        "predicates": 22,
+        "predicates": 37,
         "thresholds": [
             3,
             1500,
@@ -617,8 +622,8 @@
         "predicates": 4,
         "thresholds": [
             2,
-            45,
-            45
+            40,
+            40
         ]
     },
     "forum-board-counter-regression.php": {
@@ -990,6 +995,11 @@
         "predicates": 7,
         "thresholds": []
     },
+    "mobile-skin-routing-regression.php": {
+        "assertions": 0,
+        "predicates": 6,
+        "thresholds": []
+    },
     "mobile-tab-says-what-the-code-does.php": {
         "assertions": 7,
         "predicates": 6,
@@ -1220,6 +1230,29 @@
             2,
             2,
             10
+        ]
+    },
+    "portfolio-route-resolver-regression.php": {
+        "assertions": 1,
+        "predicates": 19,
+        "thresholds": []
+    },
+    "portfolio-surfaces-honour-the-flags-regression.php": {
+        "assertions": 1,
+        "predicates": 21,
+        "thresholds": [
+            2,
+            2,
+            3,
+            3
+        ]
+    },
+    "portfolio-visibility-predicate-regression.php": {
+        "assertions": 1,
+        "predicates": 10,
+        "thresholds": [
+            6,
+            6
         ]
     },
     "postmodel-born-a-post-regression.php": {
@@ -1492,6 +1525,11 @@
             2
         ]
     },
+    "skin-control-selector-regression.php": {
+        "assertions": 0,
+        "predicates": 3,
+        "thresholds": []
+    },
     "skin-direct-execution-regression.php": {
         "assertions": 8,
         "predicates": 7,
@@ -1653,6 +1691,19 @@
         "assertions": 3,
         "predicates": 8,
         "thresholds": []
+    },
+    "skin-screenshot-digest-exclusion-regression.php": {
+        "assertions": 0,
+        "predicates": 0,
+        "thresholds": []
+    },
+    "skin-screenshots-naming-regression.php": {
+        "assertions": 0,
+        "predicates": 0,
+        "thresholds": [
+            3,
+            3
+        ]
     },
     "skin-security-gate-wiring-regression.php": {
         "assertions": 3,
@@ -1825,6 +1876,15 @@
         "predicates": 4,
         "thresholds": []
     },
+    "soft-404-regression.php": {
+        "assertions": 0,
+        "predicates": 3,
+        "thresholds": [
+            200,
+            404,
+            404
+        ]
+    },
     "solo-page-hotkeys-regression.php": {
         "assertions": 26,
         "predicates": 26,
@@ -1926,6 +1986,14 @@
         "assertions": 2,
         "predicates": 16,
         "thresholds": []
+    },
+    "taxonomy-cover-selection-regression.php": {
+        "assertions": 1,
+        "predicates": 4,
+        "thresholds": [
+            2,
+            2
+        ]
     },
     "telegram-mobile-skin-regression.php": {
         "assertions": 16,
