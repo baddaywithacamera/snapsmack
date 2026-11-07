@@ -26,6 +26,7 @@ if (defined('SNAPSMACK_META_EMITTED')) { return; }
 define('SNAPSMACK_META_EMITTED', true);
 
 require_once __DIR__ . '/custom-code-policy.php';
+require_once __DIR__ . '/public-favicon.php';
 snapsmack_emit_public_csp(snapsmack_owner_custom_code_enabled($settings ?? []));
 
 require_once __DIR__ . '/indieweb.php';
@@ -94,7 +95,7 @@ if (!empty($img['img_file'])) {
 // only when the page has no image of its own. A specific post/page image above
 // still wins so individual shares keep their own image.
 if (empty($og_image) && !empty($settings['og_image_override'])) {
-    $og_image = BASE_URL . ltrim($settings['og_image_override'], '/');
+    $og_image = snapsmack_public_brand_image_url((string)$settings['og_image_override']);
 }
 
 // Deliberate: NO logo fallback and NO latest-image auto-pick. If nothing
@@ -188,7 +189,6 @@ if ($ai_policy === 'disallow'): ?>
 <?php snapsmack_indieweb_head_links($settings); ?>
 
 <?php
-require_once __DIR__ . '/public-favicon.php';
 echo snapsmack_public_favicon_link(snapsmack_public_favicon_url(
     $settings, (string)($active_skin ?? $settings['active_skin'] ?? '')
 ));
@@ -212,7 +212,7 @@ if (!empty($img) && is_array($img)) {
 }
 ?>
 <?php if (!empty($og_image)): ?>
-<meta property="og:image" content="<?php echo $og_image; ?>">
+<meta property="og:image" content="<?php echo htmlspecialchars($og_image, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">
 <meta property="og:image:width" content="1200">
 <?php if ($og_image_alt !== ''): ?>
 <meta property="og:image:alt" content="<?php echo htmlspecialchars($og_image_alt, ENT_QUOTES, 'UTF-8'); ?>">
@@ -225,7 +225,7 @@ if (!empty($img) && is_array($img)) {
 <meta name="twitter:description" content="<?php echo htmlspecialchars($og_description); ?>">
 <?php endif; ?>
 <?php if (!empty($og_image)): ?>
-<meta name="twitter:image" content="<?php echo $og_image; ?>">
+<meta name="twitter:image" content="<?php echo htmlspecialchars($og_image, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">
 <?php if ($og_image_alt !== ''): ?>
 <meta name="twitter:image:alt" content="<?php echo htmlspecialchars($og_image_alt, ENT_QUOTES, 'UTF-8'); ?>">
 <?php endif; ?>

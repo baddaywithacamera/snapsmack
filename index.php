@@ -518,6 +518,8 @@ try {
                 ? (string)$settings['header_logo_url']
                 : (string)($settings['site_logo'] ?? ''),
             'favicon_url' => snapsmack_public_favicon_url($settings, (string)$active_skin),
+            'og_image_url' => ($_public['kind'] ?? '') === 'landing'
+                ? snapsmack_public_brand_image_url((string)($settings['og_image_override'] ?? '')) : '',
             'skin_slug' => (string)$active_skin,
             'skin_style_url' => $_active_skin_style_url,
             'base_style_url' => $_base_style_url,
