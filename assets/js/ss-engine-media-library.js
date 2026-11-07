@@ -196,4 +196,30 @@ document.querySelectorAll('.asset-alt-input').forEach(function (input) {
     input.addEventListener('change', function () { saveAlt(input); });
 });
 
+/**
+ * Persist a card's display CAPTION (SS-1216). Its own endpoint, so it never
+ * touches ALT or the border. Saves on blur/change.
+ */
+function saveCaption(input) {
+    const card = input.closest('.asset-card');
+    const note = card ? card.querySelector('.caption-saved-note') : null;
+    const formData = new FormData();
+    formData.append('caption_id', input.dataset.assetId);
+    formData.append('asset_caption', input.value);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'smack-media.php', true);
+    xhr.onload = function () {
+        if (note) {
+            note.textContent = (xhr.status === 200) ? 'saved' : 'error';
+            setTimeout(() => { note.textContent = ''; }, 1200);
+        }
+    };
+    xhr.send(formData);
+}
+
+document.querySelectorAll('.asset-caption-input').forEach(function (input) {
+    input.addEventListener('change', function () { saveCaption(input); });
+});
+
 // ===== SNAPSMACK EOF =====

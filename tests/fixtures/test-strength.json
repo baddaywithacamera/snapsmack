@@ -148,6 +148,11 @@
             2
         ]
     },
+    "asset-caption-lightbox-regression.php": {
+        "assertions": 0,
+        "predicates": 7,
+        "thresholds": []
+    },
     "asset-refetch-control-regression.php": {
         "assertions": 20,
         "predicates": 18,
