@@ -45,6 +45,14 @@ the explicit, reviewable handoff between AI- or human-assisted source analysis a
 the deterministic importer. They live in SMACKPRESS's local migration database and
 can be changed without changing SnapSmack core or a skin.
 
+## FooGallery imports
+
+Install WordPress companion 1.1.2 or later on the source site. SMACKPRESS
+imports published FooGallery shortcodes and editor blocks backed by WordPress
+Media Library images. Each gallery becomes one native mosaic in FooGallery's
+server-side attachment order. An unresolved gallery stops the draft before
+any image downloads begin.
+
 ## WordPress companion plugin
 
 Install `tools/smackpress-wp-companion/smackpress-wp-companion.php` on the source
