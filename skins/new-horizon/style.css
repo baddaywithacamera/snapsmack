@@ -108,7 +108,7 @@ body {
 }
 
 .site-title-text {
-    font-family: 'Montserrat', sans-serif;
+    /* Header typography comes from Skin Admin on this exact text element. */
     font-weight: 800;
     font-size: 1.2rem;
     text-transform: uppercase;
@@ -485,6 +485,8 @@ img.post-image {
 
 /* --- GRID A: Square & Cropped (CSS Grid layout) --- */
 #browse-grid {
+    width: var(--ss-grid-width, 100%);
+    box-sizing: border-box;
     max-width: 95%;
     margin: 80px auto;
     padding: 0 60px;
@@ -496,8 +498,9 @@ img.post-image {
 #browse-grid.square-grid,
 #browse-grid.cropped-grid {
     display: grid;
-    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
-    gap: var(--grid-gap, 50px);
+    /* Shared archive controls keep legacy saved values as fallbacks. */
+    grid-template-columns: repeat(var(--ss-cols, var(--grid-cols, 4)), minmax(0, var(--ss-thumb-size, var(--thumb-width, 200px))));
+    gap: var(--ss-gap, var(--grid-gap, 50px));
     justify-content: center;
 }
 #browse-grid.square-grid .thumb-container,
@@ -545,7 +548,9 @@ img.post-image {
 .square-grid .thumb-link,
 .cropped-grid .thumb-link {
     display: inline-block;
-    border: 3px solid var(--border-accent);
+    border-width: var(--ss-border-width, 1px);
+    border-color: var(--ss-border-color, #666);
+    border-style: var(--ss-border-style, solid);
     box-shadow: none;
     box-sizing: border-box;
 }
@@ -578,7 +583,7 @@ img.post-image {
 
 .square-grid .thumb-link img,
 .cropped-grid .thumb-link img {
-    max-width: var(--thumb-width, 400px);
+    max-width: 100%;
     height: auto;
     display: block;
     transition: opacity 0.3s ease;
