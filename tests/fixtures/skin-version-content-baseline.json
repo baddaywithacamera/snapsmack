@@ -35,8 +35,8 @@
             "files_sha256": "8eac57791653605864b1cc2faece5ce20b4a8e05c82f03763fc14d16796fd563"
         },
         "glide": {
-            "version": "0.1.23",
-            "files_sha256": "6f8e79cf9bd468244c2d414d84aced818f09788e297d8fc8b92e8e239a0c48d7"
+            "version": "0.1.24",
+            "files_sha256": "0e13bec7578767ec86a8a76a9fe896d6f7f97bc448f875c114672a10ee8c539a"
         },
         "heuristic": {
             "version": "0.1.19",

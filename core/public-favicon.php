@@ -13,12 +13,17 @@ function snapsmack_public_favicon_url(array $settings, string $skin): string
         $skin !== '' ? ($settings[$skin . '__skin_avatar'] ?? '') : '',
         $settings['skin_avatar'] ?? '',
     ] as $candidate) {
-        $url = snap_validate_url($candidate);
-        if ($url === '') continue;
-        if (preg_match('#^https?://#i', $url)) return $url;
-        return (defined('BASE_URL') ? BASE_URL : '/') . ltrim($url, '/');
+        $url = snapsmack_public_brand_image_url($candidate);
+        if ($url !== '') return $url;
     }
     return '';
+}
+
+function snapsmack_public_brand_image_url(string $value): string
+{
+    $url = snap_validate_url($value);
+    if ($url === '' || preg_match('#^https?://#i', $url)) return $url;
+    return (defined('BASE_URL') ? BASE_URL : '/') . ltrim($url, '/');
 }
 
 function snapsmack_public_favicon_link(string $url): string
