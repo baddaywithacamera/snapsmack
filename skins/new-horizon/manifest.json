@@ -809,17 +809,6 @@
             "selector": ".site-title-text",
             "property": "text-transform"
         },
-        "content_line_height": {
-            "section": "CONTENT STYLING",
-            "type": "range",
-            "label": "Leading (Line Spacing)",
-            "default": "1.6",
-            "min": "1",
-            "max": "3",
-            "step": "0.1",
-            "selector": ":root",
-            "property": "--content-lh"
-        },
         "content_letter_spacing": {
             "section": "CONTENT STYLING",
             "type": "range",
