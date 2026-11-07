@@ -206,19 +206,6 @@
             "property": "--footer-padding",
             "unit": "px"
         },
-        "htbs_slider_per_view": {
-            "section": "SLIDER",
-            "type": "select",
-            "label": "Images Per View",
-            "default": "2",
-            "options": {
-                "1": "1 Image",
-                "2": "2 Images",
-                "3": "3 Images"
-            },
-            "selector": ":root",
-            "property": "--slider-per-view"
-        },
         "htbs_slider_speed": {
             "section": "SLIDER",
             "type": "range",
@@ -286,18 +273,6 @@
             "property": "padding-left, padding-right",
             "unit": "px"
         },
-        "htbs_archive_miniframes": {
-            "section": "ARCHIVE GRID",
-            "type": "select",
-            "label": "Thumbnail Style",
-            "default": "1",
-            "options": {
-                "1": "Mini Frames (scaled from hero)",
-                "0": "Plain Border (3px frame colour)"
-            },
-            "selector": ":root",
-            "property": "--archive-frames"
-        },
         "htbs_show_filmstrip": {
             "section": "SINGLE IMAGE",
             "type": "select",
@@ -309,20 +284,6 @@
             },
             "selector": ":root",
             "property": "--show-filmstrip",
-            "admin_page": "solo"
-        },
-        "htbs_plaque_style": {
-            "section": "SINGLE IMAGE",
-            "type": "select",
-            "label": "Plaque Style",
-            "default": "classic",
-            "options": {
-                "minimal": "Minimal",
-                "classic": "Classic",
-                "hidden": "Hidden"
-            },
-            "selector": ":root",
-            "property": "--plaque-style",
             "admin_page": "solo"
         },
         "page_bg_color": {
