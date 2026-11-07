@@ -359,9 +359,28 @@ function snapsmack_render_strict_skin_template(string $skinDir, string $template
     // Strict-controller requests do not load the legacy skin-view bootstrap,
     // so relying on that bootstrap leaves every guarded schema-v2 layout blank.
     if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
-    (static function (string $__snapsmack_template, array $view): void {
-        include $__snapsmack_template;
-    })($candidate, $view);
+    $favicon = '';
+    if (!empty($view['site']['favicon_url'])) {
+        require_once __DIR__ . '/public-favicon.php';
+        $favicon = snapsmack_public_favicon_link((string)$view['site']['favicon_url']);
+    }
+    if ($favicon !== '') {
+        // Older strict skins own their head markup. Keep an icon they already emit.
+        ob_start(static function (string $html) use ($favicon): string {
+            $headEnd = stripos($html, '</head>');
+            if ($headEnd === false) return $html;
+            $head = substr($html, 0, $headEnd);
+            if (preg_match('~<link\b[^>]*\brel\s*=\s*["\x27](?:shortcut\s+)?icon["\x27]~i', $head)) return $html;
+            return substr_replace($html, $favicon, $headEnd, 0);
+        });
+    }
+    try {
+        (static function (string $__snapsmack_template, array $view): void {
+            include $__snapsmack_template;
+        })($candidate, $view);
+    } finally {
+        if ($favicon !== '') ob_end_flush();
+    }
     return true;
 }
 // ===== SNAPSMACK EOF =====

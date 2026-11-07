@@ -15,6 +15,7 @@
  */
 
 require_once __DIR__ . '/skin-manifest.php';
+require_once __DIR__ . '/public-favicon.php';
 require_once __DIR__ . '/public-route-aliases.php';
 require_once __DIR__ . '/indieweb.php';
 if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
@@ -588,6 +589,7 @@ function snapsmack_public_presentation(PDO $pdo, array $settings, string $active
         'site_description' => strip_tags((string)($settings['site_description'] ?? '')),
         'avatar_url' => function_exists('snapsmack_public_avatar_url')
             ? snapsmack_public_avatar_url($settings) : '',
+        'favicon_url' => snapsmack_public_favicon_url($settings, $active_skin),
         'skin_slug' => $active_skin,
         'skin_style_url' => $skin_style,
         'base_style_url' => $base_style,

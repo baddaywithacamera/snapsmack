@@ -188,20 +188,11 @@ if ($ai_policy === 'disallow'): ?>
 <?php snapsmack_indieweb_head_links($settings); ?>
 
 <?php
-// --- FAVICON SUPPORT ---
-// Support .ico, .png, and .svg favicons with appropriate MIME types
-if (!empty($settings['favicon_url'])):
-    $fav_path = $settings['favicon_url'];
-    $fav_ext  = strtolower(pathinfo($fav_path, PATHINFO_EXTENSION));
-    if ($fav_ext === 'svg'):
+require_once __DIR__ . '/public-favicon.php';
+echo snapsmack_public_favicon_link(snapsmack_public_favicon_url(
+    $settings, (string)($active_skin ?? $settings['active_skin'] ?? '')
+));
 ?>
-<link rel="icon" type="image/svg+xml" href="<?php echo BASE_URL . ltrim($fav_path, '/'); ?>">
-<?php elseif ($fav_ext === 'png'): ?>
-<link rel="icon" type="image/png" href="<?php echo BASE_URL . ltrim($fav_path, '/'); ?>">
-<?php else: ?>
-<link rel="icon" type="image/x-icon" href="<?php echo BASE_URL . ltrim($fav_path, '/'); ?>">
-<?php endif; ?>
-<?php endif; ?>
 
 <meta property="og:site_name" content="<?php echo $site_name; ?>">
 <meta property="og:title" content="<?php echo $og_title; ?>">
