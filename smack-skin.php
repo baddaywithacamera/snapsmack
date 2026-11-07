@@ -1752,13 +1752,15 @@ if (!empty($google_families)) {
         $url_dir = BASE_URL . "skins/{$slug}"; // absolute URL for img src
         $shots   = [];
         $names   = [
-            'screenshot-landing.png' => 'Landing',
-            'screenshot-archive.png' => 'Archive',
-            'screenshot-page.png'    => 'Text Page',
+            'Primary' => ['screenshot-primary.png', 'screenshot-landing.png'],
+            'Secondary' => ['screenshot-secondary.png', 'screenshot-archive.png'],
+            'Tertiary' => ['screenshot-tertiary.png', 'screenshot-page.png'],
         ];
-        foreach ($names as $file => $label) {
-            if (file_exists("{$abs_dir}/{$file}")) {
+        foreach ($names as $label => $files) {
+            foreach ($files as $file) {
+                if (!file_exists("{$abs_dir}/{$file}")) continue;
                 $shots[] = ['file' => "{$url_dir}/{$file}", 'label' => $label];
+                break;
             }
         }
         // Fallback: single screenshot.png (legacy)
@@ -1774,6 +1776,11 @@ if (!empty($google_families)) {
     // $remote_screenshot:  single URL string, legacy fallback (used when $remote_screenshots absent).
     function render_skin_screenshots(string $slug, string $skin_name, ?string $remote_screenshot = null, array $remote_screenshots = []): void {
         $shots = skin_screenshots($slug);
+        $legacy_labels = ['Landing' => 'Primary', 'Archive' => 'Secondary', 'Text Page' => 'Tertiary'];
+        foreach ($remote_screenshots as &$remote_shot) {
+            $remote_shot['label'] = $legacy_labels[$remote_shot['label']] ?? $remote_shot['label'];
+        }
+        unset($remote_shot);
         if (!empty($shots)): ?>
             <?php foreach ($shots as $i => $s): ?>
                 <img src="<?php echo htmlspecialchars($s['file']); ?>"
