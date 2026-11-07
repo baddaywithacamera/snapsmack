@@ -38,7 +38,7 @@ window._ssLightboxLoaded = true;
 
 // --- module state (shared across the initial scan + modal re-scans) ---
 var _lbItems = [];
-var _lbOverlay = null, _lbBigImg = null, _lbPrev = null, _lbNext = null;
+var _lbOverlay = null, _lbBigImg = null, _lbPrev = null, _lbNext = null, _lbCaption = null;
 var _lbCurrent = 0;
 var _lbOpacity = (window.SMACK_CONFIG && window.SMACK_CONFIG.lightbox && window.SMACK_CONFIG.lightbox.opacity)
     ? window.SMACK_CONFIG.lightbox.opacity
@@ -66,11 +66,19 @@ function _lbUpdateArrows() {
     _lbNext.style.display = _lbCurrent >= _lbItems.length - 1 ? 'none' : 'flex';
 }
 
+function _lbSetCaption() {
+    if (!_lbCaption) return;
+    var cap = (_lbItems[_lbCurrent] && _lbItems[_lbCurrent].caption) || '';
+    _lbCaption.textContent = cap;
+    _lbCaption.style.display = cap ? 'block' : 'none';
+}
+
 function _lbGo(i) {
     if (i < 0 || i >= _lbItems.length) return; // clamp, no wrap
     _lbCurrent = i;
     _lbBigImg.setAttribute('src', _lbItems[_lbCurrent].src);
     _lbUpdateArrows();
+    _lbSetCaption();
 }
 
 function _lbBuildOverlay() {
@@ -85,6 +93,17 @@ function _lbBuildOverlay() {
     _lbBigImg = document.createElement('img');
     _lbBigImg.style.cssText = 'max-width:95vw;max-height:95vh;object-fit:contain;box-shadow:0 0 40px rgba(0,0,0,.8);cursor:zoom-out;';
     _lbOverlay.appendChild(_lbBigImg);
+
+    // SS-1216: the asset's display caption. Hidden when empty -- the lightbox
+    // never shows a page or post title, only the owner-written caption.
+    _lbCaption = document.createElement('div');
+    _lbCaption.id = 'ss-lightbox-caption';
+    _lbCaption.style.cssText =
+        'position:fixed;left:0;right:0;bottom:0;padding:14px 20px;' +
+        'background:linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,0));' +
+        'color:#fff;font-size:15px;line-height:1.4;text-align:center;' +
+        'pointer-events:none;z-index:10000;display:none;';
+    _lbOverlay.appendChild(_lbCaption);
 
     _lbPrev = _lbNavBtn('‹', 'left');
     _lbNext = _lbNavBtn('›', 'right');
@@ -120,6 +139,7 @@ function _lbOpen(index) {
     _lbCurrent = index;
     _lbBigImg.setAttribute('src', _lbItems[_lbCurrent].src);
     _lbUpdateArrows();
+    _lbSetCaption();
     _lbOverlay.style.display = 'flex';
     requestAnimationFrame(function () {
         requestAnimationFrame(function () { _lbOverlay.style.opacity = '1'; });
@@ -147,7 +167,7 @@ function _lbWire(el, src) {
     if (!src || el.dataset._ssLbWired) return;
     el.dataset._ssLbWired = '1';
     var idx = _lbItems.length;
-    _lbItems.push({ src: src });
+    _lbItems.push({ src: src, caption: (el.getAttribute('data-caption') || '') });
     el.style.cursor = 'zoom-in';
     el.addEventListener('click', function (e) {
         if (e.target.closest && e.target.closest('a, button') && e.target !== el) return;
