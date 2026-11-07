@@ -6,7 +6,7 @@
  *              so the SmackPress desktop tool can pull posts from WordPress and mark
  *              migrated posts as private. Authenticate with a WordPress Application Password.
  *              Delete this plugin once migration is complete.
- * Version:     1.1.1
+ * Version:     1.1.2
  * Author:      SnapSmack
  * License:     GPL-2.0-or-later
  *
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Constants
  * --------------------------------------------------------------------- */
 
-define( 'SMACKPRESS_COMPANION_VERSION', '1.1.1' );
+define( 'SMACKPRESS_COMPANION_VERSION', '1.1.2' );
 define( 'SMACKPRESS_NS',  'smackpress/v1' );
 define( 'SMACKPRESS_META', 'smackpress_migrated_to' );
 
@@ -385,6 +385,69 @@ function smackpress_normalize_upload_hosts( string $content ): string {
     );
 }
 
+/**
+ * Resolve FooGallery's ordered Media Library attachments into a native gallery
+ * marker. Keep unresolved embeds intact so the desktop importer can flag them.
+ */
+function smackpress_expand_foogallery( string $content, array &$images ): string {
+    if ( ! class_exists( 'FooGallery' ) ) {
+        return $content;
+    }
+
+    $expand = static function( array $atts, string $original ) use ( &$images ): string {
+        $id = absint( $atts['id'] ?? 0 );
+        $slug = (string) ( $atts['gallery'] ?? '' );
+        if ( ! $id && ctype_digit( $slug ) ) {
+            $id = absint( $slug );
+        }
+        $gallery = $id ? FooGallery::get_by_id( $id ) : ( $slug !== '' ? FooGallery::get_by_slug( $slug ) : false );
+        if ( ! $gallery || ! $gallery->is_published() || post_password_required( $gallery->ID ) ) {
+            return $original;
+        }
+
+        $gallery = apply_filters( 'foogallery_render_template_argument_overrides', $gallery, $atts );
+        $resolved = [];
+        $lines = [];
+        foreach ( $gallery->attachments() as $attachment ) {
+            $attachment_id = absint( $attachment->ID ?? 0 );
+            if ( ! $attachment_id || ! wp_attachment_is_image( $attachment_id ) ) {
+                return $original;
+            }
+            $image = $images[ $attachment_id ] ?? smackpress_image_data( $attachment_id );
+            if ( empty( $image['url'] ) ) {
+                return $original;
+            }
+            $resolved[ $attachment_id ] = $image;
+            $lines[] = '[smackpress-image id="' . $attachment_id . '" url="' . esc_url_raw( $image['url'] ) . '"]';
+        }
+        if ( ! $lines ) {
+            return $original;
+        }
+        $images += $resolved;
+        return "[smackpress-gallery]\n" . implode( "\n", $lines ) . "\n[/smackpress-gallery]";
+    };
+
+    $content = preg_replace_callback(
+        '/' . get_shortcode_regex( [ 'foogallery' ] ) . '/s',
+        static function( array $match ) use ( $expand ): string {
+            if ( $match[1] === '[' && $match[6] === ']' ) {
+                return $match[0];
+            }
+            $atts = (array) shortcode_parse_atts( $match[3] );
+            return $expand( apply_filters( 'foogallery_shortcode_atts', $atts + [ 'id' => 0, 'gallery' => '' ] ), $match[0] );
+        },
+        $content
+    );
+
+    return preg_replace_callback(
+        '~<!--\s*wp:fooplugins/foogallery\s+(\{.*?\})\s*(?:/-->|-->\s*<!--\s*/wp:fooplugins/foogallery\s*-->)~s',
+        static function( array $match ) use ( $expand ): string {
+            return $expand( (array) json_decode( $match[1], true ), $match[0] );
+        },
+        $content
+    );
+}
+
 function smackpress_expand_content( string $content, int $post_id ): array {
     $images = [];   // keyed by attachment ID to avoid dupes
 
@@ -392,6 +455,8 @@ function smackpress_expand_content( string $content, int $post_id ): array {
     // or bare <img> tags and attachment lookups (which key off the current host)
     // silently miss them. See smackpress_normalize_upload_hosts().
     $content = smackpress_normalize_upload_hosts( $content );
+
+    $content = smackpress_expand_foogallery( $content, $images );
 
     // Find all gallery shortcodes
     $content = preg_replace_callback(

@@ -362,6 +362,15 @@ $date_options = [
 ];
 
 $page_title = "Configuration";
+try {
+    $og_picker_assets = $pdo->query(
+        "SELECT id, asset_name, asset_path FROM snap_assets
+         WHERE LOWER(asset_path) REGEXP '[.](jpe?g|png|gif|webp|svg|avif)$'
+         ORDER BY created_at DESC, id DESC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    $og_picker_assets = [];
+}
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -404,8 +413,13 @@ include 'core/sidebar.php';
                     <label>SITEMAP IMAGE CAP <span class="field-tip" data-tip="Max posts/images to list in the XML sitemap. 0 or blank = your whole archive (paginated, no truncation). Lower it if you only want your most recent work indexed by search engines.">ⓘ</span></label>
                     <input type="number" min="0" name="settings[sitemap_image_cap]" value="<?php echo htmlspecialchars($settings['sitemap_image_cap'] ?? '0'); ?>" placeholder="0 = whole archive">
 
-                    <label>OG IMAGE OVERRIDE <span class="field-tip" data-tip="Default social-share image (path or URL) used when a page has no image of its own. Individual post images still take priority.">ⓘ</span></label>
-                    <input type="text" name="settings[og_image_override]" value="<?php echo htmlspecialchars($settings['og_image_override'] ?? ''); ?>" placeholder="e.g. uploads/social-card.jpg">
+                    <label for="og-image-override">OG IMAGE OVERRIDE <span class="field-tip" data-tip="Default social-share image (path or URL) used when a page has no image of its own. Individual post images still take priority.">ⓘ</span></label>
+                    <input id="og-image-override" type="text" name="settings[og_image_override]" value="<?php echo htmlspecialchars($settings['og_image_override'] ?? ''); ?>" placeholder="e.g. uploads/social-card.jpg">
+                    <?php if ($og_picker_assets !== []): ?>
+                        <button type="button" class="sc-btn" data-asset-picker-field="og-image-override">Choose from Media Library</button>
+                    <?php else: ?>
+                        <p class="dim">Add an image in <a href="smack-media.php">Media Library</a> to choose it here.</p>
+                    <?php endif; ?>
 
                     <label>BASE SITE URL</label>
                     <input type="text" name="settings[site_url]" value="<?php echo htmlspecialchars($settings['site_url'] ?? 'https://example.com/'); ?>">
@@ -1339,5 +1353,19 @@ if (archiveLayout) {
 </script>
 <script src="assets/js/ss-ai-spendcap.js?v=<?php echo time(); ?>"></script>
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
+<?php if ($og_picker_assets !== []): ?>
+<div id="ss-asset-picker-overlay" class="asset-picker-overlay d-none">
+    <div class="asset-picker-modal">
+        <div class="asset-picker-header">
+            <span>SELECT IMAGE FROM LIBRARY</span>
+            <button type="button" id="asset-picker-close" aria-label="Close image picker">&times;</button>
+        </div>
+        <div class="asset-picker-grid" id="asset-picker-grid"
+             data-assets="<?php echo htmlspecialchars(json_encode($og_picker_assets, JSON_INVALID_UTF8_SUBSTITUTE), ENT_QUOTES, 'UTF-8'); ?>"
+             data-base-url="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8'); ?>"></div>
+    </div>
+</div>
+<script src="assets/js/smack-asset-picker.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<?php endif; ?>
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

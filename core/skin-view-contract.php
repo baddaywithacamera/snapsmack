@@ -165,7 +165,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'base_style_url', 'skin_variant_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',
-        'favicon_url', 'footer', 'slickr_profile', 'crop_circles', 'archive_layout', 'archive_thumb_style', 'archive_grid', 'body_class'];
+        'favicon_url', 'og_image_url', 'footer', 'slickr_profile', 'crop_circles', 'archive_layout', 'archive_thumb_style', 'archive_grid', 'body_class'];
     // THE ARCHIVE'S OWN CONTROL ROW -- SHOW ALL, the filter panel, the search
     // field and the layout toggles.
     //
@@ -359,19 +359,23 @@ function snapsmack_render_strict_skin_template(string $skinDir, string $template
     // Strict-controller requests do not load the legacy skin-view bootstrap,
     // so relying on that bootstrap leaves every guarded schema-v2 layout blank.
     if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
-    $favicon = '';
-    if (!empty($view['site']['favicon_url'])) {
+    $hasHeadImage = !empty($view['site']['favicon_url']) || !empty($view['site']['og_image_url']);
+    if ($hasHeadImage) {
         require_once __DIR__ . '/public-favicon.php';
-        $favicon = snapsmack_public_favicon_link((string)$view['site']['favicon_url']);
-    }
-    if ($favicon !== '') {
-        // Older strict skins own their head markup. Keep an icon they already emit.
-        ob_start(static function (string $html) use ($favicon): string {
+        $favicon = snapsmack_public_favicon_link((string)($view['site']['favicon_url'] ?? ''));
+        $ogImage = snap_escape_url($view['site']['og_image_url'] ?? '');
+        ob_start(static function (string $html) use ($favicon, $ogImage): string {
             $headEnd = stripos($html, '</head>');
             if ($headEnd === false) return $html;
             $head = substr($html, 0, $headEnd);
-            if (preg_match('~<link\b[^>]*\brel\s*=\s*["\x27](?:shortcut\s+)?icon["\x27]~i', $head)) return $html;
-            return substr_replace($html, $favicon, $headEnd, 0);
+            $markup = '';
+            if ($favicon !== '' && !preg_match('~<link\b[^>]*\brel\s*=\s*["\x27](?:shortcut\s+)?icon["\x27]~i', $head)) {
+                $markup .= $favicon;
+            }
+            if ($ogImage !== '' && !preg_match('~<meta\b[^>]*\bproperty\s*=\s*["\x27]og:image["\x27]~i', $head)) {
+                $markup .= '<meta property="og:image" content="' . $ogImage . '">';
+            }
+            return substr_replace($html, $markup, $headEnd, 0);
         });
     }
     try {
@@ -379,7 +383,7 @@ function snapsmack_render_strict_skin_template(string $skinDir, string $template
             include $__snapsmack_template;
         })($candidate, $view);
     } finally {
-        if ($favicon !== '') ob_end_flush();
+        if ($hasHeadImage) ob_end_flush();
     }
     return true;
 }

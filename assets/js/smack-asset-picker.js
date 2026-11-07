@@ -88,7 +88,7 @@
         grid.querySelectorAll('.asset-picker-cell').forEach(function (c) {
             c.classList.remove('selected');
         });
-        scOpts.classList.add('d-none');
+        if (scOpts) scOpts.classList.add('d-none');
         overlay.classList.remove('d-none');
     }
 
@@ -119,7 +119,7 @@
     });
 
     // Shortcode insert
-    document.getElementById('asset-sc-insert').addEventListener('click', function () {
+    document.getElementById('asset-sc-insert')?.addEventListener('click', function () {
         if (!selectedAsset || !pickerTarget) return;
         var size  = document.getElementById('asset-sc-size').value;
         var align = document.getElementById('asset-sc-align').value;
@@ -132,6 +132,13 @@
         ta.selectionStart = ta.selectionEnd = start + tag.length;
         ta.focus();
         closeAssetPicker();
+    });
+
+    document.querySelectorAll('[data-asset-picker-field]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var field = document.getElementById(button.dataset.assetPickerField);
+            if (field) openAssetPicker('field', field);
+        });
     });
 
     // Expose for shortcode-toolbar.js
