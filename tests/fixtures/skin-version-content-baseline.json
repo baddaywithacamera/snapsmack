@@ -75,12 +75,12 @@
             "files_sha256": "d631742c03c0b3c621b343b0329f504f33486a0d783c2b760a637b66d41335ca"
         },
         "rational-geo": {
-            "version": "2.1.38",
-            "files_sha256": "5c5c91d3d9f0ac2a94838ac7beae3e154e66d478818838c994e669c1e11c7687"
+            "version": "2.1.39",
+            "files_sha256": "c421f26985795b51def072a56b4a689a546d6a354d4756b817e4ad8d9b9bee55"
         },
         "scroll": {
-            "version": "0.1.78",
-            "files_sha256": "ff0999c24f4981e88cb47aeb656859d3788f7c9d0879b33b3849022d6eb5cde1"
+            "version": "0.1.79",
+            "files_sha256": "0a71ae349cedced412f0c7563cf78f309e13c2656305abe6bb5aac3fa36f74be"
         },
         "show-n-tell": {
             "version": "1.2.14",
