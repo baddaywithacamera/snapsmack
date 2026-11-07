@@ -21,7 +21,7 @@
     },
     "agreed-rules-gate.php": {
         "assertions": 14,
-        "predicates": 15,
+        "predicates": 16,
         "thresholds": [
             2,
             2,
@@ -1524,6 +1524,11 @@
         "thresholds": [
             2
         ]
+    },
+    "skin-control-migration-regression.php": {
+        "assertions": 0,
+        "predicates": 0,
+        "thresholds": []
     },
     "skin-control-selector-regression.php": {
         "assertions": 0,

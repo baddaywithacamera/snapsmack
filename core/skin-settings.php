@@ -20,6 +20,40 @@
  */
 
 
+/**
+ * The value a RENAMED or RESHAPED control inherits from the control it replaced,
+ * so a live site's saved choice carries forward and its page does not change on
+ * upgrade (SS-1185 / the shared archive controls).
+ *
+ * Two shapes, both declared on the NEW option in manifest.json:
+ *   'migrated_from' => 'old_key'                     direct carry (a rename).
+ *   'migrated_map'  => ['old_value' => 'new_value']  a reshape (one old select
+ *                                                    becomes several new controls,
+ *                                                    e.g. a frame preset -> border
+ *                                                    width / colour / style).
+ * A direct carry of a range value is clamped into the new control's [min,max] so
+ * a saved value outside the new range cannot land. This is a READ-time fallback:
+ * nothing is written, so the old value keeps answering until the owner saves the
+ * new control.
+ */
+function snapsmack_skin_migrated_value(string $old, array $meta): string
+{
+    if (isset($meta['migrated_map']) && is_array($meta['migrated_map'])) {
+        if (array_key_exists($old, $meta['migrated_map'])) {
+            return (string) $meta['migrated_map'][$old];
+        }
+        return (string) ($meta['default'] ?? '');
+    }
+    $value = $old;
+    if (($meta['type'] ?? '') === 'range' && is_numeric($value)) {
+        $n = (float) $value;
+        if (isset($meta['min']) && is_numeric($meta['min']) && $n < (float) $meta['min']) $n = (float) $meta['min'];
+        if (isset($meta['max']) && is_numeric($meta['max']) && $n > (float) $meta['max']) $n = (float) $meta['max'];
+        $value = ($n == (int) $n) ? (string) (int) $n : (string) $n;
+    }
+    return (string) $value;
+}
+
 function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): void
 {
     // Keys owned exclusively by Global Vibe -- skin-scoped copies must never
@@ -111,6 +145,13 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
             $scoped_key = $prefix . $bare_key;
             if (array_key_exists($scoped_key, $settings)) {
                 $settings[$bare_key] = $settings[$scoped_key];
+            } elseif (is_array($meta) && !empty($meta['migrated_from'])
+                && array_key_exists($prefix . (string) $meta['migrated_from'], $settings)) {
+                // A renamed/reshaped control with no value of its own yet inherits
+                // the value of the control it replaced, so no live grid changes.
+                $settings[$bare_key] = snapsmack_skin_migrated_value(
+                    (string) $settings[$prefix . (string) $meta['migrated_from']], $meta
+                );
             } elseif ($legacy_owned_prefix !== ''
                 && str_starts_with((string)$bare_key, $legacy_owned_prefix)
                 && array_key_exists($bare_key, $settings)) {

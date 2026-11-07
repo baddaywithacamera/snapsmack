@@ -2,8 +2,10 @@
     "schema_version": 2,
     "name": "NEW HORIZON",
     "oh_snap_ready": true,
-    "version": "1.3.28",
-    "scrolltime_pages": ["archive"],
+    "version": "1.3.29",
+    "scrolltime_pages": [
+        "archive"
+    ],
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "High-contrast photography skin with archival framing, tactical layout controls, and full JS library support. Light and dark variants.",
@@ -87,15 +89,49 @@
                 "masonry": "Justified / Masonry (Flickr Style)"
             }
         },
-        "browse_cols": {
+        "archive_columns": {
             "section": "ARCHIVE GRID",
             "type": "range",
             "label": "Grid Columns (Square & Cropped)",
             "default": "4",
             "min": "2",
             "max": "8",
+            "selector": "#browse-grid.square-grid, #browse-grid.cropped-grid",
+            "property": "--ss-cols",
+            "migrated_from": "browse_cols"
+        },
+        "archive_thumb_size": {
+            "section": "ARCHIVE GRID",
+            "type": "range",
+            "label": "Thumbnail Size",
+            "default": "200",
+            "min": "80",
+            "max": "400",
+            "unit": "px",
+            "selector": "#browse-grid.square-grid, #browse-grid.cropped-grid",
+            "property": "--ss-thumb-size"
+        },
+        "archive_grid_width": {
+            "section": "ARCHIVE GRID",
+            "type": "range",
+            "label": "Grid Width (% of content)",
+            "default": "100",
+            "min": "40",
+            "max": "100",
+            "unit": "%",
             "selector": "#browse-grid",
-            "property": "--grid-cols"
+            "property": "--ss-grid-width"
+        },
+        "archive_gap": {
+            "section": "ARCHIVE GRID",
+            "type": "range",
+            "label": "Gap Between Thumbnails",
+            "default": "50",
+            "min": "0",
+            "max": "80",
+            "unit": "px",
+            "selector": "#browse-grid.square-grid, #browse-grid.cropped-grid",
+            "property": "--ss-gap"
         },
         "image_frame_style": {
             "section": "FRAMING",
@@ -127,38 +163,64 @@
                 }
             }
         },
-        "archive_frame_style": {
+        "archive_border_width": {
+            "section": "FRAMING",
+            "type": "range",
+            "label": "Thumbnail Border Width",
+            "default": "1",
+            "min": "0",
+            "max": "8",
+            "unit": "px",
+            "selector": ".square-grid .thumb-link, .cropped-grid .thumb-link",
+            "property": "--ss-border-width",
+            "migrated_from": "archive_frame_style",
+            "migrated_map": {
+                "thin_grey": "1",
+                "thin_white": "1",
+                "thin_dark": "1",
+                "medium_grey": "3",
+                "medium_white": "3",
+                "none": "0"
+            }
+        },
+        "archive_border_color": {
+            "section": "FRAMING",
+            "type": "color",
+            "label": "Thumbnail Border Color",
+            "default": "#666666",
+            "selector": ".square-grid .thumb-link, .cropped-grid .thumb-link",
+            "property": "--ss-border-color",
+            "migrated_from": "archive_frame_style",
+            "migrated_map": {
+                "thin_grey": "#666666",
+                "thin_white": "#ffffff",
+                "thin_dark": "#333333",
+                "medium_grey": "#666666",
+                "medium_white": "#ffffff",
+                "none": "#666666"
+            }
+        },
+        "archive_border_style": {
             "section": "FRAMING",
             "type": "select",
-            "label": "Archive Thumbnail Frame",
-            "default": "thin_grey",
+            "label": "Thumbnail Border Style",
+            "default": "solid",
             "selector": ".square-grid .thumb-link, .cropped-grid .thumb-link",
-            "property": "custom-framing",
+            "property": "--ss-border-style",
             "options": {
-                "thin_grey": {
-                    "label": "Thin Grey (1px)",
-                    "css": "{ border: 1px solid #666666 !important; box-shadow: none !important; }"
-                },
-                "thin_white": {
-                    "label": "Thin White (1px)",
-                    "css": "{ border: 1px solid #ffffff !important; box-shadow: none !important; }"
-                },
-                "thin_dark": {
-                    "label": "Thin Dark (1px)",
-                    "css": "{ border: 1px solid #333333 !important; box-shadow: none !important; }"
-                },
-                "medium_grey": {
-                    "label": "Medium Grey (3px)",
-                    "css": "{ border: 3px solid #666666 !important; box-shadow: none !important; }"
-                },
-                "medium_white": {
-                    "label": "Medium White (3px)",
-                    "css": "{ border: 3px solid #ffffff !important; box-shadow: none !important; }"
-                },
-                "none": {
-                    "label": "No Border",
-                    "css": "{ border: none !important; box-shadow: none !important; }"
-                }
+                "solid": "Solid",
+                "dashed": "Dashed",
+                "dotted": "Dotted",
+                "none": "None"
+            },
+            "migrated_from": "archive_frame_style",
+            "migrated_map": {
+                "thin_grey": "solid",
+                "thin_white": "solid",
+                "thin_dark": "solid",
+                "medium_grey": "solid",
+                "medium_white": "solid",
+                "none": "none"
             }
         },
         "header_font_family": {

@@ -755,8 +755,12 @@ body[data-frame="none"]   { --rg-hero-colour: transparent; }
   margin-bottom: var(--space-md);
 }
 
-.rg-comment-text {
-  font-size: var(--font-scale-base);
+.rg-comment-text,
+#pane-comments .ss-comment-body,
+#pane-comments .snap-comments li > p {
+  /* The CMS community component and its fallback share drawer typography. */
+  font-family: inherit;
+  font-size: inherit;
   line-height: 1.7;
   color: var(--rg-text-primary);
 }
@@ -1848,9 +1852,6 @@ input[type="reset"]:active {
     font-size: var(--font-scale-sm);
   }
 
-  .rg-comment-text {
-    font-size: var(--font-scale-sm);
-  }
 
   .rg-comment-form h3 {
     font-size: var(--font-scale-base);
