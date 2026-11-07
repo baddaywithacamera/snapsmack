@@ -359,6 +359,20 @@
 
         panel.addEventListener('submit', closePanel);
         panel.addEventListener('cancel', closePanel);
+        function isPanelBackdrop(event) {
+            if (event.target !== panel) return false;
+            var bounds = panel.getBoundingClientRect();
+            return event.clientX < bounds.left || event.clientX >= bounds.right
+                || event.clientY < bounds.top || event.clientY >= bounds.bottom;
+        }
+        var pressedBackdrop = false;
+        panel.addEventListener('pointerdown', function (event) {
+            pressedBackdrop = isPanelBackdrop(event);
+        });
+        panel.addEventListener('click', function (event) {
+            if (pressedBackdrop && isPanelBackdrop(event)) closePanel(event);
+            pressedBackdrop = false;
+        });
         function openWallPanel(url, title, selector) {
             panel.querySelector('h2').textContent = title;
             panel.dataset.wallPanel = title;
@@ -686,7 +700,7 @@
             originals: track && track.children ? track.children.length : 0,
             period: 0,
             current: index * -90, target: index * -90,
-            dragging: false, moved: false, captured: false,
+            dragging: false, moved: false, captured: false, pointerId: null,
             // vel is the recent speed of the drag, carried past release;
             // flinging says the wall is still coasting on it.
             vel: 0, flinging: false,
@@ -782,7 +796,8 @@
         }, { passive: false });
 
         state.row.addEventListener('pointerdown', function (event) {
-            if (event.button !== 0 && event.pointerType === 'mouse') return;
+            if (state.dragging || (event.button !== 0 && event.pointerType === 'mouse')) return;
+            state.pointerId = event.pointerId;
             state.dragging = true;
             state.moved = false;
             // PUTTING A FINGER ON A COASTING WALL STOPS IT, which is what
@@ -822,7 +837,7 @@
             // actually a drag -- so a real click keeps its own target.
         });
         state.row.addEventListener('pointermove', function (event) {
-            if (!state.dragging) return;
+            if (!state.dragging || event.pointerId !== state.pointerId) return;
             var dx = event.clientX - state.x;
             var dy = event.clientY - state.y;
             // THE WORLD VECTOR: dx/dy are screen pixels, and on screen the
@@ -861,12 +876,13 @@
             state.y = event.clientY;
             requestPaint();
         });
-        function release(event, cancelled) {
-            if (!state.dragging) return;
+        function release(pointerId, cancelled) {
+            if (!state.dragging || pointerId !== state.pointerId) return;
             state.dragging = false;
+            state.pointerId = null;
             state.row.classList.remove('is-dragging');
-            if (state.captured && state.row.hasPointerCapture(event.pointerId)) {
-                state.row.releasePointerCapture(event.pointerId);
+            if (state.captured && state.row.hasPointerCapture(pointerId)) {
+                state.row.releasePointerCapture(pointerId);
             }
             state.captured = false;
             // A CANCEL IS FOLLOWED BY NO CLICK, so the moved flag had nothing
@@ -889,8 +905,13 @@
                 requestPaint();
             }
         }
-        state.row.addEventListener('pointerup', function (event) { release(event, false); });
-        state.row.addEventListener('pointercancel', function (event) { release(event, true); });
+        // A press below the drag threshold can end outside the row before capture.
+        window.addEventListener('pointerup', function (event) { release(event.pointerId, false); }, true);
+        window.addEventListener('pointercancel', function (event) { release(event.pointerId, true); }, true);
+        state.row.addEventListener('lostpointercapture', function (event) {
+            if (event.target === state.row) release(event.pointerId, true);
+        });
+        window.addEventListener('blur', function () { release(state.pointerId, true); });
         state.row.addEventListener('click', function (event) {
             if (state.moved) { event.preventDefault(); event.stopPropagation(); state.moved = false; }
         }, true);

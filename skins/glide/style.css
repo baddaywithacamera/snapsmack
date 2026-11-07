@@ -1374,7 +1374,8 @@ body.glide-v2:has(.archive-grid, .blogroll-page) {
 .wall-panel-body a { color: inherit; }
 .wall-panel #browse-grid.archive-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
 .wall-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; margin: 24px 0; }
-.wall-pagination a { display: grid; place-items: center; width: 44px; height: 44px; font-size: 1.75rem; line-height: 1; text-decoration: none; opacity: .65; }
+.wall-pagination :is(a, [aria-disabled="true"]) { display: grid; place-items: center; width: 44px; height: 44px; font-size: 1.75rem; line-height: 1; text-decoration: none; opacity: .65; }
+.wall-pagination [aria-disabled="true"] { opacity: .3; }
 .wall-pagination a:is(:hover, :focus-visible) { opacity: 1; }
 .wall-viewer { padding: 0; border: 0; overflow: visible; color: #fff; background: transparent; }
 .wall-viewer::backdrop { background: rgb(0 0 0 / 80%); }

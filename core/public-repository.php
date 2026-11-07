@@ -178,7 +178,7 @@ final class SnapPublicRepository
 
     public function randomPhotographs(int $limit): array {
         return $this->all(
-            "SELECT id,img_title,img_slug,img_alt,img_file,img_width,img_height,img_thumb_square,img_thumb_aspect
+            "SELECT id,img_title,img_slug,img_alt,img_file,img_width,img_height,img_thumb_square,img_thumb_aspect,allow_comments
              FROM snap_images
              WHERE img_status='published' AND img_date <= NOW()
              ORDER BY RAND() LIMIT ?",

@@ -319,7 +319,7 @@ try {
             'brand_logo' => (string)($settings['header_logo_url'] ?? '') !== ''
                 ? (string)$settings['header_logo_url']
                 : (string)($settings['site_logo'] ?? ''),
-                    'favicon_url' => !empty($settings['favicon_url']) ? (preg_match('#^https?://#i', (string)$settings['favicon_url']) ? (string)$settings['favicon_url'] : (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['favicon_url'], '/')) : '',
+                    'favicon_url' => snapsmack_public_favicon_url($settings, (string)$active_skin),
                     'skin_slug' => (string)$active_skin,
                     'skin_style_url' => $_active_skin_style_url,
             'base_style_url' => $_base_style_url,
@@ -517,6 +517,7 @@ try {
             'brand_logo' => (string)($settings['header_logo_url'] ?? '') !== ''
                 ? (string)$settings['header_logo_url']
                 : (string)($settings['site_logo'] ?? ''),
+            'favicon_url' => snapsmack_public_favicon_url($settings, (string)$active_skin),
             'skin_slug' => (string)$active_skin,
             'skin_style_url' => $_active_skin_style_url,
             'base_style_url' => $_base_style_url,

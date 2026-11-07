@@ -60,6 +60,13 @@ async function check(page, width) {
     const before = await page.locator('.glide-track').first().evaluate(el => getComputedStyle(el).transform);
     await page.waitForTimeout(200);
     assert.notEqual(await page.locator('.glide-track').first().evaluate(el => getComputedStyle(el).transform), before);
+    await page.locator('.glide-tile').first().dispatchEvent('pointerdown', { pointerId: 17, pointerType: 'mouse', button: 0 });
+    await page.locator('body').dispatchEvent('pointerup', { pointerId: 17, pointerType: 'mouse', button: 0 });
+    await page.waitForTimeout(850);
+    const afterRelease = await page.locator('.glide-track').first().evaluate(el => getComputedStyle(el).transform);
+    await page.waitForTimeout(200);
+    assert.notEqual(await page.locator('.glide-track').first().evaluate(el => getComputedStyle(el).transform), afterRelease,
+        'A release outside the pressed band must let it resume');
     await page.locator('a[href="/about"]').click();
     await page.locator('.wall-portrait img').waitFor({ state: 'attached' });
     const opacity = await page.locator('.wall-portrait img').evaluate(async img => {
@@ -78,6 +85,12 @@ async function check(page, width) {
         return { left: rect.left, right: rect.right };
     });
     assert.ok(bounds.left >= 0 && bounds.right <= width);
+    const panel = page.locator('.wall-panel');
+    const box = await panel.boundingBox();
+    await page.mouse.click(box.x + 2, box.y + box.height - 5);
+    assert.equal(await panel.evaluate(el => el.open), true);
+    await page.mouse.click(5, 5);
+    await page.waitForFunction(() => !document.querySelector('.wall-panel').open);
     console.log(`PASS ${width}px: flips, keys, F1 theme/top layer, band restart and monotonic About entrance`);
 }
 

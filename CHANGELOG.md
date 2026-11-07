@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.982D - 2026-11-06
+
+- GLIDE resumes idle motion after a pointer is released outside a band.
+- GLIDE dismisses its panels when clicking outside them, keeps disabled archive chevrons visible, and uses each wall photo’s comment setting in the lightbox.
+- Public pages use the active skin avatar when the site has no dedicated favicon.
+
 ## 0.7.981D - 2026-11-06
 
 - GLIDE wall photos use its flip viewer without a competing generic lightbox. Space, Info and Comments work from viewer entry, and restored photo focus lets the bands resume after closing.

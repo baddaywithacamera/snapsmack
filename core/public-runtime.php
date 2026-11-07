@@ -325,6 +325,11 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
             if (is_array($_rows) && $_rows !== []) $_lists[] = ['results', $_group];
         }
     }
+    if (($response['kind'] ?? '') === 'landing') {
+        foreach ($response['rows'] ?? [] as $_group => $_rows) {
+            if ($_rows !== []) $_lists[] = ['rows', $_group];
+        }
+    }
     if ($_lists !== []) {
         $_siteComments = ((string)($settings['global_comments_enabled'] ?? '1') !== '0')
                       && ((string)($settings['community_comments_enabled'] ?? '1') !== '0');
