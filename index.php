@@ -978,6 +978,56 @@ try {
             <?php
             exit;
         }
+
+        // SOFT-404. The visitor asked for a SPECIFIC path ($requested_slug) and
+        // it matched neither a published photograph (above) nor an active page
+        // (just now). On a cms_controller=smacktalk skin the post and page
+        // lookups already failed in snapsmack_smacktalk_request(), which returns
+        // handled=false so this legacy path can also try the photograph and page
+        // tables; with those exhausted the honest answer is 404, not the 200
+        // homepage/feed that renders below. Measured: unknown URLs returned 200
+        // on TILEZ and ALFRED (both cms_controller=smacktalk) while GLIDE (public
+        // controller) already 404'd -- this closes that gap for every skin that
+        // reaches the legacy fall-through. The homepage itself ($requested_slug
+        // empty) never enters this block, and any photograph or page that
+        // resolved has already exited above, so no URL that resolves on a live
+        // site changes. A 404 is not a page view, so it is not logged as a hit.
+        http_response_code(404);
+        $skin_path = 'skins/' . $active_skin;
+        if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
+            include __DIR__ . '/' . $skin_path . '/skin-meta.php';
+        }
+        ?>
+<body class="static-transmission not-found">
+    <div id="page-wrapper">
+        <div id="scroll-stage">
+            <?php
+            $header_file = __DIR__ . '/' . $skin_path . '/skin-header.php';
+            if (file_exists($header_file)) {
+                include $header_file;
+            } else {
+                include __DIR__ . '/core/header.php';
+            }
+            ?>
+            <div class="static-content">
+                <h1 class="static-page-title">404 — Not Found</h1>
+                <div class="description">
+                    <p class="dim">No signal at this address.</p>
+                </div>
+            </div>
+            <?php
+            $footer_file = __DIR__ . '/' . $skin_path . '/skin-footer.php';
+            if (file_exists($footer_file)) {
+                include $footer_file;
+            }
+            ?>
+        </div>
+    </div>
+    <?php include __DIR__ . '/core/footer-scripts.php'; ?>
+</body>
+</html>
+        <?php
+        exit;
     }
 
     // --- NAVIGATION LINKS ---
