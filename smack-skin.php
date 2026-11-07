@@ -1750,20 +1750,10 @@ if (!empty($google_families)) {
     function skin_screenshots(string $slug): array {
         $abs_dir = SKINS_DIR . '/' . $slug;   // absolute path for file_exists
         $url_dir = BASE_URL . "skins/{$slug}"; // absolute URL for img src
-        $shots   = [];
-        $names   = [
-            'screenshot-landing.png' => 'Landing',
-            'screenshot-archive.png' => 'Archive',
-            'screenshot-page.png'    => 'Text Page',
-        ];
-        foreach ($names as $file => $label) {
-            if (file_exists("{$abs_dir}/{$file}")) {
-                $shots[] = ['file' => "{$url_dir}/{$file}", 'label' => $label];
-            }
-        }
-        // Fallback: single screenshot.png (legacy)
-        if (empty($shots) && file_exists("{$abs_dir}/screenshot.png")) {
-            $shots[] = ['file' => "{$url_dir}/screenshot.png", 'label' => 'Preview'];
+        require_once __DIR__ . '/core/skin-screenshots.php';
+        $shots = [];
+        foreach (snapsmack_skin_screenshot_shots($abs_dir) as $s) {
+            $shots[] = ['file' => "{$url_dir}/{$s['name']}", 'label' => $s['label']];
         }
         return $shots;
     }
