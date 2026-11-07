@@ -737,16 +737,6 @@
             "selector": ".site-title-text",
             "property": "font-weight"
         },
-        "footer_font_size": {
-            "section": "FOOTER",
-            "type": "range",
-            "label": "Footer Font Size (px)",
-            "default": "11",
-            "min": "8",
-            "max": "18",
-            "selector": "#system-footer p, #sig-text",
-            "property": "font-size"
-        },
         "image_frame_style": {
             "section": "VERTICAL LOCKS",
             "type": "select",
