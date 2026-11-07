@@ -216,6 +216,17 @@ class RewriteTests(unittest.TestCase):
 
 
 class DraftTests(unittest.TestCase):
+    def test_unresolved_foogallery_stops_before_downloading(self):
+        embeds = (
+            '[foogallery id="42"]',
+            '<!-- wp:fooplugins/foogallery {"id":42} /-->',
+        )
+        for embed in embeds:
+            with self.subTest(embed=embed), tempfile.TemporaryDirectory() as workdir:
+                post = {**POST, "content_expanded": embed}
+                with self.assertRaisesRegex(wp_source.ImportError_, "FooGallery"):
+                    wp_source.draft_from_wp(post, workdir, fetch=lambda url: self.fail(url))
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

@@ -377,6 +377,11 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
     migrated half-way."""
     say = on_progress or (lambda m: None)
     content = full_post.get("content_expanded") or full_post.get("content_raw") or ""
+    if re.search(r"(?<!\[)\[foogallery(?=\s|/|\])|<!--\s*wp:fooplugins/foogallery\b", content, re.I):
+        raise ImportError_(
+            "A FooGallery embed could not be resolved. Update the WordPress companion "
+            "and check that the gallery is published and uses Media Library images."
+        )
     images = list(full_post.get("images") or [])
 
     # Featured image leads: COLD SNAP's poster makes images[0] the cover.
