@@ -596,6 +596,36 @@
             event.preventDefault();
         }
     });
+
+    // SS-1217: POINTER-ORIGIN FOCUS MUST NOT FREEZE A ROW.
+    //
+    // The resting gate in paint() refuses to idle-drift a row that holds a
+    // :focus-visible tile, so a KEYBOARD user tabbing a row is never scrolled
+    // out from under -- that is deliberate and stays. But a focus LEFT OVER
+    // from a POINTER or OVERLAY interaction is not keyboard navigation, and it
+    // was freezing the row for good: Codex's live repro on portalproject had
+    // one clicked tile (row 4) stop its whole row while the other eight drifted,
+    // because that tile matched :focus-visible:not([data-glide-restored-focus]).
+    //
+    // The viewer already marks the tile it restores focus to on close; this
+    // generalises that to ALL pointer-origin focus. Track the last input
+    // modality: a tile that takes focus right after a pointer gesture is marked
+    // data-glide-restored-focus (cleared on focusout), so the resting gate
+    // ignores it and the row keeps drifting. Genuine keyboard focus (no pointer
+    // immediately before it) is left UNMARKED, so it still pauses the row and
+    // stays reachable -- accessibility is untouched.
+    var glideLastInputPointer = false;
+    window.addEventListener('pointerdown', function () { glideLastInputPointer = true; }, true);
+    window.addEventListener('keydown', function () { glideLastInputPointer = false; }, true);
+    wall.addEventListener('focusin', function (event) {
+        if (!glideLastInputPointer) return; // keyboard focus pauses the row, by design
+        var tile = event.target && event.target.closest && event.target.closest('.glide-tile');
+        if (!tile || !wall.contains(tile)) return;
+        tile.setAttribute('data-glide-restored-focus', '');
+        tile.addEventListener('focusout', function () {
+            tile.removeAttribute('data-glide-restored-focus');
+        }, { once: true });
+    });
     var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var sensitivity = parseFloat(wall.dataset.travel || '0.9');
     var raf = 0;
