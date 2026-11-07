@@ -85,11 +85,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
         $blob = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'custom_css_public'")->fetchColumn() ?: '');
 
         // Helper: upsert a marker-keyed CSS rule into the blob.
+        //
+        // The rule MUST land OUTSIDE the /* SKIN_START */ ... /* SKIN_END */ region.
+        // core/skin-css-recompile.php regenerates that whole region from manifest
+        // state and keeps only what sits outside it, so a rule written INSIDE it is
+        // silently deleted on the next skin recompile -- the owner's archive frame
+        // vanished while Archive Appearance still showed the preset selected. So we
+        // drop any prior copy wherever it sits (old builds wrote it before SKIN_END,
+        // i.e. inside the region) and re-place it AFTER /* SKIN_END */, where
+        // recompile leaves it alone. Existing sites heal on their next archive save.
         $upsert_rule = function(string &$blob, string $marker, string $rule): void {
-            if (strpos($blob, $marker) !== false) {
-                $blob = preg_replace('/' . preg_quote($marker, '/') . '[^\n]+/', $rule, $blob);
-            } elseif (strpos($blob, '/* SKIN_END */') !== false) {
-                $blob = str_replace('/* SKIN_END */', $rule . "\n/* SKIN_END */", $blob);
+            $blob = preg_replace('/' . preg_quote($marker, '/') . '[^\n]*\n?/', '', (string)$blob);
+            $blob = rtrim($blob);
+            if (strpos($blob, '/* SKIN_END */') !== false) {
+                $blob = str_replace('/* SKIN_END */', '/* SKIN_END */' . "\n" . $rule, $blob);
             } else {
                 $blob .= ($blob !== '' ? "\n" : '') . $rule;
             }
