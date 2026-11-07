@@ -214,19 +214,19 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="featured-skin-grid">
                 <a class="featured-skin" href="https://hekeepsdroningon.ca" target="_blank" rel="noopener" data-stats="<?php echo ss_skin_card_stats('hekeepsdroningon.ca', $_skin_demo_stats); ?>">
-                    <img src="img/galleria-landing.png" alt="Galleria skin running on hekeepsdroningon.ca" width="1920" height="1080" loading="lazy">
+                    <img src="img/galleria-primary.png" alt="Galleria skin running on hekeepsdroningon.ca" width="1920" height="1080" loading="lazy">
                     <strong>Galleria</strong><span>hekeepsdroningon.ca</span>
                 </a>
                 <a class="featured-skin" href="https://usedcarparts.photoblogs.fyi" target="_blank" rel="noopener" data-stats="<?php echo ss_skin_card_stats('usedcarparts.photoblogs.fyi', $_skin_demo_stats); ?>">
-                    <img src="img/scroll-landing.png" alt="SCROLL skin running on usedcarparts.photoblogs.fyi" width="1920" height="1080" loading="lazy">
+                    <img src="img/scroll-primary.png" alt="SCROLL skin running on usedcarparts.photoblogs.fyi" width="1920" height="1080" loading="lazy">
                     <strong>SCROLL</strong><span>usedcarparts.photoblogs.fyi</span>
                 </a>
                 <a class="featured-skin" href="https://fauxlaroid.fyi" target="_blank" rel="noopener" data-stats="<?php echo ss_skin_card_stats('fauxlaroid.fyi', $_skin_demo_stats); ?>">
-                    <img src="img/instantcam-landing.png" alt="Instant Camera skin running on fauxlaroid.fyi" width="1920" height="1080" loading="lazy">
+                    <img src="img/instantcam-primary.png" alt="Instant Camera skin running on fauxlaroid.fyi" width="1920" height="1080" loading="lazy">
                     <strong>Instant Camera</strong><span>fauxlaroid.fyi</span>
                 </a>
                 <a class="featured-skin" href="skins.php">
-                    <img src="img/gameon-landing.png" alt="GAME ON skin: a field of sliding-puzzle photographs" width="1920" height="1080" loading="lazy">
+                    <img src="img/gameon-primary.png" alt="GAME ON skin: a field of sliding-puzzle photographs" width="1920" height="1080" loading="lazy">
                     <strong>GAME ON</strong><span>a sliding-puzzle photoblog. Yes, really.</span>
                 </a>
             </div>
