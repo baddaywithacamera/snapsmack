@@ -1116,6 +1116,7 @@ body.is-blogroll .blogroll-canvas > .blogroll-category-block {
 .glide-page[data-flow-axis="diagonal_up"] { --glide-axis-angle: -45deg; }
 
 html:has(.glide-page), body:has(.glide-page) { width: 100%; height: 100%; background: var(--glide-bg); overflow: hidden; overscroll-behavior: none; }
+html:has(.glide-page) { scrollbar-gutter: auto; }
 body:has(.glide-page) { margin: 0; }
 .glide-page { position: fixed; inset: 0; background: var(--glide-bg); color: var(--glide-ink); font-family: "DM Sans", sans-serif; overflow: hidden; }
 .glide-viewport { position: absolute; inset: 0; overflow: hidden; background: var(--glide-bg); }
