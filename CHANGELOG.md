@@ -11,6 +11,15 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.983D - 2026-11-07
+
+- SS-1185: portfolio URLs resolve at /<album>/<category>/<slug>; the resolver falls through harmlessly on any site whose schema migration has not run yet, so no public page can 500 during a deploy.
+- Unknown public URLs on SMACKTALK skins (ALFRED, STANLEY, TELEGRAM, TILEZ, WRITING-WITH-IMPACT) now return a real 404 instead of the homepage at 200.
+- SS-1214: confirmed-dead skin controls removed from their manifests, with a new control-selector gate that fails on any new dead control.
+- Skin gallery screenshots move to positional names (primary/secondary/tertiary) with a legacy fallback; packages publish both names during the transition, so no version bump is forced.
+- The public-repository boundary gate scans code, not comments, so prose that mentions SQL keywords no longer trips it.
+- GLIDE 0.1.24: footer.
+
 ## 0.7.982D - 2026-11-06
 
 - GLIDE resumes idle motion after a pointer is released outside a band.
