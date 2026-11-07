@@ -190,18 +190,6 @@
             "selector": ":root",
             "property": "--pfd-body-size"
         },
-        "onyx_wall_columns": {
-            "section": "PHOTO WALL",
-            "type": "range",
-            "label": "Columns Across",
-            "default": "4",
-            "min": "2",
-            "max": "6",
-            "step": "1",
-            "selector": ".onyx-photo-wall",
-            "property": "--ss-cols",
-            "unit": ""
-        },
         "onyx_wall_width": {
             "section": "PHOTO WALL",
             "type": "range",
@@ -222,17 +210,6 @@
             "max": "60",
             "step": "6",
             "unit": ""
-        },
-        "onyx_wall_gap": {
-            "section": "PHOTO WALL",
-            "type": "range",
-            "label": "Space Between Tiles (px)",
-            "default": "8",
-            "min": "0",
-            "max": "25",
-            "selector": ".onyx-photo-wall",
-            "property": "--ss-gap",
-            "unit": "px"
         },
         "onyx_wall_radius": {
             "section": "PHOTO WALL",
