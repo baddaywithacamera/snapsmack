@@ -915,7 +915,7 @@ class SnapSmack {
                     // Fallback SELECT (no border cols) protects blogs where the schema
                     // sync hasn't added the columns yet — avoids an Unknown-column fatal.
                     try {
-                        $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name, asset_alt as alt, asset_border_width as bw, asset_border_color as bc FROM snap_assets WHERE id = ? LIMIT 1");
+                        $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name, asset_alt as alt, asset_caption as caption, asset_border_width as bw, asset_border_color as bc FROM snap_assets WHERE id = ? LIMIT 1");
                         $stmt->execute([$id]);
                         $asset = $stmt->fetch();
                     } catch (\PDOException $e) {
@@ -966,14 +966,22 @@ class SnapSmack {
                     ? sprintf(' data-w="%d" data-h="%d"', (int)$asset['width'], (int)$asset['height'])
                     : '';
 
+                // SS-1216: the owner's display CAPTION rides to the lightbox as a
+                // data attribute, emitted only when set. An empty caption emits no
+                // attribute at all, so the lightbox shows nothing -- never the
+                // surrounding page or post title.
+                $caption      = trim((string)($asset['caption'] ?? ''));
+                $caption_attr = $caption !== '' ? sprintf(' data-caption="%s"', htmlspecialchars($caption, ENT_QUOTES)) : '';
+
                 return sprintf(
-                    '<div class="snap-inline-frame align-%s" style="--snap-image-width:%d%%"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy" data-lightbox-src="%s"%s style="cursor:zoom-in;%s"></div></div>',
+                    '<div class="snap-inline-frame align-%s" style="--snap-image-width:%d%%"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy" data-lightbox-src="%s"%s%s style="cursor:zoom-in;%s"></div></div>',
                     $align,
                     $width,
                     $full_src,
                     $classes,
                     snap_alt_attr($asset['alt'] ?? null, $asset['name'] ?? ''),
                     htmlspecialchars($full_url),
+                    $caption_attr,
                     $dimensions,
                     $border_css
                 );

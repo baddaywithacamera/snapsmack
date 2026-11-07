@@ -489,6 +489,8 @@ CREATE TABLE IF NOT EXISTS `snap_assets` (
   `asset_path`     varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
   `asset_alt`      varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
                    COMMENT 'Accessibility ALT text for inline [img:ID] assets. Falls back to asset_name on render when NULL/blank. Added 0.7.512.',
+  `asset_caption`  varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                   COMMENT 'Owner-written display caption shown in the media-image lightbox (SS-1216). Separate from asset_alt; empty = no caption, never a page/post title fallback.',
   `asset_checksum` varchar(64)  COLLATE utf8mb4_unicode_ci DEFAULT NULL
                    COMMENT 'SHA-256 hash for recovery verification',
   `asset_border_width` tinyint unsigned NOT NULL DEFAULT 0
