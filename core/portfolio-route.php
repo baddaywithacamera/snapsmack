@@ -110,7 +110,24 @@ function snap_portfolio_route_for_request(PDO $pdo, string $path): array {
     $segments = snap_portfolio_route_parse($path);
     if ($segments === null) return ['action' => 'none'];
 
-    $verdict = snap_portfolio_route_resolve($pdo, $segments);
+    // SCHEMA TOLERANCE. The resolver reads columns this release adds --
+    // snap_albums.album_slug, snap_categories.cat_slug, snap_posts.primary_album_id
+    // and primary_category_id. core/schema-sync.php adds them, but it runs on
+    // UPDATE, not on a public page view (see core/public-repository.php, "WHY
+    // THESE TOLERATE A MISSING COLUMN"), so on a site whose files are new but
+    // whose UPDATE has not run yet those columns are absent. This function runs on
+    // EVERY public request that carries a slug; an uncaught "Unknown column" here
+    // would be a 500 on every 3-segment URL during that window -- the fleet-wide
+    // fault class recorded at core/threeacross-api.php:907. Measured against a
+    // real 0.7.982D database (album_slug absent): the unguarded query threw
+    // "Unknown column 'album_slug'". So ANY resolver error falls through to the
+    // existing routing -- precisely the pre-SS-1185 behaviour, where the path
+    // 404s or serves its flat slug, and never 500s.
+    try {
+        $verdict = snap_portfolio_route_resolve($pdo, $segments);
+    } catch (Throwable $e) {
+        return ['action' => 'none'];
+    }
     if (($verdict['kind'] ?? '') !== 'post') return ['action' => 'none'];
 
     if (!empty($verdict['redirect'])) {

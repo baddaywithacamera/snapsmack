@@ -366,6 +366,27 @@ function glob_php(string $root): array {
     return $out;
 }
 
+// ── SCHEMA TOLERANCE: a pre-UPDATE install (new files, columns not yet added) ──
+// core/schema-sync.php adds album_slug / cat_slug / primary_album_id /
+// primary_category_id, but it runs on UPDATE, not on a public page view. On a
+// site whose files are new but whose UPDATE has not run, those columns are
+// absent. snap_portfolio_route_for_request() runs on EVERY public request with
+// a slug, so an uncaught "Unknown column" would 500 every 3-segment URL during
+// that window. Proven against a real 0.7.982D database (album_slug absent) that
+// the unguarded query threw; the guard must make the resolver fall through.
+$bare = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+// snap_albums WITHOUT album_slug, snap_posts WITHOUT the primary_* columns --
+// exactly the shape a 0.7.982D install has before schema-sync runs.
+$bare->exec("CREATE TABLE snap_albums (id INTEGER PRIMARY KEY, album_name TEXT)");
+$bare->exec("CREATE TABLE snap_categories (id INTEGER PRIMARY KEY, cat_name TEXT, cat_slug TEXT)");
+$bare->exec("CREATE TABLE snap_posts (id INTEGER PRIMARY KEY, slug TEXT, status TEXT)");
+$threw = false; $verdict = null;
+try { $verdict = snap_portfolio_route_for_request($bare, 'portfolio/people/wedding'); }
+catch (Throwable $e) { $threw = true; }
+cx(!$threw, 'a 3-segment URL on a pre-schema-sync database does not throw (no 500 on a public page)');
+cx($verdict === ['action' => 'none'],
+   'a pre-schema-sync database falls through to existing routing (action none), not a fatal');
+
 echo $fail === 0
     ? "\nPASS - the new paths resolve, every existing path is untouched, one decision in one place\n"
     : "\n$fail CHECK(S) FAILED\n";
