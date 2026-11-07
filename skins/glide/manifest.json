@@ -1,225 +1,235 @@
 {
-    "schema_version": 2,
-    "name": "GLIDE",
-    "version": "0.1.24",
-    "scrolltime_pages": ["landing", "archive"],
-    "min_images": 50,
-    "author": "Sean McCormick, OpenAI Codex",
-    "description": "A kinetic, full-window photo wall that turns vertical scrolling into angled lateral motion.",
-    "status": "beta",
-    "features": {
-        "supports_wall": true,
-        "supports_slider": false,
-        "has_landing": true,
-        "post_modes": [
-            "image"
-        ],
-        "instagram_mode": false,
-        "carousel": false,
-        "community": [
-            "likes",
-            "comments"
-        ],
-        "archive_layouts": [
-            "justified"
-        ]
-    },
-    "require_scripts": [
-        "smack-footer",
-        "smack-image-fade-load",
-        "smack-lazyload",
-        "smack-glide",
-        "smack-community",
-        "smack-keyboard",
-        "smack-lightbox"
+  "schema_version": 2,
+  "name": "GLIDE",
+  "version": "0.1.25",
+  "scrolltime_pages": [
+    "landing",
+    "archive"
+  ],
+  "min_images": 50,
+  "author": "Sean McCormick, OpenAI Codex",
+  "description": "A kinetic, full-window photo wall that turns vertical scrolling into angled lateral motion.",
+  "status": "beta",
+  "features": {
+    "supports_wall": true,
+    "supports_slider": false,
+    "has_landing": true,
+    "post_modes": [
+      "image"
     ],
-    "community_comments": true,
-    "community_likes": true,
-    "community_reactions": false,
-    "social_dock": {
-        "position": "inline",
-        "color_mode": "light",
-        "icon_style": "outline",
-        "shadow": false
+    "instagram_mode": false,
+    "carousel": false,
+    "community": [
+      "likes",
+      "comments"
+    ],
+    "archive_layouts": [
+      "justified"
+    ]
+  },
+  "require_scripts": [
+    "smack-footer",
+    "smack-image-fade-load",
+    "smack-lazyload",
+    "smack-glide",
+    "smack-community",
+    "smack-keyboard",
+    "smack-lightbox"
+  ],
+  "community_comments": true,
+  "community_likes": true,
+  "community_reactions": false,
+  "social_dock": {
+    "position": "inline",
+    "color_mode": "light",
+    "icon_style": "outline",
+    "shadow": false
+  },
+  "options": {
+    "header_logo": {
+      "section": "GLIDE HEADER",
+      "type": "image",
+      "label": "Header Logo",
+      "hint": "Optional image that replaces the site name on the wall."
     },
-    "options": {
-        "header_logo": {
-            "section": "GLIDE HEADER",
-            "type": "image",
-            "label": "Header Logo",
-            "hint": "Optional image that replaces the site name on the wall."
-        },
-        "glide_viewer_title": {
-            "section": "GLIDE VIEWER",
-            "type": "select",
-            "label": "Photo Title",
-            "default": "block",
-            "options": { "block": "Show on Hover", "none": "Off" },
-            "selector": ":root",
-            "property": "--wall-title-display"
-        },
-        "glide_viewer_title_font": {
-            "section": "GLIDE VIEWER",
-            "type": "select",
-            "label": "Photo Title Font",
-            "default": "system-ui",
-            "options": { "system-ui": "System Sans", "Georgia": "Georgia", "monospace": "Monospace" },
-            "selector": ":root",
-            "property": "--wall-title-font"
-        },
-        "glide_viewer_title_size": {
-            "section": "GLIDE VIEWER",
-            "type": "range",
-            "label": "Photo Title Size (px)",
-            "default": "16",
-            "min": "10",
-            "max": "36",
-            "step": "1",
-            "selector": ":root",
-            "property": "--wall-title-size",
-            "unit": "px"
-        },
-        "glide_idle_motion": {
-            "section": "GLIDE WALL",
-            "type": "select",
-            "label": "Idle Motion",
-            "default": "off",
-            "options": {
-                "off": "Off",
-                "alternating": "Alternating Directions",
-                "together": "Same Direction, Same Speed",
-                "staggered": "Same Direction, Different Speeds"
-            }
-        },
-        "glide_idle_speed": {
-            "section": "GLIDE WALL",
-            "type": "range",
-            "label": "Idle Speed (px per second)",
-            "default": "14",
-            "min": "1",
-            "max": "60",
-            "step": "1"
-        },
-        "glide_flow_axis": {
-            "section": "GLIDE WALL",
-            "type": "select",
-            "label": "Flow Orientation",
-            "hint": "The wall travels both ways on this axis. Scrolling back reverses its direction.",
-            "default": "vertical",
-            "options": {
-                "vertical": "Up / Down",
-                "horizontal": "Left / Right",
-                "diagonal_down": "Top Left / Bottom Right",
-                "diagonal_up": "Bottom Left / Top Right"
-            }
-        },
-        "glide_wall_angle": {
-            "section": "GLIDE WALL",
-            "type": "range",
-            "label": "Fine Angle Adjustment (degrees)",
-            "hint": "Adds a little lean to the selected flow orientation.",
-            "default": "-20",
-            "min": "-30",
-            "max": "30",
-            "step": "1",
-            "selector": ":root",
-            "property": "--glide-angle",
-            "unit": "deg"
-        },
-        "glide_row_height": {
-            "section": "GLIDE WALL",
-            "type": "range",
-            "label": "Photo Row Height (px)",
-            "default": "675",
-            "min": "130",
-            "max": "1000",
-            "step": "5",
-            "selector": ":root",
-            "property": "--glide-row-height",
-            "unit": "px"
-        },
-        "glide_gap": {
-            "section": "GLIDE WALL",
-            "type": "range",
-            "label": "Space Between Photos (px)",
-            "default": "28",
-            "min": "0",
-            "max": "40",
-            "step": "1",
-            "selector": ":root",
-            "property": "--glide-gap",
-            "unit": "px"
-        },
-        "glide_travel": {
-            "section": "GLIDE WALL",
-            "type": "range",
-            "label": "Wheel / Drag Sensitivity",
-            "hint": "How strongly each strip responds to wheel, drag and swipe gestures.",
-            "default": "0.9",
-            "min": "0.25",
-            "max": "2",
-            "step": "0.05"
-        },
-        "glide_corner_radius": {
-            "section": "GLIDE WALL",
-            "type": "range",
-            "label": "Photo Corner Radius (px)",
-            "default": "0",
-            "min": "0",
-            "max": "32",
-            "step": "1",
-            "selector": ":root",
-            "property": "--glide-radius",
-            "unit": "px"
-        },
-        "glide_background": {
-            "section": "COLOUR",
-            "type": "color",
-            "label": "Canvas Colour",
-            "default": "#0b0b0b",
-            "selector": ":root",
-            "property": "--glide-bg"
-        },
-        "glide_overlay_color": {
-            "section": "COLOUR",
-            "type": "color",
-            "label": "Overlay Text Colour",
-            "default": "#ffffff",
-            "selector": ":root",
-            "property": "--glide-ink"
-        },
-        "page_title_font_weight": {
-            "section": "TYPOGRAPHY",
-            "type": "select",
-            "label": "Photo Title Weight",
-            "default": "400",
-            "options": {
-                "300": "Light (300)",
-                "400": "Regular (400)",
-                "500": "Medium (500)",
-                "600": "Semi-Bold (600)",
-                "700": "Bold (700)",
-                "900": "Black (900)"
-            },
-            "selector": ".photo-title-footer",
-            "property": "font-weight"
-        }
+    "glide_viewer_title": {
+      "section": "GLIDE VIEWER",
+      "type": "select",
+      "label": "Photo Title",
+      "default": "block",
+      "options": {
+        "block": "Show on Hover",
+        "none": "Off"
+      },
+      "selector": ":root",
+      "property": "--wall-title-display"
     },
-    "security_policy": 2,
-    "cms_controller": "public",
-    "view_model": "snapsmack.public.v1",
-    "templates": {
-        "landing": "layout.php",
-        "photo": "layout.php",
-        "post": "layout.php",
-        "archive": "layout.php",
-        "page": "layout.php",
-        "search": "layout.php",
-        "hashtag": "layout.php",
-        "albums": "layout.php",
-        "collections": "layout.php",
-        "collection": "layout.php",
-        "not_found": "layout.php",
-        "default": "layout.php"
+    "glide_viewer_title_font": {
+      "section": "GLIDE VIEWER",
+      "type": "select",
+      "label": "Photo Title Font",
+      "default": "system-ui",
+      "options": {
+        "system-ui": "System Sans",
+        "Georgia": "Georgia",
+        "monospace": "Monospace"
+      },
+      "selector": ":root",
+      "property": "--wall-title-font"
+    },
+    "glide_viewer_title_size": {
+      "section": "GLIDE VIEWER",
+      "type": "range",
+      "label": "Photo Title Size (px)",
+      "default": "16",
+      "min": "10",
+      "max": "36",
+      "step": "1",
+      "selector": ":root",
+      "property": "--wall-title-size",
+      "unit": "px"
+    },
+    "glide_idle_motion": {
+      "section": "GLIDE WALL",
+      "type": "select",
+      "label": "Idle Motion",
+      "default": "off",
+      "options": {
+        "off": "Off",
+        "alternating": "Alternating Directions",
+        "together": "Same Direction, Same Speed",
+        "staggered": "Same Direction, Different Speeds"
+      }
+    },
+    "glide_idle_speed": {
+      "section": "GLIDE WALL",
+      "type": "range",
+      "label": "Idle Speed (px per second)",
+      "default": "14",
+      "min": "1",
+      "max": "60",
+      "step": "1"
+    },
+    "glide_flow_axis": {
+      "section": "GLIDE WALL",
+      "type": "select",
+      "label": "Flow Orientation",
+      "hint": "The wall travels both ways on this axis. Scrolling back reverses its direction.",
+      "default": "vertical",
+      "options": {
+        "vertical": "Up / Down",
+        "horizontal": "Left / Right",
+        "diagonal_down": "Top Left / Bottom Right",
+        "diagonal_up": "Bottom Left / Top Right"
+      }
+    },
+    "glide_wall_angle": {
+      "section": "GLIDE WALL",
+      "type": "range",
+      "label": "Fine Angle Adjustment (degrees)",
+      "hint": "Adds a little lean to the selected flow orientation.",
+      "default": "-20",
+      "min": "-30",
+      "max": "30",
+      "step": "1",
+      "selector": ":root",
+      "property": "--glide-angle",
+      "unit": "deg"
+    },
+    "glide_row_height": {
+      "section": "GLIDE WALL",
+      "type": "range",
+      "label": "Photo Row Height (px)",
+      "default": "675",
+      "min": "130",
+      "max": "1000",
+      "step": "5",
+      "selector": ":root",
+      "property": "--glide-row-height",
+      "unit": "px"
+    },
+    "glide_gap": {
+      "section": "GLIDE WALL",
+      "type": "range",
+      "label": "Space Between Photos (px)",
+      "default": "28",
+      "min": "0",
+      "max": "40",
+      "step": "1",
+      "selector": ":root",
+      "property": "--glide-gap",
+      "unit": "px"
+    },
+    "glide_travel": {
+      "section": "GLIDE WALL",
+      "type": "range",
+      "label": "Wheel / Drag Sensitivity",
+      "hint": "How strongly each strip responds to wheel, drag and swipe gestures.",
+      "default": "0.9",
+      "min": "0.25",
+      "max": "2",
+      "step": "0.05"
+    },
+    "glide_corner_radius": {
+      "section": "GLIDE WALL",
+      "type": "range",
+      "label": "Photo Corner Radius (px)",
+      "default": "0",
+      "min": "0",
+      "max": "32",
+      "step": "1",
+      "selector": ":root",
+      "property": "--glide-radius",
+      "unit": "px"
+    },
+    "glide_background": {
+      "section": "COLOUR",
+      "type": "color",
+      "label": "Canvas Colour",
+      "default": "#0b0b0b",
+      "selector": ":root",
+      "property": "--glide-bg"
+    },
+    "glide_overlay_color": {
+      "section": "COLOUR",
+      "type": "color",
+      "label": "Overlay Text Colour",
+      "default": "#ffffff",
+      "selector": ":root",
+      "property": "--glide-ink"
+    },
+    "page_title_font_weight": {
+      "section": "TYPOGRAPHY",
+      "type": "select",
+      "label": "Photo Title Weight",
+      "default": "400",
+      "options": {
+        "300": "Light (300)",
+        "400": "Regular (400)",
+        "500": "Medium (500)",
+        "600": "Semi-Bold (600)",
+        "700": "Bold (700)",
+        "900": "Black (900)"
+      },
+      "selector": ".photo-title-footer",
+      "property": "font-weight"
     }
+  },
+  "security_policy": 2,
+  "cms_controller": "public",
+  "view_model": "snapsmack.public.v1",
+  "templates": {
+    "landing": "layout.php",
+    "photo": "layout.php",
+    "post": "layout.php",
+    "archive": "layout.php",
+    "page": "layout.php",
+    "search": "layout.php",
+    "hashtag": "layout.php",
+    "albums": "layout.php",
+    "collections": "layout.php",
+    "collection": "layout.php",
+    "not_found": "layout.php",
+    "default": "layout.php"
+  }
 }
