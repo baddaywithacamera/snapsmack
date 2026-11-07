@@ -14,10 +14,24 @@ foreach ($required as $method) {
         throw new RuntimeException("Missing public repository surface: {$method}");
     }
 }
-if (preg_match('/SELECT\s+(?:[a-zA-Z_][a-zA-Z0-9_]*\.)?\*/i', $source)) {
+// Scan CODE, not prose. Comments in this file legitimately discuss the
+// update/migration chain (UPDATE, ALTER, the update path) to explain WHY
+// there is no DDL here; those words are not SQL. Strip comment tokens so the
+// no-SELECT-* and no-mutation-statement checks examine executable code and
+// SQL string literals only. Real mutation SQL is still caught.
+$code = '';
+foreach (token_get_all($source) as $t) {
+    if (is_array($t)) {
+        if ($t[0] === T_COMMENT || $t[0] === T_DOC_COMMENT) continue;
+        $code .= $t[1];
+    } else {
+        $code .= $t;
+    }
+}
+if (preg_match('/SELECT\s+(?:[a-zA-Z_][a-zA-Z0-9_]*\.)?\*/i', $code)) {
     throw new RuntimeException('Public repository contains SELECT *.');
 }
-if (preg_match('/\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|CREATE|DROP|TRUNCATE)\b[\s\S]*\b(?:INTO|TABLE|SET|FROM)\b/i', $source)) {
+if (preg_match('/\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|CREATE|DROP|TRUNCATE)\b[\s\S]*\b(?:INTO|TABLE|SET|FROM)\b/i', $code)) {
     throw new RuntimeException('Public repository contains a mutation statement.');
 }
 
