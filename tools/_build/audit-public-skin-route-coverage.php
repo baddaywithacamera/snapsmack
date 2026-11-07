@@ -93,7 +93,7 @@ foreach (glob($root . '/skins/*', GLOB_ONLYDIR) ?: [] as $skinDirectory) {
     if (($manifest['schema_version'] ?? null) !== 2 || ($manifest['cms_controller'] ?? '') !== 'public') continue;
 
     $skinResult = ['covered_count' => 0, 'declared_count' => 0, 'routes' => []];
-    $image = '/skins/' . $slug . '/screenshot-landing.png';
+    $image = '/skins/' . $slug . '/screenshot-primary.png';
     $site = [
         'site_name' => 'ROUTE AUDIT',
         'owner_name' => 'Route Auditor',
