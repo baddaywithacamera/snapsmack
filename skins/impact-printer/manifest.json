@@ -438,16 +438,6 @@
             "selector": ".photo-title-footer",
             "property": "font-weight"
         },
-        "footer_font_size": {
-            "section": "TYPOGRAPHY",
-            "type": "range",
-            "label": "Footer Font Size (px)",
-            "default": "10",
-            "min": "8",
-            "max": "18",
-            "selector": "#system-footer p, #sig-text",
-            "property": "font-size"
-        },
         "optical_lift": {
             "section": "VERTICAL LOCKS",
             "type": "range",

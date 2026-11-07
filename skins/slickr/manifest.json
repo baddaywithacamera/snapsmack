@@ -174,19 +174,6 @@
             },
             "admin_page": "solo"
         },
-        "blogroll_columns": {
-            "section": "BLOGROLL",
-            "type": "select",
-            "label": "Blogroll Columns",
-            "default": "1",
-            "selector": ".blogroll-grid",
-            "property": "custom-cols",
-            "options": {
-                "1": "Single Column",
-                "2": "Two Columns",
-                "3": "Three Columns"
-            }
-        },
         "footer_bg": {
             "section": "FOOTER",
             "type": "color",
