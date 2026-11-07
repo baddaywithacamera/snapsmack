@@ -14,6 +14,14 @@ declare(strict_types=1);
  * thirteen skins use a key no manifest declares, so the number was written on
  * every save and read by nothing: the font changed and its size never did.
  *
+ * The floor was 45 until the SS-1214 sweep removed five confirmed-dead font
+ * controls (galleria/hip-to-be-square htbs_heading_font, new-horizon
+ * tagline_font_family, rational-geo comment_font, scroll
+ * scroll_horizontal_title_font): their font-family selector never reached
+ * rendered markup, so the size slider beneath each was dead too. Forty
+ * working sliders across the same thirteen skins remain. If Sean would
+ * rather those controls be WIRED than dropped, revert the sweep and this.
+ *
  * Measured on photowalk.ing (50 SHADES, 0.7.952D): the body font size slider
  * read 1.35rem in Skin Admin and the page carried no font-size rule for
  * `.static-content, .description` at all.
@@ -74,8 +82,8 @@ foreach (glob(dirname(__DIR__) . '/skins/*/manifest.json') ?: [] as $path) {
     }
 }
 
-fss_check($sliders >= 45, "only {$sliders} font size sliders found; this skin family has at least 45");
-fss_check($checked >= 45, "only {$checked} sliders were exercised");
+fss_check($sliders >= 40, "only {$sliders} font size sliders found; this skin family has at least 40");
+fss_check($checked >= 40, "only {$checked} sliders were exercised");
 
 if ($failures > 0) {
     fwrite(STDERR, "\nFont size slider regression FAILED with {$failures} problem(s).\n");
