@@ -145,7 +145,13 @@ if ($lastTag !== '') {
     $touched = [];
     foreach (array_filter(array_map('trim', explode("\n", $changed))) as $path) {
         if (!preg_match('#^skins/([^/]+)/#', $path, $m)) continue;
-        $touched[$m[1]][] = basename($path);
+        $bn = basename($path);
+        // Screenshots are catalog/preview assets, never served to visitors, so a
+        // change or rename cannot alter an installed skin and must NOT force a
+        // version bump -- the same exemption the skin content digest applies in
+        // tools/_build/generate-skin-version-baseline.php.
+        if (preg_match('#^screenshot(-[a-z0-9]+)?\.(png|jpe?g|webp)$#i', $bn)) continue;
+        $touched[$m[1]][] = $bn;
     }
     foreach ($touched as $slug => $files) {
         if (in_array('manifest.json', $files, true)) continue;   // version may have moved
