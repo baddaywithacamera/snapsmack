@@ -1169,10 +1169,10 @@ body:has(.glide-page) .glide-scroll-cue { display: none; }
 }
 .glide-row { width: 100%; height: var(--glide-row-height); overflow: visible; cursor: grab; touch-action: none; user-select: none; }
 .glide-row.is-dragging { cursor: grabbing; }
-/* A small fullscreen offset clears the clipped outer band at the top right. */
-:root:fullscreen .glide-page[data-flow-axis="vertical"] .glide-field { left: calc(44% + 24px); }
+/* Keep the outer-band seam beyond the top-right corner in browser F11
+   fullscreen as well as element fullscreen; F11 does not match :fullscreen. */
 /* Vertical travel uses upright portrait columns; the field keeps only its lean. */
-.glide-page[data-flow-axis="vertical"] .glide-field { display: flex; width: max-content; height: 180vmax; left: 44%; transform: translate(-50%, -50%) rotate(var(--glide-angle)); }
+.glide-page[data-flow-axis="vertical"] .glide-field { display: flex; width: max-content; height: 180vmax; left: calc(44% + 72px); transform: translate(-50%, -50%) rotate(var(--glide-angle)); }
 .glide-page[data-flow-axis="vertical"] .glide-row { flex: 0 0 calc(var(--glide-row-height) * 2 / 3); width: calc(var(--glide-row-height) * 2 / 3); height: 100%; }
 .glide-page[data-flow-axis="vertical"] .glide-track { flex-direction: column; width: 100%; height: max-content; }
 .glide-page[data-flow-axis="vertical"] .glide-tile { width: 100%; height: auto; }
