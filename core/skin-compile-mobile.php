@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/font-stack.php';
 /**
  * SNAPSMACK — Mobile skin CSS compiler (Photogram)
  *
@@ -71,12 +72,7 @@ function snapsmack_compile_mobile_css(PDO $pdo, ?string $mobile_slug = null): bo
         if (($meta['type'] ?? '') === 'select' && isset($meta['options'][$val]['css'])) {
             $css .= "{$meta['selector']} {$meta['options'][$val]['css']}\n";
         } elseif ($prop === 'font-family') {
-            $fallback = 'sans-serif';
-            if (stripos($val, 'DotMatrix') !== false || stripos($val, 'Mono') !== false
-                || stripos($val, 'Courier') !== false || stripos($val, 'Tiny5') !== false
-                || stripos($val, 'Anonymous') !== false) {
-                $fallback = "'Courier New', monospace";
-            }
+            $fallback = snapsmack_font_family_generic_fallback($val);
             $css .= "{$meta['selector']} { font-family: \"{$val}\", {$fallback}; }\n";
             if (!empty($meta['selector'])) {
                 $sz_key = $key . '_size';

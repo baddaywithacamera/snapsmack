@@ -6,6 +6,7 @@
  */
 declare(strict_types=1);
 
+require_once __DIR__ . '/font-stack.php';
 require_once __DIR__ . '/trusted-html.php';
 require_once __DIR__ . '/menu-presentation.php';
 require_once __DIR__ . '/public-skin-presentation.php';
@@ -531,7 +532,7 @@ function snapsmack_declared_skin_style(string $skinSlug, array $options): string
                 $cssValue = $font;
             } else {
                 $safe = str_replace(['\\', '"'], ['\\\\', '\\"'], $font);
-                $cssValue = '"' . $safe . '", sans-serif';
+                $cssValue = '"' . $safe . '", ' . snapsmack_font_family_generic_fallback($font);
             }
         } elseif (in_array($type, ['range', 'range_numeric', 'number'], true)) {
             $cssValue = (string)$value . (string)($definition['unit'] ?? (str_starts_with($property, '--') ? '' : 'px'));

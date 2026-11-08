@@ -639,6 +639,11 @@
             2000
         ]
     },
+    "font-family-fallback-parity-regression.php": {
+        "assertions": 2,
+        "predicates": 5,
+        "thresholds": []
+    },
     "font-inventory-availability-regression.php": {
         "assertions": 7,
         "predicates": 2,
