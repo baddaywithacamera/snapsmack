@@ -135,6 +135,13 @@
             2
         ]
     },
+    "archive-query-time-budget-benchmark.php": {
+        "assertions": 0,
+        "predicates": 0,
+        "thresholds": [
+            10
+        ]
+    },
     "archive-settings-reach-the-page-regression.php": {
         "assertions": 9,
         "predicates": 8,
