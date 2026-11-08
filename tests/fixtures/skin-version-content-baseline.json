@@ -13,13 +13,13 @@
             "manifest_css_sha256": "53759ac9939ee3eaf2b45aca9c121d761fd38a74b98c2315e0f7505cfbeac57d"
         },
         "alfred": {
-            "version": "1.0.11",
-            "files_sha256": "d9a744f0493795c2d7db510a6179c6b49eb374fd3b04c7e9bf6cf9a89608c74b",
+            "version": "1.0.12",
+            "files_sha256": "eb1885178d5f94f3867cacbed143c5a38c9b19971a711ad9c56ad741c5572598",
             "manifest_css_sha256": "f06a8252ab0e42004734c97aedc0edd47340d2f0192064e0a5b72cdaccf1d7c0"
         },
         "aurora": {
-            "version": "1.0.57",
-            "files_sha256": "f9de7ecf36e895d299ec8e4b19838299fd87a11d8427c15963fc507655bbe683",
+            "version": "1.0.58",
+            "files_sha256": "7444219a8b58fb4b1307fa949184684d80186480b852135a52aaa9a75319c280",
             "manifest_css_sha256": "f67477db80f99dfe768ffabd28206817df5b3c62d90a452a6ffc4979795552d3"
         },
         "chaplin": {
@@ -38,8 +38,8 @@
             "manifest_css_sha256": "82dd12ca562dc273ad9c02d53eb2d180c944ab7ba2833eacbb1bbfd189e89c8c"
         },
         "game-on": {
-            "version": "0.1.41",
-            "files_sha256": "8eac57791653605864b1cc2faece5ce20b4a8e05c82f03763fc14d16796fd563",
+            "version": "0.1.42",
+            "files_sha256": "50d2dab7702e269761bdf16b67515ff1a6b4942413897376f0bb75c18b17a692",
             "manifest_css_sha256": "e3c6f2c2fb571c6ca6442303d6bd25e1d9d93fb1a6753007f2318120d8af4393"
         },
         "glide": {
@@ -48,8 +48,8 @@
             "manifest_css_sha256": "9ad69417b2483da3f07caa8edc3381a11c066b03c0a95a5c7154c381b23ca395"
         },
         "heuristic": {
-            "version": "0.1.19",
-            "files_sha256": "dfb574456d09ee36735ed0a3e8fab3c671b05098d89fc2cf9c855e5321386459",
+            "version": "0.1.20",
+            "files_sha256": "9911d4f1f3d3726de9c072f08c9e34c5392745e9c035c69cb4fcc1aec572c329",
             "manifest_css_sha256": "cdc3124b68df1ed2adde3b6945b56d54738341ba30014969c06d8e98ea604236"
         },
         "hip-to-be-square": {
@@ -63,13 +63,13 @@
             "manifest_css_sha256": "b3db7a21d655d9ed6c02201fb02d972dc8048f3052f32bbf61832cde131f2ba9"
         },
         "instant-camera": {
-            "version": "1.0.59",
-            "files_sha256": "b8e4c331b4d7324e9d828d48bf5ac2fe5ba774426ff92b6a7b57fb479e77d58a",
+            "version": "1.0.60",
+            "files_sha256": "35f735f0593d790caa63e56c41904d930fa796b5bae5a82e8421d3c8682a9df4",
             "manifest_css_sha256": "9f063a0c2f9bb2373403c8ae99ce96df101706f2b2e6b97728f72abe7122a3a0"
         },
         "jive-turkey": {
-            "version": "0.1.45",
-            "files_sha256": "51e2fbcc45be6b8089204a86b85826f132022423b881c3dfafb81cc22b748d80",
+            "version": "0.1.46",
+            "files_sha256": "b960f2cb4b77ad543b0a90f128dba286e2b02047a6018aff1c43b77ecdf50e07",
             "manifest_css_sha256": "f5ade19134d0fe0731b124814ea8cf74151079a73356af70e3fe19cd87006aa7"
         },
         "new-horizon": {
@@ -83,8 +83,8 @@
             "manifest_css_sha256": "d140a8d1a2446bb436bf161c5223d8a1e02ba36b7607318565a7d1a9acaa09b7"
         },
         "parade": {
-            "version": "1.2.55",
-            "files_sha256": "e049fdf027c2f8eb0ed2e7645447f062d11bdafc158d8f7be41dd857869a9a6f",
+            "version": "1.2.56",
+            "files_sha256": "3feb84b5def07efdd2546338da16b6814dbb8e9ce15af470b12878980dbe0f36",
             "manifest_css_sha256": "d037815ba4381789c20187682fe43e93838442fe07473aba7a5e04f8929c51ed"
         },
         "photogram": {
@@ -113,28 +113,28 @@
             "manifest_css_sha256": "00f4c68332312cba078d32b419a366b7bec518ec322a17748e5c1884bc7245df"
         },
         "sliders": {
-            "version": "0.1.19",
-            "files_sha256": "ff46b69a057e14b69ff0cc6a5c2e7c1abeab58e193ee79e6a3750a6cb3835c97",
+            "version": "0.1.20",
+            "files_sha256": "c5bb01ab700c068f46dae96e2faac19ce75a813a27f11a88309ca8caabc575ae",
             "manifest_css_sha256": "649ec65c436bd7740d3f1301089d767ba3de976fff4e680d652d7a5d22579267"
         },
         "stanley": {
-            "version": "1.1.10",
-            "files_sha256": "f8fe1613d2c7282fbee112e6bd66aac256cee433f149f8b6f5c96ee6beffb29d",
+            "version": "1.1.11",
+            "files_sha256": "d2540a0489314400c8031944cd5bf427ec19d8ae7a5360f03e5d7b51e44b91d5",
             "manifest_css_sha256": "c3b9279f81005d1fdb3cf36f5cdb5959de66924bd72dcc0f912d93ef1666f150"
         },
         "sudden-impact": {
-            "version": "1.0.24",
-            "files_sha256": "f4ad260ce2fc71f6068eb01a4ce1428ecadbf12723cba89b8c17864bdf29e5af",
+            "version": "1.0.25",
+            "files_sha256": "142e3a8823e2dab63bc2d88f389dfafdf73049d5fa8f29314a3f6ed95fa50cde",
             "manifest_css_sha256": "79996a16f5aaad1ff09769a0188d5b3a3663bf239bc30d3ed854c84eb20d08b1"
         },
         "telegram": {
-            "version": "0.1.7",
-            "files_sha256": "7d2538c2f05db8056f038969abb7320e44485df80a71235870b9221b085af19e",
+            "version": "0.1.8",
+            "files_sha256": "f20299dfd167963ad6917882705354b027439f0a1f31f6bce036a1485c3632f4",
             "manifest_css_sha256": "f06a8252ab0e42004734c97aedc0edd47340d2f0192064e0a5b72cdaccf1d7c0"
         },
         "the-grid": {
-            "version": "1.3.59",
-            "files_sha256": "a930b82f74bf9fa18950608d586c11701aa3bbcb8811048823a551be7268cb3d",
+            "version": "1.3.60",
+            "files_sha256": "64ca399257b0aec2bce8333fcc411d4d41d70a5310cbc484e019a3b1e92aa74c",
             "manifest_css_sha256": "eab3f387f9f5546c00035c537a1bb0049f1003da547e89505cdde320f23fb01e"
         },
         "tilez": {
@@ -148,8 +148,8 @@
             "manifest_css_sha256": "1ab738f3b1f78b657cd75adcce960b87dd9f3d8c8842994c10f4f36c4d8e080e"
         },
         "writing-with-impact": {
-            "version": "1.1.10",
-            "files_sha256": "f013f635a8b960bdd2056e2e6ce442b8fb662f327ef5dd1764efb96ed5726ea7",
+            "version": "1.1.11",
+            "files_sha256": "7acd251b4e0b3ad03191e0e214709933a89f415bf34807dec77cf5a28a10e259",
             "manifest_css_sha256": "f54621b19b0c82ff25087a4ecc264f99165d072f9ee6d93d47d7a651a335f2ac"
         }
     }

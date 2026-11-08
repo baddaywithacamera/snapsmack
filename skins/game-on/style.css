@@ -1522,4 +1522,6 @@ body:has(.go-puzzle-field) {
     margin-right: 20px;
 }
 
+.ss-feed-sentinel { height: auto; min-height: 44px; padding: 16px 24px; text-align: center; }
+.ss-feed-sentinel a { display: inline-block; padding: 12px; }
 /* ===== SNAPSMACK EOF ===== */
