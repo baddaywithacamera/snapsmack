@@ -555,6 +555,9 @@ function snap_schema_sync(PDO $pdo): array {
             "ALTER TABLE `snap_images` ADD INDEX `idx_images_post_id` (`post_id`)"],
         ['snap_images', 'idx_images_checksum',
             "ALTER TABLE `snap_images` ADD INDEX `idx_images_checksum` (`img_checksum`)"],
+        // Category-driven public counts/covers need the reverse pivot lookup.
+        ['snap_image_cat_map', 'idx_icm_category_image',
+            "ALTER TABLE `snap_image_cat_map` ADD INDEX `idx_icm_category_image` (`cat_id`, `image_id`)"],
     ];
 
     // The album_slug UNIQUE key is conditional on the pre-flight above, so it

@@ -341,7 +341,8 @@ CREATE TABLE IF NOT EXISTS `snap_tags` (
 CREATE TABLE IF NOT EXISTS `snap_image_cat_map` (
   `image_id` int NOT NULL,
   `cat_id`   int NOT NULL,
-  PRIMARY KEY (`image_id`, `cat_id`)
+  PRIMARY KEY (`image_id`, `cat_id`),
+  KEY `idx_icm_category_image` (`cat_id`, `image_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `snap_image_album_map` (

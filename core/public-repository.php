@@ -432,21 +432,14 @@ final class SnapPublicRepository
         );
     }
 
-    /**
-     * Lightweight complete inventory for CMS-owned justified layouts.
-     *
-     * A justified row cannot be paged correctly until the CMS has measured the
-     * photographs which precede it: cutting the SQL result at an arbitrary item
-     * count changes row boundaries and can make the rest of a large archive
-     * unreachable.  Keep this read deliberately narrow and let the controller
-     * expose only one bounded page of prepared rows to the skin.
-     */
-    public function justifiedPhotographFeed(): array {
+    /** Bounded metadata batch; callers must continue in stable sort order. */
+    public function justifiedPhotographFeed(int $limit = 200, int $offset = 0): array {
         return $this->all(
             "SELECT id,img_title,img_slug,img_alt,img_file,img_thumb_aspect,img_width,img_height
              FROM snap_images
              WHERE img_status='published' AND img_date <= NOW()
-             ORDER BY sort_order ASC,img_date DESC,id DESC"
+             ORDER BY sort_order ASC,img_date DESC,id DESC LIMIT ? OFFSET ?",
+            [max(1, min(400, $limit)), max(0, $offset)]
         );
     }
 

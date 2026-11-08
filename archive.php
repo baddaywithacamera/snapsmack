@@ -279,7 +279,6 @@ try {
     if (count($filter_albums) === 1 && empty($filter_cats) && empty($filter_collections)
         && trim($_GET['q'] ?? $_GET['search'] ?? '') === '' && (int)($_GET['page'] ?? 1) <= 1) {
         try {
-            $pdo->exec("ALTER TABLE snap_albums ADD COLUMN IF NOT EXISTS `view_count` int NOT NULL DEFAULT 0");
             $pdo->prepare("UPDATE snap_albums SET view_count = view_count + 1 WHERE id = ?")
                 ->execute([(int)$filter_albums[0]]);
         } catch (Exception $e) { /* non-fatal */ }
@@ -368,12 +367,13 @@ try {
         }
     } elseif ($from_filter && $to_filter) {
         // Calendar date-range browse.
-        $where_clauses[] = "DATE(i.img_date) >= ? AND DATE(i.img_date) <= ?";
+        $where_clauses[] = "i.img_date >= ? AND i.img_date < DATE_ADD(?, INTERVAL 1 DAY)";
         $params[] = $from_filter;
         $params[] = $to_filter;
     } elseif ($date_filter) {
         // Calendar day browse — all posts published on a specific date.
-        $where_clauses[] = "DATE(i.img_date) = ?";
+        $where_clauses[] = "i.img_date >= ? AND i.img_date < DATE_ADD(?, INTERVAL 1 DAY)";
+        $params[] = $date_filter;
         $params[] = $date_filter;
     } elseif ($active_filter_count > 0) {
         // Unified multi-filter: AND EXISTS for each selected taxonomy item.
