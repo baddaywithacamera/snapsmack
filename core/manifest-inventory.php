@@ -636,6 +636,12 @@ $inventory = [
             'css'          => 'assets/css/ss-engine-thomas.css',
             'has_settings' => false
         ],
+        'smack-motion-warning' => [
+            'label'        => 'Motion & Flashing Warning',
+            'path'         => 'assets/js/ss-engine-motion-warning.js',
+            'css'          => 'assets/css/ss-engine-motion-warning.css',
+            'has_settings' => false
+        ],
         'smack-justified-lib' => [
             'label'        => 'fjGallery Library (Flickr Justified Layout)',
             'path'         => 'assets/js/fjGallery.min.js',
