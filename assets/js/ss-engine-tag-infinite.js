@@ -40,11 +40,21 @@
 
         var isFeed    = sentinel.hasAttribute('data-feed');
         var justified = (P === 'justified');
-        var grid = justified ? document.getElementById('justified-grid')
-                             : document.querySelector('.' + P + '-grid');
+        // A skin whose grid/item classes do not follow the .<prefix>-grid /
+        // .<prefix>-tile convention (the SMACKTALK feed's #browse-grid.smacktalk-feed
+        // with .smacktalk-feed-item, GLIDE's .archive-grid with .glide-archive-item,
+        // etc.) states them outright on the sentinel: data-grid-selector and
+        // data-item-selector. When absent, the convention (and the justified
+        // special case) is unchanged, so every existing sentinel pages as before.
+        var gridSel = sentinel.dataset.gridSelector;
+        var itemSelAttr = sentinel.dataset.itemSelector;
+        var grid = gridSel ? document.querySelector(gridSel)
+                 : (justified ? document.getElementById('justified-grid')
+                              : document.querySelector('.' + P + '-grid'));
         if (!grid) return;
-        var itemSel = justified ? '#justified-grid > .justified-row'
-                                : '.' + P + '-grid .' + P + '-tile';
+        var itemSel = itemSelAttr ? itemSelAttr
+                    : (justified ? '#justified-grid > .justified-row'
+                                 : '.' + P + '-grid .' + P + '-tile');
 
         var loading = false;
         var nextPg  = parseInt(sentinel.dataset.next, 10);
