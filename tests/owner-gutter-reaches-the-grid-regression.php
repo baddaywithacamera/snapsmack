@@ -61,9 +61,22 @@ og(snapsmack_owner_gutter_px(['archive_gutter' => null]) === null,
 og(snapsmack_owner_gutter_px(['archive_gutter' => true]) === null,
    'a boolean yields null rather than 1px');
 
-echo "\nA SAVED VALUE IS CARRIED THROUGH, AND IT IS THE VALUE THE OWNER SAVED\n";
-og(snapsmack_owner_gutter_px(['archive_gutter' => '4']) === 4, '"4" becomes 4');
-og(snapsmack_owner_gutter_px(['archive_gutter' => 4]) === 4, 'and so does the integer 4');
+echo "\nTHE DEFAULT POSITION (4) MEANS THE SKIN DECIDES -- 988D\n";
+// The admin slider always posts its position (default 4) even on an untouched
+// save, so persisting 4 made a value nobody chose override the skin's own gap
+// (TRUE GRIT's var(--grid-gap,100px) collapsed to 4 and the archive looked
+// crammed after 987D). 4 is indistinguishable from "never touched", so it is
+// read as "use the skin's spacing": emit nothing.
+og(snapsmack_owner_gutter_px(['archive_gutter' => '4']) === null,
+   'the default position "4" yields null, so the skin\'s own gap stands');
+og(snapsmack_owner_gutter_px(['archive_gutter' => 4]) === null,
+   'and so does the integer 4');
+og(snapsmack_owner_gutter_px(['archive_gutter' => '4', 'archive_gutter_mode' => 'custom']) === 4,
+   'but an explicit opt-in (archive_gutter_mode=custom) emits a literal 4');
+
+echo "\nA SAVED NON-DEFAULT VALUE IS CARRIED THROUGH, AND IT IS WHAT THE OWNER SAVED\n";
+og(snapsmack_owner_gutter_px(['archive_gutter' => '10']) === 10, 'a non-default "10" becomes 10');
+og(snapsmack_owner_gutter_px(['archive_gutter' => 10]) === 10, 'and so does the integer 10');
 og(snapsmack_owner_gutter_px(['archive_gutter' => 0]) === 0,
    'zero is a legitimate saved value and is not confused with unsaved');
 og(snapsmack_owner_gutter_px(['archive_gutter' => '40']) === 40,
@@ -87,7 +100,7 @@ echo "\nTHE EMISSION LANDS LAST, WHICH IS WHAT MAKES THE OWNER WIN\n";
 // silently. Built with a REAL skin whose option emits --grid-gap already, so
 // both declarations are present and the order between them is observable.
 $withGutter = snapsmack_skin_presentation(
-    ['aurora__au_gap' => '20', 'archive_gutter' => '4'], 'aurora');
+    ['aurora__au_gap' => '20', 'archive_gutter' => '10'], 'aurora');
 $css = (string)($withGutter['style'] ?? '');
 $ownerAt = strpos($css, 'snapsmack-owner-gutter');
 og($ownerAt !== false, 'the owner block is in AURORA\'s presentation css');
@@ -101,8 +114,8 @@ og($declaredAt === false || ($ownerAt !== false && $ownerAt > $declaredAt),
    'it also comes after the declared-skin-style block, which emits --grid-gap too');
 // The last --grid-gap declaration in the document is the one that applies.
 preg_match_all('/--grid-gap:\s*([0-9]+)px/', $css, $all);
-og(($all[1] ?? []) !== [] && end($all[1]) === '4',
-   'the LAST --grid-gap in the emitted css is the owner\'s 4, not the skin\'s 20 '
+og(($all[1] ?? []) !== [] && end($all[1]) === '10',
+   'the LAST --grid-gap in the emitted css is the owner\'s 10, not the skin\'s 20 '
    . '(found: ' . implode(', ', $all[1] ?? []) . ')');
 
 echo "\nTHE OTHER ORDER: SKIN KEEPS ITS OWN LOOK UNTIL THE OWNER TOUCHES THE CONTROL\n";
@@ -120,9 +133,9 @@ echo "\nMUTATION PROOF: THE ORDER CHECK MUST BE ABLE TO FAIL\n";
 // win and the control would be dead again -- the exact state this repairs.
 // Reproduce that order here and show the last-declaration test catches it.
 $inverted = str_replace(
-    '<style id="snapsmack-owner-gutter">:root{--grid-gap:4px;}</style>', '', $css
+    '<style id="snapsmack-owner-gutter">:root{--grid-gap:10px;}</style>', '', $css
 );
-$inverted = '<style id="snapsmack-owner-gutter">:root{--grid-gap:4px;}</style>' . $inverted;
+$inverted = '<style id="snapsmack-owner-gutter">:root{--grid-gap:10px;}</style>' . $inverted;
 preg_match_all('/--grid-gap:\s*([0-9]+)px/', $inverted, $invAll);
 og(($invAll[1] ?? []) !== [] && end($invAll[1]) === '20',
    'with the blocks the other way round the skin wins, so the order check above '
@@ -141,6 +154,17 @@ $builder = (static function (string $s): string {
 og($builder !== '', 'the presentation builder was found');
 og(str_contains($builder, 'snapsmack_owner_gutter_px($settings)'),
    'and it calls the emitter with the site settings');
+
+echo "\nTHE SAVE HANDLER STOPS PERSISTING THE UNTOUCHED DEFAULT -- 988D\n";
+// So clean data stops carrying the phantom 4, and dragging back to 4 resets to
+// the skin default rather than storing an override. Source check: the archive
+// appearance save deletes archive_gutter when the slider is at 4 (unless the
+// explicit opt-in mode is set).
+$save = (string)@file_get_contents($root . '/smack-appearance-archive.php');
+og((bool)preg_match('/archive_gutter[\s\S]{0,200}===\s*.4.[\s\S]{0,200}DELETE FROM snap_settings WHERE setting_key = .archive_gutter./', $save),
+   'the save handler deletes archive_gutter when the slider is at the default 4');
+og(str_contains($save, "archive_gutter_mode"),
+   'and honours the explicit opt-in (archive_gutter_mode) so a literal 4 can still be chosen');
 
 echo "\nWHO ACTUALLY READS --grid-gap -- MEASURED, NOT ASSUMED\n";
 // The control cannot change a skin that never reads the variable. This counts

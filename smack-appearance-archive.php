@@ -89,6 +89,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
             $_POST['settings']['archive_thumb_style'] = 'cropped';
         }
 
+        // 988D: the GUTTER slider always posts its position (default 4) even when
+        // the owner never dragged it. Persisting 4 made a value nobody chose
+        // override the skin's own gap (TRUE GRIT looked crammed). 4 means "use the
+        // skin's spacing", so at 4 we DELETE the key -- resetting to the skin
+        // default -- rather than storing a phantom override. Any other value is a
+        // real choice and is stored normally. (See snapsmack_owner_gutter_px.)
+        if (array_key_exists('archive_gutter', $_POST['settings'])
+            && (string)$_POST['settings']['archive_gutter'] === '4'
+            && (string)($_POST['settings']['archive_gutter_mode'] ?? '') !== 'custom') {
+            $pdo->prepare("DELETE FROM snap_settings WHERE setting_key = 'archive_gutter'")->execute();
+            unset($_POST['settings']['archive_gutter']);
+        }
+
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
         foreach ($_POST['settings'] as $k => $v) {
             $stmt->execute([$k, $v, $v]);

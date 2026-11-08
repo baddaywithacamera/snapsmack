@@ -436,7 +436,18 @@ function snapsmack_owner_gutter_px(array $settings): ?int
     $raw = $settings['archive_gutter'];
     if (is_bool($raw) || is_array($raw) || is_null($raw)) return null;
     if (!is_numeric((string)$raw)) return null;
-    return (int)max(0, min(40, (int)(float)(string)$raw));
+    $val = (int)max(0, min(40, (int)(float)(string)$raw));
+    // 988D: the slider's default position (4) is posted on every save even when
+    // the owner never dragged it, so a value nobody chose used to override the
+    // skin's own gap and the archive looked crammed (TRUE GRIT after 987D). The
+    // default IS indistinguishable from an untouched save, so 4 means "use the
+    // skin's spacing" -- emit nothing and let the skin's own fallback win. Any
+    // other value is a real choice and is honoured, including on sites saved
+    // before this fix (they recover on deploy with no re-save). The explicit
+    // opt-in archive_gutter_mode=custom can still emit a literal 4.
+    if ((string)($settings['archive_gutter_mode'] ?? '') === 'custom') return $val;
+    if ($val === 4) return null;
+    return $val;
 }
 
 /**
