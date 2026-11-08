@@ -857,6 +857,11 @@
         "predicates": 0,
         "thresholds": []
     },
+    "image-visibility-filter-rewrite-regression.php": {
+        "assertions": 0,
+        "predicates": 4,
+        "thresholds": []
+    },
     "impact-printer-archive-regression.php": {
         "assertions": 10,
         "predicates": 11,
