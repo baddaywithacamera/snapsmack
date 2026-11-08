@@ -989,6 +989,13 @@
         "predicates": 1,
         "thresholds": []
     },
+    "manifest-option-change-requires-version-bump-regression.php": {
+        "assertions": 0,
+        "predicates": 3,
+        "thresholds": [
+            2
+        ]
+    },
     "masthead-anchor-regression.php": {
         "assertions": 5,
         "predicates": 5,
@@ -1365,7 +1372,7 @@
     },
     "public-skin-css-self-heal-regression.php": {
         "assertions": 1,
-        "predicates": 11,
+        "predicates": 13,
         "thresholds": []
     },
     "public-skin-route-coverage-audit-regression.php": {
@@ -1755,9 +1762,11 @@
         ]
     },
     "skin-version-content-regression.php": {
-        "assertions": 7,
+        "assertions": 8,
         "predicates": 1,
-        "thresholds": []
+        "thresholds": [
+            2
+        ]
     },
     "skin-view-contract-regression.php": {
         "assertions": 8,
@@ -1986,7 +1995,7 @@
     },
     "strict-skin-css-self-heal-regression.php": {
         "assertions": 1,
-        "predicates": 10,
+        "predicates": 11,
         "thresholds": [
             2,
             2,
