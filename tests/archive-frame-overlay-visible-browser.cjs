@@ -16,6 +16,8 @@
 // archive-frame-rule-survives-recompile-regression.php).
 const assert = require('node:assert/strict');
 const zlib = require('node:zlib');
+const { execFileSync } = require('node:child_process');
+const path = require('node:path');
 const { chromium } = require('../tools/browser-tests/runtime.cjs');
 
 // Minimal PNG decoder (8-bit RGBA, non-interlaced -- what Playwright emits).
@@ -114,7 +116,31 @@ async function edgeAndCentre(page) {
     console.log('PASS old inset-on-element frame is correctly detected as invisible (under the photo)');
     passed++;
 
-    console.log(`PASS: ${passed}/2 archive frame pixel checks`);
+    // Execute the actual save-path rule remover. Compare complete rendered pixels
+    // before/after a prior CMS frame is cleared, retaining a skin-owned shadow.
+    const cleanCss = execFileSync('php', ['-r', `
+      $src=file_get_contents($argv[1]);
+      $start=strpos($src, '$upsert_rule = function');
+      $end=strpos($src, "\\n        };", $start);
+      eval(substr($src,$start,$end-$start)."\\n};");
+      $blob=$argv[2]."\\n/* arch_opt:grid_border */ .thumb-link {box-shadow:none!important;}\\n/* arch_opt:masonry_border */ .justified-item::after {content:'';}\\n";
+      $upsert_rule($blob,'/* arch_opt:grid_border */','');
+      $upsert_rule($blob,'/* arch_opt:masonry_border */','');
+      echo $blob;
+    `, path.resolve(__dirname, '../smack-appearance-archive.php'),
+      '.thumb-link {box-shadow: 0 8px 15px #333; border: 2px solid #789;}'], { encoding: 'utf8' });
+    for (const width of [1920, 1440, 1024]) {
+      await page2.setViewportSize({ width, height: 900 });
+      await page2.setContent(`<body>${FIXTURE}</body>`);
+      await page2.evaluate(() => document.querySelector('img').decode());
+      await page2.addStyleTag({ content: '.thumb-link {box-shadow: 0 8px 15px #333; border: 2px solid #789;}' });
+      const before = await page2.screenshot();
+      await page2.addStyleTag({ content: cleanCss });
+      assert.deepEqual(await page2.screenshot(), before, `none changed skin pixels at ${width}`);
+      console.log(`PASS none preserves skin border/shadow and geometry at ${width}`);
+      passed++;
+    }
+    console.log(`PASS: ${passed}/5 archive frame pixel checks`);
   } finally {
     await browser.close();
   }
