@@ -46,6 +46,7 @@
         try { return window.localStorage.getItem(STORE_KEY); } catch (e) { return null; }
     }
     function writeChoice(value) {
+        if (!persistOk) return; // consent declined: this page view only, never stored
         try { window.localStorage.setItem(STORE_KEY, value); } catch (e) { /* private mode: modal returns next visit, which is safe */ }
     }
 
@@ -55,20 +56,46 @@
             && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     } catch (e) { reduceMotion = false; }
 
-    var stored = readChoice();
-    if (stored !== 'allow' && stored !== 'disable') stored = null;
-
-    // Initial decision. Reduced-motion is an automatic DISABLE and shows nothing.
-    // A stored choice is honoured silently. Otherwise the motion stays held and
-    // the modal asks. allowed is FALSE in every case but an explicit/stored allow.
-    var allowed = (!reduceMotion && stored === 'allow');
-    var decided = reduceMotion || stored !== null;
+    // Fail-safe from the first paint: motion is HELD until a decision releases
+    // it. allowed stays false and <html> is paused the instant this runs.
+    var allowed = false;
+    var decided = false;
+    var persistOk = true; // may the choice be remembered? (no when consent declined)
 
     function applyClass() {
         root.classList.toggle('ss-motion-ok', allowed);
         root.classList.toggle('ss-motion-paused', !allowed);
     }
-    applyClass(); // the instant the script runs, before any paint we can affect
+    applyClass();
+
+    // Storage-consent integration (ss-engine-consent). PM ruling 14:05 #6:
+    //   declined -> default STILL, no modal, footer toggle for this page view only;
+    //   pending  -> consent banner first, the motion modal waits for it;
+    //   ok / no consent engine -> the choice is strictly-necessary and persists.
+    function consentState() {
+        var c = window.snapConsent;
+        if (!c) return 'ok';
+        if (c.declined && c.declined()) return 'declined';
+        if (c.pending && c.pending()) return 'pending';
+        return 'ok';
+    }
+    function decide() {
+        var cs = consentState();
+        if (cs === 'declined') {
+            persistOk = false; allowed = false; decided = true;
+            applyClass(); emitChange(); syncToggle();
+            return;
+        }
+        persistOk = (cs === 'ok');
+        if (reduceMotion) { allowed = false; decided = true; }
+        else {
+            var stored = readChoice();
+            if (stored === 'allow') { allowed = true; decided = true; }
+            else if (stored === 'disable') { allowed = false; decided = true; }
+            else { allowed = false; decided = false; } // no decision yet -> ask
+        }
+        applyClass(); emitChange(); syncToggle();
+    }
 
     function emitChange() {
         try {
@@ -206,6 +233,17 @@
 
     function onReady() {
         buildToggle();
+        if (consentState() === 'pending') {
+            // The consent banner is up; let the visitor answer it first, then
+            // decide and ask about motion only if still needed.
+            document.addEventListener('snap:consent-resolved', function onres() {
+                document.removeEventListener('snap:consent-resolved', onres);
+                decide();
+                if (!decided) showModal();
+            });
+            return;
+        }
+        decide();
         if (!decided) showModal();
     }
     if (document.readyState === 'loading') {

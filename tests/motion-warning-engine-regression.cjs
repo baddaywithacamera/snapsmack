@@ -13,7 +13,7 @@ const fs=require('fs'), vm=require('vm'), assert=require('assert');
 const SRC=fs.readFileSync('assets/js/ss-engine-motion-warning.js','utf8');
 
 function run(opts={}) {
-  opts=Object.assign({store:null,reduce:false,readyState:'complete'},opts);
+  opts=Object.assign({store:null,reduce:false,readyState:'complete',consent:null},opts);
   const cls=new Set();
   const events={};
   const el=()=>({ _children:[], style:{}, classList:{add(){}, remove(){}, toggle(){}},
@@ -36,15 +36,17 @@ function run(opts={}) {
     dispatchEvent:(e)=>{ (document.__fired=document.__fired||[]).push(e.type); return true; },
   };
   const _ls={_m:opts.store?{ss_motion:opts.store}:{}, getItem(k){return k in this._m?this._m[k]:null;}, setItem(k,v){this._m[k]=String(v);}};
-  const sandbox={ window:{ matchMedia:()=> ({matches:opts.reduce}), localStorage:_ls }, document,
+  const snapConsent = opts.consent ? { ok:()=>opts.consent==='ok', accepted:()=>opts.consent==='ok', declined:()=>opts.consent==='declined', pending:()=>opts.consent==='pending' } : null;
+  const sandbox={ window:{ matchMedia:()=> ({matches:opts.reduce}), localStorage:_ls, snapConsent:snapConsent }, document,
     CustomEvent:function(t,o){this.type=t;this.detail=o&&o.detail;}, navigator:{} };
   sandbox.window.matchMedia=()=>({matches:opts.reduce});
   vm.runInNewContext(SRC, sandbox);
-  return { ssMotion:sandbox.window.ssMotion, cls, events, made, fired:()=>document.__fired||[] };
+  return { ssMotion:sandbox.window.ssMotion, cls, events, made, store:_ls._m, fired:()=>document.__fired||[] };
 }
 
 let pass=0, fail=0;
 function ok(c,w){ if(c){pass++;console.log('  ok   '+w);} else {fail++;console.log('  FAIL '+w);} }
+function modalUp(r){ return r.made.some(function(e){ return e && e.id==='ss-motion-modal'; }); }
 
 let r=run({});                    // first visit, no cookie, motion present
 ok(r.ssMotion && r.ssMotion.allowed===false, 'default: window.ssMotion.allowed is false (fail-safe)');
@@ -67,7 +69,7 @@ ok(r.ssMotion.allowed===false && r.cls.has('ss-motion-paused'), 'toggle() revers
 
 // modal was built on first visit (a dialog element with role)
 r=run({});
-ok(r.made.length>0, 'first visit builds the modal DOM');
+ok(modalUp(r), 'first visit builds the modal DOM');
 
 // Esc chooses "keep it still": the keydown handler disables
 r=run({});
@@ -75,6 +77,23 @@ const kd=r.events['keydown'];
 ok(typeof kd==='function', 'the modal installs a keydown handler (focus trap + Esc)');
 kd({key:'Escape', preventDefault(){}});
 ok(r.ssMotion.allowed===false && r.ssMotion.decided===true, 'Esc on the modal keeps motion still and records the choice');
+
+// --- PM ruling #6: storage-consent integration ---
+r=run({consent:'declined'});
+ok(r.ssMotion.allowed===false && r.ssMotion.decided===true && !modalUp(r),
+   'consent DECLINED: still, decided, NO modal');
+r.ssMotion.toggle();
+ok(r.ssMotion.allowed===true, 'consent declined: footer toggle flips for this page view');
+ok(!('ss_motion' in r.store), 'consent declined: the choice is NOT persisted');
+
+r=run({consent:'pending'});
+ok(!modalUp(r) && typeof r.events['snap:consent-resolved']==='function',
+   'consent PENDING: motion modal deferred, waiting on snap:consent-resolved');
+r.events['snap:consent-resolved']();
+ok(modalUp(r), 'after consent resolves, the motion modal is shown');
+
+r=run({consent:'ok', store:'allow'});
+ok(r.ssMotion.allowed===true, 'consent OK + stored allow: motion allowed as normal');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if(fail) process.exitCode=1;
