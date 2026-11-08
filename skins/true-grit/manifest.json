@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "name": "TRUE GRIT",
-  "version": "1.3.26",
+  "version": "1.3.28",
     "scrolltime_pages": ["archive"],
   "author": "Sean McCormick",
   "support": "sean@baddaywithacamera.ca",
@@ -808,7 +808,7 @@
       "section": "TYPOGRAPHY",
       "type": "select",
       "label": "Footer Font",
-      "default": "Raleway",
+      "default": "DM Sans",
       "options": {
         "DM Sans": "DM Sans (Geometric / Clean UI body)",
         "Figtree": "Figtree (Friendly Geometric \u2014 contemporary)",
