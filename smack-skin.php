@@ -26,6 +26,7 @@ require_once 'core/auth-smack.php';
 require_once 'core/skin-registry.php';
 require_once 'core/skin-settings.php';
 require_once 'core/skin-view-model.php';
+require_once 'core/skin-presentation.php'; // snapsmack_clamp_skin_option() for the save path
 require_once 'core/mode-guard.php';
 
 // --- SETTINGS BOOTSTRAP ---
@@ -506,6 +507,11 @@ if (isset($_POST['save_skin_settings'])) {
     $save_skin = $_requested_skin; // SECAUDIT 047 — sanitized, validated slug only
     if (isset($_POST['skin_opt'])) {
         foreach ($_POST['skin_opt'] as $s_key => $s_val) {
+            // Clamp numeric controls to their manifest bounds on the way in, so a
+            // stale or tampered POST cannot store a value under a control's floor
+            // (the render path clamps the same bounds). Non-numeric and unknown
+            // keys pass through unchanged. SECAUDIT 061 / Codex save-path repair.
+            $s_val = snapsmack_clamp_skin_option((string)$save_skin, (string)$s_key, $s_val);
             $scoped_key = $save_skin . '__' . $s_key;
             $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
                 ->execute([$scoped_key, $s_val, $s_val]);
