@@ -585,7 +585,16 @@ $orphan_count = (int)$pdo->query(
 // cheap count drives a banner on the normal page; the full grouped review only
 // runs when the owner opens it (?find_dupes=1). The CASE mirrors
 // snap_manage_duplicate_groups() exactly so the banner and the review agree.
-$dupe_extra_count = (int)$pdo->query(
+// B1 (SQL audit): the GROUP BY is on a CASE expression, which no index can
+// serve, so it was a scan on EVERY Manage load. idx_images_post_id (989D) makes
+// the WHERE post_id IS NULL a seek, and this cheap existence pre-check skips the
+// grouped scan entirely on the common case -- a tidy library with nothing
+// unfiled, where the answer is always zero.
+$dupe_extra_count = 0;
+$has_unfiled = (bool)$pdo->query(
+    "SELECT 1 FROM snap_images WHERE post_id IS NULL LIMIT 1"
+)->fetchColumn();
+if ($has_unfiled) $dupe_extra_count = (int)$pdo->query(
     "SELECT COALESCE(SUM(cnt - 1), 0) FROM (
         SELECT COUNT(*) AS cnt
         FROM snap_images
