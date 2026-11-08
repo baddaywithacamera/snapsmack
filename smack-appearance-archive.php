@@ -38,7 +38,22 @@ if ($active_skin) {
 }
 // Skin manifest options flagged admin_page=>'archive' rendered here if manifest loaded.
 $archive_manifest_opts = [];
+// One thumbnail-size control, not two. Thumbnail size is presentation, so a skin
+// that ships its own thumbnail-size control (one that emits the shared
+// --ss-thumb-size variable, e.g. NEW HORIZON's archive_thumb_size from SS-1185)
+// owns it; the global Archive Appearance thumb_size control is HIDDEN on that
+// skin so the owner sees exactly one. This is manifest-driven -- it reads what
+// the active skin declares, never a skin-name list -- and the CMS does NOT feed
+// its thumb_size into any skin variable; it only decides whether to show its own
+// control. A skin with no such control keeps the global one unchanged.
+$skin_has_own_thumb_size = false;
 if (is_array($manifest)) {
+    foreach ($manifest['options'] ?? [] as $o) {
+        if (is_array($o) && ($o['property'] ?? '') === '--ss-thumb-size') {
+            $skin_has_own_thumb_size = true;
+            break;
+        }
+    }
     foreach ($manifest['options'] ?? [] as $k => $o) {
         if (($o['admin_page'] ?? 'skin') === 'archive') {
             $archive_manifest_opts[$k] = $o;
@@ -305,6 +320,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                     <p style="margin:8px 0 0; font-size:0.78em; opacity:0.6;">Visitors who change these preferences have their choice cookied for a year.</p>
                 </div>
 
+                <?php if (!$skin_has_own_thumb_size): ?>
                 <div class="lens-input-wrapper">
                     <label>THUMBNAIL SIZE <span class="field-tip" data-tip="Applies to square and cropped grid modes.">ⓘ</span></label>
                     <select name="settings[thumb_size]">
@@ -315,6 +331,12 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <?php else: ?>
+                <div class="lens-input-wrapper">
+                    <label>THUMBNAIL SIZE <span class="field-tip" data-tip="This skin has its own thumbnail-size control in Skin Settings, which is used instead.">ⓘ</span></label>
+                    <p class="field-note">Set in this skin's own Skin Settings &mdash; shown there to keep one control.</p>
+                </div>
+                <?php endif; ?>
 
                 <div class="lens-input-wrapper">
                     <label>COLUMNS <span class="field-tip" data-tip="How many columns across on desktop. Applies to square and cropped grid modes.">ⓘ</span></label>
