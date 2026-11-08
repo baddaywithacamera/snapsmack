@@ -419,6 +419,58 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             if ($count > 1) $html .= '<span class="pg-carousel-badge" aria-label="' . $count . ' photos">&#x29C9;</span>';
             $html .= '</a>';
         }
+    } elseif ($name === 'feed-pager') {
+        // THE ENDLESS-SCROLL SENTINEL AND ITS NO-JS FALLBACK, IN ONE PLACE.
+        // (SS-986D, named by function per AGENTS.md -- a pager serves the feed,
+        // landing and hashtag across skins, so it is NOT named for the smacktalk
+        // family. Markup lives on the CMS rail; the skin owns only the CSS and
+        // the two selector values it passes in.)
+        //
+        // ss-engine-tag-infinite.js finds "#<prefix>-sentinel" and reads the
+        // data-* below. A skin whose grid/tile classes do not follow the
+        // .<prefix>-grid / .<prefix>-tile convention (the smacktalk feed, GLIDE
+        // hashtag, TRUE-GRIT landing) passes grid_selector / item_selector and
+        // the engine honours them; omit them and the convention applies.
+        //
+        // THE FALLBACK IS A REAL LINK, in <noscript>, so paging still works with
+        // JavaScript off or failed -- the one case infinite scroll cannot cover.
+        // Its >=44px touch target is skin CSS on .ss-feed-pager-link (the stylesheet
+        // rail); core emits the semantic, navigable anchor and nothing visual.
+        $prefix = preg_replace('/[^a-z0-9]/', '', strtolower((string)($data['prefix'] ?? '')));
+        if ($prefix === '') $prefix = 'feed';
+        $nextUrl  = (string)($data['next_url'] ?? '');
+        $nextPage = (int)($data['next_page'] ?? 0);
+        // Nothing to render once there is no next page. next_url is the prepared,
+        // filter-safe url (core/public-runtime.php for strict skins, index.php for
+        // the smacktalk feed); next_page alone still drives the historic p=N path.
+        if ($nextUrl !== '' || $nextPage > 0) {
+            $isFeed = !empty($data['feed']);
+            $tag    = (string)($data['tag'] ?? '');
+            $base   = (string)($data['base'] ?? '');
+            $gridSel = (string)($data['grid_selector'] ?? '');
+            $itemSel = (string)($data['item_selector'] ?? '');
+            $label   = (string)($data['label'] ?? 'Load more');
+            $attrs  = 'id="' . snap_escape_attr($prefix) . '-sentinel" class="ss-feed-sentinel"';
+            // One of data-feed / data-tag is required, plus data-base, or the
+            // engine ignores the sentinel. Hashtag carries the tag; everything
+            // else is a feed/landing.
+            if ($isFeed || $tag === '') $attrs .= ' data-feed';
+            else $attrs .= ' data-tag="' . snap_escape_attr($tag) . '"';
+            if ($base !== '')    $attrs .= ' data-base="' . snap_escape_url($base) . '"';
+            if ($nextPage > 0)   $attrs .= ' data-next="' . snap_escape_attr((string)$nextPage) . '"';
+            if ($nextUrl !== '') $attrs .= ' data-next-url="' . snap_escape_url($nextUrl) . '"';
+            if ($gridSel !== '') $attrs .= ' data-grid-selector="' . snap_escape_attr($gridSel) . '"';
+            if ($itemSel !== '') $attrs .= ' data-item-selector="' . snap_escape_attr($itemSel) . '"';
+            $html = '<nav class="ss-feed-pager ' . snap_escape_attr($prefix) . '-feed-pager" aria-label="Pagination">'
+                . '<div ' . $attrs . ' data-has-more="1" aria-hidden="true"></div>';
+            // The no-JS fallback only makes sense when there is a real url to go
+            // to; a p=N-only skin without a prepared url has no link to print.
+            if ($nextUrl !== '') {
+                $html .= '<noscript><a class="ss-feed-pager-link ' . snap_escape_attr($prefix) . '-feed-pager-link" '
+                    . 'href="' . snap_escape_url($nextUrl) . '" rel="next">' . snap_escape_html($label) . '</a></noscript>';
+            }
+            $html .= '</nav>';
+        }
     } elseif ($name === 'wall-tile') {
         // One photograph in a wall. The page renderer and the endless-scroll
         // JSON endpoint both build their tiles here, so a tile fetched on
