@@ -1152,8 +1152,9 @@ def _effect_mix(original, effect, amount):
         original.icc_profile)
 
 
-def _translated(image, dx, dy):
-    yy, xx = np.mgrid[0:image.height, 0:image.width].astype(np.float32)
+def _translated(image, dx, dy, coordinates=None):
+    yy, xx = (coordinates if coordinates is not None else
+              np.mgrid[0:image.height, 0:image.width].astype(np.float32))
     return resample_coordinates(image, xx - np.float32(dx), yy - np.float32(dy),
                                 transparent=False)
 
@@ -1169,9 +1170,11 @@ def apply_filter(image, kind, settings):
         length = np.clip(float(settings.get("length", 24)), 1.0, 200.0)
         angle = np.deg2rad(float(settings.get("angle", 0.0)))
         samples = max(3, min(31, int(length / 3) * 2 + 1))
+        coordinates = np.mgrid[0:image.height, 0:image.width].astype(np.float32)
         frames = [_rgb(_translated(image,
                   (index / (samples - 1) - .5) * length * np.cos(angle),
-                  (index / (samples - 1) - .5) * length * np.sin(angle)))[0]
+                  (index / (samples - 1) - .5) * length * np.sin(angle),
+                  coordinates=coordinates))[0]
                   for index in range(samples)]
         effect = FloatImage(np.mean(frames, axis=0, dtype=np.float32),
                             image.channel_names, image.source_format, image.icc_profile)
@@ -1181,11 +1184,12 @@ def apply_filter(image, kind, settings):
         cy = image.height * np.clip(float(settings.get("center_y", 50)), 0, 100) / 100.0
         samples = max(5, min(25, int(strength / 5) * 2 + 5))
         frames = []
+        if settings.get("mode", "spin") == "zoom":
+            yy, xx = np.mgrid[0:image.height, 0:image.width].astype(np.float32)
         for index in range(samples):
             offset = index / (samples - 1) - .5
             if settings.get("mode", "spin") == "zoom":
                 scale = max(.5, 1.0 + offset * strength / 125.0)
-                yy, xx = np.mgrid[0:image.height, 0:image.width].astype(np.float32)
                 frame = resample_coordinates(image, cx + (xx - cx) / scale,
                                               cy + (yy - cy) / scale)
             else:
