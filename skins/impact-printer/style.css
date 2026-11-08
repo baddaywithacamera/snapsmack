@@ -442,7 +442,7 @@ body.landing-only .ip-header-inside,
 
 #system-footer p, #sig-text {
     color: var(--text-dim) !important;
-    font-family: 'DotMatrix', 'Courier New', monospace !important;
+    font-family: 'DotMatrix', 'Courier New', monospace;
     font-size: 0.7rem !important;
     text-transform: uppercase !important;
     letter-spacing: 2px !important;
