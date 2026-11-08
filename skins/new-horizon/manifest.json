@@ -2,7 +2,7 @@
     "schema_version": 2,
     "name": "NEW HORIZON",
     "oh_snap_ready": true,
-    "version": "1.3.31",
+    "version": "1.3.32",
     "scrolltime_pages": [
         "archive"
     ],
@@ -372,6 +372,16 @@
             },
             "selector": ".site-title-text",
             "property": "font-family"
+        },
+        "header_font_size": {
+            "section": "TYPOGRAPHY",
+            "type": "range",
+            "label": "Header Font Size (PX)",
+            "default": "50",
+            "min": "40",
+            "max": "100",
+            "selector": ".site-title-text",
+            "property": "font-size"
         },
         "static_heading_font": {
             "section": "TYPOGRAPHY",
@@ -840,16 +850,6 @@
             "default": "#111111",
             "selector": ".static-content, .static-transmission #scroll-stage",
             "property": "background-color"
-        },
-        "header_font_size": {
-            "section": "HEADER & NAV",
-            "type": "range",
-            "label": "Header Font Size (px)",
-            "default": "50",
-            "min": "40",
-            "max": "100",
-            "selector": ".site-title-text",
-            "property": "font-size"
         },
         "header_title_color": {
             "section": "HEADER & NAV",
