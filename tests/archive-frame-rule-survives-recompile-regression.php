@@ -86,6 +86,22 @@ cx((bool)preg_match('/justified-item::after/', $src)
    && !(bool)preg_match('/justified-item\s*\{\s*position:/', $src),
    'the masonry item gets the overlay but NOT position (the wall engine positions it absolutely)');
 
+// Exercise the actual save-path closure, rather than a mirrored implementation.
+$closureStart = strpos($src, '$upsert_rule = function');
+$closureEnd = strpos($src, "\n        };", $closureStart);
+eval(substr($src, $closureStart, $closureEnd - $closureStart) . "\n};");
+$skinCss = ".thumb-link { box-shadow: 0 4px 20px #333; }";
+$saved = $skinCss . "\n" . $arch_rule . "\n/* arch_opt:masonry_border */ .justified-item { box-shadow:none; }\n";
+$upsert_rule($saved, '/* arch_opt:grid_border */', '');
+$upsert_rule($saved, '/* arch_opt:masonry_border */', '');
+cx($saved === $skinCss, 'none removes both CMS rules and preserves the skin shadow byte-for-byte');
+$upsert_rule($saved, '/* arch_opt:grid_border */', '');
+cx($saved === $skinCss, 'saving none again adds no empty marker or overlay');
+$upsert_rule($saved, '/* arch_opt:grid_border */', $arch_rule);
+cx(str_contains($saved, $arch_rule), 'a real frame can still be selected after none');
+cx(str_contains($src, "if (\$tfp === 'none') {\n            \$grid_rule = '';\n            \$masonry_rule = '';"),
+   'none routes both frame rules through removal');
+
 echo "\n{$pass} checks, {$fail} failed\n";
 exit($fail > 0 ? 1 : 0);
 // ===== SNAPSMACK EOF =====
