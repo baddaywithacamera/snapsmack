@@ -261,26 +261,36 @@ final class SnapPublicRepository
     public function imageFilter(string $flag, string $imageAlias = 'i'): string {
         if (!in_array($flag, $this->visibilityFlagsPresent(), true)) return '';
         $img = $imageAlias === '' ? 'snap_images' : $imageAlias;
-        $owner = "(
-                      EXISTS (SELECT 1 FROM snap_post_images vpi
-                               WHERE vpi.image_id = {$img}.id AND vpi.post_id = vp.id)
-                   OR {$img}.post_id = vp.id
-                  )";
+        // INDEX-SEEKABLE REWRITE (987D, CT110 outage). The original nested an
+        // EXISTS over snap_posts AROUND an EXISTS over snap_post_images, so for
+        // every image row the planner scanned every published post and then the
+        // pivot per pair -- images x posts, cubic with the pivot inside. Measured
+        // at 280-363s per archive COUNT on the fleet DB. This is logically the
+        // SAME qualifying-owner rule, flattened so each test is an index seek:
+        // the pivot route becomes snap_post_images(image_id) -> snap_posts(PK),
+        // and the legacy snap_images.post_id route becomes its own PK lookup.
+        //   EXISTS vp (published AND (pivot(img,vp) OR img.post_id=vp))
+        //     == EXISTS(pivot->published post) OR EXISTS(published post = img.post_id)
+        // (distributing the existential over the OR -- identical result set).
+        $published = "vp.status = 'published' AND vp.created_at <= NOW()";
+        // Has at least one published owner (by either ownership route).
+        $ownerPublished = "(
+                EXISTS (SELECT 1 FROM snap_post_images vfpi
+                          JOIN snap_posts vp ON vp.id = vfpi.post_id
+                         WHERE vfpi.image_id = {$img}.id AND {$published})
+             OR EXISTS (SELECT 1 FROM snap_posts vp
+                         WHERE vp.id = {$img}.post_id AND {$published})
+            )";
+        // Has at least one published owner that does NOT exclude it.
+        $ownerVisible = "(
+                EXISTS (SELECT 1 FROM snap_post_images vgpi
+                          JOIN snap_posts vp ON vp.id = vgpi.post_id
+                         WHERE vgpi.image_id = {$img}.id AND {$published} AND vp.{$flag} = 0)
+             OR EXISTS (SELECT 1 FROM snap_posts vp
+                         WHERE vp.id = {$img}.post_id AND {$published} AND vp.{$flag} = 0)
+            )";
         // Hidden only if a qualifying owner exists AND none of them is visible.
-        return "
-               AND NOT (
-                    EXISTS (
-                        SELECT 1 FROM snap_posts vp
-                         WHERE vp.status = 'published' AND vp.created_at <= NOW()
-                           AND {$owner}
-                    )
-                AND NOT EXISTS (
-                        SELECT 1 FROM snap_posts vp
-                         WHERE vp.status = 'published' AND vp.created_at <= NOW()
-                           AND vp.{$flag} = 0
-                           AND {$owner}
-                    )
-               )";
+        return " AND NOT ({$ownerPublished} AND NOT {$ownerVisible})";
     }
 
     private function qualify(string $alias, string $column): string {

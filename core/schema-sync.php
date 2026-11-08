@@ -534,6 +534,15 @@ function snap_schema_sync(PDO $pdo): array {
             "ALTER TABLE `snap_images` ADD INDEX `idx_images_status_sort` (`img_status`, `sort_order`, `id`)"],
         ['snap_images', 'idx_images_status_date',
             "ALTER TABLE `snap_images` ADD INDEX `idx_images_status_date` (`img_status`, `img_date`)"],
+        // 0.7.987D (CT110 outage) — the archive COUNT/LIST excludes images that
+        // are a published post's signature via NOT EXISTS (... WHERE
+        // p.signature_image_id = i.id ...). snap_posts had no index on that
+        // column, so the subquery scanned snap_posts for every image row. The
+        // imageFilter() pivot rewrite already rides existing keys (snap_post_images
+        // uq_image, snap_posts PRIMARY); this one index makes the signature
+        // exclusion an index seek too.
+        ['snap_posts', 'idx_posts_signature_image',
+            "ALTER TABLE `snap_posts` ADD INDEX `idx_posts_signature_image` (`signature_image_id`)"],
     ];
 
     // The album_slug UNIQUE key is conditional on the pre-flight above, so it

@@ -232,7 +232,8 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
   KEY `idx_status` (`status`),
   KEY `idx_created_at` (`created_at`),
   KEY `idx_post_type` (`post_type`),
-  KEY `idx_trigram` (`trigram_id`)
+  KEY `idx_trigram` (`trigram_id`),
+  KEY `idx_posts_signature_image` (`signature_image_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
