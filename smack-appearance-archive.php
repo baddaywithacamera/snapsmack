@@ -125,6 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
         $upsert_rule = function(string &$blob, string $marker, string $rule): void {
             $blob = preg_replace('/' . preg_quote($marker, '/') . '[^\n]*\n?/', '', (string)$blob);
             $blob = rtrim($blob);
+            // An empty rule removes the CMS preset without touching skin CSS.
+            if ($rule === '') return;
             if (strpos($blob, '/* SKIN_END */') !== false) {
                 $blob = str_replace('/* SKIN_END */', '/* SKIN_END */' . "\n" . $rule, $blob);
             } else {
@@ -197,6 +199,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
         // is already a containing block for its ::after -- do NOT set position here
         // or the wall layout breaks. Just the overlay.
         $masonry_rule = "/* arch_opt:masonry_border */ #justified-grid .justified-item::after { {$overlay} }";
+        // None means no CMS frame declarations, including positioning/overlays.
+        // Remove both old marker rules so the skin's own shadow remains intact.
+        if ($tfp === 'none') {
+            $grid_rule = '';
+            $masonry_rule = '';
+        }
         $upsert_rule($blob, '/* arch_opt:grid_border */', $grid_rule);
         $upsert_rule($blob, '/* arch_opt:masonry_border */', $masonry_rule);
 
