@@ -288,6 +288,7 @@ try {
         // is still in hand; the component that prints it has none. Same call
         // public-runtime makes, for the same reason.
         require_once __DIR__ . '/core/consent-runtime.php';
+        require_once __DIR__ . '/core/thomas-uid.php';
         $GLOBALS['snapsmack_consent'] = snapsmack_consent_prepare($pdo, $settings);
 
         $_smacktalk = snapsmack_smacktalk_request($pdo, $settings, [

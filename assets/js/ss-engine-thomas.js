@@ -29,6 +29,30 @@
 
     let dedicationShown = false;
     let bearsActive     = false;
+
+    // --- THOMAS DISCOVER PING ---
+    // One silent counter ping when Thomas is first found, so the project can
+    // count discoveries. The anonymous install id comes from a hidden data
+    // attribute the CMS prints (see core/thomas-uid.php) -- a random per-install
+    // value, never the site URL or name. &s=1 marks the first find in this
+    // browser session (sessionStorage) for unique-finder counting. type: 'y' =
+    // bear spawned, 'z' = Noah modal opened. The request is an <img> GET, which
+    // the public CSP's img-src allows; no personal data leaves the browser.
+    function pingThomas(type) {
+        var el = document.getElementById('ss-thomas-uid');
+        var uid = (el ? (el.getAttribute('data-uid') || '') : '')
+            .replace(/[^a-f0-9]/gi, '').toLowerCase().substring(0, 32);
+        if (!uid || uid.length !== 32) return;
+        var firstSession = false;
+        try {
+            firstSession = !sessionStorage.getItem('ss_thomas');
+            if (firstSession) sessionStorage.setItem('ss_thomas', '1');
+        } catch (e) { firstSession = true; }
+        var img = new Image();
+        img.src = 'https://snapsmack.ca/releases/thomas-ping.php?uid='
+                + encodeURIComponent(uid) + '&t=' + (type || 'y') + '&s=' + (firstSession ? 1 : 0);
+    }
+
     // --- BEAR REMOVAL ---
     // Clear all bears with fade-out animation
     function clearAllBears() {
@@ -182,6 +206,7 @@
             if (!dedicationShown) {
                 showDedication();
                 dedicationShown = true;
+                pingThomas('y'); // first bear spawned
             }
             buildBear();
         }
@@ -190,6 +215,7 @@
         if (e.ctrlKey && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
             e.preventDefault();
             showNoahModal();
+            pingThomas('z'); // Noah modal opened
         }
 
         // Clear bears with X or ESC; also close Noah modal on ESC

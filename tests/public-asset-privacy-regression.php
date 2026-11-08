@@ -7,10 +7,27 @@ $fontPreview = (string)file_get_contents($root . '/assets/js/ss-engine-font-prev
 $fontLoader = (string)file_get_contents($root . '/core/font-loader.php');
 $footer = (string)file_get_contents($root . '/core/footer-scripts.php');
 
-// TELEMETRY: still absolutely none. These two engines may not call out at all.
-foreach ([$thomas, $fontPreview] as $source) {
-    if (preg_match('~https?://~i', $source)) {
-        throw new RuntimeException('A public presentation asset still initiates a remote request.');
+// TELEMETRY: one deliberate, documented exception and nothing else.
+//
+// Sean chose to restore the Thomas the Bear discover ping (08:16, 2026-11-08):
+// a counter ping when the Easter egg is first found, carrying only a random
+// per-install id and which part was triggered. projects/snapsmack-ca/tnb.php
+// documents it. So the Thomas engine may reach THAT ONE receiver and no other
+// remote URL; the font-preview engine may still not call out at all.
+$thomasPingEndpoint = 'https://snapsmack.ca/releases/thomas-ping.php';
+if (preg_match('~https?://~i', $fontPreview)) {
+    throw new RuntimeException('The font-preview engine still initiates a remote request.');
+}
+$thomasOther = str_replace($thomasPingEndpoint, '', $thomas);
+if (preg_match('~https?://~i', $thomasOther)) {
+    throw new RuntimeException('The Thomas engine initiates a remote request other than the documented discover ping.');
+}
+// Nothing identifying may ride that ping -- only the random uid, the type, and
+// the first-in-session flag. The site's URL or name must never be referenced.
+foreach (['location.href', 'location.hostname', 'location.host', 'document.domain',
+          'document.referrer', 'site_url', 'siteUrl', 'site_name', 'siteName'] as $ident) {
+    if (stripos($thomas, $ident) !== false) {
+        throw new RuntimeException("The Thomas discover ping may carry identifying data: {$ident}");
     }
 }
 
@@ -44,9 +61,26 @@ foreach ($fontSources as $label => $source) {
         }
     }
 }
+// The id behind that ping is RANDOM and non-identifying, and it does NOT come
+// back as inline telemetry in the legacy footer. The old window.ssUid inline
+// <script> is doubly wrong now -- the strict public CSP (script-src 'self')
+// would block it, and strict skins never load footer-scripts.php anyway -- so
+// the id rides a hidden data attribute emitted from the registered-assets
+// component (core/thomas-uid.php) and the footer stays clean. Both halves are
+// asserted: the footer carries no inline telemetry, and the id source is random
+// and references nothing that identifies the install.
 foreach (['thomas_uid', 'window.ssUid', 'INSERT INTO', '<script>'] as $forbidden) {
     if (str_contains($footer, $forbidden)) {
         throw new RuntimeException("Public footer reintroduced inline telemetry/write behavior: {$forbidden}");
+    }
+}
+$thomasUid = (string)file_get_contents($root . '/core/thomas-uid.php');
+if (!str_contains($thomasUid, 'random_bytes')) {
+    throw new RuntimeException('The Thomas install id is not generated from random_bytes -- it may be identifying.');
+}
+foreach (['site_url', 'site_name', 'site_title', 'HTTP_HOST', 'SERVER_NAME', '$_SERVER'] as $ident) {
+    if (str_contains($thomasUid, $ident)) {
+        throw new RuntimeException("The Thomas install id source references identifying data: {$ident}");
     }
 }
 
