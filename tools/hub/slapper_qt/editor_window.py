@@ -1508,6 +1508,7 @@ class EditorWindow(QMainWindow):
         curve_section = Accordion("TONE CURVE", expanded=False)
         self.curve_editor = CurveEditor()
         self.curve_editor.changed.connect(self._on_curve_changed)
+        self.curve_editor.committed.connect(self._on_commit)
         curve_section.add(self.curve_editor)
         inner_layout.addWidget(curve_section)
         self._sections["TONE CURVE"] = curve_section
@@ -4259,9 +4260,8 @@ class EditorWindow(QMainWindow):
         if target is None:
             return
         target[key] = points
-        self.doc.record("Tone curve")
+        self._interactive_render = True
         self._schedule_render()
-        self._update_title()
 
     def reset_all(self):
         target = self.active_adjustments()

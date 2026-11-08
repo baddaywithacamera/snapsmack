@@ -71,28 +71,32 @@ def colour_range_mask(image, hue, hue_range, minimum_saturation=0,
     """Select pixels by circular hue distance, saturation, and luminance."""
     hsv = image.convert("RGB").convert("HSV")
     h_band, s_band, v_band = hsv.split()
-    output = Image.new("L", image.size)
     centre = (float(hue) % 360) / 360 * 255
     reach = max(1.0, float(hue_range) / 360 * 255)
     feather = max(1.0, float(softness) / 100 * 64)
     min_sat = float(minimum_saturation) / 100 * 255
     min_lum = float(minimum_luminance) / 100 * 255
     max_lum = float(maximum_luminance) / 100 * 255
-    values = []
-    for h, saturation, luminance in zip(h_band.getdata(), s_band.getdata(),
-                                        v_band.getdata()):
-        distance = min(abs(h - centre), 255 - abs(h - centre))
-        hue_weight = 1.0 if distance <= reach else max(
-            0.0, 1.0 - (distance - reach) / feather)
-        sat_weight = 1.0 if saturation >= min_sat else max(
-            0.0, 1.0 - (min_sat - saturation) / feather)
-        lower_weight = 1.0 if luminance >= min_lum else max(
-            0.0, 1.0 - (min_lum - luminance) / feather)
-        upper_weight = 1.0 if luminance <= max_lum else max(
-            0.0, 1.0 - (luminance - max_lum) / feather)
-        lum_weight = lower_weight * upper_weight
-        values.append(int(255 * hue_weight * sat_weight * lum_weight))
-    output.putdata(values)
+    # The weights depend on byte-valued channels, so calculate each of the
+    # 256 possibilities once rather than running Python for every pixel.
+    hue_weights = []
+    sat_weights = []
+    lum_weights = []
+    for value in range(256):
+        distance = min(abs(value - centre), 255 - abs(value - centre))
+        hue_weights.append(1.0 if distance <= reach else max(
+            0.0, 1.0 - (distance - reach) / feather))
+        sat_weights.append(1.0 if value >= min_sat else max(
+            0.0, 1.0 - (min_sat - value) / feather))
+        lower = 1.0 if value >= min_lum else max(
+            0.0, 1.0 - (min_lum - value) / feather)
+        upper = 1.0 if value <= max_lum else max(
+            0.0, 1.0 - (value - max_lum) / feather)
+        lum_weights.append(lower * upper)
+    values = (255 * np.asarray(hue_weights)[np.asarray(h_band)]
+              * np.asarray(sat_weights)[np.asarray(s_band)]
+              * np.asarray(lum_weights)[np.asarray(v_band)])
+    output = Image.fromarray(values.astype(np.uint8), "L")
     return ImageOps.invert(output) if invert else output
 
 # ===== SNAPSMACK EOF =====

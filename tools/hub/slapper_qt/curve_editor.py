@@ -21,6 +21,7 @@ CHANNEL_COLOUR = {"curve": "#dddddd", "curve_red": "#ff5a5a",
 
 class _Canvas(QWidget):
     changed = Signal(str, list)      # adjustment key, points
+    committed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -29,6 +30,7 @@ class _Canvas(QWidget):
         self._curves = {key: [list(p) for p in IDENTITY] for _n, key in CHANNELS}
         self._key = "curve"
         self._drag = None
+        self._gesture_changed = False
 
     def set_curves(self, adjustments):
         for _n, key in CHANNELS:
@@ -68,6 +70,8 @@ class _Canvas(QWidget):
             if index is not None and 0 < index < len(self._points()) - 1:
                 self._points().pop(index)
                 self._emit()
+                self.committed.emit(self._key)
+                self._gesture_changed = False
             return
         if event.button() != Qt.LeftButton:
             return
@@ -97,9 +101,15 @@ class _Canvas(QWidget):
         self._emit()
 
     def mouseReleaseEvent(self, event):
+        if event.button() != Qt.LeftButton:
+            return
         self._drag = None
+        if self._gesture_changed:
+            self._gesture_changed = False
+            self.committed.emit(self._key)
 
     def _emit(self):
+        self._gesture_changed = True
         self.changed.emit(self._key, [list(p) for p in self._points()])
         self.update()
 
@@ -140,6 +150,7 @@ class CurveEditor(QWidget):
     """Channel picker + the curve canvas."""
 
     changed = Signal(str, list)
+    committed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -163,6 +174,7 @@ class CurveEditor(QWidget):
         layout.addLayout(tabs)
         self.canvas = _Canvas()
         self.canvas.changed.connect(self.changed)
+        self.canvas.committed.connect(self.committed)
         layout.addWidget(self.canvas, 0, Qt.AlignHCenter)
 
     def set_curves(self, adjustments):
