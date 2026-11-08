@@ -135,6 +135,7 @@ require __DIR__ . '/sc-layout-top.php';
     <div class="sc-stat__label">Sites w/ Discovers</div>
   </div>
 </div>
+<p class="sc-dim">Totals to 29 Sep 2026 &mdash; the anonymous discover ping was retired that day on privacy grounds. The bears and the story modal still work on every site; there is just no counter ping, so these numbers no longer move.</p>
 <?php endif; ?>
 
 <div class="sc-box">
