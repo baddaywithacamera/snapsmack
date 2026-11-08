@@ -303,7 +303,7 @@
     },
     "core-ownership-gate-regression.php": {
         "assertions": 3,
-        "predicates": 6,
+        "predicates": 10,
         "thresholds": [
             20
         ]

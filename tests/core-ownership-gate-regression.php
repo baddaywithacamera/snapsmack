@@ -83,11 +83,27 @@ $presSrc = (string)@file_get_contents($root . '/core/skin-presentation.php');
 gx(substr_count($presSrc, "'snapsmack-owner-gutter'") === 1,
    'the owner gutter is emitted from exactly one place in the presentation builder');
 
+echo "\nG1 (slice) -- CORE STYLES A SKIN-OWNED SELECTOR ONLY VIA A VARIABLE OR A CORE OVERLAY\n";
+// The two recurring G1 offenders, locked: core must not put a bare visual
+// declaration (border, box-shadow, gap) on a selector the skin owns. It may
+// expose a CSS variable the skin reads (the gutter), or style a core-owned
+// pseudo-element (the frame's ::after overlay) -- never the skin's own tile
+// selector directly. The full G1 (a static map of every skin-owned selector vs
+// every core emission) is the larger follow-up; this locks what broke.
+gx((bool)preg_match("/'snapsmack-owner-gutter'[^;]*'--grid-gap'/", $presSrc),
+   'G1a: core exposes the gutter as the CSS variable --grid-gap, not a bare gap on a skin selector');
+$save = (string)@file_get_contents($root . '/smack-appearance-archive.php');
+gx(str_contains($save, '{$grid_sel} { position: relative !important; } {$grid_after} {'),
+   'G1b: core frames the thumbnail on a ::after overlay; the skin\'s own tile selector gets only a positioning context');
+gx(str_contains($save, '::after') && !preg_match('/\{\$grid_sel\}\s*\{[^}]*box-shadow/', $save),
+   'G1b: the skin\'s own tile selector carries no bare border/box-shadow emitted by core');
+
 echo "\n{$pass} passed, {$fail} failed\n";
 if ($fail > 0) { echo "Core ownership gate: FAIL ({$fail}).\n"; exit(1); }
 echo "Core ownership gate: PASS ({$pass} assertions).\n";
-echo "  NOT CHECKED: G1 (no core visual declaration for a skin-owned selector at\n";
-echo "  all) needs a static map of skin-owned selectors vs every core CSS emission;\n";
-echo "  it is drafted in Muse's rule text and is the next slice of this gate.\n";
+echo "  NOT CHECKED: the FULL G1 -- a static map of every skin-owned selector vs\n";
+echo "  every core CSS emission. The slice above locks the two offenders that broke\n";
+echo "  (gutter variable, frame overlay); the full map is the larger follow-up in\n";
+echo "  Muse's rule draft.\n";
 
 // ===== SNAPSMACK EOF =====
