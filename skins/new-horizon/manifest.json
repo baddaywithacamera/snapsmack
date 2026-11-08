@@ -2,7 +2,7 @@
     "schema_version": 2,
     "name": "NEW HORIZON",
     "oh_snap_ready": true,
-    "version": "1.3.32",
+    "version": "1.3.33",
     "scrolltime_pages": [
         "archive"
     ],
@@ -123,6 +123,18 @@
             "unit": "%",
             "selector": "#browse-grid",
             "property": "--ss-grid-width"
+        },
+        "archive_thumb_padding": {
+            "section": "ARCHIVE GRID",
+            "admin_page": "archive",
+            "type": "range",
+            "label": "Thumbnail Padding (Square & Cropped)",
+            "default": "0",
+            "min": "0",
+            "max": "30",
+            "unit": "px",
+            "selector": "#browse-grid.square-grid, #browse-grid.cropped-grid",
+            "property": "--ss-thumb-padding"
         },
         "archive_gap": {
             "admin_page": "archive",

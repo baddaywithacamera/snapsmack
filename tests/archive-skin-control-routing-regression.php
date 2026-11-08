@@ -20,6 +20,8 @@ $validate = substr($src, $start, $end - $start);
 foreach ([
     [['archive_thumb_size'=>'350','archive_gap'=>'50'], ['archive_thumb_size'=>'350','archive_gap'=>'50']],
     [['archive_thumb_size'=>'999','archive_gap'=>'-10'], ['archive_thumb_size'=>'400','archive_gap'=>'0']],
+    [['archive_thumb_padding'=>'16'], ['archive_thumb_padding'=>'16']],
+    [['archive_thumb_padding'=>'999'], ['archive_thumb_padding'=>'30']],
     [['active_skin'=>'x','archive_thumb_size'=>['x'],'archive_gap'=>'1px'], []],
     ['malformed', []],
 ] as [$posted, $expected]) {
