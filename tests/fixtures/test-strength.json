@@ -98,7 +98,7 @@
     },
     "archive-frame-rule-survives-recompile-regression.php": {
         "assertions": 0,
-        "predicates": 13,
+        "predicates": 17,
         "thresholds": []
     },
     "archive-item-info-and-comments-regression.php": {
@@ -145,6 +145,11 @@
     "archive-settings-reach-the-page-regression.php": {
         "assertions": 9,
         "predicates": 8,
+        "thresholds": []
+    },
+    "archive-skin-control-routing-regression.php": {
+        "assertions": 18,
+        "predicates": 15,
         "thresholds": []
     },
     "archive-thumb-edit-link-regression.php": {
