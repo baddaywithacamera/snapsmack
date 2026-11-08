@@ -31,7 +31,7 @@ require_once $root . '/tools/_build/generate-skin-version-baseline.php';
 
 $baselinePath = $root . '/tests/fixtures/skin-version-content-baseline.json';
 $baseline = json_decode((string)file_get_contents($baselinePath), true, 512, JSON_THROW_ON_ERROR);
-if (($baseline['schema_version'] ?? null) !== 1) {
+if (($baseline['schema_version'] ?? null) !== 2) {
     throw new RuntimeException('Skin version/content baseline schema drifted.');
 }
 
@@ -51,14 +51,23 @@ foreach ($current as $skin => $now) {
     }
     $sameVersion = (string)$was['version'] === (string)$now['version'];
     $sameFiles = (string)$was['files_sha256'] === (string)$now['files_sha256'];
+    // 986D: a manifest option's selector/property/default/choices generates the
+    // public CSS, so a change to it alters what an installed site renders even
+    // though manifest.json is outside the file digest. It counts as content.
+    $sameManifestCss = (string)($was['manifest_css_sha256'] ?? '') === (string)($now['manifest_css_sha256'] ?? '');
 
     if ($sameVersion && !$sameFiles) {
         $failures[] = "{$skin}: files changed but the version is still {$now['version']}. "
             . 'Sites install by version, so they would never receive this change. '
             . 'Bump the version and regenerate the baseline in the same commit.';
-    } elseif (!$sameVersion && $sameFiles) {
+    } elseif ($sameVersion && !$sameManifestCss) {
+        $failures[] = "{$skin}: a manifest option's selector/property/default changed but the "
+            . "version is still {$now['version']}. The option generates the public CSS, so sites "
+            . 'installed by version would never receive the change (this is exactly how SS-1214 hid '
+            . 'the dead masthead selector). Bump the version and regenerate the baseline in the same commit.';
+    } elseif (!$sameVersion && $sameFiles && $sameManifestCss) {
         $failures[] = "{$skin}: version moved {$was['version']} -> {$now['version']} with no "
-            . 'file change. Regenerate the baseline, or drop the bump.';
+            . 'file or manifest-option change. Regenerate the baseline, or drop the bump.';
     }
 }
 
