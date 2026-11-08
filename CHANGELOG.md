@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.987D - 2026-11-07
+
+- Archive thumbnail frames are visible again. The 986D frame was drawn behind the photo and never showed; it now draws on an overlay on top of the photo, at the image edge, clipped by nothing and without moving the photo. A real-browser pixel test guards it. Re-save Archive Appearance once after installing to apply the stored rule.
+- NEW HORIZON 1.3.32: the masthead Header Font Size control now sits directly under the Header Font picker in the Typography section, where it belongs, instead of in Header & Nav. (The size itself is unchanged; a previous rem value from the removed companion slider does not carry over — set the pixel size once.)
+- TRUE GRIT 1.3.26 and GLIDE 0.1.27: their landing, archive and hashtag pages now scroll endlessly past the first batch (through the shared pager, with a no-JS fallback link), the same as the other paged skins.
+
 ## 0.7.986D - 2026-11-07
 
 - Archive, hashtag, tag and landing pages were running a per-image visibility check that scanned the whole posts table for every photograph, which pegged a site's database once its library grew (introduced one day earlier in the 983D portfolio-exclusion work). Rewritten to use the existing indexes, with identical results; the heavy query drops from minutes to milliseconds, and a prod-sized benchmark now guards it.
