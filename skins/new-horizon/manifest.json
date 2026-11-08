@@ -225,6 +225,7 @@
             }
         },
         "header_font_family": {
+      "no_size_slider": true,
             "section": "TYPOGRAPHY",
             "type": "select",
             "label": "Header Font (Text Logo)",
