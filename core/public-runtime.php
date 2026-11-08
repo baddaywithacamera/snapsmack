@@ -12,6 +12,7 @@ require_once __DIR__ . '/public-controller.php';
 require_once __DIR__ . '/parser.php';
 require_once __DIR__ . '/archive-controls.php';
 require_once __DIR__ . '/consent-runtime.php';
+require_once __DIR__ . '/thomas-uid.php';
 
 /** Expand CMS-owned static-page shortcodes before the presentation-only skin sees them. */
 function snapsmack_public_parse_page_content(PDO $pdo, array $response): array

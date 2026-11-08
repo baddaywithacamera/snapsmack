@@ -1361,8 +1361,8 @@
         "thresholds": []
     },
     "public-asset-privacy-regression.php": {
-        "assertions": 5,
-        "predicates": 9,
+        "assertions": 9,
+        "predicates": 13,
         "thresholds": []
     },
     "public-controller-boundary-regression.php": {
@@ -2070,6 +2070,11 @@
             4,
             30
         ]
+    },
+    "thomas-uid-emission-regression.php": {
+        "assertions": 2,
+        "predicates": 11,
+        "thresholds": []
     },
     "thumb-size-single-control-regression.php": {
         "assertions": 0,

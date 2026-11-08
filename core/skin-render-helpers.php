@@ -787,6 +787,15 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             snapsmack_consent_banner_tag();
             $html .= (string)ob_get_clean();
         }
+        // And the anonymous Thomas discover-ping id, same place and reason: a
+        // hidden data attribute the Easter-egg engine reads, since the inline
+        // window.ssUid it used to ride is blocked by the strict public CSP and
+        // lived only on the legacy footer path. See core/thomas-uid.php.
+        if (function_exists('snapsmack_thomas_uid_tag')) {
+            ob_start();
+            snapsmack_thomas_uid_tag();
+            $html .= (string)ob_get_clean();
+        }
     } elseif ($name === 'navigation') {
         $html = '<nav class="navigation" aria-label="Primary"><ul class="nav-menu">';
         foreach (($data['items'] ?? []) as $item) {
