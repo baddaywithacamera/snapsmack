@@ -119,38 +119,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
             }
         };
 
-        // Thumbnail frame preset — covers all grid types across all skins.
-        // Each preset carries separate CSS for grid thumbs vs justified grid:
-        //   grid: border (outside) or inset box-shadow (inside)
-        //   justified: outline with offset 0 (outside) or negative (inside)
-        $no_border_grid = 'border: none !important; box-shadow: none !important;';
-        $no_border_just = 'outline: none !important;';
-        $thumb_frame_presets = [
-            'none'                  => ['grid' => $no_border_grid,                                                              'just' => $no_border_just],
-            'out_1px_grey'          => ['grid' => 'border: 1px solid #666666 !important; box-shadow: none !important;',         'just' => 'outline: 1px solid #666666 !important; outline-offset: 0 !important;'],
-            'out_1px_white'         => ['grid' => 'border: 1px solid #ffffff !important; box-shadow: none !important;',         'just' => 'outline: 1px solid #ffffff !important; outline-offset: 0 !important;'],
-            'out_1px_dark'          => ['grid' => 'border: 1px solid #333333 !important; box-shadow: none !important;',         'just' => 'outline: 1px solid #333333 !important; outline-offset: 0 !important;'],
-            'out_3px_grey'          => ['grid' => 'border: 3px solid #666666 !important; box-shadow: none !important;',         'just' => 'outline: 3px solid #666666 !important; outline-offset: 0 !important;'],
-            'out_3px_white'         => ['grid' => 'border: 3px solid #ffffff !important; box-shadow: none !important;',         'just' => 'outline: 3px solid #ffffff !important; outline-offset: 0 !important;'],
-            'in_1px_grey'           => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 1px #666666 !important;',  'just' => 'outline: 1px solid #666666 !important; outline-offset: -1px !important;'],
-            'in_1px_white'          => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 1px #ffffff !important;',  'just' => 'outline: 1px solid #ffffff !important; outline-offset: -1px !important;'],
-            'in_3px_grey'           => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #666666 !important;',  'just' => 'outline: 3px solid #666666 !important; outline-offset: -3px !important;'],
-            'in_3px_white'          => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #ffffff !important;',  'just' => 'outline: 3px solid #ffffff !important; outline-offset: -3px !important;'],
-            // Double frame: layered lines framing the thumb. INSET on the grid too,
-            // not external (986D, PM 19:00). An external box-shadow (0 0 0 Npx) is
-            // painted OUTSIDE the tile's box, so any ancestor with overflow:hidden --
-            // the aspect-ratio crop box NEW HORIZON and the grid skins wrap each thumb
-            // in -- clips it, and Sean saw the double frame vanish on his archive. The
-            // inset equivalent draws the same lines INSIDE the box, where overflow
-            // cannot reach them; the justified variant was already inset for the same
-            // reason (tight gaps). Grid keeps its own 3/8/9px radii, now inset.
-            'dbl_grey'  => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #666666, inset 0 0 0 8px #0d0d0d, inset 0 0 0 9px #666666 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #666666, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #666666 !important;'],
-            'dbl_white' => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #d4d4d4, inset 0 0 0 8px #0d0d0d, inset 0 0 0 9px #d4d4d4 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #d4d4d4, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #d4d4d4 !important;'],
-            'dbl_dark'  => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #333333, inset 0 0 0 8px #0d0d0d, inset 0 0 0 9px #333333 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #333333, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #333333 !important;'],
+        // Thumbnail frame preset. (987D -- the frame is drawn on a ::after OVERLAY
+        // that sits ON TOP of the thumbnail image, because that is the only place
+        // it is actually visible. Measured on Sean's live /archive: an inset
+        // box-shadow on the tile element (986D) paints UNDER the opaque image that
+        // fills the tile, and an outside box-shadow (pre-986D) is clipped by the
+        // aspect-ratio crop box. The overlay is pointer-events:none and inset:0 --
+        // edge-aligned, on top of the photo -- so every preset reads as a line at
+        // the image edge, never clipped, never under the photo, and the photo's
+        // geometry is untouched. A real-browser pixel test guards it.
+        //
+        // One inset box-shadow per preset now (the overlay is the same shape for
+        // grid and justified). out_ and in_ both read as a line at the edge; the
+        // pre-987D outside/inside distinction could not survive the clip/under-image
+        // problem and was never reliably visible. Double frame keeps 3/8/9px.
+        $thumb_frame_shadows = [
+            'none'          => 'none',
+            'out_1px_grey'  => 'inset 0 0 0 1px #666666',
+            'out_1px_white' => 'inset 0 0 0 1px #ffffff',
+            'out_1px_dark'  => 'inset 0 0 0 1px #333333',
+            'out_3px_grey'  => 'inset 0 0 0 3px #666666',
+            'out_3px_white' => 'inset 0 0 0 3px #ffffff',
+            'in_1px_grey'   => 'inset 0 0 0 1px #666666',
+            'in_1px_white'  => 'inset 0 0 0 1px #ffffff',
+            'in_3px_grey'   => 'inset 0 0 0 3px #666666',
+            'in_3px_white'  => 'inset 0 0 0 3px #ffffff',
+            'dbl_grey'      => 'inset 0 0 0 3px #666666, inset 0 0 0 8px #0d0d0d, inset 0 0 0 9px #666666',
+            'dbl_white'     => 'inset 0 0 0 3px #d4d4d4, inset 0 0 0 8px #0d0d0d, inset 0 0 0 9px #d4d4d4',
+            'dbl_dark'      => 'inset 0 0 0 3px #333333, inset 0 0 0 8px #0d0d0d, inset 0 0 0 9px #333333',
         ];
         $tfp = $_POST['settings']['archive_thumb_frame'] ?? 'none';
-        if (!isset($thumb_frame_presets[$tfp])) $tfp = 'none';
-        $tf = $thumb_frame_presets[$tfp];
+        if (!isset($thumb_frame_shadows[$tfp])) $tfp = 'none';
+        $frameShadow = $thumb_frame_shadows[$tfp];
         // WHICH ARCHIVES THIS CAN REACH, measured 6 November 2026 by rendering
         // all 30 skins' archives in square, cropped and masonry and asking the
         // DOM. It reaches FIVE: 50 SHADES and CHAPLIN via .fsog-archive-item,
@@ -165,9 +165,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
         // would quietly drop the owner's border the day that skin starts
         // emitting the class again, and a selector that matches nothing costs
         // nothing. It is recorded here rather than left to be rediscovered.
-        $grid_sel = '.square-grid .thumb-link, .cropped-grid .thumb-link, .fsog-archive-item .fsog-thumb, .rg-archive-item .rg-thumb';
-        $grid_rule    = "/* arch_opt:grid_border */ {$grid_sel} { {$tf['grid']} }";
-        $masonry_rule = "/* arch_opt:masonry_border */ #justified-grid .justified-item { {$tf['just']} }";
+        $grid_sel   = '.square-grid .thumb-link, .cropped-grid .thumb-link, .fsog-archive-item .fsog-thumb, .rg-archive-item .rg-thumb';
+        // The ::after selector list, one per grid selector.
+        $grid_after = implode(', ', array_map(
+            static fn(string $s): string => trim($s) . '::after',
+            explode(',', $grid_sel)
+        ));
+        // The overlay: a transparent layer on top of the image, clicks pass
+        // through, the frame drawn as the chosen inset shadow. box-sizing is set
+        // so a future border-based preset would also stay inside the edge.
+        $overlay = "content: '' !important; position: absolute !important; inset: 0 !important; "
+                 . "pointer-events: none !important; box-sizing: border-box !important; box-shadow: {$frameShadow} !important;";
+        // GRID: the tile is static, so it needs a positioning context for the
+        // overlay. position:relative does not move an in-flow element, so photo
+        // geometry is unchanged.
+        $grid_rule = "/* arch_opt:grid_border */ {$grid_sel} { position: relative !important; } {$grid_after} { {$overlay} }";
+        // JUSTIFIED/MASONRY: the wall engine positions each item ABSOLUTELY, so it
+        // is already a containing block for its ::after -- do NOT set position here
+        // or the wall layout breaks. Just the overlay.
+        $masonry_rule = "/* arch_opt:masonry_border */ #justified-grid .justified-item::after { {$overlay} }";
         $upsert_rule($blob, '/* arch_opt:grid_border */', $grid_rule);
         $upsert_rule($blob, '/* arch_opt:masonry_border */', $masonry_rule);
 
