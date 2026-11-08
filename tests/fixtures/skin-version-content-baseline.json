@@ -43,8 +43,8 @@
             "manifest_css_sha256": "e3c6f2c2fb571c6ca6442303d6bd25e1d9d93fb1a6753007f2318120d8af4393"
         },
         "glide": {
-            "version": "0.1.26",
-            "files_sha256": "61b1cd970c8c40c9fb5ca9835e5ec146e0ad06a4c41b6011c8c138986e5cd823",
+            "version": "0.1.27",
+            "files_sha256": "e2c50a4562c45354c9d7658ed7d6950912880a874b1c264be735c10398251ed9",
             "manifest_css_sha256": "9ad69417b2483da3f07caa8edc3381a11c066b03c0a95a5c7154c381b23ca395"
         },
         "heuristic": {
@@ -143,8 +143,8 @@
             "manifest_css_sha256": "49416b17f884f017c8a3d69fdca7ad1d279234d9a6d175241fc7f4b3852eec4f"
         },
         "true-grit": {
-            "version": "1.3.25",
-            "files_sha256": "0d895d5e23ba24c2182ad44db2067a6105f82cfcf75a8df9a9751e705776ff04",
+            "version": "1.3.26",
+            "files_sha256": "0fcecde76c331b98fc7480eeaacf25a9633f1f3f4abf0698482d2d078307e73a",
             "manifest_css_sha256": "1ab738f3b1f78b657cd75adcce960b87dd9f3d8c8842994c10f4f36c4d8e080e"
         },
         "writing-with-impact": {
