@@ -13,6 +13,8 @@
  *   unique_30d      int     — unique visitors, last 30 days
  *   active_since    string  — date of first published post (Y-m-d)
  *   version         string  — installed SnapSmack version
+ *   browsing_time_ms int|null — total engaged dwell (ms) over non-bot
+ *                            landing/archive hits; null when unavailable
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -112,6 +114,22 @@ try {
         } catch (Throwable $e) { /* snap_stats absent — keep the daily-based total */ }
     }
 
+    // Browsing time — total engaged dwell across non-bot landing/archive hits,
+    // the SAME source and filter the fleet scrolltime metric uses
+    // (core/multisite-api.php: snap_stats.dwell_ms, is_bot = 0, dwell_ms >= 10000,
+    // page_type IN ('landing','archive')). Aggregate only — no individual rows,
+    // no per-visitor data. NULL (not 0) when snap_stats or dwell_ms is absent, or
+    // when nothing engaged has been recorded yet, so the hover card shows a dash
+    // rather than a wrong zero.
+    $browsing_time_ms = null;
+    try {
+        $v = $pdo->query("
+            SELECT SUM(dwell_ms) FROM snap_stats
+            WHERE is_bot = 0 AND dwell_ms >= 10000 AND page_type IN ('landing','archive')
+        ")->fetchColumn();
+        $browsing_time_ms = ($v === null || $v === false) ? null : (int)$v;
+    } catch (Throwable $e) { /* snap_stats / dwell_ms absent — leave null (dash) */ }
+
     echo json_encode([
         'site_name'    => $settings['site_name']    ?? 'SnapSmack Site',
         'posts'        => $posts,
@@ -119,6 +137,7 @@ try {
         'unique_30d'   => (int)($stats['unique_30d']      ?? 0),
         'views_all'    => $views_all,
         'unique_all'   => (int)($stats_all['unique_all']  ?? 0),
+        'browsing_time_ms' => $browsing_time_ms,
         'active_since' => $since ?: null,
         'version'      => SNAPSMACK_VERSION_SHORT,
     ], JSON_UNESCAPED_SLASHES);
