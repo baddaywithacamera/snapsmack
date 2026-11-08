@@ -10,6 +10,8 @@
  */
 
 $_skin_demo_sites = [
+    'baddaywithacamera.ca'           => 'https://baddaywithacamera.ca',
+    'portalproject.photoblogs.fyi'   => 'https://portalproject.photoblogs.fyi',
     'portalproject.photoblogs.fyi'     => 'https://portalproject.photoblogs.fyi',
     'baddaywithacamera.ca'              => 'https://baddaywithacamera.ca',
     'unzucked.ca'                     => 'https://unzucked.ca',

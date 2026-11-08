@@ -345,7 +345,7 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="post-meta"><span class="post-date">November 8, 2026</span><span class="post-tag">Skins</span></div>
                 <h2><a href="#tilez-first-smacktalk">TILEZ: The First SMACKTALK Skin</a></h2>
                 <p>Some photographs need a caption. Some need the whole damn story. <strong>TILEZ is the first SMACKTALK skin</strong>, built for photography and writing that deserve equal billing.</p>
-                <p>The front page is an asymmetric wall of photographic tiles, with dates and story titles laid over the images. Open a tile and there is room for a proper post: paragraphs, multiple photographs, and an editorial sidebar. The photograph gets you through the door; the story has somewhere to go.</p>
+                <p>The front page is a vertical column based masonry wall, with dates and story titles laid over the images. Open a tile and there is room for a proper post: paragraphs, multiple photographs, and an editorial sidebar. The photograph gets you through the door; the story has somewhere to go.</p>
                 <p>It is running on <a href="https://baddaywithacamera.ca" target="_blank" rel="noopener">A Bad Day With a Camera</a>, where travel, everyday observations, and photography share the same home. No need to split the words and the pictures between two services.</p>
                 <p><a href="skins.php">See TILEZ and its screenshots in the skin gallery &rarr;</a></p>
             </article>
