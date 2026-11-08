@@ -98,7 +98,7 @@
     },
     "archive-frame-rule-survives-recompile-regression.php": {
         "assertions": 0,
-        "predicates": 8,
+        "predicates": 13,
         "thresholds": []
     },
     "archive-item-info-and-comments-regression.php": {
