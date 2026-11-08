@@ -102,6 +102,7 @@
             "migrated_from": "browse_cols"
         },
         "archive_thumb_size": {
+            "admin_page": "archive",
             "section": "ARCHIVE GRID",
             "type": "range",
             "label": "Thumbnail Size",
@@ -124,6 +125,7 @@
             "property": "--ss-grid-width"
         },
         "archive_gap": {
+            "admin_page": "archive",
             "section": "ARCHIVE GRID",
             "type": "range",
             "label": "Gap Between Thumbnails",
