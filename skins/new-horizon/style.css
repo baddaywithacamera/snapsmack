@@ -1188,4 +1188,29 @@ a.logo-area,
     text-align: center;
 }
 #nh-sentinel a { display: inline-block; padding: 12px; }
+/* Shared community markup uses ss-* classes rather than the legacy form. */
+#pane-comments .ss-community { padding: 24px 0 40px; }
+#pane-comments .ss-comments { margin-top: 20px; }
+#pane-comments .ss-comments-empty,
+#pane-comments .ss-comment-empty { margin: 0 0 20px; color: var(--text-primary, #ccc); font-size: 1rem; line-height: 1.5; }
+#pane-comments .ss-comment-guest-fields { display: flex; gap: 16px; margin-bottom: 8px; }
+#pane-comments .ss-comment-guest-fields input,
+#pane-comments .ss-comment-textarea {
+    min-width: 0;
+    min-height: 44px;
+    background: var(--bg-page, #111);
+    color: var(--text-primary, #ccc);
+    border: 1px solid var(--border-primary, #555);
+    border-radius: 0;
+    padding: 12px;
+    font: inherit;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+#pane-comments .ss-comment-guest-fields input { flex: 1; width: 100%; }
+#pane-comments .ss-comment-textarea { min-height: 96px; resize: vertical; }
+#pane-comments .ss-comment-guest-fields input::placeholder,
+#pane-comments .ss-comment-textarea::placeholder { color: var(--text-dim, #999); opacity: 1; }
+#pane-comments .ss-comment-guest-fields input:focus-visible,
+#pane-comments .ss-comment-textarea:focus-visible { outline: 2px solid var(--text-bright, #eee); outline-offset: 2px; }
 /* ===== SNAPSMACK EOF ===== */
