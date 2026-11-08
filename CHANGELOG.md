@@ -11,6 +11,15 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.988D - 2026-11-08
+
+- The Thomas the Bear Easter-egg discover ping is restored. Finding him (Ctrl+Shift+Y) or opening the Noah story (Ctrl+Shift+Z) sends one anonymous counter ping -- a random per-install id, which key was pressed, and a first-in-session flag, and nothing that identifies the site. It now reaches every skin: the id rides a hidden data attribute from the shared asset hook rather than the inline script the strict content-security-policy blocked, and the ping itself is a plain image request the policy already allows. The receiver on snapsmack.ca is live; re-install to pick up the restored ping.
+- Monospace skin fonts keep a monospace fallback again. The compiler was appending sans-serif after every chosen font, so a face like DotMatrix fell back to a proportional sans; it now falls back to 'Courier New', monospace -- what the hand-written skin CSS always intended -- so a masthead or footer reads correctly while the custom face loads or if it is unavailable. No change when the face is present.
+- The public stats endpoint adds browsing_time_ms: total engaged browsing time across non-bot landing and archive visits, for the snapsmack.ca gallery cards. It is aggregate only, with no per-visitor data, and is blank on a site that has not recorded any engaged time yet.
+- NEW HORIZON 1.3.33: the masthead tagline shows again -- the layout had dropped it even though the setting and its CSS were present -- and the logo link styling targets the right element (SS-1235). Archive Appearance now carries this skin's thumbnail size and gap controls directly, through the guarded scoped-settings path, plus an optional 0-30px inner thumbnail padding (default 0, so nothing changes until you set it).
+- Footer fonts on 50 SHADES, IMPACT PRINTER, NEW HORIZON and TRUE GRIT follow their own font control again, instead of a hardcoded family overriding it; a site that never set a footer font keeps its previous face. 50 SHADES 1.7.8, IMPACT PRINTER 2.1.24, TRUE GRIT 1.3.28.
+- TILEZ 0.2.75: a lighter scrollbar on the tile columns -- transparent track, light-grey thumb.
+
 ## 0.7.987D - 2026-11-07
 
 - Archive thumbnail frames are visible again. The 986D frame was drawn behind the photo and never showed; it now draws on an overlay on top of the photo, at the image edge, clipped by nothing and without moving the photo. A real-browser pixel test guards it. Re-save Archive Appearance once after installing to apply the stored rule.
