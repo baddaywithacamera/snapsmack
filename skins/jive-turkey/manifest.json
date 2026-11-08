@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "JIVE TURKEY",
-    "version": "0.1.45",
+    "version": "0.1.46",
     "scrolltime_pages": ["landing"],
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
