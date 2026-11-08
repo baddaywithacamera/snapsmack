@@ -637,8 +637,8 @@
         "predicates": 4,
         "thresholds": [
             2,
-            40,
-            40
+            39,
+            39
         ]
     },
     "forum-board-counter-regression.php": {

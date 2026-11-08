@@ -82,8 +82,13 @@ foreach (glob(dirname(__DIR__) . '/skins/*/manifest.json') ?: [] as $path) {
     }
 }
 
-fss_check($sliders >= 40, "only {$sliders} font size sliders found; this skin family has at least 40");
-fss_check($checked >= 40, "only {$checked} sliders were exercised");
+// Floor lowered 40 -> 39 for 0.7.986D. SS-1214 made NEW HORIZON's masthead font
+// a single control: header_font_family now carries no_size_slider (the size is
+// header_font_size alone), so its companion size slider is deliberately gone and
+// the loop above skips it. One fewer slider by design, not lost coverage -- every
+// remaining size slider is still exercised end to end.
+fss_check($sliders >= 39, "only {$sliders} font size sliders found; this skin family has at least 39");
+fss_check($checked >= 39, "only {$checked} sliders were exercised");
 
 if ($failures > 0) {
     fwrite(STDERR, "\nFont size slider regression FAILED with {$failures} problem(s).\n");
