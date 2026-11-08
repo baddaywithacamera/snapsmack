@@ -555,6 +555,12 @@ function snap_schema_sync(PDO $pdo): array {
             "ALTER TABLE `snap_images` ADD INDEX `idx_images_post_id` (`post_id`)"],
         ['snap_images', 'idx_images_checksum',
             "ALTER TABLE `snap_images` ADD INDEX `idx_images_checksum` (`img_checksum`)"],
+        // 0.7.989D (SQL audit B3) — img_slug unindexed, so SELECT ... WHERE
+        // img_slug = ? full-scanned: photographBySlug on every public photo view
+        // (core/public-repository.php:310) and the import slug-uniqueness probes
+        // in flkrfckr/threeacross/smackthemup/fediverse. One index seeks them all.
+        ['snap_images', 'idx_images_slug',
+            "ALTER TABLE `snap_images` ADD INDEX `idx_images_slug` (`img_slug`)"],
     ];
 
     // The album_slug UNIQUE key is conditional on the pre-flight above, so it

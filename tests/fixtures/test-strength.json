@@ -2007,9 +2007,10 @@
     },
     "stats-hotpath-index-benchmark.php": {
         "assertions": 6,
-        "predicates": 2,
+        "predicates": 3,
         "thresholds": [
             4,
+            120,
             120,
             150,
             200,
