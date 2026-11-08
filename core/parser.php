@@ -755,8 +755,9 @@ class SnapSmack {
         // --- [random_image] ---
         $content = preg_replace_callback('/\[random_image\]/i', function () use ($base) {
             try {
-                $stmt = $this->pdo->query("SELECT id, img_file, img_title, img_alt, img_thumb_aspect FROM snap_images WHERE img_status = 'published' ORDER BY RAND() LIMIT 1");
-                $img = $stmt->fetch(PDO::FETCH_ASSOC);
+                require_once __DIR__ . '/random-photographs.php';
+                $img = snap_random_public_images($this->pdo, 1,
+                    ['id','img_file','img_title','img_alt','img_thumb_aspect'])[0] ?? null;
                 if (!$img) return '';
                 $src = !empty($img['img_thumb_aspect']) ? $img['img_thumb_aspect'] : $img['img_file'];
                 return sprintf(

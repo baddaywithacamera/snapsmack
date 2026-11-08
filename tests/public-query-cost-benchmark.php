@@ -43,6 +43,23 @@ try {
     $next=$repository->justifiedPhotographFeed(200,200);
     qc(count(array_intersect(array_column($first,'id'),array_column($next,'id')))===0, 'metadata batches advance without duplicates');
     qc(!str_contains($archive, 'ALTER TABLE snap_albums ADD COLUMN'), 'archive GET no longer executes album schema DDL');
+    require_once dirname(__DIR__).'/core/random-photographs.php';
+    $start=microtime(true);
+    $old=$pdo->query("SELECT id FROM snap_images WHERE img_status='published' AND img_date<=NOW() ORDER BY RAND() LIMIT 400")->fetchAll();
+    $oldMs=(microtime(true)-$start)*1000;
+    $start=microtime(true);
+    $random=snap_random_public_images($pdo,400,['id']);
+    $newMs=(microtime(true)-$start)*1000;
+    qc(count($random)===400 && count(array_unique(array_column($random,'id')))===400, 'random display pool is bounded and unique');
+    $plan=$pdo->query("EXPLAIN SELECT id FROM snap_images WHERE id>=20000 AND img_status='published' AND img_date<=NOW() ORDER BY id LIMIT 50")->fetch(PDO::FETCH_ASSOC);
+    qc($plan['key']==='PRIMARY' && !str_contains($plan['Extra'],'filesort'), 'random floor walk uses primary index without random sort');
+    echo sprintf("TIMING 40000rows RAND %.2fms, range sampler %.2fms\n",$oldMs,$newMs);
+    $pdo->exec('DELETE FROM snap_images WHERE id NOT IN (2,20000,39999)');
+    $pdo->exec("INSERT INTO snap_images(id,img_status,img_date) VALUES(90000,'draft','2020-01-01'),(99999,'published','2099-01-01')");
+    $ids=array_column(snap_random_public_images($pdo,400,['id']),'id');sort($ids);
+    qc(array_map('intval',$ids)===[2,20000,39999], 'sparse small pool returns every eligible row, excludes drafts and future dates');
+    $pdo->exec('DELETE FROM snap_images');
+    qc(snap_random_public_images($pdo,1,['id'])===[], 'empty random pool returns no photograph');
     echo "$pass checks passed on40000 throwaway rows. No production database used.\n";
 } finally { $pdo->exec("DROP DATABASE `$db`"); }
 // ===== SNAPSMACK EOF =====

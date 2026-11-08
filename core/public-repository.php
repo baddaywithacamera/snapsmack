@@ -444,13 +444,11 @@ final class SnapPublicRepository
     }
 
     public function randomPhotographs(int $limit): array {
-        return $this->all(
-            "SELECT id,img_title,img_slug,img_alt,img_file,img_width,img_height,img_thumb_square,img_thumb_aspect,allow_comments
-             FROM snap_images
-             WHERE img_status='published' AND img_date <= NOW()
-             ORDER BY RAND() LIMIT ?",
-            [max(1, min(400, $limit))]
-        );
+        require_once __DIR__ . '/random-photographs.php';
+        return snap_random_public_images($this->pdo, $limit, [
+            'id','img_title','img_slug','img_alt','img_file','img_width',
+            'img_height','img_thumb_square','img_thumb_aspect','allow_comments',
+        ]);
     }
 
     public function publicAssetsByIds(array $ids): array {
