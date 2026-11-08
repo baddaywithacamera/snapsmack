@@ -30,7 +30,9 @@ def test_motion_blur_matches_legacy_samples():
 
 def test_zoom_blur_matches_legacy_samples():
     image = hb.FloatImage(np.random.default_rng(31).random((49, 73, 3), dtype=np.float32), ("R", "G", "B"))
-    strength, cx, cy = 28.0, image.width * .4, image.height * .6
+    strength = np.clip(28.0, .1, 100.0)
+    cx = image.width * np.clip(40.0, 0, 100) / 100.0
+    cy = image.height * np.clip(60.0, 0, 100) / 100.0
     samples = max(5, min(25, int(strength / 5) * 2 + 5))
     frames = []
     for index in range(samples):
