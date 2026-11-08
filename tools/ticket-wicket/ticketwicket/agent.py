@@ -53,7 +53,9 @@ COMMANDS = [
      "example": ENTRY + " post SS-1042 --dry-run",
      "notes": "REFUSES and exits 1 if the body still identifies anyone. Always "
               "--dry-run first; it prints exactly what would be published."},
-    {"name": "reply", "does": "QUEUE a reply. Does not send.",
+    {"name": "reply", "does": "Reply to a reporter. A FORUM reply to a published "
+     "ticket is delivered now (with the forum key); email, no key, or an "
+     "unpublished ticket queues instead.",
      "returns": "outbox row id",
      "args": ["ID", "--text T | --text-file F", "--channel email|forum",
               "--unwrap"],
@@ -90,7 +92,16 @@ COMMANDS = [
     {"name": "outbox", "does": "What is waiting to go out.",
      "returns": "queued rows", "args": ["--state queued|sent"],
      "example": ENTRY + " outbox --json",
-     "notes": "Nothing here has been sent. A separate armed sender delivers."},
+     "notes": "Forum replies are delivered by `deliver-forum`; email replies "
+              "wait here for the owner to send."},
+    {"name": "deliver-forum", "does": "The armed sender: deliver every queued "
+     "FORUM reply to its ticket's thread, and mark it sent.",
+     "returns": "delivered / skipped lists", "args": ["--forum-url URL", "--forum-key KEY"],
+     "example": ENTRY + " deliver-forum --json",
+     "notes": "Needs a forum key -- the credential stays separate from authoring. "
+              "Resolves the thread from the board if the store lost it; an "
+              "unpublished ticket is skipped and its reply kept. Email is never "
+              "sent here: that is the owner's."},
     {"name": "mod-check", "does": "Does my forum key have the role it needs?",
      "returns": "admin (bool), boards", "args": [],
      "example": ENTRY + " mod-check --json",
@@ -100,7 +111,11 @@ COMMANDS = [
 ]
 
 REFUSALS = [
-    "THERE IS NO send. Replies queue; a separate armed sender holds the only "
+    "A forum reply to a PUBLISHED ticket is delivered when you have the forum "
+    "key; otherwise it queues and `deliver-forum` (which also needs the key) "
+    "sends it. Email replies always queue -- the owner sends mail. "
+    "The credential is still held apart from authoring: no key, no delivery. "
+    "Older note, kept because the boundary still holds: a bad draft that cannot "
     "credential. A bad draft can be written and cannot be delivered.",
     "THERE IS NO delete. close, withdraw, merge. The record survives all three.",
     "post and reply REFUSE a hard-wrapped body, and refuse markdown. The "

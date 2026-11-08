@@ -238,6 +238,39 @@ def _board_id(forum, name: str) -> int:
     return forummod.board_id(forum, name)
 
 
+def _resolve_thread(s, f, ticket_id):
+    """The ticket's forum thread id, backfilling the store when the DB lost it.
+
+    A ticket published through FORUM CLI or by another seat never wrote its
+    thread id back into TICKET WICKET's own forum_thread, so a queued reply had
+    nowhere the tool knew to go. Here we trust the DB first, then find the thread
+    on the board by the ticket id in its title and record it, so next time it is
+    known.
+    """
+    try:
+        thread = int(getattr(s.get(ticket_id), "forum_thread", 0) or 0)
+    except Exception:
+        return 0
+    if thread > 0:
+        return thread
+    try:
+        data = f.search(ticket_id)
+        items = (data.get("threads") or data.get("items") or data.get("results")
+                 or (data if isinstance(data, list) else []))
+        for th in items:
+            if str(th.get("title") or "").strip().startswith(ticket_id):
+                tid = int(th.get("id") or 0)
+                if tid > 0:
+                    try:
+                        s.update(ticket_id, forum_thread=tid)
+                    except Exception:
+                        pass
+                    return tid
+    except Exception:
+        pass
+    return 0
+
+
 def cmd_reply(args):
     s = _store(args)
     text = args.text
@@ -267,9 +300,67 @@ def cmd_reply(args):
         row = s.enqueue(args.id, args.channel, body)
     except PermissionError as exc:
         print(str(exc), file=sys.stderr); return 1
+    # SS-1099: a forum reply to a PUBLISHED ticket is delivered now, with the
+    # forum key, instead of sitting unsent in the outbox forever. Delivery still
+    # needs the credential (the armed part); without a key, or for email, or for
+    # an unpublished ticket, it stays queued and `tw deliver-forum` drains it.
+    if args.channel == "forum" and args.forum_url and args.forum_key:
+        _f = forummod.Forum(args.forum_url, args.forum_key)
+        thread = _resolve_thread(s, _f, args.id)
+        if thread > 0:
+            try:
+                reply_id = _f.reply(thread, body)
+                s.mark_sent(row, f"forum reply {reply_id} on thread {thread}")
+                _out(args, {"outbox": row, "sent": True, "thread": thread, "reply": reply_id},
+                     f"Delivered to forum thread {thread} (reply {reply_id}), signed {sig}.")
+                return 0
+            except Exception as exc:
+                _out(args, {"outbox": row, "sent": False, "error": str(exc)},
+                     f"Queued for forum, signed {sig}. Delivery FAILED ({exc}); "
+                     f"it stays in the outbox for `tw deliver-forum`.")
+                return 0
     _out(args, {"outbox": row, "sent": False},
          f"Queued for {args.channel}, signed {sig}. "
-         f"NOT SENT — the sender is armed separately.")
+         + ("NOT SENT — email is the owner's to send."
+            if args.channel == "email"
+            else "NOT SENT — no forum key, or the ticket is not published yet. "
+                 "Run `tw deliver-forum` with a key once it is."))
+    return 0
+
+
+def cmd_deliver_forum(args):
+    """The armed sender: deliver every queued FORUM reply to its ticket's thread.
+
+    This is what SS-1099 was missing -- replies queued and nothing ever sent
+    them. It needs the forum key (the credential is still held separately from
+    authoring), posts each queued forum reply to the ticket's published thread,
+    and marks the outbox row sent so it is never double-posted. Email replies are
+    left untouched: sending mail is the owner's.
+    """
+    s = _store(args)
+    if not args.forum_url or not args.forum_key:
+        print("The armed sender needs a forum key: --forum-url and --forum-key "
+              "(or SNAPSMACK_FORUM_URL / SNAPSMACK_FORUM_KEY).", file=sys.stderr)
+        return 2
+    f = forummod.Forum(args.forum_url, args.forum_key)
+    rows = [r for r in s.outbox("queued") if r.get("channel") == "forum"]
+    delivered, skipped = [], []
+    for r in rows:
+        ticket_id = r.get("ticket")
+        thread = _resolve_thread(s, f, ticket_id)
+        if thread <= 0:
+            skipped.append({"ticket": ticket_id, "why": "ticket not published to the forum"})
+            continue
+        try:
+            reply_id = f.reply(thread, r.get("body", ""))
+            s.mark_sent(r["rowid_"], f"forum reply {reply_id} on thread {thread}")
+            delivered.append({"ticket": ticket_id, "thread": thread, "reply": reply_id})
+        except Exception as exc:
+            skipped.append({"ticket": ticket_id, "why": f"delivery failed: {exc}"})
+    _out(args, {"delivered": delivered, "skipped": skipped},
+         f"Delivered {len(delivered)} queued forum repl"
+         f"{'y' if len(delivered) == 1 else 'ies'}; {len(skipped)} skipped. "
+         f"Email replies are left for the owner to send.")
     return 0
 
 
@@ -464,6 +555,9 @@ def build_parser():
     mg.add_argument("--into", required=True); mg.set_defaults(func=cmd_merge)
 
     sub.add_parser("stale").set_defaults(func=cmd_stale)
+
+    df = sub.add_parser("deliver-forum")
+    df.set_defaults(func=cmd_deliver_forum)
 
     ob = sub.add_parser("outbox")
     ob.add_argument("--state", default="queued", choices=["queued", "sent"])
