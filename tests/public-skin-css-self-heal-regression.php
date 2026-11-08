@@ -22,6 +22,8 @@ $checks = [
     'compiler persists its stamp' => str_contains($compiler, "'custom_css_public_stamp'"),
     'compiler embeds the same identity inside the CSS blob' => str_contains($compiler, '/* SKIN_ID {$target_stamp} */'),
     'stamp covers CMS and skin versions' => str_contains($compiler, "'+cms@'") && str_contains($compiler, 'SNAPSMACK_VERSION_SHORT'),
+    'stamp also folds in a manifest-options hash (986D, so a same-version option change recompiles)'
+        => str_contains($compiler, "'+opt@'") && str_contains($compiler, "sha1((string)json_encode(\$manifest['options']))"),
 ];
 foreach ($checks as $label => $passed) {
     if (!$passed) { fwrite(STDERR, "FAIL: {$label}\n"); exit(1); }

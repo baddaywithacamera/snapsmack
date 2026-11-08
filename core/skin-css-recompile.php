@@ -211,7 +211,16 @@ function snapsmack_public_css_target_stamp(string $active_skin, ?array $manifest
     if ($manifest === null) $manifest = load_skin_manifest($active_skin);
     if (!is_array($manifest) || empty($manifest['options']) || !is_array($manifest['options'])) return '';
     $cms = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0';
-    return $active_skin . '@' . (string)($manifest['version'] ?? '0') . '+cms@' . $cms;
+    // MANIFEST-CONTENT HASH (986D, PM 19:00). The version alone is not enough:
+    // the skin content digest excludes manifest.json, so a selector or property
+    // can change WITHOUT a version bump (SS-1214 repointed header_font_family
+    // from .logo-area a to .site-title-text under the same NH 1.3.30). Keying the
+    // stamp on the version only, the compiled option CSS would keep targeting the
+    // old selector until the CMS version happened to move. Folding a hash of the
+    // options into the stamp makes any option change -- selector, property, unit,
+    // default -- move the stamp and force a recompile, same version or not.
+    $opt = substr(sha1((string)json_encode($manifest['options'])), 0, 12);
+    return $active_skin . '@' . (string)($manifest['version'] ?? '0') . '+cms@' . $cms . '+opt@' . $opt;
 }
 /**
  * Repair the compiled public option CSS if it has gone stale, and hand the

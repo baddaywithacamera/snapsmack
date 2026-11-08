@@ -52,6 +52,22 @@ $skin = 'impact-printer';
 $target = snapsmack_public_css_target_stamp($skin);
 cx($target !== '', "the target stamp for {$skin} is computable: '{$target}'");
 
+// 986D: THE STAMP MOVES ON A SAME-VERSION MANIFEST OPTION CHANGE.
+// SS-1214 repointed NH's header_font_family selector with no version bump
+// (the skin digest excludes manifest.json), and the stamp used to key on the
+// version alone, so the compiled option CSS kept the old selector. A hash of
+// the options is now folded in, so any selector/property change forces a
+// recompile at the same version.
+$m0 = ['version' => '1.3.30', 'options' => ['f' => ['selector' => '.logo-area a', 'property' => 'font-family']]];
+$m1 = ['version' => '1.3.30', 'options' => ['f' => ['selector' => '.site-title-text', 'property' => 'font-family']]];
+$s0 = snapsmack_public_css_target_stamp('new-horizon', $m0);
+$s1 = snapsmack_public_css_target_stamp('new-horizon', $m1);
+cx($s0 !== '' && $s1 !== '' && $s0 !== $s1,
+   "a same-version selector change moves the stamp ('{$s0}' -> '{$s1}')");
+cx(str_contains($s0, '+opt@'), 'the stamp carries a manifest-options hash (+opt@)');
+cx(snapsmack_public_css_target_stamp('new-horizon', $m0) === $s0,
+   'the same manifest hashes to the same stamp (stable, so it does not recompile forever)');
+
 echo "\nTHE FUNCTION THE STRICT PATH NEEDS\n";
 $exists = function_exists('snapsmack_public_css_refresh_if_stale');
 cx($exists, 'snapsmack_public_css_refresh_if_stale() exists in core');

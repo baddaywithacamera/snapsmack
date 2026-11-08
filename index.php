@@ -318,13 +318,6 @@ try {
                     $_smacktalk['rendered_content'] = snapsmack_trusted_html((string)$_smacktalk['rendered_content']);
                 }
                 $_smacktalk['navigation'] = $skin_view['navigation'] ?? [];
-                // A STRICT SKIN NEVER LOADS core/meta.php, so the stale-option-CSS repair
-                // that lived in that head could never run here -- and four skins print only
-                // that compiled blob, so their declared controls silently did nothing until
-                // somebody pressed Save. Repair it before the view is built, because the view
-                // prints from $settings on this same request.
-                require_once __DIR__ . '/core/skin-css-recompile.php';
-                snapsmack_public_css_refresh_if_stale($pdo, (string)$active_skin, $settings);
                 // SS-986D: THE SMACKTALK FRONT FEED PAGES LIKE THE STRICT LANDING.
                 //
                 // The smacktalk controller never goes through snapsmack_public_runtime(),
@@ -348,6 +341,13 @@ try {
                         ? snap_same_origin_path(snap_route_url_raw('home', $_feedPage > 2 ? ['page' => $_feedPage - 1] : []))
                         : null;
                 }
+                // A STRICT SKIN NEVER LOADS core/meta.php, so the stale-option-CSS repair
+                // that lived in that head could never run here -- and four skins print only
+                // that compiled blob, so their declared controls silently did nothing until
+                // somebody pressed Save. Repair it before the view is built, because the view
+                // prints from $settings on this same request.
+                require_once __DIR__ . '/core/skin-css-recompile.php';
+                snapsmack_public_css_refresh_if_stale($pdo, (string)$active_skin, $settings);
                 $_strict_view = snapsmack_build_skin_view($_smacktalk, [
                     'site_name' => (string)($settings['site_name'] ?? ''),
                     'tagline' => (string)($settings['site_tagline'] ?? ''),
