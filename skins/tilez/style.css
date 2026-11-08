@@ -2,7 +2,15 @@
 
 /*
  * SNAPSMACK_EOF_HEADER
- *     /* ===== SNAPSMACK EOF ===== */
+ *     /* Quiet scrollbars keep the white page background visible. */
+html { scrollbar-color: #ccc transparent; scrollbar-width: thin; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border: 2px solid transparent; background-clip: padding-box; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background-color: #bbb; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* ===== SNAPSMACK EOF ===== */
  * Last non-empty line of this file MUST match the line above.
  * Missing or different = truncated/corrupted. Restore before saving.
  *
@@ -2658,5 +2666,13 @@ body.blog, body.single, body.archive { background: #fff; }
 .taxonomy-links a:hover strong { color: var(--alfred-accent); }
 @media (max-width: 900px) { .taxonomy-split { grid-template-columns: 1fr; gap: 38px; } .taxonomy-record { position: static; grid-row: 1; } }
 @media (max-width: 560px) { .taxonomy-grid { grid-template-columns: 1fr; } }
+
+/* Quiet scrollbars keep the white page background visible. */
+html { scrollbar-color: #ccc transparent; scrollbar-width: thin; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border: 2px solid transparent; background-clip: padding-box; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background-color: #bbb; }
+::-webkit-scrollbar-corner { background: transparent; }
 
 /* ===== SNAPSMACK EOF ===== */
