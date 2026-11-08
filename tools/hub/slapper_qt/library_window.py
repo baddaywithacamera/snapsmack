@@ -170,6 +170,26 @@ class _FolderTree(QTreeView):
         event.accept()
 
 
+class _AnalysisSignals(QObject):
+    finished = Signal(object, str)
+
+
+class _AnalysisTask(QRunnable):
+    """Read-only photo analysis; no widgets or catalog writes in this worker."""
+    def __init__(self, kind, paths, signals):
+        super().__init__()
+        self.kind, self.paths, self.signals = kind, list(paths), signals
+
+    def run(self):
+        try:
+            function = (photo_manager.quality_flags if self.kind == "quality"
+                        else photo_manager.duplicate_groups)
+            result, error = function(self.paths), ""
+        except Exception as exc:
+            result, error = None, str(exc)
+        self.signals.finished.emit(result, error)
+
+
 class _FileSignals(QObject):
     finished = Signal(object, object, str, bool, object)
 
@@ -383,6 +403,11 @@ class LibraryWindow(QMainWindow):
         self._tiff_pool.setMaxThreadCount(1)
         self._scan_pool = QThreadPool(self)
         self._scan_pool.setMaxThreadCount(1)
+        self._analysis_pool = QThreadPool(self)
+        self._analysis_pool.setMaxThreadCount(1)
+        self._analysis_signals = _AnalysisSignals(self)
+        self._analysis_signals.finished.connect(self._analysis_finished)
+        self._analysis_request = None
         self._items = {}          # path -> QListWidgetItem
         self._icons = {}          # path -> QIcon (cached so re-sort never re-decodes)
         self._icon_versions = {}  # path -> (source mtime, saved-edit mtime)
@@ -1252,16 +1277,37 @@ class LibraryWindow(QMainWindow):
             QMessageBox.information(
                 self, "Flag Blurry or Dark", "Open a folder of photographs first.")
             return
-        previous = self.statusBar().currentMessage()
-        self.status.showMessage(
-            f"Measuring {len(paths):,} photograph(s)…")
-        QApplication.setOverrideCursor(Qt.WaitCursor)
-        try:
-            results = photo_manager.quality_flags(paths)
-        finally:
-            QApplication.restoreOverrideCursor()
-            if not results:
-                self.status.showMessage(previous)
+        self._start_analysis("quality", paths)
+
+    def _start_analysis(self, kind, paths):
+        if self._analysis_request is not None or not paths:
+            return
+        paths = list(paths)
+        self._analysis_request = (kind, paths, self._scan_generation)
+        self.act_find_quality.setEnabled(False)
+        self.act_find_duplicates.setEnabled(False)
+        self.status.showMessage(f"Analyzing {len(paths):,} photograph(s)…")
+        self._analysis_pool.start(_AnalysisTask(kind, paths, self._analysis_signals))
+
+    def _analysis_finished(self, results, error):
+        request, self._analysis_request = self._analysis_request, None
+        self.act_find_quality.setEnabled(True)
+        self.act_find_duplicates.setEnabled(not self._restricted)
+        if request is None:
+            return
+        kind, paths, generation = request
+        if generation != self._scan_generation or paths != list(self._paths):
+            return  # Results from a previous folder cannot change this selection.
+        if error:
+            self.status.showMessage("Photo analysis failed", 6000)
+            QMessageBox.warning(self, "Photo analysis failed", error)
+            return
+        if kind == "duplicates":
+            self._select_duplicate_results(results)
+        else:
+            self._select_quality_results(paths, results)
+
+    def _select_quality_results(self, paths, results):
         flagged = {os.path.normcase(os.path.abspath(item["path"]))
                    for item in results}
         self.list.clearSelection()
@@ -1281,7 +1327,9 @@ class LibraryWindow(QMainWindow):
             f"soft, {dark:,} very dark — nothing changed", 10000)
 
     def _find_duplicates(self):
-        groups = photo_manager.duplicate_groups(self._paths)
+        self._start_analysis("duplicates", self._paths)
+
+    def _select_duplicate_results(self, groups):
         duplicates = {os.path.normcase(os.path.abspath(path))
                       for group in groups for path in group}
         self.list.clearSelection()
@@ -1916,6 +1964,8 @@ class LibraryWindow(QMainWindow):
             self._scan_token.cancelled = True
         self._scan_pool.clear()
         self._raw_pool.clear()
+        self._analysis_request = None
+        self._analysis_pool.clear()
         # Closing from the taskbar while minimized is not a request to reopen
         # small. Only remember a visible, intentional normal/maximized state.
         if not self.isMinimized():
