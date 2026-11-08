@@ -11,6 +11,14 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.986D - 2026-11-07
+
+- NEW HORIZON 1.3.31: the masthead Header Font control works again and is now a single control (one font picker, one size); the photo-page date sits back inside the content lane; a photo with no comments invites one ("No comments yet. Be the first.") and the guest comment form reads correctly on the dark theme.
+- Archive thumbnail double-frame presets draw inside the thumbnail (inset) instead of outside it, so an archive that crops its thumbnails no longer clips the frame away.
+- Feed, landing and hashtag pages page past the first batch through one shared core pager component (sentinel plus a no-JS fallback link): four SMACKTALK skins and nine shared-grid skins now scroll their archives endlessly; GLIDE 0.1.26.
+- The shared infinite-scroll engine accepts explicit grid/item selectors, so a skin whose markup does not follow the default convention pages without a custom script; core prepares the next-page URL for the landing feed and the SMACKTALK front feed.
+- A skin's compiled CSS now rebuilds when a manifest control's selector or property changes even without a version bump, and the skin-version gate now treats such a change as content requiring a version bump (closes the hole that hid the dead masthead selector).
+
 ## 0.7.985D - 2026-11-07
 
 - NEW HORIZON 1.3.30: archive and hashtag pages now page past the first 24 photographs (endless scroll via a core-prepared next-url sentinel); the masthead font follows Skin Admin (hardcode removed).
