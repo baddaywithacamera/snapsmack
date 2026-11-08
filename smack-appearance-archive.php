@@ -136,11 +136,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
             'in_1px_white'          => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 1px #ffffff !important;',  'just' => 'outline: 1px solid #ffffff !important; outline-offset: -1px !important;'],
             'in_3px_grey'           => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #666666 !important;',  'just' => 'outline: 3px solid #666666 !important; outline-offset: -3px !important;'],
             'in_3px_white'          => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #ffffff !important;',  'just' => 'outline: 3px solid #ffffff !important; outline-offset: -3px !important;'],
-            // Double frame: 3px inner line + 5px dark gap + 1px outer line, all outside the image.
-            // Grid: layered external box-shadow. Justified: inset equivalent (external shadow overlaps tight gaps).
-            'dbl_grey'  => ['grid' => 'border: none !important; box-shadow: 0 0 0 3px #666666, 0 0 0 8px #0d0d0d, 0 0 0 9px #666666 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #666666, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #666666 !important;'],
-            'dbl_white' => ['grid' => 'border: none !important; box-shadow: 0 0 0 3px #d4d4d4, 0 0 0 8px #0d0d0d, 0 0 0 9px #d4d4d4 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #d4d4d4, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #d4d4d4 !important;'],
-            'dbl_dark'  => ['grid' => 'border: none !important; box-shadow: 0 0 0 3px #333333, 0 0 0 8px #0d0d0d, 0 0 0 9px #333333 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #333333, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #333333 !important;'],
+            // Double frame: layered lines framing the thumb. INSET on the grid too,
+            // not external (986D, PM 19:00). An external box-shadow (0 0 0 Npx) is
+            // painted OUTSIDE the tile's box, so any ancestor with overflow:hidden --
+            // the aspect-ratio crop box NEW HORIZON and the grid skins wrap each thumb
+            // in -- clips it, and Sean saw the double frame vanish on his archive. The
+            // inset equivalent draws the same lines INSIDE the box, where overflow
+            // cannot reach them; the justified variant was already inset for the same
+            // reason (tight gaps). Grid keeps its own 3/8/9px radii, now inset.
+            'dbl_grey'  => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #666666, inset 0 0 0 8px #0d0d0d, inset 0 0 0 9px #666666 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #666666, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #666666 !important;'],
+            'dbl_white' => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #d4d4d4, inset 0 0 0 8px #0d0d0d, inset 0 0 0 9px #d4d4d4 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #d4d4d4, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #d4d4d4 !important;'],
+            'dbl_dark'  => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #333333, inset 0 0 0 8px #0d0d0d, inset 0 0 0 9px #333333 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #333333, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #333333 !important;'],
         ];
         $tfp = $_POST['settings']['archive_thumb_frame'] ?? 'none';
         if (!isset($thumb_frame_presets[$tfp])) $tfp = 'none';
