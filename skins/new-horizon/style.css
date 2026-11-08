@@ -286,7 +286,8 @@ img.post-image {
     flex-shrink: 0 !important;
 }
 
-.photo-title-footer, 
+.photo-title-footer,
+#pane-info > .dt-published,
 .description, 
 .meta,
 .comment-form,
@@ -297,6 +298,18 @@ img.post-image {
     padding-left: 20px;
     padding-right: 20px;
     box-sizing: border-box;
+}
+
+/* The publication date belongs to the same information lane as its title. */
+#pane-info > .dt-published {
+    display: block;
+    width: 100%;
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: var(--text-dim, #999);
+    font-family: inherit;
+    font-size: .8rem;
+    line-height: 1.5;
 }
 
 .photo-title-footer {
