@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "name": "GLIDE",
-  "version": "0.1.26",
+  "version": "0.1.27",
   "scrolltime_pages": [
     "landing",
     "archive"
@@ -28,6 +28,7 @@
     ]
   },
   "require_scripts": [
+    "smack-tag-infinite",
     "smack-footer",
     "smack-image-fade-load",
     "smack-lazyload",
