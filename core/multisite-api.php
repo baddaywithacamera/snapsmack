@@ -1114,9 +1114,9 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
         $has_today = false;
         foreach ($stats as $r) { if (($r['stat_date'] ?? '') === $today) { $has_today = true; break; } }
         if (!$has_today) {
-            $tv = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=0")->fetchColumn();
-            $tu = (int)$pdo->query("SELECT COUNT(DISTINCT ip_hash) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=0")->fetchColumn();
-            $tb = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=1")->fetchColumn();
+            $tv = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE hit_at >= CURDATE() AND hit_at < CURDATE() + INTERVAL 1 DAY AND is_bot=0")->fetchColumn();
+            $tu = (int)$pdo->query("SELECT COUNT(DISTINCT ip_hash) FROM snap_stats WHERE hit_at >= CURDATE() AND hit_at < CURDATE() + INTERVAL 1 DAY AND is_bot=0")->fetchColumn();
+            $tb = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE hit_at >= CURDATE() AND hit_at < CURDATE() + INTERVAL 1 DAY AND is_bot=1")->fetchColumn();
             if ($tv || $tu || $tb) {
                 array_unshift($stats, [
                     'stat_date'       => $today,
