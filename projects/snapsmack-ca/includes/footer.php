@@ -190,6 +190,15 @@ document.addEventListener('keydown', event => {
         tip.style.top = Math.max(gap, Math.min(mouseY + gap, window.innerHeight - bounds.height - gap)) + 'px';
     }
 
+    function browsingTime(value) {
+        if (value == null || !Number.isFinite(Number(value))) return '\u2014';
+        const minutes = Math.floor(Math.max(0, Number(value)) / 60000);
+        if (Number(value) === 0) return '0m';
+        if (minutes < 1) return '&lt;1m';
+        const hours = Math.floor(minutes / 60);
+        return hours ? hours.toLocaleString() + 'h ' + (minutes % 60) + 'm' : minutes + 'm';
+    }
+
     function content(card) {
         let stats = null;
         try { stats = JSON.parse(card.dataset.stats || 'null'); } catch (error) {}
@@ -201,6 +210,7 @@ document.addEventListener('keydown', event => {
                 '<div><span class="stt-stat-val">' + fmt(stats.posts) + '</span><span class="stt-stat-label">Photos</span></div>' +
                 '<div><span class="stt-stat-val">' + fmt(stats.views_all || stats.views_30d) + '</span><span class="stt-stat-label">Views</span></div>' +
                 '<div><span class="stt-stat-val">' + fmt(stats.unique_all || stats.unique_30d) + '</span><span class="stt-stat-label">Visitors</span></div>' +
+                '<div><span class="stt-stat-val">' + browsingTime(stats.browsing_time_ms) + '</span><span class="stt-stat-label">Browsing time</span></div>' +
                 '<div><span class="stt-stat-val">' + (stats.version || '\u2014') + '</span><span class="stt-stat-label">Version</span></div>' +
             '</div>' +
             (stats.active_since ? '<div class="stt-since">Since ' + String(stats.active_since).slice(0, 4) + '</div>' : '');

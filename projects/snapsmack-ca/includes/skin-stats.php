@@ -82,6 +82,7 @@ if ((empty($_skin_demo_stats) || !empty($_skin_missing_stats)) && function_exist
                     'unique_30d' => (int)($_skin_data['unique_30d'] ?? 0),
                     'views_all' => (int)($_skin_data['views_all'] ?? 0),
                     'unique_all' => (int)($_skin_data['unique_all'] ?? 0),
+                    'browsing_time_ms' => isset($_skin_data['browsing_time_ms']) && is_numeric($_skin_data['browsing_time_ms']) ? max(0, (int)$_skin_data['browsing_time_ms']) : null,
                     'version' => $_skin_data['version'] ?? '',
                     'active_since' => $_skin_data['active_since'] ?? null,
                 ];
