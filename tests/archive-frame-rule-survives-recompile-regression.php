@@ -73,6 +73,19 @@ $blob2  = str_replace('/* SKIN_END */', '/* SKIN_END */' . "\n" . $newrule, $blo
 cx(substr_count($blob2, $marker) === 1 && str_contains($blob2, $newrule) && !str_contains($blob2, '3px solid #666666'),
    'a repeated save replaces the marker rule once, with no stale duplicate');
 
+// 6. The frame is drawn on a ::after OVERLAY (987D), not on the tile element.
+//    An inset box-shadow on the tile paints UNDER the opaque photo and is
+//    invisible (Sean's live /archive); the overlay sits on top. The pixel proof
+//    is tests/archive-frame-overlay-visible-browser.cjs; this ties the source to
+//    that contract so the two cannot drift.
+cx(str_contains($src, '::after') && str_contains($src, 'pointer-events: none'),
+   'the grid frame is emitted as a ::after overlay with pointer-events:none');
+cx((bool)preg_match('/arch_opt:grid_border[\s\S]{0,400}position: relative[\s\S]{0,400}::after/', $src),
+   'the grid tile gets position:relative so the overlay anchors to it');
+cx((bool)preg_match('/justified-item::after/', $src)
+   && !(bool)preg_match('/justified-item\s*\{\s*position:/', $src),
+   'the masonry item gets the overlay but NOT position (the wall engine positions it absolutely)');
+
 echo "\n{$pass} checks, {$fail} failed\n";
 exit($fail > 0 ? 1 : 0);
 // ===== SNAPSMACK EOF =====
