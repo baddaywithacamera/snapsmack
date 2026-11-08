@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "name": "GLIDE",
-  "version": "0.1.25",
+  "version": "0.1.26",
   "scrolltime_pages": [
     "landing",
     "archive"
