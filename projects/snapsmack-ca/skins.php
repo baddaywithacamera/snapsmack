@@ -36,7 +36,7 @@ $page_css = <<<'CSS'
 .skin-entry { min-width: 0; padding-bottom: 52px; border-bottom: 1px solid var(--border); }
 .skin-entry:last-child { padding-bottom: 0; border-bottom: 0; }
 .skin-gallery { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.skin-entry a.shot { position: relative; display: block; min-height: 0; background: #e8e8e8; border: 1px solid var(--border); overflow: hidden; }
+.skin-entry a.shot { position: relative; display: block; min-height: 0; background: #e8e8e8; border: 1px solid #888; overflow: hidden; }
 .skin-entry a.shot:first-child { grid-row: 1 / 3; }
 .skin-entry img { width: 100%; height: 100%; aspect-ratio: 16 / 9; object-fit: cover; transition: transform .25s ease; }
 .shot-label { position: absolute; left: 0; bottom: 0; padding: 5px 9px; color: var(--white); background: rgba(17,17,17,.88); font: 900 .65rem/1 Arial, sans-serif; letter-spacing: .05em; text-transform: uppercase; }
