@@ -1991,6 +1991,15 @@
         "predicates": 7,
         "thresholds": []
     },
+    "stats-browsing-time-regression.php": {
+        "assertions": 3,
+        "predicates": 6,
+        "thresholds": [
+            10000,
+            10000,
+            52000
+        ]
+    },
     "stats-single-direct-bot-rule-regression.php": {
         "assertions": 15,
         "predicates": 16,
