@@ -1826,6 +1826,8 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         self.doc.geometry["rotation"] = float(value)
+        self._interactive_render = True
+        self._geometry_preview_mode = "rotation"
         self._schedule_render()
 
     def _on_perspective(self, key, value):

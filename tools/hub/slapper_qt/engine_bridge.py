@@ -5,6 +5,9 @@ converts between them, so the rest of the Qt code never imports PIL and the
 engine never imports Qt.
 """
 
+import os
+from collections import OrderedDict
+
 from PIL import Image, ImageOps
 from PySide6.QtGui import QImage, QPixmap
 
@@ -32,12 +35,36 @@ def render_pixmap(document, max_size=None) -> QPixmap:
     return pil_to_qpixmap(image)
 
 
+# Compare runs on Qt's UI thread. Retain only bounded display images, never
+# full-resolution masters; file identity and viewport size invalidate the cache.
+_original_images = OrderedDict()
+_ORIGINAL_CACHE_BYTES = 32 * 1024 * 1024
+
+
 def original_pixmap(source_path, max_size=None) -> QPixmap:
-    """The untouched original photograph (for before/after comparison)."""
-    with Image.open(source_path) as source:
-        image = ImageOps.exif_transpose(source).convert("RGBA")
-    if max_size:
-        image.thumbnail(max_size, Image.Resampling.LANCZOS)
+    """The untouched original, reusing identical bounded comparison frames."""
+    stat = os.stat(source_path)
+    key = (os.path.realpath(source_path), stat.st_mtime_ns, stat.st_size,
+           tuple(max_size) if max_size else None)
+    image = _original_images.get(key)
+    if image is None:
+        with Image.open(source_path) as source:
+            image = ImageOps.exif_transpose(source).convert("RGBA")
+        if max_size:
+            image.thumbnail(max_size, Image.Resampling.LANCZOS)
+        cost = image.width * image.height * 4
+        if max_size and cost <= _ORIGINAL_CACHE_BYTES:
+            # Replacing a source must not retain its obsolete comparison image.
+            for old in list(_original_images):
+                if old[0] == key[0] and old[1:3] != key[1:3]:
+                    del _original_images[old]
+            while _original_images and (len(_original_images) >= 8 or sum(
+                    frame.width * frame.height * 4
+                    for frame in _original_images.values()) + cost > _ORIGINAL_CACHE_BYTES):
+                _original_images.popitem(last=False)
+            _original_images[key] = image
+    else:
+        _original_images.move_to_end(key)
     return pil_to_qpixmap(image)
 
 
