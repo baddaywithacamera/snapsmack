@@ -16,7 +16,7 @@ function hx(bool $ok,string $w):void{global $pass,$fail; if($ok){$pass++;echo " 
 $canon=(string)@file_get_contents($root.'/database/schema/snapsmack_canonical.sql');
 $sync=(string)@file_get_contents($root.'/core/schema-sync.php');
 echo "INDEXES DECLARED (canonical + retrofit for existing installs)\n";
-foreach (['idx_images_post_id'=>'`post_id`','idx_images_checksum'=>'`img_checksum`'] as $idx=>$col) {
+foreach (['idx_images_post_id'=>'`post_id`','idx_images_checksum'=>'`img_checksum`','idx_images_slug'=>'`img_slug`'] as $idx=>$col) {
     hx(str_contains($canon,"KEY `{$idx}` ({$col})"), "canonical schema declares {$idx} on {$col}");
     hx(str_contains($sync,"ADD INDEX `{$idx}`"), "schema-sync retrofits {$idx} for existing installs");
 }

@@ -45,10 +45,12 @@ $pdo->exec("CREATE TABLE snap_images (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   img_status VARCHAR(20) NOT NULL,
   img_checksum VARCHAR(64) DEFAULT NULL,
+  img_slug VARCHAR(255) NOT NULL DEFAULT '',
   post_id INT DEFAULT NULL,
   KEY idx_images_status_date (img_status, id),
   KEY idx_images_post_id (post_id),
-  KEY idx_images_checksum (img_checksum)
+  KEY idx_images_checksum (img_checksum),
+  KEY idx_images_slug (img_slug)
 ) ENGINE=InnoDB");
 $pdo->exec("CREATE TABLE snap_posts (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, post_status VARCHAR(20) NOT NULL)");
 $pdo->exec("CREATE TABLE snap_stats (
@@ -61,8 +63,8 @@ $pdo->exec("CREATE TABLE snap_stats (
 
 echo "SEEDING prod-sized rows...\n";
 $pdo->beginTransaction();
-$img = $pdo->prepare("INSERT INTO snap_images (img_status, img_checksum, post_id) VALUES ('published', ?, ?)");
-for ($i = 1; $i <= 12000; $i++) { $img->execute([md5((string)($i % 11000)), ($i % 4 === 0) ? null : $i]); }
+$img = $pdo->prepare("INSERT INTO snap_images (img_status, img_checksum, img_slug, post_id) VALUES ('published', ?, ?, ?)");
+for ($i = 1; $i <= 12000; $i++) { $img->execute([md5((string)($i % 11000)), 'photo-' . $i, ($i % 4 === 0) ? null : $i]); }
 $post = $pdo->prepare("INSERT INTO snap_posts (post_status) VALUES ('published')");
 for ($i = 1; $i <= 9000; $i++) { $post->execute(); }
 $st = $pdo->prepare("INSERT INTO snap_stats (hit_at, is_bot, ip_hash) VALUES (?, ?, ?)");
@@ -106,6 +108,17 @@ $exo = explain_type($pdo, $old);
 $oldScans = false; foreach ($exo as $r) { if (($r['type'] ?? '')==='ALL') $oldScans = true; }
 bk($oldScans, 'and the OLD DATE(hit_at)=CURDATE() form is a full scan (type=' . implode('/', array_map(fn($r)=>($r['type']??''), $exo)) . '), which is what the rewrite removes');
 bk(timed($pdo, $today) < 120, 'today-count under 120ms');
+
+echo "
+B3 — photographBySlug: WHERE img_slug = ? (now idx_images_slug)
+";
+$slug = "SELECT id FROM snap_images WHERE img_slug = 'photo-9001' AND img_status = 'published' AND img_date <= NOW() LIMIT 1";
+// seed needs an img_date column for this predicate; add it tolerantly
+try { $pdo->exec("ALTER TABLE snap_images ADD COLUMN img_date DATETIME NULL"); $pdo->exec("UPDATE snap_images SET img_date = NOW() - INTERVAL 1 DAY"); $pdo->query("ANALYZE TABLE snap_images")->fetchAll(); } catch (Throwable $e) {}
+$ex = explain_type($pdo, $slug);
+$slugSeek = false; foreach ($ex as $r) { if (strpos((string)($r['key'] ?? ''), 'slug') !== false) $slugSeek = true; }
+bk($slugSeek, 'the slug lookup seeks idx_images_slug, not a scan (keys=' . implode('/', array_map(fn($r)=>($r['key']??'NULL'), $ex)) . ')');
+bk(timed($pdo, $slug) < 120, 'slug lookup under 120ms');
 
 $pdo->exec("DROP DATABASE `{$db}`");
 
