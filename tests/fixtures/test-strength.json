@@ -2005,6 +2005,24 @@
             52000
         ]
     },
+    "stats-hotpath-index-benchmark.php": {
+        "assertions": 6,
+        "predicates": 2,
+        "thresholds": [
+            4,
+            120,
+            150,
+            200,
+            9000,
+            12000,
+            40000
+        ]
+    },
+    "stats-hotpath-index-regression.php": {
+        "assertions": 2,
+        "predicates": 4,
+        "thresholds": []
+    },
     "stats-single-direct-bot-rule-regression.php": {
         "assertions": 15,
         "predicates": 16,
