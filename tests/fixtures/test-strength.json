@@ -96,6 +96,11 @@
         "predicates": 26,
         "thresholds": []
     },
+    "archive-frame-rule-survives-recompile-regression.php": {
+        "assertions": 0,
+        "predicates": 8,
+        "thresholds": []
+    },
     "archive-item-info-and-comments-regression.php": {
         "assertions": 0,
         "predicates": 15,
@@ -2026,6 +2031,11 @@
             4,
             30
         ]
+    },
+    "thumb-size-single-control-regression.php": {
+        "assertions": 0,
+        "predicates": 4,
+        "thresholds": []
     },
     "thumbnail-dimensions-single-source-regression.php": {
         "assertions": 14,

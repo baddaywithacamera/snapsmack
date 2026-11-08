@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.985D - 2026-11-07
+
+- NEW HORIZON 1.3.30: archive and hashtag pages now page past the first 24 photographs (endless scroll via a core-prepared next-url sentinel); the masthead font follows Skin Admin (hardcode removed).
+- Infinite-scroll engine prefers a core-prepared data-next-url so filtered routes (archive category, hashtag) page without losing the filter; p=N paths unchanged for other skins.
+- Archive thumbnail frame survives a skin recompile (it was silently wiped fleet-wide); Archive Appearance shows one thumbnail-size control, hiding its global one on skins that ship their own.
+
 ## 0.7.984D - 2026-11-07
 
 - GLIDE 0.1.25: footer moved to a faded horizontal bottom-left treatment (no backing strip); and the wall no longer freezes a row when a tile holds a focus left over from a pointer or overlay interaction (SS-1217) -- genuine keyboard focus still pauses the row and stays reachable.
