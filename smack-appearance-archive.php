@@ -19,6 +19,9 @@
 
 
 require_once 'core/auth-smack.php';
+require_once __DIR__ . '/core/skin-registry.php';
+require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/skin-css-recompile.php';
 
 // --- MANIFEST (best-effort: skin-specific options if it loads; not required for core controls) ---
 // $settings is not populated until admin-header.php (included far below), so read the
@@ -38,6 +41,8 @@ if ($active_skin) {
 }
 // Skin manifest options flagged admin_page=>'archive' rendered here if manifest loaded.
 $archive_manifest_opts = [];
+$archive_owns_thumb_size = false;
+$archive_owns_gap = false;
 // One thumbnail-size control, not two. Thumbnail size is presentation, so a skin
 // that ships its own thumbnail-size control (one that emits the shared
 // --ss-thumb-size variable, e.g. NEW HORIZON's archive_thumb_size from SS-1185)
@@ -57,12 +62,35 @@ if (is_array($manifest)) {
     foreach ($manifest['options'] ?? [] as $k => $o) {
         if (($o['admin_page'] ?? 'skin') === 'archive') {
             $archive_manifest_opts[$k] = $o;
+            if (($o['property'] ?? '') === '--ss-thumb-size') $archive_owns_thumb_size = true;
+            if (($o['property'] ?? '') === '--ss-gap') $archive_owns_gap = true;
         }
     }
 }
 
 // --- POST HANDLER ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearance'])) {
+    // Skin controls retain the same signed-package boundary and scoped storage
+    // as Skin Admin, even when their editing surface is Archive Appearance.
+    $archive_skin_values = [];
+    $posted_archive_skin = is_array($_POST['archive_skin_opt'] ?? null) ? $_POST['archive_skin_opt'] : [];
+    foreach ($posted_archive_skin as $key => $value) {
+        $meta = $archive_manifest_opts[$key] ?? null;
+        if (!is_array($meta) || !is_scalar($value)) continue;
+        if (($meta['type'] ?? '') === 'range' && is_numeric($value)) {
+            $archive_skin_values[$key] = snapsmack_skin_migrated_value((string)$value, $meta);
+        } elseif (($meta['type'] ?? '') === 'select' && isset($meta['options'][(string)$value])) {
+            $archive_skin_values[$key] = (string)$value;
+        }
+    }
+    if ($archive_skin_values) {
+        $reason = null;
+        if (!skin_registry_verify_installed_provenance($pdo, $active_skin, $reason)) {
+            $_SESSION['gallery_flash'] = 'No archive setting was changed: ' . $reason;
+            header('Location: smack-appearance-archive.php');
+            exit;
+        }
+    }
     if (isset($_POST['settings']) && is_array($_POST['settings'])) {
         // 0.7.79: archive_layouts_available is no longer authoritative — kept
         // for legacy reads but pinned to 'thumbs,masonry' regardless of input.
@@ -211,6 +239,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
         $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('custom_css_public', ?)")
             ->execute([$blob]);
     }
+    if ($archive_skin_values) {
+        $skin_stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
+        foreach ($archive_skin_values as $key => $value) {
+            $skin_stmt->execute([$active_skin . '__' . $key, $value, $value]);
+        }
+        snapsmack_recompile_public_skin_css($pdo, $active_skin);
+    }
     header("Location: smack-appearance-archive.php?msg=SAVED");
     exit;
 }
@@ -218,6 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
 $page_title = "Archive Appearance";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
+if ($active_skin !== '') snapsmack_apply_skin_settings($settings, $active_skin);
 
 // 0.7.79: layout vocabulary is just thumbs | masonry.
 // Thumb style (square or cropped) is admin's separate choice and applies
@@ -374,7 +410,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <?php else: ?>
+                <?php elseif (!$archive_owns_thumb_size): ?>
                 <div class="lens-input-wrapper">
                     <label>THUMBNAIL SIZE <span class="field-tip" data-tip="This skin has its own thumbnail-size control in Skin Settings, which is used instead.">ⓘ</span></label>
                     <p class="field-note">Set in this skin's own Skin Settings &mdash; shown there to keep one control.</p>
@@ -393,7 +429,8 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>GUTTER <span class="field-tip" data-tip="Gap between grid tiles. Your value overrides the skin's own spacing on the 12 skins that read it: AURORA, GAME ON, HEURISTIC, IMPACT PRINTER, INSTANT CAMERA, JIVE TURKEY, NEW HORIZON, PARADE, SLIDERS, SUDDEN IMPACT, THE GRID and TRUE GRIT. STANLEY, TELEGRAM, TILEZ and WRITING WITH IMPACT fix their own gaps in their stylesheets, so this will not change them. Saving this page sends the slider's current position, so this takes effect from the first save even if you did not move it.">ⓘ</span></label>
+                    <?php if (!$archive_owns_gap): ?>
+                    <label>GUTTER <span class="field-tip" data-tip="Gap between grid tiles on skins that use this control. The default position 4 leaves spacing to the skin. A skin-owned gap control appears below when available.">ⓘ</span></label>
                     <div class="flex-mid gap-12">
                         <input type="range" name="settings[archive_gutter]"
                                min="0" max="40" step="2"
@@ -401,6 +438,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
                         <span style="min-width:36px; font-family:monospace;"><?php echo $current_gutter; ?>px</span>
                     </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="lens-input-wrapper">
@@ -439,6 +477,18 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
             ?>
                 <div class="lens-input-wrapper">
                     <label><?php echo strtoupper($o['label']); ?></label>
+                    <?php if (($o['type'] ?? '') === 'range'): ?>
+                    <div class="flex-mid gap-12">
+                        <input type="range" name="archive_skin_opt[<?php echo htmlspecialchars($k); ?>]"
+                               min="<?php echo htmlspecialchars((string)($o['min'] ?? 0)); ?>"
+                               max="<?php echo htmlspecialchars((string)($o['max'] ?? 100)); ?>"
+                               step="<?php echo htmlspecialchars((string)($o['step'] ?? 1)); ?>"
+                               value="<?php echo htmlspecialchars((string)$val); ?>"
+                               oninput="this.nextElementSibling.textContent=this.value">
+                        <output><?php echo htmlspecialchars((string)$val); ?></output>
+                        <span><?php echo htmlspecialchars((string)($o['unit'] ?? '')); ?></span>
+                    </div>
+                    <?php else: ?>
                     <select name="settings[<?php echo htmlspecialchars($k); ?>]">
                         <?php foreach ($o['options'] ?? [] as $opt_val => $opt_data):
                             $opt_label = is_array($opt_data) ? ($opt_data['label'] ?? $opt_val) : $opt_data;
@@ -448,6 +498,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
             </div>
