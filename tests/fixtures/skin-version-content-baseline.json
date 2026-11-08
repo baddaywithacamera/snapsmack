@@ -11,8 +11,8 @@
             "files_sha256": "dd79cf4501aea7a9903e621487f2315d851bb613b5070a1609b586e4a5b7f542"
         },
         "alfred": {
-            "version": "1.0.11",
-            "files_sha256": "d9a744f0493795c2d7db510a6179c6b49eb374fd3b04c7e9bf6cf9a89608c74b"
+            "version": "1.0.12",
+            "files_sha256": "eb1885178d5f94f3867cacbed143c5a38c9b19971a711ad9c56ad741c5572598"
         },
         "aurora": {
             "version": "1.0.58",
@@ -95,16 +95,16 @@
             "files_sha256": "c5bb01ab700c068f46dae96e2faac19ce75a813a27f11a88309ca8caabc575ae"
         },
         "stanley": {
-            "version": "1.1.10",
-            "files_sha256": "f8fe1613d2c7282fbee112e6bd66aac256cee433f149f8b6f5c96ee6beffb29d"
+            "version": "1.1.11",
+            "files_sha256": "d2540a0489314400c8031944cd5bf427ec19d8ae7a5360f03e5d7b51e44b91d5"
         },
         "sudden-impact": {
             "version": "1.0.25",
             "files_sha256": "142e3a8823e2dab63bc2d88f389dfafdf73049d5fa8f29314a3f6ed95fa50cde"
         },
         "telegram": {
-            "version": "0.1.7",
-            "files_sha256": "7d2538c2f05db8056f038969abb7320e44485df80a71235870b9221b085af19e"
+            "version": "0.1.8",
+            "files_sha256": "f20299dfd167963ad6917882705354b027439f0a1f31f6bce036a1485c3632f4"
         },
         "the-grid": {
             "version": "1.3.60",
@@ -119,8 +119,8 @@
             "files_sha256": "0d895d5e23ba24c2182ad44db2067a6105f82cfcf75a8df9a9751e705776ff04"
         },
         "writing-with-impact": {
-            "version": "1.1.10",
-            "files_sha256": "f013f635a8b960bdd2056e2e6ce442b8fb662f327ef5dd1764efb96ed5726ea7"
+            "version": "1.1.11",
+            "files_sha256": "7acd251b4e0b3ad03191e0e214709933a89f415bf34807dec77cf5a28a10e259"
         }
     }
 }
