@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "HEURISTIC",
-    "version": "0.1.19",
+    "version": "0.1.20",
     "scrolltime_pages": ["landing"],
     "author": "Sean McCormick with Claude and OpenAI Codex",
     "support": "sean@baddaywithacamera.ca",
