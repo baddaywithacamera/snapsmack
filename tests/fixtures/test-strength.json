@@ -301,6 +301,13 @@
         "predicates": 14,
         "thresholds": []
     },
+    "core-ownership-gate-regression.php": {
+        "assertions": 3,
+        "predicates": 6,
+        "thresholds": [
+            20
+        ]
+    },
     "crawler-file-lifecycle-regression.php": {
         "assertions": 13,
         "predicates": 10,
