@@ -113,9 +113,28 @@ echo "\nA HASHTAG KEEPS ITS TAG\n";
 cx(str_contains((string)$n, 'tag=blue'), "next keeps the tag ({$n})");
 cx(str_contains((string)$p, 'tag=blue'), 'and so does previous');
 
+echo "\nTHE LANDING FEED PAGES ON THE HOME ROUTE (SS-986D)\n";
+// A front-feed skin (TRUE-GRIT's landing, the smacktalk feed) pages its own
+// feed. Landing carries no filter, so the only state is the page number, and
+// the landing route IS 'home' (the empty path) -- not a 'landing' path, which
+// snap_route_url_raw does not have. The skin prints data-next-url and the
+// shared engine fetches it verbatim; without this it fell back to ?p=N, a
+// parameter the landing router never reads.
+[$p, $n] = urls(['kind' => 'landing', 'page' => 2, 'next_page' => 3]);
+cx(str_contains((string)$n, 'page=3'), "landing next is the home route at page 3 ({$n})");
+cx(strpos((string)$n, 'tag=') === false && strpos((string)$n, 'category=') === false,
+   'landing next carries no filter state');
+cx(strpos((string)$p, 'page=') === false && $p !== 'ABSENT' && $p !== null,
+   "landing previous from page 2 is the home route with no page param ({$p})");
+[$p1, $n1] = urls(['kind' => 'landing', 'page' => 1, 'next_page' => 2]);
+cx($p1 === null, 'landing page 1 has no previous_url');
+cx(str_contains((string)$n1, 'page=2'), "landing page 1 next is page 2 ({$n1})");
+[$pl, $nl] = urls(['kind' => 'landing', 'page' => 4, 'next_page' => 0]);
+cx($nl === null, 'landing last page (next_page 0) has no next_url');
+
 echo "\nA PAGE THAT DOES NOT PAGE IS LEFT ALONE\n";
-// Only three kinds page. A photo or a static page must not grow paging keys it
-// has no meaning for.
+// Only the paged kinds grow these keys. A photo or a static page must not grow
+// paging keys it has no meaning for.
 $untouched = snapsmack_public_paging_urls(['kind' => 'photo', 'page' => 1, 'next_page' => 2]);
 cx(!array_key_exists('next_url', $untouched) && !array_key_exists('previous_url', $untouched),
    'a photo response gets no paging urls');

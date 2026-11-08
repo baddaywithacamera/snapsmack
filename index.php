@@ -325,6 +325,29 @@ try {
                 // prints from $settings on this same request.
                 require_once __DIR__ . '/core/skin-css-recompile.php';
                 snapsmack_public_css_refresh_if_stale($pdo, (string)$active_skin, $settings);
+                // SS-986D: THE SMACKTALK FRONT FEED PAGES LIKE THE STRICT LANDING.
+                //
+                // The smacktalk controller never goes through snapsmack_public_runtime(),
+                // so its feed carried page/next_page but no prepared next_url -- the one
+                // the shared infinite-scroll engine fetches verbatim. A skin falling back
+                // to the engine's ?p=N construction would miss, because this router reads
+                // ?page=, not ?p=. Core prepares the link here, where snap_route_url_raw()
+                // is loaded (above) and the request context is known.
+                //
+                // THE FRONT FEED IS THE 'home' ROUTE (the empty path). DIARY is also
+                // kind 'feed' but lives at its own slug, which this build does not resolve
+                // to a paged path, so DIARY is left without a prepared url rather than
+                // given a wrong one -- absent is safe, wrong strands posts on a filter.
+                if (($_smacktalk['kind'] ?? '') === 'feed' && empty($_smacktalk['is_diary'])) {
+                    $_feedPage = max(1, (int)($_smacktalk['page'] ?? 1));
+                    $_feedNext = (int)($_smacktalk['next_page'] ?? 0);
+                    $_smacktalk['next_url'] = $_feedNext > $_feedPage
+                        ? snap_same_origin_path(snap_route_url_raw('home', ['page' => $_feedNext]))
+                        : null;
+                    $_smacktalk['previous_url'] = $_feedPage > 1
+                        ? snap_same_origin_path(snap_route_url_raw('home', $_feedPage > 2 ? ['page' => $_feedPage - 1] : []))
+                        : null;
+                }
                 $_strict_view = snapsmack_build_skin_view($_smacktalk, [
                     'site_name' => (string)($settings['site_name'] ?? ''),
                     'tagline' => (string)($settings['site_tagline'] ?? ''),

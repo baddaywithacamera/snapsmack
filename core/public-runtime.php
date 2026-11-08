@@ -179,7 +179,7 @@ function snapsmack_public_paging_urls(array $response): array
         require_once __DIR__ . '/skin-render-helpers.php';
     }
     $kind = (string)($response['kind'] ?? '');
-    if (!in_array($kind, ['archive', 'search', 'hashtag'], true)) return $response;
+    if (!in_array($kind, ['archive', 'search', 'hashtag', 'landing'], true)) return $response;
 
     $pageNow = max(1, (int)($response['page'] ?? 1));
     $state = [];
@@ -194,10 +194,18 @@ function snapsmack_public_paging_urls(array $response): array
         // parameter nothing read, so page two lost the search term.
         $q = (string)($response['query'] ?? '');
         if ($q !== '') $state['q'] = $q;
-    } else {
+    } elseif ($kind === 'hashtag') {
         $tag = (string)($response['slug'] ?? '');
         if ($tag !== '') $state['slug'] = $tag;
     }
+    // LANDING carries no filter, so its state stays empty -- page N of the feed
+    // and nothing else. It is here (SS-986D) so the smacktalk-feed and landing
+    // skins that page their front feed get a prepared, filter-safe next_url the
+    // same way the archive does, instead of a skin assembling ?p=N by hand (the
+    // engine's p=N fallback uses a parameter name the landing router never read).
+    // snap_route_url_raw has no 'landing' key; the landing route IS 'home' (the
+    // empty path), so the page number rides on the home route.
+    $routeName = $kind === 'landing' ? 'home' : $kind;
 
     // next_page is a page number on archive and hashtag and 0-or-a-number on
     // search, so read it as "a page after this one" and both shapes answer.
@@ -221,11 +229,11 @@ function snapsmack_public_paging_urls(array $response): array
     // absolute on every install, so the raw builder alone would hand a skin
     // https://site.test/archive?... -- measured, not assumed.
     $response['next_url'] = $next > $pageNow
-        ? snap_same_origin_path(snap_route_url_raw($kind, $state + ['page' => $next])) : null;
+        ? snap_same_origin_path(snap_route_url_raw($routeName, $state + ['page' => $next])) : null;
     // Page 2's previous is page 1, and page 1 is the route with NO page
     // parameter: a ?page=1 in a link works and still looks like a mistake.
     $response['previous_url'] = $prev >= 1
-        ? snap_same_origin_path(snap_route_url_raw($kind, $prev > 1 ? $state + ['page' => $prev] : $state))
+        ? snap_same_origin_path(snap_route_url_raw($routeName, $prev > 1 ? $state + ['page' => $prev] : $state))
         : null;
     return $response;
 }
