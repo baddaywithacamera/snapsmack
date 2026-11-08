@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/font-stack.php';
 /**
  * SNAPSMACK — Isolated public skin-CSS recompiler.
  *
@@ -95,12 +96,7 @@ function snapsmack_recompile_public_skin_css(PDO $pdo, string $active_skin): voi
         if ($meta['type'] === 'select' && isset($meta['options'][$val]['css'])) {
             $generated_public .= "{$meta['selector']} {$meta['options'][$val]['css']}\n";
         } elseif ($prop === 'font-family') {
-            $fallback = 'sans-serif';
-            if (stripos($val, 'DotMatrix') !== false || stripos($val, 'Mono') !== false
-                || stripos($val, 'Courier') !== false || stripos($val, 'Tiny5') !== false
-                || stripos($val, 'Anonymous') !== false) {
-                $fallback = "'Courier New', monospace";
-            }
+            $fallback = snapsmack_font_family_generic_fallback($val);
             $generated_public .= "{$meta['selector']} { font-family: \"{$val}\", {$fallback}; }\n";
             if (!empty($meta['selector']) && empty($meta['no_size_slider'])) {
                 $sz_key = $key . '_size';
