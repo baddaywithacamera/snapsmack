@@ -1137,11 +1137,12 @@
     },
     "owner-gutter-reaches-the-grid-regression.php": {
         "assertions": 2,
-        "predicates": 11,
+        "predicates": 13,
         "thresholds": [
             2,
             4,
-            4,
+            10,
+            10,
             12,
             40,
             40
