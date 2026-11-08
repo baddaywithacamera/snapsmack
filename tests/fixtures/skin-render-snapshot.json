@@ -1328,7 +1328,7 @@
         "links": 3,
         "headings": 2,
         "words": 3,
-        "text_sha256": "272a90989f9a7ec41dbae4e70d6e741a69f9c7af4b3e78e83cf4d1b25bc15399"
+        "text_sha256": "3d863a239b4edadf2ec333b85734a8882044f0fb67cd4e06db1c6e2c2508dbc3"
     },
     "new-horizon/landing": {
         "images": [
@@ -1344,7 +1344,7 @@
         "links": 3,
         "headings": 2,
         "words": 3,
-        "text_sha256": "272a90989f9a7ec41dbae4e70d6e741a69f9c7af4b3e78e83cf4d1b25bc15399"
+        "text_sha256": "3d863a239b4edadf2ec333b85734a8882044f0fb67cd4e06db1c6e2c2508dbc3"
     },
     "new-horizon/not_found": {
         "images": [],
@@ -1357,7 +1357,7 @@
         "links": 1,
         "headings": 1,
         "words": 4,
-        "text_sha256": "154e91dcd4fe45969e7b17b24f5387ef3c4bc79e4ffc84b8628d6dd217ec6fd2"
+        "text_sha256": "97e9197fbf66507c9f3217629b0406d3ab3a340b877ee1194b248e24ba338429"
     },
     "new-horizon/page": {
         "images": [
@@ -1372,7 +1372,7 @@
         "links": 1,
         "headings": 1,
         "words": 5,
-        "text_sha256": "88cf91fafb37c7daa60147b95af17738497aac31f1d3f54159d06faeca81b734"
+        "text_sha256": "06f5d17f2351b5490608f80533465f2fd25dd8330cb27e593b32088495132f67"
     },
     "new-horizon/photo": {
         "images": [
@@ -1387,7 +1387,7 @@
         "links": 3,
         "headings": 1,
         "words": 19,
-        "text_sha256": "a58a30300f6da4fdd17480ad21acf5e87015d4c62c409435d55f059dc64912e7"
+        "text_sha256": "fae3e3b17a268c066fb65f9eedfb561720a0b066e5a50003c8257a8657683a94"
     },
     "new-horizon/post": {
         "images": [],
@@ -1400,7 +1400,7 @@
         "links": 3,
         "headings": 1,
         "words": 15,
-        "text_sha256": "444eb76772ee0235b53e4630155ca5c0bda71b1bfe03d111844bbe61934c4a23"
+        "text_sha256": "405859509d05a34d1474dee953b7721e15ae1764da7e337a03c5b8f78f3c7c71"
     },
     "new-horizon/post-mixed": {
         "images": [
@@ -1415,7 +1415,7 @@
         "links": 3,
         "headings": 1,
         "words": 34,
-        "text_sha256": "8a560a8d6c9d3072ae304607a84893c3156d5ac8a15c99e52dc32b7839e09297"
+        "text_sha256": "49ff4f8131c8987876c51cc7808b1e61c9a2df365660a2a39396b46f4ec47caf"
     },
     "onyx/archive": {
         "images": [
