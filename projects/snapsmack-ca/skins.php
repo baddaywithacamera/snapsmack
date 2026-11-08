@@ -51,6 +51,12 @@ $page_css = <<<'CSS'
     .skin-entry a.shot:first-child { grid-row: auto; }
     .skin-entry img { height: auto; }
 }
+.gallery-lightbox { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 50px; background: rgba(0,0,0,.9); }
+.gallery-lightbox[hidden] { display: none; }
+.gallery-lightbox img { width: auto; height: auto; max-width: 90vw; max-height: 90vh; object-fit: contain; box-shadow: 0 8px 40px #0008; }
+.gallery-lightbox button { position: absolute; top: 16px; right: 20px; width: 44px; height: 44px; border: 0; background: transparent; color: white; font: 32px/1 Arial, sans-serif; cursor: pointer; }
+html.gallery-lightbox-open { overflow: hidden; }
+
 CSS;
 
 require_once __DIR__ . '/includes/header.php';
@@ -92,5 +98,48 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 </main>
+<script>
+// Keep the fixed viewer outside the scaled page body.
+(function () {
+    const shots = Array.from(document.querySelectorAll('.skin-gallery a.shot'));
+    if (!shots.length) return;
+    const box = document.createElement('div');
+    box.className = 'gallery-lightbox';
+    box.hidden = true;
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-label', 'Enlarged skin screenshot');
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.setAttribute('aria-label', 'Close screenshot');
+    closeButton.textContent = '×';
+    const image = document.createElement('img');
+    box.append(closeButton, image);
+    document.documentElement.appendChild(box);
+    let opener;
+    function close() {
+        box.hidden = true;
+        document.documentElement.classList.remove('gallery-lightbox-open');
+        image.removeAttribute('src');
+        if (opener) opener.focus({preventScroll: true});
+    }
+    shots.forEach(shot => shot.addEventListener('click', event => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        opener = shot;
+        image.src = shot.href;
+        image.alt = shot.querySelector('img').alt;
+        box.hidden = false;
+        document.documentElement.classList.add('gallery-lightbox-open');
+        closeButton.focus({preventScroll: true});
+    }));
+    box.addEventListener('click', event => { if (event.target !== image) close(); });
+    document.addEventListener('keydown', event => {
+        if (box.hidden) return;
+        if (event.key === 'Escape') { event.preventDefault(); close(); }
+        if (event.key === 'Tab') { event.preventDefault(); closeButton.focus(); }
+    });
+})();
+</script>
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
