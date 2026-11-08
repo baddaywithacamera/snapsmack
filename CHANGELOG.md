@@ -13,6 +13,7 @@
 
 ## 0.7.986D - 2026-11-07
 
+- Archive, hashtag, tag and landing pages were running a per-image visibility check that scanned the whole posts table for every photograph, which pegged a site's database once its library grew (introduced one day earlier in the 983D portfolio-exclusion work). Rewritten to use the existing indexes, with identical results; the heavy query drops from minutes to milliseconds, and a prod-sized benchmark now guards it.
 - NEW HORIZON 1.3.31: the masthead Header Font control works again and is now a single control (one font picker, one size); the photo-page date sits back inside the content lane; a photo with no comments invites one ("No comments yet. Be the first.") and the guest comment form reads correctly on the dark theme.
 - Archive thumbnail double-frame presets draw inside the thumbnail (inset) instead of outside it, so an archive that crops its thumbnails no longer clips the frame away.
 - Feed, landing and hashtag pages page past the first batch through one shared core pager component (sentinel plus a no-JS fallback link): four SMACKTALK skins and nine shared-grid skins now scroll their archives endlessly; GLIDE 0.1.26.
