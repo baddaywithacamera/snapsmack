@@ -43,8 +43,8 @@
             "manifest_css_sha256": "e3c6f2c2fb571c6ca6442303d6bd25e1d9d93fb1a6753007f2318120d8af4393"
         },
         "glide": {
-            "version": "0.1.25",
-            "files_sha256": "d63ab568b2ce076e371e129f3c868d9a8d818a27c1b082588a2aea30e9968b28",
+            "version": "0.1.26",
+            "files_sha256": "61b1cd970c8c40c9fb5ca9835e5ec146e0ad06a4c41b6011c8c138986e5cd823",
             "manifest_css_sha256": "9ad69417b2483da3f07caa8edc3381a11c066b03c0a95a5c7154c381b23ca395"
         },
         "heuristic": {
