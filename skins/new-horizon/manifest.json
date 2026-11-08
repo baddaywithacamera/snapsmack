@@ -2,7 +2,7 @@
     "schema_version": 2,
     "name": "NEW HORIZON",
     "oh_snap_ready": true,
-    "version": "1.3.30",
+    "version": "1.3.31",
     "scrolltime_pages": [
         "archive"
     ],
@@ -225,6 +225,7 @@
             }
         },
         "header_font_family": {
+      "no_size_slider": true,
             "section": "TYPOGRAPHY",
             "type": "select",
             "label": "Header Font (Text Logo)",
