@@ -22,6 +22,7 @@ def make_grid():
     grid.setMovement(QListView.Static)
     grid.setGridSize(QSize(120,100))
     grid.setSelectionMode(QAbstractItemView.ExtendedSelection)
+    grid.setDragEnabled(True)
     grid.setDragDropMode(QAbstractItemView.DragDrop)
     grid.setDragDropOverwriteMode(False)
     grid.resize(640,320)

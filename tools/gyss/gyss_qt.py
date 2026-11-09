@@ -106,7 +106,7 @@ class GramReorderList(QListWidget):
     def mousePressEvent(self,event):
         super().mousePressEvent(event)
         point=event.position().toPoint()
-        self._reorder_press=point if event.button()==Qt.LeftButton and self.indexAt(point).isValid() else None
+        self._reorder_press=point if self.dragEnabled() and event.button()==Qt.LeftButton and self.indexAt(point).isValid() else None
         self._mouse_reordering=False
     def mouseMoveEvent(self,event):
         if self._reorder_press is not None and event.buttons()&Qt.LeftButton and (event.position().toPoint()-self._reorder_press).manhattanLength()>=QApplication.startDragDistance():
@@ -181,7 +181,7 @@ class Window(QMainWindow):
         p,l=self.page("Your local photo library","Choose a site. Sync while it is online; browse and sort the saved copy whenever you like."); c,cl=card("Library status"); self.lib_status=lbl("Choose a site above.","Muted"); cl.addWidget(self.lib_status); r=QHBoxLayout(); self.sync=QPushButton("SYNC FROM SITE"); self.sync.clicked.connect(self.sync_library); self.browse=QPushButton("BROWSE LOCAL COPY"); self.browse.setObjectName("Primary"); self.browse.clicked.connect(self.browse_local); folder=QPushButton("OPEN LIBRARY FOLDER"); folder.clicked.connect(self.open_library); self.open_editor=QPushButton("OPEN POST EDITOR IN COLD SNAP"); self.open_editor.clicked.connect(self.open_in_coldsnap); r.addWidget(self.sync); r.addWidget(self.browse); r.addWidget(folder); r.addWidget(self.open_editor); r.addStretch(); cl.addLayout(r); self.progress=QProgressBar(); self.progress.hide(); cl.addWidget(self.progress); l.addWidget(c)
         f,fl=card("Optional filter","Leave these alone to load the complete library."); form=QFormLayout(); self.cat=QComboBox(); self.alb=QComboBox(); self.limit=QSpinBox(); self.limit.setRange(1,500); self.limit.setValue(200); form.addRow("Category",self.cat); form.addRow("Album",self.alb); form.addRow("Live pull limit",self.limit); fl.addLayout(form); live=QPushButton("PULL A LIVE SESSION"); live.clicked.connect(self.pull_live); fl.addWidget(live,0,Qt.AlignRight); l.addWidget(f); l.addStretch(); return p
     def sort_page(self):
-        p,l=self.page("Sort photographs","Drag to reorder. Select photographs to enrich missing details together."); self.sort_intro=l.itemAt(1).widget(); self.sort_empty=QFrame(); empty_layout=QVBoxLayout(self.sort_empty); empty_layout.addWidget(lbl("No photographs loaded. Go to Library, then Browse local copy.","Muted")); self.sort_empty_button=QPushButton("GO TO LIBRARY"); self.sort_empty_button.clicked.connect(lambda:self.show_page(0)); empty_layout.addWidget(self.sort_empty_button,0,Qt.AlignLeft); l.addWidget(self.sort_empty);sort_bar=QHBoxLayout();sort_bar.addStretch();sort_all=QPushButton("SELECT ALL");sort_all.clicked.connect(lambda:self.select_all_in(self.photo_list,True));sort_bar.addWidget(sort_all);sort_none=QPushButton("SELECT NONE");sort_none.clicked.connect(lambda:self.select_all_in(self.photo_list,False));sort_bar.addWidget(sort_none);sort_bar.addSpacing(392);l.addLayout(sort_bar); r=QHBoxLayout(); self.photo_list=QListWidget(); self.photo_list.setViewMode(QListWidget.IconMode); self.photo_list.setIconSize(QSize(150,110)); self.photo_list.setGridSize(QSize(180,165)); self.photo_list.setResizeMode(QListWidget.Adjust); self.photo_list.setDragDropMode(QAbstractItemView.InternalMove); self.photo_list.setSelectionMode(QAbstractItemView.ExtendedSelection); self.photo_list.currentItemChanged.connect(self.edit_photo); self.photo_list.itemSelectionChanged.connect(self.update_sort_enrich_label); r.addWidget(self.photo_list,1)
+        p,l=self.page("Sort photographs","Drag to reorder. Select photographs to enrich missing details together."); self.sort_intro=l.itemAt(1).widget(); self.sort_empty=QFrame(); empty_layout=QVBoxLayout(self.sort_empty); empty_layout.addWidget(lbl("No photographs loaded. Go to Library, then Browse local copy.","Muted")); self.sort_empty_button=QPushButton("GO TO LIBRARY"); self.sort_empty_button.clicked.connect(lambda:self.show_page(0)); empty_layout.addWidget(self.sort_empty_button,0,Qt.AlignLeft); l.addWidget(self.sort_empty);sort_bar=QHBoxLayout();sort_bar.addStretch();sort_all=QPushButton("SELECT ALL");sort_all.clicked.connect(lambda:self.select_all_in(self.photo_list,True));sort_bar.addWidget(sort_all);sort_none=QPushButton("SELECT NONE");sort_none.clicked.connect(lambda:self.select_all_in(self.photo_list,False));sort_bar.addWidget(sort_none);sort_bar.addSpacing(392);l.addLayout(sort_bar); r=QHBoxLayout(); self.photo_list=GramReorderList(); self.photo_list.setMovement(QListView.Static); self.photo_list.setViewMode(QListWidget.IconMode); self.photo_list.setIconSize(QSize(150,110)); self.photo_list.setGridSize(QSize(180,165)); self.photo_list.setResizeMode(QListWidget.Adjust); self.photo_list.setDragDropOverwriteMode(False); self.photo_list.setDefaultDropAction(Qt.MoveAction); self.photo_list.setDragDropMode(QAbstractItemView.NoDragDrop); self.photo_list.setSelectionMode(QAbstractItemView.ExtendedSelection); self.photo_list.currentItemChanged.connect(self.edit_photo); self.photo_list.itemSelectionChanged.connect(self.update_sort_enrich_label); r.addWidget(self.photo_list,1)
         e,el=card("Selected photograph"); form=QFormLayout(); self.title_edit=QLineEdit(); self.desc_edit=QTextEdit(); self.desc_edit.setMaximumHeight(90); self.alt_edit=QTextEdit(); self.alt_edit.setMaximumHeight(75); self.tags_edit=QLineEdit(); self.tags_edit.setPlaceholderText("#family #portrait"); self.colors_edit=QLineEdit(); self.colors_edit.setPlaceholderText("#RRGGBB #RRGGBB (up to 3)"); choose_color=QPushButton("CHOOSE COLOUR"); choose_color.clicked.connect(self.choose_color); self.edit_cats=QListWidget(); self.edit_cats.setSelectionMode(QAbstractItemView.MultiSelection); self.edit_cats.setMaximumHeight(92); self.edit_albums=QListWidget(); self.edit_albums.setSelectionMode(QAbstractItemView.MultiSelection); self.edit_albums.setMaximumHeight(92); self.colour=QComboBox(); self.colour.addItem("Not classified",""); self.colour.addItem("Colour","color"); self.colour.addItem("Black & white","bw"); self.orientation=QComboBox(); self.orientation.addItem("Landscape",0); self.orientation.addItem("Portrait",1); self.orientation.addItem("Square",2); form.addRow("Title",self.title_edit); form.addRow("Description",self.desc_edit); form.addRow("ALT text",self.alt_edit); form.addRow("Hashtags",self.tags_edit); form.addRow("Colours",self.colors_edit); form.addRow("",choose_color); form.addRow("Categories",self.edit_cats); form.addRow("Albums",self.edit_albums); form.addRow("Colour / B&W",self.colour); form.addRow("Orientation",self.orientation); el.addLayout(form); apply=QPushButton("APPLY DETAILS TO THIS PHOTO"); apply.clicked.connect(self.apply_edit); el.addWidget(apply); organize=QPushButton("ORGANIZE SELECTED PHOTOS"); organize.clicked.connect(self.apply_organization); el.addWidget(organize); self.sort_enrich=QPushButton("ENRICH THIS PHOTO"); self.sort_enrich.clicked.connect(self.enrich_sort_photo); el.addWidget(self.sort_enrich); self.sort_stop=QPushButton("STOP AFTER THIS IMAGE"); self.sort_stop.setObjectName("Danger"); self.sort_stop.setEnabled(False); self.sort_stop.clicked.connect(lambda:setattr(self,"cancel",True)); el.addWidget(self.sort_stop); self.sort_progress=QProgressBar(); self.sort_progress.hide(); el.addWidget(self.sort_progress); edit_scroll=QScrollArea(); edit_scroll.setWidgetResizable(True); edit_scroll.setFixedWidth(380); edit_scroll.setWidget(e); self.sort_edit_panel=edit_scroll; r.addWidget(edit_scroll); l.addLayout(r,1); br=QHBoxLayout(); self.save_session_button=QPushButton("SAVE SESSION"); self.save_session_button.clicked.connect(self.save_session); br.addWidget(self.save_session_button); self.detect_orientation_button=QPushButton("MATCH ORIENTATION TO PHOTO SHAPE"); self.detect_orientation_button.clicked.connect(self.match_orientations); br.addWidget(self.detect_orientation_button); cold=QPushButton("SEND SELECTED TO COLD TAKE"); cold.clicked.connect(self.send_selected_to_cold_take); br.addWidget(cold); br.addStretch(); push=QPushButton("PUBLISH CHANGES"); push.setObjectName("Primary"); push.clicked.connect(self.push); br.addWidget(push); l.addLayout(br); return p
     def organizer_page(self):
         p,l=self.page("Organize categories and albums","Open a category or album, then drag photographs between the library filmstrip and the large working area.")
@@ -280,7 +280,7 @@ class Window(QMainWindow):
         old_site=(self.profile or {}).get("site_url")
         self.profile=self.site.itemData(i) if i>=0 else None; self.api=API(self.profile) if self.profile and self.profile.get("api_key") else None; p=self.profile or {}; self.name.setText(p.get("name","")); self.url.setText(p.get("site_url","")); self.key.setText(p.get("api_key","")); self.status.setText("● Site selected" if self.api else ("● Run Discover Fleet" if self.profile else "Choose a site")); self.library_status()
         if old_site!=p.get("site_url"):
-            self.photos=[];self.original={};self.photo_list.clear();self.gram.clear();self.gram_site="";self.gram_loaded=0
+            self.sort_library_ids=[];self.photos=[];self.original={};self.photo_list.clear();self.gram.clear();self.gram_site="";self.gram_loaded=0
             self.gram_empty.setText("Open Grid to load this site's published posts." if self.api else "Choose a site to load its published posts.")
             _,cached_meta=self.local() if self.profile else ({},{})
             self.mode=(p.get("extras") or {}).get("gyss_site_mode") or cached_meta.get("site_mode") or ""
@@ -289,12 +289,22 @@ class Window(QMainWindow):
             if self.pages.currentIndex()==1 and self.profile:self.show_page(1)
             if self.pages.currentIndex()==2:self.load_organizer()
             if self.pages.currentIndex()==3 and self.api:self.load_grid()
+    def can_reorder_photos(self):
+        if self.mode not in {"photoblog","smackoneout"}:return False
+        proof=getattr(self,"sort_library_ids",None)
+        if not proof or len(proof)!=len(set(proof)):return False
+        loaded=[int(p["id"]) for p in self.photos]
+        visible=[int(self.photo_list.item(i).data(Qt.UserRole)["id"]) for i in range(self.photo_list.count())]
+        return len(loaded)==len(proof) and set(loaded)==set(proof) and len(visible)==len(proof) and set(visible)==set(proof)
     def configure_mode(self):
         gram=self.mode=="carousel"
         self.nav[1].setText("Photos\nEdit details")
         self.nav[3].setVisible(gram or not self.mode)
         self.sort_intro.setText("Edit and enrich a bounded working set of photographs. Use Organize for categories and albums; GRAMOFSMACK orders published posts on Grid.")
-        self.photo_list.setDragDropMode(QAbstractItemView.NoDragDrop)
+        complete=self.can_reorder_photos()
+        self.photo_list.setDragDropMode(QAbstractItemView.DragDrop if complete else QAbstractItemView.NoDragDrop)
+        self.photo_list.setDragEnabled(complete);self.photo_list.setAcceptDrops(complete)
+        self.sort_intro.setText("Drag to reorder your complete synced library. Changes stay local until Publish." if complete else "Reordering is off: load the complete unfiltered library after syncing to verify its server count. Metadata edits still work.")
         self.save_session_button.setVisible(False)
     def require_api(self):
         if self.api:return True
@@ -506,6 +516,10 @@ class Window(QMainWindow):
             if current:
                 for k in list(images):
                     if k not in current:images.pop(k,None)
+            # current_ids is the server's complete published ID set, not the delta.
+            ids=resp.get("current_ids")
+            meta["sort_library_ids"]=sorted(int(x) for x in ids) if isinstance(ids,list) and all(isinstance(x,int) and not isinstance(x,bool) and x>0 for x in ids) and len(ids)==len(set(ids)) else []
+            meta["sort_server_total"]=len(meta["sort_library_ids"])
             meta.update({"site_url":self.profile["site_url"],"synced_at":resp.get("synced_at") or meta.get("synced_at"),"site_mode":resp.get("site_mode") or meta.get("site_mode"),"gyss_detail_schema":resp.get("detail_schema",0),"categories":resp.get("categories",meta.get("categories",[])),"albums":resp.get("albums",meta.get("albums",[])),"counts":{"images":len(images)}}); ip,mp=self.paths(); os.makedirs(os.path.dirname(ip),exist_ok=True)
             for path,data in ((ip,index),(mp,meta)):
                 tmp=path+".tmp"
@@ -562,13 +576,14 @@ class Window(QMainWindow):
         self.status.setText(f"● Sent {len(photos)} photographs to COLD TAKE")
     def browse_local(self):
         if not self.profile:return
-        index,_=self.local(); rows=list(index.get("images",{}).values()); cid=self.cat.currentData();aid=self.alb.currentData()
+        index,meta=self.local(); self.sort_library_ids=meta.get("sort_library_ids",[]) if meta.get("sort_server_total")==len(meta.get("sort_library_ids",[])) else []; rows=list(index.get("images",{}).values()); cid=self.cat.currentData();aid=self.alb.currentData()
         if cid is not None:rows=[x for x in rows if cid in x.get("category_ids",[])]
         if aid is not None:rows=[x for x in rows if aid in x.get("album_ids",[])]
         if not rows:QMessageBox.information(self,"Library is empty","Sync this site first, or clear the filters.");return
         rows=sorted(rows,key=lambda x:(x.get("sort_order",0),-int(x.get("id",0))));limit=self.limit.value();self.photos=rows[:limit];self.photo_subset_total=len(rows);self.begin_sort()
     def pull_live(self):
         if not self.require_api():return
+        self.sort_library_ids=[]
         f={"limit":self.limit.value()}
         if self.cat.currentData() is not None:f["category_id"]=self.cat.currentData()
         if self.alb.currentData() is not None:f["album_id"]=self.alb.currentData()
@@ -714,7 +729,7 @@ class Window(QMainWindow):
         original_positions={int(photo["id"]):index for index,photo in enumerate(self.photos,1)}
         for i in range(self.photo_list.count()):
             p=self.photo_list.item(i).data(Qt.UserRole)
-            if self.mode!="carousel":
+            if self.can_reorder_photos():
                 if original_positions.get(int(p["id"]))!=i+1:p["dirty"]=True
                 p["sort_order"]=i+1
             rows.append(p)
@@ -749,7 +764,7 @@ class Window(QMainWindow):
             row={"id":p["id"],"title":p.get("title",""),"description":p.get("description",""),"category_id":p.get("category_id"),"color_mode":p.get("color_mode",""),"expected_modified_at":original.get("modified_at")}
             if p.get("organization_dirty"):
                 row["category_ids"]=p.get("category_ids",[]);row["album_ids"]=p.get("album_ids",[])
-            if self.mode!="carousel":row["sort_order"]=p["sort_order"]
+            if self.can_reorder_photos():row["sort_order"]=p["sort_order"]
             for key in ("alt","hashtags","colors","orientation"):
                 if p.get(key)!=original.get(key):row[key]=p.get(key)
             u.append(row)
