@@ -53,14 +53,17 @@ COMMANDS = [
      "example": ENTRY + " post SS-1042 --dry-run",
      "notes": "REFUSES and exits 1 if the body still identifies anyone. Always "
               "--dry-run first; it prints exactly what would be published."},
-    {"name": "reply", "does": "Reply to a reporter. A FORUM reply to a published "
-     "ticket is delivered now (with the forum key); email, no key, or an "
-     "unpublished ticket queues instead.",
+    {"name": "reply", "does": "Reply to a reporter. DEFAULTS TO THE FORUM: an "
+     "update to a ticket is public, so it goes to the ticket's thread. A forum "
+     "reply to a published ticket is delivered now (with the forum key); on an "
+     "unpublished ticket it queues and `deliver-forum` posts it once published. "
+     "Pass --channel email only for a genuinely private note.",
      "returns": "outbox row id",
      "args": ["ID", "--text T | --text-file F", "--channel email|forum",
               "--unwrap"],
      "example": ENTRY + " reply SS-1042 --text '...' --as claude",
-     "notes": "Signed with YOUR signature automatically. Fails on a pulse ticket."},
+     "notes": "Signed with YOUR signature automatically. Fails on a pulse ticket. "
+              "Channel defaults to forum; email is the deliberate opt-in."},
     {"name": "ack", "does": "Queue the fixed acknowledgement.",
      "returns": "outbox row id", "args": ["ID", "--channel email|forum"],
      "example": ENTRY + " ack SS-1042",
@@ -99,9 +102,11 @@ COMMANDS = [
      "returns": "delivered / skipped lists", "args": ["--forum-url URL", "--forum-key KEY"],
      "example": ENTRY + " deliver-forum --json",
      "notes": "Needs a forum key -- the credential stays separate from authoring. "
-              "Resolves the thread from the board if the store lost it; an "
-              "unpublished ticket is skipped and its reply kept. Email is never "
-              "sent here: that is the owner's."},
+              "Resolves the thread from the board if the store lost it, and will "
+              "not repost an update the thread already carries. Also RESCUES an "
+              "update parked as email on a published ticket that has no address on "
+              "file. Genuine mail -- a real address, or no thread -- is never sent "
+              "here: that is the owner's."},
     {"name": "mod-check", "does": "Does my forum key have the role it needs?",
      "returns": "admin (bool), boards", "args": [],
      "example": ENTRY + " mod-check --json",
