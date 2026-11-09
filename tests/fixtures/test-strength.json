@@ -481,6 +481,52 @@
             3
         ]
     },
+    "federation-image-alt-regression.php": {
+        "assertions": 4,
+        "predicates": 2,
+        "thresholds": []
+    },
+    "federation-moderation-receipts-regression.php": {
+        "assertions": 18,
+        "predicates": 6,
+        "thresholds": [
+            190,
+            202,
+            202,
+            202,
+            202,
+            202,
+            401
+        ]
+    },
+    "federation-outbox-exclusions-regression.php": {
+        "assertions": 21,
+        "predicates": 9,
+        "thresholds": [
+            3,
+            3,
+            45,
+            404,
+            404
+        ]
+    },
+    "federation-profile-cache-regression.php": {
+        "assertions": 5,
+        "predicates": 2,
+        "thresholds": []
+    },
+    "federation-profile-mode-regression.php": {
+        "assertions": 2,
+        "predicates": 4,
+        "thresholds": []
+    },
+    "federation-reply-audience-regression.php": {
+        "assertions": 4,
+        "predicates": 3,
+        "thresholds": [
+            202
+        ]
+    },
     "fedistructure-onyx-fleet-regression.php": {
         "assertions": 2,
         "predicates": 2,
@@ -1127,6 +1173,11 @@
         "predicates": 3,
         "thresholds": []
     },
+    "nh-font-colour-regression.php": {
+        "assertions": 5,
+        "predicates": 5,
+        "thresholds": []
+    },
     "ohsnap-regression.php": {
         "assertions": 14,
         "predicates": 10,
@@ -1164,6 +1215,11 @@
             40,
             40
         ]
+    },
+    "page-cache-federation-bypass-regression.php": {
+        "assertions": 13,
+        "predicates": 1,
+        "thresholds": []
     },
     "paging-urls-keep-the-filter-regression.php": {
         "assertions": 0,
