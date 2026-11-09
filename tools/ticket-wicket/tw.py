@@ -328,14 +328,43 @@ def cmd_reply(args):
     return 0
 
 
+def _already_on_thread(f, thread, body):
+    """True when the thread already carries this update, so delivery is idempotent.
+
+    An update can reach a thread by more than one path -- posted as a reply, or
+    edited into the opening post as an inline UPDATE block -- and the outbox row
+    is not always marked sent when that happens (SS-1043's 0.7.970D note is on
+    thread 77 that way). Reposting it would double it on a PUBLIC board, so we
+    read the thread first and match on a distinctive line of the body.
+    """
+    probe = ""
+    for line in (body or "").splitlines():
+        line = line.strip()
+        if len(line) >= 24:
+            probe = line[:60]
+            break
+    if not probe:
+        return False
+    try:
+        data = f.thread(thread)
+        texts = [(data.get("thread") or {}).get("body", "")]
+        texts += [x.get("body", "") for x in (data.get("replies") or [])]
+        return probe in "\n".join(texts)
+    except Exception:
+        return False   # cannot read the thread: do not block delivery on it
+
+
 def cmd_deliver_forum(args):
     """The armed sender: deliver every queued FORUM reply to its ticket's thread.
 
     This is what SS-1099 was missing -- replies queued and nothing ever sent
     them. It needs the forum key (the credential is still held separately from
     authoring), posts each queued forum reply to the ticket's published thread,
-    and marks the outbox row sent so it is never double-posted. Email replies are
-    left untouched: sending mail is the owner's.
+    and marks the outbox row sent so it is never double-posted. It also RESCUES an
+    update parked as email on a ticket that is published to the forum and has no
+    email address on file -- there is no inbox and the ticket is public, so its
+    thread is where it belongs. Genuine mail (a real address, or no thread) is
+    left untouched: sending that is the owner's.
     """
     s = _store(args)
     if not args.forum_url or not args.forum_key:
@@ -343,24 +372,50 @@ def cmd_deliver_forum(args):
               "(or SNAPSMACK_FORUM_URL / SNAPSMACK_FORUM_KEY).", file=sys.stderr)
         return 2
     f = forummod.Forum(args.forum_url, args.forum_key)
-    rows = [r for r in s.outbox("queued") if r.get("channel") == "forum"]
     delivered, skipped = [], []
-    for r in rows:
+    for r in s.outbox("queued"):
         ticket_id = r.get("ticket")
+        channel = r.get("channel")
         thread = _resolve_thread(s, f, ticket_id)
+        # Which queued rows belong on the forum:
+        #   - anything already tagged `forum`, and
+        #   - an update parked as `email` for a ticket that IS published to the
+        #     forum AND has no email address on file. There is no inbox for it,
+        #     and the ticket is public, so the update's home is its thread. A
+        #     reply to a ticket with a real reporter address, or to one with no
+        #     thread, is genuine mail and stays the owner's to send.
+        t = s.get(ticket_id)
+        reporter = (getattr(t, "reporter", "") or "")
+        rescued = channel == "email" and thread > 0 and "@" not in reporter
+        if channel != "forum" and not rescued:
+            continue
         if thread <= 0:
             skipped.append({"ticket": ticket_id, "why": "ticket not published to the forum"})
             continue
+        body = r.get("body", "")
+        if _already_on_thread(f, thread, body):
+            s.mark_sent(r["rowid_"], f"already on thread {thread}; reconciled, not reposted")
+            skipped.append({"ticket": ticket_id, "why": f"already on thread {thread} (reconciled)"})
+            continue
+        # The email drafts were never vetted for forum rendering; make sure a
+        # hard-wrapped one does not post as a ladder of broken lines.
+        if snap_forum.body_shape_complaints(body):
+            body = snap_forum.unwrap_body(body)
         try:
-            reply_id = f.reply(thread, r.get("body", ""))
-            s.mark_sent(r["rowid_"], f"forum reply {reply_id} on thread {thread}")
-            delivered.append({"ticket": ticket_id, "thread": thread, "reply": reply_id})
+            reply_id = f.reply(thread, body)
+            note = f"forum reply {reply_id} on thread {thread}"
+            if rescued:
+                note += " (rescued from email: public ticket, no inbox)"
+            s.mark_sent(r["rowid_"], note)
+            delivered.append({"ticket": ticket_id, "thread": thread, "reply": reply_id,
+                              "rescued": rescued})
         except Exception as exc:
             skipped.append({"ticket": ticket_id, "why": f"delivery failed: {exc}"})
     _out(args, {"delivered": delivered, "skipped": skipped},
-         f"Delivered {len(delivered)} queued forum repl"
+         f"Delivered {len(delivered)} forum repl"
          f"{'y' if len(delivered) == 1 else 'ies'}; {len(skipped)} skipped. "
-         f"Email replies are left for the owner to send.")
+         f"Genuine email replies -- no forum thread, or a real address -- are left "
+         f"for the owner to send.")
     return 0
 
 
@@ -529,7 +584,9 @@ def build_parser():
 
     rp = sub.add_parser("reply"); rp.add_argument("id")
     rp.add_argument("--text", default=""); rp.add_argument("--text-file", default="")
-    rp.add_argument("--channel", default="email", choices=["email", "forum"])
+    rp.add_argument("--channel", default="forum", choices=["email", "forum"],
+                    help="where the reply goes; defaults to the ticket's forum "
+                         "thread. Pass email only for a genuinely private note.")
     rp.add_argument("--unwrap", action="store_true",
                     help="join hard-wrapped lines before queueing")
     rp.set_defaults(func=cmd_reply)

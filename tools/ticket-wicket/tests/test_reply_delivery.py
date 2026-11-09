@@ -31,8 +31,9 @@ from ticketwicket import model, store as storemod      # noqa: E402
 
 
 class FakeForum:
-    def __init__(self, threads_by_title=None):
+    def __init__(self, threads_by_title=None, posts_by_thread=None):
         self._by_title = threads_by_title or {}
+        self._posts = {int(k): v for k, v in (posts_by_thread or {}).items()}
         self.replied = []           # (thread_id, body)
 
     def reply(self, thread_id, body):
@@ -44,6 +45,12 @@ class FakeForum:
                 for title, tid in self._by_title.items()
                 if title.startswith(query)]
         return {"threads": hits}
+
+    def thread(self, thread_id):
+        bodies = self._posts.get(int(thread_id), [])
+        op = {"body": bodies[0] if bodies else ""}
+        replies = [{"body": b} for b in bodies[1:]]
+        return {"thread": op, "replies": replies}
 
 
 @pytest.fixture()
@@ -134,5 +141,70 @@ def test_reply_still_queues_an_email_without_sending(store, monkeypatch):
     assert code == 0
     assert forum.replied == []                               # email is the owner's to send
     assert len(store.outbox("queued")) == 1
+
+
+# ---- the forum-routing rescue (Sean, 2026-11-08: updates go into forum threads) ----
+
+def test_deliver_forum_rescues_an_email_update_on_a_published_ticket_with_no_inbox(store, monkeypatch):
+    """An update parked as email, on a forum ticket with no address, belongs on the thread."""
+    t = _ticket(store, reporter="")                 # no email address on file
+    store.update(t.id, forum_thread=201)            # but it is published to the forum
+    store.enqueue(t.id, "email", "Fixed in v0.7.978D.\n\n-- the SnapSmack assistant")
+    forum = FakeForum()
+    monkeypatch.setattr(tw.forummod, "Forum", lambda *a, **k: forum)
+    monkeypatch.setattr(tw, "_store", lambda args: store)
+
+    code = tw.cmd_deliver_forum(_args())
+    assert code == 0
+    assert forum.replied and forum.replied[0][0] == 201     # the email update reached the thread
+    assert store.outbox("queued") == []                     # nothing left parked
+    assert len(store.outbox("sent")) == 1
+
+
+def test_deliver_forum_leaves_a_real_email_address_for_the_owner(store, monkeypatch):
+    """A reply to a ticket with an actual address is genuine mail, not a board post."""
+    t = _ticket(store, reporter="someone@example.com")
+    store.update(t.id, forum_thread=202)
+    store.enqueue(t.id, "email", "A private note to the reporter.")
+    forum = FakeForum()
+    monkeypatch.setattr(tw.forummod, "Forum", lambda *a, **k: forum)
+    monkeypatch.setattr(tw, "_store", lambda args: store)
+
+    code = tw.cmd_deliver_forum(_args())
+    assert code == 0
+    assert forum.replied == []                              # never auto-posted to the public board
+    assert len(store.outbox("queued")) == 1                 # left for the owner to send
+
+
+def test_deliver_forum_leaves_an_email_update_with_no_thread_alone(store, monkeypatch):
+    """No thread means nowhere to post; the row stays, it is not guessed onto a board."""
+    t = _ticket(store, reporter="")
+    store.enqueue(t.id, "email", "Status: looking into it.")
+    forum = FakeForum()                                     # search finds no thread
+    monkeypatch.setattr(tw.forummod, "Forum", lambda *a, **k: forum)
+    monkeypatch.setattr(tw, "_store", lambda args: store)
+
+    code = tw.cmd_deliver_forum(_args())
+    assert code == 0
+    assert forum.replied == []
+    assert len(store.outbox("queued")) == 1
+
+
+def test_deliver_forum_does_not_repost_an_update_already_on_the_thread(store, monkeypatch):
+    """Idempotent: an update the thread already carries is reconciled, never doubled."""
+    t = _ticket(store, reporter="")
+    store.update(t.id, forum_thread=77)
+    body = "CMS SIDE LANDED, FOLDED INTO 0.7.970D.\n\n-- the SnapSmack assistant"
+    store.enqueue(t.id, "forum", body)
+    forum = FakeForum(posts_by_thread={77: ["the original ticket text",
+                                            "CMS SIDE LANDED, FOLDED INTO 0.7.970D. (earlier inline update)"]})
+    monkeypatch.setattr(tw.forummod, "Forum", lambda *a, **k: forum)
+    monkeypatch.setattr(tw, "_store", lambda args: store)
+
+    code = tw.cmd_deliver_forum(_args())
+    assert code == 0
+    assert forum.replied == []                              # already there -> not reposted
+    assert store.outbox("queued") == []                     # but reconciled
+    assert len(store.outbox("sent")) == 1
 
 # ===== SNAPSMACK EOF =====
