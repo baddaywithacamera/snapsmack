@@ -462,8 +462,13 @@ echo "\nThe row and the stylesheet that styles it travel together\n";
 // because the engine that carries that stylesheet was hardcoded in a <script>
 // tag at the bottom of archive.php. No test could see a missing CSS file.
 // This one can: it reads what the runtime declares.
-ac_test(str_contains($runtime, "['smack-archive-toggle']"),
-    'the runtime declares the archive engine as a required asset');
+ac_test(str_contains($runtime, "'smack-archive-toggle'"),
+    'the runtime declares the archive toggle engine as a required asset');
+// The cascade reveal rides the same archive/hashtag asset list; it self-gates to
+// its phase-one skin by body class and is fail-safe off, so it is loaded fleet-
+// wide here. (Added 990D, Sean's archive fade-in request.)
+ac_test(str_contains($runtime, "'smack-archive-cascade'"),
+    'the runtime also declares the archive cascade reveal engine');
 $inventory = require $root . '/core/manifest-inventory.php';
 $toggle = $inventory['scripts']['smack-archive-toggle'] ?? [];
 ac_test(($toggle['css'] ?? '') === 'assets/css/page-archive.css',
