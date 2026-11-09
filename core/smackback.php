@@ -1123,7 +1123,16 @@ function smackback_init_from_disk(bool $cleanup_installers = true): bool {
         if ($seen) {
             $pruned = 0;
             $del    = $pdo->prepare("DELETE FROM snap_file_manifest WHERE id = ?");
-            foreach ($pdo->query("SELECT id, file_path FROM snap_file_manifest")->fetchAll(PDO::FETCH_ASSOC) as $erow) {
+            // ONLY core rows (skin_id IS NULL). A signed skin's provenance rows
+            // (skin_id = slug) are written by the SIGNED skin install/recovery
+            // path, never by this core disk baseline, and skins/ is excluded from
+            // $seen (see should_monitor) -- so without this filter EVERY skin
+            // provenance row looked orphaned and was deleted on every core
+            // update, which then froze every skin setting behind the "no
+            // signed-package integrity record" gate. That was the recurring beta
+            // blocker (SS-1038). Core rows are still pruned as before; stale
+            // null-skin_id skin-path rows are handled by the LIKE cleanup above.
+            foreach ($pdo->query("SELECT id, file_path FROM snap_file_manifest WHERE skin_id IS NULL")->fetchAll(PDO::FETCH_ASSOC) as $erow) {
                 if (!isset($seen[$erow['file_path']])) {
                     $del->execute([(int) $erow['id']]);
                     $pruned++;
