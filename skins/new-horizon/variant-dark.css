@@ -15,6 +15,9 @@
 
 
 :root {
+    --ss-scroll-thumb: #3b3b3b;
+    --ss-scroll-thumb-hover: #555555;
+    --ss-scroll-thumb-active: #666666;
     --nh-heading-colour: var(--nh-heading-dark, var(--text-bright));
     --nh-body-colour: var(--nh-body-dark, var(--text-primary));
     --nh-description-colour: var(--nh-body-dark, var(--text-secondary));
