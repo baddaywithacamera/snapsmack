@@ -72,6 +72,22 @@ function page_cache_eligible(array $settings): bool {
 }
 
 /**
+ * True when the response may be stored as an HTML page. A non-HTML 200 served
+ * through content negotiation on a cacheable URL -- the ActivityPub actor or
+ * object JSON on a profile slug being the one that matters -- must NOT land in
+ * the HTML page cache, or a later plain request would be served those bytes.
+ * No explicit Content-Type means PHP's default (text/html), which is cacheable.
+ */
+function page_cache_headers_are_html(array $headers): bool {
+    foreach ($headers as $h) {
+        if (stripos($h, 'content-type:') === 0) {
+            return stripos($h, 'text/html') !== false;
+        }
+    }
+    return true;
+}
+
+/**
  * Serve a fresh cached copy if one exists, otherwise start output buffering so
  * the rendered page is written to cache on completion. No-op when ineligible.
  */
@@ -100,7 +116,8 @@ function page_cache_serve_or_start(array $settings): void {
     header('X-SnapSmack-Cache: MISS');
     ob_start(function (string $buffer) use ($file) {
         // Only persist successful, non-empty HTML responses.
-        if (strlen($buffer) > 0 && http_response_code() === 200) {
+        if (strlen($buffer) > 0 && http_response_code() === 200
+            && page_cache_headers_are_html(headers_list())) {
             @file_put_contents($file, $buffer, LOCK_EX);
         }
         return $buffer;
