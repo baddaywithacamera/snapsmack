@@ -7,7 +7,7 @@ foreach(['sv_client_plain_text','sv_account_actor_id','sv_rest_photo_metadata','
 }
 $checks=0;
 function rest_metadata_check(bool $ok,string $message):void{global $checks;$checks++;if(!$ok)throw new RuntimeException($message);}
-$status=['uri'=>'https://remote.invalid/objects/1','content'=>'<p>A caption</p>','sensitive'=>true,'spoiler_text'=>'<b>Storm</b> &amp; lightning','account'=>['uri'=>'https://remote.invalid/actor'],'media_attachments'=>[
+$status=['uri'=>'https://remote.invalid/objects/1','content'=>'<p>A caption</p>','sensitive'=>true,'spoiler_text'=>'Storm < lightning & snow > rain','account'=>['uri'=>'https://remote.invalid/actor'],'media_attachments'=>[
  ['type'=>'video','url'=>'https://remote.invalid/video','description'=>'not a photograph'],
  ['type'=>'image','url'=>'','description'=>'no usable URL'],
  ['type'=>'image','url'=>'https://remote.invalid/one.jpg','description'=>'Door <left> & "right"'],
@@ -16,7 +16,7 @@ $status=['uri'=>'https://remote.invalid/objects/1','content'=>'<p>A caption</p>'
 foreach(['sv_map_status_row','sv_map_tag_status','sv_masto_map_statuses'] as $mapper){
  $row=$mapper==='sv_masto_map_statuses'?$mapper([$status],5)[0]:$mapper($status,'remote.invalid');
  rest_metadata_check($row['sensitive']===true,$mapper.' loses sensitive flag');
- rest_metadata_check($row['summary']==='Storm & lightning',$mapper.' loses plain content warning');
+ rest_metadata_check($row['summary']==='Storm < lightning & snow > rain',$mapper.' loses plain content warning');
  rest_metadata_check($row['images']===['https://remote.invalid/one.jpg','https://remote.invalid/two.jpg'],$mapper.' changes URL list');
  rest_metadata_check(count($row['attachments'])===2,$mapper.' metadata is not aligned');
  rest_metadata_check($row['attachments'][0]['description']==='Door <left> & "right"',$mapper.' loses authored ALT');

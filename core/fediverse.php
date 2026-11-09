@@ -5137,7 +5137,7 @@ function sv_rest_photo_metadata(array $status): array {
     }
     return ['attachments' => $attachments,
         'sensitive' => !empty($status['sensitive']),
-        'summary' => sv_client_plain_text((string)($status['spoiler_text'] ?? ''))];
+        'summary' => mb_substr(trim((string)($status['spoiler_text'] ?? '')), 0, 5000)];
 }
 
 /** Map a Mastodon/Pixelfed status entity to the client feed-row shape, or null if it has no image. */
