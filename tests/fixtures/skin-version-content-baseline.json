@@ -68,8 +68,8 @@
             "manifest_css_sha256": "9f063a0c2f9bb2373403c8ae99ce96df101706f2b2e6b97728f72abe7122a3a0"
         },
         "jive-turkey": {
-            "version": "0.1.47",
-            "files_sha256": "ebac584aa66c51f3ff981247e153b1713ca6c210d3695d5bd25fe8fa904da8e6",
+            "version": "0.1.48",
+            "files_sha256": "aea16ca4cd5f2da5431e57f6dab7b8673e2027c24d0abab03052fbb11b4407ae",
             "manifest_css_sha256": "f5ade19134d0fe0731b124814ea8cf74151079a73356af70e3fe19cd87006aa7"
         },
         "new-horizon": {
