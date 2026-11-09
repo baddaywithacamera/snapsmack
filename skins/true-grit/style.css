@@ -1472,12 +1472,19 @@ a.logo-area,
     background: #fff;
 }
 
-/* Keep the archive toggle in this skin's filter flow, clear of search. */
-.true-grit-v2 .archive-filter-inner { flex-wrap: wrap; gap: 16px; }
+/* Keep T/M/C outside the centred filter content, in the right-hand gutter. */
+.true-grit-v2 #infobox .archive-filter-inner {
+    position: static;
+    max-width: min(var(--archive-content-width, 1280px), calc(100% - 420px));
+    flex-wrap: wrap;
+    gap: 16px;
+}
 .true-grit-v2 .archive-controls--docked {
-    position: static !important;
-    transform: none !important;
-    margin-left: auto;
+    position: absolute !important;
+    right: 20px !important;
+    top: 50%;
+    transform: translateY(-50%) !important;
+    margin: 0;
     flex-shrink: 0;
 }
 .tg-search-page { max-width: 1200px; margin: 48px auto; padding: 0 30px; }
