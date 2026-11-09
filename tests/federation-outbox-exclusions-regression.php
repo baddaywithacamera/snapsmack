@@ -10,6 +10,14 @@ $start = strpos($source, 'function sv_outbox_doc(');
 $end = strpos($source, "\nfunction ", $start + 1);
 if ($start === false || $end === false) throw new RuntimeException('Outbox function missing');
 eval(substr($source, $start, $end - $start));
+foreach (['sv_post_row', 'sv_federated_post_row', 'sv_public_unit_count'] as $function) {
+    $functionStart = strpos($source, 'function ' . $function . '(');
+    $functionEnd = strpos($source, "\nfunction ", $functionStart + 1);
+    // Stop at the closing brace, excluding any following docblock.
+    $functionSource = substr($source, $functionStart, $functionEnd - $functionStart);
+    $functionSource = substr($functionSource, 0, strrpos($functionSource, "\n}") + 2);
+    eval($functionSource);
+}
 function sv_outbox_url(array $settings): string { return 'https://fixture.invalid/ap/outbox'; }
 function sv_note_for_image(PDO $pdo, array $row, array $settings): array { return ['id' => 'image:' . $row['id']]; }
 function sv_note_for_post(PDO $pdo, array $row, array $settings): array { return ['id' => 'post:' . $row['id']]; }
@@ -40,6 +48,12 @@ foreach (['photoblog' => 47, 'carousel' => 45, 'smacktalk' => 47] as $mode => $e
     $settings = ['site_mode' => $mode];
     $shell = sv_outbox_doc($pdo, $settings);
     outbox_check($shell['totalItems'] === $expected, "$mode count follows publication and mode rules");
+    outbox_check(sv_public_unit_count($pdo, $settings) === $expected, "$mode NodeInfo count matches outbox");
+    outbox_check(sv_federated_post_row($pdo, 1, $settings) !== null, "$mode eligible direct post remains available");
+    foreach ([100, 101, 102, 999] as $blockedId) {
+        outbox_check(sv_federated_post_row($pdo, $blockedId, $settings) === null, "$mode direct post $blockedId unavailable");
+    }
+    outbox_check((sv_federated_post_row($pdo, 103, $settings) !== null) === ($mode !== 'carousel'), "$mode direct longform matches outbox policy");
     $ids = [];
     for ($page = 1; $page <= 3; $page++) {
         $doc = sv_outbox_doc($pdo, $settings, $page);
