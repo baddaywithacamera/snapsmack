@@ -1651,6 +1651,11 @@
             500
         ]
     },
+    "skin-option-save-clamp-regression.php": {
+        "assertions": 20,
+        "predicates": 2,
+        "thresholds": []
+    },
     "skin-owns-its-colour.php": {
         "assertions": 16,
         "predicates": 7,
