@@ -2515,6 +2515,21 @@ function sv_is_direct(array $activity, array $obj, array $settings): bool {
     return false;
 }
 
+/** An explicit public audience is required before publishing a remote reply.
+ * Object addressing wins when supplied; a broader wrapper cannot promote a
+ * followers-only object. Older peers may supply addressing on the wrapper only. */
+function sv_reply_is_public(array $activity, array $obj): bool {
+    $addressed = array_key_exists('to', $obj) || array_key_exists('cc', $obj) ? $obj : $activity;
+    foreach ([$addressed['to'] ?? [], $addressed['cc'] ?? []] as $set) {
+        if (is_string($set)) $set = [$set];
+        if (!is_array($set)) continue;
+        foreach ($set as $recipient) {
+            if (in_array($recipient, ['https://www.w3.org/ns/activitystreams#Public', 'Public', 'as:Public'], true)) return true;
+        }
+    }
+    return false;
+}
+
 /** Derive durable DM threading metadata without fetching an untrusted parent. */
 function sv_dm_thread_metadata(PDO $pdo, array $obj, string $actor_id): array {
     $context = sv_activity_object_uri($obj['context'] ?? null);
@@ -3216,6 +3231,13 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             sv_capture_dm($pdo, $settings, $obj, $actor_id, $handle);
             // RECEIPT (0.7.611D) — no object id and no content: it's private.
             sv_inbox_log($pdo, 'Create', $actor_id, null, 'received — private message captured');
+            return 202;
+        }
+
+        // A non-DM reply may still be followers-only. Never convert that into
+        // a public comment, notification or reader row. Do not log private ids.
+        if ($in_reply !== '' && !sv_reply_is_public($activity, $obj)) {
+            sv_inbox_log($pdo, 'Create', $actor_id, null, 'received — non-public reply not published');
             return 202;
         }
 
