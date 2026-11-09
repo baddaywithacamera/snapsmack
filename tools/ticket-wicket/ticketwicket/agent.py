@@ -53,12 +53,17 @@ COMMANDS = [
      "example": ENTRY + " post SS-1042 --dry-run",
      "notes": "REFUSES and exits 1 if the body still identifies anyone. Always "
               "--dry-run first; it prints exactly what would be published."},
-    {"name": "reply", "does": "QUEUE a reply. Does not send.",
+    {"name": "reply", "does": "Reply to a reporter. DEFAULTS TO THE FORUM: an "
+     "update to a ticket is public, so it goes to the ticket's thread. A forum "
+     "reply to a published ticket is delivered now (with the forum key); on an "
+     "unpublished ticket it queues and `deliver-forum` posts it once published. "
+     "Pass --channel email only for a genuinely private note.",
      "returns": "outbox row id",
      "args": ["ID", "--text T | --text-file F", "--channel email|forum",
               "--unwrap"],
      "example": ENTRY + " reply SS-1042 --text '...' --as claude",
-     "notes": "Signed with YOUR signature automatically. Fails on a pulse ticket."},
+     "notes": "Signed with YOUR signature automatically. Fails on a pulse ticket. "
+              "Channel defaults to forum; email is the deliberate opt-in."},
     {"name": "ack", "does": "Queue the fixed acknowledgement.",
      "returns": "outbox row id", "args": ["ID", "--channel email|forum"],
      "example": ENTRY + " ack SS-1042",
@@ -90,7 +95,18 @@ COMMANDS = [
     {"name": "outbox", "does": "What is waiting to go out.",
      "returns": "queued rows", "args": ["--state queued|sent"],
      "example": ENTRY + " outbox --json",
-     "notes": "Nothing here has been sent. A separate armed sender delivers."},
+     "notes": "Forum replies are delivered by `deliver-forum`; email replies "
+              "wait here for the owner to send."},
+    {"name": "deliver-forum", "does": "The armed sender: deliver every queued "
+     "FORUM reply to its ticket's thread, and mark it sent.",
+     "returns": "delivered / skipped lists", "args": ["--forum-url URL", "--forum-key KEY"],
+     "example": ENTRY + " deliver-forum --json",
+     "notes": "Needs a forum key -- the credential stays separate from authoring. "
+              "Resolves the thread from the board if the store lost it, and will "
+              "not repost an update the thread already carries. Also RESCUES an "
+              "update parked as email on a published ticket that has no address on "
+              "file. Genuine mail -- a real address, or no thread -- is never sent "
+              "here: that is the owner's."},
     {"name": "mod-check", "does": "Does my forum key have the role it needs?",
      "returns": "admin (bool), boards", "args": [],
      "example": ENTRY + " mod-check --json",
@@ -100,7 +116,11 @@ COMMANDS = [
 ]
 
 REFUSALS = [
-    "THERE IS NO send. Replies queue; a separate armed sender holds the only "
+    "A forum reply to a PUBLISHED ticket is delivered when you have the forum "
+    "key; otherwise it queues and `deliver-forum` (which also needs the key) "
+    "sends it. Email replies always queue -- the owner sends mail. "
+    "The credential is still held apart from authoring: no key, no delivery. "
+    "Older note, kept because the boundary still holds: a bad draft that cannot "
     "credential. A bad draft can be written and cannot be delivered.",
     "THERE IS NO delete. close, withdraw, merge. The record survives all three.",
     "post and reply REFUSE a hard-wrapped body, and refuse markdown. The "
