@@ -187,7 +187,7 @@ try {
     if ($requested_slug !== null && $requested_slug !== ''
         && ($settings['fediverse_enabled'] ?? '0') === '1') {
         require_once __DIR__ . '/core/fediverse.php';
-        if (strcasecmp((string)$requested_slug, sv_handle($settings)) === 0) {
+        if (sv_enabled($settings) && strcasecmp((string)$requested_slug, sv_handle($settings)) === 0) {
             $pp_accept = $_SERVER['HTTP_ACCEPT'] ?? '';
             if (stripos($pp_accept, 'activity+json') !== false || stripos($pp_accept, 'ld+json') !== false) {
                 header('Content-Type: application/activity+json; charset=utf-8');
