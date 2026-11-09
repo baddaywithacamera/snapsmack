@@ -5584,6 +5584,15 @@ function sv_post_row(PDO $pdo, int $id): ?array {
     return $row ?: null;
 }
 
+/** Public federation dereference: match the grouped-post outbox policy. */
+function sv_federated_post_row(PDO $pdo, int $id, array $settings): ?array {
+    $row = sv_post_row($pdo, $id);
+    if (!$row || (int)($row['fedi_enabled'] ?? 0) !== 1) return null;
+    if (($settings['site_mode'] ?? 'photoblog') === 'carousel'
+        && ($row['post_type'] ?? '') === 'longform') return null;
+    return $row;
+}
+
 /** The post's images in carousel order (is_cover first within ties). */
 function sv_post_images(PDO $pdo, int $post_id): array {
     $stmt = $pdo->prepare(
@@ -6668,20 +6677,8 @@ function sv_convert_to_carousel(PDO $pdo, array $settings, array $image_ids, int
 
 /** Total published, federatable content units (standalone images + grouped
  *  posts) — the same basis as the outbox totalItems. Used for NodeInfo usage. */
-function sv_public_unit_count(PDO $pdo): int {
-    $n = 0;
-    try {
-        $n  = (int)$pdo->query(
-            "SELECT COUNT(*) FROM snap_images
-             WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL"
-        )->fetchColumn();
-        $n += (int)$pdo->query(
-            "SELECT COUNT(*) FROM snap_posts
-             WHERE status = 'published' AND created_at <= NOW()
-               AND post_type IN ('single','carousel','panorama','longform')"
-        )->fetchColumn();
-    } catch (Exception $e) { /* best-effort count */ }
-    return $n;
+function sv_public_unit_count(PDO $pdo, array $settings = []): int {
+    return (int)sv_outbox_doc($pdo, $settings)['totalItems'];
 }
 
 /**
@@ -6700,7 +6697,7 @@ function sv_nodeinfo_doc(PDO $pdo, array $settings): array {
         'openRegistrations' => false,
         'usage'             => [
             'users'      => ['total' => 1, 'activeHalfyear' => 1, 'activeMonth' => 1],
-            'localPosts' => sv_public_unit_count($pdo),
+            'localPosts' => sv_public_unit_count($pdo, $settings),
         ],
         'metadata'          => [
             'nodeName'        => html_entity_decode((string)($settings['site_name'] ?? 'SnapSmack'), ENT_QUOTES | ENT_HTML5),

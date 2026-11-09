@@ -232,11 +232,11 @@ switch ($ap) {
         } elseif (isset($_GET['longform'])) {
             // Dereferenceable Note for a LONGFORM post (/ap/note/l/N). Mirrors
             // the p/ route; JSON-only for now (no HTML post view wired yet).
-            $post = sv_post_row($pdo, (int)$_GET['longform']);
+            $post = sv_federated_post_row($pdo, (int)$_GET['longform'], $settings);
             $note = ($post && ($post['post_type'] ?? '') === 'longform')
                 ? sv_note_for_longform($pdo, $post, $settings) : null;
         } elseif (isset($_GET['post'])) {
-            $post = sv_post_row($pdo, (int)$_GET['post']);
+            $post = sv_federated_post_row($pdo, (int)$_GET['post'], $settings);
             $note = $post ? sv_note_for_post($pdo, $post, $settings) : null;
         } else {
             $img  = sv_image_row($pdo, (int)($_GET['id'] ?? 0));
