@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "SUDDEN IMPACT",
-    "version": "1.0.25",
+    "version": "1.0.26",
     "scrolltime_pages": ["landing"],
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
