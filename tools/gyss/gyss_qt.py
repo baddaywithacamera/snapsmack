@@ -218,6 +218,7 @@ class Window(QMainWindow):
         if n==2 and self.profile:self.load_organizer()
     def update_sort_empty_state(self):
         loaded=self.photo_list.count()>0
+        if not loaded:self.sort_intro.setText("Load photographs from Library to begin sorting.")
         self.sort_empty.setVisible(not loaded)
         self.photo_list.setVisible(loaded)
         self.sort_edit_panel.setVisible(loaded)
