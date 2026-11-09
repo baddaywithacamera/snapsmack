@@ -159,6 +159,26 @@ def test_reply_does_not_double_post_when_run_twice(store, monkeypatch):
     assert len(forum.replied) == 1, "the repeat must NOT post a second reply to the board"
 
 
+def test_short_assistant_replies_probe_on_text_not_signature(store, monkeypatch):
+    """The ASSISTANT signature is 24 chars; a short assistant reply must probe on
+    its TEXT, not the shared signature line, or a new one is wrongly suppressed
+    (Muse 989D re-pass)."""
+    t = _ticket(store, reporter="")
+    store.update(t.id, forum_thread=70)
+    forum = FakeForum()
+    monkeypatch.setattr(tw.forummod, "Forum", lambda *a, **k: forum)
+    monkeypatch.setattr(tw, "_store", lambda args: store)
+
+    tw.cmd_reply(_args(id=t.id, channel="forum", text="Fixed.", as_who=model.ASSISTANT))
+    assert len(forum.replied) == 1
+    # a DIFFERENT short assistant reply must also post -- not matched on the signature
+    tw.cmd_reply(_args(id=t.id, channel="forum", text="Shipped.", as_who=model.ASSISTANT))
+    assert len(forum.replied) == 2, "a different short assistant reply must not be suppressed"
+    # the SAME text again is a true duplicate -> reconciled, not reposted
+    tw.cmd_reply(_args(id=t.id, channel="forum", text="Shipped.", as_who=model.ASSISTANT))
+    assert len(forum.replied) == 2, "the same text twice must post only once"
+
+
 # ---- the forum-routing rescue (Sean, 2026-11-08: updates go into forum threads) ----
 
 def test_deliver_forum_rescues_an_email_update_on_a_published_ticket_with_no_inbox(store, monkeypatch):
