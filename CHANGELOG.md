@@ -11,6 +11,14 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.989D - 2026-11-08
+
+- NEW HORIZON 1.3.34 restores independent tagline font, size and colour controls alongside the visible tagline. The text-header size can reach 20px; IMPACT PRINTER 2.1.25 also lowers its header-size minimum to 20px. Numeric skin settings are clamped to their declared limits when saved, including font-size companion controls.
+- Add image post, checksum and slug indexes through the canonical schema and schema sync. Replace daily statistics DATE() scans with timestamp ranges, and avoid the duplicate-group scan when the library has no unfiled images. Production-sized isolated benchmarks verify the indexed query plans; installed fleet performance remains to be checked after deployment.
+
+
+- AURORA 1.0.59, INSTANT CAMERA 1.0.61, JIVE TURKEY 0.1.48, SUDDEN IMPACT 1.0.26 and THE GRID 1.3.61 remove misplaced archive continuation links from decorative background overlays. JIVE TURKEY also removes the duplicate link from its dark tile-hover overlay; the real endless-scroll fallback remains.
+
 ## 0.7.988D - 2026-11-08
 
 - The Thomas the Bear Easter-egg discover ping is restored. Finding him (Ctrl+Shift+Y) or opening the Noah story (Ctrl+Shift+Z) sends one anonymous counter ping -- a random per-install id, which key was pressed, and a first-in-session flag, and nothing that identifies the site. It now reaches every skin: the id rides a hidden data attribute from the shared asset hook rather than the inline script the strict content-security-policy blocked, and the ping itself is a plain image request the policy already allows. The receiver on snapsmack.ca is live; re-install to pick up the restored ping.
