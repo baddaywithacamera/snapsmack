@@ -5126,8 +5126,23 @@ function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
  * by hashtag. Same status→row shape as sv_public_timeline(), so the client's
  * feed renderer handles it unchanged.
  */
+/** Metadata retained alongside the legacy image URL list for REST photo cards. */
+function sv_rest_photo_metadata(array $status): array {
+    $attachments = [];
+    foreach (($status['media_attachments'] ?? []) as $media) {
+        if (!is_array($media) || ($media['type'] ?? '') !== 'image') continue;
+        $url = (string)($media['url'] ?? ($media['preview_url'] ?? ''));
+        if ($url === '') continue;
+        $attachments[] = ['type' => 'image', 'description' => mb_substr((string)($media['description'] ?? ''), 0, 2000)];
+    }
+    return ['attachments' => $attachments,
+        'sensitive' => !empty($status['sensitive']),
+        'summary' => mb_substr(trim((string)($status['spoiler_text'] ?? '')), 0, 5000)];
+}
+
 /** Map a Mastodon/Pixelfed status entity to the client feed-row shape, or null if it has no image. */
 function sv_map_status_row(array $st, string $fallback_host = ''): ?array {
+    $metadata = sv_rest_photo_metadata($st);
     $imgs = [];
     foreach (($st['media_attachments'] ?? []) as $m) {
         if (is_array($m) && ($m['type'] ?? '') === 'image') {
@@ -5144,6 +5159,9 @@ function sv_map_status_row(array $st, string $fallback_host = ''): ?array {
         'text'      => (isset($st['content_text']) && $st['content_text'] !== '')
                         ? (string)$st['content_text']
                         : sv_client_plain_text((string)($st['content'] ?? '')),
+        'attachments' => $metadata['attachments'],
+        'sensitive' => $metadata['sensitive'],
+        'summary' => $metadata['summary'],
         'images'    => $imgs, 'count' => count($imgs),
         'author'    => [
             'handle' => (string)($acct['acct'] ?? ''),
@@ -5273,6 +5291,7 @@ function sv_map_account_card(array $acct): array {
  *  Returns null for text-only rows (no image attachments). Shared by the
  *  public and authenticated hashtag-timeline paths so they stay in lockstep. */
 function sv_map_tag_status(array $st, string $fallback_host): ?array {
+    $metadata = sv_rest_photo_metadata($st);
     $imgs = [];
     foreach (($st['media_attachments'] ?? []) as $m) {
         if (is_array($m) && ($m['type'] ?? '') === 'image') {
@@ -5289,6 +5308,9 @@ function sv_map_tag_status(array $st, string $fallback_host): ?array {
         'text'      => (isset($st['content_text']) && $st['content_text'] !== '')
                         ? (string)$st['content_text']
                         : sv_client_plain_text((string)($st['content'] ?? '')),
+        'attachments' => $metadata['attachments'],
+        'sensitive' => $metadata['sensitive'],
+        'summary' => $metadata['summary'],
         'images'    => $imgs, 'count' => count($imgs),
         'author'    => [
             'handle' => (string)($acct['acct'] ?? ''),
@@ -5471,11 +5493,15 @@ function sv_masto_map_statuses(array $rows, int $max): array {
         $text = (isset($st['content_text']) && $st['content_text'] !== '')
             ? (string)$st['content_text']
             : trim(strip_tags((string)($st['content'] ?? '')));
+        $metadata = sv_rest_photo_metadata($st);
         $posts[] = [
             'id'        => (string)($st['uri'] ?? ($st['url'] ?? '')),   // canonical AP id for like/reply
             'url'       => (string)($st['url'] ?? ($st['uri'] ?? '')),   // HTML permalink
             'published' => (string)($st['created_at'] ?? ''),
             'text'      => $text,
+            'attachments' => $metadata['attachments'],
+            'sensitive' => $metadata['sensitive'],
+            'summary' => $metadata['summary'],
             'images'    => $imgs,
             'count'     => count($imgs),
         ];
