@@ -207,4 +207,58 @@ def test_deliver_forum_does_not_repost_an_update_already_on_the_thread(store, mo
     assert store.outbox("queued") == []                     # but reconciled
     assert len(store.outbox("sent")) == 1
 
+
+# ---- Muse 989D pass: thread resolution must not misroute (whole-id match) ----
+
+def test_resolve_thread_does_not_match_a_longer_ticket_id(store, monkeypatch):
+    """Searching SS-1 must not backfill from an SS-12 thread (bare prefix bug)."""
+    t = store.create(title="a thing", body="x", reporter="", usability="stopped")
+    # force the id to the short SS-1-style prefix that the real board search widens
+    # by constructing a forum whose only hit is a DIFFERENT, longer-id thread.
+    forum = FakeForum(threads_by_title={f"{t.id}2 · a different ticket": 500})
+    thread = tw._resolve_thread(store, forum, t.id)
+    assert thread == 0, "SS-1 must not resolve an SS-12 thread"
+    assert int(store.get(t.id).forum_thread) == 0, "and must not backfill the wrong id"
+
+
+def test_resolve_thread_matches_the_whole_id_with_a_separator(store, monkeypatch):
+    """The real title is '<id> · <subject>'; that still resolves."""
+    t = store.create(title="masthead", body="x", reporter="", usability="stopped")
+    forum = FakeForum(threads_by_title={f"{t.id} · masthead": 321})
+    assert tw._resolve_thread(store, forum, t.id) == 321
+
+
+def test_deliver_forum_never_backfills_a_genuine_email_ticket(store, monkeypatch):
+    """An email row with a REAL address is skipped before the board is ever searched."""
+    t = _ticket(store, reporter="someone@example.com")      # genuine inbox, unpublished
+    store.enqueue(t.id, "email", "a private note")
+
+    class Boom(FakeForum):
+        def search(self, *a, **k):
+            raise AssertionError("a genuine-email ticket must not be searched")
+
+    forum = Boom()
+    monkeypatch.setattr(tw.forummod, "Forum", lambda *a, **k: forum)
+    monkeypatch.setattr(tw, "_store", lambda args: store)
+    code = tw.cmd_deliver_forum(_args())
+    assert code == 0
+    assert forum.replied == []
+    assert int(store.get(t.id).forum_thread) == 0           # never backfilled
+    assert len(store.outbox("queued")) == 1                 # left for the owner
+
+
+def test_already_on_thread_catches_a_body_with_no_long_line(store, monkeypatch):
+    """A short / wrapped update is still detected, so it is not double-posted."""
+    t = _ticket(store, reporter="")
+    store.update(t.id, forum_thread=88)
+    body = "Fixed.\nShipped.\nDone."                         # no single line >= 24 chars
+    store.enqueue(t.id, "forum", body)
+    forum = FakeForum(posts_by_thread={88: ["... earlier: Fixed. Shipped. Done. (already here) ..."]})
+    monkeypatch.setattr(tw.forummod, "Forum", lambda *a, **k: forum)
+    monkeypatch.setattr(tw, "_store", lambda args: store)
+    code = tw.cmd_deliver_forum(_args())
+    assert code == 0
+    assert forum.replied == []                              # recognised as already present
+    assert len(store.outbox("sent")) == 1
+
 # ===== SNAPSMACK EOF =====

@@ -238,6 +238,22 @@ def _board_id(forum, name: str) -> int:
     return forummod.board_id(forum, name)
 
 
+def _title_is_for_ticket(title, ticket_id):
+    """True only when a thread title names THIS ticket as a WHOLE id.
+
+    The board search is a prefix query: searching SS-1 returns SS-1, SS-12,
+    SS-100... A bare startswith() backfilled SS-1's thread id from an SS-12
+    thread and misrouted every later delivery for SS-1 (Muse, 989D pass). The id
+    must be followed by a boundary -- end of string, or a non-word character --
+    never another digit or letter.
+    """
+    title = (title or "").strip()
+    if not title.startswith(ticket_id):
+        return False
+    rest = title[len(ticket_id):]
+    return rest == "" or not (rest[0].isalnum() or rest[0] in "-_")
+
+
 def _resolve_thread(s, f, ticket_id):
     """The ticket's forum thread id, backfilling the store when the DB lost it.
 
@@ -258,7 +274,7 @@ def _resolve_thread(s, f, ticket_id):
         items = (data.get("threads") or data.get("items") or data.get("results")
                  or (data if isinstance(data, list) else []))
         for th in items:
-            if str(th.get("title") or "").strip().startswith(ticket_id):
+            if _title_is_for_ticket(th.get("title"), ticket_id):
                 tid = int(th.get("id") or 0)
                 if tid > 0:
                     try:
@@ -337,19 +353,23 @@ def _already_on_thread(f, thread, body):
     thread 77 that way). Reposting it would double it on a PUBLIC board, so we
     read the thread first and match on a distinctive line of the body.
     """
+    collapse = lambda t: " ".join((t or "").split())   # whitespace-insensitive
+    norm = collapse(body)
     probe = ""
-    for line in (body or "").splitlines():
-        line = line.strip()
+    for line in (body or "").splitlines():            # prefer a distinctive line
+        line = collapse(line)
         if len(line) >= 24:
-            probe = line[:60]
+            probe = line[:80]
             break
+    if not probe:                                     # short/one-line body: use the whole thing
+        probe = norm[:80]
     if not probe:
         return False
     try:
         data = f.thread(thread)
         texts = [(data.get("thread") or {}).get("body", "")]
         texts += [x.get("body", "") for x in (data.get("replies") or [])]
-        return probe in "\n".join(texts)
+        return probe in collapse("\n".join(texts))
     except Exception:
         return False   # cannot read the thread: do not block delivery on it
 
@@ -376,19 +396,18 @@ def cmd_deliver_forum(args):
     for r in s.outbox("queued"):
         ticket_id = r.get("ticket")
         channel = r.get("channel")
+        reporter = (getattr(s.get(ticket_id), "reporter", "") or "")
+        # Decide candidacy BEFORE touching the board. A genuine email row (a real
+        # address) is never searched, so its ticket's forum_thread can never be
+        # backfilled as a side effect (Muse, 989D pass). A forum row, or an email
+        # row for a public ticket with no inbox, is a candidate; nothing else is.
+        if channel == "forum":
+            rescued = False
+        elif channel == "email" and "@" not in reporter:
+            rescued = True
+        else:
+            continue                        # genuine mail: the owner's to send
         thread = _resolve_thread(s, f, ticket_id)
-        # Which queued rows belong on the forum:
-        #   - anything already tagged `forum`, and
-        #   - an update parked as `email` for a ticket that IS published to the
-        #     forum AND has no email address on file. There is no inbox for it,
-        #     and the ticket is public, so the update's home is its thread. A
-        #     reply to a ticket with a real reporter address, or to one with no
-        #     thread, is genuine mail and stays the owner's to send.
-        t = s.get(ticket_id)
-        reporter = (getattr(t, "reporter", "") or "")
-        rescued = channel == "email" and thread > 0 and "@" not in reporter
-        if channel != "forum" and not rescued:
-            continue
         if thread <= 0:
             skipped.append({"ticket": ticket_id, "why": "ticket not published to the forum"})
             continue
