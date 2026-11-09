@@ -1702,6 +1702,11 @@
             2
         ]
     },
+    "skin-integrity-survey-regression.php": {
+        "assertions": 15,
+        "predicates": 2,
+        "thresholds": []
+    },
     "skin-min-images-regression.php": {
         "assertions": 17,
         "predicates": 9,

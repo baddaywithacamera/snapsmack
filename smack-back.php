@@ -381,6 +381,17 @@ try {
     }
 } catch (PDOException $e) { }
 
+// Read-only integrity survey (SS-1264): installed skins with no signed-package
+// record, the refused-save condition. DB group counts above hide a zero-row
+// skin; this enumerates the installed skin dirs and left-joins the counts.
+require_once __DIR__ . '/core/skin-integrity-survey.php';
+$skin_integrity_survey     = [];
+$skin_missing_record_count = 0;
+try {
+    $skin_integrity_survey     = snapsmack_skin_integrity_survey($pdo);
+    $skin_missing_record_count = snapsmack_skin_integrity_missing_count($skin_integrity_survey);
+} catch (Throwable $e) { }
+
 $incidents = [];
 try {
     $incidents = $pdo->query(
@@ -466,6 +477,39 @@ include 'core/sidebar.php';
                 <div class="stat-label">LAST FULL VERIFY</div>
             </div>
         </div>
+    </div>
+
+    <?php // ── SKIN INTEGRITY RECORDS (SS-1264) ──────────────────────────────
+    // Read-only: an installed skin with no signed-package integrity record has
+    // every setting refused ("no signed-package integrity record exists"). This
+    // surfaces it before the owner hits a refused save. Not an action. ?>
+    <div class="panel">
+        <h2>Skin integrity records</h2>
+        <?php if ($skin_missing_record_count > 0): ?>
+            <p class="dim" style="margin:8px 0 12px;">
+                <strong><?php echo (int) $skin_missing_record_count; ?></strong>
+                installed skin<?php echo $skin_missing_record_count === 1 ? '' : 's'; ?>
+                ha<?php echo $skin_missing_record_count === 1 ? 's' : 've'; ?>
+                NO signed-package integrity record. Every setting, upload and mode change is
+                refused for <?php echo $skin_missing_record_count === 1 ? 'it' : 'them'; ?> until the
+                record is restored.
+            </p>
+        <?php else: ?>
+            <p class="dim" style="margin:8px 0 12px;">Every installed skin has an integrity record; no skin is blocked from saving.</p>
+        <?php endif; ?>
+        <table class="data-table">
+            <thead><tr><th>Skin</th><th>Version</th><th>Manifest rows</th><th>Record</th></tr></thead>
+            <tbody>
+            <?php foreach ($skin_integrity_survey as $s): ?>
+                <tr>
+                    <td><?php echo htmlspecialchars((string) $s['slug']); ?></td>
+                    <td><?php echo htmlspecialchars((string) $s['version']); ?></td>
+                    <td><?php echo $s['manifest_rows'] < 0 ? '<span class="dim">n/a</span>' : (int) $s['manifest_rows']; ?></td>
+                    <td><?php echo $s['has_record'] ? 'yes' : '<strong>MISSING</strong>'; ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
     </div>
 
     <?php
