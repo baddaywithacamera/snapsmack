@@ -2,7 +2,7 @@
     "schema_version": 2,
     "name": "NEW HORIZON",
     "oh_snap_ready": true,
-    "version": "1.3.34",
+    "version": "1.3.35",
     "scrolltime_pages": [
         "archive"
     ],
@@ -397,6 +397,15 @@
             "selector": ".site-title-text",
             "property": "font-size"
         },
+        "header_title_color": {
+            "section": "TYPOGRAPHY",
+            "type": "color",
+            "label": "Site Title Colour",
+            "default": "#f5f5f5",
+            "selector": ".site-title-text",
+            "property": "color",
+            "reset_to_default": true
+        },
         "static_heading_font": {
             "section": "TYPOGRAPHY",
             "type": "select",
@@ -544,6 +553,24 @@
             },
             "selector": ".static-page-title, .photo-title-footer",
             "property": "font-family"
+        },
+        "nh_heading_colour_dark": {
+            "section": "TYPOGRAPHY",
+            "type": "color",
+            "label": "Heading Colour (Dark, default = skin shades)",
+            "default": "#ffffff",
+            "selector": ":root",
+            "property": "--nh-heading-dark",
+            "omit_if_default": true
+        },
+        "nh_heading_colour_light": {
+            "section": "TYPOGRAPHY",
+            "type": "color",
+            "label": "Heading Colour (Light, default = skin shades)",
+            "default": "#111111",
+            "selector": ":root",
+            "property": "--nh-heading-light",
+            "omit_if_default": true
         },
         "static_body_font": {
             "section": "TYPOGRAPHY",
@@ -693,6 +720,24 @@
             "selector": ".static-content, .description",
             "property": "font-family"
         },
+        "nh_body_colour_dark": {
+            "section": "TYPOGRAPHY",
+            "type": "color",
+            "label": "Body Colour (Dark, default = skin shades)",
+            "default": "#cccccc",
+            "selector": ":root",
+            "property": "--nh-body-dark",
+            "omit_if_default": true
+        },
+        "nh_body_colour_light": {
+            "section": "TYPOGRAPHY",
+            "type": "color",
+            "label": "Body Colour (Light, default = skin shades)",
+            "default": "#333333",
+            "selector": ":root",
+            "property": "--nh-body-light",
+            "omit_if_default": true
+        },
         "footer_font_family": {
             "section": "TYPOGRAPHY",
             "type": "select",
@@ -841,6 +886,24 @@
             "selector": "#system-footer .inside, #system-footer p, #sig-text",
             "property": "font-family"
         },
+        "nh_footer_colour_dark": {
+            "section": "TYPOGRAPHY",
+            "type": "color",
+            "label": "Footer Colour (Dark, default = skin shades)",
+            "default": "#cccccc",
+            "selector": ":root",
+            "property": "--nh-footer-dark",
+            "omit_if_default": true
+        },
+        "nh_footer_colour_light": {
+            "section": "TYPOGRAPHY",
+            "type": "color",
+            "label": "Footer Colour (Light, default = skin shades)",
+            "default": "#333333",
+            "selector": ":root",
+            "property": "--nh-footer-light",
+            "omit_if_default": true
+        },
         "page_title_font_weight": {
             "section": "TYPOGRAPHY",
             "type": "select",
@@ -864,14 +927,6 @@
             "default": "#111111",
             "selector": ".static-content, .static-transmission #scroll-stage",
             "property": "background-color"
-        },
-        "header_title_color": {
-            "section": "HEADER & NAV",
-            "type": "color",
-            "label": "Site Title Colour",
-            "default": "#f5f5f5",
-            "selector": ".site-title-text",
-            "property": "color"
         },
         "header_text_transform": {
             "section": "HEADER & NAV",
@@ -1185,12 +1240,13 @@
             "property": "font-size"
         },
         "tagline_color": {
-            "section": "HEADER & NAV",
+            "section": "TYPOGRAPHY",
             "type": "color",
             "label": "Tagline Colour",
             "default": "#ffffff",
             "selector": ".site-tagline-text",
-            "property": "color"
+            "property": "color",
+            "reset_to_default": true
         }
     },
     "admin_styling": "\r\n        .metadata-selector-row { \r\n            display: flex; \r\n            justify-content: space-between; \r\n            align-items: center; \r\n            margin-top: -15px; \r\n            margin-bottom: 50px; \r\n        }\r\n        .skin-switcher-form { display: flex; align-items: center; gap: 10px; }\r\n        .skin-switcher-form label { margin: 0 !important; }\r\n        .control-group-flex { display: flex; align-items: center; gap: 20px; }\r\n        .control-group-flex input { flex: 1; }\r\n        .active-val { width: 50px; text-align: right; font-family: monospace; }\r\n        .hex-display { font-family: monospace; }\r\n    ",

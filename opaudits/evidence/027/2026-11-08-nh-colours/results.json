@@ -1,0 +1,146 @@
+[
+  {
+    "width": 1920,
+    "variant": "dark",
+    "state": "default",
+    "actual": {
+      ".static-page-title": "rgb(255, 255, 255)",
+      "#body": "rgb(204, 204, 204)",
+      ".description": "rgb(170, 170, 170)",
+      "#sig-text": "rgb(204, 204, 204)"
+    },
+    "pass": true
+  },
+  {
+    "width": 1920,
+    "variant": "dark",
+    "state": "grey",
+    "actual": {
+      ".static-page-title": "rgb(128, 128, 128)",
+      "#body": "rgb(128, 128, 128)",
+      ".description": "rgb(128, 128, 128)",
+      "#sig-text": "rgb(128, 128, 128)"
+    },
+    "pass": true
+  },
+  {
+    "width": 1920,
+    "variant": "light",
+    "state": "default",
+    "actual": {
+      ".static-page-title": "rgb(17, 17, 17)",
+      "#body": "rgb(51, 51, 51)",
+      ".description": "rgb(85, 85, 85)",
+      "#sig-text": "rgb(51, 51, 51)"
+    },
+    "pass": true
+  },
+  {
+    "width": 1920,
+    "variant": "light",
+    "state": "grey",
+    "actual": {
+      ".static-page-title": "rgb(128, 128, 128)",
+      "#body": "rgb(128, 128, 128)",
+      ".description": "rgb(128, 128, 128)",
+      "#sig-text": "rgb(128, 128, 128)"
+    },
+    "pass": true
+  },
+  {
+    "width": 1440,
+    "variant": "dark",
+    "state": "default",
+    "actual": {
+      ".static-page-title": "rgb(255, 255, 255)",
+      "#body": "rgb(204, 204, 204)",
+      ".description": "rgb(170, 170, 170)",
+      "#sig-text": "rgb(204, 204, 204)"
+    },
+    "pass": true
+  },
+  {
+    "width": 1440,
+    "variant": "dark",
+    "state": "grey",
+    "actual": {
+      ".static-page-title": "rgb(128, 128, 128)",
+      "#body": "rgb(128, 128, 128)",
+      ".description": "rgb(128, 128, 128)",
+      "#sig-text": "rgb(128, 128, 128)"
+    },
+    "pass": true
+  },
+  {
+    "width": 1440,
+    "variant": "light",
+    "state": "default",
+    "actual": {
+      ".static-page-title": "rgb(17, 17, 17)",
+      "#body": "rgb(51, 51, 51)",
+      ".description": "rgb(85, 85, 85)",
+      "#sig-text": "rgb(51, 51, 51)"
+    },
+    "pass": true
+  },
+  {
+    "width": 1440,
+    "variant": "light",
+    "state": "grey",
+    "actual": {
+      ".static-page-title": "rgb(128, 128, 128)",
+      "#body": "rgb(128, 128, 128)",
+      ".description": "rgb(128, 128, 128)",
+      "#sig-text": "rgb(128, 128, 128)"
+    },
+    "pass": true
+  },
+  {
+    "width": 1024,
+    "variant": "dark",
+    "state": "default",
+    "actual": {
+      ".static-page-title": "rgb(255, 255, 255)",
+      "#body": "rgb(204, 204, 204)",
+      ".description": "rgb(170, 170, 170)",
+      "#sig-text": "rgb(204, 204, 204)"
+    },
+    "pass": true
+  },
+  {
+    "width": 1024,
+    "variant": "dark",
+    "state": "grey",
+    "actual": {
+      ".static-page-title": "rgb(128, 128, 128)",
+      "#body": "rgb(128, 128, 128)",
+      ".description": "rgb(128, 128, 128)",
+      "#sig-text": "rgb(128, 128, 128)"
+    },
+    "pass": true
+  },
+  {
+    "width": 1024,
+    "variant": "light",
+    "state": "default",
+    "actual": {
+      ".static-page-title": "rgb(17, 17, 17)",
+      "#body": "rgb(51, 51, 51)",
+      ".description": "rgb(85, 85, 85)",
+      "#sig-text": "rgb(51, 51, 51)"
+    },
+    "pass": true
+  },
+  {
+    "width": 1024,
+    "variant": "light",
+    "state": "grey",
+    "actual": {
+      ".static-page-title": "rgb(128, 128, 128)",
+      "#body": "rgb(128, 128, 128)",
+      ".description": "rgb(128, 128, 128)",
+      "#sig-text": "rgb(128, 128, 128)"
+    },
+    "pass": true
+  }
+]
