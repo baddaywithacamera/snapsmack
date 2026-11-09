@@ -362,15 +362,20 @@ def _already_on_thread(f, thread, body):
     read the thread first and match on a distinctive line of the body.
     """
     collapse = lambda t: " ".join((t or "").split())   # whitespace-insensitive
-    norm = collapse(body)
+    # Probe on the TEXT, never the signature. Every reply ends with a fixed
+    # signature, and the ASSISTANT one is exactly 24 chars, so a short
+    # --as assistant reply would otherwise probe on the signature line and match
+    # ANY earlier assistant-signed reply -- suppressing a genuinely new one
+    # (Muse, 989D re-pass). Drop any line that is a known signature.
+    sigs = {collapse(s) for s in model.SIGNATURES.values()}
+    content = [c for c in (collapse(l) for l in (body or "").splitlines()) if c and c not in sigs]
     probe = ""
-    for line in (body or "").splitlines():            # prefer a distinctive line
-        line = collapse(line)
+    for line in content:                              # prefer a distinctive text line
         if len(line) >= 24:
             probe = line[:80]
             break
-    if not probe:                                     # short/one-line body: use the whole thing
-        probe = norm[:80]
+    if not probe:                                     # short reply: all the text, signature excluded
+        probe = " ".join(content)[:80]
     if not probe:
         return False
     try:
