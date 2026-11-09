@@ -6,6 +6,7 @@ $start=strpos($library,'function sv_enabled(');$end=strpos($library,"\n}",$start
 $index=file_get_contents(__DIR__.'/../index.php');
 $start=strpos($index,'    // --- FEDIVERSE public profile');$end=strpos($index,'    // --- CMS-OWNED PUBLIC CONTROLLER',$start);
 $route=substr($index,$start,$end-$start);
+require_once __DIR__.'/../core/page-cache.php';
 $route=str_replace("require_once __DIR__ . '/core/fediverse.php';",'', $route);
 $route=str_replace("include __DIR__ . '/core/public-profile.php';",'throw new ProfileReached("html");',$route);
 $route=str_replace("header('Content-Type: application/activity+json; charset=utf-8');",'', $route);

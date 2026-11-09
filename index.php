@@ -83,7 +83,7 @@ try {
     }
 
     require_once __DIR__ . '/core/page-cache.php';
-    page_cache_serve_or_start($settings);
+    // Profile content negotiation below must run before any cached HTML is served.
 
     // Define BASE_URL from settings or fallback. Ensures trailing slash for consistent routing.
     if (!defined('BASE_URL')) {
@@ -198,6 +198,8 @@ try {
             exit;
         }
     }
+
+    page_cache_serve_or_start($settings);
 
     // --- CMS-OWNED PUBLIC CONTROLLER ---
     // The avatar, resolved exactly as PHOTOGRAM resolved it before the strict

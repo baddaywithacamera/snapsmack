@@ -32,7 +32,7 @@ function page_cache_dir(): string {
 }
 
 /** Cache key → file path for the current request. */
-function page_cache_file(): string {
+function page_cache_file(array $settings = []): string {
     $uri = $_SERVER['REQUEST_URI'] ?? '/';
     // Strip any query string defensively (we only cache no-query requests).
     $uri = strtok($uri, '?');
@@ -44,12 +44,16 @@ function page_cache_file(): string {
     $viewport = function_exists('snapsmack_is_mobile') && snapsmack_is_mobile()
         ? 'mobile'
         : 'desktop';
-    return page_cache_dir() . '/' . sha1($host . '|' . $uri . '|' . $viewport) . '.html';
+    return page_cache_dir() . '/' . sha1('html-v2|' . $host . '|' . $uri . '|' . $viewport . '|'
+        . ($settings['site_mode'] ?? '') . '|' . ($settings['fediverse_enabled'] ?? '0')) . '.html';
 }
 
 /** Is this request eligible to be served from / written to cache? */
 function page_cache_eligible(array $settings): bool {
     if (($settings['cache_enabled'] ?? '0') !== '1') return false;
+    // Federation representations never enter the anonymous HTML cache.
+    $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+    if (stripos($accept, 'activity+json') !== false || stripos($accept, 'ld+json') !== false) return false;
     // Dev mode: caching is paused (bypassed entirely) until cache_dev_until, an
     // absolute unix timestamp set from the admin's chosen 5min–1week window.
     // Auto-resumes once the timestamp passes — no need to remember to switch back.
@@ -76,7 +80,7 @@ function page_cache_serve_or_start(array $settings): void {
 
     $ttl  = (int)($settings['cache_ttl'] ?? 300);
     if ($ttl < 1) $ttl = 300;
-    $file = page_cache_file();
+    $file = page_cache_file($settings);
 
     // Serve a fresh hit.
     if (is_file($file) && (time() - filemtime($file)) < $ttl) {
