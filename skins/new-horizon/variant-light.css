@@ -15,6 +15,10 @@
 
 
 :root {
+    --nh-heading-colour: var(--nh-heading-light, var(--text-bright));
+    --nh-body-colour: var(--nh-body-light, var(--text-primary));
+    --nh-description-colour: var(--nh-body-light, var(--text-secondary));
+    --nh-footer-colour: var(--nh-footer-light, var(--text-primary));
     --bg-page:        #f2f2f2;
     --bg-secondary:   #e8e8e8;
     --bg-tertiary:    #dddddd;

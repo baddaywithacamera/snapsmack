@@ -81,6 +81,8 @@ function snapsmack_recompile_public_skin_css(PDO $pdo, string $active_skin): voi
     foreach ($manifest['options'] as $key => $meta) {
         $val  = ($all_settings[$key] ?? '') !== '' ? $all_settings[$key] : ($meta['default'] ?? '');
         $prop = $meta['property'] ?? '';
+        if (!empty($meta['omit_if_default']) && in_array($meta['type'] ?? '', ['color', 'colour'], true)
+            && strcasecmp((string)$val, (string)($meta['default'] ?? '')) === 0) continue;
 
         if ($prop === '')                    continue; // handled in PHP, not CSS
         if ($val === '')                     continue; // empty → skin style.css fallback wins
