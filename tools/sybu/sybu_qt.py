@@ -229,6 +229,7 @@ class Window(QMainWindow):
         r=QHBoxLayout(); self.drive=QCheckBox("Attach Google Drive originals"); r.addWidget(self.drive); self.drive_check_btn=QPushButton("Check Drive"); self.drive_check_btn.setToolTip("Ask Google Drive whether this token and folder work. Needs no queue, no images and no blog connection."); self.drive_check_btn.clicked.connect(self._drive_check); r.addWidget(self.drive_check_btn); r.addStretch(1); validate=QPushButton("Validate queue"); validate.setToolTip("Check the queue titles, categories and albums. Does not check Google Drive."); validate.clicked.connect(self._validate); r.addWidget(validate); self.post_btn=QPushButton("POST"); self.post_btn.setObjectName("Primary"); self.post_btn.clicked.connect(lambda:self._post(None)); r.addWidget(self.post_btn); self.post_solo=QPushButton("POST SOLO"); self.post_solo.clicked.connect(lambda:self._post(False)); r.addWidget(self.post_solo); self.post_gram=QPushButton("POST GRAM"); self.post_gram.clicked.connect(lambda:self._post(True)); r.addWidget(self.post_gram); pl.addLayout(r)
         self.drive_status_line=label("Drive: Not connected", "Muted"); self.drive_status_line.setWordWrap(True); pl.addWidget(self.drive_status_line)
         self.drive.toggled.connect(self._drive_status_changed)
+        copyright_row=QHBoxLayout(); copyright_row.addWidget(label("COPYRIGHT FOR SOLO IMAGE EXIF", "Eyebrow")); self.copyright_text=QLineEdit(); self.copyright_text.setPlaceholderText("Optional. Empty adds no copyright text."); self.copyright_text.setToolTip("Written to SOLO JPEG metadata and the Drive copy only. Never appended to captions. GRAM uploads retain the source file metadata."); copyright_row.addWidget(self.copyright_text,1); pl.addLayout(copyright_row)
         l.addWidget(send)
         act,aa=card("Activity"); self.activity_card=act; self.log=QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(72); aa.addWidget(self.log); l.addWidget(act,1); return page
 
@@ -281,12 +282,12 @@ class Window(QMainWindow):
 
     def _load(self):
         names=self.engine.profiles_list(); self.profile.blockSignals(True); self.profile.clear(); self.profile.addItems(names); self.profile.blockSignals(False)
-        c=self.engine.config_fields(); self.url.setText(c['url']); self.key.setText(c['api_key']); self.folder.setText(c['last_image_folder']); self.manifest.setText(c['last_manifest_file']); self.gemini.setText(c['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(c['google_credentials']); self.drive_folder.setText(c['drive_folder_id']); self.drive.setChecked(c['drive_enabled']); self.prompt.setText(c['gemini_last_prompt'])
+        c=self.engine.config_fields(); self.url.setText(c['url']); self.key.setText(c['api_key']); self.folder.setText(c['last_image_folder']); self.manifest.setText(c['last_manifest_file']); self.gemini.setText(c['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(c['google_credentials']); self.drive_folder.setText(c['drive_folder_id']); self.drive.setChecked(c['drive_enabled']); self.prompt.setText(c['gemini_last_prompt']); self.copyright_text.setText(c.get('copyright_text',''))
         if names: self._profile(names[0])
 
     def _profile(self,name):
         if not name:return
-        p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self._set_prompt_state(p); self.drive.setChecked(p['drive_enabled']); self._connect()
+        p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self._set_prompt_state(p); self.drive.setChecked(p['drive_enabled']); self.copyright_text.setText(p.get('copyright_text','')); self._connect()
 
     def _set_prompt_state(self,state):
         presets=state.get('prompt_presets') or {'Default':state.get('prompt','')}
@@ -571,7 +572,7 @@ class Window(QMainWindow):
             extra=self.additional_tags.text().strip()
             tag_note=f"\n\nAdditional hashtags: {extra}" if extra else ""
             if QMessageBox.question(self,"Confirm publish",f"Post {pf['count']} selected image(s) to {pf['dest']} as {'GRAM' if grams else 'SOLO'}?{tag_note}",QMessageBox.Yes|QMessageBox.No)!=QMessageBox.Yes:return
-            out=self.engine.post_start(grams,self.cat.currentText(),self.album.currentText(),self.orient.currentText(),"",self.engine.config.get('copyright_text',''),self.drive_folder.text(),ack_no_drive=True,ack_unknown_mode=True,drive_enabled=self.drive.isChecked(),additional_tags=extra)
+            out=self.engine.post_start(grams,self.cat.currentText(),self.album.currentText(),self.orient.currentText(),"",self.copyright_text.text(),self.drive_folder.text(),ack_no_drive=True,ack_unknown_mode=True,drive_enabled=self.drive.isChecked(),additional_tags=extra)
             if out.get('needs_ack'): self._error("Google Drive is not connected."); return
             self.poll_seen['post']=0; self.progress.setValue(0); self.progress_text.setText(f"Publishing {pf['count']} image(s) to {pf['dest']}…"); self.stop_btn.setEnabled(True); self._fill_queue()
         except Exception as e:self._error(str(e))
@@ -623,7 +624,7 @@ class Window(QMainWindow):
                 if out.get('error'):self._error(out['error'])
 
     def _save(self):
-        _vw=self.engine.save_config({'url':self.url.text(),'api_key':self.key.text(),'last_image_folder':self.folder.text(),'last_manifest_file':self.manifest.text(),'google_credentials':self.gcreds.text(),'drive_folder_id':self.drive_folder.text(),'gemini_api_key':self.gemini.text(),'gemini_last_prompt':self.prompt.text()}); self._gemini_manually_edited=False; self.engine.drive_toggle(self.drive.isChecked()); self.gemini_source.setText("Gemini key source: SNAP HQ shared store"); self._say("Settings saved to the shared store.")
+        _vw=self.engine.save_config({'url':self.url.text(),'api_key':self.key.text(),'last_image_folder':self.folder.text(),'last_manifest_file':self.manifest.text(),'google_credentials':self.gcreds.text(),'drive_folder_id':self.drive_folder.text(),'gemini_api_key':self.gemini.text(),'gemini_last_prompt':self.prompt.text(),'copyright_text':self.copyright_text.text()}); self._gemini_manually_edited=False; self.engine.drive_toggle(self.drive.isChecked()); self.gemini_source.setText("Gemini key source: SNAP HQ shared store"); self._say("Settings saved to the shared store.")
         if _vw: self._say("⚠ KEY NOT REMEMBERED — "+_vw); self.progress_text.setText("⚠ Key not remembered: "+_vw)
     def _post_row_event(self,ev):
         r=ev.get('index')

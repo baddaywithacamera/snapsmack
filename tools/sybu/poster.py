@@ -34,7 +34,6 @@ from PIL import Image as PILImage, ImageFilter, ImageOps
 log = logging.getLogger('sybu')
 
 import exif_writer
-from exif_writer import COPYRIGHT as _DEFAULT_COPYRIGHT
 from manifest_parser import ManifestEntry
 
 try:
@@ -360,7 +359,7 @@ class SnapSmackClient:
         tmp_drive = ''
         notes     = []
 
-        copyright_str = copyright_text or _DEFAULT_COPYRIGHT
+        copyright_str = copyright_text or ''
 
         try:
             # ── 1. Resize → web version ───────────────────────────────
@@ -466,9 +465,9 @@ class SnapSmackClient:
                 if hex_tags:
                     post_tags = f"{post_tags} {hex_tags}" if post_tags else hex_tags
 
-            # Caption (AI or manual) becomes the post description; copyright is appended so it is never lost.
+            # Caption alone becomes the post description. Copyright belongs only in image metadata.
             _caption = (getattr(entry, 'caption', '') or '').strip()
-            post_desc = f"{_caption}\n\n{copyright_str}" if _caption else copyright_str
+            post_desc = _caption
 
             form_data: Dict[str, str] = {
                 'title':                entry.title,
