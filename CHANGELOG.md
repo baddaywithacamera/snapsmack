@@ -11,6 +11,13 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.991D - 2026-11-09
+
+- NEW HORIZON 1.3.36: the single-image landing nav bar snaps to the bottom of the frame again, and an understated custom scrollbar (transparent track, subtle thumb) replaces the browser default on its primary surfaces. Desktop and large-tablet widths verified in a browser; installed and admin-save acceptance remain to be checked.
+- Archive pages reveal their photographs in a quick top-to-bottom, left-to-right fade-in wave on NEW HORIZON. The effect respects reduced-motion and the motion-warning consent, and is fail-safe: the grid is always fully visible if it does not run. Other skins are unchanged (phase one).
+- Federation REST photo responses carry attachment descriptions (ALT), the sensitive flag and a plain-text content-warning summary alongside the image list, matching the ActivityPub path.
+- Source and isolated browser checks cover these; installed fleet and owner acceptance remain to be verified after deployment.
+
 ## 0.7.990D - 2026-11-08
 
 - NEW HORIZON 1.3.35 adds separate heading, body and footer colour controls for light and dark variants, with reset controls. TRUE GRIT 1.3.29 keeps the archive T/M/C toolbar outside the centered content and clear of search.
