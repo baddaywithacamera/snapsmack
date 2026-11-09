@@ -257,6 +257,70 @@ function snapsmack_declared_skin_options(array $settings, string $skinSlug): arr
     return $out;
 }
 
+/**
+ * Clamp one posted skin-option value to the manifest before it is stored.
+ *
+ * Skin Admin's save path (smack-skin.php 4a) writes $_POST['skin_opt'] straight
+ * into scoped settings. Nothing stopped a stale or tampered POST storing a
+ * NUMBER under a control's floor -- e.g. a header font size below its minimum.
+ * The render path, snapsmack_declared_skin_options() above, already clamps the
+ * same bounds on the way out; this is the matching guard on the way in, so the
+ * floor holds at save as well as at display (defence in depth).
+ *
+ * It clamps only numeric controls: a declared range/number option, and a font
+ * control's <key>_size companion slider (sz_key_override), each to its own
+ * manifest range, mirroring the two numeric blocks above. Every other key -- and
+ * any non-numeric value -- is returned UNCHANGED, so no legitimate control
+ * (select, colour, text, checkbox) is ever rejected or truncated here; those
+ * stay validated on the render path. A key the manifest does not know is
+ * returned as-is.
+ */
+function snapsmack_clamp_skin_option(string $skinSlug, string $key, $value)
+{
+    $skinSlug = preg_replace('/[^a-z0-9-]/', '', strtolower($skinSlug));
+    if ($skinSlug === '' || !preg_match('/^[a-zA-Z0-9_-]{1,100}$/', $key)) return $value;
+    if (!is_numeric($value)) return $value;                 // only numeric controls are clamped here
+    $path = dirname(__DIR__) . '/skins/' . $skinSlug . '/manifest.json';
+    if (!is_file($path)) return $value;
+    try {
+        $manifest = json_decode((string)file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+    } catch (Throwable $e) {
+        return $value;
+    }
+    if (!is_array($manifest['options'] ?? null)) return $value;
+    $options = $manifest['options'];
+
+    // A declared numeric control: clamp to its own min/max.
+    $definition = $options[$key] ?? null;
+    if (is_array($definition)
+        && in_array(strtolower((string)($definition['type'] ?? 'text')), ['range', 'range_numeric', 'number'], true)) {
+        $min = is_numeric($definition['min'] ?? null) ? (float)$definition['min'] : -100000;
+        $max = is_numeric($definition['max'] ?? null) ? (float)$definition['max'] : 100000;
+        return snapsmack_skin_number_string(max($min, min($max, (float)$value)));
+    }
+
+    // A font control's companion size slider (<key>_size / sz_key_override),
+    // clamped to the font's own size range -- mirrors the companion block above.
+    foreach ($options as $optKey => $def) {
+        if (!is_array($def)) continue;
+        $isFont = (($def['property'] ?? '') === 'font-family') || !empty($def['is_font']);
+        if (!$isFont || !empty($def['no_size_slider'])) continue;
+        if ((string)($def['sz_key_override'] ?? ($optKey . '_size')) !== $key) continue;
+        $range = is_array($def['size'] ?? null) ? $def['size'] : [];
+        $min = is_numeric($range['min'] ?? null) ? (float)$range['min'] : 0.5;
+        $max = is_numeric($range['max'] ?? null) ? (float)$range['max'] : 4.0;
+        return snapsmack_skin_number_string(max($min, min($max, (float)$value)));
+    }
+
+    return $value;
+}
+
+/** A clamped number as a compact string, so it stores the way the POST did (no trailing .0). */
+function snapsmack_skin_number_string(float $n): string
+{
+    return ($n == (int)$n) ? (string)(int)$n : rtrim(rtrim(sprintf('%.4f', $n), '0'), '.');
+}
+
 /** CMS-owned presentation model shared by every strict skin. */
 function snapsmack_skin_presentation(array $settings, string $skinSlug): array
 {
