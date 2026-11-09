@@ -75,7 +75,7 @@
         "new-horizon": {
             "version": "1.3.35",
             "files_sha256": "df342667a1ecf44778b65d24b297cb661d9cd278f37c4b6964cd5e42b9ed0e3f",
-            "manifest_css_sha256": "9584bd77b0723cd4ab7385752316a8d45c690d46ba6700ca522e868c5b5a7ae7"
+            "manifest_css_sha256": "b47a89ff8d91cad0e020bb44767ace4241924620f70be9c34f2558a53de1c6ff"
         },
         "onyx": {
             "version": "0.1.26",
