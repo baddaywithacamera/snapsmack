@@ -1,1 +1,26 @@
-{"commit":"3675add93b20c5ac24a9cf064ccad483b70e5a0b","security":"pass","parity":"pass","skin_render_parity":"pass","authority_review":"approved","skin_count":30,"skin_inventory_sha256":"d9559be77cfc2a7bddd42c7b90b824a42b9cc4471ab6ff303e0d2abf9bda7c3d","skin_render_changes":[],"browser_regressions":"pass","tests":"378 PHP files and mandatory browser suite PASS; NH browser 12/12; TRUE GRIT 12 clearances; SS1099 pytest 15 PASS. Installed fleet and owner acceptance NOT CHECKED.","authority":"Muse zO8BDnk1ku8m9IztQNZI-EpV; PM pZfBPqqkwNY_eAQeF8MSD5Aa; Sean tag/push authorization"}
+{
+  "commit": "3675add93b20c5ac24a9cf064ccad483b70e5a0b",
+  "security": "pass",
+  "parity": "pass",
+  "skin_render_parity": "pass",
+  "authority_review": "approved",
+  "skin_count": 30,
+  "skin_inventory_sha256": "d9559be77cfc2a7bddd42c7b90b824a42b9cc4471ab6ff303e0d2abf9bda7c3d",
+  "skin_render_changes": [
+    {
+      "skin": "new-horizon",
+      "reason": "Optional per-variant heading/body/footer colours; reset controls. Default appearance retained.",
+      "pre_strip_reference": "3fdf217d; opaudits/evidence/027/2026-11-08-nh-colours, twelve variant/state/width captures. Installed admin lifecycle NOT CHECKED."
+    },
+    {
+      "skin": "true-grit",
+      "reason": "Dock archive T/M/C toolbar outside centered filter content and clear of search.",
+      "pre_strip_reference": "3fdf217d; opaudits/evidence/027/2026-11-08-true-grit-toolbar before/after fixtures and PNGs. Installed acceptance NOT CHECKED."
+    }
+  ],
+  "browser_regressions": "pass",
+  "tests": "378 PHP files and mandatory browser suite PASS; NH browser 12/12; TRUE GRIT 12 clearances; SS1099 pytest 15 PASS. Installed fleet and owner acceptance NOT CHECKED.",
+  "authority": "Muse zO8BDnk1ku8m9IztQNZI-EpV; PM pZfBPqqkwNY_eAQeF8MSD5Aa; Sean tag/push authorization",
+  "independent_review": "Muse zO8BDnk1ku8m9IztQNZI-EpV: assembled tree and feedback test PASS; read-only, tests not run by reviewer.",
+  "installed_acceptance": "NOT CHECKED; owner package/deploy and installed verification remain separate."
+}
