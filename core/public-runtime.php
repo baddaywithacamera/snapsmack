@@ -421,7 +421,11 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
             // engine as companions, which is the whole row: the panel that
             // opens, the search field, and the docked T/M group measuring
             // from the content column instead of the window.
-            ['smack-archive-toggle']
+            // smack-archive-cascade fades the grid in as a quick wave on load;
+            // it self-gates to the phase-one skin (NEW HORIZON) by body class
+            // and is fail-safe off, so loading it fleet-wide changes nothing on
+            // any other skin until its gate is widened.
+            ['smack-archive-toggle', 'smack-archive-cascade']
         )));
         if (!empty($_archiveControls['calendar']['enabled'])) {
             $response['required_assets']['scripts'] = array_values(array_unique(array_merge(
