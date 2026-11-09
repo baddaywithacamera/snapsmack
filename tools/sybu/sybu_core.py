@@ -114,6 +114,24 @@ def _orient_to_api(value: str) -> str:
     return ORIENT_DISPLAY_TO_API.get((value or 'auto').strip().lower(), 'auto')
 
 
+def merge_additional_hashtags(existing: str, additional: str) -> str:
+    """Append temporary batch hashtags without duplicating existing tags."""
+    current = (existing or '').strip()
+    seen = {
+        token.lstrip('#').casefold()
+        for token in re.split(r'[\s,;]+', current)
+        if token.strip().lstrip('#')
+    }
+    added = []
+    for token in re.split(r'[\s,;]+', additional or ''):
+        tag = token.strip().lstrip('#')
+        if not tag or tag.casefold() in seen:
+            continue
+        seen.add(tag.casefold())
+        added.append('#' + tag)
+    return ' '.join(part for part in (current, ' '.join(added)) if part)
+
+
 # ---------------------------------------------------------------------------
 # Background op record — one active long job per key
 # ---------------------------------------------------------------------------
@@ -770,7 +788,7 @@ class Engine:
     def post_start(self, as_grams: bool, def_cat: str, def_album: str, def_orient: str,
                    def_color: str, copyright_text: str, drive_folder_id: str,
                    ack_no_drive: bool = False, ack_unknown_mode: bool = False,
-                   drive_enabled: bool = True) -> dict:
+                   drive_enabled: bool = True, additional_tags: str = '') -> dict:
         pf = self.post_preflight(as_grams, drive_enabled)
         if pf['blocked_enrichment']:
             raise RuntimeError("Posting blocked — %d image(s) failed enrichment. "
@@ -792,6 +810,8 @@ class Engine:
         sel = [(i, self.entries[i]) for i in range(len(self.entries)) if self.rowstate[i]['selected']]
         id_to_index = {id(e): i for i, e in enumerate(self.entries)}
         sel_entries = [e for _, e in sel]
+        for entry in sel_entries:
+            entry.tags = merge_additional_hashtags(entry.tags, additional_tags)
         image_folder = self.image_folder
         self.ensure_recovery(image_folder)
         # Managed SNAP HQ workflow: a file posted from `...\\upload` moves to its sibling
@@ -906,6 +926,35 @@ class Engine:
 
     def drive_status(self) -> dict:
         return {'connected': self.drive_service is not None}
+
+    def drive_check(self, drive_folder_id: str = '') -> dict:
+        """Is Drive actually usable? NO SITE, NO QUEUE, NO IMAGES REQUIRED.
+
+        SS-1171, the owner's words: Validate refuses an empty queue. It did --
+        validate() raises "Connect first." without a site and "Load or scan
+        images first." without entries, and then only checks the MANIFEST. It
+        never asked Drive anything. So the one button next to "Attach Google
+        Drive originals" could not tell him whether Drive worked, and
+        drive_status() only reported that authenticate() had returned an object.
+
+        This is deliberately independent of everything else: it needs no blog
+        connection, no scanned folder and no queue, because the question "will
+        my originals upload" is not a question about the queue. Read-only --
+        one files().get on the folder, no upload and no write.
+
+        Falls back to the configured folder id when none is passed, so the
+        check uses what a publish would actually use rather than whatever is
+        typed in the box at the time.
+        """
+        folder_id = (drive_folder_id or '').strip() or str(
+            self.config.get('drive_folder_id', '') or '').strip()
+        if not self.config.get('drive_enabled'):
+            return {'ok': False, 'reason': 'disabled', 'folder_id': folder_id,
+                    'detail': 'Google Drive attachment is switched off, so nothing '
+                              'would be uploaded.', 'name': ''}
+        out = _drive().probe_folder(self.drive_service, folder_id)
+        out['folder_id'] = folder_id
+        return out
 
     # ────────────────────────────────────────────────────────────────────────
     # AUDIT

@@ -293,13 +293,7 @@ def load() -> dict:
         'drive_folder_id':    cfg.get('google', 'drive_folder_id', fallback=''),
         'gemini_api_key':     cfg.get('gemini', 'api_key', fallback=''),
         'gemini_last_prompt': cfg.get('gemini', 'last_prompt', fallback=''),
-        'copyright_text':     cfg.get('metadata', 'copyright_text', fallback=(
-            '\u00a9 Sean McCormick / foundtextures.ca. '
-            'Free for personal and commercial use. '
-            'Cannot be resold as a standalone texture file. '
-            'No attribution required. '
-            'Permitted for use in AI training datasets.'
-        )),
+        'copyright_text':     cfg.get('metadata', 'copyright_text', fallback=''),
         # UI prefs / dismissable flags (see [ui] section in save()).
         'post_as_grams':           cfg.getboolean('ui', 'post_as_grams', fallback=False),
         'drive_warning_dismissed': cfg.getboolean('ui', 'drive_warning_dismissed', fallback=False),
