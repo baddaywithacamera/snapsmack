@@ -1,0 +1,422 @@
+[
+  {
+    "skin": "50-shades-of-noah-grey",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "innerScrollAreas": 1
+  },
+  {
+    "skin": "52-card-pickup",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(245, 240, 232)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "alfred",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(29, 29, 29)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "aurora",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(0, 0, 0)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "chaplin",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": true,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(10, 10, 10)",
+      "image": "none"
+    },
+    "innerScrollAreas": 1
+  },
+  {
+    "skin": "full-monty",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgb(9, 9, 9)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(9, 9, 9)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "galleria",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": true,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(245, 240, 235)",
+      "image": "url(\"file:///C:/dev/snapsmack/_continuity/true-grit-toolbar-after/skins/galleria/assets/wall-smooth-plaster.jpg\")"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "game-on",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(255, 255, 255)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "glide",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": true,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(11, 11, 11)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "heuristic",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgb(3, 3, 5)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(3, 3, 5)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "hip-to-be-square",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": true,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(31, 56, 69)",
+      "image": "url(\"file:///C:/dev/snapsmack/_continuity/true-grit-toolbar-after/skins/hip-to-be-square/assets/wall-concrete.jpg\")"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "impact-printer",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "innerScrollAreas": 1
+  },
+  {
+    "skin": "instant-camera",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "jive-turkey",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(0, 0, 0)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "new-horizon",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "innerScrollAreas": 1
+  },
+  {
+    "skin": "onyx",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(17, 17, 17)",
+      "image": "none"
+    },
+    "innerScrollAreas": 1
+  },
+  {
+    "skin": "parade",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(255, 247, 237)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "photogram",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(239, 239, 239)",
+      "image": "none"
+    },
+    "innerScrollAreas": 1
+  },
+  {
+    "skin": "rational-geo",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(10, 10, 10)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "scroll",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(255, 255, 255)",
+      "image": "none"
+    },
+    "innerScrollAreas": 1
+  },
+  {
+    "skin": "show-n-tell",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(255, 255, 255)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "slickr",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(255, 255, 255)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "sliders",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "stanley",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(213, 214, 215)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "sudden-impact",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "url(\"file:///C:/dev/snapsmack/_continuity/true-grit-toolbar-after/assets/textures/tractor-feed-paper-texture%2001.jpg\")"
+    },
+    "body": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "url(\"file:///C:/dev/snapsmack/_continuity/true-grit-toolbar-after/assets/textures/tractor-feed-paper-texture%2001.jpg\")"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "telegram",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgb(255, 255, 255)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(255, 255, 255)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "the-grid",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(255, 255, 255)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "tilez",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": true,
+    "html": {
+      "background": "rgb(255, 255, 255)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(255, 255, 255)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  },
+  {
+    "skin": "true-grit",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgb(42, 42, 42)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(42, 42, 42)",
+      "image": "url(\"file:///C:/dev/snapsmack/_continuity/true-grit-toolbar-after/skins/true-grit/textures/paintedconcrete.jpg\")"
+    },
+    "innerScrollAreas": 2
+  },
+  {
+    "skin": "writing-with-impact",
+    "status": "default fixture inspected",
+    "existingScrollbarRules": false,
+    "html": {
+      "background": "rgba(0, 0, 0, 0)",
+      "image": "none"
+    },
+    "body": {
+      "background": "rgb(207, 202, 187)",
+      "image": "none"
+    },
+    "innerScrollAreas": 0
+  }
+]

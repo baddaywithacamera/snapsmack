@@ -1,0 +1,163 @@
+[
+  {
+    "engine": "chromium",
+    "variant": "dark",
+    "state": "before",
+    "width": 1920,
+    "status": "PASS",
+    "geometry": {
+      "scrollable": true,
+      "thumb": "rgba(0, 0, 0, 0)",
+      "innerColor": "auto",
+      "width": "auto"
+    }
+  },
+  {
+    "engine": "chromium",
+    "variant": "dark",
+    "state": "after",
+    "width": 1920,
+    "status": "PASS",
+    "geometry": {
+      "scrollable": true,
+      "thumb": "rgb(59, 59, 59)",
+      "innerColor": "auto",
+      "width": "12px"
+    }
+  },
+  {
+    "engine": "chromium",
+    "variant": "dark",
+    "state": "before",
+    "width": 1440,
+    "status": "PASS",
+    "geometry": {
+      "scrollable": true,
+      "thumb": "rgba(0, 0, 0, 0)",
+      "innerColor": "auto",
+      "width": "auto"
+    }
+  },
+  {
+    "engine": "chromium",
+    "variant": "dark",
+    "state": "after",
+    "width": 1440,
+    "status": "PASS",
+    "geometry": {
+      "scrollable": true,
+      "thumb": "rgb(59, 59, 59)",
+      "innerColor": "auto",
+      "width": "12px"
+    }
+  },
+  {
+    "engine": "chromium",
+    "variant": "dark",
+    "state": "before",
+    "width": 1024,
+    "status": "PASS",
+    "geometry": {
+      "scrollable": true,
+      "thumb": "rgba(0, 0, 0, 0)",
+      "innerColor": "auto",
+      "width": "auto"
+    }
+  },
+  {
+    "engine": "chromium",
+    "variant": "dark",
+    "state": "after",
+    "width": 1024,
+    "status": "PASS",
+    "geometry": {
+      "scrollable": true,
+      "thumb": "rgb(59, 59, 59)",
+      "innerColor": "auto",
+      "width": "12px"
+    }
+  },
+  {
+    "engine": "chromium",
+    "variant": "light",
+    "state": "before",
+    "width": 1920,
+    "status": "PASS",
+    "geometry": {
+      "scrollable": true,
+      "thumb": "rgba(0, 0, 0, 0)",
+      "innerColor": "auto",
+      "width": "auto"
+    }
+  },
+  {
+    "engine": "chromium",
+    "variant": "light",
+    "state": "after",
+    "width": 1920,
+    "status": "PASS",
+    "geometry": {
+      "scrollable": true,
+      "thumb": "rgb(187, 187, 187)",
+      "innerColor": "auto",
+      "width": "12px"
+    }
+  },
+  {
+    "engine": "chromium",
+    "variant": "light",
+    "state": "before",
+    "width": 1440,
+    "status": "PASS",
+    "geometry": {
+      "scrollable": true,
+      "thumb": "rgba(0, 0, 0, 0)",
+      "innerColor": "auto",
+      "width": "auto"
+    }
+  },
+  {
+    "engine": "chromium",
+    "variant": "light",
+    "state": "after",
+    "width": 1440,
+    "status": "PASS",
+    "geometry": {
+      "scrollable": true,
+      "thumb": "rgb(187, 187, 187)",
+      "innerColor": "auto",
+      "width": "12px"
+    }
+  },
+  {
+    "engine": "chromium",
+    "variant": "light",
+    "state": "before",
+    "width": 1024,
+    "status": "PASS",
+    "geometry": {
+      "scrollable": true,
+      "thumb": "rgba(0, 0, 0, 0)",
+      "innerColor": "auto",
+      "width": "auto"
+    }
+  },
+  {
+    "engine": "chromium",
+    "variant": "light",
+    "state": "after",
+    "width": 1024,
+    "status": "PASS",
+    "geometry": {
+      "scrollable": true,
+      "thumb": "rgb(187, 187, 187)",
+      "innerColor": "auto",
+      "width": "12px"
+    }
+  },
+  {
+    "engine": "firefox",
+    "status": "NOT CHECKED",
+    "reason": "Firefox runtime unavailable"
+  }
+]

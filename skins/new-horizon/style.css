@@ -1224,4 +1224,31 @@ a.logo-area,
 .description { color: var(--nh-description-colour); }
 #system-footer .inside, #system-footer p, #sig-text { color: var(--nh-footer-colour) !important; }
 
+/* Single photographs fill the remaining viewport using the actual header and
+   navigation heights. Appearance controls can change both; the old fixed
+   80 + 60 subtraction left a gap when the navigation was set to 50px. */
+body.new-horizon-v2:has(.single-image-page) {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+}
+body.new-horizon-v2 #scroll-stage:has(> .single-image-page) > .single-image-page {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    min-height: 100%;
+}
+
+.single-image-page:not(:has(> #footer[style*="display: block"])):not(:has(> #footer[style*="display:block"])) {
+    height: 100%;
+}
+
+/* Keep the photograph flexible only while the information drawer is shut.
+   Opening a drawer retains the original photo box and scrolls its content. */
+.single-image-page:not(:has(> #footer[style*="display: block"])):not(:has(> #footer[style*="display:block"])) > #photobox {
+    height: auto;
+    flex: 1 1 0 !important;
+    min-height: 0;
+}
+
 /* ===== SNAPSMACK EOF ===== */
