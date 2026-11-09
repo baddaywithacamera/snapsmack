@@ -28,5 +28,12 @@ foreach(['sv_map_status_row','sv_map_tag_status','sv_masto_map_statuses'] as $ma
  $text=$plain;$text['media_attachments']=[];
  rest_metadata_check(($mapper==='sv_masto_map_statuses'?$mapper([$text],5):$mapper($text,'remote.invalid'))===($mapper==='sv_masto_map_statuses'?[]:null),$mapper.' changes photo-only contract');
 }
+$boundary=['media_attachments'=>[null, ['type'=>'image','url'=>'https://remote.invalid/long.jpg','description'=>str_repeat('é',2001)]]];
+$metadata=sv_rest_photo_metadata($boundary);
+rest_metadata_check(count($metadata['attachments'])===1,'non-array media must be ignored');
+rest_metadata_check(mb_strlen($metadata['attachments'][0]['description'])===2000,'ALT must retain a valid 2000-character boundary');
+rest_metadata_check(mb_check_encoding($metadata['attachments'][0]['description'],'UTF-8'),'ALT boundary must preserve UTF-8');
+rest_metadata_check(sv_rest_photo_metadata([])['attachments']===[],'missing media list must remain empty');
+rest_metadata_check(mb_strlen(sv_rest_photo_metadata(['spoiler_text'=>str_repeat('é',5001)])['summary'])===5000,'CW boundary must retain 5000 characters');
 echo "REST photo metadata: $checks checks PASS; network and installed renderer NOT CHECKED.\n";
 // ===== SNAPSMACK EOF =====
