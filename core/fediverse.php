@@ -37,6 +37,7 @@ if (is_file(__DIR__ . '/photochallenge.php')) require_once __DIR__ . '/photochal
 if (is_file(__DIR__ . '/smackcast-relay.php')) require_once __DIR__ . '/smackcast-relay.php'; // FEDISTRUCTURE 4.0 hub policy — inert unless explicitly enabled
 if (is_file(__DIR__ . '/curator-directory.php')) require_once __DIR__ . '/curator-directory.php'; // consent-directory curator — identity gated
 require_once __DIR__ . '/client-ip.php';  // mandatory security boundary — SECAUDIT 035
+require_once __DIR__ . '/alt-text.php';   // raw ALT resolver for JSON-LD attachments
 
 function sv_enabled(array $settings): bool {
     // SMACKTHEMUP is a non-federated mode by design (spec §5.3). Federation-off
@@ -5528,6 +5529,10 @@ function sv_fedi_bake_url(array $img, array $settings): ?string {
  * focalPoint ships only with the raw file — the bakes ARE the crop.
  */
 function sv_image_attachment(array $img, array $settings, string $alt = '', bool $derive = true): array {
+    // Authored image descriptions take precedence over caller caption/title
+    // fallbacks for singles, carousel members and longform attachments alike.
+    // JSON encoding happens at the response boundary; do not HTML-escape here.
+    $alt = snap_alt_value($img['img_alt'] ?? null, $alt);
     $bake  = sv_fedi_bake_url($img, $settings);
     $frame = $bake ?? sv_frame_url($img, $settings);
     $url   = $frame ?? (sv_base($settings) . ltrim($img['img_file'] ?? '', '/'));
