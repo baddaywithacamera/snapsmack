@@ -1,8 +1,10 @@
 {
     "schema_version": 2,
     "name": "INSTANT CAMERA",
-    "version": "1.0.60",
-    "scrolltime_pages": ["landing"],
+    "version": "1.0.61",
+    "scrolltime_pages": [
+        "landing"
+    ],
     "min_images": 200,
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
