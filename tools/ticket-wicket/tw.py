@@ -324,6 +324,14 @@ def cmd_reply(args):
         _f = forummod.Forum(args.forum_url, args.forum_key)
         thread = _resolve_thread(s, _f, args.id)
         if thread > 0:
+            # Idempotent like the drain path: reply now defaults to forum, so a
+            # repeated `tw reply` must NOT double-post to the public board. If the
+            # thread already carries this update, reconcile the row, do not repost.
+            if _already_on_thread(_f, thread, body):
+                s.mark_sent(row, f"already on thread {thread}; reconciled, not reposted")
+                _out(args, {"outbox": row, "sent": False, "thread": thread, "duplicate": True},
+                     f"Already on forum thread {thread}; not reposted. Row reconciled.")
+                return 0
             try:
                 reply_id = _f.reply(thread, body)
                 s.mark_sent(row, f"forum reply {reply_id} on thread {thread}")

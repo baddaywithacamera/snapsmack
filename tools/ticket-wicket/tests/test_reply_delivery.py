@@ -38,6 +38,7 @@ class FakeForum:
 
     def reply(self, thread_id, body):
         self.replied.append((int(thread_id), body))
+        self._posts.setdefault(int(thread_id), []).append(body)   # now it's on the thread
         return 900 + len(self.replied)
 
     def search(self, query, category_id=0, page=1):
@@ -141,6 +142,21 @@ def test_reply_still_queues_an_email_without_sending(store, monkeypatch):
     assert code == 0
     assert forum.replied == []                               # email is the owner's to send
     assert len(store.outbox("queued")) == 1
+
+
+def test_reply_does_not_double_post_when_run_twice(store, monkeypatch):
+    """reply defaults to forum now; a repeat must reconcile, not post again (Muse follow-up)."""
+    t = _ticket(store, reporter="")
+    store.update(t.id, forum_thread=55)
+    forum = FakeForum()
+    monkeypatch.setattr(tw.forummod, "Forum", lambda *a, **k: forum)
+    monkeypatch.setattr(tw, "_store", lambda args: store)
+
+    tw.cmd_reply(_args(id=t.id, channel="forum", text="Looking into it."))
+    assert len(forum.replied) == 1                           # first one posts
+    code = tw.cmd_reply(_args(id=t.id, channel="forum", text="Looking into it."))
+    assert code == 0
+    assert len(forum.replied) == 1, "the repeat must NOT post a second reply to the board"
 
 
 # ---- the forum-routing rescue (Sean, 2026-11-08: updates go into forum threads) ----
