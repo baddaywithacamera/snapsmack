@@ -143,8 +143,8 @@
             "manifest_css_sha256": "49416b17f884f017c8a3d69fdca7ad1d279234d9a6d175241fc7f4b3852eec4f"
         },
         "true-grit": {
-            "version": "1.3.28",
-            "files_sha256": "e4c8a1f8f329e639503fc927a870ef9c2dba8c764009463887e1f71732509ffb",
+            "version": "1.3.29",
+            "files_sha256": "bf3eb3449908447d0beb884d22fbf526e80260c70284235acc00237a48297340",
             "manifest_css_sha256": "1a23cbc672ce9923b6011615dd9dd10c68e23a32ac9591ccf915e59fec2067d6"
         },
         "writing-with-impact": {
