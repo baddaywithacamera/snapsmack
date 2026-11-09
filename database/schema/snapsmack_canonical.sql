@@ -152,7 +152,14 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
   -- filesort); idx_images_status_date serves the date-range filter and the
   -- published-count query.
   KEY `idx_images_status_sort` (`img_status`, `sort_order`, `id`),
-  KEY `idx_images_status_date` (`img_status`, `img_date`)
+  KEY `idx_images_status_date` (`img_status`, `img_date`),
+  -- 0.7.989D (SQL audit): post_id drives the cover/stats LEFT JOIN probes and
+  -- img_checksum the RSS orphan NOT EXISTS; both were unindexed and scanned.
+  KEY `idx_images_post_id` (`post_id`),
+  KEY `idx_images_checksum` (`img_checksum`),
+  -- 0.7.989D (SQL audit B3): img_slug drives photographBySlug on every public
+  -- photo view and the import slug-uniqueness probes; it was unindexed.
+  KEY `idx_images_slug` (`img_slug`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

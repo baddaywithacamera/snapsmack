@@ -253,9 +253,9 @@ try {
     $has_today = false;
     foreach ($hub_data as $r) { if (($r['stat_date'] ?? '') === $today) { $has_today = true; break; } }
     if (!$has_today) {
-        $tv = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=0")->fetchColumn();
-        $tu = (int)$pdo->query("SELECT COUNT(DISTINCT ip_hash) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=0")->fetchColumn();
-        $tb = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=1")->fetchColumn();
+        $tv = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE hit_at >= CURDATE() AND hit_at < CURDATE() + INTERVAL 1 DAY AND is_bot=0")->fetchColumn();
+        $tu = (int)$pdo->query("SELECT COUNT(DISTINCT ip_hash) FROM snap_stats WHERE hit_at >= CURDATE() AND hit_at < CURDATE() + INTERVAL 1 DAY AND is_bot=0")->fetchColumn();
+        $tb = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE hit_at >= CURDATE() AND hit_at < CURDATE() + INTERVAL 1 DAY AND is_bot=1")->fetchColumn();
         if ($tv || $tu || $tb) {
             $hub_data[] = ['stat_date' => $today, 'total_views' => $tv,
                            'unique_visitors' => $tu, 'bot_views' => $tb,
