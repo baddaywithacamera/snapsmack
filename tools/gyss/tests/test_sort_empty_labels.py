@@ -22,6 +22,7 @@ def test_empty_state_and_rendered_labels(tmp_path):
     with patch.object(gyss_qt,'QSettings',return_value=settings),patch.object(gyss_qt.Window,'load_profiles',lambda self:None):
         win=gyss_qt.Window();win.resize(1420,900);win.show();win.show_page(1);app.processEvents()
         assert win.sort_empty.isVisible()
+        assert not win.sort_selection_bar.isVisible() and not win.sort_action_bar.isVisible()
         assert not win.photo_list.isVisible() and not win.sort_edit_panel.isVisible()
         assert win.grab().save(str(tmp_path/'sort-empty.png'))
         win.sort_empty_button.click();assert win.pages.currentIndex()==0
@@ -29,6 +30,7 @@ def test_empty_state_and_rendered_labels(tmp_path):
             item=QListWidgetItem('Photograph '+str(ident));item.setData(Qt.UserRole,{'id':ident});win.photo_list.addItem(item)
         win.show_page(1);app.processEvents()
         assert not win.sort_empty.isVisible()
+        assert win.sort_selection_bar.isVisible() and win.sort_action_bar.isVisible()
         assert win.photo_list.isVisible() and win.sort_edit_panel.isVisible()
         heading=next(label for label in win.sort_edit_panel.findChildren(QLabel) if label.text()=='Selected photograph')
         app.processEvents()
