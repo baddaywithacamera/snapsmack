@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "name": "THE GRID",
-  "version": "1.3.60",
+  "version": "1.3.61",
     "scrolltime_pages": ["landing"],
   "author": "Sean McCormick",
   "support": "sean@baddaywithacamera.ca",
