@@ -81,8 +81,8 @@
         "thresholds": []
     },
     "archive-controls-reach-the-page-regression.php": {
-        "assertions": 53,
-        "predicates": 54,
+        "assertions": 54,
+        "predicates": 55,
         "thresholds": [
             2,
             2,
@@ -525,6 +525,15 @@
         "predicates": 3,
         "thresholds": [
             202
+        ]
+    },
+    "federation-rest-photo-metadata-regression.php": {
+        "assertions": 17,
+        "predicates": 2,
+        "thresholds": [
+            2,
+            2000,
+            5000
         ]
     },
     "fedistructure-onyx-fleet-regression.php": {

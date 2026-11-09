@@ -543,6 +543,23 @@
             "purpose": "Alfred skin mobile navigation toggle v1.0.0 Wires the .nav-toggle hamburger button to show/hide .mobile-navigation."
         },
         {
+            "file": "assets/js/ss-engine-archive-cascade.js",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-archive-cascade",
+            "legacy_handle": "smack-archive-cascade",
+            "callers": [
+                "core/public-runtime.php"
+            ],
+            "security_signals": [],
+            "security_review": null,
+            "enable": "loaded on archive and hashtag pages via core/public-runtime.php",
+            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
+            "vendor": false,
+            "requires": [],
+            "purpose": "Archive Cascade Reveal Engine On an archive / hashtag page, the grid of photographs reveals in a quick ordered wave, top-to-bottom left-to-right; motion-gated (reduced-motion + ssMotion) and fail-safe off."
+        },
+        {
             "file": "assets/js/ss-engine-archive-filter.js",
             "owner": "cms",
             "scope": "public",
