@@ -979,6 +979,15 @@ $inventory = [
             'has_settings' => false,
             'admin_page'   => 'archive',
         ],
+        'smack-archive-cascade' => [
+            'label'        => 'Archive Cascade Reveal (quick fade-in wave, top-to-bottom left-to-right)',
+            'path'         => 'assets/js/ss-engine-archive-cascade.js',
+            // No stylesheet: the reveal is applied inline by the engine at
+            // runtime and is fail-safe off, so the archive is fully visible if
+            // the engine never runs.
+            'has_settings' => false,
+            'admin_page'   => 'archive',
+        ],
         'smack-alfred-nav' => [
             'label'        => 'Alfred skin mobile navigation toggle',
             'path'         => 'assets/js/ss-engine-alfred-nav.js',
