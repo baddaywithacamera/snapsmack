@@ -568,7 +568,7 @@
         "thresholds": []
     },
     "fediverse-forward-feedback-regression.php": {
-        "assertions": 1,
+        "assertions": 2,
         "predicates": 19,
         "thresholds": []
     },
