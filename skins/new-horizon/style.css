@@ -1217,4 +1217,11 @@ a.logo-area,
 #pane-comments .ss-comment-textarea::placeholder { color: var(--text-dim, #999); opacity: 1; }
 #pane-comments .ss-comment-guest-fields input:focus-visible,
 #pane-comments .ss-comment-textarea:focus-visible { outline: 2px solid var(--text-bright, #eee); outline-offset: 2px; }
+
+/* Font-role overrides keep their original shades until explicitly changed. */
+.static-page-title, .photo-title-footer { color: var(--nh-heading-colour); }
+.static-content { color: var(--nh-body-colour); }
+.description { color: var(--nh-description-colour); }
+#system-footer .inside, #system-footer p, #sig-text { color: var(--nh-footer-colour) !important; }
+
 /* ===== SNAPSMACK EOF ===== */
