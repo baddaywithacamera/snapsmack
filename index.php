@@ -83,7 +83,7 @@ try {
     }
 
     require_once __DIR__ . '/core/page-cache.php';
-    page_cache_serve_or_start($settings);
+    // Profile content negotiation below must run before any cached HTML is served.
 
     // Define BASE_URL from settings or fallback. Ensures trailing slash for consistent routing.
     if (!defined('BASE_URL')) {
@@ -187,7 +187,7 @@ try {
     if ($requested_slug !== null && $requested_slug !== ''
         && ($settings['fediverse_enabled'] ?? '0') === '1') {
         require_once __DIR__ . '/core/fediverse.php';
-        if (strcasecmp((string)$requested_slug, sv_handle($settings)) === 0) {
+        if (sv_enabled($settings) && strcasecmp((string)$requested_slug, sv_handle($settings)) === 0) {
             $pp_accept = $_SERVER['HTTP_ACCEPT'] ?? '';
             if (stripos($pp_accept, 'activity+json') !== false || stripos($pp_accept, 'ld+json') !== false) {
                 header('Content-Type: application/activity+json; charset=utf-8');
@@ -198,6 +198,8 @@ try {
             exit;
         }
     }
+
+    page_cache_serve_or_start($settings);
 
     // --- CMS-OWNED PUBLIC CONTROLLER ---
     // The avatar, resolved exactly as PHOTOGRAM resolved it before the strict

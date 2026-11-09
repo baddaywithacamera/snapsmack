@@ -210,6 +210,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'enabl
 // --- DISABLE FEDERATION (reduces access — no re-auth needed) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'disable_fediverse') {
     $sv_setting_upsert('fediverse_enabled', '0');
+    require_once __DIR__ . '/page-cache.php';
+    page_cache_purge_all();
     // Pull the delivery cron — no point running a sweep that self-exits.
     require_once 'core/cron-register.php';
     cron_remove_job('# snapsmack-fediverse', dirname(__DIR__) . '/cron-fediverse.php');
