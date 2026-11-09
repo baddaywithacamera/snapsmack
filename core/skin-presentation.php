@@ -566,6 +566,11 @@ function snapsmack_declared_skin_style(string $skinSlug, array $options): string
         if ($selector === '' || $property === '' || str_starts_with($property, 'data-')) continue;
         $value = $options[$key];
         $type = strtolower((string)($definition['type'] ?? 'text'));
+        // Optional colour overrides preserve the skin's existing cascade when
+        // reset to their advertised default, including per-element shades.
+        if (!empty($definition['omit_if_default'])
+            && in_array($type, ['color', 'colour'], true)
+            && strcasecmp((string)$value, (string)($definition['default'] ?? '')) === 0) continue;
 
         if (str_starts_with($property, 'custom-')) {
             $choice = $definition['options'][(string)$value] ?? null;

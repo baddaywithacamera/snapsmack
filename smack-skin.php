@@ -644,6 +644,8 @@ if (isset($_POST['save_skin_settings'])) {
     foreach ($manifest['options'] as $key => $meta) {
         $val = ($all_settings[$key] ?? '') !== '' ? $all_settings[$key] : ($meta['default'] ?? '');
         $prop = $meta['property'] ?? '';
+        if (!empty($meta['omit_if_default']) && in_array($meta['type'] ?? '', ['color', 'colour'], true)
+            && strcasecmp((string)$val, (string)($meta['default'] ?? '')) === 0) continue;
 
         // Skip options with no CSS property — handled by PHP (e.g. bevel style, wood grain)
         if ($prop === '') {
@@ -1387,6 +1389,9 @@ if (!empty($google_families)) {
                                 <div class="color-picker-container">
                                     <input type="color" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
                                     <span class="hex-display"><?php echo strtoupper(htmlspecialchars($val)); ?></span>
+                                    <?php if (!empty($o['omit_if_default']) || !empty($o['reset_to_default'])): ?>
+                                    <button type="button" data-default="<?php echo htmlspecialchars($o['default'] ?? '#000000', ENT_QUOTES); ?>" onclick="var c=this.parentElement;c.querySelector('input').value=this.dataset.default;c.querySelector('.hex-display').textContent=this.dataset.default.toUpperCase();">Use skin default</button>
+                                    <?php endif; ?>
                                 </div>
                             <?php elseif ($o['type'] === 'range'):
                                 $display_unit = strtoupper($o['unit'] ?? 'px');
