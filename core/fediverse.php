@@ -3092,6 +3092,41 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         return 202;
     }
 
+    if ($type === 'Block') {
+        // A peer can withdraw only its own follower relationship, and only
+        // when its signed Block names this actor. Never create a global block.
+        $blocked = sv_activity_object_uri($activity['object'] ?? null);
+        if ($blocked === sv_actor_url($settings)) {
+            $pdo->prepare("UPDATE snap_ap_followers SET is_active = 0 WHERE actor_url = ?")
+                ->execute([$actor_id]);
+            sv_inbox_log($pdo, 'Block', $actor_id, $blocked, 'received — sender follower relationship deactivated');
+        } else {
+            sv_inbox_log($pdo, 'Block', $actor_id, null, 'IGNORED: Block does not target this actor');
+        }
+        return 202;
+    }
+
+    if ($type === 'Flag') {
+        // Reports belong in the authenticated inbox receipt log, not as public
+        // comments or an automatic moderation decision. Do not fetch targets.
+        $objects = $activity['object'] ?? [];
+        if (!is_array($objects) || isset($objects['id'])) $objects = [$objects];
+        $localTargets = [];
+        foreach (array_slice($objects, 0, 20) as $object) {
+            $uri = sv_activity_object_uri($object);
+            if ($uri !== '' && ($uri === sv_actor_url($settings) || sv_url_is_ours($uri, $settings))) $localTargets[$uri] = true;
+        }
+        if ($localTargets) {
+            $reason = trim(html_entity_decode(strip_tags((string)($activity['content'] ?? '')), ENT_QUOTES, 'UTF-8'));
+            $reason = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $reason) ?? '';
+            sv_inbox_log($pdo, 'Flag', $actor_id, array_key_first($localTargets),
+                'REPORT for owner review (' . count($localTargets) . ' local targets): ' . mb_strcut($reason, 0, 100, 'UTF-8'));
+        } else {
+            sv_inbox_log($pdo, 'Flag', $actor_id, null, 'IGNORED: report has no local target');
+        }
+        return 202;
+    }
+
     if ($type === 'Undo') {
         $obj   = $activity['object'] ?? [];
         $otype = is_array($obj) ? ($obj['type'] ?? '') : '';
@@ -3198,7 +3233,14 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
 
     if ($type === 'Create') {
         $obj = $activity['object'] ?? [];
-        if (!is_array($obj) || (($obj['type'] ?? '') !== 'Note' && ($obj['type'] ?? '') !== 'Image')) return 202;
+        if (!is_array($obj) || (($obj['type'] ?? '') !== 'Note' && ($obj['type'] ?? '') !== 'Image')) {
+            // A verified unsupported object is acknowledged, but must leave a
+            // diagnostic receipt. Never include its possibly private content.
+            $objectType = is_array($obj) && is_string($obj['type'] ?? null) ? $obj['type'] : 'non-object';
+            $objectType = preg_replace('/[^A-Za-z0-9_:-]/', '', $objectType) ?? '';
+            sv_inbox_log($pdo, 'Create', $actor_id, null, 'IGNORED: unsupported object type ' . substr($objectType, 0, 80));
+            return 202;
+        }
         if (function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)) {
             sc_relay_fanout($pdo, $settings, $activity, $actor_id);
             return 202;
