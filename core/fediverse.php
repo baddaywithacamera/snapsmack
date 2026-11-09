@@ -6730,18 +6730,23 @@ function sv_nodeinfo_doc(PDO $pdo, array $settings): array {
 function sv_outbox_doc(PDO $pdo, array $settings, int $page = 0): array {
     $outbox  = sv_outbox_url($settings);
     $perPage = 20;
+    // Carousel profiles publish grouped posts only, matching native backfill.
+    $isCarousel = (($settings['site_mode'] ?? 'photoblog') === 'carousel');
+    $standaloneGate = $isCarousel ? ' AND 1 = 0' : '';
+    $postTypes = $isCarousel ? "'single','carousel','panorama'" : "'single','carousel','panorama','longform'";
 
     // Total published content units (standalone images + grouped posts).
     $total = 0;
     try {
         $total  = (int)$pdo->query(
             "SELECT COUNT(*) FROM snap_images
-             WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL"
+             WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL{$standaloneGate}"
         )->fetchColumn();
         $total += (int)$pdo->query(
             "SELECT COUNT(*) FROM snap_posts
              WHERE status = 'published' AND created_at <= NOW()
-               AND post_type IN ('single','carousel','panorama','longform')"
+               AND fedi_enabled = 1
+               AND post_type IN ({$postTypes})"
         )->fetchColumn();
     } catch (Exception $e) { /* shell/page stay valid on error */ }
 
@@ -6781,11 +6786,12 @@ function sv_outbox_doc(PDO $pdo, array $settings, int $page = 0): array {
         $stmt = $pdo->prepare(
             "SELECT id, d, kind FROM (
                 SELECT id, COALESCE(fedi_published_at, img_date) AS d, 'image' AS kind FROM snap_images
-                  WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL
+                  WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL{$standaloneGate}
                 UNION ALL
                 SELECT id, COALESCE(fedi_published_at, created_at) AS d, 'post' AS kind FROM snap_posts
                   WHERE status = 'published' AND created_at <= NOW()
-                    AND post_type IN ('single','carousel','panorama','longform')
+                    AND fedi_enabled = 1
+                    AND post_type IN ({$postTypes})
              ) u
              ORDER BY d DESC, kind ASC, id DESC
              LIMIT " . (int)$perPage . " OFFSET " . (int)$offset
