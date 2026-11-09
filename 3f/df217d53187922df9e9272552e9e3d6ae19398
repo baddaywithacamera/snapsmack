@@ -1,1 +1,49 @@
-{"commit":"3fdf217d53187922df9e9272552e9e3d6ae19398","security":"pass","parity":"pass","skin_render_parity":"pass","authority_review":"approved","skin_count":30,"skin_inventory_sha256":"d9559be77cfc2a7bddd42c7b90b824a42b9cc4471ab6ff303e0d2abf9bda7c3d","skin_render_changes":[],"browser_regressions":"pass","tests":"SQL scratch benchmark9PASS; clamp17PASS; overlay browser18PASS; final full PHP and required browser suite enforced by tag-dev. Installed acceptance not checked. Forum sender, motion, search excluded.","authority":"Muse G3RhgRmyvFKTkvRym_RfzRKy and WXz6CFGqvS0QOhb7R9qTh-xG; PM COI775V6odxXlCzuTmWGXexA"}
+{
+  "commit": "3fdf217d53187922df9e9272552e9e3d6ae19398",
+  "security": "pass",
+  "parity": "pass",
+  "skin_render_parity": "pass",
+  "authority_review": "approved",
+  "skin_count": 30,
+  "skin_inventory_sha256": "d9559be77cfc2a7bddd42c7b90b824a42b9cc4471ab6ff303e0d2abf9bda7c3d",
+  "skin_render_changes": [
+    {
+      "skin": "aurora",
+      "reason": "Remove misplaced continuation links from decorative overlays; feed fallback retained.",
+      "pre_strip_reference": "fa8c92fe; _continuity/overlay-link-results.json; JIVE dark-hover browser checks at1920/1440/1024"
+    },
+    {
+      "skin": "instant-camera",
+      "reason": "Remove misplaced continuation links from decorative overlays; feed fallback retained.",
+      "pre_strip_reference": "fa8c92fe; _continuity/overlay-link-results.json; JIVE dark-hover browser checks at1920/1440/1024"
+    },
+    {
+      "skin": "jive-turkey",
+      "reason": "Remove misplaced continuation links from decorative overlays; feed fallback retained.",
+      "pre_strip_reference": "fa8c92fe; _continuity/overlay-link-results.json; JIVE dark-hover browser checks at1920/1440/1024"
+    },
+    {
+      "skin": "sudden-impact",
+      "reason": "Remove misplaced continuation links from decorative overlays; feed fallback retained.",
+      "pre_strip_reference": "fa8c92fe; _continuity/overlay-link-results.json; JIVE dark-hover browser checks at1920/1440/1024"
+    },
+    {
+      "skin": "the-grid",
+      "reason": "Remove misplaced continuation links from decorative overlays; feed fallback retained.",
+      "pre_strip_reference": "fa8c92fe; _continuity/overlay-link-results.json; JIVE dark-hover browser checks at1920/1440/1024"
+    },
+    {
+      "skin": "new-horizon",
+      "reason": "Restore explicit tagline typography controls and20px header floor; unset defaults retain skin presentation.",
+      "pre_strip_reference": "57aed83f historical declarations; fa8c92fe visible tagline; _continuity/nh-typography-browser.json"
+    },
+    {
+      "skin": "impact-printer",
+      "reason": "Header font size minimum24px->20px; current saved settings unchanged.",
+      "pre_strip_reference": "fa8c92fe manifest header_font_size"
+    }
+  ],
+  "browser_regressions": "pass",
+  "tests": "SQL scratch benchmark9PASS; clamp17PASS; overlay browser18PASS; final full PHP and required browser suite enforced by tag-dev. Installed acceptance not checked. Forum sender, motion, search excluded.",
+  "authority": "Muse G3RhgRmyvFKTkvRym_RfzRKy and WXz6CFGqvS0QOhb7R9qTh-xG; PM COI775V6odxXlCzuTmWGXexA"
+}
