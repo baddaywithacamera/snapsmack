@@ -11,6 +11,14 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.990D - 2026-11-08
+
+- NEW HORIZON 1.3.35 adds separate heading, body and footer colour controls for light and dark variants, with reset controls. TRUE GRIT 1.3.29 keeps the archive T/M/C toolbar outside the centered content and clear of search.
+- Federation outbox, direct post documents and NodeInfo counts respect publication and exclusion rules. Authored image ALT survives federation. Non-public replies cannot enter the public reply path; Block and Flag activities receive bounded owner-visible receipts.
+- Profile routing respects the mode-level federation gate. ActivityPub and non-HTML responses stay out of the HTML cache; old cache entries are invalidated and disabling federation clears cached pages.
+- TICKET WICKET preserves reply sender identity and thread delivery context (SS1099).
+- Source and isolated browser checks cover these fixes; installed fleet and owner acceptance remain to be verified after deployment.
+
 ## 0.7.989D - 2026-11-08
 
 - NEW HORIZON 1.3.34 restores independent tagline font, size and colour controls alongside the visible tagline. The text-header size can reach 20px; IMPACT PRINTER 2.1.25 also lowers its header-size minimum to 20px. Numeric skin settings are clamped to their declared limits when saved, including font-size companion controls.
