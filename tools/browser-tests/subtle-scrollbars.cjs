@@ -29,7 +29,16 @@ const old = p => execFileSync('git',['show',`3675add9:${p}`],{cwd:root,encoding:
      assert(await page.locator('#scroll-stage').evaluate(e=>e.scrollTop>0),'wheel scroll remains available');
      await page.locator('#scroll-stage').evaluate(e=>{e.style.scrollBehavior='auto';e.scrollTop=0;});
      const r=await page.locator('#scroll-stage').boundingBox();
-     await page.mouse.move(r.x+r.width-6,r.y+30);await page.mouse.down();await page.mouse.move(r.x+r.width-6,r.y+200,{steps:10});await page.mouse.up();
+     await page.mouse.move(r.x+r.width-6,r.y+30);
+     if(engine==='chromium') {
+      const hover=await page.locator('#scroll-stage').evaluate(e=>getComputedStyle(e,'::-webkit-scrollbar-thumb').backgroundColor);
+      assert.equal(hover,variant==='dark'?'rgb(85, 85, 85)':'rgb(153, 153, 153)','thumb hover colour');
+     }
+     await page.mouse.down(); await page.waitForTimeout(80);
+     if(engine==='chromium') {
+      const active=await page.locator('#scroll-stage').evaluate(e=>getComputedStyle(e,'::-webkit-scrollbar-thumb').backgroundColor);
+      assert.equal(active,variant==='dark'?'rgb(85, 85, 85)':'rgb(153, 153, 153)','thumb retains its hover highlight while pressed');
+     }await page.mouse.move(r.x+r.width-6,r.y+200,{steps:10});await page.mouse.up();
      if(engine==='chromium')assert(await page.locator('#scroll-stage').evaluate(e=>e.scrollTop>0),'thumb remains draggable');
      await page.locator('#scroll-stage').evaluate(e=>e.scrollTop=0);
     }
@@ -44,5 +53,6 @@ const old = p => execFileSync('git',['show',`3675add9:${p}`],{cwd:root,encoding:
  fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(results,null,2));console.log(JSON.stringify(results));
 })().catch(e=>{console.error(e);process.exitCode=1;});
 // ===== SNAPSMACK EOF =====
+
 
 

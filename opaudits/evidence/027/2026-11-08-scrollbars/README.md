@@ -6,7 +6,7 @@ Shared CSS is opt-in. NEW HORIZON marks body and its primary #scroll-stage. No o
 
 The fixture embeds production skin/base/variant CSS around an explicitly long primary surface and an independent nested scroller. This isolates scrollbar behavior; it is not a full archive/render parity claim. Before uses the base CSS from 3675add9; after uses the WIP CSS and explicit opt-in classes. The browser must ignore the default headless --hide-scrollbars switch to measure the real draggable gutter.
 
-Twelve Chromium state/variant/width captures: 1920, 1440, 1024; dark/light; before/after. After checks verify computed colour/width, wheel scrolling, actual thumb dragging, and unchanged native nested-control colour. Screenshots were visually inspected at 1024 for both variants. Hover/active rules exist; their visual interaction is NOT CHECKED. Firefox runtime unavailable: NOT CHECKED. Installed owner settings, admin lifecycle and owner acceptance: NOT CHECKED.
+Twelve Chromium state/variant/width captures: 1920, 1440, 1024; dark/light; before/after. After checks verify computed colour/width, wheel scrolling, actual thumb dragging, and unchanged native nested-control colour. Screenshots were visually inspected at 1024 for both variants. Chromium hover colour and retention of that highlight while the mouse is pressed are checked. Chromium exposes the hover colour during native thumb dragging; the distinct declared :active shade is NOT CHECKED. Firefox runtime unavailable: NOT CHECKED. Installed owner settings, admin lifecycle and owner acceptance: NOT CHECKED.
 
 Run: node tools/browser-tests/subtle-scrollbars.cjs OUTPUT_DIRECTORY
 
