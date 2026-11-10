@@ -94,6 +94,37 @@ check("stripped result has no stamp bytes", (act, STAMP_B in (new or b"")), ("ST
 check("module exposes classify + DB without running them",
       (callable(m.classify), hasattr(m, "DB")), (True, True))
 
+# 14. variant inventory: marker present, full stamp absent -> variant
+variant_row = "An old caption.\n\n© Sean McCormick / foundtextures.ca. Free for personal use only.".encode("utf-8")
+check("wording variant detected", m.is_variant(variant_row), True)
+# 15. full-stamp row is NOT a variant (it is a clean strip, handled elsewhere)
+check("full-stamp row is not a variant", m.is_variant(b"cap\n\n" + STAMP_B), False)
+# 16. an unrelated caption is not a variant
+check("plain caption not a variant", m.is_variant(b"nothing to see"), False)
+
+# 17-20. site_status fail-closed on blank/missing url
+check("blank url -> unknown (fail closed)", m.site_status(""), "unknown")
+check("None url -> unknown", m.site_status(None), "unknown")
+check("foundtextures url -> foundtextures", m.site_status("https://foundtextures.ca"), "foundtextures")
+check("normal url -> eligible", m.site_status("https://acolourlesslife.ca"), "eligible")
+
+# 21. backup reload rehearsal accepts a consistent backup row set
+good_rows = []
+for cap in (b"", b"Field.\n\n", b"Dusk.\r\n\r\n"):
+    old = cap + STAMP_B
+    _, new, _ = m.classify(old)
+    good_rows.append({"id": 1, "table": "snap_posts", "old_hex": old.hex(), "new_hex": new.hex()})
+check("backup rehearsal accepts consistent rows", m.rehearse_backup_rows(good_rows), 3)
+
+# 22. backup rehearsal REJECTS a tampered new_hex (would mis-restore)
+bad = [{"id": 2, "table": "snap_posts",
+        "old_hex": (b"x\n\n" + STAMP_B).hex(), "new_hex": b"WRONG".hex()}]
+try:
+    m.rehearse_backup_rows(bad)
+    check("backup rehearsal rejects tampered row", "no-raise", "raise")
+except ValueError:
+    check("backup rehearsal rejects tampered row", "raise", "raise")
+
 if fails:
     sys.stderr.write(f"\n{fails} assertion(s) FAILED\n")
     sys.exit(1)
