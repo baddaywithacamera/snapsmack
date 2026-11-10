@@ -2096,6 +2096,39 @@ function _smackback_download_zip(string $url, string $dest, string &$error = '')
 // ─── EMAIL ALERT ─────────────────────────────────────────────────────────────
 
 /**
+ * SS-1173: persist the outcome of the last breach-alert send so a failure is
+ * actionable and can be surfaced on the dashboard, instead of vanishing. Writes
+ * only non-secret facts (counts, timestamp, the admins' own addresses that
+ * failed) to snap_settings. Never throws — recording the outcome must not break
+ * the breach path.
+ *
+ * @param PDO      $pdo
+ * @param int      $sent    how many recipients were delivered to
+ * @param string[] $failed  recipient addresses the send failed for
+ * @param string   $note    optional short status note
+ */
+function smackback_record_alert_delivery($pdo, int $sent, array $failed, string $note = ''): void {
+    try {
+        $failed_to = implode(', ', $failed);
+        if (strlen($failed_to) > 500) $failed_to = substr($failed_to, 0, 497) . '...';
+        $rows = [
+            'smackback_last_alert_at'        => date('Y-m-d H:i:s'),
+            'smackback_last_alert_sent'      => (string) $sent,
+            'smackback_last_alert_failed'    => (string) count($failed),
+            'smackback_last_alert_failed_to' => $failed_to,
+            'smackback_last_alert_note'      => $note,
+        ];
+        $stmt = $pdo->prepare(
+            "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+        );
+        foreach ($rows as $k => $v) { $stmt->execute([$k, $v]); }
+    } catch (\Throwable $e) {
+        error_log('SMACKBACK: could not record alert-delivery status: ' . $e->getMessage());
+    }
+}
+
+/**
  * Send tamper alert email.
  *
  * @param  string[] $tampered
@@ -2118,13 +2151,36 @@ function smackback_send_alert(array $tampered, array $missing, array $truncated 
     $site_name  = $settings['site_name']  ?? 'Your SnapSmack Site';
     $site_url   = $settings['site_url']   ?? '';
     $admin_mail = $settings['admin_email'] ?? '';
-    // ?: does not suppress an undefined key the way ?? does, and a fresh install
-    // never seeds smackback_alert_email -- so the breach-alert path emitted a PHP
-    // warning into the response before any header was sent. SS-1156.
-    $to         = ($settings['smackback_alert_email'] ?? '') ?: $admin_mail;
+    // SS-1173: a breach alert must reach EVERY admin, not one address. Collect the
+    // configured alert address, the legacy admin_email, and every admin-tier user
+    // with an email, de-duplicated case-insensitively. ?: (not ??) is kept for the
+    // settings reads so a fresh install that never seeds smackback_alert_email does
+    // not emit a PHP warning (SS-1156).
+    $recipients = [];
+    foreach ([($settings['smackback_alert_email'] ?? '') ?: '', $admin_mail] as $cfg) {
+        $cfg = trim((string) $cfg);
+        if ($cfg !== '') $recipients[strtolower($cfg)] = $cfg;
+    }
+    try {
+        // Admin tier is admin/administrator/owner (see auth-smack.php is_admin()).
+        $admins = $pdo->query(
+            "SELECT email FROM snap_users
+              WHERE user_role IN ('admin','administrator','owner')
+                AND email IS NOT NULL AND email <> ''"
+        )->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($admins as $addr) {
+            $addr = trim((string) $addr);
+            if ($addr !== '') $recipients[strtolower($addr)] = $addr;
+        }
+    } catch (\PDOException $e) {
+        // snap_users shape varies across installs; fall back to the settings
+        // addresses rather than failing the alert.
+        error_log('SMACKBACK: could not enumerate admin users for the alert: ' . $e->getMessage());
+    }
 
-    if (empty($to)) {
-        error_log('SMACKBACK: No alert email configured — breach alert not sent.');
+    if (!$recipients) {
+        error_log('SMACKBACK: No alert recipients configured — breach alert not sent.');
+        smackback_record_alert_delivery($pdo, 0, [], 'no recipients configured');
         return;
     }
 
@@ -2166,8 +2222,23 @@ TEXT;
 
     // Send via the central mailer (Brevo HTTPS API → direct from this box even
     // if the hub is down; falls back to mail() when Brevo isn't configured).
+    // SS-1173: send to every recipient and HANDLE each result — the return value
+    // used to be discarded, so a failed breach alert looked identical to a sent
+    // one. Record what was sent and what failed so the failure is actionable.
     require_once __DIR__ . '/mailer.php';
-    snapsmack_send_mail($to, $subject, $body, ['pdo' => $pdo]);
+    $sent = 0; $failed = [];
+    foreach ($recipients as $addr) {
+        if (snapsmack_send_mail($addr, $subject, $body, ['pdo' => $pdo])) {
+            $sent++;
+        } else {
+            $failed[] = $addr;
+        }
+    }
+    if ($failed) {
+        error_log('SMACKBACK: breach alert FAILED to ' . count($failed) . ' of '
+            . count($recipients) . ' recipient(s): ' . implode(', ', $failed));
+    }
+    smackback_record_alert_delivery($pdo, $sent, $failed);
 }
 
 // ─── BREACH RENDER ───────────────────────────────────────────────────────────
