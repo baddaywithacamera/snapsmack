@@ -4,10 +4,10 @@
 |---|---|
 | Audit ID | 2026-11-10-028 (remediation for the historical-exposure finding under audit 028) |
 | Opened | 2026-11-10 |
-| State | OPEN — confirmed live PUBLIC disclosure. This is a DESIGN runbook, not a fix. Nothing here has been applied. |
+| State | OPEN — confirmed live PUBLIC disclosure. DESIGN runbook, not a fix; nothing applied. Accepted by the PM as the plan (03:25 MT). |
 | Author | Claude Code (design only) |
 | Executes | Sean, and Sean alone. Key material is his. |
-| Measured basis | Codex, Brain Trust m0csLNuZ (webroots) + y4kae4Tc (final: public remote, 19 tags) + _continuity/2026-11-10-secaudit-028-presence-check.md |
+| Measured basis | Codex, Brain Trust m0csLNuZ (webroots) + y4kae4Tc (public remote, 19 tags) + Xhh8sJRe (no current code path reads the root file; six copies stale) + _continuity/2026-11-10-secaudit-028-presence-check.md |
 
 ## Read this first
 
@@ -109,22 +109,37 @@ Order is driven by two things: how fast and cheap the step is, and how much it
 reduces active risk. Do the instant, zero-fleet-impact kills first; do the
 highest-blast-radius operation (signing key) last and deliberately.
 
-### Step 0 — Containment: get the file out of the webroots (do first, it is cheap)
+### Step 0 — Containment: remove the six stale ROOT copies (do first, it is cheap and verified safe)
 
 Goal: stop ongoing and future web exposure without waiting on rotation.
 
-- For each of the six webroots, **move `sc-config.php` out of the document root**,
-  or deny it at the server level. SMACK CENTRAL is the vendor hub; a site webroot
-  is the wrong place for it to live at all — the correct state is that these six
-  sites have no `sc-config.php`.
-- Preferred: move the file to a non-web path the hub code reads from, OR, if a
-  given box genuinely runs SMACK CENTRAL from that root, deny direct web access
-  with a server rule (e.g. an Apache `<Files "sc-config.php"> Require all denied`
-  or the nginx equivalent) AND confirm it is not includable via any traversal.
+**Verified safe to remove (Codex read-only, Xhh8sJRe):** a repository-wide
+current-dev source search found NO `include`, `require`, `is_file`, or
+`SNAPSMACK_ROOT`-style path that reads `/sc-config.php` at the webroot root. The
+only runtime readers of an sc-config are the **`/smack-central/sc-config.php`**
+path (`core/updater.php`, `core/smackback.php`, and snapsmack.ca's
+`sc-network-api.php`). So the six root copies are stale duplicates; removing them
+does not break any current SnapSmack code path. All six also pre-date the 8/17
+backup; acolourlesslife's root copy is additionally **malformed** (the line-46
+parse error), i.e. already non-functional.
+
+- For each of the six webroots, **remove (or move out of the document root) the
+  ROOT `sc-config.php`**. The correct end state is that these six sites have no
+  root `sc-config.php`. A site webroot is the wrong place for a SMACK CENTRAL
+  config to live at all.
+- **Do NOT touch `/smack-central/sc-config.php`.** That is the LIVE hub config that
+  holds the current secrets and that the running code actually reads. Removing it
+  would break the hub. Its secrets are handled by rotation (Steps 1–3), not by
+  deletion. (On the checked site `/smack-central/sc-config.php` returned 404; where
+  it exists it stays.)
+- If for any reason a box cannot have the root copy removed immediately, deny
+  direct web access at the server level (e.g. Apache
+  `<Files "sc-config.php"> Require all denied </Files>` or the nginx equivalent) as
+  a stopgap — but removal is the goal, since nothing current reads the root file.
 - Do **not** rely on the zero-byte 200 as the control — that is a side effect of
   the current PHP handler, not a deliberate deny rule.
-- This is containment only. It does not undo the backup or tag copies. Rotation
-  (below) is what actually closes the exposure.
+- This is containment only. It does not undo the backup, the mirror, or the public
+  tag copies. Rotation (below) is what actually closes the exposure.
 - Caveat: AGENTS.md forbids agents from FTPing to a SnapSmack install. This step
   is yours; I am not doing it, and I am not scripting an FTP.
 
