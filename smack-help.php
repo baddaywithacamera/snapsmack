@@ -1,7 +1,8 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// SS-1158: do not force display_errors/startup-errors on here. This is shipped
+// admin code; forcing error output renders PHP warnings, paths and stack traces
+// into the page for any viewer who trips one. Error visibility is the host's
+// php.ini decision, not a per-file override. Left-over debug lines, removed.
 /**
  * SNAPSMACK - User Manual
  *
