@@ -641,12 +641,13 @@ img.post-image {
 .static-transmission #footer { background: var(--bg-secondary) !important; }
 .static-transmission #system-footer { background: var(--bg-chrome) !important; border-top: 1px solid var(--border-accent) !important; }
 
-/* THE LANE: Centered 850px container with 20px padding for symmetry */
+/* Static pages share one 900px lane.  The title begins about 64px below the
+   navigation baseline on the supported desktop and large-tablet widths. */
 .static-content {
-    max-width: var(--static-content-width, 850px) !important;
-    margin: 40px auto 0 auto !important;
-    padding-left: 20px;
-    padding-right: 20px;
+    width: 100%;
+    max-width: 900px !important;
+    margin: 0 auto !important;
+    padding: 34px 20px 0 !important;
     box-sizing: border-box;
     background: var(--bg-page);
     text-align: left;
@@ -659,22 +660,41 @@ img.post-image {
     clear: both; 
 }
 
-/* THE TITLE: 24px Optical Snap to align with framed content below */
+/* Shared static-page title: the same tracked sans-serif voice as the nav,
+   enlarged to establish the page without turning into a second masthead. */
 .static-page-title {
     width: 100% !important;
-    max-width: 850px !important;
-    margin: 0 0 40px 0 !important;
-    padding-left: 24px !important; /* 20px baseline + 4px frame compensation */
-    padding-right: 20px !important;
+    max-width: none !important;
+    margin: 0 0 24px 0 !important;
+    padding: 0 !important;
     text-align: left !important;
     display: block !important;
     box-sizing: border-box !important;
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    color: var(--text-bright);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-size: 2rem;
-    font-weight: 700;
+    font-family: 'Inter', sans-serif !important;
+    color: var(--text-secondary) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 2px !important;
+    font-size: 24px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+}
+
+/* About uses the shared title above a 38/62 image-and-copy grid.  The image's
+   existing .main-photo frame is deliberately retained. */
+.static-transmission.page-slug-about .static-content {
+    display: grid;
+    grid-template-columns: minmax(0, 38%) minmax(0, 1fr);
+    column-gap: 48px;
+    align-items: start;
+}
+
+.static-transmission.page-slug-about .static-page-title {
+    grid-column: 1 / -1;
+    /* .main-photo keeps 40px of breathing room around the framed portrait.
+       Move the heading onto the portrait's visible left edge so the About
+       composition reads as one unit instead of two nearly aligned lanes. */
+    width: calc(100% - 40px) !important;
+    margin-left: 40px !important;
 }
 
 /* THE BIO IMAGE: 17px Top (Baseline Snap) and 10px Left (Lane Shift) */
@@ -704,9 +724,26 @@ img.post-image {
     height: auto !important;
     padding: 0 !important; 
     width: auto !important;
-    float: left !important; 
+    float: left !important;
     background: transparent !important;
     margin: 0 !important;
+}
+
+.static-transmission.page-slug-about #photobox.page-hero {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100% !important;
+    float: none !important;
+}
+
+.static-transmission.page-slug-about .static-content > .description {
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    max-width: 70ch;
+    margin: 0 0 40px !important;
+    padding: 0 !important;
 }
 
 /* Kill paragraph top interference to ensure baseline snap */
@@ -1016,10 +1053,49 @@ span.dropcap {
 /* Outer canvas — width controlled by manifest blogroll_max_width */
 .blogroll-canvas {
     max-width: 900px;
-    margin: 40px auto 0 auto;
+    margin: 0 auto;
     padding: 0 20px;
     box-sizing: border-box;
     text-align: left;
+}
+
+/* The outer blogroll canvas owns the same lane and title rhythm as About.
+   The inner canvas supplied by the blogroll component must not add a second
+   inset or top margin. */
+.blogroll-page > .blogroll-canvas {
+    width: 100%;
+    max-width: 900px !important;
+    padding: 34px 20px 0 !important;
+}
+
+.blogroll-page > .blogroll-canvas > .blogroll-canvas {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+}
+
+@media (max-width: 900px) {
+    .static-transmission.page-slug-about .static-content {
+        display: block;
+    }
+
+    .static-transmission.page-slug-about #photobox.page-hero {
+        width: min(100%, 420px) !important;
+        margin: 0 auto 24px !important;
+    }
+
+    .static-transmission.page-slug-about .static-page-title {
+        width: min(calc(100% - 80px), 340px) !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+
+    .static-transmission.page-slug-about .static-content > .description {
+        max-width: 70ch;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
 }
 
 /* Category block — wraps heading + grid for each category */
