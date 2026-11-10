@@ -3,7 +3,7 @@ name = "oh-snap"
 version = "0.3.2"
 edition = "2021"
 description = "Oh Snap! — SnapSmack skin designer"
-license = "GPL-3.0"
+license = "LicenseRef-SPL-2.4"
 
 [lib]
 name = "oh_snap_lib"
