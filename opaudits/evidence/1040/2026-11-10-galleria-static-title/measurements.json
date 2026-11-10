@@ -1,0 +1,419 @@
+{
+  "note": "Source-equivalent GALLERIA markup with the current stylesheet and the pre-repair stylesheet. This is browser geometry evidence, not installed-build or owner-acceptance evidence.",
+  "results": [
+    {
+      "width": 1920,
+      "route": "about",
+      "previous": {
+        "route": "about",
+        "title": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 65.797
+        },
+        "content": {
+          "x": 0,
+          "y": 230.797,
+          "width": 1920,
+          "height": 20.797
+        },
+        "page": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 251.594
+        },
+        "hero": {
+          "x": 0,
+          "y": 125.797,
+          "width": 1920,
+          "height": 105
+        },
+        "titleStyle": {
+          "fontFamily": "Georgia, \"Times New Roman\", serif",
+          "fontSize": "28px",
+          "fontWeight": "400",
+          "letterSpacing": "6px",
+          "borderBottomWidth": "1px"
+        },
+        "overflow": false
+      },
+      "current": {
+        "route": "about",
+        "title": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 65.797
+        },
+        "content": {
+          "x": 0,
+          "y": 230.797,
+          "width": 1920,
+          "height": 20.797
+        },
+        "page": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 251.594
+        },
+        "hero": {
+          "x": 0,
+          "y": 125.797,
+          "width": 1920,
+          "height": 105
+        },
+        "titleStyle": {
+          "fontFamily": "Georgia, \"Times New Roman\", serif",
+          "fontSize": "28px",
+          "fontWeight": "400",
+          "letterSpacing": "6px",
+          "borderBottomWidth": "1px"
+        },
+        "overflow": false
+      }
+    },
+    {
+      "width": 1920,
+      "route": "blogroll",
+      "previous": {
+        "route": "blogroll",
+        "title": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 38.391
+        },
+        "content": {
+          "x": 640,
+          "y": 98.391,
+          "width": 640,
+          "height": 134.188
+        },
+        "page": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 232.578
+        },
+        "hero": null,
+        "titleStyle": {
+          "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "24px",
+          "fontWeight": "500",
+          "letterSpacing": "normal",
+          "borderBottomWidth": "0px"
+        },
+        "overflow": false
+      },
+      "current": {
+        "route": "blogroll",
+        "title": {
+          "x": 580,
+          "y": 60,
+          "width": 760,
+          "height": 65.797
+        },
+        "content": {
+          "x": 580,
+          "y": 185.797,
+          "width": 760,
+          "height": 134.188
+        },
+        "page": {
+          "x": 560,
+          "y": 60,
+          "width": 800,
+          "height": 259.984
+        },
+        "hero": null,
+        "titleStyle": {
+          "fontFamily": "Georgia, \"Times New Roman\", serif",
+          "fontSize": "28px",
+          "fontWeight": "400",
+          "letterSpacing": "6px",
+          "borderBottomWidth": "1px"
+        },
+        "overflow": false
+      }
+    },
+    {
+      "width": 1440,
+      "route": "about",
+      "previous": {
+        "route": "about",
+        "title": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 65.797
+        },
+        "content": {
+          "x": 0,
+          "y": 230.797,
+          "width": 1440,
+          "height": 20.797
+        },
+        "page": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 251.594
+        },
+        "hero": {
+          "x": 0,
+          "y": 125.797,
+          "width": 1440,
+          "height": 105
+        },
+        "titleStyle": {
+          "fontFamily": "Georgia, \"Times New Roman\", serif",
+          "fontSize": "28px",
+          "fontWeight": "400",
+          "letterSpacing": "6px",
+          "borderBottomWidth": "1px"
+        },
+        "overflow": false
+      },
+      "current": {
+        "route": "about",
+        "title": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 65.797
+        },
+        "content": {
+          "x": 0,
+          "y": 230.797,
+          "width": 1440,
+          "height": 20.797
+        },
+        "page": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 251.594
+        },
+        "hero": {
+          "x": 0,
+          "y": 125.797,
+          "width": 1440,
+          "height": 105
+        },
+        "titleStyle": {
+          "fontFamily": "Georgia, \"Times New Roman\", serif",
+          "fontSize": "28px",
+          "fontWeight": "400",
+          "letterSpacing": "6px",
+          "borderBottomWidth": "1px"
+        },
+        "overflow": false
+      }
+    },
+    {
+      "width": 1440,
+      "route": "blogroll",
+      "previous": {
+        "route": "blogroll",
+        "title": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 38.391
+        },
+        "content": {
+          "x": 400,
+          "y": 98.391,
+          "width": 640,
+          "height": 134.188
+        },
+        "page": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 232.578
+        },
+        "hero": null,
+        "titleStyle": {
+          "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "24px",
+          "fontWeight": "500",
+          "letterSpacing": "normal",
+          "borderBottomWidth": "0px"
+        },
+        "overflow": false
+      },
+      "current": {
+        "route": "blogroll",
+        "title": {
+          "x": 340,
+          "y": 60,
+          "width": 760,
+          "height": 65.797
+        },
+        "content": {
+          "x": 340,
+          "y": 185.797,
+          "width": 760,
+          "height": 134.188
+        },
+        "page": {
+          "x": 320,
+          "y": 60,
+          "width": 800,
+          "height": 259.984
+        },
+        "hero": null,
+        "titleStyle": {
+          "fontFamily": "Georgia, \"Times New Roman\", serif",
+          "fontSize": "28px",
+          "fontWeight": "400",
+          "letterSpacing": "6px",
+          "borderBottomWidth": "1px"
+        },
+        "overflow": false
+      }
+    },
+    {
+      "width": 1024,
+      "route": "about",
+      "previous": {
+        "route": "about",
+        "title": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 65.797
+        },
+        "content": {
+          "x": 0,
+          "y": 230.797,
+          "width": 1024,
+          "height": 20.797
+        },
+        "page": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 251.594
+        },
+        "hero": {
+          "x": 0,
+          "y": 125.797,
+          "width": 1024,
+          "height": 105
+        },
+        "titleStyle": {
+          "fontFamily": "Georgia, \"Times New Roman\", serif",
+          "fontSize": "28px",
+          "fontWeight": "400",
+          "letterSpacing": "6px",
+          "borderBottomWidth": "1px"
+        },
+        "overflow": false
+      },
+      "current": {
+        "route": "about",
+        "title": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 65.797
+        },
+        "content": {
+          "x": 0,
+          "y": 230.797,
+          "width": 1024,
+          "height": 20.797
+        },
+        "page": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 251.594
+        },
+        "hero": {
+          "x": 0,
+          "y": 125.797,
+          "width": 1024,
+          "height": 105
+        },
+        "titleStyle": {
+          "fontFamily": "Georgia, \"Times New Roman\", serif",
+          "fontSize": "28px",
+          "fontWeight": "400",
+          "letterSpacing": "6px",
+          "borderBottomWidth": "1px"
+        },
+        "overflow": false
+      }
+    },
+    {
+      "width": 1024,
+      "route": "blogroll",
+      "previous": {
+        "route": "blogroll",
+        "title": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 38.391
+        },
+        "content": {
+          "x": 192,
+          "y": 98.391,
+          "width": 640,
+          "height": 134.188
+        },
+        "page": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 232.578
+        },
+        "hero": null,
+        "titleStyle": {
+          "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "24px",
+          "fontWeight": "500",
+          "letterSpacing": "normal",
+          "borderBottomWidth": "0px"
+        },
+        "overflow": false
+      },
+      "current": {
+        "route": "blogroll",
+        "title": {
+          "x": 132,
+          "y": 60,
+          "width": 760,
+          "height": 65.797
+        },
+        "content": {
+          "x": 132,
+          "y": 185.797,
+          "width": 760,
+          "height": 134.188
+        },
+        "page": {
+          "x": 112,
+          "y": 60,
+          "width": 800,
+          "height": 259.984
+        },
+        "hero": null,
+        "titleStyle": {
+          "fontFamily": "Georgia, \"Times New Roman\", serif",
+          "fontSize": "28px",
+          "fontWeight": "400",
+          "letterSpacing": "6px",
+          "borderBottomWidth": "1px"
+        },
+        "overflow": false
+      }
+    }
+  ]
+}
