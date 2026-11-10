@@ -24,8 +24,10 @@ require_once $root . '/core/trusted-html.php';
 require_once $root . '/core/skin-render-helpers.php';
 require_once $root . '/core/skin-view-contract.php';
 require_once $root . '/core/skin-presentation.php';
+require_once $root . '/core/skin-manifest.php';
 require_once $root . '/core/asset-registry.php';
 require_once $root . '/core/public-runtime.php';
+require_once $root . '/core/stats-logger.php';
 require_once $root . '/tools/_build/fixture-head.php';
 
 if (!is_dir($out) && !@mkdir($out, 0777, true) && !is_dir($out)) {
@@ -138,11 +140,14 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
     $manifest = json_decode((string)file_get_contents($manifestFile), true) ?: [];
     $modes = array_map('strtolower', array_values(array_filter((array)($manifest['modes'] ?? []), 'is_string')));
     $kind = in_array('smacktalk', $modes, true) ? 'single' : 'photo';
+    $siteMode = in_array('carousel', $modes, true) ? 'carousel' : ($kind === 'single' ? 'smacktalk' : 'photoblog');
     $assets = snapsmack_merge_registered_assets(
         snapsmack_skin_declared_assets($manifest),
         snapsmack_public_engine_assets()
     );
     $GLOBALS['snapsmack_consent'] = ['show' => true, 'privacy_url' => '/privacy'];
+    $GLOBALS['settings'] = ['site_mode' => $siteMode];
+    $GLOBALS['snapsmack_hit'] = ['id' => 4201, 'page_type' => $kind === 'single' ? 'page' : 'image'];
     $response = array_merge([
         'kind' => $kind, 'page_title' => 'Current entry', 'item' => $item, 'post' => $post,
         'rendered_content' => snapsmack_trusted_html('<p>A complete solo-entry fixture.</p>'),
@@ -166,7 +171,6 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
     $html = (string)ob_get_clean();
     if (trim($html) === '') continue;
     $html = str_replace(['src="/current-', 'src="/previous-', 'src="/next-'], ['src="current-', 'src="previous-', 'src="next-'], $html);
-    $siteMode = in_array('carousel', $modes, true) ? 'carousel' : ($kind === 'single' ? 'smacktalk' : 'photoblog');
     $html = str_replace('</head>', '<script>window.SNAP_SITE_MODE=' . json_encode($siteMode) . ';</script></head>', $html);
     $html = fp_inline_assets($html, $root, $assets, $skin);
     $target = $out . '/' . $skin . '--solo.html';
@@ -176,6 +180,7 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
         ['archive_layout' => 'thumbs', 'archive_calendar_enabled' => '1'],
         $manifest
     );
+    $GLOBALS['snapsmack_hit'] = ['id' => 4202, 'page_type' => 'archive'];
     $archiveResponse = [
         'kind' => 'archive', 'page_title' => 'Archive', 'items' => $archiveItems,
         'item' => [], 'next_page' => 2, 'next_url' => '/archive?p=2', 'has_more' => true,
@@ -220,9 +225,44 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
     $archiveTarget = $out . '/' . $skin . '--archive.html';
     file_put_contents($archiveTarget, $archiveHtml);
 
+    $landingFile = '';
+    if ($siteMode === 'carousel') {
+        $GLOBALS['snapsmack_hit'] = ['id' => 4203, 'page_type' => 'landing'];
+        $landingResponse = [
+            'kind' => 'landing', 'page_title' => 'Landing', 'items' => $archiveItems,
+            'photographs' => $archiveItems, 'navigation' => $nav,
+        ];
+        $landingView = snapsmack_build_skin_view($landingResponse, [
+            'site_name' => 'Feature Matrix', 'tagline' => 'Rendered capability proof',
+            'site_url' => 'https://example.test/', 'language' => 'en', 'direction' => 'ltr',
+            'owner_name' => 'Fixture Owner', 'skin_slug' => $skin,
+            'skin_style_url' => '', 'base_style_url' => '', 'skin_variant_url' => '',
+            'registered_assets' => $assets, 'owner_custom_code' => '',
+            'search_dock' => ['enabled' => true, 'action' => '/search', 'placeholder' => 'Search'],
+            'skin_presentation' => snapsmack_skin_presentation([], $skin),
+            'footer' => ['site_name' => 'Feature Matrix', 'site_url' => 'https://example.test/', 'slots' => []],
+            'crop_circles' => ['navigation' => $nav, 'identity' => 'Feature Matrix', 'home_url' => '/'],
+        ]);
+        ob_start();
+        @snapsmack_render_strict_skin_template($root . '/skins/' . $skin, 'layout.php', $landingView);
+        $landingHtml = (string)ob_get_clean();
+        $landingHtml = str_replace(
+            ['src="/current-', 'src="/previous-', 'src="/next-'],
+            ['src="current-', 'src="previous-', 'src="next-'],
+            $landingHtml
+        );
+        $landingHtml = str_replace(
+            '</head>', '<script>window.SNAP_SITE_MODE=' . json_encode($siteMode) . ';</script></head>', $landingHtml);
+        $landingHtml = fp_inline_assets($landingHtml, $root, $assets, $skin);
+        $landingTarget = $out . '/' . $skin . '--landing.html';
+        file_put_contents($landingTarget, $landingHtml);
+        $landingFile = basename($landingTarget);
+    }
+
     $index[] = [
         'skin' => $skin, 'file' => basename($target), 'kind' => $kind,
         'archive_file' => basename($archiveTarget),
+        'landing_file' => $landingFile,
         'site_mode' => $siteMode,
         'version' => (string)($manifest['version'] ?? ''), 'modes' => $modes,
         'features' => is_array($manifest['features'] ?? null) ? $manifest['features'] : [],
