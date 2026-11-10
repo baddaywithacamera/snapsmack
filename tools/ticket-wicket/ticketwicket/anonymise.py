@@ -39,6 +39,40 @@ _QUERY = re.compile(r"\?[^\s'\"]+")
 _SELF = re.compile(
     r"\b(my name is|i am|i'm|this is)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?", re.IGNORECASE)
 
+# @-tokens that look like a handle but name no one. A real fediverse handle is
+# "@user" or "@user@host"; these CSS at-rules and doc/decorator tags never are.
+# Matched as the WHOLE token after '@' (at-rules/tags are followed by a space or
+# brace, so the regex token is exactly the keyword), so "@media_person" — a real
+# handle — is NOT excluded.
+_AT_NONHANDLE = frozenset({
+    # CSS at-rules (this is what blocked the bug sync: "@font-face" read as a handle)
+    "charset", "import", "namespace", "media", "supports", "document",
+    "page", "font-face", "font-feature-values", "keyframes", "viewport",
+    "counter-style", "property", "layer", "container", "scope",
+    "starting-style", "-webkit-keyframes", "-moz-keyframes",
+    # PHPDoc / JSDoc / docblock tags
+    "param", "return", "returns", "var", "type", "throws", "deprecated",
+    "see", "link", "since", "author", "method", "example", "package",
+    "todo", "api", "internal", "inheritdoc", "override", "template",
+    "extends", "implements", "uses", "global", "const",
+    # Python / JS decorators
+    "staticmethod", "classmethod", "abstractmethod", "dataclass",
+    "cached_property", "patch", "fixture", "mark", "pytest", "app",
+})
+
+
+def _is_handle(token: str) -> bool:
+    """True if an @token is a real fediverse handle, not a CSS at-rule or a
+    docblock/decorator tag (@font-face, @media, @param, @staticmethod…)."""
+    return token[1:].lower() not in _AT_NONHANDLE  # drop the leading '@'
+
+
+def _is_keyish(token: str) -> bool:
+    """True if a hex run is key-shaped, EXCLUDING a 40-char git SHA-1. Real
+    secrets here are 64 hex (public key) or 128 hex (private key); commit SHAs
+    are 40 hex and are safe to keep in a ticket body."""
+    return len(token) != 40
+
 
 def scrub(text: str, extra=None) -> str:
     """Strip anything that identifies the reporter, their site or their visitors.
@@ -58,8 +92,8 @@ def scrub(text: str, extra=None) -> str:
     out = _IPV4.sub("[an address]", out)
     out = _IPV6.sub("[an address]", out)
     out = _DOMAIN.sub("[a site]", out)
-    out = _HANDLE.sub("[a handle]", out)
-    out = _KEYISH.sub("[a key]", out)
+    out = _HANDLE.sub(lambda m: "[a handle]" if _is_handle(m.group(0)) else m.group(0), out)
+    out = _KEYISH.sub(lambda m: "[a key]" if _is_keyish(m.group(0)) else m.group(0), out)
     out = _SELF.sub("someone", out)
     return out
 
@@ -75,19 +109,22 @@ def check(text: str, extra=None) -> list:
     for term in (extra or []):
         if term and len(term) > 3 and re.search(re.escape(term), body, re.IGNORECASE):
             problems.append(f"the reporter's own identifier: {term}")
-    for label, pattern in (
-        ("an email address", _EMAIL),
-        ("an IP address", _IPV4),
-        ("a URL", _URL),
-        ("a domain", _DOMAIN),
-        ("a filesystem path", _WINPATH),
-        ("a filesystem path", _NIXPATH),
-        ("a fediverse handle", _HANDLE),
-        ("something key-shaped", _KEYISH),
+    for label, pattern, keep in (
+        ("an email address", _EMAIL, None),
+        ("an IP address", _IPV4, None),
+        ("a URL", _URL, None),
+        ("a domain", _DOMAIN, None),
+        ("a filesystem path", _WINPATH, None),
+        ("a filesystem path", _NIXPATH, None),
+        ("a fediverse handle", _HANDLE, _is_handle),
+        ("something key-shaped", _KEYISH, _is_keyish),
     ):
-        hit = pattern.search(body)
-        if hit:
-            problems.append(f"{label}: {hit.group(0)[:60]}")
+        # Report the first REAL hit per pattern; a filtered-out match (a CSS
+        # at-rule, a git SHA) must not be the thing that blocks a post.
+        for hit in pattern.finditer(body):
+            if keep is None or keep(hit.group(0)):
+                problems.append(f"{label}: {hit.group(0)[:60]}")
+                break
     return problems
 
 
