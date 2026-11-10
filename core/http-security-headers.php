@@ -37,7 +37,7 @@ if (!defined('SNAPSMACK_SECURITY_HEADERS_EMITTED')) {
         header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
         require_once __DIR__ . '/custom-code-policy.php';
         $entry=basename((string)($_SERVER['SCRIPT_NAME']??''));
-        $admin=str_starts_with($entry,'smack-')||in_array($entry,['login.php','install.php','password-reset.php','break-glass.php'],true);
+        $admin=str_starts_with($entry,'smack-')||in_array($entry,['login.php','snap-in.php','install.php','password-reset.php','break-glass.php'],true);
         header('Content-Security-Policy: '.($admin
             ? "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
             : snapsmack_public_csp(false)));
