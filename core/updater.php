@@ -276,6 +276,11 @@ const UPDATER_KNOWN_MIGRATIONS = [
  * entries — older installs still need them flagged.
  */
 const UPDATER_DEPRECATED_FILES = [
+    // SECAUDIT 028: an obsolete Smack Central configuration copy was shipped
+    // at the install webroot on a small number of spokes. The live hub config
+    // is /smack-central/sc-config.php; this exact relative path deliberately
+    // removes only the stale root copy.
+    'sc-config.php'  => '0.7.992D',
     'smack-post.php' => '0.7.20',  // renamed to smack-post-solo.php
     'login.php'      => '0.7.155', // replaced by snap-in slug model; predictable URL attack surface
     'core/auth.php'  => '0.7.155', // renamed to core/auth-smack.php to avoid cPanel filename collision

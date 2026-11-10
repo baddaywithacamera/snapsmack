@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+- The signed updater removes the obsolete root-level `sc-config.php` copy left on a small number of spokes. The removal is exact-path only: `/smack-central/sc-config.php` is untouched, installs without the stale root copy are a harmless no-op, and cleanup still occurs before SMACKBACK rebuilds its baseline.
+
 ## 0.7.991D - 2026-11-09
 
 - NEW HORIZON 1.3.36: the single-image landing nav bar snaps to the bottom of the frame again, and an understated custom scrollbar (transparent track, subtle thumb) replaces the browser default on its primary surfaces. Desktop and large-tablet widths verified in a browser; installed and admin-save acceptance remain to be checked.
