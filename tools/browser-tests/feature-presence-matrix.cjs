@@ -11,10 +11,10 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { pathToFileURL } = require('node:url');
 const seam = process.env.SNAP_BROWSER_SEAM_ROOT || path.resolve(__dirname, '../..');
 const { chromium } = require(path.join(seam, 'tools/browser-tests/runtime.cjs'));
 const root = path.resolve(__dirname, '../..');
@@ -51,17 +51,16 @@ function declared(page, feature) {
     const community = Array.isArray(page.features?.community) ? page.features.community : [];
     const capabilities = page.capabilities || [];
     const carousel = page.site_mode === 'carousel';
-    if (feature === 'likes' && carousel) return ['UNVERIFIED', 'carousel likes require the landing-to-modal transport fixture'];
     if (feature === 'likes') return community.includes('likes') || page.community_likes === '1'
         ? ['REQUIRED', 'manifest declares community likes'] : ['NOT APPLICABLE', 'manifest does not declare likes'];
-    if (feature === 'comments' && carousel) return ['UNVERIFIED', 'carousel comments require the landing-to-modal transport fixture'];
     if (feature === 'comments') return community.includes('comments') || capabilities.includes('comments') || page.community_comments === '1'
         ? ['REQUIRED', 'manifest declares comments'] : ['NOT APPLICABLE', 'manifest does not declare comments'];
-    if (feature === 'lightbox' && carousel) return ['UNVERIFIED', 'carousel lightbox requires the landing-to-modal transport fixture'];
     if (feature === 'lightbox' && page.kind === 'single') return ['UNVERIFIED', 'long-form lightbox requires a story fixture containing inline media'];
     if (feature === 'lightbox') return scripts.includes('smack-lightbox')
         ? ['REQUIRED', 'manifest requires smack-lightbox'] : ['NOT APPLICABLE', 'manifest does not require smack-lightbox'];
-    if (feature === 'keyboard' && carousel) return ['UNVERIFIED', 'carousel keyboard navigation requires the landing-to-modal transport fixture'];
+    if (feature === 'keyboard' && carousel) return scripts.includes('smack-keyboard') && scripts.includes('smack-slider')
+        ? ['REQUIRED', 'carousel declares keyboard and slider engines for modal cursor navigation']
+        : ['NOT APPLICABLE', 'carousel does not declare modal cursor navigation'];
     if (feature === 'keyboard') return page.kind === 'photo'
         ? ['REQUIRED', 'core supplies keyboard navigation to every photoblog solo entry']
         : ['NOT APPLICABLE', 'long-form single entry has no image-order keyboard contract'];
@@ -71,11 +70,13 @@ function declared(page, feature) {
     if (feature === 'search') return scripts.includes('smack-gram-search')
         ? ['REQUIRED', 'manifest requires smack-gram-search'] : ['UNVERIFIED', 'search may be ordinary navigation; contract not yet classified'];
     if (feature === 'navigation') return ['REQUIRED', 'every public skin needs site navigation'];
-    if (feature === 'prev-next' && carousel) return ['UNVERIFIED', 'carousel previous/next requires the landing-to-modal transport fixture'];
+    if (feature === 'prev-next' && carousel) return scripts.includes('smack-slider')
+        ? ['REQUIRED', 'carousel declares slider controls for multi-photo modal navigation']
+        : ['NOT APPLICABLE', 'carousel does not declare slider controls'];
     if (feature === 'prev-next') return page.kind === 'photo'
         ? ['REQUIRED', 'photoblog solo entry has previous and next targets'] : ['NOT APPLICABLE', 'long-form single entry has no image-order contract'];
     if (feature === 'archive-controls') return ['REQUIRED', 'every archive is endless scroll and exposes archive controls'];
-    if (feature === 'downloads' && carousel) return ['UNVERIFIED', 'carousel download requires the landing-to-modal transport fixture'];
+    if (feature === 'downloads' && carousel) return ['NOT APPLICABLE', 'carousel modal fragment contract does not expose downloads'];
     if (feature === 'downloads') return page.kind === 'photo'
         ? ['REQUIRED', 'runtime supplied a prepared download link for this photoblog entry']
         : ['NOT APPLICABLE', 'long-form single entry has no photo-download contract'];
@@ -155,7 +156,68 @@ function telemetryFixtureFile(fixture) {
     return fixture.archive_file;
 }
 
-async function measure(page, feature) {
+function startFixtureServer(fixtureIndex) {
+    const fixtureBySkin = new Map(fixtureIndex.map(fixture => [fixture.skin, fixture]));
+    const contentTypes = { '.html': 'text/html; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json' };
+    const server = http.createServer((request, response) => {
+        const requestUrl = new URL(request.url, 'http://127.0.0.1');
+        const modalMatch = requestUrl.pathname.match(/^\/modal\/([^/]+)\/[^/]+$/);
+        let relative = requestUrl.pathname.replace(/^\/+/, '');
+        if (modalMatch && requestUrl.searchParams.get('modal') === '1') {
+            const fixture = fixtureBySkin.get(decodeURIComponent(modalMatch[1]));
+            relative = fixture?.modal_file || '';
+        }
+        const absolute = path.resolve(out, relative || 'index.json');
+        if (!absolute.startsWith(path.resolve(out) + path.sep) || !fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) {
+            response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+            response.end('Not found');
+            return;
+        }
+        response.writeHead(200, { 'Content-Type': contentTypes[path.extname(absolute)] || 'application/octet-stream' });
+        response.end(fs.readFileSync(absolute));
+    });
+    return new Promise((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(0, '127.0.0.1', () => {
+            const address = server.address();
+            resolve({ server, baseUrl: `http://127.0.0.1:${address.port}/` });
+        });
+    });
+}
+
+function fixtureUrl(baseUrl, file) {
+    return new URL(file, baseUrl).href;
+}
+
+async function freshPage(browser, viewport) {
+    const page = await browser.newPage({ viewport });
+    await page.context().clearCookies();
+    await page.addInitScript(() => {
+        localStorage.clear();
+        sessionStorage.clear();
+    });
+    return page;
+}
+
+async function ensureCarouselModal(page) {
+    const overlay = page.locator('[data-grid-url][id$="-modal-overlay"]');
+    if (await overlay.count() && await overlay.isVisible()) return true;
+    const tile = page.locator('#browse-grid article a, .public-grid article a').first();
+    if (!await tile.count() || !await tile.isVisible()) return false;
+    await tile.click({ force: true });
+    try {
+        await overlay.waitFor({ state: 'visible', timeout: 2500 });
+    } catch (_) {
+        return false;
+    }
+    return true;
+}
+
+async function measure(page, feature, fixture = null) {
+    const carousel = fixture?.site_mode === 'carousel';
+    if (carousel && ['likes', 'comments', 'lightbox', 'keyboard', 'prev-next'].includes(feature)) {
+        if (!await ensureCarouselModal(page)) return false;
+    }
     if (feature === 'archive-controls') {
         return (await measureArchive(page)).pass;
     }
@@ -163,6 +225,17 @@ async function measure(page, feature) {
         return (await visibleCount(page, 'nav[aria-label*="navigation" i] a, nav.navigation a, a[href="/archive"], a[href="/about"], a[href="/blogroll"]')) > 0;
     }
     if (feature === 'comments') {
+        if (carousel) {
+            const modalSurface = page.locator('[data-grid-url][id$="-modal-overlay"] article, [data-grid-url][id$="-modal-overlay"]').first();
+            if (await modalSurface.count()) {
+                await modalSurface.hover({ force: true });
+                await page.waitForTimeout(100);
+            }
+            const communityExists = (await page.locator('.ss-community, .ss-comment-form').count()) > 0;
+            const accessVisible = (await visibleCount(page, '[data-ss-action="scroll-to"][aria-label*="comment" i], [aria-label*="comment" i]')) > 0;
+            const communityVisible = (await visibleCount(page, '.ss-community, .ss-comment-form')) > 0;
+            return communityExists && (accessVisible || communityVisible);
+        }
         await revealCommunity(page);
         return (await visibleCount(page, '.ss-community, .ss-comment-form')) > 0;
     }
@@ -171,6 +244,10 @@ async function measure(page, feature) {
         return (await visibleCount(page, '.ss-like-btn, .ss-cdock-heart, [data-like]')) > 0;
     }
     if (feature === 'prev-next') {
+        if (carousel) {
+            return (await visibleCount(page, '.ss-slider .slider-arrow-left')) > 0
+                && (await visibleCount(page, '.ss-slider .slider-arrow-right')) > 0;
+        }
         return (await visibleCount(page, 'a[rel="prev"]')) > 0 && (await visibleCount(page, 'a[rel="next"]')) > 0;
     }
     if (feature === 'downloads') return (await visibleCount(page, 'a[download], a[href*="/download"], .photo-download, .snap-download-btn')) > 0;
@@ -185,6 +262,19 @@ async function measure(page, feature) {
         return opened > 0;
     }
     if (feature === 'keyboard') {
+        if (carousel) {
+            const slider = page.locator('.ss-slider').first();
+            if (!await slider.count() || !await slider.isVisible()) return false;
+            const activeDot = page.locator('.ss-slider-dot.is-active').first();
+            if (!await activeDot.count()) return false;
+            const before = await activeDot.getAttribute('data-slide-index');
+            await page.keyboard.press('ArrowRight');
+            await page.waitForTimeout(500);
+            const afterDot = page.locator('.ss-slider-dot.is-active').first();
+            if (!await afterDot.count()) return false;
+            const after = await afterDot.getAttribute('data-slide-index');
+            return before !== null && after !== null && before !== after;
+        }
         if (!(await page.locator('a[rel="prev"], a[rel="next"]').count())) return false;
         const before = page.url();
         await page.keyboard.press('ArrowLeft');
@@ -210,18 +300,18 @@ async function measure(page, feature) {
     return null;
 }
 
-async function negativeControl(browser, fixture, feature, selector) {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+async function negativeControl(browser, fixture, feature, selector, baseUrl) {
+    const page = await freshPage(browser, { width: 1440, height: 1000 });
     try {
-        await page.goto(pathToFileURL(path.join(out, fixture.file)).href, { waitUntil: 'load' });
+        await page.goto(fixtureUrl(baseUrl, fixture.file), { waitUntil: 'load' });
         if (feature !== 'consent' && await page.locator('#snap-consent-decline').count()) {
             await page.locator('#snap-consent-decline').click({ force: true });
             await page.waitForTimeout(400);
         }
-        const before = await measure(page, feature);
+        const before = await measure(page, feature, fixture);
         assert.equal(before, true, `${fixture.skin}: ${feature} needs one passing fixture for its negative control`);
         await page.evaluate(value => document.querySelectorAll(value).forEach(element => element.remove()), selector);
-        const after = await measure(page, feature);
+        const after = await measure(page, feature, fixture);
         assert.equal(after, false, `${fixture.skin}: ${feature} detector did not fail after control removal`);
         return { feature, skin: fixture.skin, status: 'PASS', mutation: `removed ${selector}` };
     } finally {
@@ -233,6 +323,7 @@ async function negativeControl(browser, fixture, feature, selector) {
     generateFixtures();
     const fixtureIndex = JSON.parse(fs.readFileSync(path.join(out, 'index.json'), 'utf8')).pages;
     assert.equal(fixtureIndex.length, 30, 'the matrix must cover all 30 skins');
+    const { server, baseUrl } = await startFixtureServer(fixtureIndex);
     const browser = await chromium.launch({ channel: 'chrome' });
     const matrix = [];
     try {
@@ -243,29 +334,34 @@ async function negativeControl(browser, fixture, feature, selector) {
                 cells[feature] = { requirement, reason, status: requirement === 'NOT APPLICABLE' ? 'NOT APPLICABLE' : 'NOT CHECKED', widths: {} };
             }
             for (const width of widths) {
-                const page = await browser.newPage({ viewport: { width, height: 1000 } });
+                const page = await freshPage(browser, { width, height: 1000 });
                 page.setDefaultTimeout(2500);
-                await page.goto(pathToFileURL(path.join(out, fixture.file)).href, { waitUntil: 'load' });
+                const primaryFile = fixture.site_mode === 'carousel' ? fixture.landing_file : fixture.file;
+                await page.goto(fixtureUrl(baseUrl, primaryFile), { waitUntil: 'load' });
                 for (const feature of features) {
                     const cell = cells[feature];
                     if (cell.requirement !== 'REQUIRED') continue;
                     if (feature === 'archive-controls' || feature === 'telemetry-eligibility') continue;
-                    const value = await measure(page, feature);
+                    if (fixture.site_mode === 'carousel' && ['likes', 'comments', 'lightbox', 'keyboard', 'prev-next'].includes(feature)) {
+                        await page.goto(fixtureUrl(baseUrl, primaryFile), { waitUntil: 'load' });
+                    }
+                    const value = await measure(page, feature, fixture);
                     if (value === null) continue;
                     cell.widths[String(width)] = value ? 'PASS' : 'FAIL';
                     if (feature === 'consent' && value) {
                         await page.locator('#snap-consent-decline').click({ force: true });
                         await page.waitForTimeout(400);
                     }
-                    if (feature === 'keyboard' && page.url() !== pathToFileURL(path.join(out, fixture.file)).href) {
-                        await page.goto(pathToFileURL(path.join(out, fixture.file)).href, { waitUntil: 'load' });
+                    if (feature === 'keyboard' && page.url() !== fixtureUrl(baseUrl, primaryFile)) {
+                        await page.goto(fixtureUrl(baseUrl, primaryFile), { waitUntil: 'load' });
                     }
                 }
                 await page.close();
 
-                const archivePage = await browser.newPage({ viewport: { width, height: 1000 } });
+                const archivePage = await freshPage(browser, { width, height: 1000 });
                 archivePage.setDefaultTimeout(2500);
-                await archivePage.goto(pathToFileURL(path.join(out, fixture.archive_file)).href, { waitUntil: 'load' });
+                await archivePage.route('**/archive?*', route => route.abort());
+                await archivePage.goto(fixtureUrl(baseUrl, fixture.archive_file), { waitUntil: 'load' });
                 const archiveValue = await measureArchive(archivePage);
                 cells['archive-controls'].widths[String(width)] = archiveValue.pass ? 'PASS' : 'FAIL';
                 cells['archive-controls'].observations ??= {};
@@ -277,10 +373,10 @@ async function negativeControl(browser, fixture, feature, selector) {
 
                 const telemetryFile = telemetryFixtureFile(fixture);
                 assert.ok(telemetryFile, `${fixture.skin}: missing eligible telemetry fixture`);
-                const telemetryPage = await browser.newPage({ viewport: { width, height: 1000 } });
+                const telemetryPage = await freshPage(browser, { width, height: 1000 });
                 telemetryPage.setDefaultTimeout(2500);
-                await telemetryPage.goto(pathToFileURL(path.join(out, telemetryFile)).href, { waitUntil: 'load' });
-                const telemetryValue = await measure(telemetryPage, 'telemetry-eligibility');
+                await telemetryPage.goto(fixtureUrl(baseUrl, telemetryFile), { waitUntil: 'load' });
+                const telemetryValue = await measure(telemetryPage, 'telemetry-eligibility', fixture);
                 cells['telemetry-eligibility'].widths[String(width)] = telemetryValue ? 'PASS' : 'FAIL';
                 await telemetryPage.close();
             }
@@ -312,8 +408,10 @@ async function negativeControl(browser, fixture, feature, selector) {
                 controlFixture = { ...fixture, file: fixture.archive_file };
             } else if (feature === 'telemetry-eligibility') {
                 controlFixture = { ...fixture, file: telemetryFixtureFile(fixture) };
+            } else if (fixture.site_mode === 'carousel') {
+                controlFixture = { ...fixture, file: fixture.landing_file };
             }
-            controls.push(await negativeControl(browser, controlFixture, feature, selector));
+            controls.push(await negativeControl(browser, controlFixture, feature, selector, baseUrl));
         }
 
         const summary = {};
@@ -322,7 +420,7 @@ async function negativeControl(browser, fixture, feature, selector) {
             for (const row of matrix) summary[feature][row.features[feature].status]++;
         }
         const report = {
-            generated_at: new Date().toISOString(), widths, page_type: 'solo entry and archive',
+            generated_at: new Date().toISOString(), widths, page_type: 'solo entry, carousel landing/modal, and archive',
             meaning: 'PASS is rendered/browser measured; NOT CHECKED and NOT APPLICABLE are not passes.',
             summary, negative_controls: controls, skins: matrix
         };
@@ -332,6 +430,7 @@ async function negativeControl(browser, fixture, feature, selector) {
         console.log(`Report: ${reportPath}`);
     } finally {
         await browser.close();
+        await new Promise(resolve => server.close(resolve));
     }
 })().catch(error => { console.error(error); process.exitCode = 1; });
 
