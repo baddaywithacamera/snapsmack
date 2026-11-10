@@ -51,6 +51,17 @@ $page_css = <<<'CSS'
 .security-layer .layer-num { margin-bottom: 10px; color: var(--red); font: 900 .7rem/1 Arial Black, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
 .security-layer h3 { color: var(--white); margin-bottom: 12px; font-size: 1.1rem; }
 .security-layer p { margin: 0; color: #bbb; font-size: .9rem; line-height: 1.6; }
+.skin-model { border-top: 8px solid var(--black); background: var(--white); }
+.skin-model .lede { max-width: 900px; }
+.skin-model-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin-top: 34px; background: var(--border); border: 1px solid var(--border); }
+.skin-model-card { padding: 26px; background: #f7f5f1; }
+.skin-model-card h3 { margin-bottom: 12px; }
+.skin-model-card p { margin: 0; font-size: .92rem; line-height: 1.65; }
+.skin-model-status { margin-top: 34px; padding: 24px 28px; color: #ddd; background: var(--black); border-left: 6px solid var(--red); }
+.skin-model-status h3 { margin-bottom: 10px; color: var(--white); }
+.skin-model-status p { margin: 0 0 .8em; font-size: .92rem; line-height: 1.6; }
+.skin-model-status p:last-child { margin-bottom: 0; }
+.skin-model-status strong { color: var(--white); }
 .defence { border-top: 8px solid var(--black); background: #f4f1eb; }
 .defence-body { max-width: 820px; }
 .defence-q { margin-top: 30px; }
@@ -64,7 +75,7 @@ $page_css = <<<'CSS'
 .receipts-grid a span { display: block; margin-top: 6px; color: var(--mid-grey); font-size: .88rem; line-height: 1.45; }
 .receipts-grid a:hover { background: #fff5f3; text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
 @media (max-width: 850px) { .doctrine-grid, .wrong-steps { grid-template-columns: 1fr; } }
-@media (max-width: 700px) { .security-layers, .receipts-grid { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .security-layers, .skin-model-grid, .receipts-grid { grid-template-columns: 1fr; } }
 CSS;
 
 require_once __DIR__ . '/includes/header.php';
@@ -186,6 +197,37 @@ require_once __DIR__ . '/includes/header.php';
                     <h3>Snap Decision</h3>
                     <p>Cryptographically signed releases, published checksums, signed git tags, reviewed bundled dependencies, and public security audits protect the software supply chain.</p>
                 </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="skin-model" id="skin-security-model">
+        <div class="wrap">
+            <p class="site-discovery-kicker">Skin security model</p>
+            <h2>Why SnapSmack has no plugins.</h2>
+            <p class="lede">A skin can change the presentation of a site. It cannot add arbitrary application behaviour. SnapSmack keeps those two jobs separate so a new look does not silently become a new attack surface.</p>
+            <div class="skin-model-grid">
+                <article class="skin-model-card">
+                    <h3>Bounded templates</h3>
+                    <p>A current skin package contains declarative metadata, stylesheets, and bounded presentation templates. Templates can print values prepared by the CMS and use eight approved presentation helpers. The strict gate refuses unapproved function calls, database access, request globals, state changes, executable declarations, and unsafe output.</p>
+                </article>
+                <article class="skin-model-card">
+                    <h3>No bundled executable code</h3>
+                    <p>Skin packages cannot ship JavaScript or arbitrary PHP behaviour. When a design needs interaction, its manifest asks for a named engine supplied by the CMS. The package gate checks the complete skin regardless of who wrote or signed it.</p>
+                </article>
+                <article class="skin-model-card">
+                    <h3>Owner code is separate</h3>
+                    <p>Site owners may deliberately enable their own custom code. That facility is off by default, wrapped by the CMS, and separate from the skin package: a skin cannot supply it or turn it on. It is not a way for a downloaded skin to gain execution rights.</p>
+                </article>
+                <article class="skin-model-card">
+                    <h3>No local bypass</h3>
+                    <p>The former &ldquo;Allow Custom Skin JS&rdquo; path is gone. Development copies and production copies use the same strict package gate. Removing a skin leaves no executable plugin code behind because SnapSmack has no arbitrary server-side plugin mechanism.</p>
+                </article>
+            </div>
+            <div class="skin-model-status">
+                <h3>What was measured</h3>
+                <p>On the current development line, all <strong>30 installable skin packages</strong> pass the strict fleet gate and no skin directory contains JavaScript. The retired Beatbox directory has no manifest or renderable package and is not counted as installable.</p>
+                <p><strong>Known limitation &mdash; SS-1264 remains open.</strong> A core update can remove signed skin-provenance records, leaving an affected install unable to save skin settings until those records are recovered. That repair is not being presented here as complete.</p>
             </div>
         </div>
     </section>

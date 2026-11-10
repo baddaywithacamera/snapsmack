@@ -185,7 +185,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="feat-head">
                 <p class="site-discovery-kicker">Skins</p>
                 <h2>One engine. No house style.</h2>
-                <p class="lede">A SnapSmack skin is presentation plus a manifest, not a plugin. The manifest lists the layouts, controls, fonts, and effects the skin needs; the CMS supplies the reviewed engines. Fix an engine once and every skin gets the repair. Remove a skin and it leaves nothing behind.</p>
+                <p class="lede">A SnapSmack skin is presentation plus a manifest, not a plugin. The manifest lists the layouts, controls, fonts, and effects the skin needs; the CMS supplies the reviewed engines. Fix an engine once and every skin gets the repair. Remove a skin and it leaves no executable plugin code behind.</p>
             </div>
             <ul class="feat-list">
                 <li>Production skins with their own layout and appearance controls.</li>
