@@ -1533,6 +1533,11 @@
         "predicates": 13,
         "thresholds": []
     },
+    "release-key-rotation-form-regression.php": {
+        "assertions": 11,
+        "predicates": 8,
+        "thresholds": []
+    },
     "release-ships-no-screenshots-regression.php": {
         "assertions": 11,
         "predicates": 15,
@@ -1606,6 +1611,26 @@
     "scrolltime-declaration-matches-calls-regression.php": {
         "assertions": 0,
         "predicates": 8,
+        "thresholds": []
+    },
+    "secaudit-008-assets-img-no-exec.php": {
+        "assertions": 2,
+        "predicates": 3,
+        "thresholds": []
+    },
+    "secaudit-026-installer-no-constants-template.php": {
+        "assertions": 2,
+        "predicates": 5,
+        "thresholds": []
+    },
+    "secaudit-028-root-config-cleanup-regression.php": {
+        "assertions": 8,
+        "predicates": 4,
+        "thresholds": []
+    },
+    "secaudit-049-login-emits-csp.php": {
+        "assertions": 10,
+        "predicates": 5,
         "thresholds": []
     },
     "secaudit-055-dev-dirs-regression.php": {
