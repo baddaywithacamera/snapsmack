@@ -591,6 +591,19 @@ img { display: block; max-width: 100%; }
     position: relative;
 }
 
+/* A multi-photo post needs a stable stage: unlike a single image, the
+   percentage-sized slider has no intrinsic width for the flex item to adopt.
+   Keep that stage square and inside both the viewport and GAME ON's existing
+   78dvh presentation ceiling. Solo photographs continue to size themselves
+   from their own dimensions above. */
+.go-post-ig-image:has(.go-carousel-wrap) {
+    flex:         0 0 min(78dvh, 820px, calc(100vw - 383px));
+    width:        min(78dvh, 820px, calc(100vw - 383px));
+    height:       min(78dvh, 820px, calc(100vw - 383px));
+    aspect-ratio: 1 / 1;
+    background:   var(--post-bg, #000);
+}
+
 .go-post-ig-image .ss-slider,
 .go-post-ig-image .slider-track {
     height: 100%;

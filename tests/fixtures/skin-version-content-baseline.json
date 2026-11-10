@@ -38,8 +38,8 @@
             "manifest_css_sha256": "82dd12ca562dc273ad9c02d53eb2d180c944ab7ba2833eacbb1bbfd189e89c8c"
         },
         "game-on": {
-            "version": "0.1.42",
-            "files_sha256": "50d2dab7702e269761bdf16b67515ff1a6b4942413897376f0bb75c18b17a692",
+            "version": "0.1.43",
+            "files_sha256": "9c04ed90343cb63b9bb0438c2ea41c8745b96bc328f91b13ef55e9271ca919f2",
             "manifest_css_sha256": "e3c6f2c2fb571c6ca6442303d6bd25e1d9d93fb1a6753007f2318120d8af4393"
         },
         "glide": {

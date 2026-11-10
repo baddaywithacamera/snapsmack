@@ -1,0 +1,464 @@
+{
+  "scope": "Source-build GAME ON post markup with registered slider CSS/JS and carousel controller. Not installed-build or live verification.",
+  "results": [
+    {
+      "width": 1920,
+      "initial": {
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "post": {
+          "x": 492.5,
+          "y": 24,
+          "right": 1647.5,
+          "bottom": 844,
+          "width": 1155,
+          "height": 820
+        },
+        "imagePanel": {
+          "x": 492.5,
+          "y": 24,
+          "right": 1312.5,
+          "bottom": 844,
+          "width": 820,
+          "height": 820
+        },
+        "slider": {
+          "x": 492.5,
+          "y": 24,
+          "right": 1312.5,
+          "bottom": 844,
+          "width": 820,
+          "height": 820
+        },
+        "leftArrow": {
+          "x": 507.5,
+          "y": 414,
+          "right": 547.5,
+          "bottom": 454,
+          "width": 40,
+          "height": 40
+        },
+        "rightArrow": {
+          "x": 1257.5,
+          "y": 414,
+          "right": 1297.5,
+          "bottom": 454,
+          "width": 40,
+          "height": 40
+        },
+        "trackTransform": "matrix(1, 0, 0, 1, 0, 0)",
+        "activeDot": 0,
+        "overflow": 0,
+        "errors": []
+      },
+      "afterMouse": {
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "post": {
+          "x": 492.5,
+          "y": 24,
+          "right": 1647.5,
+          "bottom": 844,
+          "width": 1155,
+          "height": 820
+        },
+        "imagePanel": {
+          "x": 492.5,
+          "y": 24,
+          "right": 1312.5,
+          "bottom": 844,
+          "width": 820,
+          "height": 820
+        },
+        "slider": {
+          "x": 492.5,
+          "y": 24,
+          "right": 1312.5,
+          "bottom": 844,
+          "width": 820,
+          "height": 820
+        },
+        "leftArrow": {
+          "x": 507.5,
+          "y": 414,
+          "right": 547.5,
+          "bottom": 454,
+          "width": 40,
+          "height": 40
+        },
+        "rightArrow": {
+          "x": 1257.5,
+          "y": 414,
+          "right": 1297.5,
+          "bottom": 454,
+          "width": 40,
+          "height": 40
+        },
+        "trackTransform": "matrix(1, 0, 0, 1, -820, 0)",
+        "activeDot": 1,
+        "overflow": 0,
+        "errors": []
+      },
+      "afterKeyboard": {
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "post": {
+          "x": 492.5,
+          "y": 24,
+          "right": 1647.5,
+          "bottom": 844,
+          "width": 1155,
+          "height": 820
+        },
+        "imagePanel": {
+          "x": 492.5,
+          "y": 24,
+          "right": 1312.5,
+          "bottom": 844,
+          "width": 820,
+          "height": 820
+        },
+        "slider": {
+          "x": 492.5,
+          "y": 24,
+          "right": 1312.5,
+          "bottom": 844,
+          "width": 820,
+          "height": 820
+        },
+        "leftArrow": {
+          "x": 507.5,
+          "y": 414,
+          "right": 547.5,
+          "bottom": 454,
+          "width": 40,
+          "height": 40
+        },
+        "rightArrow": {
+          "x": 1257.5,
+          "y": 414,
+          "right": 1297.5,
+          "bottom": 454,
+          "width": 40,
+          "height": 40
+        },
+        "trackTransform": "matrix(1, 0, 0, 1, -1640, 0)",
+        "activeDot": 2,
+        "overflow": 0,
+        "errors": []
+      }
+    },
+    {
+      "width": 1440,
+      "initial": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "post": {
+          "x": 252.5,
+          "y": 24,
+          "right": 1289.5,
+          "bottom": 726,
+          "width": 1037,
+          "height": 702
+        },
+        "imagePanel": {
+          "x": 252.5,
+          "y": 24,
+          "right": 954.5,
+          "bottom": 726,
+          "width": 702,
+          "height": 702
+        },
+        "slider": {
+          "x": 252.5,
+          "y": 24,
+          "right": 954.5,
+          "bottom": 726,
+          "width": 702,
+          "height": 702
+        },
+        "leftArrow": {
+          "x": 267.5,
+          "y": 355,
+          "right": 307.5,
+          "bottom": 395,
+          "width": 40,
+          "height": 40
+        },
+        "rightArrow": {
+          "x": 899.5,
+          "y": 355,
+          "right": 939.5,
+          "bottom": 395,
+          "width": 40,
+          "height": 40
+        },
+        "trackTransform": "matrix(1, 0, 0, 1, 0, 0)",
+        "activeDot": 0,
+        "overflow": 0,
+        "errors": []
+      },
+      "afterMouse": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "post": {
+          "x": 252.5,
+          "y": 24,
+          "right": 1289.5,
+          "bottom": 726,
+          "width": 1037,
+          "height": 702
+        },
+        "imagePanel": {
+          "x": 252.5,
+          "y": 24,
+          "right": 954.5,
+          "bottom": 726,
+          "width": 702,
+          "height": 702
+        },
+        "slider": {
+          "x": 252.5,
+          "y": 24,
+          "right": 954.5,
+          "bottom": 726,
+          "width": 702,
+          "height": 702
+        },
+        "leftArrow": {
+          "x": 267.5,
+          "y": 355,
+          "right": 307.5,
+          "bottom": 395,
+          "width": 40,
+          "height": 40
+        },
+        "rightArrow": {
+          "x": 899.5,
+          "y": 355,
+          "right": 939.5,
+          "bottom": 395,
+          "width": 40,
+          "height": 40
+        },
+        "trackTransform": "matrix(1, 0, 0, 1, -702, 0)",
+        "activeDot": 1,
+        "overflow": 0,
+        "errors": []
+      },
+      "afterKeyboard": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "post": {
+          "x": 252.5,
+          "y": 24,
+          "right": 1289.5,
+          "bottom": 726,
+          "width": 1037,
+          "height": 702
+        },
+        "imagePanel": {
+          "x": 252.5,
+          "y": 24,
+          "right": 954.5,
+          "bottom": 726,
+          "width": 702,
+          "height": 702
+        },
+        "slider": {
+          "x": 252.5,
+          "y": 24,
+          "right": 954.5,
+          "bottom": 726,
+          "width": 702,
+          "height": 702
+        },
+        "leftArrow": {
+          "x": 267.5,
+          "y": 355,
+          "right": 307.5,
+          "bottom": 395,
+          "width": 40,
+          "height": 40
+        },
+        "rightArrow": {
+          "x": 899.5,
+          "y": 355,
+          "right": 939.5,
+          "bottom": 395,
+          "width": 40,
+          "height": 40
+        },
+        "trackTransform": "matrix(1, 0, 0, 1, -1404, 0)",
+        "activeDot": 2,
+        "overflow": 0,
+        "errors": []
+      }
+    },
+    {
+      "width": 1024,
+      "initial": {
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "post": {
+          "x": 44.984375,
+          "y": 24,
+          "right": 979.015625,
+          "bottom": 623.03125,
+          "width": 934.03125,
+          "height": 599.03125
+        },
+        "imagePanel": {
+          "x": 44.984375,
+          "y": 24,
+          "right": 644.015625,
+          "bottom": 623.03125,
+          "width": 599.03125,
+          "height": 599.03125
+        },
+        "slider": {
+          "x": 44.984375,
+          "y": 24,
+          "right": 644.015625,
+          "bottom": 623.03125,
+          "width": 599.03125,
+          "height": 599.03125
+        },
+        "leftArrow": {
+          "x": 59.984375,
+          "y": 303.515625,
+          "right": 99.984375,
+          "bottom": 343.515625,
+          "width": 40,
+          "height": 40
+        },
+        "rightArrow": {
+          "x": 589.015625,
+          "y": 303.515625,
+          "right": 629.015625,
+          "bottom": 343.515625,
+          "width": 40,
+          "height": 40
+        },
+        "trackTransform": "matrix(1, 0, 0, 1, 0, 0)",
+        "activeDot": 0,
+        "overflow": 0,
+        "errors": []
+      },
+      "afterMouse": {
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "post": {
+          "x": 44.984375,
+          "y": 24,
+          "right": 979.015625,
+          "bottom": 623.03125,
+          "width": 934.03125,
+          "height": 599.03125
+        },
+        "imagePanel": {
+          "x": 44.984375,
+          "y": 24,
+          "right": 644.015625,
+          "bottom": 623.03125,
+          "width": 599.03125,
+          "height": 599.03125
+        },
+        "slider": {
+          "x": 44.984375,
+          "y": 24,
+          "right": 644.015625,
+          "bottom": 623.03125,
+          "width": 599.03125,
+          "height": 599.03125
+        },
+        "leftArrow": {
+          "x": 59.984375,
+          "y": 303.515625,
+          "right": 99.984375,
+          "bottom": 343.515625,
+          "width": 40,
+          "height": 40
+        },
+        "rightArrow": {
+          "x": 589.015625,
+          "y": 303.515625,
+          "right": 629.015625,
+          "bottom": 343.515625,
+          "width": 40,
+          "height": 40
+        },
+        "trackTransform": "matrix(1, 0, 0, 1, -599, 0)",
+        "activeDot": 1,
+        "overflow": 0,
+        "errors": []
+      },
+      "afterKeyboard": {
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "post": {
+          "x": 44.984375,
+          "y": 24,
+          "right": 979.015625,
+          "bottom": 623.03125,
+          "width": 934.03125,
+          "height": 599.03125
+        },
+        "imagePanel": {
+          "x": 44.984375,
+          "y": 24,
+          "right": 644.015625,
+          "bottom": 623.03125,
+          "width": 599.03125,
+          "height": 599.03125
+        },
+        "slider": {
+          "x": 44.984375,
+          "y": 24,
+          "right": 644.015625,
+          "bottom": 623.03125,
+          "width": 599.03125,
+          "height": 599.03125
+        },
+        "leftArrow": {
+          "x": 59.984375,
+          "y": 303.515625,
+          "right": 99.984375,
+          "bottom": 343.515625,
+          "width": 40,
+          "height": 40
+        },
+        "rightArrow": {
+          "x": 589.015625,
+          "y": 303.515625,
+          "right": 629.015625,
+          "bottom": 343.515625,
+          "width": 40,
+          "height": 40
+        },
+        "trackTransform": "matrix(1, 0, 0, 1, -1198, 0)",
+        "activeDot": 2,
+        "overflow": 0,
+        "errors": []
+      }
+    }
+  ]
+}
