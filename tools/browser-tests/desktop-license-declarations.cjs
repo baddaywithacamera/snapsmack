@@ -15,6 +15,23 @@ const forbiddenDependency = /\b(?:AGPL|GPL)(?:-|\s|v|\b)/i;
 const forbiddenPythonPackages = /(^|["'\s])(PyQt[56])(?=$|[<>=!~;\s,"'])/im;
 const falseFirstPartyClaim = /(?:\bis\s+GPL\b|[·:]\s*GPL(?:[-\s]?v?\.?\d)?\b|license\s*[=:]\s*["']?GPL)/i;
 
+function isOperabilityAuditHtml(relative, name) {
+  if (path.extname(name).toLowerCase() !== '.html') return false;
+  return relative.split(path.sep).includes('opaudits');
+}
+
+function isDeclarationCandidate(absolute, name) {
+  const relative = path.relative(root, absolute);
+  if (!declarationNames.has(name) && path.extname(name).toLowerCase() !== '.html') return false;
+  return !isOperabilityAuditHtml(relative, name);
+}
+
+function declarationFailure(absolute, name, source) {
+  if (!isDeclarationCandidate(absolute, name)) return null;
+  const relative = path.relative(root, absolute);
+  return forbiddenDeclaration.test(source) ? relative : null;
+}
+
 function walk(directory, visitor) {
   for (const entry of fs.readdirSync(directory, {withFileTypes: true})) {
     if (entry.isDirectory() && excludedDirectories.has(entry.name)) continue;
@@ -28,12 +45,23 @@ const spl = fs.readFileSync(splPath, 'utf8');
 assert.match(spl, /^\s*SMACK PUBLIC LICENSE \(SPL\)\s*$/m, 'authoritative SPL title missing');
 assert.match(spl, /^\s*Version 2\.4\s*$/m, 'authoritative SPL version is not 2.4');
 
+const historicalAuditText = '<p>The former first-party declaration said GPL-3.0.</p>';
+const auditRegressionPath = path.join(root, 'projects/snapsmack-ca/opaudits/032.html');
+const publicClaimRegressionPath = path.join(root, 'projects/snapsmack-ca/licensing.html');
+assert.equal(declarationFailure(auditRegressionPath, '032.html', historicalAuditText), null,
+  'operability audit evidence must be allowed to quote a former declaration');
+assert.equal(
+  declarationFailure(publicClaimRegressionPath, 'licensing.html', historicalAuditText),
+  path.relative(root, publicClaimRegressionPath),
+  'the same wording on a public product page must still fail');
+
 const declarationFailures = [];
 for (const subtree of ['tools', 'projects']) {
   walk(path.join(root, subtree), (absolute, name) => {
-    if (!declarationNames.has(name) && path.extname(name).toLowerCase() !== '.html') return;
+    if (!isDeclarationCandidate(absolute, name)) return;
     const source = fs.readFileSync(absolute, 'utf8');
-    if (forbiddenDeclaration.test(source)) declarationFailures.push(path.relative(root, absolute));
+    const failure = declarationFailure(absolute, name, source);
+    if (failure !== null) declarationFailures.push(failure);
   });
 }
 assert.deepEqual(declarationFailures, [],
