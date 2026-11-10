@@ -2947,8 +2947,9 @@ who need those features should use Pixieset, HoneyBook, or similar dedicated too
 by one person. It works because it has to work for the person who built it. There is no
 support contract, no SLA, no guaranteed response time.</p>
 
-<p>SnapSmack is GPL v3. The source is yours. Fork it, modify it, build the commercial
-studio tool you need. We won't help you build it but we won't stop you either.</p>
+<p>SnapSmack is licensed under the SMACK PUBLIC LICENSE (SPL) 2.4 — public and free to
+read, run, and self-host. See the licence for what you may and may not do with the
+source.</p>
 
 <p>This software was built by a photographer for photographers who want to own their work
 and their platform. If that's you, welcome.</p>

@@ -563,7 +563,7 @@ const doc = new Document({
       new Paragraph({
         spacing: { before: 0, after: 0 },
         border: { top: { style: BorderStyle.SINGLE, size: 4, color: "444444", space: 6 } },
-        children: [new TextRun({ text: "SNAPSMACK \u00B7 Feature Spec 0.8.x \u00B7 GPL v3 \u00B7 No ads. Ever.", font: FONT, size: 18, italics: true, color: "888888" })]
+        children: [new TextRun({ text: "SNAPSMACK \u00B7 Feature Spec 0.8.x \u00B7 SMACK PUBLIC LICENSE 2.4 \u00B7 No ads. Ever.", font: FONT, size: 18, italics: true, color: "888888" })]
       }),
     ]
   }]
