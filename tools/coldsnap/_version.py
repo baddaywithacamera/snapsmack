@@ -29,5 +29,5 @@ BUILD_VERSION = "0.7.31"
 # bump_version.py now refuses to produce a version at or below this floor, so a
 # stale checkout fails loudly instead of quietly rolling him back. Raise it when
 # a build is confirmed installed.
-INSTALLED_VERSION = "0.7.28"
+INSTALLED_VERSION = "0.7.31"
 # ===== SNAPSMACK EOF =====
