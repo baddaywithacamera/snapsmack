@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+- SECAUDIT 028: the hub's release Key Rotation panel verified against a root public key (d4c4256...) that no install uses; every install's trust anchor is 3287b9b... (the value 0.7.45 corrected `core/updater.php` to, while the hub copy was missed). The hub now matches the installs, so a root-signed rotation the hub accepts is the same one the fleet accepts. Hub-only change; installs already carried the correct anchor. A regression now fails if the two ever diverge.
+
 - The signed updater removes the obsolete root-level `sc-config.php` copy left on a small number of spokes. The removal is exact-path only: `/smack-central/sc-config.php` is untouched, installs without the stale root copy are a harmless no-op, and cleanup still occurs before SMACKBACK rebuilds its baseline.
 
 ## 0.7.991D - 2026-11-09
