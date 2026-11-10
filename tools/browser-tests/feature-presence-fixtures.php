@@ -176,13 +176,23 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
     $target = $out . '/' . $skin . '--solo.html';
     file_put_contents($target, $html);
 
+    $skinArchiveItems = $archiveItems;
+    $carouselItems = $siteMode === 'carousel'
+        ? array_map(
+            static function (array $archiveItem) use ($skin): array {
+                $archiveItem['url'] = '/modal/' . rawurlencode($skin) . '/' . rawurlencode((string)$archiveItem['img_slug']);
+                return $archiveItem;
+            },
+            $archiveItems
+        )
+        : $archiveItems;
     $archiveControls = snapsmack_archive_controls(
         ['archive_layout' => 'thumbs', 'archive_calendar_enabled' => '1'],
         $manifest
     );
     $GLOBALS['snapsmack_hit'] = ['id' => 4202, 'page_type' => 'archive'];
     $archiveResponse = [
-        'kind' => 'archive', 'page_title' => 'Archive', 'items' => $archiveItems,
+        'kind' => 'archive', 'page_title' => 'Archive', 'items' => $skinArchiveItems,
         'item' => [], 'next_page' => 2, 'next_url' => '/archive?p=2', 'has_more' => true,
         'total_count' => 60, 'total_pages' => 5, 'navigation' => $nav,
         'archive_layouts' => snapsmack_archive_layout_links(
@@ -226,11 +236,12 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
     file_put_contents($archiveTarget, $archiveHtml);
 
     $landingFile = '';
+    $modalFile = '';
     if ($siteMode === 'carousel') {
         $GLOBALS['snapsmack_hit'] = ['id' => 4203, 'page_type' => 'landing'];
         $landingResponse = [
-            'kind' => 'landing', 'page_title' => 'Landing', 'items' => $archiveItems,
-            'photographs' => $archiveItems, 'navigation' => $nav,
+            'kind' => 'landing', 'page_title' => 'Landing', 'items' => $carouselItems,
+            'photographs' => $carouselItems, 'navigation' => $nav,
         ];
         $landingView = snapsmack_build_skin_view($landingResponse, [
             'site_name' => 'Feature Matrix', 'tagline' => 'Rendered capability proof',
@@ -257,12 +268,43 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
         $landingTarget = $out . '/' . $skin . '--landing.html';
         file_put_contents($landingTarget, $landingHtml);
         $landingFile = basename($landingTarget);
+
+        $modalResponse = array_merge($response, [
+            'kind' => 'photo', 'fragment' => true,
+            'item' => $item, 'photographs' => [$item, array_merge($item, [
+                'id' => 43, 'img_file' => $next, 'img_title' => 'Next photograph',
+                'img_alt' => 'Next photograph',
+            ])],
+        ]);
+        $modalView = snapsmack_build_skin_view($modalResponse, [
+            'site_name' => 'Feature Matrix', 'tagline' => 'Rendered capability proof',
+            'site_url' => 'https://example.test/', 'language' => 'en', 'direction' => 'ltr',
+            'owner_name' => 'Fixture Owner', 'skin_slug' => $skin,
+            'skin_style_url' => '', 'base_style_url' => '', 'skin_variant_url' => '',
+            'registered_assets' => $assets, 'owner_custom_code' => '',
+            'search_dock' => ['enabled' => true, 'action' => '/search', 'placeholder' => 'Search'],
+            'skin_presentation' => snapsmack_skin_presentation([], $skin),
+            'footer' => ['site_name' => 'Feature Matrix', 'site_url' => 'https://example.test/', 'slots' => []],
+            'crop_circles' => ['navigation' => $nav, 'identity' => 'Feature Matrix', 'home_url' => '/'],
+        ]);
+        ob_start();
+        @snapsmack_render_strict_skin_template($root . '/skins/' . $skin, 'layout.php', $modalView);
+        $modalHtml = (string)ob_get_clean();
+        $modalHtml = str_replace(
+            ['src="/current-', 'src="/previous-', 'src="/next-'],
+            ['src="current-', 'src="previous-', 'src="next-'],
+            $modalHtml
+        );
+        $modalTarget = $out . '/' . $skin . '--modal.html';
+        file_put_contents($modalTarget, $modalHtml);
+        $modalFile = basename($modalTarget);
     }
 
     $index[] = [
         'skin' => $skin, 'file' => basename($target), 'kind' => $kind,
         'archive_file' => basename($archiveTarget),
         'landing_file' => $landingFile,
+        'modal_file' => $modalFile,
         'site_mode' => $siteMode,
         'version' => (string)($manifest['version'] ?? ''), 'modes' => $modes,
         'features' => is_array($manifest['features'] ?? null) ? $manifest['features'] : [],
