@@ -80,7 +80,11 @@ function declared(page, feature) {
         ? ['REQUIRED', 'runtime supplied a prepared download link for this photoblog entry']
         : ['NOT APPLICABLE', 'long-form single entry has no photo-download contract'];
     if (feature === 'consent') return ['REQUIRED', 'core supplies the consent choice on a fresh public request'];
-    if (feature === 'telemetry-eligibility') return ['UNVERIFIED', 'requires a logged-hit runtime fixture'];
+    if (feature === 'telemetry-eligibility') {
+        if (carousel) return ['REQUIRED', 'carousel landing feed is eligible for Scroll Time'];
+        if (page.site_mode === 'smacktalk') return ['REQUIRED', 'SMACKTALK story is eligible for Scroll Time'];
+        return ['REQUIRED', 'photoblog archive is eligible for Scroll Time'];
+    }
     return ['UNVERIFIED', 'classification pending'];
 }
 
@@ -145,6 +149,12 @@ async function measureArchive(page) {
     return { pass: controls > 0 && continuation > 0, controls, continuation };
 }
 
+function telemetryFixtureFile(fixture) {
+    if (fixture.site_mode === 'carousel') return fixture.landing_file;
+    if (fixture.site_mode === 'smacktalk') return fixture.file;
+    return fixture.archive_file;
+}
+
 async function measure(page, feature) {
     if (feature === 'archive-controls') {
         return (await measureArchive(page)).pass;
@@ -191,6 +201,11 @@ async function measure(page, feature) {
     if (feature === 'consent') {
         return (await visibleCount(page, '#snap-consent-banner #snap-consent-accept')) > 0
             && (await visibleCount(page, '#snap-consent-banner #snap-consent-decline')) > 0;
+    }
+    if (feature === 'telemetry-eligibility') {
+        return (await page.locator(
+            '#ss-scrolltime[data-hit]:not([data-hit=""])[data-token]:not([data-token=""])[data-endpoint]:not([data-endpoint=""])'
+        ).count()) === 1;
     }
     return null;
 }
@@ -259,6 +274,15 @@ async function negativeControl(browser, fixture, feature, selector) {
                     continuation_marker_count: archiveValue.continuation
                 };
                 await archivePage.close();
+
+                const telemetryFile = telemetryFixtureFile(fixture);
+                assert.ok(telemetryFile, `${fixture.skin}: missing eligible telemetry fixture`);
+                const telemetryPage = await browser.newPage({ viewport: { width, height: 1000 } });
+                telemetryPage.setDefaultTimeout(2500);
+                await telemetryPage.goto(pathToFileURL(path.join(out, telemetryFile)).href, { waitUntil: 'load' });
+                const telemetryValue = await measure(telemetryPage, 'telemetry-eligibility');
+                cells['telemetry-eligibility'].widths[String(width)] = telemetryValue ? 'PASS' : 'FAIL';
+                await telemetryPage.close();
             }
             for (const cell of Object.values(cells)) {
                 const values = Object.values(cell.widths);
@@ -276,15 +300,19 @@ async function negativeControl(browser, fixture, feature, selector) {
             'prev-next': 'a[rel="prev"],a[rel="next"]',
             lightbox: 'img[data-lightbox-src],img.post-image,img.pg-post-image',
             consent: '#snap-consent-banner',
-            'archive-controls': '.archive-controls,.archive-filter-row,[data-archive-layout]'
+            'archive-controls': '.archive-controls,.archive-filter-row,[data-archive-layout]',
+            'telemetry-eligibility': '#ss-scrolltime'
         };
         for (const [feature, selector] of Object.entries(controlSpecs)) {
             const passing = matrix.find(row => row.features[feature].status === 'PASS');
             assert.ok(passing, `no passing ${feature} fixture available for negative control`);
             const fixture = fixtureIndex.find(candidate => candidate.skin === passing.skin);
-            const controlFixture = feature === 'archive-controls'
-                ? { ...fixture, file: fixture.archive_file }
-                : fixture;
+            let controlFixture = fixture;
+            if (feature === 'archive-controls') {
+                controlFixture = { ...fixture, file: fixture.archive_file };
+            } else if (feature === 'telemetry-eligibility') {
+                controlFixture = { ...fixture, file: telemetryFixtureFile(fixture) };
+            }
             controls.push(await negativeControl(browser, controlFixture, feature, selector));
         }
 
