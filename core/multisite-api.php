@@ -602,6 +602,10 @@ if ($resource === 'fediverse' && $sub_action === 'status' && $method === 'GET') 
 // as if the operator pressed JOIN NETWORK on its portal. FULL api_key_local auth.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'fediverse' && $sub_action === 'relay-join' && $method === 'POST') {
+    // SS-1055: hub->spoke only. One secret authenticates inbound at both ends, so
+    // without this a spoke presenting the hub->spoke key could drive this spoke
+    // into a relay join. The same role guard the posts/create path already uses.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may command a relay join on this node', 403);
     require_once __DIR__ . '/fediverse.php';
     if (!sv_enabled($settings)) {
         ms_err('Federation is not enabled on this blog.');
@@ -1436,6 +1440,10 @@ if ($resource === 'backup' && $sub_action === 'export' && $method === 'GET') {
 // the single-site suyb-complete.php contract. (0.7.261)
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'backup' && $sub_action === 'report' && $method === 'POST') {
+    // SS-1055: hub->spoke only. The report is written by SUYB on the hub side; the
+    // scoped backup key sits on this spoke's hub row, so a legitimate caller is
+    // always role='hub'. The scope guard above already pins it to backup/*.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may report a backup on this node', 403);
     $b_status = in_array(($_POST['status'] ?? ''), ['ok', 'failed'], true) ? $_POST['status'] : 'ok';
     $b_size   = isset($_POST['size'])  ? (string)(int)$_POST['size'] : '';
     $b_dest   = substr(trim((string)($_POST['dest'] ?? '')), 0, 100);
@@ -1721,6 +1729,10 @@ if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
 // Hub is revoking its own access. Wipe the node record.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'disconnect' && $method === 'POST') {
+    // SS-1055: hub->spoke only. Only the hub may revoke its own access and wipe this
+    // node row; a spoke-role caller must not delete the relationship from here. A
+    // spoke that wants to leave uses the local disconnect_hub path, not this route.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may disconnect this node', 403);
     $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE id = ?")->execute([$node_id]);
 
     // Clear all hub_controls_* flags — the spoke is now standalone and its settings
