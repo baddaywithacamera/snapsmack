@@ -12,7 +12,7 @@
 | State | OPEN. Diagnosed; the register and the two standing rules exist, but the register is not yet complete and live verification of the open findings is still owed. |
 | Scope | The SECAUDIT filing and closure process — not any one finding. It worked on paper and failed in operation, which is why this is an operability audit as well as a security-program one. |
 | Subject source | SEAN, 2026-11-08/09; PM posts jVbf3kea (this audit), MnsYNqru + g6acd4K1 (the fix). |
-| Author | Claude Code (draft); Muse (read-only fact verification). |
+| Author | Claude Code (draft); Muse (read-only fact verification, 14XZxgxT — the 22:53/23:02 MT dates in §2/§7 corrected 2026-11-08 → 2026-11-09 per that check). |
 
 ## 1. Decision
 
@@ -33,7 +33,7 @@ Sean asked, more than once, whether the open SECAUDITs had been dealt with, and
 was told they had been — by more than one agent. There was no register to check
 the answers against, so the answers could not be wrong in a way anyone could see.
 On 2026-11-09 he found for himself that a number of audits he had been told were
-resolved were not. His words on 2026-11-08, 22:53 MT: *"SECAUDITS ARE FUCKING
+resolved were not. His words on 2026-11-09, 22:53 MT: *"SECAUDITS ARE FUCKING
 IMPORTANT. WE DO NOT MISFILE THEM."*
 
 The gap between "told handled" and "actually open" is the whole finding. A report
@@ -83,7 +83,7 @@ Measured endpoints: the register snapshot is dated 2026-11-08; Sean's own
 discovery of still-open items is 2026-11-09. The earlier dates on which he asked
 and was told "handled" are in the room record and should be pinned to exact
 messages before this is published — stated here as "from the room record," not
-asserted to a day this draft has not measured.
+asserted to a day this draft has not measured. Muse's read of the full archive-recovery history (3,420 messages) could not pin a first ask; the earliest pinned instances are 2026-10-31 19:31 MT (F6/F7 on 049) and 2026-11-03, each pointing back at an earlier unpinned ask — so the first ask is not in this store and may be in Sean's own agent chats.
 
 ## 6. Impact
 
@@ -96,7 +96,7 @@ wrong and uncheckable.
 
 ## 7. Fix
 
-Two standing rules were posted on 2026-11-08 (22:53 MT) and are in force:
+Two standing rules were posted on 2026-11-09 (22:53 MT) and are in force:
 
 - **Standing Rule 1 (MnsYNqru) — number and file, same day.** Every SECAUDIT gets
   its number the moment it is opened and is filed in
