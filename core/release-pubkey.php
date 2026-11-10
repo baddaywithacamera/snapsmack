@@ -33,5 +33,5 @@ if (PHP_SAPI !== 'cli' && !empty($_SERVER['SCRIPT_FILENAME'])
  */
 
 
-define('SNAPSMACK_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');
+define('SNAPSMACK_RELEASE_PUBKEY', 'c72e35ffd5a6bcf7225f749b2a4320f21bde6f4c253023290710792d7bd5c33e');
 // ===== SNAPSMACK EOF =====

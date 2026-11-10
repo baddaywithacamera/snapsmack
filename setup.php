@@ -51,7 +51,7 @@ define('SETUP_USER_AGENT', 'SnapSmack-Setup/1');
 
 // Ed25519 public key — must match core/release-pubkey.php in the release package.
 // If the installed key ever differs, smack-update.php has a repair tool.
-define('SETUP_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');
+define('SETUP_RELEASE_PUBKEY', 'c72e35ffd5a6bcf7225f749b2a4320f21bde6f4c253023290710792d7bd5c33e');
 
 // --- PHP VERSION GATE ---
 // The docblock at the top of this file has claimed "Requirements: PHP 8.3+"

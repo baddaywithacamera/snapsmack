@@ -2,6 +2,9 @@
 /**
  * SMACK CENTRAL - Release Packager
  *
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line must be: // ===== SNAPSMACK EOF =====
+ *
  * Fetches tags from GitHub, downloads the repo zip for the selected tag,
  * repackages it as a clean distributable zip (no local git or shell access
  * required), SHA-256 checksums it, signs the checksum with the Ed25519
@@ -1115,6 +1118,110 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     exit;
 }
 
+// ── POST: Publish or delete release-key rotation ─────────────────────────────
+$rot_error = '';
+$rot_ok    = false;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['publish_rotation'])) {
+    $submitted_csrf = (string)($_POST['csrf'] ?? '');
+    $new_pub        = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $_POST['rotation_new_pubkey'] ?? ''));
+    $old_pub        = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $_POST['rotation_old_pubkey'] ?? ''));
+    $issued_at      = trim((string)($_POST['rotation_issued_at'] ?? ''));
+    $reason         = trim((string)($_POST['rotation_reason'] ?? ''));
+    $sig_input      = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $_POST['rotation_sig'] ?? ''));
+
+    $issued = DateTimeImmutable::createFromFormat(
+        '!Y-m-d\TH:i:s\Z',
+        $issued_at,
+        new DateTimeZone('UTC')
+    );
+    $issued_valid = $issued instanceof DateTimeImmutable
+        && $issued->format('Y-m-d\TH:i:s\Z') === $issued_at;
+
+    if ($submitted_csrf === '' || !hash_equals($sc_release_csrf, $submitted_csrf)) {
+        $rot_error = 'Rotation refused: the form expired. Reload the page and try again.';
+    } elseif (strlen($new_pub) !== 64) {
+        $rot_error = 'New pubkey must be exactly 64 hex characters.';
+    } elseif ($sc_derived_pubkey === '' || !hash_equals($sc_derived_pubkey, $new_pub)) {
+        $rot_error = 'New pubkey does not match the active release-signing private key. Stop and correct sc-config.php before rotating.';
+    } elseif (strlen($old_pub) !== 64) {
+        $rot_error = 'Old pubkey must be exactly 64 hex characters.';
+    } elseif (hash_equals($new_pub, $old_pub)) {
+        $rot_error = 'New and old pubkeys must be different.';
+    } elseif (!$issued_valid) {
+        $rot_error = 'Rotation timestamp is missing or invalid. Reload the page and regenerate the blob.';
+    } elseif (strlen($reason) > 240) {
+        $rot_error = 'Rotation reason must be 240 characters or fewer.';
+    } elseif (strlen($sig_input) !== 128) {
+        $rot_error = 'Signature must be exactly 128 hex characters.';
+    } else {
+        // Rebuild the exact canonical blob shown in the browser. The submitted
+        // timestamp is preserved so the bytes verified here are the bytes that
+        // were signed offline; never replace it with the POST processing time.
+        $rot_blob = json_encode([
+            'new_pubkey' => $new_pub,
+            'old_pubkey' => $old_pub,
+            'issued_at'  => $issued_at,
+            'reason'     => $reason,
+        ], JSON_UNESCAPED_SLASHES);
+
+        // This permanent root trust anchor must match SNAPSMACK_ROOT_PUBKEY in
+        // core/updater.php on installed sites.
+        $root_pub_hex = '3287b9b29257da6a307fc85b949c9dc52bc99c08a66db21e6fcbaab0fb324652';
+        try {
+            $valid = function_exists('sodium_crypto_sign_verify_detached')
+                && sodium_crypto_sign_verify_detached(
+                    sodium_hex2bin($sig_input),
+                    $rot_blob,
+                    sodium_hex2bin($root_pub_hex)
+                );
+        } catch (Throwable $e) {
+            $valid = false;
+        }
+
+        if (!$valid) {
+            $rot_error = 'Signature did not verify against the fleet root public key. Re-sign the exact displayed blob and try again.';
+        } else {
+            $release_dir = rtrim(RELEASES_DIR, '/');
+            $json_dst    = $release_dir . '/key-rotation.json';
+            $sig_dst     = $release_dir . '/key-rotation.sig';
+            try {
+                $suffix   = bin2hex(random_bytes(8));
+                $json_tmp = $json_dst . '.tmp-' . $suffix;
+                $sig_tmp  = $sig_dst . '.tmp-' . $suffix;
+                $written  = file_put_contents($json_tmp, $rot_blob, LOCK_EX) !== false
+                    && file_put_contents($sig_tmp, $sig_input, LOCK_EX) !== false;
+                $moved = $written
+                    && @rename($sig_tmp, $sig_dst)
+                    && @rename($json_tmp, $json_dst);
+                if ($moved) {
+                    $rot_ok = true;
+                } else {
+                    @unlink($json_tmp);
+                    @unlink($sig_tmp);
+                    // If only the signature moved, remove it unconditionally.
+                    // A missing signature fails closed; a new signature beside
+                    // an older JSON blob could otherwise create a mismatched pair.
+                    @unlink($sig_dst);
+                    $rot_error = 'Failed to publish both rotation files atomically. Check release-directory permissions.';
+                }
+            } catch (Throwable $e) {
+                $rot_error = 'Failed to publish rotation files. Check release-directory permissions.';
+            }
+        }
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_rotation'])) {
+    $submitted_csrf = (string)($_POST['csrf'] ?? '');
+    if ($submitted_csrf === '' || !hash_equals($sc_release_csrf, $submitted_csrf)) {
+        $rot_error = 'Rotation deletion refused: the form expired. Reload the page and try again.';
+    } else {
+        @unlink(rtrim(RELEASES_DIR, '/') . '/key-rotation.json');
+        @unlink(rtrim(RELEASES_DIR, '/') . '/key-rotation.sig');
+    }
+}
+
 // ── POST: Build release ───────────────────────────────────────────────────────
 // ── AJAX: fetch and parse CHANGELOG.md for a given tag ───────────────────────
 // Called by the packager JS instead of hitting raw.githubusercontent.com directly.
@@ -1122,62 +1229,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 if (($_GET['action'] ?? '') === 'fetch_changelog') {
     header('Content-Type: application/json');
     $tag = preg_replace('/[^a-zA-Z0-9._\-]/', '', $_GET['tag'] ?? '');
-    // ── Publish key rotation ─────────────────────────────────────────────────
-    if (isset($_POST['publish_rotation'])) {
-        $new_pub   = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $_POST['rotation_new_pubkey'] ?? ''));
-        $old_pub   = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $_POST['rotation_old_pubkey'] ?? ''));
-        $reason    = trim($_POST['rotation_reason'] ?? '');
-        $sig_input = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $_POST['rotation_sig'] ?? ''));
-        $rot_error = '';
-        $rot_ok    = false;
-
-        if (strlen($new_pub) !== 64) {
-            $rot_error = 'New pubkey must be exactly 64 hex characters.';
-        } elseif (strlen($sig_input) !== 128) {
-            $rot_error = 'Signature must be exactly 128 hex characters.';
-        } else {
-            // Build the canonical blob the admin signed locally
-            $rot_blob = json_encode([
-                'new_pubkey' => $new_pub,
-                'old_pubkey' => $old_pub,
-                'issued_at'  => gmdate('Y-m-d\TH:i:s\Z'),
-                'reason'     => $reason,
-            ], JSON_UNESCAPED_SLASHES);
-
-            // Verify against the hardcoded root public key
-            $root_pub_hex = '3287b9b29257da6a307fc85b949c9dc52bc99c08a66db21e6fcbaab0fb324652';
-            try {
-                $valid = function_exists('sodium_crypto_sign_verify_detached')
-                    && sodium_crypto_sign_verify_detached(
-                        sodium_hex2bin($sig_input),
-                        $rot_blob,
-                        sodium_hex2bin($root_pub_hex)
-                    );
-            } catch (Exception $e) {
-                $valid = false;
-            }
-
-            if (!$valid) {
-                $rot_error = 'Signature did not verify against the root public key. Re-sign the exact blob shown and try again.';
-            } else {
-                $json_dst = rtrim(RELEASES_DIR, '/') . '/key-rotation.json';
-                $sig_dst  = rtrim(RELEASES_DIR, '/') . '/key-rotation.sig';
-                if (file_put_contents($json_dst, $rot_blob) !== false
-                    && file_put_contents($sig_dst, $sig_input) !== false) {
-                    $rot_ok = true;
-                } else {
-                    $rot_error = 'Failed to write rotation files to ' . RELEASES_DIR . '. Check server permissions.';
-                }
-            }
-        }
-    }
-
-    // ── Delete key rotation file ─────────────────────────────────────────────
-    if (isset($_POST['delete_rotation'])) {
-        @unlink(rtrim(RELEASES_DIR, '/') . '/key-rotation.json');
-        @unlink(rtrim(RELEASES_DIR, '/') . '/key-rotation.sig');
-    }
-
     if ($tag === '') { echo json_encode(['ok' => false, 'error' => 'No tag']); exit; }
 
     // Resolve tag → commit SHA via API so we fetch by SHA, not tag ref.
@@ -2377,6 +2428,8 @@ require __DIR__ . '/sc-layout-top.php';
 
         <p class="sc-dim" style="margin-bottom:6px;font-size:var(--sc-size-label);">STEP 1 — Fill in the new pubkey and an optional reason, then copy the blob below.</p>
         <form method="POST" id="rotation-form">
+          <input type="hidden" name="csrf" value="<?php echo htmlspecialchars($sc_release_csrf); ?>">
+          <input type="hidden" name="rotation_issued_at" id="rot-issued-at" value="">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
             <div>
               <label class="sc-label">New pubkey (64 hex)</label>
@@ -2436,6 +2489,7 @@ require __DIR__ . '/sc-layout-top.php';
           <tr><td style="opacity:0.5;padding:2px 12px 2px 0;">Old key</td><td style="font-family:monospace;word-break:break-all;opacity:0.5;"><?php echo htmlspecialchars($rot_live['old_pubkey'] ?? ''); ?></td></tr>
         </table>
         <form method="POST" style="margin-top:12px;">
+          <input type="hidden" name="csrf" value="<?php echo htmlspecialchars($sc_release_csrf); ?>">
           <button type="submit" name="delete_rotation" value="1" class="sc-btn sc-btn--sm"
                   style="background:#600;font-size:0.7rem;"
                   onclick="return confirm('Delete the rotation file? Installs that have not yet updated their key will fall back to manual repair.');">
@@ -2460,13 +2514,15 @@ require __DIR__ . '/sc-layout-top.php';
         var newPub  = document.getElementById('rot-new-pub');
         var oldPub  = document.getElementById('rot-old-pub');
         var reason  = document.getElementById('rot-reason');
+        var issued  = document.getElementById('rot-issued-at');
         var preview = document.getElementById('rot-blob-preview');
-        if (!newPub || !preview) return;
+        if (!newPub || !issued || !preview) return;
         function updateBlob() {
+            issued.value = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
             var blob = JSON.stringify({
                 new_pubkey: newPub.value.trim().toLowerCase(),
                 old_pubkey: (oldPub ? oldPub.value.trim().toLowerCase() : ''),
-                issued_at:  new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+                issued_at:  issued.value,
                 reason:     (reason ? reason.value.trim() : ''),
             });
             preview.textContent = blob;

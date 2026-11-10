@@ -98,7 +98,7 @@ include __DIR__ . '/includes/header.php';
                     </ol>
                     <p><strong>Current release public key:</strong></p>
                     <div class="key-copy-wrap">
-                        <span class="key-value" id="pubkey-val">b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2</span>
+                        <span class="key-value" id="pubkey-val">c72e35ffd5a6bcf7225f749b2a4320f21bde6f4c253023290710792d7bd5c33e</span>
                         <button class="btn-copy" onclick="(function(b){var v=document.getElementById('pubkey-val');navigator.clipboard.writeText(v.textContent).then(function(){b.textContent='COPIED';b.classList.add('copied');setTimeout(function(){b.textContent='COPY';b.classList.remove('copied');},2000);});})(this)">COPY</button>
                     </div>
                 </div>

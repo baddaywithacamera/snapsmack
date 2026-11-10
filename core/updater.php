@@ -57,7 +57,7 @@ if (file_exists($_rpk_file)) {
 }
 if (!defined('SNAPSMACK_RELEASE_PUBKEY')
     || SNAPSMACK_RELEASE_PUBKEY === str_repeat('0', 64)) {
-    $_rpk_canonical = 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2';
+    $_rpk_canonical = 'c72e35ffd5a6bcf7225f749b2a4320f21bde6f4c253023290710792d7bd5c33e';
     $_rpk_written = @file_put_contents($_rpk_file,
           "<?php\n"
         // SECAUDIT 050-B: a self-healed copy keeps the direct-access guard too.
