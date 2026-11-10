@@ -1,0 +1,150 @@
+{
+  "note": "Offline actual THE GRID stylesheet and strict-layout footer markup. Historical reference uses the pre-migration .inside wrapper. Not installed-build or live verification.",
+  "introducingCommit": "6cab3a9ca7f35d907396e6bc4d23655903f82f17",
+  "measurements": [
+    {
+      "width": 1920,
+      "reference": {
+        "footer": {
+          "x": 492.5,
+          "width": 935,
+          "height": 63
+        },
+        "wrapper": {
+          "x": 492.5,
+          "width": 935,
+          "height": 62
+        },
+        "paddingTop": 20,
+        "paddingBottom": 20,
+        "overflow": 0
+      },
+      "before": {
+        "footer": {
+          "x": 492.5,
+          "width": 935,
+          "height": 23
+        },
+        "wrapper": {
+          "x": 492.5,
+          "width": 935,
+          "height": 22
+        },
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "overflow": 0
+      },
+      "after": {
+        "footer": {
+          "x": 492.5,
+          "width": 935,
+          "height": 63
+        },
+        "wrapper": {
+          "x": 492.5,
+          "width": 935,
+          "height": 62
+        },
+        "paddingTop": 20,
+        "paddingBottom": 20,
+        "overflow": 0
+      }
+    },
+    {
+      "width": 1440,
+      "reference": {
+        "footer": {
+          "x": 252.5,
+          "width": 935,
+          "height": 63
+        },
+        "wrapper": {
+          "x": 252.5,
+          "width": 935,
+          "height": 62
+        },
+        "paddingTop": 20,
+        "paddingBottom": 20,
+        "overflow": 0
+      },
+      "before": {
+        "footer": {
+          "x": 252.5,
+          "width": 935,
+          "height": 23
+        },
+        "wrapper": {
+          "x": 252.5,
+          "width": 935,
+          "height": 22
+        },
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "overflow": 0
+      },
+      "after": {
+        "footer": {
+          "x": 252.5,
+          "width": 935,
+          "height": 63
+        },
+        "wrapper": {
+          "x": 252.5,
+          "width": 935,
+          "height": 62
+        },
+        "paddingTop": 20,
+        "paddingBottom": 20,
+        "overflow": 0
+      }
+    },
+    {
+      "width": 1024,
+      "reference": {
+        "footer": {
+          "x": 44.5,
+          "width": 935,
+          "height": 63
+        },
+        "wrapper": {
+          "x": 44.5,
+          "width": 935,
+          "height": 62
+        },
+        "paddingTop": 20,
+        "paddingBottom": 20,
+        "overflow": 0
+      },
+      "before": {
+        "footer": {
+          "x": 44.5,
+          "width": 935,
+          "height": 23
+        },
+        "wrapper": {
+          "x": 44.5,
+          "width": 935,
+          "height": 22
+        },
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "overflow": 0
+      },
+      "after": {
+        "footer": {
+          "x": 44.5,
+          "width": 935,
+          "height": 63
+        },
+        "wrapper": {
+          "x": 44.5,
+          "width": 935,
+          "height": 62
+        },
+        "paddingTop": 20,
+        "paddingBottom": 20,
+        "overflow": 0
+      }
+    }
+  ]
+}

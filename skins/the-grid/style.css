@@ -1013,7 +1013,8 @@ body.tg-modal-open { overflow: hidden; }
     margin: 0 auto;
 }
 
-#system-footer .inside {
+#system-footer .inside,
+#system-footer > #footer {
     max-width: var(--grid-max-width, 935px);
     margin: 0 auto;
     padding: 20px var(--grid-gutter, 0px);

@@ -133,8 +133,8 @@
             "manifest_css_sha256": "f06a8252ab0e42004734c97aedc0edd47340d2f0192064e0a5b72cdaccf1d7c0"
         },
         "the-grid": {
-            "version": "1.3.61",
-            "files_sha256": "a72e6ef1c0555860e8f100967c7276af73ed07bb574d778d6cb2aa0bec2f4e57",
+            "version": "1.3.62",
+            "files_sha256": "c24bbddae8c006c8f9dd23ecae13d8417efe0547dcaaddc5b539142a44c2828e",
             "manifest_css_sha256": "eab3f387f9f5546c00035c537a1bb0049f1003da547e89505cdde320f23fb01e"
         },
         "tilez": {
