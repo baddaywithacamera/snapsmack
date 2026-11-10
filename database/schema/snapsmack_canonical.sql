@@ -354,6 +354,25 @@ CREATE TABLE IF NOT EXISTS `snap_image_album_map` (
   KEY `idx_iam_album` (`album_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- SS-1070: attribution + reversibility for scoped-key image metadata edits. The
+-- GYSS batch-update endpoint accepted field-scoped writes under a desktop key and
+-- recorded nothing, so a mistaken or bulk edit could not be attributed or undone.
+-- Each successful edit now logs who did it (the key and, if known, the user), the
+-- new values, and the PRIOR values so the change can be put back.
+CREATE TABLE IF NOT EXISTS `snap_image_edit_audit` (
+  `id`             bigint unsigned NOT NULL AUTO_INCREMENT,
+  `image_id`       int             NOT NULL,
+  `actor_key_id`   int unsigned    DEFAULT NULL,
+  `actor_key_type` varchar(20)     COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `actor_user_id`  int unsigned    DEFAULT NULL,
+  `changed`        longtext        COLLATE utf8mb4_unicode_ci,
+  `prior`          longtext        COLLATE utf8mb4_unicode_ci,
+  `edited_at`      timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_iea_image` (`image_id`),
+  KEY `idx_iea_at` (`edited_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `snap_image_tags` (
   `id`         int unsigned NOT NULL AUTO_INCREMENT,
   `image_id`   int unsigned NOT NULL,

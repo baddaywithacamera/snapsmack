@@ -1230,6 +1230,10 @@ if ($resource === 'batch-update' && $method === 'POST') {
             continue;
         }
 
+        // SS-1070: capture the prior hashtags now, before snap_sync_tags() below
+        // rewrites them, so the edit audit records the true pre-edit value.
+        $iea_prior_hashtags = gy_hashtags_by_image($pdo, [$id])[$id] ?? '';
+
         // Conflict detection: check expected_modified_at unless force is set
         $force    = !empty($upd['force']);
         $expected = $upd['expected_modified_at'] ?? null;
@@ -1402,6 +1406,45 @@ if ($resource === 'batch-update' && $method === 'POST') {
             } catch (Exception $e) {
                 $failed[] = ['id' => $id, 'error' => 'Failed to update category'];
                 continue;
+            }
+        }
+
+        // SS-1070: record who edited this image, the new values, and the PRIOR
+        // values, so a scoped-key metadata edit is attributable and can be put
+        // back. The table ships in the canonical schema (schema-sync creates it).
+        // Best-effort so a pre-sync install still saves — but a failure is logged.
+        $iea_editable = ['sort_order', 'title', 'description', 'alt', 'colors', 'hashtags',
+                         'color_mode', 'orientation', 'category_id', 'category_ids',
+                         'album_ids', 'collection_ids'];
+        $iea_changed = array_intersect_key($upd, array_flip($iea_editable));
+        if ($iea_changed) {
+            $iea_prior = [
+                'title'           => $current['title'],
+                'description'     => $current['description'],
+                'alt'             => $current['alt'],
+                'sort_order'      => (int) $current['sort_order'],
+                'color_mode'      => $current['color_mode'] ?? '',
+                'orientation'     => (int) $current['orientation'],
+                'category_id'     => $current['category_id'] !== null ? (int) $current['category_id'] : null,
+                'display_options' => $current['img_display_options'],
+                'hashtags'        => $iea_prior_hashtags,
+            ];
+            try {
+                $pdo->prepare(
+                    "INSERT INTO snap_image_edit_audit
+                        (image_id, actor_key_id, actor_key_type, actor_user_id, changed, prior)
+                     VALUES (?, ?, ?, ?, ?, ?)"
+                )->execute([
+                    $id,
+                    $api_key_row['id']       ?? null,
+                    $api_key_row['key_type'] ?? null,
+                    $api_key_row['user_id']  ?? null,
+                    json_encode($iea_changed, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                    json_encode($iea_prior,   JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                ]);
+            } catch (\Throwable $e) {
+                error_log('GYSS batch-update: SS-1070 edit audit insert failed for image '
+                    . $id . ' — ' . $e->getMessage());
             }
         }
 
