@@ -18,8 +18,22 @@ if ($template === false) {
     }
     if ($probe_line === '') {
         $failures[] = 'Probe Guard rewrite rule is missing';
-    } elseif (str_contains($probe_line, 'wp-content')) {
-        $failures[] = 'Probe Guard must not auto-ban wp-content asset requests';
+    } else {
+        if (str_contains($probe_line, 'wp-content')) {
+            $failures[] = 'Probe Guard must not auto-ban wp-content asset requests';
+        }
+        // SS-1170: setup.php is SnapSmack's own bootstrap deployer, not a scanner
+        // path. Banning it locked the owner out of the whole fleet for 30 days.
+        if (preg_match('/\bsetup\\\\?\.php\b/', $probe_line)) {
+            $failures[] = 'Probe Guard must not auto-ban setup.php, a file SnapSmack ships (SS-1170)';
+        }
+        // ...but the genuine scanner signatures must still be there — removing a
+        // real exploit path would gut the guard. Spot-check a representative set.
+        foreach (['wp-login\.php', 'xmlrpc\.php', '\.env', 'phpmyadmin', 'shell\.php', '\.git/config'] as $sig) {
+            if (!str_contains($probe_line, $sig)) {
+                $failures[] = "Probe Guard lost a genuine scanner signature: {$sig}";
+            }
+        }
     }
 }
 
