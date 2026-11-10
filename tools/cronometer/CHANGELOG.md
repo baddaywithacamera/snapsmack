@@ -11,6 +11,33 @@ red / amber / grey / green — so a silently-dead cron is caught before it bites
 Versioning follows the SnapSmack desktop-family `0.7.x` convention;
 `bump_version.py` adds one patch for subsequent builds.
 
+## 0.7.13 — 2026-11-10
+
+0.7.13 was tagged "unbuilt" on 2026-09-14 (icon via iconphoto) and never built;
+the installed build is still 0.7.12. Per the fold rule this OPAUDIT 024 repair
+folds into 0.7.13 rather than taking a new number — it ships when 0.7.13 ships.
+
+### Fixed — OPAUDIT 024, "the watchman was asleep"
+- **A failed fleet load no longer looks like an empty fleet.** `config.load_fleet()`
+  returned `[]` both when the shared profile store could not be read AND when it
+  genuinely held no sites, so a blind monitor was indistinguishable from an idle
+  one. It stayed silent for 33 days with 25 profiles on disk. `load_fleet()` now
+  raises `FleetLoadError` when the store cannot be loaded (import failure or
+  `list_profiles()` failure), chaining the real cause; it returns `[]` only on a
+  clean, genuinely-empty store. A single malformed profile is skipped loudly (to
+  the debug log) instead of blanking the whole board.
+- **The screen now says BLIND, not "no sites".** On a failed load CRONOMETER shows
+  a distinct alarm-coloured panel ("CRONOMETER IS BLIND — it could not read the
+  fleet"), prints the cause, and points at the debug log — and writes the full
+  traceback to that log instead of discarding the exception. A monitor is not
+  allowed to fail quietly.
+- **Label fix.** The empty-state screen told the operator to press "RELOAD FLEET";
+  the button is labelled "RELOAD SITE LIST". The text now matches the button.
+
+Still owed outside this tool's lane (recorded, not silently patched): the shared
+`../_shared` path contract (section 6 of OPAUDIT 024) needs settling across the
+desktop family, not patching here; and 0.7.13 itself needs building and installing.
+
 ## 0.7.11 — 2026-09-14
 
 ### Fixed

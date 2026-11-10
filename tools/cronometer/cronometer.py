@@ -164,6 +164,7 @@ class App(tk.Tk):
         # Whether PARKED (maintenance) + MUTED cards are collapsed off the board.
         self._hide_parked = bool(self._prefs.get('hide_parked', False))
         self._fleet: List[dict] = []
+        self._fleet_error: Optional[str] = None   # set when the load FAILED (not empty)
         self._site_cards = {}          # url -> dict of widgets to update in place
         self._health_by_url = {}       # latest complete probe result for reports
         self._busy = False
@@ -283,7 +284,22 @@ class App(tk.Tk):
     # Fleet loading + board build
     # ------------------------------------------------------------------
     def _load_fleet(self):
-        self._fleet = cfg_module.load_fleet()
+        # OPAUDIT 024: a failed load must NOT look like an empty fleet. load_fleet()
+        # now raises FleetLoadError when the store can't be read; we keep the board
+        # empty but record the error so the screen says BLIND, not "no sites", and
+        # we write the full cause to the debug log instead of discarding it.
+        self._fleet_error = None
+        try:
+            self._fleet = cfg_module.load_fleet()
+        except cfg_module.FleetLoadError as exc:
+            self._fleet = []
+            self._fleet_error = str(exc)
+            import traceback
+            sys.stderr.write(
+                "CRONOMETER: FLEET LOAD FAILED — the board is BLIND, not empty. "
+                "This is OPAUDIT 024's failure mode; do not read an empty board as "
+                "'nothing to do'.\n")
+            traceback.print_exc()
         self._rebuild_board()
 
     def _reload_fleet(self):
@@ -295,13 +311,31 @@ class App(tk.Tk):
             w.destroy()
         self._site_cards = {}
 
+        if self._fleet_error:
+            # OPAUDIT 024: the monitor is BLIND, not idle. Say so, loudly, in the
+            # alarm colour — and point at the log that carries the real cause.
+            tk.Label(self._board,
+                     text=("CRONOMETER IS BLIND — it could not read the fleet.\n\n"
+                           "This is a FAILED LOAD, not an empty fleet. The board is "
+                           "not showing zero sites because there are none; it is "
+                           "showing zero because the shared profile store could not "
+                           "be read:\n\n"
+                           f"    {self._fleet_error}\n\n"
+                           "The full cause (traceback) is in the debug log:\n"
+                           f"    {LOG_PATH}\n\n"
+                           "Fix the profile store, then press RELOAD SITE LIST. "
+                           "Until then there is NO fleet cron monitoring."),
+                     bg=BG_DEEP, fg=FG_ERR, font=FONT_UI, justify="left").pack(
+                         anchor="w", padx=20, pady=20)
+            return
+
         if not self._fleet:
             tk.Label(self._board,
                      text=("No fleet sites found.\n\n"
                            "CRONOMETER reads the shared per-site profiles that SYBU, "
                            "GYSS and COLD SNAP write.\nSet up a site in one of those "
                            "tools (or confirm C:\\snapsmack\\shared_library\\profiles "
-                           "exists),\nthen press RELOAD FLEET."),
+                           "exists),\nthen press RELOAD SITE LIST."),
                      bg=BG_DEEP, fg=FG_DIM, font=FONT_UI, justify="left").pack(
                          anchor="w", padx=20, pady=20)
             return
