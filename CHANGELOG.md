@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+- SECAUDIT 028 (SS-1282): SMACKBACK no longer baselines a forbidden (leak/secret-shaped) file by presence. A FORBIDDEN list (root sc-config.php, .env/.pem/.key/.p12/.pfx/.bak, backups/) is refused at baseline time (both init paths), pruned from any existing baseline, and surfaced in a non-locking FORBIDDEN bucket at verify time; because such a file is never baselined, the admin REMOVE accepts it, so a leaked secret can be deleted without a MISSING breach or lockout. Empty on the Smack Central host. PROPOSAL on a branch; not applied.
+
 - The signed updater removes the obsolete root-level `sc-config.php` copy left on a small number of spokes. The removal is exact-path only: `/smack-central/sc-config.php` is untouched, installs without the stale root copy are a harmless no-op, and cleanup still occurs before SMACKBACK rebuilds its baseline.
 
 ## 0.7.991D - 2026-11-09
