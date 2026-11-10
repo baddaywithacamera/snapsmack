@@ -4,10 +4,10 @@
 |---|---|
 | Audit ID | 2026-11-10-028 (remediation for the historical-exposure finding under audit 028) |
 | Opened | 2026-11-10 |
-| State | OPEN. This is a DESIGN runbook, not a fix. Nothing here has been applied. |
+| State | OPEN — confirmed live PUBLIC disclosure. This is a DESIGN runbook, not a fix. Nothing here has been applied. |
 | Author | Claude Code (design only) |
 | Executes | Sean, and Sean alone. Key material is his. |
-| Measured basis | Codex, Brain Trust m0csLNuZ + _continuity/2026-11-10-secaudit-028-presence-check.md |
+| Measured basis | Codex, Brain Trust m0csLNuZ (webroots) + y4kae4Tc (final: public remote, 19 tags) + _continuity/2026-11-10-secaudit-028-presence-check.md |
 
 ## Read this first
 
@@ -52,16 +52,56 @@ Non-secret, for context: `SC_BASE_URL`, `FORUM_API_URL`, repo/release paths,
 - Root `sc-config.php` currently exists in six CT102 webroots (acolourlesslife.ca,
   foundtextures.ca, hekeepsdroningon.ca, photowalk.ing, pixhellated.ca,
   wateronthebrain.ca). CT106 has none.
-- Five of those return HTTP 200 with a **zero-byte body** (PHP executes, so the
-  source is not served as text today); acolourlesslife returns 500 (Codex is
-  answering separately why). A zero-byte 200 means it is not being served as
-  plaintext **right now**, under the current PHP+server config. It does not mean
-  the secrets are safe: the file is still on disk in a web-served directory, still
-  in the 8/17 backup, and still in 19 git tags. Any future "PHP off" misconfig,
-  path-traversal bug, backup download, or repo/tag read re-exposes it.
-- Treat every one of the five secret classes above as **potentially already
-  compromised** since at least 2026-08-17 (the backup date), and rotate on that
-  assumption. Do not treat the zero-byte 200 as evidence the secrets are intact.
+- Live HTTP (Codex final, y4kae4Tc): foundtextures.ca, hekeepsdroningon.ca,
+  photowalk.ing, pixhellated.ca, wateronthebrain.ca return HTTP 200 with a
+  **zero-byte** `text/html` body — the file is routed through PHP and produces no
+  output, so it is **not served as source text** under the current config.
+  acolourlesslife.ca returns 500/zero bytes: the Apache error log shows a PHP
+  parse error at line 46 (the file was not opened). `/smack-central/sc-config.php`
+  returned 404 on the checked site. A zero-byte 200 means it is not being served
+  as plaintext **right now**; it is not evidence the secrets are safe.
+- **This is NOT the only exposure, and the webroot is not the worst of it (see the
+  UPDATE below).** The file is also in the 2026-08-17 CT102 backup and — confirmed
+  public — in 19 tags on the public GitHub remote.
+- Treat every one of the five secret classes above as **publicly disclosed**, not
+  merely "potentially compromised." Rotate all five on that basis. Do not treat
+  the zero-byte 200 as evidence the secrets are intact.
+
+## UPDATE 2026-11-10 — CONFIRMED PUBLIC remote exposure (Codex final read-only, y4kae4Tc)
+
+This arrived after the first draft and raises the severity. Codex's final
+read-only inventory (tree names only; no protected content opened) found:
+
+- The public GitHub remote carries the file **right now**: of 1,281 tags, **19 still
+  contain root `sc-config.php`** (Alpha-0.7.9M; alpha-0.7.9O; two archive/claude-*
+  tags; v0.7.17/.18/.19/.21/.22/.23/.24/.25; v0.7.9b/9L/9M/9M-image-fade-load/9N/9O/9P).
+  122 branch heads are clean; 0 pull refs.
+- The repository **is public now** and was public ~2 months ago while those tags
+  existed, so the exposure is not merely historical — anyone can clone the repo,
+  check out one of those 19 tags, and read every secret in the file today.
+- The **GPL history rewrite did not remove it** — the rewrite only purged licence
+  material. Both the pre-rewrite mirrors and the GPL-rewritten mirror retain the
+  same 19 affected tag trees.
+
+What this changes: the webroot copies (Step 0) are the *least* of it. The live,
+unauthenticated, public copy is on github.com. That makes **secret rotation the
+urgent, primary action** — the GitHub token revoke (Step 1) and the signing-key
+rotation (Step 3) are responses to a live public disclosure, not precautions.
+
+New decision point for Sean/PM (it is theirs, not an agent's): whether to **delete
+the 19 affected tags from the public remote**. Honest tradeoff:
+- Deleting them stops *new* readers from pulling the secrets via those tags, and
+  is the only way to reduce the public copy at all.
+- It does NOT close the exposure. The tags are immutable under AGENTS.md once on
+  origin; anyone who already cloned, and both mirror sets, still hold them. So
+  deleting tags is containment-of-further-spread, never closure.
+- Deleting published tags breaks anyone relying on them and is itself a
+  significant, irreversible repo action — exactly the class AGENTS.md reserves to
+  the owner. I am not proposing to do it; I am flagging it as a decision.
+
+Closure does not depend on deleting the tags. Rotation (Steps 1–3) is what makes
+every public, backup, and already-cloned copy carry dead credentials. Do rotation
+regardless of what is decided about the tags.
 
 ## Remediation order (why this order)
 
@@ -179,15 +219,17 @@ has this, verified against an **offline root key**:
 
 ## Why rotation is the closure (and removal alone is not)
 
-The file is in six webroots, one backup, and 19 git tag trees. You can get it out
-of the webroots (Step 0) and you can stop tracking it (already done — current dev
-tracks neither config path and both are gitignored). You cannot remove it from
-published git tags without rewriting and force-moving refs others may hold, which
-AGENTS.md forbids once a tag is on origin, and you cannot un-ship the 8/17 backup.
-So the copies will persist. Rotating all five secret classes is what makes those
-persistent copies carry only **dead** credentials. After Steps 1–3, the sc-config
-copies in the tags and the backup are worthless, which is the actual close
-condition for the exposure.
+The file is in six webroots, the 8/17 backup, and 19 tags on the **public** GitHub
+remote (confirmed — see the UPDATE above). You can get it out of the webroots
+(Step 0) and you can stop tracking it (already done — current dev tracks neither
+config path and both are gitignored). Deleting the 19 public tags is a Sean/PM
+decision (UPDATE above) and at best contains further spread; it cannot close the
+exposure, because both mirror sets and anyone who already cloned still hold them,
+and AGENTS.md makes published tags immutable. So the copies will persist. Rotating
+all five secret classes is what makes those persistent copies — public tags,
+mirrors, backup, webroots — carry only **dead** credentials. After Steps 1–3 the
+sc-config copies are worthless, which is the actual close condition for the
+exposure, whether or not the tags are ever deleted.
 
 ## What stays Sean's decision
 
@@ -195,15 +237,22 @@ condition for the exposure.
   its own least-privilege DB user.
 - Timing of the signing-key rotation (it should be paired with a planned release).
 - Whether the GitHub token's real scope makes it urgent-high or low.
-- Any git-history question about the 19 tags goes to Codex's read-only brief
-  (PM 03:00, item 3); this runbook does not touch history.
+- Whether to delete the 19 affected tags from the public remote (UPDATE above):
+  containment of further spread only, irreversible, and owner-reserved under
+  AGENTS.md. Rotation does not depend on this either way.
+- The git-history / public-exposure questions are now ANSWERED by Codex's final
+  read-only result (y4kae4Tc): repo public, 19 tags still carry the file, GPL
+  rewrite did not purge it, mirrors retain it. This runbook does not touch history.
 
 ## Status
 
-028 is **OPEN**. This runbook is design only; nothing here has been applied. The
-exposure has existed in webroots since at least 2026-08-17. Closure requires Sean
-to execute Steps 0–3; an agent may then verify, read-only and metadata-only, that
-`sc-config.php` is gone from the six webroots and that a new-key-signed release
-verifies on a test install — never by reading any secret value.
+028 is **OPEN** and confirmed a live PUBLIC disclosure: the secrets are readable
+now in 19 tags on the public GitHub remote (Codex y4kae4Tc), and have been exposed
+since at least 2026-08-17 (backup) / ~2 months ago (public crawl). This runbook is
+design only; nothing here has been applied. Closure requires Sean to execute
+Steps 1–3 (rotation); Step 0 and any tag deletion are containment, not closure. An
+agent may then verify, read-only and metadata-only, that `sc-config.php` is gone
+from the six webroots and that a new-key-signed release verifies on a test install
+— never by reading any secret value.
 
 <!-- ===== SNAPSMACK EOF ===== -->
