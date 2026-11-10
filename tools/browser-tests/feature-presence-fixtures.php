@@ -111,6 +111,12 @@ $post = [
     'title' => 'Current story', 'created_at' => '2026-11-10',
     'featured_image_path' => $hero,
 ];
+$storyContent = snapsmack_trusted_html(
+    '<p>A complete solo-entry fixture.</p>'
+    . '<figure><img class="post-image" src="' . htmlspecialchars($hero, ENT_QUOTES)
+    . '" data-lightbox-src="' . htmlspecialchars($hero, ENT_QUOTES)
+    . '" alt="Inline story photograph"></figure>'
+);
 $destinations = [
     'previous' => ['id' => 41, 'img_slug' => 'previous', 'url' => '/previous', 'img_file' => $previous],
     'next' => ['id' => 43, 'img_slug' => 'next', 'url' => '/next', 'img_file' => $next],
@@ -150,7 +156,9 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
     $GLOBALS['snapsmack_hit'] = ['id' => 4201, 'page_type' => $kind === 'single' ? 'page' : 'image'];
     $response = array_merge([
         'kind' => $kind, 'page_title' => 'Current entry', 'item' => $item, 'post' => $post,
-        'rendered_content' => snapsmack_trusted_html('<p>A complete solo-entry fixture.</p>'),
+        'rendered_content' => $kind === 'single'
+            ? $storyContent
+            : snapsmack_trusted_html('<p>A complete solo-entry fixture.</p>'),
         'comments' => [['author' => 'Fixture visitor', 'comment' => 'Fixture comment']],
         'comments_enabled' => true, 'community' => $community, 'navigation' => $nav,
         'photographs' => [$item],

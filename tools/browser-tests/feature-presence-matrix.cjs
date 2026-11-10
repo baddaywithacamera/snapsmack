@@ -55,7 +55,9 @@ function declared(page, feature) {
         ? ['REQUIRED', 'manifest declares community likes'] : ['NOT APPLICABLE', 'manifest does not declare likes'];
     if (feature === 'comments') return community.includes('comments') || capabilities.includes('comments') || page.community_comments === '1'
         ? ['REQUIRED', 'manifest declares comments'] : ['NOT APPLICABLE', 'manifest does not declare comments'];
-    if (feature === 'lightbox' && page.kind === 'single') return ['UNVERIFIED', 'long-form lightbox requires a story fixture containing inline media'];
+    if (feature === 'lightbox' && page.kind === 'single') return scripts.includes('smack-lightbox')
+        ? ['REQUIRED', 'long-form manifest requires smack-lightbox for inline story media']
+        : ['NOT APPLICABLE', 'long-form manifest does not declare an inline-media lightbox'];
     if (feature === 'lightbox') return scripts.includes('smack-lightbox')
         ? ['REQUIRED', 'manifest requires smack-lightbox'] : ['NOT APPLICABLE', 'manifest does not require smack-lightbox'];
     if (feature === 'keyboard' && carousel) return scripts.includes('smack-keyboard') && scripts.includes('smack-slider')
@@ -68,7 +70,8 @@ function declared(page, feature) {
         ? ['NOT APPLICABLE', 'carousel mode deliberately omits F1 help']
         : ['REQUIRED', 'core supplies F1 help to every non-carousel public page'];
     if (feature === 'search') return scripts.includes('smack-gram-search')
-        ? ['REQUIRED', 'manifest requires smack-gram-search'] : ['UNVERIFIED', 'search may be ordinary navigation; contract not yet classified'];
+        ? ['REQUIRED', 'manifest requires smack-gram-search']
+        : ['NOT APPLICABLE', 'manifest does not declare a public search control'];
     if (feature === 'navigation') return ['REQUIRED', 'every public skin needs site navigation'];
     if (feature === 'prev-next' && carousel) return scripts.includes('smack-slider')
         ? ['REQUIRED', 'carousel declares slider controls for multi-photo modal navigation']
