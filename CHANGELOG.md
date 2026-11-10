@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.992D - 2026-11-10
+
 - Release-key rotation in Smack Central now reaches its POST handler, verifies the exact timestamped blob shown for offline signing, checks that the proposed public key matches the active release-signing private key, uses the fleet's permanent root trust anchor, and rejects expired forms. A mismatched or only partially published rotation fails closed.
 
 - SECAUDIT 028: the hub's release Key Rotation panel verified against a root public key (d4c4256...) that no install uses; every install's trust anchor is 3287b9b... (the value 0.7.45 corrected `core/updater.php` to, while the hub copy was missed). The hub now matches the installs, so a root-signed rotation the hub accepts is the same one the fleet accepts. Hub-only change; installs already carried the correct anchor. A regression now fails if the two ever diverge.
