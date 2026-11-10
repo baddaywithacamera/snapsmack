@@ -1,0 +1,643 @@
+[
+  {
+    "width": 1920,
+    "display": "grid",
+    "columns": 4,
+    "alignItems": "center",
+    "declaredRowGap": 8,
+    "rows": [
+      {
+        "row": 1,
+        "firstIndex": 0,
+        "lastIndex": 3,
+        "items": [
+          {
+            "index": 0,
+            "orientation": "portrait",
+            "left": 559.5,
+            "top": 142,
+            "right": 706.5,
+            "bottom": 362.484375,
+            "width": 147,
+            "height": 220.484375
+          },
+          {
+            "index": 1,
+            "orientation": "landscape",
+            "left": 746,
+            "top": 182.21875,
+            "right": 956,
+            "bottom": 322.25,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 2,
+            "orientation": "landscape",
+            "left": 964,
+            "top": 182.21875,
+            "right": 1174,
+            "bottom": 322.25,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 3,
+            "orientation": "landscape",
+            "left": 1182,
+            "top": 182.21875,
+            "right": 1392,
+            "bottom": 322.25,
+            "width": 210,
+            "height": 140.03125
+          }
+        ],
+        "minTop": 142,
+        "maxTop": 182.21875,
+        "topSpread": 40.21875,
+        "minBottom": 322.25,
+        "maxBottom": 362.484375,
+        "bottomSpread": 40.234375
+      },
+      {
+        "row": 2,
+        "firstIndex": 4,
+        "lastIndex": 7,
+        "items": [
+          {
+            "index": 4,
+            "orientation": "landscape",
+            "left": 528,
+            "top": 370.484375,
+            "right": 738,
+            "bottom": 510.515625,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 5,
+            "orientation": "landscape",
+            "left": 746,
+            "top": 370.484375,
+            "right": 956,
+            "bottom": 510.515625,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 6,
+            "orientation": "landscape",
+            "left": 964,
+            "top": 370.484375,
+            "right": 1174,
+            "bottom": 510.515625,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 7,
+            "orientation": "landscape",
+            "left": 1182,
+            "top": 370.484375,
+            "right": 1392,
+            "bottom": 510.5,
+            "width": 210,
+            "height": 140.015625
+          }
+        ],
+        "minTop": 370.484375,
+        "maxTop": 370.484375,
+        "topSpread": 0,
+        "minBottom": 510.5,
+        "maxBottom": 510.515625,
+        "bottomSpread": 0.015625,
+        "gapFromPreviousVisualBottom": 8,
+        "trackStep": 228.484375
+      },
+      {
+        "row": 3,
+        "firstIndex": 8,
+        "lastIndex": 11,
+        "items": [
+          {
+            "index": 8,
+            "orientation": "landscape",
+            "left": 528,
+            "top": 527.265625,
+            "right": 738,
+            "bottom": 667.265625,
+            "width": 210,
+            "height": 140
+          },
+          {
+            "index": 9,
+            "orientation": "landscape",
+            "left": 746,
+            "top": 527.265625,
+            "right": 956,
+            "bottom": 667.265625,
+            "width": 210,
+            "height": 140
+          },
+          {
+            "index": 10,
+            "orientation": "landscape",
+            "left": 964,
+            "top": 518.515625,
+            "right": 1174,
+            "bottom": 676.015625,
+            "width": 210,
+            "height": 157.5
+          },
+          {
+            "index": 11,
+            "orientation": "landscape",
+            "left": 1182,
+            "top": 527.265625,
+            "right": 1392,
+            "bottom": 667.265625,
+            "width": 210,
+            "height": 140
+          }
+        ],
+        "minTop": 518.515625,
+        "maxTop": 527.265625,
+        "topSpread": 8.75,
+        "minBottom": 667.265625,
+        "maxBottom": 676.015625,
+        "bottomSpread": 8.75,
+        "gapFromPreviousVisualBottom": 8,
+        "trackStep": 148.03125
+      },
+      {
+        "row": 4,
+        "firstIndex": 12,
+        "lastIndex": 15,
+        "items": [
+          {
+            "index": 12,
+            "orientation": "landscape",
+            "left": 528,
+            "top": 712.546875,
+            "right": 738,
+            "bottom": 852.546875,
+            "width": 210,
+            "height": 140
+          },
+          {
+            "index": 13,
+            "orientation": "landscape",
+            "left": 746,
+            "top": 712.28125,
+            "right": 956,
+            "bottom": 852.8125,
+            "width": 210,
+            "height": 140.53125
+          },
+          {
+            "index": 14,
+            "orientation": "landscape",
+            "left": 964,
+            "top": 712.546875,
+            "right": 1174,
+            "bottom": 852.546875,
+            "width": 210,
+            "height": 140
+          },
+          {
+            "index": 15,
+            "orientation": "landscape",
+            "left": 1182,
+            "top": 684.015625,
+            "right": 1392,
+            "bottom": 881.078125,
+            "width": 210,
+            "height": 197.0625
+          }
+        ],
+        "minTop": 684.015625,
+        "maxTop": 712.546875,
+        "topSpread": 28.53125,
+        "minBottom": 852.546875,
+        "maxBottom": 881.078125,
+        "bottomSpread": 28.53125,
+        "gapFromPreviousVisualBottom": 8,
+        "trackStep": 165.5
+      }
+    ]
+  },
+  {
+    "width": 1440,
+    "display": "grid",
+    "columns": 4,
+    "alignItems": "center",
+    "declaredRowGap": 8,
+    "rows": [
+      {
+        "row": 1,
+        "firstIndex": 0,
+        "lastIndex": 3,
+        "items": [
+          {
+            "index": 0,
+            "orientation": "portrait",
+            "left": 319.5,
+            "top": 142,
+            "right": 466.5,
+            "bottom": 362.484375,
+            "width": 147,
+            "height": 220.484375
+          },
+          {
+            "index": 1,
+            "orientation": "landscape",
+            "left": 506,
+            "top": 182.21875,
+            "right": 716,
+            "bottom": 322.25,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 2,
+            "orientation": "landscape",
+            "left": 724,
+            "top": 182.21875,
+            "right": 934,
+            "bottom": 322.25,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 3,
+            "orientation": "landscape",
+            "left": 942,
+            "top": 182.21875,
+            "right": 1152,
+            "bottom": 322.25,
+            "width": 210,
+            "height": 140.03125
+          }
+        ],
+        "minTop": 142,
+        "maxTop": 182.21875,
+        "topSpread": 40.21875,
+        "minBottom": 322.25,
+        "maxBottom": 362.484375,
+        "bottomSpread": 40.234375
+      },
+      {
+        "row": 2,
+        "firstIndex": 4,
+        "lastIndex": 7,
+        "items": [
+          {
+            "index": 4,
+            "orientation": "landscape",
+            "left": 288,
+            "top": 370.484375,
+            "right": 498,
+            "bottom": 510.515625,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 5,
+            "orientation": "landscape",
+            "left": 506,
+            "top": 370.484375,
+            "right": 716,
+            "bottom": 510.515625,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 6,
+            "orientation": "landscape",
+            "left": 724,
+            "top": 370.484375,
+            "right": 934,
+            "bottom": 510.515625,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 7,
+            "orientation": "landscape",
+            "left": 942,
+            "top": 370.484375,
+            "right": 1152,
+            "bottom": 510.5,
+            "width": 210,
+            "height": 140.015625
+          }
+        ],
+        "minTop": 370.484375,
+        "maxTop": 370.484375,
+        "topSpread": 0,
+        "minBottom": 510.5,
+        "maxBottom": 510.515625,
+        "bottomSpread": 0.015625,
+        "gapFromPreviousVisualBottom": 8,
+        "trackStep": 228.484375
+      },
+      {
+        "row": 3,
+        "firstIndex": 8,
+        "lastIndex": 11,
+        "items": [
+          {
+            "index": 8,
+            "orientation": "landscape",
+            "left": 288,
+            "top": 527.265625,
+            "right": 498,
+            "bottom": 667.265625,
+            "width": 210,
+            "height": 140
+          },
+          {
+            "index": 9,
+            "orientation": "landscape",
+            "left": 506,
+            "top": 527.265625,
+            "right": 716,
+            "bottom": 667.265625,
+            "width": 210,
+            "height": 140
+          },
+          {
+            "index": 10,
+            "orientation": "landscape",
+            "left": 724,
+            "top": 518.515625,
+            "right": 934,
+            "bottom": 676.015625,
+            "width": 210,
+            "height": 157.5
+          },
+          {
+            "index": 11,
+            "orientation": "landscape",
+            "left": 942,
+            "top": 527.265625,
+            "right": 1152,
+            "bottom": 667.265625,
+            "width": 210,
+            "height": 140
+          }
+        ],
+        "minTop": 518.515625,
+        "maxTop": 527.265625,
+        "topSpread": 8.75,
+        "minBottom": 667.265625,
+        "maxBottom": 676.015625,
+        "bottomSpread": 8.75,
+        "gapFromPreviousVisualBottom": 8,
+        "trackStep": 148.03125
+      },
+      {
+        "row": 4,
+        "firstIndex": 12,
+        "lastIndex": 15,
+        "items": [
+          {
+            "index": 12,
+            "orientation": "landscape",
+            "left": 288,
+            "top": 712.546875,
+            "right": 498,
+            "bottom": 852.546875,
+            "width": 210,
+            "height": 140
+          },
+          {
+            "index": 13,
+            "orientation": "landscape",
+            "left": 506,
+            "top": 712.28125,
+            "right": 716,
+            "bottom": 852.8125,
+            "width": 210,
+            "height": 140.53125
+          },
+          {
+            "index": 14,
+            "orientation": "landscape",
+            "left": 724,
+            "top": 712.546875,
+            "right": 934,
+            "bottom": 852.546875,
+            "width": 210,
+            "height": 140
+          },
+          {
+            "index": 15,
+            "orientation": "landscape",
+            "left": 942,
+            "top": 684.015625,
+            "right": 1152,
+            "bottom": 881.078125,
+            "width": 210,
+            "height": 197.0625
+          }
+        ],
+        "minTop": 684.015625,
+        "maxTop": 712.546875,
+        "topSpread": 28.53125,
+        "minBottom": 852.546875,
+        "maxBottom": 881.078125,
+        "bottomSpread": 28.53125,
+        "gapFromPreviousVisualBottom": 8,
+        "trackStep": 165.5
+      }
+    ]
+  },
+  {
+    "width": 1024,
+    "display": "grid",
+    "columns": 3,
+    "alignItems": "center",
+    "declaredRowGap": 8,
+    "rows": [
+      {
+        "row": 1,
+        "firstIndex": 0,
+        "lastIndex": 2,
+        "items": [
+          {
+            "index": 0,
+            "orientation": "portrait",
+            "left": 220.5,
+            "top": 142,
+            "right": 367.5,
+            "bottom": 362.484375,
+            "width": 147,
+            "height": 220.484375
+          },
+          {
+            "index": 1,
+            "orientation": "landscape",
+            "left": 407,
+            "top": 182.21875,
+            "right": 617,
+            "bottom": 322.25,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 2,
+            "orientation": "landscape",
+            "left": 625,
+            "top": 182.21875,
+            "right": 835,
+            "bottom": 322.25,
+            "width": 210,
+            "height": 140.03125
+          }
+        ],
+        "minTop": 142,
+        "maxTop": 182.21875,
+        "topSpread": 40.21875,
+        "minBottom": 322.25,
+        "maxBottom": 362.484375,
+        "bottomSpread": 40.234375
+      },
+      {
+        "row": 2,
+        "firstIndex": 3,
+        "lastIndex": 5,
+        "items": [
+          {
+            "index": 3,
+            "orientation": "landscape",
+            "left": 189,
+            "top": 370.484375,
+            "right": 399,
+            "bottom": 510.515625,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 4,
+            "orientation": "landscape",
+            "left": 407,
+            "top": 370.484375,
+            "right": 617,
+            "bottom": 510.515625,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 5,
+            "orientation": "landscape",
+            "left": 625,
+            "top": 370.484375,
+            "right": 835,
+            "bottom": 510.515625,
+            "width": 210,
+            "height": 140.03125
+          }
+        ],
+        "minTop": 370.484375,
+        "maxTop": 370.484375,
+        "topSpread": 0,
+        "minBottom": 510.515625,
+        "maxBottom": 510.515625,
+        "bottomSpread": 0,
+        "gapFromPreviousVisualBottom": 8,
+        "trackStep": 228.484375
+      },
+      {
+        "row": 3,
+        "firstIndex": 6,
+        "lastIndex": 8,
+        "items": [
+          {
+            "index": 6,
+            "orientation": "landscape",
+            "left": 189,
+            "top": 518.515625,
+            "right": 399,
+            "bottom": 658.546875,
+            "width": 210,
+            "height": 140.03125
+          },
+          {
+            "index": 7,
+            "orientation": "landscape",
+            "left": 407,
+            "top": 518.515625,
+            "right": 617,
+            "bottom": 658.53125,
+            "width": 210,
+            "height": 140.015625
+          },
+          {
+            "index": 8,
+            "orientation": "landscape",
+            "left": 625,
+            "top": 518.53125,
+            "right": 835,
+            "bottom": 658.53125,
+            "width": 210,
+            "height": 140
+          }
+        ],
+        "minTop": 518.515625,
+        "maxTop": 518.53125,
+        "topSpread": 0.015625,
+        "minBottom": 658.53125,
+        "maxBottom": 658.546875,
+        "bottomSpread": 0.015625,
+        "gapFromPreviousVisualBottom": 8,
+        "trackStep": 148.03125
+      },
+      {
+        "row": 4,
+        "firstIndex": 9,
+        "lastIndex": 11,
+        "items": [
+          {
+            "index": 9,
+            "orientation": "landscape",
+            "left": 189,
+            "top": 675.296875,
+            "right": 399,
+            "bottom": 815.296875,
+            "width": 210,
+            "height": 140
+          },
+          {
+            "index": 10,
+            "orientation": "landscape",
+            "left": 407,
+            "top": 666.546875,
+            "right": 617,
+            "bottom": 824.046875,
+            "width": 210,
+            "height": 157.5
+          },
+          {
+            "index": 11,
+            "orientation": "landscape",
+            "left": 625,
+            "top": 675.296875,
+            "right": 835,
+            "bottom": 815.296875,
+            "width": 210,
+            "height": 140
+          }
+        ],
+        "minTop": 666.546875,
+        "maxTop": 675.296875,
+        "topSpread": 8.75,
+        "minBottom": 815.296875,
+        "maxBottom": 824.046875,
+        "bottomSpread": 8.75,
+        "gapFromPreviousVisualBottom": 8,
+        "trackStep": 148.03125
+      }
+    ]
+  }
+]
