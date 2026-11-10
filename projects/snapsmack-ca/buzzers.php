@@ -386,10 +386,10 @@ require_once __DIR__ . '/includes/header.php';
             </article>
 
             <article class="post" id="a044">
-                <div class="post-meta"><span class="post-date">August 13, 2026</span><span class="post-tag">Closed</span></div>
+                <div class="post-meta"><span class="post-date">August 13, 2026</span><span class="post-tag">Closed &mdash; one residual documented</span></div>
                 <h2>THE HUB &mdash; Shared Profiles, Prompts, and the Launcher Boundary</h2>
                 <p>The shared profile and Gemini-prompt stores held up: filenames are confined, writes are atomic and recoverable, migrations are repeatable, and no new network or shell surface was introduced. An independent adversarial pass did, however, overturn the first review&rsquo;s low-risk rating on the launcher. THE HUB searched for wildcard-matched programs inside the same folder tree GYSS is allowed to write. A compromised GYSS window could plant a program there and make it appear installed. Hub 0.1.2 removes and defensively rejects those in-jail wildcard searches.</p>
-                <p>The follow-up closes the architectural remainder too. GYSS&rsquo;s privileged file commands can now reach only <code>shared_library</code> and its own <code>config_files\gyss</code> data. The sibling SYBU and COLD SNAP executable directories are outside that allowlist, including when addressed by exact path. A Rust regression test pins the legitimate data paths and rejects executable, lookalike-directory and traversal paths.</p>
+                <p>One finding from the adversarial pass is a documented architectural residual, not a completed fix. GYSS&rsquo;s privileged file commands run inside a jail whose root also holds the sibling SYBU and COLD SNAP executable directories, so a program named by its exact path inside that jail is not structurally blocked. The architectural change that would close it &mdash; moving those executables out of the writable jail, or refusing executable writes on every privileged path &mdash; has not been made; the finding is mitigated by keeping the install directory owner-only and is recorded as an open residual in the report. An earlier version of this entry described this remainder as closed by a narrowed allowlist and a Rust regression test. That was inaccurate &mdash; those controls are not in place &mdash; and this corrects the record.</p>
                 <a class="report-link" href="secaudits/2026-08-13-044-hub-readside-shared-profiles-and-prompts.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
@@ -555,10 +555,9 @@ require_once __DIR__ . '/includes/header.php';
             </article>
 
             <article class="post" id="a028">
-                <div class="post-meta"><span class="post-date">June 20, 2026</span><span class="post-tag">Closed</span></div>
-                <h2>Dev-File Leak &amp; SMACKBACK Blind Spot</h2>
-                <p>Closed a path where development-only files could be swept into a release package, plus a SMACKBACK blind spot around the release-staging directory. The integrity monitor now flags leaked central code if it ever lands on a normal install. Closed in 0.7.317.</p>
-                <a class="report-link" href="secaudits/2026-06-20-028-package-dev-file-leak-and-smackback-blindspot.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+                <div class="post-meta"><span class="post-date">June 20, 2026</span><span class="post-tag">Open &mdash; reopened</span></div>
+                <h2>SECAUDIT 028 &mdash; Dev-File Leak &amp; SMACKBACK Blind Spot</h2>
+                <p>Status: OPEN. This audit has been reopened. Per the responsible-disclosure policy stated at the top of this page, the details are held until the finding is fixed; the ID and title are listed here for transparency, and the full write-up will appear once it is closed.</p>
             </article>
 
             <article class="post" id="a029">
