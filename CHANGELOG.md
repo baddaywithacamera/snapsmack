@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+- SECAUDIT 028 (SS-1282): SMACKBACK no longer baselines a forbidden (leak/secret-shaped) file by presence. A FORBIDDEN list (root sc-config.php, .env/.pem/.key/.p12/.pfx/.bak, backups/) is refused at baseline time (both init paths), pruned from any existing baseline, and surfaced in a non-locking FORBIDDEN bucket at verify time; because such a file is never baselined, the admin REMOVE accepts it, so a leaked secret can be deleted without a MISSING breach or lockout. Empty on the Smack Central host.
+
+- SS-1055: three hub->spoke multisite write endpoints (relay-join, backup/report, disconnect) now check the caller's role, so a spoke presenting the shared hub->spoke key can no longer drive them. run-crons (the fourth write) is held for a follow-up pending confirmation of how CRONOMETER authenticates.
+
+- SS-1170: setup.php removed from the probe-ban rule -- it is SnapSmack's own bootstrap deployer, and once install cleanup removes it the fleet post-deploy check that requests it had auto-banned the owner for 30 days. The 25 genuine scanner signatures are unchanged.
+
 ## 0.7.992D - 2026-11-10
 
 - Release-key rotation in Smack Central now reaches its POST handler, verifies the exact timestamped blob shown for offline signing, checks that the proposed public key matches the active release-signing private key, uses the fleet's permanent root trust anchor, and rejects expired forms. A mismatched or only partially published rotation fails closed.
