@@ -108,8 +108,8 @@
             "manifest_css_sha256": "ed224763d773f545f51e8316978fd4f725d4a4057136a31fc0a1d0bba5afc139"
         },
         "slickr": {
-            "version": "1.0.51",
-            "files_sha256": "a5964717cca52fbfa7f5107e4a8b8ebd38d623fa64102457ddc236cb8f3941e2",
+            "version": "1.0.52",
+            "files_sha256": "8998c27093292e2435b9e77cf767646de08dcc268dba16b123a4253447993c87",
             "manifest_css_sha256": "00f4c68332312cba078d32b419a366b7bec518ec322a17748e5c1884bc7245df"
         },
         "sliders": {

@@ -458,8 +458,15 @@ a:hover { color: var(--sl-link-hover); }
 .sl-sidebar-tag:hover { background: #e1e4e6; color: var(--sl-text-primary); }
 
 .sl-metadata-table { width: 100%; border-collapse: collapse; }
+.sl-metadata-table th {
+  width: 40%;
+  padding: 4px 12px 4px 0;
+  color: var(--sl-text-secondary);
+  font-size: 13px;
+  text-align: right;
+  vertical-align: top;
+}
 .sl-metadata-table td { padding: 4px 0; font-size: 13px; vertical-align: top; }
-.sl-metadata-table td:first-child { color: var(--sl-text-secondary); width: 40%; }
 
 .sl-geo-routing { margin-top: 8px; font-size: 13px; }
 
