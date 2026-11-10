@@ -1,0 +1,92 @@
+[
+    {
+        "variant": "dark",
+        "key": "header_title_color",
+        "changed_saved": "#c13b4a",
+        "reset_saved": "#f5f5f5",
+        "expected_changed": "#c13b4a",
+        "expected_reset": "#f5f5f5",
+        "pass": true
+    },
+    {
+        "variant": "dark",
+        "key": "tagline_color",
+        "changed_saved": "#d49a2a",
+        "reset_saved": "#ffffff",
+        "expected_changed": "#d49a2a",
+        "expected_reset": "#ffffff",
+        "pass": true
+    },
+    {
+        "variant": "dark",
+        "key": "nh_heading_colour_dark",
+        "changed_saved": "#2fa36b",
+        "reset_saved": "#ffffff",
+        "expected_changed": "#2fa36b",
+        "expected_reset": "#ffffff",
+        "pass": true
+    },
+    {
+        "variant": "dark",
+        "key": "nh_body_colour_dark",
+        "changed_saved": "#3977c5",
+        "reset_saved": "#cccccc",
+        "expected_changed": "#3977c5",
+        "expected_reset": "#cccccc",
+        "pass": true
+    },
+    {
+        "variant": "dark",
+        "key": "nh_footer_colour_dark",
+        "changed_saved": "#8a5ac2",
+        "reset_saved": "#cccccc",
+        "expected_changed": "#8a5ac2",
+        "expected_reset": "#cccccc",
+        "pass": true
+    },
+    {
+        "variant": "light",
+        "key": "header_title_color",
+        "changed_saved": "#c13b4a",
+        "reset_saved": "#f5f5f5",
+        "expected_changed": "#c13b4a",
+        "expected_reset": "#f5f5f5",
+        "pass": true
+    },
+    {
+        "variant": "light",
+        "key": "tagline_color",
+        "changed_saved": "#d49a2a",
+        "reset_saved": "#ffffff",
+        "expected_changed": "#d49a2a",
+        "expected_reset": "#ffffff",
+        "pass": true
+    },
+    {
+        "variant": "light",
+        "key": "nh_heading_colour_light",
+        "changed_saved": "#2fa36b",
+        "reset_saved": "#111111",
+        "expected_changed": "#2fa36b",
+        "expected_reset": "#111111",
+        "pass": true
+    },
+    {
+        "variant": "light",
+        "key": "nh_body_colour_light",
+        "changed_saved": "#3977c5",
+        "reset_saved": "#333333",
+        "expected_changed": "#3977c5",
+        "expected_reset": "#333333",
+        "pass": true
+    },
+    {
+        "variant": "light",
+        "key": "nh_footer_colour_light",
+        "changed_saved": "#8a5ac2",
+        "reset_saved": "#333333",
+        "expected_changed": "#8a5ac2",
+        "expected_reset": "#333333",
+        "pass": true
+    }
+]
