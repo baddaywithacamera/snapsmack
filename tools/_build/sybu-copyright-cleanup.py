@@ -36,6 +36,9 @@ SAFETY / CORRECTNESS
     RELOAD the persisted backup and rehearse the restore OFFLINE (recompute strip
     from stored old bytes == stored new bytes; stored old bytes still carry the
     stamp); then confirm live bytes still equal the backup (abort on drift). (F2.)
+  * --apply refuses unless snap_posts AND snap_images are InnoDB; the atomic
+    rollback only holds on a transactional engine (Codex ask). Engines are shown
+    in the dry run.
   * Apply is ATOMIC and byte-verified INSIDE the transaction: after each UPDATE a
     SELECT confirms the stored bytes now equal the expected new bytes (CAST AS
     BINARY, so a trigger/charset change cannot pass); the transaction COMMITs only
@@ -231,6 +234,27 @@ def discover_sites(db):
     return sites, dropped
 
 
+def assert_transactional(engines: dict):
+    """Refuse unless both target tables are InnoDB. The atomic COMMIT/ROLLBACK
+    gate only guarantees rollback on a transactional engine (Codex ask). Pure."""
+    for t, _ in TARGETS:
+        e = engines.get(t)
+        if e is None:
+            raise SystemExit(f"refusing: target table {t} not found in schema")
+        if (e or "").upper() != "INNODB":
+            raise SystemExit(f"refusing: {t} engine is '{e}', not InnoDB -- the atomic "
+                             f"rollback guarantee requires a transactional engine")
+    return True
+
+
+def table_engines(db, schema):
+    rows = db.query(
+        f"SELECT TABLE_NAME, ENGINE FROM information_schema.tables "
+        f"WHERE TABLE_SCHEMA='{schema}' "
+        f"AND TABLE_NAME IN ('snap_posts','snap_images')")
+    return {r[0]: (r[1] if len(r) > 1 else "") for r in rows}
+
+
 def read_hex(db, schema, table, col, where):
     rows = db.query(f"SELECT id, HEX(`{col}`) FROM `{schema}`.`{table}` "
                     f"WHERE {where} ORDER BY id")
@@ -417,6 +441,8 @@ def main(argv=None):
             raise SystemExit(f"refusing --apply on {args.site}: status={st or 'not-found'} "
                              f"(fail closed; dropped-bad-ident={args.site in dropped})")
         url = url_of[args.site]
+        assert_transactional(table_engines(db, args.site))
+        print("engine check: snap_posts + snap_images are InnoDB (transactional)")
         strip, reject, variants = plan_site(db, args.site)
         print(f"[apply] {args.site}  ({url})")
         print(json.dumps(summarize(strip, reject, variants), indent=2))
@@ -444,7 +470,9 @@ def main(argv=None):
     report = []
     for schema, url in eligible:
         strip, reject, variants = plan_site(db, schema)
-        report.append({"schema": schema, "site_url": url, **summarize(strip, reject, variants)})
+        report.append({"schema": schema, "site_url": url,
+                       "engines": table_engines(db, schema),
+                       **summarize(strip, reject, variants)})
     report.sort(key=lambda r: r["strip_total"])
     print(f"SKIPPED foundtextures: {foundtx}")
     print(f"SKIPPED unknown-identity (blank site_url, fail-closed): {unknown}")

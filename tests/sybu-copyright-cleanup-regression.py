@@ -209,6 +209,20 @@ try:
 except SystemExit as e:
     check("restore runs on a matching eligible backup", f"exit:{e}", True)
 
+# ---- InnoDB transactional-engine guard (Codex ask) ----
+check("engine guard passes when both tables are InnoDB",
+      m.assert_transactional({"snap_posts": "InnoDB", "snap_images": "INNODB"}), True)
+for bad_engines, label in (
+    ({"snap_posts": "MyISAM", "snap_images": "InnoDB"}, "refuses MyISAM snap_posts"),
+    ({"snap_posts": "InnoDB", "snap_images": "Aria"}, "refuses Aria snap_images"),
+    ({"snap_posts": "InnoDB"}, "refuses missing snap_images"),
+):
+    try:
+        m.assert_transactional(bad_engines)
+        check(f"engine guard {label}", "no-exit", "SystemExit")
+    except SystemExit:
+        check(f"engine guard {label}", "SystemExit", "SystemExit")
+
 if fails:
     sys.stderr.write(f"\n{fails} assertion(s) FAILED\n")
     sys.exit(1)
