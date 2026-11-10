@@ -153,6 +153,10 @@ class StorageMode(QWidget):
         self.grid.setUniformItemSizes(True)
         self.grid.setWordWrap(True)
         self.grid.currentItemChanged.connect(self._on_pick)
+        # asset_id -> asset dict, rebuilt each _populate. Lets _row_site and
+        # _on_pick resolve a row in O(1); the old next()-scan over self._assets
+        # ran per item per 80ms tick, O(N) on the UI thread on a big shelf.
+        self._asset_index = {}
         # PER ROW, NOT PER VIEW. In an ALL SITES view two rows can belong to
         # different sites, and a thumbnail lives under shared_library/<site>/.
         self._photos = ListPhotos(self.grid, lambda item: snap_library.asset_file(
@@ -464,8 +468,7 @@ class StorageMode(QWidget):
         if item is None:
             return self._connected_site()
         aid = item.data(Qt.UserRole)
-        return self._asset_site(
-            next((a for a in self._assets if a["asset_id"] == aid), None))
+        return self._asset_site(self._asset_index.get(aid))
 
     def _refresh_sites(self):
         """Fill the picker from the catalogues on disk, keeping the choice.
@@ -547,6 +550,7 @@ class StorageMode(QWidget):
 
     def _populate(self, *_):
         """Fill the grid from what is already loaded. No query, no site call."""
+        self._asset_index = {a["asset_id"]: a for a in self._assets}
         shown = self.sort_assets(
             self.filter_assets(self._assets, self.find_edit.text()),
             self.sort_combo.currentData() or "name")
@@ -611,7 +615,7 @@ class StorageMode(QWidget):
         if item is None:
             return
         aid = item.data(Qt.UserRole)
-        a = next((x for x in self._assets if x["asset_id"] == aid), None)
+        a = self._asset_index.get(aid)
         if a is None:
             return
         self._sel = a
