@@ -371,7 +371,6 @@ img.post-image {
 #system-footer .inside {
     max-width: 95% !important;
     margin: 0 auto;
-    font-family: 'Inter', sans-serif;
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 1.5px;
@@ -380,7 +379,6 @@ img.post-image {
 
 #system-footer p, #sig-text {
     color: var(--text-primary) !important;
-    font-family: 'Inter', sans-serif;
     font-size: 0.7rem !important;
     text-transform: uppercase !important;
     letter-spacing: 1.5px !important;
