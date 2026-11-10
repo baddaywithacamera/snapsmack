@@ -13,7 +13,9 @@ SNAPSMACK_EOF_HEADER
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
+import tempfile
 from pathlib import Path
 
 _SCRIPT = Path(__file__).resolve().parents[1] / "tools" / "_build" / "sybu-copyright-cleanup.py"
@@ -124,6 +126,88 @@ try:
     check("backup rehearsal rejects tampered row", "no-raise", "raise")
 except ValueError:
     check("backup rehearsal rejects tampered row", "raise", "raise")
+
+# ---- apply SQL generation: atomic + in-transaction byte verification (F1) ----
+_strip = [{"id": 7, "table": "snap_posts", "col": "description",
+           "old_hex": (b"cap\n\n" + STAMP_B).hex(), "new_hex": b"cap".hex()}]
+sql = m.build_apply_sql("acme_blog", _strip)
+check("apply: begins a transaction", "START TRANSACTION;" in sql, True)
+check("apply: byte-exact old-byte predicate (CAST AS BINARY)",
+      "CAST(`description` AS BINARY) = UNHEX('" + (b"cap\n\n" + STAMP_B).hex() + "')" in sql, True)
+check("apply: in-transaction verify counts the NEW bytes before commit",
+      "SET @ok := @ok + (SELECT COUNT(*)" in sql
+      and ("CAST(`description` AS BINARY) = UNHEX('" + b"cap".hex() + "')") in sql, True)
+check("apply: sets value via CONVERT ... USING utf8mb4",
+      "CONVERT(UNHEX('" + b"cap".hex() + "') USING utf8mb4)" in sql, True)
+check("apply: atomic gate commits only when every row verified",
+      ("IF @ok = 1 THEN COMMIT;" in sql) and ("ELSE ROLLBACK;" in sql), True)
+_updates = [ln for ln in sql.splitlines() if ln.strip().startswith("UPDATE ")]
+check("apply: every UPDATE carries an old-byte predicate",
+      len(_updates) == 1 and all("AND CAST(" in ln for ln in _updates), True)
+
+# 23+. restore SQL only touches rows still at the cleaned value
+rsql = m.build_restore_sql("acme_blog", _strip)
+check("restore: predicate is the cleaned (new) bytes",
+      "CAST(`description` AS BINARY) = UNHEX('" + b"cap".hex() + "')" in rsql, True)
+check("restore: writes back the original (old) bytes",
+      "CONVERT(UNHEX('" + (b"cap\n\n" + STAMP_B).hex() + "') USING utf8mb4)" in rsql, True)
+
+
+# ---- FakeDB exercises do_restore guards (F3) offline, no real DB ----
+class FakeDB:
+    def __init__(self, schema, url):
+        self.schema, self.url, self.scripts = schema, url, []
+
+    def query(self, sql):
+        if "information_schema.tables" in sql:
+            return [[self.schema]]
+        if "snap_settings" in sql:
+            return [[self.url]]
+        return []  # post-restore verify: pretend rows gone/absent
+
+    def script(self, sql):
+        self.scripts.append(sql)
+        return "ok"
+
+
+def _write_backup(tmp, schema, url, stamp_hex):
+    p = Path(tmp)
+    p.write_text(json.dumps({"schema": schema, "site_url": url, "stamp_hex": stamp_hex,
+                             "rows": []}), encoding="utf-8")
+    return str(p)
+
+
+import tempfile
+_tmp = tempfile.mkdtemp()
+bp_ok = _write_backup(Path(_tmp) / "ok.json", "acme_blog", "https://acme.example", m.STAMP_HEX)
+bp_badstamp = _write_backup(Path(_tmp) / "bs.json", "acme_blog", "https://acme.example", "deadbeef")
+bp_badurl = _write_backup(Path(_tmp) / "bu.json", "acme_blog", "https://OTHER.example", m.STAMP_HEX)
+bp_ftx = _write_backup(Path(_tmp) / "ft.json", "acme_blog", "https://acme.example", m.STAMP_HEX)
+
+
+def expect_exit(label, fn):
+    try:
+        fn()
+        check(label, "no-exit", "SystemExit")
+    except SystemExit:
+        check(label, "SystemExit", "SystemExit")
+
+
+expect_exit("restore refuses stamp_hex mismatch",
+            lambda: m.do_restore(FakeDB("acme_blog", "https://acme.example"), bp_badstamp))
+expect_exit("restore refuses site_url mismatch",
+            lambda: m.do_restore(FakeDB("acme_blog", "https://acme.example"), bp_badurl))
+expect_exit("restore refuses foundtextures site",
+            lambda: m.do_restore(FakeDB("acme_blog", "https://foundtextures.ca"), bp_ftx))
+expect_exit("restore refuses unknown-identity (blank url)",
+            lambda: m.do_restore(FakeDB("acme_blog", ""), bp_ok))
+# happy path: matching stamp + url + eligible -> runs, no raise
+_fdb = FakeDB("acme_blog", "https://acme.example")
+try:
+    m.do_restore(_fdb, bp_ok)
+    check("restore runs on a matching eligible backup", len(_fdb.scripts) >= 1, True)
+except SystemExit as e:
+    check("restore runs on a matching eligible backup", f"exit:{e}", True)
 
 if fails:
     sys.stderr.write(f"\n{fails} assertion(s) FAILED\n")

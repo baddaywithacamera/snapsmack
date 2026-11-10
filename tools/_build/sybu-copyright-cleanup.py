@@ -5,7 +5,8 @@ sybu-copyright-cleanup.py  (SS-1266)  --  OWNER-RUN, one site per run.
 Strip the SYBU default-copyright stamp that older SYBU builds appended to post
 and image descriptions, from EVERY site EXCEPT foundtextures. AUTHORED by Claude
 Code, RUN BY SEAN. No agent runs it. PM route (room AnIOPdp); Codex strict
-exact-suffix plan (Fs3EapbC); Codex review (3192685) folded in; Muse review.
+exact-suffix plan (Fs3EapbC); Codex reviews (3192685, 8f234515) and Muse review
+(jJdhO8Uk) folded in -- all 8 findings.
 
 WHAT IT TOUCHES
   snap_posts.description and snap_images.img_description, in each site schema
@@ -17,30 +18,32 @@ WHAT "A STAMPED ROW" MEANS
   separator (CRLF+CRLF or LF+LF). A description that is only the stamp becomes
   empty (''). Every other byte of the caption is preserved.
 
-REFUSED (rejected into a counted review list, never changed)
-  non-suffix | repeated-marker | unexpected-separator. A custom owner copyright
-  never equals this exact stamp, so it is never matched.
+REFUSED (counted into a review list, never changed)
+  non-suffix | repeated-marker | unexpected-separator.
 
-VARIANT INVENTORY (read-only, never changed)
-  Rows that carry the licence marker but NOT the exact full stamp (older wording
-  variants) are counted and sampled for review. The cleanup does not touch them;
-  surfacing them answers Codex finding (4).
+VARIANT INVENTORY (read-only, broad review net, never changed)
+  Rows mentioning "foundtextures" that do NOT carry the exact full stamp are
+  counted + sampled for human review. SCOPE IS HONEST AND BROAD: it may include
+  legitimate captions that merely say "foundtextures". The cleanup NEVER touches
+  them; only exact-full-stamp suffix rows are ever stripped. (Finding 4.)
 
-SAFETY
-  * --dry-run is DEFAULT; reads only.
-  * --apply requires --site <schema>; ONE site per run.
-  * A site with a blank/missing site_url is INELIGIBLE (fail closed).
-  * Before any write: a local backup of every target row's original bytes is
-    written OUTSIDE the repo; the persisted backup is then RELOADED and a restore
-    rehearsal is run OFFLINE (recompute strip from stored old bytes, confirm the
-    stored restore returns the original); then the live bytes are confirmed still
-    equal the backup (abort on any drift).
-  * The site's writes run in ONE transaction; every UPDATE carries an old-byte
-    predicate; the transaction COMMITs only if the number of rows actually
-    updated equals the plan, else it ROLLs BACK (atomic -- Codex finding 1).
-  * After commit, rows are re-read and verified byte-for-byte.
-  * --restore <backup.json> rolls a site back; it re-checks site identity and
-    refuses foundtextures / unknown sites (Codex finding 3).
+SAFETY / CORRECTNESS
+  * --dry-run DEFAULT; reads only. --apply needs --site <schema>; ONE per run.
+  * Blank/missing site_url => unknown identity => INELIGIBLE (fail closed, F6).
+  * Schemas whose name fails the identifier guard are REPORTED, not silently
+    skipped (F8).
+  * Before any write: backup every target row's original bytes OUTSIDE the repo;
+    RELOAD the persisted backup and rehearse the restore OFFLINE (recompute strip
+    from stored old bytes == stored new bytes; stored old bytes still carry the
+    stamp); then confirm live bytes still equal the backup (abort on drift). (F2.)
+  * Apply is ATOMIC and byte-verified INSIDE the transaction: after each UPDATE a
+    SELECT confirms the stored bytes now equal the expected new bytes (CAST AS
+    BINARY, so a trigger/charset change cannot pass); the transaction COMMITs only
+    if every row verified, else ROLLBACK. Row count alone is not trusted. (F1.)
+  * After commit, rows are re-read and verified again.
+  * --restore binds to the backup's site_url and stamp_hex and the site's
+    eligibility, rolls back only rows still at the cleaned value, then VERIFIES
+    and REPORTS any rows it skipped because they changed since cleanup. (F3, F7.)
   * Output is counts/ids/lengths/separator-kind ONLY, never caption content.
 
 TRANSPORT (handed over by Codex, no credentials here)
@@ -48,9 +51,9 @@ TRANSPORT (handed over by Codex, no credentials here)
       pct exec <container> -- mariadb --default-character-set=utf8mb4
       --batch --skip-column-names ...
 
-NOTE for the reviewer: the atomic COMMIT/ROLLBACK uses a `BEGIN NOT ATOMIC ...
-END` compound block (MariaDB 10.1+). If the fleet's MariaDB rejects it the apply
-fails CLOSED (nothing committed); flag the version if so.
+REVIEWER NOTE: the atomic COMMIT/ROLLBACK uses a `BEGIN NOT ATOMIC ... END`
+compound block (MariaDB 10.1+). If the fleet's MariaDB rejects it the apply fails
+CLOSED (nothing committed); flag the version if so.
 
 SNAPSMACK_EOF_HEADER
     # ===== SNAPSMACK EOF =====
@@ -61,15 +64,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import subprocess
 import sys
 import time
 from pathlib import Path
-
-try:
-    import shlex
-except ImportError:  # pragma: no cover
-    shlex = None
 
 # ---- the exact stamp (byte-identical to tools/sybu history / Codex dry run) ----
 STAMP = (
@@ -82,11 +81,10 @@ STAMP = (
 STAMP_B = STAMP.encode("utf-8")
 STAMP_HEX = STAMP_B.hex()
 
-# A distinctive licence phrase older variants are likely to share. Used ONLY for
-# the read-only variant inventory; never for stripping.
-VARIANT_MARKER = "foundtextures.ca. Free for personal"
-VARIANT_MARKER_B = VARIANT_MARKER.encode("utf-8")
-VARIANT_MARKER_HEX = VARIANT_MARKER_B.hex()
+# Broad review marker (brand token). Deliberately wider than the stamp so older
+# wording variants and partial remnants surface; may include legitimate mentions.
+VARIANT_MARKER = "foundtextures"
+VARIANT_MARKER_HEX = VARIANT_MARKER.encode("utf-8").hex()
 
 TARGETS = (("snap_posts", "description"), ("snap_images", "img_description"))
 
@@ -118,8 +116,8 @@ def classify(old: bytes):
 
 
 def is_variant(old: bytes) -> bool:
-    """Carries the licence marker but NOT the exact full stamp (a wording variant)."""
-    return VARIANT_MARKER_B in old and STAMP_B not in old
+    """Mentions the brand marker but is NOT a clean full-stamp row."""
+    return (VARIANT_MARKER.encode("utf-8") in old) and (STAMP_B not in old)
 
 
 def site_status(url: str) -> str:
@@ -132,13 +130,8 @@ def site_status(url: str) -> str:
     return "eligible"
 
 
-def rehearse_backup_rows(rows: list):
-    """OFFLINE restore rehearsal over backup rows. Raises on any inconsistency.
-
-    For each row: recompute the strip from the PERSISTED old bytes and confirm it
-    equals the stored new bytes; confirm the stored old bytes are what a restore
-    would write back. Pure -- no DB. Returns the row count.
-    """
+def rehearse_backup_rows(rows: list) -> int:
+    """OFFLINE restore rehearsal over backup rows. Raises on any inconsistency."""
     for r in rows:
         old = bytes.fromhex(r["old_hex"])
         action, new, _ = classify(old)
@@ -146,10 +139,48 @@ def rehearse_backup_rows(rows: list):
             raise ValueError(f"backup row {r.get('table')}#{r.get('id')} is not a clean strip")
         if new.hex() != r["new_hex"]:
             raise ValueError(f"backup row {r.get('table')}#{r.get('id')} new-bytes mismatch")
-        # restore writes old back; the stamp must reappear exactly.
-        if not old.endswith(STAMP_B) and old != STAMP_B:
+        if not old.endswith(STAMP_B):
             raise ValueError(f"backup row {r.get('table')}#{r.get('id')} old bytes lack the stamp")
     return len(rows)
+
+
+# ---- SQL fragment builders (pure, structure-tested offline) ----
+def _val_expr(hexv: str) -> str:
+    # UNHEX('')='' and CONVERT('' USING utf8mb4)='' so the empty case is covered.
+    return f"CONVERT(UNHEX('{hexv}') USING utf8mb4)"
+
+
+def _bin_eq(col: str, hexv: str) -> str:
+    # byte-exact comparison, immune to collation/charset coercion
+    return f"CAST(`{col}` AS BINARY) = UNHEX('{hexv}')"
+
+
+def build_apply_sql(schema: str, strip: list) -> str:
+    n = len(strip)
+    L = ["SET SESSION max_statement_time=10;", "SET @ok := 0;", "START TRANSACTION;"]
+    for row in strip:
+        t, c, rid = row["table"], row["col"], int(row["id"])
+        L.append(f"UPDATE `{schema}`.`{t}` SET `{c}` = {_val_expr(row['new_hex'])} "
+                 f"WHERE id = {rid} AND {_bin_eq(c, row['old_hex'])};")
+        # IN-TRANSACTION byte verify: stored bytes must now equal expected new bytes
+        L.append(f"SET @ok := @ok + (SELECT COUNT(*) FROM `{schema}`.`{t}` "
+                 f"WHERE id = {rid} AND {_bin_eq(c, row['new_hex'])});")
+    L += ["DELIMITER $$", "BEGIN NOT ATOMIC",
+          f"  IF @ok = {n} THEN COMMIT; SELECT CONCAT('COMMIT verified=', @ok) AS result;",
+          f"  ELSE ROLLBACK; SELECT CONCAT('ROLLBACK verified=', @ok, ' expected={n}') AS result; END IF;",
+          "END$$", "DELIMITER ;"]
+    return "\n".join(L)
+
+
+def build_restore_sql(schema: str, rows: list) -> str:
+    L = ["SET SESSION max_statement_time=10;", "START TRANSACTION;"]
+    for row in rows:
+        t, c, rid = row["table"], row["col"], int(row["id"])
+        # restore only rows STILL at the cleaned value (don't clobber a later edit)
+        L.append(f"UPDATE `{schema}`.`{t}` SET `{c}` = {_val_expr(row['old_hex'])} "
+                 f"WHERE id = {rid} AND {_bin_eq(c, row['new_hex'])};")
+    L.append("COMMIT;")
+    return "\n".join(L)
 
 
 # ======================================================================
@@ -157,9 +188,7 @@ def rehearse_backup_rows(rows: list):
 # ======================================================================
 class DB:
     def __init__(self, ssh_target: str, pct: str, timeout: int = 120):
-        self.ssh_target = ssh_target
-        self.pct = pct
-        self.timeout = timeout
+        self.ssh_target, self.pct, self.timeout = ssh_target, pct, timeout
 
     def _base(self) -> str:
         return (f"pct exec {self.pct} -- mariadb --default-character-set=utf8mb4 "
@@ -185,30 +214,30 @@ def ident_ok(name: str) -> bool:
     return bool(name) and name.replace("_", "").isalnum()
 
 
-def discover_sites(db: DB):
-    """[(schema, url, status)] for schemas that have snap_images."""
-    schemas = [row[0] for row in db.query(
+def discover_sites(db):
+    """Returns (sites, dropped). sites=[(schema,url,status)]; dropped=bad idents."""
+    raw = [row[0] for row in db.query(
         "SELECT TABLE_SCHEMA FROM information_schema.tables "
         "WHERE TABLE_NAME='snap_images' ORDER BY TABLE_SCHEMA")]
-    out = []
-    for s in schemas:
+    sites, dropped = [], []
+    for s in raw:
         if not ident_ok(s):
+            dropped.append(s)
             continue
         rows = db.query(f"SELECT setting_val FROM `{s}`.snap_settings "
                         f"WHERE setting_key='site_url' LIMIT 1")
         url = rows[0][0] if rows and rows[0] else ""
-        out.append((s, url, site_status(url)))
-    return out
+        sites.append((s, url, site_status(url)))
+    return sites, dropped
 
 
-def read_hex(db: DB, schema: str, table: str, col: str, where: str):
+def read_hex(db, schema, table, col, where):
     rows = db.query(f"SELECT id, HEX(`{col}`) FROM `{schema}`.`{table}` "
                     f"WHERE {where} ORDER BY id")
     return [(r[0], bytes.fromhex(r[1])) for r in rows if len(r) >= 2]
 
 
-def plan_site(db: DB, schema: str):
-    """Returns (strip, reject, variants) across both stores."""
+def plan_site(db, schema):
     strip, reject, variants = [], [], []
     for table, col in TARGETS:
         for rid, old in read_hex(db, schema, table, col,
@@ -221,35 +250,34 @@ def plan_site(db: DB, schema: str):
             elif action == "REJECT":
                 reject.append({"id": rid, "table": table, "col": col,
                                "reason": reason, "old_len": len(old)})
-        # read-only variant inventory: marker present, full stamp absent
         var = db.query(
             f"SELECT id, CHAR_LENGTH(`{col}`) FROM `{schema}`.`{table}` "
             f"WHERE LOCATE(0x{VARIANT_MARKER_HEX}, CAST(`{col}` AS BINARY)) > 0 "
             f"AND LOCATE(0x{STAMP_HEX}, CAST(`{col}` AS BINARY)) = 0 ORDER BY id")
         for r in var:
             variants.append({"id": r[0], "table": table,
-                             "len": int(r[1]) if len(r) > 1 and r[1].isdigit() else -1})
+                             "len": int(r[1]) if len(r) > 1 and r[1].lstrip("-").isdigit() else -1})
     return strip, reject, variants
 
 
 # ======================================================================
 # Backup / apply / restore
 # ======================================================================
-def backup_path(backup_dir: str, schema: str) -> Path:
+def backup_path(backup_dir, schema):
     d = Path(backup_dir)
     d.mkdir(parents=True, exist_ok=True)
     return d / f"{schema}-{time.strftime('%Y%m%d-%H%M%S')}.json"
 
 
-def write_backup(path: Path, schema: str, url: str, strip: list):
+def write_backup(path, schema, url, strip):
     path.write_text(json.dumps(
         {"schema": schema, "site_url": url, "stamp_hex": STAMP_HEX,
          "created": time.strftime("%Y-%m-%d %H:%M:%S"), "rows": strip},
         indent=2), encoding="utf-8")
 
 
-def reload_and_rehearse(path: Path, strip: list) -> int:
-    """Reload the persisted backup from disk and rehearse restore OFFLINE."""
+def reload_and_rehearse(path, strip):
+    """Reload persisted backup from disk and rehearse restore OFFLINE (F2)."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     rows = data.get("rows", [])
     if len(rows) != len(strip):
@@ -258,16 +286,13 @@ def reload_and_rehearse(path: Path, strip: list) -> int:
     for r in rows:
         p = plan.get((r["table"], str(r["id"])))
         if not p or r["old_hex"] != p["old_hex"] or r["new_hex"] != p["new_hex"]:
-            raise SystemExit(f"backup roundtrip: reloaded row differs from plan: "
-                             f"{r.get('table')}#{r.get('id')}")
-    rehearse_backup_rows(rows)   # recompute + restore rehearsal, pure
+            raise SystemExit(f"backup roundtrip: reloaded row differs: {r.get('table')}#{r.get('id')}")
+    rehearse_backup_rows(rows)
     return len(rows)
 
 
-def live_drift_check(db: DB, schema: str, strip: list) -> list:
-    """Live bytes must still equal the backed-up old bytes. Returns drifted ids."""
-    drift = []
-    by = {}
+def live_drift_check(db, schema, strip):
+    drift, by = [], {}
     for row in strip:
         by.setdefault((row["table"], row["col"]), {})[str(row["id"])] = row["old_hex"]
     for (table, col), idmap in by.items():
@@ -280,34 +305,15 @@ def live_drift_check(db: DB, schema: str, strip: list) -> list:
     return drift
 
 
-def build_apply_sql(schema: str, strip: list) -> str:
-    n = len(strip)
-    L = ["SET SESSION max_statement_time=10;", "SET @applied := 0;", "START TRANSACTION;"]
-    for row in strip:
-        new_sql = f"UNHEX('{row['new_hex']}')" if row["new_hex"] else "''"
-        L.append(f"UPDATE `{schema}`.`{row['table']}` SET `{row['col']}` = {new_sql} "
-                 f"WHERE id = {int(row['id'])} AND `{row['col']}` = UNHEX('{row['old_hex']}');")
-        L.append("SET @applied := @applied + ROW_COUNT();")
-    # atomic gate: COMMIT only if every planned row was updated, else ROLLBACK
-    L.append("DELIMITER $$")
-    L.append("BEGIN NOT ATOMIC")
-    L.append(f"  IF @applied = {n} THEN COMMIT; SELECT CONCAT('COMMIT applied=', @applied) AS result;")
-    L.append(f"  ELSE ROLLBACK; SELECT CONCAT('ROLLBACK applied=', @applied, ' expected={n}') AS result; END IF;")
-    L.append("END$$")
-    L.append("DELIMITER ;")
-    return "\n".join(L)
-
-
-def apply_site(db: DB, schema: str, strip: list) -> str:
+def apply_site(db, schema, strip):
     out = db.script(build_apply_sql(schema, strip))
-    if "COMMIT applied=" not in out:
-        raise SystemExit(f"APPLY DID NOT COMMIT (rolled back): {out.strip()}")
+    if "COMMIT verified=" not in out:
+        raise SystemExit(f"APPLY DID NOT COMMIT (rolled back / error): {out.strip()}")
     return out.strip()
 
 
-def verify_site(db: DB, schema: str, strip: list) -> list:
-    bad = []
-    by = {}
+def verify_site(db, schema, strip):
+    bad, by = [], {}
     for row in strip:
         by.setdefault((row["table"], row["col"]), {})[str(row["id"])] = row["new_hex"]
     for (table, col), idmap in by.items():
@@ -320,28 +326,40 @@ def verify_site(db: DB, schema: str, strip: list) -> list:
     return bad
 
 
-def do_restore(db: DB, backup_file: str):
+def do_restore(db, backup_file):
     data = json.loads(Path(backup_file).read_text(encoding="utf-8"))
-    schema = data["schema"]
+    schema = data.get("schema", "")
     if not ident_ok(schema):
         raise SystemExit(f"restore: bad schema in backup: {schema}")
-    # re-check site identity: must still exist, have snap_images, and be eligible
-    sites = {s: st for s, u, st in discover_sites(db)}
-    st = sites.get(schema)
-    if st is None:
+    if data.get("stamp_hex") != STAMP_HEX:
+        raise SystemExit("restore: backup stamp_hex does not match this tool's stamp; refusing")
+    sites, _ = discover_sites(db)
+    live = {s: (u, st) for s, u, st in sites}
+    if schema not in live:
         raise SystemExit(f"restore: schema {schema} not present / no snap_images")
+    live_url, st = live[schema]
     if st != "eligible":
         raise SystemExit(f"restore: refusing schema {schema} (status={st})")
-    L = ["SET SESSION max_statement_time=10;", "START TRANSACTION;"]
-    for row in data["rows"]:
-        old_sql = f"UNHEX('{row['old_hex']}')" if row["old_hex"] else "''"
-        new_sql = f"UNHEX('{row['new_hex']}')" if row["new_hex"] else "''"
-        # only restore rows still at the cleaned value (don't clobber a later edit)
-        L.append(f"UPDATE `{schema}`.`{row['table']}` SET `{row['col']}` = {old_sql} "
-                 f"WHERE id = {int(row['id'])} AND `{row['col']}` = {new_sql};")
-    L.append("COMMIT;")
-    db.script("\n".join(L))
-    print(f"restore: submitted {len(data['rows'])} rows for {schema} from {backup_file}")
+    if (live_url or "").strip() != (data.get("site_url") or "").strip():
+        raise SystemExit(f"restore: live site_url for {schema} does not match the backup; refusing")
+    rows = data.get("rows", [])
+    db.script(build_restore_sql(schema, rows))
+    # post-restore verify + report rows skipped (edited since cleanup)
+    not_restored = []
+    by = {}
+    for row in rows:
+        by.setdefault((row["table"], row["col"]), {})[str(row["id"])] = row["old_hex"]
+    for (table, col), idmap in by.items():
+        live_rows = db.query(f"SELECT id, HEX(`{col}`) FROM `{schema}`.`{table}` "
+                             f"WHERE id IN ({','.join(idmap.keys())})")
+        lm = {r[0]: (r[1] if len(r) > 1 else "") for r in live_rows}
+        for rid, old_hex in idmap.items():
+            if lm.get(rid, "").upper() != old_hex.upper():
+                not_restored.append(f"{table}#{rid}")
+    print(f"restore {schema}: {len(rows) - len(not_restored)}/{len(rows)} rows restored.")
+    if not_restored:
+        print(f"NOT restored (changed since cleanup, left as-is): {len(not_restored)} -> "
+              f"{not_restored[:25]}")
 
 
 # ======================================================================
@@ -360,8 +378,8 @@ def summarize(strip, reject, variants):
         rej[r["reason"]] = rej.get(r["reason"], 0) + 1
     return {"strip_total": len(strip), "strip_by_table": by_table(strip),
             "strip_by_separator": sep, "reject_total": len(reject),
-            "reject_by_reason": rej, "variant_inventory_total": len(variants),
-            "variant_by_table": by_table(variants),
+            "reject_by_reason": rej,
+            "variant_inventory_total": len(variants), "variant_by_table": by_table(variants),
             "strip_sample_ids": [f"{r['table']}#{r['id']}" for r in strip[:25]],
             "reject_sample_ids": [f"{r['table']}#{r['id']}({r['reason']})" for r in reject[:25]],
             "variant_sample_ids": [f"{r['table']}#{r['id']}" for r in variants[:25]]}
@@ -384,20 +402,21 @@ def main(argv=None):
         do_restore(db, args.restore)
         return 0
 
-    sites = discover_sites(db)
+    sites, dropped = discover_sites(db)
+    status_of = {s: st for s, u, st in sites}
+    url_of = {s: u for s, u, st in sites}
     eligible = [(s, u) for s, u, st in sites if st == "eligible"]
     foundtx = [s for s, u, st in sites if st == "foundtextures"]
     unknown = [s for s, u, st in sites if st == "unknown"]
 
-    # ---- APPLY: one eligible site only ----
     if args.apply:
         if not args.site:
             raise SystemExit("--apply requires --site <schema> (one site per run)")
-        st = {s: stt for s, u, stt in sites}.get(args.site)
+        st = status_of.get(args.site)
         if st != "eligible":
             raise SystemExit(f"refusing --apply on {args.site}: status={st or 'not-found'} "
-                             f"(fail closed; only eligible non-foundtextures sites with a site_url)")
-        url = dict((s, u) for s, u, _ in sites)[args.site]
+                             f"(fail closed; dropped-bad-ident={args.site in dropped})")
+        url = url_of[args.site]
         strip, reject, variants = plan_site(db, args.site)
         print(f"[apply] {args.site}  ({url})")
         print(json.dumps(summarize(strip, reject, variants), indent=2))
@@ -411,19 +430,17 @@ def main(argv=None):
         print("backup roundtrip (reload + offline restore rehearsal): OK")
         drift = live_drift_check(db, args.site, strip)
         if drift:
-            raise SystemExit(f"ABORT: {len(drift)} row(s) drifted since read; "
-                             f"nothing written. ids={drift}")
-        print("live drift check: OK (live bytes match backup)")
+            raise SystemExit(f"ABORT: {len(drift)} row(s) drifted since read; nothing written. {drift}")
+        print("live drift check: OK")
         result = apply_site(db, args.site, strip)
         bad = verify_site(db, args.site, strip)
         if bad:
-            raise SystemExit(f"POST-VERIFY MISMATCH on {len(bad)} row(s): {bad}. "
-                             f"Backup {bpath}; use --restore to roll back.")
+            raise SystemExit(f"POST-VERIFY MISMATCH {len(bad)}: {bad}. Backup {bpath}; --restore to roll back.")
         print(f"{result}; VERIFIED {len(strip)} row(s) on {args.site}. "
               f"Rejected {len(reject)}, variants-for-review {len(variants)}. Backup: {bpath}")
         return 0
 
-    # ---- DRY RUN (default): read-only, all eligible sites ----
+    # ---- DRY RUN (default) ----
     report = []
     for schema, url in eligible:
         strip, reject, variants = plan_site(db, schema)
@@ -431,11 +448,12 @@ def main(argv=None):
     report.sort(key=lambda r: r["strip_total"])
     print(f"SKIPPED foundtextures: {foundtx}")
     print(f"SKIPPED unknown-identity (blank site_url, fail-closed): {unknown}")
+    print(f"DROPPED bad-identifier schemas (NOT processed, reported per F8): {dropped}")
     print(json.dumps(report, indent=2))
     positive = [r for r in report if r["strip_total"] > 0]
     if positive:
         first = positive[0]
-        print(f"\nSMALLEST FIRST (positive strip count): --site {first['schema']} --apply   "
+        print(f"\nSMALLEST FIRST (positive strip count): --site {first['schema']} --apply "
               f"({first['strip_total']} rows)")
     else:
         print("\nNo eligible site has rows to strip.")
