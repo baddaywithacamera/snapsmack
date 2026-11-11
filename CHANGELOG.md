@@ -25,11 +25,13 @@
 
 - SS-1293's neighbouring direct-access check now resolves both sides of the path comparison, so a symlinked deployment cannot bypass the maintenance-lock file's direct-request guard.
 
-- PhotoFri.day prompt cards keep all four border edges. The shared public stylesheet's image-link rule had enough specificity to erase the bottom edge from cards inside static content; the board stylesheet now restores that edge with a selector that wins on every affected skin.
+- PhotoFri.day prompt cards keep all four border edges. The shared public stylesheet's image-link rule had enough specificity to erase the bottom edge from cards inside static content; the board stylesheet now restores that edge with a selector that wins on every affected skin. The regression inventory now records the measured 28 of 30 skin manifests instead of the earlier incorrect 25-of-31 comment; its assertions are unchanged.
 
 - Archive-settings coverage now includes NEW HORIZON and checks both values returned by the real archive-grid helper. The fixture no longer reports a difference that cannot occur on a rendered site.
 
 - NEW HORIZON 1.3.37 puts an About-page portrait beside the biography at supported desktop and large-tablet widths instead of letting the image consume the whole row. The portrait stays visible while the text scrolls and the layout collapses below 900px. A live check on an installed site remains outstanding.
+
+- IMPACT PRINTER 2.1.26 gives its About-page portrait the same two-column treatment instead of allowing the uncapped natural-width image to overflow and be clipped. The portrait stays visible while the text scrolls and the layout collapses below 900px. A live check on an installed site remains outstanding.
 
 - GLIDE 0.1.28 gives its fixed footer rule the same inset on the left and bottom, so the line no longer sits against the viewport edge.
 
