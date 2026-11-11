@@ -1677,7 +1677,7 @@
     },
     "secaudit-017-reinit-stepup-regression.php": {
         "assertions": 3,
-        "predicates": 16,
+        "predicates": 21,
         "thresholds": []
     },
     "secaudit-026-installer-no-constants-template.php": {
