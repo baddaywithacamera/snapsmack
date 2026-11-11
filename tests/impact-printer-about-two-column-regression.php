@@ -8,37 +8,56 @@ declare(strict_types=1);
  * underneath, and asked what had happened to it. Nothing had. It was never
  * there.
  *
- * The skin DID float the portrait left, since 71780ef0 (0.7.159, 2026-05-20).
- * But no version of that rule ever capped its WIDTH, and a shrink-to-fit float
- * against a large photograph fills the column. Measured on the live page,
- * curbappeal.photoblogs.fyi/about, identical at 1920 and 1440:
+ * The skin DID float the portrait left. Verified for THIS skin, not inherited
+ * from the NEW HORIZON repair it was found alongside: `float: left` entered
+ * skins/impact-printer/style.css at 71780ef0 (0.7.159, 2026-05-20), and no
+ * version of that rule has ever set a numeric width on it -- checked by
+ * extracting the rule from every commit that has touched this stylesheet.
  *
- *     content column available   802px
- *     floated portrait            802px
- *     room left beside it           0px
- *     text line boxes              23
- *     LINE BOXES BESIDE THE PHOTO   0 of 23
+ * A shrink-to-fit float against a large photograph takes the whole column.
+ * Measured by rendering IMPACT PRINTER's own layout with a 2655x2655 portrait,
+ * at 1920:
  *
- * A float as wide as its container leaves nothing to flow past it. 20684ab4
- * (27 Oct) released the hero's HEIGHT and its comment states the intent --
- * "it is an image in a column of text" -- then never touched the width.
+ *     container             850px
+ *     floated portrait     2655px   <- the image's full natural size
+ *     overflow                       1805px past the container
+ *     text line boxes          16
+ *     LINE BOXES BESIDE IT    0 of 16
  *
- * NOT SS-1269 and not this week's shared-component work: the float predates
- * both by six months and the geometry has never differed. Checked by walking
- * every commit that has touched the stylesheet, not assumed.
+ * AND IT WAS CLIPPED, NOT MERELY WIDE. .static-content carries
+ * overflow-x: hidden, so the right ~1800px of the portrait was cut off rather
+ * than scrolled to. Nobody was seeing the whole photograph. That is the second
+ * symptom of the same cause, and on a photographer's site it is the worse one.
  *
- * AFTER, rendered through IMPACT PRINTER's own layout.php with a 2655x2655
- * portrait and measured in a browser:
+ * AFTER, same harness, same portrait:
  *
  *     width  display  container  portrait  text starts  lines beside
- *     1920   grid     1100px     445px     right of it  15 of 22
- *     1440   grid     1100px     445px     right of it  15 of 22
- *     1024   grid     1012px     408px     right of it  14 of 24
- *      880   block     850px     810px     below it      0 (collapsed, correct)
- *      390   block     378px     338px     below it      0 (collapsed, correct)
+ *     1920   grid     1100px     445px     right of it  14 of 22
+ *     1440   grid     1100px     445px     right of it  14 of 22
+ *     1024   grid      899px     361px     right of it  12 of 28
+ *      880   block     755px     715px     below it      0 (collapsed, correct)
  *
- * SS-1269's heading alignment measured 24px from the portrait's left edge at
- * every one of those widths, before and after. No horizontal overflow at any.
+ * 390px was NOT measured for this skin. IMPACT PRINTER is a desktop and
+ * large-tablet skin and 880 already proves the collapse; recording a width I
+ * did not measure would be the same fault this docblock was corrected for.
+ *
+ * The heading's 24px offset from the portrait's left edge held at every width
+ * above, before and after. No horizontal overflow at any, and the portrait now
+ * fits its track instead of being cropped by the container.
+ *
+ * SS-1269 IS NOT THIS SKIN'S TICKET. It aligned NEW HORIZON's About heading;
+ * no commit for it has ever touched skins/impact-printer. This skin simply has
+ * the same 24px left padding on .static-page-title, and the grid preserves it
+ * for the same reason -- the portrait still starts at the container's content
+ * edge, so the same 24px lands in the same place.
+ *
+ * THIS BLOCK WAS WRONG WHEN FIRST COMMITTED AND MUSE CAUGHT IT. The test was
+ * derived from tests/new-horizon-about-two-column-regression.php, and the
+ * derivation renamed the identifiers but carried NEW HORIZON's measurements,
+ * NEW HORIZON's live page, and NEW HORIZON's ticket history into a file about
+ * a different skin. Every assertion below was correct; the record above them
+ * described the wrong skin, which in this repository is the part that gets
+ * read later and believed.
  *
  * WHAT THIS TEST CAN AND CANNOT DO. The numbers above need a browser and this
  * repository has no resolvable puppeteer or playwright, so they are recorded
