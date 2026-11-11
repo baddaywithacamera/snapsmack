@@ -1482,6 +1482,13 @@
             2
         ]
     },
+    "prompt-card-bottom-border-regression.php": {
+        "assertions": 4,
+        "predicates": 24,
+        "thresholds": [
+            3
+        ]
+    },
     "provision-shared-key-regression.php": {
         "assertions": 9,
         "predicates": 8,

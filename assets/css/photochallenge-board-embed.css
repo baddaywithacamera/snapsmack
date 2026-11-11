@@ -4,6 +4,11 @@
  * geometry (three-across / masonry) lives in photochallenge-board-layouts.css;
  * this file is only the card look (§18 red #D40000 on dark cards). Used by both
  * /board (photochallenge-board.php) and the [board] shortcode.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     /* ===== SNAPSMACK EOF ===== *\/
+ * Last non-empty line of this file MUST match the line above. Missing or
+ * different = truncated/corrupted. Restore before saving.
  */
 .pc-board { position: relative; width: 100%; }
 .pc-board .card {
@@ -51,9 +56,23 @@
   text-decoration: none; overflow: hidden;
   transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-/* public-base removes border-bottom from image links. A prompt card is a
-   bordered component, not an inline image link, so restore its fourth edge. */
-.pc-prompt-card:has(img) { border-bottom: 1px solid rgba(0,0,0,.18) !important; }
+/* public-base removes border-bottom from image links, to stop an inline image
+   link wearing a text underline:
+       .description a:has(img), .static-content a:has(img) { border-bottom: none !important }
+   A prompt card IS an <a> containing an <img>, and the board shortcode lives in
+   a static page, so every card matches that. It is a bordered component, not an
+   inline image link, so restore its fourth edge.
+
+   THE PARENT CLASS IS LOAD-BEARING, NOT DECORATION. Both declarations are
+   !important, so specificity decides, and public-base's selector scores
+   (0,1,2) against a bare .pc-prompt-card:has(img)'s (0,1,1) - which is why
+   the restore written that way never once worked, and the cards shipped with
+   no bottom edge on 25 of the 31 skins. Naming the grid container takes it to
+   (0,2,1) and it wins. The markup always provides it: core/photochallenge.php
+   emits <div class="pc-prompt-cards"> around these links.
+   tests/prompt-card-bottom-border-regression.php computes both specificities
+   from the stylesheets and fails if this one stops outranking that one. */
+.pc-prompt-cards .pc-prompt-card:has(img) { border-bottom: 1px solid rgba(0,0,0,.18) !important; }
 .pc-prompt-card:hover,
 .pc-prompt-card:focus-visible {
   transform: translateY(-2px); border-color: #D40000;
@@ -72,8 +91,10 @@
 
 @media (prefers-color-scheme: dark) {
   .pc-prompt-card { background: rgba(16,16,16,.78); border-color: rgba(255,255,255,.2); }
-  .pc-prompt-card:has(img) { border-bottom-color: rgba(255,255,255,.2) !important; }
+  /* Same specificity contest as the light rule above. */
+  .pc-prompt-cards .pc-prompt-card:has(img) { border-bottom-color: rgba(255,255,255,.2) !important; }
   .pc-prompt-card:hover:has(img),
   .pc-prompt-card:focus-visible:has(img),
   .pc-prompt-card.is-current:has(img) { border-bottom-color: #D40000 !important; }
 }
+/* ===== SNAPSMACK EOF ===== */
