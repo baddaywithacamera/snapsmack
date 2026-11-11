@@ -13,9 +13,39 @@
 
 ## 0.7.994D - 2026-11-11
 
-- PhotoFri.day prompt cards keep all four border edges. The shared public stylesheet's image-link rule had enough specificity to erase the bottom edge from cards inside static content; the board stylesheet now restores that edge with a selector that wins on every affected skin.
+- SS-1197: the installer now offers only site modes that have been tested. The same allow-list drives the visible choices and the server-side write, so an old form cannot submit an unsupported mode.
+
+- SS-1198 and SS-1293: when the bootstrap deployer cannot write or download a release package, it now names the failed operation and target and includes PHP's actual reason instead of guessing that every failure is a permission problem. Release-URL query strings are redacted through one shared rule before any error reaches the screen or log.
+
+- SS-1292: GYSS's COLD SNAP and COLD TAKE buttons use the real COLD SNAP installation-directory helper instead of calling a helper that never existed and crashing on click. Source verification is complete; the built Windows application still needs an installed check.
+
+- SS-1185: gallery shuffle now belongs to each mosaic rather than the whole layout. The canonical schema, API parser, renderer, WordPress companion, COLD SNAP and SMACKPRESS import paths all carry the owner-random flag while preserving authored order when it is off. The canonical schema's existing layout comment was preserved during the column change.
+
+- SECAUDIT 017: RE-INITIALISE BASELINE now requires the owner's password and current 2FA code, records the action, and tells the owner to try a signed update before blessing files from disk. Its regression-strength record was refreshed to the predicates actually present.
+
+- SS-1293's neighbouring direct-access check now resolves both sides of the path comparison, so a symlinked deployment cannot bypass the maintenance-lock file's direct-request guard.
+
+- PhotoFri.day prompt cards keep all four border edges. The shared public stylesheet's image-link rule had enough specificity to erase the bottom edge from cards inside static content; the board stylesheet now restores that edge with a selector that wins on every affected skin. The regression inventory now records the measured 28 of 30 skin manifests instead of the earlier incorrect 25-of-31 comment; its assertions are unchanged.
+
+- Archive-settings coverage now includes NEW HORIZON and checks both values returned by the real archive-grid helper. The fixture no longer reports a difference that cannot occur on a rendered site.
+
+- NEW HORIZON 1.3.37 puts an About-page portrait beside the biography at supported desktop and large-tablet widths instead of letting the image consume the whole row. The portrait stays visible while the text scrolls and the layout collapses below 900px. A live check on an installed site remains outstanding.
+
+- IMPACT PRINTER 2.1.26 gives its About-page portrait the same two-column treatment instead of allowing the uncapped natural-width image to overflow and be clipped. The portrait stays visible while the text scrolls and the layout collapses below 900px. A live check on an installed site remains outstanding.
 
 - GLIDE 0.1.28 gives its fixed footer rule the same inset on the left and bottom, so the line no longer sits against the viewport edge.
+
+- CHAPLIN 0.2.30 through 0.2.32 reduce and space the footer band, make the archive honour the owner's column and thumbnail-size controls, and preserve sparse tablet columns.
+
+- NEW HORIZON's shared image-fade engine now fades photographs loaded from cache as well as network loads and respects reduced-motion preferences.
+
+- The missed November 4 closed-beta date and apology are now published in WOTCHA. No replacement date is claimed.
+
+- SS-1284 now has a recovery runbook for the shared updater-temporary-directory false-breach incident. The 993D serialized-rollout and CHAPLIN live-acceptance runbooks are also recorded for the next installed verification.
+
+- OPAUDIT 029 through 033 are filed in Markdown, HTML and PDF, covering database overload and recovery, SQL/search costs, the audit register failure, the wrong desktop licence declaration, and the shared updater directory false breach. The rendered lists in 031 and 032 were cleaned up after review.
+
+- SECAUDIT 039's credential documentation now describes the locked-vault behaviour accurately and records finding D as closed.
 
 ## 0.7.993D - 2026-11-10
 
