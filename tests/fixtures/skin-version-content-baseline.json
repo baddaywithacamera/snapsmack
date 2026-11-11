@@ -23,9 +23,9 @@
             "manifest_css_sha256": "f67477db80f99dfe768ffabd28206817df5b3c62d90a452a6ffc4979795552d3"
         },
         "chaplin": {
-            "version": "0.2.29",
-            "files_sha256": "272488aa640c24c754f3a2306ca5275fd4e2dd4088ca949caa64658aac35e003",
-            "manifest_css_sha256": "142869199e278e117414f58821705150b2ff9a6ae2ce4a28e3b5e82b5e0e5014"
+            "version": "0.2.31",
+            "files_sha256": "78ed27c90aa494c38fd30b6b934859b74fc590ba530cdf3a5a5404d76b7b3038",
+            "manifest_css_sha256": "2190dc5b444023c881326610eea180b36ba855b894adf87a232d0d1038841df0"
         },
         "full-monty": {
             "version": "0.1.10",

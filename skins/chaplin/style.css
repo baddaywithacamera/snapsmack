@@ -1372,7 +1372,10 @@ body.static-transmission #scroll-stage {
 #system-footer {
   background-color: var(--chap-bg-chrome);
   border-top: 1px solid var(--chap-border);
-  padding: 32px 0;
+  /* Owner request (Sean, 2026-11-10): reduce the footer's height by about 40%.
+     Vertical padding drops from 32px to 19px; the text below uses the same
+     proportional reduction while continuing to follow Footer Size in Admin. */
+  padding: 19px 0;
   text-align: center;
   width: 100%;
   margin-top: auto;
@@ -1385,11 +1388,19 @@ body.static-transmission #system-footer {
   z-index: 100;
 }
 
+/* Owner request: 30px of breathing room above the archive footer. Static
+   pages already provide 80px below .static-content, so adding this there would
+   double the intended gap. Keep it on the archive content rather than replacing
+   the footer's margin-top:auto, which anchors short pages to the viewport. */
+body.archive-page #scroll-stage {
+  padding-bottom: 30px;
+}
+
 #system-footer .inside {
   max-width: var(--chap-photo-max-width, 1600px);
   margin: 0 auto;
   font-family: var(--chap-footer-font, monospace);
-  font-size: calc(var(--chap-footer-size, 7) * 0.1rem);
+  font-size: calc(var(--chap-footer-size, 7) * 0.06rem);
   text-transform: uppercase;
   letter-spacing: 1.5px;
   color: var(--chap-footer-color, var(--chap-ink-muted));
@@ -1397,7 +1408,7 @@ body.static-transmission #system-footer {
 
 #system-footer p {
   color: var(--chap-ink-muted);
-  font-size: calc(var(--chap-footer-size, 7) * 0.1rem);
+  font-size: calc(var(--chap-footer-size, 7) * 0.06rem);
   text-transform: uppercase;
   letter-spacing: 1.5px;
   line-height: 1.7;
