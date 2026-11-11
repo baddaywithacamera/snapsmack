@@ -197,7 +197,22 @@ define('UPDATER_API_URL_FEDISTRUCTURE', 'https://snapsmack.ca/releases/latest-fe
 define('UPDATER_API_URL_FEDISTRUCTURE_DEV', 'https://snapsmack.ca/releases/latest-fedistructure-dev.json');
 define('UPDATER_BACKUP_DIR', dirname(__DIR__) . '/backups');
 define('UPDATER_MIGRATIONS_DIR', dirname(__DIR__) . '/migrations');
-define('UPDATER_TEMP_DIR', sys_get_temp_dir() . '/snapsmack_update');
+// SS-1284: ONE temp directory per INSTALL, never one shared by every vhost.
+// Until 0.7.992D this was a bare sys_get_temp_dir() . '/snapsmack_update', so
+// all 27 spokes in CT102 downloaded to, extracted from and cleaned up the SAME
+// /tmp/snapsmack_update/snapsmack-update.zip. During the fleet update of
+// 2026-11-11 one site's updater_cleanup() deleted the package another site was
+// still using: strathmore.pics logged
+//   hash_file(/tmp/snapsmack_update/snapsmack-update.zip): No such file
+// at 03:57:05, its post-update SMACKBACK re-baseline was skipped by the
+// file_exists($zip_path) guard at finalize, and the next cron verify flagged the
+// six files the update had rewritten -> false BREACH -> LOCKOUT on a live site.
+//
+// The suffix is derived from the install root, so it is STABLE across the whole
+// staged update (download, verify, extract chunks, migrate are separate requests
+// sharing $_SESSION state) and DISTINCT between vhosts. A per-REQUEST directory
+// would break the staged flow outright — do not "improve" this into one.
+define('UPDATER_TEMP_DIR', sys_get_temp_dir() . '/snapsmack_update_' . substr(hash('sha256', dirname(__DIR__)), 0, 16));
 define('UPDATER_PROTECTED_PATHS_FILE', dirname(__DIR__) . '/protected_paths.json');
 
 // ─── KNOWN MIGRATIONS ───────────────────────────────────────────────────────

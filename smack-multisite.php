@@ -759,6 +759,39 @@ if (isset($_POST['push_update']) || isset($_POST['push_update_all'])) {
                 $result['files']    = $data['files_updated'] ?? 0;
                 $result['migs']     = $data['migrations'] ?? 0;
                 $result['errors']   = $data['errors'] ?? [];
+
+                // SS-1284: HTTP 200 is not "clean". A spoke can update, stamp its
+                // version and answer OK while its SMACKBACK manifest still
+                // describes the PRE-UPDATE files — which is exactly how
+                // strathmore.pics reached LOCKOUT with the fleet board showing
+                // green. The spoke now reports this; consume it, or the report
+                // is decoration.
+                //
+                // A spoke that has not yet taken this fix sends no 'smackback'
+                // key at all. Treat that as UNKNOWN, not as a failure: it is the
+                // behaviour we have always had, and painting 27 old spokes amber
+                // would bury the real ones.
+                $sb = (isset($data['smackback']) && is_array($data['smackback'])) ? $data['smackback'] : null;
+                if ($sb === null) {
+                    $result['smackback'] = null;
+                } else {
+                    $baseline_refreshed = !empty($sb['baseline_refreshed']);
+                    $package_missing    = !empty($sb['package_missing']);
+                    $result['smackback'] = [
+                        'baseline_refreshed' => $baseline_refreshed,
+                        'package_missing'    => $package_missing,
+                    ];
+                    if (!$baseline_refreshed || $package_missing) {
+                        // The update itself succeeded, so this is not ok=false —
+                        // but it must NOT read as a clean success on the board.
+                        $result['warn']        = true;
+                        $result['warn_detail'] = !$baseline_refreshed
+                            ? 'Updated, but the SMACKBACK baseline was NOT refreshed — this spoke will false-breach on its next verify. See SS-1284.'
+                            : 'Updated, but the package was missing at finalize; an existing breach was not cleared. See SS-1284.';
+                        error_log('SnapSmack hub: spoke ' . (string)($tn['site_url'] ?? $tn['id'])
+                            . ' updated with a SMACKBACK problem — ' . $result['warn_detail']);
+                    }
+                }
                 // Refresh DB version
                 if (!empty($data['to_version'])) {
                     $clean_ver = preg_replace('/^[^0-9]+/', '', $data['to_version']);
@@ -1741,7 +1774,26 @@ include 'core/sidebar.php';
             <?php if (!empty($update_results)): ?>
                 <div id="update-progress-php" style="margin-bottom:18px;">
                     <?php foreach ($update_results as $ur): ?>
-                        <?php if ($ur['ok']): ?>
+                        <?php if (!empty($ur['ok']) && !empty($ur['warn'])): ?>
+                            <?php /* SS-1284: ok+warn is checked BEFORE clean ok. The spoke
+                                      updated, but it told us its SMACKBACK baseline was not
+                                      refreshed (or the package vanished at finalize), so it
+                                      WILL false-breach on its next verify. A checkmark and
+                                      alert-success here is the non-AJAX twin of the green
+                                      fleet board that let strathmore.pics reach LOCKOUT
+                                      unnoticed. This is the plain-POST path and the
+                                      no-JavaScript fallback for UPDATE ALL. */ ?>
+                            <div class="alert alert-warning mb-6">
+                                &#9888; <strong><?php echo htmlspecialchars($ur['name']); ?></strong>
+                                updated <?php echo htmlspecialchars($ur['from']); ?> &rarr; <?php echo htmlspecialchars($ur['to']); ?>
+                                (<?php echo (int)$ur['files']; ?> files<?php echo $ur['migs'] > 0 ? ', ' . (int)$ur['migs'] . ' migration' . ($ur['migs'] !== 1 ? 's' : '') : ''; ?>)
+                                &mdash; <strong>WARNING:</strong>
+                                <?php echo htmlspecialchars($ur['warn_detail'] ?? 'The SMACKBACK baseline was not refreshed. See SS-1284.'); ?>
+                                <?php if (!empty($ur['errors'])): ?>
+                                    Errors: <?php echo htmlspecialchars(implode('; ', $ur['errors'])); ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php elseif ($ur['ok']): ?>
                             <?php if (($ur['status'] ?? '') === 'already_current'): ?>
                                 <div class="alert alert-success mb-6">
                                     ✓ <strong><?php echo htmlspecialchars($ur['name']); ?></strong> — already on current version.
@@ -1883,7 +1935,12 @@ include 'core/sidebar.php';
                     catch (e) { ids = []; }
                     if (!ids.length) return;
 
-                    var total = ids.length, done = 0, okCount = 0, failCount = 0;
+                    // SS-1284: warnCount is its own tally. A spoke that updated but could
+                    // not refresh its SMACKBACK baseline is NOT an "ok" — counting it as
+                    // one produced "Finished — N updated, 0 failed" in green over a fleet
+                    // that was about to false-breach.
+                    var total = ids.length, done = 0, okCount = 0, warnCount = 0, failCount = 0;
+                    var warnLines = [];
                     var queue = ids.slice();
 
                     function esc(v) {
@@ -1903,7 +1960,7 @@ include 'core/sidebar.php';
                               'UPDATING ' + Math.min(done + 1, total) + ' OF ' + total +
                               (current ? ' &mdash; ' + esc(current) : '') +
                               '  <span class="text-muted">(' + okCount +
-                              ' ok, ' + failCount + ' failed)</span></div>' +
+                              ' ok, ' + warnCount + ' with warnings, ' + failCount + ' failed)</span></div>' +
                             '<div style="height:6px;background:rgba(255,255,255,0.12);border-radius:3px;overflow:hidden;">' +
                               '<div style="height:100%;width:' + pct + '%;background:var(--accent,#00d4d4);transition:width .2s;"></div>' +
                             '</div>';
@@ -1911,11 +1968,31 @@ include 'core/sidebar.php';
                     function finish() {
                         if (btn) btn.textContent = "DONE";   // stays disabled; reload via the link
                         if (live) {
-                            live.innerHTML =
-                                '<div class="alert ' + (failCount ? "alert-warning" : "alert-success") +
-                                '">Finished &mdash; ' + okCount + ' updated, ' +
-                                failCount + ' failed. <a href="#" onclick="location.reload();return false;">' +
-                                'Reload</a> to refresh the board.</div>';
+                            // SS-1284: a run with warnings is never alert-success, and the
+                            // warned spokes are listed by name with their reason. An amber
+                            // row outline and a hidden tooltip under a green "0 failed"
+                            // banner is exactly the kind of reassuring summary that let a
+                            // live site go into LOCKOUT without anyone noticing.
+                            var cls = failCount ? "alert-error" : (warnCount ? "alert-warning" : "alert-success");
+                            // Wording is deliberately neutral (PM ruling, SS-1284). The
+                            // earlier shouted wording overstated it: the update itself
+                            // succeeded and the files are correct. What is wrong is the
+                            // integrity BOOKKEEPING, and the per-spoke warn_detail is the
+                            // place that says which — baseline not refreshed, or package
+                            // missing. A summary that shouts does not help the operator
+                            // decide anything; the detail line does.
+                            var body = 'Finished &mdash; ' + okCount + ' updated, '
+                                     + warnCount + ' with warnings, ' + failCount + ' failed.';
+                            if (warnCount) {
+                                body += '<div style="margin-top:8px;"><strong>These spokes updated with SMACKBACK '
+                                      + 'warnings:</strong><ul style="margin:6px 0 0 18px;">';
+                                for (var i = 0; i < warnLines.length; i++) {
+                                    body += '<li>' + warnLines[i] + '</li>';
+                                }
+                                body += '</ul></div>';
+                            }
+                            body += ' <a href="#" onclick="location.reload();return false;">Reload</a> to refresh the board.';
+                            live.innerHTML = '<div class="alert ' + cls + '">' + body + '</div>';
                         }
                     }
                     function next() {
@@ -1939,7 +2016,22 @@ include 'core/sidebar.php';
                         .then(function (r) { return r.json(); })
                         .then(function (d) {
                             var res = (d && d.results && d.results[0]) || {};
-                            if (res.ok) {
+                            if (res.ok && res.warn) {
+                                // SS-1284: the update landed, but the spoke told us its
+                                // SMACKBACK baseline was not refreshed (or the package
+                                // vanished at finalize). It WILL false-breach on its next
+                                // verify. It is counted separately from ok, named in the
+                                // final summary, and the summary is not alert-success —
+                                // an outline and a tooltip are not a report.
+                                warnCount++;
+                                warnLines.push('<strong>' + esc(nm) + '</strong> &mdash; '
+                                    + esc(res.warn_detail || "Updated, but the SMACKBACK baseline was not refreshed. See SS-1284."));
+                                rowMark(id, "var(--warning,#e08c00)");
+                                var vw = document.getElementById("spoke-ver-" + id);
+                                if (vw && res.to) vw.textContent = String(res.to).replace(/^[^0-9]+/, "");
+                                var rw = document.getElementById("spoke-row-" + id);
+                                if (rw) rw.title = res.warn_detail || "Updated, but the SMACKBACK baseline was not refreshed. See SS-1284.";
+                            } else if (res.ok) {
                                 okCount++;
                                 rowMark(id, "var(--success,#2e9e4f)");
                                 var vc = document.getElementById("spoke-ver-" + id);
