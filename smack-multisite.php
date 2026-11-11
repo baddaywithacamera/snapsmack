@@ -399,8 +399,14 @@ if (isset($_POST['disconnect'])) {
     $node = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($node) {
-        // Best-effort notify spoke to wipe its hub record.
-        // Fire and forget — we delete our side regardless of whether the spoke responds.
+        // SS-1054: this used to be fire-and-forget — it discarded the curl result
+        // and deleted the hub's record regardless. If the spoke was down, slow or
+        // returned an error, the hub forgot it while the spoke kept its row and a
+        // LIVE api_key_local, so the admin was told access was revoked when it was
+        // not. Remove our side only once the spoke CONFIRMS it wiped its record
+        // (HTTP 200). Otherwise keep the relationship and say plainly that the
+        // spoke's key is still live, so the owner retries rather than trusting a
+        // revocation that did not happen.
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL            => rtrim($node['site_url'], '/') . '/api.php?route=multisite/disconnect',
@@ -413,12 +419,25 @@ if (isset($_POST['disconnect'])) {
             CURLOPT_TIMEOUT        => 5,
             CURLOPT_SSL_VERIFYPEER => true,
         ]);
-        curl_exec($ch);
+        $dc_resp = curl_exec($ch);
+        $dc_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $dc_err  = curl_error($ch);
         curl_close($ch);
 
-        // Delete our spoke record — clean slate for re-registration.
-        $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE id = ?")->execute([$node_id]);
-        $msg = "Spoke disconnected and removed.";
+        if ($dc_code === 200) {
+            // Spoke confirmed: it deleted its record and cleared the keys. Safe
+            // to delete our side — clean slate for re-registration.
+            $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE id = ?")->execute([$node_id]);
+            $msg = "Spoke disconnected and removed. The spoke confirmed and revoked its key.";
+        } else {
+            // Do NOT delete: the spoke still holds a live api_key_local, and
+            // forgetting it here would leave that key valid with no record of it.
+            $err = "Not removed: the spoke did not confirm the disconnect ("
+                 . ($dc_err !== '' ? $dc_err : "HTTP {$dc_code}")
+                 . "). Its key is still live. Retry when the spoke is reachable; "
+                 . "if it is permanently gone, rotate the relationship keys or take "
+                 . "the spoke down so the key cannot be used.";
+        }
     }
 }
 
