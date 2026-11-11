@@ -405,6 +405,14 @@ function smackpress_expand_foogallery( string $content, array &$images ): string
             return $original;
         }
 
+        // FooGallery's template loader applies this shortcode override before
+        // its argument filter. Export the displayed membership, not the saved
+        // gallery's complete list. Keep each shortcode's instance independent.
+        $gallery = clone $gallery;
+        if ( ! empty( $atts['attachment_ids'] ) ) {
+            $gallery->attachment_ids = is_array( $atts['attachment_ids'] )
+                ? $atts['attachment_ids'] : explode( ',', (string) $atts['attachment_ids'] );
+        }
         $gallery = apply_filters( 'foogallery_render_template_argument_overrides', $gallery, $atts );
         $resolved = [];
         $lines = [];

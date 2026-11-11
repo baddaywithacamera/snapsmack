@@ -2017,6 +2017,19 @@
         "predicates": 1,
         "thresholds": []
     },
+    "smackpress-portfolio-designation-regression.php": {
+        "assertions": 1,
+        "predicates": 13,
+        "thresholds": [
+            3,
+            3,
+            3,
+            3,
+            6,
+            6,
+            6
+        ]
+    },
     "smacktalk-archive-search-regression.php": {
         "assertions": 20,
         "predicates": 17,
