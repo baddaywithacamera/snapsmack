@@ -64,6 +64,17 @@ $resource   = $parts[1] ?? '';   // heartbeat, comments, posts, etc.
 $sub_action = $parts[2] ?? '';   // pending, action, recent, etc.
 $method     = $_SERVER['REQUEST_METHOD'];
 
+// --- SECAUDIT 064: the action-aware half of the breach write gate --------
+// api.php deliberately does not gate 'multisite', because the front door
+// cannot see which action this is and three of them MUST keep working on a
+// breached site: the signed update (the way out), smackback/report (the
+// alarm) and run-crons (the housekeeping -- SS-1055 says gating it in the
+// wrong place takes fleet cron down). Now that the action is parsed, gate
+// everything else. run-crons is matched by RESOURCE, not by method, because
+// :530 below has no method check at all.
+require_once __DIR__ . '/breach-write-gate.php';
+snap_breach_write_gate_multisite($pdo, $resource, $sub_action, $method);
+
 // --- SETTINGS ---
 try {
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
