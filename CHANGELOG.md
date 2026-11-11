@@ -19,11 +19,11 @@
 
 - SS-1292: GYSS's COLD SNAP and COLD TAKE buttons use the real COLD SNAP installation-directory helper instead of calling a helper that never existed and crashing on click. Source verification is complete; the built Windows application still needs an installed check.
 
-- SS-1185: gallery shuffle now belongs to each mosaic rather than the whole layout. The canonical schema, API parser, renderer, WordPress companion, COLD SNAP and SMACKPRESS import paths all carry the owner-random flag while preserving authored order when it is off. The canonical schema's existing layout comment was preserved during the column change.
+- SS-1185: gallery shuffle now belongs to each mosaic rather than the whole layout. The canonical schema, API parser, renderer, WordPress companion, COLD SNAP and SMACKPRESS import paths all carry the owner-random flag while preserving authored order when it is off. The canonical schema's layout comment was lost when the new column was inserted into the middle of its definition, leaving two COMMENT clauses on one column - which MySQL rejects, so the schema would not have executed - and was repaired within the same release, with a new check that walks every table and fails on any column carrying more than one COMMENT.
 
 - SECAUDIT 017: RE-INITIALISE BASELINE now requires the owner's password and current 2FA code, records the action, and tells the owner to try a signed update before blessing files from disk. Its regression-strength record was refreshed to the predicates actually present.
 
-- SS-1293's neighbouring direct-access check now resolves both sides of the path comparison, so a symlinked deployment cannot bypass the maintenance-lock file's direct-request guard.
+- SS-1293's neighbouring direct-access checks now resolve both sides of the path comparison, so a symlinked deployment cannot bypass the direct-request guards in maintenance-lock.php or gallery-order.php.
 
 - PhotoFri.day prompt cards keep all four border edges. The shared public stylesheet's image-link rule had enough specificity to erase the bottom edge from cards inside static content; the board stylesheet now restores that edge with a selector that wins on every affected skin. The regression inventory now records the measured 28 of 30 skin manifests instead of the earlier incorrect 25-of-31 comment; its assertions are unchanged.
 
