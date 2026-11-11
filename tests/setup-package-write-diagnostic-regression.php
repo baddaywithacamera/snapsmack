@@ -102,6 +102,19 @@ if (!preg_match('/(function\s+setup_write_failure_message\s*\(.*?\n\})/s', $setu
     exit(1);
 }
 sw('setup_write_failure_message() could be extracted', true);
+
+// Its dependency, extracted too. SS-1198 and SS-1293 each carried their own
+// copy of the URL-scrubbing rule until they were folded into one helper on
+// merge; the message function now CALLS setup_redact_url_query() rather than
+// repeating the pattern, so evaluating it alone would fatal on an undefined
+// function. Asserted rather than assumed, so a future refactor that removes
+// the helper fails here loudly instead of erroring out mid-run.
+if (preg_match('/(function\s+setup_redact_url_query\s*\(.*?\n\})/s', $setup, $dep)) {
+    eval($dep[1]);
+}
+sw('its URL-redaction dependency is present and loadable',
+    function_exists('setup_redact_url_query'));
+
 eval($fn[1]);
 sw('setup_write_failure_message() is callable', function_exists('setup_write_failure_message'));
 

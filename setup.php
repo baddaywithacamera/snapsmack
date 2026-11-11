@@ -176,6 +176,30 @@ function setup_dev_feed_is_stale(string $manifest_version): bool {
 // --- VERIFY PACKAGE ---
 /** @return string|true  Error message, or true. Return type left off: see the PHP VERSION GATE note. */
 /**
+ * A release URL with its query string replaced, safe to print on the page.
+ * SS-1293.
+ *
+ * The deployer prints the download address when a download fails, and it is the
+ * one screen where the reader has no logs, no admin and nowhere else to look —
+ * so they will reasonably screenshot it and send it to somebody for help. A
+ * query string is where a one-time token or a signing parameter lives. Today's
+ * release links carry neither, so nothing is leaking; this is the defence for
+ * the day one does, and it costs a line.
+ *
+ * The host and path are KEPT. They are the diagnostic part — wrong host, wrong
+ * channel, typo in a manifest — and dropping them would trade a real leak risk
+ * for a useless error message.
+ *
+ * Deliberately not a parser: a failed download URL may be malformed, and
+ * parse_url() returning false would turn a bad address into no address at all.
+ * Cutting at the first '?' is what is wanted and cannot fail.
+ */
+function setup_redact_url_query(string $url): string {
+    $at = strpos($url, '?');
+    return $at === false ? $url : substr($url, 0, $at) . '?[redacted]';
+}
+
+/**
  * Say what failed, where, and why, when the release package cannot be written.
  * SS-1198.
  *
@@ -203,7 +227,16 @@ function setup_write_failure_message(string $target, ?array $last_error): string
         // prefix is removed means a URL is scrubbed whether it sits inside
         // PHP's own call prefix or in the body of the reason — the prefix match
         // is not something to depend on for a secret not leaking.
-        $reason = (string) preg_replace('#(https?://[^\s?]*)\?\S*#i', '$1?[redacted]', $reason);
+        //
+        // ONE RULE, ONE PLACE (SS-1198 + SS-1293 fold). This used to carry its
+        // own copy of the pattern while the download-failure message above used
+        // setup_redact_url_query(). Two copies of a secret-handling rule is one
+        // too many: the day somebody improves one, the other keeps leaking.
+        $reason = (string) preg_replace_callback(
+            '#https?://\S+#i',
+            static fn(array $m): string => setup_redact_url_query($m[0]),
+            $reason
+        );
 
         // PHP prefixes its own message with the failing call and repeats the
         // path. The target is named below, so printing it twice only crowds out
@@ -332,7 +365,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
             $zip_file = $target_dir . '/snapsmack-install.zip';
             $zip_data = setup_fetch_url($release['download_url']);
             if (!$zip_data || strlen($zip_data) < 10000) {
-                $error = 'Failed to download release package from ' . htmlspecialchars($release['download_url']) . '.';
+                // SS-1293: the address is shown because it is the useful part of this
+                // failure, but without its query string. See setup_redact_url_query().
+                $error = 'Failed to download release package from '
+                       . htmlspecialchars(setup_redact_url_query((string)$release['download_url']), ENT_QUOTES, 'UTF-8') . '.';
             } else {
                 // SS-1198: the old message named only the containing directory
                 // and never asked PHP why. Somebody staring at "check write

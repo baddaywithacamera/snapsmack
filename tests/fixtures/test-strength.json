@@ -1704,6 +1704,11 @@
             2
         ]
     },
+    "setup-download-url-redaction-regression.php": {
+        "assertions": 5,
+        "predicates": 11,
+        "thresholds": []
+    },
     "setup-package-write-diagnostic-regression.php": {
         "assertions": 6,
         "predicates": 36,
