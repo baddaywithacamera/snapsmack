@@ -225,7 +225,7 @@ def get(key: str, default: str = "") -> str:
 
 
 def set(key: str, value: str) -> None:
-    """Store `value` under `key`, sealed with the vault if unlocked else base64."""
+    """Store `value` under `key`; refuse the write unless the vault can seal it."""
     init()
     data = _read()
     data[key] = _seal(value or "")
