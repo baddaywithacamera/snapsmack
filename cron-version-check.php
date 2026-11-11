@@ -160,18 +160,29 @@ try {
     $snap_maint_lock   = "{$root}/data/maintenance.lock";
     $snap_update_running = false;
     if (($smack_settings['smackback_enabled'] ?? '0') === '1' && file_exists($snap_maint_lock)) {
-        // Honour the same 5-minute safety valve core/constants.php uses, so a
-        // stale lock left by a crashed update cannot silence verification for
-        // ever. Past that age the lock is ignored and the verify proceeds.
-        $snap_maint      = @json_decode((string) @file_get_contents($snap_maint_lock), true) ?? [];
-        $snap_maint_age  = time() - (int)($snap_maint['since'] ?? 0);
-        $snap_maint_held = ((int)($snap_maint['since'] ?? 0) > 0 && $snap_maint_age <= 300);
-        if ($snap_maint_held) {
-            echo "SMACKBACK: verify skipped — an update holds data/maintenance.lock ({$snap_maint_age}s). "
+        // The decision lives in core/maintenance-lock.php as one pure function so
+        // it can be exercised directly by a test with real files, rather than
+        // asserted at by reading this source. It FAILS CLOSED: held unless the
+        // lock can be positively proven stale.
+        //
+        // That inversion is the whole point. updater_acquire_lock() creates this
+        // file and then writes to it; for the instant in between the file EXISTS
+        // and decodes to nothing. A check asking "is there a recent valid
+        // timestamp?" reads that instant as UNLOCKED and walks into the update it
+        // was written to avoid — the worst answer at the worst moment.
+        // core/constants.php already gets this right on the web side, and this
+        // matches it. (Codex caught this on the first verify of 3ad1d4a0.)
+        require_once "{$root}/core/maintenance-lock.php";
+        $snap_maint_age = null;
+        if (snap_maintenance_lock_held($snap_maint_lock, 300, $snap_maint_age)) {
+            $snap_maint_how = ($snap_maint_age === null)
+                ? 'no readable timestamp yet — treated as held'
+                : $snap_maint_age . 's';
+            echo "SMACKBACK: verify skipped — an update holds data/maintenance.lock ({$snap_maint_how}). "
                . "Verifying mid-update compares new files against the pre-update manifest and false-breaches. "
                . "The next scheduled run will verify.\n";
             error_log('SnapSmack cron: SMACKBACK verify skipped — maintenance lock held ('
-                . $snap_maint_age . 's). See the strathmore.pics false breach, 2026-11-11.');
+                . $snap_maint_how . '). See the strathmore.pics false breach, 2026-11-11.');
             $snap_update_running = true;
         }
     }

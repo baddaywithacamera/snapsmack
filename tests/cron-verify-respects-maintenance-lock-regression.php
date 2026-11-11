@@ -94,18 +94,85 @@ cvml(
     !preg_match('/\$snap_update_running[^;]*\n[^\n]*(INSERT INTO|UPDATE)\s+snap_settings/i', $cron)
 );
 
-// ── It must honour the stale-lock safety valve ──────────────────────────────
-// Otherwise a lock left by a crashed update silences integrity checking for
-// ever, which is strictly worse than the bug being fixed.
 cvml(
-    'the guard honours a 300-second stale-lock ceiling',
-    (bool) preg_match('/\$snap_maint_age\s*<=\s*300/', $cron)
+    'the decision is delegated to the pure lock helper, not inlined',
+    (bool) preg_match('/snap_maintenance_lock_held\s*\(\s*\$snap_maint_lock\s*,\s*300\s*,/', $cron)
 );
 
-cvml(
-    'the guard reads the lock age from the lock file',
-    (bool) preg_match("/\\\$snap_maint\s*\[\s*'since'\s*\]/", $cron)
-);
+// ── BEHAVIOUR, not source text ──────────────────────────────────────────────
+//
+// Everything above reads the source. That is how the first version of this
+// guard passed 13 assertions while still walking into the race: the code SAID
+// the right words and DID the wrong thing. core/maintenance-lock.php exists as
+// one pure function precisely so the decision can be run against real files.
+//
+// FAIL CLOSED is the rule: held unless provably stale. The dangerous case is a
+// lock that exists but has no readable timestamp yet, which is what
+// updater_acquire_lock() leaves on disk for the instant between creating the
+// file and writing to it — the exact moment an update is starting.
+
+require_once $root . '/core/maintenance-lock.php';
+
+cvml('the lock helper is loadable and defines its function', function_exists('snap_maintenance_lock_held'));
+
+if (function_exists('snap_maintenance_lock_held')) {
+    $tmp = sys_get_temp_dir() . '/snap-lock-test-' . getmypid();
+    @mkdir($tmp, 0700, true);
+    $lock = $tmp . '/maintenance.lock';
+
+    $case = function (string $label, $contents, bool $expect_held) use ($lock) {
+        if ($contents === null) {
+            @unlink($lock);
+        } else {
+            file_put_contents($lock, $contents);
+        }
+        $age = null;
+        $got = snap_maintenance_lock_held($lock, 300, $age);
+        cvml($label . ' -> ' . ($expect_held ? 'HELD' : 'not held'), $got === $expect_held);
+    };
+
+    $now = time();
+
+    // No lock at all: the ordinary case, verification proceeds.
+    $case('no lock file', null, false);
+
+    // A fresh, valid lock: an update is running.
+    $case('fresh valid lock', json_encode(['since' => $now, 'site_name' => 'x']), true);
+    $case('valid lock 299s old', json_encode(['since' => $now - 299]), true);
+    $case('valid lock exactly 300s old', json_encode(['since' => $now - 300]), true);
+
+    // Provably stale: a crashed update must not block verification for ever.
+    $case('valid lock 301s old (provably stale)', json_encode(['since' => $now - 301]), false);
+    $case('valid lock a day old (provably stale)', json_encode(['since' => $now - 86400]), false);
+
+    // THE CASE CODEX CAUGHT. Each of these is a lock we cannot prove stale, so
+    // each must block. The empty and partial cases are what the file actually
+    // looks like mid-write.
+    $case('empty lock file (mid-write)', '', true);
+    $case('partial JSON (mid-write)', '{"since":', true);
+    $case('valid JSON, no since key', json_encode(['site_name' => 'x']), true);
+    $case('since is zero', json_encode(['since' => 0]), true);
+    $case('since is negative', json_encode(['since' => -5]), true);
+    $case('since is a non-numeric string', json_encode(['since' => 'soon']), true);
+    $case('since is null', json_encode(['since' => null]), true);
+    $case('lock is a JSON array, not an object', json_encode([1, 2, 3]), true);
+    $case('lock is plain text', 'locked', true);
+    $case('future-dated since (clock skew)', json_encode(['since' => $now + 600]), true);
+
+    // The reported age is for humans only and must never drive the decision.
+    $age = null;
+    file_put_contents($lock, json_encode(['since' => $now - 42]));
+    snap_maintenance_lock_held($lock, 300, $age);
+    cvml('age is reported for a valid timestamp', $age === 42 || $age === 43);
+
+    $age = -1;
+    file_put_contents($lock, '');
+    snap_maintenance_lock_held($lock, 300, $age);
+    cvml('age is null when there is no readable timestamp', $age === null);
+
+    @unlink($lock);
+    @rmdir($tmp);
+}
 
 // ── It must say so ──────────────────────────────────────────────────────────
 // A silent skip is how this class of problem stays invisible. Say it on stdout
