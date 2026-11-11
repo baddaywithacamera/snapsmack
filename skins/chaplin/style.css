@@ -1372,7 +1372,12 @@ body.static-transmission #scroll-stage {
 #system-footer {
   background-color: var(--chap-bg-chrome);
   border-top: 1px solid var(--chap-border);
-  padding: 32px 0;
+  /* Owner request (Sean, 2026-11-10): the footer band was too tall. 32px of
+     vertical padding reduced by ~40% to 19px, which takes the band itself down
+     by the same proportion. The TEXT size is deliberately untouched: it is
+     already the owner's own control (--chap-footer-size, Footer Size in Skin
+     Admin), and shrinking it here would silently override a slider he set. */
+  padding: 19px 0;
   text-align: center;
   width: 100%;
   margin-top: auto;
@@ -1383,6 +1388,17 @@ body.static-transmission #system-footer {
   display: block;
   position: relative;
   z-index: 100;
+}
+
+/* Owner request: 30px of breathing room above the footer.
+   This is put on the CONTENT, not as a margin on the footer, because
+   #system-footer uses margin-top:auto to sit at the bottom of a short page —
+   replacing that would break the push-to-bottom on pages with little content.
+   Scoped to the two body states that actually show the footer (single-photo
+   and landing views hide it entirely), so nothing else gains stray space. */
+body.archive-page #scroll-stage,
+body.static-transmission #scroll-stage {
+  padding-bottom: 30px;
 }
 
 #system-footer .inside {
