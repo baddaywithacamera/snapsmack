@@ -206,6 +206,61 @@ ss1284(
     (bool) preg_match('/rowMark\s*\(\s*id\s*,\s*"var\(--warning/', $board)
 );
 
+// ── 3b-ii. THE WARNING IS VISIBLE, NOT JUST COLOURED (Codex re-verify) ──────
+//
+// First attempt painted the row amber and put the reason in a title tooltip,
+// while the spoke still counted as "ok" and the run still finished with a green
+// "Finished — N updated, 0 failed". An outline plus a hidden tooltip under a
+// reassuring green banner is the same blindness in a different costume.
+
+ss1284(
+    'warned spokes are counted separately from ok',
+    (bool) preg_match('/\bwarnCount\s*\+\+/', $board)
+    && !preg_match('/if\s*\(\s*res\.ok\s*&&\s*res\.warn\s*\)\s*\{[^}]*\bokCount\s*\+\+/s', $board)
+);
+
+ss1284(
+    'the final summary reports the not-clean count',
+    (bool) preg_match('/warnCount\s*\+\s*\x27 NOT CLEAN/', $board)
+);
+
+ss1284(
+    'a run with warnings is not rendered as alert-success',
+    (bool) preg_match('/warnCount\s*\?\s*"alert-warning"\s*:\s*"alert-success"/', $board)
+);
+
+ss1284(
+    'warned spokes are named in the final summary, not only tooltipped',
+    (bool) preg_match('/warnLines\s*\.\s*push\s*\(/', $board)
+    && (bool) preg_match('/warnLines\s*\[\s*i\s*\]/', $board)
+);
+
+ss1284(
+    'the in-progress counter shows the not-clean tally',
+    (bool) preg_match("/warnCount\s*\+\s*' not clean/", $board)
+);
+
+// ── 3b-iii. THE NON-AJAX RENDERER TOO (Codex re-verify, blocker 2) ──────────
+//
+// The per-spoke UPDATE form is a plain POST and is also the no-JavaScript
+// fallback for UPDATE ALL. Its PHP renderer checked only $ur['ok'], so a warned
+// spoke got a checkmark and alert-success.
+
+ss1284(
+    'PHP renderer handles ok+warn BEFORE the clean-ok branch',
+    (bool) preg_match('/if\s*\(\s*!empty\s*\(\s*\$ur\s*\[\s*\x27ok\x27\s*\]\s*\)\s*&&\s*!empty\s*\(\s*\$ur\s*\[\s*\x27warn\x27\s*\]\s*\)\s*\)\s*:[\s\S]{0,2500}?elseif\s*\(\s*\$ur\s*\[\s*\x27ok\x27\s*\]\s*\)\s*:/', $board)
+);
+
+ss1284(
+    'PHP renderer shows a warned spoke in a warning class, not alert-success',
+    (bool) preg_match('/\x27warn\x27[\s\S]{0,1500}?alert alert-warning/', $board)
+);
+
+ss1284(
+    'PHP renderer prints the reason, not just a colour',
+    (bool) preg_match('/\$ur\s*\[\s*\x27warn_detail\x27\s*\]/', $board)
+);
+
 // ── 3c. UPLOAD PACKAGE-MISSING IS VISIBLE (Codex verify, blocker 2) ─────────
 //
 // It must show in the operator's step list even when the re-baseline SUCCEEDED,
