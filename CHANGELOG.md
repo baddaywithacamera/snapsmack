@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.994D - 2026-11-11
+
+- PhotoFri.day prompt cards keep all four border edges. The shared public stylesheet's image-link rule had enough specificity to erase the bottom edge from cards inside static content; the board stylesheet now restores that edge with a selector that wins on every affected skin.
+
+- GLIDE 0.1.28 gives its fixed footer rule the same inset on the left and bottom, so the line no longer sits against the viewport edge.
+
 ## 0.7.993D - 2026-11-10
 
 - SS-1284: every site on a shared server was downloading its update into the same temporary folder, so one site finishing could delete the package another site was still using. Each install now uses its own folder. This caused a real incident: one site's post-update integrity record was never refreshed, its next scheduled check read the files the update had legitimately rewritten as tampering, and the site locked itself out. The record is no longer skipped when the package is missing, a missing package is reported instead of passing silently, and a site that updated without refreshing its record now shows on the fleet board as updated WITH WARNINGS, naming the site and the reason, rather than as a clean success.
