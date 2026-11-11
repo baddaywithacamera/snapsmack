@@ -36,6 +36,18 @@ require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/api-site-scope.php';
 snap_api_site_scope_check($pdo);
 
+// --- SECAUDIT 064: a breached site refuses API writes --------------------
+// Before any route runs, and for the same reason the site-scope check above
+// sits here: this is the one place that sees every API request before a
+// surface is loaded. There is no single AUTH chokepoint -- six surfaces
+// authenticate six ways -- but there is a single front door, so the gate is
+// two calls instead of six. The second is inside multisite-api.php, which
+// knows the action; this one deliberately does not gate 'multisite' for that
+// reason. Reads are never gated. See core/breach-write-gate.php for the three
+// states, the exemption list and the accepted breach-oracle limit.
+require_once __DIR__ . '/core/breach-write-gate.php';
+snap_breach_write_gate($pdo, $route, $_SERVER['REQUEST_METHOD'] ?? 'GET');
+
 // --- PAGE CACHE: desktop-tool writes clear it, like admin publishing does ---
 // The admin posting pages call page_cache_purge_all() after publishing; the
 // APIs the desktop tools post through never did. A SYBU batch of 13 grams left

@@ -1730,6 +1730,14 @@
         "predicates": 32,
         "thresholds": []
     },
+    "secaudit-064-breach-write-gate-regression.php": {
+        "assertions": 2,
+        "predicates": 10,
+        "thresholds": [
+            403,
+            423
+        ]
+    },
     "security-claim-boundary-regression.php": {
         "assertions": 7,
         "predicates": 8,
