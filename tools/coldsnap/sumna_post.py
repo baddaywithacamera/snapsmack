@@ -761,19 +761,37 @@ class SmacktalkPoster:
     # Asymmetric never matched and went to the site as literal marker text.
     _MOSAIC_LAYOUTS = ("asymmetric", "columns", "rows", "square",
                        "one-left", "one-right", "three-across", "one-top")
+    # `shuffle` (optional, after the layout) means the owner wants this gallery
+    # SHOWN in a random order. It is the only channel between the WordPress
+    # importer and the panel it creates: wp_source writes the keyword into the
+    # marker, this reads it, and create_mosaic sends gallery_shuffle. An absent
+    # keyword means authored order, which is what every existing marker means,
+    # so nothing already written changes behaviour.
     _MOSAIC_TOKEN = re.compile(
         r'\[mosaic(?:=\s*([0-9]+(?:\s*,\s*[0-9]+)*))?'
         r'(?:\s+layout=([a-z-]+))?'
+        r'(?:\s+(shuffle))?'
         r'(?::\s*(?:bucket|new|auto)\s*)?\]', re.I)
 
     def create_mosaic(self, image_ids, title="Mosaic", gap=4,
-                      layout="asymmetric") -> Tuple[int, str]:
+                      layout="asymmetric", gallery_shuffle=False) -> Tuple[int, str]:
         """Create a snap_mosaics panel from ordered Gallery image ids via
-        POST smackpress/mosaics. Returns (mosaic_id, '[mosaic:ID]')."""
+        POST smackpress/mosaics. Returns (mosaic_id, '[mosaic:ID]').
+
+        image_ids is the AUTHORED order and is sent as authored. gallery_shuffle
+        asks the site to PRESENT the panel in a random order; it never changes
+        what is stored, so turning it off afterwards gives this sequence back.
+
+        The key is omitted entirely when it is off, so a site that has not yet
+        synced the column sees exactly the request it saw before."""
+        payload = {"title": title or "Mosaic",
+                   "asset_ids": [int(i) for i in image_ids],
+                   "gap": max(0, min(20, int(gap or 4))), "layout": layout}
+        if gallery_shuffle:
+            payload["gallery_shuffle"] = True
         r = self.session.post(
             self._route("smackpress/mosaics"),
-            json={"title": title or "Mosaic", "asset_ids": [int(i) for i in image_ids],
-                  "gap": max(0, min(20, int(gap or 4))), "layout": layout},
+            json=payload,
             timeout=60)
         if r.status_code in (401, 403):
             raise RuntimeError(_resp_msg(
@@ -824,6 +842,7 @@ class SmacktalkPoster:
         def build(match):
             selection = match.group(1)
             layout = (match.group(2) or 'asymmetric').lower()
+            shuffle = bool(match.group(3))
             if layout not in self._MOSAIC_LAYOUTS:
                 layout = 'asymmetric'
             chosen = list(image_ids)
@@ -834,7 +853,8 @@ class SmacktalkPoster:
             if not chosen:
                 return ''
             mid, shortcode = self.create_mosaic(
-                chosen, title=(draft.title or "Mosaic"), gap=gap, layout=layout)
+                chosen, title=(draft.title or "Mosaic"), gap=gap, layout=layout,
+                gallery_shuffle=shuffle)
             mosaic_ids.append(mid)
             return shortcode
 
