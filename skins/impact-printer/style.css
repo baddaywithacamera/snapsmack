@@ -764,6 +764,85 @@ body.archive-page #scroll-stage {
 }
 
 
+
+/* -- THE ABOUT PAGE: THE PORTRAIT BESIDE THE WORDS -------------------------
+   The same fault NEW HORIZON had, found while checking whether that repair
+   needed to reach any sibling. This skin floats the static hero left and has
+   never capped its width either, so a shrink-to-fit float takes the whole
+   column and the text is pushed underneath.
+
+   Worse here than it was there. Rendered through this skin's own layout.php
+   with a 2655x2655 portrait and measured in a browser: the floated hero came
+   out 2655px wide inside an 850px container -- the image's full natural size,
+   overflowing by 1805px -- with 0 of 16 text line boxes beside it. NEW
+   HORIZON at least inherited a 100% cap from somewhere; this did not.
+
+   Same repair, same shape as skins/new-horizon: a grid rather than a capped
+   float, because a float lets the text wrap back under the portrait once it
+   runs past the bottom. Scoped to :has(#photobox.page-hero), so a static page
+   with no portrait, the blogroll and the search results keep their single
+   column and never open an empty track.
+
+   The widths are custom properties so a Static Page Hero Position control can
+   be wired to them later without touching this geometry again. */
+.static-content:has(#photobox.page-hero) {
+    display: var(--ip-static-layout, grid);
+    grid-template-columns:
+        var(--ip-static-cols, var(--ip-static-hero-width, 42%) 1fr);
+    column-gap: var(--ip-static-column-gap, 48px);
+    align-items: start;
+    /* Two columns inside 850px leave both too mean. The wider cap applies
+       ONLY in the two-column case, so a single-column static page keeps the
+       850px measure this skin has always had. */
+    max-width: var(--ip-static-two-col-width, 1100px) !important;
+}
+
+/* The heading spans both columns and keeps its 24px left padding, so it still
+   lines up with the portrait's edge -- the portrait starts at the container's
+   content edge in column 1, so the same 24px lands in the same place. Only
+   the 850px cap has to go, or the heading stops short of the wider grid. */
+.static-content:has(#photobox.page-hero) > .static-page-title {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    max-width: none !important;
+}
+
+.static-content:has(#photobox.page-hero) > #photobox.page-hero {
+    grid-column: var(--ip-static-hero-col, 1);
+    grid-row: 2;
+    float: none !important;
+    width: auto !important;
+    /* The cap this skin never had. Without it the portrait renders at its own
+       natural size and overflows the track. */
+    max-width: 100%;
+    position: sticky;
+    top: var(--ip-static-hero-sticky-top, 40px);
+}
+
+.static-content:has(#photobox.page-hero) > #photobox.page-hero img {
+    max-width: 100%;
+    height: auto;
+}
+
+.static-content:has(#photobox.page-hero) > .description {
+    grid-column: var(--ip-static-text-col, 2);
+    grid-row: 2;
+}
+
+/* One column on a narrow screen: portrait first, nothing sticky, nothing
+   floated. IMPACT PRINTER is a desktop and large-tablet skin, so this is the
+   graceful floor rather than a phone layout. */
+@media (max-width: 900px) {
+    .static-content:has(#photobox.page-hero) {
+        display: block;
+        max-width: var(--static-content-width, 850px) !important;
+    }
+    .static-content:has(#photobox.page-hero) > #photobox.page-hero {
+        position: static;
+        float: none !important;
+    }
+}
+
 .static-content::after {
     content: "";
     display: table;
@@ -849,7 +928,13 @@ body.archive-page #scroll-stage {
     min-height: auto !important;
     padding: 0 !important;
     width: auto !important;
-    float: left !important;
+    /* WAS float: left !important. The intent was the portrait beside the
+       words, but nothing ever capped the float's width, so it filled the
+       column and pushed every line of text underneath -- measured 2655px of
+       portrait in an 850px container, 0 of 16 lines beside it. The two
+       columns are now a grid on .static-content, so the float was not merely
+       unnecessary, it was the thing that produced the single column. */
+    float: none !important;
     margin: 0 !important;
 }
 

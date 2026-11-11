@@ -978,6 +978,11 @@
         "predicates": 4,
         "thresholds": []
     },
+    "impact-printer-about-two-column-regression.php": {
+        "assertions": 4,
+        "predicates": 22,
+        "thresholds": []
+    },
     "impact-printer-archive-regression.php": {
         "assertions": 10,
         "predicates": 11,
