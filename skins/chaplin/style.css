@@ -1066,6 +1066,53 @@ body.archive-page #scroll-stage {
     justify-items: center;
 }
 
+/* ----------------------------------------------------------------------------
+   ARCHIVE APPEARANCE — the owner's controls, honoured.
+   SS-1287 sibling. Chaplin ignored COLUMNS and THUMBNAIL SIZE: core computed
+   them and printed them as classes on this grid (archive-cols-N,
+   archive-thumbs-STEP, snapsmack_archive_grid_metrics in
+   core/skin-view-model.php), and the stylesheet then laid the grid out from
+   --grid-cols and --thumb-width, which were fixed at 4 and 210px/250px at the
+   top of this file. The classes arrived and nothing read them. Moving either
+   slider on ARCHIVE APPEARANCE changed the markup and not the page.
+   These rules read them. No core change was needed: core was already saying
+   it, the skin was not listening.
+   --------------------------------------------------------------------------
+   WHY THE CLASS AND NOT AN INLINE VALUE: a custom property written onto this
+   element would beat the :root value in the RESPONSIVE section below at every
+   width, so an owner who picked 8 columns would get 8 on a tablet too and the
+   grid would never collapse. Keeping it in the stylesheet keeps the cascade
+   where the skin can still win at narrow widths — see the two-class override
+   in RESPONSIVE. */
+
+.fsog-archive-grid.archive-cols-1  { --grid-cols: 1; }
+.fsog-archive-grid.archive-cols-2  { --grid-cols: 2; }
+.fsog-archive-grid.archive-cols-3  { --grid-cols: 3; }
+.fsog-archive-grid.archive-cols-4  { --grid-cols: 4; }
+.fsog-archive-grid.archive-cols-5  { --grid-cols: 5; }
+.fsog-archive-grid.archive-cols-6  { --grid-cols: 6; }
+.fsog-archive-grid.archive-cols-7  { --grid-cols: 7; }
+.fsog-archive-grid.archive-cols-8  { --grid-cols: 8; }
+.fsog-archive-grid.archive-cols-9  { --grid-cols: 9; }
+.fsog-archive-grid.archive-cols-10 { --grid-cols: 10; }
+.fsog-archive-grid.archive-cols-11 { --grid-cols: 11; }
+.fsog-archive-grid.archive-cols-12 { --grid-cols: 12; }
+
+/* THUMBNAIL SIZE. The five widths per style are the same numbers core resolves
+   in snapsmack_archive_grid_metrics(); core sends the step, not the pixels, so
+   they are mirrored here deliberately. If that map ever changes, change these
+   with it — tests/chaplin-archive-controls-regression.php fails if they drift. */
+.fsog-archive-grid.square-grid.archive-thumbs-xs  { --thumb-width: 120px; }
+.fsog-archive-grid.square-grid.archive-thumbs-s   { --thumb-width: 150px; }
+.fsog-archive-grid.square-grid.archive-thumbs-m   { --thumb-width: 200px; }
+.fsog-archive-grid.square-grid.archive-thumbs-l   { --thumb-width: 250px; }
+.fsog-archive-grid.square-grid.archive-thumbs-xl  { --thumb-width: 300px; }
+.fsog-archive-grid.cropped-grid.archive-thumbs-xs { --thumb-width: 150px; }
+.fsog-archive-grid.cropped-grid.archive-thumbs-s  { --thumb-width: 190px; }
+.fsog-archive-grid.cropped-grid.archive-thumbs-m  { --thumb-width: 250px; }
+.fsog-archive-grid.cropped-grid.archive-thumbs-l  { --thumb-width: 310px; }
+.fsog-archive-grid.cropped-grid.archive-thumbs-xl { --thumb-width: 375px; }
+
 .fsog-archive-item {
     position: relative;
     cursor: pointer;
@@ -1539,6 +1586,14 @@ input[type="reset"]:hover {
     --header-height: 52px;
   }
 
+  /* Cap dense owner choices at three columns on a large tablet, while keeping
+     deliberate one- and two-column choices intact. These selectors tie the
+     owner's class specificity and come later, so the responsive cap wins only
+     when the chosen count is above the safe tablet maximum. */
+  .fsog-archive-grid.fsog-archive-grid { --grid-cols: 3; }
+  .fsog-archive-grid.archive-cols-1 { --grid-cols: 1; }
+  .fsog-archive-grid.archive-cols-2 { --grid-cols: 2; }
+
   #rg-photobox {
     height: calc(100dvh - var(--header-height) - var(--infobox-height) - 60px);
   }
@@ -1552,6 +1607,10 @@ input[type="reset"]:hover {
     --chap-title-size:  9; /* unitless, matches ×0.1rem scale */
     --grid-cols:        2;
   }
+
+  /* Cap at two columns here, but preserve an explicit one-column choice. */
+  .fsog-archive-grid.fsog-archive-grid { --grid-cols: 2; }
+  .fsog-archive-grid.archive-cols-1 { --grid-cols: 1; }
 
   .rg-header-inside { padding: 0 1rem; }
   .rg-header-nav .nav-menu { gap: 16px; }
