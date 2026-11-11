@@ -1120,11 +1120,29 @@ html:has(.glide-page) { scrollbar-gutter: auto; }
 body:has(.glide-page) { margin: 0; }
 /* Keep the configured CMS links quiet and clear of the wall controls. */
 body:has(.glide-page) > #system-footer {
+    /* ONE value sets how far the footer line sits from the window on the left
+       and at the bottom. Both edges below are derived from it; never type a
+       second number. */
+    --glide-footer-inset: 24px;
+    /* The two reasons the box bottom is not where the text bottom is: the links
+       are inline-blocks with vertical padding, and line-height adds half of its
+       extra leading below the descender. Measured at 1920/1440/1024, the text
+       sat 6.6-6.9px higher than the box, so the line looked further from the
+       bottom edge than from the left. Pull the box down by exactly that slack
+       and the VISIBLE gap matches --glide-footer-inset on both edges. These two
+       are consumed by the link and paragraph rules below, so the arithmetic
+       stays true if either is changed. */
+    --glide-footer-link-pad: 5px;
+    --glide-footer-leading: 1.4;
     position: fixed;
     z-index: 5;
-    left: 24px;
+    /* Set here, not on the paragraph, so the .5em in the bottom calc resolves
+       against the size the text is actually rendered at. */
+    font-size: clamp(.52rem, .52vw, .62rem);
+    left: var(--glide-footer-inset);
     right: 96px;
-    bottom: 24px;
+    bottom: calc(var(--glide-footer-inset) - var(--glide-footer-link-pad)
+                 - (var(--glide-footer-leading) - 1) * .5em);
     width: auto;
     margin: 0;
     padding: 0;
@@ -1144,14 +1162,14 @@ body:has(.glide-page) > #system-footer:focus-within { opacity: 1; }
 body:has(.glide-page) > #system-footer .inside { width: 100%; }
 body:has(.glide-page) > #system-footer p {
     font-family: "DM Sans", sans-serif;
-    font-size: clamp(.52rem, .52vw, .62rem);
+    font-size: inherit;
     letter-spacing: .04em;
-    line-height: 1.4;
+    line-height: var(--glide-footer-leading);
     white-space: nowrap;
 }
 body:has(.glide-page) > #system-footer a {
     display: inline-block;
-    padding-block: 5px;
+    padding-block: var(--glide-footer-link-pad);
 }
 body:has(.glide-page) .glide-scroll-cue { display: none; }
 
