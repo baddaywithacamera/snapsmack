@@ -403,7 +403,7 @@
         "max": "14",
         "default": "7",
         "step": "1",
-        "unit": "×0.1REM"
+        "unit": "×0.06REM"
       }
     },
     "chap_page_title_font": {
