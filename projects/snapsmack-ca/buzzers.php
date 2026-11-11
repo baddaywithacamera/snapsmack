@@ -557,7 +557,7 @@ require_once __DIR__ . '/includes/header.php';
             <article class="post" id="a028">
                 <div class="post-meta"><span class="post-date">June 20, 2026</span><span class="post-tag">Closed</span></div>
                 <h2>Dev-File Leak &amp; SMACKBACK Blind Spot</h2>
-                <p>Closed a path where development-only files could be swept into a release package, plus a SMACKBACK blind spot around the release-staging directory. The integrity monitor now flags leaked central code if it ever lands on a normal install. Closed in 0.7.317.</p>
+                <p><strong>CLOSED in 0.7.992D:</strong> stale root sc-config.php removed from all affected sites.</p>
                 <a class="report-link" href="secaudits/2026-06-20-028-package-dev-file-leak-and-smackback-blindspot.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
