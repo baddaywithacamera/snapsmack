@@ -1,5 +1,10 @@
 # SnapSmack 0.7.993D — serialized rollout verification
 
+<!--
+  SNAPSMACK_EOF_HEADER
+  Last non-empty line must be the canonical Markdown EOF marker.
+-->
+
 > Verification-only runbook. Sean builds, signs, publishes, deploys, supplies credentials/2FA, and decides whether to continue or roll back. This document does not authorize any of those actions.
 
 ## Non-negotiable rollout rule
