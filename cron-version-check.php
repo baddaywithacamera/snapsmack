@@ -141,7 +141,42 @@ try {
          WHERE setting_key IN ('smackback_enabled', 'smackback_mode')"
     )->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    if (($smack_settings['smackback_enabled'] ?? '0') === '1' && smackback_verify_due()) {
+    // A verify that runs WHILE AN UPDATE IS IN FLIGHT compares half-replaced (or
+    // fully replaced, not yet re-baselined) files against the PRE-UPDATE manifest
+    // and reports tampering that never happened. core/constants.php exempts CLI
+    // from the maintenance lock — correctly, because the updater's own chunk
+    // requests must not 503 themselves — but this cron inherited that exemption
+    // and walks straight through the lock a web request would respect.
+    //
+    // strathmore.pics, 2026-11-11: update finalized 03:57, its re-baseline was
+    // skipped (SS-1284), the 04:11:40 cron verify flagged the six files the
+    // update had rewritten, and a live site went BREACH -> LOCKOUT. SS-1284 stops
+    // the baseline being skipped; this stops the cron verifying into the middle
+    // of an update at all. They are separate defects and both are real.
+    //
+    // Deliberately only SKIPS: smackback_verify_due() stays true, so the very
+    // next cron run verifies normally once the lock clears. A skipped pass costs
+    // one interval; a false breach costs a site.
+    $snap_maint_lock   = "{$root}/data/maintenance.lock";
+    $snap_update_running = false;
+    if (($smack_settings['smackback_enabled'] ?? '0') === '1' && file_exists($snap_maint_lock)) {
+        // Honour the same 5-minute safety valve core/constants.php uses, so a
+        // stale lock left by a crashed update cannot silence verification for
+        // ever. Past that age the lock is ignored and the verify proceeds.
+        $snap_maint      = @json_decode((string) @file_get_contents($snap_maint_lock), true) ?? [];
+        $snap_maint_age  = time() - (int)($snap_maint['since'] ?? 0);
+        $snap_maint_held = ((int)($snap_maint['since'] ?? 0) > 0 && $snap_maint_age <= 300);
+        if ($snap_maint_held) {
+            echo "SMACKBACK: verify skipped — an update holds data/maintenance.lock ({$snap_maint_age}s). "
+               . "Verifying mid-update compares new files against the pre-update manifest and false-breaches. "
+               . "The next scheduled run will verify.\n";
+            error_log('SnapSmack cron: SMACKBACK verify skipped — maintenance lock held ('
+                . $snap_maint_age . 's). See the strathmore.pics false breach, 2026-11-11.');
+            $snap_update_running = true;
+        }
+    }
+
+    if (($smack_settings['smackback_enabled'] ?? '0') === '1' && !$snap_update_running && smackback_verify_due()) {
         $smack_result = smackback_verify_all('cron');
         if ($smack_result['status'] === 'breach') {
             smackback_handle_breach(
