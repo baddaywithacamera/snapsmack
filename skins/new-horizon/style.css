@@ -653,6 +653,95 @@ img.post-image {
     overflow-x: hidden;
 }
 
+
+/* -- THE ABOUT PAGE: THE PORTRAIT BESIDE THE WORDS -------------------------
+   Sean reported the About page as one column, portrait on top and text
+   underneath, and asked what had happened to it. Nothing had: it was never
+   there. The skin DID float the portrait left -- since 0.7.159, 2026-05-20 --
+   but no version of that rule ever capped its WIDTH, and a shrink-to-fit
+   float against a large photograph fills the column. Measured on
+   curbappeal.photoblogs.fyi/about at 1920 and 1440: 802px of content, an
+   802px portrait, 0px left beside it, and 0 of 23 text line boxes anywhere
+   but underneath. A float as wide as its container leaves nothing to flow
+   past it. 20684ab4 (27 Oct) released the hero's HEIGHT, and its comment says
+   the intent out loud -- "it is an image in a column of text" -- then never
+   touched the width. This finishes that sentence.
+
+   Done as a GRID, the way 50 SHADES OF NOAH GREY does it, rather than by
+   capping the float: a float lets the text wrap back underneath the portrait
+   once it runs past the bottom, and a grid gives two true columns that stay
+   columns. Every number above and below is checked in
+   tests/new-horizon-about-two-column-regression.php.
+
+   SCOPED TO A PAGE THAT HAS A PORTRAIT. :has(#photobox.page-hero) means a
+   static page without a hero, the blogroll and the search results are
+   untouched and keep their single column -- there is no empty track to leave
+   open. That is the whole blast radius.
+
+   The widths are custom properties so the owner's Static Page Hero Position
+   control can be wired to them later without touching this geometry again,
+   exactly as 50 SHADES does. */
+.static-content:has(#photobox.page-hero) {
+    display: var(--nh-static-layout, grid);
+    grid-template-columns:
+        var(--nh-static-cols, var(--nh-static-hero-width, 42%) 1fr);
+    column-gap: var(--nh-static-column-gap, 48px);
+    align-items: start;
+    /* Two columns inside 850px leave a 370px photograph and a 420px measure,
+       which is too mean for both. The wider cap applies ONLY in the
+       two-column case, so a single-column static page keeps the 850px measure
+       this skin has always had. */
+    max-width: var(--nh-static-two-col-width, 1100px) !important;
+}
+
+/* The heading spans both columns and KEEPS SS-1269's alignment. That ticket
+   set padding-left to 24px -- 20px baseline plus 4px frame compensation -- so
+   the words line up with the portrait's frame edge rather than its box edge.
+   The portrait still begins at the container's content edge in column 1, so
+   the same 24px lands in the same place. The only thing that has to change is
+   the 850px cap, which would otherwise hold the heading short of the wider
+   grid. The test compares the two left edges rather than trusting this. */
+.static-content:has(#photobox.page-hero) > .static-page-title {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    max-width: none !important;
+}
+
+.static-content:has(#photobox.page-hero) > #photobox.page-hero {
+    grid-column: var(--nh-static-hero-col, 1);
+    grid-row: 2;
+    float: none !important;
+    width: auto !important;
+    max-width: 100%;
+    /* The writing is taller than the photograph, so rather than leave half the
+       page empty the portrait stays with the reader as the words scroll by. */
+    position: sticky;
+    top: var(--nh-static-hero-sticky-top, 40px);
+}
+
+.static-content:has(#photobox.page-hero) > .description {
+    grid-column: var(--nh-static-text-col, 2);
+    grid-row: 2;
+    /* .description carries its own 850px cap for the single-image view where
+       it is a top-level container. In its own grid track that cap would hold
+       it short of the column. */
+    max-width: none !important;
+}
+
+/* One column on a narrow screen: portrait first, nothing sticky, nothing
+   floated. NEW HORIZON is a desktop and large-tablet skin, so this is the
+   graceful floor rather than a phone layout. */
+@media (max-width: 900px) {
+    .static-content:has(#photobox.page-hero) {
+        display: block;
+        max-width: var(--static-content-width, 850px) !important;
+    }
+    .static-content:has(#photobox.page-hero) > #photobox.page-hero {
+        position: static;
+        float: none !important;
+    }
+}
+
 .static-content::after { 
     content: ""; 
     display: table; 
@@ -704,7 +793,15 @@ img.post-image {
     height: auto !important;
     padding: 0 !important; 
     width: auto !important;
-    float: left !important; 
+    /* WAS float: left !important, from 0.7.159 (2026-05-20) until today. The
+       intent was the portrait beside the words, but nothing ever capped the
+       float's width, so it filled the column and pushed every line of text
+       underneath -- measured 802px of portrait in 802px of column, 0 of 23
+       lines beside it. The two columns are now a grid on .static-content, so
+       the float was not merely unnecessary, it was the thing that produced
+       the single column. Removed rather than overridden, so the next reader
+       does not find a float that looks load-bearing and is not. */
+    float: none !important;
     background: transparent !important;
     margin: 0 !important;
 }
