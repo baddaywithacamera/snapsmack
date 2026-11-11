@@ -1501,6 +1501,19 @@ if ($action === 'stage_migrate_upload' && !empty($_SESSION['upload_migrate_pendi
             error_log('SnapSmack updater: SMACKBACK re-baseline FAILED on the upload path — '
                 . 'the manifest still describes the PRE-UPDATE files. See SS-1284.');
         }
+        // SS-1284 (Codex verify, blocker 2): a missing package must be VISIBLE to
+        // the operator, not just in error_log, and it must stay visible even when
+        // the re-baseline itself succeeded. A package that vanished mid-update is
+        // the signature of the shared-temp-dir race; the operator needs to see it
+        // on the site where it happened, not reconstruct it from logs afterwards.
+        if ($smack_upload_missing) {
+            $upload_steps[] = [
+                'label'  => 'Update package',
+                'status' => 'fail',
+                'detail' => 'Package was gone before finalize. Another process removed it mid-update. '
+                          . 'Re-baselined from disk anyway; verify this site before trusting the result. See SS-1284.',
+            ];
+        }
         $upload_steps[] = [
             'label'  => 'SMACKBACK baseline',
             'status' => $smack_ok ? 'ok' : 'fail',

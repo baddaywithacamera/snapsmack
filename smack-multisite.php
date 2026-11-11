@@ -740,6 +740,39 @@ if (isset($_POST['push_update']) || isset($_POST['push_update_all'])) {
                 $result['files']    = $data['files_updated'] ?? 0;
                 $result['migs']     = $data['migrations'] ?? 0;
                 $result['errors']   = $data['errors'] ?? [];
+
+                // SS-1284: HTTP 200 is not "clean". A spoke can update, stamp its
+                // version and answer OK while its SMACKBACK manifest still
+                // describes the PRE-UPDATE files — which is exactly how
+                // strathmore.pics reached LOCKOUT with the fleet board showing
+                // green. The spoke now reports this; consume it, or the report
+                // is decoration.
+                //
+                // A spoke that has not yet taken this fix sends no 'smackback'
+                // key at all. Treat that as UNKNOWN, not as a failure: it is the
+                // behaviour we have always had, and painting 27 old spokes amber
+                // would bury the real ones.
+                $sb = (isset($data['smackback']) && is_array($data['smackback'])) ? $data['smackback'] : null;
+                if ($sb === null) {
+                    $result['smackback'] = null;
+                } else {
+                    $baseline_refreshed = !empty($sb['baseline_refreshed']);
+                    $package_missing    = !empty($sb['package_missing']);
+                    $result['smackback'] = [
+                        'baseline_refreshed' => $baseline_refreshed,
+                        'package_missing'    => $package_missing,
+                    ];
+                    if (!$baseline_refreshed || $package_missing) {
+                        // The update itself succeeded, so this is not ok=false —
+                        // but it must NOT read as a clean success on the board.
+                        $result['warn']        = true;
+                        $result['warn_detail'] = !$baseline_refreshed
+                            ? 'Updated, but the SMACKBACK baseline was NOT refreshed — this spoke will false-breach on its next verify. See SS-1284.'
+                            : 'Updated, but the package was missing at finalize; an existing breach was not cleared. See SS-1284.';
+                        error_log('SnapSmack hub: spoke ' . (string)($tn['site_url'] ?? $tn['id'])
+                            . ' updated with a SMACKBACK problem — ' . $result['warn_detail']);
+                    }
+                }
                 // Refresh DB version
                 if (!empty($data['to_version'])) {
                     $clean_ver = preg_replace('/^[^0-9]+/', '', $data['to_version']);
@@ -1920,7 +1953,19 @@ include 'core/sidebar.php';
                         .then(function (r) { return r.json(); })
                         .then(function (d) {
                             var res = (d && d.results && d.results[0]) || {};
-                            if (res.ok) {
+                            if (res.ok && res.warn) {
+                                // SS-1284: the update landed, but the spoke told us its
+                                // SMACKBACK baseline was not refreshed (or the package
+                                // vanished at finalize). It WILL false-breach on its next
+                                // verify. Never paint that green — green here is what let
+                                // strathmore.pics reach LOCKOUT unnoticed.
+                                okCount++;
+                                rowMark(id, "var(--warning,#e08c00)");
+                                var vw = document.getElementById("spoke-ver-" + id);
+                                if (vw && res.to) vw.textContent = String(res.to).replace(/^[^0-9]+/, "");
+                                var rw = document.getElementById("spoke-row-" + id) || document.getElementById("spoke-ver-" + id);
+                                if (rw) rw.title = res.warn_detail || "Updated, but the SMACKBACK baseline was not refreshed. See SS-1284.";
+                            } else if (res.ok) {
                                 okCount++;
                                 rowMark(id, "var(--success,#2e9e4f)");
                                 var vc = document.getElementById("spoke-ver-" + id);

@@ -163,6 +163,61 @@ ss1284(
     (bool) preg_match("/'status'\s*=>\s*\\\$smack_ok\s*\?\s*'ok'\s*:\s*'fail'/", $local)
 );
 
+// ── 3b. THE HUB CONSUMES THE REPORT (Codex verify, blocker 1) ───────────────
+//
+// Producing a report nobody reads is decoration. The first version of this fix
+// returned data.smackback from the spoke and the hub copied only
+// status/from/to/files/migs/errors, so a spoke that updated without refreshing
+// its baseline was still painted green on the fleet board — the exact blindness
+// that let strathmore.pics reach LOCKOUT unnoticed. Assert the CONSUMER.
+
+$board = (string) @file_get_contents($root . '/smack-multisite.php');
+ss1284('smack-multisite.php is readable', $board !== '');
+
+ss1284(
+    'hub board reads the spoke smackback report',
+    (bool) preg_match("/\\\$data\s*\[\s*'smackback'\s*\]/", $board)
+);
+
+ss1284(
+    'hub board carries baseline_refreshed and package_missing into the result',
+    str_contains($board, "'baseline_refreshed'") && str_contains($board, "'package_missing'")
+);
+
+ss1284(
+    'hub board flags a spoke that updated without refreshing its baseline',
+    (bool) preg_match("/\\\$result\s*\[\s*'warn'\s*\]\s*=\s*true/", $board)
+);
+
+// An older spoke sends no 'smackback' key. That is UNKNOWN, not a failure —
+// painting every pre-fix spoke amber would bury the real ones.
+ss1284(
+    'hub board treats a missing report as unknown rather than failure',
+    (bool) preg_match("/isset\s*\(\s*\\\$data\s*\[\s*'smackback'\s*\]\s*\)\s*&&\s*is_array/", $board)
+);
+
+ss1284(
+    'fleet board renderer does not paint a warned spoke green',
+    (bool) preg_match('/res\.ok\s*&&\s*res\.warn/', $board)
+);
+
+ss1284(
+    'fleet board renderer marks a warned spoke with the warning colour',
+    (bool) preg_match('/rowMark\s*\(\s*id\s*,\s*"var\(--warning/', $board)
+);
+
+// ── 3c. UPLOAD PACKAGE-MISSING IS VISIBLE (Codex verify, blocker 2) ─────────
+//
+// It must show in the operator's step list even when the re-baseline SUCCEEDED,
+// because a package that vanished mid-update is the signature of the race.
+ss1284(
+    'upload path adds a visible fail row for a missing package',
+    (bool) preg_match(
+        "/if\s*\(\s*\\\$smack_upload_missing\s*\)\s*\{\s*\\\$upload_steps\s*\[\s*\]\s*=\s*\[\s*'label'\s*=>\s*'Update package'\s*,\s*'status'\s*=>\s*'fail'/s",
+        $local
+    )
+);
+
 // ── 4. A BREACH IS NOT AUTO-CLEARED WHEN WE CANNOT VOUCH ────────────────────
 
 ss1284(
