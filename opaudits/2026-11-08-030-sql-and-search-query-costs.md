@@ -5,7 +5,7 @@
 | Field | Value |
 |---|---|
 | Audit ID | 2026-11-08-030 |
-| State | OPEN. Nine source changes have evidence; random selection, search semantics, release assembly and installed behavior remain open. |
+| State | OPEN. Seven named source repairs have evidence; random selection, search semantics, release assembly and installed behavior remain open. |
 | Scope | The SQL/search sweep triggered by OPAUDIT 029, covering query shapes that can become table scans or unbounded work on public and machine-polled paths. |
 | Related record | OPAUDIT 029 records the CT110 incident and the `imageFilter` timing guard. |
 
@@ -13,7 +13,7 @@
 
 A pattern sweep of 433 PHP files identified eleven risky query shapes: correlated per-row checks, random ordering, date functions on indexed columns, unbounded metadata reads, missing reverse relationship indexes, schema work on a GET path, and search behavior whose semantics had not been fully measured.
 
-The initial report ranked three items HIGH, four MEDIUM and four LOW. Severity was based on mechanism, table size and call frequency. It was not a production timing measurement.
+The initial report ranked three items HIGH, three MEDIUM and five LOW. Severity was based on mechanism, table size and call frequency. It was not a production timing measurement.
 
 ## Source changes and measured checks
 

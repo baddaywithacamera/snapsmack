@@ -5,13 +5,13 @@
 <blockquote><p><strong>DRAFT — unpublished.</strong> Prepared from the retained 8 November SQL sweep and subsequent verified branch history. It is not installed-fleet acceptance.</p></blockquote>
 <table class="meta"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
 <tr><td>Audit ID</td><td>2026-11-08-030</td></tr>
-<tr><td>State</td><td>OPEN. Nine source changes have evidence; random selection, search semantics, release assembly and installed behavior remain open.</td></tr>
+<tr><td>State</td><td>OPEN. Seven named source repairs have evidence; random selection, search semantics, release assembly and installed behavior remain open.</td></tr>
 <tr><td>Scope</td><td>The SQL/search sweep triggered by OPAUDIT 029, covering query shapes that can become table scans or unbounded work on public and machine-polled paths.</td></tr>
 <tr><td>Related record</td><td>OPAUDIT 029 records the CT110 incident and the <code>imageFilter</code> timing guard.</td></tr>
 </tbody></table>
 <h2>What was found</h2>
 <p>A pattern sweep of 433 PHP files identified eleven risky query shapes: correlated per-row checks, random ordering, date functions on indexed columns, unbounded metadata reads, missing reverse relationship indexes, schema work on a GET path, and search behavior whose semantics had not been fully measured.</p>
-<p>The initial report ranked three items HIGH, four MEDIUM and four LOW. Severity was based on mechanism, table size and call frequency. It was not a production timing measurement.</p>
+<p>The initial report ranked three items HIGH, three MEDIUM and five LOW. Severity was based on mechanism, table size and call frequency. It was not a production timing measurement.</p>
 <h2>Source changes and measured checks</h2>
 <p>Commit <code>27235e0c</code> repaired the three HIGH hot paths. The query-cost branch repaired four more items: calendar filters now use half-open date ranges, the reverse category relationship has an index, justified metadata batches are bounded, and schema alteration was removed from an archive GET path.</p>
 <p>An isolated MariaDB benchmark with 40,000 rows passed nine checks, including calendar result parity, indexed query plans and bounded repository batches. Current <code>dev</code> contains those changes. This is isolated database evidence, not installed-fleet acceptance.</p>
