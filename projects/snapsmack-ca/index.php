@@ -45,6 +45,14 @@ $page_css = <<<'CSS'
 .btn-primary:hover { color: var(--white); background: #ad0000; }
 .btn-secondary:hover { color: var(--white); background: var(--black); }
 
+/* --- CLOSED BETA DELAY: staged copy, pending Sean's final wording --- */
+.beta-delay { padding: 28px 0; color: var(--white); background: var(--black); border-top: 8px solid var(--red); }
+.beta-delay-inner { display: flex; gap: 28px; align-items: center; justify-content: space-between; }
+.beta-delay-copy { margin: 0; color: #ddd; font-size: 1rem; line-height: 1.5; }
+.beta-delay-copy strong { display: block; margin-bottom: 4px; color: var(--white); font: 900 clamp(1.05rem, 2vw, 1.35rem)/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.beta-delay-link { flex: 0 0 auto; display: inline-block; padding: 14px 22px; color: var(--white); background: var(--red); font: 900 .8rem/1 Arial Black, Arial, sans-serif; letter-spacing: .03em; text-transform: uppercase; }
+.beta-delay-link:hover { color: var(--white); background: #ad0000; text-decoration: none; }
+
 
 /* --- WHAT WAS: the four things taken, and their names here --- */
 #was { padding: 64px 0; background: #2a2a2a; color: #ddd; border-top: 8px solid var(--red); }
@@ -138,6 +146,8 @@ $page_css = <<<'CSS'
     .whodat-portrait img { height: 100%; }
 }
 @media (max-width: 700px) {
+    .beta-delay-inner { display: block; }
+    .beta-delay-link { margin-top: 18px; }
     #door { padding: 56px 0 44px; }
     .door-inner { grid-template-columns: 1fr; gap: 32px; }
     .featured-skin-grid { grid-template-columns: 1fr; }
@@ -151,6 +161,13 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
 <main>
+    <aside class="beta-delay" aria-label="Closed beta delay notice">
+        <div class="wrap beta-delay-inner">
+            <p class="beta-delay-copy"><strong>Closed beta is running late.</strong> It opens when the software is ready.</p>
+            <a class="beta-delay-link" href="wotcha.php#closed-beta-delay">Read why &rarr;</a>
+        </div>
+    </aside>
+
     <section id="door">
         <div class="door-inner">
             <div class="door-copy">
