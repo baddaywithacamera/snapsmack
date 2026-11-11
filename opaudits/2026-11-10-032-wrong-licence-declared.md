@@ -9,7 +9,7 @@
 | Field | Value |
 |---|---|
 | Audit ID | 2026-11-10-032 |
-| State | OPEN. The tree is fixed and history rewritten; closure waits on the limits in §6 and the publish-gate interaction in §8. |
+| State | OPEN. The tree is fixed and history rewritten; downloaded copies and old clones remain outside our control, and packaged/installed declarations still need verification. |
 | Scope | The licence SnapSmack declared on its OWN code: the copyleft GPL-3.0 was shown on first-party desktop tools and in a public sentence, contrary to the project's own permissive SMACK PUBLIC LICENSE (SPL) 2.4. |
 | Subject source | SEAN, 2026-11-09 ("GPL is also an OPAUDIT"); PM post 6KFWEURJ; Codex's SS-1270 posts. |
 | Author | Claude Code (draft); Muse (read-only fact verification). |
@@ -64,7 +64,7 @@ that never existed.
 
 ## 5. Fix
 
-- **Tree fix: f9ee0415, 2026-11-09, "Remove false GPL declarations from desktop
+- **Tree fix: 1f9abc4f5, 2026-11-09, "Remove false GPL declarations from desktop
   tools (SS-1270)."** (Verified.) Plus **94eac75a, 2026-11-09, "Remove stray GPL
   claims from smack-help.php and build-spec-080.js (SS-1270)."** (Verified.)
 - **History rewrite** removing the licence material from history: 5,456 commits
@@ -100,23 +100,28 @@ sc-config tags: you cannot un-ship what is already out.
 **Not established beyond Sean's own machines**, stated plainly. The declaration was
 in public tags and at least one installed build, so wider exposure is possible,
 but this audit has not shown any third party relied on or redistributed under the
-wrong terms. See §9 for the specific unchecked items.
+wrong terms. See §10 for the specific unchecked items.
 
-## 8. Publish-gate interaction (measured here; flag for the gate owner)
+## 8. Publish-gate interaction (resolved before publication)
 
-This audit, when rendered to HTML and filed under `projects/snapsmack-ca/opaudits/`,
-will contain the literal string "GPL-3.0" in its prose. The new gate
-(`desktop-license-declarations.cjs`) walks `projects/` and tests every `.html`
-file against `forbiddenDeclaration = /\b(?:GNU\s+)?(?:A?GPL)(?:[-\s]?v?\.?3(?:\.0)?|\b)/i`.
-That regex matches audit prose, not just a licence field, so the **published HTML
-of OPAUDIT 032 will trip the gate it describes.** Before 032 is published as HTML:
-the gate should be scoped to licence-declaration contexts (or exclude the
-`opaudits/` audit prose), or the published HTML must encode the term so it does
-not match. This is a `tools/browser-tests/` change — flagged for Codex, not fixed
-here. (The Markdown draft is safe: the gate scans only `.html`/declaration files
-under `tools/` and `projects/`, and this draft is `.md` under `opaudits/`.)
+The first draft identified a real interaction: audit prose quoting the incorrect
+licence name could be mistaken for a first-party declaration by the new gate.
+SS-1279 resolved that before this HTML was filed. Commit `3c8433e23` excludes
+OPAUDIT prose from the declaration scan and carries a regression proving that an
+audit may quote the incorrect declaration without failing the gate. The rendered
+HTML also entity-encodes the quoted term. The current licence gate passes with
+this audit present, so this interaction is evidence of a repaired test boundary,
+not an open closure dependency.
 
-## 9. What this audit does not claim / NOT CHECKED
+## 9. What to check in your own project
+
+1. Does the licence declared in your code (manifests, footers and about pages) match the licence you actually intend to grant?
+2. Is there a single source of truth for your licence that every declaration points back to?
+3. Does any automated check read your first-party licence declarations, or has a human ever actually looked at the footer?
+4. If you bundle third-party code under a different licence, is your own code's licence clearly separated from it?
+5. When you change your licence, do old published copies and tags still state the old one — and have you accounted for that?
+
+## 10. What this audit does not claim / NOT CHECKED
 
 - **Downloads by anyone else** — whether any third party cloned or pulled a
   GPL-stamped build. Not checked.

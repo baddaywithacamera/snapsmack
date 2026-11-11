@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: preserve the final SNAPSMACK EOF comment. -->
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OPAUDIT 032 — Wrong licence declared on our own code: G&#80;L-3.0 shown in OH SNAP and elsewhere, contrary to the SPL</title><link rel="stylesheet" href="_report.css?v=ace953fd"></head><body><p class="doc-kicker">SnapSmack Operability Audit</p>
+<h1>OPAUDIT 032 — Wrong licence declared on our own code: G&#80;L-3.0 shown in OH SNAP and elsewhere, contrary to the SPL</h1>
+<blockquote><p><strong>DRAFT — unpublished. Pending Sean's approval before anything is public.</strong> Drafted by Claude Code (the PM reassigned 031/032 drafting to Code on 2026-11-10 04:32 MT; Muse was unavailable and stays read-only verifier of these facts). Authored as Markdown; renders to the published opaudit HTML on Sean's approval. No copy is written in Sean's voice (OPAUDIT 028).</p></blockquote>
+<table class="meta"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+<tr><td>Audit ID</td><td>2026-11-10-032</td></tr>
+<tr><td>State</td><td>OPEN. The tree is fixed and history rewritten; downloaded copies and old clones remain outside our control, and packaged/installed declarations still need verification.</td></tr>
+<tr><td>Scope</td><td>The licence SnapSmack declared on its OWN code: the copyleft G&#80;L-3.0 was shown on first-party desktop tools and in a public sentence, contrary to the project's own permissive SMACK PUBLIC LICENSE (SPL) 2.4.</td></tr>
+<tr><td>Subject source</td><td>SEAN, 2026-11-09 ("G&#80;L is also an OPAUDIT"); PM post 6KFWEURJ; Codex's SS-1270 posts.</td></tr>
+<tr><td>Author</td><td>Claude Code (draft); Muse (read-only fact verification).</td></tr>
+</tbody></table>
+<h2>1. Decision</h2>
+<p>Declaring the wrong licence on your own code is not cosmetic. The SPL 2.4 is permissive-only; G&#80;L-3.0 is copyleft. Shipping first-party tools stamped G&#80;L-3.0 tells every recipient they have copyleft rights the project never granted and never intended. It is a false statement about the terms of our own software, and it sat in shipped artifacts because no check ever read the footer.</p>
+<p>Like OPAUDIT 031, this is an operability finding: a control that should have caught a wrong licence declaration did not exist, so the wrong text propagated silently from 2026-05 until a human happened to read it in 2026-11.</p>
+<h2>2. Measured — what was wrong</h2>
+<p>G&#80;L-3.0 (or an equivalent G&#80;L declaration) appeared on first-party code in:</p>
+<ul><li><strong>OH SNAP</strong> <code>package.json</code>, <code>package-lock</code>, and <code>Cargo.toml</code> (the Tauri desktop</li></ul>
+<p>tool's own declaration files).</p>
+<ul><li>Both OH SNAP <strong>footers</strong> (the rendered UI).</li><li>The <strong>smack-help</strong> paragraph and the <strong>build-spec footer</strong>.</li><li>A sentence on the <strong>public site</strong>.</li></ul>
+<p>These are first-party declarations — our code describing its own licence — not the legitimate third-party licence files the project still carries and should (e.g. <code>licenses/G&#80;L-3.0.txt</code> and the LG&#80;L notices exist because external tools such as darktable and Qt/PySide6 are G&#80;L/LG&#80;L; those are correct and untouched).</p>
+<h2>3. Since when</h2>
+<ul><li><strong>First declaration: 60afaf74, 2026-05-20, "SnapSmack 0.7.159"</strong> — Sean's own</li></ul>
+<p>commit. (Verified: commit exists, dated 2026-05-20, that subject.)</p>
+<ul><li>**Linux copy: cf46d595, 2026-08-21, "Build SMACKCAST, PHOTOFRI, and OH SNAP for</li></ul>
+<p>0.7.545D."** (Verified: commit exists, that date and subject.)</p>
+<ul><li>Present <strong>in public tags from 0.7.207</strong> onward (from the PM/room record; the</li></ul>
+<p>exact first tag is not independently re-measured in this draft).</p>
+<ul><li><strong>At least one installed build showed it</strong> (the rendered footer Sean read on</li></ul>
+<p>2026-11-09).</p>
+<p>So the wrong declaration was live, in public tags and in at least one installed build, for roughly six months.</p>
+<h2>4. How it was found</h2>
+<p>Sean read the footer on 2026-11-09. No automated check had ever looked at a first-party licence declaration until then — the same silent-absence class as the rest of this audit series: the failure was not an error that fired, it was a check that never existed.</p>
+<h2>5. Fix</h2>
+<ul><li>**Tree fix: 1f9abc4f5, 2026-11-09, "Remove false G&#80;L declarations from desktop</li></ul>
+<p>tools (SS-1270)."<strong> (Verified.) Plus </strong>94eac75a, 2026-11-09, "Remove stray G&#80;L claims from smack-help.php and build-spec-080.js (SS-1270)."** (Verified.)</p>
+<ul><li><strong>History rewrite</strong> removing the licence material from history: 5,456 commits</li></ul>
+<p>and 1,271 tags rewritten, 0 signed tags broken (figures from Codex's SS-1270 posts; the rewrite is Codex's work, cited not re-measured here).</p>
+<ul><li><strong>New gate:</strong> <code>tools/browser-tests/desktop-license-declarations.cjs</code> — asserts</li></ul>
+<p>the authoritative SPL title and "Version 2.4", and fails on any first-party G&#80;L/A G&#80;L declaration (and on PyQt5/6 dependencies) found while walking <code>tools/</code> and <code>projects/</code> for <code>package.json</code>/<code>Cargo.toml</code>/<code>pyproject.toml</code> and <code>.html</code> files. This is the check that did not exist in §4. (Gate owned by Codex, <code>tools/browser-tests/</code>.)</p>
+<ul><li><strong>Hockney PyQt6 → PySide6 port</strong> (removing a G&#80;L-linked Qt binding in favour of</li></ul>
+<p>the LG&#80;L one), published on <code>claude/hockney-pyside6-port</code> @ 9e53336c, pending owner-lane review.</p>
+<p>Current measured state: a search of current <code>Github/dev</code> finds no first-party G&#80;L declaration — the only remaining G&#80;L mentions are the legitimate third-party licence files and the detection/audit tooling itself.</p>
+<h2>6. Limits</h2>
+<ul><li><strong>Downloaded copies and old clones keep the wrong text.</strong> The history rewrite</li></ul>
+<p>changes our remote; it cannot reach a copy someone already pulled.</p>
+<ul><li><strong>GitHub may keep unreachable objects</strong> until its own garbage collection runs,</li></ul>
+<p>so the old blobs can remain fetchable by direct hash for a while.</p>
+<p>Rewriting history does not retract what was already distributed; it only stops new readers getting it from us. This mirrors OPAUDIT 028's conclusion about the sc-config tags: you cannot un-ship what is already out.</p>
+<h2>7. Who was affected</h2>
+<p><strong>Not established beyond Sean's own machines</strong>, stated plainly. The declaration was in public tags and at least one installed build, so wider exposure is possible, but this audit has not shown any third party relied on or redistributed under the wrong terms. See §10 for the specific unchecked items.</p>
+<h2>8. Publish-gate interaction (resolved before publication)</h2>
+<p>The first draft identified a real interaction: audit prose quoting the incorrect licence name could be mistaken for a first-party declaration by the new gate. SS-1279 resolved that before this HTML was filed. Commit <code>3c8433e23</code> excludes OPAUDIT prose from the declaration scan and carries a regression proving that an audit may quote the incorrect declaration without failing the gate. The rendered HTML also entity-encodes the quoted term. The current licence gate passes with this audit present, so this interaction is evidence of a repaired test boundary, not an open closure dependency.</p>
+<h2>9. What to check in your own project</h2>
+<ol><li>Does the licence declared in your code (manifests, footers and about pages) match the licence you actually intend to grant?</li><li>Is there a single source of truth for your licence that every declaration points back to?</li><li>Does any automated check read your first-party licence declarations, or has a human ever actually looked at the footer?</li><li>If you bundle third-party code under a different licence, is your own code's licence clearly separated from it?</li><li>When you change your licence, do old published copies and tags still state the old one — and have you accounted for that?</li></ol>
+<h2>10. What this audit does not claim / NOT CHECKED</h2>
+<ul><li><strong>Downloads by anyone else</strong> — whether any third party cloned or pulled a</li></ul>
+<p>G&#80;L-stamped build. Not checked.</p>
+<ul><li><strong>Whether SYBU ever shipped to other users</strong> (i.e. whether a wrong-licence build</li></ul>
+<p>reached a non-Sean machine through it). Not checked.</p>
+<ul><li><strong>Hockney's non-Qt dependency licences</strong> — the port fixed the Qt binding; the</li></ul>
+<p>other dependencies' licences have not been audited.</p>
+<ul><li>The history-rewrite figures (5,456 commits / 1,271 tags / 0 signed tags broken)</li></ul>
+<p>are Codex's measurement, cited not independently re-counted here.</p>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

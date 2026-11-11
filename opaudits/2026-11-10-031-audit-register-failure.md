@@ -117,15 +117,21 @@ Reconciliation already done under these rules: 061 filed (codex/secaudit-061-fil
 044 discrepancy identified (MD authoritative, correction held for Sean), 063/064
 numbering ruled on pending Sean.
 
-## 8. Register status flag (029/030 — flag only, not drafted here)
+## 8. Register status correction
 
-Per the PM, flagged not drafted: the OPAUDIT series itself has gaps. The published
-opaudit records run to **028**; **029 (the CT110 imageFilter incident)** and
-**030 (the SQL sweep)** are not filed as opaudit records in `opaudits/` or
-`projects/snapsmack-ca/opaudits/` (measured 2026-11-10). They belong on the
-register as unfiled. This audit does not draft them.
+At the time this audit was drafted, OPAUDIT 029 and 030 were unfiled. They are now
+filed as unpublished drafts alongside this record. That closes the numbering gap;
+it does not close either audit's open acceptance work.
 
-## 9. What this audit does not claim / NOT CHECKED
+## 9. What to check in your own project
+
+1. Is there ONE written register of your security findings, or does their status live only in memory and chat?
+2. Does every open finding have a named owner and a due date on its row?
+3. When someone asks "is this dealt with?", can you answer from a document, or only from recollection?
+4. Do you treat "fixed in the code" as done, or require a live check on the deployed system before you close it?
+5. Does anything flag findings that have sat open with no movement, without a human remembering to ask?
+
+## 10. What this audit does not claim / NOT CHECKED
 
 - It does not claim any specific security breach resulted from the bookkeeping
   failure. It claims the program could not say what was open, which is a different
