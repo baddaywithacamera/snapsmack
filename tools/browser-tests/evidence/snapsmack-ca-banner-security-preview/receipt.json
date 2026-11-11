@@ -187,6 +187,39 @@
           "left": 32
         }
       ]
+    },
+    "fair-1920": {
+      "innerWidth": 1920,
+      "scrollWidth": 1920,
+      "background": "rgb(200, 197, 191)",
+      "box": {
+        "x": 0,
+        "y": 4603.921875,
+        "width": 1920,
+        "height": 1464.328125
+      }
+    },
+    "fair-1440": {
+      "innerWidth": 1440,
+      "scrollWidth": 1440,
+      "background": "rgb(200, 197, 191)",
+      "box": {
+        "x": 0,
+        "y": 4581.015625,
+        "width": 1440,
+        "height": 1462.578125
+      }
+    },
+    "fair-390": {
+      "innerWidth": 390,
+      "scrollWidth": 390,
+      "background": "rgb(200, 197, 191)",
+      "box": {
+        "x": 0,
+        "y": 7480.3125,
+        "width": 390,
+        "height": 1899.1875
+      }
     }
   }
 }
