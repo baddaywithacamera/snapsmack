@@ -224,8 +224,6 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'FEDIVERSE (0.7.393): Note.summary content-warning text shown before a sensitive post.',
   `portfolio_post`    tinyint(1)     NOT NULL DEFAULT 0
                       COMMENT 'PORTFOLIO: 1 = this post is a standing portfolio page rather than a dated entry. DESIGNATION ONLY — it hides nothing by itself. Visibility is the three exclude_* flags, so a page can be marked now and its visibility decided later without a schema change.',
-  `gallery_shuffle`   tinyint(1)     NOT NULL DEFAULT 0
-                      COMMENT 'PORTFOLIO (SS-1185): 1 = show this post photographs in a random order on each view. PRESENTATION ONLY — the authored order in snap_bucket_items is never rewritten, so turning this off gives the arranged sequence back exactly. Default 0 so an import that says nothing about shuffle keeps the authored order.',
   `exclude_from_archive` tinyint(1)  NOT NULL DEFAULT 0
                       COMMENT 'PORTFOLIO: 1 = keep out of archive and landing listings, and out of the photograph archive and taxonomy counts via snap_post_images. Never affects the post own URL.',
   `exclude_from_search` tinyint(1)   NOT NULL DEFAULT 0
@@ -974,7 +972,9 @@ CREATE TABLE IF NOT EXISTS `snap_mosaics` (
                COMMENT 'Gap in pixels between mosaic cells (0–20)',
   `emphasis`   VARCHAR(12)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'natural'
                COMMENT 'Block arrangement, sent to ss-engine-mosaic.js as data-emphasis: natural|balanced|landscape|portrait',
-  `layout`     VARCHAR(12)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'asymmetric'
+  `layout`     VARCHAR(12)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'asymmetric',
+  `gallery_shuffle` TINYINT(1)  NOT NULL DEFAULT 0
+               COMMENT 'SS-1185: 1 = show this mosaic photographs in a random order on each view. PRESENTATION ONLY — asset_ids keeps the authored order and is never rewritten, so turning this off gives the arranged sequence back exactly. Lives here and not on snap_posts because a post may hold several mosaics and each is a separate gallery; one WordPress gallery maps to one mosaic. Default 0 so an import that says nothing keeps the authored order.'
                COMMENT 'Which engine renders the block: asymmetric (ss-engine-mosaic) | columns, square (ss-engine-columns) | rows (ss-engine-rows). emphasis applies to asymmetric only',
   `created_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

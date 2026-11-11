@@ -650,15 +650,6 @@ if ($sub === 'posts' && $method === 'POST') {
     // text cannot silently clear a designation somebody set in the admin --
     // and sending an explicit null CAN clear it on purpose. Same shape the
     // colophon and signature image already use here.
-    // SS-1185: six of the galleries migrating from mccormickphotography.com
-    // were owner-random in WordPress. Without somewhere to put that, the import
-    // either drops the setting or claims an order the owner never authored.
-    // Same array_key_exists rule as everything else here, for the same reason:
-    // an older client that has never heard of shuffle sends no key, and its
-    // edit must leave the stored value alone.
-    $has_gallery_shuffle = array_key_exists('gallery_shuffle', $body);
-    $gallery_shuffle     = !empty($body['gallery_shuffle']) ? 1 : 0;
-
     $has_portfolio_flag = array_key_exists('portfolio_post', $body);
     $has_primary_album  = array_key_exists('primary_album_id', $body);
     $has_primary_cat    = array_key_exists('primary_category_id', $body);
@@ -737,23 +728,12 @@ if ($sub === 'posts' && $method === 'POST') {
             if ($has_primary_album)  { $portfolio_sql .= ', primary_album_id=?';    $portfolio_params[] = $primary_album; }
             if ($has_primary_cat)    { $portfolio_sql .= ', primary_category_id=?'; $portfolio_params[] = $primary_cat; }
         }
-        // Its OWN variables, not the designation ones. A gallery can be
-        // owner-random without being a portfolio page, so shuffle is not gated
-        // on $wants_portfolio and does not belong in the designation bindings.
-        // Keeping them apart also keeps each regression honest about its own
-        // fields instead of counting a shared total. (SS-1185)
-        $shuffle_sql = '';
-        $shuffle_params = [];
-        if ($has_gallery_shuffle) { $shuffle_sql = ', gallery_shuffle=?'; $shuffle_params[] = $gallery_shuffle; }
-
         $sql = "UPDATE snap_posts SET title=?, slug=?, content=?, colophon=?, signature_image_id=?, status=?, allow_comments=?, featured_image_id=?, user_id=?"
              . $portfolio_sql
-             . $shuffle_sql
              . ($custom_date ? ", created_at=?" : "")
              . " WHERE id=? AND post_type='longform'";
         $params = [$title, $slug, $content_html, $colophon_html, $signature_image, $status, $allow_comments, $featured_image, $actor_user_id];
         foreach ($portfolio_params as $p) $params[] = $p;
-        foreach ($shuffle_params as $p) $params[] = $p;
         if ($custom_date) $params[] = $custom_date;
         $params[] = $post_id;
         $pdo->prepare($sql)->execute($params);
@@ -798,23 +778,14 @@ if ($sub === 'posts' && $method === 'POST') {
             if ($has_primary_album)  { $portfolio_cols .= ',primary_album_id';    $portfolio_marks .= ',?'; $portfolio_params[] = $primary_album; }
             if ($has_primary_cat)    { $portfolio_cols .= ',primary_category_id'; $portfolio_marks .= ',?'; $portfolio_params[] = $primary_cat; }
         }
-        // Its own variables, same reason as the UPDATE path above.
-        $shuffle_cols = '';
-        $shuffle_marks = '';
-        $shuffle_params = [];
-        if ($has_gallery_shuffle) { $shuffle_cols = ',gallery_shuffle'; $shuffle_marks = ',?'; $shuffle_params[] = $gallery_shuffle; }
-
         $sql = "INSERT INTO snap_posts (title,slug,content,colophon,signature_image_id,post_type,status,allow_comments,featured_image_id,user_id"
              . $portfolio_cols
-             . $shuffle_cols
              . ($custom_date ? ",created_at" : "")
              . ") VALUES(?,?,?,?,?,'longform',?,?,?,?"
              . $portfolio_marks
-             . $shuffle_marks
              . ($custom_date ? ",?" : "") . ")";
         $params = [$title, $slug, $content_html, $colophon_html, $signature_image, $status, $allow_comments, $featured_image, $actor_user_id];
         foreach ($portfolio_params as $p) $params[] = $p;
-        foreach ($shuffle_params as $p) $params[] = $p;
         if ($custom_date) $params[] = $custom_date;
         $pdo->prepare($sql)->execute($params);
         $new_id = (int)$pdo->lastInsertId();
@@ -930,8 +901,20 @@ if ($sub === 'mosaics' && $method === 'POST') {
 
     if (empty($asset_ids)) smackpress_error(422, 'asset_ids required.');
 
-    $stmt = $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, gap, layout) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$title, json_encode($asset_ids), $gap, $layout]);
+    // SS-1185: six of the galleries migrating from mccormickphotography.com
+    // were owner-random in WordPress, and the import had nowhere to put that,
+    // so it either dropped the setting or claimed an order the owner never
+    // authored. The flag lives on the MOSAIC, not the post: a post may hold
+    // several mosaics and each is a separate gallery, and one WordPress gallery
+    // maps to one mosaic.
+    //
+    // Default OFF, so a client that says nothing about shuffle gets the
+    // authored order. asset_ids is stored exactly as sent either way --
+    // shuffling is presentation and never rewrites what was saved.
+    $gallery_shuffle = !empty($body['gallery_shuffle']) ? 1 : 0;
+
+    $stmt = $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, gap, layout, gallery_shuffle) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$title, json_encode($asset_ids), $gap, $layout, $gallery_shuffle]);
     $mosaic_id = (int)$pdo->lastInsertId();
     smackpress_ok(['mosaic_id' => $mosaic_id, 'shortcode' => '[mosaic:' . $mosaic_id . ']']);
 }

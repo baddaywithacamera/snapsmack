@@ -1166,6 +1166,14 @@
         "predicates": 3,
         "thresholds": []
     },
+    "mosaic-shuffle-render-regression.php": {
+        "assertions": 3,
+        "predicates": 3,
+        "thresholds": [
+            10,
+            40
+        ]
+    },
     "mosaic-solo-link-regression.php": {
         "assertions": 1,
         "predicates": 0,
@@ -2014,7 +2022,7 @@
     },
     "smackpress-gallery-shuffle-regression.php": {
         "assertions": 4,
-        "predicates": 4,
+        "predicates": 8,
         "thresholds": [
             25,
             50,

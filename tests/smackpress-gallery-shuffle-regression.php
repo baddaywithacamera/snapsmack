@@ -109,30 +109,49 @@ gsh('shuffle ON actually reorders (not a silent no-op)', $moved);
 gsh('an empty gallery stays empty', snap_gallery_present_order([], true) === []);
 gsh('a one-photograph gallery is returned as-is', snap_gallery_present_order([42], true) === [42]);
 
-// ── 4. The receiving rule: an older client cannot clear the flag ───────────
-// Checked against core/smackpress-api.php, where the field arrives.
+// ── 4. The receiving rule, now on the MOSAIC ───────────────────────────────
+// PM ruling (i), 11 November: the flag lives on snap_mosaics, not snap_posts.
+// Three reasons, and the first is the one that forced it: there is no way back
+// from a mosaic to its post, so a post-level flag could not be read at render
+// time without new plumbing through six callers. A post may also hold several
+// mosaics, each a separate gallery, and one WordPress gallery maps to one
+// mosaic. These assertions moved with the column.
 $api = (string) @file_get_contents($root . '/core/smackpress-api.php');
 gsh('core/smackpress-api.php is readable', $api !== '');
 
 gsh(
-    'the import keys the shuffle flag on array_key_exists, not on truthiness',
-    (bool) preg_match("/array_key_exists\(\s*'gallery_shuffle'\s*,\s*\\\$body\s*\)/", $api)
+    'the mosaics endpoint receives gallery_shuffle',
+    str_contains($api, "\$gallery_shuffle = !empty(\$body['gallery_shuffle'])")
 );
 gsh(
-    'the flag is only written when the caller actually sent it (UPDATE path)',
-    (bool) preg_match('/\$has_gallery_shuffle\s*\)\s*\{[^}]*gallery_shuffle=\?/s', $api)
+    'it is stored on the mosaic row',
+    str_contains($api, 'INSERT INTO snap_mosaics (title, asset_ids, gap, layout, gallery_shuffle)')
 );
 gsh(
-    'the flag is only written when the caller actually sent it (INSERT path)',
-    (bool) preg_match('/\$has_gallery_shuffle\s*\)\s*\{[^}]*,gallery_shuffle/s', $api)
+    'a client that says nothing gets OFF rather than a missing value',
+    (bool) preg_match('/\$gallery_shuffle = !empty\([^)]*\) \? 1 : 0;/', $api)
+);
+gsh(
+    'the post no longer carries a shuffle flag at all',
+    !str_contains($api, "array_key_exists('gallery_shuffle'")
 );
 
-// ── The column exists, and defaults to OFF ─────────────────────────────────
+// ── The column exists on the mosaic, and defaults to OFF ───────────────────
 $canonical = (string) @file_get_contents($root . '/database/schema/snapsmack_canonical.sql');
 gsh(
-    'snap_posts carries gallery_shuffle, defaulting to 0',
-    (bool) preg_match('/`gallery_shuffle`\s+tinyint\(1\)\s+NOT NULL DEFAULT 0/i', $canonical)
+    'snap_mosaics carries gallery_shuffle, defaulting to 0',
+    (bool) preg_match('/`gallery_shuffle`\s+TINYINT\(1\)\s+NOT NULL DEFAULT 0/i', $canonical)
 );
+// The snap_posts block is cut out FIRST and then searched. A single pattern
+// spanning "snap_posts ... gallery_shuffle ... ENGINE=" runs straight past the
+// end of snap_posts and finds the column on snap_mosaics instead, so it fails
+// on a schema that is correct. It did.
+$posts_block = '';
+if (preg_match('/CREATE TABLE IF NOT EXISTS `snap_posts`(.*?)ENGINE=/is', $canonical, $pm)) {
+    $posts_block = $pm[1];
+}
+gsh('the snap_posts block could be read',            $posts_block !== '');
+gsh('and snap_posts no longer carries the flag',     !str_contains($posts_block, 'gallery_shuffle'));
 
 if ($fails) {
     fwrite(STDERR, "\n{$fails} FAILURE(S): the shuffle receiving contract is not held. Six owner-random "

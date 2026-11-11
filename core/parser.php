@@ -386,7 +386,7 @@ class SnapSmack {
             $id = (int)$m[1];
 
             try {
-                $stmt = $this->pdo->prepare("SELECT asset_ids, focus_positions, gap, emphasis, layout FROM snap_mosaics WHERE id = ? LIMIT 1");
+                $stmt = $this->pdo->prepare("SELECT asset_ids, focus_positions, gap, emphasis, layout, gallery_shuffle FROM snap_mosaics WHERE id = ? LIMIT 1");
                 $stmt->execute([$id]);
                 $mosaic = $stmt->fetch(\PDO::FETCH_ASSOC);
             } catch (\PDOException $e) {
@@ -403,6 +403,22 @@ class SnapSmack {
 
             $image_ids = json_decode($mosaic['asset_ids'] ?? '[]', true);
             if (!is_array($image_ids) || empty($image_ids)) return '';
+
+            // SS-1185. Six of the galleries migrating from mccormickphotography.com
+            // were owner-random in WordPress. This is where that becomes visible.
+            //
+            // PRESENTATION, NOT STORAGE: asset_ids above is the authored order and
+            // is never rewritten. Turning shuffle off gives the arranged sequence
+            // back exactly, and a gallery re-randomised on disk at every page view
+            // would have no authored order left after the first view and no way
+            // back. The ordering helper is pure and proven a permutation, so no
+            // photograph is lost or repeated.
+            //
+            // The older 3-column SELECT in the fallback above has no
+            // gallery_shuffle, so an install mid-schema-sync simply keeps the
+            // authored order rather than erroring.
+            require_once __DIR__ . '/gallery-order.php';
+            $image_ids = snap_gallery_present_order($image_ids, !empty($mosaic['gallery_shuffle']));
             $focus_positions = json_decode($mosaic['focus_positions'] ?? '{}', true);
             if (!is_array($focus_positions)) $focus_positions = [];
             $gap = max(0, min(20, (int)($mosaic['gap'] ?? 4)));
