@@ -1697,6 +1697,11 @@
             2
         ]
     },
+    "setup-package-write-diagnostic-regression.php": {
+        "assertions": 6,
+        "predicates": 36,
+        "thresholds": []
+    },
     "setup-php-version-gate-regression.php": {
         "assertions": 20,
         "predicates": 18,
