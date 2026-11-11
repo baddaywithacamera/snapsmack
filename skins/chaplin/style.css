@@ -1575,12 +1575,13 @@ input[type="reset"]:hover {
     --header-height: 52px;
   }
 
-  /* The archive grid now carries its own --grid-cols from the owner's COLUMNS
-     setting, which is more specific than :root, so the line above cannot reach
-     it. The doubled class matches that specificity and this rule comes later,
-     so the collapse still wins at tablet width. Chaplin is a desktop and
-     large-tablet skin; this is the large-tablet end of it. */
+  /* Cap dense owner choices at three columns on a large tablet, while keeping
+     deliberate one- and two-column choices intact. These selectors tie the
+     owner's class specificity and come later, so the responsive cap wins only
+     when the chosen count is above the safe tablet maximum. */
   .fsog-archive-grid.fsog-archive-grid { --grid-cols: 3; }
+  .fsog-archive-grid.archive-cols-1 { --grid-cols: 1; }
+  .fsog-archive-grid.archive-cols-2 { --grid-cols: 2; }
 
   #rg-photobox {
     height: calc(100dvh - var(--header-height) - var(--infobox-height) - 60px);
@@ -1596,8 +1597,9 @@ input[type="reset"]:hover {
     --grid-cols:        2;
   }
 
-  /* Same reason as the 1024px block above. */
+  /* Cap at two columns here, but preserve an explicit one-column choice. */
   .fsog-archive-grid.fsog-archive-grid { --grid-cols: 2; }
+  .fsog-archive-grid.archive-cols-1 { --grid-cols: 1; }
 
   .rg-header-inside { padding: 0 1rem; }
   .rg-header-nav .nav-menu { gap: 16px; }

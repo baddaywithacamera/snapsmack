@@ -21,8 +21,9 @@
  * style on the element: a custom property written onto the grid element beats
  * the :root value inside a media query at EVERY width. An owner who picked
  * eight columns would get eight on a tablet and the grid would never collapse.
- * The breakpoints therefore re-assert --grid-cols with a doubled class, which
- * matches the specificity and comes later in the file.
+ * The breakpoints therefore cap --grid-cols with matching-specificity rules.
+ * Counts above the safe width collapse, while an owner's smaller one- or
+ * two-column choice remains smaller instead of being enlarged by the cap.
  *
  * Static assertions over the stylesheet and the component — no DB, no site.
  *
@@ -108,18 +109,25 @@ cac(
     $drift === []
 );
 
-// ── The responsive collapse still wins ──────────────────────────────────────
+// ── Responsive rules cap dense grids without enlarging sparse ones ──────────
 // This is the part most likely to be broken by a later "tidy-up". Without the
-// doubled class the owner's column count would hold at every width.
-foreach ([1024 => 3, 768 => 2] as $width => $cols) {
+// doubled class a high owner count would hold at every width; without the
+// smaller-count exceptions, one and two columns would be enlarged at 1024px.
+foreach ([1024 => [3, [1, 2]], 768 => [2, [1]]] as $width => [$cap, $preserved]) {
     $block = '';
     if (preg_match('/@media \(max-width:\s*' . $width . 'px\)\s*\{(.*?)\n\}/s', $css, $m)) {
         $block = $m[1];
     }
     cac(
-        "the {$width}px breakpoint re-asserts {$cols} columns on the grid itself",
-        (bool) preg_match('/\.fsog-archive-grid\.fsog-archive-grid\s*\{\s*--grid-cols:\s*' . $cols . '\s*;/', $block)
+        "the {$width}px breakpoint caps dense grids at {$cap} columns",
+        (bool) preg_match('/\.fsog-archive-grid\.fsog-archive-grid\s*\{\s*--grid-cols:\s*' . $cap . '\s*;/', $block)
     );
+    foreach ($preserved as $cols) {
+        cac(
+            "the {$width}px breakpoint preserves an owner's {$cols}-column choice",
+            (bool) preg_match('/\.fsog-archive-grid\.archive-cols-' . $cols . '\s*\{\s*--grid-cols:\s*' . $cols . '\s*;/', $block)
+        );
+    }
 }
 
 // The override must come AFTER the per-column rules, or specificity ties the
