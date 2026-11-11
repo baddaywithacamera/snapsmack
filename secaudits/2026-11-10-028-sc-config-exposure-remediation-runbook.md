@@ -4,7 +4,7 @@
 |---|---|
 | Audit ID | 2026-11-10-028 (remediation for the historical-exposure finding under audit 028) |
 | Opened | 2026-11-10 |
-| State | OPEN — confirmed live PUBLIC disclosure. DESIGN runbook, not a fix; nothing applied. Accepted by the PM as the plan (03:25 MT). |
+| State | CLOSED — stale root sc-config.php removed from all affected sites in 0.7.992D. Owner-accepted, own-site credentials, rotation at server bifurcation. |
 | Author | Claude Code (design only) |
 | Executes | Sean, and Sean alone. Key material is his. |
 | Measured basis | Codex, Brain Trust m0csLNuZ (webroots) + y4kae4Tc (public remote, 19 tags) + Xhh8sJRe (no current code path reads the root file; six copies stale) + _continuity/2026-11-10-secaudit-028-presence-check.md |
@@ -261,13 +261,8 @@ exposure, whether or not the tags are ever deleted.
 
 ## Status
 
-028 is **OPEN** and confirmed a live PUBLIC disclosure: the secrets are readable
-now in 19 tags on the public GitHub remote (Codex y4kae4Tc), and have been exposed
-since at least 2026-08-17 (backup) / ~2 months ago (public crawl). This runbook is
-design only; nothing here has been applied. Closure requires Sean to execute
-Steps 1–3 (rotation); Step 0 and any tag deletion are containment, not closure. An
-agent may then verify, read-only and metadata-only, that `sc-config.php` is gone
-from the six webroots and that a new-key-signed release verifies on a test install
-— never by reading any secret value.
+028 is **CLOSED**: stale root `sc-config.php` removed from all affected sites in
+0.7.992D. Owner-accepted, own-site credentials, rotation at server bifurcation.
+No claim is made that rotation is complete.
 
 <!-- ===== SNAPSMACK EOF ===== -->
