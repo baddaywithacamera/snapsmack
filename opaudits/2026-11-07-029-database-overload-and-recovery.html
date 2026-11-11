@@ -14,7 +14,7 @@
 <h2>Evidence recorded during the incident</h2>
 <p>Database process inspection showed archive visibility queries running for 363, 305 and 280 seconds. Their repeated correlated visibility checks were observed. Random ordering was a separate hypothesis, not the demonstrated cause of those statements.</p>
 <p>Following restart, recorded memory use was approximately 848 MiB of 4 GiB, with no swap in use. A CPU percentage quoted earlier was a lifetime average and is not presented here as an instantaneous measurement.</p>
-<p>The offending archive predicate was repaired in commit <code>5c42ae83</code>; the measured replacement query completed in 28 ms in the retained incident record. A production-sized MariaDB timing test now guards that predicate, but the test reports NOT CHECKED when no MariaDB connection is supplied and no repository CI workflow was found that supplies one.</p>
+<p>The offending archive predicate was repaired in commit <code>543da1d15</code>; the measured replacement query completed in 28 ms in the retained incident record. A production-sized MariaDB timing test now guards that predicate, but the test reports NOT CHECKED when no MariaDB connection is supplied and no repository CI workflow was found that supplies one.</p>
 <h2>Recovery and limits</h2>
 <p>A 30-second database statement limit was applied and read back, then persisted and verified through the server configuration parser. The incident record reports CMS 0.7.986D installed. Those steps are recovery evidence, not proof that every expensive query or long-running maintenance job is safe.</p>
 <p>Limited host inspections did not establish either compromise or a clean bill of health. Full swap alone also does not establish active swapping.</p>

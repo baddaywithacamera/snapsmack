@@ -64,7 +64,7 @@ that never existed.
 
 ## 5. Fix
 
-- **Tree fix: f9ee0415, 2026-11-09, "Remove false GPL declarations from desktop
+- **Tree fix: 1f9abc4f5, 2026-11-09, "Remove false GPL declarations from desktop
   tools (SS-1270)."** (Verified.) Plus **94eac75a, 2026-11-09, "Remove stray GPL
   claims from smack-help.php and build-spec-080.js (SS-1270)."** (Verified.)
 - **History rewrite** removing the licence material from history: 5,456 commits

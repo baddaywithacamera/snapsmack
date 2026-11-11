@@ -19,7 +19,7 @@ Database process inspection showed archive visibility queries running for 363, 3
 
 Following restart, recorded memory use was approximately 848 MiB of 4 GiB, with no swap in use. A CPU percentage quoted earlier was a lifetime average and is not presented here as an instantaneous measurement.
 
-The offending archive predicate was repaired in commit `5c42ae83`; the measured replacement query completed in 28 ms in the retained incident record. A production-sized MariaDB timing test now guards that predicate, but the test reports NOT CHECKED when no MariaDB connection is supplied and no repository CI workflow was found that supplies one.
+The offending archive predicate was repaired in commit `543da1d15`; the measured replacement query completed in 28 ms in the retained incident record. A production-sized MariaDB timing test now guards that predicate, but the test reports NOT CHECKED when no MariaDB connection is supplied and no repository CI workflow was found that supplies one.
 
 ## Recovery and limits
 

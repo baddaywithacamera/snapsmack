@@ -11,13 +11,15 @@
 
 ## What was found
 
-A pattern sweep of 433 PHP files identified eleven risky query shapes: correlated per-row checks, random ordering, date functions on indexed columns, unbounded metadata reads, missing reverse relationship indexes, schema work on a GET path, and search behavior whose semantics had not been fully measured.
+A pattern sweep identified eleven risky query shapes: correlated per-row checks, random ordering, date functions on indexed columns, unbounded metadata reads, missing reverse relationship indexes, schema work on a GET path, and search behavior whose semantics had not been fully measured.
 
 The initial report ranked three items HIGH, three MEDIUM and five LOW. Severity was based on mechanism, table size and call frequency. It was not a production timing measurement.
 
 ## Source changes and measured checks
 
-Commit `27235e0c`, now on `dev`, repaired the three HIGH hot paths. The unmerged branch `codex/sql-query-cost` at `cc4b45f6d` contains four more repairs: calendar filters use half-open date ranges, the reverse category relationship has an index, justified metadata batches are bounded, and schema alteration is removed from an archive GET path.
+Commit `4c2b4f87f`, now on `dev`, repaired the three HIGH hot paths. The unmerged branch `codex/sql-query-cost` at `cc4b45f6d` contains four more repairs: calendar filters use half-open date ranges, the reverse category relationship has an index, justified metadata batches are bounded, and schema alteration is removed from an archive GET path.
+
+The branch also replaces two `ORDER BY RAND()` paths with a shared primary-key-range sampler. That sampler is branch-only and is not included in the seven named repairs because its equivalence and production cost have not been established.
 
 At that branch tip, an isolated MariaDB benchmark with 40,000 rows executed fourteen checks, including calendar result parity, indexed query plans and bounded repository batches. The four repairs and their benchmark are not on `dev`. This is branch evidence, not merged-source or installed-fleet acceptance.
 
@@ -25,7 +27,7 @@ The review also corrected earlier claims: listing exclusion flags concern discov
 
 ## What remains open
 
-1. Measure remaining random-selection costs while preserving publication eligibility and uniqueness.
+1. Validate and measure the branch-only primary-key-range sampler and remaining random-selection costs while preserving publication eligibility and uniqueness.
 2. Verify search enablement, token matching, hashtags and literal wildcard behavior through the complete public route.
 3. Decide and measure search semantics before considering FULLTEXT; the earlier experiment lost substring matches and was not a drop-in replacement.
 4. Extend production-sized timing coverage beyond the single OPAUDIT 029 predicate, or record the gap as accepted.
