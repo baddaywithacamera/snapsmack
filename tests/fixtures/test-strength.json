@@ -261,6 +261,15 @@
         "predicates": 0,
         "thresholds": []
     },
+    "chaplin-archive-controls-regression.php": {
+        "assertions": 3,
+        "predicates": 15,
+        "thresholds": [
+            5,
+            5,
+            12
+        ]
+    },
     "chaplin-frame-ornament-regression.php": {
         "assertions": 22,
         "predicates": 23,
