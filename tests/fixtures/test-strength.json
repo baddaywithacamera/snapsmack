@@ -351,6 +351,14 @@
             2
         ]
     },
+    "cron-verify-respects-maintenance-lock-regression.php": {
+        "assertions": 4,
+        "predicates": 10,
+        "thresholds": [
+            42,
+            43
+        ]
+    },
     "crop-circles-regression.php": {
         "assertions": 3,
         "predicates": 3,
@@ -918,6 +926,13 @@
         "predicates": 5,
         "thresholds": []
     },
+    "hub-spoke-disconnect-revocation-regression.php": {
+        "assertions": 10,
+        "predicates": 8,
+        "thresholds": [
+            200
+        ]
+    },
     "hub-spoke-registration-stepup-regression.php": {
         "assertions": 31,
         "predicates": 27,
@@ -1095,6 +1110,11 @@
             17,
             22
         ]
+    },
+    "migration-ghosts-regression.php": {
+        "assertions": 3,
+        "predicates": 11,
+        "thresholds": []
     },
     "min-images-reaches-the-guard-regression.php": {
         "assertions": 0,
@@ -1406,8 +1426,8 @@
         "thresholds": []
     },
     "probe-guard-regression.php": {
-        "assertions": 4,
-        "predicates": 2,
+        "assertions": 6,
+        "predicates": 4,
         "thresholds": []
     },
     "promote-stable-accepts-only-the-version-commit.php": {
@@ -1626,6 +1646,19 @@
     "secaudit-028-root-config-cleanup-regression.php": {
         "assertions": 8,
         "predicates": 4,
+        "thresholds": []
+    },
+    "secaudit-028-root-pubkey-match-regression.php": {
+        "assertions": 2,
+        "predicates": 2,
+        "thresholds": [
+            64,
+            64
+        ]
+    },
+    "secaudit-028-smackback-forbidden-files-regression.php": {
+        "assertions": 2,
+        "predicates": 8,
         "thresholds": []
     },
     "secaudit-049-login-emits-csp.php": {
@@ -1938,6 +1971,11 @@
         "predicates": 1,
         "thresholds": []
     },
+    "smackback-alert-all-admins-regression.php": {
+        "assertions": 11,
+        "predicates": 11,
+        "thresholds": []
+    },
     "smackback-breach-panel-regression.php": {
         "assertions": 8,
         "predicates": 13,
@@ -2065,6 +2103,11 @@
             100,
             500
         ]
+    },
+    "ss1284-updater-temp-dir-regression.php": {
+        "assertions": 3,
+        "predicates": 43,
+        "thresholds": []
     },
     "stanley-cms-media-slot-regression.php": {
         "assertions": 1,
