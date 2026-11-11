@@ -534,7 +534,7 @@ class Window(QMainWindow):
         if mode not in {"photoblog","carousel","smacktalk"}:
             QMessageBox.information(self,"Verify this site","Test the connection or sync its library once so GYSS knows which COLD SNAP editor to open.");return
         snap_desktop_handoff.write_request("coldsnap",{"source":"gyss","site_url":self.profile["site_url"],"site_mode":mode})
-        exe=os.path.join(snap_home.app_dir("coldsnap"),"coldsnap.exe")
+        exe=os.path.join(snap_home.install_dir("coldsnap"),"coldsnap.exe")
         if not os.path.isfile(exe):
             QMessageBox.warning(self,"COLD SNAP is not installed",f"GYSS saved the handoff, but could not find:\n{exe}\n\nInstall or rebuild COLD SNAP, then try again.");return
         try:subprocess.Popen([exe],cwd=os.path.dirname(exe))
@@ -550,7 +550,7 @@ class Window(QMainWindow):
             QMessageBox.information(self,"Choose a SMACKTALK site","A COLD TAKE bucket belongs to a SMACKTALK site. Choose that site's library first.");return
         photos=[{"id":int(row.get("id") or 0),"filename":row.get("filename") or "","alt":row.get("alt") or "","width":row.get("width") or 0,"height":row.get("height") or 0,"full_url":row.get("full_url") or row.get("thumb_url") or ""} for row in selected]
         snap_desktop_handoff.write_request("coldsnap",{"source":"gyss","site_url":self.profile["site_url"],"site_mode":"smacktalk","selected_images":photos})
-        exe=os.path.join(snap_home.app_dir("coldsnap"),"coldsnap.exe")
+        exe=os.path.join(snap_home.install_dir("coldsnap"),"coldsnap.exe")
         try:subprocess.Popen([exe],cwd=os.path.dirname(exe))
         except OSError as exc:QMessageBox.critical(self,"Could not open COLD SNAP",str(exc));return
         self.status.setText(f"● Sent {len(photos)} photographs to COLD TAKE")
