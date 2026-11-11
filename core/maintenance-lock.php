@@ -1,7 +1,7 @@
 <?php
 // SNAPSMACK_EOF_HEADER — preserve the canonical EOF marker below.
 if (PHP_SAPI !== 'cli' && !empty($_SERVER['SCRIPT_FILENAME'])
-    && realpath($_SERVER['SCRIPT_FILENAME']) === __FILE__) {
+    && @realpath($_SERVER['SCRIPT_FILENAME']) === @realpath(__FILE__)) {
     http_response_code(404);
     exit;
 }
