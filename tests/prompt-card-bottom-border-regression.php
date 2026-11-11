@@ -40,9 +40,28 @@
  *
  * Shared fault, so the inventory is here rather than in a chat message: the
  * card loses its edge wherever it sits inside .static-content or
- * .description, which is 25 of the 31 skins. The remaining six are NOT
- * CHECKED, not passing: their static-page wrapper was not found by a static
- * read of layout.php plus any same-named core page component.
+ * .description. RENDERED and MEASURED in a browser, before and after, for
+ * every skin that could not be settled by reading:
+ *
+ *     AFFECTED      28 of the 30 skins
+ *     NOT AFFECTED  stanley, writing-with-impact - they wrap a static page in
+ *                   .post-content.entry-content.e-content, which the removing
+ *                   rule does not name. Measured 1px bottom before AND after,
+ *                   so the fix neither helped nor harmed them.
+ *     NOT A SKIN    skins/beatbox holds only style.css and beatbox-config.json
+ *                   - no layout.php, no manifest.json. The skin-version
+ *                   ratchet counts 30, not 31, and beatbox is the one it
+ *                   leaves out. It renders no page, so it cannot show this.
+ *
+ * An earlier version of this docblock said 25 of 31, with six NOT CHECKED.
+ * That was a static read of layout.php plus any same-named core page
+ * component, and it was WRONG for three of the six: 50-shades-of-noah-grey,
+ * full-monty and glide take their .static-content/.description wrapper from
+ * the SHARED static-page component, which carries neither the skin's name nor
+ * its own layout file, so the scan could not see it. Rendered, all three
+ * showed 3 of 3 cards at border-bottom 0px before the fix and 1px after. The
+ * lesson is the one this file is already about: read the structure, not the
+ * filename.
  *
  * Static stylesheet assertions — no DB, no site, no browser.
  *
