@@ -1149,19 +1149,32 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
         } else {
             $_SESSION['tables_created'] = $created;
 
-            // Stamp all numbered migration files as already applied.
-            // Fresh installs get the full schema from canonical.sql — the migration
-            // runner must not re-apply them on first admin login.
-            // This list is derived automatically from the migrations/ directory so
-            // it never needs manual updating when new migrations are added.
-            $migration_files = glob(__DIR__ . '/migrations/[0-9][0-9][0-9]_*.php') ?: [];
+            // Stamp every shipped migration as already applied.
+            // A fresh install gets the FULL schema from canonical.sql, so the
+            // migration runner must not re-apply any of them on first admin login,
+            // and the Schema Recovery panel must not list them as pending.
+            //
+            // THIS GLOB WAS DEAD FOR SIX MONTHS. It looked for
+            // migrations/[0-9][0-9][0-9]_*.php — the numbered PHP scheme used up to
+            // 0.7.159 (027_multisite_tables.php and friends). When migrations were
+            // converted to migrate-*.sql the installer's stamp was not converted
+            // with them, so the glob matched NOTHING and a fresh install recorded
+            // NOT ONE migration. Every new site then showed all ~41 known
+            // migrations PENDING from its first login, for ever, with a perfectly
+            // correct database. The comment that used to sit here claimed the list
+            // "never needs manual updating", which is why nobody looked at it.
+            // Measured on dev 2026-11-10: 38 .sql files, 0 matching the old glob.
+            $migration_files = glob(__DIR__ . '/migrations/migrate*.sql') ?: [];
             sort($migration_files);
             $stamp = $pdo->prepare(
                 "INSERT IGNORE INTO `{$prefix}migrations` (migration, applied_at)
                  VALUES (?, NOW())"
             );
             foreach ($migration_files as $mf) {
-                $stamp->execute([basename($mf, '.php')]);
+                // The updater records migrations by full filename (basename with
+                // the .sql extension). Stamp the same string or the two never
+                // match and the pending list never clears.
+                $stamp->execute([basename($mf)]);
             }
 
             $step = 4; // Advance to admin user creation

@@ -215,10 +215,20 @@ define('UPDATER_PROTECTED_PATHS_FILE', dirname(__DIR__) . '/protected_paths.json
 const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-fedboard-sso.sql',
     'migrate-reactions-to-likes.sql',
-    'migrate-076.sql',
-    'migrate-077.sql',
-    'migrate-078.sql',
-    'migrate-comment-identity.sql',
+    // REMOVED 2026-11-11: migrate-076.sql, migrate-077.sql, migrate-078.sql and
+    // migrate-comment-identity.sql were deleted from the repo in eca7e4e9
+    // (v0.7.8e, 2026-04-07) but left in this list for seven months. The screen
+    // builds its PENDING list from THIS CONSTANT while the runner can only run
+    // files that exist on disk, so all four were listed as pending on every site
+    // in the fleet and nothing could ever clear them — not an update, not RUN
+    // SCHEMA SYNC, only MARK ALL MIGRATIONS APPLIED. A permanent floor of four
+    // phantom rows, and four reasons to reach for the one button that records
+    // migrations without running them.
+    // Their schema is in database/schema/snapsmack_canonical.sql, verified before
+    // removal: snap_posts (076), snap_images.img_source_file (077),
+    // snap_pages.image_size (078). migrate-comment-identity.sql was already a
+    // no-op (`SELECT 1;`). The canonical diff runs before migrations on every
+    // update, so nothing is lost by dropping them.
     'migrate-multisite-tables.sql',
     'migrate-pages-image-cols.sql',
     'migrate-users-recovery-columns.sql',
