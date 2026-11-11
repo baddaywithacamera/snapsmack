@@ -28,14 +28,7 @@
 </tbody></table>
 <h2>4. Cause</h2>
 <p>Four process gaps, and the fourth is what kept the first three invisible.</p>
-<ol><li><strong>No single register.</strong> Status lived in agents' messages and memory, not in one</li></ol>
-<p>tracked file. With nothing to read, "is it open?" was answered from recollection.</p>
-<ol><li><strong>No owner or date per finding.</strong> A row with neither cannot go stale in a way a</li></ol>
-<p>person notices, and no one is accountable for moving it.</p>
-<ol><li><strong>"Fixed in source" was treated as done.</strong> A code change with a passing offline</li></ol>
-<p>test was reported as closed, with nothing forcing the live verification that the project's own rule ("measure, do not assert") requires.</p>
-<ol><li><strong>Nothing forced live verification, so nothing caught the drift.</strong> The same</li></ol>
-<p>class as the operability faults this project keeps hitting: a step that silently never ran, with no alarm that it had not.</p>
+<ol><li><strong>No single register.</strong> Status lived in agents' messages and memory, not in one tracked file. With nothing to read, "is it open?" was answered from recollection.</li><li><strong>No owner or date per finding.</strong> A row with neither cannot go stale in a way a person notices, and no one is accountable for moving it.</li><li><strong>"Fixed in source" was treated as done.</strong> A code change with a passing offline test was reported as closed, with nothing forcing the live verification that the project's own rule ("measure, do not assert") requires.</li><li><strong>Nothing forced live verification, so nothing caught the drift.</strong> The same class as the operability faults this project keeps hitting: a step that silently never ran, with no alarm that it had not.</li></ol>
 <h3>The verification-debt pattern</h3>
 <p>About a third of the open SECAUDITs are not "unstarted" — they are "fixed in source, live check never run": 048, 049, 050, 052 and similar. 049 is the live example from this same week: the login-CSP code fix landed and was cross-verified in an isolated local request, but the authoritative close needs a live 60-response fleet re-sweep that cannot run until Sean deploys. "Fixed" and "closed" were being collapsed into one state; they are two, with a deploy and a live measurement between them.</p>
 <h2>5. How long</h2>
@@ -44,25 +37,13 @@
 <p>For the duration, no one could state from a document which security findings were open. That includes 061, fleet enrollment — a finding about whether sites join a hub safely was itself unfindable in the repo. No confidentiality breach is claimed from the bookkeeping failure itself; the cost is that the program could not answer its own central question, and the owner was given answers that were wrong and uncheckable.</p>
 <h2>7. Fix</h2>
 <p>Two standing rules were posted on 2026-11-09 (22:53 MT) and are in force:</p>
-<ul><li><strong>Standing Rule 1 (MnsYNqru) — number and file, same day.</strong> Every SECAUDIT gets</li></ul>
-<p>its number the moment it is opened and is filed in <code>projects/snapsmack-ca/secaudits/</code> the same day, PDF and source, tracked in git. No gaps, no working copies outside the repo, no unnumbered audits. Codex owns reconciling the five misfilings above (no deletions) and posting a listing that every number 001–063 has a file or a stated reason. Muse's CLOSED/OPEN table becomes the register.</p>
-<ul><li><strong>Standing Rule 2 (g6acd4K1) — owner, date, and a real close.</strong> Every open</li></ul>
-<p>finding has a named owner and a due date on its row. When Sean asks, the answer within 30 minutes is a status plus the next action and who does it, never "tracked". The lifecycle is fix → deploy → verify live → close, each step dated; a step blocked on Sean says in one line what he must do. Items older than 7 days with no movement are reported to Sean by the PM, not left for him to ask.</p>
+<ul><li><strong>Standing Rule 1 (MnsYNqru) — number and file, same day.</strong> Every SECAUDIT gets its number the moment it is opened and is filed in <code>projects/snapsmack-ca/secaudits/</code> the same day, PDF and source, tracked in git. No gaps, no working copies outside the repo, no unnumbered audits. Codex owns reconciling the five misfilings above (no deletions) and posting a listing that every number 001–063 has a file or a stated reason. Muse's CLOSED/OPEN table becomes the register.</li><li><strong>Standing Rule 2 (g6acd4K1) — owner, date, and a real close.</strong> Every open finding has a named owner and a due date on its row. When Sean asks, the answer within 30 minutes is a status plus the next action and who does it, never "tracked". The lifecycle is fix → deploy → verify live → close, each step dated; a step blocked on Sean says in one line what he must do. Items older than 7 days with no movement are reported to Sean by the PM, not left for him to ask.</li></ul>
 <p>Reconciliation already done under these rules: 061 filed (codex/secaudit-061-filing), 27 canonical PDFs including 049/050/051 filed (codex/audit-pdf-filing-current), 044 discrepancy identified (MD authoritative, correction held for Sean), 063/064 numbering ruled on pending Sean.</p>
 <h2>8. Register status correction</h2>
 <p>At the time this audit was drafted, OPAUDIT 029 and 030 were unfiled. They are now filed as unpublished drafts alongside this record. That closes the numbering gap; it does not close either audit's open acceptance work.</p>
 <h2>9. What to check in your own project</h2>
 <ol><li>Is there ONE written register of your security findings, or does their status live only in memory and chat?</li><li>Does every open finding have a named owner and a due date on its row?</li><li>When someone asks "is this dealt with?", can you answer from a document, or only from recollection?</li><li>Do you treat "fixed in the code" as done, or require a live check on the deployed system before you close it?</li><li>Does anything flag findings that have sat open with no movement, without a human remembering to ask?</li></ol>
 <h2>10. What this audit does not claim / NOT CHECKED</h2>
-<ul><li>It does not claim any specific security breach resulted from the bookkeeping</li></ul>
-<p>failure. It claims the program could not say what was open, which is a different and serious statement.</p>
-<ul><li>It has <strong>not</strong> verified, finding by finding, which of the 17 "handled" reports</li></ul>
-<p>were false versus merely unverified-live. That audit of the history is owed.</p>
-<ul><li>It has <strong>not</strong> re-run the live verification for the verification-debt findings</li></ul>
-<p>(048, 049, 050, 052 and similar); that is exactly the debt being named.</p>
-<ul><li>The exact first date Sean asked and was told "handled" is from the room record</li></ul>
-<p>and is not pinned to a message in this draft.</p>
-<ul><li>Whether the new register and the two rules actually hold is itself unproven</li></ul>
-<p>until the 7-day stale report runs at least once and an audit closes under the full fix → deploy → verify → close lifecycle.</p>
+<ul><li>It does not claim any specific security breach resulted from the bookkeeping failure. It claims the program could not say what was open, which is a different and serious statement.</li><li>It has <strong>not</strong> verified, finding by finding, which of the 17 "handled" reports were false versus merely unverified-live. That audit of the history is owed.</li><li>It has <strong>not</strong> re-run the live verification for the verification-debt findings (048, 049, 050, 052 and similar); that is exactly the debt being named.</li><li>The exact first date Sean asked and was told "handled" is from the room record and is not pinned to a message in this draft.</li><li>Whether the new register and the two rules actually hold is itself unproven until the 7-day stale report runs at least once and an audit closes under the full fix → deploy → verify → close lifecycle.</li></ul>
 </body></html>
 <!-- ===== SNAPSMACK EOF ===== -->

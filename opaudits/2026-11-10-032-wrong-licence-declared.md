@@ -30,8 +30,7 @@ silently from 2026-05 until a human happened to read it in 2026-11.
 
 GPL-3.0 (or an equivalent GPL declaration) appeared on first-party code in:
 
-- **OH SNAP** `package.json`, `package-lock`, and `Cargo.toml` (the Tauri desktop
-  tool's own declaration files).
+- **OH SNAP** `package.json`, `package-lock`, and `Cargo.toml` (the Tauri desktop tool's own declaration files).
 - Both OH SNAP **footers** (the rendered UI).
 - The **smack-help** paragraph and the **build-spec footer**.
 - A sentence on the **public site**.
@@ -43,14 +42,10 @@ darktable and Qt/PySide6 are GPL/LGPL; those are correct and untouched).
 
 ## 3. Since when
 
-- **First declaration: 60afaf74, 2026-05-20, "SnapSmack 0.7.159"** — Sean's own
-  commit. (Verified: commit exists, dated 2026-05-20, that subject.)
-- **Linux copy: cf46d595, 2026-08-21, "Build SMACKCAST, PHOTOFRI, and OH SNAP for
-  0.7.545D."** (Verified: commit exists, that date and subject.)
-- Present **in public tags from 0.7.207** onward (from the PM/room record; the
-  exact first tag is not independently re-measured in this draft).
-- **At least one installed build showed it** (the rendered footer Sean read on
-  2026-11-09).
+- **First declaration: 60afaf74, 2026-05-20, "SnapSmack 0.7.159"** — Sean's own commit. (Verified: commit exists, dated 2026-05-20, that subject.)
+- **Linux copy: cf46d595, 2026-08-21, "Build SMACKCAST, PHOTOFRI, and OH SNAP for 0.7.545D."** (Verified: commit exists, that date and subject.)
+- Present **in public tags from 0.7.207** onward (from the PM/room record; the exact first tag is not independently re-measured in this draft).
+- **At least one installed build showed it** (the rendered footer Sean read on 2026-11-09).
 
 So the wrong declaration was live, in public tags and in at least one installed
 build, for roughly six months.
@@ -64,21 +59,10 @@ that never existed.
 
 ## 5. Fix
 
-- **Tree fix: 1f9abc4f5, 2026-11-09, "Remove false GPL declarations from desktop
-  tools (SS-1270)."** (Verified.) Plus **94eac75a, 2026-11-09, "Remove stray GPL
-  claims from smack-help.php and build-spec-080.js (SS-1270)."** (Verified.)
-- **History rewrite** removing the licence material from history: 5,456 commits
-  and 1,271 tags rewritten, 0 signed tags broken (figures from Codex's SS-1270
-  posts; the rewrite is Codex's work, cited not re-measured here).
-- **New gate:** `tools/browser-tests/desktop-license-declarations.cjs` — asserts
-  the authoritative SPL title and "Version 2.4", and fails on any first-party
-  GPL/AGPL declaration (and on PyQt5/6 dependencies) found while walking `tools/`
-  and `projects/` for `package.json`/`Cargo.toml`/`pyproject.toml` and `.html`
-  files. This is the check that did not exist in §4. (Gate owned by Codex,
-  `tools/browser-tests/`.)
-- **Hockney PyQt6 → PySide6 port** (removing a GPL-linked Qt binding in favour of
-  the LGPL one), published on `claude/hockney-pyside6-port` @ 9e53336c, pending
-  owner-lane review.
+- **Tree fix: 1f9abc4f5, 2026-11-09, "Remove false GPL declarations from desktop tools (SS-1270)."** (Verified.) Plus **94eac75a, 2026-11-09, "Remove stray GPL claims from smack-help.php and build-spec-080.js (SS-1270)."** (Verified.)
+- **History rewrite** removing the licence material from history: 5,456 commits and 1,271 tags rewritten, 0 signed tags broken (figures from Codex's SS-1270 posts; the rewrite is Codex's work, cited not re-measured here).
+- **New gate:** `tools/browser-tests/desktop-license-declarations.cjs` — asserts the authoritative SPL title and "Version 2.4", and fails on any first-party GPL/AGPL declaration (and on PyQt5/6 dependencies) found while walking `tools/` and `projects/` for `package.json`/`Cargo.toml`/`pyproject.toml` and `.html` files. This is the check that did not exist in §4. (Gate owned by Codex, `tools/browser-tests/`.)
+- **Hockney PyQt6 → PySide6 port** (removing a GPL-linked Qt binding in favour of the LGPL one), published on `claude/hockney-pyside6-port` @ 9e53336c, pending owner-lane review.
 
 Current measured state: a search of current `Github/dev` finds no first-party GPL
 declaration — the only remaining GPL mentions are the legitimate third-party
@@ -86,10 +70,8 @@ licence files and the detection/audit tooling itself.
 
 ## 6. Limits
 
-- **Downloaded copies and old clones keep the wrong text.** The history rewrite
-  changes our remote; it cannot reach a copy someone already pulled.
-- **GitHub may keep unreachable objects** until its own garbage collection runs,
-  so the old blobs can remain fetchable by direct hash for a while.
+- **Downloaded copies and old clones keep the wrong text.** The history rewrite changes our remote; it cannot reach a copy someone already pulled.
+- **GitHub may keep unreachable objects** until its own garbage collection runs, so the old blobs can remain fetchable by direct hash for a while.
 
 Rewriting history does not retract what was already distributed; it only stops new
 readers getting it from us. This mirrors OPAUDIT 028's conclusion about the
@@ -123,13 +105,9 @@ not an open closure dependency.
 
 ## 10. What this audit does not claim / NOT CHECKED
 
-- **Downloads by anyone else** — whether any third party cloned or pulled a
-  GPL-stamped build. Not checked.
-- **Whether SYBU ever shipped to other users** (i.e. whether a wrong-licence build
-  reached a non-Sean machine through it). Not checked.
-- **Hockney's non-Qt dependency licences** — the port fixed the Qt binding; the
-  other dependencies' licences have not been audited.
-- The history-rewrite figures (5,456 commits / 1,271 tags / 0 signed tags broken)
-  are Codex's measurement, cited not independently re-counted here.
+- **Downloads by anyone else** — whether any third party cloned or pulled a GPL-stamped build. Not checked.
+- **Whether SYBU ever shipped to other users** (i.e. whether a wrong-licence build reached a non-Sean machine through it). Not checked.
+- **Hockney's non-Qt dependency licences** — the port fixed the Qt binding; the other dependencies' licences have not been audited.
+- The history-rewrite figures (5,456 commits / 1,271 tags / 0 signed tags broken) are Codex's measurement, cited not independently re-counted here.
 
 <!-- ===== SNAPSMACK EOF ===== -->
