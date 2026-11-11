@@ -50,7 +50,7 @@ can be changed without changing SnapSmack core or a skin.
 Install WordPress companion 1.1.2 or later on the source site. SMACKPRESS
 imports published FooGallery shortcodes and editor blocks backed by WordPress
 Media Library images. Each gallery becomes one native mosaic in FooGallery's
-server-side attachment order. An unresolved gallery stops the draft before
+server-side attachment order, including a shortcode's attachment_ids subset or ordering override. Repeated embeds remain independent. An unresolved gallery stops the draft before
 any image downloads begin.
 
 ## WordPress companion plugin
