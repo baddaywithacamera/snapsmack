@@ -13,8 +13,8 @@ declare(strict_types=1);
  * ENDPOINT CHECKS IT. A site can know it has been tampered with, say so on its
  * dashboard, and go on accepting posts, comments, mosaics, skin reinstalls and
  * enrollments through the API as if nothing had happened. multisite-api.php
- * does reference breach state, but only to report it (:774), auto-resolve an
- * update (:2027) and receive a spoke's report (:2134) — none is a content
+ * does reference breach state, but only to report it (:784), auto-resolve an
+ * update (:2039) and receive a spoke's report (:2149) — none is a content
  * write.
  *
  * WHERE THE GATE LIVES, AND WHY NOT IN THE AUTH LAYER. There is no single auth
@@ -196,7 +196,7 @@ function snap_breach_gate_desktop_auth_exempt(string $route): bool
  *
  * updates/*        — THE WAY OUT. A signed update is how the owner repairs a
  *                    breached install, so the gate must never stand in front
- *                    of it. The auto-resolve at multisite-api.php:2025-2030 is
+ *                    of it. The auto-resolve at multisite-api.php:2038-2041 is
  *                    conditional on a verified package AND the zip being
  *                    present; that conditionality is untouched here, so a
  *                    vanished package still cannot clear a breach.
@@ -219,13 +219,19 @@ function snap_breach_gate_desktop_auth_exempt(string $route): bool
  *                    stopping the fleet's cron. The PM weighed both on
  *                    2026-11-11 and ruled: exempt, named explicitly.
  *
- * It is also METHOD-AGNOSTIC — multisite-api.php:530 is a bare
+ * It is also METHOD-AGNOSTIC — multisite-api.php:541 is a bare
  * `$resource === 'run-crons'` with no method check — so a method-based gate
  * would miss it entirely. Named here rather than relied on to be a POST.
  */
 function snap_breach_gate_multisite_exempt(string $resource, string $sub_action): bool
 {
     if ($resource === 'run-crons') return true;
+    // RESOURCE-WIDE on purpose, and the consequence is stated rather than
+    // discovered later: a future updates/* sub-action is exempt the day it
+    // is added, without anyone revisiting this list. That is the right
+    // default for the one path that repairs a breached install, but it is a
+    // standing permission, not an oversight. Today the resource holds only
+    // status, trigger, finalize and track.
     if ($resource === 'updates') return true;
     if ($resource === 'smackback' && $sub_action === 'report') return true;
     return false;
