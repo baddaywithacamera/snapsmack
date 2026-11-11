@@ -152,7 +152,43 @@ function snap_breach_gate_front_door_exempt(string $route): bool
     foreach (['multisite', 'stats'] as $prefix) {
         if (strpos($route, $prefix) === 0) return true;
     }
+    if (snap_breach_gate_desktop_auth_exempt($route)) return true;
     return false;
+}
+
+/**
+ * desktop-auth, split by action. PM ruling, 2026-11-11.
+ *
+ * EXEMPT status and renew. They share one branch at core/desktop-auth.php:218
+ * and together are the KEEP-ALIVE PATH for a device that is already trusted.
+ * `status` is the call a running installation makes on its own, and inside the
+ * last 30 days of the term it renews it (:223). Gating it does not merely
+ * block a status check: the auto-renewal never fires, the device ages through
+ * its term and its 14-day grace, and the signed entitlement lapses --
+ * capabilities snap_slapper_full and lewk_again_full with it. A device already
+ * near term end expires within DAYS of a breach starting, and SNAP SLAPPER has
+ * been the only image source since 2026-08-28. A gate that takes the owner's
+ * editing tool away while they are repairing their site is the same mistake as
+ * gating run-crons, in a different place.
+ *
+ * GATED: activate and enroll. Those add a NEW device to a site known to be
+ * tampered with, which is what an attacker would want and not something the
+ * owner needs mid-breach.
+ *
+ * THE HONEST COST of exempting, recorded rather than glossed: a holder of
+ * valid device credentials on a breached site can still bump last_used_at,
+ * last_ip, the device metadata and the term. That is a trusted-device write,
+ * not new access, and it was weighed against the editing tool going dark.
+ *
+ * LOWERCASED, because the dispatcher does (:131-132). Without it a request to
+ * /desktop-auth/STATUS would be refused here and treated as `status` there --
+ * the gate and the code it guards disagreeing about the same request.
+ */
+function snap_breach_gate_desktop_auth_exempt(string $route): bool
+{
+    if (strpos($route, 'desktop-auth') !== 0) return false;
+    $action = strtolower(basename(trim($route, '/')));
+    return in_array($action, ['status', 'renew'], true);
 }
 
 /**

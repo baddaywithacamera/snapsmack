@@ -175,6 +175,59 @@ foreach (['gyss', 'smackpress', 'bloggerflogger', 'flkrfckr', 'ohsnap',
         snap_breach_gate_front_door_exempt($route) === false);
 }
 
+// ── desktop-auth, ONE ASSERTION PER ACTION ─────────────────────────────────
+// PM ruling 2026-11-11. The four actions are not alike: two keep an existing
+// device alive, two grant a new one access. core/desktop-auth.php:218 puts
+// status and renew in one branch; :223 is where status renews the term inside
+// the last 30 days, which is the reason the exemption exists at all.
+//
+// EXEMPT -- the keep-alive path. Gating these lapses the signed entitlement
+// and SNAP SLAPPER with it, within days for a device near term end.
+foreach (['status', 'renew'] as $action) {
+    s64(
+        'desktop-auth/' . $action . ' is EXEMPT (keep-alive for a trusted device)',
+        snap_breach_gate_desktop_auth_exempt('desktop-auth/' . $action) === true
+    );
+    s64(
+        'and the front door agrees for ' . $action,
+        snap_breach_gate_front_door_exempt('desktop-auth/' . $action) === true
+    );
+}
+
+// GATED -- new device access on a tampered site.
+foreach (['activate', 'enroll'] as $action) {
+    s64(
+        'desktop-auth/' . $action . ' is GATED (new device access)',
+        snap_breach_gate_desktop_auth_exempt('desktop-auth/' . $action) === false
+    );
+    s64(
+        'and the front door agrees for ' . $action,
+        snap_breach_gate_front_door_exempt('desktop-auth/' . $action) === false
+    );
+}
+
+// The dispatcher lowercases the action (:131-132). If the gate did not, a
+// request to /desktop-auth/STATUS would be refused here and handled as
+// `status` there -- the gate and the code it guards disagreeing about one
+// request, which is worse than either answer on its own.
+foreach (['STATUS', 'Status', 'ReNeW'] as $action) {
+    s64(
+        'case does not change the answer: desktop-auth/' . $action,
+        snap_breach_gate_desktop_auth_exempt('desktop-auth/' . $action) === true
+    );
+}
+s64(
+    'a mixed-case WRITE action is still gated',
+    snap_breach_gate_desktop_auth_exempt('desktop-auth/ACTIVATE') === false
+);
+
+// The bare prefix exempts nothing: no action means the dispatcher 404s anyway,
+// and a blanket desktop-auth exemption would let activate and enroll through.
+s64('the bare desktop-auth prefix is NOT exempt',
+    snap_breach_gate_desktop_auth_exempt('desktop-auth') === false);
+s64('and a lookalike route is not caught',
+    snap_breach_gate_desktop_auth_exempt('gyss/status') === false);
+
 // ── THE MULTISITE EXEMPTIONS ───────────────────────────────────────────────
 // run-crons: SS-1055. multisite-api.php:530 is a bare resource check with NO
 // method, so this must match by resource or it is missed entirely.
