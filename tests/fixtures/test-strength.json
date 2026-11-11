@@ -841,6 +841,11 @@
         "predicates": 5,
         "thresholds": []
     },
+    "glide-footer-inset-regression.php": {
+        "assertions": 4,
+        "predicates": 20,
+        "thresholds": []
+    },
     "gram-continuation-regression.php": {
         "assertions": 1,
         "predicates": 1,
@@ -1711,7 +1716,7 @@
     },
     "setup-package-write-diagnostic-regression.php": {
         "assertions": 6,
-        "predicates": 36,
+        "predicates": 37,
         "thresholds": []
     },
     "setup-php-version-gate-regression.php": {
