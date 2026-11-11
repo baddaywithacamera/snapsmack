@@ -175,6 +175,66 @@ function setup_dev_feed_is_stale(string $manifest_version): bool {
 
 // --- VERIFY PACKAGE ---
 /** @return string|true  Error message, or true. Return type left off: see the PHP VERSION GATE note. */
+/**
+ * Say what failed, where, and why, when the release package cannot be written.
+ * SS-1198.
+ *
+ * The person reading this is standing in a browser on an empty directory with
+ * no SnapSmack installed and therefore no logs, no admin and nowhere else to
+ * look. "Check write permission" was all they got, and it is wrong as often as
+ * it is right: a read-only mount, a missing directory, a full disk, open_basedir
+ * and SELinux all land here and none of them is fixed by chmod.
+ *
+ * A pure function on purpose, so every branch can be exercised without a web
+ * server, a download or a broken disk. See
+ * tests/setup-package-write-diagnostic-regression.php.
+ *
+ * @param string     $target     The full path that was being written.
+ * @param array|null $last_error error_get_last() captured immediately after.
+ */
+function setup_write_failure_message(string $target, ?array $last_error): string {
+    $reason = '';
+    if (is_array($last_error) && isset($last_error['message']) && $last_error['message'] !== '') {
+        $reason = (string) $last_error['message'];
+
+        // REDACT FIRST, STRIP SECOND. If the write went through a stream
+        // wrapper the message can carry the URL, and a query string is exactly
+        // where a signed-URL token or a credential lives. Doing this before the
+        // prefix is removed means a URL is scrubbed whether it sits inside
+        // PHP's own call prefix or in the body of the reason — the prefix match
+        // is not something to depend on for a secret not leaking.
+        $reason = (string) preg_replace('#(https?://[^\s?]*)\?\S*#i', '$1?[redacted]', $reason);
+
+        // PHP prefixes its own message with the failing call and repeats the
+        // path. The target is named below, so printing it twice only crowds out
+        // the part that matters.
+        $reason = (string) preg_replace('/^\s*file_put_contents\s*\([^)]*\)\s*:\s*/i', '', $reason);
+
+        $reason = trim($reason);
+    }
+
+    // Named operation, then the exact target, both escaped: a path is attacker-
+    // influenced on a shared host and this string is printed into a page.
+    $message = 'file_put_contents() failed writing the release package to '
+             . htmlspecialchars($target, ENT_QUOTES, 'UTF-8') . '.';
+
+    if ($reason !== '') {
+        $message .= ' PHP reported: ' . htmlspecialchars($reason, ENT_QUOTES, 'UTF-8') . '.';
+    } else {
+        // Silence is itself a clue, and the usual causes are the two that chmod
+        // does not touch.
+        $message .= ' PHP reported no reason, which usually points at an'
+                  . ' open_basedir restriction or SELinux rather than file mode.';
+    }
+
+    if ($reason !== '' && stripos($reason, 'permission denied') !== false) {
+        $message .= ' The web server user owns neither the file nor its directory:'
+                  . ' check ownership and ACLs on the directory, not only its mode.';
+    }
+
+    return $message;
+}
+
 function setup_verify(string $file_path, string $expected_sha256, string $signature_hex) {
     $actual = hash_file('sha256', $file_path);
     if ($actual === false) {
@@ -274,9 +334,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
             if (!$zip_data || strlen($zip_data) < 10000) {
                 $error = 'Failed to download release package from ' . htmlspecialchars($release['download_url']) . '.';
             } else {
-                $written = file_put_contents($zip_file, $zip_data);
+                // SS-1198: the old message named only the containing directory
+                // and never asked PHP why. Somebody staring at "check write
+                // permission" has no way to tell a read-only mount from a
+                // missing directory from SELinux, and the deployer is the one
+                // place where the person reading the message has no logs yet.
+                //
+                // error_clear_last() first, error_get_last() IMMEDIATELY after:
+                // a stale warning from earlier in the request would otherwise
+                // be reported as this failure's cause, which is worse than
+                // saying nothing. @ keeps the raw warning out of the page while
+                // still recording it for error_get_last().
+                if (function_exists('error_clear_last')) { error_clear_last(); }
+                $written = @file_put_contents($zip_file, $zip_data);
                 if ($written === false) {
-                    $error = 'Could not write release package to disk — check that the web server has write permission to ' . htmlspecialchars($target_dir) . '.';
+                    $error = setup_write_failure_message($zip_file, error_get_last());
                 }
             }
         }
