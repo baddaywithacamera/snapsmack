@@ -175,6 +175,30 @@ function setup_dev_feed_is_stale(string $manifest_version): bool {
 
 // --- VERIFY PACKAGE ---
 /** @return string|true  Error message, or true. Return type left off: see the PHP VERSION GATE note. */
+/**
+ * A release URL with its query string replaced, safe to print on the page.
+ * SS-1293.
+ *
+ * The deployer prints the download address when a download fails, and it is the
+ * one screen where the reader has no logs, no admin and nowhere else to look —
+ * so they will reasonably screenshot it and send it to somebody for help. A
+ * query string is where a one-time token or a signing parameter lives. Today's
+ * release links carry neither, so nothing is leaking; this is the defence for
+ * the day one does, and it costs a line.
+ *
+ * The host and path are KEPT. They are the diagnostic part — wrong host, wrong
+ * channel, typo in a manifest — and dropping them would trade a real leak risk
+ * for a useless error message.
+ *
+ * Deliberately not a parser: a failed download URL may be malformed, and
+ * parse_url() returning false would turn a bad address into no address at all.
+ * Cutting at the first '?' is what is wanted and cannot fail.
+ */
+function setup_redact_url_query(string $url): string {
+    $at = strpos($url, '?');
+    return $at === false ? $url : substr($url, 0, $at) . '?[redacted]';
+}
+
 function setup_verify(string $file_path, string $expected_sha256, string $signature_hex) {
     $actual = hash_file('sha256', $file_path);
     if ($actual === false) {
@@ -272,7 +296,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
             $zip_file = $target_dir . '/snapsmack-install.zip';
             $zip_data = setup_fetch_url($release['download_url']);
             if (!$zip_data || strlen($zip_data) < 10000) {
-                $error = 'Failed to download release package from ' . htmlspecialchars($release['download_url']) . '.';
+                // SS-1293: the address is shown because it is the useful part of this
+                // failure, but without its query string. See setup_redact_url_query().
+                $error = 'Failed to download release package from '
+                       . htmlspecialchars(setup_redact_url_query((string)$release['download_url']), ENT_QUOTES, 'UTF-8') . '.';
             } else {
                 $written = file_put_contents($zip_file, $zip_data);
                 if ($written === false) {

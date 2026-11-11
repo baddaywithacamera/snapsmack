@@ -1697,6 +1697,11 @@
             2
         ]
     },
+    "setup-download-url-redaction-regression.php": {
+        "assertions": 5,
+        "predicates": 11,
+        "thresholds": []
+    },
     "setup-php-version-gate-regression.php": {
         "assertions": 20,
         "predicates": 18,
