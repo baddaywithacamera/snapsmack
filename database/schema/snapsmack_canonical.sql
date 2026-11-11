@@ -972,10 +972,10 @@ CREATE TABLE IF NOT EXISTS `snap_mosaics` (
                COMMENT 'Gap in pixels between mosaic cells (0–20)',
   `emphasis`   VARCHAR(12)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'natural'
                COMMENT 'Block arrangement, sent to ss-engine-mosaic.js as data-emphasis: natural|balanced|landscape|portrait',
-  `layout`     VARCHAR(12)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'asymmetric',
-  `gallery_shuffle` TINYINT(1)  NOT NULL DEFAULT 0
-               COMMENT 'SS-1185: 1 = show this mosaic photographs in a random order on each view. PRESENTATION ONLY — asset_ids keeps the authored order and is never rewritten, so turning this off gives the arranged sequence back exactly. Lives here and not on snap_posts because a post may hold several mosaics and each is a separate gallery; one WordPress gallery maps to one mosaic. Default 0 so an import that says nothing keeps the authored order.'
+  `layout`     VARCHAR(12)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'asymmetric'
                COMMENT 'Which engine renders the block: asymmetric (ss-engine-mosaic) | columns, square (ss-engine-columns) | rows (ss-engine-rows). emphasis applies to asymmetric only',
+  `gallery_shuffle` TINYINT(1)  NOT NULL DEFAULT 0
+               COMMENT 'SS-1185: 1 = show this mosaic photographs in a random order on each view. PRESENTATION ONLY — asset_ids keeps the authored order and is never rewritten, so turning this off gives the arranged sequence back exactly. Lives here and not on snap_posts because a post may hold several mosaics and each is a separate gallery; one WordPress gallery maps to one mosaic. Default 0 so an import that says nothing keeps the authored order.',
   `created_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
