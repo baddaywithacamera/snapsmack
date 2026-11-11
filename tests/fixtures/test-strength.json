@@ -1234,6 +1234,11 @@
         "predicates": 15,
         "thresholds": []
     },
+    "new-horizon-about-two-column-regression.php": {
+        "assertions": 4,
+        "predicates": 23,
+        "thresholds": []
+    },
     "new-horizon-variant-regression.php": {
         "assertions": 2,
         "predicates": 3,

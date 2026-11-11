@@ -1,0 +1,286 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * NEW HORIZON's About page puts the portrait BESIDE the words.
+ *
+ * Sean reported the About page as one column, portrait on top and text
+ * underneath, and asked what had happened to it. Nothing had. It was never
+ * there.
+ *
+ * The skin DID float the portrait left, since 71780ef0 (0.7.159, 2026-05-20).
+ * But no version of that rule ever capped its WIDTH, and a shrink-to-fit float
+ * against a large photograph fills the column. Measured on the live page,
+ * curbappeal.photoblogs.fyi/about, identical at 1920 and 1440:
+ *
+ *     content column available   802px
+ *     floated portrait            802px
+ *     room left beside it           0px
+ *     text line boxes              23
+ *     LINE BOXES BESIDE THE PHOTO   0 of 23
+ *
+ * A float as wide as its container leaves nothing to flow past it. 20684ab4
+ * (27 Oct) released the hero's HEIGHT and its comment states the intent --
+ * "it is an image in a column of text" -- then never touched the width.
+ *
+ * NOT SS-1269 and not this week's shared-component work: the float predates
+ * both by six months and the geometry has never differed. Checked by walking
+ * every commit that has touched the stylesheet, not assumed.
+ *
+ * AFTER, rendered through NEW HORIZON's own layout.php with a 2655x2655
+ * portrait and measured in a browser:
+ *
+ *     width  display  container  portrait  text starts  lines beside
+ *     1920   grid     1100px     445px     right of it  15 of 22
+ *     1440   grid     1100px     445px     right of it  15 of 22
+ *     1024   grid     1012px     408px     right of it  14 of 24
+ *      880   block     850px     810px     below it      0 (collapsed, correct)
+ *      390   block     378px     338px     below it      0 (collapsed, correct)
+ *
+ * SS-1269's heading alignment measured 24px from the portrait's left edge at
+ * every one of those widths, before and after. No horizontal overflow at any.
+ *
+ * WHAT THIS TEST CAN AND CANNOT DO. The numbers above need a browser and this
+ * repository has no resolvable puppeteer or playwright, so they are recorded
+ * here and in the commit rather than re-run. What runs here is the two halves
+ * that CAN be checked without one, and that between them are what make those
+ * numbers true:
+ *
+ *   1. the RENDERED MARKUP contract the selectors depend on -- NEW HORIZON's
+ *      own layout.php is executed and the result inspected, because
+ *      `.static-content > #photobox.page-hero` is a CHILD combinator and a
+ *      wrapper introduced anywhere in that chain would silently return the
+ *      page to one column with every CSS assertion still green;
+ *   2. the STYLESHEET structure -- the grid exists, is scoped to a page that
+ *      has a portrait, places the three children in the right tracks, keeps
+ *      the heading spanning both, removes the float that caused this, and
+ *      collapses on a narrow screen.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ */
+
+$root  = dirname(__DIR__);
+$fails = 0;
+
+function nh(string $label, bool $ok): void {
+    global $fails;
+    echo ($ok ? 'PASS ' : 'FAIL ') . $label . "\n";
+    if (!$ok) $fails++;
+}
+
+// ── PART 1: the rendered markup ────────────────────────────────────────────
+if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
+require_once $root . '/core/trusted-html.php';
+require_once $root . '/core/skin-render-helpers.php';
+require_once $root . '/core/skin-view-contract.php';
+require_once $root . '/core/skin-presentation.php';
+
+$body = SnapTrustedHtml::__snapsmackCmsOnly('<p>A paragraph of the About text.</p><p>And another.</p>');
+$response = [
+    'status' => 200,
+    'kind'   => 'page',
+    'item'   => [
+        'id' => 1, 'title' => 'About Sean', 'page_title' => 'About Sean', 'slug' => 'about',
+        'content' => $body, 'description' => $body,
+        'image_asset' => 'media_assets/portrait.jpg',
+        'image_size' => 'full', 'image_align' => 'center',
+    ],
+    'page_title' => 'About Sean',
+    'rendered_content' => $body,
+    'navigation' => [],
+];
+$site = [
+    'site_name' => 'curb appeal', 'language' => 'en', 'direction' => 'ltr',
+    'skin_style_url' => '/skins/new-horizon/style.css',
+    'skin_presentation' => snapsmack_skin_presentation([], 'new-horizon'),
+    'footer' => [],
+];
+
+$html = '';
+try {
+    $view = snapsmack_build_skin_view($response, $site);
+    ob_start();
+    snapsmack_render_strict_skin_template($root . '/skins/new-horizon', 'layout.php', $view);
+    $html = (string) ob_get_clean();
+} catch (\Throwable $e) {
+    while (ob_get_level() > 0) { ob_end_clean(); }
+    nh('NEW HORIZON renders a static page: ' . $e->getMessage(), false);
+}
+
+nh('NEW HORIZON renders a static page', $html !== '');
+if ($html === '') {
+    fwrite(STDERR, "\nCould not render the skin — the rest cannot be judged.\n");
+    exit(1);
+}
+
+$doc = new DOMDocument();
+libxml_use_internal_errors(true);
+$doc->loadHTML('<?xml encoding="utf-8" ?>' . $html);
+libxml_clear_errors();
+$xp = new DOMXPath($doc);
+
+$sc = $xp->query('//div[contains(concat(" ", normalize-space(@class), " "), " static-content ")]');
+nh('the page has a .static-content container', $sc->length === 1);
+
+if ($sc->length === 1) {
+    $container = $sc->item(0);
+    // DIRECT children only. This is the assertion that protects the selector:
+    // a wrapper added around the hero or the text would leave every rule below
+    // matching nothing, and the page would quietly stack again.
+    $kids = [];
+    foreach ($container->childNodes as $n) {
+        if ($n->nodeType === XML_ELEMENT_NODE) {
+            $kids[] = strtolower($n->nodeName) . '.' . trim((string) $n->getAttribute('class'));
+        }
+    }
+    $classOf = static fn(string $k): string => explode('.', $k, 2)[1] ?? '';
+
+    nh(
+        'the heading is a DIRECT child of .static-content',
+        (bool) array_filter($kids, static fn($k) => str_contains($classOf($k), 'static-page-title'))
+    );
+    nh(
+        'the portrait box is a DIRECT child of .static-content',
+        (bool) array_filter($kids, static fn($k) => str_contains($classOf($k), 'page-hero'))
+    );
+    nh(
+        'the text is a DIRECT child of .static-content',
+        (bool) array_filter($kids, static fn($k) => str_contains($classOf($k), 'description'))
+    );
+
+    $hero = $xp->query('.//*[@id="photobox"][contains(concat(" ", normalize-space(@class), " "), " page-hero ")]', $container);
+    nh('the portrait box is #photobox.page-hero, which the grid selects on', $hero->length === 1);
+    nh(
+        'the portrait box actually holds an image',
+        $hero->length === 1 && $xp->query('.//img', $hero->item(0))->length >= 1
+    );
+}
+
+// A page with no portrait must still render, and must NOT grow an empty track.
+$noHero = $response;
+$noHero['item']['image_asset'] = '';
+try {
+    $view2 = snapsmack_build_skin_view($noHero, $site);
+    ob_start();
+    snapsmack_render_strict_skin_template($root . '/skins/new-horizon', 'layout.php', $view2);
+    $html2 = (string) ob_get_clean();
+} catch (\Throwable $e) {
+    while (ob_get_level() > 0) { ob_end_clean(); }
+    $html2 = '';
+}
+nh('a static page with no portrait still renders', $html2 !== '');
+nh(
+    'and emits no #photobox.page-hero, so the grid never engages on it',
+    $html2 !== '' && !preg_match('/id="photobox"[^>]*page-hero/', $html2)
+);
+
+// ── PART 2: the stylesheet ─────────────────────────────────────────────────
+$css_raw = (string) @file_get_contents($root . '/skins/new-horizon/style.css');
+nh('the NEW HORIZON stylesheet is readable', $css_raw !== '');
+if ($css_raw === '') { fwrite(STDERR, "\nStylesheet missing.\n"); exit(1); }
+
+// Strip comments before anything is matched. The stylesheet now explains, in
+// prose, the float it removed — and the first run of this test FAILED on that
+// explanation, reading "WAS float: left !important" as a live declaration. A
+// commented-out rule must not count as a rule either, so the comments come out
+// once, here, rather than being worked around at each assertion.
+$css = (string) preg_replace('#/\*.*?\*/#s', ' ', $css_raw);
+
+/** One declaration block by its exact selector. */
+function nh_block(string $css, string $selector): string {
+    $at = strpos($css, $selector . ' {');
+    if ($at === false) return '';
+    $open = strpos($css, '{', $at);
+    $end  = strpos($css, '}', $open);
+    return ($open === false || $end === false) ? '' : substr($css, $open + 1, $end - $open - 1);
+}
+
+$SCOPE = '.static-content:has(#photobox.page-hero)';
+
+$grid = nh_block($css, $SCOPE);
+nh('the two-column rule exists', $grid !== '');
+nh(
+    'it is a grid',
+    (bool) preg_match('/display:\s*var\(--nh-static-layout,\s*grid\)|display:\s*grid/', $grid)
+);
+nh(
+    'it declares two tracks: the portrait and the rest',
+    (bool) preg_match('/grid-template-columns:[^;]*1fr/s', $grid)
+);
+nh(
+    'the portrait width is a named property, not a buried number',
+    str_contains($grid, '--nh-static-hero-width')
+);
+
+// THE SCOPE IS THE POINT. Without :has(), the blogroll and every static page
+// with no portrait would open an empty column.
+nh(
+    'the grid is scoped to a page that HAS a portrait',
+    str_contains($css, $SCOPE)
+);
+nh(
+    'the bare .static-content rule did NOT become a grid',
+    !preg_match('/display:\s*grid/', nh_block($css, '.static-content'))
+);
+
+// Placement of the three children.
+$title = nh_block($css, $SCOPE . ' > .static-page-title');
+$heroR = nh_block($css, $SCOPE . ' > #photobox.page-hero');
+$descR = nh_block($css, $SCOPE . ' > .description');
+
+nh('the heading spans both columns', (bool) preg_match('/grid-column:\s*1\s*\/\s*-1/', $title));
+nh('the heading keeps no 850px cap that would cut it short', str_contains($title, 'max-width: none'));
+nh('the portrait sits in its own column', str_contains($heroR, 'grid-column'));
+nh('the text sits in the other column', str_contains($descR, 'grid-column'));
+nh('the text is not held to its single-column cap', str_contains($descR, 'max-width: none'));
+
+// THE FAULT ITSELF: the float must be gone. It is what produced one column.
+$heroBase = nh_block($css, '.static-transmission #photobox.page-hero');
+nh('the static hero rule still exists', $heroBase !== '');
+nh(
+    'the float that caused this is gone from the static hero',
+    $heroBase !== '' && !preg_match('/float:\s*left/', $heroBase)
+);
+nh(
+    'and it is explicitly none, not merely absent',
+    (bool) preg_match('/float:\s*none/', $heroBase)
+);
+nh(
+    'the float is also neutralised inside the grid',
+    (bool) preg_match('/float:\s*none/', $heroR)
+);
+
+// The bio image's own float is a DIFFERENT thing and must survive.
+$bio = nh_block($css, '.static-transmission .description .align-left');
+nh(
+    'the inline bio image keeps its own float (different feature, untouched)',
+    (bool) preg_match('/float:\s*left/', $bio) && (bool) preg_match('/max-width:\s*40%/', $bio)
+);
+
+// Narrow screens collapse to one column.
+nh(
+    'a narrow screen collapses it to one column',
+    (bool) preg_match('/@media\s*\(max-width:\s*900px\)\s*\{[^@]*' . preg_quote($SCOPE, '/') . '\s*\{[^}]*display:\s*block/s', $css)
+);
+
+// ── The version must move or no site receives this ─────────────────────────
+$manifest = json_decode((string) @file_get_contents($root . '/skins/new-horizon/manifest.json'), true);
+$version  = is_array($manifest) ? (string) ($manifest['version'] ?? '') : '';
+nh('the NEW HORIZON manifest carries a version', $version !== '');
+nh(
+    'it is past 1.3.36, the version that shipped the single column',
+    $version !== '' && version_compare($version, '1.3.36', '>')
+);
+
+if ($fails) {
+    fwrite(STDERR, "\n{$fails} FAILURE(S): NEW HORIZON's About page no longer puts the portrait "
+        . "beside the words. Either the grid is gone, or the markup it selects on has changed "
+        . "shape, or the float is back — and the float is what made the page one column for "
+        . "six months.\n");
+    exit(1);
+}
+echo "NEW HORIZON About two-column: PASS\n";
+exit(0);
+
+// ===== SNAPSMACK EOF =====
