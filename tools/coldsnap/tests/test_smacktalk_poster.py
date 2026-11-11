@@ -174,12 +174,13 @@ def _checks():
     # 8. A composed mosaic can select/reorder bucket positions and carry an
     # explicit three-photo layout through to mosaic creation.
     calls = []
-    poster.create_mosaic = lambda ids, title="Mosaic", gap=4, layout="asymmetric": (
-        calls.append((list(ids), layout)) or (55, "[mosaic:55]"))
+    poster.create_mosaic = (
+        lambda ids, title="Mosaic", gap=4, layout="asymmetric", gallery_shuffle=False: (
+            calls.append((list(ids), layout, gallery_shuffle)) or (55, "[mosaic:55]")))
     resolved, mids = poster._resolve_mosaics(
         "before\n[mosaic=3,1,2 layout=one-top]\nafter", [101, 102, 103, 104], draft)
     assert resolved == "before\n[mosaic:55]\nafter", resolved
-    assert mids == [55] and calls == [([103, 101, 102], "one-top")], calls
+    assert mids == [55] and calls == [([103, 101, 102], "one-top", False)], calls
     n += 1
 
     # 9. A four-photo bucket can use only its bottom three, in their chosen order.
@@ -187,7 +188,33 @@ def _checks():
     resolved, mids = poster._resolve_mosaics(
         "[mosaic=2,3,4 layout=three-across]", [101, 102, 103, 104], draft)
     assert resolved == "[mosaic:55]", resolved
-    assert mids == [55] and calls == [([102, 103, 104], "three-across")], calls
+    assert mids == [55] and calls == [([102, 103, 104], "three-across", False)], calls
+    n += 1
+
+    # 10. SS-1185: an owner-random gallery. The `shuffle` keyword the WordPress
+    # importer writes reaches create_mosaic as gallery_shuffle=True, and the ids
+    # are still handed over IN THE AUTHORED ORDER - the randomising is the
+    # site's presentation step, not something the poster does on the way out. A
+    # poster that scrambled here would destroy the arrangement irrecoverably.
+    calls.clear()
+    resolved, mids = poster._resolve_mosaics(
+        "[mosaic=1,2,3 layout=rows shuffle]", [101, 102, 103, 104], draft)
+    assert resolved == "[mosaic:55]", resolved
+    assert calls == [([101, 102, 103], "rows", True)], calls
+    n += 1
+
+    # 11. The same marker without the keyword is unchanged: OFF, not absent.
+    # This is the pair that proves the keyword is read rather than ignored.
+    calls.clear()
+    poster._resolve_mosaics("[mosaic=1,2,3 layout=rows]", [101, 102, 103], draft)
+    assert calls == [([101, 102, 103], "rows", False)], calls
+    n += 1
+
+    # 12. shuffle with no layout, and shuffle on a whole-bucket marker: both are
+    # shapes the importer can emit, and neither may lose the flag.
+    calls.clear()
+    poster._resolve_mosaics("[mosaic shuffle]", [101, 102], draft)
+    assert calls == [([101, 102], "asymmetric", True)], calls
     n += 1
 
     return n
@@ -214,7 +241,23 @@ def _mosaic_token_checks():
         assert m and m.group(2) == name, name
     assert rx.search("[mosaic]") and rx.search("[mosaic:bucket]")
     assert not rx.search("[mosaic:123]"), "numeric mosaic ids are the site's, left alone"
-    return 3
+
+    # SS-1185: the shuffle keyword, in every shape the importer can write, and
+    # asserted ABSENT where it is not written. Group 3 is the flag.
+    for text in ("[mosaic=1,2 layout=rows shuffle]", "[mosaic shuffle]",
+                 "[mosaic=1,2 shuffle]", "[mosaic=1,2 layout=rows SHUFFLE]"):
+        m = rx.search(text)
+        assert m and m.group(3), text
+    for text in ("[mosaic=1,2 layout=rows]", "[mosaic]", "[mosaic:bucket]"):
+        m = rx.search(text)
+        assert m and not m.group(3), text
+    # The layout must survive alongside it rather than swallowing the keyword.
+    m = rx.search("[mosaic=1,2 layout=one-top shuffle]")
+    assert m and m.group(2) == "one-top" and m.group(3), m.groups()
+    # A word that merely starts the same is not the flag.
+    m = rx.search("[mosaic=1,2 layout=rows shuffled]")
+    assert (m is None) or not m.group(3), "shuffled is not shuffle"
+    return 8
 
 
 if __name__ == "__main__":

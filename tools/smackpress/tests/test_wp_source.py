@@ -161,6 +161,98 @@ class RewriteTests(unittest.TestCase):
         self.assertEqual([image["alt"] for image in ordered],
                          ["one", "two", "three", "four"])
 
+    # ── SS-1185: owner-random galleries ────────────────────────────────────
+    # Six of the eleven mccormickphotography galleries are owner-random
+    # (cars-trucks-and-tractors, engagement-shoot, high-school-sports,
+    # landscapes, old-and-abandoned, panoramic-images, per the staged
+    # manifest). The marker is the only way that fact survives the trip from
+    # WordPress to the panel COLD SNAP creates, so it is asserted in both
+    # gallery dialects and in both states.
+
+    def test_gallery_marker_says_nothing_about_order_by_default(self):
+        """An import that was not told keeps the authored order. This is the
+        pair to the test below: the keyword must be absent, not merely
+        unasserted, or a default-on bug reads as a pass."""
+        content = (
+            '[smackpress-gallery]\n'
+            f'[smackpress-image id="10" url="{WP}/one.png"]\n'
+            f'[smackpress-image id="11" url="{WP}/two.png"]\n'
+            '[/smackpress-gallery]'
+        )
+        body, _ = wp_source.rewrite_body(content, [])
+        self.assertEqual(body, "[mosaic=1,2 layout=asymmetric]")
+        self.assertNotIn("shuffle", body)
+
+    def test_classic_gallery_carries_shuffle_when_the_caller_says_so(self):
+        content = (
+            '[smackpress-gallery]\n'
+            f'[smackpress-image id="10" url="{WP}/one.png"]\n'
+            f'[smackpress-image id="11" url="{WP}/two.png"]\n'
+            f'[smackpress-image id="12" url="{WP}/three.png"]\n'
+            '[/smackpress-gallery]'
+        )
+        body, ordered = wp_source.rewrite_body(content, [], gallery_shuffle=True)
+        self.assertEqual(body, "[mosaic=1,2,3 layout=asymmetric shuffle]")
+        # The AUTHORED order still goes across. Shuffling is what the site does
+        # when it shows the panel; an importer that scrambled the sequence here
+        # would leave no arrangement to go back to.
+        self.assertEqual([image["url"] for image in ordered],
+                         [f"{WP}/one.png", f"{WP}/two.png", f"{WP}/three.png"])
+
+    def test_gutenberg_gallery_carries_shuffle_when_the_caller_says_so(self):
+        figures = "".join(
+            '<!-- wp:image --><figure class="wp-block-image">'
+            f'<img src="{WP}/{name}.png" alt="{name}"></figure><!-- /wp:image -->'
+            for name in ("one", "two", "three", "four")
+        )
+        content = (
+            '<!-- wp:gallery {"columns":2} -->'
+            '<figure class="wp-block-gallery has-nested-images columns-2">'
+            + figures + '</figure><!-- /wp:gallery -->'
+        )
+        body, ordered = wp_source.rewrite_body(content, [], gallery_shuffle=True)
+        self.assertEqual(body, "[mosaic=1,2,3,4 layout=asymmetric shuffle]")
+        self.assertEqual([image["alt"] for image in ordered],
+                         ["one", "two", "three", "four"])
+
+    def test_shuffle_marks_galleries_only_not_loose_images(self):
+        """A post with a gallery AND an ordinary picture: the flag belongs to
+        the gallery marker. A bucket token has no order to randomise, and
+        putting the word anywhere near one would make the body unparseable."""
+        content = (
+            f'<img src="{WP}/solo.png">'
+            '[smackpress-gallery]\n'
+            f'[smackpress-image id="10" url="{WP}/one.png"]\n'
+            f'[smackpress-image id="11" url="{WP}/two.png"]\n'
+            '[/smackpress-gallery]'
+        )
+        body, _ = wp_source.rewrite_body(content, [], gallery_shuffle=True)
+        # Gallery members are slotted first (the gallery pass runs before the
+        # loose-<img> pass), so the solo picture is 3, not 1.
+        self.assertIn("[mosaic=1,2 layout=asymmetric shuffle]", body)
+        self.assertIn("[img:bucket:3]", body)
+        self.assertEqual(body.count("shuffle"), 1)
+
+    def test_every_gallery_in_one_post_gets_the_same_answer(self):
+        """Stated as a limit, not a feature. The flag is per POST because a
+        WordPress gallery has no identity left in the body by this point, so
+        two galleries in one post cannot be told apart. If an owner ever needs
+        one random and one authored, this test is the one that has to change."""
+        gallery = (
+            '[smackpress-gallery]\n'
+            f'[smackpress-image id="10" url="{WP}/a.png"]\n'
+            f'[smackpress-image id="11" url="{WP}/b.png"]\n'
+            '[/smackpress-gallery]'
+        )
+        other = (
+            '[smackpress-gallery]\n'
+            f'[smackpress-image id="12" url="{WP}/c.png"]\n'
+            f'[smackpress-image id="13" url="{WP}/d.png"]\n'
+            '[/smackpress-gallery]'
+        )
+        body, _ = wp_source.rewrite_body(gallery + other, [], gallery_shuffle=True)
+        self.assertEqual(body.count("shuffle"), 2)
+
     def test_wordpress_derivatives_collapse_to_largest_variant(self):
         images = [
             {"url": f"{WP}/lake-1024x683.jpg", "width": 1024, "height": 683},
@@ -255,6 +347,27 @@ class DraftTests(unittest.TestCase):
         with self.assertRaises(wp_source.ImportError_) as cm:
             wp_source.draft_from_wp(post, self.tmp.name, fetch=fake_fetch)
         self.assertIn("missing.png", str(cm.exception))
+
+    def test_draft_from_wp_carries_the_shuffle_choice_into_the_body(self):
+        """The adapter is the only caller of rewrite_body, so a flag that stops
+        there reaches nothing. Asserted at the level the migration tool will
+        actually use: give draft_from_wp the choice, read the finished body."""
+        gallery = (
+            '[smackpress-gallery]\n'
+            f'[smackpress-image id="10" url="{WP}/grille.png"]\n'
+            f'[smackpress-image id="11" url="{WP}/badge.png"]\n'
+            '[/smackpress-gallery]'
+        )
+        post = {**POST, "content_expanded": gallery, "images": []}
+
+        plain = wp_source.draft_from_wp(post, self.tmp.name, fetch=fake_fetch)
+        self.assertNotIn("shuffle", plain.caption)
+
+        random_order = wp_source.draft_from_wp(
+            post, self.tmp.name, fetch=fake_fetch, gallery_shuffle=True)
+        # Slots 2 and 3: POST carries a featured image, which draft_from_wp
+        # puts first so COLD SNAP makes it the cover, so it takes slot 1.
+        self.assertIn("[mosaic=2,3 layout=asymmetric shuffle]", random_order.caption)
 
     def test_wordpress_page_keeps_its_identity_and_is_not_a_post(self):
         page = dict(POST)

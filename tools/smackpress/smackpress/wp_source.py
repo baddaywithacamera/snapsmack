@@ -193,13 +193,29 @@ def _variant_rank(image: dict) -> tuple:
     return (width * height, 0 if derivative else 1)
 
 
-def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
+def rewrite_body(content: str, images: List[dict], *,
+                 gallery_shuffle: bool = False) -> Tuple[str, List[dict]]:
     """Replace every picture in the body with an [img:bucket:N] token.
 
     `images` is the companion's list ({id,url,alt,filename,…}). Pictures found
     in the body that the companion did not list (hot-linked from elsewhere) are
     appended so they get downloaded too. Returns (body, ordered_images) where
-    position N in ordered_images ↔ [img:bucket:N] (1-based)."""
+    position N in ordered_images ↔ [img:bucket:N] (1-based).
+
+    `gallery_shuffle` marks this post's galleries as owner-random, so the
+    mosaic placeholder carries `shuffle` and COLD SNAP's poster sets
+    gallery_shuffle on the panel it creates. It is OFF unless the caller says
+    otherwise: a migrated gallery keeps its authored order by default, and the
+    flag is presentation only — the stored order is never scrambled.
+
+    It is per POST, not per gallery, because by the time a body reaches here a
+    WordPress gallery has NO IDENTITY LEFT. The companion has already expanded
+    [gallery] into [smackpress-gallery], dropping its orderby="rand", and a
+    Gutenberg wp:gallery block carries no name. So nothing in the body can say
+    WHICH gallery was random — only the caller knows, and for a post holding
+    two galleries this flag cannot tell them apart. Said plainly rather than
+    guessed at: if that case arrives, the marker syntax is the place to fix
+    it, not this signature."""
     ordered: List[dict] = []
     by_url: Dict[str, int] = {}
 
@@ -251,8 +267,9 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
         placement.
         """
         positions = list(positions)
-        return "\n[mosaic=%s layout=asymmetric]\n" % (
-            ",".join(str(position) for position in positions),)
+        return "\n[mosaic=%s layout=asymmetric%s]\n" % (
+            ",".join(str(position) for position in positions),
+            " shuffle" if gallery_shuffle else "")
 
     # Classic [gallery] shortcodes are expanded by the companion inside this
     # explicit boundary.  Resolve every member through slot() first, then carry
@@ -370,7 +387,8 @@ def extract_wordpress_ephemera(body: str, ordered: List[dict],
 # ── the adapter ───────────────────────────────────────────────────────────────
 def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
                   status: str = "draft", on_progress: Callable[[str], None] = None,
-                  profile: Optional[dict] = None) -> Draft:
+                  profile: Optional[dict] = None,
+                  gallery_shuffle: bool = False) -> Draft:
     """Turn the companion's full post JSON into a COLD SNAP Draft with every
     picture downloaded into `workdir`. Raises ImportError_ naming the picture
     if one cannot be brought across — a post with a missing picture is not
@@ -389,7 +407,7 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
     if feat.get("url"):
         images = [feat] + [im for im in images if _norm(im.get("url", "")) != _norm(feat["url"])]
 
-    body, ordered = rewrite_body(content, images)
+    body, ordered = rewrite_body(content, images, gallery_shuffle=gallery_shuffle)
     destination_type = "page" if full_post.get("type") == "page" else "post"
     if destination_type == "page":
         # A WordPress Page is authored static content.  Do not reinterpret its
