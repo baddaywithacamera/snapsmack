@@ -11,6 +11,20 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.993D - 2026-11-10
+
+- SS-1284: every site on a shared server was downloading its update into the same temporary folder, so one site finishing could delete the package another site was still using. Each install now uses its own folder. This caused a real incident: one site's post-update integrity record was never refreshed, its next scheduled check read the files the update had legitimately rewritten as tampering, and the site locked itself out. The record is no longer skipped when the package is missing, a missing package is reported instead of passing silently, and a site that updated without refreshing its record now shows on the fleet board as updated WITH WARNINGS, naming the site and the reason, rather than as a clean success.
+
+- SS-1286: the scheduled integrity check could run in the middle of an update. It runs from the command line, which is exempt from the maintenance lock that pauses a site during an update, so it compared newly replaced files against the old record and reported tampering that had not happened. It now stands aside while an update holds the lock and checks normally on its next pass. A lock it cannot read is treated as held rather than absent, which is the case that matters: the lock file exists briefly before it has been written. A lock left behind by a crashed update still expires after five minutes, so checking can never be silenced for good.
+
+- SS-1287: database changes showed as pending for ever on every site. A newly installed site records the complete schema in one go and is then meant to mark each change as already applied, but that step looked for files named in a style the project stopped using in May, so it matched nothing and marked nothing. Four more changes had been deleted from the project in April and left on the known list, so they were pending everywhere with no file to run. One shipped file was missing from that list and reported as an orphan; it duplicates the canonical schema and nothing uses it, so it has been removed. No site was ever missing any schema. Existing sites still need their records filled in once; that is a deployment step, not part of this build.
+
+- SS-1173: a SMACKBACK breach alert went to one address and the result of sending it was discarded, so a failed alert looked the same as a delivered one and no other administrator was told. The alert now reaches every administrator, each send is checked, and the outcome is recorded where the dashboard can show it.
+
+- SS-1054: removing a spoke from the hub now confirms the spoke's credentials were revoked before the hub forgets it.
+
+- SS-1158: the help page no longer forces PHP error display on, which could expose internal detail to visitors.
+
 - SECAUDIT 028 (SS-1282): SMACKBACK no longer baselines a forbidden (leak/secret-shaped) file by presence. A FORBIDDEN list (root sc-config.php, .env/.pem/.key/.p12/.pfx/.bak, backups/) is refused at baseline time (both init paths), pruned from any existing baseline, and surfaced in a non-locking FORBIDDEN bucket at verify time; because such a file is never baselined, the admin REMOVE accepts it, so a leaked secret can be deleted without a MISSING breach or lockout. Empty on the Smack Central host.
 
 - SS-1055: three hub->spoke multisite write endpoints (relay-join, backup/report, disconnect) now check the caller's role, so a spoke presenting the shared hub->spoke key can no longer drive them. run-crons (the fourth write) is held for a follow-up pending confirmation of how CRONOMETER authenticates.
