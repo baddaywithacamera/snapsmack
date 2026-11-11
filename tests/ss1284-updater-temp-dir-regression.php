@@ -221,7 +221,7 @@ ss1284(
 
 ss1284(
     'the final summary reports the not-clean count',
-    (bool) preg_match('/warnCount\s*\+\s*\x27 NOT CLEAN/', $board)
+    (bool) preg_match('/warnCount\s*\+\s*\x27 with warnings/', $board)
 );
 
 ss1284(
@@ -236,8 +236,37 @@ ss1284(
 );
 
 ss1284(
-    'the in-progress counter shows the not-clean tally',
-    (bool) preg_match("/warnCount\s*\+\s*' not clean/", $board)
+    'the in-progress counter shows the warning tally',
+    (bool) preg_match("/warnCount\s*\+\s*' with warnings/", $board)
+);
+
+// PM ruling, SS-1284: the wording is neutral. The update succeeded and the
+// files are correct; what failed is the integrity bookkeeping, and the
+// per-spoke warn_detail is where the specific reason belongs. "NOT CLEAN" in
+// the summary overstated it. Assert the overstatement is gone, not merely that
+// the neutral text is present — otherwise both could sit in the file at once.
+ss1284(
+    'the summary does not use the overstated "NOT CLEAN" wording',
+    !str_contains($board, 'NOT CLEAN')
+);
+
+ss1284(
+    'the warned-spokes heading is the neutral one',
+    str_contains($board, 'These spokes updated with SMACKBACK')
+);
+
+ss1284(
+    'the plain-POST renderer labels it WARNING',
+    (bool) preg_match('/<strong>WARNING:<\/strong>/', $board)
+);
+
+// The reason must still be reported per spoke — neutral wording must not mean
+// vague wording. warn_detail is what distinguishes "baseline not refreshed"
+// from "package missing at finalize".
+ss1284(
+    'per-spoke warn_detail still distinguishes the two causes',
+    str_contains($board, 'SMACKBACK baseline was NOT refreshed')
+    && str_contains($board, 'package was missing at finalize')
 );
 
 // ── 3b-iii. THE NON-AJAX RENDERER TOO (Codex re-verify, blocker 2) ──────────

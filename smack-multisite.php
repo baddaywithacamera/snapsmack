@@ -1768,7 +1768,7 @@ include 'core/sidebar.php';
                                 &#9888; <strong><?php echo htmlspecialchars($ur['name']); ?></strong>
                                 updated <?php echo htmlspecialchars($ur['from']); ?> &rarr; <?php echo htmlspecialchars($ur['to']); ?>
                                 (<?php echo (int)$ur['files']; ?> files<?php echo $ur['migs'] > 0 ? ', ' . (int)$ur['migs'] . ' migration' . ($ur['migs'] !== 1 ? 's' : '') : ''; ?>)
-                                &mdash; <strong>NOT CLEAN:</strong>
+                                &mdash; <strong>WARNING:</strong>
                                 <?php echo htmlspecialchars($ur['warn_detail'] ?? 'The SMACKBACK baseline was not refreshed. See SS-1284.'); ?>
                                 <?php if (!empty($ur['errors'])): ?>
                                     Errors: <?php echo htmlspecialchars(implode('; ', $ur['errors'])); ?>
@@ -1941,7 +1941,7 @@ include 'core/sidebar.php';
                               'UPDATING ' + Math.min(done + 1, total) + ' OF ' + total +
                               (current ? ' &mdash; ' + esc(current) : '') +
                               '  <span class="text-muted">(' + okCount +
-                              ' ok, ' + warnCount + ' not clean, ' + failCount + ' failed)</span></div>' +
+                              ' ok, ' + warnCount + ' with warnings, ' + failCount + ' failed)</span></div>' +
                             '<div style="height:6px;background:rgba(255,255,255,0.12);border-radius:3px;overflow:hidden;">' +
                               '<div style="height:100%;width:' + pct + '%;background:var(--accent,#00d4d4);transition:width .2s;"></div>' +
                             '</div>';
@@ -1955,11 +1955,18 @@ include 'core/sidebar.php';
                             // banner is exactly the kind of reassuring summary that let a
                             // live site go into LOCKOUT without anyone noticing.
                             var cls = failCount ? "alert-error" : (warnCount ? "alert-warning" : "alert-success");
+                            // Wording is deliberately neutral (PM ruling, SS-1284). The
+                            // earlier shouted wording overstated it: the update itself
+                            // succeeded and the files are correct. What is wrong is the
+                            // integrity BOOKKEEPING, and the per-spoke warn_detail is the
+                            // place that says which — baseline not refreshed, or package
+                            // missing. A summary that shouts does not help the operator
+                            // decide anything; the detail line does.
                             var body = 'Finished &mdash; ' + okCount + ' updated, '
-                                     + warnCount + ' NOT CLEAN, ' + failCount + ' failed.';
+                                     + warnCount + ' with warnings, ' + failCount + ' failed.';
                             if (warnCount) {
-                                body += '<div style="margin-top:8px;"><strong>These spokes updated but are not clean '
-                                      + 'and will false-breach on their next verify (SS-1284):</strong><ul style="margin:6px 0 0 18px;">';
+                                body += '<div style="margin-top:8px;"><strong>These spokes updated with SMACKBACK '
+                                      + 'warnings:</strong><ul style="margin:6px 0 0 18px;">';
                                 for (var i = 0; i < warnLines.length; i++) {
                                     body += '<li>' + warnLines[i] + '</li>';
                                 }
