@@ -1731,7 +1731,7 @@
         "thresholds": []
     },
     "secaudit-064-breach-write-gate-regression.php": {
-        "assertions": 2,
+        "assertions": 51,
         "predicates": 10,
         "thresholds": [
             403,
