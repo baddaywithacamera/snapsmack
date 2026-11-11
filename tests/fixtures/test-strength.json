@@ -2012,6 +2012,15 @@
         "predicates": 0,
         "thresholds": []
     },
+    "smackpress-gallery-shuffle-regression.php": {
+        "assertions": 4,
+        "predicates": 4,
+        "thresholds": [
+            25,
+            50,
+            200
+        ]
+    },
     "smackpress-import-boundary-regression.php": {
         "assertions": 2,
         "predicates": 1,

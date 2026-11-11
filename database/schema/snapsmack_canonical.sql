@@ -224,6 +224,8 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'FEDIVERSE (0.7.393): Note.summary content-warning text shown before a sensitive post.',
   `portfolio_post`    tinyint(1)     NOT NULL DEFAULT 0
                       COMMENT 'PORTFOLIO: 1 = this post is a standing portfolio page rather than a dated entry. DESIGNATION ONLY — it hides nothing by itself. Visibility is the three exclude_* flags, so a page can be marked now and its visibility decided later without a schema change.',
+  `gallery_shuffle`   tinyint(1)     NOT NULL DEFAULT 0
+                      COMMENT 'PORTFOLIO (SS-1185): 1 = show this post photographs in a random order on each view. PRESENTATION ONLY — the authored order in snap_bucket_items is never rewritten, so turning this off gives the arranged sequence back exactly. Default 0 so an import that says nothing about shuffle keeps the authored order.',
   `exclude_from_archive` tinyint(1)  NOT NULL DEFAULT 0
                       COMMENT 'PORTFOLIO: 1 = keep out of archive and landing listings, and out of the photograph archive and taxonomy counts via snap_post_images. Never affects the post own URL.',
   `exclude_from_search` tinyint(1)   NOT NULL DEFAULT 0
