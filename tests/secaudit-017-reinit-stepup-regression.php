@@ -139,7 +139,34 @@ sa017(
 // ── The panel text matches what the code does ──────────────────────────────
 sa017(
     'the panel tells the owner it needs password + 2FA',
-    (bool) preg_match('/RE-INITIALISE BASELINE.{0,900}password \+ 2FA/s', $src)
+    (bool) preg_match('/RE-INITIALISE BASELINE.{0,1400}password \+ 2FA/s', $src)
+);
+
+// Sean's ruling, 2026-11-11: the signed update is the primary exit from a false
+// breach and this control is the fallback. A warning that says only "do not use
+// this" leaves the owner with a locked-out site and no next step; the panel has
+// to name the thing that does work. Pinned because panel copy is the kind of
+// text that gets tidied by somebody who does not know it is a ruling.
+sa017(
+    'the panel names the signed update as the thing to try first',
+    (bool) preg_match('/RE-INITIALISE BASELINE.{0,600}signed update first/si', $src)
+);
+sa017(
+    'and says to use this control only when that has not worked',
+    (bool) preg_match('/RE-INITIALISE BASELINE.{0,1200}only when that\s*\n?\s*has been tried and has not worked/si', $src)
+);
+// The direction must come BEFORE the warning, or the owner reads "do not" and
+// stops without ever learning what to do instead.
+// Searched FROM THE PANEL HEADING, not from the top of the file: the handler's
+// own comment quotes the warning verbatim and sits earlier, so a bare strpos
+// finds the comment and compares the wrong two positions. (It did.)
+$panel_at  = strpos($src, 'RE-INITIALISE BASELINE</h3>');
+$update_at = $panel_at === false ? false : strpos($src, 'Try a signed update first', $panel_at);
+$warn_at   = $panel_at === false ? false : strpos($src, 'Do not use this if a breach is active', $panel_at);
+sa017(
+    'the direction is given before the warning, not after it',
+    $panel_at !== false && $update_at !== false && $warn_at !== false
+    && $update_at > $panel_at && $update_at < $warn_at
 );
 
 if ($fails) {

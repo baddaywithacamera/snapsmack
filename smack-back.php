@@ -1090,6 +1090,11 @@ include 'core/sidebar.php';
     <div class="box">
         <h3>RE-INITIALISE BASELINE</h3>
         <p class="dim" style="margin-bottom:20px;line-height:1.7;">
+            <strong>Try a signed update first.</strong> If this breach followed a release,
+            the update path re-builds the baseline itself and is the fix that was used to
+            clear curbappeal.photoblogs.fyi on 11 November. Use this control only when that
+            has been tried and has not worked.
+            <br><br>
             Re-hash all monitored files from disk and update the baseline.
             Use this after a legitimate manual file edit.
             <strong>Do not use this if a breach is active</strong> — it would bless the tampered files.
