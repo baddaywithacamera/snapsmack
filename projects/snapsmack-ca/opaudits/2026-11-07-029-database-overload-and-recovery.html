@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: preserve the final SNAPSMACK EOF comment. -->
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OPAUDIT 029 — Database overload and recovery</title><link rel="stylesheet" href="_report.css?v=ace953fd"></head><body><p class="doc-kicker">SnapSmack Operability Audit</p>
+<h1>OPAUDIT 029 — Database overload and recovery</h1>
+<blockquote><p><strong>DRAFT — unpublished.</strong> Prepared from the retained 7 November incident record and its follow-up. This is dated evidence, not a fresh fleet inspection.</p></blockquote>
+<table class="meta"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+<tr><td>Audit ID</td><td>2026-11-07-029</td></tr>
+<tr><td>State</td><td>OPEN. Recovery and source checks are recorded; acceptance work remains.</td></tr>
+<tr><td>Scope</td><td>The CT110 database overload incident, recovery, statement limit, and the missing operational guard that allowed one query shape to run for minutes.</td></tr>
+<tr><td>Ticket</td><td>No single Ticket Wicket record was identified for the incident at filing time.</td></tr>
+</tbody></table>
+<h2>What happened</h2>
+<p>The owner stopped the shared database container after server load made its shell difficult to open. Sites depending on that database then became unavailable. The container was restarted through the authenticated administration shell.</p>
+<h2>Evidence recorded during the incident</h2>
+<p>Database process inspection showed archive visibility queries running for 363, 305 and 280 seconds. Their repeated correlated visibility checks were observed. Random ordering was a separate hypothesis, not the demonstrated cause of those statements.</p>
+<p>Following restart, recorded memory use was approximately 848 MiB of 4 GiB, with no swap in use. A CPU percentage quoted earlier was a lifetime average and is not presented here as an instantaneous measurement.</p>
+<p>The offending archive predicate was repaired in commit <code>5c42ae83</code>; the measured replacement query completed in 28 ms in the retained incident record. A production-sized MariaDB timing test now guards that predicate, but the test reports NOT CHECKED when no MariaDB connection is supplied and no repository CI workflow was found that supplies one.</p>
+<h2>Recovery and limits</h2>
+<p>A 30-second database statement limit was applied and read back, then persisted and verified through the server configuration parser. The incident record reports CMS 0.7.986D installed. Those steps are recovery evidence, not proof that every expensive query or long-running maintenance job is safe.</p>
+<p>Limited host inspections did not establish either compromise or a clean bill of health. Full swap alone also does not establish active swapping.</p>
+<h2>What remains open</h2>
+<ol><li>Exercise backup, import and migration jobs against the statement limit.</li><li>Prove slow-query monitoring, deduplicated failure alerts and recovery alerts on an isolated installation.</li><li>Verify sustained site availability under representative load.</li><li>Run the query budget test on the release path with a real MariaDB so NOT CHECKED cannot silently satisfy the gate.</li></ol>
+<h2>What to check in your own project</h2>
+<ol><li>Can one public request trigger a query that scans the same large table once for every result row?</li><li>Do query-time limits protect interactive traffic without breaking backups, imports or migrations?</li><li>Does a production-sized timing check actually run, or can it pass as NOT CHECKED when its database is absent?</li><li>Will operators receive one clear alert when a query fails and another when service recovers?</li><li>After recovery, do you verify sustained availability rather than treating a successful restart as closure?</li></ol>
+<h2>What this audit does not claim</h2>
+<ul><li>It does not claim the database was compromised.</li><li>It does not claim the statement limit has been exercised against every maintenance job.</li><li>It does not claim the timing guard currently runs in CI.</li><li>It does not claim the remaining SQL sweep is complete; that work is OPAUDIT 030.</li></ul>
+<p>Prepared by Codex with AI assistance. Status: <strong>OPEN</strong>.</p>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->

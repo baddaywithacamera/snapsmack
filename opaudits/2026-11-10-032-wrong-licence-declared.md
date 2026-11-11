@@ -116,7 +116,15 @@ not match. This is a `tools/browser-tests/` change — flagged for Codex, not fi
 here. (The Markdown draft is safe: the gate scans only `.html`/declaration files
 under `tools/` and `projects/`, and this draft is `.md` under `opaudits/`.)
 
-## 9. What this audit does not claim / NOT CHECKED
+## 9. What to check in your own project
+
+1. Does the licence declared in your code (manifests, footers and about pages) match the licence you actually intend to grant?
+2. Is there a single source of truth for your licence that every declaration points back to?
+3. Does any automated check read your first-party licence declarations, or has a human ever actually looked at the footer?
+4. If you bundle third-party code under a different licence, is your own code's licence clearly separated from it?
+5. When you change your licence, do old published copies and tags still state the old one — and have you accounted for that?
+
+## 10. What this audit does not claim / NOT CHECKED
 
 - **Downloads by anyone else** — whether any third party cloned or pulled a
   GPL-stamped build. Not checked.
