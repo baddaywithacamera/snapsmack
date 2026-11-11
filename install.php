@@ -96,6 +96,43 @@ if (is_file(__DIR__ . '/core/fedistructure-package.php')) {
 $installer_is_fedistructure = defined('SNAPSMACK_DISTRIBUTION')
                            && SNAPSMACK_DISTRIBUTION === 'fedistructure';
 
+// --- WHICH SITE MODES THE INSTALLER MAY OFFER (SS-1197) ---
+// ONE list. It draws the cards AND it validates the POST, because two copies of
+// "which modes are ready" is how SMACKTHEMUP came to be offered on the install
+// screen before it had been tested: the card existed, the accepted-values array
+// listed it separately, and nothing tied them together.
+//
+// SMACKTHEMUP is deliberately absent. It is a real mode -- core recognises it,
+// it has a label and a default skin -- but a new owner must not be able to
+// choose it during installation until it has been tested, because the mode
+// decides the whole shape of their site and is not a casual thing to undo.
+function install_selectable_site_modes(): array {
+    return ['photoblog', 'carousel', 'smacktalk'];
+}
+
+function install_mode_is_selectable(string $mode): bool {
+    return in_array($mode, install_selectable_site_modes(), true);
+}
+
+/**
+ * The mode that may actually be written to the database.
+ *
+ * Re-checked here and not only at the POST, because a session can outlive the
+ * list: a stale 'smackthemup' left in $_SESSION by an earlier build, or by a
+ * half-finished install, would otherwise be carried into persisted site_mode
+ * without ever passing the gate again.
+ *
+ * 'fedistructure' is allowed through and is NOT in the selectable list on
+ * purpose. The installer sets it from the package it was shipped in, never from
+ * a card, so it is not something a visitor can post.
+ */
+function install_persistable_site_mode(string $mode): string {
+    if ($mode === 'fedistructure') {
+        return $mode;
+    }
+    return install_mode_is_selectable($mode) ? $mode : 'photoblog';
+}
+
 // --- INSTALLER SKIN FETCH HELPERS ---
 // Used by the Step 5 skin fetch block. Standalone so there's no dependency on
 // core/skin-registry.php (which has smackback ties not safe at install time).
@@ -351,7 +388,7 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
             }
         } else {
         $posted_mode = $_POST['site_mode'] ?? '';
-        if (in_array($posted_mode, ['photoblog', 'carousel', 'smacktalk', 'smackthemup'], true)) {
+        if (install_mode_is_selectable($posted_mode)) {
             // Mode-vs-content safety: refuse to set a mode that mismatches the
             // database's dominant existing content (e.g. choosing GRAMOFSMACK on a
             // DB full of SmackTalk essays). A normal re-install is already blocked
@@ -1348,7 +1385,9 @@ try {
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]);
 
-            $install_mode     = $_SESSION['site_mode'] ?? 'photoblog';
+            // SS-1197: re-gated, not trusted. A stale session value from an
+            // earlier build cannot become a persisted site_mode.
+            $install_mode     = install_persistable_site_mode((string)($_SESSION['site_mode'] ?? 'photoblog'));
             $install_distribution = $_SESSION['distribution'] ?? 'blog';
             $install_profile  = $_SESSION['distribution_profile'] ?? '';
             $install_role     = $_SESSION['node_role'] ?? '';
@@ -2297,6 +2336,27 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         .install-mode-card:hover .install-mode-card-inner {
             border-color: #444;
         }
+        /* SS-1197: a mode that is shown but not offered. It must not look
+           clickable, because a card that looks selectable and does nothing
+           reads as a broken installer rather than an unfinished feature. */
+        .install-mode-card-unavailable {
+            cursor: default;
+            opacity: 0.45;
+        }
+        .install-mode-card-unavailable:hover .install-mode-card-inner {
+            border-color: #2a2a2a;
+        }
+        .install-mode-soon {
+            font-size: 0.7rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border: 1px solid #555;
+            border-radius: 3px;
+            padding: 2px 6px;
+            margin-left: 10px;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
         .install-mode-version {
             font-size: 2rem;
             font-weight: 700;
@@ -2645,16 +2705,24 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                         </div>
                     </div>
                 </label>
-                <label class="install-mode-card">
-                    <input type="radio" name="site_mode" value="smackthemup">
+                <?php /* SS-1197: SHOWN, NOT OFFERED. No input, so there is nothing
+                         to post, nothing for Tab to land on and nothing for Space
+                         to select; and not a <label>, so a click has no control to
+                         activate either. It stays on the page because a new owner
+                         deciding between modes should see what is coming, and
+                         because quietly deleting the card would make the roadmap
+                         less honest, not the installer safer. The only way to
+                         re-enable it is to add it to install_selectable_site_modes(),
+                         which is also what the server validates against. */ ?>
+                <div class="install-mode-card install-mode-card-unavailable" aria-disabled="true">
                     <div class="install-mode-card-inner">
                         <div class="install-mode-version">4.0</div>
                         <div class="install-mode-body">
-                            <div class="install-mode-name">SMACKTHEMUP</div>
+                            <div class="install-mode-name">SMACKTHEMUP <span class="install-mode-soon">Not available yet</span></div>
                             <div class="install-mode-desc">Build your public scrapbook, no fediverse. Publish photographs by dragging them from SNAP SLAPPER, organize and curate them with GYSS, moderate comments with SHOTS FIRED, and display them through any GRAMOFSMACK skin in a public three-across gallery-blog. Public web pages, desktop publishing, and no social network to join.</div>
                         </div>
                     </div>
-                </label>
+                </div>
                 <?php endif; ?>
             </div>
 

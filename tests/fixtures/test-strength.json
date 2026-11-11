@@ -1002,6 +1002,13 @@
             2
         ]
     },
+    "installer-offers-only-tested-modes-regression.php": {
+        "assertions": 5,
+        "predicates": 19,
+        "thresholds": [
+            3
+        ]
+    },
     "installer-refuses-to-invent-its-version.php": {
         "assertions": 16,
         "predicates": 13,
