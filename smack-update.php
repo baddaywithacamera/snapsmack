@@ -1478,21 +1478,36 @@ if ($action === 'stage_migrate_upload' && !empty($_SESSION['upload_migrate_pendi
         $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
 
         // SMACKBACK: refresh file integrity manifest before cleanup (upload path)
-        $smack_upload_zip = UPDATER_TEMP_DIR . '/snapsmack-upload.zip';
-        if (file_exists($smack_upload_zip)) {
-            if (!function_exists('smackback_init_from_disk')) {
-                require_once __DIR__ . '/core/smackback.php';
-            }
-            // Re-baseline from the verified on-disk files, not the in-zip manifest, so
-            // per-install files don't read as UNEXPECTED → false-breach lockout. Same
-            // fix and trust basis as the auto-update path above.
-            $smack_ok = smackback_init_from_disk();
-            $upload_steps[] = [
-                'label'  => 'SMACKBACK baseline',
-                'status' => $smack_ok ? 'ok' : 'warn',
-                'detail' => $smack_ok ? 'Baseline rebuilt from verified on-disk files' : 'Re-baseline failed — check error log',
-            ];
+        // SS-1284: the upload path had the same shape as the auto path — the
+        // re-baseline gated on a package it does not read, and a failure recorded
+        // as a mere warning. Files are already extracted by the time we get here,
+        // so the manifest MUST be refreshed whether or not the upload zip is
+        // still on disk; otherwise this path leaves the same stale manifest that
+        // put strathmore.pics into LOCKOUT.
+        $smack_upload_zip     = UPDATER_TEMP_DIR . '/snapsmack-upload.zip';
+        $smack_upload_missing = !file_exists($smack_upload_zip);
+        if (!function_exists('smackback_init_from_disk')) {
+            require_once __DIR__ . '/core/smackback.php';
         }
+        // Re-baseline from the verified on-disk files, not the in-zip manifest, so
+        // per-install files don't read as UNEXPECTED → false-breach lockout. Same
+        // fix and trust basis as the auto-update path above.
+        $smack_ok = smackback_init_from_disk();
+        if ($smack_upload_missing) {
+            error_log('SnapSmack updater: uploaded package missing at finalize ('
+                . $smack_upload_zip . ') — see SS-1284.');
+        }
+        if (!$smack_ok) {
+            error_log('SnapSmack updater: SMACKBACK re-baseline FAILED on the upload path — '
+                . 'the manifest still describes the PRE-UPDATE files. See SS-1284.');
+        }
+        $upload_steps[] = [
+            'label'  => 'SMACKBACK baseline',
+            'status' => $smack_ok ? 'ok' : 'fail',
+            'detail' => $smack_ok
+                ? 'Baseline rebuilt from verified on-disk files'
+                : 'Re-baseline failed — check error log. The next verify will false-breach.',
+        ];
 
         updater_cleanup();
         updater_prune_backups(3);

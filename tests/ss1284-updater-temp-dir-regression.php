@@ -95,6 +95,11 @@ ss1284(
 );
 
 ss1284(
+    'upload path does not gate the re-baseline on the uploaded package',
+    !preg_match('/if\s*\(\s*file_exists\s*\(\s*\$smack_upload_zip\s*\)\s*\)/', $local)
+);
+
+ss1284(
     'local finalize still calls smackback_init_from_disk()',
     str_contains($local, 'smackback_init_from_disk()')
 );
