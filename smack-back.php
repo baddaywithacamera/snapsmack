@@ -216,7 +216,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['clear_incident_log'] ?? ''
 }
 
 // RE-INITIALISE BASELINE FROM DISK
+// Requires the step-up window, exactly as RE-BLESS ONE FILE and REMOVE ONE FILE
+// above do. SECAUDIT 017 hardening.
+//
+// THE ASYMMETRY THIS CLOSES: re-blessing ONE file demanded a password and 2FA.
+// Re-blessing EVERY file demanded a click. This control takes whatever is on
+// disk right now and declares it trustworthy for all 500-odd monitored files at
+// once, which is the single most powerful thing an attacker who reached the
+// admin could press: it launders tampered files into the trusted baseline
+// permanently, and unlike disabling the monitor it leaves the dashboard
+// looking green afterwards. It was the cheapest door in the room and the
+// quietest one to walk through.
+//
+// The panel already warned "Do not use this if a breach is active — it would
+// bless the tampered files", while the code below had a dedicated branch for
+// exactly that case. A sentence of advice is not a control.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['reinit_baseline'] ?? '') === '1') {
+    require_once 'core/reauth.php';
+    if (!reauth_window_active('smackback_files')) {
+        header('Location: smack-back.php?msg=' . urlencode('Authorize with password + 2FA first.'));
+        exit;
+    }
+
+    // Record WHAT is about to be trusted, before it is trusted. Until now the
+    // only trace of a re-init was the resolution word on the breach row, so a
+    // baseline that absorbed tampered files left nothing saying which files
+    // those were. Written first and deliberately not conditional on success:
+    // an attempt that fails halfway is the one worth being able to read back.
+    try {
+        $pending = $pdo->query(
+            "SELECT file_path FROM snap_file_manifest WHERE last_status IN ('tampered','truncated','corrupted','missing')"
+        )->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        $pdo->prepare(
+            'INSERT INTO snap_smackback_log (detected_at, affected_files, file_count, resolution) VALUES (?, ?, ?, ?)'
+        )->execute([
+            date('Y-m-d H:i:s'),
+            json_encode(array_values($pending)),
+            count($pending),
+            $is_breach ? 'reinit_during_breach' : 'reinit_clean',
+        ]);
+    } catch (PDOException $e) {
+        // The manifest or the log table may not exist on a schema-behind spoke.
+        // Never block the owner's recovery path on the audit write — but say so.
+        error_log('SMACKBACK: could not record the re-initialise audit row — ' . $e->getMessage());
+    }
+
     $ok = smackback_init_from_disk();
     if ($ok && $is_breach) {
         // Re-baselining accepts the current disk as authoritative, so the breach is
@@ -1049,6 +1093,8 @@ include 'core/sidebar.php';
             Re-hash all monitored files from disk and update the baseline.
             Use this after a legitimate manual file edit.
             <strong>Do not use this if a breach is active</strong> — it would bless the tampered files.
+            Requires password + 2FA, like re-blessing a single file, and the attempt is
+            recorded with the list of files that were flagged at the time.
         </p>
         <form method="post"
               onsubmit="return confirm('Re-initialise from disk? Only do this after a verified legitimate change. Do NOT use during an active breach.');">
