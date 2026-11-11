@@ -1171,42 +1171,74 @@ if ($action === 'stage_migrate'
 
         $pdo->exec("DELETE FROM snap_settings WHERE setting_key = 'update_check_result'");
 
-        // SMACKBACK: refresh file integrity manifest before cleanup deletes the ZIP
-        $smack_zip = $stage_state['zip_path'] ?? '';
-        if ($smack_zip && file_exists($smack_zip)) {
-            require_once __DIR__ . '/core/smackback.php';
-            // Re-baseline from the freshly-extracted, Ed25519-verified disk — NOT the
-            // in-zip manifest. The signed manifest can't enumerate per-install files
-            // (db.php, sc-config.php, release-pubkey.php), so baselining from it left
-            // those reading as UNEXPECTED under PARANOID → fleet-wide false-breach
-            // LOCKOUT on every update. Disk == the signed release here (verified before
-            // staging), the same trust basis the installer uses (install.php uses
-            // init_from_disk too); it captures the full monitored state and prunes
-            // orphans so nothing false-trips. (See project_smackback_false_breach_lockout.)
-            $smack_ok     = smackback_init_from_disk();
-            $smack_detail = $smack_ok
-                ? 'Baseline rebuilt from verified on-disk files'
-                : 'Re-baseline failed — check error log';
-            // Auto-clear a stale breach after a successful re-baseline by EITHER method.
-            // The update reaching this point was Ed25519-verified before staging, so the
-            // freshly-extracted disk shares the same trust basis as the in-zip signed
-            // manifest (0.7.263 posture: a signed update is trusted to re-baseline + clear,
-            // never LOCKOUT). The prune in smackback_init_from_disk() guarantees no orphaned
-            // row survives to re-trip the breach on the next verify.
-            if ($smack_ok && function_exists('smackback_resolve_breach')) {
-                $smack_prev_status = $pdo->query(
-                    "SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'"
-                )->fetchColumn();
-                if ($smack_prev_status === 'breach') {
-                    smackback_resolve_breach('update');
-                }
-            }
+        // SMACKBACK: refresh the file-integrity manifest.
+        //
+        // SS-1284: this used to be gated on `file_exists($smack_zip)`. The
+        // re-baseline does not READ the package — it hashes the freshly-extracted
+        // files on disk — so that guard only ever meant "an update just ran".
+        // When the shared temp directory let another vhost's cleanup delete the
+        // package first (strathmore.pics, 2026-11-11, 03:57:05), the guard went
+        // false, this ENTIRE BLOCK was skipped without a single log line, the
+        // version was still stamped, the update reported success, and the next
+        // cron verify flagged the six files the update had rewritten: false
+        // BREACH -> LOCKOUT on a live site. Never gate integrity bookkeeping on a
+        // file it does not use, and never skip it silently.
+        $smack_zip         = $stage_state['zip_path'] ?? '';
+        $smack_zip_missing = ($smack_zip === '' || !file_exists($smack_zip));
+        if ($smack_zip_missing) {
+            // HARD FAILURE, not a skip. The re-baseline still runs (disk is the
+            // trusted source), but a package that vanished mid-update means we
+            // cannot vouch for what happened, so an existing breach is NOT
+            // auto-cleared and the operator is told in the update log.
+            error_log('SnapSmack updater: update package missing at finalize ('
+                . ($smack_zip !== '' ? $smack_zip : 'no path in stage state')
+                . ') — shared temp dir or premature cleanup. See SS-1284.');
             $_SESSION['update_state']['log'][] = [
-                'label'  => 'SMACKBACK manifest',
-                'status' => $smack_ok ? 'ok' : 'warn',
-                'detail' => $smack_detail,
+                'label'  => 'Update package',
+                'status' => 'fail',
+                'detail' => 'Package was gone before finalize. Re-baselining from disk anyway; '
+                          . 'an existing breach will NOT be auto-cleared. See SS-1284.',
             ];
         }
+
+        require_once __DIR__ . '/core/smackback.php';
+        // Re-baseline from the freshly-extracted, Ed25519-verified disk — NOT the
+        // in-zip manifest. The signed manifest can't enumerate per-install files
+        // (db.php, sc-config.php, release-pubkey.php), so baselining from it left
+        // those reading as UNEXPECTED under PARANOID → fleet-wide false-breach
+        // LOCKOUT on every update. Disk == the signed release here (verified before
+        // staging), the same trust basis the installer uses (install.php uses
+        // init_from_disk too); it captures the full monitored state and prunes
+        // orphans so nothing false-trips. (See project_smackback_false_breach_lockout.)
+        $smack_ok     = smackback_init_from_disk();
+        $smack_detail = $smack_ok
+            ? 'Baseline rebuilt from verified on-disk files'
+            : 'Re-baseline failed — check error log';
+        // Auto-clear a stale breach after a successful re-baseline by EITHER method.
+        // The update reaching this point was Ed25519-verified before staging, so the
+        // freshly-extracted disk shares the same trust basis as the in-zip signed
+        // manifest (0.7.263 posture: a signed update is trusted to re-baseline + clear,
+        // never LOCKOUT). The prune in smackback_init_from_disk() guarantees no orphaned
+        // row survives to re-trip the breach on the next verify.
+        // SS-1284: withheld when the package vanished — see above.
+        if ($smack_ok && !$smack_zip_missing && function_exists('smackback_resolve_breach')) {
+            $smack_prev_status = $pdo->query(
+                "SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'"
+            )->fetchColumn();
+            if ($smack_prev_status === 'breach') {
+                smackback_resolve_breach('update');
+            }
+        }
+        if (!$smack_ok) {
+            error_log('SnapSmack updater: SMACKBACK re-baseline FAILED at finalize — '
+                . 'the manifest still describes the PRE-UPDATE files and the next '
+                . 'verify will false-breach. See SS-1284.');
+        }
+        $_SESSION['update_state']['log'][] = [
+            'label'  => 'SMACKBACK manifest',
+            'status' => $smack_ok ? 'ok' : 'fail',
+            'detail' => $smack_detail,
+        ];
 
         updater_cleanup();
         updater_prune_backups(3);

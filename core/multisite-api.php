@@ -1997,27 +1997,54 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
     // verified) update package — mirrors the local SYSTEM UPDATES path
     // (smack-update.php). Without this the spoke's freshly-replaced files no
     // longer match its OLD manifest, so SMACKBACK false-breaches on the next
-    // scan. Must run while the zip still exists (the signed in-zip manifest is
-    // the trusted baseline), so it precedes the unlink below.
-    if (file_exists($zip_path)) {
-        require_once __DIR__ . '/smackback.php';
-        // Re-baseline from the freshly-extracted, Ed25519-verified disk — NOT the
-        // in-zip manifest. The signed manifest can't enumerate per-install files
-        // (db.php, sc-config.php, release-pubkey.php), so baselining a hub-pushed
-        // update from it left those reading UNEXPECTED under PARANOID → this is the
-        // path that LOCKED THE WHOLE FLEET at once. Disk == the signed release here
-        // (verified before staging); init_from_disk captures the full monitored state
-        // and prunes orphans, so auto-clearing the stale breach is safe.
-        // (See project_smackback_false_breach_lockout.)
-        if (function_exists('smackback_init_from_disk') && smackback_init_from_disk()) {
-            if (function_exists('smackback_resolve_breach')) {
-                $smack_prev = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'")->fetchColumn();
-                if ($smack_prev === 'breach') {
-                    smackback_resolve_breach('update');
-                }
-            }
+    // scan.
+    //
+    // SS-1284: this block used to be wrapped in `if (file_exists($zip_path))` and
+    // to DISCARD the return value of smackback_init_from_disk(). That gave two
+    // silent skips stacked on each other: a package deleted by another vhost's
+    // cleanup (shared temp dir, fixed at updater.php UPDATER_TEMP_DIR) skipped the
+    // whole block, and a re-baseline that returned false was thrown away. Either
+    // way the hub stamped the version, answered OK, and left the spoke with a
+    // manifest describing its PRE-UPDATE files — which the next cron verify reads
+    // as tampering. The re-baseline does not read the package, so it is no longer
+    // gated on it; both failure modes are now reported to the hub instead.
+    $smack_zip_missing = !file_exists($zip_path);
+    $smack_ok          = false;
+    require_once __DIR__ . '/smackback.php';
+    // Re-baseline from the freshly-extracted, Ed25519-verified disk — NOT the
+    // in-zip manifest. The signed manifest can't enumerate per-install files
+    // (db.php, sc-config.php, release-pubkey.php), so baselining a hub-pushed
+    // update from it left those reading UNEXPECTED under PARANOID → this is the
+    // path that LOCKED THE WHOLE FLEET at once. Disk == the signed release here
+    // (verified before staging); init_from_disk captures the full monitored state
+    // and prunes orphans, so auto-clearing the stale breach is safe.
+    // (See project_smackback_false_breach_lockout.)
+    if (function_exists('smackback_init_from_disk')) {
+        $smack_ok = smackback_init_from_disk();
+    }
+    // Auto-clear a stale breach only when we can vouch for the update. A package
+    // that vanished mid-update means we cannot, so the breach stands.
+    if ($smack_ok && !$smack_zip_missing && function_exists('smackback_resolve_breach')) {
+        $smack_prev = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'")->fetchColumn();
+        if ($smack_prev === 'breach') {
+            smackback_resolve_breach('update');
         }
     }
+    if ($smack_zip_missing) {
+        error_log('SnapSmack hub update: package missing at finalize (' . $zip_path
+            . ') — shared temp dir or premature cleanup. See SS-1284.');
+    }
+    if (!$smack_ok) {
+        error_log('SnapSmack hub update: SMACKBACK re-baseline FAILED — the manifest '
+            . 'still describes the PRE-UPDATE files and the next verify will '
+            . 'false-breach this spoke. See SS-1284.');
+    }
+    // Reported to the hub so a spoke that updated but could not re-baseline is
+    // visible on the fleet board instead of reading as a clean success.
+    $smack_report = [
+        'baseline_refreshed' => $smack_ok,
+        'package_missing'    => $smack_zip_missing,
+    ];
 
     @unlink($zip_path);
 
@@ -2078,6 +2105,10 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
             $cron_failures
         )),
         'public_site'   => $public_reconcile,
+        // SS-1284: a spoke that updated but could not re-baseline is NOT a clean
+        // success. The hub shows this so the next cron verify's false breach is
+        // expected rather than alarming, and so the operator can act before it.
+        'smackback'     => $smack_report,
         'errors'        => $extract['errors'],
     ]);
 }
