@@ -37,7 +37,7 @@ The SS-1284 repair gives each installation a stable workspace derived from its i
 
 A separate repair makes the scheduled verifier respect the update maintenance lock, while retaining the existing stale-lock ceiling so an abandoned lock cannot suppress verification indefinitely.
 
-The SS-1284 regression contains 35 assertions and was mutation-checked against the unfixed tree. Different-agent review confirmed the install-root key is distinct for the 27 spoke roots and stable across staged requests. The repairs are in source for the next release; they are not installed acceptance.
+The SS-1284 regression executes 46 checks. Claude Code reported mutation checks against the unfixed tree for earlier revisions of the branch; this audit did not independently repeat that mutation run against the final tip. Codex's different-agent review at `6c45b931` passed the final regression and rendered warning state, but it was not a live 27-root uniqueness sweep. The repair derives a stable key from each install root by source design; cross-vhost isolation remains part of the acceptance work below. The repairs are in source for the next release; they are not installed acceptance.
 
 ## What remains open
 

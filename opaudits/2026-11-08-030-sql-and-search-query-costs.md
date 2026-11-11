@@ -17,9 +17,9 @@ The initial report ranked three items HIGH, three MEDIUM and five LOW. Severity 
 
 ## Source changes and measured checks
 
-Commit `27235e0c` repaired the three HIGH hot paths. The query-cost branch repaired four more items: calendar filters now use half-open date ranges, the reverse category relationship has an index, justified metadata batches are bounded, and schema alteration was removed from an archive GET path.
+Commit `27235e0c`, now on `dev`, repaired the three HIGH hot paths. The unmerged branch `codex/sql-query-cost` at `cc4b45f6d` contains four more repairs: calendar filters use half-open date ranges, the reverse category relationship has an index, justified metadata batches are bounded, and schema alteration is removed from an archive GET path.
 
-An isolated MariaDB benchmark with 40,000 rows passed nine checks, including calendar result parity, indexed query plans and bounded repository batches. Current `dev` contains those changes. This is isolated database evidence, not installed-fleet acceptance.
+At that branch tip, an isolated MariaDB benchmark with 40,000 rows executed fourteen checks, including calendar result parity, indexed query plans and bounded repository batches. The four repairs and their benchmark are not on `dev`. This is branch evidence, not merged-source or installed-fleet acceptance.
 
 The review also corrected earlier claims: listing exclusion flags concern discoverability and were not demonstrated to expose private content; the archive repository cap was 5,000, not 10,000; an existing checksum index did not prove efficient computed duplicate grouping; and a slug-index repair already belonged to separate work.
 
