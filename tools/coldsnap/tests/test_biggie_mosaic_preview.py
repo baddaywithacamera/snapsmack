@@ -44,6 +44,7 @@ from coldsnap_qt.canvas import (  # noqa: E402
     _image_size, _pixmap, _mosaic_images, mosaic_cells, mosaic_note,
     mosaic_is_approximate, _seen_size, _mosaic_gap, _ROTATE90)
 from coldsnap_qt.mosaic_site_layout import compute_layout            # noqa: E402
+from PySide6.QtGui import QImageReader                                # noqa: E402
 
 
 class _Canvas:
@@ -130,26 +131,50 @@ def main():
     # Nothing in the suite could see it, because PIL fixtures carry no EXIF.
     # They do now.
 
-    # First the flag test on its own, over all eight orientation tags. 1-4 are
-    # unrotated; 5-8 all carry the quarter turn. Measured against Qt, not
-    # assumed: a 1500x1000 file tagged 5, 6, 7 or 8 reads back 1000x1500.
-    for tag, flags, rotates in ((1, 0, False), (2, 1, False), (3, 3, False),
-                                (4, 2, False), (5, 6, True), (6, 4, True),
-                                (7, 5, True), (8, 7, True)):
-        seen = _seen_size(_Size(1500, 1000), flags)
-        check('orientation %d reports %s' % (tag, '1000x1500' if rotates else '1500x1000'),
-              seen == ((1000, 1500) if rotates else (1500, 1000)))
+    # The flag table, over all eight orientation tags. 1-4 are unrotated;
+    # 5-8 all carry the quarter turn.
+    #
+    # MUSE'S CAVEAT, CLOSED: the first version of this loop carried the flag
+    # values as literals, taken from a measurement I had made outside the
+    # suite. She was right that this proved the arithmetic and assumed the
+    # tag-to-flag mapping -- so if Qt ever mapped a tag to a different flag,
+    # the table would still pass while reality moved. The mapping is now READ
+    # OUT OF QT per tag, from a real file, and the literal is asserted against
+    # it. The assumption is the thing being tested instead of the premise.
+    EXPECTED_FLAGS = {1: 0, 2: 1, 3: 3, 4: 2, 5: 6, 6: 4, 7: 5, 8: 7}
+    for tag in range(1, 9):
+        path = _write(work, 'tag%d.jpg' % tag, 1500, 1000, orientation=tag)
+        reader = QImageReader(path)
+        reader.setAutoTransform(True)
+        measured = int(getattr(reader.transformation(), 'value',
+                               reader.transformation()))
+        check('Qt maps EXIF tag %d to flag %d, as the table says'
+              % (tag, EXPECTED_FLAGS[tag]), measured == EXPECTED_FLAGS[tag])
+
+        rotates = tag >= 5
+        # the helper, driven by the flags QT gave, not by a literal
+        check('tag %d: _seen_size reports %s' % (
+                  tag, '1000x1500' if rotates else '1500x1000'),
+              _seen_size(_Size(1500, 1000), measured)
+              == ((1000, 1500) if rotates else (1500, 1000)))
+        # AND END TO END THROUGH _image_size, for every tag rather than one.
+        # The live path was covered only for tag 6 before.
+        check('tag %d: _image_size measures the file as the viewer sees it' % tag,
+              _image_size(path) == ((1000, 1500) if rotates else (1500, 1000)))
+        # And what Qt actually decodes must agree with what we measured, or
+        # the cell and the pixmap disagree again.
+        decoded = QImageReader(path)
+        decoded.setAutoTransform(True)
+        image = decoded.read()
+        check('tag %d: the decoded photograph is the shape _image_size claimed' % tag,
+              (image.width(), image.height()) == _image_size(path))
+
     check('a zero-sized header reports (0, 0) rather than swapping nothing',
           _seen_size(_Size(0, 0), 4) == (0, 0))
     check('the quarter-turn flag is the one Qt uses', int(_ROTATE90.value) == 4)
 
-    # Then end to end, on real files Qt reads.
-    turned = _write(work, 'turned.jpg', 1500, 1000, orientation=6)
-    straight = _write(work, 'straight.jpg', 1500, 1000, orientation=1)
-    check('a quarter-turned photograph measures as the viewer sees it, 1000x1500',
-          _image_size(turned) == (1000, 1500))
-    check('and an untagged one is unchanged at 1500x1000',
-          _image_size(straight) == (1500, 1000))
+    turned = os.path.join(work, 'tag6.jpg')
+    straight = os.path.join(work, 'tag1.jpg')
 
     # The composition consequence, which is the fault itself: the cell must be
     # PORTRAIT for a turned photograph, not landscape.
