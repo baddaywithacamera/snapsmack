@@ -46,6 +46,11 @@ $faq_qas = <<<'HTML'
                 <p>Eventually, yes. A Progressive Web App (PWA) is in the works for open beta.</p>
             </div>
 
+            <div class="qa" id="q-third-party-plugins">
+                <h3>Will SNAPSMACK ever support third-party plugins?</h3>
+                <p>No. Not ever. Our software is built on three pillars: Ethics, Security, and Function, in that order. Each one yields to the one before it. I've personally experienced how plugins compromise security and introduce new attack surfaces. A feature that weakens security weakens the app for every user, so function never gets to trade it away. Hard no to plugins.</p>
+            </div>
+
             <div class="qa" id="q-companion-apps">
                 <h3>Why companion apps instead of plugins?</h3>
                 <p>The desktop tools started with one backup app. It worked so well that I built another for batch posting, then realized I preferred working that way altogether. They're faster, easier, and let my own computer do the heavy lifting.</p>

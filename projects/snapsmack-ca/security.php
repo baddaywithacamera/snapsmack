@@ -64,10 +64,11 @@ $page_css = <<<'CSS'
 .skin-model-status p { margin: 0 0 .8em; font-size: .92rem; line-height: 1.6; }
 .skin-model-status p:last-child { margin-bottom: 0; }
 .skin-model-status strong { color: var(--white); }
-.defence { border-top: 8px solid var(--black); background: #c8c5bf; }
+.defence { border-top: 8px solid var(--black); background: #bcbcbc; }
 .defence-body { max-width: 820px; }
 .defence-q { margin-top: 30px; }
-.defence-q h3 { color: var(--red); font-size: 1.1rem; margin-bottom: 8px; }
+.defence h2, .defence .site-discovery-kicker, .defence-q h3 { color: #990000; }
+.defence-q h3 { font-size: 1.1rem; margin-bottom: 8px; }
 .defence-line { margin-top: 34px; padding: 22px 26px; border-left: 5px solid var(--red); background: var(--white); color: var(--black); font: 900 clamp(1.05rem, 2vw, 1.3rem)/1.4 Arial Black, Arial, sans-serif; }
 .receipts { border-top: 8px solid var(--red); }
 .receipts-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
