@@ -1,0 +1,26 @@
+{
+  "commit": "a7d4f494",
+  "source": "local PHP render of projects/snapsmack-ca/security.php and faq-running.php",
+  "security": {
+    "viewports": [1440, 390],
+    "horizontal_overflow": false,
+    "defence_background": "rgb(188, 188, 188)",
+    "pixel_samples": [
+      { "x": 1300, "y": 4700, "rgba": [188, 188, 188, 255] },
+      { "x": 1300, "y": 5000, "rgba": [188, 188, 188, 255] },
+      { "x": 1300, "y": 6000, "rgba": [188, 188, 188, 255] }
+    ],
+    "foregrounds": {
+      "body": { "color": "#333333", "contrast": 6.6528850371 },
+      "headings_kicker_questions": { "color": "#990000", "contrast": 4.6965015040 },
+      "black": { "color": "#111111", "contrast": 9.9430368510 }
+    },
+    "result": "PASS"
+  },
+  "faq": {
+    "question": "Will SNAPSMACK ever support third-party plugins?",
+    "answer": "No. Not ever. Our software is built on three pillars: Ethics, Security, and Function, in that order. Each one yields to the one before it. I've personally experienced how plugins compromise security and introduce new attack surfaces. A feature that weakens security weakens the app for every user, so function never gets to trade it away. Hard no to plugins.",
+    "immediately_before": "Why companion apps instead of plugins?",
+    "result": "PASS"
+  }
+}
