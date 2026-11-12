@@ -810,12 +810,10 @@ body.static-transmission #system-footer {
 }
 
 .static-content:has(#photobox.page-hero) > .static-page-title {
-    grid-column: 1 / -1;
-    /* .main-photo keeps 40px of breathing room around the framed portrait.
-       Move the heading onto the portrait's visible left edge so the About
-       composition reads as one unit instead of two nearly aligned lanes. */
-    width: calc(100% - 40px) !important;
-    margin-left: 40px !important;
+    grid-column: 2;
+    grid-row: 1;
+    width: 100% !important;
+    margin-left: 0 !important;
 }
 
 /* THE BIO IMAGE: 17px Top (Baseline Snap) and 10px Left (Lane Shift) */
@@ -860,7 +858,7 @@ body.static-transmission #system-footer {
 
 .static-content:has(#photobox.page-hero) > #photobox.page-hero {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 1 / span 2;
     width: 100% !important;
     float: none !important;
 }
