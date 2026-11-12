@@ -207,21 +207,19 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <p class="site-discovery-kicker">Skin security model</p>
             <h2>Why SnapSmack has no plugins.</h2>
-            <p class="lede">A skin can change the presentation of a site. It cannot add arbitrary application behaviour. SnapSmack keeps those two jobs separate so a new look does not silently become a new attack surface.</p>
+            <p class="lede">A plugin is third-party code running inside your site with the site&rsquo;s own access. It usually brings its own dependencies, often duplicating code other plugins already carry. Some become a small CMS bolted onto the CMS. Popular plugins can be bought or taken over, then turned into malware delivery through an ordinary trusted update. Every plugin adds bloat, another attack surface, slower pages, and upkeep nobody can promise. SnapSmack avoids that entire class of risk: it has bounded skins instead, and a strict gate checks every one.</p>
             <div class="skin-model-grid">
                 <article class="skin-model-card">
                     <h3>Bounded templates</h3>
-                    <p>A current skin package contains declarative metadata, stylesheets, and bounded presentation templates. Templates can print values prepared by the CMS and use eight approved presentation helpers. The strict gate refuses unapproved function calls, database access, request globals, state changes, executable declarations, and unsafe output.</p>
+                    <p>A current skin package contains declarative metadata, stylesheets, and bounded presentation templates. Templates can print values prepared by the CMS and use eight approved presentation helpers. The strict gate refuses unapproved function calls, database access, request globals, state changes, executable declarations, and unsafe output. The same rules apply to every package, regardless of author or signature.</p>
                 </article>
                 <article class="skin-model-card">
                     <h3>No bundled executable code</h3>
-                    <p>Skin packages cannot ship JavaScript or arbitrary PHP behaviour. When a design needs interaction, its manifest asks for a named engine supplied by the CMS. The package gate checks the complete skin regardless of who wrote or signed it.</p>
-                    <p>Plugins are executable third-party software with their own dependency trees, often duplicating what the CMS already provides. Some become a CMS inside the CMS. Each one adds code to audit, another attack surface, more work on every request, and a maintenance schedule the site owner does not control. A trusted plugin can also change hands: a buyer or hijacker can acquire a popular package and ship malware through its next routine update. SnapSmack avoids that entire class of bloat, performance damage, dependency drift, and supply-chain attack by not providing an arbitrary plugin mechanism.</p>
+                    <p>Skin packages cannot ship JavaScript or arbitrary PHP behaviour. When a design needs interaction, its manifest requests a named engine supplied by the CMS. The CMS owns and serves that engine; the skin only declares which one it needs. The package gate checks the complete skin regardless of who wrote or signed it, so a signature never turns executable code into acceptable presentation.</p>
                 </article>
                 <article class="skin-model-card">
                     <h3>Owner code is separate</h3>
-                    <p>Site owners may deliberately enable their own custom code. That facility is off by default, wrapped by the CMS, and separate from the skin package: a skin cannot supply it or turn it on. It is not a way for a downloaded skin to gain execution rights.</p>
-                    <p><strong>No local bypass.</strong> The former &ldquo;Allow Custom Skin JS&rdquo; path is gone. Development copies and production copies use the same strict package gate. Removing a skin leaves no executable plugin code behind because SnapSmack has no arbitrary server-side plugin mechanism.</p>
+                    <p>Site owners may deliberately enable their own custom code. It is off by default, wrapped by the CMS, and separate from every skin package: a skin cannot supply it or turn it on. <strong>No local bypass remains;</strong> the former &ldquo;Allow Custom Skin JS&rdquo; path is gone, and development and production use the same strict gate. Removing a skin leaves no executable plugin code behind.</p>
                 </article>
             </div>
             <div class="skin-model-status">
