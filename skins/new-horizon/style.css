@@ -813,6 +813,7 @@ body.static-transmission #system-footer {
     grid-column: 2;
     grid-row: 1;
     width: 100% !important;
+    margin-top: 40px !important;
     margin-left: 0 !important;
 }
 
@@ -1214,6 +1215,7 @@ span.dropcap {
 
     .static-content:has(#photobox.page-hero) > .static-page-title {
         width: min(calc(100% - 80px), 340px) !important;
+        margin-top: 0 !important;
         margin-left: auto !important;
         margin-right: auto !important;
     }

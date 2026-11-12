@@ -97,16 +97,20 @@ const near = (actual, expected, tolerance = 1) => Math.abs(actual - expected) <=
         assert.equal(after.titleStyle.weight, '600');
         assert.equal(after.titleStyle.spacing, '2px');
         assert.match(after.titleStyle.family, /Inter/i);
-        assert.ok(near(after.navToTitle, 64.5, 2), `${route} ${width}: nav/title gap ${after.navToTitle}`);
-        assert.ok(near(after.titleToContent, 24, 1), `${route} ${width}: title/content gap ${after.titleToContent}`);
+        const expectedNavToTitle = route === 'about' ? 104.5 : 64.5;
+        assert.ok(near(after.navToTitle, expectedNavToTitle, 2), `${route} ${width}: nav/title gap ${after.navToTitle}`);
+        if (route === 'blogroll') {
+          assert.ok(near(after.titleToContent, 24, 1), `${route} ${width}: title/content gap ${after.titleToContent}`);
+        }
         assert.equal(after.overflow, false, `${route} ${width}: horizontal overflow`);
 
         if (route === 'about') {
-          assert.ok(near(after.title.x, after.image.x, 1), `${route} ${width}: heading and visible image left edges differ`);
+          assert.ok(near(after.title.x, after.description.x, 1), `${route} ${width}: heading and copy left edges differ`);
+          assert.ok(near(after.title.y, after.hero.y, 1), `${route} ${width}: heading and photograph tops differ`);
           const usableWidth = after.container.width - 40;
           const heroShare = after.hero.width / usableWidth;
           assert.ok(heroShare >= 0.37 && heroShare <= 0.39, `${route} ${width}: hero share ${heroShare}`);
-          assert.ok(near(after.hero.y, after.description.y, 1), `${route} ${width}: image and copy tops differ`);
+          assert.ok(after.description.y >= after.title.bottom + 23, `${route} ${width}: copy does not follow heading`);
           assert.ok(after.hero.right < after.description.x, `${route} ${width}: columns overlap`);
         } else {
           assert.ok(near(after.title.x, after.content.x, 1), `${route} ${width}: title and content left edges differ`);
