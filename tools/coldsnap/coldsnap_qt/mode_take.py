@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
+    QSplitter,
 )
 
 import sumna_offline as O
@@ -191,7 +192,7 @@ class TakeMode(QWidget):
 
         card = Card("COMPOSE — an essay with photos")
         # Let the editor use the centre pane instead of shrinking to sizeHint.
-        right.addWidget(card)
+        right.addWidget(card, 1)
 
         card.body.addWidget(field_label("Title"))
         self.title_edit = QLineEdit()
@@ -222,17 +223,31 @@ class TakeMode(QWidget):
         # IMG picks from THIS site's cached Media Gallery (COLD STORAGE), by picture.
         self.body.canvas.set_site_provider(
             lambda: ((self.app_config() or {}).get("url") or "").strip())
-        card.body.addWidget(self.body, 1)   # the write-up is the main event — it grows
+        # The editor used to share one scrolling card with every field below it.
+        # QScrollArea therefore kept the card at its size hint and the editor at
+        # its 160px minimum, even when the centre pane had room to spare. Keep
+        # the primary actions outside the scroll, then let the author divide the
+        # available card height between the document and its secondary fields.
+        self.compose_splitter = QSplitter(Qt.Vertical)
+        self.compose_splitter.setChildrenCollapsible(False)
+        self.compose_splitter.setHandleWidth(10)
+        self.compose_splitter.addWidget(self.body)
+
+        compose_details = QWidget()
+        details = QVBoxLayout(compose_details)
+        details.setContentsMargins(0, 0, 0, 0)
+        details.setSpacing(9)
+
         self.save_state = hint("Begin the story… changes will be safe on this computer.")
-        card.body.addWidget(self.save_state)
-        card.body.addWidget(hint(
+        details.addWidget(self.save_state)
+        details.addWidget(hint(
             "MOSAIC = a tiled grid of this post's photos at the marker. For a "
             "text grid with no photos, use COL 2 / COL 3. For one inline image "
             "from the site's Media Library, use IMG."))
 
-        card.body.addWidget(field_label("Tags (space-separated #hashtags)"))
+        details.addWidget(field_label("Tags (space-separated #hashtags)"))
         self.tags_edit = QLineEdit()
-        card.body.addWidget(self.tags_edit)
+        details.addWidget(self.tags_edit)
 
         srow = QHBoxLayout()
         srow.addWidget(field_label("Status"))
@@ -240,7 +255,13 @@ class TakeMode(QWidget):
         self.status_combo.addItems(["published", "draft"])
         srow.addWidget(self.status_combo)
         srow.addStretch(1)
-        card.body.addLayout(srow)
+        details.addLayout(srow)
+
+        self.compose_splitter.addWidget(compose_details)
+        self.compose_splitter.setStretchFactor(0, 1)
+        self.compose_splitter.setStretchFactor(1, 0)
+        self.compose_splitter.setSizes([560, 210])
+        card.body.addWidget(self.compose_splitter, 1)
 
         # -- THE PHOTOS — a rail section, opened when wanted. The count lives in
         #    the accordion header (no redundant, cramped label fighting the
