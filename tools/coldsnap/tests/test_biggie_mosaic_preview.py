@@ -42,7 +42,8 @@ except Exception as exc:                                   # pragma: no cover
 
 from coldsnap_qt.canvas import (  # noqa: E402
     _image_size, _pixmap, _mosaic_images, mosaic_cells, mosaic_note,
-    mosaic_is_approximate, _seen_size, _mosaic_gap, _ROTATE90)
+    mosaic_is_approximate, _seen_size, _mosaic_gap, _ROTATE90,
+    mosaic_cell_problem)
 from coldsnap_qt.mosaic_site_layout import compute_layout            # noqa: E402
 from PySide6.QtGui import QImageReader                                # noqa: E402
 
@@ -314,6 +315,40 @@ def main():
     check('and gap 0 really differs from the default of 4',
           round(at_zero['items'][0]['width'], 3)
           != round(mosaic_cells(canvas, {'order': []}, 900)[1]['items'][0]['width'], 3))
+
+    # ── A CELL THAT CANNOT DRAW SAYS WHY (SS-1301 close condition 3) ───────
+    # Sean reported cells 13 and 14 as blank numbered boxes and asked what they
+    # were. The editor could not tell him: a missing file, an unreadable one
+    # and an empty path all produced the same QPixmap() and the same dark box
+    # with a number on it. These are now distinguishable.
+    check('a readable photograph has no problem to report',
+          mosaic_cell_problem(wide) is None)
+    check('an empty path says so', mosaic_cell_problem("") == "NO FILE")
+    check('and so does None', mosaic_cell_problem(None) == "NO FILE")
+    check('a path that is not on disk says the file is missing',
+          mosaic_cell_problem(os.path.join(work, 'absent.jpg')) == "FILE MISSING")
+
+    # A file that EXISTS and cannot be decoded is a different fault from one
+    # that is not there, and it is the one a photographer actually hits -- a
+    # half-copied file, a RAW the editor cannot read, a rename to .jpg.
+    broken_file = os.path.join(work, 'broken.jpg')
+    with open(broken_file, 'wb') as handle:
+        handle.write(b'not a photograph at all')
+    check('a file that exists but cannot be read says that instead',
+          mosaic_cell_problem(broken_file) == "CANNOT READ")
+    check('the two are different messages, which is the whole point',
+          mosaic_cell_problem(broken_file)
+          != mosaic_cell_problem(os.path.join(work, 'absent.jpg')))
+
+    # A directory is on disk but is not a file, and must not read as missing.
+    check('a directory is not reported as a missing file',
+          mosaic_cell_problem(work) == "FILE MISSING")
+
+    # Truncated-but-headered is READABLE: the header gives the shape, so the
+    # mosaic can still compose a correct cell for it. Reporting a problem here
+    # would be wrong.
+    check('a truncated photograph with an intact header is not a problem',
+          mosaic_cell_problem(truncated) is None)
 
     # ── A BUCKET THAT CANNOT BE READ MUST NOT CRASH THE EDITOR ─────────────
     broken = _Canvas([os.path.join(work, 'gone.jpg')])

@@ -125,6 +125,36 @@ def mosaic_cells(canvas, data, width):
     return paths, out
 
 
+def mosaic_cell_problem(path):
+    """Why a mosaic cell cannot draw its photograph, or None when it can.
+
+    SS-1301 CLOSE CONDITION 3. Sean reported cells 13 and 14 as blank numbered
+    boxes in a 53-photograph mosaic and asked what they were. The editor could
+    not tell him: a missing file, a file it cannot decode and an empty path all
+    produced the same QPixmap() and the same dark box with a number on it. The
+    ticket asks for them to be distinguishable rather than silently identical,
+    and that is the whole of what this does -- it does not repair a photograph,
+    it stops the editor being silent about one.
+
+    I am NOT claiming this is why 13 and 14 were blank. I have never seen his
+    files. This makes the editor state the reason the next time it happens, in
+    the cell itself, instead of leaving him to guess from a number.
+
+    There are two states here and not the three the ticket lists. The third,
+    still loading, belongs to mode_take's PhotoLoader, which decodes off the
+    GUI thread; this path is synchronous, so a cell that has no photograph has
+    finished finding that out. Saying "still loading" here would be a lie.
+    """
+    if not path:
+        return "NO FILE"
+    if not os.path.isfile(path):
+        return "FILE MISSING"
+    width, height = _image_size(path)
+    if width <= 0 or height <= 0:
+        return "CANNOT READ"
+    return None
+
+
 def mosaic_is_approximate(count, layout):
     """True when the preview cannot promise the published arrangement.
 
@@ -247,6 +277,14 @@ class _Objects(QPyTextObject):
                     QRect(cell.left() + (cell.width() - scaled.width()) // 2,
                           cell.top() + (cell.height() - scaled.height()) // 2,
                           scaled.width(), scaled.height()), scaled)
+            else:
+                # SAY WHICH, rather than leaving a numbered blank. A cell that
+                # cannot draw used to look exactly like every other cell that
+                # cannot draw, whatever the reason.
+                painter.setPen(QColor(theme.DIM))
+                painter.drawText(cell.adjusted(2, 14, -2, -2),
+                                 Qt.AlignCenter | Qt.TextWordWrap,
+                                 mosaic_cell_problem(path) or "CANNOT READ")
             painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
             painter.drawRect(cell.adjusted(0, 0, -1, -1))
             badge = QRect(cell.left() + 4, cell.top() + 4, 22, 18)
