@@ -17,7 +17,7 @@ import uuid
 
 import requests
 
-from PySide6.QtCore import Qt, QRect, QSize, Signal, QTimer
+from PySide6.QtCore import Qt, QRect, QSize, Signal, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
@@ -176,6 +176,7 @@ class TakeMode(QWidget):
         self._bucket = []          # list[O.DraftImage]
         self._cover_idx = 0
         self._loading = False
+        self._view_settings = QSettings("SnapSmack", "COLD SNAP")
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(10, 10, 0, 0)
@@ -260,7 +261,12 @@ class TakeMode(QWidget):
         self.compose_splitter.addWidget(compose_details)
         self.compose_splitter.setStretchFactor(0, 1)
         self.compose_splitter.setStretchFactor(1, 0)
-        self.compose_splitter.setSizes([560, 210])
+        splitter_state = self._view_settings.value("take/compose_splitter_state")
+        if splitter_state is None or not self.compose_splitter.restoreState(splitter_state):
+            self.compose_splitter.setSizes([560, 210])
+        self.compose_splitter.splitterMoved.connect(
+            lambda _position, _index: self._view_settings.setValue(
+                "take/compose_splitter_state", self.compose_splitter.saveState()))
         card.body.addWidget(self.compose_splitter, 1)
 
         # -- THE PHOTOS — a rail section, opened when wanted. The count lives in
