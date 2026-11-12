@@ -625,6 +625,21 @@ img.post-image {
 .static-transmission #scroll-stage {
     display: block !important;
     text-align: center !important;
+    flex: 1 0 auto;
+    overflow-y: visible;
+}
+
+/* Keep the signature at the viewport floor when a static page is short.
+   Once the page is taller than the viewport, the body scrolls normally and
+   the signature follows the content instead of becoming a fixed overlay. */
+body.static-transmission {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+}
+
+body.static-transmission #system-footer {
+    flex: 0 0 auto;
 }
 
 .static-transmission #footer,
