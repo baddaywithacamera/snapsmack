@@ -45,15 +45,6 @@ $page_css = <<<'CSS'
 .btn-primary:hover { color: var(--white); background: #ad0000; }
 .btn-secondary:hover { color: var(--white); background: var(--black); }
 
-/* --- CLOSED BETA DELAY: staged copy, pending Sean's final wording --- */
-.beta-delay { padding: 28px 0; color: var(--white); background: var(--black); border-top: 8px solid var(--red); }
-.beta-delay-inner { display: flex; gap: 28px; align-items: center; justify-content: space-between; }
-.beta-delay-copy { margin: 0; color: #ddd; font-size: 1rem; line-height: 1.5; }
-.beta-delay-copy strong { display: block; margin-bottom: 4px; color: var(--white); font: 900 clamp(1.05rem, 2vw, 1.35rem)/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
-.beta-delay-link { flex: 0 0 auto; display: inline-block; padding: 14px 22px; color: var(--white); background: var(--red); font: 900 .8rem/1 Arial Black, Arial, sans-serif; letter-spacing: .03em; text-transform: uppercase; }
-.beta-delay-link:hover { color: var(--white); background: #ad0000; text-decoration: none; }
-
-
 /* --- WHAT WAS: the four things taken, and their names here --- */
 #was { padding: 64px 0; background: #2a2a2a; color: #ddd; border-top: 8px solid var(--red); }
 #was h2 { margin-bottom: 26px; color: var(--white); }
@@ -119,10 +110,13 @@ $page_css = <<<'CSS'
 #respect a { color: var(--white); text-decoration: underline; }
 #respect a:hover { color: var(--red); }
 #whodat { padding-top: 46px; background: var(--light-grey); }
-.whodat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px; }
+.whodat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; }
 .whodat-card { background: var(--white); border: 1px solid var(--border); padding: 22px; }
 .whodat-portrait { margin: -22px -22px 20px; background: var(--white); }
 .whodat-portrait img { display: block; width: 100%; aspect-ratio: 1 / 1; padding: 10px; box-sizing: border-box; object-fit: contain; object-position: center; }
+.whodat-placeholder { display: grid; width: 100%; aspect-ratio: 1 / 1; padding: 10px; box-sizing: border-box; place-content: center; gap: 8px; color: #666; background: #e4e4e4; text-align: center; }
+.whodat-placeholder strong { color: var(--black); font: 900 clamp(1.5rem, 4vw, 3rem)/1 Arial Black, Arial, sans-serif; letter-spacing: .08em; }
+.whodat-placeholder span { font: 700 .68rem/1.3 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; }
 .whodat-name { margin: 0; color: var(--black); font: 900 1rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .whodat-title { margin: 5px 0 15px; color: var(--red); font: 700 .72rem/1.35 'Courier New', monospace; text-transform: uppercase; }
 .whodat-bio { font-size: .83rem; line-height: 1.55; }
@@ -146,8 +140,6 @@ $page_css = <<<'CSS'
     .whodat-portrait img { height: 100%; }
 }
 @media (max-width: 700px) {
-    .beta-delay-inner { display: block; }
-    .beta-delay-link { margin-top: 18px; }
     #door { padding: 56px 0 44px; }
     .door-inner { grid-template-columns: 1fr; gap: 32px; }
     .featured-skin-grid { grid-template-columns: 1fr; }
@@ -161,13 +153,6 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
 <main>
-    <aside class="beta-delay" aria-label="Closed beta delay notice">
-        <div class="wrap beta-delay-inner">
-            <p class="beta-delay-copy"><strong>Closed beta is running late.</strong> It opens when the software is ready.</p>
-            <a class="beta-delay-link" href="wotcha.php#closed-beta-delay">Read why &rarr;</a>
-        </div>
-    </aside>
-
     <section id="door">
         <div class="door-inner">
             <div class="door-copy">
@@ -312,8 +297,21 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="whodat-portrait"><img src="img/whodat-codex.png" alt="OpenAI Codex" width="1128" height="1338" loading="lazy"></div>
                     <div>
                         <p class="whodat-name">OpenAI Codex</p>
-                        <p class="whodat-title">Implementation co-author. Skilled, but spicy.</p>
-                        <p class="whodat-bio">Large language model and co-author of SnapSmack. Rebuilt most of the desktop suite and is responsible for nearly all of SNAP SLAPPER, from its editing engine and persistent project history to layers, masks, AI healing, packaging, and the fixes that make those features survive contact with real photographs. Also works across the wider project on architecture, implementation, security, testing, recovery, documentation, and the difficult last mile between "built" and "shipped." Sean supplies the requirements, judgment, relentless real-world testing, and final decisions; Codex turns a substantial share of that direction into working software, challenges it when the evidence demands it, and stays with the ugly bugs until they are actually closed. Powered by OpenAI.</p>
+                        <p class="whodat-title">Skilled, but spicy.</p>
+                        <p class="whodat-bio">Large language model and co-author of SnapSmack. Rebuilt most of the desktop suite and is responsible for nearly all of SNAP SLAPPER, from its editing engine and project history to layers, masks, AI healing and packaging. Also works across architecture, security, testing, recovery and the last mile between "built" and "shipped." Sean supplies the requirements and the final call; Codex turns that into working software, pushes back when the evidence demands it, and stays on the ugly bugs until they are actually closed. Powered by OpenAI.</p>
+                    </div>
+                </article>
+                <article class="whodat-card">
+                    <div class="whodat-portrait">
+                        <div class="whodat-placeholder" role="img" aria-label="Muse portrait placeholder">
+                            <strong>MUSE</strong>
+                            <span>Portrait placeholder</span>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="whodat-name">Muse</p>
+                        <p class="whodat-title">Independent second pair of eyes.</p>
+                        <p class="whodat-bio">AI agent and independent checker for SnapSmack. Reads what the others build, read-only, and reports what it finds: claims checked against the repo, tests read, public pages and links verified. Never the one who wrote what it is checking, which is the point. Will take first-line support questions when the forums open. Powered by Meta.</p>
                     </div>
                 </article>
             </div>
