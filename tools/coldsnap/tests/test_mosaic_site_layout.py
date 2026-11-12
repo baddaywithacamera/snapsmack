@@ -10,13 +10,23 @@ the day somebody edits one of them, and a preview that has quietly stopped
 matching the site is worse than no preview: Sean would only find out after the
 post was published.
 
-So this holds a digest of the port's geometry over 147 cases, captured from
+So this holds a digest of the port's geometry over 350 cases, captured from
 the REAL engine running in a browser. Any disagreement -- a changed constant,
 a reordered tie-break, a different rounding -- moves the digest and fails here.
 
-THE GOLDEN VALUE IS NOT A GUESS. It was produced by loading
-assets/js/ss-engine-mosaic.js in a browser and calling the engine's own public
-entry point, window.SnapMosaic.computeLayout(), over:
+THE GOLDEN VALUE IS NOT A GUESS, AND YOU DO NOT HAVE TO TAKE THAT ON TRUST.
+The capture is a file in this repository, not a described method:
+
+    tools/_build/capture-mosaic-golden.html
+
+Serve the repo root over HTTP, open it, and it prints the three constants
+below. Read its twenty lines of JavaScript beside _canonical() in this file
+and you can see for yourself that the two build the same string -- which was
+the one thing a reviewer could not check when the capture lived only in a
+docstring.
+
+It loads assets/js/ss-engine-mosaic.js and calls the engine's own public entry
+point, window.SnapMosaic.computeLayout(), over:
 
     10 aspect-ratio sets  1, 2, 3, 4, 5, 6, 7, 9 and 13 photographs
     5 container widths    900, 1400, 480, 1100 and 1250

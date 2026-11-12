@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Capture the mosaic golden digest</title>
+<!--
+  SNAPSMACK_EOF_HEADER
+      <!-- ===== SNAPSMACK EOF ===== - - >
+  Last non-empty line of this file MUST match the marker above.
+
+  WHY THIS FILE IS IN THE REPOSITORY.
+
+  tools/coldsnap/coldsnap_qt/mosaic_site_layout.py is a Python port of
+  assets/js/ss-engine-mosaic.js, and its test pins a SHA-256 of the geometry
+  the port produces. That digest is only worth anything if it came from the
+  ENGINE rather than from the port -- otherwise the drift detector is a
+  photograph of the thing it is meant to be checking.
+
+  Muse made exactly that point in review: the capture was described in a
+  docstring and nobody but me had seen it run. A described method is not
+  evidence. So the capture is a file now: anyone can open this page, read the
+  twenty lines of JavaScript below, and regenerate the digest themselves. The
+  residual she named -- whether the canonical string built at capture time
+  matches the one the test builds -- is answered by reading both, which is
+  only possible because both are in the repository.
+
+  HOW TO RUN IT
+
+    1. Serve the repository root over HTTP. A file:// page cannot load the
+       engine script. From the repo root:
+           python -m http.server 8099
+    2. Open  http://127.0.0.1:8099/tools/_build/capture-mosaic-golden.html
+    3. The digest, the case count and the character count appear on the page.
+    4. Those three values are GOLDEN_SHA256, GOLDEN_CASES and GOLDEN_CHARS in
+       tools/coldsnap/tests/test_mosaic_site_layout.py.
+
+  IF THE TEST FAILS, regenerate from HERE and never by pasting whatever the
+  port currently produces. Pasting the port's own output turns the test from
+  a comparison into a tautology, and the next person to read it will believe
+  the editor still matches the site when it does not.
+
+  The case set below must stay identical to ASPECT_SETS, WIDTHS and MODES in
+  that test. If you add a case here, add it there, and vice versa -- the
+  character count is the cheap tripwire for the two drifting apart.
+-->
+<style>
+  :root { color-scheme: dark; }
+  body { background:#101210; color:#d8d8d8; font:14px/1.6 ui-monospace,Consolas,monospace; padding:32px; }
+  h1 { font-size:1.1rem; letter-spacing:.08em; text-transform:uppercase; color:#fff; }
+  .v { color:#7fd17f; word-break:break-all; }
+  .k { color:#9a9a9a; }
+  pre { background:#171a17; padding:16px; border-left:3px solid #2f6f2f; overflow-x:auto; }
+  .err { color:#ff6b6b; }
+</style>
+</head>
+<body>
+<h1>Mosaic golden digest</h1>
+<pre id="out">running…</pre>
+<script src="/assets/js/ss-engine-mosaic.js"></script>
+<script>
+(async function () {
+    var out = document.getElementById('out');
+    if (!window.SnapMosaic || !window.SnapMosaic.computeLayout) {
+        out.className = 'err';
+        out.textContent =
+            'ss-engine-mosaic.js did not load from /assets/js/.\n' +
+            'Serve the REPOSITORY ROOT, not this directory:\n' +
+            '    python -m http.server 8099     (run from the repo root)';
+        return;
+    }
+
+    /* Must match ASPECT_SETS in tests/test_mosaic_site_layout.py exactly. */
+    var ASPECT_SETS = {
+        a: [1.5, 0.75, 1.5],
+        b: [1.5, 1.5, 0.667, 1.333, 1.0],
+        c: [1.5, 0.667, 1.333, 1.0, 1.5, 0.75, 1.777, 0.562, 1.25],
+        d: [0.8, 1.2],
+        e: [1.0],
+        f: [0.9, 1.6, 0.7, 1.4, 1.1, 0.6, 1.8],
+        g: [1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5],
+        h: [1.05, 1.5, 0.8, 1.2],
+        i: [3.0, 0.4, 1.0, 1.0, 1.0],
+        j: [1.08, 1.12, 1.02, 1.1, 1.06, 1.14]
+    };
+    /* 480 is below MOBILE_BREAKPOINT; 1100 is just below the 1200
+       enforceUsefulSize line; 1250 and 1400 are above it. */
+    var WIDTHS = [900, 1400, 480, 1100, 1250];
+    var MODES = [['natural', ''], ['natural', 'one-left'], ['natural', 'one-top'],
+                 ['natural', 'three-across'], ['balanced', ''],
+                 ['portrait', ''], ['landscape', '']];
+    var GAP = 5;
+
+    function images(ars) {
+        return ars.map(function (ar, i) {
+            return { width: Math.round(1000 * ar), height: 1000, src: 'p' + i };
+        });
+    }
+
+    /* The canonical string. Mirrors _canonical() in the test line for line:
+       one row per case, fields separated by |, tiles by ;, numbers to six
+       decimal places, sets in sorted order. */
+    var lines = [];
+    Object.keys(ASPECT_SETS).sort().forEach(function (name) {
+        WIDTHS.forEach(function (width) {
+            MODES.forEach(function (mode) {
+                var o = SnapMosaic.computeLayout(
+                    images(ASPECT_SETS[name]), width, GAP, mode[0], mode[1]);
+                var tiles = o.items.map(function (t) {
+                    return [t.order, t.x.toFixed(6), t.y.toFixed(6),
+                            t.width.toFixed(6), t.height.toFixed(6)].join(',');
+                }).join(';');
+                lines.push(name + '|' + width + '|' + mode[0] + '|' + mode[1]
+                           + '|' + o.height.toFixed(6) + '|' + tiles);
+            });
+        });
+    });
+
+    var canon = lines.join('\n');
+    var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canon));
+    var hex = Array.prototype.map.call(new Uint8Array(buf), function (b) {
+        return b.toString(16).padStart(2, '0');
+    }).join('');
+
+    out.innerHTML =
+        '<span class="k">GOLDEN_SHA256 = </span><span class="v">' + hex + '</span>\n' +
+        '<span class="k">GOLDEN_CASES  = </span><span class="v">' + lines.length + '</span>\n' +
+        '<span class="k">GOLDEN_CHARS  = </span><span class="v">' + canon.length + '</span>\n\n' +
+        '<span class="k">engine        = /assets/js/ss-engine-mosaic.js</span>\n' +
+        '<span class="k">first row     = </span>' + lines[0].slice(0, 120) + '…';
+})();
+</script>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
