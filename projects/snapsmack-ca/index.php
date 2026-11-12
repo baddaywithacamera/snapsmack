@@ -110,13 +110,10 @@ $page_css = <<<'CSS'
 #respect a { color: var(--white); text-decoration: underline; }
 #respect a:hover { color: var(--red); }
 #whodat { padding-top: 46px; background: var(--light-grey); }
-.whodat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; }
+.whodat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px; }
 .whodat-card { background: var(--white); border: 1px solid var(--border); padding: 22px; }
 .whodat-portrait { margin: -22px -22px 20px; background: var(--white); }
 .whodat-portrait img { display: block; width: 100%; aspect-ratio: 1 / 1; padding: 10px; box-sizing: border-box; object-fit: contain; object-position: center; }
-.whodat-placeholder { display: grid; width: 100%; aspect-ratio: 1 / 1; padding: 10px; box-sizing: border-box; place-content: center; gap: 8px; color: #666; background: #e4e4e4; text-align: center; }
-.whodat-placeholder strong { color: var(--black); font: 900 clamp(1.5rem, 4vw, 3rem)/1 Arial Black, Arial, sans-serif; letter-spacing: .08em; }
-.whodat-placeholder span { font: 700 .68rem/1.3 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; }
 .whodat-name { margin: 0; color: var(--black); font: 900 1rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .whodat-title { margin: 5px 0 15px; color: var(--red); font: 700 .72rem/1.35 'Courier New', monospace; text-transform: uppercase; }
 .whodat-bio { font-size: .83rem; line-height: 1.55; }
@@ -299,19 +296,6 @@ require_once __DIR__ . '/includes/header.php';
                         <p class="whodat-name">OpenAI Codex</p>
                         <p class="whodat-title">Skilled, but spicy.</p>
                         <p class="whodat-bio">Large language model and co-author of SnapSmack. Rebuilt most of the desktop suite and is responsible for nearly all of SNAP SLAPPER, from its editing engine and project history to layers, masks, AI healing and packaging. Also works across architecture, security, testing, recovery and the last mile between "built" and "shipped." Sean supplies the requirements and the final call; Codex turns that into working software, pushes back when the evidence demands it, and stays on the ugly bugs until they are actually closed. Powered by OpenAI.</p>
-                    </div>
-                </article>
-                <article class="whodat-card">
-                    <div class="whodat-portrait">
-                        <div class="whodat-placeholder" role="img" aria-label="Muse portrait placeholder">
-                            <strong>MUSE</strong>
-                            <span>Portrait placeholder</span>
-                        </div>
-                    </div>
-                    <div>
-                        <p class="whodat-name">Muse</p>
-                        <p class="whodat-title">Independent second pair of eyes.</p>
-                        <p class="whodat-bio">AI agent and independent checker for SnapSmack. Reads what the others build, read-only, and reports what it finds: claims checked against the repo, tests read, public pages and links verified. Never the one who wrote what it is checking, which is the point. Will take first-line support questions when the forums open. Powered by Meta.</p>
                     </div>
                 </article>
             </div>

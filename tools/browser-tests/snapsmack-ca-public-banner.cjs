@@ -119,7 +119,7 @@ const samples = [
 
       await page.goto(`${baseUrl}/index.php`, { waitUntil: 'networkidle' });
       const cards = page.locator('.whodat-card');
-      assert.equal(await cards.count(), 4, 'Home page must render four credit cards');
+      assert.equal(await cards.count(), 3, 'Home page must keep the three-card credits layout');
       await page.locator('#whodat').scrollIntoViewIfNeeded();
       await page.waitForFunction(() => [...document.querySelectorAll('#whodat img')].every((image) => image.complete && image.naturalWidth > 0));
       const creditGeometry = await page.locator('#whodat').evaluate((section) => {
@@ -131,10 +131,8 @@ const samples = [
         return {
           rects,
           horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-          placeholderText: section.querySelector('.whodat-placeholder')?.textContent.replace(/\s+/g, ' ').trim() || '',
         };
       });
-      assert.equal(creditGeometry.placeholderText, 'MUSE Portrait placeholder');
       assert.ok(creditGeometry.horizontalOverflow <= 0, `Credits must not overflow at ${width}px`);
       await page.locator('#whodat').screenshot({ path: path.join(output, `credits-${width}.png`) });
       results.push({ page: 'index.php#whodat', width, ...creditGeometry });
@@ -146,7 +144,7 @@ const samples = [
     await browser.close();
   }
 
-  console.log(`PASS ${publicPages.length} public pages at 1440px and 390px; shared banner, mobile menus, WOTCHA anchor, overflow and four-card credits verified.`);
+  console.log(`PASS ${publicPages.length} public pages at 1440px and 390px; shared banner, mobile menus, WOTCHA anchor, overflow and three-card credits verified.`);
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;
