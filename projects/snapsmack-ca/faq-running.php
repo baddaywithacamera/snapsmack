@@ -32,7 +32,7 @@ $faq_qas = <<<'HTML'
             <div class="qa" id="q-platforms">
                 <h3>Platforms supported?</h3>
                 <p><strong>Server.</strong> LAMP. Linux, Apache, MySQL/MariaDB, PHP 8.3 or newer. Nginx with PHP-FPM works in principle and several testers run it. Officially supported once it's been through enough cycles to call it tested. WIMP — Windows, IIS, MySQL, PHP — can go eat a bag of dicks. Not supported. Not going to be. Don't file bug reports. See "Does SnapSmack run on macOS?" for the other platform we don't build for, and why.</p>
-                <p><strong>Desktop Companion Apps.</strong> Windows 10 and up. Any recent Linux distribution. The Linux builds have also been found to work on macOS, entirely by accident, but macOS remains unsupported. See "Does SnapSmack run on macOS?" before getting excited.</p>
+                <p><strong>Desktop Companion Apps.</strong> Windows 10 and up, plus native Linux builds for recent distributions. macOS is not supported. See "Does SnapSmack run on macOS?" for why we do not build for it.</p>
             </div>
 
             <div class="qa" id="q-mobile">
