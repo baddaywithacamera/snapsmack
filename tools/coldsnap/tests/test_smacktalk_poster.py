@@ -260,7 +260,80 @@ def _mosaic_token_checks():
     return 8
 
 
+def _gap_checks():
+    """SS-1301: the mosaic gap, with ZERO meaning zero, on the PUBLISH path.
+
+    `int(gap or 4)` and `int(getattr(draft, "mosaic_gap", 4) or 4)` both read a
+    saved 0 as 4, because `0 or 4` is 4. snap_mosaics.gap allows 0 to 20,
+    core/parser.php clamps to the same range and ss-engine-mosaic.js honours
+    it, so a flush grid of photographs was a layout COLD SNAP could not send --
+    not a preview nit but what the site ends up storing.
+
+    Muse found the same expression in the BIGGIE preview. This is the rest of
+    the path, which is why it is checked here as well as there.
+    """
+    n = 0
+    assert P._gap_value(0) == 0, "a gap of 0 must stay 0"
+    assert P._gap_value("0") == 0, "a gap of '0' must stay 0"
+    assert P._gap_value(0.0) == 0, "a gap of 0.0 must stay 0"
+    n += 3
+    assert P._gap_value(12) == 12 and P._gap_value("12") == 12
+    n += 1
+    # Only absence falls back to the schema default.
+    assert P._gap_value(None) == 4 and P._gap_value("") == 4
+    assert P._gap_value("wide") == 4, "garbage falls back rather than raising"
+    n += 2
+    # This layer clamps, because it is what leaves the machine.
+    assert P._gap_value(99) == 20 and P._gap_value(-5) == 0
+    n += 1
+
+    # AND THE PAYLOAD ITSELF, which is what the site stores. A mutation run
+    # put the old `int(gap or 4)` back on this line and nothing failed: every
+    # check above stubs create_mosaic out, so the draft -> gap step was proved
+    # and the gap -> payload step was not. This drives the real method.
+    class _MosaicSession:
+        def __init__(self):
+            self.headers = {}
+            self.sent = []
+
+        def post(self, url, files=None, data=None, json=None, timeout=None):
+            if "smackpress/mosaics" in url:
+                self.sent.append(json)
+                return FakeResp(200, {"mosaic_id": 9})
+            return FakeResp(404, {})
+
+        def get(self, url, timeout=None, params=None):
+            return FakeResp(200, {})
+
+    for value, expected in ((0, 0), (4, 4), (20, 20), (99, 20), (None, 4),
+                            ("", 4), ("7", 7)):
+        sess = _MosaicSession()
+        mid, token = P.SmacktalkPoster("https://x", "k", session=sess).create_mosaic(
+            [1, 2, 3], gap=value)
+        assert sess.sent and sess.sent[0]["gap"] == expected, (value, sess.sent)
+        assert (mid, token) == (9, "[mosaic:9]"), (mid, token)
+        n += 1
+
+    # And end to end: a draft carrying gap 0 reaches create_mosaic as 0.
+    from sumna_offline import Draft, KIND_SMACKTALK, MODE_SMACKTALK
+    seen = []
+    poster = P.SmacktalkPoster.__new__(P.SmacktalkPoster)
+    poster.create_mosaic = (
+        lambda ids, title="Mosaic", gap=4, layout="asymmetric",
+        gallery_shuffle=False: (seen.append(gap) or (7, "[mosaic:7]")))
+    for value, expected in ((0, 0), (4, 4), (11, 11), (None, 4)):
+        seen.clear()
+        draft = Draft(draft_id="g", kind=KIND_SMACKTALK, mode=MODE_SMACKTALK,
+                      title="t", caption="[mosaic]", tags="")
+        draft.mosaic_gap = value
+        poster._resolve_mosaics("[mosaic]", [1, 2, 3], draft)
+        assert seen == [expected], (value, seen, expected)
+        n += 1
+    return n
+
+
 if __name__ == "__main__":
-    passed = _checks() + _mosaic_token_checks() + _bucket_img_checks()
+    passed = (_checks() + _mosaic_token_checks() + _bucket_img_checks()
+              + _gap_checks())
     print(f"OK - {passed} checks passed")
 # ===== SNAPSMACK EOF =====

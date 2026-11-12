@@ -10,7 +10,7 @@ import os
 from urllib.parse import urlparse
 
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QPixmap, QIntValidator
+from PySide6.QtGui import QPixmap, QIntValidator, QImageReader
 from PySide6.QtWidgets import (
     QFrame, QLabel, QLineEdit, QScrollArea, QSizePolicy, QVBoxLayout,
     QHBoxLayout, QMessageBox, QPushButton, QSlider, QWidget,
@@ -66,8 +66,56 @@ def status_badge(status: str) -> QLabel:
 _PIX_CACHE: dict = {}
 
 
+def thumb_decode_size(source_width, source_height, size):
+    """The size to DECODE a thumbnail at, or None to decode unscaled.
+
+    Lifted out of load_pixmap so it can be asked rather than inferred. The
+    final pixmap is scaled again afterwards, so a wrong decode size produces
+    the right picture at the wrong cost -- a mutation run put the full decode
+    back and used the width instead of the long edge, and both survived every
+    assertion, because nothing could see this step. This is that step.
+
+    The target is a square fit, so the LONG edge is what must reach `size`.
+    Scaling is computed in the PRE-transform frame, which is the frame
+    setScaledSize works in: Qt scales the stored grid and then rotates. One
+    factor on both axes keeps that correct for a quarter-turned photograph.
+
+    None means the photograph is already within the box, and decoding it
+    unscaled is cheaper than asking Qt to scale it up.
+    """
+    width = int(source_width or 0)
+    height = int(source_height or 0)
+    size = int(size or 0)
+    if width <= 0 or height <= 0 or size <= 0:
+        return None
+    longest = max(width, height)
+    if longest <= size:
+        return None
+    scale = size / float(longest)
+    return (max(1, int(round(width * scale))), max(1, int(round(height * scale))))
+
+
 def load_pixmap(path: str, size: int = 64):
-    """Square-fit pixmap, cached by (path, mtime, size). None when missing."""
+    """Square-fit pixmap, cached by (path, mtime, size). None when missing.
+
+    THE EXIF ORIENTATION IS APPLIED, and it was not. This was QPixmap(path),
+    which ignores the orientation tag -- measured: a 1500x1000 JPEG tagged
+    Orientation=6 comes back 1500x1000 from QPixmap and 1000x1500 from
+    QImageReader with autoTransform. So a photograph the camera recorded
+    sideways was shown on its side here, by every one of the eighteen call
+    sites in COLD SNAP that go through this function.
+
+    Found while fixing the same fault in the BIGGIE mosaic preview, which Muse
+    had caught there. This is the shared control the rest of the application
+    draws thumbnails with: photo_loader.PhotoLoader already passed
+    setAutoTransform(True) and canvas._pixmap now does, so leaving this one
+    alone would have meant the same photograph upright in a mosaic and
+    sideways as a single image block in the same editor window.
+
+    It also stops decoding at full resolution. The old call read the whole
+    photograph to make a 64px thumbnail; setScaledSize decodes straight to the
+    size asked for. A SNAP SLAPPER original is 2655x2655.
+    """
     if not path or not os.path.isfile(path):
         return None
     try:
@@ -76,7 +124,14 @@ def load_pixmap(path: str, size: int = 64):
         return None
     if key in _PIX_CACHE:
         return _PIX_CACHE[key]
-    pm = QPixmap(path)
+    reader = QImageReader(path)
+    reader.setAutoTransform(True)
+    source = reader.size()
+    want = thumb_decode_size(source.width(), source.height(), size)         if source.isValid() else None
+    if want is not None:
+        reader.setScaledSize(QSize(want[0], want[1]))
+    image = reader.read()
+    pm = QPixmap.fromImage(image) if not image.isNull() else QPixmap()
     if pm.isNull():
         return None
     pm = pm.scaled(QSize(size, size), Qt.KeepAspectRatio, Qt.SmoothTransformation)
