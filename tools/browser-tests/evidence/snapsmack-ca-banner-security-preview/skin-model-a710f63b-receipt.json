@@ -1,0 +1,28 @@
+{
+  "commit": "a710f63b",
+  "captured_at": "2026-11-12T03:01:56Z",
+  "source": "local PHP render of projects/snapsmack-ca/security.php",
+  "viewports": {
+    "1440": {
+      "inner_width": 1440,
+      "scroll_width": 1440,
+      "cards": [
+        { "x": 64.5, "width": 422.328125, "height": 430.046875 },
+        { "x": 508.828125, "width": 422.328125, "height": 430.046875 },
+        { "x": 953.15625, "width": 422.34375, "height": 430.046875 }
+      ],
+      "result": "PASS"
+    },
+    "390": {
+      "inner_width": 390,
+      "scroll_width": 390,
+      "cards": [
+        { "x": 32, "width": 326, "height": 407.125 },
+        { "x": 32, "width": 326, "height": 352.75 },
+        { "x": 32, "width": 326, "height": 334.28125 }
+      ],
+      "result": "PASS"
+    }
+  },
+  "notes": "Desktop cards are equal height. Mobile cards stack in source order. Neither viewport has horizontal overflow."
+}
