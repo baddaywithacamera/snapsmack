@@ -789,7 +789,10 @@ body.archive-page #scroll-stage {
     display: var(--ip-static-layout, grid);
     grid-template-columns:
         var(--ip-static-cols, var(--ip-static-hero-width, 42%) 1fr);
-    column-gap: var(--ip-static-column-gap, 48px);
+    /* The description contributes a 20px inset inside its track, so the old
+       48px grid gap rendered as 68px from frame to first glyph. Twenty-six
+       pixels here renders the shared About treatment at 46px. */
+    column-gap: var(--ip-static-column-gap, 26px);
     align-items: start;
     /* Two columns inside 850px leave both too mean. The wider cap applies
        ONLY in the two-column case, so a single-column static page keeps the
@@ -827,6 +830,16 @@ body.archive-page #scroll-stage {
 .static-content:has(#photobox.page-hero) > .description {
     grid-column: var(--ip-static-text-col, 2);
     grid-row: 2;
+}
+
+/* IMPACT PRINTER has no NEW HORIZON-style shadow spread. Its frame began 6px
+   above the visible first text line, so the desktop grid gets that measured
+   top inset. The narrow stacked layout keeps its existing geometry. */
+@media (min-width: 901px) {
+    .static-content:has(#photobox.page-hero) > #photobox.page-hero .main-photo {
+        box-sizing: border-box;
+        padding-top: var(--ip-static-hero-top-inset, 6px);
+    }
 }
 
 /* One column on a narrow screen: portrait first, nothing sticky, nothing
