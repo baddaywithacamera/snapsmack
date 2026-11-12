@@ -7,7 +7,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "features.php",
@@ -17,7 +18,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "skins.php",
@@ -27,7 +29,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tools.php",
@@ -37,7 +40,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "security.php",
@@ -47,7 +51,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "wotcha.php",
@@ -57,7 +62,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "brass-tacks.php",
@@ -67,7 +73,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "coming-soon.php",
@@ -77,7 +84,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "oi.php",
@@ -87,7 +95,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tnb.php",
@@ -97,7 +106,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "hairy-muff.php",
@@ -107,7 +117,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "buzzers.php",
@@ -117,7 +128,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "ding-dong-bell.php",
@@ -127,7 +139,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "the-reckoning.php",
@@ -137,7 +150,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "hows-yer-father.php",
@@ -147,7 +161,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "bugger.php",
@@ -157,7 +172,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-why.php",
@@ -167,7 +183,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-running.php",
@@ -177,7 +194,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-content.php",
@@ -187,7 +205,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-tools.php",
@@ -197,7 +216,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-fediverse.php",
@@ -207,7 +227,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-security.php",
@@ -217,7 +238,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-future.php",
@@ -227,7 +249,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-cold-snap.php",
@@ -237,7 +260,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-flkr-fckr.php",
@@ -247,7 +271,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-gyss.php",
@@ -257,7 +282,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-smackpress.php",
@@ -267,7 +293,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-snap-hq.php",
@@ -277,7 +304,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-snap-slapper.php",
@@ -287,7 +315,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-suyb.php",
@@ -297,7 +326,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-sybu.php",
@@ -307,7 +337,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-unzucker.php",
@@ -317,7 +348,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "export-your-photos.php",
@@ -327,7 +359,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "fediverse-photography.php",
@@ -337,7 +370,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "flickr-alternative.php",
@@ -347,7 +381,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "instagram-alternative.php",
@@ -357,7 +392,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "photo-blog-software.php",
@@ -367,7 +403,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "self-hosted-photography.php",
@@ -377,7 +414,8 @@
     "bannerTop": 114.515625,
     "headerBottom": 114.515625,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "index.php#whodat",
@@ -419,7 +457,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "features.php",
@@ -429,7 +468,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "skins.php",
@@ -439,7 +479,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tools.php",
@@ -449,7 +490,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "security.php",
@@ -459,7 +501,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "wotcha.php",
@@ -469,7 +512,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "brass-tacks.php",
@@ -479,7 +523,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "coming-soon.php",
@@ -489,7 +534,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "oi.php",
@@ -499,7 +545,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tnb.php",
@@ -509,7 +556,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "hairy-muff.php",
@@ -519,7 +567,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "buzzers.php",
@@ -529,7 +578,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "ding-dong-bell.php",
@@ -539,7 +589,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 63
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "the-reckoning.php",
@@ -549,7 +600,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "hows-yer-father.php",
@@ -559,7 +611,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "bugger.php",
@@ -569,7 +622,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-why.php",
@@ -579,7 +633,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-running.php",
@@ -589,7 +644,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-content.php",
@@ -599,7 +655,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-tools.php",
@@ -609,7 +666,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-fediverse.php",
@@ -619,7 +677,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-security.php",
@@ -629,7 +688,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "faq-future.php",
@@ -639,7 +699,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-cold-snap.php",
@@ -649,7 +710,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-flkr-fckr.php",
@@ -659,7 +721,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-gyss.php",
@@ -669,7 +732,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-smackpress.php",
@@ -679,7 +743,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-snap-hq.php",
@@ -689,7 +754,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-snap-slapper.php",
@@ -699,7 +765,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-suyb.php",
@@ -709,7 +776,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-sybu.php",
@@ -719,7 +787,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "tool-unzucker.php",
@@ -729,7 +798,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "export-your-photos.php",
@@ -739,7 +809,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "fediverse-photography.php",
@@ -749,7 +820,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "flickr-alternative.php",
@@ -759,7 +831,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "instagram-alternative.php",
@@ -769,7 +842,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "photo-blog-software.php",
@@ -779,7 +853,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "self-hosted-photography.php",
@@ -789,7 +864,8 @@
     "bannerTop": 101,
     "headerBottom": 101,
     "bannerOverflow": 0,
-    "horizontalOverflow": 0
+    "horizontalOverflow": 0,
+    "overflowingElements": []
   },
   {
     "page": "index.php#whodat",

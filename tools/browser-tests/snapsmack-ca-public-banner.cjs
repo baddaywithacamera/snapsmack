@@ -61,6 +61,20 @@ const samples = [
             headerBottom: headerBox?.bottom ?? null,
             bannerOverflow: banner ? banner.scrollWidth - banner.clientWidth : null,
             horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            overflowingElements: [...document.body.querySelectorAll('*')]
+              .map((element) => {
+                const box = element.getBoundingClientRect();
+                return {
+                  tag: element.tagName.toLowerCase(),
+                  id: element.id,
+                  className: typeof element.className === 'string' ? element.className : '',
+                  left: box.left,
+                  right: box.right,
+                  width: box.width,
+                };
+              })
+              .filter((item) => item.right > document.documentElement.clientWidth + 0.5 || item.left < -0.5)
+              .slice(0, 12),
           };
         });
 

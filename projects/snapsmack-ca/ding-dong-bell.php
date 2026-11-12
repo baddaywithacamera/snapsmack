@@ -148,6 +148,9 @@ section.disclosure   { padding: 52px 0 72px; }
 /* Alternating tinted bands, like the landing page. A family header and its
    entries share one background so each family reads as one block. */
 .ddb-shade { background: var(--light-grey); }
+@media (max-width: 600px) {
+    .entry .date { white-space: normal; overflow-wrap: anywhere; }
+}
 CSS;
 
 require_once __DIR__ . '/includes/header.php';
