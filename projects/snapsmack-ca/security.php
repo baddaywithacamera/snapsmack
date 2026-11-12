@@ -216,6 +216,7 @@ require_once __DIR__ . '/includes/header.php';
                 <article class="skin-model-card">
                     <h3>No bundled executable code</h3>
                     <p>Skin packages cannot ship JavaScript or arbitrary PHP behaviour. When a design needs interaction, its manifest asks for a named engine supplied by the CMS. The package gate checks the complete skin regardless of who wrote or signed it.</p>
+                    <p>Plugins are executable third-party software with their own dependency trees, often duplicating what the CMS already provides. Some become a CMS inside the CMS. Each one adds code to audit, another attack surface, more work on every request, and a maintenance schedule the site owner does not control. A trusted plugin can also change hands: a buyer or hijacker can acquire a popular package and ship malware through its next routine update. SnapSmack avoids that entire class of bloat, performance damage, dependency drift, and supply-chain attack by not providing an arbitrary plugin mechanism.</p>
                 </article>
                 <article class="skin-model-card">
                     <h3>Owner code is separate</h3>
