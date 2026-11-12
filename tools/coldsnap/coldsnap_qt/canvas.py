@@ -31,7 +31,7 @@ from PySide6.QtGui import (
     QColor, QFont, QPainter, QPen, QPixmap, QPixmapCache, QTextBlockFormat,
     QTextCharFormat, QTextCursor, QTextFormat, QTextFrameFormat, QTextLength,
     QTextListFormat, QTextTableFormat, QPyTextObject, QAction, QKeySequence,
-    QImageReader,
+    QImageReader, QImageIOHandler,
 )
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QMenu,
@@ -85,6 +85,27 @@ def _mosaic_images(canvas, data):
     return paths, images
 
 
+def _mosaic_gap(data):
+    """The saved gap, with ZERO meaning zero.
+
+    `int(data.get("gap", 4) or 4)` read a saved 0 as 4, because `0 or 4` is 4.
+    Gap 0 is a real choice -- the column schema allows 0 to 20, parser.php
+    clamps to the same range and the engine honours it -- and it is the one a
+    flush grid of photographs needs, so previewing it at 4 would show spacing
+    the published page does not have. Only a missing, blank or unparseable
+    value falls back to 4, which is the schema default for snap_mosaics.gap.
+    The range is left to compute_layout, which clamps 0 to 20 exactly as the
+    site does; clamping twice is how the two drift apart.
+    """
+    raw = data.get("gap", 4)
+    if raw is None or raw == "":
+        return 4
+    try:
+        return int(float(raw))
+    except (TypeError, ValueError):
+        return 4
+
+
 def mosaic_cells(canvas, data, width):
     """The cells this mosaic will occupy at `width`, as the site computes them.
 
@@ -99,7 +120,7 @@ def mosaic_cells(canvas, data, width):
         return [], {"items": [], "sections": [], "height": 0.0}
     layout = data.get("layout", "asymmetric")
     out = site_compute_layout(
-        images, width, int(data.get("gap", 4) or 4), "natural",
+        images, width, _mosaic_gap(data), "natural",
         "" if layout == "asymmetric" else layout)
     return paths, out
 
@@ -291,6 +312,38 @@ def _data(fmt) -> dict:
         return {}
 
 
+#: Qt reports the EXIF transform as flags. Bit 4 is the quarter turn, and it
+#: is the only bit that changes the SHAPE: mirroring and flipping leave the
+#: width and height alone. Measured across all eight EXIF orientation tags --
+#: 1 to 4 are unrotated, 5 to 8 all carry this bit and all swap.
+_ROTATE90 = QImageIOHandler.Transformation.TransformationRotate90
+_ROTATE90_BIT = int(_ROTATE90.value)
+
+
+def _seen_size(size, transformation):
+    """(width, height) as a VIEWER shows it, from the raw header size + flags.
+
+    QImageReader.size() reports the stored pixel grid and ignores the EXIF
+    orientation -- with setAutoTransform(True) as well, which is the part that
+    catches people. Measured: a 1500x1000 JPEG tagged Orientation=6 reports
+    1500x1000 from size() with autoTransform either way, and read() returns
+    1000x1500. There is no effectiveSize() in this PySide6 to ask instead.
+
+    So the swap is done here, from the flags, and this takes plain values so a
+    test can drive all eight orientations without eight files on disk.
+    """
+    width = int(size.width()) if hasattr(size, "width") else int(size[0])
+    height = int(size.height()) if hasattr(size, "height") else int(size[1])
+    if width <= 0 or height <= 0:
+        return (0, 0)
+    # The flags are normalised to a plain int, because Qt's Transformation enum
+    # in this PySide6 supports neither int() nor `int & Transformation`
+    # (measured -- both raise TypeError). Going through .value once here is
+    # what lets a test drive all eight orientations from literals.
+    flags = int(getattr(transformation, "value", transformation))
+    return (height, width) if flags & _ROTATE90_BIT else (width, height)
+
+
 def _pixmap(path: str, width: int) -> QPixmap:
     """Bucket photo, decoded once and cached at a sane size.
 
@@ -338,9 +391,16 @@ def _pixmap(path: str, width: int) -> QPixmap:
     reader = QImageReader(path)
     reader.setAutoTransform(True)       # honour the EXIF orientation, as before
     source = reader.size()
-    if source.isValid() and source.width() > bucket:
-        scale = bucket / float(source.width())
-        reader.setScaledSize(QSize(bucket,
+    # SCALE IN THE PRE-TRANSFORM FRAME, because that is the frame setScaledSize
+    # works in: Qt scales the stored grid and THEN rotates. Asking a quarter-
+    # turned photograph for a 320-wide pixmap used to deliver a 213-wide one
+    # (measured), so the cell got an under-resolved photograph and the cache
+    # key lied about what it held. Scaling both axes by one factor off the SEEN
+    # width lands the delivered width on the bucket for all eight orientations.
+    seen_w, _seen_h = _seen_size(source, reader.transformation())
+    if source.isValid() and seen_w > bucket:
+        scale = bucket / float(seen_w)
+        reader.setScaledSize(QSize(max(1, int(round(source.width() * scale))),
                                    max(1, int(round(source.height() * scale)))))
     image = reader.read()
     pix = QPixmap.fromImage(image) if not image.isNull() else QPixmap()
@@ -358,6 +418,19 @@ def _image_size(path: str):
     ask how big they are is what made this editor unusable in the first place.
     Cached on path and modification time, like everything else here, because
     SNAP SLAPPER rewrites photographs in place.
+
+    THE EXIF ORIENTATION IS APPLIED, and it was not. A photograph tagged for a
+    quarter turn was composed from its stored landscape grid while _pixmap drew
+    it portrait, so KeepAspectRatio letterboxed it inside its own cell -- the
+    exact banding this whole change removes, back again for rotated files. The
+    test fixtures are PIL JPEGs with no EXIF, so no assertion could see it;
+    Muse read it out of the Qt API instead.
+
+    Matching the site is not a judgement call here. core/image-ingest.php:359
+    rotates the PIXELS on upload for orientation 3, 6 and 8 and then stores
+    img_width/img_height off the rotated image, which parser.php:509 emits as
+    data-w/data-h and the engine composes from. The published page therefore
+    uses the ORIENTED shape, so the editor must too.
     """
     try:
         stamp = os.stat(path).st_mtime_ns if path else 0
@@ -366,8 +439,12 @@ def _image_size(path: str):
     hit = _SIZE_CACHE.get((path, stamp))
     if hit is not None:
         return hit
-    size = QImageReader(path).size() if os.path.isfile(path) else None
-    out = (size.width(), size.height()) if size is not None and size.isValid() else (0, 0)
+    out = (0, 0)
+    if os.path.isfile(path):
+        reader = QImageReader(path)
+        size = reader.size()
+        if size.isValid():
+            out = _seen_size(size, reader.transformation())
     if len(_SIZE_CACHE) > 2000:
         _SIZE_CACHE.clear()
     _SIZE_CACHE[(path, stamp)] = out

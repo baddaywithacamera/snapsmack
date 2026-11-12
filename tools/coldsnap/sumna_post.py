@@ -43,6 +43,34 @@ from sumna_offline import (
 )
 import sumna_resize
 
+
+def _gap_value(raw):
+    """The mosaic gap, with ZERO meaning zero, clamped to the column's range.
+
+    THE PUBLISH PATH COLLAPSED A SAVED 0 TO 4, in two places -- `int(gap or 4)`
+    and `int(getattr(draft, "mosaic_gap", 4) or 4)` -- because `0 or 4` is 4.
+    Gap 0 is a real choice: snap_mosaics.gap allows 0 to 20, core/parser.php
+    clamps to the same range, and ss-engine-mosaic.js honours it. It is the
+    value a flush grid of photographs needs, and COLD SNAP could not send it.
+
+    Found while fixing the same expression in the BIGGIE preview
+    (coldsnap_qt/canvas.py:_mosaic_gap). A fault in one place on a shared value
+    means checking every place that reads it, and this is the layer that
+    decides what the SITE stores -- the preview only decides what Sean sees.
+    The two copies are deliberate: the transport must not import the Qt
+    package, and each names the other.
+
+    Only a missing, blank or unparseable value falls back to 4, the schema
+    default. Unlike the preview, this one clamps, because it is what leaves the
+    machine and the site clamps it anyway.
+    """
+    if raw is None or raw == "":
+        return 4
+    try:
+        return max(0, min(20, int(float(raw))))
+    except (TypeError, ValueError):
+        return 4
+
 try:
     import snap_site_scope   # X-Snap-Site header (mutual-auth A1, SECAUDIT 054)
 except Exception:  # noqa: BLE001
@@ -786,7 +814,7 @@ class SmacktalkPoster:
         synced the column sees exactly the request it saw before."""
         payload = {"title": title or "Mosaic",
                    "asset_ids": [int(i) for i in image_ids],
-                   "gap": max(0, min(20, int(gap or 4))), "layout": layout}
+                   "gap": _gap_value(gap), "layout": layout}
         if gallery_shuffle:
             payload["gallery_shuffle"] = True
         r = self.session.post(
@@ -836,7 +864,7 @@ class SmacktalkPoster:
         content = content or ""
         if not image_ids or not self._MOSAIC_TOKEN.search(content):
             return content, []
-        gap = int(getattr(draft, "mosaic_gap", 4) or 4)
+        gap = _gap_value(getattr(draft, "mosaic_gap", 4))
         mosaic_ids = []
 
         def build(match):

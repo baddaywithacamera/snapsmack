@@ -42,7 +42,7 @@ except Exception as exc:                                   # pragma: no cover
 
 from coldsnap_qt.canvas import (  # noqa: E402
     _image_size, _pixmap, _mosaic_images, mosaic_cells, mosaic_note,
-    mosaic_is_approximate)
+    mosaic_is_approximate, _seen_size, _mosaic_gap, _ROTATE90)
 from coldsnap_qt.mosaic_site_layout import compute_layout            # noqa: E402
 
 
@@ -52,10 +52,29 @@ class _Canvas:
         self.assets = {}
 
 
-def _write(directory, name, width, height):
+def _write(directory, name, width, height, orientation=None):
     path = os.path.join(directory, name)
-    Image.new('RGB', (width, height), (70, 80, 90)).save(path, 'JPEG', quality=60)
+    img = Image.new('RGB', (width, height), (70, 80, 90))
+    if orientation is None:
+        img.save(path, 'JPEG', quality=60)
+    else:
+        exif = img.getexif()
+        exif[0x0112] = orientation          # the EXIF Orientation tag
+        img.save(path, 'JPEG', quality=60, exif=exif)
     return path
+
+
+class _Size:
+    """A stand-in for QSize, so _seen_size can be driven without a file."""
+
+    def __init__(self, w, h):
+        self._w, self._h = w, h
+
+    def width(self):
+        return self._w
+
+    def height(self):
+        return self._h
 
 
 def main():
@@ -99,6 +118,70 @@ def main():
     check('_image_size reads the header with QImageReader', 'QImageReader' in body)
     check('and never constructs a QPixmap, which would decode the photograph',
           'QPixmap' not in body)
+
+    # ── EXIF ORIENTATION ───────────────────────────────────────────────────
+    # Muse caught this reading the Qt API: QImageReader.size() reports the
+    # STORED pixel grid and ignores the EXIF orientation -- with
+    # setAutoTransform(True) as well -- while _pixmap draws the photograph
+    # rotated. A quarter-turned photograph was therefore composed landscape and
+    # drawn portrait, and KeepAspectRatio letterboxed it inside its own cell:
+    # the exact banding this change exists to remove, back for rotated files.
+    #
+    # Nothing in the suite could see it, because PIL fixtures carry no EXIF.
+    # They do now.
+
+    # First the flag test on its own, over all eight orientation tags. 1-4 are
+    # unrotated; 5-8 all carry the quarter turn. Measured against Qt, not
+    # assumed: a 1500x1000 file tagged 5, 6, 7 or 8 reads back 1000x1500.
+    for tag, flags, rotates in ((1, 0, False), (2, 1, False), (3, 3, False),
+                                (4, 2, False), (5, 6, True), (6, 4, True),
+                                (7, 5, True), (8, 7, True)):
+        seen = _seen_size(_Size(1500, 1000), flags)
+        check('orientation %d reports %s' % (tag, '1000x1500' if rotates else '1500x1000'),
+              seen == ((1000, 1500) if rotates else (1500, 1000)))
+    check('a zero-sized header reports (0, 0) rather than swapping nothing',
+          _seen_size(_Size(0, 0), 4) == (0, 0))
+    check('the quarter-turn flag is the one Qt uses', int(_ROTATE90.value) == 4)
+
+    # Then end to end, on real files Qt reads.
+    turned = _write(work, 'turned.jpg', 1500, 1000, orientation=6)
+    straight = _write(work, 'straight.jpg', 1500, 1000, orientation=1)
+    check('a quarter-turned photograph measures as the viewer sees it, 1000x1500',
+          _image_size(turned) == (1000, 1500))
+    check('and an untagged one is unchanged at 1500x1000',
+          _image_size(straight) == (1500, 1000))
+
+    # The composition consequence, which is the fault itself: the cell must be
+    # PORTRAIT for a turned photograph, not landscape.
+    turned_cells = compute_layout(
+        [{'width': w, 'height': h, 'src': 's'}
+         for w, h in [_image_size(turned)]], 900, 5, 'natural', '')
+    cell = turned_cells['items'][0]
+    check('a turned photograph gets a portrait cell, so nothing letterboxes',
+          cell['height'] > cell['width'])
+
+    # And the decode: setScaledSize works in the PRE-transform frame, so asking
+    # a turned photograph for 320 wide used to deliver 213 wide. Measured.
+    turned_pix = _pixmap(turned, 300)
+    check('a turned photograph decodes to the width that was asked for',
+          280 <= turned_pix.width() <= 384)
+    check('and comes back portrait, matching its cell',
+          turned_pix.height() > turned_pix.width())
+
+    # ── GAP ZERO IS A REAL SAVED VALUE ─────────────────────────────────────
+    # `int(data.get("gap", 4) or 4)` read a saved 0 as 4, because `0 or 4` is 4.
+    # Zero is what a flush grid needs and the schema allows it (0-20).
+    check('a saved gap of 0 stays 0', _mosaic_gap({'gap': 0}) == 0)
+    check('a saved gap of 0 as a string stays 0', _mosaic_gap({'gap': '0'}) == 0)
+    check('a saved gap of 12 is honoured', _mosaic_gap({'gap': 12}) == 12)
+    check('a missing gap falls back to the schema default of 4',
+          _mosaic_gap({}) == 4)
+    check('a blank gap falls back to 4', _mosaic_gap({'gap': ''}) == 4)
+    check('a None gap falls back to 4', _mosaic_gap({'gap': None}) == 4)
+    check('an unparseable gap falls back to 4 rather than raising',
+          _mosaic_gap({'gap': 'wide'}) == 4)
+    check('the range is left to the engine, not clamped twice here',
+          _mosaic_gap({'gap': 99}) == 99)
 
     # ── THE DECODE FIX ─────────────────────────────────────────────────────
     # The old code produced 1200 for every request. The width now decides.
@@ -199,6 +282,13 @@ def main():
     check('the default gap is the schema default of 4, not 5',
           abs(sum(t['width'] for t in mosaic_cells(canvas, {'order': []}, 900)[1]['items'])
               + 4 * 2 - 900) < 1e-6)
+    # And gap 0 reaches the layout, rather than being read as 4 on the way in.
+    _, at_zero = mosaic_cells(canvas, {'order': [], 'gap': 0}, 900)
+    check('a saved gap of 0 composes a row with no gaps at all',
+          abs(sum(t['width'] for t in at_zero['items']) - 900) < 1e-6)
+    check('and gap 0 really differs from the default of 4',
+          round(at_zero['items'][0]['width'], 3)
+          != round(mosaic_cells(canvas, {'order': []}, 900)[1]['items'][0]['width'], 3))
 
     # ── A BUCKET THAT CANNOT BE READ MUST NOT CRASH THE EDITOR ─────────────
     broken = _Canvas([os.path.join(work, 'gone.jpg')])
