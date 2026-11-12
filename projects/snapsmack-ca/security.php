@@ -211,7 +211,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="skin-model-grid">
                 <article class="skin-model-card">
                     <h3>Bounded templates</h3>
-                    <p>A current skin package contains declarative metadata, stylesheets, and bounded presentation templates. Templates can print values prepared by the CMS and use eight approved presentation helpers. The strict gate refuses unapproved function calls, database access, request globals, state changes, executable declarations, and unsafe output. The same rules apply to every package, regardless of author or signature.</p>
+                    <p>A current skin package contains declarative metadata, stylesheets, and bounded presentation templates. Templates can print values prepared by the CMS and use seven approved presentation helpers plus one render-guard construct. The strict gate refuses unapproved function calls, database access, request globals, state changes, executable declarations, and unsafe output. The same rules apply to every package, regardless of author or signature.</p>
                 </article>
                 <article class="skin-model-card">
                     <h3>No bundled executable code</h3>
