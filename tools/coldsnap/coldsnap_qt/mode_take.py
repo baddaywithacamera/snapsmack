@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
-    QSplitter, QFormLayout, QSpinBox, QSizePolicy,
+    QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton,
 )
 
 import sumna_offline as O
@@ -35,6 +35,8 @@ from .widgets import (Accordion, Card, build_rail, hint, field_label,
                       big_button, load_pixmap)
 from .photo_loader import PhotoLoader
 from .photo_edits import render_non_destructive
+from .slapper_handoff import (ReturnWatch, find_executable,
+                              focus_window, launch as launch_slapper)
 from .body_editor import BodyEditor
 from .block_tray import BlockAction, BlockTray
 from .drafts_panel import BatchRail, default_draft_row
@@ -182,6 +184,10 @@ class TakeMode(QWidget):
         self._updating_photo_fields = False
         self._loading = False
         self._view_settings = QSettings("SnapSmack", "COLD SNAP")
+        self._slapper_state = "idle"
+        self._slapper_watch_session = None
+        self._slapper_asset_uuid = ""
+        self._slapper_launch_error = ""
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(10, 10, 0, 0)
@@ -346,6 +352,9 @@ class TakeMode(QWidget):
         self._autosave.setSingleShot(True)
         self._autosave.setInterval(900)
         self._autosave.timeout.connect(self._autosave_now)
+        self._slapper_timer = QTimer(self)
+        self._slapper_timer.setInterval(1000)
+        self._slapper_timer.timeout.connect(self._poll_slapper_return)
         self.body.changed.connect(self._changed)
         self.title_edit.textChanged.connect(self._changed)
         self.tags_edit.textChanged.connect(self._changed)
@@ -1184,7 +1193,229 @@ class TakeMode(QWidget):
             "Kept in the post draft. Nothing is written into the image file."))
         self.metadata_panel.setVisible(False)
         col.addWidget(self.metadata_panel)
+
+        self.slapper_btn = QPushButton("Edit in SNAP SLAPPER  ↗")
+        self.slapper_btn.setObjectName("PhotoTool")
+        self.slapper_btn.setToolTip(
+            "Open this photograph in SNAP SLAPPER. Save a flattened copy "
+            "beside it and COLD SNAP will bring that copy back.")
+        self.slapper_btn.clicked.connect(self._start_slapper_handoff)
+        col.addWidget(self.slapper_btn)
+        self.slapper_hint = hint(
+            "COLD SNAP keeps the original. Save the edited copy beside it in "
+            "SNAP SLAPPER; COLD SNAP will notice when the file is complete.")
+        col.addWidget(self.slapper_hint)
+
+        self.slapper_state_panel = QFrame()
+        self.slapper_state_panel.setObjectName("SlapperState")
+        state_col = QVBoxLayout(self.slapper_state_panel)
+        state_col.setContentsMargins(9, 9, 9, 9)
+        state_col.setSpacing(5)
+        self.slapper_state_title = QLabel()
+        self.slapper_state_title.setObjectName("BlockTrayGroup")
+        self.slapper_state_body = QLabel()
+        self.slapper_state_body.setWordWrap(True)
+        state_col.addWidget(self.slapper_state_title)
+        state_col.addWidget(self.slapper_state_body)
+        self.slapper_use_edit = QRadioButton("Use the edited version")
+        self.slapper_use_original = QRadioButton("Use the original")
+        self.slapper_use_edit.clicked.connect(
+            lambda: self._choose_slapper_version(True))
+        self.slapper_use_original.clicked.connect(
+            lambda: self._choose_slapper_version(False))
+        state_col.addWidget(self.slapper_use_edit)
+        state_col.addWidget(self.slapper_use_original)
+        state_actions = QHBoxLayout()
+        self.slapper_primary = QPushButton()
+        self.slapper_secondary = QPushButton()
+        self.slapper_close = QPushButton("Close")
+        self.slapper_close.setObjectName("Quiet")
+        self.slapper_primary.clicked.connect(self._slapper_primary_action)
+        self.slapper_secondary.clicked.connect(self._slapper_secondary_action)
+        self.slapper_close.clicked.connect(self._stop_slapper_handoff)
+        state_actions.addWidget(self.slapper_primary)
+        state_actions.addWidget(self.slapper_secondary)
+        state_actions.addWidget(self.slapper_close)
+        state_col.addLayout(state_actions)
+        self.slapper_state_panel.setVisible(False)
+        col.addWidget(self.slapper_state_panel)
         self.photos_sec.add(self.photo_tools)
+
+    def _start_slapper_handoff(self):
+        image = self._selected_image()
+        source = os.path.abspath(str(
+            getattr(image, "local_path", "") if image else ""))
+        if not image or not source or not os.path.isfile(source):
+            self._slapper_launch_error = "The selected photograph is not available."
+            self._set_slapper_state("launch-error")
+            return
+        configured = self._view_settings.value(
+            "snap_slapper_executable", "", type=str)
+        executable = find_executable(configured)
+        if not executable:
+            self._set_slapper_state("not-installed")
+            return
+        try:
+            watcher = ReturnWatch.start(source)
+            launch_slapper(executable, source)
+        except Exception as exc:  # noqa: BLE001 - show the local launch failure
+            self._slapper_launch_error = str(exc)
+            self._set_slapper_state("launch-error")
+            return
+        image.slapper_base_path = source
+        image.slapper_base_filename = image.filename or os.path.basename(source)
+        image.slapper_base_edit_state = {
+            name: getattr(image, name, 0)
+            for name in ("edit_flip_h", "edit_flip_v", "edit_crop_left",
+                         "edit_crop_top", "edit_crop_right", "edit_crop_bottom")
+        }
+        self._slapper_asset_uuid = str(image.asset_uuid)
+        self._slapper_watch_session = watcher
+        self._slapper_timer.start()
+        self._set_slapper_state("waiting")
+        self._changed()
+
+    def _set_slapper_state(self, state: str):
+        self._slapper_state = state
+        self.slapper_state_panel.setVisible(state != "idle")
+        returned = state == "returned"
+        self.slapper_use_edit.setVisible(returned)
+        self.slapper_use_original.setVisible(returned)
+        self.slapper_close.setVisible(state in {"returned", "not-installed", "launch-error"})
+        self.slapper_secondary.setVisible(True)
+        self.slapper_state_panel.setObjectName(
+            "SlapperError" if state in {"not-installed", "launch-error"}
+            else "SlapperState")
+        self.slapper_state_panel.style().unpolish(self.slapper_state_panel)
+        self.slapper_state_panel.style().polish(self.slapper_state_panel)
+        if state == "waiting":
+            self.slapper_state_title.setText("WAITING FOR SNAP SLAPPER")
+            self.slapper_state_body.setText(
+                "Save a flattened copy beside the original. COLD SNAP will "
+                "bring it back after the file finishes writing.")
+            self.slapper_primary.setText("Bring editor forward")
+            self.slapper_secondary.setText("Stop waiting")
+        elif state == "returned":
+            self.slapper_state_title.setText("EDITED COPY RETURNED")
+            self.slapper_state_body.setText(
+                "Both versions are safe. Choose which one this post should use.")
+            self.slapper_primary.setText("Edit again")
+            self.slapper_secondary.setText("Open folder")
+        elif state == "not-installed":
+            self.slapper_state_title.setText("SNAP SLAPPER NOT FOUND")
+            self.slapper_state_body.setText(
+                "Choose the installed SNAP SLAPPER app, then COLD SNAP can "
+                "open the selected photograph in it.")
+            self.slapper_primary.setText("Find SNAP SLAPPER…")
+            self.slapper_secondary.setVisible(False)
+        elif state == "launch-error":
+            self.slapper_state_title.setText("SNAP SLAPPER COULD NOT START")
+            self.slapper_state_body.setText(
+                self._slapper_launch_error or "Windows did not start the editor.")
+            self.slapper_primary.setText("Try again")
+            self.slapper_secondary.setText("Choose another app…")
+
+    def _slapper_primary_action(self):
+        if self._slapper_state == "waiting":
+            focus_window()
+        elif self._slapper_state == "returned":
+            self._start_slapper_handoff()
+        elif self._slapper_state == "not-installed":
+            self._browse_for_slapper()
+        elif self._slapper_state == "launch-error":
+            self._start_slapper_handoff()
+
+    def _slapper_secondary_action(self):
+        if self._slapper_state == "waiting":
+            self._stop_slapper_handoff()
+        elif self._slapper_state == "returned":
+            image = self._image_for_uuid(self._slapper_asset_uuid)
+            path = str(getattr(image, "slapper_edited_path", "") or "") if image else ""
+            folder = os.path.dirname(os.path.abspath(path)) if path else ""
+            if folder and os.path.isdir(folder) and hasattr(os, "startfile"):
+                os.startfile(folder)  # noqa: S606 - owner-requested local folder
+        elif self._slapper_state == "launch-error":
+            self._browse_for_slapper()
+
+    def _browse_for_slapper(self):
+        path, _kind = QFileDialog.getOpenFileName(
+            self, "Find SNAP SLAPPER", "", "Applications (*.exe);;All files (*)")
+        if not path:
+            return
+        self._view_settings.setValue("snap_slapper_executable", path)
+        self._start_slapper_handoff()
+
+    def _stop_slapper_handoff(self):
+        self._slapper_timer.stop()
+        self._slapper_watch_session = None
+        self._set_slapper_state("idle")
+
+    def _image_for_uuid(self, asset_uuid: str):
+        return next((image for image in self._bucket
+                     if str(image.asset_uuid) == str(asset_uuid)), None)
+
+    def _poll_slapper_return(self):
+        if self._slapper_watch_session is None:
+            self._slapper_timer.stop()
+            return
+        returned = self._slapper_watch_session.poll()
+        if not returned:
+            return
+        image = self._image_for_uuid(self._slapper_asset_uuid)
+        if image is None:
+            self._stop_slapper_handoff()
+            return
+        try:
+            from PIL import Image
+            with Image.open(returned) as opened:
+                opened.verify()
+            with Image.open(returned) as opened:
+                width, height = opened.size
+        except Exception as exc:  # noqa: BLE001 - do not accept a broken return
+            self._slapper_launch_error = f"The returned file is not a readable image: {exc}"
+            self._slapper_timer.stop()
+            self._set_slapper_state("launch-error")
+            return
+        image.slapper_edited_path = os.path.abspath(returned)
+        image.slapper_use_edited = True
+        image.local_path = image.slapper_edited_path
+        image.filename = os.path.basename(returned)
+        image.width, image.height = width, height
+        image.thumb_square = ""
+        image.thumb_aspect = ""
+        for name in ("edit_flip_h", "edit_flip_v", "edit_crop_left",
+                     "edit_crop_top", "edit_crop_right", "edit_crop_bottom"):
+            setattr(image, name, False if name.startswith("edit_flip") else 0)
+        self._slapper_timer.stop()
+        self._slapper_watch_session = None
+        self.slapper_use_edit.setChecked(True)
+        self.slapper_use_original.setChecked(False)
+        self._set_slapper_state("returned")
+        self._refresh_bucket()
+        self._changed()
+
+    def _choose_slapper_version(self, use_edited: bool):
+        image = self._image_for_uuid(self._slapper_asset_uuid)
+        if image is None or not image.slapper_edited_path:
+            return
+        image.slapper_use_edited = bool(use_edited)
+        if use_edited:
+            image.local_path = image.slapper_edited_path
+            image.filename = os.path.basename(image.slapper_edited_path)
+            for name in ("edit_flip_h", "edit_flip_v", "edit_crop_left",
+                         "edit_crop_top", "edit_crop_right", "edit_crop_bottom"):
+                setattr(image, name, False if name.startswith("edit_flip") else 0)
+        else:
+            image.local_path = image.slapper_base_path or image.original_path
+            image.filename = (image.slapper_base_filename or
+                              os.path.basename(image.local_path))
+            for name, value in (image.slapper_base_edit_state or {}).items():
+                if hasattr(image, name):
+                    setattr(image, name, value)
+        image.thumb_square = ""
+        image.thumb_aspect = ""
+        self._refresh_bucket()
+        self._changed()
 
     def _selected_image(self):
         index = self._selected_photo_idx
@@ -1302,9 +1533,14 @@ class TakeMode(QWidget):
         self.photo_tools.setEnabled(enabled)
         if not enabled:
             self.selected_photo_label.setText("SELECT A PHOTO")
+            if self._slapper_state != "waiting":
+                self._slapper_asset_uuid = ""
+                self._set_slapper_state("idle")
             return
         name = image.filename or os.path.basename(image.original_path or image.local_path)
-        self.selected_photo_label.setText(f"SELECTED — {name}")
+        edited = bool(getattr(image, "slapper_use_edited", False))
+        self.selected_photo_label.setText(
+            f"SELECTED — {name}{' · EDITED' if edited else ''}")
         self._updating_photo_fields = True
         try:
             self.flip_h_btn.setChecked(bool(getattr(image, "edit_flip_h", False)))
@@ -1315,6 +1551,19 @@ class TakeMode(QWidget):
                 edit.setText(str(getattr(image, attr, "") or ""))
         finally:
             self._updating_photo_fields = False
+        if self._slapper_state != "waiting":
+            if getattr(image, "slapper_edited_path", ""):
+                self._slapper_asset_uuid = str(image.asset_uuid)
+                self.slapper_use_edit.blockSignals(True)
+                self.slapper_use_original.blockSignals(True)
+                self.slapper_use_edit.setChecked(edited)
+                self.slapper_use_original.setChecked(not edited)
+                self.slapper_use_edit.blockSignals(False)
+                self.slapper_use_original.blockSignals(False)
+                self._set_slapper_state("returned")
+            else:
+                self._slapper_asset_uuid = ""
+                self._set_slapper_state("idle")
 
     def _refresh_bucket(self):
         while self.bucket_col.count():

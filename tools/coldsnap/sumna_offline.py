@@ -161,6 +161,14 @@ class DraftImage:
     edit_crop_top:    int = 0
     edit_crop_right:  int = 0
     edit_crop_bottom: int = 0
+    # SNAP SLAPPER returns a flattened version beside the photo it received.
+    # Both versions remain in the draft so the author can switch back without
+    # rerunning the editor or losing COLD TAKE's earlier crop/flip instructions.
+    slapper_base_path: str = ""
+    slapper_base_filename: str = ""
+    slapper_edited_path: str = ""
+    slapper_use_edited: bool = False
+    slapper_base_edit_state: dict = field(default_factory=dict)
     sort_position: int = 0    # carousel order (0-based)
     is_cover:     bool = False
     is_signature: bool = False  # semantic closing mark; importer/UI sets it explicitly
@@ -699,6 +707,10 @@ class Session:
         thumbs_dir = os.path.join(self.images_dir, "thumbs")
         os.makedirs(thumbs_dir, exist_ok=True)
         for im in draft.images:
+            slapper_sources = {
+                attr: os.path.abspath(str(getattr(im, attr, "") or ""))
+                for attr in ("slapper_base_path", "slapper_edited_path")
+            }
             if not im.original_path and im.local_path:
                 im.original_path = os.path.abspath(im.local_path)
             # A non-destructive edit makes local_path a derivative. Keep its
@@ -723,6 +735,20 @@ class Session:
                     if os.path.abspath(src) != os.path.abspath(dst):
                         shutil.copy2(src, dst)
                     setattr(im, attr, dst)
+            # The external editor handoff deliberately keeps both versions.
+            # Copy them into the session even when one is not the active
+            # local_path, otherwise choosing the other version after moving or
+            # reopening the draft would point back to the owner's Pictures folder.
+            versions_dir = os.path.join(self.images_dir, "versions")
+            for attr, src in slapper_sources.items():
+                if not src or not os.path.isfile(src):
+                    continue
+                os.makedirs(versions_dir, exist_ok=True)
+                dst = os.path.join(
+                    versions_dir, f"{im.asset_uuid}-{attr}-{os.path.basename(src)}")
+                if os.path.abspath(src) != os.path.abspath(dst):
+                    shutil.copy2(src, dst)
+                setattr(im, attr, dst)
 
     def _dbrows_path(self, draft_id: str) -> str:
         return os.path.join(self.drafts_dir, f"{draft_id}{DBROWS_SUFFIX}")
