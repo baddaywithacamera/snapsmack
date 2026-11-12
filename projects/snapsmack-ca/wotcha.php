@@ -162,7 +162,6 @@ require_once __DIR__ . '/includes/header.php';
                 <li><span class="idx-date">Nov 8</span><a href="#glide">GLIDE Goes Beyond the Old Photoblog</a></li>
                 <li><span class="idx-date">Nov 4</span><a href="#closed-beta-delay">We Missed the Closed Beta Date. Here Is Why, and I&rsquo;m Sorry.</a></li>
                 <li><span class="idx-date">Sep 13</span><a href="#ai-heal-free-tier">We Accidentally Replaced Half a Canva Subscription</a></li>
-                <li><span class="idx-date">Aug 30</span><a href="#snap-slapper-editor">SNAP SLAPPER Is Ready for the Box O&rsquo; Tricks</a></li>
                 <li>
                     <span class="idx-date">Aug 30</span>
                     <a href="#lewk-again">LEWK AGAIN Shows Its Work</a>
