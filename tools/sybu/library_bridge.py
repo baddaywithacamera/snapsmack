@@ -90,9 +90,32 @@ def record_enrichment(site: str, image_path: str, entry, *, session=None) -> dic
         raw_response=getattr(entry, '_enrichment_raw_response', '') or '',
         accepted={key: True for key, value in _bundle(entry).items() if value != ''},
         prompt_version=prompt_version, source='desktop',
+        base_prompt_hash=snap_enrichment_cache.prompt_sha256(
+            getattr(entry, '_enrichment_base_prompt', '') or prompt),
     )
     propagated = _push_cache(session, site, saved)
     return {'asset': asset, 'cache': saved, 'propagated': propagated}
+
+
+def restore_enrichment(site: str, image_path: str, base_prompt: str, model: str):
+    """Enrichment already paid for, for this photograph and this prompt.
+
+    SS-1137. Returns the stored bundle dict, with where it came from, or None.
+    Called BEFORE the Gemini call: a hit means the API is never reached.
+
+    The hash is of the file's CONTENT, so a renamed or copied photograph is
+    recognised as the same one -- which is exactly the case that was costing
+    money, the same picture carried to a second blog.
+    """
+    if not image_path or not os.path.isfile(image_path):
+        return None
+    hit = snap_enrichment_cache.find_reusable(
+        snap_enrichment_cache.image_sha256(image_path),
+        model or '',
+        snap_enrichment_cache.prompt_sha256(base_prompt or ''),
+        prefer_site=site or None,
+    )
+    return hit
 
 
 def record_post_success(site: str, image_path: str, entry, post_id: int,

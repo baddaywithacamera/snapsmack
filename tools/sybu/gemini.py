@@ -147,6 +147,33 @@ def filename_stem(file_name: str) -> str:
     return stem.strip()
 
 
+def base_prompt(custom_prompt: str, categories, albums, *,
+                cat_descriptions=None, album_descriptions=None,
+                existing_tags=None) -> str:
+    """The prompt as the OWNER set it, before any per-image binding.
+
+    SS-1137. This is the text that decides what we ask about a photograph: his
+    own custom prompt, or the default built from his categories and albums. It
+    is the half of the enrichment key that legitimately changes the answer.
+
+    What it is NOT is the text actually sent. prompt_with_filename() binds each
+    image's filename into that (and a retry prepends the title to avoid), so
+    the sent prompt is unique per file and per attempt. Hashing THAT is why a
+    photograph brought to a second blog never matched its own paid enrichment.
+
+    enrich_batch calls this, and so does the restore path in sybu_core, so the
+    two can never drift -- the moment they disagree the cache stops hitting and
+    Sean pays again without being told.
+    """
+    custom = (custom_prompt or '').strip()
+    if custom:
+        return custom
+    return _build_prompt(categories, albums,
+                         cat_descriptions=cat_descriptions,
+                         album_descriptions=album_descriptions,
+                         existing_tags=existing_tags)
+
+
 def prompt_with_filename(prompt: str, file_name: str) -> str:
     """Bind one image's name into the prompt text sent with that image."""
     stem = filename_stem(file_name)
@@ -258,12 +285,10 @@ def enrich_batch(
     genai = _import_genai()
     genai.configure(api_key=api_key)
     model  = genai.GenerativeModel(MODEL_NAME)
-    prompt = custom_prompt.strip() if custom_prompt.strip() else _build_prompt(
-        categories, albums,
-        cat_descriptions=cat_descriptions,
-        album_descriptions=album_descriptions,
-        existing_tags=existing_tags,
-    )
+    prompt = base_prompt(custom_prompt, categories, albums,
+                         cat_descriptions=cat_descriptions,
+                         album_descriptions=album_descriptions,
+                         existing_tags=existing_tags)
     total  = len(entries)
     log.info("ENRICH start — %d item(s), %d categories, %d albums",
              total, len(categories), len(albums))
@@ -329,6 +354,7 @@ def enrich_batch(
                 entry._enrichment_raw_response = response.text
                 entry._enrichment_prompt = run_prompt
                 entry._enrichment_model = MODEL_NAME
+                entry._enrichment_base_prompt = prompt
                 entry._enrichment_prompt_version = '1'
                 log.info("GEMINI PARSED %s — title=%r alt=%r tags=%r category=%r album=%r colors=%r color_mode=%r orientation=%r",
                          entry.file, parsed.get('title', ''), parsed.get('alt', ''),
