@@ -169,8 +169,17 @@ check("Ctrl+Z removes the mosaic", biggie.serialize_blocks(cv2.to_blocks()),
 
 _d = tempfile.mkdtemp()
 _paths = []
+# 2000x1500, not 400x300. The canvas composes with the SITE's rules now, and
+# the site REFUSES TO UPSCALE a photograph past its original size: a one-left
+# hero in an 876px column is 583px wide, so with 400px sources every candidate
+# with a hero is rejected and the engine falls back to three equal columns.
+# That is correct behaviour -- verified against ss-engine-mosaic.js itself,
+# which lays 400x300 sources three-across and 2000x1500 hero-left for the same
+# template -- and it is what the old uniform grid got wrong by blowing a 400px
+# photograph up to 583px. The fixture was unrealistic, not the assertion: a
+# real photograph out of SNAP SLAPPER is thousands of pixels wide.
 for _i, _col in enumerate(("#ff0000", "#00ff00", "#0000ff")):
-    _img = QImage(400, 300, QImage.Format_RGB32)
+    _img = QImage(2000, 1500, QImage.Format_RGB32)
     _img.fill(QColor(_col))
     _p = os.path.join(_d, f"p{_i}.png")
     _img.save(_p)
