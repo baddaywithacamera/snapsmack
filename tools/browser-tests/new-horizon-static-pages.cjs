@@ -88,12 +88,10 @@ const near = (actual, expected, tolerance = 1) => Math.abs(actual - expected) <=
   const results = [];
   try {
     for (const width of [1920, 1440, 1024]) {
-      const candidateRows = {};
       for (const route of ['about', 'blogroll']) {
         const screenshot = width === 1920;
         const before = await capture(browser, width, route, 'before', previous, screenshot);
         const after = await capture(browser, width, route, 'after', candidate, screenshot);
-        candidateRows[route] = after;
 
         assert.equal(after.titleStyle.size, '24px');
         assert.equal(after.titleStyle.weight, '600');
@@ -117,7 +115,6 @@ const near = (actual, expected, tolerance = 1) => Math.abs(actual - expected) <=
         }
         results.push({ width, route, before, after });
       }
-      assert.ok(candidateRows.about.title.x > candidateRows.blogroll.title.x, `${width}: About heading was not optically aligned to the inset portrait`);
     }
 
     const narrow = await capture(browser, 800, 'about', 'after', candidate, true);

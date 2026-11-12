@@ -58,8 +58,8 @@
             "manifest_css_sha256": "6354f1225e5dfd93ed693b112ede9dcc702980a019f1254df3fabb7c551641a6"
         },
         "impact-printer": {
-            "version": "2.1.26",
-            "files_sha256": "089b876a5dc524f8e4bda5cb72f9622976bea800d9443e75311a232257f73863",
+            "version": "2.1.27",
+            "files_sha256": "a756c993378a60c1204c96178856bc36535d4f46e32c5fc679f9a4d353b769cf",
             "manifest_css_sha256": "3b8bf63241dcfebbc852fca4c126eee3e15ebd2fda9b248bf35936b21ea99715"
         },
         "instant-camera": {
@@ -73,8 +73,8 @@
             "manifest_css_sha256": "f5ade19134d0fe0731b124814ea8cf74151079a73356af70e3fe19cd87006aa7"
         },
         "new-horizon": {
-            "version": "1.3.38",
-            "files_sha256": "96e8740624beeac397f188b0a74d29c497b8d0b60f2b8b866626c42ba2652da3",
+            "version": "1.3.39",
+            "files_sha256": "b376e18e243866f9b8c9bebb192c70d82c5a272580a7af10ce2dee7b8ba12957",
             "manifest_css_sha256": "b47a89ff8d91cad0e020bb44767ace4241924620f70be9c34f2558a53de1c6ff"
         },
         "onyx": {

@@ -686,7 +686,12 @@ img.post-image {
     display: var(--nh-static-layout, grid);
     grid-template-columns:
         var(--nh-static-cols, var(--nh-static-hero-width, 42%) 1fr);
-    column-gap: var(--nh-static-column-gap, 48px);
+    /* The portrait's 40px inner frame clearance and the text's 20px inset
+       both sit INSIDE the grid tracks. Together with the frame's 16px outer
+       shadow, a 48px column gap rendered as 92px of visible air. The 2px grid
+       gap below renders as 46px from the visible frame edge to the first
+       glyph: 2 + 40 + 20 - 16. */
+    column-gap: var(--nh-static-column-gap, 2px);
     align-items: start;
     /* Two columns inside 850px leave a 370px photograph and a 420px measure,
        which is too mean for both. The wider cap applies ONLY in the
@@ -727,6 +732,18 @@ img.post-image {
        it is a top-level container. In its own grid track that cap would hold
        it short of the column. */
     max-width: none !important;
+}
+
+/* The two grid children already share the same row start. On the desktop
+   layout, the photograph's normal 40px top clearance put the OUTER 16px
+   frame 20px below the visible top of the first text line. Twenty pixels of
+   top clearance puts those two visible edges level while preserving the
+   larger side and bottom clearances. Keep this out of the narrow stacked
+   layout, whose geometry is intentionally unchanged. */
+@media (min-width: 901px) {
+    .static-content:has(#photobox.page-hero) > #photobox.page-hero .main-photo {
+        padding-top: var(--nh-static-hero-top-inset, 20px);
+    }
 }
 
 /* One column on a narrow screen: portrait first, nothing sticky, nothing
@@ -770,14 +787,14 @@ img.post-image {
 
 /* About uses the shared title above a 38/62 image-and-copy grid.  The image's
    existing .main-photo frame is deliberately retained. */
-.static-transmission.page-slug-about .static-content {
+.static-content:has(#photobox.page-hero) {
     display: grid;
     grid-template-columns: minmax(0, 38%) minmax(0, 1fr);
     column-gap: 48px;
     align-items: start;
 }
 
-.static-transmission.page-slug-about .static-page-title {
+.static-content:has(#photobox.page-hero) > .static-page-title {
     grid-column: 1 / -1;
     /* .main-photo keeps 40px of breathing room around the framed portrait.
        Move the heading onto the portrait's visible left edge so the About
@@ -826,14 +843,14 @@ img.post-image {
     margin: 0 !important;
 }
 
-.static-transmission.page-slug-about #photobox.page-hero {
+.static-content:has(#photobox.page-hero) > #photobox.page-hero {
     grid-column: 1;
     grid-row: 2;
     width: 100% !important;
     float: none !important;
 }
 
-.static-transmission.page-slug-about .static-content > .description {
+.static-content:has(#photobox.page-hero) > .description {
     grid-column: 2;
     grid-row: 2;
     width: 100%;
@@ -1173,22 +1190,22 @@ span.dropcap {
 }
 
 @media (max-width: 900px) {
-    .static-transmission.page-slug-about .static-content {
+    .static-content:has(#photobox.page-hero) {
         display: block;
     }
 
-    .static-transmission.page-slug-about #photobox.page-hero {
+    .static-content:has(#photobox.page-hero) > #photobox.page-hero {
         width: min(100%, 420px) !important;
         margin: 0 auto 24px !important;
     }
 
-    .static-transmission.page-slug-about .static-page-title {
+    .static-content:has(#photobox.page-hero) > .static-page-title {
         width: min(calc(100% - 80px), 340px) !important;
         margin-left: auto !important;
         margin-right: auto !important;
     }
 
-    .static-transmission.page-slug-about .static-content > .description {
+    .static-content:has(#photobox.page-hero) > .description {
         max-width: 70ch;
         margin-left: auto !important;
         margin-right: auto !important;
