@@ -340,9 +340,19 @@ def main():
           mosaic_cell_problem(broken_file)
           != mosaic_cell_problem(os.path.join(work, 'absent.jpg')))
 
-    # A directory is on disk but is not a file, and must not read as missing.
-    check('a directory is not reported as a missing file',
+    # A directory exists at its path but is not a file, so there IS no file
+    # there and FILE MISSING is the right answer -- it is also the useful one
+    # for a bucket entry pointing at a folder.
+    #
+    # MUSE'S NIT: the label here used to read "a directory is not reported as
+    # a missing file" while asserting that it IS. The behaviour was right and
+    # the words were the opposite of it, which is worse than a wrong
+    # assertion: a reader skimming labels would have learnt the inverse of
+    # what the code does. Written from an earlier intent and never reconciled.
+    check('a directory reports FILE MISSING, because no file is there',
           mosaic_cell_problem(work) == "FILE MISSING")
+    check('and a directory is certainly not reported as readable',
+          mosaic_cell_problem(work) is not None)
 
     # Truncated-but-headered is READABLE: the header gives the shape, so the
     # mosaic can still compose a correct cell for it. Reporting a problem here
