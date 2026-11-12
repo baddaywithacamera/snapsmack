@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
-    QSplitter,
+    QSplitter, QFormLayout, QSpinBox, QSizePolicy,
 )
 
 import sumna_offline as O
@@ -32,8 +32,9 @@ from sumna_post import SmacktalkPoster
 
 from . import theme, biggie
 from .widgets import (Accordion, Card, build_rail, hint, field_label,
-                      big_button, thumb_label, load_pixmap)
+                      big_button, load_pixmap)
 from .photo_loader import PhotoLoader
+from .photo_edits import render_non_destructive
 from .body_editor import BodyEditor
 from .block_tray import BlockAction, BlockTray
 from .drafts_panel import BatchRail, default_draft_row
@@ -177,6 +178,8 @@ class TakeMode(QWidget):
         self._editing_id = None
         self._bucket = []          # list[O.DraftImage]
         self._cover_idx = 0
+        self._selected_photo_idx = None
+        self._updating_photo_fields = False
         self._loading = False
         self._view_settings = QSettings("SnapSmack", "COLD SNAP")
 
@@ -275,6 +278,8 @@ class TakeMode(QWidget):
         #    the accordion header (no redundant, cramped label fighting the
         #    buttons for the 340px rail width). --------------------------------
         self.photos_sec = Accordion("THE PHOTOS — none yet")
+        self.photos_sec.setMaximumWidth(360)
+        self.photos_sec.body.setMaximumWidth(360)
         brow = QHBoxLayout()
         add_btn = QPushButton("Add photos…")
         add_btn.clicked.connect(self._add_photos)
@@ -298,6 +303,7 @@ class TakeMode(QWidget):
         self.bucket_col = QVBoxLayout()
         self.bucket_col.setSpacing(4)
         self.photos_sec.add_layout(self.bucket_col)
+        self._build_photo_tools()
 
         # No trailing stretch — the compose card (stretch 1 above) fills the
         # height itself, so there is no dead void beneath it.
@@ -331,9 +337,10 @@ class TakeMode(QWidget):
         outer.addLayout(centre, 1)
 
         # The rail: photos + batch accordion open when wanted; SEND pinned.
-        outer.addWidget(build_rail(
+        self.right_rail = build_rail(
             [self.photos_sec, self.rail.section],
-            [self.rail.send_box]))
+            [self.rail.send_box], width=360)
+        outer.addWidget(self.right_rail)
         self._refresh_bucket()
         self._autosave = QTimer(self)
         self._autosave.setSingleShot(True)
@@ -1003,6 +1010,7 @@ class TakeMode(QWidget):
             return
         self._bucket = bucket
         self._cover_idx = 0
+        self._selected_photo_idx = 0 if bucket else None
         self._refresh_bucket()
         self._changed()
         self.save_state.setText(f"{len(bucket)} photographs received from GYSS")
@@ -1016,10 +1024,13 @@ class TakeMode(QWidget):
                     f"An essay holds up to {O.SMACKTALK_BUCKET_MAX} photos.")
                 break
             image = O.DraftImage(local_path=p, filename=os.path.basename(p))
+            image.original_path = os.path.abspath(p)
             self._bucket.append(image)
             added.append(image)
         if paths and not self.title_edit.text().strip():
             self.title_edit.setText(os.path.splitext(os.path.basename(paths[0]))[0])
+        if added:
+            self._selected_photo_idx = len(self._bucket) - len(added)
         self._refresh_bucket()
         if insert:
             for image in added:
@@ -1044,6 +1055,10 @@ class TakeMode(QWidget):
         j = idx + delta
         if 0 <= j < len(self._bucket):
             self._bucket[idx], self._bucket[j] = self._bucket[j], self._bucket[idx]
+            if self._selected_photo_idx == idx:
+                self._selected_photo_idx = j
+            elif self._selected_photo_idx == j:
+                self._selected_photo_idx = idx
             if self._cover_idx == idx:
                 self._cover_idx = j
             elif self._cover_idx == j:
@@ -1053,6 +1068,10 @@ class TakeMode(QWidget):
 
     def _remove(self, idx: int):
         del self._bucket[idx]
+        if self._selected_photo_idx == idx:
+            self._selected_photo_idx = min(idx, len(self._bucket) - 1) if self._bucket else None
+        elif self._selected_photo_idx is not None and self._selected_photo_idx > idx:
+            self._selected_photo_idx -= 1
         if self._cover_idx >= len(self._bucket):
             self._cover_idx = max(0, len(self._bucket) - 1)
         self._refresh_bucket()
@@ -1062,6 +1081,240 @@ class TakeMode(QWidget):
         self._cover_idx = idx
         self._refresh_bucket()
         self._changed()
+
+    def _build_photo_tools(self):
+        """Selected-photo controls; edits stay beside, never inside, the source."""
+        self.photo_tools = QFrame()
+        self.photo_tools.setObjectName("SelectedPhotoTools")
+        self.photo_tools.setMaximumWidth(340)
+        col = QVBoxLayout(self.photo_tools)
+        col.setContentsMargins(0, 8, 0, 0)
+        col.setSpacing(7)
+
+        self.selected_photo_label = QLabel("SELECT A PHOTO")
+        self.selected_photo_label.setObjectName("BlockTrayGroup")
+        col.addWidget(self.selected_photo_label)
+
+        manage = QHBoxLayout()
+        manage.setSpacing(4)
+        up = QPushButton("▲")
+        down = QPushButton("▼")
+        lead = QPushButton("★ Lead")
+        remove = QPushButton("×")
+        remove.setObjectName("Danger")
+        up.clicked.connect(lambda: self._manage_selected("up"))
+        down.clicked.connect(lambda: self._manage_selected("down"))
+        lead.clicked.connect(lambda: self._manage_selected("lead"))
+        remove.clicked.connect(lambda: self._manage_selected("remove"))
+        for button in (up, down, lead, remove):
+            manage.addWidget(button)
+        manage.addStretch(1)
+        col.addLayout(manage)
+
+        tools = QHBoxLayout()
+        tools.setSpacing(4)
+        self.flip_h_btn = QPushButton("⇆ Flip H")
+        self.flip_v_btn = QPushButton("⇅ Flip V")
+        self.crop_btn = QPushButton("Crop")
+        self.caption_btn = QPushButton("Caption")
+        self.metadata_btn = QPushButton("Metadata")
+        for button in (self.flip_h_btn, self.flip_v_btn, self.crop_btn,
+                       self.caption_btn, self.metadata_btn):
+            button.setObjectName("PhotoTool")
+            button.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+            tools.addWidget(button)
+        self.flip_h_btn.setCheckable(True)
+        self.flip_v_btn.setCheckable(True)
+        self.caption_btn.setCheckable(True)
+        self.metadata_btn.setCheckable(True)
+        self.flip_h_btn.clicked.connect(
+            lambda: self._flip_selected("edit_flip_h"))
+        self.flip_v_btn.clicked.connect(
+            lambda: self._flip_selected("edit_flip_v"))
+        self.crop_btn.clicked.connect(self._crop_selected)
+        self.caption_btn.clicked.connect(
+            lambda checked: self._show_photo_detail("caption", checked))
+        self.metadata_btn.clicked.connect(
+            lambda checked: self._show_photo_detail("metadata", checked))
+        col.addLayout(tools)
+
+        self.photo_alt = QLineEdit()
+        self.photo_alt.setPlaceholderText("ALT — one plain sentence describing this photo")
+        self.photo_alt.textEdited.connect(
+            lambda text: self._set_selected_field("alt", text.strip()))
+        col.addWidget(self.photo_alt)
+
+        self.caption_panel = QWidget()
+        caption_col = QVBoxLayout(self.caption_panel)
+        caption_col.setContentsMargins(0, 2, 0, 2)
+        caption_col.setSpacing(4)
+        caption_col.addWidget(field_label(
+            "Caption — typed against this photo, carried in the post"))
+        self.photo_caption = QPlainTextEdit()
+        self.photo_caption.setMaximumHeight(78)
+        self.photo_caption.setPlaceholderText("Caption")
+        self.photo_caption.textChanged.connect(
+            lambda: self._set_selected_field(
+                "caption", self.photo_caption.toPlainText().strip()))
+        caption_col.addWidget(self.photo_caption)
+        self.caption_panel.setVisible(False)
+        col.addWidget(self.caption_panel)
+
+        self.metadata_panel = QWidget()
+        metadata_col = QVBoxLayout(self.metadata_panel)
+        metadata_col.setContentsMargins(0, 2, 0, 2)
+        metadata_col.setSpacing(5)
+        metadata_col.addWidget(field_label("Metadata — saved with this post"))
+        form = QFormLayout()
+        form.setContentsMargins(0, 0, 0, 0)
+        form.setSpacing(5)
+        self.photo_meta_fields = {}
+        for attr, label in (
+                ("title", "Title"), ("description", "Description"),
+                ("credit", "Credit"), ("copyright", "Copyright"),
+                ("place", "Place"), ("date_taken", "Date taken"),
+                ("tags", "Keywords")):
+            edit = QLineEdit()
+            edit.textEdited.connect(
+                lambda text, attr=attr: self._set_selected_field(attr, text.strip()))
+            self.photo_meta_fields[attr] = edit
+            form.addRow(label, edit)
+        metadata_col.addLayout(form)
+        metadata_col.addWidget(hint(
+            "Kept in the post draft. Nothing is written into the image file."))
+        self.metadata_panel.setVisible(False)
+        col.addWidget(self.metadata_panel)
+        self.photos_sec.add(self.photo_tools)
+
+    def _selected_image(self):
+        index = self._selected_photo_idx
+        if index is None or not (0 <= index < len(self._bucket)):
+            return None
+        return self._bucket[index]
+
+    def _select_photo(self, idx: int):
+        if 0 <= idx < len(self._bucket):
+            self._selected_photo_idx = idx
+        self._refresh_bucket()
+
+    def _manage_selected(self, action: str):
+        index = self._selected_photo_idx
+        if index is None:
+            return
+        if action == "up":
+            self._move(index, -1)
+        elif action == "down":
+            self._move(index, 1)
+        elif action == "lead":
+            self._set_cover(index)
+        elif action == "remove":
+            self._remove(index)
+
+    def _set_selected_field(self, attr: str, value: str):
+        if self._updating_photo_fields:
+            return
+        image = self._selected_image()
+        if image is None:
+            return
+        setattr(image, attr, value)
+        self._changed()
+
+    def _show_photo_detail(self, which: str, checked: bool):
+        if which == "caption":
+            self.metadata_btn.blockSignals(True)
+            self.metadata_btn.setChecked(False)
+            self.metadata_btn.blockSignals(False)
+            self.metadata_panel.setVisible(False)
+            self.caption_panel.setVisible(bool(checked))
+        else:
+            self.caption_btn.blockSignals(True)
+            self.caption_btn.setChecked(False)
+            self.caption_btn.blockSignals(False)
+            self.caption_panel.setVisible(False)
+            self.metadata_panel.setVisible(bool(checked))
+
+    def _flip_selected(self, attr: str):
+        image = self._selected_image()
+        if image is None:
+            return
+        setattr(image, attr, not bool(getattr(image, attr, False)))
+        self._render_selected_edit()
+
+    def _crop_selected(self):
+        image = self._selected_image()
+        if image is None:
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Crop this photograph")
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(hint(
+            "Trim percentages from the four edges. The original is never changed."))
+        form = QFormLayout()
+        controls = {}
+        for attr, label in (
+                ("edit_crop_left", "Left %"),
+                ("edit_crop_top", "Top %"),
+                ("edit_crop_right", "Right %"),
+                ("edit_crop_bottom", "Bottom %")):
+            spin = QSpinBox()
+            spin.setRange(0, 90)
+            spin.setSuffix(" %")
+            spin.setValue(int(getattr(image, attr, 0) or 0))
+            controls[attr] = spin
+            form.addRow(label, spin)
+        layout.addLayout(form)
+        reset = QPushButton("Reset crop")
+        reset.clicked.connect(lambda: [control.setValue(0)
+                                      for control in controls.values()])
+        layout.addWidget(reset)
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        if dialog.exec() != QDialog.Accepted:
+            return
+        left, right = controls["edit_crop_left"].value(), controls["edit_crop_right"].value()
+        top, bottom = controls["edit_crop_top"].value(), controls["edit_crop_bottom"].value()
+        if left + right > 95 or top + bottom > 95:
+            QMessageBox.warning(
+                self, "Crop is too small",
+                "Leave at least five percent of the photograph in each direction.")
+            return
+        for attr, control in controls.items():
+            setattr(image, attr, control.value())
+        self._render_selected_edit()
+
+    def _render_selected_edit(self):
+        image = self._selected_image()
+        if image is None:
+            return
+        try:
+            render_non_destructive(image)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Could not apply photo edit", str(exc))
+            return
+        self._refresh_bucket()
+        self._changed()
+
+    def _populate_photo_tools(self):
+        image = self._selected_image()
+        enabled = image is not None
+        self.photo_tools.setEnabled(enabled)
+        if not enabled:
+            self.selected_photo_label.setText("SELECT A PHOTO")
+            return
+        name = image.filename or os.path.basename(image.original_path or image.local_path)
+        self.selected_photo_label.setText(f"SELECTED — {name}")
+        self._updating_photo_fields = True
+        try:
+            self.flip_h_btn.setChecked(bool(getattr(image, "edit_flip_h", False)))
+            self.flip_v_btn.setChecked(bool(getattr(image, "edit_flip_v", False)))
+            self.photo_alt.setText(getattr(image, "alt", "") or "")
+            self.photo_caption.setPlainText(getattr(image, "caption", "") or "")
+            for attr, edit in self.photo_meta_fields.items():
+                edit.setText(str(getattr(image, attr, "") or ""))
+        finally:
+            self._updating_photo_fields = False
 
     def _refresh_bucket(self):
         while self.bucket_col.count():
@@ -1076,8 +1329,12 @@ class TakeMode(QWidget):
         self.photos_sec.header.setText(
             f"THE PHOTOS — {n} in the bucket" if n else "THE PHOTOS — none yet")
         if not self._bucket:
+            self._selected_photo_idx = None
+            self._populate_photo_tools()
             self.bucket_col.addWidget(hint("No photos yet — click “Add photos…”."))
             return
+        if self._selected_photo_idx is None or self._selected_photo_idx >= len(self._bucket):
+            self._selected_photo_idx = 0
         for i, im in enumerate(self._bucket):
             is_cover = (i == self._cover_idx)
             row = QFrame()
@@ -1086,32 +1343,27 @@ class TakeMode(QWidget):
             col.setContentsMargins(6, 6, 6, 6)
             col.setSpacing(4)
             lay = QHBoxLayout()
-            lay.addWidget(thumb_label(im.thumb_square or im.local_path, 40))
+            select = QPushButton()
+            select.setObjectName("PhotoSelect")
+            select.setCheckable(True)
+            select.setChecked(i == self._selected_photo_idx)
+            select.setAccessibleName(
+                "Selected photograph" if i == self._selected_photo_idx
+                else "Select photograph")
+            select.setIcon(QIcon(load_pixmap(im.thumb_square or im.local_path, 40)))
+            select.setIconSize(QSize(40, 40))
+            select.setFixedSize(48, 48)
+            select.clicked.connect(lambda _=False, i=i: self._select_photo(i))
+            lay.addWidget(select)
             name = QLabel(("★ " if is_cover else "") +
                           (im.filename or os.path.basename(im.local_path)))
             name.setStyleSheet(
                 f"color: {theme.ACCENT if is_cover else theme.BODY}; background: transparent;")
+            name.setMinimumWidth(0)
             lay.addWidget(name, 1)
-            up = QPushButton("▲"); up.setFixedWidth(34)
-            up.clicked.connect(lambda _=False, i=i: self._move(i, -1))
-            dn = QPushButton("▼"); dn.setFixedWidth(34)
-            dn.clicked.connect(lambda _=False, i=i: self._move(i, 1))
-            lay.addWidget(up); lay.addWidget(dn)
-            if not is_cover:
-                cov = QPushButton("★ Lead")
-                cov.clicked.connect(lambda _=False, i=i: self._set_cover(i))
-                lay.addWidget(cov)
-            rm = QPushButton("✕"); rm.setObjectName("Danger"); rm.setFixedWidth(34)
-            rm.clicked.connect(lambda _=False, i=i: self._remove(i))
-            lay.addWidget(rm)
             col.addLayout(lay)
-            # Per-photo ALT — saved with the image on the site (img_alt).
-            alt = QLineEdit(getattr(im, "alt", "") or "")
-            alt.setPlaceholderText("ALT — one plain sentence describing this photo")
-            alt.textChanged.connect(lambda text, im=im: (setattr(im, "alt", text.strip()),
-                                                         self._changed()))
-            col.addWidget(alt)
             self.bucket_col.addWidget(row)
+        self._populate_photo_tools()
 
     def _ai_fill(self):
         if not self._bucket:
@@ -1163,6 +1415,7 @@ class TakeMode(QWidget):
                                                         "is_cover"}})
                         for im in draft.images]
         self._cover_idx = next((i for i, im in enumerate(self._bucket) if im.is_cover), 0)
+        self._selected_photo_idx = 0 if self._bucket else None
         self._ai_post_meta = {
             "category": getattr(draft, "category", ""),
             "album": getattr(draft, "album", ""),
@@ -1183,6 +1436,7 @@ class TakeMode(QWidget):
         self.body.clear()
         self._bucket = []
         self._cover_idx = 0
+        self._selected_photo_idx = None
         self._ai_post_meta = {}
         self._refresh_bucket()
         self._loading = False

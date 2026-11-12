@@ -48,12 +48,14 @@ class FakeSession:
     def __init__(self):
         self.headers = {}
         self.uploads = 0
+        self.upload_names = []
         self.post_calls = []
         self.last_json = None
     def post(self, url, files=None, data=None, json=None, timeout=None):
         self.post_calls.append(url)
         if "smackpress/media/upload" in url:
             self.uploads += 1
+            self.upload_names.append(files["file"][0])
             return FakeResp(200, {"image_id": 100 + self.uploads})
         if "smackpress/posts" in url:
             self.last_json = json
@@ -94,6 +96,18 @@ def _checks():
     assert res.ok, res.message
     assert res.remote_post_id == 777, res.remote_post_id
     assert fake.uploads == 3, fake.uploads
+    n += 1
+
+    # A non-destructive edit uploads under the derivative's real extension,
+    # not the untouched source's old name.
+    edited_path = os.path.join(tmp, "edited-version.jpg"); _img(edited_path)
+    edited = DraftImage(local_path=edited_path, original_path=p1,
+                        filename="original.png", edit_flip_h=True)
+    edited_fake = FakeSession()
+    edited_poster = P.SmacktalkPoster(
+        "https://smacktalk.example", "deadbeef", session=edited_fake)
+    assert edited_poster._upload_one(edited) == 101
+    assert edited_fake.upload_names == ["edited-version.jpg"], edited_fake.upload_names
     n += 1
 
     # A WordPress Page uses the static-page endpoint and cannot become a

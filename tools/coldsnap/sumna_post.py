@@ -700,7 +700,14 @@ class SmacktalkPoster:
         im.uploaded_path = up   # runtime-only: the exact file that went over the wire
         fh = open(up, "rb")
         try:
-            files = {"file": (im.filename or os.path.basename(im.local_path), fh, _mime(up))}
+            # A COLD TAKE flip/crop is a JPEG derivative beside an untouched
+            # source. Give the upload the derivative's real extension instead
+            # of pairing JPEG bytes with the source's old .png/.webp name.
+            source = os.path.abspath(getattr(im, "original_path", "") or im.local_path)
+            edited = os.path.abspath(im.local_path) != source
+            upload_name = (os.path.basename(im.local_path) if edited
+                           else (im.filename or os.path.basename(im.local_path)))
+            files = {"file": (upload_name, fh, _mime(up))}
             # ALT rides the upload → snap_images.img_alt (travels with the image).
             data = {"alt": im.alt} if getattr(im, "alt", "") else None
             r = self.session.post(self._route("smackpress/media/upload"),

@@ -146,6 +146,21 @@ class DraftImage:
     ocr:          str = ""
     content_warning: str = ""
     sensitive:    str = "no"
+    # COLD TAKE's selected-photo tools are non-destructive.  These typed
+    # values travel in the draft beside the photograph; the source bytes at
+    # original_path are never rewritten.  local_path may point at a derived
+    # preview/upload version produced from these instructions.
+    description:  str = ""
+    credit:       str = ""
+    copyright:    str = ""
+    place:        str = ""
+    date_taken:   str = ""
+    edit_flip_h:  bool = False
+    edit_flip_v:  bool = False
+    edit_crop_left:   int = 0
+    edit_crop_top:    int = 0
+    edit_crop_right:  int = 0
+    edit_crop_bottom: int = 0
     sort_position: int = 0    # carousel order (0-based)
     is_cover:     bool = False
     is_signature: bool = False  # semantic closing mark; importer/UI sets it explicitly
@@ -686,6 +701,19 @@ class Session:
         for im in draft.images:
             if not im.original_path and im.local_path:
                 im.original_path = os.path.abspath(im.local_path)
+            # A non-destructive edit makes local_path a derivative. Keep its
+            # untouched source inside the session as well, so reopening or
+            # moving the session never turns the edit instructions into a
+            # pointer back to somebody's Pictures folder.
+            if (im.original_path and os.path.isfile(im.original_path)
+                    and os.path.abspath(im.original_path) != os.path.abspath(im.local_path)):
+                originals_dir = os.path.join(self.images_dir, "originals")
+                os.makedirs(originals_dir, exist_ok=True)
+                original_name = os.path.basename(im.original_path)
+                dst = os.path.join(originals_dir, f"{im.asset_uuid}-{original_name}")
+                if os.path.abspath(im.original_path) != os.path.abspath(dst):
+                    shutil.copy2(im.original_path, dst)
+                im.original_path = dst
             for attr, dest_dir in (("local_path", self.images_dir),
                                    ("thumb_square", thumbs_dir),
                                    ("thumb_aspect", thumbs_dir)):
