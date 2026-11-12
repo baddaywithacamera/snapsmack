@@ -519,4 +519,17 @@ p:last-child { margin-bottom: 0; }
     h1 { font-size: 1.55rem; overflow-wrap: normal; word-break: normal; }
 }
 
+/* --- SHARED CLOSED-BETA STATUS BANNER --- */
+.beta-delay { padding: 28px 0; color: var(--white); background: var(--black); border-top: 8px solid var(--red); }
+.beta-delay-inner { display: flex; gap: 28px; align-items: center; justify-content: space-between; }
+.beta-delay-copy { margin: 0; color: #ddd; font-size: 1rem; line-height: 1.5; }
+.beta-delay-copy strong { display: block; margin-bottom: 4px; color: var(--white); font: 900 clamp(1.05rem, 2vw, 1.35rem)/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.beta-delay-link { flex: 0 0 auto; display: inline-block; padding: 14px 22px; color: var(--white); background: var(--red); font: 900 .8rem/1 Arial Black, Arial, sans-serif; letter-spacing: .03em; text-transform: uppercase; }
+.beta-delay-link:hover { color: var(--white); background: #ad0000; text-decoration: none; }
+
+@media (max-width: 700px) {
+    .beta-delay-inner { display: block; }
+    .beta-delay-link { margin-top: 18px; }
+}
+
 /* ===== SNAPSMACK EOF ===== */
