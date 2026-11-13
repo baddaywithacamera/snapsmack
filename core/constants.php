@@ -105,6 +105,44 @@ function snap_version_compare(string $v1, string $v2, string $op = '>'): bool {
     return version_compare($normalise($v1), $normalise($v2), $op);
 }
 
+// --- THE AGE OF A READING ---
+// SS-1145. The fleet board printed every spoke's software_version in the same
+// monospace whether the hub had heard it four minutes ago or seven weeks ago.
+// A failed heartbeat leaves the stored version untouched -- nothing in the
+// version column changes -- so a value recorded three releases back reads as
+// current. An afternoon went into chasing installs that were never on the
+// build the board claimed.
+//
+// The version string is not the defect. The missing fact is WHEN it was heard.
+// This returns that fact as a decision the caller prints:
+//
+//   known   false when there is no reading to age: never heard from, or a
+//           timestamp in the future, which means the clocks disagree and the
+//           age cannot be computed. Unknown is never treated as fresh.
+//   phrase  the age, in the same words the LAST SEEN column already uses
+//   stale   the reading is old enough that it must not be shown as current
+//
+// $now is a parameter rather than time() so the boundaries can be measured.
+function snap_reading_age(int $last_seen_ts, int $now, int $stale_after = 86400): array {
+    if ($last_seen_ts <= 0) {
+        return ['known' => false, 'phrase' => 'never', 'stale' => true, 'seconds' => 0];
+    }
+    if ($now < $last_seen_ts) {
+        return ['known' => false, 'phrase' => 'clock skew', 'stale' => true, 'seconds' => 0];
+    }
+    $age = $now - $last_seen_ts;
+    if ($age < 60) {
+        $phrase = 'just now';
+    } elseif ($age < 3600) {
+        $phrase = intdiv($age, 60) . 'm ago';
+    } elseif ($age < 86400) {
+        $phrase = intdiv($age, 3600) . 'h ago';
+    } else {
+        $phrase = intdiv($age, 86400) . 'd ago';
+    }
+    return ['known' => true, 'phrase' => $phrase, 'stale' => $age >= $stale_after, 'seconds' => $age];
+}
+
 // --- HTTPS DETECTION ---
 // Behind Cloudflare Tunnel (and other SSL-terminating reverse proxies),
 // $_SERVER['HTTPS'] is always empty because CF connects to the origin over
