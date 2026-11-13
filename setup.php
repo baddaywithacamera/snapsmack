@@ -234,7 +234,16 @@ function setup_write_failure_message(string $target, ?array $last_error): string
         // too many: the day somebody improves one, the other keeps leaking.
         $reason = (string) preg_replace_callback(
             '#https?://\S+#i',
-            static fn(array $m): string => setup_redact_url_query($m[0]),
+            // A CLOSURE, NOT AN ARROW FUNCTION. setup.php must parse on PHP 7:
+            // it is the one file that runs BEFORE we know what version we are
+            // on, and PHP compiles the whole file before executing a line of
+            // it, so a PHP 8 construct anywhere in it turns the version gate's
+            // refusal into a blank white page. SS-1293 landed `static fn` here
+            // on 2026-11-11 and tests/setup-php-version-gate-regression.php has
+            // been failing since.
+            static function (array $m) {
+                return setup_redact_url_query($m[0]);
+            },
             $reason
         );
 
