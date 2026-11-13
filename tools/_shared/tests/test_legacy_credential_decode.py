@@ -71,4 +71,47 @@ def test_profile_load_rejects_malformed_legacy_value_loudly(tmp_path):
     with pytest.raises(snap_creds.LegacyCredentialDecodeError):
         snap_profiles._read(str(path))
 
+
+def test_get_returns_default_for_one_bad_entry_without_hiding_good_entries(
+        monkeypatch, caplog):
+    encoded = base64.b64encode(b"still-readable").decode("ascii")
+    monkeypatch.setattr(snap_creds, "init", lambda: None)
+    monkeypatch.setattr(snap_creds, "_read", lambda: {
+        "bad_key": "b64:YWJj$",
+        "good_key": "b64:" + encoded,
+    })
+
+    with caplog.at_level("WARNING", logger=snap_creds.__name__):
+        assert snap_creds.get("bad_key", "safe-default") == "safe-default"
+    assert snap_creds.get("good_key", "safe-default") == "still-readable"
+    assert "bad_key" in caplog.text
+    assert "YWJj$" not in caplog.text
+
+
+def test_migration_leaves_bad_entry_and_migrates_good_entries(
+        monkeypatch, caplog):
+    encoded = base64.b64encode(b"migrate-me").decode("ascii")
+    original = {
+        "bad_key": "b64:YWJj$",
+        "good_key": "b64:" + encoded,
+        "plain_key": "plain legacy value",
+    }
+    written = []
+    monkeypatch.setattr(snap_creds, "_read", lambda: dict(original))
+    monkeypatch.setattr(snap_creds, "_write", lambda data: written.append(dict(data)))
+    monkeypatch.setattr(snap_creds.snap_vault, "is_encrypted", lambda blob: False)
+    monkeypatch.setattr(
+        snap_creds.snap_vault, "encrypt", lambda value: "enc1:" + value)
+
+    with caplog.at_level("WARNING", logger=snap_creds.__name__):
+        snap_creds._migrate_legacy_values()
+
+    assert written == [{
+        "bad_key": "b64:YWJj$",
+        "good_key": "enc1:migrate-me",
+        "plain_key": "enc1:plain legacy value",
+    }]
+    assert "bad_key" in caplog.text
+    assert "YWJj$" not in caplog.text
+
 # ===== SNAPSMACK EOF =====
