@@ -162,6 +162,8 @@ FG_OK     = "#4EC994"   # success
 FG_ERR    = "#FF3E3E"   # error
 FG_WARN   = "#D4872A"   # warning
 
+
+
 STATUS_COLORS = {
     'pending':  ("#2A2A2A", FG_DIM),
     'enriched': ("#0D2B3E", "#00BFFF"),  # dark teal bg, bright blue text
@@ -4417,15 +4419,19 @@ class App(tk.Tk):
                         # The enrichment and original now belong to the selected
                         # site's shared library even before posting. A later
                         # confirmed post attaches its canonical server identity.
-                        try:
-                            library_bridge.record_enrichment(
-                                self._url_var.get().strip(),
-                                os.path.join(image_folder, entry.file), entry,
-                                session=getattr(self._client, 'session', None))
-                        except Exception as exc:
-                            print(f"[shared library] enrichment save failed: {exc}")
-                        self._set_status(
-                            f"Gemini: enriched {idx} / {total} — {entry.file}", FG_OK)
+                        saved, failure = library_bridge.save_enrichment_to_library(
+                            self._url_var.get().strip(),
+                            os.path.join(image_folder, entry.file), entry,
+                            session=getattr(self._client, 'session', None))
+                        if saved:
+                            self._set_status(
+                                f"Gemini: enriched {idx} / {total} — {entry.file}", FG_OK)
+                        else:
+                            # DO NOT say "enriched" when the paid result was not
+                            # saved. The old code printed the error and then said
+                            # enriched anyway, so the one row that needed his
+                            # attention looked exactly like the ones that worked.
+                            self._set_status(failure, FG_ERR)
                 self.after(0, _ui_update)
 
             gemini_module.enrich_batch(
