@@ -1,0 +1,4134 @@
+{
+  "generated_at": "2026-11-13T03:23:32.243Z",
+  "widths": [
+    1920,
+    1440,
+    1024
+  ],
+  "page_type": "solo entry, carousel landing/modal, and archive",
+  "meaning": "PASS is rendered/browser measured; NOT CHECKED and NOT APPLICABLE are not passes.",
+  "summary": {
+    "consent": {
+      "PASS": 30,
+      "FAIL": 0,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 0
+    },
+    "likes": {
+      "PASS": 21,
+      "FAIL": 4,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 5
+    },
+    "downloads": {
+      "PASS": 1,
+      "FAIL": 15,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 14
+    },
+    "lightbox": {
+      "PASS": 21,
+      "FAIL": 3,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 6
+    },
+    "search": {
+      "PASS": 9,
+      "FAIL": 1,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 20
+    },
+    "navigation": {
+      "PASS": 30,
+      "FAIL": 0,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 0
+    },
+    "archive-controls": {
+      "PASS": 5,
+      "FAIL": 25,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 0
+    },
+    "comments": {
+      "PASS": 26,
+      "FAIL": 4,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 0
+    },
+    "help": {
+      "PASS": 21,
+      "FAIL": 0,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 9
+    },
+    "telemetry-eligibility": {
+      "PASS": 30,
+      "FAIL": 0,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 0
+    },
+    "keyboard": {
+      "PASS": 18,
+      "FAIL": 7,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 5
+    },
+    "prev-next": {
+      "PASS": 18,
+      "FAIL": 7,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 5
+    }
+  },
+  "negative_controls": [
+    {
+      "feature": "navigation",
+      "skin": "50-shades-of-noah-grey",
+      "status": "PASS",
+      "mutation": "removed nav[aria-label*=\"navigation\" i],nav.navigation,a[href=\"/archive\"],a[href=\"/about\"],a[href=\"/blogroll\"]"
+    },
+    {
+      "feature": "comments",
+      "skin": "50-shades-of-noah-grey",
+      "status": "PASS",
+      "mutation": "removed .ss-community,.ss-comment-form"
+    },
+    {
+      "feature": "likes",
+      "skin": "50-shades-of-noah-grey",
+      "status": "PASS",
+      "mutation": "removed .ss-like-btn,.ss-cdock-heart,[data-like]"
+    },
+    {
+      "feature": "downloads",
+      "skin": "true-grit",
+      "status": "PASS",
+      "mutation": "removed a[download],a[href*=\"/download\"],.photo-download,.snap-download-btn"
+    },
+    {
+      "feature": "prev-next",
+      "skin": "50-shades-of-noah-grey",
+      "status": "PASS",
+      "mutation": "removed a[rel=\"prev\"],a[rel=\"next\"]"
+    },
+    {
+      "feature": "lightbox",
+      "skin": "50-shades-of-noah-grey",
+      "status": "PASS",
+      "mutation": "removed img[data-lightbox-src],img.post-image,img.pg-post-image"
+    },
+    {
+      "feature": "search",
+      "skin": "aurora",
+      "status": "PASS",
+      "mutation": "removed search controls and search surface"
+    },
+    {
+      "feature": "consent",
+      "skin": "50-shades-of-noah-grey",
+      "status": "PASS",
+      "mutation": "removed #snap-consent-banner"
+    },
+    {
+      "feature": "archive-controls",
+      "skin": "50-shades-of-noah-grey",
+      "status": "PASS",
+      "mutation": "removed .archive-controls,.archive-filter-row,[data-archive-layout]"
+    },
+    {
+      "feature": "telemetry-eligibility",
+      "skin": "50-shades-of-noah-grey",
+      "status": "PASS",
+      "mutation": "removed #ss-scrolltime"
+    },
+    {
+      "feature": "keyboard",
+      "skin": "50-shades-of-noah-grey",
+      "status": "PASS",
+      "mutation": "blocked ArrowLeft and ArrowRight before the skin keyboard handler"
+    },
+    {
+      "feature": "help",
+      "skin": "50-shades-of-noah-grey",
+      "status": "PASS",
+      "mutation": "blocked F1 before the public help handler"
+    }
+  ],
+  "skins": [
+    {
+      "skin": "50-shades-of-noah-grey",
+      "version": "1.7.8",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 3,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 3,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 3,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "52-card-pickup",
+      "version": "1.4.18",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-gram-search",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        }
+      }
+    },
+    {
+      "skin": "alfred",
+      "version": "1.0.12",
+      "kind": "single",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare likes",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no photo-download contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form manifest does not declare an inline-media lightbox",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "SMACKTALK story is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no image-order keyboard contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "prev-next": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no image-order contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        }
+      }
+    },
+    {
+      "skin": "aurora",
+      "version": "1.0.59",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel modal fragment contract does not expose downloads",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-gram-search",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel mode deliberately omits F1 help",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "carousel landing feed is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares keyboard and slider engines for modal cursor navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares slider controls for multi-photo modal navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "chaplin",
+      "version": "0.2.32",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 3,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 3,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 3,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "full-monty",
+      "version": "0.1.10",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not require smack-lightbox",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        }
+      }
+    },
+    {
+      "skin": "galleria",
+      "version": "1.3.24",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "game-on",
+      "version": "0.1.42",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel modal fragment contract does not expose downloads",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not require smack-lightbox",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "search": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-gram-search",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel mode deliberately omits F1 help",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "carousel landing feed is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares keyboard and slider engines for modal cursor navigation",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares slider controls for multi-photo modal navigation",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        }
+      }
+    },
+    {
+      "skin": "glide",
+      "version": "0.1.28",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        }
+      }
+    },
+    {
+      "skin": "heuristic",
+      "version": "0.1.20",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel modal fragment contract does not expose downloads",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-gram-search",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel mode deliberately omits F1 help",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "carousel landing feed is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares keyboard and slider engines for modal cursor navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares slider controls for multi-photo modal navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "hip-to-be-square",
+      "version": "1.3.21",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "impact-printer",
+      "version": "2.1.27",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 2,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 2,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 2,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "instant-camera",
+      "version": "1.0.61",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel modal fragment contract does not expose downloads",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-gram-search",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel mode deliberately omits F1 help",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "carousel landing feed is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares keyboard and slider engines for modal cursor navigation",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares slider controls for multi-photo modal navigation",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        }
+      }
+    },
+    {
+      "skin": "jive-turkey",
+      "version": "0.1.48",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel modal fragment contract does not expose downloads",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-gram-search",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel mode deliberately omits F1 help",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "carousel landing feed is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares keyboard and slider engines for modal cursor navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares slider controls for multi-photo modal navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "new-horizon",
+      "version": "1.3.42",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "onyx",
+      "version": "0.1.26",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 2,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 2,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 2,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "parade",
+      "version": "1.2.56",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel modal fragment contract does not expose downloads",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-gram-search",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel mode deliberately omits F1 help",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "carousel landing feed is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares keyboard and slider engines for modal cursor navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares slider controls for multi-photo modal navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "photogram",
+      "version": "2.0.32",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not require smack-lightbox",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        }
+      }
+    },
+    {
+      "skin": "rational-geo",
+      "version": "2.1.39",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "scroll",
+      "version": "0.1.79",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "show-n-tell",
+      "version": "1.2.14",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        }
+      }
+    },
+    {
+      "skin": "slickr",
+      "version": "1.0.51",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "sliders",
+      "version": "0.1.20",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel modal fragment contract does not expose downloads",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-gram-search",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel mode deliberately omits F1 help",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "carousel landing feed is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares keyboard and slider engines for modal cursor navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares slider controls for multi-photo modal navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "stanley",
+      "version": "1.1.11",
+      "kind": "single",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare likes",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no photo-download contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form manifest does not declare an inline-media lightbox",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "SMACKTALK story is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no image-order keyboard contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "prev-next": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no image-order contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        }
+      }
+    },
+    {
+      "skin": "sudden-impact",
+      "version": "1.0.26",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel modal fragment contract does not expose downloads",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-gram-search",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel mode deliberately omits F1 help",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "carousel landing feed is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares keyboard and slider engines for modal cursor navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares slider controls for multi-photo modal navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "telegram",
+      "version": "0.1.8",
+      "kind": "single",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare likes",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no photo-download contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "long-form manifest requires smack-lightbox for inline story media",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "SMACKTALK story is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no image-order keyboard contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "prev-next": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no image-order contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        }
+      }
+    },
+    {
+      "skin": "the-grid",
+      "version": "1.3.61",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel modal fragment contract does not expose downloads",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-gram-search",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "carousel mode deliberately omits F1 help",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "carousel landing feed is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares keyboard and slider engines for modal cursor navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "carousel declares slider controls for multi-photo modal navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "tilez",
+      "version": "0.2.75",
+      "kind": "single",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare likes",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no photo-download contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "long-form manifest requires smack-lightbox for inline story media",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "SMACKTALK story is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no image-order keyboard contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "prev-next": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no image-order contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        }
+      }
+    },
+    {
+      "skin": "true-grit",
+      "version": "1.3.29",
+      "kind": "photo",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares community likes",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "downloads": {
+          "requirement": "REQUIRED",
+          "reason": "runtime supplied a prepared download link for this photoblog entry",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "lightbox": {
+          "requirement": "REQUIRED",
+          "reason": "manifest requires smack-lightbox",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 2,
+              "continuation_marker_count": 1
+            },
+            "1440": {
+              "visible_control_count": 2,
+              "continuation_marker_count": 1
+            },
+            "1920": {
+              "visible_control_count": 2,
+              "continuation_marker_count": 1
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog archive is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies keyboard navigation to every photoblog solo entry",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "prev-next": {
+          "requirement": "REQUIRED",
+          "reason": "photoblog solo entry has previous and next targets",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        }
+      }
+    },
+    {
+      "skin": "writing-with-impact",
+      "version": "1.1.11",
+      "kind": "single",
+      "features": {
+        "consent": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies the consent choice on a fresh public request",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "likes": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare likes",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "downloads": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no photo-download contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "lightbox": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form manifest does not declare an inline-media lightbox",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "search": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "manifest does not declare a public search control",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "navigation": {
+          "requirement": "REQUIRED",
+          "reason": "every public skin needs site navigation",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "archive-controls": {
+          "requirement": "REQUIRED",
+          "reason": "every archive is endless scroll and exposes archive controls",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0,
+              "continuation_marker_count": 0
+            }
+          }
+        },
+        "comments": {
+          "requirement": "REQUIRED",
+          "reason": "manifest declares comments",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "help": {
+          "requirement": "REQUIRED",
+          "reason": "core supplies F1 help to every non-carousel public page",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "telemetry-eligibility": {
+          "requirement": "REQUIRED",
+          "reason": "SMACKTALK story is eligible for Scroll Time",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          }
+        },
+        "keyboard": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no image-order keyboard contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "prev-next": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "long-form single entry has no image-order contract",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        }
+      }
+    }
+  ]
+}

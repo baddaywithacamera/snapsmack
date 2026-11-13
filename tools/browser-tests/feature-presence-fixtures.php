@@ -151,7 +151,15 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
         snapsmack_skin_declared_assets($manifest),
         snapsmack_public_engine_assets()
     );
-    $GLOBALS['snapsmack_consent'] = ['show' => true, 'privacy_url' => '/privacy'];
+    // The consent renderer is deliberately one-shot per PHP request. This
+    // fixture writes several independent browser pages in one CLI process, so
+    // do not let a carousel's unused solo page consume the banner before its
+    // measured landing page is rendered. A live landing request gets its own
+    // PHP process and therefore its own one-shot renderer.
+    $GLOBALS['snapsmack_consent'] = [
+        'show' => $siteMode !== 'carousel',
+        'privacy_url' => '/privacy',
+    ];
     $GLOBALS['settings'] = ['site_mode' => $siteMode];
     $GLOBALS['snapsmack_hit'] = ['id' => 4201, 'page_type' => $kind === 'single' ? 'page' : 'image'];
     $response = array_merge([
@@ -246,6 +254,7 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
     $landingFile = '';
     $modalFile = '';
     if ($siteMode === 'carousel') {
+        $GLOBALS['snapsmack_consent'] = ['show' => true, 'privacy_url' => '/privacy'];
         $GLOBALS['snapsmack_hit'] = ['id' => 4203, 'page_type' => 'landing'];
         $landingResponse = [
             'kind' => 'landing', 'page_title' => 'Landing', 'items' => $carouselItems,

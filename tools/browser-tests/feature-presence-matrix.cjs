@@ -303,7 +303,7 @@ async function measure(page, feature, fixture = null) {
     return null;
 }
 
-async function negativeControl(browser, fixture, feature, selector, baseUrl) {
+async function negativeControl(browser, fixture, feature, control, baseUrl) {
     const page = await freshPage(browser, { width: 1440, height: 1000 });
     try {
         await page.goto(fixtureUrl(baseUrl, fixture.file), { waitUntil: 'load' });
@@ -313,10 +313,22 @@ async function negativeControl(browser, fixture, feature, selector, baseUrl) {
         }
         const before = await measure(page, feature, fixture);
         assert.equal(before, true, `${fixture.skin}: ${feature} needs one passing fixture for its negative control`);
-        await page.evaluate(value => document.querySelectorAll(value).forEach(element => element.remove()), selector);
+        if (feature === 'keyboard') {
+            await page.goto(fixtureUrl(baseUrl, fixture.file), { waitUntil: 'load' });
+        }
+        if (typeof control === 'string') {
+            await page.evaluate(value => document.querySelectorAll(value).forEach(element => element.remove()), control);
+        } else {
+            await control.mutate(page);
+        }
         const after = await measure(page, feature, fixture);
         assert.equal(after, false, `${fixture.skin}: ${feature} detector did not fail after control removal`);
-        return { feature, skin: fixture.skin, status: 'PASS', mutation: `removed ${selector}` };
+        return {
+            feature,
+            skin: fixture.skin,
+            status: 'PASS',
+            mutation: typeof control === 'string' ? `removed ${control}` : control.label
+        };
     } finally {
         await page.close();
     }
@@ -398,11 +410,42 @@ async function negativeControl(browser, fixture, feature, selector, baseUrl) {
             downloads: 'a[download],a[href*="/download"],.photo-download,.snap-download-btn',
             'prev-next': 'a[rel="prev"],a[rel="next"]',
             lightbox: 'img[data-lightbox-src],img.post-image,img.pg-post-image',
+            search: {
+                label: 'removed search controls and search surface',
+                mutate: page => page.evaluate(() => {
+                    const selector = [
+                        'input[type="search"]', 'form[role="search"]', '[data-wall-search]', '[data-search-dock]',
+                        '.search-toggle', '.search-button', '[data-search-toggle]', 'button[aria-label*="search" i]',
+                        'a[aria-label*="search" i]', 'a[href="#search"]'
+                    ].join(',');
+                    document.querySelectorAll(selector).forEach(element => element.remove());
+                })
+            },
             consent: '#snap-consent-banner',
             'archive-controls': '.archive-controls,.archive-filter-row,[data-archive-layout]',
-            'telemetry-eligibility': '#ss-scrolltime'
+            'telemetry-eligibility': '#ss-scrolltime',
+            keyboard: {
+                label: 'blocked ArrowLeft and ArrowRight before the skin keyboard handler',
+                mutate: page => page.evaluate(() => {
+                    window.addEventListener('keydown', event => {
+                        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                    }, true);
+                })
+            },
+            help: {
+                label: 'blocked F1 before the public help handler',
+                mutate: page => page.evaluate(() => {
+                    window.addEventListener('keydown', event => {
+                        if (event.key !== 'F1') return;
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                    }, true);
+                })
+            }
         };
-        for (const [feature, selector] of Object.entries(controlSpecs)) {
+        for (const [feature, control] of Object.entries(controlSpecs)) {
             const passing = matrix.find(row => row.features[feature].status === 'PASS');
             assert.ok(passing, `no passing ${feature} fixture available for negative control`);
             const fixture = fixtureIndex.find(candidate => candidate.skin === passing.skin);
@@ -414,7 +457,7 @@ async function negativeControl(browser, fixture, feature, selector, baseUrl) {
             } else if (fixture.site_mode === 'carousel') {
                 controlFixture = { ...fixture, file: fixture.landing_file };
             }
-            controls.push(await negativeControl(browser, controlFixture, feature, selector, baseUrl));
+            controls.push(await negativeControl(browser, controlFixture, feature, control, baseUrl));
         }
 
         const summary = {};
