@@ -172,7 +172,8 @@ def _site_catalogues() -> list:
 
 
 def find_reusable(image_hash: str, model: str, base_prompt_hash: str,
-                  prefer_site: Optional[str] = None) -> Optional[dict]:
+                  prefer_site: Optional[str] = None,
+                  legacy_prompt_hashes=()) -> Optional[dict]:
     """Enrichment already paid for, for THESE IMAGE BYTES and THIS prompt.
 
     SS-1137 -- the money bug. Sean pays Gemini per image per blog, and the
@@ -203,6 +204,24 @@ def find_reusable(image_hash: str, model: str, base_prompt_hash: str,
 
     NOTHING IS RE-KEYED. cache_key, get() and the CMS merge contract are
     untouched, so no row he has already paid for is invalidated by this.
+
+    LEGACY ROWS. Muse's finding, and she was right: every row written before
+    this change stores '' for base_prompt_sha256, so matching only on that
+    column means the FIRST run after the fix re-pays for everything already
+    enriched. My "no re-charge" claim was true of the key and misleading about
+    the money, which is the whole ticket.
+
+    So `legacy_prompt_hashes` is tried when the content match misses: the
+    caller recomputes the hash the OLD code would have written for this file
+    (the owner prompt with this filename bound in) and a pre-fix row is matched
+    on `prompt_sha256` instead. That recovers the re-charge for a photograph
+    still under the name it was enriched with -- the same-site, same-folder,
+    past-90-days case, and a copy that kept its filename.
+
+    WHAT IT CANNOT RECOVER: a pre-fix row whose file has since been RENAMED.
+    Its stored hash contains the old stem and nothing on disk can reproduce it.
+    That enrichment is paid for once more and then cached properly forever. I
+    am stating it rather than leaving it to be discovered on the bill.
     """
     image_hash = str(image_hash or "")
     base_prompt_hash = str(base_prompt_hash or "")
@@ -231,6 +250,25 @@ def find_reusable(image_hash: str, model: str, base_prompt_hash: str,
             row = None
         finally:
             conn.close()
+        if not row:
+            legacy = [str(h) for h in (legacy_prompt_hashes or ()) if str(h or "")]
+            if legacy:
+                marks = ",".join("?" for _ in legacy)
+                try:
+                    conn = _connect_path(path)
+                    row = conn.execute(
+                        """SELECT * FROM enrichment_cache
+                           WHERE image_sha256 = ? AND model = ?
+                             AND prompt_sha256 IN (%s)
+                           ORDER BY revision DESC, modified_at DESC LIMIT 1""" % marks,
+                        tuple([image_hash, str(model or "")] + legacy)).fetchone()
+                except sqlite3.Error:
+                    row = None
+                finally:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
         if row:
             result = dict(row)
             result["bundle"] = json.loads(result.pop("bundle_json"))

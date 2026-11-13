@@ -197,7 +197,75 @@ def main():
           'DSC_0041' not in gemini.prompt_with_filename(built, 'x.jpg').replace(
               gemini.base_prompt('', ['Landscapes'], ['Town']), ''))
 
-    # ── 9. THE LOOKUP IS ACTUALLY IN FRONT OF THE PAID CALL ────────────────
+    # ── 9. MUSE'S FINDING: A PRE-FIX ROW MUST NOT BE RE-PAID ───────────────
+    # Every row written before this change stores '' for base_prompt_sha256, so
+    # matching only on that column means the first run after the fix re-pays
+    # for everything already enriched. "Nothing is re-keyed" was true of the
+    # key and misleading about the money.
+    #
+    # The fallback recomputes the hash the OLD code wrote for this file -- the
+    # owner prompt with this filename bound in -- and matches prompt_sha256.
+    import gemini
+    legacy_file = _write_image(os.path.join(work, 'IMG_7788.jpg'), b'PREFIX-ROW-BYTES')
+    legacy_h = cache.image_sha256(legacy_file)
+    old_rendered = gemini.prompt_with_filename(BASE_PROMPT, 'IMG_7788.jpg')
+    cache.put(site_a, legacy_h, 'baddaywithacamera.com', MODEL,
+              cache.prompt_sha256(old_rendered), bundle)      # no base hash: pre-fix
+    check('without the fallback a pre-fix row is a miss, so it would be re-paid',
+          cache.find_reusable(legacy_h, MODEL,
+                              cache.prompt_sha256(BASE_PROMPT)) is None)
+    check('WITH the fallback it is found, and the money is not spent twice',
+          cache.find_reusable(
+              legacy_h, MODEL, cache.prompt_sha256(BASE_PROMPT),
+              legacy_prompt_hashes=(cache.prompt_sha256(old_rendered),)) is not None)
+    check('the fallback still refuses a genuinely different owner prompt',
+          cache.find_reusable(
+              legacy_h, MODEL, cache.prompt_sha256(BASE_PROMPT + ' In French.'),
+              legacy_prompt_hashes=(cache.prompt_sha256(
+                  gemini.prompt_with_filename(BASE_PROMPT + ' In French.',
+                                              'IMG_7788.jpg')),)) is None)
+    check('an empty legacy hash is ignored rather than matching everything',
+          cache.find_reusable(legacy_h, MODEL, cache.prompt_sha256('nope'),
+                              legacy_prompt_hashes=('', None)) is None)
+
+    # ── 10. THE SHIPPED APP IS COVERED, NOT JUST THE Qt ENGINE ─────────────
+    # Muse's second finding. desktop-versions.json builds SYBU from main.py,
+    # the Tk app, which calls enrich_batch DIRECTLY and never touched
+    # sybu_core.enrich_start. A money fix in the engine Sean does not run is
+    # not a fix, so the restore now lives inside enrich_batch where every
+    # caller gets it.
+    gem = open(os.path.join(SYBU, 'gemini.py'), encoding='utf-8').read()
+    batch = gem[gem.index('def enrich_batch('):]
+    call = batch.find('restore_from_library(')
+    first_api = batch.find('model.generate_content(')
+    check('enrich_batch consults the library itself', call != -1)
+    check('and does so before any generate_content call',
+          call != -1 and first_api != -1 and call < first_api)
+    check('it passes the legacy hashes, or pre-fix rows get re-paid',
+          'legacy_prompt_hashes' in gem)
+    tk = open(os.path.join(SYBU, 'main.py'), encoding='utf-8').read()
+    check('the shipped Tk app reaches it through enrich_batch',
+          'gemini_module.enrich_batch(' in tk)
+
+    # restore_from_library itself, driven directly.
+    class _E:
+        def __init__(self, name):
+            self.file = name
+            for f in ('title', 'caption', 'alt', 'tags', 'category', 'album',
+                      'colors', 'color_mode', 'orientation'):
+                setattr(self, f, '')
+    seen = []
+    remaining, n = gemini.restore_from_library(
+        [_E('breakwater-dusk.jpg'), _E('other.jpg')], work, BASE_PROMPT,
+        site=site_b, on_progress=lambda *a: seen.append(a))
+    check('the renamed copy is restored and dropped from the batch', n == 1)
+    check('and the photograph with no cached answer still goes to the API',
+          len(remaining) == 1 and remaining[0].file == 'other.jpg')
+    check('the restored entry carries the answer', bool(seen) and
+          seen[0][2].title == 'Low Tide At Dusk')
+    check('and the UI is told, so reuse is not silent', len(seen) == 1)
+
+    # ── 11. THE LOOKUP IS ACTUALLY IN FRONT OF THE PAID CALL ───────────────
     # The cache layer above is proved by behaviour. The ORCHESTRATION is not:
     # driving enrich_start needs a connected SYBU engine, a Gemini key and a
     # real folder, which this test has none of. A correct cache that nothing
