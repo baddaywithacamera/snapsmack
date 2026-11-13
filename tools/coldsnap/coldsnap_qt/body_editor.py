@@ -26,6 +26,7 @@ from .widgets import hint
 
 class BodyEditor(QWidget):
     changed = Signal()
+    faceChanged = Signal(bool)  # True = BIGGIE visual, False = TWIGGY text
     def __init__(self, *, allow_mosaic: bool = False, simple_height: int = 84,
                  rich: bool = True, parent=None):
         """rich=False (COLD ONE / COLD STACK): the plain box and bar only, no
@@ -105,6 +106,7 @@ class BodyEditor(QWidget):
         self.biggie_btn.setChecked(on)
         self._simple.setVisible(not on)
         self._biggie_page.setVisible(on)
+        self.faceChanged.emit(on)
 
     def _set_biggie(self, on: bool):
         if not self.rich:

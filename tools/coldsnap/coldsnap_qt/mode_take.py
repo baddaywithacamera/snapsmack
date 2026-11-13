@@ -35,6 +35,7 @@ from .widgets import (Accordion, Card, build_rail, hint, field_label,
                       big_button, thumb_label, load_pixmap)
 from .photo_loader import PhotoLoader
 from .body_editor import BodyEditor
+from .block_tray import BlockAction, BlockTray
 from .drafts_panel import BatchRail, default_draft_row
 from .mosaic_layout import tile_rects as _tile_rects
 
@@ -168,6 +169,7 @@ class MosaicPreview(QWidget):
 
 class TakeMode(QWidget):
     SUITE_MODE = O.MODE_SMACKTALK
+    blocksStateChanged = Signal(bool, str)  # open, header label
 
     def __init__(self, app_config_provider, parent=None):
         super().__init__(parent)
@@ -321,6 +323,11 @@ class TakeMode(QWidget):
         centre.setSpacing(8)
         centre.addWidget(scroll, 1)
         centre.addLayout(act)
+        self.blocks_tray = BlockTray()
+        self.blocks_tray.stateChanged.connect(self._blocks_state_changed)
+        self.body.faceChanged.connect(self._refresh_block_actions)
+        self._refresh_block_actions(self.body.is_biggie())
+        outer.addWidget(self.blocks_tray)
         outer.addLayout(centre, 1)
 
         # The rail: photos + batch accordion open when wanted; SEND pinned.
@@ -336,6 +343,103 @@ class TakeMode(QWidget):
         self.title_edit.textChanged.connect(self._changed)
         self.tags_edit.textChanged.connect(self._changed)
         QTimer.singleShot(0, self._recover_last_draft)
+        QTimer.singleShot(0, self._sync_block_tray_width)
+
+    def blocks_open(self) -> bool:
+        return self.blocks_tray.is_open
+
+    def blocks_header_label(self) -> str:
+        return "BLOCKS" if self.body.is_biggie() else "SHORTCODES"
+
+    def set_blocks_open(self, opened: bool):
+        self.blocks_tray.set_open(opened)
+        self.blocksStateChanged.emit(self.blocks_open(), self.blocks_header_label())
+
+    def toggle_blocks(self):
+        self.blocks_tray.toggle_open()
+        self.blocksStateChanged.emit(self.blocks_open(), self.blocks_header_label())
+
+    def _blocks_state_changed(self, opened: bool, _pinned: bool):
+        self.blocksStateChanged.emit(opened, self.blocks_header_label())
+
+    def _sync_block_tray_width(self):
+        window = self.window()
+        self.blocks_tray.set_compact_window(bool(window and window.width() <= 1366))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._sync_block_tray_width()
+
+    def _refresh_block_actions(self, visual: bool):
+        self.blocks_tray.set_actions(
+            "BLOCKS" if visual else "SHORTCODES",
+            self._visual_block_actions() if visual else self._text_block_actions())
+        self.blocksStateChanged.emit(self.blocks_open(), self.blocks_header_label())
+
+    def _visual_block_actions(self):
+        canvas = self.body.canvas
+        return [
+            BlockAction("P", "Paragraph", "WRITE", "Plain paragraph",
+                        lambda: canvas.set_kind("para")),
+            BlockAction("H", "Heading", "WRITE", "Large heading",
+                        lambda: canvas.set_kind("h2")),
+            BlockAction("SH", "Subhead", "WRITE", "Smaller heading",
+                        lambda: canvas.set_kind("h3")),
+            BlockAction("Q", "Quote", "WRITE", "Quoted passage",
+                        lambda: canvas.set_kind("quote")),
+            BlockAction("PQ", "Pull quote", "WRITE", "Words lifted out large",
+                        lambda: canvas.set_kind("pullquote")),
+            BlockAction("DC", "Drop cap", "WRITE", "A large first letter",
+                        canvas.toggle_dropcap),
+            BlockAction("BUL", "Bullets", "WRITE", "Bullet list",
+                        lambda: canvas.set_list(False)),
+            BlockAction("NUM", "Numbers", "WRITE", "Numbered list",
+                        lambda: canvas.set_list(True)),
+            BlockAction("DIV", "Divider", "PLACE", "A divider line", canvas.insert_hr),
+            BlockAction("SP", "Space", "PLACE", "A vertical gap", canvas._edit_spacer),
+            BlockAction("RAW", "Raw", "PLACE", "Shortcodes or HTML kept exactly as typed",
+                        lambda: canvas.set_kind("raw")),
+            BlockAction("MSC", "Mosaic", "PLACE", "Build a mosaic from this post's photos",
+                        self._insert_mosaic),
+            BlockAction("PHO", "Photograph", "PLACE", "Choose a local photograph",
+                        self._add_and_insert_photo),
+            BlockAction("2C", "2 columns", "PLACE", "Two columns side by side",
+                        lambda: canvas.insert_columns(2)),
+            BlockAction("3C", "3 columns", "PLACE", "Three columns",
+                        lambda: canvas.insert_columns(3)),
+            BlockAction("IMG", "Image", "PLACE", "Pick an image from the site's Media Library",
+                        canvas._edit_image),
+        ]
+
+    def _text_block_actions(self):
+        bar = self.body.bar
+        return [
+            BlockAction("H2", "Heading 2", "WRITE", "<h2>…</h2>",
+                        lambda: bar._wrap("<h2>", "</h2>")),
+            BlockAction("H3", "Heading 3", "WRITE", "<h3>…</h3>",
+                        lambda: bar._wrap("<h3>", "</h3>")),
+            BlockAction("BQ", "Blockquote", "WRITE", "<blockquote>…</blockquote>",
+                        lambda: bar._wrap("<blockquote>", "</blockquote>")),
+            BlockAction("PULL", "Pull quote", "WRITE", "[pullquote]…[/pullquote]",
+                        lambda: bar._wrap("[pullquote]", "[/pullquote]")),
+            BlockAction("HR", "Divider", "PLACE", "<hr>",
+                        lambda: bar._wrap("\n<hr>\n")),
+            BlockAction("UL", "Bullets", "WRITE", "<ul><li>…</li></ul>",
+                        lambda: bar._list("ul")),
+            BlockAction("OL", "Numbers", "WRITE", "<ol><li>…</li></ol>",
+                        lambda: bar._list("ol")),
+            BlockAction("IMG", "Image", "PLACE", "[img:ID|size|align]", bar._img),
+            BlockAction("COL 2", "2 columns", "PLACE", "[columns=2]…[/columns]",
+                        lambda: bar._columns(2)),
+            BlockAction("COL 3", "3 columns", "PLACE", "[columns=3]…[/columns]",
+                        lambda: bar._columns(3)),
+            BlockAction("DROP", "Drop cap", "WRITE", "[dropcap]…[/dropcap]",
+                        lambda: bar._wrap("[dropcap]", "[/dropcap]")),
+            BlockAction("SPACER", "Space", "PLACE", "[spacer:20]", bar._spacer),
+            BlockAction("MOSAIC", "Mosaic", "PLACE",
+                        "[mosaic=1,2 layout=asymmetric] (built from the photo picker)",
+                        self._insert_mosaic),
+        ]
 
     def _recover_last_draft(self):
         """Reopen the newest safe, unfinished essay after a restart."""
