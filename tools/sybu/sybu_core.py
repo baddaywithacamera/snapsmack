@@ -757,6 +757,9 @@ class Engine:
                 on_progress=on_progress,
                 skip_filled=not redo,
                 custom_prompt=custom_prompt or '',
+                # A REDO must reach the API. Skipping restore_enrichment_for
+                # above is not enough: enrich_batch restores on its own.
+                restore=not redo,
                 cat_descriptions=getattr(sd, 'cat_descriptions', None),
                 album_descriptions=getattr(sd, 'album_descriptions', None),
                 existing_tags=getattr(sd, 'tags', None),

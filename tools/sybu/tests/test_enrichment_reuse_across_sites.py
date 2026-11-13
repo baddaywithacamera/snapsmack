@@ -69,10 +69,21 @@ BASE_PROMPT = "Describe the photograph. Give a haiku title."
 MODEL = 'gemini-3.5-flash'
 
 
-def _write_image(path, payload=b'\xff\xd8\xff\xe0JPEGBYTES-the-same-photograph'):
-    with open(path, 'wb') as handle:
-        handle.write(payload)
+def _write_image(path, colour=(70, 80, 90)):
+    """A REAL JPEG. enrich_batch reads orientation and colour mode off the
+    file with PIL before it calls the model, so a handful of fake bytes
+    aborts the run -- the first version of this test used fake bytes and
+    died inside PIL. `colour` is how two files are made to differ."""
+    from PIL import Image
+    Image.new("RGB", (160, 120), colour).save(path, "JPEG", quality=70)
     return path
+
+
+def _copy_image(src, dst):
+    """Byte-identical copy under a different name -- Sean carrying the same
+    photograph to a second blog, the case that was costing money."""
+    shutil.copyfile(src, dst)
+    return dst
 
 
 def main():
@@ -99,7 +110,7 @@ def main():
 
     # ── 2. THE OLD BEHAVIOUR, asserted so the fault cannot come back ───────
     # Same photograph, second blog, new filename. This is what Sean did.
-    copied = _write_image(os.path.join(work, 'breakwater-dusk.jpg'))
+    copied = _copy_image(original, os.path.join(work, 'breakwater-dusk.jpg'))
     check('the copy is byte-identical, so it is the same photograph',
           cache.image_sha256(copied) == image_hash)
     rendered_b = "FILENAME: breakwater-dusk\n\n" + BASE_PROMPT
@@ -133,7 +144,7 @@ def main():
                               prefer_site=site_b) is None)
     check('a different photograph does NOT reuse',
           cache.find_reusable(cache.image_sha256(
-              _write_image(os.path.join(work, 'other.jpg'), b'DIFFERENT-BYTES')),
+              _write_image(os.path.join(work, 'other.jpg'), (200, 20, 20))),
               MODEL, cache.prompt_sha256(BASE_PROMPT), prefer_site=site_b) is None)
     check('an empty prompt hash refuses rather than matching everything',
           cache.find_reusable(image_hash, MODEL, '', prefer_site=site_b) is None)
@@ -164,7 +175,7 @@ def main():
     # ── 7. A ROW FROM BEFORE THE FIX simply does not reuse ──────────────────
     # Rows written before today have no base_prompt_sha256. They must not match
     # anything, and must not crash the lookup.
-    legacy_image = _write_image(os.path.join(work, 'legacy.jpg'), b'LEGACY-BYTES')
+    legacy_image = _write_image(os.path.join(work, 'legacy.jpg'), (20, 200, 20))
     legacy_hash = cache.image_sha256(legacy_image)
     cache.put(site_a, legacy_hash, 'baddaywithacamera.com', MODEL,
               cache.prompt_sha256('whatever'), bundle)        # no base hash
@@ -206,7 +217,7 @@ def main():
     # The fallback recomputes the hash the OLD code wrote for this file -- the
     # owner prompt with this filename bound in -- and matches prompt_sha256.
     import gemini
-    legacy_file = _write_image(os.path.join(work, 'IMG_7788.jpg'), b'PREFIX-ROW-BYTES')
+    legacy_file = _write_image(os.path.join(work, 'IMG_7788.jpg'), (20, 20, 200))
     legacy_h = cache.image_sha256(legacy_file)
     old_rendered = gemini.prompt_with_filename(BASE_PROMPT, 'IMG_7788.jpg')
     cache.put(site_a, legacy_h, 'baddaywithacamera.com', MODEL,
@@ -265,7 +276,88 @@ def main():
           seen[0][2].title == 'Low Tide At Dusk')
     check('and the UI is told, so reuse is not silent', len(seen) == 1)
 
-    # ── 11. THE LOOKUP IS ACTUALLY IN FRONT OF THE PAID CALL ───────────────
+    # ── 11. REDO MUST REACH THE API. BEHAVIOURALLY, NOT BY GREP ────────────
+    # MUSE'S THIRD FINDING, and the sharpest one. enrich_start(redo=True) skips
+    # its own restore pass, then called enrich_batch with no flag -- and
+    # enrich_batch restored anyway. So Qt's REDO silently returned the cached
+    # answer, never reached Gemini, and marked the row enriched. The button
+    # lied, which is exactly what my own comment said must not happen.
+    #
+    # And MY TEST PASSED THROUGHOUT, because it grepped sybu_core for
+    # "if not redo:" -- pinning the wrapper while the behaviour was broken.
+    # A source assertion standing in for a behavioural one is the fault I have
+    # spent this whole ticket complaining about, so this drives the real call.
+    calls = []
+
+    class _FakeModel:
+        def __init__(self, name):
+            self.name = name
+
+        def generate_content(self, parts):
+            calls.append(parts)
+            class _R:
+                text = chr(10).join([
+                    'TITLE: Fresh Answer', 'CAPTION: c', 'ALT: a',
+                    'TAGS: #t', 'CATEGORY: Landscapes', 'ALBUM: Around Town',
+                    'COLORS: blue', 'COLOR_MODE: colour',
+                    'ORIENTATION: landscape'])
+            return _R()
+
+    class _FakeGenai:
+        def configure(self, **kw):
+            pass
+
+        def GenerativeModel(self, name):
+            return _FakeModel(name)
+
+    real_genai, real_part = gemini._genai, gemini._load_image_part
+    gemini._genai = _FakeGenai()
+    gemini._load_image_part = lambda genai, path, max_edge=600: b'PART'
+    try:
+        # restore=True: the cached answer is used and the API is NEVER called.
+        calls.clear()
+        kept = gemini.enrich_batch(api_key='k', entries=[_E('breakwater-dusk.jpg')],
+                                   image_folder=work, categories=['Landscapes'],
+                                   albums=['Around Town'], custom_prompt=BASE_PROMPT,
+                                   site=site_b, restore=True)
+        check('with restore on, the cached answer is used and Gemini is NOT called',
+              len(calls) == 0)
+        check('and the restored entry carries the cached title',
+              kept and kept[0].title == 'Low Tide At Dusk')
+
+        # THE DEFAULT, called the way the SHIPPED Tk app calls it: main.py
+        # passes no restore= at all, so it relies on the default being True.
+        # A mutation run flipped that default to False and every other
+        # assertion still passed, because they all pass restore= explicitly --
+        # while the app Sean actually runs would have paid for every image.
+        calls.clear()
+        gemini.enrich_batch(api_key='k', entries=[_E('breakwater-dusk.jpg')],
+                            image_folder=work, categories=['Landscapes'],
+                            albums=['Around Town'], custom_prompt=BASE_PROMPT,
+                            site=site_b)
+        check('with NO restore argument, as the Tk app calls it, reuse still happens',
+              len(calls) == 0)
+
+        # restore=False, which is what a REDO passes: the API IS reached.
+        calls.clear()
+        redone = gemini.enrich_batch(api_key='k', entries=[_E('breakwater-dusk.jpg')],
+                                     image_folder=work, categories=['Landscapes'],
+                                     albums=['Around Town'], custom_prompt=BASE_PROMPT,
+                                     site=site_b, restore=False)
+        check('a REDO reaches generate_content, so the button does something',
+              len(calls) == 1)
+        check('and it comes back with the FRESH answer, not the cached one',
+              redone and redone[0].title == 'Fresh Answer')
+    finally:
+        gemini._genai, gemini._load_image_part = real_genai, real_part
+
+    # And the wiring: enrich_start must pass restore=not redo, or the wrapper's
+    # own skip is undone one call later.
+    core_src = open(os.path.join(SYBU, 'sybu_core.py'), encoding='utf-8').read()
+    check('enrich_start passes restore=not redo to enrich_batch',
+          'restore=not redo' in core_src)
+
+    # ── 12. THE LOOKUP IS ACTUALLY IN FRONT OF THE PAID CALL ───────────────
     # The cache layer above is proved by behaviour. The ORCHESTRATION is not:
     # driving enrich_start needs a connected SYBU engine, a Gemini key and a
     # real folder, which this test has none of. A correct cache that nothing
