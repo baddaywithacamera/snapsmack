@@ -116,20 +116,7 @@ def _orient_to_api(value: str) -> str:
 
 def merge_additional_hashtags(existing: str, additional: str) -> str:
     """Append temporary batch hashtags without duplicating existing tags."""
-    current = (existing or '').strip()
-    seen = {
-        token.lstrip('#').casefold()
-        for token in re.split(r'[\s,;]+', current)
-        if token.strip().lstrip('#')
-    }
-    added = []
-    for token in re.split(r'[\s,;]+', additional or ''):
-        tag = token.strip().lstrip('#')
-        if not tag or tag.casefold() in seen:
-            continue
-        seen.add(tag.casefold())
-        added.append('#' + tag)
-    return ' '.join(part for part in (current, ' '.join(added)) if part)
+    return manifest_parser.normalize_tags(f"{existing or ''} {additional or ''}")
 
 
 # ---------------------------------------------------------------------------
@@ -488,7 +475,10 @@ class Engine:
         e = self.entries[index]
         for k in ('title', 'tags', 'category', 'album', 'colors', 'caption', 'alt', 'color_mode'):
             if k in patch:
-                setattr(e, k, patch[k] or '')
+                value = patch[k] or ''
+                if k == 'tags':
+                    value = manifest_parser.normalize_tags(value)
+                setattr(e, k, value)
         if 'orientation' in patch:
             e.orientation = _orient_to_api(patch['orientation'])
         return self._serialize_entry(index)

@@ -21,8 +21,42 @@ Manifest format:
 
 
 import os
+import re
 from dataclasses import dataclass, field
 from typing import List, Tuple
+
+
+_STANDARD_TAG_RE = re.compile(r'^[A-Za-z][A-Za-z0-9_]{0,49}$')
+_HEX_TAG_RE = re.compile(r'^[0-9][0-9A-Fa-f]{5}$')
+
+
+def normalize_tags(value: str) -> str:
+    """Return backend-compatible, deduplicated hashtags in source order.
+
+    Gemini occasionally follows the requested words but drops every leading
+    ``#``.  SnapSmack deliberately extracts only hashtags, so sending that raw
+    response silently creates a post with no descriptive tags.  Normalising at
+    the shared model boundary also repairs restored enrichment without another
+    paid AI call.
+    """
+    if not isinstance(value, str):
+        return ''
+    tags = []
+    seen = set()
+    for raw in re.split(r'[\s,;]+', value or ''):
+        token = raw.strip().lstrip('#').strip('.,:;!?()[]{}"\'')
+        token = token.replace('-', '_')
+        if not token:
+            continue
+        if not (_STANDARD_TAG_RE.fullmatch(token) or _HEX_TAG_RE.fullmatch(token)):
+            continue
+        tag = token.lower()
+        folded = tag.casefold()
+        if folded in seen:
+            continue
+        seen.add(folded)
+        tags.append('#' + tag)
+    return ' '.join(tags)
 
 
 @dataclass
@@ -96,7 +130,7 @@ def parse(manifest_path: str) -> ParseResult:
         elif key == 'TITLE':
             current.title = value
         elif key == 'TAGS':
-            current.tags = value
+            current.tags = normalize_tags(value)
         elif key == 'CATEGORY':
             current.category = value
         elif key == 'ALBUM':

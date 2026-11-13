@@ -17,7 +17,7 @@ from typing import Callable, List, Optional
 
 from PIL import Image
 
-from manifest_parser import ManifestEntry
+from manifest_parser import ManifestEntry, normalize_tags
 
 log = logging.getLogger('sybu')
 
@@ -195,6 +195,7 @@ def _parse_response(text: str) -> dict:
     if result['colors']:
         hexes = re.findall(r'#[0-9A-Fa-f]{6}', result['colors'])
         result['colors'] = ' '.join(h.upper() for h in hexes[:3])
+    result['tags'] = normalize_tags(result['tags'])
     return result
 
 
