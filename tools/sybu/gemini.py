@@ -147,6 +147,66 @@ def filename_stem(file_name: str) -> str:
     return stem.strip()
 
 
+def restore_from_library(entries, image_folder, prompt, *, site='', on_progress=None):
+    """Fill in whatever has already been paid for. Returns (remaining, restored).
+
+    SS-1137, and it lives HERE on purpose. Muse found the fix wired only into
+    sybu_core.enrich_start, which is the Qt/web engine -- while
+    desktop-versions.json builds the SHIPPED SYBU from main.py, the Tk app,
+    which calls enrich_batch directly and would have kept paying twice. A money
+    fix in the engine the owner does not run is not a fix.
+
+    Putting it in enrich_batch means every caller is covered by one piece of
+    code, and there is one place to get right rather than one per app.
+
+    `site` only ORDERS the search (the posting site's catalogue first); reuse
+    works without it, because the enrichment belongs to the photograph.
+    """
+    try:
+        import library_bridge
+        import snap_enrichment_cache as _cache
+    except Exception:
+        return list(entries), 0          # never block enrichment on the cache
+
+    remaining, restored = [], 0
+    for entry in entries:
+        path = os.path.join(image_folder, getattr(entry, 'file', '') or '')
+        if not os.path.isfile(path):
+            remaining.append(entry)
+            continue
+        try:
+            # The legacy hash is what the OLD code wrote for THIS file: the
+            # owner prompt with this filename bound in. Without it the first
+            # run after the fix re-pays for every pre-fix row.
+            legacy = _cache.prompt_sha256(prompt_with_filename(prompt, getattr(entry, 'file', '')))
+            hit = _cache.find_reusable(
+                _cache.image_sha256(path), MODEL_NAME,
+                _cache.prompt_sha256(prompt),
+                prefer_site=site or None,
+                legacy_prompt_hashes=(legacy,),
+            )
+        except Exception:
+            hit = None
+        if not hit:
+            remaining.append(entry)
+            continue
+        for field, value in (hit.get('bundle') or {}).items():
+            if value != '':
+                setattr(entry, field, value)
+        entry._enrichment_base_prompt = prompt
+        entry._enrichment_model = MODEL_NAME
+        entry._enrichment_restored_from = hit.get('reused_from_domain', '') or 'library'
+        restored += 1
+        if on_progress:
+            # Tell the UI, so reuse is never silent and he can see money not
+            # being spent. error=None means the row reads as enriched.
+            try:
+                on_progress(restored, len(entries), entry, None)
+            except Exception:
+                pass
+    return remaining, restored
+
+
 def base_prompt(custom_prompt: str, categories, albums, *,
                 cat_descriptions=None, album_descriptions=None,
                 existing_tags=None) -> str:
@@ -267,6 +327,7 @@ def enrich_batch(
     existing_tags:      Optional[List[str]] = None,
     existing_titles:    Optional[List[str]] = None,
     cancel_event=None,
+    site: str = '',
 ) -> List[ManifestEntry]:
     """
     Process a list of ManifestEntry objects, sending each image to Gemini
@@ -289,6 +350,11 @@ def enrich_batch(
                          cat_descriptions=cat_descriptions,
                          album_descriptions=album_descriptions,
                          existing_tags=existing_tags)
+    entries, restored = restore_from_library(entries, image_folder, prompt,
+                                             site=site, on_progress=on_progress)
+    if restored:
+        log.info("ENRICH — %d item(s) restored from the shared library, not billed",
+                 restored)
     total  = len(entries)
     log.info("ENRICH start — %d item(s), %d categories, %d albums",
              total, len(categories), len(albums))
