@@ -526,7 +526,45 @@
         return copies;
     }
 
-    window.SSGlide = { wrap: glideWrap, periodFrom: glidePeriodFrom, fill: glideFill };
+    /**
+     * The repeated target that puts the nearest tile centre on the row centre.
+     *
+     * A tile appears once per period, so each centre has infinitely many
+     * equivalent targets. Check the copies around the current reference and
+     * choose the shortest move. If two are exactly as close, the last manual
+     * movement decides which one wins instead of a rounding accident.
+     */
+    function glideNearestTarget(reference, centres, rowCentre, period, direction) {
+        if (!centres || !centres.length || !(period > 0)) return reference;
+        var best = reference;
+        var bestDistance = Infinity;
+        var bestDirection = false;
+        for (var i = 0; i < centres.length; i++) {
+            var base = rowCentre - centres[i];
+            var nearestCopy = Math.round((reference - base) / period);
+            for (var copy = nearestCopy - 1; copy <= nearestCopy + 1; copy++) {
+                var candidate = base + (copy * period);
+                var delta = candidate - reference;
+                var distance = Math.abs(delta);
+                var followsDirection = direction !== 0 && Math.sign(delta) === Math.sign(direction);
+                if (distance < bestDistance - 0.001
+                    || (Math.abs(distance - bestDistance) <= 0.001
+                        && followsDirection && !bestDirection)) {
+                    best = candidate;
+                    bestDistance = distance;
+                    bestDirection = followsDirection;
+                }
+            }
+        }
+        return best;
+    }
+
+    window.SSGlide = {
+        wrap: glideWrap,
+        periodFrom: glidePeriodFrom,
+        fill: glideFill,
+        nearestTarget: glideNearestTarget
+    };
 
     // How far the pointer may travel before a press counts as a drag
     // rather than a click. 10px on Sean's instruction: 3px discarded
@@ -713,6 +751,40 @@
         return out;
     }
 
+    /** Centres of the original tiles in the track's own travel direction. */
+    function originalCentres(state) {
+        var out = [], kids = state.track.children;
+        for (var i = 0; i < state.originals && i < kids.length; i++) {
+            out.push(vertical
+                ? kids[i].offsetTop + (kids[i].offsetHeight / 2)
+                : kids[i].offsetLeft + (kids[i].offsetWidth / 2));
+        }
+        return out;
+    }
+
+    /** Put the nearest photograph at the centre, using the existing ease. */
+    function beginSettle(state) {
+        var rowCentre = vertical ? state.row.clientHeight / 2 : state.row.clientWidth / 2;
+        state.target = glideNearestTarget(
+            state.target,
+            originalCentres(state),
+            rowCentre,
+            state.period,
+            state.lastDirection
+        );
+        state.flinging = false;
+        state.vel = 0;
+        state.settling = true;
+        state.idleSince = null;
+        if (reduced) {
+            state.current = state.target;
+            // The skin normally disables transforms under reduced motion.
+            // A manual move is still owed an INSTANT resting position, so the
+            // engine's one final placement deliberately outranks that rule.
+            state.reducedSettle = true;
+        }
+    }
+
     /** Measure the period and make sure the track is long enough to hide the seam. */
     function measure(state) {
         var gap = trackGap(state.track);
@@ -733,7 +805,8 @@
             dragging: false, moved: false, captured: false, pointerId: null,
             // vel is the recent speed of the drag, carried past release;
             // flinging says the wall is still coasting on it.
-            vel: 0, flinging: false,
+            vel: 0, flinging: false, settling: false,
+            lastDirection: 0, pointerInside: false, reducedSettle: false,
             x: 0, y: 0, startX: 0, startY: 0
         };
         measure(state);
@@ -754,7 +827,8 @@
         var moving = false;
         for (var i = 0; i < states.length; i++) {
             var state = states[i];
-            var resting = idleDrift && !state.dragging && !state.flinging
+            var resting = idleDrift && !state.dragging && !state.flinging && !state.settling
+                && !state.pointerInside
                 && Math.abs(state.target - state.current) <= 0.1
                 && !state.row.querySelector(':focus-visible:not([data-glide-restored-focus])');
             state.idleSince = resting ? (state.idleSince ?? now) : null;
@@ -769,11 +843,14 @@
                 state.target += state.vel;
                 state.vel *= GLIDE_FRICTION;
                 if (Math.abs(state.vel) < GLIDE_VEL_FLOOR) {
-                    state.flinging = false;
-                    state.vel = 0;
+                    beginSettle(state);
                 }
             }
             state.current += (state.target - state.current) * (reduced ? 1 : 0.18);
+            if (state.settling && Math.abs(state.target - state.current) <= 0.1) {
+                state.current = state.target;
+                state.settling = false;
+            }
             var x = glideWrap(state.current, state.period);
             // THE LOCAL VECTOR, because this is the track's own frame and the
             // field's rotate() adds the lean on top. For a horizontal axis
@@ -781,13 +858,15 @@
             // translation as the original. The branch is kept anyway so a skin
             // that has not asked for this gets the original expression, not a
             // computed one that happens to agree.
-            state.track.style.transform = alongAxis
+            var transform = alongAxis
                 ? 'translate3d(' + (x * localX) + 'px,' + (x * localY) + 'px,0)'
                 : 'translate3d(' + x + 'px,0,0)';
+            state.track.style.setProperty('transform', transform,
+                reduced && state.reducedSettle ? 'important' : '');
             // Without the flinging term the loop could stop while the wall
             // still had speed left, because target and current can be close
             // together at the moment of release.
-            if (state.flinging
+            if (state.flinging || state.settling
                 || Math.abs(state.target - state.current) > 0.1) moving = true;
         }
         raf = (moving || idleDrift) ? requestAnimationFrame(paint) : 0;
@@ -800,6 +879,7 @@
             var delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
             var step = -delta * sensitivity;
             state.target += step;
+            if (step) state.lastDirection = Math.sign(step);
             // THE WHEEL COASTS TOO, AND IT DID NOT BEFORE.
             //
             // Inertia was built for the drag: pointermove kept a smoothed
@@ -822,8 +902,18 @@
                 state.vel = (state.vel * 0.6) + (step * 0.4);
                 state.flinging = Math.abs(state.vel) > GLIDE_VEL_FLOOR;
             }
+            if (reduced || !state.flinging) beginSettle(state);
             requestPaint();
         }, { passive: false });
+
+        state.row.addEventListener('pointerenter', function () {
+            state.pointerInside = true;
+            state.idleSince = null;
+        });
+        state.row.addEventListener('pointerleave', function () {
+            state.pointerInside = false;
+            if (!state.dragging) requestPaint();
+        });
 
         state.row.addEventListener('pointerdown', function (event) {
             if (state.dragging || (event.button !== 0 && event.pointerType === 'mouse')) return;
@@ -873,6 +963,8 @@
             // THE WORLD VECTOR: dx/dy are screen pixels, and on screen the
             // wall travels along the leaned direction.
             var projected = (dx * worldX) + (dy * worldY);
+            var manualStep = projected * sensitivity;
+            if (manualStep) state.lastDirection = Math.sign(manualStep);
             // TOTAL TRAVEL SINCE THE PRESS, not the size of one pointermove.
             // dx/dy above are per-move deltas because x/y are rewritten each
             // move, so the old test "dx + dy > 3" asked whether the pointer
@@ -897,7 +989,7 @@
                     } catch (e) { state.captured = false; }
                 }
             }
-            state.target += projected * sensitivity;
+            state.target += manualStep;
             // A smoothed recent speed, not the last sample: one twitchy
             // pointermove at the end of a slow drag should not fling the
             // wall across the screen.
@@ -932,8 +1024,10 @@
             if (state.moved && !reduced
                 && Math.abs(state.vel) > GLIDE_VEL_FLOOR) {
                 state.flinging = true;
-                requestPaint();
+            } else if (state.moved) {
+                beginSettle(state);
             }
+            requestPaint();
         }
         // A press below the drag threshold can end outside the row before capture.
         window.addEventListener('pointerup', function (event) { release(event.pointerId, false); }, true);
@@ -965,7 +1059,10 @@
         // The row height changes at the 720px breakpoint, so the tiles change
         // width and the period changes with them. Re-measure rather than keep
         // wrapping at a distance that was true at the old size.
-        for (var i = 0; i < states.length; i++) measure(states[i]);
+        for (var i = 0; i < states.length; i++) {
+            measure(states[i]);
+            if (states[i].settling) beginSettle(states[i]);
+        }
         requestPaint();
     });
     if ('ResizeObserver' in window) {
