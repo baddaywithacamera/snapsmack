@@ -106,6 +106,22 @@ def stylesheet() -> str:
     QPushButton#BlockAction:hover, QPushButton#BlockAction:focus {{
         border: 1px solid {ACCENT}; color: {ACCENT}; background: {FIELD};
     }}
+    QFrame#SelectedPhotoTools {{
+        background: {PANEL}; border-top: 1px solid {BORDER};
+    }}
+    QPushButton#PhotoTool {{
+        background: {FIELD}; color: {BODY}; border: 1px solid {BORDER};
+        border-radius: 5px; min-height: 30px; padding: 3px 5px;
+        font-size: 11px;
+    }}
+    QPushButton#PhotoTool:hover, QPushButton#PhotoTool:focus,
+    QPushButton#PhotoTool:checked {{
+        border: 1px solid {ACCENT}; color: {ACCENT};
+    }}
+    QPushButton#PhotoSelect {{
+        background: {FIELD}; border: 1px solid {BORDER}; padding: 3px;
+    }}
+    QPushButton#PhotoSelect:checked {{ border: 2px solid {ACCENT}; }}
     QPushButton#AccordionHeader {{
         background: {PANEL_HI};
         color: {DIM};
