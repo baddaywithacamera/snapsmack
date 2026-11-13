@@ -906,7 +906,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . ' title="' . snap_escape_attr($title) . '">' . snap_escape_html($label) . '</a>';
         };
         $html = '<div class="nav-links"><span class="left">'
-            . $link($destination($data['previous'] ?? []), '« PREV', 'Previous Entry', $current, 'prev')
+            . $link($destination($data['next'] ?? []), '« NEXT', 'Next Entry', $current, 'next')
             . '<span class="sep">|</span>'
             . $link($destination($data['first'] ?? []), 'FIRST', 'Jump to First Entry', $current)
             . '</span><span class="sep">|</span><span class="center"><a href="#" id="show-details">INFO</a>';
@@ -914,7 +914,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $html .= '</span><span class="sep">|</span><span class="right">'
             . $link($destination($data['last'] ?? []), 'LAST', 'Jump to Latest Entry', $current)
             . '<span class="sep">|</span>'
-            . $link($destination($data['next'] ?? []), 'NEXT »', 'Next Entry', $current, 'next')
+            . $link($destination($data['previous'] ?? []), 'PREV »', 'Previous Entry', $current, 'prev')
             . '</span></div>';
     } elseif ($name === 'image') {
         $class = trim((string)($data['class'] ?? ''));
