@@ -2146,10 +2146,35 @@ include 'core/sidebar.php';
                                     <td class="col-center" id="spoke-ver-<?php echo $n['id']; ?>" style="font-family:monospace; font-size:0.85rem;">
                                         <?php
                                             $spoke_ver = $n['software_version'] ?? '';
-                                            echo $spoke_ver ? htmlspecialchars($spoke_ver) : '—';
+                                            // SS-1145: the age of the reading travels with the version.
+                                            // A failed heartbeat leaves software_version untouched, so
+                                            // without this line a value recorded seven weeks and three
+                                            // releases ago is printed exactly like one taken a minute
+                                            // ago. The hub cannot know what is installed now; it can
+                                            // only say what it was last told, and when.
+                                            $ver_age  = snap_reading_age(
+                                                isset($n['last_seen_ts']) ? (int)$n['last_seen_ts'] : 0,
+                                                time()
+                                            );
+                                            $ver_text = $spoke_ver !== '' ? htmlspecialchars($spoke_ver) : '—';
+                                            $ver_cls  = ($spoke_ver !== '' && $ver_age['stale']) ? ' version-stale' : '';
+                                            $ver_ttl  = $ver_age['stale']
+                                                ? 'Last heard ' . $ver_age['phrase'] . ' — the last version this spoke reported, not a reading taken now.'
+                                                : 'Reported ' . $ver_age['phrase'] . '.';
+                                            echo '<span id="spoke-ver-val-' . (int)$n['id'] . '" class="version-value' . $ver_cls . '"'
+                                               . ' title="' . htmlspecialchars($ver_ttl) . '">' . $ver_text . '</span>';
                                             if ($spoke_ver && snap_version_compare(SNAPSMACK_VERSION_SHORT, $spoke_ver, '>')) {
                                                 echo ' <span class="version-behind" title="Behind hub version ' . htmlspecialchars(SNAPSMACK_VERSION_SHORT) . '">&#x25B2;</span>';
                                             }
+                                            // KNOWN LIMIT: the UPDATE push below writes the new
+                                            // version over this whole cell, which takes the age
+                                            // line with it until the page is reloaded. The code
+                                            // that does it is inside the SS-1041 allowlisted
+                                            // inline script, which the agreed-rules gate says is
+                                            // moved to assets/js/ rather than edited in place.
+                                            echo '<span class="version-age' . $ver_cls . '" id="spoke-ver-age-' . (int)$n['id'] . '">'
+                                               . ($ver_age['known'] ? 'read ' . htmlspecialchars($ver_age['phrase']) : htmlspecialchars($ver_age['phrase']))
+                                               . '</span>';
                                         ?>
                                     </td>
                                     <td class="col-center">

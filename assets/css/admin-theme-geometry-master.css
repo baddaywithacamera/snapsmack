@@ -4746,6 +4746,18 @@ input[type="range"]:active::-webkit-slider-thumb {
 /* Version-behind indicator                                                    */
 .version-behind { color: #FF9800; font-size: 0.75rem; }
 
+/* SS-1145 -- the age of a version reading, printed under the version itself.  */
+/* A spoke's software_version is whatever the hub was last TOLD. A failed      */
+/* heartbeat leaves it untouched, so the age is the only thing that            */
+/* distinguishes a reading taken a minute ago from one taken seven weeks ago.  */
+/* .version-stale is marked by more than colour: the dotted underline carries  */
+/* the same meaning where colour cannot.                                       */
+.version-value  { font-family: inherit; }
+.version-age    { display: block; font-size: 0.68rem; letter-spacing: 0.5px;
+                  color: var(--text-muted, #8A8A8A); margin-top: 2px; }
+.version-stale  { color: var(--text-muted, #8A8A8A);
+                  text-decoration: underline dotted; text-underline-offset: 2px; }
+
 /* Hub connection indicator (spoke page left-border accent)                    */
 .hub-connected-border { border-left: 4px solid #4CAF50; }
 
@@ -7140,6 +7152,18 @@ input[type="range"]:active::-webkit-slider-thumb {
 
 /* Version-behind indicator                                                    */
 .version-behind { color: #FF9800; font-size: 0.75rem; }
+
+/* SS-1145 -- the age of a version reading, printed under the version itself.  */
+/* A spoke's software_version is whatever the hub was last TOLD. A failed      */
+/* heartbeat leaves it untouched, so the age is the only thing that            */
+/* distinguishes a reading taken a minute ago from one taken seven weeks ago.  */
+/* .version-stale is marked by more than colour: the dotted underline carries  */
+/* the same meaning where colour cannot.                                       */
+.version-value  { font-family: inherit; }
+.version-age    { display: block; font-size: 0.68rem; letter-spacing: 0.5px;
+                  color: var(--text-muted, #8A8A8A); margin-top: 2px; }
+.version-stale  { color: var(--text-muted, #8A8A8A);
+                  text-decoration: underline dotted; text-underline-offset: 2px; }
 
 /* Hub connection indicator (spoke page left-border accent)                    */
 .hub-connected-border { border-left: 4px solid #4CAF50; }
