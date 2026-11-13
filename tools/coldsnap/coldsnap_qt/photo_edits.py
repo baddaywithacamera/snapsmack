@@ -30,6 +30,10 @@ def has_edits(image) -> bool:
 
 
 def source_path(image) -> str:
+    edited = os.path.abspath(str(getattr(image, "slapper_edited_path", "") or ""))
+    if (bool(getattr(image, "slapper_use_edited", False)) and edited
+            and os.path.isfile(edited)):
+        return edited
     original = os.path.abspath(str(getattr(image, "original_path", "") or ""))
     if original and os.path.isfile(original):
         return original

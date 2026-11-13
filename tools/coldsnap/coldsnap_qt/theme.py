@@ -109,6 +109,12 @@ def stylesheet() -> str:
     QFrame#SelectedPhotoTools {{
         background: {PANEL}; border-top: 1px solid {BORDER};
     }}
+    QFrame#SlapperState {{
+        background: {FIELD}; border: 1px solid {ACCENT}; border-radius: 6px;
+    }}
+    QFrame#SlapperError {{
+        background: #25100e; border: 1px solid {DANGER}; border-radius: 6px;
+    }}
     QPushButton#PhotoTool {{
         background: {FIELD}; color: {BODY}; border: 1px solid {BORDER};
         border-radius: 5px; min-height: 30px; padding: 3px 5px;
