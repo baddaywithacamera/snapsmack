@@ -328,6 +328,7 @@ def enrich_batch(
     existing_titles:    Optional[List[str]] = None,
     cancel_event=None,
     site: str = '',
+    restore: bool = True,
 ) -> List[ManifestEntry]:
     """
     Process a list of ManifestEntry objects, sending each image to Gemini
@@ -350,8 +351,20 @@ def enrich_batch(
                          cat_descriptions=cat_descriptions,
                          album_descriptions=album_descriptions,
                          existing_tags=existing_tags)
-    entries, restored = restore_from_library(entries, image_folder, prompt,
-                                             site=site, on_progress=on_progress)
+    # SS-1137, Muse's third finding. `restore` MUST be False on a REDO.
+    # sybu_core.enrich_start(redo=True) skips its own restore pass and then
+    # called this with no flag, so the library was consulted here anyway: the
+    # Qt REDO button silently handed back the cached answer and never reached
+    # Gemini. Skipping the wrapper is not skipping the restore.
+    restored = 0
+    # Every entry handed in comes back out, restored or enriched. No caller uses
+    # the return value today (both call this for its side effects), but the
+    # docstring promises the list and silently shortening it would be a trap for
+    # the next one.
+    all_entries = list(entries)
+    if restore:
+        entries, restored = restore_from_library(entries, image_folder, prompt,
+                                                 site=site, on_progress=on_progress)
     if restored:
         log.info("ENRICH — %d item(s) restored from the shared library, not billed",
                  restored)
@@ -500,7 +513,7 @@ def enrich_batch(
             if on_progress:
                 on_progress(i, total, entry, msg)
 
-    return entries
+    return all_entries
 
 
 def _load_image_part(genai, path: str, max_edge: int = 600):
