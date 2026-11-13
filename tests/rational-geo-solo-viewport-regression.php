@@ -21,8 +21,8 @@ $expect(
     'RATIONAL GEO solo pages must use the real strict-layout body/main flex column.'
 );
 $expect(
-    preg_match('/\.rg-photo-wrap\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;[^}]*height:\s*auto;/s', $css) === 1,
-    'RATIONAL GEO image well must yield space to the navigation row.'
+    preg_match('/\.rg-photo-wrap\s*\{[^}]*flex:\s*1 0 calc\(100% - var\(--infobox-height, 50px\)\);[^}]*min-height:\s*calc\(100% - var\(--infobox-height, 50px\)\);[^}]*height:\s*auto;/s', $css) === 1,
+    'RATIONAL GEO image well must preserve the solo viewport when the in-flow information tray opens.'
 );
 $expect(
     preg_match('/\.rg-single\s+#infobox\s*\{[^}]*width:\s*100%;/s', $css) === 1,
