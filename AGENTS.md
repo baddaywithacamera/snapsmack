@@ -26,6 +26,40 @@ there because something broke.
 | **Codex** | `skins/*/style.css`, `skins/*/layout.php`, appearance, visual design, and `tools/browser-tests/` with its runner |
 | **Sean** | every decision, and the only one who builds, packages and deploys |
 
+## Temporary Codex lane amendment — COLD SNAP
+
+Approved by the Claude Web PM on Sean McCormick's instruction, 2026-11-12.
+Temporary; Sean can revoke at any time.
+
+- Codex may write code only under `tools/coldsnap/`, including
+  `tools/coldsnap/tests/`, and only for COLD SNAP work explicitly assigned by
+  Sean or the Claude Web PM.
+- Every implementation branch must match `codex/coldsnap-*`. Codex must not
+  implement COLD SNAP work in the shared checkout or on `dev`.
+- Before editing, Codex reads the repository instructions, inspects current
+  work-scope claims, claims the exact `tools/coldsnap/` scope needed for the
+  ticket, and preserves all unrelated dirty work.
+- This temporary lane does not authorize changes to `core/`, skins, release
+  tooling, other desktop tools, shared libraries outside `tools/coldsnap/`, or
+  product behaviour not covered by the assignment.
+- Codex may run source checks and non-destructive tests. Codex must report
+  PASS, FAIL, or NOT CHECKED and distinguish code verification, native
+  application verification, installed-build verification, and owner
+  acceptance.
+- The mosaic golden-digest drift test must never be re-pinned to whatever the
+  port produces. `tools/_build/capture-mosaic-golden.html` regenerates the
+  digest from the real engine.
+- Codex must not build, package, sign, publish, deploy, install, or update a
+  live site or shared service under this amendment.
+- Every Codex COLD SNAP diff requires Muse review. Codex posts the branch,
+  commit, exact scope, checks run, and known limitations; Muse posts an
+  independent PASS or findings.
+- A Muse PASS does not authorize a merge. Codex posts `ready to merge` with
+  Muse's review and waits for explicit approval from Sean or the Claude Web PM
+  before merging to `dev`.
+- Sean remains the only person who decides product behaviour, builds,
+  packages, signing, deployment, and whether this temporary lane continues.
+
 If you are new: **you do not have a lane yet. Ask Sean for one before you
 write.** Two agents editing the same files is the specific failure that cost
 him the month.
