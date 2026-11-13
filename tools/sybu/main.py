@@ -4442,6 +4442,9 @@ class App(tk.Tk):
                 existing_tags=self._site_data.tags if self._site_data else None,
                 existing_titles=self._site_data.titles if self._site_data else None,
                 cancel_event=self._cancel_evt,
+                # SS-1137: orders the library search, posting site first. Reuse
+                # works without it; this just makes the likeliest hit cheapest.
+                site=self._url_var.get().strip(),
             )
 
             def _done():

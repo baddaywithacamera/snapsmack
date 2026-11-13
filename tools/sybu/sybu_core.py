@@ -621,6 +621,64 @@ class Engine:
         return sum(1 for i in range(len(self.entries))
                    if self.rowstate[i]['selected'] and self._already_enriched(i))
 
+    def restore_enrichment_for(self, sel, custom_prompt, cats, albums):
+        """Fill in whatever Sean has already paid for. Returns (remaining, restored).
+
+        SS-1137, the money bug. Lifted out of enrich_start so it returns values
+        a test can ask about: a cache consulted inside the paid path can only be
+        checked by watching the bill.
+
+        The prompt hashed here comes from gemini.base_prompt, the SAME function
+        enrich_batch uses, so the key written at enrich time and the key looked
+        up here cannot drift. If they ever did, every lookup would miss and he
+        would quietly pay twice again -- the exact fault this repairs.
+        """
+        try:
+            import library_bridge
+            g = _gemini()
+            base = g.base_prompt(custom_prompt, cats, albums,
+                                 cat_descriptions=getattr(self.site_data, 'cat_descriptions', None),
+                                 album_descriptions=getattr(self.site_data, 'album_descriptions', None),
+                                 existing_tags=getattr(self.site_data, 'tags', None))
+            model = getattr(g, 'MODEL_NAME', '') or ''
+        except Exception:
+            return sel, 0                       # never block enrichment on the cache
+
+        site = getattr(self.client, 'base_url', '') or self.config.get('url', '')
+        remaining, restored = [], 0
+        for i, entry in sel:
+            path = os.path.join(self.image_folder, getattr(entry, 'file', '') or '')
+            try:
+                hit = library_bridge.restore_enrichment(site, path, base, model)
+            except Exception:
+                hit = None
+            if not hit:
+                remaining.append((i, entry))
+                continue
+            bundle = hit.get('bundle') or {}
+            for field, value in bundle.items():
+                if value != '':
+                    setattr(entry, field, value)
+            # Stamp the same provenance a paid run would, so a later save
+            # writes the same key rather than a second, unmatchable one.
+            entry._enrichment_base_prompt = base
+            entry._enrichment_model = model
+            entry._enrichment_prompt = getattr(entry, '_enrichment_prompt', '') or base
+            entry._enrichment_restored_from = hit.get('reused_from_domain', '') or 'library'
+            self.rowstate[i]['status'] = 'enriched'
+            # SAY IT. Reuse must never be silent in either direction: he has to
+            # be able to see money not being spent, and know a fresh answer
+            # means ticking the image and using REDO.
+            self.rowstate[i]['message'] = ('restored from your library (%s) — no API call'
+                                           % (entry._enrichment_restored_from or 'library'))
+            try:
+                if self.recovery:
+                    self.recovery.upsert(entry, 'enriched')
+            except Exception:
+                pass
+            restored += 1
+        return remaining, restored
+
     def enrich_start(self, api_key: str, custom_prompt: str, redo: bool = False) -> dict:
         api_key = (api_key or '').strip()
         if not api_key:
@@ -638,10 +696,23 @@ class Engine:
                 raise RuntimeError("Every ticked image is already enriched. Nothing to do.")
         self.ensure_recovery(self.image_folder)
         id_to_index = {id(e): i for i, e in enumerate(self.entries)}
-        sel_entries = [e for _, e in sel]
         cats = self.categories()
         albums = self.albums()
         sd = self.site_data
+
+        # SS-1137: CONSULT THE LIBRARY BEFORE SPENDING. Anything already paid
+        # for is filled in here and never reaches Gemini.
+        # REDO means he asked for a fresh answer and is willing to pay for it,
+        # so the library is not consulted on a redo. Restoring there would make
+        # the button do nothing, which is worse than the cost.
+        restored = 0
+        if not redo:
+            sel, restored = self.restore_enrichment_for(sel, custom_prompt, cats, albums)
+        if not sel and restored:
+            raise RuntimeError(
+                "Nothing to enrich: all %d restored from your library, no API calls."
+                % restored)
+        sel_entries = [e for _, e in sel]
 
         def _target(op: Op):
             def on_progress(idx, total, entry, error):
@@ -676,6 +747,9 @@ class Engine:
                 on_progress=on_progress,
                 skip_filled=not redo,
                 custom_prompt=custom_prompt or '',
+                # A REDO must reach the API. Skipping restore_enrichment_for
+                # above is not enough: enrich_batch restores on its own.
+                restore=not redo,
                 cat_descriptions=getattr(sd, 'cat_descriptions', None),
                 album_descriptions=getattr(sd, 'album_descriptions', None),
                 existing_tags=getattr(sd, 'tags', None),
