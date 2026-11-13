@@ -539,4 +539,14 @@ select.sc-select--sm { width: auto; height: 28px; padding: 0 8px; font-size: 0.6
 .sc-help-table th { text-align: left; font-size: var(--sc-size-label); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--sc-text-dim); padding: 8px 12px; border-bottom: 1px solid var(--sc-border); }
 .sc-help-table td { padding: 8px 12px; border-bottom: 1px solid var(--sc-border); font-size: var(--sc-size-base); vertical-align: top; }
 .sc-help-table tr:last-child td { border-bottom: none; }
+/* SS-1164 — Thomas the Bear totals are history, not live counters.
+   The reporter that fed them was removed in the telemetry cleanup, so the
+   block is marked rather than silently presented alongside current figures. */
+.sc-thomas-historical { margin-top: 8px; opacity: .78; }
+.sc-thomas-historical__note {
+    margin: 0 0 6px; font-size: 12px; line-height: 1.45; color: #b9b9b9;
+    border-left: 3px solid #6a6a6a; padding-left: 10px;
+}
+.sc-thomas-historical__note strong { color: #e4e4e4; }
+
 /* ===== SNAPSMACK EOF ===== */

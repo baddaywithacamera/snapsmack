@@ -117,7 +117,21 @@ require __DIR__ . '/sc-layout-top.php';
 </div>
 
 <?php if ($stats['thomas_y'] > 0 || $stats['thomas_z'] > 0): ?>
-<div class="sc-stat-grid" style="margin-top:8px;">
+<?php /* SS-1164. THESE NUMBERS ARE HISTORY, NOT TODAY. sc_thomas was filled
+         by releases/thomas-ping.php, and that reporter was removed in the
+         public-telemetry cleanup (commit 576fc6aa took pingThomas and its
+         calls out of the Thomas engine). The table still holds what it
+         collected before then and nothing adds to it, so presenting these as
+         live counters tells the operator something untrue. Labelled until
+         Sean decides whether to retire them or approve a way of counting
+         that fits the privacy rules — that decision is his, not this fix. */ ?>
+<div class="sc-thomas-historical">
+  <p class="sc-thomas-historical__note">
+    These Thomas the Bear numbers are <strong>historical</strong>. They are
+    the totals collected up to the point the counting was switched off, and
+    nothing has been added to them since. They are not a picture of today.
+  </p>
+<div class="sc-stat-grid sc-stat-grid--historical">
   <div class="sc-stat">
     <div class="sc-stat__val"><?php echo $stats['thomas_y']; ?></div>
     <div class="sc-stat__label">Bears Spawned</div>
@@ -134,6 +148,7 @@ require __DIR__ . '/sc-layout-top.php';
     <div class="sc-stat__val"><?php echo $stats['thomas_sites']; ?></div>
     <div class="sc-stat__label">Sites w/ Discovers</div>
   </div>
+</div>
 </div>
 <?php endif; ?>
 
