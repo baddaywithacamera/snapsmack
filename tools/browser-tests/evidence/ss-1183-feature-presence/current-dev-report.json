@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-13T03:23:32.243Z",
+  "generated_at": "2026-11-13T03:33:06.460Z",
   "widths": [
     1920,
     1440,
@@ -46,7 +46,13 @@
     },
     "archive-controls": {
       "PASS": 5,
-      "FAIL": 25,
+      "FAIL": 20,
+      "NOT CHECKED": 0,
+      "NOT APPLICABLE": 5
+    },
+    "archive-continuation": {
+      "PASS": 23,
+      "FAIL": 7,
       "NOT CHECKED": 0,
       "NOT APPLICABLE": 0
     },
@@ -137,6 +143,12 @@
       "mutation": "removed .archive-controls,.archive-filter-row,[data-archive-layout]"
     },
     {
+      "feature": "archive-continuation",
+      "skin": "50-shades-of-noah-grey",
+      "status": "PASS",
+      "mutation": "removed [id$=\"-sentinel\"][data-next],[id$=\"-sentinel\"][data-next-url],.scroll-wall-sentinel[data-next],[data-has-more=\"1\"][data-next]"
+    },
+    {
       "feature": "telemetry-eligibility",
       "skin": "50-shades-of-noah-grey",
       "status": "PASS",
@@ -219,7 +231,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "PASS",
           "widths": {
             "1024": "PASS",
@@ -228,15 +240,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 3,
+              "visible_control_count": 3
+            },
+            "1440": {
+              "visible_control_count": 3
+            },
+            "1920": {
+              "visible_control_count": 3
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 3,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 3,
               "continuation_marker_count": 1
             }
           }
@@ -360,7 +390,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -369,15 +399,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 0
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             }
           }
@@ -484,26 +532,29 @@
           }
         },
         "archive-controls": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "SMACKTALK has one story-feed layout rather than photograph archive controls",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "archive-continuation": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
-          "status": "FAIL",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
           "widths": {
-            "1024": "FAIL",
-            "1440": "FAIL",
-            "1920": "FAIL"
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             }
           }
         },
@@ -614,7 +665,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -623,15 +674,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -747,7 +816,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "PASS",
           "widths": {
             "1024": "PASS",
@@ -756,15 +825,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 3,
+              "visible_control_count": 3
+            },
+            "1440": {
+              "visible_control_count": 3
+            },
+            "1920": {
+              "visible_control_count": 3
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 3,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 3,
               "continuation_marker_count": 1
             }
           }
@@ -880,7 +967,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -889,15 +976,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 0
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             }
           }
@@ -1017,7 +1122,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -1026,15 +1131,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 0
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             }
           }
@@ -1150,7 +1273,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -1159,15 +1282,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -1283,7 +1424,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -1292,15 +1433,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 0
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             }
           }
@@ -1420,7 +1579,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -1429,15 +1588,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -1553,7 +1730,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -1562,15 +1739,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 0
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             }
           }
@@ -1690,7 +1885,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "PASS",
           "widths": {
             "1024": "PASS",
@@ -1699,15 +1894,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 2,
+              "visible_control_count": 2
+            },
+            "1440": {
+              "visible_control_count": 2
+            },
+            "1920": {
+              "visible_control_count": 2
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 2,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 2,
               "continuation_marker_count": 1
             }
           }
@@ -1827,7 +2040,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -1836,15 +2049,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -1960,7 +2191,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -1969,15 +2200,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -2093,7 +2342,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -2102,15 +2351,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -2230,7 +2497,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "PASS",
           "widths": {
             "1024": "PASS",
@@ -2239,15 +2506,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 2,
+              "visible_control_count": 2
+            },
+            "1440": {
+              "visible_control_count": 2
+            },
+            "1920": {
+              "visible_control_count": 2
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 2,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 2,
               "continuation_marker_count": 1
             }
           }
@@ -2367,7 +2652,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -2376,15 +2661,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -2496,7 +2799,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -2505,15 +2808,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 0
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             }
           }
@@ -2633,7 +2954,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -2642,15 +2963,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -2770,7 +3109,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -2779,15 +3118,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -2907,7 +3264,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -2916,15 +3273,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "FAIL",
+          "widths": {
+            "1024": "FAIL",
+            "1440": "FAIL",
+            "1920": "FAIL"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 0
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 0
             }
           }
@@ -3044,7 +3419,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -3053,15 +3428,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -3181,7 +3574,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -3190,15 +3583,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -3301,26 +3712,29 @@
           }
         },
         "archive-controls": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "SMACKTALK has one story-feed layout rather than photograph archive controls",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "archive-continuation": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
-          "status": "FAIL",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
           "widths": {
-            "1024": "FAIL",
-            "1440": "FAIL",
-            "1920": "FAIL"
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             }
           }
         },
@@ -3431,7 +3845,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -3440,15 +3854,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -3555,26 +3987,29 @@
           }
         },
         "archive-controls": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "SMACKTALK has one story-feed layout rather than photograph archive controls",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "archive-continuation": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
-          "status": "FAIL",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
           "widths": {
-            "1024": "FAIL",
-            "1440": "FAIL",
-            "1920": "FAIL"
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             }
           }
         },
@@ -3685,7 +4120,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "FAIL",
           "widths": {
             "1024": "FAIL",
@@ -3694,15 +4129,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
+              "visible_control_count": 0
+            },
+            "1440": {
+              "visible_control_count": 0
+            },
+            "1920": {
+              "visible_control_count": 0
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
               "continuation_marker_count": 1
             }
           }
@@ -3809,26 +4262,29 @@
           }
         },
         "archive-controls": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "SMACKTALK has one story-feed layout rather than photograph archive controls",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "archive-continuation": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
-          "status": "FAIL",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
           "widths": {
-            "1024": "FAIL",
-            "1440": "FAIL",
-            "1920": "FAIL"
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             }
           }
         },
@@ -3939,7 +4395,7 @@
         },
         "archive-controls": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
+          "reason": "every photograph archive exposes its prepared controls",
           "status": "PASS",
           "widths": {
             "1024": "PASS",
@@ -3948,15 +4404,33 @@
           },
           "observations": {
             "1024": {
-              "visible_control_count": 2,
+              "visible_control_count": 2
+            },
+            "1440": {
+              "visible_control_count": 2
+            },
+            "1920": {
+              "visible_control_count": 2
+            }
+          }
+        },
+        "archive-continuation": {
+          "requirement": "REQUIRED",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
+          "widths": {
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
+          },
+          "observations": {
+            "1024": {
               "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 2,
               "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 2,
               "continuation_marker_count": 1
             }
           }
@@ -4063,26 +4537,29 @@
           }
         },
         "archive-controls": {
+          "requirement": "NOT APPLICABLE",
+          "reason": "SMACKTALK has one story-feed layout rather than photograph archive controls",
+          "status": "NOT APPLICABLE",
+          "widths": {}
+        },
+        "archive-continuation": {
           "requirement": "REQUIRED",
-          "reason": "every archive is endless scroll and exposes archive controls",
-          "status": "FAIL",
+          "reason": "every archive or story feed continues through endless scroll",
+          "status": "PASS",
           "widths": {
-            "1024": "FAIL",
-            "1440": "FAIL",
-            "1920": "FAIL"
+            "1024": "PASS",
+            "1440": "PASS",
+            "1920": "PASS"
           },
           "observations": {
             "1024": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             },
             "1440": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             },
             "1920": {
-              "visible_control_count": 0,
-              "continuation_marker_count": 0
+              "continuation_marker_count": 1
             }
           }
         },

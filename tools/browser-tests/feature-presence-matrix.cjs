@@ -23,7 +23,8 @@ const reportPath = process.env.SNAP_FEATURE_REPORT || path.join(out, 'feature-pr
 const widths = [1920, 1440, 1024];
 const features = [
     'consent', 'likes', 'downloads', 'lightbox', 'search', 'navigation',
-    'archive-controls', 'comments', 'help', 'telemetry-eligibility', 'keyboard', 'prev-next'
+    'archive-controls', 'archive-continuation', 'comments', 'help',
+    'telemetry-eligibility', 'keyboard', 'prev-next'
 ];
 
 function generateFixtures() {
@@ -78,7 +79,10 @@ function declared(page, feature) {
         : ['NOT APPLICABLE', 'carousel does not declare slider controls'];
     if (feature === 'prev-next') return page.kind === 'photo'
         ? ['REQUIRED', 'photoblog solo entry has previous and next targets'] : ['NOT APPLICABLE', 'long-form single entry has no image-order contract'];
-    if (feature === 'archive-controls') return ['REQUIRED', 'every archive is endless scroll and exposes archive controls'];
+    if (feature === 'archive-controls') return page.kind === 'single'
+        ? ['NOT APPLICABLE', 'SMACKTALK has one story-feed layout rather than photograph archive controls']
+        : ['REQUIRED', 'every photograph archive exposes its prepared controls'];
+    if (feature === 'archive-continuation') return ['REQUIRED', 'every archive or story feed continues through endless scroll'];
     if (feature === 'downloads' && carousel) return ['NOT APPLICABLE', 'carousel modal fragment contract does not expose downloads'];
     if (feature === 'downloads') return page.kind === 'photo'
         ? ['REQUIRED', 'runtime supplied a prepared download link for this photoblog entry']
@@ -222,7 +226,10 @@ async function measure(page, feature, fixture = null) {
         if (!await ensureCarouselModal(page)) return false;
     }
     if (feature === 'archive-controls') {
-        return (await measureArchive(page)).pass;
+        return (await measureArchive(page)).controls > 0;
+    }
+    if (feature === 'archive-continuation') {
+        return (await measureArchive(page)).continuation > 0;
     }
     if (feature === 'navigation') {
         return (await visibleCount(page, 'nav[aria-label*="navigation" i] a, nav.navigation a, a[href="/archive"], a[href="/about"], a[href="/blogroll"]')) > 0;
@@ -356,7 +363,8 @@ async function negativeControl(browser, fixture, feature, control, baseUrl) {
                 for (const feature of features) {
                     const cell = cells[feature];
                     if (cell.requirement !== 'REQUIRED') continue;
-                    if (feature === 'archive-controls' || feature === 'telemetry-eligibility') continue;
+                    if (feature === 'archive-controls' || feature === 'archive-continuation'
+                        || feature === 'telemetry-eligibility') continue;
                     if (fixture.site_mode === 'carousel' && ['likes', 'comments', 'lightbox', 'keyboard', 'prev-next'].includes(feature)) {
                         await page.goto(fixtureUrl(baseUrl, primaryFile), { waitUntil: 'load' });
                     }
@@ -375,13 +383,27 @@ async function negativeControl(browser, fixture, feature, control, baseUrl) {
 
                 const archivePage = await freshPage(browser, { width, height: 1000 });
                 archivePage.setDefaultTimeout(2500);
+                await archivePage.addInitScript(() => {
+                    window.IntersectionObserver = class {
+                        observe() {}
+                        unobserve() {}
+                        disconnect() {}
+                        takeRecords() { return []; }
+                    };
+                });
                 await archivePage.route('**/archive?*', route => route.abort());
                 await archivePage.goto(fixtureUrl(baseUrl, fixture.archive_file), { waitUntil: 'load' });
                 const archiveValue = await measureArchive(archivePage);
-                cells['archive-controls'].widths[String(width)] = archiveValue.pass ? 'PASS' : 'FAIL';
-                cells['archive-controls'].observations ??= {};
-                cells['archive-controls'].observations[String(width)] = {
-                    visible_control_count: archiveValue.controls,
+                if (cells['archive-controls'].requirement === 'REQUIRED') {
+                    cells['archive-controls'].widths[String(width)] = archiveValue.controls > 0 ? 'PASS' : 'FAIL';
+                    cells['archive-controls'].observations ??= {};
+                    cells['archive-controls'].observations[String(width)] = {
+                        visible_control_count: archiveValue.controls
+                    };
+                }
+                cells['archive-continuation'].widths[String(width)] = archiveValue.continuation > 0 ? 'PASS' : 'FAIL';
+                cells['archive-continuation'].observations ??= {};
+                cells['archive-continuation'].observations[String(width)] = {
                     continuation_marker_count: archiveValue.continuation
                 };
                 await archivePage.close();
@@ -423,6 +445,7 @@ async function negativeControl(browser, fixture, feature, control, baseUrl) {
             },
             consent: '#snap-consent-banner',
             'archive-controls': '.archive-controls,.archive-filter-row,[data-archive-layout]',
+            'archive-continuation': '[id$="-sentinel"][data-next],[id$="-sentinel"][data-next-url],.scroll-wall-sentinel[data-next],[data-has-more="1"][data-next]',
             'telemetry-eligibility': '#ss-scrolltime',
             keyboard: {
                 label: 'blocked ArrowLeft and ArrowRight before the skin keyboard handler',
@@ -450,7 +473,7 @@ async function negativeControl(browser, fixture, feature, control, baseUrl) {
             assert.ok(passing, `no passing ${feature} fixture available for negative control`);
             const fixture = fixtureIndex.find(candidate => candidate.skin === passing.skin);
             let controlFixture = fixture;
-            if (feature === 'archive-controls') {
+            if (feature === 'archive-controls' || feature === 'archive-continuation') {
                 controlFixture = { ...fixture, file: fixture.archive_file };
             } else if (feature === 'telemetry-eligibility') {
                 controlFixture = { ...fixture, file: telemetryFixtureFile(fixture) };

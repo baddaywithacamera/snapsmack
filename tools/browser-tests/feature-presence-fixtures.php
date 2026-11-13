@@ -207,15 +207,35 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
         $manifest
     );
     $GLOBALS['snapsmack_hit'] = ['id' => 4202, 'page_type' => 'archive'];
-    $archiveResponse = [
-        'kind' => 'archive', 'page_title' => 'Archive', 'items' => $skinArchiveItems,
-        'item' => [], 'next_page' => 2, 'next_url' => '/archive?p=2', 'has_more' => true,
-        'total_count' => 60, 'total_pages' => 5, 'navigation' => $nav,
-        'archive_layouts' => snapsmack_archive_layout_links(
-            $archiveControls['layouts'], 'https://example.test/', ['archive' => 'archive'], $siteMode),
-        'archive_calendar' => $archiveControls['calendar'],
-        'archive_layout_active' => $archiveControls['active'],
-    ];
+    if ($kind === 'single') {
+        $storyPosts = array_map(
+            static fn(array $archiveItem): array => [
+                'id' => $archiveItem['id'],
+                'slug' => $archiveItem['img_slug'],
+                'url' => $archiveItem['url'],
+                'title' => $archiveItem['img_title'],
+                'created_at' => '2026-11-10',
+                'image_url' => $archiveItem['img_thumb_aspect'],
+                'excerpt' => 'A rendered story-feed fixture.',
+            ],
+            $archiveItems
+        );
+        $archiveResponse = [
+            'kind' => 'feed', 'page_title' => 'Stories', 'posts' => $storyPosts,
+            'item' => [], 'next_page' => 2, 'next_url' => '/?page=2', 'has_more' => true,
+            'total_count' => 60, 'total_pages' => 5, 'navigation' => $nav,
+        ];
+    } else {
+        $archiveResponse = [
+            'kind' => 'archive', 'page_title' => 'Archive', 'items' => $skinArchiveItems,
+            'item' => [], 'next_page' => 2, 'next_url' => '/archive?p=2', 'has_more' => true,
+            'total_count' => 60, 'total_pages' => 5, 'navigation' => $nav,
+            'archive_layouts' => snapsmack_archive_layout_links(
+                $archiveControls['layouts'], 'https://example.test/', ['archive' => 'archive'], $siteMode),
+            'archive_calendar' => $archiveControls['calendar'],
+            'archive_layout_active' => $archiveControls['active'],
+        ];
+    }
     $archiveAssets = snapsmack_merge_registered_assets($assets, [
         'scripts' => ['smack-archive-toggle', 'smack-archive-cascade'],
         'styles' => [],
