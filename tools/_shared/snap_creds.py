@@ -44,7 +44,9 @@ Usage:
 """
 
 import base64
+import binascii
 import json
+import logging
 import os
 import re
 import secrets
@@ -59,6 +61,36 @@ _SHARED_APP = "SnapSmackShared"     # one vault scope shared by ALL tools (see s
 _STORE_NAME = "shared_creds.json"
 _B64_PREFIX = "b64:"
 _initialized_for = None
+_LOG = logging.getLogger(__name__)
+
+
+class LegacyCredentialDecodeError(ValueError):
+    """A stored pre-vault credential is not canonical UTF-8 base64."""
+
+
+def decode_legacy_base64(blob: str) -> str:
+    """Decode one genuine pre-vault value, rejecting lookalikes completely.
+
+    ``base64.b64decode`` is permissive by default: it discards characters that
+    are not in the alphabet and accepts encodings with non-canonical pad bits.
+    A credential migration must not turn either form into a different secret.
+    """
+    if not isinstance(blob, str) or not blob:
+        raise LegacyCredentialDecodeError("legacy credential is empty or not text")
+    try:
+        encoded = blob.encode("ascii")
+    except UnicodeEncodeError as exc:
+        raise LegacyCredentialDecodeError("legacy credential is not ASCII base64") from exc
+    try:
+        decoded = base64.b64decode(encoded, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise LegacyCredentialDecodeError("legacy credential is malformed base64") from exc
+    if base64.b64encode(decoded) != encoded:
+        raise LegacyCredentialDecodeError("legacy credential is not canonical base64")
+    try:
+        return decoded.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise LegacyCredentialDecodeError("legacy credential is not UTF-8 text") from exc
 
 
 def _store_path() -> str:
@@ -116,10 +148,7 @@ def _open(blob) -> str:
         except Exception:
             return ""                                         # locked / wrong key
     if isinstance(blob, str) and blob.startswith(_B64_PREFIX):
-        try:
-            return base64.b64decode(blob[len(_B64_PREFIX):]).decode("utf-8")
-        except Exception:
-            return ""
+        return decode_legacy_base64(blob[len(_B64_PREFIX):])
     return blob if isinstance(blob, str) else ""              # tolerate legacy plaintext
 
 
@@ -162,7 +191,16 @@ def _migrate_legacy_values() -> None:
         if snap_vault.is_encrypted(blob):
             migrated[key] = blob
             continue
-        value = _open(blob)
+        try:
+            value = _open(blob)
+        except LegacyCredentialDecodeError:
+            migrated[key] = blob
+            _LOG.warning(
+                "Shared credential %r contains an unreadable legacy value; "
+                "leaving it unchanged",
+                key,
+            )
+            continue
         migrated[key] = snap_vault.encrypt(value)
         changed = True
     if changed:
@@ -220,7 +258,15 @@ def get(key: str, default: str = "") -> str:
     data = _read()
     if key not in data:
         return default
-    val = _open(data[key])
+    try:
+        val = _open(data[key])
+    except LegacyCredentialDecodeError:
+        _LOG.warning(
+            "Shared credential %r contains an unreadable legacy value; "
+            "returning its default",
+            key,
+        )
+        return default
     return val if val else default
 
 
@@ -265,10 +311,7 @@ def open_local(blob) -> str:
             return snap_vault.decrypt(blob)
         except Exception:
             return ""
-    try:
-        return base64.b64decode(str(blob).encode()).decode("utf-8")
-    except Exception:
-        return ""
+    return decode_legacy_base64(blob)
 
 
 def prepare_explicit_replacement() -> None:

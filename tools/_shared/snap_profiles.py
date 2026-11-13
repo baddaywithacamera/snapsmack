@@ -63,11 +63,9 @@ _SECRET_EXTRA_KEYS = {
 
 
 def _legacy_deobfuscate(blob: str) -> str:
-    import base64
-    try:
-        return base64.b64decode((blob or "").encode("ascii")).decode("utf-8")
-    except Exception:
+    if not blob:
         return ""
+    return snap_creds.decode_legacy_base64(blob)
 
 
 def _path_for_site(site_url: str) -> str:
@@ -215,6 +213,8 @@ def _read(path):
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return _migrate_secrets(path, data) if isinstance(data, dict) else None
+    except snap_creds.LegacyCredentialDecodeError:
+        raise
     except Exception:
         return None
 

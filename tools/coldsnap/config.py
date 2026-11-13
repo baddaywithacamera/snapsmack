@@ -120,10 +120,16 @@ def _open_secret_checked(blob: str) -> tuple:
     if sc is not None:
         try:
             return (sc.open_local(blob), True)
+        except sc.LegacyCredentialDecodeError:
+            return ('', False)
         except Exception:
             pass
     try:
-        return (base64.b64decode(str(blob).encode()).decode(), True)
+        encoded = str(blob).encode('ascii')
+        decoded = base64.b64decode(encoded, validate=True)
+        if base64.b64encode(decoded) != encoded:
+            raise ValueError('non-canonical legacy base64')
+        return (decoded.decode('utf-8'), True)
     except Exception:
         return ('', False)
 
@@ -133,10 +139,18 @@ def _open_secret(blob: str) -> str:
     if sc is not None:
         try:
             return sc.open_local(blob)
+        except sc.LegacyCredentialDecodeError:
+            return ''
         except Exception:
             pass
     try:                                     # legacy base64 (pre-vault installs)
-        return base64.b64decode(str(blob).encode()).decode() if blob else ''
+        if not blob:
+            return ''
+        encoded = str(blob).encode('ascii')
+        decoded = base64.b64decode(encoded, validate=True)
+        if base64.b64encode(decoded) != encoded:
+            return ''
+        return decoded.decode('utf-8')
     except Exception:
         return ''
 
