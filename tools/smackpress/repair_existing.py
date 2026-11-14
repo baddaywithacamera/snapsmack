@@ -14,7 +14,7 @@ import argparse
 from pathlib import Path
 
 import snap_connections
-from smackpress import config, wp_client, wp_source
+from smackpress import config, db, links, wp_client, wp_source
 from sumna_post import SmacktalkPoster
 
 
@@ -66,14 +66,36 @@ def main() -> int:
         return 0
 
     profile = config.get_migration_profile(config.get("wp_url"))
+
+    # THE POST-MIGRATION FIX-UP PASS. The first import of a post cannot rewrite
+    # a link to a post that had not been migrated yet -- at that moment there
+    # was no destination to point at. By the time a repair runs, the rest of
+    # the archive is there, so the links that were unplaceable the first time
+    # round can be placed now. The map is built once, from the local posts
+    # table, and only from rows that actually have a destination.
+    link_map = links.build_maps(db.get_all_posts())
+    print(f"Link map: {len(link_map[0])} slugs, {len(link_map[1])} WordPress ids "
+          f"with a destination.")
     failures = 0
+    link_notes = 0
     for kind, source, destination in matches:
         slug = source["slug"]
         print(f"REPAIR   {kind:4} WP {source['id']} -> Snap {destination['id']}  {slug}")
         try:
             full = wp_client.get_post(int(source["id"]))
             workdir = args.state_dir / "repair" / str(source["id"])
-            draft = wp_source.draft_from_wp(full, str(workdir), profile=profile)
+            reports = []
+            draft = wp_source.draft_from_wp(full, str(workdir), profile=profile,
+                                            link_map=link_map,
+                                            on_links=reports.append)
+            for report in reports:
+                if report.rewritten:
+                    print(f"         links: {report.summary()}")
+                added = db.add_note_lines(int(source["id"]), report.note_lines())
+                link_notes += added
+                if added:
+                    print(f"         {added} link note(s) recorded against WP "
+                          f"{source['id']} — these were NOT silently dropped")
             draft.remote_post_id = int(destination["id"])
             draft.destination_url = connection["site_url"]
             draft.img_status = "published" if kind == "post" else draft.img_status
@@ -120,6 +142,13 @@ def main() -> int:
             print(f"FAILED   {slug}: {exc}")
 
     print(f"Repair complete: {len(matches) - failures} succeeded, {failures} failed.")
+    if link_notes:
+        print(f"{link_notes} internal link(s) could not be placed and are recorded "
+              f"in the posts' notes. They were NOT deleted without a word, which is "
+              f"what used to happen.")
+    else:
+        print("Every internal link in the repaired posts was either rewritten or "
+              "already fine.")
     return 1 if failures else 0
 
 

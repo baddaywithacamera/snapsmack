@@ -46,6 +46,8 @@ import uuid
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
+from . import links
+
 # COLD SNAP's data model and shared safety module, by path — same repo, same build.
 _HERE = Path(__file__).resolve()
 for _p in (_HERE.parents[2] / "coldsnap", _HERE.parents[2] / "_shared"):
@@ -138,20 +140,31 @@ _IMAGE_LINK = re.compile(
 )
 
 
-def _discard_source_links(body: str, source_url: str) -> str:
-    """Keep link text, but do not carry links back to the retired WP site."""
-    source_host = (urllib.parse.urlparse(source_url or "").hostname or "").lower()
-    if not source_host:
-        return body
+def _discard_source_links(body: str, source_url: str,
+                          link_map: Optional[Tuple[dict, dict]] = None):
+    """Rewrite the links that CAN be rewritten; keep the text of the rest.
 
-    anchor = re.compile(
-        r'<a\b([^>]*)\bhref\s*=\s*(["\'])(.*?)\2([^>]*)>(.*?)</a>', re.I | re.S)
+    SMACKPRESS SILENTLY STRIPS INTERNAL LINKS. This used to keep a link's text
+    and throw its URL away whenever the href pointed at the retired WordPress
+    host. That is right for a page that no longer exists anywhere. It was wrong
+    for the common case -- a link from one of the owner's posts to ANOTHER of
+    the owner's posts, which has also been migrated and does exist, at an
+    address this tool already knows -- and nothing was recorded, so there was
+    no list of what had been lost.
 
-    def replace(match):
-        host = (urllib.parse.urlparse(html.unescape(match.group(3))).hostname or "").lower()
-        return match.group(5) if host == source_host else match.group(0)
+    Relative links were worse off: `/2015/03/a-post/` has no hostname, so the
+    host comparison never matched and it was left exactly as written, to
+    resolve against the NEW site where that path does not exist. Silent 404.
 
-    return anchor.sub(replace, body)
+    ``link_map`` is (slug_map, id_map) from links.build_maps() over the local
+    posts table. Without it the behaviour is what it always was, so every
+    existing caller is unaffected -- but the report comes back either way, and
+    the caller can put the unmapped ones in the post's notes.
+
+    Returns (body, LinkReport).
+    """
+    slug_map, id_map = link_map if link_map else ({}, {})
+    return links.rewrite_internal_links(body, source_url, slug_map, id_map)
 
 
 def _publication_instant(full_post: dict) -> str:
@@ -388,12 +401,18 @@ def extract_wordpress_ephemera(body: str, ordered: List[dict],
 def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
                   status: str = "draft", on_progress: Callable[[str], None] = None,
                   profile: Optional[dict] = None,
-                  gallery_shuffle: bool = False) -> Draft:
+                  gallery_shuffle: bool = False,
+                  link_map: Optional[Tuple[dict, dict]] = None,
+                  on_links: Callable[[object], None] = None) -> Draft:
     """Turn the companion's full post JSON into a COLD SNAP Draft with every
     picture downloaded into `workdir`. Raises ImportError_ naming the picture
     if one cannot be brought across — a post with a missing picture is not
     migrated half-way."""
     say = on_progress or (lambda m: None)
+    # The link report goes to the caller, not just to the log. The caller is
+    # the only one that knows the WordPress id this body belongs to, and so is
+    # the only one that can write the unmapped links into that post's notes.
+    tell_links = on_links or (lambda report: None)
     content = full_post.get("content_expanded") or full_post.get("content_raw") or ""
     if re.search(r"(?<!\[)\[foogallery(?=\s|/|\])|<!--\s*wp:fooplugins/foogallery\b", content, re.I):
         raise ImportError_(
@@ -414,10 +433,26 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
         # final paragraph, signature, or links as post metadata: the page must
         # arrive as written.  Images still become local bucket tokens so the
         # old WordPress host can be retired safely.
+        #
+        # ITS LINKS ARE STILL NOT TOUCHED, and that is a decision, not an
+        # oversight: a Page arrives as written. The consequence is that a Page
+        # linking to the retired host keeps a link that dies with that host.
+        # The links are REPORTED now so the owner is told, which is the part
+        # that was missing; whether a Page's links should also be rewritten is
+        # a product decision and is not made here.
         colophon, signature_slots = "", set()
+        _, page_links = _discard_source_links(
+            body, full_post.get("link") or "", link_map)
+        for line in page_links.note_lines():
+            say("page link left as written: " + line)
+        tell_links(page_links)
     else:
-        body = _discard_source_links(body, full_post.get("link") or "")
+        body, link_report = _discard_source_links(
+            body, full_post.get("link") or "", link_map)
         body, colophon, signature_slots = extract_wordpress_ephemera(body, ordered, profile)
+        for line in link_report.note_lines():
+            say(line)
+        tell_links(link_report)
 
     draft_images: List[DraftImage] = []
     for n, im in enumerate(ordered, 1):
