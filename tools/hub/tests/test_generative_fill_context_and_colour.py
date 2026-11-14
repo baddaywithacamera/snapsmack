@@ -96,6 +96,11 @@ def test_the_constant_is_the_knob_and_turning_it_moves_the_tile():
 
 
 def test_a_negative_or_silly_floor_cannot_shrink_the_tile():
+    # NOTE, from the mutation run: removing the max(0.0, ...) guard inside
+    # square_tile_box does not fail this test, and should not. The three-way
+    # max() already floors the margin at minimum_margin (96), so a negative
+    # ratio changes nothing. The guard is kept as a statement of intent, not
+    # as load-bearing code, and that mutant is equivalent rather than missed.
     size, bounds = (6000, 4000), _centre((6000, 4000), 200)
     baseline = _side(g.square_tile_box(size, bounds, floor_ratio=0.0))
     assert _side(g.square_tile_box(size, bounds, floor_ratio=-5.0)) == baseline
