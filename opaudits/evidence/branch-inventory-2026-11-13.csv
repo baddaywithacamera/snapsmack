@@ -1,0 +1,210 @@
+branch,tip,ahead,behind,last_commit,owner,state,note,subject
+Github,3d8d31d5,1,416,2026-11-02,unassigned,open,1 of 1 patch(es) not on dev,
+assemble-986d,1438b4cd,0,255,2026-11-07,unassigned,merged,ancestor of dev,
+assemble-987d,b7b159ef,0,250,2026-11-07,unassigned,merged,ancestor of dev,
+backup/claude/declared-controls-have-a-consumer,a39a4b5d,2849,3309,2026-10-31,Claude,divergent,2849 commits off a different line - never bulk merge,"Name it for what it is: a candidate-reference inventory, with its two blind spots asserted"
+backup/claude/portfolio-flag-ss1185,1994ee22,2923,3309,2026-11-04,Claude,divergent,2923 commits off a different line - never bulk merge,The lightbox was being torn down by the page it sits on (SS-1202)
+backup/claude/ss1185-clean,0e0f78ba,2983,3309,2026-11-03,Claude,divergent,2983 commits off a different line - never bulk merge,Drop exclude_from_sitemap: SS-1185 never asked for it
+claude/028-044-buzzers-correction,7007e5a9,1,156,2026-11-10,Claude,open,1 of 1 patch(es) not on dev,buzzers.php: correct 044 (documented residual) and set 028 to Open (ID+title only) for Codex to deploy
+claude/028-land-match-guard,6867b3d6,0,144,2026-11-10,Claude,merged,ancestor of dev,
+claude/028-root-pubkey-reconcile,5f061302,2,157,2026-11-10,Claude,merged-rebased,all 2 patch(es) already on dev under another sha,
+claude/974-stable-candidate,5dd5567c,1,430,2026-11-01,Claude,open,1 of 1 patch(es) not on dev,Promote the tested 974D source to stable 0.7.974
+claude/986d-feed-paging,d6f8246a,0,270,2026-11-07,Claude,merged,ancestor of dev,
+claude/987d-frame-overlay,f92bc8ba,2,255,2026-11-07,Claude,open,1 of 2 patch(es) not on dev,987D: move NH masthead size control beside the font picker (NH 1.3.32)
+claude/987d-visibility-hotfix,053b6e06,0,257,2026-11-07,Claude,merged,ancestor of dev,
+claude/988d-assembly,a65d2b31,0,235,2026-11-08,Claude,merged,ancestor of dev,
+claude/988d-gutter-owner-default,2da061b2,0,247,2026-11-08,Claude,merged,ancestor of dev,
+claude/988d-thomas-caption,bda7d853,1,250,2026-11-08,Claude,open,1 of 1 patch(es) not on dev,988D: label the Smack Central Thomas counters as historical (option A)
+claude/988d-thomas-ping,80e55ec5,0,245,2026-11-08,Claude,merged,ancestor of dev,
+claude/989d-motion-warning,4023e063,2,235,2026-11-08,Claude,open,2 of 2 patch(es) not on dev,"Motion warning: honour the storage-consent decision (989D, PM ruling 14:05 #6)"
+claude/989d-skin-save-validation,4db80425,1,235,2026-11-08,Claude,merged-rebased,all 1 patch(es) already on dev under another sha,
+claude/989d-sql-hotpath-indexes,ff5c1922,0,232,2026-11-08,Claude,merged,ancestor of dev,
+claude/990d-archive-cascade,8c645f44,0,193,2026-11-09,Claude,merged,ancestor of dev,
+claude/991-assembly,5a32cbcf,0,182,2026-11-09,Claude,merged,ancestor of dev,
+claude/992d-skin-provenance-prune,690737b9,2,182,2026-11-09,Claude,open,2 of 2 patch(es) not on dev,Add read-only skin integrity-record survey to SMACKBACK (SS-1264 acceptance 4)
+claude/993d-allowlist-hash,f76bb380,0,123,2026-11-11,Claude,merged,ancestor of dev,
+claude/993d-strength-adoption,8efdabcc,0,122,2026-11-11,Claude,merged,ancestor of dev,
+claude/admin-taxonomy-labels,6ad6dd47,0,465,2026-10-31,Claude,merged,ancestor of dev,
+claude/archive-settings-cover-nh,3b5379e5,0,87,2026-11-11,Claude,merged,ancestor of dev,
+claude/biggie-site-mosaic-parity,2aa2de87,0,48,2026-11-11,Claude,merged,ancestor of dev,
+claude/changelog-974d,99a829bc,1,440,2026-10-31,Claude,open,1 of 1 patch(es) not on dev,Draft the 974D changelog entries that landed after the review section was written
+claude/changelog-974d-fresh-install,d0ceec5f,0,431,2026-11-01,Claude,merged,ancestor of dev,
+claude/chaplin-footer-shrink,888773d7,1,126,2026-11-10,Claude,merged-rebased,all 1 patch(es) already on dev under another sha,
+claude/chaplin-honour-global-archive-controls,4a27c6a3,1,124,2026-11-11,Claude,merged-rebased,all 1 patch(es) already on dev under another sha,
+claude/coldsnap-0.7.31-thumbnail-fix,f4384e17,0,170,2026-11-09,Claude,merged,ancestor of dev,
+claude/coldsnap-m0-spike,dbee02ce,1,10,2026-11-13,Claude,open,1 of 1 patch(es) not on dev,"JOB 1: the M0 spike — one window, one pane, one editable block"
+claude/cron-verify-respects-maintenance-lock,c976dfdd,0,142,2026-11-10,Claude,merged,ancestor of dev,
+claude/dead-controls,0cca527e,0,321,2026-11-07,Claude,merged,ancestor of dev,
+claude/declared-controls-have-a-consumer,5c873192,6,466,2026-10-31,Claude,open,6 of 6 patch(es) not on dev,"Name it for what it is: a candidate-reference inventory, with its two blind spots asserted"
+claude/docs-974d-bundle,dd31c48b,0,433,2026-10-31,Claude,merged,ancestor of dev,
+claude/engine-reach-tests-ask-the-runtime,2986931a,1,497,2026-10-31,Claude,open,1 of 1 patch(es) not on dev,Two engine-reach tests ask the runtime instead of parsing it (SS-1102)
+claude/forum-gap-check,112b34d0,2,466,2026-10-31,Claude,open,2 of 2 patch(es) not on dev,forum-gap counted a queued reply as delivered and let a reply reset the board state
+claude/fresh-install-blockers,44e9ac0f,0,432,2026-11-01,Claude,merged,ancestor of dev,
+claude/glide-footer-padding,f17b9d7b,0,85,2026-11-11,Claude,merged,ancestor of dev,
+claude/glide-landing-fixture,69f61734,2,497,2026-10-30,Claude,open,2 of 2 patch(es) not on dev,"Every plate on the wall fixture carries its number, so a screenshot says which ones the wrap skipped"
+claude/gyss-coldsnap-launch-attributeerror,270bb8f4,0,97,2026-11-11,Claude,merged,ancestor of dev,
+claude/history-master-net,6f5c1a8c,1008,1739,2026-10-31,Claude,divergent,1008 commits off a different line - never bulk merge,Park master c335c0a2 on history as a preservation net
+claude/hockney-pyside6-port,9e53336c,1,167,2026-11-03,Claude,open,1 of 1 patch(es) not on dev,"Port HOCKNEY JOINER from PyQt6 to PySide6, so it obeys its own licence"
+claude/impact-printer-about-two-column,c1af4619,0,64,2026-11-11,Claude,merged,ancestor of dev,
+claude/maintenance-lock-guard-parity,fe9ea7dd,0,97,2026-11-11,Claude,merged,ancestor of dev,
+claude/master-ancestry,42670c14,0,436,2026-10-31,Claude,merged,ancestor of dev,
+claude/migration-ghosts-installer-stamp,1ee50720,0,143,2026-11-10,Claude,merged,ancestor of dev,
+claude/mod-php-identifier-guards,528744a9,0,430,2026-11-01,Claude,merged,ancestor of dev,
+claude/nh-about-two-column,6128d462,0,67,2026-11-11,Claude,merged,ancestor of dev,
+claude/nh-fade-cached-and-reduced-motion,ee425b3b,0,123,2026-11-11,Claude,merged,ancestor of dev,
+claude/overlay-arrow-keys,e2f1946a,1,466,2026-10-31,Claude,open,1 of 1 patch(es) not on dev,"The arrow keys move between photographs in the overlay (SS-1095, option C)"
+claude/portfolio-flag-ss1185,2e4e48eb,14,416,2026-11-03,Claude,open,7 of 14 patch(es) not on dev,"Rule 10: core is named by function, never by skin"
+claude/promote-stable-gate-on-dev-tag,01789f5e,0,427,2026-11-01,Claude,merged,ancestor of dev,
+claude/prompt-card-bottom-border,424c22ab,0,83,2026-11-11,Claude,merged,ancestor of dev,
+claude/prompt-card-inventory-correction,77ed2724,0,68,2026-11-11,Claude,merged,ancestor of dev,
+claude/release-gate-asks-the-real-remote,49358ca1,0,496,2026-10-31,Claude,merged,ancestor of dev,
+claude/remove-health-detail-from-audits,63dbfd45,2,422,2026-11-01,Claude,open,2 of 2 patch(es) not on dev,OPAUDIT 028 records where the sentence actually came from
+claude/repo-hygiene-safe-items,77a99571,1,464,2026-10-31,Claude,open,1 of 1 patch(es) not on dev,"The README stops advertising version 0.7.407, and three files stop being tracked"
+claude/screenshot-core,87cae00d,0,329,2026-11-07,Claude,merged,ancestor of dev,
+claude/secaudit-017-reinit-stepup,b06e970f,0,122,2026-11-11,Claude,merged,ancestor of dev,
+claude/secaudit-064-breach-write-gate,e2b94dc7,3,61,2026-11-11,Claude,open,3 of 3 patch(es) not on dev,"SECAUDIT 064: Muse's three review nits, in one commit"
+claude/secaudit-closure-sprint,a907ca0b,0,158,2026-11-10,Claude,merged,ancestor of dev,
+claude/slapper-faces,bdf58880,1,1621,2026-09-12,Claude,merged-rebased,all 1 patch(es) already on dev under another sha,
+claude/snapsmack-ca-rework,c696399d,5,1630,2026-09-12,Claude,merged-rebased,all 5 patch(es) already on dev under another sha,
+claude/soft-404-guard,05910be7,0,329,2026-11-07,Claude,merged,ancestor of dev,
+claude/ss-1057-toggle-flex,2d1dfe4e,3,497,2026-10-31,Claude,open,3 of 3 patch(es) not on dev,"The archive controls go back on the column edge, where the owner accepted them (SS-1057)"
+claude/ss-1129-smacktalk-post-dwell,9c39bbc7,1,457,2026-10-31,Claude,open,1 of 1 patch(es) not on dev,"A SMACKTALK post records scroll time, and the reported figure does not move"
+claude/ss-1133-body-file,f2e7ee33,1,450,2026-10-31,Claude,merged-rebased,all 1 patch(es) already on dev under another sha,
+claude/ss-1133-body-file-rebased,1935ee55,0,14,2026-11-13,Claude,merged,ancestor of dev,
+claude/ss-1171-sybu-drive-check,512afa39,0,421,2026-11-01,Claude,merged,ancestor of dev,
+claude/ss-1185-importer-shuffle,e50ef142,0,85,2026-11-11,Claude,merged,ancestor of dev,
+claude/ss-1185-integration,0b3cc3ad,0,94,2026-11-11,Claude,merged,ancestor of dev,
+claude/ss-1185-portfolio-cms,deef6241,2915,3309,2026-11-04,Claude,divergent,2915 commits off a different line - never bulk merge,Refile the portfolio work as 977D: 976D ships without it
+claude/ss-1185-schema-comment-fix,40952ebb,0,93,2026-11-11,Claude,merged,ancestor of dev,
+claude/ss-1197-no-smackthemup,049e8e93,0,97,2026-11-11,Claude,merged,ancestor of dev,
+claude/ss-1198-package-write-diagnostic,6452f498,0,97,2026-11-11,Claude,merged,ancestor of dev,
+claude/ss-1293-download-url-redaction,6d3e4c2b,0,95,2026-11-11,Claude,merged,ancestor of dev,
+claude/ss-frame-rule-survives,127951cd,0,285,2026-11-07,Claude,merged,ancestor of dev,
+claude/ss1054-spoke-removal-revocation,0c8ca31e,0,143,2026-11-10,Claude,merged,ancestor of dev,
+claude/ss1055-multisite-write-roles,976d6787,0,151,2026-11-10,Claude,merged,ancestor of dev,
+claude/ss1070-image-edit-audit,397cf4e0,1,144,2026-11-10,Claude,open,1 of 1 patch(es) not on dev,SS-1070: audit trail for scoped-key image metadata edits
+claude/ss1099-reply-sender,f6117c18,0,230,2026-11-08,Claude,merged,ancestor of dev,
+claude/ss1137-enrichment-reuse,91f957f0,3,40,2026-11-12,Claude,merged-rebased,all 3 patch(es) already on dev under another sha,
+claude/ss1137-enrichment-reuse-rebased,d56d9900,0,34,2026-11-12,Claude,merged,ancestor of dev,
+claude/ss1145-version-reading-age,c7165241,1,8,2026-11-13,Claude,merged-rebased,all 1 patch(es) already on dev under another sha,
+claude/ss1158-help-display-errors,a2c99ffc,0,143,2026-11-10,Claude,merged,ancestor of dev,
+claude/ss1164-thomas-historical,4e387170,1,13,2026-11-13,Claude,open,1 of 1 patch(es) not on dev,"SS-1164: say that the Thomas totals are history, because they are"
+claude/ss1170-probe-guard-setup,773a8963,0,150,2026-11-10,Claude,merged,ancestor of dev,
+claude/ss1173-smackback-alert-all-admins,87f7fb85,0,143,2026-11-10,Claude,merged,ancestor of dev,
+claude/ss1185-flags,8e94e572,0,324,2026-11-03,Claude,merged,ancestor of dev,
+claude/ss1185-resolver,d6007aee,0,316,2026-11-07,Claude,merged,ancestor of dev,
+claude/ss1214-core-font-fallback,d1e56920,0,246,2026-11-08,Claude,merged,ancestor of dev,
+claude/ss1216-caption,b335e30b,0,290,2026-11-07,Claude,merged,ancestor of dev,
+claude/ss1217-glide-focus,d1685bff,0,289,2026-11-07,Claude,merged,ancestor of dev,
+claude/ss1270-gpl-text-claude-lane,94eac75a,0,169,2026-11-09,Claude,merged,ancestor of dev,
+claude/ss1282-smackback-forbidden-files,22e3364f,0,156,2026-11-10,Claude,merged,ancestor of dev,
+claude/ss1284-updater-temp-dir,6c45b931,0,139,2026-11-10,Claude,merged,ancestor of dev,
+claude/ss1322-unblock-tray-test,bab10ca3,1,10,2026-11-13,Claude,merged-rebased,all 1 patch(es) already on dev under another sha,
+claude/ss1331-setup-php7-arrow-fn,cf786bfb,1,4,2026-11-13,Claude,open,1 of 1 patch(es) not on dev,setup.php parses on PHP 7 again: an arrow function had to be a closure
+claude/stats-browsing-time,e4109392,1,245,2026-11-08,Claude,merged-rebased,all 1 patch(es) already on dev under another sha,
+claude/sybu-copyright-cleanup,2fc391cf,4,171,2026-11-09,Claude,open,4 of 4 patch(es) not on dev,SS-1266 cleanup: InnoDB/transactional-engine guard before --apply (Codex ask)
+claude/tag-infinite-nexturl,6226ed3b,0,285,2026-11-07,Claude,merged,ancestor of dev,
+claude/thumb-control-hide,cb3c2606,0,285,2026-11-07,Claude,merged,ancestor of dev,
+claude/tw-anonymiser-falsepos,40cddabe,0,155,2026-11-10,Claude,merged,ancestor of dev,
+claude/version-0.7.974D,bea37943,0,464,2026-10-31,Claude,merged,ancestor of dev,
+claude/whodat-claude-card,b5bc5d15,2,444,2026-10-31,Claude,open,2 of 2 patch(es) not on dev,"Card wording to Sean's taste: strengths, still every line true"
+claude/zero-dimensions-are-unknown,16ab3328,1,466,2026-10-31,Claude,open,1 of 1 patch(es) not on dev,A photograph with no stored dimensions gets the shape the code asks for (SS-1117)
+codex/974-scrolltime-note,e385b2d8,0,450,2026-10-31,Codex,merged,ancestor of dev,
+codex/988-integration,b1c5243a,0,237,2026-11-08,Codex,merged,ancestor of dev,
+codex/990-assembly,9c8a3c93,0,194,2026-11-08,Codex,merged,ancestor of dev,
+codex/994d-changelog-audit,74d905f6,0,58,2026-11-11,Codex,merged,ancestor of dev,
+codex/agents-coldsnap-lane,7b73c334,0,39,2026-11-12,Codex,merged,ancestor of dev,
+codex/alfred-recovery,44393081,1,430,2026-11-01,Codex,open,1 of 1 patch(es) not on dev,Wire ALFRED archive interactions and presentation controls (SS-1166)
+codex/archive-control-placement,85cb7d70,4,247,2026-11-08,Codex,merged-rebased,all 4 patch(es) already on dev under another sha,
+codex/archive-frame-none,b12d3b85,2,249,2026-11-08,Codex,merged-rebased,all 2 patch(es) already on dev under another sha,
+codex/archive-paging-fleet,a617e12e,0,275,2026-11-07,Codex,merged,ancestor of dev,
+codex/audit-pdf-filing,baf36cdf,1,250,2026-11-08,Codex,open,1 of 1 patch(es) not on dev,File 27 published security audit PDFs in the audit record
+codex/audit-pdf-filing-current,4f6c20ed,3142,3309,2026-11-08,Codex,divergent,3142 commits off a different line - never bulk merge,File 27 published security audit PDFs in the audit record
+codex/coldsnap-shell-stage1-blocks,2de1386b,0,21,2026-11-12,Codex,merged,ancestor of dev,
+codex/coldsnap-shell-stage2-photo-tools,4fdb8290,0,19,2026-11-12,Codex,merged,ancestor of dev,
+codex/coldsnap-shell-stage3-slapper-handoff,059ee8d0,0,17,2026-11-12,Codex,merged,ancestor of dev,
+codex/coldsnap-ss1301-splitter,94ee6391,0,34,2026-11-12,Codex,merged,ancestor of dev,
+codex/deployment-verification-runbooks,bc7ad0e8,0,100,2026-11-11,Codex,merged,ancestor of dev,
+codex/deprecate-root-sc-config,58313993,0,157,2026-11-10,Codex,merged,ancestor of dev,
+codex/federation-image-alt,7590e0cd,0,221,2026-11-08,Codex,merged,ancestor of dev,
+codex/federation-moderation-receipts,bb76a652,0,221,2026-11-08,Codex,merged,ancestor of dev,
+codex/federation-profile-gate,0a0035bf,0,219,2026-11-08,Codex,merged,ancestor of dev,
+codex/federation-publication-filters,3543ad09,0,219,2026-11-08,Codex,merged,ancestor of dev,
+codex/federation-reply-audience,137b1aca,0,221,2026-11-08,Codex,merged,ancestor of dev,
+codex/federation-rest-metadata,d44473f2,0,191,2026-11-08,Codex,merged,ancestor of dev,
+codex/foogallery,1e0eb7ad,1,328,2026-11-07,Codex,open,1 of 1 patch(es) not on dev,Honor FooGallery shortcode attachment overrides during migration
+codex/glide-demo,52faffc4,1,336,2026-11-06,Codex,open,1 of 1 patch(es) not on dev,Preserve the approved GLIDE browser demo for comparison
+codex/glide-fixes,d7070e56,0,326,2026-11-07,Codex,merged,ancestor of dev,
+codex/glide-fullscreen-edge,b912cb2d,0,276,2026-11-07,Codex,merged,ancestor of dev,
+codex/gyss-sort-recovery,6750cba9,6,194,2026-11-09,Codex,open,6 of 6 patch(es) not on dev,Update GYSS evidence status after 0.7.36 build
+codex/installer-reappearance,f4b54c83,1,442,2026-10-31,Codex,open,1 of 1 patch(es) not on dev,Add isolated Apache installer request probe
+codex/mosaic-defaults,f6c6ef9a,959,1805,2026-10-19,Codex,divergent,959 commits off a different line - never bulk merge,Stop automatic three-across mosaics
+codex/muse-member-access,cc023c67,980,1805,2026-10-30,Codex,divergent,980 commits off a different line - never bulk merge,Keep live EOF differences outside connector patch context
+codex/new-horizon-gallery,8cbe2a4d,0,41,2026-11-12,Codex,merged,ancestor of dev,
+codex/new-horizon-sticky-footer,f4b4693e,0,42,2026-11-12,Codex,merged,ancestor of dev,
+codex/nh-date-lane,9c68e76e,0,274,2026-11-07,Codex,merged,ancestor of dev,
+codex/nh-font-colours,993f996f,0,220,2026-11-08,Codex,merged,ancestor of dev,
+codex/nh-masthead-control-location,13691397,1,255,2026-11-07,Codex,merged-rebased,all 1 patch(es) already on dev under another sha,
+codex/nh-paging-header,4701465d,0,289,2026-11-07,Codex,merged,ancestor of dev,
+codex/nh-typography-controls,10ed00b6,0,233,2026-11-08,Codex,merged,ancestor of dev,
+codex/ohsnap-render-dimensions,3c6a9120,2,497,2026-10-30,Codex,open,2 of 2 patch(es) not on dev,OH SNAP default render to Full HD1920x1080
+codex/opaudit-029-033-filing,a41fb4f5,0,111,2026-11-11,Codex,merged,ancestor of dev,
+codex/opaudit-031-032-artifact-cleanup,6ffe6833,0,101,2026-11-11,Codex,merged,ancestor of dev,
+codex/overlay-keyboard-acceptance,0fb42238,1,497,2026-10-31,Codex,open,1 of 1 patch(es) not on dev,Verify overlay keyboard navigation with real browser events
+codex/pixelfed-015-compat,0019b1cb,966,1805,2026-10-19,Codex,divergent,966 commits off a different line - never bulk merge,TROLL BOOTH: the build specs travel with the commit
+codex/pixelix-edit-fix,140606be,1,1358,2026-09-24,Codex,open,1 of 1 patch(es) not on dev,TILEZ 0.2.8: add dual text and icon navigation
+codex/remaining-endless-paging,183fe643,2,275,2026-11-07,Codex,open,2 of 2 patch(es) not on dev,Enable endless TRUE GRIT collections and GLIDE hashtag results
+codex/screenshot-slots,f8073574,0,319,2026-11-07,Codex,merged,ancestor of dev,
+codex/scroll-secondary-header,eccf9e7a,0,432,2026-11-01,Codex,merged,ancestor of dev,
+codex/scrollbar-inventory,a36b3cef,1,191,2026-11-09,Codex,open,1 of 1 patch(es) not on dev,Recommend preserving native thumbs on unverified layered surfaces
+codex/scrolltime-skin-wiring,4c588e86,15,403,2026-11-05,Codex,open,15 of 15 patch(es) not on dev,Let true-grit request archive scroll-time
+codex/secaudit-039-docstring,5052ee21,0,118,2026-11-11,Codex,merged,ancestor of dev,
+codex/secaudit-044-public-correction,df2506f0,1,57,2026-11-11,Codex,open,1 of 1 patch(es) not on dev,docs: correct public SECAUDIT 044 residual record
+codex/secaudit-061-filing,81c69620,3142,3309,2026-11-10,Codex,divergent,3142 commits off a different line - never bulk merge,File SECAUDIT 061 enrollment provenance record
+codex/secaudit-065-injection-sweep,2aa780b3,1,66,2026-11-11,Codex,open,1 of 1 patch(es) not on dev,File SECAUDIT 065 injection sweep
+codex/skin-css-controls,059435c5,2,321,2026-11-07,Codex,open,2 of 2 patch(es) not on dev,Connect New Horizon archive CSS to shared controls
+codex/skin-paging-cleanup,571e5598,0,232,2026-11-08,Codex,merged,ancestor of dev,
+codex/slapper-performance,21b7c407,5,235,2026-11-08,Codex,open,5 of 5 patch(es) not on dev,Match original zoom centre precision in pixel parity fixture
+codex/snapsmack-ca-banner-security,4a6960a1,12,66,2026-11-11,Codex,open,12 of 12 patch(es) not on dev,Keep credits to the approved three cards
+codex/snapsmack-ca-closed-beta,1846185c,4,41,2026-11-12,Codex,open,4 of 4 patch(es) not on dev,Correct desktop platform and SNAP SLAPPER news claims
+codex/sql-query-cost,cc4b45f6,3,234,2026-11-08,Codex,open,3 of 3 patch(es) not on dev,Measure fulltext search semantics and make benchmark availability explicit
+codex/ss-1008-the-grid-footer,f57439d5,1,158,2026-11-10,Codex,open,1 of 1 patch(es) not on dev,SS-1008: re-apply THE GRID footer 40px padding lost in strict-layout migration; bump 1.3.61 -> 1.3.62
+codex/ss-1022-onyx-overlay,6b717dac,1,161,2026-11-10,Codex,open,1 of 1 patch(es) not on dev,test(onyx): prove static content clears vignette
+codex/ss-1040-galleria-title,4abb0d62,1,158,2026-11-10,Codex,open,1 of 1 patch(es) not on dev,SS-1040: verify GALLERIA static title geometry
+codex/ss-1051-chaplin-rows,79b58486,1,158,2026-11-10,Codex,open,1 of 1 patch(es) not on dev,SS-1051: record CHAPLIN archive row measurements
+codex/ss-1087-strict-decode,dcd432a1,0,16,2026-11-13,Codex,merged,ancestor of dev,
+codex/ss-1091-partial-settings,ebcd5254,0,37,2026-11-02,Codex,merged,ancestor of dev,
+codex/ss-1112-game-on-arrow,6a6ace2a,1,158,2026-11-10,Codex,open,1 of 1 patch(es) not on dev,SS-1112: fix GAME ON carousel panel collapse (0px) after solo-letterbox change; bump 0.1.42 -> 0.1.43
+codex/ss-1183-feature-matrix,bf1d2139,4,161,2026-11-10,Codex,open,4 of 4 patch(es) not on dev,test(browser): complete feature classifications (SS-1183)
+codex/ss-1214-rendered-verification,cf1825e8,2,163,2026-11-10,Codex,open,2 of 2 patch(es) not on dev,Fix New Horizon footer font control (SS-1214)
+codex/ss-1217-glide-band-resume,bc2282ae,1,164,2026-11-10,Codex,open,1 of 1 patch(es) not on dev,SS-1217: measure GLIDE band recovery in browser
+codex/ss-1255-new-horizon-colours,d126e2af,1,158,2026-11-10,Codex,open,1 of 1 patch(es) not on dev,SS-1255 verify NEW HORIZON font colours end to end
+codex/ss-1269-about-geometry,7f9e71e1,1,47,2026-11-11,Codex,open,1 of 1 patch(es) not on dev,Fix About portrait alignment and gutter
+codex/ss-1269-new-horizon-static,7e97a775,1,165,2026-11-10,Codex,open,1 of 1 patch(es) not on dev,Fix New Horizon static page alignment
+codex/ss-1269-nh-dev-integration,af054c48,0,45,2026-11-11,Codex,merged,ancestor of dev,
+codex/ss-1272-skin-security-model,d7ab2029,1,159,2026-11-10,Codex,open,1 of 1 patch(es) not on dev,SS-1272 stage public skin security model
+codex/ss-1275-slickr-exif-align,286b0040,1,165,2026-11-10,Codex,open,1 of 1 patch(es) not on dev,SLICKR: align EXIF labels
+codex/ss-1279-license-gate-audit-evidence,07fddd68,1,159,2026-11-10,Codex,merged-rebased,all 1 patch(es) already on dev under another sha,
+codex/ss-1284-false-breach-runbook,c9962bb0,2909,3309,2026-11-11,Codex,divergent,2909 commits off a different line - never bulk merge,Document SS-1284 false-breach recovery
+codex/ss-1290-chaplin-columns,4dda0393,0,112,2026-11-11,Codex,merged,ancestor of dev,
+codex/ss-1290-chaplin-footer,c56680a5,0,112,2026-11-11,Codex,merged,ancestor of dev,
+codex/ss-1312-oh-snap-copy,51714d01,1,98,2026-11-12,Codex,merged-rebased,all 1 patch(es) already on dev under another sha,
+codex/ss-1317-tag-normalization,91b96c3a,0,31,2026-11-13,Codex,merged,ancestor of dev,
+codex/ss-1318-classic-nav-order,2cace8e6,0,9,2026-11-13,Codex,merged,ancestor of dev,
+codex/ss-1322-tray-slide-down,a6ecf700,1,0,2026-11-13,Codex,open,1 of 1 patch(es) not on dev,RATIONAL GEO: restore downward info tray
+codex/ss-1325-glide-settle,470fa8e9,0,3,2026-11-13,Codex,merged,ancestor of dev,
+codex/ss-1326-glide-footer,654ebd1b,0,3,2026-11-13,Codex,merged,ancestor of dev,
+codex/subtle-scrollbars,ea751ab4,0,191,2026-11-09,Codex,merged,ancestor of dev,
+codex/sybu-copyright-075,375a653a,0,412,2026-11-09,Codex,merged,ancestor of dev,
+codex/tilez-columns,13069240,1,1456,2026-09-21,Codex,merged-rebased,all 1 patch(es) already on dev under another sha,
+codex/tilez-glide-announcements,1d8de0db,5,250,2026-11-08,Codex,open,5 of 5 patch(es) not on dev,Open skin gallery screenshots in a lightbox
+codex/tilez-scrollbar,ec6c5ebb,1,241,2026-11-08,Codex,merged-rebased,all 1 patch(es) already on dev under another sha,
+codex/troll-booth,f944987d,10,818,2026-10-18,Codex,open,9 of 10 patch(es) not on dev,Stop publishing private handoff documents
+codex/troll-booth-attention,435ebbfd,958,1805,2026-10-19,Codex,divergent,958 commits off a different line - never bulk merge,Make TROLL BOOTH desktop attentive
+codex/troll-booth-desktop-mariadb,142451b0,14,818,2026-10-18,Codex,open,13 of 14 patch(es) not on dev,Preview pasted screenshots before posting
+codex/troll-booth-owner-console,883c654a,9,857,2026-10-18,Codex,open,5 of 9 patch(es) not on dev,Stop publishing private handoff documents
+codex/troll-bridge-finish,e71be92f,969,1805,2026-10-20,Codex,divergent,969 commits off a different line - never bulk merge,Keep TROLL BOOTH transcript scroll stable
+codex/true-grit-restore-look,5a9b7c76,1,250,2026-11-08,Codex,open,1 of 1 patch(es) not on dev,Restore TRUE GRIT pre-paging layout and styles as 1.3.27
+codex/true-grit-toolbar,524030c1,0,220,2026-11-08,Codex,merged,ancestor of dev,
+history,6f5c1a8c,1008,1739,2026-10-31,unassigned,divergent,1008 commits off a different line - never bulk merge,Park master c335c0a2 on history as a preservation net
+master,3d8d31d5,1,416,2026-11-02,unassigned,open,1 of 1 patch(es) not on dev,Prepare stable 0.7.975 version-only promotion candidate
