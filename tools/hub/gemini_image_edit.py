@@ -89,7 +89,124 @@ def marked_selection(image, mask):
     return Image.composite(tint, image, mask)
 
 
-def square_tile_box(image_size, bounds, margin_ratio=0.75, minimum_margin=96):
+# HOW MUCH OF THE PHOTOGRAPH THE MODEL GETS TO SEE.
+#
+# The margin used to be a fraction of the SELECTION with a 96-pixel floor, and
+# that is where the bad fills came from. Paint a 40-pixel blemish on a
+# 6000-pixel frame and the margin was max(96, 30) = 96: a 232-pixel tile, under
+# 4% of the picture. The model was asked to invent content that matched a
+# photograph it had been shown almost none of, so it matched the little it
+# could see and clashed with everything else.
+#
+# This floor is a fraction of the IMAGE's long edge instead, so the context the
+# model gets scales with the photograph rather than with how small a spot was
+# painted. It is the number to turn when fills look out of place; it is here,
+# named, for exactly that reason.
+#
+# IT IS A TRADE. The tile is resized to the model's working resolution, so a
+# wider tile spends fewer of those pixels on the selection itself. Gemini works
+# at 1536 and absorbs this easily. The local Diffusers model is capped at 512 by
+# the model, not by us, so on a large frame a small selection can end up with
+# very few pixels to generate into. CONTEXT_MARGIN_LOCAL_CAP bounds the floor
+# for that provider only.
+CONTEXT_MARGIN_OF_LONG_EDGE = 0.20
+
+# The smallest the selection may become once the tile is resized to the
+# model's working resolution. MEASURED, not guessed: with the 20% floor
+# applied unconditionally, a 40-pixel blemish on a 6000-pixel frame gives a
+# 2440-pixel tile, and at the local model's 512 cap that selection arrives as
+# EIGHT pixels. Eight pixels is not something to inpaint into; the old
+# behaviour gave it 88. So the floor is reduced, per call, to whatever still
+# leaves the selection this many pixels to work with. Gemini works at 1536 and
+# reaches the full 20% in every case measured; the local model gives up
+# context on big frames because the alternative is giving up the repair.
+MIN_SELECTION_PIXELS_AT_WORK_RESOLUTION = 64
+
+# What heal_tile() sends. Named so a caller sizing a tile for Gemini
+# asks this module rather than repeating the number.
+WORK_RESOLUTION = 1536
+
+
+# ---------------------------------------------------------------------------
+# COLOUR. Every image model answers in sRGB. It is not told what space the
+# pixels it was given are in, and it does not ask.
+#
+# SNAP SLAPPER's document keeps the source profile -- a phone photograph is
+# usually Display P3, which is a visibly wider space than sRGB. The numbers in
+# a P3 file mean different colours than the same numbers in an sRGB file, so
+# handing them over unconverted is handing over the wrong picture: saturated
+# reds and greens read as duller than they are. The model then matches what it
+# was shown, the patch comes back in sRGB, and it is pasted straight into a P3
+# document where those numbers mean something else again. The error happens
+# twice and in opposite directions, which is why a generative fill could come
+# back close in tone and wrong in colour.
+#
+# So: convert to sRGB on the way out, convert back on the way in. Both are
+# no-ops when the document is already sRGB or carries no profile, which is the
+# common case and must stay free.
+def _srgb_profile():
+    from PIL import ImageCms
+    return ImageCms.createProfile("sRGB")
+
+
+def to_srgb(image, profile_bytes):
+    """The picture as the model should see it. Returns the image unchanged
+    when there is nothing to convert or the conversion is not available."""
+    if not profile_bytes:
+        return image
+    try:
+        from PIL import ImageCms
+        source = ImageCms.ImageCmsProfile(io.BytesIO(profile_bytes))
+        return ImageCms.profileToProfile(
+            image, source, _srgb_profile(), outputMode="RGB")
+    except Exception:                          # noqa: BLE001
+        # A broken or unreadable profile must not cost the person their edit.
+        # Sending unconverted pixels is what happened before this existed.
+        return image
+
+
+def from_srgb(image, profile_bytes):
+    """The model's sRGB answer, moved into the document's own space."""
+    if not profile_bytes:
+        return image
+    try:
+        from PIL import ImageCms
+        target = ImageCms.ImageCmsProfile(io.BytesIO(profile_bytes))
+        return ImageCms.profileToProfile(
+            image, _srgb_profile(), target, outputMode="RGB")
+    except Exception:                          # noqa: BLE001
+        return image
+
+
+def context_floor_ratio(image_size, bounds, work_resolution,
+                        wanted=CONTEXT_MARGIN_OF_LONG_EDGE,
+                        minimum_selection=MIN_SELECTION_PIXELS_AT_WORK_RESOLUTION):
+    """The largest context floor that still leaves the selection usable.
+
+    Returns ``wanted`` when the model's working resolution can afford it, and
+    a smaller ratio when it cannot. Never returns less than 0.
+
+    The tile is square with side = selection + 2 * margin, and it is resized so
+    its long edge is ``work_resolution``. The selection therefore survives at
+    ``selection * work_resolution / side`` pixels, so the widest usable tile is
+    ``selection * work_resolution / minimum_selection`` and the margin that
+    produces it follows directly.
+    """
+    left, top, right, bottom = bounds
+    selection = max(1, max(right - left, bottom - top))
+    wanted = max(0.0, float(wanted))
+    long_edge = max(image_size)
+    if work_resolution <= 0 or minimum_selection <= 0 or long_edge <= 0:
+        return wanted
+    affordable_side = selection * float(work_resolution) / float(minimum_selection)
+    affordable_margin = (affordable_side - selection) / 2.0
+    if affordable_margin <= 0:
+        return 0.0
+    return min(wanted, affordable_margin / float(long_edge))
+
+
+def square_tile_box(image_size, bounds, margin_ratio=0.75, minimum_margin=96,
+                    floor_ratio=CONTEXT_MARGIN_OF_LONG_EDGE):
     """Choose a SQUARE tile with context around ``bounds``, clamped to the frame.
 
     Square matters. Gemini's image models answer in their own aspect ratio and
@@ -100,10 +217,18 @@ def square_tile_box(image_size, bounds, margin_ratio=0.75, minimum_margin=96):
 
     The tile stays inside the frame. At a frame edge it is pushed inward rather
     than shrunk, so a selection in the corner still gets its context.
+
+    ``floor_ratio`` is the share of the image's LONG edge the margin may not go
+    below. Pass 0 to get the old selection-relative behaviour exactly.
     """
     width, height = image_size
     left, top, right, bottom = bounds
-    margin = max(int(minimum_margin), int(max(right - left, bottom - top) * margin_ratio))
+    # Three floors, largest wins: an absolute pixel floor, a share of the
+    # selection, and a share of the PHOTOGRAPH. The third is the one that was
+    # missing, and it is the one that matters on a big frame.
+    margin = max(int(minimum_margin),
+                 int(max(right - left, bottom - top) * margin_ratio),
+                 int(max(width, height) * max(0.0, float(floor_ratio))))
     side = max(right - left, bottom - top) + margin * 2
     side = max(1, min(side, width, height))
     centre_x = (left + right) / 2.0
@@ -226,7 +351,7 @@ def _instruction_for(operation, prompt):
 
 
 def heal_tile(tile, tile_mask, prompt, api_key, model="gemini-3.1-flash-image",
-              timeout=300, operation="heal", work_target=1536):
+              timeout=300, operation="heal", work_target=WORK_RESOLUTION):
     """One model round trip on a prepared tile, returned at the TILE's own size.
 
     The caller chooses the tile, so the generated pixels can be delivered at

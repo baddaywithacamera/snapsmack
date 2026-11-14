@@ -7,10 +7,24 @@ not imported by the frozen SNAP SLAPPER process.
 import argparse
 import json
 import os
+import sys
 
 from PIL import Image
 
 MODEL = "stable-diffusion-v1-5/stable-diffusion-inpainting"
+
+STEPS = 30
+
+
+def say(**fields):
+    """One NDJSON line on stdout, flushed, so the caller sees it as it happens.
+
+    SNAP SLAPPER reads these live. Without them the only honest thing the
+    window could say during a multi-minute fill was "this can take several
+    minutes", and the person had no way to stop it short of killing the app.
+    """
+    sys.stdout.write(json.dumps(fields) + chr(10))
+    sys.stdout.flush()
 
 
 def pipeline():
@@ -37,6 +51,7 @@ def main():
     parser.add_argument("--output")
     parser.add_argument("--prompt", default="")
     args = parser.parse_args()
+    say(stage="loading", detail="Loading the model")
     pipe = pipeline()
     if args.warmup:
         print(json.dumps({"ok": True, "model": MODEL}))
@@ -49,9 +64,28 @@ def main():
     negative = (
         "frame, border, seam, text, watermark, illustration, painting, oversaturated, "
         "different lighting, changed subject, changed composition")
-    result = pipe(prompt=prompt, negative_prompt=negative, image=image,
-                  mask_image=mask, num_inference_steps=30,
-                  guidance_scale=7.0).images[0]
+    say(stage="generating", step=0, steps=STEPS)
+
+    def progressed(_pipe, step, _timestep, kwargs):
+        # step is zero-based and fires AFTER the step, so step + 1 is how many
+        # are done. Diffusers requires this callback to return the kwargs dict.
+        say(stage="generating", step=min(step + 1, STEPS), steps=STEPS)
+        return kwargs
+
+    try:
+        result = pipe(prompt=prompt, negative_prompt=negative, image=image,
+                      mask_image=mask, num_inference_steps=STEPS,
+                      guidance_scale=7.0,
+                      callback_on_step_end=progressed).images[0]
+    except TypeError:
+        # An older diffusers has no callback_on_step_end. Losing the per-step
+        # line is survivable; failing the fill over it is not. The caller
+        # already treats a silent run as "working, no step count".
+        say(stage="generating", detail="This diffusers build reports no steps")
+        result = pipe(prompt=prompt, negative_prompt=negative, image=image,
+                      mask_image=mask, num_inference_steps=STEPS,
+                      guidance_scale=7.0).images[0]
+    say(stage="saving")
     result.save(args.output, "PNG")
     print(json.dumps({"ok": True, "model": MODEL, "output": args.output}))
 
