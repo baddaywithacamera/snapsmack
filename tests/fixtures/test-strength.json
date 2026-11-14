@@ -2479,8 +2479,8 @@
         ]
     },
     "updater-manifest-reconciliation.php": {
-        "assertions": 31,
-        "predicates": 21,
+        "assertions": 32,
+        "predicates": 22,
         "thresholds": [
             2,
             2

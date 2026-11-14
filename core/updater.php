@@ -788,13 +788,27 @@ function updater_load_protected_paths(string $zip_path = ''): array {
         return $protected;
     }
 
-    // NEVER RETIRABLE, whatever a manifest says. core/db.php holds the
-    // install's database credentials; protected_paths.json holds the owner's
-    // own additions and must survive for the union above to mean anything. A
-    // release that tried to retire either would be a release that wiped
-    // per-install data off the fleet, so the list is refused here rather than
-    // trusted. tests/updater-manifest-reconciliation.php proves it.
-    $never = ['core/db.php', 'protected_paths.json'];
+    // NEVER RETIRABLE, whatever a manifest says. These are the per-install
+    // files: a release that retired one would be a release that wiped the
+    // owner's own work off the fleet, so the list is refused here rather than
+    // trusted. tests/updater-manifest-reconciliation.php proves each of them.
+    //
+    //   core/db.php            the install's database credentials
+    //   protected_paths.json   the owner's own additions, which the union
+    //                          above needs in order to mean anything
+    //   .htaccess              hand-edited on most installs
+    //   robots.txt             hand-edited, and it CAN reach a release zip:
+    //                          build-release.php allowlists .txt, so once a
+    //                          path is retired the builder's own is_protected
+    //                          check stops skipping it. Muse found that one.
+    //
+    // skins/ needs no entry: updater_is_protected() hard-protects it whatever
+    // any list says. The user-content directories (img_uploads/, media_assets/,
+    // assets/img/, backups/, logs/) are not here because they cannot reach a
+    // release zip at all -- the builder ships git-tracked files and user
+    // content is never in git -- so retiring one would be inert rather than
+    // dangerous. If that ever stops being true they belong here too.
+    $never = ['core/db.php', 'protected_paths.json', '.htaccess', 'robots.txt'];
     $retired = array_values(array_diff($retired, $never));
 
     return array_values(array_diff($protected, $retired));

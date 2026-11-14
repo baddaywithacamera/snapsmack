@@ -164,14 +164,34 @@ check('robots.txt, protected by the package and absent from the stale list, is p
       in_array('robots.txt', resolve($work, $STALE, $SHIPPED), true));
 
 // THINGS THAT MUST NEVER BE RETIRABLE, whatever a manifest claims.
-$hostile = ['protected' => [], 'retired' => ['core/db.php', 'protected_paths.json',
-                                             'core/constants.php']];
-$r = resolve($work, $STALE, $hostile);
-check('a package cannot retire core/db.php', in_array('core/db.php', $r, true));
-check('a package cannot retire protected_paths.json',
-      in_array('protected_paths.json', $r, true));
+// Each of these is per-install: retiring one would let a release overwrite
+// the owner's own work on every site in the fleet at once. robots.txt and
+// .htaccess were added on Muse's finding -- robots.txt in particular CAN
+// reach a release zip, because build-release.php allowlists .txt and its own
+// is_protected check stops skipping a path once it is retired.
+$NEVER = ['core/db.php', 'protected_paths.json', '.htaccess', 'robots.txt'];
+$with_never = $STALE;
+foreach ($NEVER as $path) {
+    if (!in_array($path, $with_never['protected'], true)) {
+        $with_never['protected'][] = $path;
+    }
+}
+$hostile = ['protected' => [],
+            'retired'   => array_merge($NEVER, ['core/constants.php'])];
+$r = resolve($work, $with_never, $hostile);
+foreach ($NEVER as $path) {
+    check("a package cannot retire {$path}", in_array($path, $r, true));
+}
 check('  but a legitimate retirement in the same list still applies',
       !in_array('core/constants.php', $r, true));
+
+// And each one alone, so a single broken entry cannot slip through on the
+// strength of the others being refused.
+foreach ($NEVER as $path) {
+    $one = resolve($work, $with_never, ['protected' => [], 'retired' => [$path]]);
+    check("{$path} survives a package that retires only it",
+          in_array($path, $one, true));
+}
 
 // FAIL SAFE MEANS KEEPING PROTECTION.
 foreach ([['no retired key', ['protected' => ['core/db.php']]],
@@ -216,6 +236,9 @@ check('  and it retires core/constants.php',
       in_array('core/constants.php', (array)$shipped_here['retired'], true));
 check('  and retires NOTHING else, so the widened surface is one path',
       count((array)$shipped_here['retired']) === 1);
+check('  and never retires a per-install file',
+      array_intersect((array)$shipped_here['retired'],
+                      ['core/db.php', 'protected_paths.json', '.htaccess', 'robots.txt']) === []);
 check('  while core/db.php remains protected',
       in_array('core/db.php', (array)$shipped_here['protected'], true));
 check('  and protected_paths.json remains protected, so owner additions survive',
