@@ -57,7 +57,7 @@ foreach (['.rg-single .rg-description', 'margin-bottom: 0', 'font-size: var(--fo
 // one. Asserting it here before it exists would block dev instead of blocking
 // him, which is the same fault pointing the other way.
 
-if (version_compare((string)($manifest['version'] ?? '0'), '2.1.35', '<')) {
+if (version_compare((string)($manifest['version'] ?? '0'), '2.1.40', '<')) {
     throw new RuntimeException('RATIONAL GEO version was not advanced for the info-tray repair.');
 }
 
