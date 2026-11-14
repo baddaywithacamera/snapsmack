@@ -29,6 +29,10 @@ WORK_RESOLUTION = 512
 # the shared band is what there is to blend across.
 OVERLAP = 96
 
+# Below this accumulated weight a pixel is treated as not covered at all.
+# Anything smaller makes acc/wsum numerically meaningless.
+WEIGHT_FLOOR = 1e-3
+
 Cancelled = subprocess_limits.Cancelled
 
 
@@ -184,7 +188,35 @@ def plan_windows(size, mask_bbox, work=WORK_RESOLUTION, overlap=OVERLAP):
     return boxes
 
 
-def _feather(size, overlap):
+def fade_sides(window, windows):
+    """Which sides of ``window`` actually meet another window.
+
+    POSITION IS NOT THE TEST, and assuming it was is what left 706 painted
+    pixels starved after the first attempt at this. A window pushed inward to
+    fit the frame can have x0 > 0 with nothing to its left at all: the region
+    simply does not extend that way. Fading such a side gives weight away to
+    a neighbour that does not exist. So each side is asked directly whether
+    some other window overlaps past it.
+    """
+    x0, y0, x1, y1 = window
+    left = top = right = bottom = False
+    for ox0, oy0, ox1, oy1 in windows:
+        if (ox0, oy0, ox1, oy1) == window:
+            continue
+        if oy0 < y1 and oy1 > y0:                 # shares rows
+            if ox0 < x0 and ox1 > x0:
+                left = True
+            if ox1 > x1 and ox0 < x1:
+                right = True
+        if ox0 < x1 and ox1 > x0:                 # shares columns
+            if oy0 < y0 and oy1 > y0:
+                top = True
+            if oy1 > y1 and oy0 < y1:
+                bottom = True
+    return (left, top, right, bottom)
+
+
+def _feather(size, overlap, fade=(True, True, True, True)):
     """A raised-cosine weight that falls to zero at a window's edges.
 
     Averaging overlapping answers with a flat weight leaves a visible ridge
@@ -195,20 +227,32 @@ def _feather(size, overlap):
     accumulated the composite in Python loops; on the 2600-pixel region from
     Sean's own photograph that is 6.8 million iterations per pass, twice, and
     it turned a fix for slow-looking output into slow output.
+
+    ONLY SIDES THAT MEET ANOTHER WINDOW ARE FADED. ``fade`` is (left, top,
+    right, bottom). A side lying on the region's own boundary has no
+    neighbour to make up the weight it gives away, so fading it leaves those
+    pixels with a total weight of almost nothing -- measured at 4.5e-09 in
+    the corner -- and dividing by that produced the near-black corner in
+    Sean's fill. 4.1% of his painted area had effectively no weight. Edges of
+    the region keep full weight; only interior joins are blended.
     """
     import numpy as np
     width, height = size
     ramp = int(max(1, min(overlap, width // 2, height // 2)))
 
-    def axis(n):
+    def axis(n, fade_low, fade_high):
         out = np.ones(n, dtype=np.float32)
         i = np.arange(ramp, dtype=np.float32)
-        w = 0.5 - 0.5 * np.cos(np.pi * (i + 0.5) / ramp)
-        out[:ramp] = w
-        out[n - ramp:] = w[::-1]
+        w = (0.5 - 0.5 * np.cos(np.pi * (i + 0.5) / ramp)).astype(np.float32)
+        if fade_low:
+            out[:ramp] = w
+        if fade_high:
+            out[n - ramp:] = w[::-1]
         return out
 
-    return np.outer(axis(height), axis(width)).astype(np.float32)
+    left, top, right, bottom = fade
+    return np.outer(axis(height, top, bottom),
+                    axis(width, left, right)).astype(np.float32)
 
 
 def fill_tile(tile, tile_mask, prompt, on_progress=None, should_cancel=None):
@@ -275,7 +319,11 @@ def fill_tile(tile, tile_mask, prompt, on_progress=None, should_cancel=None):
             continue            # nothing painted here; do not spend a model run
         patch, used_model = _fill_one_window(
             window, window_mask, prompt, window_progress(index), should_cancel)
-        weights = _feather(patch.size, OVERLAP)
+        # Fade only the sides that meet another window. At the region's own
+        # edge there is nothing to blend with, and fading there is what made
+        # a corner selection come back black.
+        weights = _feather(patch.size, OVERLAP,
+                           fade=fade_sides((x0, y0, x1, y1), windows))
         values = np.asarray(patch, dtype=np.float32)
         acc[y0:y0 + patch.height, x0:x0 + patch.width] += values * weights[..., None]
         wsum[y0:y0 + patch.height, x0:x0 + patch.width] += weights
@@ -283,8 +331,16 @@ def fill_tile(tile, tile_mask, prompt, on_progress=None, should_cancel=None):
     # Only painted pixels are replaced. Everything outside the mask is the
     # photograph, untouched, which is the promise the dialog makes in words.
     base = np.asarray(tile, dtype=np.float32)
-    covered = wsum > 0.0
-    blended = np.where(covered[..., None], acc / np.maximum(wsum, 1e-6)[..., None], base)
+    # A FLOOR, NOT JUST A GUARD. Dividing by a weight of almost nothing is
+    # what turned Sean's corner selection black: the feather faded a window
+    # side that had no neighbour, leaving 4.5e-09 of weight, and acc/wsum
+    # became garbage. Fading only interior sides fixes the common case; this
+    # makes the bad case impossible whatever the geometry turns out to be.
+    # A pixel the windows barely reached keeps the PHOTOGRAPH, which is wrong
+    # in the small and never ugly, instead of noise that is wrong in the large.
+    covered = wsum > WEIGHT_FLOOR
+    blended = np.where(covered[..., None],
+                       acc / np.maximum(wsum, WEIGHT_FLOOR)[..., None], base)
     painted = (np.asarray(tile_mask) > 0) & covered
     merged = np.where(painted[..., None], blended, base)
     result = Image.fromarray(np.clip(merged, 0, 255).astype(np.uint8), "RGB")

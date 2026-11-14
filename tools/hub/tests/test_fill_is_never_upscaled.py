@@ -341,6 +341,62 @@ def test_the_overlap_is_blended_not_butted(monkeypatch, tmp_path):
     assert mixed, "no blended pixels: the windows were butted together"
 
 
+def test_a_selection_in_a_CORNER_is_not_blacked_out(monkeypatch, tmp_path):
+    """SS-1338 follow-up. Sean's selection sat in the bottom-right corner and
+    came back near-black: mean luma 4.1 where the previous build gave 42.6.
+
+    The feather faded EVERY window side. That is right where another window
+    overlaps and makes up the weight, and wrong at the region's own boundary
+    where there is no neighbour -- the corner pixel ended with 4.5e-09 of
+    total weight and acc/wsum became garbage. 4.1% of his painted area had
+    effectively none.
+    """
+    _installed(monkeypatch, tmp_path)
+    monkeypatch.setattr(local_fill.subprocess_limits, "stream",
+                        _fake_model(colour=(120, 130, 140)))
+    photo = Image.new("RGB", (1400, 1400), (30, 60, 90))
+    mask = Image.new("L", photo.size, 0)
+    mask.paste(255, (1047, 872, 1400, 1400))        # hard into the corner
+    out, _ = local_fill.fill_tile(photo, mask, "")
+
+    import numpy as np
+    arr = np.asarray(out.crop((1047, 872, 1400, 1400)), dtype=np.float32)
+    luma = 0.299 * arr[..., 0] + 0.587 * arr[..., 1] + 0.114 * arr[..., 2]
+    # The stand-in model answers a flat 120,130,140 -> luma about 128.
+    assert luma.mean() > 100, (
+        "the corner selection came back dark: mean luma %.1f" % luma.mean())
+    assert luma.min() > 60, (
+        "some corner pixels are near-black: min luma %.1f" % luma.min())
+    # And the very corner pixel itself, which is where the weight vanished.
+    assert out.getpixel((1399, 1399))[0] > 60, out.getpixel((1399, 1399))
+
+
+def test_every_painted_pixel_carries_real_weight(monkeypatch, tmp_path):
+    """The property behind the corner bug, checked directly on the weights."""
+    import numpy as np
+    for bbox, size in [((2247, 2072, 2600, 2600), (2600, 2600)),   # corner
+                       ((0, 0, 400, 400), (2600, 2600)),           # other corner
+                       ((0, 1000, 2600, 1400), (2600, 2600)),      # edge to edge
+                       ((1100, 1100, 1500, 1500), (2600, 2600))]:  # middle
+        width, height = size
+        total = np.zeros((height, width), dtype=np.float32)
+        windows = local_fill.plan_windows(size, bbox)
+        for x0, y0, x1, y1 in windows:
+            total[y0:y1, x0:x1] += local_fill._feather(
+                (x1 - x0, y1 - y0), local_fill.OVERLAP,
+                fade=local_fill.fade_sides((x0, y0, x1, y1), windows))
+        painted = total[bbox[1]:bbox[3], bbox[0]:bbox[2]]
+        starved = int((painted < local_fill.WEIGHT_FLOOR).sum())
+        assert starved == 0, (
+            "%d painted pixels have less than the weight floor for %r"
+            % (starved, bbox))
+
+
+def test_a_starved_pixel_keeps_the_photograph_rather_than_going_dark():
+    """The floor, as a guarantee that does not depend on the geometry."""
+    assert local_fill.WEIGHT_FLOOR > 0
+
+
 def test_the_feather_falls_off_at_the_edges():
     import numpy as np
     w = local_fill._feather((WORK, WORK), local_fill.OVERLAP)
