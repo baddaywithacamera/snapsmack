@@ -1,5 +1,4 @@
 branch,tip,ahead,behind,last_commit,owner,state,note,subject
-Github,3d8d31d5,1,416,2026-11-02,unassigned,open,1 of 1 patch(es) not on dev,
 assemble-986d,1438b4cd,0,255,2026-11-07,unassigned,merged,ancestor of dev,
 assemble-987d,b7b159ef,0,250,2026-11-07,unassigned,merged,ancestor of dev,
 backup/claude/declared-controls-have-a-consumer,a39a4b5d,2849,3309,2026-10-31,Claude,divergent,2849 commits off a different line - never bulk merge,"Name it for what it is: a candidate-reference inventory, with its two blind spots asserted"
