@@ -111,13 +111,20 @@ check('but the fresh reading is still readable, in the tooltip',
       str_contains($h, 'Reported 2m ago.'));
 check('a fresh row is NOT marked stale', !str_contains($h, 'version-stale'));
 check('a fresh row still shows the behind-hub arrow', str_contains($h, 'version-behind'));
-check('a fresh row carries the value id the update JS can find',
+// Muse's nit on 698ada27, and she is right about both ids. SS-1145's label
+// said these ids were "what the update JS can find". They are not: the only
+// id that script looks up is the TD's, spoke-ver-N (smack-multisite.php 2072
+// and 2079). spoke-ver-val-N and spoke-ver-age-N are addressable hooks nothing
+// reads yet. Pinning them is still worth doing -- they are the handles an
+// extracted SS-1041 block would use to refresh the cell in place instead of
+// overwriting it -- but the reason has to be stated truthfully.
+check('a fresh row still carries the addressable value id',
       str_contains($h, 'id="spoke-ver-val-7"'));
 
 $h = render_cell($cell, $old);
 check('a seven-week-old reading still prints the version', str_contains($h, $behind));
 check('a seven-week-old reading prints its age', str_contains($h, 'read 49d ago'));
-check('and that age line still carries the id the update JS looks for',
+check('and that age line still carries its addressable id',
       str_contains($h, 'id="spoke-ver-age-8"'));
 check('a seven-week-old reading is marked stale', str_contains($h, 'version-stale'));
 check('and says in words that it is not a reading taken now',
