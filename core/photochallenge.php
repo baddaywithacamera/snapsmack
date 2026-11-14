@@ -1335,6 +1335,24 @@ function pc_maybe_boost_entry(PDO $pdo, array $settings, string $object_id): boo
 }
 
 /**
+ * How deep recovery reads each participant's outbox.
+ *
+ * SS-1337. Recovery called pc_rescan_participants() with a hardcoded 12, so a
+ * participant who had posted more than twelve originals since their challenge
+ * entry had that entry fall off the bottom of the scan and could never be
+ * recovered. Curb Appeal sat at 12/20 while Portal Project, whose participants
+ * post less often, reached 20/20. A recovery pass exists precisely to pick up
+ * what live delivery missed; bounding it at twelve posts defeats it.
+ *
+ * 60 is the ceiling pc_rescan_participants() already clamps to, so this raises
+ * the depth to the limit the function was written for rather than inventing a
+ * new one. The entry window is about 50 hours, so sixty originals is well past
+ * any realistic posting rate, and pc_outbox_notes' page guard still bounds the
+ * number of requests.
+ */
+if (!defined('PC_RECOVERY_POSTS_PER_ACTOR')) define('PC_RECOVERY_POSTS_PER_ACTOR', 60);
+
+/**
  * Walk a remote actor's outbox and return up to $max raw Note objects (the
  * Create's object, or a bare Note), so they can be ingested. Mirrors
  * sv_crawl_outbox but keeps the RAW AP object (that helper returns a
@@ -1445,7 +1463,7 @@ function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25,
             'rows' => [], 'unreadable' => []];
     if (!pc_enabled($settings)) return $out;
     pc_ensure_tables($pdo);
-    $per_actor = max(1, min(60, $per_actor));
+    $per_actor = max(1, min(PC_RECOVERY_POSTS_PER_ACTOR, $per_actor));
     try {
         $rows = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active' ORDER BY actor_url")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) { throw new RuntimeException('Could not list challenge participants for recovery.', 0, $e); }
@@ -1561,7 +1579,8 @@ function pc_text_has_tag(string $text, string $tag): bool {
  * Keeping the raw Note avoids fetching the same post a second time.
  */
 /** Experimental alternate collector retained for review; not used by recovery. */
-function pc_participant_recovery_rows(PDO $pdo, array $settings, string $tag, int $per_actor = 12): array {
+function pc_participant_recovery_rows(PDO $pdo, array $settings, string $tag,
+                                     int $per_actor = PC_RECOVERY_POSTS_PER_ACTOR): array {
     $rows = []; $actors = 0; $errors = 0;
     try {
         $participants = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active' ORDER BY actor_url")
@@ -1576,7 +1595,7 @@ function pc_participant_recovery_rows(PDO $pdo, array $settings, string $tag, in
         $outbox = is_array($ob) ? trim((string)($ob['id'] ?? '')) : trim((string)$ob);
         if ($outbox === '') { $errors++; continue; }
         $actors++;
-        foreach (pc_outbox_notes($outbox, $settings, max(1, min(25, $per_actor))) as $note) {
+        foreach (pc_outbox_notes($outbox, $settings, max(1, min(PC_RECOVERY_POSTS_PER_ACTOR, $per_actor))) as $note) {
             if (!pc_note_has_tag($note, $tag)) continue;
             $id = trim((string)($note['id'] ?? ''));
             if ($id === '') continue;
@@ -1608,7 +1627,7 @@ function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40,
     }
     // Wire the established participant-rescan/outbox reader in collection mode.
     // It returns raw Notes; admission below remains the one policy path.
-    $participant_scan = pc_rescan_participants($pdo,$settings,12,true,$tag,$actor_offset,$actor_limit);
+    $participant_scan = pc_rescan_participants($pdo,$settings,PC_RECOVERY_POSTS_PER_ACTOR,true,$tag,$actor_offset,$actor_limit);
     $merged = [];
     foreach (array_merge($rows, $participant_scan['rows']) as $row) {
         if (!is_array($row)) continue;

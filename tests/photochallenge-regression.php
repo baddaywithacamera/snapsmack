@@ -137,7 +137,10 @@ pc_test(str_contains($schema, 'CREATE TABLE IF NOT EXISTS `pc_entry_failures`')
     && str_contains($photo, 'function pc_latest_recovery_results')
     && !str_contains($admin, 'value="notify_failed_entries"'),
     'missed-entry recovery, durable failure logging, or resubmit notification is absent');
-pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,12,true,$tag,$actor_offset,$actor_limit)')
+// SS-1337: the per-actor depth was a hardcoded 12 and hid entries more than
+// twelve posts down. It is now PC_RECOVERY_POSTS_PER_ACTOR; the depth itself
+// is proven behaviourally in tests/photochallenge-recovery-scan-depth.php.
+pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,PC_RECOVERY_POSTS_PER_ACTOR,true,$tag,$actor_offset,$actor_limit)')
     && str_contains($photo, 'array_merge($rows, $participant_scan[\'rows\'])')
     && str_contains($photo, 'pc_participant_recent_posts($actor, $outbox, $settings, $per_actor)')
     && str_contains($photo, 'sv_masto_statuses($host, $username, $max)')

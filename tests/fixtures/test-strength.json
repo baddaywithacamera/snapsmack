@@ -1357,6 +1357,17 @@
         "predicates": 25,
         "thresholds": []
     },
+    "photochallenge-recovery-scan-depth.php": {
+        "assertions": 0,
+        "predicates": 2,
+        "thresholds": [
+            2,
+            3,
+            10,
+            12,
+            19
+        ]
+    },
     "photochallenge-regression.php": {
         "assertions": 105,
         "predicates": 178,
