@@ -11,6 +11,38 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.996D - 2026-11-14
+
+- PHOTO CHALLENGE recovery reads far enough into a participant's outbox to
+  find their entry. pc_recover_tagged_entries() passed a hardcoded 12 to
+  pc_rescan_participants(), so each active participant's outbox was read only
+  twelve originals deep. Anyone who had posted more than twelve times since
+  entering had that entry fall off the bottom of the scan, and no number of
+  re-runs would ever find it -- which is the opposite of what a recovery pass
+  is for. Curb Appeal sat at 12 of 20 while Portal Project, whose participants
+  post less often, reached 20 of 20. The depth is now
+  PC_RECOVERY_POSTS_PER_ACTOR = 60, which is the ceiling
+  pc_rescan_participants() already clamped to, so this raises the scan to what
+  the function was written for rather than inventing a number. The page guard
+  still bounds it at six requests per actor, and the existing actor paging
+  still bounds a run. (SS-1337)
+
+- The multisite fleet table fits again. 0.7.995D printed a second line under
+  every spoke's version, "read just now". It is display:block in a narrow
+  column, so it wrapped, every row grew, and the ACTION column lost enough
+  width that ENABLE MAINT and DISCONNECT stacked. The age line now prints only
+  when the reading is STALE or the spoke has never been heard from, which is
+  the only time it says anything the version does not. A fresh reading is
+  still readable in the version tooltip. (SS-1338)
+
+- CORRECTION TO THE 0.7.995D ENTRY ABOVE, which cannot be changed because that
+  tag is published: its "(SS-1337)" is wrong. That number was written into the
+  branch and the changelog before a ticket existed for it, and TICKET WICKET
+  has since issued SS-1337 to the PHOTO CHALLENGE scan cap above -- a
+  different fault. The frozen-constants dashboard fix shipped in 0.7.995D is
+  recorded as SS-1342. Anyone following SS-1337 back from the 995D changelog
+  should read SS-1342 instead.
+
 ## 0.7.995D - 2026-11-14
 
 - The multisite dashboard lists its spokes again on installs whose
