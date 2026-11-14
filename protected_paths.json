@@ -4,7 +4,10 @@
     "_note_skins": "skins/ is always protected. Skins update only through the signed registry and its independent strict-policy scan.",
     "_note_fonts": "assets/fonts/ is intentionally NOT protected. Fonts are excluded at zip-build time so they never appear in a release zip — protecting them here is redundant.",
     "_note_constants": "core/constants.php is intentionally NOT protected (unprotected 2026-08-15, SECAUDIT 048 follow-up). It holds NO per-install data — the release packager stamps and ships it every release (sc-release.php) and the updater rewrites its version lines post-extract. Protecting it (a stale rule from 0.7.159) silently blocked every constants.php code change from reaching upgraded installs, including SECAUDIT 048's HSTS/CSP headers. Per-install DB creds live in core/db.php, which STAYS protected. Do not re-add core/constants.php here.",
-
+    "_note_retired": "Paths the project has STOPPED protecting. SS-1335: an install's own protected_paths.json is itself protected, so it is never overwritten and its rules are frozen at the day the site was created -- a path unprotected here could never reach an existing install. core/constants.php was protected 2026-05-20 (0.7.159) and unprotected 2026-08-15 (0.7.530), and sites running in that window still pin it; their constants.php has been frozen ever since while the updater rewrote its version lines, so they reported the new version and ran the old code. That is what broke the fleet board in 0.7.994D. The updater now subtracts this list from the protection it resolves, so retiring a path here reaches every install on its next update with no file edited by hand. core/db.php and protected_paths.json can never be retired; the updater refuses them and a test proves it. Approved by Sean 2026-11-14.",
+    "retired": [
+        "core/constants.php"
+    ],
     "protected": [
         "core/db.php",
         "protected_paths.json",

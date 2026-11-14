@@ -2478,6 +2478,14 @@
             4
         ]
     },
+    "updater-manifest-reconciliation.php": {
+        "assertions": 31,
+        "predicates": 21,
+        "thresholds": [
+            2,
+            2
+        ]
+    },
     "updater-opcache-invalidation-regression.php": {
         "assertions": 1,
         "predicates": 4,

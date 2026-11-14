@@ -731,10 +731,82 @@ function updater_verify_package(string $file_path, string $expected_sha256, stri
 // ─── PROTECTED PATHS ────────────────────────────────────────────────────────
 
 /**
- * Load the list of protected paths from the JSON manifest.
- * Returns an array of relative paths that should never be overwritten.
+ * Load the list of protected paths.
+ *
+ * SS-1335: THE SHIPPED MANIFEST DECIDES; THE INSTALL MAY ONLY ADD.
+ *
+ * This used to return the install's own protected_paths.json and nothing else.
+ * That file is itself in the protected list, so it is never overwritten -- which
+ * means every rule in it is frozen at whatever it said the day the site was
+ * created, and no later decision about what should or should not be protected
+ * can ever reach that site.
+ *
+ * It cost us a live fault. core/constants.php was protected in 0.7.159
+ * (2026-05-20) and unprotected in 0.7.530 (2026-08-15), but the unprotection
+ * could not travel: sites running in that window still pin it. Their
+ * constants.php has been frozen ever since, while updater_set_version()
+ * rewrites its version lines on every update -- so the site REPORTS the new
+ * version and RUNS the old code. 0.7.994D added snap_reading_age() there,
+ * smack-multisite.php called it, and the fleet board died on its first spoke
+ * row. Confirmed on the live hub: it declared 0.7.994D with no such function.
+ *
+ * So the install's file is no longer the whole truth:
+ *
+ *     effective = (install's protected  UNION  shipped protected)
+ *                 MINUS shipped retired
+ *
+ * A path the owner added locally stays protected -- the union keeps it, and the
+ * install's file is still protected so their additions are never overwritten.
+ * A path the project still protects stays protected even if the install's list
+ * predates it. A path the project has RETIRED loses its protection everywhere,
+ * on the next update, with nobody editing a file on any site.
+ *
+ * ``$zip_path`` is the update package. The shipped manifest is read straight
+ * out of it without extracting anything. With no zip -- every caller outside an
+ * update -- this behaves exactly as it did before.
+ *
+ * FAILING SAFE MEANS KEEPING PROTECTION. If the zip cannot be opened, or its
+ * manifest is missing or unparseable, the retired list is empty and nothing is
+ * unprotected. The failure mode is "we protected too much", never "we
+ * overwrote something we should not have".
  */
-function updater_load_protected_paths(): array {
+function updater_load_protected_paths(string $zip_path = ''): array {
+    $installed = updater_installed_protected_paths();
+    $shipped   = updater_shipped_manifest($zip_path);
+    if ($shipped === null) {
+        return $installed;
+    }
+
+    $protected = array_values(array_unique(array_merge(
+        $installed,
+        array_values(array_filter((array)($shipped['protected'] ?? []), 'is_string'))
+    )));
+
+    $retired = array_values(array_filter(
+        (array)($shipped['retired'] ?? []), 'is_string'));
+    if ($retired === []) {
+        return $protected;
+    }
+
+    // NEVER RETIRABLE, whatever a manifest says. core/db.php holds the
+    // install's database credentials; protected_paths.json holds the owner's
+    // own additions and must survive for the union above to mean anything. A
+    // release that tried to retire either would be a release that wiped
+    // per-install data off the fleet, so the list is refused here rather than
+    // trusted. tests/updater-manifest-reconciliation.php proves it.
+    $never = ['core/db.php', 'protected_paths.json'];
+    $retired = array_values(array_diff($retired, $never));
+
+    return array_values(array_diff($protected, $retired));
+}
+
+
+/**
+ * The install's own manifest, or the shipped defaults when it is missing.
+ * This is the pre-SS-1335 behaviour, unchanged, kept as its own function so
+ * the reconciliation above reads as what it is.
+ */
+function updater_installed_protected_paths(): array {
     $file = UPDATER_PROTECTED_PATHS_FILE;
     if (!file_exists($file)) {
         // Sensible defaults if the file is missing.
@@ -757,9 +829,44 @@ function updater_load_protected_paths(): array {
         ];
     }
 
-    $data = json_decode(file_get_contents($file), true);
-    return $data['protected'] ?? [];
+    $data = json_decode((string)file_get_contents($file), true);
+    if (!is_array($data)) {
+        return [];
+    }
+    return array_values(array_filter((array)($data['protected'] ?? []), 'is_string'));
 }
+
+
+/**
+ * The manifest as the RELEASE ships it, read from inside the update zip.
+ *
+ * Returns null when there is no zip to read, the archive will not open, the
+ * entry is absent, or the JSON does not parse -- every one of which means the
+ * caller keeps the install's list untouched.
+ */
+function updater_shipped_manifest(string $zip_path): ?array {
+    if ($zip_path === '' || !is_file($zip_path) || !class_exists('ZipArchive')) {
+        return null;
+    }
+    $zip = new ZipArchive();
+    if ($zip->open($zip_path) !== true) {
+        return null;
+    }
+    $raw = false;
+    foreach (['protected_paths.json', 'snapsmack/protected_paths.json'] as $entry) {
+        $raw = $zip->getFromName($entry);
+        if ($raw !== false) {
+            break;
+        }
+    }
+    $zip->close();
+    if ($raw === false) {
+        return null;
+    }
+    $data = json_decode((string)$raw, true);
+    return is_array($data) ? $data : null;
+}
+
 
 /**
  * Check whether a relative path is protected.
@@ -1029,7 +1136,10 @@ function updater_replace_file(string $dest, string $content): bool {
  */
 function updater_extract(string $zip_path): array {
     $root = dirname(__DIR__);
-    $protected = updater_load_protected_paths();
+    // SS-1335: same reconciliation as the chunked path. Both extraction
+    // routes must agree, or which one an install happens to take decides
+    // whether a retired path is honoured.
+    $protected = updater_load_protected_paths($zip_path);
     $result = ['success' => true, 'files_updated' => 0, 'files_skipped' => 0, 'errors' => []];
     $written = []; // relative paths written, in extraction order
 
@@ -1149,7 +1259,9 @@ function updater_extract(string $zip_path): array {
 function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_sec = 8): array {
     $start     = microtime(true);
     $root      = dirname(__DIR__);
-    $protected = updater_load_protected_paths();
+    // SS-1335: the package decides what may be overwritten, not only the
+    // install's frozen manifest. Resolved per chunk, as before.
+    $protected = updater_load_protected_paths($zip_path);
 
     $result = [
         'success'       => true,
