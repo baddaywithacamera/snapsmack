@@ -24,6 +24,11 @@ RUNNER_STEPS = 30          # must match STEPS in local_ai/local_fill_runner.py
 # instead of repeating the number.
 WORK_RESOLUTION = 512
 
+# How much neighbouring 1:1 windows share. Two windows invent their own
+# content independently, so butting them together leaves a visible ridge;
+# the shared band is what there is to blend across.
+OVERLAP = 96
+
 Cancelled = subprocess_limits.Cancelled
 
 
@@ -78,7 +83,8 @@ def start_installer():
         creationflags=flags)
 
 
-def fill_tile(tile, tile_mask, prompt, on_progress=None, should_cancel=None):
+def _fill_one_window(tile, tile_mask, prompt, on_progress=None,
+                     should_cancel=None):
     """Generate inside ``tile_mask`` and return a patch at the TILE's own size.
 
     The diffusion model works at 512 pixels; that is the model's limit, not a
@@ -129,7 +135,160 @@ def fill_tile(tile, tile_mask, prompt, on_progress=None, should_cancel=None):
                     or source.width * source.height > WORK_RESOLUTION ** 2):
                 raise RuntimeError("Local Generative Fill returned an unsafe image.")
             source.load()
-            return source.convert("RGB").resize(tile.size, Image.Resampling.LANCZOS), MODEL
+            # NEVER UPSCALED. The model answers at WORK_RESOLUTION; this window
+            # is at most that size, so this resize only ever shrinks (or does
+            # nothing). Sean's words: "i don't want the patch upscaled at all."
+            # Growing a 512 answer to fill a 2600-pixel region is what made
+            # fills look soft, and the caller guarantees the window is bounded.
+            patch = source.convert("RGB")
+            if patch.size != tile.size:
+                if tile.width > WORK_RESOLUTION or tile.height > WORK_RESOLUTION:
+                    raise RuntimeError(
+                        "internal: a %dx%d window reached the model, which "
+                        "would upscale its answer" % tile.size)
+                patch = patch.resize(tile.size, Image.Resampling.LANCZOS)
+            return patch, MODEL
+
+
+def plan_windows(size, mask_bbox, work=WORK_RESOLUTION, overlap=OVERLAP):
+    """The 1:1 windows that cover ``mask_bbox`` inside an image of ``size``.
+
+    Each window is at most ``work`` pixels on a side, so the model's answer is
+    never stretched. Windows overlap by ``overlap`` pixels, which is what lets
+    neighbouring answers be blended instead of butted together with a seam.
+
+    A window is pushed inward at the frame edge rather than shrunk, so the
+    model always gets its full canvas of real photograph to look at.
+    """
+    width, height = size
+    left, top, right, bottom = mask_bbox
+    step = max(1, work - overlap)
+    boxes = []
+    y = top
+    while True:
+        x = left
+        while True:
+            x0 = max(0, min(x, width - work)) if width > work else 0
+            y0 = max(0, min(y, height - work)) if height > work else 0
+            x1 = min(width, x0 + work)
+            y1 = min(height, y0 + work)
+            box = (x0, y0, x1, y1)
+            if box not in boxes:
+                boxes.append(box)
+            if x + work >= right:
+                break
+            x += step
+        if y + work >= bottom:
+            break
+        y += step
+    return boxes
+
+
+def _feather(size, overlap):
+    """A raised-cosine weight that falls to zero at a window's edges.
+
+    Averaging overlapping answers with a flat weight leaves a visible ridge
+    where two windows meet, because each one invented its own content. The
+    falloff makes the handover gradual.
+
+    NumPy, not nested lists. The first version of this built the weights and
+    accumulated the composite in Python loops; on the 2600-pixel region from
+    Sean's own photograph that is 6.8 million iterations per pass, twice, and
+    it turned a fix for slow-looking output into slow output.
+    """
+    import numpy as np
+    width, height = size
+    ramp = int(max(1, min(overlap, width // 2, height // 2)))
+
+    def axis(n):
+        out = np.ones(n, dtype=np.float32)
+        i = np.arange(ramp, dtype=np.float32)
+        w = 0.5 - 0.5 * np.cos(np.pi * (i + 0.5) / ramp)
+        out[:ramp] = w
+        out[n - ramp:] = w[::-1]
+        return out
+
+    return np.outer(axis(height), axis(width)).astype(np.float32)
+
+
+def fill_tile(tile, tile_mask, prompt, on_progress=None, should_cancel=None):
+    """Rebuild everything ``tile_mask`` covers, at the photograph's own scale.
+
+    WHY THIS IS NOT ONE MODEL CALL. The model works at WORK_RESOLUTION. The
+    old path squeezed the whole region into that canvas and then stretched the
+    answer back out: a 528-pixel selection inside a 2600-pixel region reached
+    the model as 104 pixels and came back magnified 5.1 times. Measured on
+    Sean's own 3456x5184 photograph, and it is why fills looked soft. His
+    instruction: "upscaling looks like shit. it has to be quality or it has to
+    be taken out."
+
+    So the region is covered by overlapping windows of at most
+    WORK_RESOLUTION REAL pixels. Every window is inpainted at 1:1, and the
+    surrounding photograph inside that window is the model's context -- at full
+    detail, not a thumbnail of a wider view. Overlaps are blended with a
+    raised-cosine weight so neighbouring answers hand over gradually.
+
+    The cost is honest and it is time: a region needing four windows is four
+    model runs. The progress reported counts every window, so a long job looks
+    long instead of looking stuck.
+    """
+    if not installed():
+        raise RuntimeError("Local Generative Fill is not installed yet.")
+    tile = tile.convert("RGB")
+    tile_mask = tile_mask.convert("L").resize(tile.size, Image.Resampling.LANCZOS)
+    bbox = tile_mask.getbbox()
+    if not bbox:
+        raise ValueError("Paint an area to fill first.")
+
+    windows = plan_windows(tile.size, bbox)
+    if len(windows) == 1 and windows[0] == (0, 0, tile.width, tile.height):
+        return _fill_one_window(tile, tile_mask, prompt, on_progress, should_cancel)
+
+    total = len(windows)
+
+    def window_progress(index):
+        def report(stage, done, steps):
+            if on_progress is None:
+                return
+            # Steps are reported across the whole job, not per window, or the
+            # bar would restart from zero several times and read as a hang.
+            if stage == "generating" and steps > 0:
+                on_progress(stage, index * steps + done, total * steps)
+            else:
+                on_progress(stage, done, steps)
+        return report
+
+    # Accumulate in floats: overlapping windows are averaged by weight, and
+    # rounding each one into 8-bit first would band the overlap.
+    import numpy as np
+    width, height = tile.size
+    acc = np.zeros((height, width, 3), dtype=np.float32)
+    wsum = np.zeros((height, width), dtype=np.float32)
+
+    used_model = MODEL
+    for index, (x0, y0, x1, y1) in enumerate(windows):
+        if should_cancel is not None and should_cancel():
+            raise Cancelled("Stopped before the model finished.")
+        window = tile.crop((x0, y0, x1, y1))
+        window_mask = tile_mask.crop((x0, y0, x1, y1))
+        if not window_mask.getbbox():
+            continue            # nothing painted here; do not spend a model run
+        patch, used_model = _fill_one_window(
+            window, window_mask, prompt, window_progress(index), should_cancel)
+        weights = _feather(patch.size, OVERLAP)
+        values = np.asarray(patch, dtype=np.float32)
+        acc[y0:y0 + patch.height, x0:x0 + patch.width] += values * weights[..., None]
+        wsum[y0:y0 + patch.height, x0:x0 + patch.width] += weights
+
+    # Only painted pixels are replaced. Everything outside the mask is the
+    # photograph, untouched, which is the promise the dialog makes in words.
+    base = np.asarray(tile, dtype=np.float32)
+    covered = wsum > 0.0
+    blended = np.where(covered[..., None], acc / np.maximum(wsum, 1e-6)[..., None], base)
+    painted = (np.asarray(tile_mask) > 0) & covered
+    merged = np.where(painted[..., None], blended, base)
+    result = Image.fromarray(np.clip(merged, 0, 255).astype(np.uint8), "RGB")
+    return result, used_model
 
 
 def _progress_reader(on_progress):
