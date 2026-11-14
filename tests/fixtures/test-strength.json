@@ -1216,6 +1216,11 @@
         "predicates": 22,
         "thresholds": []
     },
+    "multisite-dashboard-survives-frozen-constants.php": {
+        "assertions": 15,
+        "predicates": 12,
+        "thresholds": []
+    },
     "multisite-endpoint-role-contract.php": {
         "assertions": 17,
         "predicates": 13,

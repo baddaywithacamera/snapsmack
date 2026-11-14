@@ -8,6 +8,48 @@
  */
 
 require_once 'core/auth-smack.php';
+
+// FALLBACK for installs whose core/constants.php does not define
+// snap_reading_age(). SS-1337: THE FLEET BOARD STOPPED LISTING SPOKES.
+//
+// SS-1145 added snap_reading_age() to core/constants.php and called it from
+// the spoke row below. On a fresh tree that is fine. On an install upgraded
+// from 0.7.159 or earlier it is not: that install's own
+// protected_paths.json still lists core/constants.php, and
+// protected_paths.json is ITSELF in the protected list, so the 2026-08-15
+// decision to stop protecting constants.php never reached it. Its
+// constants.php is frozen, snap_reading_age() does not exist, and the row
+// loop dies on the FIRST spoke with an undefined-function Error -- the hub
+// self-row renders because it never calls it, and the remaining spokes never
+// render at all. The CONNECTED SPOKES count is computed before the table, so
+// it still says 27 while two rows are drawn.
+//
+// This is the same fallback smack-update.php and cron-version-check.php
+// already carry for snap_version_compare(), for the same reason. The lesson
+// is that a new helper in constants.php cannot be assumed present on an
+// upgraded install, and a page that needs one must carry it.
+if (!function_exists('snap_reading_age')) {
+    function snap_reading_age(int $last_seen_ts, int $now, int $stale_after = 86400): array {
+        if ($last_seen_ts <= 0) {
+            return ['known' => false, 'phrase' => 'never', 'stale' => true, 'seconds' => 0];
+        }
+        if ($now < $last_seen_ts) {
+            return ['known' => false, 'phrase' => 'clock skew', 'stale' => true, 'seconds' => 0];
+        }
+        $age = $now - $last_seen_ts;
+        if ($age < 60) {
+            $phrase = 'just now';
+        } elseif ($age < 3600) {
+            $phrase = intdiv($age, 60) . 'm ago';
+        } elseif ($age < 86400) {
+            $phrase = intdiv($age, 3600) . 'h ago';
+        } else {
+            $phrase = intdiv($age, 86400) . 'd ago';
+        }
+        return ['known' => true, 'phrase' => $phrase,
+                'stale' => $age >= $stale_after, 'seconds' => $age];
+    }
+}
 require_once 'core/skin-registry.php';
 
 // Load settings early so multisite_role is available to all POST handlers.
