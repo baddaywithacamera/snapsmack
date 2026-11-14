@@ -28,13 +28,17 @@ def test_fill_sends_only_a_bounded_crop_to_external_runner(monkeypatch, tmp_path
     (root / "local_fill_runner.py").write_bytes(source_runner.read_bytes())
     (root / "installed.txt").write_text(local_fill.MODEL, encoding="utf-8")
     seen = {}
-    def fake_run(args, **_kwargs):
+    # The child is driven through subprocess_limits.stream() now, not run():
+    # a fill reports a line per diffusion step and can be stopped part way.
+    # What this test measures is unchanged -- only a bounded crop leaves the
+    # process -- so only the name of the call being faked moves.
+    def fake_stream(args, **_kwargs):
         image_path = args[args.index("--image") + 1]
         output_path = args[args.index("--output") + 1]
         seen["size"] = Image.open(image_path).size
         Image.new("RGB", seen["size"], "blue").save(output_path)
         return type("Result", (), {"returncode": 0, "stderr": "", "stdout": ""})()
-    monkeypatch.setattr(local_fill.subprocess_limits, "run", fake_run)
+    monkeypatch.setattr(local_fill.subprocess_limits, "stream", fake_stream)
     photo = Image.new("RGB", (2000, 1200), "red")
     mask = Image.new("L", photo.size, 0)
     for y in range(590, 610):

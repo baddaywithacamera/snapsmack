@@ -3336,7 +3336,17 @@ class EditorWindow(QMainWindow):
         """
         if not self.doc:
             return None
-        return self.doc.render().convert("RGB")
+        # KEEP THE COLOUR PROFILE ON THE WAY OUT. display_proxy() builds a
+        # Pillow image straight from the float array and sets no profile, so
+        # until this line a Display P3 document arrived at the AI tools as
+        # unlabelled numbers and was treated as sRGB. The tools convert, and
+        # convert back, but they can only do that if they are told what space
+        # these pixels are in.
+        rendered = self.doc.render().convert("RGB")
+        profile = getattr(self.doc.render_float(), "icc_profile", b"")
+        if profile:
+            rendered.info["icc_profile"] = profile
+        return rendered
 
     def apply_ai_generation(self, path, mask, model, instruction="", operation="heal",
                             provider="Google Gemini", input_image=None,
