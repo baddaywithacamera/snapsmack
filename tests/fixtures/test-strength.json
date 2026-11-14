@@ -1234,6 +1234,11 @@
         "predicates": 5,
         "thresholds": []
     },
+    "multisite-version-reading-age.php": {
+        "assertions": 36,
+        "predicates": 21,
+        "thresholds": []
+    },
     "nav-landing-is-archive-regression.php": {
         "assertions": 22,
         "predicates": 15,
