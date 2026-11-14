@@ -205,6 +205,134 @@ def test_the_step_count_matches_the_runner(monkeypatch, tmp_path):
         "the runner hardcodes a step count again, so RUNNER_STEPS can drift")
 
 
+# ── THE RUNNER ITSELF, RUN ─────────────────────────────────────────────────
+# A mutation run removed callback_on_step_end from the runner and every test
+# above still passed: they all drive local_fill with a fake child, so nothing
+# touched the one line the whole progress feature rests on. These load the
+# real runner with stand-ins for torch and diffusers -- the model weighs 12 GB
+# and is not in CI, the twenty lines of reporting logic are -- and read what
+# it actually prints.
+
+class _FakePipe:
+    """Stands in for the diffusers inpainting pipeline."""
+
+    def __init__(self, accepts_callback=True):
+        self.accepts_callback = accepts_callback
+        self.seen_steps = None
+
+    def to(self, _device):
+        return self
+
+    def enable_model_cpu_offload(self):
+        pass
+
+    def __call__(self, **kwargs):
+        self.seen_steps = kwargs.get("num_inference_steps")
+        callback = kwargs.get("callback_on_step_end")
+        if callback is not None and not self.accepts_callback:
+            raise TypeError("unexpected keyword argument callback_on_step_end")
+        if callback is not None:
+            for step in range(self.seen_steps):
+                callback(self, step, 0, {})
+        return type("Out", (), {"images": [Image.new("RGB", (64, 64), "green")]})()
+
+
+def _load_runner(monkeypatch, pipe):
+    import types
+    torch = types.ModuleType("torch")
+    torch.float16 = "float16"
+    torch.float32 = "float32"
+    torch.cuda = types.SimpleNamespace(is_available=lambda: False)
+    diffusers = types.ModuleType("diffusers")
+    diffusers.AutoPipelineForInpainting = types.SimpleNamespace(
+        from_pretrained=lambda *a, **k: pipe)
+    monkeypatch.setitem(sys.modules, "torch", torch)
+    monkeypatch.setitem(sys.modules, "diffusers", diffusers)
+
+    import importlib.util
+    path = pathlib.Path(local_fill._resource("local_fill_runner.py"))
+    spec = importlib.util.spec_from_file_location("_runner_under_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _run_runner(monkeypatch, capsys, tmp_path, pipe):
+    Image.new("RGB", (64, 64), "red").save(tmp_path / "in.png")
+    Image.new("L", (64, 64), 255).save(tmp_path / "m.png")
+    module = _load_runner(monkeypatch, pipe)
+    monkeypatch.setattr(sys, "argv", [
+        "local_fill_runner.py",
+        "--image", str(tmp_path / "in.png"),
+        "--mask", str(tmp_path / "m.png"),
+        "--output", str(tmp_path / "out.png"),
+        "--prompt", ""])
+    module.main()
+    lines = [json.loads(line) for line in capsys.readouterr().out.splitlines()
+             if line.strip().startswith("{")]
+    return module, lines
+
+
+def test_the_real_runner_reports_every_step(monkeypatch, capsys, tmp_path):
+    pipe = _FakePipe()
+    module, lines = _run_runner(monkeypatch, capsys, tmp_path, pipe)
+    stages = [line.get("stage") for line in lines]
+    assert "loading" in stages, "the runner says nothing while the model loads"
+    steps = [line for line in lines
+             if line.get("stage") == "generating" and "step" in line]
+    assert len(steps) == module.STEPS + 1, (
+        "expected the opening line plus one per step, got %d" % len(steps))
+    assert [line["step"] for line in steps] == list(range(module.STEPS + 1))
+    assert all(line["steps"] == module.STEPS for line in steps)
+    assert "saving" in stages
+    assert pipe.seen_steps == module.STEPS == local_fill.RUNNER_STEPS
+
+
+def test_an_older_diffusers_without_the_callback_still_fills(
+        monkeypatch, capsys, tmp_path):
+    """Losing the step count is survivable. Losing the fill is not."""
+    pipe = _FakePipe(accepts_callback=False)
+    module, lines = _run_runner(monkeypatch, capsys, tmp_path, pipe)
+    assert (tmp_path / "out.png").is_file(), "the fill was lost to the fallback"
+    assert lines[-1].get("ok") is True
+    assert any(line.get("stage") == "generating" for line in lines)
+
+
+def test_the_runner_prints_one_json_object_per_line(monkeypatch, capsys, tmp_path):
+    """local_fill parses these line by line; a pretty-printed object breaks it."""
+    _module, _lines = _run_runner(monkeypatch, capsys, tmp_path, _FakePipe())
+    out = capsys.readouterr()  # already drained; re-run for the raw text
+    del out
+    pipe = _FakePipe()
+    Image.new("RGB", (64, 64), "red").save(tmp_path / "in2.png")
+    Image.new("L", (64, 64), 255).save(tmp_path / "m2.png")
+    module = _load_runner(monkeypatch, pipe)
+    monkeypatch.setattr(sys, "argv", [
+        "local_fill_runner.py",
+        "--image", str(tmp_path / "in2.png"), "--mask", str(tmp_path / "m2.png"),
+        "--output", str(tmp_path / "out2.png"), "--prompt", ""])
+    module.main()
+    raw = capsys.readouterr().out
+    for line in raw.splitlines():
+        if line.strip():
+            json.loads(line)          # every line stands alone or this throws
+
+
+def test_what_the_runner_prints_is_what_local_fill_understands(
+        monkeypatch, capsys, tmp_path):
+    """The two halves agree. This is the join a fake child cannot test."""
+    _module, lines = _run_runner(monkeypatch, capsys, tmp_path, _FakePipe())
+    seen = []
+    read = local_fill._progress_reader(lambda *args: seen.append(args))
+    for line in lines:
+        read(json.dumps(line))
+    assert ("loading", 0, 0) in seen
+    assert ("generating", local_fill.RUNNER_STEPS, local_fill.RUNNER_STEPS) in seen
+    assert ("saving", 0, 0) in seen
+    assert len([s for s in seen if s[0] == "generating"]) == \
+        local_fill.RUNNER_STEPS + 1
+
+
 def test_noise_from_a_chatty_dependency_does_not_move_the_bar(monkeypatch, tmp_path):
     _installed(monkeypatch, tmp_path)
     lines = ["",
