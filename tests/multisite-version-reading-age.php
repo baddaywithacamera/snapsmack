@@ -98,15 +98,27 @@ $never  = ['id' => 9, 'software_version' => '',      'last_seen_ts' => 0];
 
 $h = render_cell($cell, $fresh);
 check('a fresh row prints the version', str_contains($h, $behind));
-check('a fresh row prints the age of the reading', str_contains($h, 'read 2m ago'));
+// SS-1338 CHANGED THIS ASSERTION DELIBERATELY. SS-1145 printed the age under
+// every spoke. .version-age is display:block in a narrow column, so on a fresh
+// row "read just now" wrapped and every row in the fleet table grew, squeezing
+// the ACTION column until its buttons stacked. A fresh reading tells a reader
+// nothing the version does not already say. So the useful rule is: STALE SHOWS
+// THE AGE, FRESH DOES NOT -- and the fresh phrase stays in the tooltip, which
+// is where it was always available anyway.
+check('a fresh row does NOT print an age line under the version',
+      !str_contains($h, 'version-age'));
+check('but the fresh reading is still readable, in the tooltip',
+      str_contains($h, 'Reported 2m ago.'));
 check('a fresh row is NOT marked stale', !str_contains($h, 'version-stale'));
 check('a fresh row still shows the behind-hub arrow', str_contains($h, 'version-behind'));
-check('a fresh row carries ids the update JS can find',
-      str_contains($h, 'id="spoke-ver-val-7"') && str_contains($h, 'id="spoke-ver-age-7"'));
+check('a fresh row carries the value id the update JS can find',
+      str_contains($h, 'id="spoke-ver-val-7"'));
 
 $h = render_cell($cell, $old);
 check('a seven-week-old reading still prints the version', str_contains($h, $behind));
 check('a seven-week-old reading prints its age', str_contains($h, 'read 49d ago'));
+check('and that age line still carries the id the update JS looks for',
+      str_contains($h, 'id="spoke-ver-age-8"'));
 check('a seven-week-old reading is marked stale', str_contains($h, 'version-stale'));
 check('and says in words that it is not a reading taken now',
       str_contains($h, 'not a reading taken now'));
@@ -115,6 +127,10 @@ $h = render_cell($cell, $never);
 check('a spoke never heard from shows no version', str_contains($h, "\u{2014}"));
 check('and says never rather than an age', str_contains($h, 'never'));
 check('and is not labelled "read never"', !str_contains($h, 'read never'));
+// snap_reading_age() reports stale=true for an unheard-of spoke, so SS-1338's
+// gate must not have hidden this one: "never" is exactly the case worth showing.
+check('a spoke never heard from DOES still print its age line',
+      str_contains($h, 'version-age'));
 
 // The fault itself: the two rows must not be indistinguishable.
 check('THE DEFECT: a fresh reading and a seven-week-old one render differently',

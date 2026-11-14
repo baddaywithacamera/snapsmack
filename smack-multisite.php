@@ -2214,9 +2214,26 @@ include 'core/sidebar.php';
                                             // that does it is inside the SS-1041 allowlisted
                                             // inline script, which the agreed-rules gate says is
                                             // moved to assets/js/ rather than edited in place.
-                                            echo '<span class="version-age' . $ver_cls . '" id="spoke-ver-age-' . (int)$n['id'] . '">'
-                                               . ($ver_age['known'] ? 'read ' . htmlspecialchars($ver_age['phrase']) : htmlspecialchars($ver_age['phrase']))
-                                               . '</span>';
+                                            // SS-1338, and the regression is mine from SS-1145. This
+                                            // line printed under EVERY spoke. .version-age is display:block
+                                            // and the VERSION column is narrow, so "read just now" wrapped
+                                            // and every row in the fleet table grew by two lines, squeezing
+                                            // the ACTION column until its buttons stacked. Sean saw it the
+                                            // moment he built 0.7.995D.
+                                            //
+                                            // A fresh reading carries no information a reader needs in the
+                                            // table: the version is simply current. Only a STALE or unknown
+                                            // reading changes what the number means, so only that prints.
+                                            // The fresh phrase is still in the .version-value tooltip above,
+                                            // which says "Reported just now."
+                                            //
+                                            // snap_reading_age() returns stale=true for both "never" and
+                                            // clock skew, so this one test covers every case worth showing.
+                                            if ($ver_age['stale']) {
+                                                echo '<span class="version-age' . $ver_cls . '" id="spoke-ver-age-' . (int)$n['id'] . '">'
+                                                   . ($ver_age['known'] ? 'read ' . htmlspecialchars($ver_age['phrase']) : htmlspecialchars($ver_age['phrase']))
+                                                   . '</span>';
+                                            }
                                         ?>
                                     </td>
                                     <td class="col-center">
