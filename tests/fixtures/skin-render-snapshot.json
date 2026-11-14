@@ -72,7 +72,7 @@
         "links": 3,
         "headings": 2,
         "words": 15,
-        "text_sha256": "2124823b648616fa7b340d76c8499cd39482a6f351e5b826aaddf10ca5bf8479"
+        "text_sha256": "9509ca95e1eab1609c5ef0fa43c9c690769bac53ab7ad8650b1724b3e7641b4e"
     },
     "50-shades-of-noah-grey/post": {
         "images": [],
@@ -85,7 +85,7 @@
         "links": 3,
         "headings": 2,
         "words": 14,
-        "text_sha256": "92b93d3ecac29057beca0e789c4c28314493da71a47e26dd5931fb28de9c03f0"
+        "text_sha256": "19cc2ad57cd593947f8f45246e108625bc0703c157d5c85f2046f6ebccf0cb5a"
     },
     "50-shades-of-noah-grey/post-mixed": {
         "images": [
@@ -100,7 +100,7 @@
         "links": 3,
         "headings": 2,
         "words": 33,
-        "text_sha256": "37fb322544a3fceb72726ae6a5eec4c2965e8b2e5ce89939c1e6e0d3dec3cbea"
+        "text_sha256": "e5b7ab6885a01f861fe8f2e4a971add0c92812b1dc268a4932cf1761d8c3caa3"
     },
     "52-card-pickup/archive": {
         "images": [
@@ -333,7 +333,7 @@
         "links": 4,
         "headings": 0,
         "words": 11,
-        "text_sha256": "d55ea870248f13ed3bc19b750a4e93a765ff733e1e9b7c1df230fd88e0338282"
+        "text_sha256": "bebe4708087576c247e7586afb8afca3a1eeec3434b6bc79ebcd650d8684942d"
     },
     "chaplin/not_found": {
         "images": [],
@@ -378,7 +378,7 @@
         "links": 3,
         "headings": 1,
         "words": 17,
-        "text_sha256": "b1146c51c8dc93509ee52c272b22769eed054286ea3d274d5bf1b002177007a9"
+        "text_sha256": "734bb49de4892276b3c55ba48b5451b03c2fcea3714d7eaaffb3a6639608544c"
     },
     "chaplin/post": {
         "images": [],
@@ -391,7 +391,7 @@
         "links": 3,
         "headings": 1,
         "words": 13,
-        "text_sha256": "831de51772dee398a5184936a12317a4d022e1d99a931ac5c858a14664893f5b"
+        "text_sha256": "fd3eb752e93bd170626393a534c26e92a765a8f96770a22ee8c3180901d7c5b2"
     },
     "chaplin/post-mixed": {
         "images": [
@@ -406,7 +406,7 @@
         "links": 3,
         "headings": 1,
         "words": 32,
-        "text_sha256": "954e37e21583704cfd33381ae46e29ed37ddf6ebc4c3a1aefdf2f388f3ee0ae9"
+        "text_sha256": "7e4980ad55c21e90e1d1bf9c8c34d0c059898a8df78285d050bf936f60aa8503"
     },
     "full-monty/archive": {
         "images": [
@@ -569,7 +569,7 @@
         "links": 3,
         "headings": 1,
         "words": 21,
-        "text_sha256": "4d2a5ccbf73c035bb09891a5d27d360a734ce84c5da7847362b2e8638b39d4cc"
+        "text_sha256": "d8e558261331e7a4780f3e2ee5370883de16bd8e497a3b89c6de06a00dfdcc8c"
     },
     "galleria/post": {
         "images": [],
@@ -581,7 +581,7 @@
         "links": 3,
         "headings": 1,
         "words": 16,
-        "text_sha256": "ce4b8d7a5ad5eb72172d955c116eede421bf0395070e2ba8ed0d3ae2354df42d"
+        "text_sha256": "f3e8a0e8893b977175659f3b85c60a122edefd90e35006beaf264ef436d20373"
     },
     "galleria/post-mixed": {
         "images": [
@@ -595,7 +595,7 @@
         "links": 3,
         "headings": 1,
         "words": 36,
-        "text_sha256": "077b0cfed1ff72004c3c9aadd6a4a3fba04d540f6d52fb95af21ea902969eaca"
+        "text_sha256": "496973bc234b1d601e4cd13d9a7ccea0515a6c6be058f935ed2aa4ebe65f76b1"
     },
     "game-on/archive": {
         "images": [
@@ -974,7 +974,7 @@
         "links": 3,
         "headings": 1,
         "words": 21,
-        "text_sha256": "4b0fb31e614bba2d9035a7975772b89ad5f0fca6ac71694cd47c219ce76ff204"
+        "text_sha256": "2b1e88af19f5367a9741367558e18883270dc83bc171ed8165955b9a1d720dc5"
     },
     "hip-to-be-square/post": {
         "images": [],
@@ -986,7 +986,7 @@
         "links": 3,
         "headings": 1,
         "words": 16,
-        "text_sha256": "ca06a71e0b5f05db81f300eb6c148e36526c8bab8786a3c910f216384bede058"
+        "text_sha256": "33c89a51286e02ea0c6f84b497783a760702d614b7483b30be6f34449e4d8822"
     },
     "hip-to-be-square/post-mixed": {
         "images": [
@@ -1000,7 +1000,7 @@
         "links": 3,
         "headings": 1,
         "words": 36,
-        "text_sha256": "5f826ed00f20c6c201f35e550fbe81d5ba5167ac39dbcf0f3690dfa8e052eb91"
+        "text_sha256": "f5f86ff4ac3e4344085d40b762a07153677f5f62368a6e430d224fe2d03cdda7"
     },
     "impact-printer/archive": {
         "images": [
@@ -1070,7 +1070,7 @@
         "links": 3,
         "headings": 1,
         "words": 14,
-        "text_sha256": "0d8f23af8867c377abc19075aaaf4bc1b059d90d759ddeae94e798d61ed695c1"
+        "text_sha256": "98ee53508ea99f89c8899b2557487162a105dfdcc9cd7fede32c0c5965207643"
     },
     "impact-printer/post": {
         "images": [],
@@ -1082,7 +1082,7 @@
         "links": 3,
         "headings": 1,
         "words": 13,
-        "text_sha256": "37962203998bbe954bacc74ee26e023d189fc13df16462a9fed3b0480f0f4010"
+        "text_sha256": "15c9254975c2ec7470390b3d9d9618d49559c776f9fe436f54349685093939be"
     },
     "impact-printer/post-mixed": {
         "images": [
@@ -1096,7 +1096,7 @@
         "links": 3,
         "headings": 1,
         "words": 32,
-        "text_sha256": "a845eb8b58ce5dbd73d30f9868ba1db8bcfe7a470ed5071f46270049c032079b"
+        "text_sha256": "a1d0d2f2ec5eeda4c3bd2fc5f7448a0f608e2b423e297a093b088b0a7f262a3a"
     },
     "instant-camera/archive": {
         "images": [
@@ -1387,7 +1387,7 @@
         "links": 3,
         "headings": 1,
         "words": 19,
-        "text_sha256": "fae3e3b17a268c066fb65f9eedfb561720a0b066e5a50003c8257a8657683a94"
+        "text_sha256": "f6235b57317171eb1abe1fe82a4a9fc334f462bc5ce94a523c743142c91c3d60"
     },
     "new-horizon/post": {
         "images": [],
@@ -1400,7 +1400,7 @@
         "links": 3,
         "headings": 1,
         "words": 15,
-        "text_sha256": "405859509d05a34d1474dee953b7721e15ae1764da7e337a03c5b8f78f3c7c71"
+        "text_sha256": "3284a4f6e7e3a4076cef94f249e4d37e0433901b993f95f390fc2b3bb41feda0"
     },
     "new-horizon/post-mixed": {
         "images": [
@@ -1415,7 +1415,7 @@
         "links": 3,
         "headings": 1,
         "words": 34,
-        "text_sha256": "49ff4f8131c8987876c51cc7808b1e61c9a2df365660a2a39396b46f4ec47caf"
+        "text_sha256": "5b441634ecdf46e6865f8ceb8ad801dff48153b722d9182054d43c995029a644"
     },
     "onyx/archive": {
         "images": [
@@ -1485,7 +1485,7 @@
         "links": 3,
         "headings": 2,
         "words": 14,
-        "text_sha256": "1a5599e699d7acfbda1ba47491b2ce01c5b4a18656587803dd8279d5960af71f"
+        "text_sha256": "be5cbbb4ef81d0d3be8c0bcd6f827287f5a301e22bc329eda27b378455664469"
     },
     "onyx/post": {
         "images": [],
@@ -1497,7 +1497,7 @@
         "links": 3,
         "headings": 2,
         "words": 13,
-        "text_sha256": "c847337f69de3c9fbcdf16d8fdc3cd74ea75a4c0f8e77c7bd539e5e076276afa"
+        "text_sha256": "161f189038c61ce01f7a42bd3f9a7c46d3c1c6536377d8cd01cb0a2eb695c630"
     },
     "onyx/post-mixed": {
         "images": [
@@ -1511,7 +1511,7 @@
         "links": 3,
         "headings": 2,
         "words": 32,
-        "text_sha256": "8c3b470771b081f4562277635bd2030d01d872472086b760e0cf014a1919f752"
+        "text_sha256": "9e37f89e131d517c46c64e45653c2f0f53f4b9d1476adcfb0e8fcbba479c4f09"
     },
     "parade/archive": {
         "images": [
@@ -1790,7 +1790,7 @@
         "links": 3,
         "headings": 1,
         "words": 17,
-        "text_sha256": "2eeb849dbbce9a75fc4c5fe167da7ed4915da25b189eb37bd016e542ea62c456"
+        "text_sha256": "e1272609c74f8919e2b9d3d11cf5fbb6f2a8be3dcffe48b6bec5bcd6ffbd0481"
     },
     "rational-geo/post": {
         "images": [],
@@ -1803,7 +1803,7 @@
         "links": 3,
         "headings": 1,
         "words": 14,
-        "text_sha256": "92b93d3ecac29057beca0e789c4c28314493da71a47e26dd5931fb28de9c03f0"
+        "text_sha256": "19cc2ad57cd593947f8f45246e108625bc0703c157d5c85f2046f6ebccf0cb5a"
     },
     "rational-geo/post-mixed": {
         "images": [
@@ -1818,7 +1818,7 @@
         "links": 3,
         "headings": 1,
         "words": 33,
-        "text_sha256": "37fb322544a3fceb72726ae6a5eec4c2965e8b2e5ce89939c1e6e0d3dec3cbea"
+        "text_sha256": "e5b7ab6885a01f861fe8f2e4a971add0c92812b1dc268a4932cf1761d8c3caa3"
     },
     "scroll/archive": {
         "images": [
@@ -1893,7 +1893,7 @@
         "links": 3,
         "headings": 1,
         "words": 15,
-        "text_sha256": "999dd717416f80ccacd16981f6ab7008fe2fd7f8522e36797c82433dc8a28e7e"
+        "text_sha256": "59464753a95df8e7c59ec021763ac377d00bdbd2e137ae34ea7eee5163f3ef1b"
     },
     "scroll/post": {
         "images": [],
@@ -1906,7 +1906,7 @@
         "links": 3,
         "headings": 1,
         "words": 14,
-        "text_sha256": "8d904a7a8da62302e1bba693e1cd3cb47388a6a5afa7468157d97b97fedc4b90"
+        "text_sha256": "d21a2ca9f269da2c38dbacf24deb3d8be7a1c227765b1687e2a6843858a17cdd"
     },
     "scroll/post-mixed": {
         "images": [
@@ -1921,7 +1921,7 @@
         "links": 3,
         "headings": 1,
         "words": 33,
-        "text_sha256": "58fcfa5f66b72c5d9f69be7fe393758552dddb27aadd0484f6549feabe3492f0"
+        "text_sha256": "63b943f6db2098ca8b3f5ec553a99285ce055aa5dcc517311f36d4fdcb54e698"
     },
     "show-n-tell/archive": {
         "images": [
@@ -2096,7 +2096,7 @@
         "links": 5,
         "headings": 2,
         "words": 15,
-        "text_sha256": "8859a030457f9346a47875bff0b85d47c125eda4d350827c3ff5346ed9610149"
+        "text_sha256": "88dfb482b68217acf81e0b6a12324505d2ee08f1e6b64ed88f623826716c9580"
     },
     "slickr/post": {
         "images": [],
@@ -2108,7 +2108,7 @@
         "links": 5,
         "headings": 2,
         "words": 14,
-        "text_sha256": "0f3030c1d4513100330c791da70cec5397f8cc27f32b5bf52fc1c2c66a0ab438"
+        "text_sha256": "edc94093ba4fb2ce47a63a88e6ffba850bb2db206b4f79a10651ae9658e59de3"
     },
     "slickr/post-mixed": {
         "images": [
@@ -2122,7 +2122,7 @@
         "links": 5,
         "headings": 2,
         "words": 33,
-        "text_sha256": "292ebd197129e064aea93e57c20233832306da6533b9ce54aba28809ca13fb9e"
+        "text_sha256": "f36ad93d15fca962586665784cf912c86f30bb69b98d889c1c08274ae873488c"
     },
     "sliders/archive": {
         "images": [
@@ -2521,7 +2521,7 @@
         "links": 3,
         "headings": 1,
         "words": 17,
-        "text_sha256": "71c300fa93cc4b1157f0f3aca03679d781f1e04fd8e571ad2c89876a066d5a4a"
+        "text_sha256": "2fa1fcf5fe652743c15c3841ca851ae8114a9b61d3b6536141736073b9889bf6"
     },
     "true-grit/post": {
         "images": [],
@@ -2534,7 +2534,7 @@
         "links": 3,
         "headings": 1,
         "words": 13,
-        "text_sha256": "c847337f69de3c9fbcdf16d8fdc3cd74ea75a4c0f8e77c7bd539e5e076276afa"
+        "text_sha256": "161f189038c61ce01f7a42bd3f9a7c46d3c1c6536377d8cd01cb0a2eb695c630"
     },
     "true-grit/post-mixed": {
         "images": [
@@ -2549,6 +2549,6 @@
         "links": 3,
         "headings": 1,
         "words": 32,
-        "text_sha256": "8c3b470771b081f4562277635bd2030d01d872472086b760e0cf014a1919f752"
+        "text_sha256": "9e37f89e131d517c46c64e45653c2f0f53f4b9d1476adcfb0e8fcbba479c4f09"
     }
 }
