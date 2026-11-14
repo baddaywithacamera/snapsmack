@@ -11,6 +11,24 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.995D - 2026-11-14
+
+- The multisite dashboard lists its spokes again on installs whose
+  core/constants.php is frozen. 0.7.994D's fleet board called
+  snap_reading_age(), which SS-1145 had added to core/constants.php. An
+  install upgraded from 0.7.159 or earlier still lists that file in its own
+  protected_paths.json -- and protected_paths.json is itself protected, so the
+  2026-08-15 decision to stop protecting constants.php never reached it. The
+  file stays frozen while the updater rewrites its version lines, so the site
+  reports the new version while running the old code, the function does not
+  exist, and the spoke row loop stopped on the FIRST spoke. The hub's own row
+  rendered because it never calls it, and the CONNECTED SPOKES count is
+  computed before the table, so the board showed 27 above two rows. Confirmed
+  on the live hub: it declares 0.7.994D and its constants.php has no
+  snap_reading_age. smack-multisite.php now carries a guarded fallback, the
+  same pattern smack-update.php and cron-version-check.php already use for
+  snap_version_compare. (SS-1337)
+
 ## 0.7.994D - 2026-11-11
 
 - SS-1197: the installer now offers only site modes that have been tested. The same allow-list drives the visible choices and the server-side write, so an old form cannot submit an unsupported mode.
