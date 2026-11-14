@@ -16,4 +16,6 @@
 <?php if (($view['response']['kind'] ?? '') === 'landing' || ($view['response']['kind'] ?? '') === 'archive'): ?><?php echo snap_render_html(snap_render_component('scroll-time', $view)); ?><?php endif; ?>
 <?php echo snap_render_html(snap_render_component('registered-assets',['assets'=>$view['site']['registered_assets'] ?? []])); ?><?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?></body></html>
 
+<?php // ===== SNAPSMACK EOF =====
+
 

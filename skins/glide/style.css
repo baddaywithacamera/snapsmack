@@ -1362,6 +1362,138 @@ a.logo-area,
     letter-spacing: 0.02em;
 }
 
+/* DIRECT PHOTO
+   A GLIDE tile has a real permalink. That route uses the shared strict-skin
+   photo structure rather than the moving wall, so it needs an owned GLIDE
+   presentation too. Keep the photograph dominant, retain the title/story,
+   and make the page feel like the same dark viewer instead of falling through
+   to unstyled browser defaults. */
+body.glide-v2:has(.single-image-page) {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    color-scheme: dark;
+    background: var(--glide-bg);
+    color: var(--glide-ink);
+    font-family: "DM Sans", system-ui, sans-serif;
+}
+.glide-v2:has(.single-image-page) #header {
+    flex: 0 0 auto;
+    padding: 18px clamp(24px, 4vw, 72px);
+    border-bottom: 1px solid #ffffff24;
+    background: #090909f2;
+}
+.glide-v2:has(.single-image-page) #header .inside {
+    width: min(1600px, 100%);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+.glide-v2:has(.single-image-page) #header .site-title {
+    flex: 0 1 auto;
+    color: inherit;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-decoration: none;
+    text-transform: uppercase;
+}
+.glide-v2:has(.single-image-page) #header .nav-menu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.glide-v2:has(.single-image-page) #header .nav-menu a {
+    color: inherit;
+    text-decoration: none;
+}
+.glide-v2:has(.single-image-page) > .public-content {
+    flex: 1 0 auto;
+    width: 100%;
+    padding: clamp(24px, 4vw, 64px);
+}
+.glide-v2 .single-image-page {
+    width: min(1600px, 100%);
+    min-height: min(780px, calc(100vh - 220px));
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+    grid-template-areas:
+        "image title"
+        "image story";
+    grid-template-rows: auto 1fr;
+    border: 1px solid #ffffff2b;
+    background: #111;
+    box-shadow: 0 28px 80px #0009;
+}
+.glide-v2 .single-image-page .photo-title-footer {
+    grid-area: title;
+    margin: 0;
+    padding: 32px 32px 24px;
+    border-bottom: 1px solid #ffffff1f;
+    font-size: clamp(1.35rem, 2vw, 2rem);
+    line-height: 1.15;
+    letter-spacing: .02em;
+}
+.glide-v2 .single-image-page .post-image-wrap {
+    grid-area: image;
+    min-width: 0;
+    min-height: min(720px, calc(100vh - 220px));
+    margin: 0;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: #050505;
+}
+.glide-v2 .single-image-page .post-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-height: calc(100vh - 190px);
+    object-fit: contain;
+}
+.glide-v2 .single-image-page #infobox {
+    grid-area: story;
+    min-width: 0;
+    margin: 0;
+    padding: 28px 32px 36px;
+    overflow-wrap: anywhere;
+    color: #d8d8d8;
+    font-size: .95rem;
+    line-height: 1.7;
+}
+.glide-v2 .single-image-page #infobox > :first-child { margin-top: 0; }
+.glide-v2 .single-image-page #infobox > :last-child { margin-bottom: 0; }
+.glide-v2:has(.single-image-page) #system-footer {
+    flex: 0 0 auto;
+    margin-top: 0;
+    border-color: #ffffff1f;
+    color: #bdbdbd;
+}
+
+@media (max-width: 1100px) {
+    .glide-v2:has(.single-image-page) > .public-content { padding: 24px; }
+    .glide-v2 .single-image-page {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "image" "title" "story";
+        grid-template-rows: auto auto auto;
+        min-height: 0;
+    }
+    .glide-v2 .single-image-page .post-image-wrap {
+        min-height: min(68vh, 680px);
+    }
+    .glide-v2 .single-image-page .post-image {
+        max-height: min(68vh, 680px);
+    }
+}
+
 /* Keep secondary views readable while the shared overlay is being wired. */
 body.glide-v2:has(.archive-grid, .blogroll-page) {
     margin: 0;
