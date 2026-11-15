@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: preserve the final SNAPSMACK EOF comment. -->
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OPAUDIT 034 — The gate that said no</title><link rel="stylesheet" href="_report.css?v=ace953fd"></head><body><p class="doc-kicker">SnapSmack Operability Audit</p>
+<h1>OPAUDIT 034 — The gate that said no</h1>
+<blockquote>
+<p><strong>DRAFT — unpublished.</strong> Written by the repo seat from the Brain Trust room record of 13–14 November 2026 (UTC). Every sha and count below is quoted from the posts of the agent who measured it. Nothing here was re-executed by the author, who has no PHP.</p>
+</blockquote>
+<table class="meta">
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Audit ID</td>
+<td>2026-11-14-034</td>
+</tr>
+<tr>
+<td>State</td>
+<td>CLOSED. The gate refused a release, the cause was found and explained, the fixtures were corrected through review, and the gate then passed.</td>
+</tr>
+<tr>
+<td>Scope</td>
+<td>The 0.7.994D release gate: a hand-written test list that disagreed with the real gate, a skin-render snapshot drift across 11 skins, and a missing test-strength record.</td>
+</tr>
+<tr>
+<td>Commits</td>
+<td><code>402c790b</code> (refused candidate), <code>2cace8e6</code> (SS-1318, drift source), <code>fdd79343</code> → <code>a66be4ef</code> (strength record), <code>2c3c66d5</code> → <code>bd6f4376</code> (snapshot re-pin), <code>v0.7.994D</code> = <code>bd6f4376</code></td>
+</tr>
+</tbody>
+</table>
+<h2>What happened</h2>
+<p>The 0.7.994D candidate was dev <code>402c790b</code>. The engineering seat (Code) reported "the fourteen-test release-flow matrix, 14 of 14 PASS". The PM ruled the candidate SAFE to tag on the strength of that number, and the owner said yes.</p>
+<p>Codex then ran the real gate: <code>php tools/release-flow.php tag-dev 0.7.994</code>. <strong>It exited 1 and refused to tag.</strong> <code>tests/skin-render-snapshot-regression.php</code> reported 34 <code>text_sha256</code> drifts across 11 skins. Codex stopped, confirmed that no local or remote tag existed, and did not re-pin the fixture to make it green.</p>
+<p>That refusal is the point of this audit. A ruling of SAFE, an owner's yes and a passing report all existed, and the gate still said no, because it measured something none of them had.</p>
+<h2>Why the report and the gate disagreed</h2>
+<p>The "fourteen-test matrix" was not the gate's test selection. It was a list written by hand from test files whose names contain "release" or "gate". The real gate (<code>rf_tests()</code>) does not use a list at all: it globs the directory, <strong>406</strong> <code>tests/*.php</code> plus <strong>22</strong> <code>tests/*.cjs</code> and <code>tools/browser-tests/run-regressions.cjs</code>. The snapshot test was one of the 392 the hand list never ran.</p>
+<p>The gate's own source already carried the lesson, in a comment written after an earlier version of the gate missed twenty files: <em>"A filename pattern is not a test selection. The directory is the suite."</em> The hand list repeated that mistake one level up.</p>
+<p>Code deleted the list and ran the directory instead: <strong>404 of 406 pass</strong>. The second failure was <code>tests/test-strength-regression.php</code>. A test file added by SS-1145 had been merged without an entry in the strength record, and the test refuses to adopt a new file by itself, by design.</p>
+<h2>Finding the cause, not hiding it</h2>
+<p>The PM's ruling after the refusal: nobody re-pins the snapshot to make it green. A re-pin is allowed only if the drift is explained as intended, shown to match the owner's rule that skin output changes are deliberate, and reviewed.</p>
+<ul>
+<li><strong>Bisect (Codex):</strong> the first bad commit was <code>2cace8e6</code>, SS-1318, "put next navigation on the left". Its parent passed.</li>
+<li><strong>What changed (Codex):</strong> on every one of the 34 pages, the only text difference was the nav row, from <code>« PREV|FIRST|INFO|COMMENTS (0)|LAST|NEXT »</code> to <code>« NEXT|FIRST|INFO|COMMENTS (0)|LAST|PREV »</code>. 34 changed, 34 marker-only, 0 with any other difference.</li>
+<li><strong>Was it deliberate? (Code):</strong> a left-pointing guillemet on NEXT reads as a mistake, and a re-pin would freeze it. It is not one: SS-1318 shipped <code>photo-navigation-order.cjs</code>, which asserts that exact sequence and the <code>rel=next</code>/<code>rel=prev</code> placement, and Muse had confirmed that tip.</li>
+</ul>
+<h2>The repairs, each reviewed before merge</h2>
+<ol>
+<li><strong>Strength record</strong> — <code>fdd79343</code>: five lines, one new entry, no existing number moved. Muse reproduced the counter's own counts (36 / 21) independently. Merged as <code>a66be4ef</code>.</li>
+<li><strong>Snapshot re-pin</strong> — <code>2c3c66d5</code>: regenerated with the test's own <code>--update</code>, never by hand. Compared key by key: 175 entries both sides, 0 added, 0 removed, 34 changed, and <code>text_sha256</code> the only field that moved, on exactly the 11 skins Codex listed. Muse repeated the comparison her own way and confirmed it. Merged as <code>bd6f4376</code>.</li>
+<li><strong>Full gate</strong> — on <code>bd6f4376</code>, including the browser rail that nobody had run on the candidate: exit 0. <code>v0.7.994D</code> was tagged on that sha. The tagged sha differs from the candidate the owner approved by these two fixture commits only, with no product code.</li>
+</ol>
+<h2>What the gate could not see</h2>
+<p>The gate passed, and 994D still broke something. On the oldest install in the fleet, the multisite dashboard stopped at the first spoke, because a new helper lived in a <code>core/constants.php</code> that the install's own stale <code>protected_paths.json</code> had frozen. That fault is outside what a source-tree gate can measure. Its release note carried the line "rendered dashboard on a long-standing install: NOT CHECKED", and that line rode into the tag. It was repaired in 0.7.995D (SS-1337), whose full gate also passed, and the root cause is a separate ticket. The PM's rule since: a NOT CHECKED that names a rendered admin page on a long-standing install blocks the tag until someone opens it or the owner accepts it in writing.</p>
+<p>The snapshot has its own blind spot, found the same night: it hashes text, so an icon drawn as inline SVG, such as the like heart, is invisible to it. A green snapshot says nothing about icons.</p>
+<h2>What to check in your own project</h2>
+<ol>
+<li>Is the number you report the number your gate actually runs, or a list someone picked?</li>
+<li>Does your gate select tests by directory, so a new test cannot be silently left out?</li>
+<li>When a fixture drifts, does anyone have to explain the drift before regenerating it, and does a second reviewer check the regenerated diff key by key?</li>
+<li>Can anyone tag past a red gate because a person said yes? Here nobody could.</li>
+<li>What does your gate structurally not see (installed builds, old installs, icons, rendered geometry), and is that written next to the release rather than assumed covered?</li>
+</ol>
+<h2>What this audit does not claim</h2>
+<ul>
+<li>It does not claim the gate covers installed builds or old installs; 0.7.995D exists because it does not.</li>
+<li>It does not claim the snapshot proves visual correctness; it hashes text.</li>
+<li>It does not claim independent re-execution of any test by the author.</li>
+<li>Ticket numbering: "SS-1335" was used for two different branches that night (the strength record and the manifest reconciliation). This audit identifies them by commit, and the collision is reported for correction.</li>
+</ul>
+<p>Prepared by the repo seat (Claude) with AI assistance, from the room record. Status: <strong>CLOSED</strong>.</p>
+</body></html>
+<!-- ===== SNAPSMACK EOF ===== -->
