@@ -70,13 +70,20 @@ button{ font-family:inherit; cursor:pointer; }
    box is 26 CSS pixels -- 78 device pixels at 3x. 128px covers every density
    anyone will use and costs 12KB instead of 107KB on every reader page load.
 
-   IT HAS A BLACK BACKGROUND, which is the artwork as supplied and is not
-   something to guess a transparent cut out of. The art fills 91% of the
-   frame with a black margin all round, so on the DARK reader it disappears
-   into the page as intended. On the LIGHT reader it is a black tile on white.
-   The small radius is so that tile reads as deliberate rather than as a
-   rectangle somebody forgot. If a transparent version is wanted on light,
-   that is Sean's file to supply; nothing here invents one. */
+   SOURCE: projects/snapsmack-ca/img/logo-fediverse-snapsmack.png, the file
+   Sean re-saved, 454x454. Its art reaches every edge of the frame, unlike the
+   earlier 1000px version which sat in a black margin.
+
+   IT HAS NO ALPHA, which is the artwork as supplied and is not something to
+   guess a transparent cut out of. On the DARK reader the black meets the page
+   and only the camera and aperture read. On the LIGHT reader it is a dark
+   tile on white -- the small radius is so that tile looks deliberate rather
+   than like a rectangle somebody forgot. Measured, so this is not a guess:
+   at the rendered 26px, 57% of the tile is visible ink and 45% is bright, so
+   it reads as a shape rather than a dark blob at that size.
+
+   If a transparent version is wanted for the light reader, that is Sean's
+   file to supply; nothing here invents one. */
 .sx-brand .sx-mark{
   width:26px; height:26px; border-radius:6px; flex:0 0 auto;
   background-image:url("../img/fediverse-mark-128.png");
