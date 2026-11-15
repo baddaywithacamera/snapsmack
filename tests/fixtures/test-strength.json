@@ -1240,8 +1240,8 @@
         "thresholds": []
     },
     "multisite-version-reading-age.php": {
-        "assertions": 36,
-        "predicates": 21,
+        "assertions": 39,
+        "predicates": 23,
         "thresholds": []
     },
     "nav-landing-is-archive-regression.php": {
@@ -1435,6 +1435,16 @@
             2,
             2,
             10
+        ]
+    },
+    "portfolio-admin-controls-save-regression.php": {
+        "assertions": 19,
+        "predicates": 13,
+        "thresholds": [
+            4,
+            6,
+            7,
+            9
         ]
     },
     "portfolio-route-resolver-regression.php": {
