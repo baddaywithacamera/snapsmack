@@ -33,8 +33,8 @@
             "manifest_css_sha256": "85c6797b236bae8cb65b0ebc1272b1f2480c2a7ddab219bfc921c68a8fb7a8be"
         },
         "galleria": {
-            "version": "1.3.24",
-            "files_sha256": "ab0c3e8f84e5f8b8182467a24a2d6dc0bff8acf39a2b64c0dabc849f481a052d",
+            "version": "1.3.25",
+            "files_sha256": "2d8f52794d109fc4e2842ea9ecc1cfba915d309b5c2a21c83d5c9792ab284914",
             "manifest_css_sha256": "82dd12ca562dc273ad9c02d53eb2d180c944ab7ba2833eacbb1bbfd189e89c8c"
         },
         "game-on": {
