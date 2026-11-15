@@ -405,6 +405,11 @@
             25
         ]
     },
+    "decorative-image-is-not-a-photograph.php": {
+        "assertions": 21,
+        "predicates": 22,
+        "thresholds": []
+    },
     "default-navigation-regression.php": {
         "assertions": 7,
         "predicates": 4,
@@ -1240,8 +1245,8 @@
         "thresholds": []
     },
     "multisite-version-reading-age.php": {
-        "assertions": 36,
-        "predicates": 21,
+        "assertions": 39,
+        "predicates": 23,
         "thresholds": []
     },
     "nav-landing-is-archive-regression.php": {

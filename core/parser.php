@@ -901,7 +901,11 @@ class SnapSmack {
      */
     private function parseImages($content) {
         return preg_replace_callback(
-            '/\[img:\s*(g)?\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?(?:\s*\|\s*(\d{1,3})(?:%)?)?\s*\]/i',
+            // SS-1356 adds an optional trailing |decorative. Each earlier part
+            // is independently optional, so [img:5|decorative] matches with the
+            // size, align and width groups empty, and
+            // [img:5|small|left|30|decorative] matches with all of them.
+            '/\[img:\s*(g)?\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?(?:\s*\|\s*(\d{1,3})(?:%)?)?(?:\s*\|\s*(decorative))?\s*\]/i',
             function ($matches) {
                 $gallery = !empty($matches[1]);   // optional 'g' prefix ([img:gID]) forces Gallery
                 $id      = $matches[2];
@@ -910,6 +914,14 @@ class SnapSmack {
                 $width   = isset($matches[5]) && $matches[5] !== ''
                     ? max(20, min(100, (int)$matches[5]))
                     : 100;
+                // SS-1356. A DECORATIVE image is furniture, not a photograph.
+                // Sean's signature was rendered asset-full and wired into the
+                // lightbox, so it showed at full width on the-idea and counted
+                // as one of the page's two photographs; clicking it opened the
+                // photo viewer. There was no way to say "this is an image but
+                // it is not one of the pictures" -- width could be reduced and
+                // nothing else could.
+                $decorative = isset($matches[6]) && $matches[6] !== '';
 
                 $asset = false;
 
@@ -988,6 +1000,39 @@ class SnapSmack {
                 // surrounding page or post title.
                 $caption      = trim((string)($asset['caption'] ?? ''));
                 $caption_attr = $caption !== '' ? sprintf(' data-caption="%s"', htmlspecialchars($caption, ENT_QUOTES)) : '';
+
+                if ($decorative) {
+                    // NO data-lightbox-src AT ALL. assets/js/ss-engine-lightbox.js
+                    // wires every img[data-lightbox-src] and is behaving
+                    // correctly; the fix is not to emit the hook. Omitting the
+                    // attribute is also what keeps it out of the viewer's
+                    // previous/next sequence -- a decorative mark should never
+                    // be a step between two photographs.
+                    //
+                    // No zoom-in cursor either: a cursor that promises a click
+                    // which does nothing is worse than no affordance.
+                    //
+                    // THE MARKER IS A CLASS, NOT A data- ATTRIBUTE, and that is
+                    // not a style preference. The first version emitted
+                    // data-decorative="1" and core/trusted-html.php:109 STRIPPED
+                    // IT -- the img allow-list carries src, alt, title, class,
+                    // width, height, loading and data-lightbox-src, and nothing
+                    // else survives. My own test passed because it read the
+                    // parser's output instead of the sanitised output, which is
+                    // the wrong layer. Widening a security allow-list to carry
+                    // something `class` already carries would be the wrong trade
+                    // for a marker, so the class does the whole job.
+                    return sprintf(
+                        '<div class="snap-inline-frame snap-decorative align-%s" style="--snap-image-width:%d%%"><div class="ip-ascii-frame-inner"><img src="%s" class="%s snap-decorative-img" alt="%s" loading="lazy"%s style="%s"></div></div>',
+                        $align,
+                        $width,
+                        $full_src,
+                        $classes,
+                        snap_alt_attr($asset['alt'] ?? null, $asset['name'] ?? ''),
+                        $dimensions,
+                        $border_css
+                    );
+                }
 
                 return sprintf(
                     '<div class="snap-inline-frame align-%s" style="--snap-image-width:%d%%"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy" data-lightbox-src="%s"%s%s style="cursor:zoom-in;%s"></div></div>',
