@@ -537,10 +537,16 @@
     // ~60fps 0.94 is about a second of travel; the floor is where the
     // remaining motion is below one pixel a frame and not worth painting.
     var GLIDE_FRICTION = 0.94;
+    // SS-1346. OPT-IN PER WALL, because a settle is a presentation decision.
+    // SS-1325 applied one everywhere and it was wrong for GLIDE; a skin that
+    // has not asked gets exactly the motion it had before, which is also what
+    // makes the revert this sits on top of meaningful.
+    var SNAP_SETTLE_ATTR = 'glideSettle';
     var GLIDE_VEL_FLOOR = 0.4;
 
     var wall = document.querySelector('[data-glide-wall]');
     if (!wall) return;
+    var snapSettle = wall.dataset[SNAP_SETTLE_ATTR] === 'nearest';
     var rows = Array.prototype.slice.call(wall.querySelectorAll('[data-glide-row]'));
     if (wall.hasAttribute('data-wall-inner-coverage') && rows.length >= 5) {
         var firstInner = Math.floor((rows.length - 3) / 2);
@@ -714,6 +720,85 @@
     }
 
     /** Measure the period and make sure the track is long enough to hide the seam. */
+    /**
+     * SS-1346. Where a fling would come to rest if nothing interfered.
+     *
+     * Each frame adds vel to target and then multiplies vel by GLIDE_FRICTION,
+     * so the travel is a geometric series -- but a TRUNCATED one. The fling
+     * stops when |vel| falls below GLIDE_VEL_FLOOR, so the tail below the
+     * floor is never travelled and the familiar v/(1-f) overshoots.
+     *
+     * The first version of this used v/(1-f) and the test caught it: exact for
+     * a hard fling, out by several percent for a gentle one, because the
+     * floor cuts a bigger share of a small velocity. A settle aimed somewhere
+     * the wall was never going to reach is the SS-1325 fault again -- the wall
+     * would be pulled past its own momentum, which is a movement the hand did
+     * not ask for.
+     *
+     * So the sum is truncated at the same frame the loop stops on:
+     *   n = frames until |v| * f^n < floor
+     *   travel = v * (1 - f^n) / (1 - f)
+     * Known AT RELEASE, which is the whole point -- the resting place is
+     * chosen before any of the momentum is spent, not discovered afterwards.
+     */
+    function glideFlingLanding(state) {
+        var v = state.vel;
+        if (Math.abs(v) < GLIDE_VEL_FLOOR) return state.target;
+        var n = Math.ceil(Math.log(GLIDE_VEL_FLOOR / Math.abs(v))
+                          / Math.log(GLIDE_FRICTION));
+        var travel = v * (1 - Math.pow(GLIDE_FRICTION, n)) / (1 - GLIDE_FRICTION);
+        return state.target + travel;
+    }
+
+    /**
+     * The tile boundary nearest to `where`, in the TRACK'S OWN AXIS.
+     *
+     * SS-1325 snapped after the fling had already stopped, so the wall halted
+     * in the wrong place and then jumped to the right one. Sean: "it should
+     * smoothly stop in the correct position. not stop in wrong position and
+     * then shift to correct position." It also computed the correction in
+     * screen space, which on a rotated track is a different direction from the
+     * one the tiles are laid out along -- that is why his left tile was cut off
+     * at the bottom and his right one at the top.
+     *
+     * This works entirely in `current`/`target` units. Those ARE the track's
+     * own axis: the lean is applied afterwards by localX/localY in paint(), so
+     * a boundary chosen here is a boundary in the direction the tiles actually
+     * sit, whatever the field is rotated to.
+     *
+     * Returns `where` unchanged when the tiles are not uniform enough for a
+     * boundary to mean anything -- a wall of mixed-width photographs has no
+     * grid to land on, and inventing one would move it somewhere arbitrary.
+     */
+    function glideNearestBoundary(state, where) {
+        var extents = originalExtents(state);
+        if (!extents.length) return where;
+        var gap = trackGap(state.track);
+        var first = extents[0] + gap;
+        if (!(first > 1)) return where;
+        for (var i = 1; i < extents.length; i++) {
+            // More than a pixel of difference and these are not a grid.
+            if (Math.abs((extents[i] + gap) - first) > 1) return where;
+        }
+        return Math.round(where / first) * first;
+    }
+
+    /**
+     * Turn a fling into a single eased approach to a chosen resting place.
+     *
+     * The fling is CANCELLED rather than allowed to run and then be corrected:
+     * target goes straight to the landing boundary and paint()'s existing
+     * exponential ease carries `current` into it. One movement, decelerating
+     * all the way, ending where it belongs. That is what "ease straight into
+     * it" means and it is why there is no second motion to see.
+     */
+    function glideSettle(state) {
+        var landing = glideNearestBoundary(state, glideFlingLanding(state));
+        state.target = landing;
+        state.vel = 0;
+        state.flinging = false;
+    }
+
     function measure(state) {
         var gap = trackGap(state.track);
         state.period = glidePeriodFrom(originalExtents(state), gap);
@@ -821,12 +906,25 @@
             if (!reduced) {
                 state.vel = (state.vel * 0.6) + (step * 0.4);
                 state.flinging = Math.abs(state.vel) > GLIDE_VEL_FLOOR;
+                // SS-1346. The wheel arrives as a burst of notches, so the
+                // resting place is only knowable once they stop. Settling on
+                // every notch would fight the next one; settling shortly after
+                // the last gives the same single eased stop the drag gets.
+                if (snapSettle && state.flinging) {
+                    clearTimeout(state.settleTimer);
+                    state.settleTimer = setTimeout(function () {
+                        if (!state.dragging) { glideSettle(state); requestPaint(); }
+                    }, 90);
+                }
             }
             requestPaint();
         }, { passive: false });
 
         state.row.addEventListener('pointerdown', function (event) {
             if (state.dragging || (event.button !== 0 && event.pointerType === 'mouse')) return;
+            // Touching the wall cancels a settle that has not run yet, or it
+            // would yank the track out from under the finger.
+            clearTimeout(state.settleTimer);
             state.pointerId = event.pointerId;
             state.dragging = true;
             state.moved = false;
@@ -931,7 +1029,9 @@
             // a second of it after every touch.
             if (state.moved && !reduced
                 && Math.abs(state.vel) > GLIDE_VEL_FLOOR) {
-                state.flinging = true;
+                // SS-1346. Choose the resting place from the momentum NOW,
+                // before any of it is spent, and ease straight into it.
+                if (snapSettle) glideSettle(state); else state.flinging = true;
                 requestPaint();
             }
         }
