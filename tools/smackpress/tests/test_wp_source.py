@@ -93,7 +93,10 @@ class RewriteTests(unittest.TestCase):
         content = ('<p><a href="https://old-blog.example/old-page/">kept words</a> '
                    '<a href="https://example.net/reference">external reference</a></p>')
         body, _ = wp_source.rewrite_body(content, [])
-        body = wp_source._discard_source_links(body, POST["link"])
+        # _discard_source_links returns (body, LinkReport) now: it rewrites
+        # the links it can place and REPORTS the rest instead of dropping
+        # them without a word. What this test measures is unchanged.
+        body, _report = wp_source._discard_source_links(body, POST["link"])
         self.assertIn("kept words", body)
         self.assertNotIn("old-blog.example", body)
         self.assertIn("https://example.net/reference", body)
