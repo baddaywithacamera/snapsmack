@@ -11,6 +11,25 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.997D - 2026-11-14
+
+- GLIDE direct photo pages are styled again. A post reached from photofri.day
+  rendered completely unstyled -- plain bulleted nav, default fonts, the photo
+  at native size on white -- because the direct-post route's markup carried no
+  GLIDE rules. Every PhotoFriday entry from Portal Project pointed at a page
+  like that. The skin now gives the direct-post page the dark GLIDE canvas, a
+  contained photo-led viewer, and the title and story beside the image at
+  desktop widths, stacked below at 1024. layout.php also regained its EOF
+  integrity marker, which the strict-layout rewrite had dropped.
+
+  THIS DOES NOT REACH A SITE THROUGH A CMS BUILD. GLIDE ships through the Skin
+  Packager and the registry, not in the release zip, so publishing this version
+  does not update it. Portal Project has to take the skin update separately.
+
+- Nothing else has landed in 997D yet. Candidates in flight, none merged at
+  this commit: the SS-1325 GLIDE carousel settle revert, and the SS-1345
+  RATIONAL GEO info-tray revert with its core test companion.
+
 ## 0.7.996D - 2026-11-14
 
 - PHOTO CHALLENGE recovery reads far enough into a participant's outbox to
