@@ -2536,6 +2536,11 @@
             4
         ]
     },
+    "wall-shortcode-never-points-at-a-missing-file.php": {
+        "assertions": 9,
+        "predicates": 8,
+        "thresholds": []
+    },
     "wall-tile-dimensions-regression.php": {
         "assertions": 11,
         "predicates": 12,
