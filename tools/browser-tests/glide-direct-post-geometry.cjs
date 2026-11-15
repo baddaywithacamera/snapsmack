@@ -6,6 +6,7 @@ const seam = process.env.SNAP_BROWSER_SEAM_ROOT || path.resolve(__dirname, '..',
 const { chromium } = require(path.join(seam, 'tools', 'browser-tests', 'runtime.cjs'));
 
 const root = path.resolve(__dirname, '..', '..');
+const output = process.env.SNAPSMACK_BROWSER_OUTPUT || '';
 const css = fs.readFileSync(path.join(root, 'skins', 'glide', 'style.css'), 'utf8');
 const image = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1067"><rect width="100%" height="100%" fill="#833"/><circle cx="800" cy="460" r="270" fill="#d9b56f"/></svg>');
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head>
@@ -14,10 +15,11 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</st
 <footer id="system-footer"><div class="inside"><p>GLIDE · SnapSmack</p></div></footer></body></html>`;
 
 (async () => {
+    if (output) fs.mkdirSync(output, { recursive: true });
     const browser = await chromium.launch({ headless: true });
     try {
-        for (const width of [1920, 1440, 1024]) {
-            const page = await browser.newPage({ viewport: { width, height: 900 } });
+        for (const width of [3840, 1920, 1440, 1024]) {
+            const page = await browser.newPage({ viewport: { width, height: width === 3840 ? 2160 : 900 } });
             await page.setContent(html, { waitUntil: 'load' });
             const geometry = await page.evaluate(() => {
                 const body = document.body.getBoundingClientRect();
@@ -34,6 +36,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</st
             assert.ok(geometry.overflow <= 0, `${width}: no horizontal overflow`);
             if (width === 1024) assert.ok(geometry.title.top >= geometry.image.bottom - 1, '1024: details stack below the photograph');
             else assert.ok(geometry.title.left >= geometry.image.right - 1, `${width}: details sit beside the photograph`);
+            if (output) await page.screenshot({ path: path.join(output, `glide-direct-post-${width}.png`), fullPage: true });
             console.log(`PASS ${width}: GLIDE direct post is dark, contained, and photo-led`);
             await page.close();
         }
