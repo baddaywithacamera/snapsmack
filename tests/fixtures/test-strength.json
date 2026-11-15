@@ -14,6 +14,14 @@
             5
         ]
     },
+    "admin-css-has-no-duplicated-block-regression.php": {
+        "assertions": 2,
+        "predicates": 1,
+        "thresholds": [
+            20,
+            150000
+        ]
+    },
     "admin-taxonomy-labels-regression.php": {
         "assertions": 2,
         "predicates": 7,
@@ -1240,8 +1248,8 @@
         "thresholds": []
     },
     "multisite-version-reading-age.php": {
-        "assertions": 36,
-        "predicates": 21,
+        "assertions": 39,
+        "predicates": 23,
         "thresholds": []
     },
     "nav-landing-is-archive-regression.php": {
