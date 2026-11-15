@@ -21,10 +21,17 @@ declare(strict_types=1);
  * AND THE DEEPER FAULT IS THE INSTRUMENT. Searching a stylesheet for the
  * string "position: absolute" never proved which way a tray opens. It proved
  * that two words appear in a file. Direction is geometry: it needs the
- * rendered page, which is exactly what tools/browser-tests/rationalgeo-tray-direction.cjs
- * measures — tray below the nav, photo height unchanged when it opens,
- * document scroll growing. That check owns the direction now, at 1920, 1440
- * and 1024. This file keeps only what reading the source can actually settle.
+ * rendered page. This file keeps only what reading the source can settle.
+ *
+ * SS-1345: THERE IS NO RENDERED CHECK ON DIRECTION AT PRESENT. This comment
+ * used to point at tools/browser-tests/rationalgeo-tray-direction.cjs and say
+ * that check owned the direction. That file measured the in-flow tray SS-1322
+ * introduced, which broke Sean's live post — with INFO open the photograph
+ * left the viewport entirely — so the revert deleted it, correctly. Nothing
+ * replaced it. Saying so is better than leaving a comment that points at a
+ * guard which no longer exists; Muse caught exactly that. SS-1346's successor
+ * work needs a rendered direction check at 1920, 1440 and 1024, and until one
+ * exists, direction is unguarded.
  *
  * DELIBERATELY NOT ASSERTED HERE: anything about position or offset. If this
  * file ever names a layout mechanic again, it will block the next repair the
@@ -51,11 +58,12 @@ foreach (['.rg-single .rg-description', 'margin-bottom: 0', 'font-size: var(--fo
 }
 
 // DIRECTION IS NOT GUARDED FROM HERE, AND SAYING SO IS THE POINT.
-// tools/browser-tests/rationalgeo-tray-direction.cjs measures it on the
-// rendered page at 1920, 1440 and 1024. That file is Codex's lane and lands
-// with his repair; a check for its existence belongs in his commit, not this
-// one. Asserting it here before it exists would block dev instead of blocking
-// him, which is the same fault pointing the other way.
+// It is not guarded ANYWHERE at the moment. The browser test that used to
+// measure it, tools/browser-tests/rationalgeo-tray-direction.cjs, asserted the
+// in-flow tray SS-1322 introduced and the SS-1345 revert deleted it. A
+// replacement has to measure the rendered page at 1920, 1440 and 1024, and it
+// belongs with the successor work, not here: this file reads source, and
+// reading source is what could not settle direction in the first place.
 
 if (version_compare((string)($manifest['version'] ?? '0'), '2.1.40', '<')) {
     throw new RuntimeException('RATIONAL GEO version was not advanced for the info-tray repair.');
