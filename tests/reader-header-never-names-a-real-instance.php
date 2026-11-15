@@ -96,14 +96,24 @@ $check('it draws no palette of its own at all', count($colours) === 0);
 // SHIPPED SMALL. The original is 1000x1000 and 107KB; this box is 26 CSS
 // pixels, 78 device pixels at 3x. Serving the original on every reader page
 // load would be a hundred kilobytes for a thumbnail.
-$asset = $root . '/assets/img/fediverse-mark-128.png';
+// SEAN RULED THE MARK SHOULD BE BIGGER than the 26px the old gradient had.
+// 44px, from his 40-48 range; the 62px header row takes it without changing.
+preg_match('/width:\s*(\d+)px;\s*height:\s*(\d+)px;/', $rule, $box);
+$check("the mark is in Sean's 40-48px range, not the old 26",
+    isset($box[1]) && (int)$box[1] >= 40 && (int)$box[1] <= 48
+    && $box[1] === $box[2]);
+$check('and it still fits the 62px header row', isset($box[1]) && (int)$box[1] <= 56);
+
+$asset = $root . '/assets/img/fediverse-mark-160.png';
 $check('the logo asset exists where the stylesheet points', is_file($asset));
 if (is_file($asset)) {
     $check('and it is a small derivative, not the 1000px original',
         filesize($asset) < 40000);
     [$aw, $ah] = getimagesize($asset);
-    $check('big enough for a 26px box at 3x (78px)', $aw >= 78 && $ah >= 78);
+    $check('big enough for a 44px box at 3x (132px)', $aw >= 132 && $ah >= 132);
     $check('and not larger than any reader needs', $aw <= 256 && $ah <= 256);
+    $check('the superseded 128px derivative is gone, not left behind',
+        !is_file($root . '/assets/img/fediverse-mark-128.png'));
 }
 
 // BOTH MODES. The mark was display:none on the SMACKTALK reader, hidden back

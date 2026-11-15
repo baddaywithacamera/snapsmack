@@ -1593,11 +1593,14 @@
         "thresholds": []
     },
     "reader-header-never-names-a-real-instance.php": {
-        "assertions": 19,
-        "predicates": 14,
+        "assertions": 22,
+        "predicates": 17,
         "thresholds": [
-            78,
-            78,
+            40,
+            48,
+            56,
+            132,
+            132,
             256,
             256,
             40000
