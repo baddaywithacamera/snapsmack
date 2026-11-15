@@ -1625,6 +1625,20 @@
         "predicates": 9,
         "thresholds": []
     },
+    "reader-header-never-names-a-real-instance.php": {
+        "assertions": 22,
+        "predicates": 17,
+        "thresholds": [
+            40,
+            48,
+            56,
+            132,
+            132,
+            256,
+            256,
+            40000
+        ]
+    },
     "reconstruction-boundary-regression.php": {
         "assertions": 14,
         "predicates": 11,
@@ -2169,7 +2183,7 @@
         ]
     },
     "smacktalk-fediverse-reader-regression.php": {
-        "assertions": 15,
+        "assertions": 16,
         "predicates": 22,
         "thresholds": []
     },
