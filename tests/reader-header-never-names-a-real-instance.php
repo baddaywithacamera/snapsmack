@@ -84,17 +84,32 @@ if (!preg_match('/\.sx-brand \.sx-mark\s*\{[^}]*\}/s', $css, $mark)) {
     exit(1);
 }
 $rule = $mark[0];
-$check('the brand mark is not a multi-hue wheel',
+$check('the brand mark is OUR LOGO ASSET, not drawn in CSS',
+    str_contains($rule, 'background-image:url("../img/fediverse-mark-'));
+$check("and it is not a CSS-drawn lookalike of anybody else's mark",
     !preg_match('/conic-gradient|linear-gradient|radial-gradient/i', $rule));
 $colours = [];
-preg_match_all('/#[0-9a-f]{3,8}/i', $rule, $hex);
+preg_match_all('/#[0-9a-f]{3,8}\b/i', $rule, $hex);
 foreach ($hex[0] as $h) { $colours[strtolower($h)] = true; }
-$check('and it does not carry a palette of its own at all',
-    count($colours) <= 1);
-$check("it uses the reader's own accent rather than a borrowed brand colour",
-    str_contains($rule, '--accent'));
-$check('and it is not a rounded square like the logo it was imitating',
-    str_contains($rule, 'border-radius:50%'));
+$check('it draws no palette of its own at all', count($colours) === 0);
+
+// SHIPPED SMALL. The original is 1000x1000 and 107KB; this box is 26 CSS
+// pixels, 78 device pixels at 3x. Serving the original on every reader page
+// load would be a hundred kilobytes for a thumbnail.
+$asset = $root . '/assets/img/fediverse-mark-128.png';
+$check('the logo asset exists where the stylesheet points', is_file($asset));
+if (is_file($asset)) {
+    $check('and it is a small derivative, not the 1000px original',
+        filesize($asset) < 40000);
+    [$aw, $ah] = getimagesize($asset);
+    $check('big enough for a 26px box at 3x (78px)', $aw >= 78 && $ah >= 78);
+    $check('and not larger than any reader needs', $aw <= 256 && $ah <= 256);
+}
+
+// BOTH MODES. The mark was display:none on the SMACKTALK reader, hidden back
+// when it was the rainbow gradient. Sean asked for his logo in both.
+$check('the SMACKTALK reader is no longer hiding the mark',
+    !preg_match('/\.sx-reader-mastodon \.sx-brand \.sx-mark\{ display:none/', $css));
 
 // --- the stale product name is gone from the public site --------------------
 $ca = (string)file_get_contents($root . '/projects/snapsmack-ca/index.php');

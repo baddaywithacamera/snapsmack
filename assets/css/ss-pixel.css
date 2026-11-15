@@ -58,22 +58,29 @@ button{ font-family:inherit; cursor:pointer; }
 .sx-brand{ display:flex; align-items:center; gap:9px; font-weight:800; font-size:1.28rem; letter-spacing:-.01em; }
 .sx-brand-copy{ display:flex; flex-direction:column; line-height:1.05; }
 .sx-brand-copy small{ margin-top:3px; color:var(--muted); font-size:.58rem; font-weight:500; letter-spacing:0; }
-/* SS-1355. THIS USED TO BE A RAINBOW CONIC GRADIENT IN A ROUNDED SQUARE, and
-   it sat immediately left of the word "pixelfed". Sean, looking at his own
-   unzucked.ca header: next to that word it reads as Pixelfed's own logo. The
-   word is fixed separately; a recoloured lookalike beside it would be the
-   same claim in a different palette, which he ruled out explicitly.
+/* SS-1355. THE MARK IS SEAN'S OWN LOGO, as an asset -- not drawn in CSS.
 
-   So the mark is OURS and says nothing about anyone else: a hollow ring in
-   the reader's own --accent, which is the shared-network idea the FEDIVERSE
-   wordmark beside it already states. No multi-hue wheel, no rounded-square
-   silhouette, nothing borrowed. It keeps the same 26px box so the header
-   grid, which is a fixed 300px first column, is unchanged. */
+   History, because it matters to the rule: this was a rainbow conic gradient
+   in a rounded square sitting beside the word "pixelfed", and together they
+   read as Pixelfed's own logo. It became a plain ring, and Sean then answered
+   the ring-or-nothing question with his own artwork: the SnapSmack fediverse
+   logo, a black camera with horns and tail over a six-blade aperture.
+
+   SHIPPED AT 128px, NOT 1000. The original is 1000x1000 and 107KB, and this
+   box is 26 CSS pixels -- 78 device pixels at 3x. 128px covers every density
+   anyone will use and costs 12KB instead of 107KB on every reader page load.
+
+   IT HAS A BLACK BACKGROUND, which is the artwork as supplied and is not
+   something to guess a transparent cut out of. The art fills 91% of the
+   frame with a black margin all round, so on the DARK reader it disappears
+   into the page as intended. On the LIGHT reader it is a black tile on white.
+   The small radius is so that tile reads as deliberate rather than as a
+   rectangle somebody forgot. If a transparent version is wanted on light,
+   that is Sean's file to supply; nothing here invents one. */
 .sx-brand .sx-mark{
-  width:26px; height:26px; border-radius:50%; flex:0 0 auto;
-  border:3px solid var(--accent,currentColor);
-  background:transparent;
-  opacity:.9;
+  width:26px; height:26px; border-radius:6px; flex:0 0 auto;
+  background-image:url("../img/fediverse-mark-128.png");
+  background-size:cover; background-position:center; background-repeat:no-repeat;
 }
 .sx-search{ position:relative; }
 .sx-search input{
@@ -259,7 +266,13 @@ button{ font-family:inherit; cursor:pointer; }
 .sx-reader-mastodon .sx-top-in,
 .sx-reader-mastodon .sx-app{ max-width:1180px; }
 .sx-reader-mastodon .sx-top-in{ grid-template-columns:240px minmax(0,620px) 280px; gap:20px; }
-.sx-reader-mastodon .sx-brand .sx-mark{ display:none; }
+/* SS-1355. THIS USED TO BE display:none, so the SMACKTALK reader had NO mark
+   at all -- it was hidden back when the mark was the rainbow gradient, which
+   would have been a Pixelfed lookalike on a Mastodon-facing page. The mark is
+   now Sean's own logo and he asked for it in BOTH reader modes, so it shows.
+   NOTE THIS IS A VISIBLE ADDITION: SMACKTALK installs gain a mark they did not
+   have. Reversible by restoring display:none on this one rule. */
+.sx-reader-mastodon .sx-brand .sx-mark{ display:block; }
 .sx-reader-mastodon .sx-brand{ align-self:center; font-size:1.05rem; }
 .sx-reader-mastodon .sx-search{ grid-column:3; }
 .sx-reader-mastodon .sx-top-right{
