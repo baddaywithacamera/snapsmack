@@ -250,9 +250,13 @@ class MouthConnection:
 # ---------------------------------------------------------------------------
 # MouthPoster — adapts a MouthConnection to the SyncEngine's injected interface.
 # Every verify() reads the comment back and confirms the change; where the
-# read-back endpoint is absent it falls back to the pending-list delta, and only
-# where NO read is possible does it trust the server's explicit 'ok' (never
-# manufacturing a false failure — the COLD SNAP verification philosophy).
+# read-back endpoint is absent it falls back to the pending-list delta.
+#
+# SS-1332: where NO read is possible it returns None — "nobody knows" — and the
+# engine records the item as UNVERIFIED so the next sync asks again. It used to
+# return True there and call that "never manufacturing a false failure". It was
+# manufacturing a false SUCCESS instead, which is the worse of the two: a
+# delete reported as done, on a live site, that nothing will ever re-check.
 # ---------------------------------------------------------------------------
 
 class MouthPoster:
@@ -265,7 +269,7 @@ class MouthPoster:
         ok, msg = self.conn.apply_action(item.comment.comment_id, item.action)
         return SyncResult(ok, message=msg)
 
-    def verify_decision(self, item: ModItem) -> bool:
+    def verify_decision(self, item: ModItem) -> Optional[bool]:
         cid = item.comment.comment_id
         row = self.conn.get_comment(cid)
         if row is not None:
@@ -279,9 +283,10 @@ class MouthPoster:
         # No read-back row. Disambiguate via the pending list.
         still_pending = self._is_in_pending(cid)
         if still_pending is None:
-            # Cannot read at all — trust the explicit 'ok' from apply_action
-            # rather than manufacturing a false failure.
-            return True
+            # Cannot read at all. The push said ok, but an ok we cannot check
+            # is not a confirmation, and saying so is the whole job of this
+            # function. The engine keeps the item queued and asks again.
+            return None
         if item.action == ACT_APPROVE:
             return not still_pending          # approved => left the pending queue
         if item.action == ACT_DELETE:
@@ -297,21 +302,25 @@ class MouthPoster:
             item.comment.comment_id, item.reply_text, author)
         return SyncResult(ok, remote_id=reply_id, message=msg)
 
-    def verify_reply(self, item: ModItem) -> bool:
+    def verify_reply(self, item: ModItem) -> Optional[bool]:
         row = self.conn.get_comment(item.comment.comment_id)
         if row is None:
-            # No read-back available — the reply endpoint already returned an
-            # explicit ok + reply_id, so trust it rather than false-fail.
-            return True
+            # No read-back available. There is no pending-list signal for a
+            # reply the way there is for a decision, so there is nothing left
+            # to check it against: say so. The reply id the server issued is
+            # kept, and the retry verifies instead of posting again.
+            return None
         replies = row.get("replies")
         if isinstance(replies, list) and replies:
             if item.remote_reply_id:
                 return any(int(rp.get("id", 0) or 0) == item.remote_reply_id
                            for rp in replies)
             return True
-        # Endpoint returned the comment but no replies array — fall back to
-        # trusting the explicit reply_id the server issued.
-        return bool(item.remote_reply_id)
+        # The endpoint answered and returned the comment, but with no replies
+        # array at all. That is the shape of a spoke that does not report
+        # replies, not evidence either way, so it is unknown rather than a
+        # green light from the reply id we happen to be holding.
+        return None if item.remote_reply_id else False
 
     # -- helpers ------------------------------------------------------------
     def _is_in_pending(self, comment_id: int) -> Optional[bool]:
