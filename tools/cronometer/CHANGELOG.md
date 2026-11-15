@@ -34,6 +34,14 @@ folds into 0.7.13 rather than taking a new number — it ships when 0.7.13 ships
 - **Label fix.** The empty-state screen told the operator to press "RELOAD FLEET";
   the button is labelled "RELOAD SITE LIST". The text now matches the button.
 
+### Fixed — the exe carried no version at all
+- **`cronometer.exe` had an EMPTY FileVersion.** The PyInstaller spec had no
+  Windows version resource, so nothing on the installed file said which build it
+  was; the 2026-09-14 exe could only be identified by its date. The version block
+  from `coldsnap-qt.spec` is now in `cronometer.spec`, reading the same
+  `BUILD_VERSION` literal the app imports, so the exe reports FileVersion and
+  ProductVersion. Built 2026-11-15: FileVersion 0.7.13, 46,049,542 bytes.
+
 Still owed outside this tool's lane (recorded, not silently patched): the shared
 `../_shared` path contract (section 6 of OPAUDIT 024) needs settling across the
 desktop family, not patching here; and 0.7.13 itself needs building and installing.
