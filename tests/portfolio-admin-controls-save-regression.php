@@ -86,6 +86,16 @@ $check('an album the owner has not chosen is not selected',
 $check('NOT DESIGNATED is offered, so a designation can be removed',
     str_contains($html, 'NOT DESIGNATED'));
 
+// THE LABELS MUST NAME THE SURFACE EACH FLAG GOVERNS. Muse caught the trap:
+// the blog listing is filtered by exclude_from_ARCHIVE, while
+// exclude_from_FEED governs RSS and the public profile. Sean calls the blog
+// listing "the feed", so a control labelled "keep out of the feed" is the one
+// he would tick, and it would leave the portfolio on his front page.
+$check('the archive control says it is the one that clears the front page',
+    str_contains($html, 'BLOG LISTING') && str_contains($html, 'front page'));
+$check('the feed control says it is RSS only, not the blog page',
+    str_contains($html, 'RSS FEED') && str_contains($html, 'not the blog page'));
+
 // NO STATIC INLINE STYLE. The repo rule, and this file is new, so it starts clean.
 $check('the fieldset carries no static style= attribute',
     !preg_match('/\sstyle="/i', $html));

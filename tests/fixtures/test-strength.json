@@ -1438,8 +1438,8 @@
         ]
     },
     "portfolio-admin-controls-save-regression.php": {
-        "assertions": 19,
-        "predicates": 13,
+        "assertions": 21,
+        "predicates": 17,
         "thresholds": [
             4,
             6,

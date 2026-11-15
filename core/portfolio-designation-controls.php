@@ -17,6 +17,17 @@
  * into each editor, because the fault this repairs is one surface having a
  * control another surface does not.
  *
+ * THE TWO EXCLUSIONS GOVERN DIFFERENT SURFACES AND THE LABELS SAY SO.
+ * Muse caught the trap: the blog listing is longformLanding(), which filters
+ * on exclude_from_archive (core/public-repository.php:538), while
+ * exclude_from_feed governs RSS and the public profile. That split is
+ * deliberate and the column comments document it. But Sean calls the blog
+ * listing "the feed" -- his words were "Portfolio currently appears in the
+ * blog feed" -- so a control labelled KEEP OUT OF THE FEED is exactly the one
+ * he would tick, and it would not do what he wanted. The labels now name the
+ * surface each flag actually governs. Behaviour is unchanged; the words are
+ * the fix.
+ *
  * NO STATIC style= ANYWHERE HERE. It uses the admin classes the geometry
  * stylesheet already defines (.option-group, .toggle-row, .toggle-label,
  * .toggle-desc, .lens-input-wrapper), so nothing in assets/css has to change
@@ -98,8 +109,9 @@ function snap_portfolio_controls_render(array $row, array $albums = [],
       </div>
       <div class="toggle-row">
         <div>
-          <div class="toggle-label">KEEP OUT OF ARCHIVE AND LANDING</div>
-          <div class="toggle-desc">Also removes its photographs from the photo
+          <div class="toggle-label">KEEP OUT OF THE BLOG LISTING AND ARCHIVE</div>
+          <div class="toggle-desc"><strong>This is the one that takes it off the
+            front page.</strong> It also removes its photographs from the photo
             archive and the taxonomy counts. The post&rsquo;s own address always
             still works.</div>
         </div>
@@ -114,11 +126,12 @@ function snap_portfolio_controls_render(array $row, array $albums = [],
       </div>
       <div class="toggle-row">
         <div>
-          <div class="toggle-label">KEEP OUT OF THE FEED</div>
-          <div class="toggle-desc">RSS and the public profile listing. This is
-            NOT the fediverse switch &mdash; delivery is governed by the
-            fediverse setting, and two switches for one surface would
-            drift.</div>
+          <div class="toggle-label">KEEP OUT OF THE RSS FEED</div>
+          <div class="toggle-desc"><strong>RSS and the public profile listing
+            only &mdash; not the blog page.</strong> To take a portfolio off the
+            front page, use the setting above. This is also NOT the fediverse
+            switch: delivery is governed by the fediverse setting, and two
+            switches for one surface would drift.</div>
         </div>
         <input type="checkbox" name="exclude_from_feed" value="1"<?php echo $on('exclude_from_feed'); ?>>
       </div>

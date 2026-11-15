@@ -838,16 +838,21 @@ include 'core/sidebar.php';
                                value="<?php echo date('Y-m-d\TH:i', strtotime($post['created_at'])); ?>">
                     </div>
 
+                    <?php
+                        // SS-1185. Same component as smack-post-long.php, and in
+                        // its OWN block. Muse caught the first version rendering
+                        // it INSIDE the comments wrapper, between that label and
+                        // its select, so the screen showed portfolio controls
+                        // under an "ALLOW PUBLIC COMMENTS?" heading.
+                        require_once __DIR__ . '/core/portfolio-designation-controls.php';
+                        snap_portfolio_controls_render(
+                            is_array($post) ? $post : [],
+                            array_map(static fn($a) => ['id' => $a['id'], 'name' => $a['album_name']], $all_albums ?? []),
+                            array_map(static fn($c) => ['id' => $c['id'], 'name' => $c['cat_name']], $all_cats ?? []));
+                    ?>
+
                     <div class="lens-input-wrapper">
                         <label>ALLOW PUBLIC COMMENTS?</label>
-                        <?php
-                            // SS-1185. Same component as smack-post-long.php.
-                            require_once __DIR__ . '/core/portfolio-designation-controls.php';
-                            snap_portfolio_controls_render(
-                                is_array($post) ? $post : [],
-                                array_map(static fn($a) => ['id' => $a['id'], 'name' => $a['album_name']], $all_albums ?? []),
-                                array_map(static fn($c) => ['id' => $c['id'], 'name' => $c['cat_name']], $all_cats ?? []));
-                        ?>
                         <select name="allow_comments" class="full-width-select">
                             <option value="1" <?php echo $post['allow_comments'] ? 'selected' : ''; ?>>ENABLED</option>
                             <option value="0" <?php echo !$post['allow_comments'] ? 'selected' : ''; ?>>DISABLED</option>
