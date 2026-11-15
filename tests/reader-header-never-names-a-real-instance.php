@@ -93,9 +93,13 @@ preg_match_all('/#[0-9a-f]{3,8}\b/i', $rule, $hex);
 foreach ($hex[0] as $h) { $colours[strtolower($h)] = true; }
 $check('it draws no palette of its own at all', count($colours) === 0);
 
-// SHIPPED SMALL. The original is 1000x1000 and 107KB; this box is 26 CSS
-// pixels, 78 device pixels at 3x. Serving the original on every reader page
-// load would be a hundred kilobytes for a thumbnail.
+// SHIPPED SMALL. The source Sean re-saved is 454x454 and 38KB; this box is
+// 44 CSS pixels, 132 device pixels at 3x. The derivative is 160px and 14KB.
+// Serving the original on every reader page load would be most of forty
+// kilobytes for a thumbnail.
+// (This comment described the superseded 1000px/26px pair until Muse caught
+// it: the CSS comment had been updated and this one had not. A stale comment
+// beside a correct assertion is how the next person learns the wrong thing.)
 // SEAN RULED THE MARK SHOULD BE BIGGER than the 26px the old gradient had.
 // 44px, from his 40-48 range; the 62px header row takes it without changing.
 preg_match('/width:\s*(\d+)px;\s*height:\s*(\d+)px;/', $rule, $box);
