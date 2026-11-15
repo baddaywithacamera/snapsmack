@@ -17,7 +17,27 @@ try:
     import snap_log
     _log = snap_log.setup("snap_slapper")
 except Exception:  # noqa: BLE001 — never let logging setup stop the app
+    snap_log = None
     _log = None
+
+
+class _nullspan:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _trace(event, **fields):
+    """SS-1350 DEV LOG. Silent and nearly free when the switch is off, and it
+    must never be the reason the application fails to start."""
+    if snap_log is None:
+        return
+    try:
+        snap_log.trace("snap_slapper", event, **fields)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def main(argv=None):
@@ -29,7 +49,14 @@ def main(argv=None):
     import snap_single_instance
     qa_mode = bool(os.environ.get("SNAP_SLAPPER_QA_IMAGE") and
                    os.environ.get("SNAP_SLAPPER_QA_MARKER"))
-    if not qa_mode and not snap_single_instance.acquire("snap-slapper", "SNAP SLAPPER"):
+    # SS-1350. argv[0] only -- the rest of the command line can be a
+    # photograph path, and a path is the user's business, not trace data.
+    _trace("process.start", exe=os.path.basename(argv[0] if argv else ""),
+           frozen=bool(getattr(sys, "frozen", False)), qa=qa_mode)
+    acquired = qa_mode or snap_single_instance.acquire("snap-slapper", "SNAP SLAPPER")
+    _trace("single_instance.acquire", acquired=acquired)
+    if not acquired:
+        _trace("process.exit", code=0, reason="another instance is running")
         return 0
     app = QApplication.instance() or QApplication(argv)
     app.setApplicationName("SNAP SLAPPER")
@@ -122,7 +149,10 @@ def main(argv=None):
                 app.quit()
         QTimer.singleShot(50, finish_qa)
 
-    return app.exec()
+    with snap_log.trace_span("snap_slapper", "event_loop")             if snap_log is not None else _nullspan():
+        code = app.exec()
+    _trace("process.exit", code=code, reason="event loop returned")
+    return code
 
 
 def _snap_hq_executable():

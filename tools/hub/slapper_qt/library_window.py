@@ -16,6 +16,7 @@ The library also provides practical organizer operations: drag/drop moves,
 copy, rename, new folders, Recycle Bin, and Explorer access.
 """
 
+import hashlib
 import os
 import shutil
 import time
@@ -239,6 +240,116 @@ class _ThumbSignals(QObject):
     failed = Signal(str, bool, int, str)  # path, is RAW, attempt, explanation
 
 
+# --- SS-1350: DEV LOG tracing -----------------------------------------------
+# Silent and nearly free when the switch is off: snap_log.trace() returns on an
+# isEnabledFor check before building a line. Wrapped because a logging problem
+# must never be the reason a thumbnail or a window fails.
+def _trace(event, **fields):
+    try:
+        import snap_log
+        snap_log.trace("snap_slapper", event, **fields)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+# --- SS-1347: a thumbnail is decoded once, not once per launch ---------------
+# LibraryWindow._icons is memory only, so every launch re-decoded every tile
+# from the source photograph -- RAW development included. A working disk cache
+# already existed in the Tk library (photo_library.py:1217-1236): a directory,
+# a SHA1 identity key, JPEG quality 82, read before decode. Sean's rule is to
+# borrow the working one rather than write a second, so this is that cache with
+# the same shape, moved ahead of this window's RAW/TIFF/recovery decode.
+#
+# The key is the same version tuple the window already trusts for redraws --
+# _thumbnail_version(): the photograph's mtime and size, plus the recovery
+# project's, plus the thumbnail size. Edit the photo, re-edit the project, or
+# change THUMB_SOURCE and the key moves, so a stale tile cannot survive.
+def _thumb_cache_dir():
+    """The on-disk thumbnail cache, under the tool's own config directory.
+
+    Same resolution order as catalog.py: snap_home when it is importable, the
+    SNAPSMACK_HOME layout when it is not. Returns "" if neither can be made,
+    and every caller treats "" as "no cache" rather than failing.
+    """
+    directory = ""
+    try:
+        directory = os.path.join(snap_home.config_dir("snap-slapper"),
+                                 "thumbnail_cache")
+    except Exception:  # noqa: BLE001 — a missing cache is never fatal
+        root = (os.environ.get("SNAPSMACK_HOME") or r"C:\snapsmack")
+        directory = os.path.join(root, "config_files", "snap-slapper",
+                                 "thumbnail_cache")
+    try:
+        os.makedirs(directory, exist_ok=True)
+    except OSError:
+        return ""
+    return directory
+
+
+def _thumb_cache_path(path, recovery_path):
+    """The cache file for this photograph at its current version, or ""."""
+    directory = _thumb_cache_dir()
+    if not directory:
+        return ""
+    identity = "|".join((
+        os.path.normcase(os.path.abspath(path)),
+        repr(_file_stamp(path)),
+        repr(_file_stamp(recovery_path) if recovery_path else 0),
+        str(THUMB_SOURCE),
+    )).encode("utf-8")
+    return os.path.join(directory, hashlib.sha1(identity).hexdigest() + ".jpg")
+
+
+def _thumb_cache_read(cache_path):
+    """(RGBA image, capture stamp) from the cache, or None.
+
+    The capture time rides in the JPEG comment because it is not derivable
+    without decoding the original, which is the whole cost being avoided. A
+    missing or unreadable comment falls back to the file's mtime, exactly as
+    _capture_timestamp() does, so a cache written by an older build still
+    loads instead of being thrown away.
+    """
+    if not cache_path:
+        return None
+    try:
+        with Image.open(cache_path) as cached:
+            cached.load()
+            comment = cached.info.get("comment")
+            image = cached.convert("RGBA")
+    except Exception:  # noqa: BLE001 — a corrupt cache entry is just a miss
+        return None
+    try:
+        stamp = float(comment.decode("ascii") if isinstance(comment, bytes)
+                      else comment)
+    except Exception:  # noqa: BLE001
+        stamp = 0.0
+    return image, stamp
+
+
+def _thumb_cache_write(cache_path, image, stamp):
+    """Store a finished thumbnail. Never raises; a failed write is a miss.
+
+    TRANSPARENCY IS NOT CACHED. JPEG has no alpha, and re-flattening a
+    transparent PNG onto an invented background would change what the tile
+    looks like. Those are rare in a photograph library, so they are simply
+    left uncached rather than cached wrongly or stored as PNG, which at this
+    size costs roughly ten times the space for every ordinary photo.
+    """
+    if not cache_path:
+        return
+    try:
+        if image.mode == "RGBA" and image.getchannel("A").getextrema()[0] < 255:
+            return
+        image.convert("RGB").save(cache_path, "JPEG", quality=82,
+                                  optimize=True,
+                                  comment=repr(float(stamp)).encode("ascii"))
+    except Exception:  # noqa: BLE001 — disk full, read-only, anything
+        try:
+            os.remove(cache_path)   # never leave a half-written entry
+        except OSError:
+            pass
+
+
 class _ThumbTask(QRunnable):
     """Load one thumbnail (and its capture time) off the GUI thread."""
 
@@ -250,7 +361,34 @@ class _ThumbTask(QRunnable):
         self.recovery_path = recovery_path
 
     def run(self):
+        _trace("pool.task.start", task="thumbnail",
+               file=os.path.basename(self.path), attempt=self.attempt)
+        started = time.monotonic()
+        try:
+            self._run()
+        finally:
+            _trace("pool.task.finish", task="thumbnail",
+                   file=os.path.basename(self.path),
+                   ms=round((time.monotonic() - started) * 1000, 1))
+
+    def _run(self):
         is_raw = os.path.splitext(self.path)[1].lower() in photo_manager.RAW_EXTENSIONS
+        cache_path = _thumb_cache_path(self.path, self.recovery_path)
+        cached = _thumb_cache_read(cache_path)
+        if cached is not None:
+            # SS-1347. Ahead of RAW development, the TIFF boundary and the
+            # recovery-project read, because every one of those is the cost
+            # this exists to avoid.
+            image, stamp = cached
+            _trace("thumbnail.cache", hit=True, file=os.path.basename(self.path))
+            data = image.tobytes("raw", "RGBA")
+            qimage = QImage(data, image.width, image.height,
+                            image.width * 4, QImage.Format_RGBA8888).copy()
+            try:
+                self.signals.ready.emit(self.path, qimage, stamp)
+            except RuntimeError:
+                pass        # the library closed; a late thumbnail is disposable
+            return
         try:
             if self.recovery_path and os.path.isfile(self.recovery_path):
                 try:
@@ -288,6 +426,7 @@ class _ThumbTask(QRunnable):
                 image = display_thumbnail(
                     self.path, (THUMB_SOURCE, THUMB_SOURCE)).convert("RGBA")
             image.thumbnail((THUMB_SOURCE, THUMB_SOURCE), Image.Resampling.LANCZOS)
+            _thumb_cache_write(cache_path, image, stamp)
             data = image.tobytes("raw", "RGBA")
             qimage = QImage(data, image.width, image.height,
                             image.width * 4, QImage.Format_RGBA8888).copy()
@@ -368,7 +507,16 @@ class LibraryWindow(QMainWindow):
         self.setWindowTitle(f"Library (build {BUILD_VERSION})")
         self.resize(1180, 780)
         self._restricted = False
-        self._pool = QThreadPool.globalInstance()
+        # SS-1349. This used to be QThreadPool.globalInstance(). Closing the
+        # library cannot clear a pool it shares with the rest of the
+        # application -- textures_dialog.py:105 is on the global instance too,
+        # so clearing it would cancel that dialog's queued work as a side
+        # effect of closing a different window. Its own pool makes "clear every
+        # pool on close" safe to actually do. Same thread count as the global
+        # one, so nothing about decode concurrency changes.
+        self._pool = QThreadPool(self)
+        self._pool.setMaxThreadCount(
+            max(1, QThreadPool.globalInstance().maxThreadCount()))
         # RawTherapee's CLI and the credential-backed cache writer are external
         # resources, not ordinary in-process JPEG decoders. Running several at
         # once intermittently drops one result on Windows, leaving a permanent
@@ -1909,13 +2057,35 @@ class LibraryWindow(QMainWindow):
             if self._restore_maximized:
                 QTimer.singleShot(0, self.showMaximized)
 
+    def _clear_all_pools(self):
+        """SS-1349. Every pool this window owns, named so a test can prove it.
+
+        A method rather than four lines inside closeEvent because the fault was
+        two pools being ABSENT from a list, and a check that reads closeEvent's
+        source for four strings is the same kind of evidence that let the fault
+        through. This can be called on a stand-in object and watched.
+        """
+        for name, pool in (("scan", self._scan_pool), ("raw", self._raw_pool),
+                           ("tiff", self._tiff_pool), ("general", self._pool)):
+            try:
+                active = pool.activeThreadCount()
+            except Exception:  # noqa: BLE001
+                active = -1
+            pool.clear()
+            _trace("pool.cleared", pool=name, active=active)
+
     def closeEvent(self, event):  # noqa: N802 — Qt override
+        _trace("window.close", window="library")
         # Stop work which has not started. Running decoders finish quietly;
         # their guarded signal delivery above discards results after teardown.
         if self._scan_token is not None:
             self._scan_token.cancelled = True
-        self._scan_pool.clear()
-        self._raw_pool.clear()
+        # SS-1349. EVERY pool, not two of four. _tiff_pool and _pool were
+        # left running, so queued TIFF and ordinary decodes carried on after
+        # the window was gone -- work nobody would ever see, holding the
+        # process and its file handles. Running tasks still finish; their
+        # signal delivery is already guarded against a torn-down window.
+        self._clear_all_pools()
         # Closing from the taskbar while minimized is not a request to reopen
         # small. Only remember a visible, intentional normal/maximized state.
         if not self.isMinimized():
