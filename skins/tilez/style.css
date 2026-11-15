@@ -2605,6 +2605,25 @@ body.blog, body.single, body.archive { background: #fff; }
 .tilez-page .page-record .post-header { margin: 0; border: 0; }
 .tilez-page .page-content { min-width: 0; }
 
+/* Decorative marks such as an author's signature are page furniture, not
+   full-width photographs. Match the established closing-signature scale and
+   keep the mark in the reading lane even when the shortcode requests 100%. */
+.tilez-page .page-content > .snap-decorative {
+    float: none;
+    clear: both;
+    width: min(340px, 72%);
+    max-width: 100%;
+    margin: 44px 0 24px;
+}
+.tilez-page .page-content > .snap-decorative .snap-decorative-img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 0;
+    cursor: default;
+}
+
 @media (max-width: 900px) {
     .alfred-archive-grid { --ss-cols: 3; }
     .posts.ss-masonry { --ss-cols: 2; }
