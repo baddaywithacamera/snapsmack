@@ -1593,8 +1593,8 @@
         "thresholds": []
     },
     "reader-header-never-names-a-real-instance.php": {
-        "assertions": 10,
-        "predicates": 9,
+        "assertions": 15,
+        "predicates": 14,
         "thresholds": []
     },
     "reconstruction-boundary-regression.php": {

@@ -71,6 +71,31 @@ $check('no instance name survives anywhere else in pixel.php',
 $check('the right-hand card says Gateway too, not "presentation"',
     str_contains($src, 'Mastodon Gateway · powered by SnapSmack'));
 
+// --- THE MARK MUST NOT BE SOMEBODY ELSE'S LOGO ------------------------------
+// Sean, on his own unzucked.ca header: the rainbow conic gradient in a
+// rounded square, sitting immediately left of the word "pixelfed", reads as
+// Pixelfed's own logo. Fixing the word and leaving a lookalike beside it
+// would be the same claim in a different place, and he ruled out a recoloured
+// lookalike too.
+$css = (string)file_get_contents($root . '/assets/css/ss-pixel.css');
+if (!preg_match('/\.sx-brand \.sx-mark\s*\{[^}]*\}/s', $css, $mark)) {
+    fwrite(STDERR, "FAIL: could not find the brand mark rule
+");
+    exit(1);
+}
+$rule = $mark[0];
+$check('the brand mark is not a multi-hue wheel',
+    !preg_match('/conic-gradient|linear-gradient|radial-gradient/i', $rule));
+$colours = [];
+preg_match_all('/#[0-9a-f]{3,8}/i', $rule, $hex);
+foreach ($hex[0] as $h) { $colours[strtolower($h)] = true; }
+$check('and it does not carry a palette of its own at all',
+    count($colours) <= 1);
+$check("it uses the reader's own accent rather than a borrowed brand colour",
+    str_contains($rule, '--accent'));
+$check('and it is not a rounded square like the logo it was imitating',
+    str_contains($rule, 'border-radius:50%'));
+
 // --- the stale product name is gone from the public site --------------------
 $ca = (string)file_get_contents($root . '/projects/snapsmack-ca/index.php');
 $check('snapsmack.ca no longer calls the reader SMACKVERSE',
