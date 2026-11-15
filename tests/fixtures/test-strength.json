@@ -1240,8 +1240,8 @@
         "thresholds": []
     },
     "multisite-version-reading-age.php": {
-        "assertions": 36,
-        "predicates": 21,
+        "assertions": 39,
+        "predicates": 23,
         "thresholds": []
     },
     "nav-landing-is-archive-regression.php": {
@@ -2512,6 +2512,11 @@
         "thresholds": [
             4
         ]
+    },
+    "wall-shortcode-never-points-at-a-missing-file.php": {
+        "assertions": 9,
+        "predicates": 8,
+        "thresholds": []
     },
     "wall-tile-dimensions-regression.php": {
         "assertions": 11,

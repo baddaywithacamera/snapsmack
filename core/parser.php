@@ -899,6 +899,35 @@ class SnapSmack {
      * Looks up the asset in snap_assets first, falls back to snap_images.
      * Supports size variants (small/wall/full) and alignment (left/center/right).
      */
+    /**
+     * The first of $candidates that is really on disk, else $fallback.
+     *
+     * SS-1316. A derivative path that is merely CONVENTIONAL is a guess, and a
+     * guess rendered into an <img src> is a broken photograph on a reader's
+     * screen. Paths are relative to the install root, which is this file's
+     * parent; anything empty or containing .. is skipped rather than trusted.
+     *
+     * If the root cannot be determined the ORIGINAL is returned, never a
+     * guessed thumbnail: a full-size image is heavier but it is always there.
+     */
+    private function first_existing_image(array $candidates, string $fallback): string
+    {
+        $root = dirname(__DIR__);
+        if ($root === '' || !is_dir($root)) {
+            return $fallback;
+        }
+        foreach ($candidates as $candidate) {
+            $candidate = ltrim((string)$candidate, '/');
+            if ($candidate === '' || strpos($candidate, '..') !== false) {
+                continue;
+            }
+            if (is_file($root . '/' . $candidate)) {
+                return $candidate;
+            }
+        }
+        return $fallback;
+    }
+
     private function parseImages($content) {
         return preg_replace_callback(
             '/\[img:\s*(g)?\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?(?:\s*\|\s*(\d{1,3})(?:%)?)?\s*\]/i',
@@ -920,7 +949,7 @@ class SnapSmack {
                     // tables number from 1, so a plain [img:ID] would resolve the
                     // Library asset of the same id first. snap_images has no border
                     // columns; defaults leave it borderless.
-                    $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt, img_width as width, img_height as height FROM snap_images WHERE id = ? LIMIT 1");
+                    $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt, img_width as width, img_height as height, img_thumb_aspect as thumb_aspect, img_thumb_square as thumb_square FROM snap_images WHERE id = ? LIMIT 1");
                     $stmt->execute([$id]);
                     $asset = $stmt->fetch();
                 } else {
@@ -943,7 +972,7 @@ class SnapSmack {
                     // --- FALLBACK TO SNAP_IMAGES (PRIORITY 2) ---
                     // snap_images has no border columns; defaults leave it borderless.
                     if (!$asset) {
-                        $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt, img_width as width, img_height as height FROM snap_images WHERE id = ? LIMIT 1");
+                        $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt, img_width as width, img_height as height, img_thumb_aspect as thumb_aspect, img_thumb_square as thumb_square FROM snap_images WHERE id = ? LIMIT 1");
                         $stmt->execute([$id]);
                         $asset = $stmt->fetch();
                     }
@@ -967,10 +996,42 @@ class SnapSmack {
                 $filename = basename($raw_path);
                 $folder   = str_replace($filename, '', $raw_path);
 
-                if ($size === 'small' && strpos($raw_path, 'uploads/') !== false) {
-                    $final_path = $folder . 'thumbs/t_' . $filename;
-                } elseif ($size === 'wall' && strpos($raw_path, 'uploads/') !== false) {
-                    $final_path = $folder . 'thumbs/wall_' . $filename;
+                // SS-1316. THE WALL DERIVATIVE NEVER EXISTED. This line built
+                // 'thumbs/wall_<file>', and that was the ONLY mention of wall_
+                // anywhere in the product -- nothing has ever written such a
+                // file, for any image, on any site. So [img:ID|wall] has always
+                // pointed at a 404. It surfaced on a SMACKPRESS migration
+                // because 23 photographs went up at once and every one showed
+                // broken, while the same ids with |full rendered fine.
+                //
+                // Generating wall_ at upload would fix nothing already on disk:
+                // every photograph on every live site predates it and would
+                // still 404 until somebody backfilled 25 sites. The RENDERER
+                // falls back instead, which repairs every existing image at once
+                // and needs no migration.
+                //
+                // Order is the one the page components already use -- aspect
+                // thumb, then square, then the original -- and each candidate is
+                // checked ON DISK before it is chosen, so a missing derivative
+                // can never be served as a broken image again.
+                // FULL IS ALWAYS THE ORIGINAL. The first version of this sent
+                // every size through the fallback, and because the aspect thumb
+                // existed, |full started serving a thumbnail -- quietly degrading
+                // the one size whose entire job is to be the real photograph.
+                // The test caught it. Only the derivative sizes fall back.
+                if ($size === 'small') {
+                    $final_path = $this->first_existing_image([
+                        $folder . 'thumbs/t_' . $filename,
+                        ltrim((string)($asset['thumb_square'] ?? ''), '/'),
+                        ltrim((string)($asset['thumb_aspect'] ?? ''), '/'),
+                        $raw_path,
+                    ], $raw_path);
+                } elseif ($size === 'wall') {
+                    $final_path = $this->first_existing_image([
+                        ltrim((string)($asset['thumb_aspect'] ?? ''), '/'),
+                        $folder . 'thumbs/a_' . $filename,
+                        $raw_path,
+                    ], $raw_path);
                 } else {
                     $final_path = $raw_path;
                 }
