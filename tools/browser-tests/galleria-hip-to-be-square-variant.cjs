@@ -35,10 +35,16 @@ function documentHtml(variantCss) {
 
 async function measure(page) {
   return page.evaluate(() => {
-    const imageBox = document.querySelector('.frame-image').getBoundingClientRect();
+    const frameBox = document.querySelector('.frame-image').getBoundingClientRect();
+    const imageElement = document.querySelector('.frame-image img');
+    const imageBox = imageElement.getBoundingClientRect();
     const style = selector => getComputedStyle(document.querySelector(selector));
     return {
-      ratio: imageBox.width / imageBox.height,
+      ratio: frameBox.width / frameBox.height,
+      imageRatio: imageBox.width / imageBox.height,
+      imageWidthDelta: Math.abs(imageBox.width - frameBox.width),
+      imageHeightDelta: Math.abs(imageBox.height - frameBox.height),
+      imageFit: getComputedStyle(imageElement).objectFit,
       overflow: document.documentElement.scrollWidth - innerWidth,
       bodyBg: style('body').backgroundColor,
       wallImage: style('body').backgroundImage,
@@ -71,6 +77,10 @@ async function measure(page) {
       await page.setContent(documentHtml(squareCss), { waitUntil: 'load' });
       const square = await measure(page);
       assert.ok(Math.abs(square.ratio - 1) < 0.01, `${width}: HIP 2 B SQUARE archive crop is 1:1`);
+      assert.ok(Math.abs(square.imageRatio - 1) < 0.01, `${width}: archive photograph itself renders 1:1`);
+      assert.ok(square.imageWidthDelta < 0.5, `${width}: archive photograph fills the square width`);
+      assert.ok(square.imageHeightDelta < 0.5, `${width}: archive photograph fills the square height`);
+      assert.equal(square.imageFit, 'cover', `${width}: landscape photograph crops to fill the square`);
       assert.equal(square.bodyBg, 'rgb(31, 56, 69)', `${width}: dark teal wall wins over saved light defaults`);
       assert.match(square.wallImage, /wall-concrete\.jpg/, `${width}: concrete wall texture is active`);
       assert.equal(square.frame, 'rgb(255, 224, 51)', `${width}: yellow frame is active`);
