@@ -3,7 +3,8 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { chromium } = require('./runtime.cjs');
+const seam = process.env.SNAP_BROWSER_SEAM_ROOT || __dirname;
+const { chromium } = require(path.join(seam, 'runtime.cjs'));
 
 const root = path.resolve(__dirname, '..', '..');
 const output = process.env.SNAPSMACK_BROWSER_OUTPUT || path.join(root, 'tmp', 'galleria-hip-to-be-square-variant');
