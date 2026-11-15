@@ -583,6 +583,42 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
         $engines['styles']
     )));
 
+    // SS-1315. THE ENGINES THE PREPARED CONTENT ACTUALLY NEEDS.
+    //
+    // On 0.7.993D a strict single longform page carried a valid 23-image
+    // mosaic payload and loaded neither the mosaic engine nor its stylesheet,
+    // so the mosaic rendered blank. Replacing it with 23 ordinary image
+    // shortcodes made the photographs appear but clicking them did nothing,
+    // because the same route omitted the lightbox too.
+    //
+    // WHY IT WAS MISSED: snapsmack_public_parse_page_content() registers the
+    // lightbox, but only for kind 'page' -- a STATIC page. A longform POST is
+    // a different kind and went down a branch that registered neither. Two
+    // routes, one of them taught and the other not, which is the same shape
+    // as the SMACKTALK engine gap recorded above this function.
+    //
+    // So this does not add another per-route list. It asks what the PREPARED
+    // CONTENT contains, at the one point every strict response passes
+    // through, which is what the ticket asked for: "whenever the prepared
+    // content requires them, and every strict desktop skin that renders
+    // longform content needs coverage."
+    //
+    // The handles are copied from core/admin-content-preview.php:27-30, which
+    // has had them right all along -- the admin preview rendered these
+    // mosaics correctly while the public page did not. Borrowing the working
+    // one rather than writing a second list.
+    $content_assets = snapsmack_assets_required_by_content($response);
+    if ($content_assets['scripts'] || $content_assets['styles']) {
+        $response['required_assets']['scripts'] = array_values(array_unique(array_merge(
+            (array)($response['required_assets']['scripts'] ?? []),
+            $content_assets['scripts']
+        )));
+        $response['required_assets']['styles'] = array_values(array_unique(array_merge(
+            (array)($response['required_assets']['styles'] ?? []),
+            $content_assets['styles']
+        )));
+    }
+
     // Worked out here because this is the last point that still has the
     // database. The component that prints it has neither.
     $GLOBALS['snapsmack_consent'] = snapsmack_consent_prepare($pdo, $settings);
@@ -593,6 +629,56 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
         $response[$group] = array_map(static fn($item) => is_array($item) ? $trustItem($item) : $item, $response[$group]);
     }
     return $response;
+}
+
+/**
+ * The engines a PREPARED response needs because of what is in it.
+ *
+ * SS-1315. Driven by the rendered markup, not by the route, because the route
+ * is what got this wrong: the static-page branch registered the lightbox and
+ * the longform branch did not, and every strict skin inherited the gap.
+ *
+ * The markers are what the parser actually emits, not guesses:
+ *   - core/parser.php:517 wraps a mosaic in  class="... snap-mosaic-wall"
+ *   - core/parser.php puts data-lightbox-src on every [img:] it renders
+ * Looking for the shortcode SOURCE instead would miss content that arrived
+ * already-rendered, and would fire on a shortcode inside a code sample.
+ *
+ * Every string a response might carry is searched -- the item's content and
+ * description, and the same fields on a list of items -- because a mosaic in
+ * an archive card needs the engine exactly as much as one in a post body.
+ */
+function snapsmack_assets_required_by_content(array $response): array
+{
+    $haystack = '';
+    $collect = static function ($node) use (&$haystack, &$collect): void {
+        if (is_string($node)) { $haystack .= $node; return; }
+        if (!is_array($node)) return;
+        foreach (['content', 'description', 'body', 'excerpt'] as $field) {
+            if (isset($node[$field]) && is_string($node[$field])) $haystack .= $node[$field];
+        }
+    };
+    $collect($response['item'] ?? null);
+    foreach (['items', 'photographs', 'slider_items', 'filmstrip'] as $group) {
+        if (!is_array($response[$group] ?? null)) continue;
+        foreach ($response[$group] as $entry) $collect($entry);
+    }
+    if ($haystack === '') return ['scripts' => [], 'styles' => []];
+
+    $scripts = $styles = [];
+    if (strpos($haystack, 'snap-mosaic-wall') !== false) {
+        // Handles copied from core/admin-content-preview.php:27-30.
+        $scripts[] = 'asset:public:ss-engine-mosaic';
+        $styles[]  = 'asset:public:ss-engine-mosaic:css';
+    }
+    // A mosaic is made of photographs somebody will click, so it needs the
+    // lightbox too -- that was the SECOND half of the fault, found only after
+    // the mosaic was replaced with plain images and they still did nothing.
+    if (strpos($haystack, 'data-lightbox-src') !== false
+        || strpos($haystack, 'snap-mosaic-wall') !== false) {
+        $scripts[] = 'asset:public:ss-engine-lightbox';
+    }
+    return ['scripts' => $scripts, 'styles' => $styles];
 }
 
 /**
