@@ -88,6 +88,16 @@ def run(args, *, timeout, memory_bytes, **kwargs):
         kwargs["stdout"] = subprocess.PIPE
         kwargs["stderr"] = subprocess.PIPE
     kwargs["shell"] = False
+    # NO CONSOLE WINDOW, unless the caller insists. Sean reported console
+    # windows popping up on his desktop and stealing focus while he works.
+    # Every child launched through here is a worker -- a RAW decoder, a
+    # diffusion runner, a face detector -- and none of them has anything to
+    # show. Two callers already passed CREATE_NO_WINDOW by hand
+    # (raw_preview.py:304 and :535) and the rest did not, which is the wrong
+    # way round: the safe thing should be what you get for free. A caller that
+    # genuinely wants a visible console still passes its own creationflags.
+    if os.name == "nt" and "creationflags" not in kwargs:
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     name = os.path.basename(str(args[0])) if args else ""
     started = time.monotonic()
     process = subprocess.Popen(args, **kwargs)
