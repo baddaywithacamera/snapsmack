@@ -413,6 +413,11 @@
             25
         ]
     },
+    "decorative-image-is-not-a-photograph.php": {
+        "assertions": 21,
+        "predicates": 22,
+        "thresholds": []
+    },
     "default-navigation-regression.php": {
         "assertions": 7,
         "predicates": 4,
