@@ -50,5 +50,9 @@ $faq_qas = <<<'HTML'
             </div>
 
 HTML;
-require_once __DIR__ . '/includes/faq-page.php';
+if (defined('SNAPSMACK_FAQ_ASSEMBLY')) {
+    return;
+}
+header('Location: brass-tacks.php#faq-future', true, 301);
+exit;
 // ===== SNAPSMACK EOF =====
