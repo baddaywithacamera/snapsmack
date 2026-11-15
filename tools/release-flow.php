@@ -626,6 +626,9 @@ if ($command === 'gate-note') {
         if (!preg_match('/^--([a-z-]+)=(.+)$/', $arg, $m)) {
             rf_fail("unrecognised argument '{$arg}'; expected --name=value");
         }
+        // Repeatable, so it is collected separately below rather than
+        // overwriting itself in $flags.
+        if ($m[1] === 'skin-render-change') continue;
         $flags[$m[1]] = $m[2];
     }
     $required = [
@@ -656,6 +659,57 @@ if ($command === 'gate-note') {
     $skinNames = array_map(static fn (string $manifest): string => basename(dirname($manifest)), $skinDirs);
     sort($skinNames, SORT_STRING);
 
+    // SKIN RENDER CHANGES ARE DERIVED, NOT ASSUMED EMPTY.
+    //
+    // This field was hardcoded to []. On 0.7.997D that was simply untrue:
+    // GLIDE, RATIONAL GEO, GALLERIA and TILEZ all had skin files change since
+    // v0.7.996D, so signing the note as written would have recorded an empty
+    // render-change list for a release that moved four skins. Codex caught it
+    // while preparing the evidence and refused to sign rather than work round
+    // it, which is exactly right: a gate note is a record, and a field the
+    // tool fills in wrongly is worse than one it asks about.
+    //
+    // WHICH skins changed is derivable, so the tool derives it. WHY each
+    // changed, and what it was compared against, are judgements, so the tool
+    // REFUSES until the signer states them -- naming the skins it found. You
+    // cannot sign [] for a release that moved a skin, and you cannot be made
+    // to invent a reason either.
+    $previousTag = trim((string)@shell_exec('git tag --merged HEAD --list "v*D" --sort=-v:refname'));
+    $previousTag = $previousTag === '' ? '' : (string)strtok($previousTag, "
+");
+    $changed = [];
+    if ($previousTag !== '') {
+        $diff = (string)@shell_exec('git diff --name-only '
+            . escapeshellarg($previousTag) . ' HEAD -- skins/');
+        foreach (preg_split('/\R/', $diff) ?: [] as $line) {
+            if (preg_match('~^skins/([^/]+)/~', trim($line), $m)) $changed[$m[1]] = true;
+        }
+    }
+    $changedSkins = array_values(array_intersect(array_keys($changed), $skinNames));
+    sort($changedSkins, SORT_STRING);
+
+    $renderChanges = [];
+    foreach (array_slice($argv, 2) as $arg) {
+        if (preg_match('/^--skin-render-change=([^:]+):([^:]+):(.+)$/', $arg, $m)) {
+            $renderChanges[] = ['skin' => trim($m[1]), 'reason' => trim($m[2]),
+                                'pre_strip_reference' => trim($m[3])];
+        }
+    }
+    $declared = array_map(static fn (array $c): string => $c['skin'], $renderChanges);
+    $undeclared = array_values(array_diff($changedSkins, $declared));
+    if ($undeclared !== []) {
+        rf_fail("these skins changed since {$previousTag} and the note would record none of them:
+"
+            . '  ' . implode(', ', $undeclared) . "
+"
+            . "  Declare each one:
+"
+            . "    --skin-render-change=<skin>:<reason>:<what it was compared against>
+"
+            . '  Nothing is assumed empty any more.');
+    }
+
+
     $note = [
         'commit' => $head,
         'security' => 'pass',
@@ -665,7 +719,7 @@ if ($command === 'gate-note') {
         'skin_count' => count($skinNames),
         'skin_inventory_sha256' => hash('sha256', implode("
 ", $skinNames)),
-        'skin_render_changes' => [],
+        'skin_render_changes' => $renderChanges,
         'browser_regressions' => 'pass',
     ];
     if (isset($flags['tests'])) $note['tests'] = $flags['tests'];
