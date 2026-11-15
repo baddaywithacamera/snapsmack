@@ -22,7 +22,21 @@ $check(str_contains($css, '.sx-reader-mastodon .sx-caption') && str_contains($cs
 $check(str_contains($css, '.sx-reader-mastodon .sx-media') && str_contains($css, 'order:4'), 'SMACKTALK media order is missing');
 $check(str_contains($css, '--fg:#f5f5f7') && str_contains($css, '--muted:#9baec8'), 'SMACKTALK reader does not lock in readable foreground colours');
 $check(str_contains($sidebar, "\$_site_is_smacktalk ? 'Mastodon' : 'Pixelfed'"), 'admin reader label is not mode-aware');
-$check(str_contains($pixel, 'Mastodon.social') && str_contains($pixel, '>pixelfed</'), 'reader brands do not match their presentation modes');
+// SS-1355 CHANGED THIS ASSERTION DELIBERATELY, AND IT WAS HOLDING A LEGAL
+// PROBLEM IN PLACE. It required pixel.php to contain the literal string
+// "Mastodon.social" -- a real instance, run by other people, printed as the
+// brand at the top of every SMACKTALK install. Owner ruling 2026-11-14: that
+// comes off. A test that pins the defect is the SS-1322 fault again, where a
+// check blocked the repair it was written to protect.
+//
+// The useful rule is the one underneath: the brand must track the mode and
+// must name the PROTOCOL rather than somebody's server. Rendered proof of
+// both modes lives in tests/reader-header-never-names-a-real-instance.php;
+// this one keeps the source-level guard that the two arms still differ.
+$check(str_contains($pixel, "'Mastodon Gateway' : 'Pixelfed Gateway'"),
+    'reader brands do not name the gateway for each presentation mode');
+$check(!preg_match('~<b>\s*Mastodon\.social~i', $pixel),
+    'the reader masthead names a real instance again');
 $check(str_contains($pixel, 'sx-masto-primary') && str_contains($pixel, '>Explore</a>'), 'Mastodon navigation shell is missing');
 $check(str_contains($css, '.sx-reader-pixelfed .sx-card') && str_contains($css, '.sx-reader-mastodon .sx-nav'), 'reader-specific shells are not separated');
 
