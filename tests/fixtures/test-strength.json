@@ -2446,6 +2446,11 @@
             30
         ]
     },
+    "tile-like-control-regression.php": {
+        "assertions": 31,
+        "predicates": 30,
+        "thresholds": []
+    },
     "tilez-columns-regression.php": {
         "assertions": 4,
         "predicates": 9,
