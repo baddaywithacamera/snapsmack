@@ -1,0 +1,68 @@
+/*
+ * SNAPSMACK_EOF_HEADER
+ * GALLERIA — HIP 2 B SQUARE variant.
+ *
+ * This is the maintained dark-teal sibling of the original GALLERIA look.
+ * The base skin keeps all layout and behaviour; this file changes the room,
+ * frame palette, chrome and archive crop only.
+ */
+
+body.galleria-v2 {
+    --frame-color: #ffe033;
+    --mat-color: #ffe033;
+    --wall-bg: #1f3845;
+    --text-primary: #d0dde3;
+    --text-secondary: #6a8a96;
+    --accent-color: #00e5ff;
+    background-color: var(--wall-bg);
+    background-image: url('assets/wall-concrete.jpg');
+    background-repeat: repeat;
+}
+
+body.galleria-v2 a:hover {
+    color: #ffe033;
+}
+
+body.galleria-v2 .htbs-header {
+    background-color: #0f2029;
+    border-bottom-color: rgba(0, 229, 255, 0.15);
+}
+
+body.galleria-v2 .htbs-header .site-title-text {
+    color: #ffe033;
+}
+
+body.galleria-v2 .htbs-header .nav-menu a {
+    color: #d0dde3;
+}
+
+body.galleria-v2 .htbs-header .nav-menu a:hover {
+    color: #00e5ff;
+}
+
+body.galleria-v2 .htbs-header .nav-menu .sep {
+    color: rgba(0, 229, 255, 0.2);
+}
+
+body.galleria-v2 .htbs-archive-item .frame-image {
+    aspect-ratio: 1;
+}
+
+body.galleria-v2 .htbs-footer,
+body.galleria-v2 footer {
+    background-color: #0f2029;
+    border-top-color: rgba(0, 229, 255, 0.15);
+    color: #6a8a96;
+}
+
+body.galleria-v2 .htbs-footer a,
+body.galleria-v2 footer a {
+    color: #00e5ff;
+}
+
+body.galleria-v2 .htbs-footer a:hover,
+body.galleria-v2 footer a:hover {
+    color: #ffe033;
+}
+
+/* ===== SNAPSMACK EOF ===== */
