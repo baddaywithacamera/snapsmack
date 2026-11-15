@@ -63,7 +63,7 @@ async function measure(page) {
   fs.mkdirSync(output, { recursive: true });
   const browser = await chromium.launch({ headless: true, channel: 'msedge' });
   try {
-    for (const width of [1920, 1440, 1024]) {
+    for (const width of [3840, 1920, 1440, 1024]) {
       const page = await browser.newPage({ viewport: { width, height: 900 } });
 
       await page.setContent(documentHtml(''), { waitUntil: 'load' });
