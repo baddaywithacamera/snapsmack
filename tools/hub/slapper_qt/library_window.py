@@ -240,6 +240,18 @@ class _ThumbSignals(QObject):
     failed = Signal(str, bool, int, str)  # path, is RAW, attempt, explanation
 
 
+# --- SS-1350: DEV LOG tracing -----------------------------------------------
+# Silent and nearly free when the switch is off: snap_log.trace() returns on an
+# isEnabledFor check before building a line. Wrapped because a logging problem
+# must never be the reason a thumbnail or a window fails.
+def _trace(event, **fields):
+    try:
+        import snap_log
+        snap_log.trace("snap_slapper", event, **fields)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 # --- SS-1347: a thumbnail is decoded once, not once per launch ---------------
 # LibraryWindow._icons is memory only, so every launch re-decoded every tile
 # from the source photograph -- RAW development included. A working disk cache
@@ -349,6 +361,17 @@ class _ThumbTask(QRunnable):
         self.recovery_path = recovery_path
 
     def run(self):
+        _trace("pool.task.start", task="thumbnail",
+               file=os.path.basename(self.path), attempt=self.attempt)
+        started = time.monotonic()
+        try:
+            self._run()
+        finally:
+            _trace("pool.task.finish", task="thumbnail",
+                   file=os.path.basename(self.path),
+                   ms=round((time.monotonic() - started) * 1000, 1))
+
+    def _run(self):
         is_raw = os.path.splitext(self.path)[1].lower() in photo_manager.RAW_EXTENSIONS
         cache_path = _thumb_cache_path(self.path, self.recovery_path)
         cached = _thumb_cache_read(cache_path)
@@ -357,6 +380,7 @@ class _ThumbTask(QRunnable):
             # recovery-project read, because every one of those is the cost
             # this exists to avoid.
             image, stamp = cached
+            _trace("thumbnail.cache", hit=True, file=os.path.basename(self.path))
             data = image.tobytes("raw", "RGBA")
             qimage = QImage(data, image.width, image.height,
                             image.width * 4, QImage.Format_RGBA8888).copy()
@@ -2033,7 +2057,25 @@ class LibraryWindow(QMainWindow):
             if self._restore_maximized:
                 QTimer.singleShot(0, self.showMaximized)
 
+    def _clear_all_pools(self):
+        """SS-1349. Every pool this window owns, named so a test can prove it.
+
+        A method rather than four lines inside closeEvent because the fault was
+        two pools being ABSENT from a list, and a check that reads closeEvent's
+        source for four strings is the same kind of evidence that let the fault
+        through. This can be called on a stand-in object and watched.
+        """
+        for name, pool in (("scan", self._scan_pool), ("raw", self._raw_pool),
+                           ("tiff", self._tiff_pool), ("general", self._pool)):
+            try:
+                active = pool.activeThreadCount()
+            except Exception:  # noqa: BLE001
+                active = -1
+            pool.clear()
+            _trace("pool.cleared", pool=name, active=active)
+
     def closeEvent(self, event):  # noqa: N802 — Qt override
+        _trace("window.close", window="library")
         # Stop work which has not started. Running decoders finish quietly;
         # their guarded signal delivery above discards results after teardown.
         if self._scan_token is not None:
@@ -2043,10 +2085,7 @@ class LibraryWindow(QMainWindow):
         # the window was gone -- work nobody would ever see, holding the
         # process and its file handles. Running tasks still finish; their
         # signal delivery is already guarded against a torn-down window.
-        self._scan_pool.clear()
-        self._raw_pool.clear()
-        self._tiff_pool.clear()
-        self._pool.clear()
+        self._clear_all_pools()
         # Closing from the taskbar while minimized is not a request to reopen
         # small. Only remember a visible, intentional normal/maximized state.
         if not self.isMinimized():

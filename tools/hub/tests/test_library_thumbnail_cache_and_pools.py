@@ -167,19 +167,51 @@ def test_a_broken_cache_entry_is_a_miss_not_a_crash(tmp_path, monkeypatch):
     assert result.results, "a corrupt cache entry stopped the thumbnail"
 
 
-def test_close_clears_every_pool_and_the_library_owns_its_own(monkeypatch):
-    """SS-1349. Reads the real source of closeEvent and __init__, because the
-    fault was two pools being absent from a list."""
+class _RecordingPool:
+    def __init__(self, log, name):
+        self._log, self._name = log, name
+
+    def activeThreadCount(self):  # noqa: N802 - Qt spelling
+        return 0
+
+    def clear(self):
+        self._log.append(self._name)
+
+
+def test_close_clears_every_pool():
+    """SS-1349. _tiff_pool and _pool were left running after the window closed.
+
+    Behavioural: _clear_all_pools() is called on a stand-in holding four
+    recording pools, and we watch which ones it actually clears. A source
+    check for four strings would be the same kind of evidence that let two
+    pools go missing in the first place.
+    """
+    cleared = []
+
+    class _StandIn:
+        pass
+
+    window = _StandIn()
+    for attr, name in (("_scan_pool", "scan"), ("_raw_pool", "raw"),
+                       ("_tiff_pool", "tiff"), ("_pool", "general")):
+        setattr(window, attr, _RecordingPool(cleared, name))
+
+    library_window.LibraryWindow._clear_all_pools(window)
+
+    assert sorted(cleared) == ["general", "raw", "scan", "tiff"],         f"closing the library left pools running: {sorted(cleared)}"
+
+
+def test_closeevent_actually_calls_it():
+    """The method is only worth anything if close still reaches it."""
     import inspect
+    assert "self._clear_all_pools()" in         inspect.getsource(library_window.LibraryWindow.closeEvent)
 
-    source = inspect.getsource(library_window.LibraryWindow.closeEvent)
-    for pool in ("_scan_pool", "_raw_pool", "_tiff_pool", "_pool"):
-        assert f"self.{pool}.clear()" in source, \
-            f"closeEvent does not clear {pool}"
 
+def test_the_library_does_not_share_the_global_thread_pool():
+    """Clearing the global pool on library close would cancel
+    textures_dialog's queued work as a side effect of closing this window."""
+    import inspect
     init = inspect.getsource(library_window.LibraryWindow.__init__)
-    assert "self._pool = QThreadPool.globalInstance()" not in init, (
-        "the library is back on the shared global pool; clearing it on close "
-        "would cancel textures_dialog's queued work too")
+    assert "self._pool = QThreadPool.globalInstance()" not in init
     assert "self._pool = QThreadPool(self)" in init
 # ===== SNAPSMACK EOF =====

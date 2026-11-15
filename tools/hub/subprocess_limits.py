@@ -6,6 +6,7 @@ import ctypes
 from ctypes import wintypes
 import os
 import subprocess
+import time
 
 
 JOB_OBJECT_LIMIT_PROCESS_MEMORY = 0x00000100
@@ -67,6 +68,18 @@ def _assign_windows_job(process, memory_bytes):
     return job, kernel32
 
 
+def _trace(event, **fields):
+    """SS-1350 DEV LOG. Child processes are the expensive, invisible part of a
+    busy cursor, so every launch and exit is traced with argv[0], duration and
+    exit code -- and nothing else. The rest of the command line can carry a
+    file path or a key and is deliberately never recorded."""
+    try:
+        import snap_log
+        snap_log.trace("snap_slapper", event, **fields)
+    except Exception:  # noqa: BLE001 — tracing never breaks a subprocess call
+        pass
+
+
 def run(args, *, timeout, memory_bytes, **kwargs):
     """Run argv without a shell, terminating the whole job on timeout or close."""
     if kwargs.pop("capture_output", False):
@@ -75,16 +88,23 @@ def run(args, *, timeout, memory_bytes, **kwargs):
         kwargs["stdout"] = subprocess.PIPE
         kwargs["stderr"] = subprocess.PIPE
     kwargs["shell"] = False
+    name = os.path.basename(str(args[0])) if args else ""
+    started = time.monotonic()
     process = subprocess.Popen(args, **kwargs)
+    _trace("child.start", exe=name, pid=process.pid, timeout=timeout)
     job = kernel32 = None
     try:
         if os.name == "nt":
             job, kernel32 = _assign_windows_job(process, memory_bytes)
         stdout, stderr = process.communicate(timeout=timeout)
+        _trace("child.exit", exe=name, pid=process.pid, code=process.returncode,
+               ms=round((time.monotonic() - started) * 1000, 1))
         return subprocess.CompletedProcess(args, process.returncode, stdout, stderr)
     except subprocess.TimeoutExpired:
         process.kill()
         process.communicate()
+        _trace("child.exit", exe=name, pid=process.pid, code="timeout",
+               ms=round((time.monotonic() - started) * 1000, 1))
         raise
     finally:
         if job:
