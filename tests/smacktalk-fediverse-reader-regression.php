@@ -21,7 +21,12 @@ $check(str_contains($js, 'Like</button>') && str_contains($js, 'Comment</button>
 $check(str_contains($css, '.sx-reader-mastodon .sx-caption') && str_contains($css, 'order:3'), 'SMACKTALK text is not ordered before media');
 $check(str_contains($css, '.sx-reader-mastodon .sx-media') && str_contains($css, 'order:4'), 'SMACKTALK media order is missing');
 $check(str_contains($css, '--fg:#f5f5f7') && str_contains($css, '--muted:#9baec8'), 'SMACKTALK reader does not lock in readable foreground colours');
-$check(str_contains($sidebar, "\$_site_is_smacktalk ? 'Mastodon' : 'Pixelfed'"), 'admin reader label is not mode-aware');
+// SS-1355: the admin link says Gateway too, so the whole product uses one
+// name for the thing. A bare project name is weaker here than in the public
+// masthead, but two names for one feature is how a product teaches its owner
+// the wrong word.
+$check(str_contains($sidebar, "\$_site_is_smacktalk ? 'Mastodon Gateway' : 'Pixelfed Gateway'"),
+    'admin reader label is not mode-aware, or does not say Gateway');
 // SS-1355 CHANGED THIS ASSERTION DELIBERATELY, AND IT WAS HOLDING A LEGAL
 // PROBLEM IN PLACE. It required pixel.php to contain the literal string
 // "Mastodon.social" -- a real instance, run by other people, printed as the
