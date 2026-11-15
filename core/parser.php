@@ -996,13 +996,25 @@ class SnapSmack {
                 $filename = basename($raw_path);
                 $folder   = str_replace($filename, '', $raw_path);
 
-                // SS-1316. THE WALL DERIVATIVE NEVER EXISTED. This line built
-                // 'thumbs/wall_<file>', and that was the ONLY mention of wall_
-                // anywhere in the product -- nothing has ever written such a
-                // file, for any image, on any site. So [img:ID|wall] has always
-                // pointed at a 404. It surfaced on a SMACKPRESS migration
-                // because 23 photographs went up at once and every one showed
-                // broken, while the same ids with |full rendered fine.
+                // SS-1316. A RETIREMENT THAT LEFT ITS CALLER BEHIND. This line
+                // built 'thumbs/wall_<file>'. Those thumbnails USED to be
+                // generated and the generation was removed -- backfill-thumbs.php
+                // still tells owners so, and tells them to delete any wall_*
+                // files they still have. Nothing in the current product writes
+                // one, and this line was its only remaining builder. So the wall
+                // size has pointed at a 404 for everything uploaded since that
+                // change, and for anything whose old file was deleted on that
+                // advice.
+                //
+                // CORRECTION, after Muse: I first wrote that the file "never
+                // existed" and that this was the only occurrence of wall_ in the
+                // product. Both were overstated. It existed and was retired, and
+                // wall_ appears elsewhere as an unrelated string. The defect and
+                // the fix are unchanged; the history was wrong.
+                //
+                // It surfaced on a SMACKPRESS migration because 23 photographs
+                // went up at once and every one showed broken, while the same
+                // ids with |full rendered fine.
                 //
                 // Generating wall_ at upload would fix nothing already on disk:
                 // every photograph on every live site predates it and would
@@ -1010,10 +1022,15 @@ class SnapSmack {
                 // falls back instead, which repairs every existing image at once
                 // and needs no migration.
                 //
-                // Order is the one the page components already use -- aspect
-                // thumb, then square, then the original -- and each candidate is
-                // checked ON DISK before it is chosen, so a missing derivative
-                // can never be served as a broken image again.
+                // Each candidate is checked ON DISK before it is chosen, so a
+                // missing derivative can never be served as a broken image
+                // again. WALL takes the stored aspect thumb, then the
+                // conventional a_ path, then the original -- no square
+                // candidate, because a square crop is the wrong shape for a
+                // wall. SMALL takes its square thumb first and may fall back to
+                // the aspect one, which is the wrong shape but is a real image
+                // rather than a hole. (Muse caught this comment describing the
+                // wall order as aspect-square-original, which it is not.)
                 // FULL IS ALWAYS THE ORIGINAL. The first version of this sent
                 // every size through the fallback, and because the aspect thumb
                 // existed, |full started serving a thumbnail -- quietly degrading
