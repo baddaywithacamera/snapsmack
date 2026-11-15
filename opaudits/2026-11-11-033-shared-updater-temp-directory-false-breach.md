@@ -1,6 +1,6 @@
 # OPAUDIT 033 — Shared updater temporary directory caused a false SMACKBACK breach
 
-> **DRAFT — unpublished.** Prepared from the measured Strathmore incident, SS-1284, and the independently reviewed source repair. The repair is merged for a future release but is not deployed.
+> **Evidence note.** Prepared from the measured Strathmore incident, SS-1284, and the independently reviewed source repair. The repair is merged for a future release but is not deployed.
 
 | Field | Value |
 |---|---|

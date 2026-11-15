@@ -1,9 +1,9 @@
 # OPAUDIT 031 — Audit register failure: SECAUDITs misfiled, left open without owners, and reported as handled without verification
 
-> **DRAFT — unpublished. Pending Sean's approval before anything is public.**
+> **Publication note.**
 > Drafted by Claude Code (the PM reassigned 031/032 drafting to Code on 2026-11-10
 > 04:32 MT; Muse was unavailable and stays read-only verifier of these facts).
-> Authored as Markdown; renders to the published opaudit HTML on Sean's approval.
+> Authored as Markdown and rendered to the published OPAUDIT HTML.
 > No copy is written in Sean's voice (OPAUDIT 028).
 
 | Field | Value |
@@ -103,7 +103,7 @@ numbering ruled on pending Sean.
 ## 8. Register status correction
 
 At the time this audit was drafted, OPAUDIT 029 and 030 were unfiled. They are now
-filed as unpublished drafts alongside this record. That closes the numbering gap;
+filed alongside this record. That closes the numbering gap;
 it does not close either audit's open acceptance work.
 
 ## 9. What to check in your own project

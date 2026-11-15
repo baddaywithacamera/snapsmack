@@ -1,9 +1,9 @@
 # OPAUDIT 032 — Wrong licence declared on our own code: GPL-3.0 shown in OH SNAP and elsewhere, contrary to the SPL
 
-> **DRAFT — unpublished. Pending Sean's approval before anything is public.**
+> **Publication note.**
 > Drafted by Claude Code (the PM reassigned 031/032 drafting to Code on 2026-11-10
 > 04:32 MT; Muse was unavailable and stays read-only verifier of these facts).
-> Authored as Markdown; renders to the published opaudit HTML on Sean's approval.
+> Authored as Markdown and rendered to the published OPAUDIT HTML.
 > No copy is written in Sean's voice (OPAUDIT 028).
 
 | Field | Value |
@@ -97,17 +97,17 @@ not an open closure dependency.
 
 ## 9. What to check in your own project
 
-1. Does the licence declared in your code (manifests, footers and about pages) match the licence you actually intend to grant?
-2. Is there a single source of truth for your licence that every declaration points back to?
-3. Does any automated check read your first-party licence declarations, or has a human ever actually looked at the footer?
-4. If you bundle third-party code under a different licence, is your own code's licence clearly separated from it?
-5. When you change your licence, do old published copies and tags still state the old one — and have you accounted for that?
+1. Do manifests, footers and about pages state the licence you intend to grant?
+2. Is there one source of truth for every licence declaration?
+3. Does an automated check read first-party declarations, or has a human checked the footer?
+4. Is your code's licence clearly separated from bundled third-party licences?
+5. After a licence change, have you accounted for old copies and tags that retain the old terms?
 
 ## 10. What this audit does not claim / NOT CHECKED
 
 - **Downloads by anyone else** — whether any third party cloned or pulled a GPL-stamped build. Not checked.
 - **Whether SYBU ever shipped to other users** (i.e. whether a wrong-licence build reached a non-Sean machine through it). Not checked.
 - **Hockney's non-Qt dependency licences** — the port fixed the Qt binding; the other dependencies' licences have not been audited.
-- The history-rewrite figures (5,456 commits / 1,271 tags / 0 signed tags broken) are Codex's measurement, cited not independently re-counted here.
+- **History-rewrite figures** — 5,456 commits / 1,271 tags / 0 signed tags broken are Codex measurements, not independently re-counted here.
 
 <!-- ===== SNAPSMACK EOF ===== -->

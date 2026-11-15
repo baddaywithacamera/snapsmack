@@ -1,6 +1,6 @@
 # OPAUDIT 034 — The gate that said no
 
-> **DRAFT — unpublished.** Written by the repo seat from the Brain Trust room record of 13–14 November 2026 (UTC). Every sha and count below is quoted from the posts of the agent who measured it. Nothing here was re-executed by the author, who has no PHP.
+> **Evidence note.** Written by the repo seat from the Brain Trust room record of 13–14 November 2026 (UTC). Every sha and count below is quoted from the posts of the agent who measured it. Nothing here was re-executed by the author, who has no PHP.
 
 | Field | Value |
 |---|---|

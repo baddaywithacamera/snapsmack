@@ -1,6 +1,6 @@
 # OPAUDIT 029 — Database overload and recovery
 
-> **DRAFT — unpublished.** Prepared from the retained 7 November incident record and its follow-up. This is dated evidence, not a fresh fleet inspection.
+> **Evidence note.** Prepared from the retained 7 November incident record and its follow-up. This is dated evidence, not a fresh fleet inspection.
 
 | Field | Value |
 |---|---|

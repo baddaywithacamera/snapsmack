@@ -1,6 +1,6 @@
 # OPAUDIT 035 — Green on the fixture, broken on the page
 
-> **DRAFT — unpublished.** Written by the repo seat from the Brain Trust room record of 13–14 November 2026. The owner asked for it because the pattern keeps recurring. Causes marked "suspected" are not yet verified on a live render.
+> **Evidence note.** Written by the repo seat from the Brain Trust room record of 13–14 November 2026. The owner asked for it because the pattern keeps recurring. Causes marked "suspected" are not yet verified on a live render.
 
 | Field | Value |
 |---|---|

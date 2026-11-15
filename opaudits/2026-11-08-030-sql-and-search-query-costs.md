@@ -1,6 +1,6 @@
 # OPAUDIT 030 — SQL and search query costs
 
-> **DRAFT — unpublished.** Prepared from the retained 8 November SQL sweep and subsequent verified branch history. It is not installed-fleet acceptance.
+> **Evidence note.** Prepared from the retained 8 November SQL sweep and subsequent verified branch history. It is not installed-fleet acceptance.
 
 | Field | Value |
 |---|---|
