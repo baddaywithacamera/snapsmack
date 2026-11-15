@@ -1450,6 +1450,16 @@
             10
         ]
     },
+    "portfolio-admin-controls-save-regression.php": {
+        "assertions": 21,
+        "predicates": 17,
+        "thresholds": [
+            4,
+            6,
+            7,
+            9
+        ]
+    },
     "portfolio-route-resolver-regression.php": {
         "assertions": 1,
         "predicates": 19,
