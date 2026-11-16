@@ -218,10 +218,15 @@ class BoothWindow(QMainWindow):
 
         access_page = QWidget()
         access_box = QVBoxLayout(access_page)
-        access_box.addWidget(QLabel("Pair Claude, Codex, or another MCP agent"))
+        access_box.addWidget(QLabel("Pair Claude, Codex, Muse, Gemini, or another MCP agent"))
         self.pair_actor = QComboBox()
         self.pair_actor.setEditable(True)
-        self.pair_actor.addItems(["claude", "codex", "muse"])
+        # gemini is Google Antigravity, the seat Sean approved on 2026-11-16:
+        # read room history, post, and read/claim/release work scopes. The
+        # combo stays editable, so this is discoverability, not enforcement --
+        # the server decides what any actor may do, and refuses a name it does
+        # not know.
+        self.pair_actor.addItems(["claude", "codex", "muse", "gemini"])
         access_box.addWidget(self.pair_actor)
         pair_button = QPushButton("GENERATE 5-MINUTE PAIRING CODE")
         pair_button.clicked.connect(self.generate_pair_code)
