@@ -266,10 +266,62 @@
 
         var loading = false, fails = 0, MAX_FAILS = 4;
 
+        // HOLD PAGE TWO UNTIL PAGE ONE HAS PAINTED.
+        //
+        // The observer below uses a 1200px lead margin, and a first wall is
+        // often shorter than that, so the sentinel starts INSIDE the margin
+        // and page two is fetched before a single photograph of page one has
+        // arrived. Measured on photowalk.ing at 1920, cold: 24 images in the
+        // markup at 178ms, 48 by 592ms, first photograph painted at 442ms.
+        // The reader waits for roughly twice the bytes to see the top of the
+        // page, and on a real connection that is the difference between a
+        // flicker and the 2-4 seconds of empty grid the owner reported.
+        //
+        // This delays nothing the reader can see: it holds the SECOND page
+        // until the FIRST one is on screen.
+        //
+        // IT FAILS OPEN ON EVERY AXIS, because an archive that stops filling
+        // is a worse fault than a slow one: a timeout releases it, any scroll
+        // releases it, no images to wait for releases it, and an image that
+        // errors counts as settled. A held request is remembered and fired on
+        // release, so nothing is lost -- only deferred.
+        var released = false, pending = false, releaseTimer = null;
+
+        function release() {
+            if (released) return;
+            released = true;
+            if (releaseTimer) { clearTimeout(releaseTimer); releaseTimer = null; }
+            window.removeEventListener('scroll', release);
+            if (pending) { pending = false; loadNext(); }
+        }
+
+        releaseTimer = setTimeout(release, 2500);
+        window.addEventListener('scroll', release, { passive: true });
+
+        (function releaseWhenFirstScreenHasPainted() {
+            var imgs = grid.querySelectorAll('img'), waiting = [], i, rect;
+            for (i = 0; i < imgs.length; i++) {
+                // Only the photographs on the first screen. A lazy image far
+                // below the fold may never load at all, and waiting on it
+                // would leave the release to the timeout every time.
+                rect = imgs[i].getBoundingClientRect();
+                if (rect.top > window.innerHeight) continue;
+                if (!imgs[i].complete) waiting.push(imgs[i]);
+            }
+            if (!waiting.length) { release(); return; }
+            var remaining = waiting.length;
+            var settled = function () { if (--remaining <= 0) release(); };
+            for (i = 0; i < waiting.length; i++) {
+                waiting[i].addEventListener('load', settled, { once: true });
+                waiting[i].addEventListener('error', settled, { once: true });
+            }
+        })();
+
         function exhausted() { return sentinel.getAttribute('data-has-more') !== '1'; }
         function stop() { sentinel.setAttribute('data-has-more', '0'); if (io) io.disconnect(); }
 
         function loadNext() {
+            if (!released) { pending = true; return; }
             if (loading || exhausted()) return;
             loading = true;
             var next = parseInt(sentinel.getAttribute('data-next'), 10) || 1;
