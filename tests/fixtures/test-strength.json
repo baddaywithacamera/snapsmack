@@ -924,8 +924,8 @@
         ]
     },
     "grid-srcset-falls-back-to-aspect-regression.php": {
-        "assertions": 29,
-        "predicates": 22,
+        "assertions": 31,
+        "predicates": 24,
         "thresholds": [
             2,
             6,

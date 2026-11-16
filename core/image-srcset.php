@@ -33,14 +33,29 @@
 // constants.php is a protected path that an update does not overwrite, so a
 // constant defined only there never reaches a site that updates.
 //
-// THIS DEFAULT IS NOT MEASURED. It describes the common grid -- roughly full
-// width on a phone, half on a tablet, a third on a desktop -- and it is the
-// value Codex's bytes gate should test and correct per skin. STANLEY and
-// WRITING WITH IMPACT paint tiles much larger than a third of the viewport
-// and should end up choosing a_; that is the thing to check, not assume.
+// 'auto, 100vw' IS MEASURED, and it replaced a guess of mine. I had
+// '(max-width: 700px) 100vw, (max-width: 1200px) 50vw, 33vw', which described
+// a common grid and described none of these skins accurately: Codex's browser
+// gate rendered all 30 at 1920, 1440 and 1024 and found 396 visible tiles
+// where the hinted slot was more than 20% off the measured tile, and 12 cases
+// in RATIONAL GEO and SCROLL where the browser chose an UNDERSIZED m_ and
+// would have blurred it. The same gate with 'auto, 100vw' failed nothing, in
+// 30 skins across 90 viewport cases, and cut the fixture's transfer total
+// from 17,328,000 to 15,312,000 bytes.
+//
+// WHY ONE VALUE BEATS THIRTY. The obvious answer was a string per skin, and
+// the evidence says no: tile widths vary WITHIN a single skin -- a masonry row
+// and a thumbs grid on the same site are different slots -- so any fixed
+// string is wrong somewhere. 'auto' asks the browser for the width it is
+// actually laying the image out at, which is the only number that is right
+// everywhere.
+//
+// IT DEPENDS ON loading="lazy", which these tags carry; sizes=auto is defined
+// only for lazily-loaded images. A browser that does not support it falls to
+// 100vw, picks the largest candidate, and behaves exactly as it does today --
+// no saving, no regression.
 if (!defined('SNAPSMACK_GRID_IMAGE_SIZES')) {
-    define('SNAPSMACK_GRID_IMAGE_SIZES',
-        '(max-width: 700px) 100vw, (max-width: 1200px) 50vw, 33vw');
+    define('SNAPSMACK_GRID_IMAGE_SIZES', 'auto, 100vw');
 }
 
 if (!function_exists('snap_image_srcset_prepare')) {

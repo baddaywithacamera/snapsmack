@@ -192,6 +192,28 @@ if (strpos($other, ' srcset="') !== false) {
 }
 snap_image_srcset_prepare([]);
 
+// --- 5b. sizes is the MEASURED value, and lazy, which it depends on ------
+// Codex's browser gate measured 'auto, 100vw' at 0 failures across 30 skins
+// and 90 viewport cases; the fixed-breakpoint string it replaced produced 396
+// mis-hinted tiles and 12 undersized m_ selections in RATIONAL GEO and SCROLL.
+// Pinned so it cannot drift back to a guess.
+snap_image_srcset_prepare([$aspect => $medium . ' 400w, ' . $aspect . ' 600w']);
+$measured = (string)snap_render_component('image', ['url' => $aspect, 'alt' => '']);
+if (strpos($measured, ' sizes="auto, 100vw"') === false) {
+    $failures[] = 'the sizes value is not the measured "auto, 100vw". A fixed '
+        . 'breakpoint string cannot be right: tile widths vary WITHIN a single '
+        . 'skin, so auto is the only value correct everywhere.';
+}
+// sizes=auto is defined only for lazily-loaded images. Without lazy it is
+// ignored, the browser falls back to 100vw and picks the largest candidate --
+// no saving at all, and nothing on screen to show it.
+if (strpos($measured, 'loading="lazy"') === false) {
+    $failures[] = 'srcset with sizes=auto is emitted on a tag that is not '
+        . 'lazily loaded, so the auto hint is ignored and every tile takes '
+        . 'the largest candidate';
+}
+snap_image_srcset_prepare([]);
+
 // --- 6. the sizes value ships outside constants.php ----------------------
 $srcsetFile = (string)@file_get_contents(dirname(__DIR__) . '/core/image-srcset.php');
 if (strpos($srcsetFile, "if (!defined('SNAPSMACK_GRID_IMAGE_SIZES'))") === false) {
