@@ -100,11 +100,33 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
         # advertises an optional write scope, so an explicitly write-enabled
         # pairing code may add booth:write to that one session. A normal code
         # can never gain it.
+        #
+        # THE SEAT'S SCOPES ARE THE GRANT, and they are carried WHOLE.
+        #
+        # This used to name the scopes to force-carry: booth:write, then
+        # conversation:read and conversation:post. Anything else the owner had
+        # granted was dropped in silence. Sean's Antigravity seat is issued
+        # conversation:read, conversation:post, scope:read and scope:write --
+        # the audit log shows pair-code.issued and pair-code.consumed with all
+        # four -- and oauth.approved recorded only the two conversation
+        # scopes, so every scope.* call failed before it reached the queue.
+        # Codex found it in the production audit after I had looked at the
+        # gate and the enqueue path and concluded, wrongly, that the worker
+        # must be stale. I never checked how the token's scopes were made.
+        #
+        # A NAMED LIST IS THE WRONG SHAPE HERE, not merely incomplete: the
+        # next scope anyone adds breaks the same way and the symptom is a tool
+        # that errors with nothing in the logs to explain it. So the identity
+        # decides, in full.
+        #
+        # STILL BOUNDED BY identity["scopes"], which is what the owner's
+        # pairing code granted, so this can only ever hand over what Sean
+        # approved for that seat -- never more, whatever a client asks for.
+        # Requested scopes come first so the order a client sees is the order
+        # it asked in.
         allowed = [scope for scope in requested if scope in identity["scopes"]]
-        if "booth:write" in identity["scopes"] and "booth:write" not in allowed:
-            allowed.append("booth:write")
-        for scope in ("conversation:read", "conversation:post"):
-            if scope in identity["scopes"] and scope not in allowed:
+        for scope in identity["scopes"]:
+            if scope not in allowed:
                 allowed.append(scope)
         if not {"booth:read", "conversation:read"}.intersection(allowed):
             # Scope names only. Both lists are already in the success record.
