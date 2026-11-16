@@ -189,4 +189,6 @@ echo json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     </div>
 </header>
 
+<?php require __DIR__ . '/status-banner.php'; ?>
+
 <?php // ===== SNAPSMACK EOF =====
