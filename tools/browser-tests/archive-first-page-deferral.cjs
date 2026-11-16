@@ -25,9 +25,10 @@ function svg(label) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600"><rect width="900" height="600" fill="#334"/><text x="30" y="60" fill="white">${label}</text></svg>`;
 }
 
-function fixtureHtml(engine) {
+function fixtureHtml(engine, scenario) {
   const wallClass = engine === 'columns' ? 'ss-masonry' : 'ss-scroll-wall';
-  const tiles = Array.from({ length: 12 }, (_, index) => {
+  const tileCount = scenario === 'no-images' ? 0 : 12;
+  const tiles = Array.from({ length: tileCount }, (_, index) => {
     const number = index + 1;
     return `<a class="ss-masonry-item" data-w="900" data-h="600"><img src="/media/page-1-${number}.svg" data-w="900" data-h="600" alt="Page one ${number}"></a>`;
   }).join('');
@@ -38,6 +39,7 @@ html,body{margin:0;padding:0}#wall{width:1000px;--ss-cols:4;--ss-gap:6px}.ss-mas
 document.addEventListener('DOMContentLoaded', function () {
   var imgs = document.querySelectorAll('#wall img');
   var remaining = imgs.length;
+  if (!remaining) window.__firstScreenSettledAt = Date.now();
   function settled() {
     remaining -= 1;
     if (remaining <= 0 && !window.__firstScreenSettledAt) window.__firstScreenSettledAt = Date.now();
@@ -86,7 +88,7 @@ async function runScenario(browser, engine, scenario) {
     const url = new URL(request.url());
     if (url.origin !== origin) return route.fulfill({ status: 204, body: '' });
     if (request.resourceType() === 'document') {
-      return route.fulfill({ contentType: 'text/html; charset=utf-8', body: fixtureHtml(engine) });
+      return route.fulfill({ contentType: 'text/html; charset=utf-8', body: fixtureHtml(engine, scenario) });
     }
     if (url.pathname === `/assets/js/ss-engine-${engine}.js`) {
       return route.fulfill({
@@ -109,6 +111,11 @@ async function runScenario(browser, engine, scenario) {
       });
     }
     if (url.pathname.startsWith('/media/page-1-')) {
+      if (scenario === 'timeout') return new Promise(() => {});
+      if (scenario === 'error') {
+        await wait(180);
+        return route.fulfill({ status: 404, body: '' });
+      }
       await wait(pageOneDelay);
       return route.fulfill({ contentType: 'image/svg+xml', body: svg(url.pathname) });
     }
@@ -128,6 +135,18 @@ async function runScenario(browser, engine, scenario) {
     assert.ok(requestAt !== null, `${engine}: scroll did not release the held page-two request`);
     const settledAt = await page.evaluate(() => window.__firstScreenSettledAt || null);
     assert.equal(settledAt, null, `${engine}: scroll evidence arrived after page one had already settled`);
+    await context.close();
+    return { engine, scenario, pageTwoRequestedAt: requestAt, firstScreenSettledAt: settledAt };
+  }
+
+  if (scenario === 'timeout') {
+    await wait(300);
+    assert.equal(pageTwoRequestedAt, null,
+      `${engine}: timeout case requested page two before the 2.5s fail-open timer`);
+    const requestAt = await waitForRequest(() => pageTwoRequestedAt, 3000);
+    assert.ok(requestAt !== null, `${engine}: timeout did not release the held page-two request`);
+    const settledAt = await page.evaluate(() => window.__firstScreenSettledAt || null);
+    assert.equal(settledAt, null, `${engine}: timeout evidence unexpectedly settled the blocked images`);
     await context.close();
     return { engine, scenario, pageTwoRequestedAt: requestAt, firstScreenSettledAt: settledAt };
   }
@@ -160,7 +179,12 @@ async function runScenario(browser, engine, scenario) {
   try {
     for (const engine of ['rows', 'columns']) {
       rows.push(await runScenario(browser, engine, 'paint'));
-      if (expectDeferral) rows.push(await runScenario(browser, engine, 'scroll'));
+      if (expectDeferral) {
+        rows.push(await runScenario(browser, engine, 'scroll'));
+        rows.push(await runScenario(browser, engine, 'timeout'));
+        rows.push(await runScenario(browser, engine, 'no-images'));
+        rows.push(await runScenario(browser, engine, 'error'));
+      }
     }
   } finally {
     await browser.close();
