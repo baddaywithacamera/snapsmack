@@ -31,7 +31,6 @@
 require_once __DIR__ . '/../core/tile-like-control.php';
 
 $failures = [];
-$heart = ['41' => '<button data-tile-like="41"></button>'];
 $html = [41 => '<button data-tile-like="41"></button>',
          42 => '<button data-tile-like="42"></button>'];
 
