@@ -126,6 +126,49 @@ final class SnapPublicRepository
      * reports HY000 with "no such column". Anything else is not a schema
      * answer.
      */
+    /** null until asked. See mediumThumbSelect(). */
+    private ?bool $mediumThumbColumn = null;
+
+    /**
+     * ',img_thumb_medium' if that column can be selected, '' if it cannot.
+     *
+     * SS-1386 adds the ~600px m_ derivative and records its path in a new
+     * snap_images column. THE GRID SELECT LISTS IN THIS FILE ARE EXPLICIT,
+     * NOT SELECT *, so naming a column a site does not have turns every
+     * archive page into Unknown column -- on 25 live sites at once. The
+     * canonical schema, install.php and the shared ingest all add it, but a
+     * site deployed by direct code copy bypasses the updater's diff, which is
+     * how hekeepsdroningon.ca lost the 0.7.393 fedi columns.
+     *
+     * So it is ASKED, by the same SELECT ... WHERE 0 probe
+     * visibilityFlagsPresent() uses and for the same reason: that probe is
+     * answered by every engine, where INFORMATION_SCHEMA is MySQL and MariaDB
+     * only. One statement per request, memoised. A site without the column
+     * simply gets no m_ candidate and the grid serves a_, which is the
+     * documented fallback rather than a failure.
+     *
+     * @param string $prefix Table alias used by the calling query ('i.' or '').
+     */
+    private function mediumThumbSelect(string $prefix = ''): string {
+        if ($this->mediumThumbColumn === null) {
+            $this->mediumThumbColumn =
+                ($this->imagesColumnSelectable('`img_thumb_medium`') === true);
+        }
+        return $this->mediumThumbColumn ? ",{$prefix}img_thumb_medium" : '';
+    }
+
+    /** As columnsSelectable(), against snap_images. */
+    private function imagesColumnSelectable(string $columnList): ?bool {
+        try {
+            $stmt = $this->pdo->prepare("SELECT {$columnList} FROM snap_images WHERE 0");
+            $stmt->execute();
+            $stmt->fetchAll();
+            return true;
+        } catch (Throwable $e) {
+            return $this->looksLikeUnknownColumn($e) ? false : null;
+        }
+    }
+
     private function columnsSelectable(string $columnList): ?bool {
         try {
             $stmt = $this->pdo->prepare("SELECT {$columnList} FROM snap_posts WHERE 0");
@@ -376,9 +419,10 @@ final class SnapPublicRepository
     }
 
     public function photographLanding(int $limit, int $offset = 0): array {
+        $med = $this->mediumThumbSelect('');
         return $this->all(
             "SELECT id,img_title,img_slug,img_description,img_alt,img_date,img_file,img_width,img_height,
-                    img_thumb_square,img_thumb_aspect,img_color_mode,post_id,sort_order,
+                    img_thumb_square,img_thumb_aspect{$med},img_color_mode,post_id,sort_order,
                     (SELECT pi.img_size_pct FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_size_pct,
                     (SELECT pi.img_border_px FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_border_px,
                     (SELECT pi.img_border_color FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_border_color,
@@ -442,8 +486,9 @@ final class SnapPublicRepository
      * expose only one bounded page of prepared rows to the skin.
      */
     public function justifiedPhotographFeed(): array {
+        $med = $this->mediumThumbSelect('');
         return $this->all(
-            "SELECT id,img_title,img_slug,img_alt,img_file,img_thumb_aspect,img_width,img_height
+            "SELECT id,img_title,img_slug,img_alt,img_file,img_thumb_aspect{$med},img_width,img_height
              FROM snap_images
              WHERE img_status='published' AND img_date <= NOW()
              ORDER BY sort_order ASC,img_date DESC,id DESC"
@@ -681,6 +726,7 @@ final class SnapPublicRepository
         }
         $params[] = max(1, min(5000, $limit));
         $params[] = max(0, $offset);
+        $med = $this->mediumThumbSelect('i.');
         return $this->all(
             // img_orientation decides which shape a thumbnail tile takes, and
             // this query never selected it. Every archive tile reached the skin
@@ -696,7 +742,7 @@ final class SnapPublicRepository
             // so an overlay could only either always offer the pane or never.
             // One column on a query that already runs; no extra round trip.
             "SELECT i.id,i.img_title,i.img_slug,i.img_alt,i.img_file,i.img_width,i.img_height,
-                    i.img_thumb_square,i.img_thumb_aspect,i.allow_comments,
+                    i.img_thumb_square,i.img_thumb_aspect{$med},i.allow_comments,
                     CASE
                       WHEN COALESCE(NULLIF(i.img_orientation,0),0) <> 0 THEN i.img_orientation
                       WHEN i.img_height > i.img_width THEN 1
@@ -781,6 +827,7 @@ final class SnapPublicRepository
         $tagLike = '%' . strtolower($term) . '%';
         $limit = max(1, min(100, $limit));
         $offset = max(0, $offset);
+        $med = $this->mediumThumbSelect('i.');
         return [
             'photographs' => $this->all(
                 // img_width and img_height are NOT optional here. A wall tile
@@ -789,7 +836,7 @@ final class SnapPublicRepository
                 // came back on their side. Every other tile query in this file
                 // already selects them; this one did not. (SS-1029, SS-1030.)
                 "SELECT DISTINCT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,
-                        i.img_file,i.img_thumb_square,i.img_thumb_aspect,i.img_width,i.img_height
+                        i.img_file,i.img_thumb_square,i.img_thumb_aspect{$med},i.img_width,i.img_height
                  FROM snap_images i
                  LEFT JOIN snap_image_tags it ON it.image_id=i.id
                  LEFT JOIN snap_tags t ON t.id=it.tag_id
@@ -814,9 +861,10 @@ final class SnapPublicRepository
     }
 
     public function hashtagPhotographs(string $slug, int $limit, int $offset = 0): array {
+        $med = $this->mediumThumbSelect('i.');
         return $this->all(
             "SELECT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,i.img_file,
-                    i.img_thumb_square,i.img_thumb_aspect,i.post_id,t.id AS tag_id,t.tag,t.slug AS tag_slug
+                    i.img_thumb_square,i.img_thumb_aspect{$med},i.post_id,t.id AS tag_id,t.tag,t.slug AS tag_slug
              FROM snap_tags t JOIN snap_image_tags it ON it.tag_id=t.id
              JOIN snap_images i ON i.id=it.image_id
              WHERE t.slug=? AND i.img_status='published' AND i.img_date <= NOW()
@@ -1046,9 +1094,10 @@ final class SnapPublicRepository
     }
 
     public function collectionPhotographs(string $slug): array {
+        $med = $this->mediumThumbSelect('i.');
         return $this->all(
             "SELECT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,i.img_file,
-                    i.img_thumb_square,i.img_thumb_aspect,ci.position,ci.caption
+                    i.img_thumb_square,i.img_thumb_aspect{$med},ci.position,ci.caption
              FROM snap_collections c JOIN snap_collection_items ci ON ci.collection_id=c.id
              JOIN snap_images i ON i.id=ci.image_id
              WHERE c.slug=? AND c.published=1 AND i.img_status='published' AND i.img_date <= NOW()

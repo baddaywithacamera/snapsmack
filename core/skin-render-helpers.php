@@ -921,8 +921,21 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $lightboxSource = trim((string)($data['attributes']['data-lightbox-src'] ?? ''));
         $width = filter_var($data['attributes']['data-w'] ?? null, FILTER_VALIDATE_INT);
         $height = filter_var($data['attributes']['data-h'] ?? null, FILTER_VALIDATE_INT);
+        // SS-1386: the smaller m_ candidate, READ rather than passed. Every
+        // skin already calls this component with a url and an alt; adding an
+        // argument would mean editing, bumping, repackaging and reinstalling
+        // about thirty skins, which OPAUDIT 025 records the result of. The
+        // runtime prepares a map keyed by this same url, and a photograph with
+        // no m_ derivative is absent from it, so this is '' and the tag is
+        // exactly what it was before. COMPUTES NOTHING: it looks up a string.
+        $srcset = function_exists('snap_image_srcset')
+            ? snap_image_srcset((string)($data['url'] ?? '')) : '';
         $html = '<img' . ($class !== '' ? ' class="' . snap_escape_attr($class) . '"' : '') . ' src="' . snap_escape_url($data['url'] ?? '') . '" alt="'
-            . snap_escape_attr($data['alt'] ?? '') . '"' . ($lightboxSource !== '' ? ' data-lightbox-src="' . snap_escape_url($lightboxSource) . '"' : '')
+            . snap_escape_attr($data['alt'] ?? '') . '"'
+            . ($srcset !== '' ? ' srcset="' . snap_escape_attr($srcset) . '" sizes="'
+                . snap_escape_attr(defined('SNAPSMACK_GRID_IMAGE_SIZES')
+                    ? SNAPSMACK_GRID_IMAGE_SIZES : '100vw') . '"' : '')
+            . ($lightboxSource !== '' ? ' data-lightbox-src="' . snap_escape_url($lightboxSource) . '"' : '')
             . ($width !== false && $width > 0 ? ' data-w="' . $width . '"' : '')
             . ($height !== false && $height > 0 ? ' data-h="' . $height . '"' : '')
             . ' loading="lazy">';

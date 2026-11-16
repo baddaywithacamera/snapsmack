@@ -923,6 +923,15 @@
             100
         ]
     },
+    "grid-srcset-falls-back-to-aspect-regression.php": {
+        "assertions": 24,
+        "predicates": 22,
+        "thresholds": [
+            2,
+            6,
+            6
+        ]
+    },
     "gyss-category-column-regression.php": {
         "assertions": 4,
         "predicates": 3,
