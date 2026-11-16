@@ -690,6 +690,14 @@ $inventory = [
             'path'         => 'assets/js/ss-engine-fingerprint.js',
             'has_settings' => false,
         ],
+        // SS-1323. The in-tile heart. Its own handle rather than riding on
+        // smack-community, because a skin may want a heart on its conveyor
+        // without the floating dock, and the two are different surfaces.
+        'smack-tile-like' => [
+            'label'        => 'Tile Like (heart on each photograph)',
+            'path'         => 'assets/js/ss-engine-tile-like.js',
+            'css'          => 'assets/css/ss-tile-like.css',
+        ],
         'smack-community' => [
             'label'        => 'Community Engine (Likes, Comments, Reactions)',
             'path'         => 'assets/js/ss-engine-community.js',

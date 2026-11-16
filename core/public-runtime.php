@@ -395,6 +395,67 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     // so the row's stylesheet and its behaviour arrived only for the five
     // skins whose manifests happen to require those engines by name. Declaring
     // them here delivers both with the row that needs them: no manifest bump,
+    // SS-1323. THE HEART ON EACH TILE IS PREPARED HERE, NOT IN THE SKIN.
+    //
+    // A strict skin may print prepared view data and call components; it may
+    // NOT call a helper or run a query (AGENTS, and the security ratchet
+    // enforces it). So a layout cannot ask "has this visitor liked this
+    // photograph" forty times down a conveyor -- which is just as well,
+    // because forty questions is how a landing page becomes slow.
+    //
+    // One question for the whole page, asked once, here. Each item carries
+    // its own finished fragment, and the skin prints it through the
+    // 'tile-like' component. Codex found this boundary before placing the
+    // control on GLIDE and stopped, which is the reason this exists.
+    //
+    // OPT-IN BY MANIFEST. Nothing is prepared unless the active skin lists
+    // smack-tile-like in require_scripts, so a skin that has not asked for
+    // hearts neither renders them nor pays for the query. Declaring the
+    // handle is also what delivers the engine and its stylesheet, through
+    // core/asset-registry.php, so there is one switch rather than two.
+    $_tileRequires = is_array($input['skin_manifest']['require_scripts'] ?? null)
+        ? $input['skin_manifest']['require_scripts'] : [];
+    if (in_array('smack-tile-like', $_tileRequires, true)
+            && (!empty($response['items']) || !empty($response['rows']))) {
+        require_once __DIR__ . '/tile-like-control.php';
+        if (snap_tile_like_enabled($settings)) {
+            require_once __DIR__ . '/like-identity.php';
+            [$_tileUser, $_tileGuest] = snap_like_identity($pdo);
+
+            // EVERY LIST A SKIN MAY ITERATE, NOT JUST items.
+            //
+            // This annotated $response['items'] only. The controller builds
+            // $rows for GLIDE by VALUE COPY -- $rows[$index % 9][] = $item --
+            // before this runs, so a row's copy of a photograph never saw the
+            // heart, and GLIDE's layout iterates rows whenever the wall has
+            // photographs in it. The control would have appeared only on the
+            // empty-rows fallback: hearts exactly when there is nothing to
+            // like. Muse found it in final review, in the one seam the browser
+            // test could not see, because that test builds its own markup.
+            //
+            // Keyed by id and written back to both, so the two copies of the
+            // same photograph cannot disagree, and still ONE query for the
+            // page. Rows come in two shapes in this codebase -- a bare list of
+            // items, and ['items' => ..., 'full' => ...] -- and both are
+            // handled rather than assumed.
+            $_tileIds = snap_tile_like_ids($response);
+            $_tileLiked = snap_tile_like_state($pdo, $_tileIds, $_tileUser, $_tileGuest);
+            $_tileHtml = [];
+            foreach ($_tileIds as $_id) {
+                $_tileHtml[$_id] = snap_tile_like_html($_id, in_array($_id, $_tileLiked, true));
+            }
+            $response = snap_tile_like_annotate($response, $_tileHtml);
+            unset($_tileHtml);
+            $_tileAssets = snap_tile_like_assets();
+            foreach (['scripts', 'styles'] as $_kind) {
+                $response['required_assets'][$_kind] = array_values(array_unique(array_merge(
+                    (array)($response['required_assets'][$_kind] ?? []),
+                    (array)($_tileAssets[$_kind] ?? [])
+                )));
+            }
+        }
+    }
+
     // no repackage, no per-site skin update, exactly as the community block
     // and the shortcode stylesheets are delivered.
     if (in_array(($response['kind'] ?? ''), ['archive', 'hashtag'], true)) {

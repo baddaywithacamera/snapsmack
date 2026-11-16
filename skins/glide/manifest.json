@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "name": "GLIDE",
-  "version": "0.1.31",
+  "version": "0.1.32",
   "scrolltime_pages": [
     "landing",
     "archive"
@@ -35,7 +35,7 @@
     "smack-glide",
     "smack-community",
     "smack-keyboard",
-    "smack-lightbox"
+    "smack-lightbox", "smack-tile-like"
   ],
   "community_comments": true,
   "community_likes": true,

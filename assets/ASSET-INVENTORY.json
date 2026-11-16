@@ -2563,6 +2563,33 @@
             "purpose": "Thomas the Bear Engine Easter egg: Ctrl+Shift+Y spawns dancing bears on the page."
         },
         {
+            "file": "assets/js/ss-engine-tile-like.js",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-tile-like",
+            "legacy_handle": "smack-tile-like",
+            "callers": [
+                "core/asset-security-reviews.php",
+                "core/tile-like-control.php",
+                "glide"
+            ],
+            "security_signals": [
+                "network"
+            ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SS-1323",
+                "review": "Reviewed the single call: a root-relative same-origin POST to /process-like.php carrying only an integer id, which is the endpoint and spelling the community dock already uses. IT ALSO SENDS A CSRF TOKEN WHEN THE PAGE CARRIES ONE, AND THAT BUYS NOTHING TODAY: process-like.php does not validate a token (the dock posts without one either). Saying the request carries a token, with no note that nothing checks it, reads as a protection that does not exist -- Muse flagged exactly that wording. The gap is pre-existing and is filed as SS-1385; this engine adds no new hole, because it is the same endpoint, the same table and the same rate limit. No DOM construction at all -- the engine toggles classes and ARIA attributes on markup the CMS rendered, so there is no html sink. Public CSP restricts connections to same-origin."
+            },
+            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
+            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
+            "vendor": false,
+            "requires": [],
+            "purpose": "TILE LIKE (SS-1323) A heart inside a photograph's tile."
+        },
+        {
             "file": "assets/js/ss-engine-updater.js",
             "owner": "cms",
             "scope": "public",
@@ -3934,6 +3961,23 @@
             },
             "requires": [],
             "purpose": "FEDIVERSE Pixelfed Client (faithful pixelfed.ca look)"
+        },
+        {
+            "file": "assets/css/ss-tile-like.css",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-tile-like",
+            "legacy_handle": "smack-tile-like:css",
+            "callers": [
+                "core/public-runtime.php",
+                "core/tile-like-control.php",
+                "skins/glide/manifest.json",
+                "glide"
+            ],
+            "security_signals": [],
+            "security_review": null,
+            "requires": [],
+            "purpose": "TILE LIKE (SS-1323) A heart in the bottom-left corner of a photograph's tile."
         }
     ]
 }

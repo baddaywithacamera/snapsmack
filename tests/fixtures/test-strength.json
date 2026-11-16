@@ -2446,6 +2446,25 @@
             30
         ]
     },
+    "tile-like-control-regression.php": {
+        "assertions": 42,
+        "predicates": 38,
+        "thresholds": []
+    },
+    "tile-like-prepared-not-computed-regression.php": {
+        "assertions": 10,
+        "predicates": 9,
+        "thresholds": []
+    },
+    "tile-like-reaches-rows-not-just-items-regression.php": {
+        "assertions": 23,
+        "predicates": 2,
+        "thresholds": [
+            2,
+            18,
+            18
+        ]
+    },
     "tilez-columns-regression.php": {
         "assertions": 4,
         "predicates": 9,
