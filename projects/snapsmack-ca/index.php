@@ -45,6 +45,21 @@ $page_css = <<<'CSS'
 .btn-primary:hover { color: var(--white); background: #ad0000; }
 .btn-secondary:hover { color: var(--white); background: var(--black); }
 
+/* --- BUILT FOR USE: Sean's statement, in Sean's words --- */
+#built-for-use { padding: 68px 0; background: var(--red); color: var(--white); border-top: 8px solid var(--black); }
+#built-for-use .site-discovery-kicker { color: var(--black); }
+#built-for-use h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
+.built-for-use-copy { max-width: 920px; }
+.built-for-use-copy p { font-size: clamp(1.05rem, 1.65vw, 1.25rem); line-height: 1.65; }
+.built-for-use-copy p + p { margin-top: 20px; }
+
+/* --- THE DELAY: the date moved; the standard did not --- */
+#running-late { padding: 68px 0; background: #f4f1eb; border-top: 8px solid var(--black); }
+#running-late h2 { max-width: 900px; margin-bottom: 26px; }
+.running-late-copy { max-width: 920px; }
+.running-late-copy p { font-size: 1rem; line-height: 1.65; }
+.running-late-copy p + p { margin-top: 18px; }
+
 
 /* --- WHAT WAS: the four things taken, and their names here --- */
 #was { padding: 64px 0; background: #2a2a2a; color: #ddd; border-top: 8px solid var(--red); }
@@ -167,6 +182,28 @@ require_once __DIR__ . '/includes/header.php';
                 <img src="img/snapslapper-editor-adv.png" alt="SNAP SLAPPER photo editor, advanced mode, editing a Banff landscape" width="1920" height="1032" loading="lazy">
                 <span class="door-shot-cap">SNAP SLAPPER &mdash; the free photo editor. Click to enlarge.</span>
             </button>
+        </div>
+    </section>
+
+    <section id="built-for-use" aria-labelledby="built-for-use-title">
+        <div class="wrap">
+            <p class="site-discovery-kicker">Built for the work</p>
+            <h2 id="built-for-use-title">I Built SnapSmack for Myself First.</h2>
+            <div class="built-for-use-copy">
+                <p>I built SNAPSMACK for myself first. There was nothing left that worked for me. I am a prolific shooter and the average publishing system crumbles under the weight of my output. I am still a prolific shooter and I do it using SNAPSMACK day in and day out now. It's not only load bearing software, it is used by me and I intend to keep doing it. That's why it was built with AI. That is why you will end up chatting with an AI for L1 and L2 support. I am not apologizing for this and anyone who has a problem with it should use something else, if you can find it. I could not.</p>
+                <p>I, too, wish to take photos and publish them online and the only way I can do that and do this (SNAPSMACK) is by leveraging technology in a way that benefits all of us. Let's use the new ways to return to The Old Ways. Welcome to the future where what is new is old again, and we have AI to thank for it.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="running-late" aria-labelledby="running-late-title">
+        <div class="wrap">
+            <p class="site-discovery-kicker">Closed beta</p>
+            <h2 id="running-late-title">Why we&rsquo;re running late.</h2>
+            <div class="running-late-copy">
+                <p>First and foremost, the software isn't ready yet. It not only has rough edges and some remaining security holes we're fixing, but it is not elegant. That is important. This software is built in the memory of a deceased friend who did everything elegantly and expected the same out of every tool he used. SnapSmack doesn't ship until it reaches the point where he would have enjoyed using it.</p>
+                <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot; &mdash; and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. This is for Ray. It will ship when it's what he would approve of.</p>
+            </div>
         </div>
     </section>
 
