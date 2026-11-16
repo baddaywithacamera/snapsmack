@@ -52,8 +52,33 @@ def display_thumbnail(source_path, max_size):
     """
     extension = __import__("os").path.splitext(source_path)[1].lower()
     if extension in {".tif", ".tiff"}:
-        import highbit_image
-        return highbit_image.read(source_path, maximum=max_size).display_proxy()
+        # SS-1389: PILLOW FIRST, THE WORKER ONLY IF PILLOW CANNOT READ IT.
+        #
+        # highbit_image.read() spawns a whole process per call
+        # (highbit_image.py, _worker_command + subprocess_limits.run), and in
+        # the frozen build _worker_command relaunches THE EXE ITSELF -- so
+        # every TIFF thumbnail paid a full application bootstrap. On Sean's
+        # "SS To Process" folder that is 12 of 42 files, each one a process
+        # launch, which is the minute per preview and the pinned fan he
+        # reported. Measured: 1.08s and 2.51s for two 20MB TIFFs in a dev
+        # python, against 0.03s for an 81MB CR3 through its embedded preview.
+        #
+        # The worker exists because camera, HDR and external-editor TIFFs use
+        # compressions and sample depths the bundled Pillow cannot display,
+        # and that is still true -- so it stays, as the FALLBACK. An ordinary
+        # TIFF that Pillow can read gets read in-process; anything Pillow
+        # refuses still goes to OIIO and still paints. Nothing is lost, and
+        # the editor's full-precision path is untouched: this function only
+        # ever produced a disposable 8-bit proxy for the UI.
+        try:
+            with Image.open(source_path) as source:
+                source.load()
+                image = ImageOps.exif_transpose(source).convert("RGBA")
+            image.thumbnail(tuple(max_size), Image.Resampling.LANCZOS)
+            return image
+        except Exception:  # noqa: BLE001 -- any Pillow refusal means OIIO
+            import highbit_image
+            return highbit_image.read(source_path, maximum=max_size).display_proxy()
     with Image.open(source_path) as source:
         try:
             source.draft("RGB", tuple(max_size))
