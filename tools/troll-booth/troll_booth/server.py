@@ -35,7 +35,8 @@ auth = AuthSettings(
     required_scopes=[],
     client_registration_options=ClientRegistrationOptions(
         enabled=True,
-        valid_scopes=["booth:read", "booth:write", "conversation:read", "conversation:post"],
+        valid_scopes=["booth:read", "booth:write", "conversation:read", "conversation:post",
+                      "scope:read", "scope:write"],
         default_scopes=["booth:read", "booth:write"],
     ),
     validate_token_resource=True,
@@ -57,10 +58,39 @@ def _require_scope(scope: str) -> None:
         raise PermissionError(f"This paired session requires the {scope} permission.")
 
 
+def _require_any_scope(*accepted: str) -> None:
+    """Any one of these is enough.
+
+    Claiming a work scope needs scope:write OR booth:write. The second is not
+    redundant: every existing seat holds booth:write and none holds
+    scope:write, so without it this change would silently take claim/release
+    away from claude, codex and the owner console the moment it deployed.
+    """
+    token = get_access_token()
+    scopes = set(token.scopes if token else [])
+    if not scopes.intersection(accepted):
+        raise PermissionError(
+            "This paired session requires one of: " + ", ".join(accepted))
+
+
 async def _queued(capability: str, arguments: dict, reason: str, ticket_id: str | None = None) -> dict:
     token = get_access_token()
     scopes = set(token.scopes if token else [])
-    required = "conversation:read" if capability.startswith("conversation.") else "booth:read"
+    # A seat may be granted one family without the others. booth:read still
+    # satisfies everything, so every existing pairing is unchanged.
+    if capability.startswith("conversation."):
+        required = "conversation:read"
+    elif capability.startswith("scope."):
+        # SS: Sean approved a Brain Trust seat for Google Antigravity that may
+        # read and claim work scopes but may NOT write to apps. Before this,
+        # scope.list fell through to booth:read and claim/release required
+        # booth:write -- and booth:write also permits confirmed app-write
+        # actions. There was no way to express "work scopes yes, app writes
+        # no", so granting the approved seat would have granted more than was
+        # approved. These two scopes are that boundary.
+        required = "scope:read"
+    else:
+        required = "booth:read"
     if "booth:read" not in scopes and required not in scopes:
         raise PermissionError("This session cannot use this capability")
     job_id = store.enqueue(_actor(), capability, arguments, reason, ticket_id)
@@ -165,7 +195,7 @@ async def claim_work_scope(
     ttl: int = 3600,
     reason: str = "Prevent overlapping edits",
 ) -> dict:
-    _require_scope("booth:write")
+    _require_any_scope("scope:write", "booth:write")
     return await _queued(
         "scope.claim", {"scope": scope, "task_id": task_id, "note": note, "ttl": ttl}, reason, task_id
     )
@@ -173,7 +203,7 @@ async def claim_work_scope(
 
 @mcp.tool(description="Release a work scope previously claimed by this paired identity.")
 async def release_work_scope(scope: str, reason: str = "Work scope completed") -> dict:
-    _require_scope("booth:write")
+    _require_any_scope("scope:write", "booth:write")
     return await _queued("scope.release", {"scope": scope}, reason)
 
 
@@ -243,6 +273,30 @@ async def worker_result(request: Request) -> JSONResponse:
     return JSONResponse({"ok": ok}, status_code=200 if ok else 409)
 
 
+# Who may be issued a pairing code at all, and what each one gets. A seat is
+# defined HERE, in one readable place, rather than inferred from a boolean --
+# because "write" in this route means booth:write, and booth:write also
+# permits confirmed app-write actions. A seat that should not write to apps
+# cannot be expressed by that flag.
+PAIR_ACTORS = {"claude", "codex", "muse", "gemini"}
+
+
+def pair_scopes(actor: str, write: bool = True) -> list[str]:
+    """Exactly the scopes this actor is issued. A pure function, so it can be
+    tested rather than read.
+
+    gemini is Google Antigravity, approved by Sean: read room history, post,
+    and read/claim/release work scopes. NOT deployment, service control,
+    arbitrary app write, build/package or host control. Listed literally.
+    """
+    if actor == "muse":
+        return ["conversation:read", "conversation:post"]
+    if actor == "gemini":
+        return ["conversation:read", "conversation:post",
+                "scope:read", "scope:write"]
+    return ["booth:read", "booth:write"] if write else ["booth:read"]
+
+
 @mcp.custom_route("/owner/pair-code", methods=["POST"])
 async def owner_pair_code(request: Request) -> JSONResponse:
     """Issue a code only to the authenticated local worker/owner application."""
@@ -250,11 +304,11 @@ async def owner_pair_code(request: Request) -> JSONResponse:
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     data = await request.json()
     actor = str(data.get("actor", "")).strip().lower()
-    if actor not in {"claude", "codex", "muse"}:
-        return JSONResponse({"error": "actor must be claude, codex or muse"}, status_code=400)
-    scopes = ["booth:read", "booth:write"] if bool(data.get("write", True)) else ["booth:read"]
-    if actor == "muse":
-        scopes = ["conversation:read", "conversation:post"]
+    if actor not in PAIR_ACTORS:
+        return JSONResponse(
+            {"error": "actor must be " + ", ".join(sorted(PAIR_ACTORS))},
+            status_code=400)
+    scopes = pair_scopes(actor, bool(data.get("write", True)))
     code = store.issue_pair_code(actor, scopes, ttl=300)
     return JSONResponse({"actor": actor, "code": code, "expires_in": 300, "scopes": scopes})
 
