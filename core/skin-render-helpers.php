@@ -471,6 +471,22 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             }
             $html .= '</nav>';
         }
+    } elseif ($name === 'tile-like') {
+        // SS-1323. The heart for one photograph, already decided.
+        //
+        // This component COMPUTES NOTHING. The fragment, including whether
+        // this visitor has already liked the photograph, was prepared once
+        // for the whole page in core/public-runtime.php, because a strict
+        // skin may not call a helper or run a query and because asking per
+        // tile would be one query per photograph on a conveyor of forty.
+        //
+        // So a strict layout prints snap_render_component('tile-like',
+        // ['item' => $item]) inside its tile and that is the entire contract.
+        // An item with no prepared fragment -- a skin that never asked for
+        // hearts, or likes switched off -- renders nothing at all, which is
+        // the correct answer rather than an empty button.
+        $item = is_array($data['item'] ?? null) ? $data['item'] : [];
+        $html = (string)($item['tile_like'] ?? '');
     } elseif ($name === 'wall-tile') {
         // One photograph in a wall. The page renderer and the endless-scroll
         // JSON endpoint both build their tiles here, so a tile fetched on

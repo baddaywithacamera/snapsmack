@@ -395,6 +395,53 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     // so the row's stylesheet and its behaviour arrived only for the five
     // skins whose manifests happen to require those engines by name. Declaring
     // them here delivers both with the row that needs them: no manifest bump,
+    // SS-1323. THE HEART ON EACH TILE IS PREPARED HERE, NOT IN THE SKIN.
+    //
+    // A strict skin may print prepared view data and call components; it may
+    // NOT call a helper or run a query (AGENTS, and the security ratchet
+    // enforces it). So a layout cannot ask "has this visitor liked this
+    // photograph" forty times down a conveyor -- which is just as well,
+    // because forty questions is how a landing page becomes slow.
+    //
+    // One question for the whole page, asked once, here. Each item carries
+    // its own finished fragment, and the skin prints it through the
+    // 'tile-like' component. Codex found this boundary before placing the
+    // control on GLIDE and stopped, which is the reason this exists.
+    //
+    // OPT-IN BY MANIFEST. Nothing is prepared unless the active skin lists
+    // smack-tile-like in require_scripts, so a skin that has not asked for
+    // hearts neither renders them nor pays for the query. Declaring the
+    // handle is also what delivers the engine and its stylesheet, through
+    // core/asset-registry.php, so there is one switch rather than two.
+    $_tileRequires = is_array($input['skin_manifest']['require_scripts'] ?? null)
+        ? $input['skin_manifest']['require_scripts'] : [];
+    if (in_array('smack-tile-like', $_tileRequires, true) && !empty($response['items'])) {
+        require_once __DIR__ . '/tile-like-control.php';
+        if (snap_tile_like_enabled($settings)) {
+            require_once __DIR__ . '/like-identity.php';
+            [$_tileUser, $_tileGuest] = snap_like_identity($pdo);
+            $_tileIds = [];
+            foreach ((array)$response['items'] as $_tileItem) {
+                $_id = (int)($_tileItem['id'] ?? $_tileItem['img_id'] ?? 0);
+                if ($_id > 0) $_tileIds[] = $_id;
+            }
+            $_tileLiked = snap_tile_like_state($pdo, $_tileIds, $_tileUser, $_tileGuest);
+            foreach ((array)$response['items'] as $_k => $_tileItem) {
+                $_id = (int)($_tileItem['id'] ?? $_tileItem['img_id'] ?? 0);
+                $response['items'][$_k]['tile_like'] = $_id > 0
+                    ? snap_tile_like_html($_id, in_array($_id, $_tileLiked, true))
+                    : '';
+            }
+            $_tileAssets = snap_tile_like_assets();
+            foreach (['scripts', 'styles'] as $_kind) {
+                $response['required_assets'][$_kind] = array_values(array_unique(array_merge(
+                    (array)($response['required_assets'][$_kind] ?? []),
+                    (array)($_tileAssets[$_kind] ?? [])
+                )));
+            }
+        }
+    }
+
     // no repackage, no per-site skin update, exactly as the community block
     // and the shortcode stylesheets are delivered.
     if (in_array(($response['kind'] ?? ''), ['archive', 'hashtag'], true)) {
