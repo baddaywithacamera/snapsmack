@@ -46,8 +46,8 @@ $page_css = <<<'CSS'
 .btn-secondary:hover { color: var(--white); background: var(--black); }
 
 /* --- BUILT FOR USE: Sean's statement, in Sean's words --- */
-#built-for-use { padding: 68px 0; background: var(--red); color: var(--white); border-top: 8px solid var(--black); }
-#built-for-use .site-discovery-kicker { color: var(--black); }
+#built-for-use { padding: 68px 0; background: #5b1016; color: var(--white); border-top: 8px solid var(--red); }
+#built-for-use .site-discovery-kicker { color: #ffb3ad; }
 #built-for-use h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
 .built-for-use-copy { max-width: 920px; }
 .built-for-use-copy p { font-size: clamp(1.05rem, 1.65vw, 1.25rem); line-height: 1.65; }
@@ -73,6 +73,13 @@ $page_css = <<<'CSS'
 .was-list em a { color: var(--white); text-decoration: underline; }
 .was-list em a:hover { color: var(--red); }
 .was-closer { max-width: 800px; margin-top: 34px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
+
+/* --- THE OTHER HALF: the digicam revival needs its native home --- */
+#camera-blog { padding: 64px 0; background: #f4f1eb; border-top: 8px solid var(--black); }
+#camera-blog h2 { max-width: 900px; margin-bottom: 24px; }
+.camera-blog-copy { max-width: 900px; }
+.camera-blog-copy p { font-size: clamp(1.05rem, 1.7vw, 1.22rem); line-height: 1.65; }
+.camera-blog-copy p + p { margin-top: 18px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 
 /* --- NOT ALONE: outcome, then the triptych as proof, plumbing last --- */
 #alone { padding: 64px 0 24px; }
@@ -185,13 +192,27 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section id="built-for-use" aria-labelledby="built-for-use-title">
+    <section id="was" aria-label="What was, and what can be again">
         <div class="wrap">
-            <p class="site-discovery-kicker">Built for the work</p>
-            <h2 id="built-for-use-title">I Built SnapSmack for Myself First.</h2>
-            <div class="built-for-use-copy">
-                <p>I built SNAPSMACK for myself first. There was nothing left that worked for me. I am a prolific shooter and the average publishing system crumbles under the weight of my output. I am still a prolific shooter and I do it using SNAPSMACK day in and day out now. It's not only load bearing software, it is used by me and I intend to keep doing it. That's why it was built with AI. That is why you will end up chatting with an AI for L1 and L2 support. I am not apologizing for this and anyone who has a problem with it should use something else, if you can find it. I could not.</p>
-                <p>I, too, wish to take photos and publish them online and the only way I can do that and do this (SNAPSMACK) is by leveraging technology in a way that benefits all of us. Let's use the new ways to return to The Old Ways. Welcome to the future where what is new is old again, and we have AI to thank for it.</p>
+            <p class="site-discovery-kicker">What was taken</p>
+            <h2>What was. What can be again.</h2>
+            <ul class="was-list">
+                <li><strong>The photoblog</strong><span>2003 to 2010. One photograph a day on one page, big, with the comments underneath and nothing else competing for the eye. Pixelpost, Photoblogs.org, a ring of people who looked at each other&rsquo;s work every morning and said so. It ran on your own domain, so when the ring dissolved, the work stayed put.</span><em>Again as <a href="features.php#modes">SMACKONEOUT</a></em></li>
+                <li><strong>Classic Instagram</strong><span>2010 to 2016. A square grid, three across, in the order you posted it, seen by the people who chose to follow you. Likes were a count, not a currency. No algorithm, no ads, no Reels, no shop tab, no video autoplaying between your photographs because a spreadsheet said it should.</span><em>Again as <a href="features.php#modes">GRAMOFSMACK</a></em></li>
+                <li><strong>Early blogging</strong><span>1999 onward. Blogger, then Greymatter in 2000 &mdash; Noah Grey was publishing his photographs with it from day one &mdash; then WordPress before it became a page builder. Writing with photographs in it, as long as you wanted, nobody&rsquo;s feed deciding whether it got read.</span><em>Again as <a href="features.php#modes">SMACKTALK</a></em></li>
+                <li><strong>Picasa Web Albums</strong><span>2006 to 2016. A free, friendly photo organizer that pushed your folders to the web as albums for friends and family. Send the link, no account needed to look, no &ldquo;suggested for you&rdquo; underneath. Friends and family, not followers: SMACKTHEMUP has no fediverse on purpose. Sharing simplified.</span><em>Again as <a href="features.php#modes">SMACKTHEMUP</a> + <a href="tool-snap-slapper.php">SNAP SLAPPER</a></em></li>
+            </ul>
+            <p class="was-closer">Everything was killed off, died off, or was walled off to prioritize profits over people.</p>
+        </div>
+    </section>
+
+    <section id="camera-blog" aria-labelledby="camera-blog-title">
+        <div class="wrap">
+            <p class="site-discovery-kicker">The other half of the look</p>
+            <h2 id="camera-blog-title">You bought the camera. Where&rsquo;s the blog?</h2>
+            <div class="camera-blog-copy">
+                <p>That beat-up 2006 point-and-shoot you paid way too much for on eBay? It came with a second half, and nobody told you. Back then, those photos didn't go on an app that buries them under ads by Tuesday. They went on a photoblog: your own site, one shot at a time, newest on top, no algorithm, no likes for sale. People found you through other people's blogrolls, and they came back because they wanted to.</p>
+                <p>The camera's only half the look. The blog is the other half. Make your photos slap.</p>
             </div>
         </div>
     </section>
@@ -204,20 +225,6 @@ require_once __DIR__ . '/includes/header.php';
                 <p>First and foremost, the software isn't ready yet. It not only has rough edges and some remaining security holes we're fixing, but it is not elegant. That is important. This software is built in the memory of a deceased friend who did everything elegantly and expected the same out of every tool he used. SnapSmack doesn't ship until it reaches the point where he would have enjoyed using it.</p>
                 <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot; &mdash; and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. This is for Ray. It will ship when it's what he would approve of.</p>
             </div>
-        </div>
-    </section>
-
-    <section id="was" aria-label="What was, and what can be again">
-        <div class="wrap">
-            <p class="site-discovery-kicker">What was taken</p>
-            <h2>What was. What can be again.</h2>
-            <ul class="was-list">
-                <li><strong>The photoblog</strong><span>2003 to 2010. One photograph a day on one page, big, with the comments underneath and nothing else competing for the eye. Pixelpost, Photoblogs.org, a ring of people who looked at each other&rsquo;s work every morning and said so. It ran on your own domain, so when the ring dissolved, the work stayed put.</span><em>Again as <a href="features.php#modes">SMACKONEOUT</a></em></li>
-                <li><strong>Classic Instagram</strong><span>2010 to 2016. A square grid, three across, in the order you posted it, seen by the people who chose to follow you. Likes were a count, not a currency. No algorithm, no ads, no Reels, no shop tab, no video autoplaying between your photographs because a spreadsheet said it should.</span><em>Again as <a href="features.php#modes">GRAMOFSMACK</a></em></li>
-                <li><strong>Early blogging</strong><span>1999 onward. Blogger, then Greymatter in 2000 &mdash; Noah Grey was publishing his photographs with it from day one &mdash; then WordPress before it became a page builder. Writing with photographs in it, as long as you wanted, nobody&rsquo;s feed deciding whether it got read.</span><em>Again as <a href="features.php#modes">SMACKTALK</a></em></li>
-                <li><strong>Picasa Web Albums</strong><span>2006 to 2016. A free, friendly photo organizer that pushed your folders to the web as albums for friends and family. Send the link, no account needed to look, no &ldquo;suggested for you&rdquo; underneath. Friends and family, not followers: SMACKTHEMUP has no fediverse on purpose. Sharing simplified.</span><em>Again as <a href="features.php#modes">SMACKTHEMUP</a> + <a href="tool-snap-slapper.php">SNAP SLAPPER</a></em></li>
-            </ul>
-            <p class="was-closer">Everything was killed off, died off, or was walled off to prioritize profits over people.</p>
         </div>
     </section>
 
@@ -295,6 +302,17 @@ require_once __DIR__ . '/includes/header.php';
                 <article><h3>Your site is yours</h3><p>Nobody at SnapSmack can lock you out, switch you off, or reach into your site. Not for a bug, not for a breach, not for anything. We have no right to, so we built it so we can&rsquo;t.</p></article>
                 <article><h3>You know what we know</h3><p>Security findings, breaches, and audit results are published the day we have them. <a href="buzzers.php">The audits are public</a>. <a href="ding-dong-bell.php">So are the failures.</a></p></article>
                 <article><h3>The door opens both ways</h3><p>Everything you put in comes back out in a form other software can read. Ownership includes the right to stop using SnapSmack.</p></article>
+            </div>
+        </div>
+    </section>
+
+    <section id="built-for-use" aria-labelledby="built-for-use-title">
+        <div class="wrap">
+            <p class="site-discovery-kicker">Built for the work</p>
+            <h2 id="built-for-use-title">Built for myself, shared with my tribe.</h2>
+            <div class="built-for-use-copy">
+                <p>I built SNAPSMACK for myself first. There was nothing left that worked for me. I am a prolific shooter and the average publishing system crumbles under the weight of my output. I still shoot that much, and I do it using SNAPSMACK day in and day out. It's not only load bearing software, it is used by me and will continue to be for years to come. However, I am an expert photographer, not an expert developer. That's why it was built with AI. That is why you will end up chatting with an AI for L1 and L2 support. I am not apologizing for this and anyone who has a problem with it should use something else, if you can find it. I could not.</p>
+                <p>I, too, wish to take photos and publish them online and the only way I can do that and do this (SNAPSMACK) is by leveraging technology in a way that benefits all of us. Let's use the new ways to return to The Old Ways. Welcome to the future where what is new is old again, and we have AI to thank for it.</p>
             </div>
         </div>
     </section>
