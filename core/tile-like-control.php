@@ -139,5 +139,67 @@ function snap_tile_like_html(int $image_id, bool $liked): string {
         . '</button>';
 }
 
+/**
+ * Every list in a prepared response that holds photographs a skin may print.
+ *
+ * WHY THIS EXISTS AS A FUNCTION RATHER THAN A LOOP IN ONE PLACE: the
+ * controller hands a skin its photographs under more than one key. GLIDE gets
+ * $response['rows'], built as VALUE COPIES of $response['items'] before the
+ * runtime annotates anything, so annotating items alone left the rows without
+ * hearts -- and GLIDE iterates rows whenever the wall has photographs. The
+ * control appeared only on the empty-rows fallback. Anything that annotates
+ * items from now on asks this instead of guessing, and a new list shape is
+ * added here once.
+ *
+ * Returns flat lists, read-only; the caller writes back by the same keys.
+ * Rows come in two shapes in this codebase -- a bare list of items, and
+ * ['items' => ..., 'full' => ...] -- and both are returned.
+ */
+function snap_tile_like_lists(array $response): array {
+    $out = [];
+    if (is_array($response['items'] ?? null)) $out[] = $response['items'];
+    foreach ((array)($response['rows'] ?? []) as $row) {
+        if (is_array($row['items'] ?? null)) $out[] = $row['items'];
+        elseif (is_array($row)) $out[] = $row;
+    }
+    return $out;
+}
+
+/**
+ * Write a prepared heart onto every photograph in every one of those lists.
+ *
+ * SEPARATE FROM THE RUNTIME ON PURPOSE. This write-back is where SS-1323's
+ * blocking fault lived -- items were annotated and rows were not -- and while
+ * it sat inside snapsmack_public_runtime() nothing could execute it without a
+ * database, a repository and a whole request. A test could only read the
+ * source and agree with it, which is how the fault survived a browser gate.
+ * Here it runs on a plain array.
+ *
+ * $html is keyed by image id. An id with no entry gets '', so a skin prints
+ * nothing rather than an empty button.
+ */
+function snap_tile_like_annotate(array $response, array $html): array {
+    if (is_array($response['items'] ?? null)) {
+        foreach ($response['items'] as $k => $item) {
+            if (!is_array($item)) continue;
+            $id = (int)($item['id'] ?? $item['img_id'] ?? 0);
+            $response['items'][$k]['tile_like'] = $html[$id] ?? '';
+        }
+    }
+    foreach ((array)($response['rows'] ?? []) as $r => $row) {
+        $nested = is_array($row) && is_array($row['items'] ?? null);
+        $list = $nested ? $row['items'] : $row;
+        if (!is_array($list)) continue;
+        foreach ($list as $k => $item) {
+            if (!is_array($item)) continue;
+            $id = (int)($item['id'] ?? $item['img_id'] ?? 0);
+            $list[$k]['tile_like'] = $html[$id] ?? '';
+        }
+        if ($nested) $response['rows'][$r]['items'] = $list;
+        else $response['rows'][$r] = $list;
+    }
+    return $response;
+}
+
 }
 // ===== SNAPSMACK EOF =====

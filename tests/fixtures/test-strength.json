@@ -2456,6 +2456,13 @@
         "predicates": 9,
         "thresholds": []
     },
+    "tile-like-reaches-rows-not-just-items-regression.php": {
+        "assertions": 14,
+        "predicates": 0,
+        "thresholds": [
+            2
+        ]
+    },
     "tilez-columns-regression.php": {
         "assertions": 4,
         "predicates": 9,

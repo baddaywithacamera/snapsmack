@@ -415,23 +415,45 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     // core/asset-registry.php, so there is one switch rather than two.
     $_tileRequires = is_array($input['skin_manifest']['require_scripts'] ?? null)
         ? $input['skin_manifest']['require_scripts'] : [];
-    if (in_array('smack-tile-like', $_tileRequires, true) && !empty($response['items'])) {
+    if (in_array('smack-tile-like', $_tileRequires, true)
+            && (!empty($response['items']) || !empty($response['rows']))) {
         require_once __DIR__ . '/tile-like-control.php';
         if (snap_tile_like_enabled($settings)) {
             require_once __DIR__ . '/like-identity.php';
             [$_tileUser, $_tileGuest] = snap_like_identity($pdo);
+
+            // EVERY LIST A SKIN MAY ITERATE, NOT JUST items.
+            //
+            // This annotated $response['items'] only. The controller builds
+            // $rows for GLIDE by VALUE COPY -- $rows[$index % 9][] = $item --
+            // before this runs, so a row's copy of a photograph never saw the
+            // heart, and GLIDE's layout iterates rows whenever the wall has
+            // photographs in it. The control would have appeared only on the
+            // empty-rows fallback: hearts exactly when there is nothing to
+            // like. Muse found it in final review, in the one seam the browser
+            // test could not see, because that test builds its own markup.
+            //
+            // Keyed by id and written back to both, so the two copies of the
+            // same photograph cannot disagree, and still ONE query for the
+            // page. Rows come in two shapes in this codebase -- a bare list of
+            // items, and ['items' => ..., 'full' => ...] -- and both are
+            // handled rather than assumed.
             $_tileIds = [];
-            foreach ((array)$response['items'] as $_tileItem) {
-                $_id = (int)($_tileItem['id'] ?? $_tileItem['img_id'] ?? 0);
-                if ($_id > 0) $_tileIds[] = $_id;
+            foreach (snap_tile_like_lists($response) as $_tileList) {
+                foreach ($_tileList as $_tileItem) {
+                    if (!is_array($_tileItem)) continue;
+                    $_id = (int)($_tileItem['id'] ?? $_tileItem['img_id'] ?? 0);
+                    if ($_id > 0) $_tileIds[] = $_id;
+                }
             }
+            $_tileIds = array_values(array_unique($_tileIds));
             $_tileLiked = snap_tile_like_state($pdo, $_tileIds, $_tileUser, $_tileGuest);
-            foreach ((array)$response['items'] as $_k => $_tileItem) {
-                $_id = (int)($_tileItem['id'] ?? $_tileItem['img_id'] ?? 0);
-                $response['items'][$_k]['tile_like'] = $_id > 0
-                    ? snap_tile_like_html($_id, in_array($_id, $_tileLiked, true))
-                    : '';
+            $_tileHtml = [];
+            foreach ($_tileIds as $_id) {
+                $_tileHtml[$_id] = snap_tile_like_html($_id, in_array($_id, $_tileLiked, true));
             }
+            $response = snap_tile_like_annotate($response, $_tileHtml);
+            unset($_tileHtml, $_tileList);
             $_tileAssets = snap_tile_like_assets();
             foreach (['scripts', 'styles'] as $_kind) {
                 $response['required_assets'][$_kind] = array_values(array_unique(array_merge(
