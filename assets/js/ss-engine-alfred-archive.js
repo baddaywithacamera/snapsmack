@@ -135,6 +135,13 @@
         });
 
         // --- Keyboard: ESC + Left / Right arrows ---
+        //
+        // NO F1 HERE, ON PURPOSE. ss-engine-comms.js holds the only F1
+        // listener in the product and serves the key on every page; a second
+        // listener on F1 would toggle the help panel twice on one press --
+        // open, then shut -- and read as F1 doing nothing. These keys are
+        // LISTED in that engine's ssShortcuts(), which is what the help panel
+        // renders, and bound here. SS-1381.
         document.addEventListener('keydown', function (e) {
             if (box.hidden) { return; }
             if (e.key === 'Escape') { close(); }

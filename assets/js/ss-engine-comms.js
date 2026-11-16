@@ -46,9 +46,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // GRAMOFSMACK (carousel) keeps standard cursor controls only — no F1 help —
-    // so the "PRESS F1 FOR HELP" toast must not appear there.
-    if (window.SNAP_DATA && window.SNAP_SITE_MODE !== 'carousel') {
+    // SS-1381: the toast appears on GRAMOFSMACK too now. It was suppressed
+    // there because gram had no F1 help; the owner reversed that, and a help
+    // key nobody is told about is a help key nobody presses.
+    //
+    // DIRECTION IS NOT TOUCHED by SS-1381. The arrows already match the
+    // owner's rule -- on an archive set RIGHT is index +1, which is older --
+    // and the PM ruled F1 only.
+    if (window.SNAP_DATA) {
         // If the consent banner is still showing, wait until it's dismissed
         // before showing the F1 help toast — don't stack modals on first visit.
         if (window.snapConsent && window.snapConsent.pending()) {
@@ -146,13 +151,37 @@ function ssShortcuts() {
         if (prev)             rows.push(['SPACE', 'Previous photo']);
     }
 
-    // Skipped on gram by the handler, so skipped here.
+    // ALFRED's archive lightbox binds ESC and the arrows itself, in
+    // ss-engine-alfred-archive.js. IT DELIBERATELY BINDS NO F1: the
+    // document-level handler below already serves F1 on every page, and a
+    // second listener on the same key would toggle the panel twice on one
+    // press -- open, then shut, looking like F1 does nothing. So those keys
+    // are LISTED here, where the help is assembled, and BOUND there, where
+    // the lightbox is. SS-1381, the PM's "add F1 help to both, without a
+    // duplicate listener".
+    //
+    // Both parts of the lightbox are required, not just the grid: a skin
+    // could print the tiles without the overlay, and then the arrows go
+    // nowhere.
+    if (document.querySelector('.alfred-archive-grid')
+            && document.querySelector('.alfred-lb-img')) {
+        rows.push(['LEFT',  'Previous photograph in the lightbox']);
+        rows.push(['RIGHT', 'Next photograph in the lightbox']);
+    }
+
+    // The info, comments and download panels stay solo-only: GRAMOFSMACK has
+    // no such panels, so listing their keys there would list keys that do
+    // nothing.
     if (!gram) {
         if (ssInfoBound())     rows.push(['1', 'Toggle info']);
         if (ssCommentsBound()) rows.push(['2', 'Toggle comments']);
         if (ssDownloadBound()) rows.push(['D', 'Download']);
-        rows.push(['F1', 'Show this help']);
     }
+
+    // SS-1381 reverses "gram keeps cursor controls only, no F1" on the
+    // owner's instruction: help is everywhere now. Listed for every mode,
+    // which is why it sits outside the block above.
+    rows.push(['F1', 'Show this help']);
 
     // ESC has no gram check in the handler, so it has none here.
     rows.push(['ESC', 'Close overlays']);
@@ -167,15 +196,18 @@ document.addEventListener('keydown', function(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (document.getElementById('wall-canvas')) return;
 
-    // GRAMOFSMACK (carousel) deliberately runs standard cursor controls ONLY —
-    // arrow-key navigation + ESC. F1 help and the [1]/[2]/[D] shortcuts are
-    // solo-photoblog features, skipped here (Sean: "nothing but standard cursor
-    // controls" — the IG paradigm needs no help layer).
+    // GRAMOFSMACK (carousel) runs standard cursor controls — arrow-key
+    // navigation + ESC — and, since SS-1381, F1 help as well. The [1]/[2]/[D]
+    // shortcuts are still solo-photoblog features and are skipped here: gram
+    // has no info, comments or download panel to toggle.
     var gram = ssGram();
 
     // Help menu — delegate to public-help engine if loaded, else own modal.
     if (e.key === 'F1') {
-        if (gram) return;                 // F1 dropped on gram
+        // SS-1381: this returned here on gram. The owner reversed that --
+        // help is available everywhere now, GRAMOFSMACK included. This is
+        // the ONLY F1 listener in the product; other engines list their keys
+        // through ssShortcuts() rather than binding the key again.
         e.preventDefault();
         if (window.snapPublicHelp) {
             window.snapPublicHelp.toggle();
