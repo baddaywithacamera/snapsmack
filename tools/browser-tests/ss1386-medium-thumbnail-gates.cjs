@@ -215,6 +215,9 @@ async function measurePage(browser, html, viewport) {
           makePage(source, origin, baseRun, 'baseline', sizes, descriptors), viewport);
         const measured = await measurePage(browser,
           makePage(source, origin, srcsetRun, 'srcset', sizes, descriptors), viewport);
+        if (measured.images.length === 0) {
+          failures.push(`${entry.skin} ${viewport}px: archive fixture rendered no measurable photographs`);
+        }
         const baselineById = new Map((baseline.images || []).map((image) => [image.id, image]));
         const rows = [];
 
