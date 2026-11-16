@@ -37,8 +37,10 @@ $aspect = 'uploads/2026/11/thumbs/a_photo.jpg';
 $medium = 'uploads/2026/11/thumbs/m_photo.jpg';
 
 // --- 1. both paths present: two candidates, smaller one first -------------
+// A 3:2 LANDSCAPE, where the long edge IS the width.
 $map = snap_image_srcset_map([[['img_thumb_aspect' => $aspect,
-                               'img_thumb_medium' => $medium]]]);
+                               'img_thumb_medium' => $medium,
+                               'img_width' => 3000, 'img_height' => 2000]]]);
 if (!isset($map[$aspect])) {
     $failures[] = 'the map is not keyed by the a_ path, which is the url every '
         . 'skin passes the image component -- so no lookup would ever hit';
@@ -49,28 +51,94 @@ if (!isset($map[$aspect])) {
     }
 }
 
+// --- 1b. A PORTRAIT, WHICH IS WHERE THE FIRST VERSION LIED ---------------
+// The constants are LONG-EDGE limits. A 2:3 portrait m_ is 400px wide, not
+// 600, and its a_ is 600px wide, not 900. Advertising the narrow file as 600w
+// invites the browser to pick it for a 600px slot and upscale it, which is a
+// blurry photograph. Codex found this in the rendered gate.
+$pMap = snap_image_srcset_map([[['img_thumb_aspect' => $aspect,
+                                 'img_thumb_medium' => $medium,
+                                 'img_width' => 2000, 'img_height' => 3000]]]);
+$pExpected = $medium . ' 400w, ' . $aspect . ' 600w';
+if (($pMap[$aspect] ?? '') !== $pExpected) {
+    $failures[] = "a 2:3 portrait advertised '" . ($pMap[$aspect] ?? '')
+        . "', expected '{$pExpected}'. The w descriptor is the candidate's "
+        . 'intrinsic pixel WIDTH, never the long-edge limit it was generated '
+        . 'under, or the browser picks an undersized file and blurs it.';
+}
+
+// A square: long edge is the width either way.
+$sMap = snap_image_srcset_map([[['img_thumb_aspect' => $aspect,
+                                 'img_thumb_medium' => $medium,
+                                 'img_width' => 2400, 'img_height' => 2400]]]);
+if (($sMap[$aspect] ?? '') !== $medium . ' 600w, ' . $aspect . ' 900w') {
+    $failures[] = "a square advertised '" . ($sMap[$aspect] ?? '') . "'";
+}
+
+// --- 1c. no dimensions, no descriptor -----------------------------------
+// There is no honest w without them, and guessing is what the bug was.
+foreach ([[], ['img_width' => 0, 'img_height' => 0],
+          ['img_width' => 3000]] as $dims) {
+    $row = array_merge(['img_thumb_aspect' => $aspect,
+                        'img_thumb_medium' => $medium], $dims);
+    if (snap_image_srcset_map([[$row]]) !== []) {
+        $failures[] = 'a row without usable source dimensions was given a '
+            . 'srcset anyway, so its w descriptors are guesses';
+    }
+}
+
+// --- 1d. a photograph smaller than both limits ---------------------------
+// It is copied at native size, so m_ and a_ are the same image. Offering it
+// twice at one width is noise, and offering it twice at two widths is a lie.
+$tiny = snap_image_srcset_map([[['img_thumb_aspect' => $aspect,
+                                 'img_thumb_medium' => $medium,
+                                 'img_width' => 400, 'img_height' => 300]]]);
+if ($tiny !== []) {
+    $failures[] = 'a photograph smaller than both limits got a srcset of two '
+        . "identical files: '" . reset($tiny) . "'";
+}
+
+// --- 1e. the advertised width is the width the generator writes ----------
+// The property that matters, asserted over real shapes rather than argued.
+foreach ([[3000, 2000], [2000, 3000], [2400, 2400], [4000, 1200], [1200, 4000],
+          [900, 1800], [1801, 900]] as $shape) {
+    [$sw, $sh] = $shape;
+    $row = ['img_thumb_aspect' => $aspect, 'img_thumb_medium' => $medium,
+            'img_width' => $sw, 'img_height' => $sh];
+    $got = snap_image_srcset_map([[$row]])[$aspect] ?? '';
+    if ($got === '') continue;              // refused, which is allowed
+    [$mBox] = snap_medium_thumb_box($sw, $sh, 600);
+    [$aBox] = snap_medium_thumb_box($sw, $sh, 900);
+    if ($got !== $medium . ' ' . $mBox . 'w, ' . $aspect . ' ' . $aBox . 'w') {
+        $failures[] = "{$sw}x{$sh} advertised '{$got}', which is not the box "
+            . "the generator writes ({$mBox}w and {$aBox}w)";
+    }
+}
+
 // --- 2. no m_ path: absent from the map, and that is correct --------------
-$none = snap_image_srcset_map([[['img_thumb_aspect' => $aspect]]]);
+$dims = ['img_width' => 3000, 'img_height' => 2000];
+$none = snap_image_srcset_map([[['img_thumb_aspect' => $aspect] + $dims]]);
 if ($none !== []) {
     $failures[] = 'a photograph with no m_ derivative was given a srcset '
         . 'anyway, which would point the browser at a file that does not exist';
 }
 $blank = snap_image_srcset_map([[['img_thumb_aspect' => $aspect,
-                                  'img_thumb_medium' => '']]]);
+                                  'img_thumb_medium' => ''] + $dims]]);
 if ($blank !== []) {
     $failures[] = 'an empty img_thumb_medium was treated as a path';
 }
 // A site whose column was never added returns no key at all, not even null.
 $missing = snap_image_srcset_map([[['img_thumb_aspect' => $aspect,
-                                    'img_width' => 3000]]]);
+                                    'img_width' => 3000,
+                                    'img_height' => 2000]]]);
 if ($missing !== []) {
     $failures[] = 'a row from a site without the column produced a srcset';
 }
 
 // --- 3. several lists, the shapes the runtime hands it --------------------
 $many = snap_image_srcset_map([
-    [['img_thumb_aspect' => 'a1', 'img_thumb_medium' => 'm1']],   // items
-    [['img_thumb_aspect' => 'a2', 'img_thumb_medium' => 'm2']],   // a row
+    [['img_thumb_aspect' => 'a1', 'img_thumb_medium' => 'm1'] + $dims], // items
+    [['img_thumb_aspect' => 'a2', 'img_thumb_medium' => 'm2'] + $dims], // a row
     [],                                                            // empty row
     ['not an item'],
 ]);

@@ -864,7 +864,8 @@ final class SnapPublicRepository
         $med = $this->mediumThumbSelect('i.');
         return $this->all(
             "SELECT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,i.img_file,
-                    i.img_thumb_square,i.img_thumb_aspect{$med},i.post_id,t.id AS tag_id,t.tag,t.slug AS tag_slug
+                    i.img_thumb_square,i.img_thumb_aspect{$med},i.img_width,i.img_height,
+                    i.post_id,t.id AS tag_id,t.tag,t.slug AS tag_slug
              FROM snap_tags t JOIN snap_image_tags it ON it.tag_id=t.id
              JOIN snap_images i ON i.id=it.image_id
              WHERE t.slug=? AND i.img_status='published' AND i.img_date <= NOW()
@@ -1097,7 +1098,8 @@ final class SnapPublicRepository
         $med = $this->mediumThumbSelect('i.');
         return $this->all(
             "SELECT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,i.img_file,
-                    i.img_thumb_square,i.img_thumb_aspect{$med},ci.position,ci.caption
+                    i.img_thumb_square,i.img_thumb_aspect{$med},i.img_width,i.img_height,
+                    ci.position,ci.caption
              FROM snap_collections c JOIN snap_collection_items ci ON ci.collection_id=c.id
              JOIN snap_images i ON i.id=ci.image_id
              WHERE c.slug=? AND c.published=1 AND i.img_status='published' AND i.img_date <= NOW()

@@ -82,6 +82,7 @@ function snap_image_srcset(string $url): string {
  * the map and serves one file, which is today's behaviour.
  */
 function snap_image_srcset_map(array $lists): array {
+    require_once __DIR__ . '/thumb-generator.php';   // snap_medium_thumb_box()
     $map = [];
     foreach ($lists as $list) {
         foreach ((array)$list as $item) {
@@ -89,12 +90,46 @@ function snap_image_srcset_map(array $lists): array {
             $aspect = trim((string)($item['img_thumb_aspect'] ?? ''));
             $medium = trim((string)($item['img_thumb_medium'] ?? ''));
             if ($aspect === '' || $medium === '') continue;
-            // The widths are the DECLARED long edges, which is what the
-            // browser needs and what the files were generated at. Reading the
-            // real pixel width of each file would mean opening every one of
-            // them on every page load.
-            $map[$aspect] = $medium . ' ' . SNAPSMACK_THUMB_MEDIUM_LONG . 'w, '
-                          . $aspect . ' ' . SNAPSMACK_THUMB_ASPECT_LONG . 'w';
+
+            // THE w DESCRIPTOR IS THE CANDIDATE'S INTRINSIC PIXEL WIDTH, NOT
+            // THE SIZE LIMIT IT WAS GENERATED UNDER. The first version of
+            // this advertised every m_ as 600w and every a_ as 900w, which is
+            // only true for landscape: the constants are LONG-EDGE limits, so
+            // a 2:3 portrait m_ is about 400px wide and its a_ about 600px.
+            // Telling the browser a 400px file is 600px wide invites it to
+            // pick that file for a 600px slot and upscale it, which is a
+            // BLURRY PHOTOGRAPH -- the one defect this product cannot ship.
+            // Codex found it in the rendered gate before anyone saw it.
+            //
+            // Derived from the source dimensions the row already carries,
+            // through the same box function the generator uses, so the number
+            // advertised is the number written. No file is opened.
+            $srcW = (int)($item['img_width'] ?? 0);
+            $srcH = (int)($item['img_height'] ?? 0);
+            if ($srcW < 1 || $srcH < 1) {
+                // WITHOUT DIMENSIONS THERE IS NO HONEST DESCRIPTOR, so this
+                // offers none and the grid serves a_ alone. Guessing here is
+                // what the bug was.
+                //
+                // HONEST ABOUT THIS GUARD: it is defensive, not load-bearing,
+                // and NO TEST CAN TELL IT APART from the equal-width check
+                // below. A zero dimension makes snap_medium_thumb_box() floor
+                // both candidates to the same width, which that check already
+                // refuses. I am keeping it because it says what it means at
+                // the point the reader needs to know it, not because a
+                // mutation proves it -- removing it changes no outcome, and I
+                // found that out by trying.
+                continue;
+            }
+            [$mw] = snap_medium_thumb_box($srcW, $srcH, SNAPSMACK_THUMB_MEDIUM_LONG);
+            [$aw] = snap_medium_thumb_box($srcW, $srcH, SNAPSMACK_THUMB_ASPECT_LONG);
+            if ($mw < 1 || $aw < 1 || $mw === $aw) {
+                // Equal widths describe one file twice: a photograph smaller
+                // than both limits is copied at native size, so m_ and a_ are
+                // the same image and a srcset would be noise.
+                continue;
+            }
+            $map[$aspect] = $medium . ' ' . $mw . 'w, ' . $aspect . ' ' . $aw . 'w';
         }
     }
     return $map;
