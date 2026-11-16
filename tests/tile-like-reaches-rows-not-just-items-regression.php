@@ -113,6 +113,66 @@ if (snap_tile_like_lists(['rows' => [['items' => [['id' => 41]]]]]) === []) {
     $failures[] = 'a wrapped row was not enumerated at all';
 }
 
+// --- 6. ONE PAGE QUERY, not one per row or per tile -----------------------
+// Codex asked for this to be proved rather than asserted. A photograph on a
+// GLIDE wall appears in items AND in its row's value copy, so a naive
+// collection would ask for its state twice, and asking inside the write-back
+// loop would ask once per row -- nine times on a GLIDE wall -- or once per
+// tile. snap_tile_like_ids() is the whole id list handed to
+// snap_tile_like_state(), and the runtime calls it exactly once
+// (public-runtime.php:441-442), so the size and shape of that list IS the
+// query cost. This runs it.
+$wall = ['items' => [], 'rows' => array_fill(0, 9, [])];
+for ($i = 1; $i <= 18; $i++) {
+    $wall['items'][] = ['id' => $i];
+    $wall['rows'][$i % 9][] = ['id' => $i];          // the controller's copy
+}
+$ids = snap_tile_like_ids($wall);
+if (count($ids) !== 18) {
+    $failures[] = '18 photographs across items and 9 rows produced '
+        . count($ids) . ' ids, not 18: the liked state is asked for more than '
+        . 'once per photograph';
+}
+if ($ids !== array_values(array_unique($ids))) {
+    $failures[] = 'the id list has duplicates in it';
+}
+sort($ids);
+if ($ids !== range(1, 18)) {
+    $failures[] = 'the id list is not the photographs on the page';
+}
+// A photograph in ten lists is still one id.
+$repeated = ['items' => [['id' => 7]], 'rows' => array_fill(0, 9, [['id' => 7]])];
+if (snap_tile_like_ids($repeated) !== [7]) {
+    $failures[] = 'one photograph repeated across ten lists produced more '
+        . 'than one id';
+}
+// A PHOTOGRAPH THAT EXISTS ONLY IN A ROW is still asked about. GLIDE fills
+// both keys today, so every other case here would pass with ids taken from
+// items alone -- and then a response shaped with rows only would hand the
+// query an id list that misses its photographs entirely, and every heart on
+// the wall would be ''. Found by mutation: collecting from items alone
+// survived the rest of this file.
+if (snap_tile_like_ids(['rows' => [[['id' => 55]]]]) !== [55]) {
+    $failures[] = 'a photograph present only in rows was never asked about, '
+        . 'so it would get no heart at all';
+}
+if (snap_tile_like_ids(['rows' => [['items' => [['id' => 56]]]]]) !== [56]) {
+    $failures[] = 'a photograph in a wrapped row was never asked about';
+}
+// Nothing to ask about asks for nothing: no query at all on an empty page.
+if (snap_tile_like_ids(['items' => [], 'rows' => []]) !== []) {
+    $failures[] = 'an empty page still produced ids to query';
+}
+// And the runtime still asks once, with that list.
+$runtime = (string)@file_get_contents(dirname(__DIR__) . '/core/public-runtime.php');
+if (substr_count($runtime, 'snap_tile_like_state(') !== 1) {
+    $failures[] = 'the runtime asks for the liked state more than once';
+}
+if (strpos($runtime, 'snap_tile_like_state($pdo, $_tileIds') === false) {
+    $failures[] = 'the runtime does not pass the collected id list to the '
+        . 'one query';
+}
+
 if ($failures) {
     throw new RuntimeException("Tile heart does not reach every list:\n  - "
         . implode("\n  - ", $failures));

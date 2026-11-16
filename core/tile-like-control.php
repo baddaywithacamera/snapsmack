@@ -166,6 +166,31 @@ function snap_tile_like_lists(array $response): array {
 }
 
 /**
+ * Every DISTINCT photograph id in a prepared response, across all its lists.
+ *
+ * THIS IS WHY THE PAGE STILL COSTS ONE QUERY. A photograph on a GLIDE wall
+ * appears twice -- once in items and once in its row's value copy -- and a
+ * shape that put it in more lists would repeat it again. Collecting ids here
+ * and deduping them means the liked state is asked for once, for the set of
+ * photographs on the page, however many lists print them. Asking inside the
+ * write-back loop would have made it one query per row, or per tile.
+ *
+ * Executable on a plain array, so a test can prove that rather than read the
+ * runtime and agree with it.
+ */
+function snap_tile_like_ids(array $response): array {
+    $ids = [];
+    foreach (snap_tile_like_lists($response) as $list) {
+        foreach ($list as $item) {
+            if (!is_array($item)) continue;
+            $id = (int)($item['id'] ?? $item['img_id'] ?? 0);
+            if ($id > 0) $ids[] = $id;
+        }
+    }
+    return array_values(array_unique($ids));
+}
+
+/**
  * Write a prepared heart onto every photograph in every one of those lists.
  *
  * SEPARATE FROM THE RUNTIME ON PURPOSE. This write-back is where SS-1323's

@@ -438,22 +438,14 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
             // page. Rows come in two shapes in this codebase -- a bare list of
             // items, and ['items' => ..., 'full' => ...] -- and both are
             // handled rather than assumed.
-            $_tileIds = [];
-            foreach (snap_tile_like_lists($response) as $_tileList) {
-                foreach ($_tileList as $_tileItem) {
-                    if (!is_array($_tileItem)) continue;
-                    $_id = (int)($_tileItem['id'] ?? $_tileItem['img_id'] ?? 0);
-                    if ($_id > 0) $_tileIds[] = $_id;
-                }
-            }
-            $_tileIds = array_values(array_unique($_tileIds));
+            $_tileIds = snap_tile_like_ids($response);
             $_tileLiked = snap_tile_like_state($pdo, $_tileIds, $_tileUser, $_tileGuest);
             $_tileHtml = [];
             foreach ($_tileIds as $_id) {
                 $_tileHtml[$_id] = snap_tile_like_html($_id, in_array($_id, $_tileLiked, true));
             }
             $response = snap_tile_like_annotate($response, $_tileHtml);
-            unset($_tileHtml, $_tileList);
+            unset($_tileHtml);
             $_tileAssets = snap_tile_like_assets();
             foreach (['scripts', 'styles'] as $_kind) {
                 $response['required_assets'][$_kind] = array_values(array_unique(array_merge(

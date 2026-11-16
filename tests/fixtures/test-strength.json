@@ -2457,10 +2457,12 @@
         "thresholds": []
     },
     "tile-like-reaches-rows-not-just-items-regression.php": {
-        "assertions": 14,
-        "predicates": 0,
+        "assertions": 23,
+        "predicates": 2,
         "thresholds": [
-            2
+            2,
+            18,
+            18
         ]
     },
     "tilez-columns-regression.php": {
