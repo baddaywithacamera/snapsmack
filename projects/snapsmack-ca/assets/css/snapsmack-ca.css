@@ -229,6 +229,27 @@ p:last-child { margin-bottom: 0; }
     #mini-header nav > .nav-group { align-self: start; }
 }
 
+/* Large tablets keep the full navigation visible. Stack the lockup over an
+   equal five-by-two grid so every destination stays legible at 1024px. */
+@media (min-width: 1024px) and (max-width: 1360px) {
+    .header-inner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 18px;
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+    .logo-lockup { align-self: center; }
+    .header-right { width: 100%; }
+    #site-header nav {
+        width: 100%;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        column-gap: 16px;
+        justify-items: center;
+        text-align: center;
+    }
+}
+
 /* --- SUBPAGE SHARED --- */
 .page-header { padding: 64px 0 8px; }
 /* First block after a page header: don't stack a second 72px on top of the header's own space. */
@@ -423,11 +444,10 @@ p:last-child { margin-bottom: 0; }
 .nav-burger { display: none; }
 .mobile-shame { display: none; }
 
-@media (max-width: 1360px) {
+@media (max-width: 1023px) {
     html { font-size: 16px; }
-    /* The header stays one row — logo left, ☰ right — and the 8-item nav drops
-       down when the burger is toggled. Replaces the old wide 4-col nav that
-       forced horizontal overflow. Applies to every page via the shared header. */
+    /* The header stays one row — logo left, ☰ right — and the ten destinations
+       open as a clean two-column tray. */
     .header-inner { position: relative; gap: 14px; padding-left: 16px; padding-right: 16px; }
     .logo-lockup { gap: 12px; }
     .header-right { margin-left: auto; }
@@ -465,25 +485,27 @@ p:last-child { margin-bottom: 0; }
     #site-header nav {
         display: none;
         position: absolute; top: 100%; left: 0; right: 0;
-        grid-template-columns: none;
-        flex-direction: column; align-items: center; gap: 0;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch; gap: 0;
         margin: 0; padding: 4px 0 14px;
         background: var(--white);
         border-bottom: 3px solid var(--red);
         z-index: 1200;
     }
-    #site-header .nav-toggle:checked ~ nav { display: flex; }
-    #site-header nav a { font-size: 0.95rem; padding: 12px 0; }
-    #site-header nav > a { align-self: center; }
-    #site-header .nav-group { width: 100%; text-align: center; }
+    #site-header .nav-toggle:checked ~ nav { display: grid; }
+    #site-header nav a { font-size: 0.95rem; padding: 12px 10px; text-align: center; }
+    #site-header nav > a { width: 100%; align-self: stretch; }
+    #site-header .nav-group { position: static; width: 100%; text-align: center; }
     #site-header .nav-group summary { padding: 12px 0; font-size: .95rem; }
     #site-header .nav-flyout {
-        position: static;
-        min-width: 0;
+        position: absolute;
+        top: 100%; left: 0; right: 0;
+        min-width: 100%;
         padding: 0;
         border: 0;
+        border-bottom: 3px solid var(--red);
         box-shadow: none;
-        background: var(--light-grey);
+        background: var(--white);
     }
     #site-header nav .nav-flyout a { padding: 10px 0; color: var(--black); text-align: center; }
     #site-header nav .nav-flyout a:hover,
@@ -494,20 +516,20 @@ p:last-child { margin-bottom: 0; }
     #mini-header nav {
         display: none;
         position: absolute; top: 100%; left: 0; right: 0;
-        grid-template-columns: none;
-        flex-direction: column; align-items: center; gap: 0;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch; gap: 0;
         margin: 0; padding: 4px 0 12px;
         background: rgba(255,255,255,0.97);
         -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
         border-bottom: 2px solid rgba(212,0,0,0.5);
         z-index: 1200;
     }
-    #mini-header .nav-toggle:checked ~ nav { display: flex; }
-    #mini-header nav a { font-size: 0.9rem; padding: 10px 0; }
-    #mini-header nav > a { align-self: center; }
-    #mini-header .nav-group { width: 100%; text-align: center; }
+    #mini-header .nav-toggle:checked ~ nav { display: grid; }
+    #mini-header nav a { font-size: 0.9rem; padding: 10px; text-align: center; }
+    #mini-header nav > a { width: 100%; align-self: stretch; }
+    #mini-header .nav-group { position: static; width: 100%; text-align: center; }
     #mini-header .nav-group summary { padding: 10px 0; font-size: .9rem; }
-    #mini-header .nav-flyout { position: static; min-width: 0; padding: 0; border: 0; box-shadow: none; background: rgba(240,240,240,.98); }
+    #mini-header .nav-flyout { position: absolute; top: 100%; left: 0; right: 0; min-width: 100%; padding: 0; border: 0; border-bottom: 2px solid rgba(212,0,0,.5); box-shadow: none; background: rgba(255,255,255,.98); }
     #mini-header nav .nav-flyout a { color: var(--black); text-align: center; }
 }
 
