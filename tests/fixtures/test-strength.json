@@ -2447,8 +2447,8 @@
         ]
     },
     "tile-like-control-regression.php": {
-        "assertions": 38,
-        "predicates": 33,
+        "assertions": 40,
+        "predicates": 35,
         "thresholds": []
     },
     "tile-like-prepared-not-computed-regression.php": {

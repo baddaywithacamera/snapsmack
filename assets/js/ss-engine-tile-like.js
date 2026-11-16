@@ -53,7 +53,18 @@
         var token = csrf();
         if (token) body.append('csrf_token', token);
 
-        fetch('process-like.php', { method: 'POST', body: body, credentials: 'same-origin' })
+        // ROOT-RELATIVE, exactly as ss-engine-community.js:89 posts it.
+        //
+        // This read 'process-like.php' with no leading slash, which resolves
+        // against the CURRENT PATH. On a landing page at the site root that
+        // is the same URL, which is why the browser test passed; on any
+        // deeper route -- /archive, a photo page, a tag -- it would post to a
+        // path that does not exist and every heart would fail silently. Muse
+        // found it in review, before a reader did.
+        //
+        // Matching the dock's spelling rather than inventing a third one: if
+        // sub-directory installs ever need a base, both change together.
+        fetch('/process-like.php', { method: 'POST', body: body, credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (data && typeof data.liked === 'boolean') paint(button, data.liked);

@@ -92,6 +92,18 @@ $check('and no longer demands an exact 1 from either',
 
 // --- THE PART THAT MATTERS: it must not open the tile or start a drag ------
 $js = (string)file_get_contents($root . '/assets/js/ss-engine-tile-like.js');
+
+// THE ENDPOINT PATH IS ROOT-RELATIVE, the way the dock spells it.
+// It was written without the leading slash, which resolves against the
+// CURRENT PATH: correct on a landing page at the site root, where the
+// browser test ran, and wrong on every deeper route -- /archive, a photo
+// page, a tag -- where every heart would have failed silently. Muse found
+// it in review. Pinned because the passing case and the failing case look
+// identical in the source.
+$check('the engine posts to the root-relative endpoint, like the dock',
+    str_contains($js, "fetch('/process-like.php'"));
+$check('and not to a path that resolves against whatever page you are on',
+    !str_contains($js, "fetch('process-like.php'"));
 foreach (['pointerdown', 'mousedown', 'touchstart', 'click'] as $type) {
     $check("the engine intercepts {$type}, so no ancestor sees it",
         str_contains($js, "'" . $type . "'"));
