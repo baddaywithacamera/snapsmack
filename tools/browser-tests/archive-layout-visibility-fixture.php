@@ -77,6 +77,7 @@ if (($argv[1] ?? '') === '--inventory') {
 
 $skin = (string)($argv[1] ?? '');
 $layout = (string)($argv[2] ?? '');
+$transferFixture = (($argv[3] ?? '') === '--transfer');
 $skinDir = $root . '/skins/' . $skin;
 if ($skin === '' || !is_file($skinDir . '/layout.php')) {
     fwrite(STDERR, "Unknown strict skin: {$skin}\n");
@@ -105,6 +106,11 @@ $items = [];
 $tiles = [];
 foreach (range(1, 12) as $number) {
     $portrait = $number % 3 === 0;
+    $full = $transferFixture ? '/media/photo-' . $number . '.jpg' : '/fixture-photo.svg';
+    $aspect = $transferFixture
+        ? '/media/thumbs/a_photo-' . $number . '.jpg'
+        : ($portrait ? '/fixture-portrait.svg' : '/fixture-photo.svg');
+    $square = $transferFixture ? '/media/thumbs/t_photo-' . $number . '.jpg' : '/fixture-square.svg';
     $item = [
         'id' => $number,
         'img_slug' => 'photograph-' . $number,
@@ -113,11 +119,11 @@ foreach (range(1, 12) as $number) {
         'presentation_title' => 'Photograph ' . $number,
         'img_alt' => 'Photograph ' . $number,
         'excerpt' => 'Archive fixture photograph.',
-        'img_file' => '/fixture-photo.svg',
-        'img_thumb_aspect' => $portrait ? '/fixture-portrait.svg' : '/fixture-photo.svg',
-        'img_thumb_square' => '/fixture-square.svg',
-        'featured_image_path' => '/fixture-photo.svg',
-        'presentation_image' => '/fixture-photo.svg',
+        'img_file' => $full,
+        'img_thumb_aspect' => $aspect,
+        'img_thumb_square' => $square,
+        'featured_image_path' => $full,
+        'presentation_image' => $aspect,
         'img_width' => $portrait ? 800 : 1200,
         'img_height' => $portrait ? 1200 : 800,
         'img_orientation' => $portrait ? 1 : 0,
@@ -126,8 +132,8 @@ foreach (range(1, 12) as $number) {
     $items[] = $item;
     $tiles[] = [
         'id' => $number,
-        'thumb' => $portrait ? '/fixture-portrait.svg' : '/fixture-photo.svg',
-        'full' => '/fixture-photo.svg',
+        'thumb' => $aspect,
+        'full' => $full,
         'title' => 'Photograph ' . $number,
         'width' => $portrait ? 2 : 3,
         'height' => $portrait ? 3 : 2,
