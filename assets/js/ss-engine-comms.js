@@ -46,9 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // GRAMOFSMACK (carousel) keeps standard cursor controls only — no F1 help —
-    // so the "PRESS F1 FOR HELP" toast must not appear there.
-    if (window.SNAP_DATA && window.SNAP_SITE_MODE !== 'carousel') {
+    // SS-1381: the toast appears on GRAMOFSMACK as well now. It used to be
+    // suppressed there because gram had no F1; the owner reversed that, and a
+    // help key nobody is told about is a help key nobody presses.
+    if (window.SNAP_DATA) {
         // If the consent banner is still showing, wait until it's dismissed
         // before showing the F1 help toast — don't stack modals on first visit.
         if (window.snapConsent && window.snapConsent.pending()) {
@@ -124,8 +125,10 @@ function ssShortcuts() {
 
     if (document.querySelector('[data-glide-wall]') && document.querySelector('.wall-viewer')) {
         return [
-            ['LEFT / SPACE', 'Previous photograph in the lightbox'],
-            ['RIGHT', 'Next photograph in the lightbox'],
+            // SS-1381: the arrows follow the FOOTER, which reads
+            // "< NEXT ... PREV >" -- newer on the left, older on the right.
+            ['LEFT', 'Next photograph in the lightbox (newer)'],
+            ['RIGHT / SPACE', 'Previous photograph in the lightbox (older)'],
             ['1', 'Toggle post info in the lightbox'],
             ['2', 'Toggle comments in the lightbox'],
             ['F1', 'Show this help'],
@@ -140,19 +143,34 @@ function ssShortcuts() {
         rows.push(['LEFT',  'Previous slide']);
         rows.push(['RIGHT', 'Next slide']);
     } else {
+        // SS-1381, owner ruling 2026-11-15: the keys follow the on-screen
+        // footer, which reads "< NEXT ... PREV >". Newer is on the LEFT and
+        // older is on the RIGHT, so LEFT goes to the NEWER photograph and
+        // RIGHT goes to the OLDER one. Listed left-to-right in that order so
+        // the help reads the way the footer looks. SPACE is unchanged: it
+        // still walks the archive newest to oldest, which is the same
+        // direction as RIGHT.
         var prev = ssNavUrl('prev');
-        if (prev)             rows.push(['LEFT',  'Previous photo']);
-        if (ssNavUrl('next')) rows.push(['RIGHT', 'Next photo']);
-        if (prev)             rows.push(['SPACE', 'Previous photo']);
+        if (ssNavUrl('next')) rows.push(['LEFT',  'Next photo (newer)']);
+        if (prev)             rows.push(['RIGHT', 'Previous photo (older)']);
+        if (prev)             rows.push(['SPACE', 'Previous photo (older)']);
     }
 
-    // Skipped on gram by the handler, so skipped here.
+    // Skipped on gram by the handler, so skipped here. The info, comments and
+    // download panels remain solo-only: GRAMOFSMACK has no such panels to
+    // toggle, so listing their keys there would be listing keys that do
+    // nothing.
     if (!gram) {
         if (ssInfoBound())     rows.push(['1', 'Toggle info']);
         if (ssCommentsBound()) rows.push(['2', 'Toggle comments']);
         if (ssDownloadBound()) rows.push(['D', 'Download']);
-        rows.push(['F1', 'Show this help']);
     }
+
+    // SS-1381 reverses the earlier "GRAMOFSMACK keeps cursor controls only,
+    // no F1" decision, on the owner's instruction: help is now everywhere,
+    // including gram. It is listed for every mode, which is also why it sits
+    // outside the block above.
+    rows.push(['F1', 'Show this help']);
 
     // ESC has no gram check in the handler, so it has none here.
     rows.push(['ESC', 'Close overlays']);
@@ -175,7 +193,8 @@ document.addEventListener('keydown', function(e) {
 
     // Help menu — delegate to public-help engine if loaded, else own modal.
     if (e.key === 'F1') {
-        if (gram) return;                 // F1 dropped on gram
+        // SS-1381: F1 used to return here on gram. The owner reversed that --
+        // help is available everywhere now, GRAMOFSMACK included.
         e.preventDefault();
         if (window.snapPublicHelp) {
             window.snapPublicHelp.toggle();
@@ -218,12 +237,21 @@ document.addEventListener('keydown', function(e) {
         var prevUrl = ssNavUrl('prev');
         var nextUrl = ssNavUrl('next');
 
-        if (e.key === 'ArrowLeft' && prevUrl) {
-            window.location.href = prevUrl;
+        // SS-1381, owner ruling 2026-11-15, from his own screenshots of a
+        // NEW HORIZON solo page: the footer reads "< NEXT ... PREV >", so
+        // newer is on the LEFT and older is on the RIGHT. The keys were the
+        // other way round, which made the help panel on the newest post say
+        // LEFT = Previous photo while the arrow beside those words pointed
+        // the other way. The screen is the contract; the keys follow it.
+        //
+        // rel="prev" is the OLDER photograph and rel="next" is the NEWER one,
+        // which is why this reads as a swap rather than a rename.
+        if (e.key === 'ArrowLeft' && nextUrl) {
+            window.location.href = nextUrl;
         }
 
-        if (e.key === 'ArrowRight' && nextUrl) {
-            window.location.href = nextUrl;
+        if (e.key === 'ArrowRight' && prevUrl) {
+            window.location.href = prevUrl;
         }
 
         // Spacebar navigates backward through the archive (newest to oldest)
