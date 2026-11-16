@@ -81,6 +81,7 @@ define("SNAPSMACK_VERSION_CODENAME", "HEISENBERG DECOMPENSATOR");
 // full img_file are SEPARATE and deliberately NOT governed by these.
 define('SNAPSMACK_THUMB_SQUARE', 400);        // t_ square centre-crop (px)
 define('SNAPSMACK_THUMB_ASPECT_LONG', 900);   // a_ aspect long-side max (px)
+define('SNAPSMACK_THUMB_MEDIUM_LONG', 600);  // m_ aspect long-side max (px)
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.

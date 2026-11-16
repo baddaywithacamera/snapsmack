@@ -485,6 +485,16 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
     $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_auto_orient TINYINT(1) NOT NULL DEFAULT 0");
     $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_alt VARCHAR(500) NULL");
     $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_color_mode VARCHAR(10) NOT NULL DEFAULT ''");
+    // SS-1386, and this one lands BEFORE anything writes or reads it on
+    // purpose. The archive grids will name img_thumb_medium in their SELECT
+    // lists, and those lists are explicit, not SELECT *: on a site that never
+    // got the column, every grid query would throw Unknown column. The
+    // canonical schema and install.php have it, but a site deployed by direct
+    // code copy bypasses the updater's diff -- that is exactly how
+    // hekeepsdroningon.ca ended up missing the 0.7.393 fedi columns and fatal
+    // on save. So it self-heals here on the next ingest, and the read path
+    // asks whether the column is selectable rather than assuming.
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_thumb_medium VARCHAR(255) NULL");
     $stmt = $pdo->prepare("
         INSERT INTO snap_images (
             img_title, img_slug, img_file, img_description, img_alt, img_film, img_exif,

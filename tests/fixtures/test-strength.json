@@ -1159,6 +1159,13 @@
             14
         ]
     },
+    "medium-thumb-column-and-size-regression.php": {
+        "assertions": 12,
+        "predicates": 7,
+        "thresholds": [
+            600
+        ]
+    },
     "menu-separator-contract-regression.php": {
         "assertions": 11,
         "predicates": 16,

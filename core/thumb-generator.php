@@ -26,6 +26,12 @@
 // update), instead of a fatal "Undefined constant" 500.
 if (!defined('SNAPSMACK_THUMB_SQUARE'))      define('SNAPSMACK_THUMB_SQUARE', 400);
 if (!defined('SNAPSMACK_THUMB_ASPECT_LONG')) define('SNAPSMACK_THUMB_ASPECT_LONG', 900);
+// SS-1386. THE FALLBACK IS THE POINT, not belt and braces: core/constants.php
+// is a protected path, so a site that updates does NOT receive a new constant
+// defined only there. Every size this generator uses is declared here as well,
+// in a file that does ship, or the m_ derivative would be undefined on exactly
+// the installed sites it exists for.
+if (!defined('SNAPSMACK_THUMB_MEDIUM_LONG')) define('SNAPSMACK_THUMB_MEDIUM_LONG', 600);
 
 
 /**
