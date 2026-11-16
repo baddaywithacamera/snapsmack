@@ -29,6 +29,31 @@ function readConstant(source, name) {
   throw new Error(`Unsupported ${name} declaration: ${raw}`);
 }
 
+function renderedDescriptors() {
+  // Ask the production map builder, rather than restating its arithmetic in
+  // the gate. The browser then receives exactly the descriptors the CMS emits.
+  const bootstrap = [
+    `require ${JSON.stringify(path.join(ROOT, 'core', 'constants.php'))};`,
+    `require ${JSON.stringify(path.join(ROOT, 'core', 'image-srcset.php'))};`,
+    `$rows = [`,
+    ` 'land' => ['img_thumb_medium'=>'m','img_thumb_aspect'=>'a','img_width'=>3000,'img_height'=>2000],`,
+    ` 'port' => ['img_thumb_medium'=>'m','img_thumb_aspect'=>'a','img_width'=>2000,'img_height'=>3000],`,
+    `];`,
+    `$out = []; foreach ($rows as $shape => $row) {`,
+    ` $value = snap_image_srcset_map([[$row]])['a'] ?? '';`,
+    ` preg_match('/m (\\d+)w, a (\\d+)w/', $value, $match);`,
+    ` $out[$shape] = ['m'=>(int)($match[1] ?? 0),'a'=>(int)($match[2] ?? 0)];`,
+    `} echo json_encode($out);`,
+  ].join(' ');
+  const result = spawnSync('php', ['-r', bootstrap], {
+    cwd: ROOT, encoding: 'utf8', windowsHide: true,
+  });
+  if (result.status !== 0) {
+    throw new Error(`Production srcset descriptor probe failed:\n${result.stdout}\n${result.stderr}`);
+  }
+  return JSON.parse(result.stdout);
+}
+
 function paddedSvg(width, height, label, bytes) {
   const head = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="#789"/><text x="12" y="30">${label}</text>`;
   const tail = '</svg>';
@@ -61,20 +86,21 @@ function injectObserver(html) {
     : script + html;
 }
 
-function makePage(html, origin, run, mode, sizes, mediumDescriptor, aspectDescriptor) {
+function makePage(html, origin, run, mode, sizes, descriptors) {
   let index = 0;
   return injectObserver(html.replace(
     /<img\b([^>]*?)\bsrc="photo-(1200x800|800x1200)\.svg"([^>]*)>/g,
     (tag, before, dimensions, after) => {
       const id = index++;
       const shape = dimensions === '1200x800' ? 'land' : 'port';
+      const descriptor = descriptors[shape];
       // Every third image is the normal fleet state while backfill is in
       // progress: there is no m_ path and therefore no srcset at all.
       const fallback = mode === 'baseline' || id % 3 === 1;
       const a = `${origin}/asset/${run}/a-${shape}-${id}.svg`;
       const m = `${origin}/asset/${run}/m-${shape}-${id}.svg`;
       const srcset = fallback ? ''
-        : ` srcset="${m} ${mediumDescriptor}w, ${a} ${aspectDescriptor}w" sizes="${sizes}"`;
+        : ` srcset="${m} ${descriptor.m}w, ${a} ${descriptor.a}w" sizes="${sizes}"`;
       return `<img${before}src="${a}"${srcset} data-ss1386-id="${id}" data-ss1386-shape="${shape}" data-ss1386-state="${fallback ? 'fallback' : 'srcset'}"${after}>`;
     }
   ));
@@ -133,8 +159,7 @@ async function measurePage(browser, html, viewport) {
 
 (async () => {
   const constants = fs.readFileSync(path.join(ROOT, 'core', 'constants.php'), 'utf8');
-  const mediumDescriptor = readConstant(constants, 'SNAPSMACK_THUMB_MEDIUM_LONG');
-  const aspectDescriptor = readConstant(constants, 'SNAPSMACK_THUMB_ASPECT_LONG');
+  const descriptors = renderedDescriptors();
   const sizes = process.env.SS1386_SIZES_OVERRIDE
     || readConstant(constants, 'SNAPSMACK_GRID_IMAGE_SIZES');
   const skipBaseline = process.env.SS1386_SKIP_BASELINE === '1';
@@ -187,9 +212,9 @@ async function measurePage(browser, html, viewport) {
         const baseRun = `${entry.skin}-${viewport}-base`;
         const srcsetRun = `${entry.skin}-${viewport}-srcset`;
         const baseline = skipBaseline ? { cls: null } : await measurePage(browser,
-          makePage(source, origin, baseRun, 'baseline', sizes, mediumDescriptor, aspectDescriptor), viewport);
+          makePage(source, origin, baseRun, 'baseline', sizes, descriptors), viewport);
         const measured = await measurePage(browser,
-          makePage(source, origin, srcsetRun, 'srcset', sizes, mediumDescriptor, aspectDescriptor), viewport);
+          makePage(source, origin, srcsetRun, 'srcset', sizes, descriptors), viewport);
         const baselineById = new Map((baseline.images || []).map((image) => [image.id, image]));
         const rows = [];
 
@@ -229,7 +254,8 @@ async function measurePage(browser, html, viewport) {
             }
             // A w descriptor is the candidate's intrinsic width, not its
             // long-edge cap. This catches portrait m_=400px advertised 600w.
-            const descriptor = current && current.size === 'm' ? mediumDescriptor : aspectDescriptor;
+            const descriptor = current && descriptors[image.shape]
+              ? descriptors[image.shape][current.size] : 0;
             if (current && descriptor !== expected.width) {
               failures.push(`${entry.skin} ${viewport}px image ${image.id}: ${image.shape} ${current.size}_ is ${expected.width}px wide but advertised ${descriptor}w`);
             }
@@ -260,7 +286,7 @@ async function measurePage(browser, html, viewport) {
 
   const evidence = path.join(fixtureDir, 'ss1386-medium-thumbnail-results.json');
   fs.writeFileSync(evidence, JSON.stringify({
-    descriptors: { mediumDescriptor, aspectDescriptor, sizes },
+    descriptors: { ...descriptors, sizes },
     results, failures,
   }, null, 2));
 
