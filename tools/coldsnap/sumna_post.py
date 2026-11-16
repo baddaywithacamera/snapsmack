@@ -915,10 +915,30 @@ class SmacktalkPoster:
         if not self.key:
             return SyncResult(False, message="No SMACKTALK key set for this site (needs a 'smackpress' API key).")
         is_page = getattr(draft, "destination_type", "post") == "page"
-        if not draft.images and not is_page:
-            return SyncResult(False, message="no images on draft")
         if not (draft.title or "").strip():
             return SyncResult(False, message="a SMACKTALK post needs a title")
+        # A LONGFORM POST DOES NOT NEED A PHOTOGRAPH.
+        #
+        # This refused any post with an empty bucket -- "no images on draft" --
+        # so an essay with no picture could be written and then never sent.
+        # Nothing downstream needs one: build_payload sends featured_image_id
+        # = None with an empty bucket_image_ids, and core/smackpress-api.php
+        # requires only a title, treating the cover as optional
+        # (`!empty($body['featured_image_id']) ? ... : 0`, smackpress-api.php
+        # :631 and :691). The guard was the only thing in the way.
+        #
+        # It also ran BEFORE the title check, so a draft missing both reported
+        # the images and never mentioned the title. Title goes first now.
+        #
+        # What DOES still need photographs is a mosaic: _resolve_mosaics()
+        # returns the body untouched when there are no image ids, so a [mosaic]
+        # placeholder would publish as literal text in the middle of the essay.
+        # That is the only case left, and it now says which one it is.
+        if (not draft.images and not is_page
+                and self._MOSAIC_TOKEN.search(draft.caption or "")):
+            return SyncResult(False, message=(
+                "This post asks for a MOSAIC but has no photographs. Add the "
+                "photos, or take the mosaic out of the writing."))
         try:
             image_ids, cover_id = [], None
             for im in draft.images:
