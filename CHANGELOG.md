@@ -11,6 +11,29 @@
 # SnapSmack Changelog
 ## Unreleased
 
+### COLD SNAP, desktop-side only — this does not ride a CMS build
+
+- SS-1362: **a longform post with no photographs can be sent.** COLD SNAP
+  refused one before it ever left the machine, with "no images on draft", so an
+  essay written without a picture could be finished and then simply not go
+  anywhere. Nothing downstream ever needed the photograph: the payload sends
+  `featured_image_id = None` with an empty bucket, and `core/smackpress-api.php`
+  requires only a title and treats the cover as optional. The desktop guard was
+  the whole obstacle.
+
+  The same guard ran before the title check, so a draft missing both reported
+  the images and stayed silent about the title. The title is checked first now.
+
+  One case genuinely still needs photographs and keeps its refusal, with a
+  message that says which one it is: a `[mosaic]` placeholder in the body.
+  Mosaic resolution returns the text untouched when there are no image ids, so
+  sending it would publish the literal token in the middle of the essay.
+
+  Measured, not assumed: the server endpoint was read for its actual
+  requirements, and the four new tests in
+  `tools/coldsnap/tests/test_longform_without_photographs.py` all fail against
+  the old guard and pass against this one.
+
 ## 0.7.997D - 2026-11-14
 
 - GLIDE direct photo pages are styled again. A post reached from photofri.day
