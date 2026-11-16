@@ -161,6 +161,56 @@ if ($genBody === '') {
         . 'companion rule. Step (c) is web uploads only.';
 }
 
+// --- 7. THE PATH SEAN ACTUALLY POSTS THROUGH -----------------------------
+// smack-post-solo.php, not just the Gallery uploader. SYBU posts here
+// (tools/sybu/poster.py:493) and SYBU has been his only image source since
+// 2026-08-28, so if this path makes no m_ then the photographs he adds every
+// day are the ones without one and the backfill never stops growing. Both web
+// paths are checked the same way, and both for arity, because adding a column
+// to an INSERT and missing a placeholder is a fatal on every post.
+foreach (['core/image-ingest.php', 'smack-post-solo.php'] as $pathFile) {
+    $src = (string)@file_get_contents(dirname(__DIR__) . '/' . $pathFile);
+    if ($src === '') {
+        $failures[] = "could not read {$pathFile}";
+        continue;
+    }
+    // THE WRITE, not just the string. Checking that "'m_' . $new_file_name"
+    // appears anywhere passed a mutation that pointed imagejpeg at 'x_' and
+    // left the is_file guard and the recorded path reading m_: every post
+    // would then store a path to a file that was never written. All three
+    // encoders are required, because a PNG or WebP upload takes a different
+    // branch and would otherwise be the one that silently produces nothing.
+    $writes = preg_match_all(
+        '/image(?:jpeg|png|webp)\(\$m_thumb,\s*\$thumb_dir \. .m_./',
+        $src);
+    if ($writes !== 3) {
+        $failures[] = "{$pathFile} writes the medium thumbnail to an m_ path "
+            . "in {$writes} of its 3 encoder branches";
+    }
+    if (strpos($src, 'snap_medium_thumb_box(') === false) {
+        $failures[] = "{$pathFile} repeats the geometry instead of calling the "
+            . 'one function the tests above cover, so the two paths can drift';
+    }
+    if (!preg_match('/is_file\(\$thumb_dir \. \x27m_\x27/', $src)) {
+        $failures[] = "{$pathFile} records the m_ path without checking the "
+            . 'file exists; a failed write would put a 404 in a srcset';
+    }
+    if (strpos($src, 'img_thumb_medium') === false) {
+        $failures[] = "{$pathFile} never records the path";
+    }
+    if (preg_match('/INSERT INTO snap_images\s*\((.*?)\)\s*VALUES\s*\((.*?)\)/s', $src, $mm)) {
+        $nCols = count(array_filter(array_map('trim', explode(',', $mm[1])), 'strlen'));
+        $nHoles = substr_count($mm[2], '?');
+        if ($nCols !== $nHoles) {
+            $failures[] = "{$pathFile}: the INSERT names {$nCols} columns and "
+                . "binds {$nHoles} placeholders -- a fatal on every post";
+        }
+    } else {
+        $failures[] = "could not isolate {$pathFile}'s INSERT to check arity";
+    }
+}
+
+
 if ($failures) {
     throw new RuntimeException("Medium thumbnail generation contract broken:\n  - "
         . implode("\n  - ", $failures));

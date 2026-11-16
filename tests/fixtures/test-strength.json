@@ -1176,9 +1176,10 @@
         ]
     },
     "medium-thumb-generated-on-web-upload-regression.php": {
-        "assertions": 19,
-        "predicates": 14,
+        "assertions": 26,
+        "predicates": 20,
         "thresholds": [
+            3,
             400,
             600
         ]
