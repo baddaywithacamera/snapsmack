@@ -34,6 +34,35 @@ if (!defined('SNAPSMACK_THUMB_ASPECT_LONG')) define('SNAPSMACK_THUMB_ASPECT_LONG
 if (!defined('SNAPSMACK_THUMB_MEDIUM_LONG')) define('SNAPSMACK_THUMB_MEDIUM_LONG', 600);
 
 
+if (!function_exists('snap_medium_thumb_box')) {
+/**
+ * The pixel box for the m_ derivative of a $w x $h source. SS-1386.
+ *
+ * PURE, AND SEPARATE FROM THE GD CALLS ON PURPOSE. The generation itself needs
+ * a real image on disk and a database to record the path, so a test can only
+ * read it; this is the part with the decisions in it, and it runs on two
+ * integers.
+ *
+ * NEVER UPSCALES. A photograph smaller than the limit on both edges is written
+ * at native size, exactly as a_ already is. That matters more than it looks:
+ * if m_ could be larger than a_, the srcset would offer the browser a 600w
+ * candidate that is actually bigger than the 900w one, and it would pick the
+ * wrong file for every small photograph.
+ *
+ * @return array{0:int,1:int} width, height -- each at least 1, because
+ *         imagecreatetruecolor(0, n) fails and a 1px-tall panorama is a real
+ *         shape in Sean's library.
+ */
+function snap_medium_thumb_box(int $w, int $h, int $long): array {
+    if ($w < 1 || $h < 1 || $long < 1) return [max(1, $w), max(1, $h)];
+    if ($w < $long && $h < $long) return [$w, $h];
+    if ($w >= $h) {
+        return [$long, max(1, (int)round($h * ($long / $w)))];
+    }
+    return [max(1, (int)round($w * ($long / $h))), $long];
+}
+}
+
 /**
  * Generate square + aspect thumbnails for a given source image path.
  *

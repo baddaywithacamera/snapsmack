@@ -325,6 +325,7 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
     $src = null;
     $db_thumb_square = null;
     $db_thumb_aspect = null;
+    $db_thumb_medium = null;          // SS-1386; null until the m_ file exists
     $db_checksum     = null;
     $display_options_json = null;
 
@@ -463,10 +464,45 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
         else                            { imagewebp($a_thumb, $thumb_dir . 'a_' . $new_file_name, 78); }
         imagedestroy($a_thumb);
 
+        // --- MEDIUM THUMBNAIL (m_ prefix): long side per constant ---------
+        // SS-1386. The grids serve this to normal tiles and keep a_ for the
+        // skins whose tiles really paint large. SS-1373 measured 1,536,000
+        // bytes of thumbnails against a 160,000 budget on 50 SHADES, and this
+        // is the file that closes that gap.
+        //
+        // SERVER-SIDE GENERATION IS FOR WEB UPLOADS ONLY, which is where this
+        // function is: the owner's companion rule puts desktop work on the
+        // desktop, so SYBU makes m_ for anything it uploads (SS-1371) and the
+        // backlog is a desktop tool, not a batch job on shared hosting.
+        //
+        // Never upscaled, same as a_: a photograph smaller than 600px on both
+        // edges is written at native size, so m_ is never larger than a_ and
+        // the srcset's widths stay honest.
+        require_once __DIR__ . '/thumb-generator.php';
+        $medium_long = defined('SNAPSMACK_THUMB_MEDIUM_LONG') ? SNAPSMACK_THUMB_MEDIUM_LONG : 600;
+        [$m_w, $m_h] = snap_medium_thumb_box((int)$orig_w, (int)$orig_h, (int)$medium_long);
+        $m_thumb = imagecreatetruecolor($m_w, $m_h);
+        if ($mime == 'image/png' || $mime == 'image/webp') {
+            imagealphablending($m_thumb, false);
+            imagesavealpha($m_thumb, true);
+        }
+        imagecopyresampled($m_thumb, $src, 0, 0, 0, 0, $m_w, $m_h, $orig_w, $orig_h);
+        if ($mime === 'image/jpeg')     { imagejpeg($m_thumb, $thumb_dir . 'm_' . $new_file_name, 82); }
+        elseif ($mime === 'image/png')  { imagepng($m_thumb, $thumb_dir . 'm_' . $new_file_name, 8); }
+        else                            { imagewebp($m_thumb, $thumb_dir . 'm_' . $new_file_name, 78); }
+        imagedestroy($m_thumb);
+
         imagedestroy($src);
 
         $db_thumb_square = $rel_dir . '/thumbs/t_' . $new_file_name;
         $db_thumb_aspect = $rel_dir . '/thumbs/a_' . $new_file_name;
+        // Recorded only if the file is really there. A failed imagejpeg would
+        // otherwise store a path the grid then puts in a srcset, and the
+        // browser would choose a 404 over a file that exists -- worse than
+        // having no m_ at all, which is the state the fallback is built for.
+        $db_thumb_medium = is_file($thumb_dir . 'm_' . $new_file_name)
+            ? $rel_dir . '/thumbs/m_' . $new_file_name
+            : null;
         $db_checksum     = hash_file('sha256', $target_path);
 
         // --- COLOUR PALETTE EXTRACTION ---
@@ -500,8 +536,8 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
             img_title, img_slug, img_file, img_description, img_alt, img_film, img_exif,
             img_status, img_date, img_orientation, img_auto_orient, img_width, img_height,
             allow_comments, allow_download, download_url,
-            img_thumb_square, img_thumb_aspect, img_checksum, img_display_options, img_color_mode
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            img_thumb_square, img_thumb_aspect, img_thumb_medium, img_checksum, img_display_options, img_color_mode
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $title,
@@ -522,6 +558,7 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
         '',
         $db_thumb_square,
         $db_thumb_aspect,
+        $db_thumb_medium,
         $db_checksum,
         $display_options_json,
         $color_mode,

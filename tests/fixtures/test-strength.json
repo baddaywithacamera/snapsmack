@@ -1175,6 +1175,14 @@
             600
         ]
     },
+    "medium-thumb-generated-on-web-upload-regression.php": {
+        "assertions": 19,
+        "predicates": 14,
+        "thresholds": [
+            400,
+            600
+        ]
+    },
     "menu-separator-contract-regression.php": {
         "assertions": 11,
         "predicates": 16,
