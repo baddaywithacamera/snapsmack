@@ -11,44 +11,68 @@ const output = process.env.SNAPSMACK_BROWSER_OUTPUT || path.join(root, 'tmp', 'g
 const glideCss = fs.readFileSync(path.join(root, 'skins', 'glide', 'style.css'), 'utf8');
 const likeCss = fs.readFileSync(path.join(root, 'assets', 'css', 'ss-tile-like.css'), 'utf8');
 const likeJs = fs.readFileSync(path.join(root, 'assets', 'js', 'ss-engine-tile-like.js'), 'utf8');
+const glideJs = fs.readFileSync(path.join(root, 'assets', 'js', 'ss-engine-glide.js'), 'utf8');
 const layout = fs.readFileSync(path.join(root, 'skins', 'glide', 'layout.php'), 'utf8');
 const photo = 'data:image/svg+xml,' + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><rect width="1200" height="800" fill="#17334a"/><circle cx="600" cy="400" r="220" fill="#d88b3f"/></svg>'
 );
 
-assert.equal((layout.match(/class="glide-tile ss-tile-like-host"/g) || []).length, 2,
-    'both GLIDE conveyor data paths mark the tile as the like-control host');
+assert.equal((layout.match(/class="glide-tile-frame ss-tile-like-host"/g) || []).length, 2,
+    'both GLIDE conveyor data paths wrap the photo link and like control in one positioned host');
 assert.equal((layout.match(/snap_render_component\('tile-like', \['item' => \$item\]\)/g) || []).length, 2,
     'both GLIDE conveyor data paths print the prepared tile-like component');
+assert.equal((layout.match(/<\/a><\?php echo snap_render_html\(snap_render_component\('tile-like', \['item' => \$item\]\)\); \?><\/div>/g) || []).length, 2,
+    'both GLIDE hearts are siblings after the photo link, never buttons nested inside links');
 
 function documentHtml() {
-    return `<!doctype html><html><head><meta charset="utf-8"><meta name="csrf-token" content="fixture-token">
+    return `<!doctype html><html><head><meta charset="utf-8"><base href="https://fixture.test/archive/"><meta name="csrf-token" content="fixture-token">
     <style>${glideCss}</style><style>${likeCss}</style></head><body class="glide-v2">
     <main class="glide-page"><div class="glide-viewport"><div class="glide-field">
       <div class="glide-row"><div class="glide-track">
-        <a class="glide-tile ss-tile-like-host" style="--glide-aspect:3/2" href="#solo" aria-label="View photograph">
-          <img src="${photo}" alt="Fixture photograph">
+        <div class="glide-tile-frame ss-tile-like-host" style="--glide-aspect:3/2">
+          <a class="glide-tile" href="#solo" aria-label="View photograph"><img src="${photo}" alt="Fixture photograph"></a>
           <button type="button" class="ss-tile-like" data-tile-like="42" data-liked="0" aria-pressed="false" aria-label="Like this photograph" title="Like this photograph">
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
           </button>
-        </a>
-        <a class="glide-tile ss-tile-like-host" style="--glide-aspect:3/2" href="#liked" aria-label="View liked photograph">
-          <img src="${photo}" alt="Liked fixture photograph">
+        </div>
+        <div class="glide-tile-frame ss-tile-like-host" style="--glide-aspect:3/2">
+          <a class="glide-tile" href="#liked" aria-label="View liked photograph"><img src="${photo}" alt="Liked fixture photograph"></a>
           <button type="button" class="ss-tile-like is-liked" data-tile-like="43" data-liked="1" aria-pressed="true" aria-label="Unlike this photograph" title="Unlike this photograph">
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
           </button>
-        </a>
+        </div>
       </div></div>
     </div></div></main></body></html>`;
+}
+
+function tileFrame(id) {
+    return `<div class="glide-tile-frame ss-tile-like-host" style="--glide-aspect:3/2">
+      <a class="glide-tile" href="https://fixture.test/photo-${id}" aria-label="Photograph ${id}"><img src="${photo}" alt="Photograph ${id}"></a>
+      <button type="button" class="ss-tile-like" data-tile-like="${id}" data-liked="0" aria-pressed="false" aria-label="Like this photograph" title="Like this photograph">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+      </button>
+    </div>`;
+}
+
+function redistributionHtml() {
+    return `<!doctype html><html><head><meta charset="utf-8"><base href="https://fixture.test/archive/"><meta name="csrf-token" content="fixture-token">
+    <style>${glideCss}</style><style>${likeCss}</style></head><body class="glide-v2">
+    <main class="glide-page" data-glide-wall data-wall-inner-coverage>
+      <div class="glide-viewport"><div class="glide-field">
+        ${[10, 20, 30, 40, 50].map(id => `<div class="glide-row" data-glide-row><div class="glide-track">${tileFrame(id)}</div></div>`).join('')}
+      </div></div>
+    </main></body></html>`;
 }
 
 async function installBehaviour(page) {
     await page.evaluate(() => {
         window.likeRequests = [];
         window.dragStarts = 0;
-        document.querySelector('.glide-row').addEventListener('pointerdown', () => { window.dragStarts += 1; });
+        document.querySelectorAll('.glide-row').forEach(row => {
+            row.addEventListener('pointerdown', () => { window.dragStarts += 1; });
+        });
         window.fetch = (url, options) => {
-            window.likeRequests.push({ url, method: options && options.method });
+            window.likeRequests.push({ url, resolved: new URL(url, document.baseURI).href, method: options && options.method });
             return Promise.resolve({ json: () => Promise.resolve({ liked: true }) });
         };
     });
@@ -103,7 +127,8 @@ async function installBehaviour(page) {
             assert.equal(await page.evaluate(() => location.hash), '',
                 `${width}: clicking the heart does not open the photograph`);
             assert.deepEqual(await page.evaluate(() => window.likeRequests[0]),
-                { url: 'process-like.php', method: 'POST' }, `${width}: heart uses the shared like endpoint`);
+                { url: '/process-like.php', resolved: 'https://fixture.test/process-like.php', method: 'POST' },
+                `${width}: heart uses the root endpoint even from a deeper page URL`);
             assert.equal(await heart.getAttribute('aria-pressed'), 'true', `${width}: successful like updates pressed state`);
 
             await page.screenshot({ path: path.join(output, `glide-tile-like-liked-${width}.png`), fullPage: true });
@@ -120,6 +145,39 @@ async function installBehaviour(page) {
         await touch.screenshot({ path: path.join(output, 'glide-tile-like-touch-1024.png'), fullPage: true });
         console.log('PASS touch 1024: GLIDE heart remains discoverable without hover');
         await touch.close();
+
+        const redistributed = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+        await redistributed.setContent(redistributionHtml(), { waitUntil: 'load' });
+        await installBehaviour(redistributed);
+        await redistributed.addScriptTag({ content: glideJs });
+        const innerRow = redistributed.locator('.glide-row').nth(1);
+        const innerOriginals = innerRow.locator('.glide-tile-frame:not([aria-hidden="true"])');
+        await assert.doesNotReject(() => innerOriginals.nth(1).waitFor(),
+            'the GLIDE engine redistributes a complete framed tile into the inner row');
+        assert.equal(await innerOriginals.count(), 2,
+            'redistribution adds the outer photograph as one complete frame');
+        const scenery = innerRow.locator('.glide-tile-frame[aria-hidden="true"]');
+        assert.ok(await scenery.count() > 0, 'the fixture exercises GLIDE scenery duplication after redistribution');
+        assert.equal(await scenery.evaluateAll(frames => frames.every(frame =>
+            Array.from(frame.querySelectorAll('a[href], button, input, select, textarea, [tabindex]'))
+                .every(control => control.tabIndex === -1))), true,
+        'aria-hidden scenery leaves no nested photo link or heart in the keyboard tab order');
+        const redistributedHeart = innerOriginals.nth(1).locator('.ss-tile-like');
+        assert.equal(await redistributedHeart.count(), 1,
+            'the redistributed photograph keeps exactly one sibling heart');
+        assert.equal(await redistributedHeart.evaluate(el => el.parentElement.classList.contains('glide-tile-frame')), true,
+            'the redistributed heart remains inside the positioned frame and outside the photo link');
+        await redistributedHeart.dispatchEvent('pointerdown', { pointerId: 9, pointerType: 'mouse', button: 0 });
+        assert.equal(await redistributed.evaluate(() => window.dragStarts), 0,
+            'pressing a redistributed heart does not begin a conveyor drag');
+        await redistributedHeart.dispatchEvent('click');
+        await redistributed.waitForFunction(() => window.likeRequests.length === 1);
+        assert.deepEqual(await redistributed.evaluate(() => window.likeRequests[0]),
+            { url: '/process-like.php', resolved: 'https://fixture.test/process-like.php', method: 'POST' },
+            'a redistributed heart records the like through the root endpoint');
+        await redistributed.screenshot({ path: path.join(output, 'glide-tile-like-redistributed-1440.png'), fullPage: true });
+        console.log('PASS redistribution 1440: cloned inner-row tile keeps one working heart without flinging');
+        await redistributed.close();
     } finally {
         await browser.close();
     }
