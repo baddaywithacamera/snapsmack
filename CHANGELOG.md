@@ -11,6 +11,41 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.998D — opened
+
+- **The archive shows the layout the visitor asked for.** Opening
+  `/archive?layout=thumbs` on 50 SHADES gave a wall, with the T button lit as
+  though it had given thumbnails. The resolution was never wrong:
+  `core/archive-controls.php` reads the URL, the cookie and the site default,
+  and `core/public-runtime.php` publishes the answer as
+  `response.archive_layout_active`, which is also what draws the T/M row.
+
+  **No page component read it.** All four that render an archive — 50 SHADES,
+  CHAPLIN, IMPACT PRINTER and ONYX — re-derived the layout independently from
+  `site.archive_layout`, the stored DEFAULT, which knows nothing about this
+  visitor. The control row and the page were answering different questions.
+
+  The two sides had also drifted apart in vocabulary. `archive-controls` folds
+  `square`, `cropped` and `croppedwithcalendar` into `thumbs`, leaving a
+  two-way answer; the components still tested the old four-way list and fell
+  through to a default when they met a normalised value.
+
+  **ONYX was wrong on every site, not just mismatched ones.** It compared the
+  stored setting against `'thumbs'` — a value that setting never holds — so the
+  test was false for all four real values and `#browse-grid` carried
+  `data-pane-hidden` permanently.
+
+  One resolution, one vocabulary, read in one place: `core/archive-pane.php`.
+  It fails open to the stored default, because these components render every
+  page kind and only an archive route carries the controls, so a landing page
+  must not lose its grid. Pinned by
+  `tests/archive-pane-follows-the-resolved-layout-regression.php`, which checks
+  the behaviour and that all four components ask rather than re-derive.
+
+  THIS DOES NOT EXPLAIN THE BLANK ARCHIVE reported at 1920 on photowalk.ing.
+  Measured live: the stylesheet, both engines and populated tiles were all
+  present, and exactly one pane is ever hidden, server-side. That is still open.
+
 ### COLD SNAP, desktop-side only — this does not ride a CMS build
 
 - SS-1362: **a longform post with no photographs can be sent.** COLD SNAP

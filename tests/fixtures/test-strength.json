@@ -136,6 +136,11 @@
         "predicates": 9,
         "thresholds": []
     },
+    "archive-pane-follows-the-resolved-layout-regression.php": {
+        "assertions": 12,
+        "predicates": 5,
+        "thresholds": []
+    },
     "archive-presentation-contract-regression.php": {
         "assertions": 3,
         "predicates": 8,

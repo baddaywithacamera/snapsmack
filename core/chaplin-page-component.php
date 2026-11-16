@@ -1,4 +1,5 @@
-<?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
+require_once __DIR__ . '/archive-pane.php'; ?>
 <?php
 // CHAPLIN's archive emits BOTH #browse-grid and #justified-grid with the same
 // photographs. Its stylesheet already chooses between them -- style.css lines
@@ -12,10 +13,10 @@
 // Copied from core/50-shades-page-component.php:4-7, which has always done
 // this and whose archive is correct. 'croppedwithcalendar' is in the list
 // because it is a thumbnail layout; only masonry selects the wall.
-$archiveLayout = in_array(($view['site']['archive_layout'] ?? ''), ['square', 'cropped', 'masonry', 'croppedwithcalendar'], true)
-    ? (string)$view['site']['archive_layout']
-    : 'square';
-$archivePane = $archiveLayout === 'masonry' ? 'masonry' : 'thumbs';
+// SUPERSEDED 2026-11-16: this derived the pane from the stored default and so
+// ignored the visitor's URL and cookie, exactly as 50 SHADES did. The resolved
+// answer already exists -- see core/archive-pane.php.
+$archivePane = snap_archive_pane($view);
 // THUMB STYLE, read the way IMPACT PRINTER reads it -- the only component that
 // honoured the owner's choice. CHAPLIN asked for img_thumb_square first and
 // unconditionally, so "cropped (natural aspect)" in ARCHIVE APPEARANCE changed

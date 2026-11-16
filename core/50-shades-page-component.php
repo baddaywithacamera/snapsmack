@@ -1,10 +1,11 @@
 <?php defined('SNAPSMACK_SKIN_RENDER') || exit;
-require_once __DIR__ . '/public-route-aliases.php'; ?>
+require_once __DIR__ . '/public-route-aliases.php';
+require_once __DIR__ . '/archive-pane.php'; ?>
 <?php
-$archiveLayout = in_array(($view['site']['archive_layout'] ?? ''), ['square', 'cropped', 'masonry', 'croppedwithcalendar'], true)
-    ? (string)$view['site']['archive_layout']
-    : 'square';
-$archivePane = $archiveLayout === 'masonry' ? 'masonry' : 'thumbs';
+// The visitor's resolved choice, not the stored default. See core/archive-pane.php:
+// this used to re-derive the layout from site.archive_layout and so ignored the URL
+// and the cookie, which is why ?layout=thumbs showed the wall and the T button lied.
+$archivePane = snap_archive_pane($view);
 ?>
 <!doctype html>
 <html lang="<?php echo snap_escape_attr($view['site']['language']); ?>" dir="<?php echo snap_escape_attr($view['site']['direction']); ?>" data-archive-layout="<?php echo snap_escape_attr($archivePane); ?>">
