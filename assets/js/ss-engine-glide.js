@@ -505,6 +505,11 @@
      * a strict skin's layout is presentation only, and a count agreed between
      * two files is a count that drifts. Returns how many copies it added.
      */
+    // Anything that can take focus. Deliberately broad: scenery must contain
+    // no tab stop at all, and a missed one is silent.
+    var FOCUSABLE = 'a[href], button, input, select, textarea, iframe, area[href],'
+        + ' summary, [contenteditable], [tabindex]';
+
     function glideFill(track, period, minExtent, gap, downPage) {
         if (!track || !track.children || !track.children.length) return 0;
         if (!(period > 0)) return 0;
@@ -519,6 +524,22 @@
                 // wall several times and every copy is a tab stop.
                 clone.setAttribute('aria-hidden', 'true');
                 clone.tabIndex = -1;
+                // AND EVERY INTERACTIVE DESCENDANT, not just the clone.
+                //
+                // While a tile WAS the anchor, hiding the clone and taking it
+                // out of the tab order was the whole job. SS-1323 wraps each
+                // tile in a positioned frame so the heart can be a sibling of
+                // the photograph's link rather than nested inside it, so a
+                // clone is now a div: aria-hidden on the outside, with a
+                // focusable anchor and a focusable button still inside it.
+                // A keyboard reader would tab into scenery that no screen
+                // reader announces, and press a heart that likes a
+                // photograph twice. Codex found it in the rendered gate.
+                //
+                // Swept rather than named, because the frame's contents are
+                // the skin's to decide and this engine must not have to know.
+                var reachable = clone.querySelectorAll(FOCUSABLE);
+                for (var f = 0; f < reachable.length; f++) reachable[f].tabIndex = -1;
                 track.appendChild(clone);
             }
             copies++;
