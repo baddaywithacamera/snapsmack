@@ -930,7 +930,7 @@ input[type="button"],
 }
 
 .header-image {
-    background-image: url(assets/images/sean-storm-panorama.jpg);
+    background-color: #1d1d1d;
     background-repeat: no-repeat;
     background-position: top center;
     background-size: var(--alfred-header-fit, cover);   /* Header Image Fit */

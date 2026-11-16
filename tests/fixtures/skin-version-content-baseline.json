@@ -13,8 +13,8 @@
             "manifest_css_sha256": "53759ac9939ee3eaf2b45aca9c121d761fd38a74b98c2315e0f7505cfbeac57d"
         },
         "alfred": {
-            "version": "1.0.13",
-            "files_sha256": "320f79063880e4c946fadfe85412d156a48ad1a4503bc71fd9f6f8895b8534d1",
+            "version": "1.0.14",
+            "files_sha256": "fc6ff8a1e825ae9590df8e8b340a1c16af1f499950630247957fa6774323d563",
             "manifest_css_sha256": "f06a8252ab0e42004734c97aedc0edd47340d2f0192064e0a5b72cdaccf1d7c0"
         },
         "aurora": {
@@ -128,8 +128,8 @@
             "manifest_css_sha256": "79996a16f5aaad1ff09769a0188d5b3a3663bf239bc30d3ed854c84eb20d08b1"
         },
         "telegram": {
-            "version": "0.1.8",
-            "files_sha256": "f20299dfd167963ad6917882705354b027439f0a1f31f6bce036a1485c3632f4",
+            "version": "0.1.10",
+            "files_sha256": "42a4ff50a6bb1db38968f4cb4c686619e1e2d81c033880ff4e382a716d783c41",
             "manifest_css_sha256": "f06a8252ab0e42004734c97aedc0edd47340d2f0192064e0a5b72cdaccf1d7c0"
         },
         "the-grid": {
@@ -138,8 +138,8 @@
             "manifest_css_sha256": "eab3f387f9f5546c00035c537a1bb0049f1003da547e89505cdde320f23fb01e"
         },
         "tilez": {
-            "version": "0.2.76",
-            "files_sha256": "4adc45c54b889f08184bd5a022545b2f7a7431cc21b8b7c7af6bb5d080b4b942",
+            "version": "0.2.78",
+            "files_sha256": "80e1d0a450192e99587075bd7a24eed1d84939e72018854753e49c57bfc7ae5a",
             "manifest_css_sha256": "49416b17f884f017c8a3d69fdca7ad1d279234d9a6d175241fc7f4b3852eec4f"
         },
         "true-grit": {
