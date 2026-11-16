@@ -37,8 +37,19 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                 ->fetchAll(PDO::FETCH_KEY_PAIR);
 
-if (($settings['community_enabled'] ?? '1') !== '1' ||
-    ($settings['community_likes_enabled'] ?? '1') !== '1') {
+// DEFAULT-ON, so `!== '0'` and never `=== '1'`. Both settings default ON, and
+// this endpoint was the only place in the chain reading them strictly, so a
+// row holding an EMPTY STRING -- which an admin save can leave -- refused
+// every like on a site that never asked for them to be off.
+//
+// That is not theoretical. core/community-component.php:61 draws the dock's
+// like button with `!== '0'`, so on such a site the button has been on screen
+// and returning 403 on click, with nothing to say why. SS-1323 surfaced it by
+// putting a second control on the same endpoint and Muse spotted the two
+// gates disagreeing. The repo-wide default-on-switch gate enforces this rule
+// and it is right: the strict read was the bug, not the control.
+if (($settings['community_enabled'] ?? '1') === '0' ||
+    ($settings['community_likes_enabled'] ?? '1') === '0') {
     http_response_code(403);
     echo json_encode(['error' => 'likes_disabled']);
     exit;

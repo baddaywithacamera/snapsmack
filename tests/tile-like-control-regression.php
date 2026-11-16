@@ -60,10 +60,35 @@ $check('and to a screen reader', str_contains($liked, 'aria-pressed="true"')
     && str_contains($liked, 'aria-label="Unlike this photograph"'));
 
 // --- the setting ------------------------------------------------------------
+// THE GATE MUST MATCH process-like.php, AND BOTH MUST FOLLOW THE DEFAULT-ON
+// RULE. The control decides whether to draw a button that endpoint will
+// accept or refuse, so a heart that 403s on click -- with nothing on screen
+// to say why -- is worse than no heart. Muse found the two disagreeing.
+// The endpoint was the one breaking the rule, reading `!== '1'` while the
+// dock reads `!== '0'`; it is fixed in the same commit. These checks pin
+// BOTH ends of that agreement.
 $check('it respects community_likes_enabled being off',
     !snap_tile_like_enabled(['community_likes_enabled' => '0']));
 $check('and is on by default, like the dock',
     snap_tile_like_enabled([]));
+$check('an empty likes setting is NOT off -- the site never asked',
+    snap_tile_like_enabled(['community_likes_enabled' => '']));
+$check('the community being off draws no heart, whatever likes says',
+    !snap_tile_like_enabled(['community_enabled' => '0', 'community_likes_enabled' => '1']));
+$check('an empty community setting is not off either',
+    snap_tile_like_enabled(['community_enabled' => '', 'community_likes_enabled' => '1']));
+$check('both on explicitly still draws it',
+    snap_tile_like_enabled(['community_enabled' => '1', 'community_likes_enabled' => '1']));
+
+// The endpoint's half of the same agreement, read from its source: it must
+// not refuse a site whose setting is merely empty.
+$likeSrc = (string)@file_get_contents(dirname(__DIR__) . '/process-like.php');
+$check('process-like.php reads community_enabled the default-on way',
+    strpos($likeSrc, "(\$settings['community_enabled'] ?? '1') === '0'") !== false);
+$check('process-like.php reads community_likes_enabled the default-on way',
+    strpos($likeSrc, "(\$settings['community_likes_enabled'] ?? '1') === '0'") !== false);
+$check('and no longer demands an exact 1 from either',
+    strpos($likeSrc, "?? '1') !== '1'") === false);
 
 // --- THE PART THAT MATTERS: it must not open the tile or start a drag ------
 $js = (string)file_get_contents($root . '/assets/js/ss-engine-tile-like.js');

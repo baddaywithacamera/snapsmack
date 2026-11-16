@@ -37,16 +37,30 @@
 if (!function_exists('snap_tile_like_enabled')) {
 
 /**
- * Likes must be on for the site, exactly as the dock requires.
+ * Likes must be on for the site, and this asks the question the same way
+ * every other reader of these two settings asks it.
  *
- * `!== '0'`, NOT `=== '1'`. The default-on gate caught my first version: a
- * setting that defaults ON must only be off when it says '0', because a row
- * holding an empty string -- which an admin save can leave -- reads as "not
- * '1'" and silently turns the feature off for a site that never asked. That
- * is the htbs_show_filmstrip fault the gate exists to stop recurring.
+ * `!== '0'`, NOT `=== '1'`. Both settings default ON, so they are only off
+ * when they say so: a row holding an empty string -- which an admin save can
+ * leave -- must not silently turn a feature off for a site that never asked.
+ * tests/default-on-switch-regression.php enforces that repo-wide.
+ *
+ * Muse found this control and process-like.php disagreeing before the branch
+ * landed: hearts drawn on a site the endpoint would 403. My first fix made
+ * the control strict to match the endpoint, and the default-on gate refused
+ * it -- correctly, because the ENDPOINT was the one breaking the rule. It
+ * read `!== '1'` while the dock at core/community-component.php:61 reads
+ * `!== '0'`, so the dock's like button has been on screen and 403ing on any
+ * site with an empty setting. That is fixed at process-like.php:40-41 in this
+ * same commit. Both ends now read the same way, and the way they read is the
+ * one the gate requires.
+ *
+ * It also now checks community_enabled, which it never did: likes cannot work
+ * with the community switched off, and the endpoint has always said so.
  */
 function snap_tile_like_enabled(array $settings): bool {
-    return (string)($settings['community_likes_enabled'] ?? '1') !== '0';
+    return (string)($settings['community_enabled'] ?? '1') !== '0'
+        && (string)($settings['community_likes_enabled'] ?? '1') !== '0';
 }
 
 /**
