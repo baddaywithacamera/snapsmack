@@ -104,6 +104,25 @@ $check('the engine posts to the root-relative endpoint, like the dock',
     str_contains($js, "fetch('/process-like.php'"));
 $check('and not to a path that resolves against whatever page you are on',
     !str_contains($js, "fetch('process-like.php'"));
+
+// THE CONVEYOR MUST CARRY THE HEART WITH THE PHOTOGRAPH.
+// GLIDE redistributes tiles into its inner rows by CLONING them. It cloned
+// the anchor, which was the whole tile until the heart became a SIBLING of
+// that anchor (a button inside a link is invalid and is announced
+// inconsistently). Cloning the anchor alone would copy the photograph and
+// leave its heart behind, so the same photograph would be likeable in one
+// row and not in another -- and nothing would look broken.
+//
+// THIS IS A SOURCE PIN, NOT A BEHAVIOUR TEST. It proves the engine reaches
+// for the host before falling back to the anchor; it does NOT prove a
+// redistributed inner row renders a working heart. That needs a browser and
+// belongs in the GLIDE rendered gate.
+$glide = (string)file_get_contents($root . '/assets/js/ss-engine-glide.js');
+$check('redistribution clones the tile host when there is one',
+    str_contains($glide, "tile.closest('.ss-tile-like-host') || tile"));
+$check('and still clones the bare anchor when there is not -- it fails safe',
+    str_contains($glide, 'unit.cloneNode(true)')
+    && !str_contains($glide, 'innerTracks[nextInner++ % innerTracks.length].append(tile.cloneNode(true))'));
 foreach (['pointerdown', 'mousedown', 'touchstart', 'click'] as $type) {
     $check("the engine intercepts {$type}, so no ancestor sees it",
         str_contains($js, "'" . $type . "'"));

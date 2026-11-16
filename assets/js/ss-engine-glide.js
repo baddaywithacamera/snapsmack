@@ -563,7 +563,24 @@
                 row.querySelectorAll('.glide-track a[href]').forEach(function (tile) {
                     if (seen.has(tile.href)) return;
                     seen.add(tile.href);
-                    innerTracks[nextInner++ % innerTracks.length].append(tile.cloneNode(true));
+                    // CLONE THE WHOLE TILE, NOT JUST THE PHOTOGRAPH'S LINK.
+                    //
+                    // This cloned the anchor, which WAS the whole tile until
+                    // SS-1323 put a heart beside it. The control is a SIBLING
+                    // of the anchor inside a positioned frame, because a
+                    // button nested inside a link is invalid and is announced
+                    // inconsistently by screen readers. Cloning the anchor
+                    // alone would copy the photograph into the inner rows and
+                    // leave its heart behind, so the same photograph would be
+                    // likeable in one row and not in another.
+                    //
+                    // Dedupe still keys on the anchor's href, which is the
+                    // photograph's identity wherever it sits. The frame
+                    // lookup FAILS SAFE: a conveyor with no frame -- every
+                    // skin before this restructure, and any wall without
+                    // hearts -- clones the anchor exactly as it always did.
+                    var unit = tile.closest('.ss-tile-like-host') || tile;
+                    innerTracks[nextInner++ % innerTracks.length].append(unit.cloneNode(true));
                 });
             });
         }
