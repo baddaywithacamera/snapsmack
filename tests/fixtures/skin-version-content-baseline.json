@@ -44,7 +44,7 @@
         },
         "glide": {
             "version": "0.1.32",
-            "files_sha256": "c70ab0ef21f5ed92932ff0bf8fb9067c6309aa10dedfca59be69d76281c5ea5b",
+            "files_sha256": "f8a26fcae8dad7ff5553dbed7ae27b7db1adfafc3c26c1b020d4cc89b9351ece",
             "manifest_css_sha256": "9ad69417b2483da3f07caa8edc3381a11c066b03c0a95a5c7154c381b23ca395"
         },
         "heuristic": {
