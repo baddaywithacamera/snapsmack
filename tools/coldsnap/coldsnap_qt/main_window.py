@@ -55,6 +55,20 @@ class MainWindow(QMainWindow):
         self.connect_panel = ConnectPanel()
         col.addWidget(self.connect_panel)
 
+        self.header_strip = QPushButton("")
+        self.header_strip.setObjectName("HeaderCollapsedStrip")
+        self.header_strip.setFixedHeight(22)
+        self.header_strip.setStyleSheet(
+            "QPushButton#HeaderCollapsedStrip { background: #141714; color: #b7d9b0;"
+            " border: none; border-bottom: 1px solid #2a302a; text-align: left;"
+            " padding: 0 14px; font-size: 11px; }"
+            "QPushButton#HeaderCollapsedStrip:hover { color: #76ff03; }"
+        )
+        self.header_strip.setToolTip("Click to expand site & mode bar (Ctrl+Shift+H)")
+        self.header_strip.clicked.connect(lambda: self.set_header_collapsed(False))
+        self.header_strip.setVisible(False)
+        col.addWidget(self.header_strip)
+
         cfg = lambda: self.connect_panel.config
 
         self.tabs = QTabWidget()
@@ -117,6 +131,13 @@ class MainWindow(QMainWindow):
         self._sync_blocks_action(
             self.take_mode.blocks_open(), self.take_mode.blocks_header_label())
 
+        self.collapse_header_btn = QPushButton("▲")
+        self.collapse_header_btn.setObjectName("Quiet")
+        self.collapse_header_btn.setToolTip("Collapse site & mode header (Ctrl+Shift+H)")
+        self.collapse_header_btn.setAccessibleName("Collapse site and mode header")
+        self.collapse_header_btn.clicked.connect(lambda: self.set_header_collapsed(True))
+        self.connect_panel.header_row.addWidget(self.collapse_header_btn)
+
         self.focus_btn = QPushButton("⛶")
         self.focus_btn.setObjectName("ShellAction")
         self.focus_btn.setCheckable(True)
@@ -135,7 +156,10 @@ class MainWindow(QMainWindow):
         self.tabs.currentChanged.connect(self._on_mode_changed)
         self.connect_panel.profile_combo.currentIndexChanged.connect(
             lambda _index: QTimer.singleShot(0, self.solo_mode.refresh_taxonomy))
+        self.connect_panel.profile_combo.currentIndexChanged.connect(
+            lambda _index: self._sync_site_context())
         self.connect_panel.sitesLoaded.connect(self.solo_mode.refresh_taxonomy)
+        self.connect_panel.sitesLoaded.connect(self._sync_site_context)
         saved_tab = int(self._window_settings.value("window/active_tab", 0))
         if 0 <= saved_tab < self.tabs.count():
             self.tabs.setCurrentIndex(saved_tab)
@@ -153,8 +177,16 @@ class MainWindow(QMainWindow):
         self._blocks_shortcut.activated.connect(self._toggle_blocks)
         self._focus_shortcut = QShortcut(QKeySequence("F11"), self)
         self._focus_shortcut.activated.connect(self.toggle_focus_mode)
+        self._header_shortcut = QShortcut(QKeySequence("Ctrl+Shift+H"), self)
+        self._header_shortcut.activated.connect(
+            lambda: self.set_header_collapsed(not self._header_collapsed))
         self._esc_focus_shortcut = QShortcut(QKeySequence("Escape"), self)
         self._esc_focus_shortcut.activated.connect(self._exit_focus_if_active)
+
+        self._header_collapsed = bool(self._window_settings.value("window/header_collapsed", False, type=bool))
+        if self._header_collapsed:
+            self.set_header_collapsed(True)
+        self._sync_site_context()
 
         self._handoff_timer = QTimer(self)
         self._handoff_timer.setInterval(600)
@@ -164,6 +196,31 @@ class MainWindow(QMainWindow):
 
         if self._restore_maximized:
             QTimer.singleShot(0, self.showMaximized)
+
+    def set_header_collapsed(self, collapsed: bool):
+        collapsed = bool(collapsed)
+        self._header_collapsed = collapsed
+        self._window_settings.setValue("window/header_collapsed", collapsed)
+        if not self._focus_mode:
+            self.connect_panel.setVisible(not collapsed)
+            self.tabs.tabBar().setVisible(not collapsed)
+            self.header_strip.setVisible(collapsed)
+        self._sync_header_strip()
+
+    def _sync_header_strip(self):
+        site_name = (
+            self.connect_panel.profile_combo.currentData()
+            or self.connect_panel.config.get("url")
+            or "no site selected"
+        )
+        mode_name = self.tabs.tabText(self.tabs.currentIndex()) if self.tabs.count() else ""
+        self.header_strip.setText(f"{site_name}  ·  {mode_name}    ▾")
+
+    def _sync_site_context(self):
+        self._sync_header_strip()
+        url = str(self.connect_panel.config.get("url") or "").strip()
+        if hasattr(self, "take_mode"):
+            self.take_mode.apply_canvas_background(url)
 
     def _on_mode_changed(self, index):
         suite_mode, label = self._tab_modes[index]
@@ -178,6 +235,7 @@ class MainWindow(QMainWindow):
             self.set_focus_mode(False)
         if index == 0:
             QTimer.singleShot(0, self.solo_mode.refresh_taxonomy)
+        self._sync_header_strip()
 
     def _toggle_blog(self):
         self.connect_panel.details_btn.toggle()

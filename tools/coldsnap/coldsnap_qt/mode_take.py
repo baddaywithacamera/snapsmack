@@ -442,6 +442,12 @@ class TakeMode(QWidget):
         QShortcut(QKeySequence("Ctrl+3"), self).activated.connect(
             self.details_toggle_btn.toggle)
         QShortcut(QKeySequence("Ctrl+0"), self).activated.connect(self._reset_hovered_zoom)
+        QShortcut(QKeySequence("Ctrl+="), self).activated.connect(
+            lambda: self._set_page_zoom(self._page_zoom + 10))
+        QShortcut(QKeySequence("Ctrl++"), self).activated.connect(
+            lambda: self._set_page_zoom(self._page_zoom + 10))
+        QShortcut(QKeySequence("Ctrl+-"), self).activated.connect(
+            lambda: self._set_page_zoom(self._page_zoom - 10))
         act.addWidget(self.details_toggle_btn)
 
         self.page_state_lbl = hint("1 block")
@@ -655,6 +661,40 @@ class TakeMode(QWidget):
         self.body.canvas.setFont(base)
         self.body.canvas.document().setDefaultFont(base)
         self._fit_page_card_width()
+
+    @staticmethod
+    def resolve_site_bg_color(site_url: str) -> str:
+        from PySide6.QtGui import QColor
+        url = str(site_url or "").strip()
+        if url:
+            try:
+                import snap_library
+                for key in ("site_bg", "page_bg", "background_color", "bg_color"):
+                    val = str(snap_library.meta(url, key, "") or "").strip()
+                    if val and QColor(val).isValid():
+                        return QColor(val).name()
+            except Exception:  # noqa: BLE001
+                pass
+        return theme.BG
+
+    def apply_canvas_background(self, site_url: str = "", explicit_bg: str = "") -> str:
+        from PySide6.QtGui import QColor
+        bg = explicit_bg.strip() if explicit_bg and QColor(explicit_bg.strip()).isValid() else self.resolve_site_bg_color(site_url)
+        c = QColor(bg)
+        if not c.isValid():
+            bg = theme.BG
+            c = QColor(bg)
+        lum = 0.299 * c.red() + 0.587 * c.green() + 0.114 * c.blue()
+        ruler = "#333333" if lum > 140 else theme.DIM
+        self._canvas_bg_color = bg
+        if hasattr(self, "_canvas_scroll"):
+            self._canvas_scroll.setStyleSheet(f"QScrollArea#CanvasWell {{ background: {bg}; border: none; }}")
+        if hasattr(self, "_canvas_host"):
+            self._canvas_host.setStyleSheet(f"QWidget#CanvasWell {{ background: {bg}; }}")
+        if hasattr(self, "body") and hasattr(self.body, "canvas"):
+            self.body.canvas._ruler_color = ruler
+            self.body.canvas.viewport().update()
+        return bg
 
     def _fit_page_card_width(self):
         pct = getattr(self, "_page_zoom", 100)

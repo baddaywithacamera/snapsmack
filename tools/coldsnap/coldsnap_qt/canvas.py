@@ -133,9 +133,42 @@ def mosaic_cells(canvas, data, width):
     key = (tuple(paths), layout, gap, w_int)
     if cache is not None and key in cache:
         return cache[key]
-    out = site_compute_layout(
-        images, width, gap, "natural",
+    # Compose at the site's 1200px desktop reference width whenever the editor
+    # card is wider than mobile (520px), then scale uniformly to the card width.
+    # Below 1200px, ss-engine-mosaic.js disables enforce_useful_size and stacks
+    # single full-width rows; composing at 1200px keeps Biggie WYSIWYG with the
+    # published desktop site at every page-zoom width.
+    ref_width = 1200.0 if width > 520 else float(width)
+    scale = (float(width) / ref_width) if ref_width > 0 else 1.0
+    raw_out = site_compute_layout(
+        images, ref_width, gap, "natural",
         "" if layout == "asymmetric" else layout)
+    if abs(scale - 1.0) > 1e-6:
+        out = {
+            "items": [
+                {
+                    **t,
+                    "x": t["x"] * scale,
+                    "y": t["y"] * scale,
+                    "width": t["width"] * scale,
+                    "height": t["height"] * scale,
+                }
+                for t in raw_out.get("items", [])
+            ],
+            "sections": [
+                {
+                    **s,
+                    "x": s.get("x", 0) * scale,
+                    "y": s.get("y", 0) * scale,
+                    "width": s.get("width", ref_width) * scale,
+                    "height": s.get("height", 0) * scale,
+                }
+                for s in raw_out.get("sections", [])
+            ],
+            "height": raw_out.get("height", 0.0) * scale,
+        }
+    else:
+        out = raw_out
     res = (paths, out)
     if cache is not None:
         if len(cache) > 64:
@@ -252,9 +285,23 @@ class _Objects(QPyTextObject):
             painter.setPen(QColor(theme.FAINT))
             painter.drawText(r, Qt.AlignCenter, f"{data.get('px', 20)} px gap")
         elif kind == "hr":
-            painter.setPen(QPen(QColor(theme.DIM), 1))
+            ruler = getattr(self.canvas, "_ruler_color", theme.DIM)
+            painter.setPen(QPen(QColor(ruler), 1))
             y = r.top() + r.height() // 2
             painter.drawLine(r.left(), y, r.right(), y)
+        if pos == getattr(self.canvas, "_selected_obj_pos", None):
+            painter.setPen(QPen(QColor(theme.ACCENT), 2))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(r.adjusted(1, 1, -1, -1))
+            close_r = QRect(max(r.left(), r.right() - 24), r.top() + 4, 20, 20)
+            painter.fillRect(close_r, QColor("#181a18"))
+            painter.setPen(QPen(QColor("#ff4f4f"), 1))
+            painter.drawRect(close_r)
+            painter.setPen(QColor("#ffffff"))
+            painter.drawText(close_r, Qt.AlignCenter, "✕")
+            rects = getattr(self.canvas, "_obj_close_rects", None)
+            if rects is not None:
+                rects[pos] = close_r
         painter.restore()
 
     def _draw_mosaic(self, painter, r, data):
@@ -611,6 +658,9 @@ class BiggieCanvas(QTextEdit):
         self._mosaic_layout_cache = {}
         self._mosaic_size_cache = {}
         self._mosaic_stat_cache = {}
+        self._selected_obj_pos = None
+        self._obj_close_rects = {}
+        self._ruler_color = theme.DIM
         self.setStyleSheet(
             "QTextEdit#BiggieCanvas { background: #ffffff; color: #1a1a1a;"
             " border: none; padding: 6px 0px; selection-background-color: #c8f5be;"
@@ -1007,6 +1057,22 @@ class BiggieCanvas(QTextEdit):
         pos = self.document().documentLayout().hitTest(point, Qt.FuzzyHit)
         return self._object_at(pos) if pos >= 0 else None
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            pt = event.position().toPoint()
+            for obj_pos, rect in list(self._obj_close_rects.items()):
+                if rect.contains(pt):
+                    self._remove_object(obj_pos)
+                    return
+            hit = self._object_under_mouse(event.position())
+            if hit:
+                self._selected_obj_pos = hit[2]
+                self.viewport().update()
+            elif self._selected_obj_pos is not None:
+                self._selected_obj_pos = None
+                self.viewport().update()
+        super().mousePressEvent(event)
+
     def mouseDoubleClickEvent(self, event):
         hit = self._object_under_mouse(event.position())
         if hit and hit[0] == "mosaic":
@@ -1042,6 +1108,8 @@ class BiggieCanvas(QTextEdit):
         menu.exec(event.globalPos())
 
     def _remove_object(self, pos: int):
+        self._selected_obj_pos = None
+        self._obj_close_rects.pop(pos, None)
         c = self.textCursor()
         c.beginEditBlock()
         c.setPosition(pos)
@@ -1137,9 +1205,15 @@ class BiggieCanvas(QTextEdit):
 
     # -- typing behaviour -----------------------------------------------------------
     def keyPressEvent(self, event):
+        key = event.key()
+        if self._selected_obj_pos is not None and key in (Qt.Key_Delete, Qt.Key_Backspace):
+            pos = self._selected_obj_pos
+            if self._object_at(pos):
+                self._remove_object(pos)
+                return
+            self._selected_obj_pos = None
         cur = self.textCursor()
         block = cur.block()
-        key = event.key()
         if key in (Qt.Key_Return, Qt.Key_Enter) and not (event.modifiers() & Qt.ShiftModifier):
             kind = _block_kind(block)
             # A paragraph on an object line goes BELOW the object, never inside it.
