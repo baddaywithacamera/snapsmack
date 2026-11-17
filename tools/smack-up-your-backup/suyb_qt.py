@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 
 import backup_engine
 from checkpoint import BackupCheckpoint
+import batch_job as batch_job_module
 import cloud_client
 import config as config_module
 import ftps_pins
@@ -113,6 +114,8 @@ class SuybWindow(QMainWindow):
         self._build()
         self._build_tray()
         self._load_profiles()
+        self._batch_jobs_dir = None
+        QTimer.singleShot(450, self._check_interrupted_batch_job)
         help_action = QAction("Help", self)
         help_action.setShortcut(QKeySequence.HelpContents)
         help_action.triggered.connect(self._show_help)
@@ -744,7 +747,52 @@ class SuybWindow(QMainWindow):
                 return None
         return runnable
 
-    def _start_backup(self, names, force_full=False, unattended=False):
+    def _check_interrupted_batch_job(self):
+        """On launch, detect any nonterminal multi-site batch job and offer RESUME / START FRESH / ABANDON."""
+        if self.busy():
+            return
+        jobs = batch_job_module.find_nonterminal_jobs(self._batch_jobs_dir)
+        if not jobs:
+            return
+        job = jobs[0]
+        completed, remaining = job.resume_plan()
+        if not remaining:
+            job.finalize_if_done()
+            return
+        box = QMessageBox(self)
+        box.setWindowTitle("Interrupted batch backup found")
+        box.setIcon(QMessageBox.Information)
+        box.setText(f"Resume interrupted fleet backup ({job.job_id})?")
+        box.setInformativeText(
+            f"Completed: {len(completed)} site(s)\n"
+            f"Remaining: {len(remaining)} site(s) (next: {remaining[0]})"
+        )
+        resume_btn = box.addButton("RESUME", QMessageBox.AcceptRole)
+        fresh_btn = box.addButton("START FRESH", QMessageBox.DestructiveRole)
+        abandon_btn = box.addButton("ABANDON", QMessageBox.RejectRole)
+        box.setDefaultButton(resume_btn)
+        box.exec()
+        chosen = box.clickedButton()
+        if chosen is resume_btn:
+            opts = job.data.get("options", {})
+            self._start_backup(
+                remaining,
+                force_full=bool(opts.get("force_full", False)),
+                unattended=False,
+                batch_job=job,
+                auto_resume_checkpoints=True,
+            )
+        elif chosen is fresh_btn:
+            job.abandon()
+            for name in remaining:
+                prof = profile_manager.load_profile(name) or {}
+                cp = BackupCheckpoint.load(prof.get("backup_dir", ""), prof.get("name", name))
+                if cp:
+                    cp.delete()
+        elif chosen is abandon_btn:
+            job.abandon()
+
+    def _start_backup(self, names, force_full=False, unattended=False, batch_job=None, auto_resume_checkpoints=False):
         resume_points = {}
         if unattended:
             # Tk's scheduled run: differential, settings bundled, never a prompt.
@@ -761,6 +809,9 @@ class SuybWindow(QMainWindow):
                 cp = BackupCheckpoint.load(
                     profile.get("backup_dir", ""), profile.get("name", name))
                 if not cp:
+                    continue
+                if auto_resume_checkpoints:
+                    resume_points[name] = cp
                     continue
                 box = QMessageBox(self)
                 box.setWindowTitle("Interrupted backup found")
@@ -807,26 +858,55 @@ class SuybWindow(QMainWindow):
         # A placeholder so busy() is true from this instant, before the worker
         # thread has built the first real engine.
         self.engine = _StartingEngine()
+        cloud_required = bool(global_cloud) or any(
+            bool((profile_manager.load_profile(n) or {}).get("cloud_provider"))
+            for n in names
+        )
+        if batch_job is None:
+            batch_job = batch_job_module.BatchJob.create(
+                list(names),
+                options={
+                    "force_full": force_full,
+                    "exit_package": exit_package,
+                    "include_settings": include_settings,
+                    "cloud_required": cloud_required,
+                },
+                jobs_dir=self._batch_jobs_dir,
+            )
         options = dict(force_full=force_full, global_cloud=global_cloud, resume_points=resume_points,
                        exit_package=exit_package, include_settings=include_settings,
-                       global_config=global_config, unattended=unattended)
+                       global_config=global_config, unattended=unattended, batch_job=batch_job)
         threading.Thread(target=self._run_backup_batch, args=(names, options), daemon=True).start()
         return True
 
     def _run_backup_batch(self, names, options):
         results = []
         total = len(names)
+        job = options.get("batch_job")
         asker = None if options["unattended"] else engine_asker(
             self.relay, self, "Download failure", "Abort backup", lambda: self.engine)
         for index, name in enumerate(names):
             if self._cancel_requested:
                 self.bridge.log.emit(f"{name}: skipped — the run was cancelled")
+                if job is not None:
+                    job.mark_site_result(
+                        name, zip_verified=False,
+                        cloud_required=bool(job.data["sites"].get(name, {}).get("cloud_required")),
+                        cloud_verified=False, cancelled=True, error="cancelled",
+                    )
                 results.append({"name": name, "success": False, "cancelled": True, "errors": []})
                 continue
             profile = profile_manager.load_profile(name)
             if not profile:
+                if job is not None:
+                    job.mark_site_result(
+                        name, zip_verified=False, cloud_required=False,
+                        cloud_verified=False, error="Profile could not be loaded",
+                    )
                 results.append({"name": name, "success": False, "errors": ["Profile could not be loaded"]})
                 continue
+            if job is not None:
+                job.mark_site_running(name)
             profile = dict(profile); profile["api_key"] = self._resolved_key(profile)
             profile["exit_package"] = bool(options["exit_package"] or profile.get("exit_package"))
             self.bridge.log.emit(f"{name}: starting backup" + (" (with exit package)" if profile["exit_package"] else ""))
@@ -846,6 +926,22 @@ class SuybWindow(QMainWindow):
             if self._pause_requested:
                 engine.pause()
             result = engine.run() or {}
+            cloud_req = bool(options.get("global_cloud") or profile.get("cloud_provider"))
+            zip_ok = bool(result.get("success"))
+            cloud_ok = bool(result.get("cloud_verified", zip_ok)) if cloud_req else True
+            if job is not None:
+                job.mark_site_result(
+                    name,
+                    zip_verified=zip_ok,
+                    cloud_required=cloud_req,
+                    cloud_verified=cloud_ok,
+                    cancelled=bool(result.get("cancelled")),
+                    evidence={
+                        "zip_path": result.get("zip_path", ""),
+                        "files_downloaded": result.get("files_downloaded", 0),
+                    },
+                    error="; ".join(result.get("errors", []) or []),
+                )
             results.append({"name": name, **result})
             if result.get("cancelled"):
                 self.bridge.log.emit(
@@ -853,6 +949,8 @@ class SuybWindow(QMainWindow):
                     f"{result.get('files_skipped', 0)} skipped, {result.get('files_failed', 0)} failed")
             elif not result.get("success"):
                 self.bridge.log.emit(f"{name}: backup needs attention; continuing with the remaining sites")
+        if job is not None:
+            job.finalize_if_done()
         self.bridge.finished.emit({
             "success": bool(results) and all(item.get("success") for item in results),
             "cancelled": any(item.get("cancelled") for item in results),
@@ -964,11 +1062,14 @@ class SuybWindow(QMainWindow):
             else "Backup needs attention. Details are above.")
         self._refresh_stats()
         for item in (result or {}).get("profiles", []):
-            if item.get("success"):
-                profile = profile_manager.load_profile(item.get("name"))
-                if profile:
+            profile = profile_manager.load_profile(item.get("name"))
+            if profile:
+                if item.get("success"):
                     profile["last_backup_date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-                    profile_manager.save_profile(profile)
+                    profile["last_backup_status"] = "ok"
+                else:
+                    profile["last_backup_status"] = "cancelled" if item.get("cancelled") else "failed"
+                profile_manager.save_profile(profile)
         if self.current_profile:
             refreshed = profile_manager.load_profile(self.current_profile["name"])
             if refreshed: self.current_profile = refreshed
