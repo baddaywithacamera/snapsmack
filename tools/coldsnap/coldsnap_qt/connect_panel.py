@@ -53,9 +53,9 @@ class ConnectPanel(QWidget):
 
         top = QHBoxLayout()
         self.header_row = top
-        site_label = QLabel("SITE")
-        site_label.setObjectName("ChromeLabel")
-        top.addWidget(site_label)
+        self.site_label = QLabel("SITE")
+        self.site_label.setObjectName("ChromeLabel")
+        top.addWidget(self.site_label)
         self.profile_combo = QComboBox()
         self.profile_combo.currentIndexChanged.connect(self._on_profile)
         top.addWidget(self.profile_combo, 1)
@@ -70,11 +70,11 @@ class ConnectPanel(QWidget):
         self.details_btn.toggled.connect(self._toggle_details)
         top.addWidget(self.details_btn)
 
-        help_btn = QPushButton("?  Help")
-        help_btn.setObjectName("Quiet")
-        help_btn.setToolTip("Open the help (F1)")
-        help_btn.clicked.connect(self._show_help)
-        top.addWidget(help_btn)
+        self.help_btn = QPushButton("?  Help")
+        self.help_btn.setObjectName("Quiet")
+        self.help_btn.setToolTip("Open the help (F1)")
+        self.help_btn.clicked.connect(self._show_help)
+        top.addWidget(self.help_btn)
         col.addLayout(top)
 
         # -- the expander ------------------------------------------------------
@@ -111,6 +111,13 @@ class ConnectPanel(QWidget):
     def add_header_action(self, widget):
         """Place one shell-level action before Connection details and Help."""
         self.header_row.insertWidget(max(0, self.header_row.count() - 2), widget)
+
+    def set_compact_window(self, compact: bool):
+        compact = bool(compact)
+        self.site_label.setVisible(not compact)
+        self.details_btn.setVisible(not compact)
+        self.status_lbl.setVisible(not compact)
+        self.help_btn.setText("?" if compact else "?  Help")
 
     # -- behaviour ------------------------------------------------------------
     def _show_help(self):

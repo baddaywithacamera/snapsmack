@@ -207,6 +207,8 @@ class TakeMode(QWidget):
     SUITE_MODE = O.MODE_SMACKTALK
     blocksStateChanged = Signal(bool, str)  # open, header label
     photosStateChanged = Signal(bool)       # right photos tray open
+    detailsStateChanged = Signal(bool)      # post details drawer open
+    exitFocusRequested = Signal()           # exit focus mode from format strip
 
     def __init__(self, app_config_provider, parent=None):
         super().__init__(parent)
@@ -439,9 +441,9 @@ class TakeMode(QWidget):
         self.save_state.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         act.addWidget(self.save_state, 1)
 
-        save_btn = QPushButton("Save as draft")
-        save_btn.clicked.connect(lambda: self._save(ready=False))
-        act.addWidget(save_btn)
+        self.save_btn = QPushButton("Save as draft")
+        self.save_btn.clicked.connect(lambda: self._save(ready=False))
+        act.addWidget(self.save_btn)
         clear_btn = QPushButton("Clear")
         clear_btn.setObjectName("Quiet")
         clear_btn.clicked.connect(self._clear)
@@ -503,6 +505,16 @@ class TakeMode(QWidget):
 
         self.ruler = _PageRuler(self._preview_width)
         self._set_page_zoom(self._page_zoom)
+        self.focus_exit_btn = QPushButton("⛶ Exit focus  F11")
+        self.focus_exit_btn.setObjectName("PreviewToggle")
+        self.focus_exit_btn.setFocusPolicy(Qt.NoFocus)
+        self.focus_exit_btn.setToolTip("Exit focus mode (F11 or Esc)")
+        self.focus_exit_btn.clicked.connect(self.exitFocusRequested.emit)
+        self.focus_exit_btn.setVisible(False)
+        strip_lay = self.body.format_strip.layout()
+        if strip_lay is not None:
+            strip_lay.addWidget(self.focus_exit_btn)
+
         centre = QVBoxLayout()
         centre.setContentsMargins(0, 0, 0, 0)
         centre.setSpacing(0)
@@ -586,11 +598,22 @@ class TakeMode(QWidget):
                 return True
         return super().eventFilter(obj, event)
 
+    def details_open(self) -> bool:
+        return bool(self.details_toggle_btn.isChecked())
+
+    def set_details_open(self, opened: bool):
+        opened = bool(opened)
+        if self.details_toggle_btn.isChecked() != opened:
+            self.details_toggle_btn.setChecked(opened)
+        else:
+            self._toggle_post_details(opened)
+
     def _toggle_post_details(self, opened: bool):
         opened = bool(opened)
         self._compose_details.setVisible(opened)
         self._view_settings.setValue("take/details_open", opened)
         self._sync_details_btn(opened)
+        self.detailsStateChanged.emit(opened)
 
     def _set_page_zoom(self, pct: int):
         pct = max(70, min(160, int(pct or 100)))
@@ -700,6 +723,14 @@ class TakeMode(QWidget):
         if hasattr(self, "act_layout"):
             self.act_layout.setContentsMargins(8 if tight else 12, 6, 8 if tight else 12, 8)
             self.act_layout.setSpacing(4 if tight else 6)
+        if hasattr(self, "save_btn"):
+            self.save_btn.setText("Save" if tight else "Save as draft")
+        if hasattr(self, "queue_btn"):
+            self.queue_btn.setText("QUEUE" if tight else "QUEUE POST")
+        if hasattr(self, "preview_desktop_btn"):
+            self.preview_desktop_btn.setText("760" if tight else "Desktop 760")
+        if hasattr(self, "preview_phone_btn"):
+            self.preview_phone_btn.setText("360" if tight else "Phone 360")
         if hasattr(self, "gutter_tag"):
             self.gutter_tag.setFixedWidth(32 if tight else 52)
         if hasattr(self, "_well_layout"):
