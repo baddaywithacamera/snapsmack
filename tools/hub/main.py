@@ -112,6 +112,7 @@ ROSTER = [
     ("SMACK YOUR MOUTH",    "comments: mod + reply", [os.path.join(_R, "smack-your-mouth", "smackmouth.exe")]),
     ("SHOTS FIRED",         "schedule board",       [os.path.join(_R, "shots-fired", "shots-fired.exe")]),
     ("CRONOMETER",          "fleet cron health",    [os.path.join(_R, "cronometer", "cronometer.exe")]),
+    ("KEYS PLEASE",         "API key manager & audit", [os.path.join(_R, "keysplease", "keysplease.exe")]),
 ]
 
 TOOL_ICON_FILES = {
@@ -126,6 +127,7 @@ TOOL_ICON_FILES = {
     "SHOTS FIRED": "shotsfired-simple.ico",
     "CRONOMETER": "cronometer-simple.ico",
     "FED UP": "fed-up.ico",
+    "KEYS PLEASE": "keysplease-simple.ico",
 }
 
 TOOL_IMAGE_FILES = {

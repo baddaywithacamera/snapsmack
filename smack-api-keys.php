@@ -166,13 +166,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'revok
 
 // --- DELETE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+    require_once __DIR__ . '/core/ohsnap-keys-helpers.php';
     $key_id = (int)($_POST['key_id'] ?? 0);
-    if ($key_id > 0) {
-        $pdo->prepare("DELETE FROM snap_ohsnap_keys WHERE id = ? AND is_active = 0")
-            ->execute([$key_id]);
-        header('Location: smack-api-keys.php?msg=KEY+DELETED');
+    $del = snap_ohsnap_key_delete($pdo, $key_id);
+    if (!$del['ok']) {
+        header('Location: smack-api-keys.php?err=' . urlencode((string)($del['error'] ?? 'DELETE FAILED')));
         exit;
     }
+    header('Location: smack-api-keys.php?msg=KEY+DELETED');
+    exit;
 }
 
 // --- AUTHORIZE BULK IMPORT (step-up: password + TOTP) ---
