@@ -558,7 +558,7 @@ if (($resource === 'keys/revoke' || $resource === 'keys/delete') && $method === 
             $_SESSION['user_id'] = $admin_id;
         }
     }
-    $ra = reauth_verify($pdo, $pw, $totp);
+    $ra = snap_ohsnap_keys_stepup($pdo, $pw, $totp);
     if (!$ra['ok']) {
         $code = !empty($ra['locked']) ? 429 : 403;
         ms_err((string)$ra['error'], $code);

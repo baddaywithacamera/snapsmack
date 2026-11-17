@@ -89,4 +89,69 @@ def test_create_key_writes_straight_to_vault_and_never_displays_raw_key():
         assert win.totp_input.text() == ""
 
 
+def test_vault_write_failure_leaves_no_orphan_active_key():
+    _app()
+
+    class _FailingVault(dict):
+        def __setitem__(self, k, v):
+            raise RuntimeError("vault locked")
+
+    with tempfile.TemporaryDirectory(dir=os.path.dirname(__file__)) as td:
+        log_file = pathlib.Path(td) / "actions.jsonl"
+        prov = FakeKeysProvider(vault_store={})
+        prov.vault = _FailingVault()
+        before_active = sum(1 for r in prov.list_keys() if r.is_active)
+        win = MainWindow(provider=prov, log_path=str(log_file))
+        win.pw_input.setText("admin-pass")
+        win.totp_input.setText("123456")
+        win.create_site_edit.setText("https://orphan-check.example")
+        win.create_type_combo.setCurrentText("sybu")
+
+        prefix = win.create_key_to_vault()
+        assert prefix == ""
+        assert "Create refused" in win.status_lbl.text()
+        # No orphan active key remains on the server
+        after_active = sum(1 for r in prov.list_keys() if r.is_active)
+        assert after_active == before_active
+        assert any(
+            r.site_url == "https://orphan-check.example" and not r.is_active
+            for r in prov.list_keys()
+        )
+
+
+def test_active_key_delete_refused_and_batch_preview_matches_execution():
+    _app()
+    import pytest
+
+    with tempfile.TemporaryDirectory(dir=os.path.dirname(__file__)) as td:
+        log_file = pathlib.Path(td) / "actions.jsonl"
+        prov = FakeKeysProvider(vault_store={})
+        win = MainWindow(provider=prov, log_path=str(log_file))
+        win.pw_input.setText("admin-pass")
+        win.totp_input.setText("123456")
+
+        # Negative control 1: provider refuses deleting an active key directly
+        with pytest.raises(PermissionError, match="SS-1400"):
+            prov.delete_key(101, "admin-pass", "123456")
+
+        # Negative control 2: mixed selection (active 101/102 + revoked 201) disables delete button
+        # and preview_batch("delete") excludes active keys, keeping only revoked 201
+        win.table.selectAll()
+        assert not win.preview_delete_btn.isEnabled()
+        assert [r.key_id for r in win.preview_batch("delete")] == [201]
+
+        # Batch preview for revoke includes ONLY active keys (101, 102) and matches execution 1:1
+        planned = win.preview_batch("revoke")
+        planned_ids = [r.key_id for r in planned]
+        assert planned_ids == [101, 102]
+        assert win.preview_list.count() == 2
+        win.confirm_input.setText("REVOKE 2 KEYS")
+        assert win.execute_batch() == 2
+
+        lines = [json.loads(l) for l in log_file.read_text(encoding="utf-8").strip().splitlines()]
+        assert [l["key_id"] for l in lines] == planned_ids
+        raw_log = log_file.read_text(encoding="utf-8")
+        assert "admin-pass" not in raw_log and "123456" not in raw_log
+
+
 # ===== SNAPSMACK EOF =====
