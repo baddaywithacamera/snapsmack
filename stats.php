@@ -49,10 +49,40 @@ try {
     } catch (Throwable $e) { /* snap_settings shape lagged — leave empty */ }
 
     // Post count — guarded for the same reason.
+    //
+    // NOTE ON THE NAME, because it has already misled once: this field counts
+    // PHOTOGRAPHS, not posts. It is COUNT(*) of published snap_images, which
+    // is why a skin card reading "207 photos" off it is correct. It keeps its
+    // name because the skin cards and other consumers read it, and renaming a
+    // public field breaks every site that has not updated yet.
     $posts = 0;
     try {
         $posts = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
     } catch (Throwable $e) { /* snap_images shape lagged — leave zero */ }
+
+    // post_count — the REAL post count, added for the snapsmack.ca fleet card.
+    //
+    // FROM snapsmack_content_counts(), WHICH IS WHAT THE HUB ALREADY COUNTS,
+    // so the front page and the hub's TOTAL POSTS tile agree by construction
+    // rather than by eye: core/multisite-api.php:677 feeds that tile from the
+    // same helper.
+    //
+    // A plain COUNT of snap_posts would be WRONG on a photoblog, which is most
+    // of the fleet. There, a standalone image IS a post and is never wrapped
+    // in snap_posts, so the helper counts solo images plus each grouped post
+    // once, and only uses snap_posts on a non-photoblog site. That is the
+    // difference between 20,423 and a number far smaller.
+    //
+    // Null, not zero, when it cannot be determined: a site whose schema lags
+    // must report "I don't know" rather than "I have no posts", because the
+    // fleet card sums these and a zero would quietly drag the total down.
+    $post_count = null;
+    try {
+        require_once __DIR__ . '/core/stats-logger.php';
+        if (function_exists('snapsmack_content_counts')) {
+            $post_count = (int)(snapsmack_content_counts($pdo)['posts'] ?? 0);
+        }
+    } catch (Throwable $e) { /* leave null — unknown is not zero */ }
 
     // Stats — snap_stats_daily and img_view_seed can be absent on an install whose
     // schema lags the code (older version, or a column-add that hasn't applied yet).
@@ -133,6 +163,7 @@ try {
     echo json_encode([
         'site_name'    => $settings['site_name']    ?? 'SnapSmack Site',
         'posts'        => $posts,
+        'post_count'   => $post_count,
         'views_30d'    => (int)($stats['views_30d']       ?? 0),
         'unique_30d'   => (int)($stats['unique_30d']      ?? 0),
         'views_all'    => $views_all,

@@ -96,16 +96,94 @@ if (($junk['sites'] ?? null) !== 3) {
     $failures[] = 'the site tally mishandled a non-array row';
 }
 
-// --- 6. no invented post count -----------------------------------------
-if (array_key_exists('posts', (array)$summary)) {
-    $failures[] = 'the summary publishes a posts figure. /stats.php has no '
-        . 'field for it -- its "posts" IS the photograph count -- so any '
-        . 'separate number would be invented, and it would be on the front '
-        . 'page';
+// --- 6. POSTS ONLY WHEN EVERY REPORTER ANSWERED -------------------------
+// post_count arrives with 998D. While the fleet is mixed, a partial sum is a
+// wrong number that LOOKS right -- smaller than the truth, on the front page,
+// with nothing on screen to say it is incomplete. The card must keep its
+// photographs-only wording until every reporting site can answer.
+$rowp = static fn(int $photos, ?int $posts): array =>
+    ['site_name' => 'A site', 'posts' => $photos, 'post_count' => $posts];
+
+$all = $summarise(['a.ca' => $rowp(207, 180), 'b.ca' => $rowp(1000, 900)]);
+if (($all['posts'] ?? null) !== 1080) {
+    $failures[] = 'a fully updated fleet did not sum post_count: got '
+        . var_export($all['posts'] ?? null, true) . ', expected 1080';
+}
+if (($all['photos'] ?? null) !== 1207) {
+    $failures[] = 'adding posts disturbed the photograph total';
+}
+
+$mixed = $summarise(['a.ca' => $rowp(207, 180), 'b.ca' => $rowp(1000, null)]);
+if (array_key_exists('posts', (array)$mixed)) {
+    $failures[] = 'a MIXED fleet published a partial post total ('
+        . var_export($mixed['posts'] ?? null, true) . '). One site short of '
+        . '998D and the front page understates the project.';
+}
+if (($mixed['photos'] ?? null) !== 1207) {
+    $failures[] = 'a mixed fleet lost its photograph total too';
+}
+
+// A site reporting zero posts HAS answered, so it counts as a reporter.
+$zero = $summarise(['a.ca' => $rowp(207, 180), 'b.ca' => $rowp(5, 0)]);
+if (($zero['posts'] ?? null) !== 180) {
+    $failures[] = 'a site honestly reporting 0 posts was treated as not '
+        . 'having answered';
+}
+
+// Pre-998D fleet: nobody reports it, so no posts figure at all.
+$older = $summarise(['a.ca' => $row(207), 'b.ca' => $row(1000)]);
+if (array_key_exists('posts', (array)$older)) {
+    $failures[] = 'a fleet with no post_count anywhere still published a '
+        . 'posts figure';
+}
+
+// Junk must not count as an answer.
+$junkp = $summarise(['a.ca' => $rowp(207, 180),
+                     'b.ca' => ['posts' => 5, 'post_count' => 'lots']]);
+if (array_key_exists('posts', (array)$junkp)) {
+    $failures[] = 'a non-numeric post_count was accepted as a report';
+}
+
+if (strpos($helper, '20423') !== false || strpos($helper, '24553') !== false) {
+    $failures[] = "yesterday's hub figures are hard-coded in the helper";
 }
 if (strpos($helper, '20423') !== false || strpos($helper, '24553') !== false) {
     $failures[] = "yesterday's hub figures are hard-coded in the helper; they "
         . 'would go stale silently on a public page';
+}
+
+// --- 7. THE RESPONSE MAPPING, executed -----------------------------------
+// A mutation turned the post_count mapping into (int)(... ?? 0), which makes
+// every pre-998D site claim ZERO POSTS rather than "unknown". That counts as
+// an answer, so the guard above would publish a partial fleet total as a
+// complete one. The guard cannot save you from a lie told upstream of it, so
+// the mapping is a function now and this runs it.
+require_once $root . '/projects/snapsmack-ca/includes/stats-row-shim.php';
+
+$absent = ss_skin_stats_row(['site_name' => 'A site', 'posts' => 207]);
+if ($absent['post_count'] !== null) {
+    $failures[] = 'a response with no post_count stored '
+        . var_export($absent['post_count'], true) . ' instead of null, so a '
+        . 'site that has not updated would be counted as having answered';
+}
+$present = ss_skin_stats_row(['posts' => 207, 'post_count' => 180]);
+if ($present['post_count'] !== 180) {
+    $failures[] = 'a reported post_count was not kept';
+}
+$zeroed = ss_skin_stats_row(['posts' => 5, 'post_count' => 0]);
+if ($zeroed['post_count'] !== 0) {
+    $failures[] = 'an honest zero was discarded; a site with no posts has '
+        . 'still answered';
+}
+foreach (['lots', '', [], null] as $junk) {
+    $row = ss_skin_stats_row(['posts' => 5, 'post_count' => $junk]);
+    if ($row['post_count'] !== null) {
+        $failures[] = 'a non-numeric post_count (' . var_export($junk, true)
+            . ') was kept as ' . var_export($row['post_count'], true);
+    }
+}
+if ($absent['posts'] !== 207) {
+    $failures[] = 'the photograph count was lost from the row';
 }
 
 if ($failures) {

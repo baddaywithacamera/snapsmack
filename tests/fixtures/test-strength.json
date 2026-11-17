@@ -743,14 +743,20 @@
         ]
     },
     "fleet-summary-fails-soft-regression.php": {
-        "assertions": 12,
-        "predicates": 5,
+        "assertions": 24,
+        "predicates": 9,
         "thresholds": [
             2,
             3,
             3,
             50,
+            180,
+            180,
             207,
+            207,
+            1080,
+            1207,
+            1207,
             1219
         ]
     },

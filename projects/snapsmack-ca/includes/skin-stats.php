@@ -29,6 +29,38 @@ $_skin_demo_sites = [
     'curbappeal.photoblogs.fyi'       => 'https://curbappeal.photoblogs.fyi',
 ];
 
+if (!function_exists('ss_skin_stats_row')) {
+    /**
+     * One site's /stats.php response, reduced to what the cards and the fleet
+     * card use.
+     *
+     * EXTRACTED SO IT CAN BE RUN. It lived inline in the curl loop, where no
+     * test could reach it -- and a mutation proved that mattered: turning the
+     * post_count mapping into (int)(... ?? 0) made every pre-998D site report
+     * ZERO POSTS instead of "unknown", which counts as having answered and
+     * would publish a partial fleet total as if it were complete. The summary
+     * guard below cannot save you from a lie told upstream of it.
+     */
+    function ss_skin_stats_row(array $data): array {
+        return [
+            'site_name' => $data['site_name'] ?? '',
+            // NAMED 'posts', COUNTS PHOTOGRAPHS. Kept for the skin cards.
+            'posts' => (int)($data['posts'] ?? 0),
+            // NULL, NOT ZERO, when absent: a site that has not updated to
+            // 998D does not know its post count, and "I don't know" must not
+            // read as "I have none".
+            'post_count' => isset($data['post_count']) && is_numeric($data['post_count'])
+                ? (int)$data['post_count'] : null,
+            'views_30d' => (int)($data['views_30d'] ?? 0),
+            'unique_30d' => (int)($data['unique_30d'] ?? 0),
+            'views_all' => (int)($data['views_all'] ?? 0),
+            'unique_all' => (int)($data['unique_all'] ?? 0),
+            'version' => $data['version'] ?? '',
+            'active_since' => $data['active_since'] ?? null,
+        ];
+    }
+}
+
 $_skin_demo_stats = [];
 $_skin_stats_cache = __DIR__ . '/stats-cache.json';
 $_skin_stats_cache_ttl = 3600;
@@ -74,16 +106,7 @@ if ((empty($_skin_demo_stats) || !empty($_skin_missing_stats)) && function_exist
         if ($_skin_code === 200 && $_skin_body) {
             $_skin_data = json_decode($_skin_body, true);
             if (is_array($_skin_data) && !isset($_skin_data['error'])) {
-                $_skin_demo_stats[$_skin_domain] = [
-                    'site_name' => $_skin_data['site_name'] ?? '',
-                    'posts' => (int)($_skin_data['posts'] ?? 0),
-                    'views_30d' => (int)($_skin_data['views_30d'] ?? 0),
-                    'unique_30d' => (int)($_skin_data['unique_30d'] ?? 0),
-                    'views_all' => (int)($_skin_data['views_all'] ?? 0),
-                    'unique_all' => (int)($_skin_data['unique_all'] ?? 0),
-                    'version' => $_skin_data['version'] ?? '',
-                    'active_since' => $_skin_data['active_since'] ?? null,
-                ];
+                $_skin_demo_stats[$_skin_domain] = ss_skin_stats_row($_skin_data);
             }
         }
     }
@@ -121,8 +144,14 @@ if ((empty($_skin_demo_stats) || !empty($_skin_missing_stats)) && function_exist
 $_skin_fleet_summary = null;
 $_skin_fleet_sites = 0;
 $_skin_fleet_photos = 0;
+$_skin_fleet_posts = 0;
+$_skin_fleet_posts_reported = 0;
 foreach ($_skin_demo_stats as $_skin_row) {
     if (!is_array($_skin_row)) continue;
+    if (isset($_skin_row['post_count']) && is_numeric($_skin_row['post_count'])) {
+        $_skin_fleet_posts_reported++;
+        $_skin_fleet_posts += max(0, (int)$_skin_row['post_count']);
+    }
     // A reporter with no count is still a site that answered; it contributes
     // to the site tally and nothing to the photographs.
     $_skin_fleet_sites++;
@@ -133,8 +162,21 @@ if ($_skin_fleet_sites > 0 && $_skin_fleet_photos > 0) {
         'sites' => $_skin_fleet_sites,
         'photos' => $_skin_fleet_photos,
     ];
+    // POSTS ONLY WHEN EVERY REPORTING SITE ANSWERED WITH ONE.
+    //
+    // post_count arrives with 998D. Until the whole fleet has updated, some
+    // sites report it and some do not, and a partial sum is a WRONG NUMBER
+    // THAT LOOKS RIGHT -- smaller than the truth, on the front page, with
+    // nothing on screen to say it is incomplete. That is worse than the card
+    // saying nothing about posts, so the card keeps its photographs-only
+    // wording until every reporter can answer.
+    if ($_skin_fleet_posts_reported === $_skin_fleet_sites
+            && $_skin_fleet_posts > 0) {
+        $_skin_fleet_summary['posts'] = $_skin_fleet_posts;
+    }
 }
-unset($_skin_row, $_skin_fleet_sites, $_skin_fleet_photos);
+unset($_skin_row, $_skin_fleet_sites, $_skin_fleet_photos,
+      $_skin_fleet_posts, $_skin_fleet_posts_reported);
 
 if (!function_exists('ss_skin_card_stats')) {
     function ss_skin_card_stats(string $domain, array $all): string {
