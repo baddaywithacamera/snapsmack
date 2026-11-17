@@ -543,6 +543,51 @@ if ($resource === 'provision-key' && $method === 'POST') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINTS: multisite/keys, multisite/keys/revoke, multisite/keys/delete
+// Remote key ledger & lifecycle for KEYS PLEASE (SS-1398 / SS-1400).
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'keys' && $method === 'GET') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub may inspect fleet keys', 403);
+    if ($ms_key_scope !== 'full') ms_err('A full hub key is required', 403);
+    require_once __DIR__ . '/ohsnap-keys-helpers.php';
+    ms_ok(['keys' => snap_ohsnap_keys_list($pdo)]);
+}
+
+if (($resource === 'keys/revoke' || $resource === 'keys/delete') && $method === 'POST') {
+    if ($node['role'] !== 'hub') ms_err('Only a hub may manage keys on this node', 403);
+    if ($ms_key_scope !== 'full') ms_err('A full hub key is required', 403);
+    require_once __DIR__ . '/ohsnap-keys-helpers.php';
+    require_once __DIR__ . '/reauth.php';
+
+    $k_body = json_decode(file_get_contents('php://input') ?: '', true) ?: [];
+    $key_id = (int)($k_body['key_id'] ?? 0);
+    $pw     = (string)($k_body['reauth_password'] ?? '');
+    $totp   = (string)($k_body['reauth_totp'] ?? '');
+
+    if (empty($_SESSION['user_id'])) {
+        $admin_id = (int)$pdo->query(
+            "SELECT id FROM snap_users WHERE user_role IN ('admin', 'owner') ORDER BY id ASC LIMIT 1"
+        )->fetchColumn();
+        if ($admin_id > 0) {
+            $_SESSION['user_id'] = $admin_id;
+        }
+    }
+    $ra = reauth_verify($pdo, $pw, $totp);
+    if (!$ra['ok']) {
+        $code = !empty($ra['locked']) ? 429 : 403;
+        ms_err((string)$ra['error'], $code);
+    }
+
+    $res = ($resource === 'keys/revoke')
+        ? snap_ohsnap_key_revoke($pdo, $key_id)
+        : snap_ohsnap_key_delete($pdo, $key_id);
+    if (!$res['ok']) {
+        ms_err((string)($res['error'] ?? 'Key action failed'), (int)$res['status']);
+    }
+    ms_ok(['key_id' => $key_id, 'action' => $resource === 'keys/revoke' ? 'revoked' : 'deleted']);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: multisite/run-crons
 // Fleet cron driver. CRONOMETER (or any full-key caller) hits this so a site's
 // due jobs run even with zero visitor traffic and no system crontab. It just
