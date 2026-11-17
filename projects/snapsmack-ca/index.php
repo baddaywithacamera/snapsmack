@@ -120,7 +120,7 @@ $page_css = <<<'CSS'
 .home-rhythm-right { width: 66.6667%; margin-left: auto; }
 
 /* --- THE DELAY: the date moved; the standard did not --- */
-#running-late { padding: 68px 0; background: #5b1016; color: var(--white); border-top: 8px solid var(--red); }
+#running-late { padding: 68px 0; background: var(--red); color: var(--white); border-top: 8px solid var(--black); }
 #running-late .site-discovery-kicker { color: var(--white); }
 #running-late h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
 .running-late-copy { max-width: 920px; }
@@ -185,13 +185,14 @@ $page_css = <<<'CSS'
 
 /* --- THREE PILLARS: the order is the policy --- */
 #three-pillars { padding: 64px 0; color: #ddd; background: #25272a; border-top: 8px solid var(--red); }
+#three-pillars .site-discovery-kicker { color: var(--white); }
 #three-pillars h2 { color: var(--white); }
 .three-pillars-copy { width: 100%; font-size: 21.25px; line-height: 1.55; }
 .three-pillars-copy p + p { margin-top: 22px; }
 .three-pillars-copy strong { color: var(--white); font-family: Arial Black, Arial, sans-serif; }
 
 /* --- SCALE: one fleet, one dashboard --- */
-#scale { padding: 64px 0; color: #ddd; background: #111; border-top: 8px solid var(--red); }
+#scale { padding: 64px 0; color: #ddd; background: #000; border-top: 8px solid var(--red); }
 #scale h2 { color: var(--white); }
 .scale-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: start; }
 .scale-shot { display: block; width: 100%; padding: 0; border: 1px solid #777; background: none; cursor: zoom-in; }

@@ -11,6 +11,104 @@ const output = process.env.SNAPSMACK_BROWSER_OUTPUT
 const widths = [1920, 1440, 1024];
 const pages = ['index.php', 'brass-tacks.php', 'features.php'];
 
+const interactiveSelector = [
+  'a[href]',
+  'button:not([aria-hidden="true"])',
+  'input:not([type="hidden"]):not([aria-hidden="true"])',
+  'select:not([aria-hidden="true"])',
+  'textarea:not([aria-hidden="true"])',
+  '[tabindex]:not([tabindex="-1"]):not([aria-hidden="true"])',
+].join(', ');
+
+const paletteViolations = async (page, state = 'normal', interactiveIndex = null) => page.evaluate(({
+  state,
+  interactiveIndex,
+  interactiveSelector,
+}) => {
+  const parseColour = value => {
+    const parts = (value.match(/[\d.]+/g) || []).map(Number);
+    if (parts.length < 3) return null;
+    return {
+      red: parts[0],
+      green: parts[1],
+      blue: parts[2],
+      alpha: parts.length > 3 ? parts[3] : 1,
+    };
+  };
+  const allowed = value => {
+    const colour = parseColour(value);
+    if (!colour || colour.alpha === 0) return true;
+    const grey = colour.red === colour.green && colour.green === colour.blue;
+    if (grey) return true;
+    if (colour.alpha !== 1) return false;
+    const approved = new Set([
+      '212,0,0',
+      '245,10,10',
+      '37,39,42',
+      '48,50,54',
+      '64,67,72',
+      '104,107,112',
+      '119,122,127',
+      '213,214,216',
+    ]);
+    return approved.has(`${colour.red},${colour.green},${colour.blue}`);
+  };
+  const label = node => {
+    const id = node.id ? `#${node.id}` : '';
+    const classes = typeof node.className === 'string' && node.className.trim()
+      ? `.${node.className.trim().replace(/\s+/g, '.')}`
+      : '';
+    return `${node.tagName.toLowerCase()}${id}${classes}`;
+  };
+  const renderedBorders = style => [
+    ['borderTopColor', style.borderTopColor, style.borderTopStyle, style.borderTopWidth],
+    ['borderRightColor', style.borderRightColor, style.borderRightStyle, style.borderRightWidth],
+    ['borderBottomColor', style.borderBottomColor, style.borderBottomStyle, style.borderBottomWidth],
+    ['borderLeftColor', style.borderLeftColor, style.borderLeftStyle, style.borderLeftWidth],
+  ].filter(([, , borderStyle, width]) => borderStyle !== 'none' && Number.parseFloat(width) > 0);
+  const violations = [];
+  const interactive = interactiveIndex === null
+    ? null
+    : document.querySelectorAll(interactiveSelector)[interactiveIndex];
+  const nodes = interactive
+    ? [interactive, ...interactive.querySelectorAll('*')]
+    : [...document.querySelectorAll('body *')];
+  for (const node of nodes) {
+    if (node.getClientRects().length === 0) continue;
+    const style = getComputedStyle(node);
+    const ownsText = [...node.childNodes].some(child => (
+      child.nodeType === Node.TEXT_NODE && child.textContent.trim() !== ''
+    ));
+    const properties = [
+      ...(ownsText || node.matches('input, select, textarea') ? [['color', style.color]] : []),
+      ['backgroundColor', style.backgroundColor],
+      ...renderedBorders(style).map(([property, value]) => [property, value]),
+    ];
+    for (const [property, value] of properties) {
+      if (!allowed(value)) violations.push({ state, node: label(node), property, value });
+    }
+  }
+  return violations;
+}, { state, interactiveIndex, interactiveSelector });
+
+const interactivePaletteViolations = async page => {
+  const violations = [];
+  const controls = page.locator(interactiveSelector);
+  const count = await controls.count();
+  for (let index = 0; index < count; index += 1) {
+    const control = controls.nth(index);
+    if (!await control.isVisible()) continue;
+    await control.hover({ force: true });
+    violations.push(...await paletteViolations(page, `hover:${index}`, index));
+    await control.focus();
+    violations.push(...await paletteViolations(page, `focus:${index}`, index));
+  }
+  return [...new Map(violations.map(violation => [
+    `${violation.node}:${violation.property}:${violation.value}`,
+    violation,
+  ])).values()];
+};
+
 (async () => {
   fs.mkdirSync(output, { recursive: true });
   const browser = await chromium.launch({ headless: true, channel: 'msedge' });
@@ -25,7 +123,7 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
           await page.locator('#built-for-use').scrollIntoViewIfNeeded();
           await page.waitForFunction(() => {
             const images = Array.from(document.querySelectorAll('#built-for-use .receipt-card img'));
-            return images.length === 10 && images.every(image => image.complete && image.naturalWidth > 0);
+            return images.length === 11 && images.every(image => image.complete && image.naturalWidth > 0);
           });
         }
 
@@ -137,7 +235,7 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
                 const block = wrap
                   ? wrap.querySelector(selector === '#built-for-use'
                     ? ':scope > .built-for-use-layout > .built-for-use-copy-wrap'
-                    : ':scope > .home-rhythm-right')
+                    : ':scope > .why-blog-layout > .why-blog-copy-wrap')
                   : null;
                 const wrapStyle = wrap ? getComputedStyle(wrap) : null;
                 const wrapRect = wrap ? wrap.getBoundingClientRect() : null;
@@ -175,7 +273,9 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
                   stackColumns: stack ? getComputedStyle(stack).gridTemplateColumns : '',
                   copyTop: copyRect ? copyRect.top : null,
                   copyLeft: copyRect ? copyRect.left : null,
+                  copyRight: copyRect ? copyRect.right : null,
                   asideTop: asideRect ? asideRect.top : null,
+                  asideLeft: asideRect ? asideRect.left : null,
                   asideRight: asideRect ? asideRect.right : null,
                   valid: cards.every(card => {
                     const image = card.querySelector('img');
@@ -210,12 +310,22 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
 
         if (pathname === 'index.php') {
           assert.deepEqual(measured.beige, [], `${width} ${pathname}: beige-family background remains`);
+          assert.deepEqual(
+            await paletteViolations(page),
+            [],
+            `${width} ${pathname}: normal state uses a colour outside black/white/grey/bright-red`,
+          );
+          assert.deepEqual(
+            await interactivePaletteViolations(page),
+            [],
+            `${width} ${pathname}: hover/focus state uses a colour outside black/white/grey/bright-red`,
+          );
         }
         assert.equal(measured.bannerCount, 1, `${width} ${pathname}: closed-beta banner missing or duplicated`);
         assert.notEqual(measured.bannerDisplay, 'none', `${width} ${pathname}: closed-beta banner hidden`);
         assert.equal(measured.overflow, false, `${width} ${pathname}: horizontal overflow`);
         if (pathname === 'index.php') {
-          assert.equal(measured.bands.length, 13, `${width}: unexpected homepage band count`);
+          assert.equal(measured.bands.length, 14, `${width}: unexpected homepage band count`);
           assert.equal(measured.bands.some(band => band.height === 0), false, `${width}: collapsed homepage band`);
           for (const pair of measured.adjacentDistances) {
             assert.ok(pair.distance >= 60, `${width}: adjacent bands ${pair.pair} are too similar (${pair.distance.toFixed(1)})`);
@@ -238,24 +348,26 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
           assert.equal(lineHeights.size, 1, `${width}: homepage body paragraph line heights differ`);
           for (const block of measured.rhythmBlocks) {
             assert.equal(block.exists, true, `${width} ${block.selector}: rhythm block is missing`);
-            assert.ok(Math.abs(block.blockRight - block.contentRight) <= 1, `${width} ${block.selector}: rhythm block is not right-aligned`);
+            if (block.selector === '#built-for-use') {
+              assert.ok(Math.abs(block.blockLeft - block.contentLeft) <= 1, `${width} ${block.selector}: rhythm block is not left-aligned`);
+            } else {
+              assert.ok(Math.abs(block.blockRight - block.contentRight) <= 1, `${width} ${block.selector}: rhythm block is not right-aligned`);
+            }
             const expectedWidth = width <= 1024
               ? block.contentWidth
-              : block.selector === '#built-for-use'
-                ? (block.contentWidth - 42) * (2 / 3)
-                : block.contentWidth * (2 / 3);
+              : (block.contentWidth - 42) * (2 / 3);
             assert.ok(
               Math.abs(block.blockWidth - expectedWidth) <= 1,
               `${width} ${block.selector}: rhythm block width ${block.blockWidth} != ${expectedWidth}`,
             );
           }
-          assert.equal(measured.receipts.count, 10, `${width}: receipt card count differs from the ten configured live sites`);
+          assert.equal(measured.receipts.count, 11, `${width}: receipt card count differs from the eleven configured live sites`);
           assert.equal(measured.receipts.valid, true, `${width}: receipt link, count, or lazy image is invalid`);
           if (width <= 1024) {
             assert.ok(measured.receipts.asideTop > measured.receipts.copyTop, `${width}: receipts are not below the copy`);
             assert.equal(measured.receipts.stackColumns.split(' ').length, 2, `${width}: receipts are not a two-up grid`);
           } else {
-            assert.ok(measured.receipts.asideRight < measured.receipts.copyLeft, `${width}: receipts are not in the left third`);
+            assert.ok(measured.receipts.asideLeft > measured.receipts.copyRight, `${width}: receipts are not in the right third`);
           }
           for (const band of await page.locator('main > section, main > aside').all()) {
             await band.scrollIntoViewIfNeeded();
