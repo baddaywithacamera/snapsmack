@@ -150,4 +150,53 @@ def test_verify_site_mode_refuses_unknown_or_mismatched(monkeypatch):
     assert len(warnings) == 2
 
 
+def test_take_poster_and_url_verifies_smacktalk_mode(monkeypatch):
+    _app()
+    import sumna_post
+    from coldsnap_qt.mode_take import TakeMode
+
+    warnings = []
+    monkeypatch.setattr(QMessageBox, "warning", lambda *_a: warnings.append(_a[1]))
+
+    class _FakeTakeConn:
+        next_mode = "photoblog"
+
+        def __init__(self, url, key):
+            self.url = url
+            self.key = key
+
+        def probe_site_mode(self, timeout=6):
+            return self.next_mode, bool(self.next_mode), "test"
+
+    monkeypatch.setattr(sumna_post, "SumnaConnection", _FakeTakeConn)
+
+    cfg = {"url": "https://example.com", "api_key": "k-api", "smackpress_key": "k-press"}
+    take = TakeMode(lambda: cfg)
+
+    # Mismatched mode ("photoblog") must refuse
+    _FakeTakeConn.next_mode = "photoblog"
+    poster, _url = take._poster_and_url()
+    assert poster is None
+    assert warnings and warnings[-1] == "Wrong site mode"
+
+    # Unknown mode ("") must refuse
+    _FakeTakeConn.next_mode = ""
+    poster2, _ = take._poster_and_url()
+    assert poster2 is None
+    assert warnings[-1] == "Site mode unknown"
+
+    # Matching mode ("smacktalk") must succeed
+    _FakeTakeConn.next_mode = "smacktalk"
+    poster3, _ = take._poster_and_url()
+    assert poster3 is not None
+
+
+def test_instance_key_unique_for_test_builds():
+    from coldsnap_qt.app import instance_key
+
+    assert instance_key("0.7.45-test") == "cold-snap-0.7.45-test"
+    assert instance_key("0.7.45-test") != instance_key("0.7.41-test")
+    assert instance_key("0.7.45") == "cold-snap"
+
+
 # ===== SNAPSMACK EOF =====

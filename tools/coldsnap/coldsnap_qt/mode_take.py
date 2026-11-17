@@ -2232,6 +2232,16 @@ class TakeMode(QWidget):
                 "from SnapSmack Admin → API Access). Open Connection details at the "
                 "top and paste it into the long-form key box.")
             return None, url
+        from sumna_post import SumnaConnection, InsecureTransportError
+        from .connect_panel import verify_site_mode
+        probe_key = (cfg.get("api_key") or key).strip()
+        try:
+            conn = SumnaConnection(url, probe_key)
+        except InsecureTransportError as e:
+            QMessageBox.warning(self, "Insecure connection", str(e))
+            return None, url
+        if not verify_site_mode(self, conn, "smacktalk", "TAKE"):
+            return None, url
         return SmacktalkPoster(url, key, site_data=None), url
 
 # ===== SNAPSMACK EOF =====

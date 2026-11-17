@@ -80,9 +80,15 @@ def _mosaic_images(canvas, data):
             paths.append(bucket[int(identity) - 1])
         elif str(identity) in canvas.assets:
             paths.append(canvas.assets[str(identity)])
+    size_cache = getattr(canvas, "_mosaic_size_cache", None)
     images = []
     for path in paths:
-        width, height = _image_size(path)
+        if size_cache is not None and path in size_cache:
+            width, height = size_cache[path]
+        else:
+            width, height = _image_size(path)
+            if size_cache is not None:
+                size_cache[path] = (width, height)
         images.append({"width": width, "height": height, "src": path})
     return paths, images
 
@@ -307,12 +313,20 @@ class _Objects(QPyTextObject):
         Never decodes on the UI thread inside paint/drawObject; returns None so
         the caller paints a placeholder until PhotoLoader delivers the frame.
         """
-        if not path or not os.path.isfile(path):
+        if not path:
             return None
-        try:
-            stamp = os.stat(path).st_mtime_ns
-        except OSError:
-            return None
+        stat_cache = getattr(self.canvas, "_mosaic_stat_cache", None)
+        if stat_cache is not None and path in stat_cache:
+            stamp = stat_cache[path]
+        else:
+            if not os.path.isfile(path):
+                return None
+            try:
+                stamp = os.stat(path).st_mtime_ns
+            except OSError:
+                return None
+            if stat_cache is not None:
+                stat_cache[path] = stamp
         cw, ch = max(1, cell_size.width()), max(1, cell_size.height())
         ckey = f"biggie_cell:{path}:{stamp}:{cw}x{ch}"
         cached = QPixmap()
@@ -335,10 +349,16 @@ class _Objects(QPyTextObject):
             QPixmapCache.insert(ckey, scaled)
             if in_sync[0]:
                 sync_result[0] = scaled
-            else:
-                vp = self.canvas.viewport()
-                if vp is not None:
-                    vp.update()
+            elif not getattr(self.canvas, "_mosaic_repaint_pending", False):
+                self.canvas._mosaic_repaint_pending = True
+
+                def _flush_repaint():
+                    self.canvas._mosaic_repaint_pending = False
+                    vp = self.canvas.viewport()
+                    if vp is not None:
+                        vp.update()
+
+                QTimer.singleShot(0, _flush_repaint)
 
         accepted = loader.request(path, bucket, _on_ready)
         in_sync[0] = False
@@ -589,6 +609,8 @@ class BiggieCanvas(QTextEdit):
         self._mosaic_loader = PhotoLoader(self)
         self._mosaic_retry_scheduled = False
         self._mosaic_layout_cache = {}
+        self._mosaic_size_cache = {}
+        self._mosaic_stat_cache = {}
         self.setStyleSheet(
             "QTextEdit#BiggieCanvas { background: #ffffff; color: #1a1a1a;"
             " border: none; padding: 6px 0px; selection-background-color: #c8f5be;"
@@ -617,6 +639,8 @@ class BiggieCanvas(QTextEdit):
     def set_bucket(self, paths):
         self.bucket = [str(p) for p in (paths or [])]
         self._mosaic_layout_cache.clear()
+        self._mosaic_size_cache.clear()
+        self._mosaic_stat_cache.clear()
         self.document().markContentsDirty(0, self.document().characterCount())
         self._sync_canvas_height()
         self.viewport().update()
@@ -625,6 +649,8 @@ class BiggieCanvas(QTextEdit):
         """Provide stable local identities independently of filmstrip order."""
         self.assets = {str(key): str(path) for key, path in dict(assets or {}).items()}
         self._mosaic_layout_cache.clear()
+        self._mosaic_size_cache.clear()
+        self._mosaic_stat_cache.clear()
         self.document().markContentsDirty(0, self.document().characterCount())
         self._sync_canvas_height()
         self.viewport().update()

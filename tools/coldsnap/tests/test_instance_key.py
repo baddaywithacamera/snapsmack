@@ -22,7 +22,7 @@ def test_prod_version_uses_prod_instance_key():
 
 
 def test_test_build_uses_isolated_instance_key():
-    assert instance_key("0.7.35-test") == "cold-snap-test"
-    assert instance_key("0.7.34-test ") == "cold-snap-test"
+    assert instance_key("0.7.35-test") == "cold-snap-0.7.35-test"
+    assert instance_key("0.7.34-test ") == "cold-snap-0.7.34-test"
 
 # ===== SNAPSMACK EOF =====

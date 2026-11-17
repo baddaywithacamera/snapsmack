@@ -14,11 +14,12 @@ import sys
 
 
 def instance_key(version: str = "") -> str:
-    """Use a separate single-instance key for -test builds so they run beside prod."""
+    """Use a version-scoped single-instance key for -test builds so they run beside prod and installed test builds."""
     if not version:
         from _version import BUILD_VERSION
         version = BUILD_VERSION
-    return "cold-snap-test" if str(version).strip().endswith("-test") else "cold-snap"
+    ver = str(version).strip()
+    return f"cold-snap-{ver}" if ver.endswith("-test") else "cold-snap"
 
 
 def _set_windows_app_id():
