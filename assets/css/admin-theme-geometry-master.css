@@ -241,7 +241,7 @@ html, body {
 /* --- MAIN CONTENT & PAGE HEADERS --- */
 .main {
     margin-left: 240px;
-    padding: 25px 80px 140px 80px;
+    padding: 25px 24px 140px 24px;
     min-height: 100vh;
 }
 
@@ -3867,7 +3867,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 /* ─── RESPONSIVE: SMALL DESKTOP / LARGE TABLET (≤1200px) ──────── */
 @media (max-width: 1200px) {
     .main {
-        padding: 25px 40px 140px 40px;
+        padding: 25px 24px 140px 24px;
     }
 
     .dash-grid,
@@ -3914,7 +3914,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 
     .main {
         margin-left: 0;
-        padding: 60px 25px 140px 25px;
+        padding: 60px 24px 140px 24px;
     }
 
     #admin-universal-footer {
