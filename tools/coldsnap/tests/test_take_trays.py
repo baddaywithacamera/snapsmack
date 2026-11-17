@@ -229,4 +229,57 @@ def test_text_mode_switch_and_visual_text_roundtrip(monkeypatch):
     win.close()
 
 
+def test_14_photo_mosaic_no_nested_scrollbar_and_fast_scroll(tmp_path, monkeypatch):
+    """14-photo MOSAIC renders without an inner BiggieCanvas scrollbar and scrolls < 100ms/step."""
+    import time
+    from PIL import Image
+    import sumna_offline as O
+
+    app = _app()
+    monkeypatch.setattr(ConnectPanel, "_start_mode_discovery", lambda self: None)
+    dummy_solo = QWidget()
+    dummy_solo.refresh_taxonomy = lambda: None
+    monkeypatch.setattr("coldsnap_qt.main_window.SoloMode", lambda _cfg: dummy_solo)
+    monkeypatch.setattr("coldsnap_qt.main_window.StackMode", lambda _cfg: QWidget())
+    monkeypatch.setattr("coldsnap_qt.main_window.StorageMode", lambda _cfg: QWidget())
+
+    paths = []
+    for i in range(14):
+        p = tmp_path / f"photo_{i:02d}.jpg"
+        Image.new("RGB", (2000, 1333), (i * 15, 90, 50)).save(p)
+        paths.append(str(p))
+
+    win = MainWindow()
+    win.setAttribute(Qt.WA_DontShowOnScreen, True)
+    win.tabs.setCurrentIndex(2)
+    win.resize(1366, 768)
+    win.show()
+
+    win.take_mode.body._set_biggie(True)
+    win.take_mode._bucket = [O.DraftImage(local_path=p, filename=os.path.basename(p)) for p in paths]
+    win.take_mode._refresh_bucket()
+    win.take_mode.body.canvas.from_blocks([
+        {"type": "mosaic", "order": list(range(1, 15)), "layout": "asymmetric"}
+    ])
+    for _ in range(6):
+        app.processEvents()
+
+    # No nested inner scrollbar on BiggieCanvas; outer CanvasWell handles scrolling
+    assert win.take_mode.body.canvas.verticalScrollBar().maximum() == 0
+    outer_sb = win.take_mode._canvas_scroll.verticalScrollBar()
+    assert outer_sb.maximum() > 0
+
+    max_step_ms = 0.0
+    for val in range(0, outer_sb.maximum() + 1, 80):
+        t0 = time.perf_counter()
+        outer_sb.setValue(val)
+        app.processEvents()
+        dt = (time.perf_counter() - t0) * 1000.0
+        if dt > max_step_ms:
+            max_step_ms = dt
+
+    assert max_step_ms < 100.0, f"UI-thread scroll stall {max_step_ms:.1f}ms >= 100ms"
+    win.close()
+
+
 # ===== SNAPSMACK EOF =====

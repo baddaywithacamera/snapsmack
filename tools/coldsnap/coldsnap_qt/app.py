@@ -9,6 +9,7 @@ Run from source:  python -m coldsnap_qt        (cwd: tools/coldsnap)
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
+import os
 import sys
 
 
@@ -20,11 +21,25 @@ def instance_key(version: str = "") -> str:
     return "cold-snap-test" if str(version).strip().endswith("-test") else "cold-snap"
 
 
+def _set_windows_app_id():
+    """Bind the Windows taskbar icon & grouping to COLD SNAP for both prod and -test."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SnapSmack.ColdSnap")
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def main() -> int:
     import snap_single_instance
     if not snap_single_instance.acquire(instance_key(), "COLD SNAP"):
         return 0
 
+    _set_windows_app_id()
+
+    from PySide6.QtGui import QIcon
     from PySide6.QtWidgets import QApplication
 
     from . import theme
@@ -32,6 +47,11 @@ def main() -> int:
 
     app = QApplication(sys.argv)
     app.setApplicationName("COLD SNAP")
+    icon_path = os.path.join(
+        getattr(sys, "_MEIPASS", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        "assets", "coldsnap.ico")
+    if os.path.isfile(icon_path):
+        app.setWindowIcon(QIcon(icon_path))
     app.setStyleSheet(theme.stylesheet())
     win = MainWindow()
     win.show()

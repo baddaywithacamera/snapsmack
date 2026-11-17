@@ -24,6 +24,7 @@ Spec, in Sean's words: _spec/SPEC-biggie-wysiwyg-in-seans-words-2026-09-09.md
 """
 
 import json
+import math
 import os
 
 from PySide6.QtCore import Qt, QRect, QRectF, QSize, QSizeF, Signal
@@ -42,6 +43,7 @@ from PySide6.QtWidgets import (
 from . import theme
 from . import biggie
 from .mosaic_site_layout import compute_layout as site_compute_layout
+from .photo_loader import PhotoLoader
 
 # ── document vocabulary ─────────────────────────────────────────────────────
 OBJ_TYPE     = QTextFormat.UserObject + 41          # our inline objects
@@ -119,10 +121,21 @@ def mosaic_cells(canvas, data, width):
     if not paths:
         return [], {"items": [], "sections": [], "height": 0.0}
     layout = data.get("layout", "asymmetric")
+    gap = _mosaic_gap(data)
+    w_int = max(1, int(round(width)))
+    cache = getattr(canvas, "_mosaic_layout_cache", None)
+    key = (tuple(paths), layout, gap, w_int)
+    if cache is not None and key in cache:
+        return cache[key]
     out = site_compute_layout(
-        images, width, _mosaic_gap(data), "natural",
+        images, width, gap, "natural",
         "" if layout == "asymmetric" else layout)
-    return paths, out
+    res = (paths, out)
+    if cache is not None:
+        if len(cache) > 64:
+            cache.clear()
+        cache[key] = res
+    return res
 
 
 def mosaic_cell_problem(path):
@@ -267,24 +280,18 @@ class _Objects(QPyTextObject):
                          max(1, int(round(tile["height"]))))
             path = tile["image"].get("src", "")
             painter.fillRect(cell, QColor("#141714"))
-            pix = _pixmap(path, cell.width())
-            if not pix.isNull():
-                # The cell IS the photograph's shape, so KeepAspectRatio fills
-                # it. Any residual pixel is rounding, not a band.
-                scaled = pix.scaled(cell.size(), Qt.KeepAspectRatio,
-                                    Qt.SmoothTransformation)
+            pix = self._cached_cell_pixmap(path, cell.size())
+            if pix is not None and not pix.isNull():
                 painter.drawPixmap(
-                    QRect(cell.left() + (cell.width() - scaled.width()) // 2,
-                          cell.top() + (cell.height() - scaled.height()) // 2,
-                          scaled.width(), scaled.height()), scaled)
+                    QRect(cell.left() + (cell.width() - pix.width()) // 2,
+                          cell.top() + (cell.height() - pix.height()) // 2,
+                          pix.width(), pix.height()), pix)
             else:
-                # SAY WHICH, rather than leaving a numbered blank. A cell that
-                # cannot draw used to look exactly like every other cell that
-                # cannot draw, whatever the reason.
+                problem = mosaic_cell_problem(path) if not path or not os.path.isfile(path) else None
                 painter.setPen(QColor(theme.DIM))
                 painter.drawText(cell.adjusted(2, 14, -2, -2),
                                  Qt.AlignCenter | Qt.TextWordWrap,
-                                 mosaic_cell_problem(path) or "CANNOT READ")
+                                 problem or "Loading…")
             painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
             painter.drawRect(cell.adjusted(0, 0, -1, -1))
             badge = QRect(cell.left() + 4, cell.top() + 4, 22, 18)
@@ -293,6 +300,26 @@ class _Objects(QPyTextObject):
             painter.drawText(badge, Qt.AlignCenter, str(n))
 
         self._mosaic_footer(painter, r, len(paths), layout)
+
+    def _cached_cell_pixmap(self, path: str, cell_size: QSize):
+        """Return a cell-sized QPixmap from the 64 MB QPixmapCache (never full-size)."""
+        if not path or not os.path.isfile(path):
+            return None
+        try:
+            stamp = os.stat(path).st_mtime_ns
+        except OSError:
+            return None
+        cw, ch = max(1, cell_size.width()), max(1, cell_size.height())
+        ckey = f"biggie_cell:{path}:{stamp}:{cw}x{ch}"
+        cached = QPixmap()
+        if QPixmapCache.find(ckey, cached) and not cached.isNull():
+            return cached
+        raw = _pixmap(path, cw)
+        if raw.isNull():
+            return None
+        scaled = raw.scaled(cell_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        QPixmapCache.insert(ckey, scaled)
+        return scaled
 
     def _mosaic_footer(self, painter, r, count, layout):
         """The strip under the mosaic. It says when the preview is EXACT and
@@ -520,6 +547,12 @@ class BiggieCanvas(QTextEdit):
                                 "Use the BLOCKS tray on the left for headings, quotes, "
                                 "lists, photos and a MOSAIC.")
         self.setObjectName("BiggieCanvas")
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setMinimumHeight(260)
+        QPixmapCache.setCacheLimit(65536)
+        self._mosaic_loader = PhotoLoader(self)
+        self._mosaic_layout_cache = {}
         self.setStyleSheet(
             "QTextEdit#BiggieCanvas { background: #ffffff; color: #1a1a1a;"
             " border: none; padding: 6px 0px; selection-background-color: #c8f5be;"
@@ -531,23 +564,33 @@ class BiggieCanvas(QTextEdit):
         self.document().setDocumentMargin(4)
         self._objects = _Objects(self)
         self.document().documentLayout().registerHandler(OBJ_TYPE, self._objects)
+        self.document().documentLayout().documentSizeChanged.connect(self._sync_canvas_height)
         self.document().contentsChange.connect(self._after_change)
+        self._sync_canvas_height()
         self.setContextMenuPolicy(Qt.DefaultContextMenu)
         QShortcut(QKeySequence("Ctrl+B"), self).activated.connect(self.toggle_bold)
         QShortcut(QKeySequence("Ctrl+I"), self).activated.connect(self.toggle_italic)
         QShortcut(QKeySequence("Ctrl+U"), self).activated.connect(self.toggle_underline)
         QShortcut(QKeySequence("Ctrl+K"), self).activated.connect(self.insert_link)
 
+    def _sync_canvas_height(self, _size=None):
+        doc_h = self.document().documentLayout().documentSize().height()
+        self.setFixedHeight(max(260, int(math.ceil(doc_h)) + 18))
+
     # -- host hooks ---------------------------------------------------------
     def set_bucket(self, paths):
         self.bucket = [str(p) for p in (paths or [])]
+        self._mosaic_layout_cache.clear()
         self.document().markContentsDirty(0, self.document().characterCount())
+        self._sync_canvas_height()
         self.viewport().update()
 
     def set_assets(self, assets):
         """Provide stable local identities independently of filmstrip order."""
         self.assets = {str(key): str(path) for key, path in dict(assets or {}).items()}
+        self._mosaic_layout_cache.clear()
         self.document().markContentsDirty(0, self.document().characterCount())
+        self._sync_canvas_height()
         self.viewport().update()
 
     def set_image_resolver(self, fn):
@@ -980,6 +1023,7 @@ class BiggieCanvas(QTextEdit):
     def set_preview_width(self, width):
         """Change only the composition viewport; stored responsive ratios remain unchanged."""
         self.document().setTextWidth(float(width) if width else -1)
+        self._sync_canvas_height()
         self.viewport().update()
 
     def _edit_mosaic(self, hit):
@@ -1160,6 +1204,7 @@ class BiggieCanvas(QTextEdit):
                 block = block.next()
             cur.movePosition(QTextCursor.End)      # resume where the writing stopped
             self.setTextCursor(cur)
+            self._sync_canvas_height()
             self.document().clearUndoRedoStacks()
             self.document().setModified(False)
         finally:
