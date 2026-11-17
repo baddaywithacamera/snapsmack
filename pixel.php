@@ -235,11 +235,25 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
 <header class="sx-top">
   <div class="sx-top-in">
     <a class="sx-brand" href="pixel.php"><span class="sx-mark"></span>
-      <?php if ($sv_reader_style === 'mastodon'): ?>
-        <span class="sx-brand-copy"><b>Mastodon.social</b><small>powered by SnapSmack</small></span>
-      <?php else: ?>
-        <span class="sx-brand-copy"><b>pixelfed</b></span>
-      <?php endif; ?>
+      <?php
+        // SS-1355. THIS HEADER USED TO SAY "Mastodon.social".
+        //
+        // That is a REAL INSTANCE, run by somebody else, and printing its name
+        // at the top of every SMACKTALK install says their service is serving
+        // the page. It is not a style reference, it is a claim about who you
+        // are talking to, and it was wrong on every one of those installs.
+        // Owner ruling 2026-11-14.
+        //
+        // The replacement names the PROTOCOL this reader speaks, which is true
+        // and useful: FEDIVERSE, then which gateway. "Mastodon Gateway" says
+        // Mastodon-compatible, the same way a product may say it speaks SMTP;
+        // "Mastodon.social" said it IS somebody's server. The photo reader had
+        // the same shape of problem in lower case and gets the same treatment.
+      ?>
+      <span class="sx-brand-copy"><b>FEDIVERSE</b><small><?php
+          echo $sv_reader_style === 'mastodon'
+              ? 'Mastodon Gateway' : 'Pixelfed Gateway';
+      ?></small></span>
     </a>
     <div class="sx-search"><span class="sx-mag">&#128269;</span>
       <input type="text" placeholder="@user@host  ·  #hashtag" aria-label="Search the fediverse">
@@ -383,7 +397,7 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
     <div class="sx-masto-about">
       <b><?php echo px_e((string)($sv_settings['site_name'] ?? 'SMACKTALK')); ?></b>
       <div><a href="index.php">About</a> <a href="privacy-policy.php">Privacy</a> <a href="smack-help.php?topic=fedboard">Help</a></div>
-      <small>Mastodon presentation · powered by SnapSmack</small>
+      <small>Mastodon Gateway · powered by SnapSmack</small>
     </div>
     <?php else: ?>
     <div class="sx-railcard">

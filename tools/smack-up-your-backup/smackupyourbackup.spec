@@ -1,4 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
 # Generic PyInstaller spec for Smack Up Your Backup.
 # The exe name's version comes from the SUYB_BUILD_VER env var, which build.bat /
 # build.sh set from bump_version.py. One spec for every build — no per-version
@@ -40,6 +44,7 @@ a = Analysis(
         (os.path.join(_src, 'exit_package.py'),       '.'),
         (os.path.join(_src, 'backup_engine.py'),      '.'),
         (os.path.join(_src, 'b2_integrity.py'),       '.'),
+        (os.path.join(_src, 'batch_job.py'),          '.'),
         (os.path.join(_src, 'checkpoint.py'),         '.'),
         (os.path.join(_src, 'cloud_client.py'),       '.'),
         (os.path.join(_src, 'cloud_manifest.py'),     '.'),
@@ -107,6 +112,7 @@ a = Analysis(
         'audit_engine',
         'backup_engine',
         'b2_integrity',
+        'batch_job',
         'checkpoint',
         'cloud_client',
         'cloud_manifest',
@@ -202,16 +208,13 @@ VSVersionInfo(
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
-    name='smackupyourbackup-' + _ver,
+    exclude_binaries=True,
+    name='suyb',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
+    upx=False,
     console=False,          # debug output goes to suyb-debug.log next to the exe
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -221,3 +224,15 @@ exe = EXE(
     icon=os.path.join(_src, '..', 'hub', 'icons', 'suyb.ico'),
     version=_version_file,
 )
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name='suyb',
+)
+
+# ===== SNAPSMACK EOF =====

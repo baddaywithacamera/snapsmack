@@ -26,6 +26,7 @@ if (defined('SNAPSMACK_META_EMITTED')) { return; }
 define('SNAPSMACK_META_EMITTED', true);
 
 require_once __DIR__ . '/custom-code-policy.php';
+require_once __DIR__ . '/public-favicon.php';
 snapsmack_emit_public_csp(snapsmack_owner_custom_code_enabled($settings ?? []));
 
 require_once __DIR__ . '/indieweb.php';
@@ -94,7 +95,7 @@ if (!empty($img['img_file'])) {
 // only when the page has no image of its own. A specific post/page image above
 // still wins so individual shares keep their own image.
 if (empty($og_image) && !empty($settings['og_image_override'])) {
-    $og_image = BASE_URL . ltrim($settings['og_image_override'], '/');
+    $og_image = snapsmack_public_brand_image_url((string)$settings['og_image_override']);
 }
 
 // Deliberate: NO logo fallback and NO latest-image auto-pick. If nothing
@@ -188,20 +189,10 @@ if ($ai_policy === 'disallow'): ?>
 <?php snapsmack_indieweb_head_links($settings); ?>
 
 <?php
-// --- FAVICON SUPPORT ---
-// Support .ico, .png, and .svg favicons with appropriate MIME types
-if (!empty($settings['favicon_url'])):
-    $fav_path = $settings['favicon_url'];
-    $fav_ext  = strtolower(pathinfo($fav_path, PATHINFO_EXTENSION));
-    if ($fav_ext === 'svg'):
+echo snapsmack_public_favicon_link(snapsmack_public_favicon_url(
+    $settings, (string)($active_skin ?? $settings['active_skin'] ?? '')
+));
 ?>
-<link rel="icon" type="image/svg+xml" href="<?php echo BASE_URL . ltrim($fav_path, '/'); ?>">
-<?php elseif ($fav_ext === 'png'): ?>
-<link rel="icon" type="image/png" href="<?php echo BASE_URL . ltrim($fav_path, '/'); ?>">
-<?php else: ?>
-<link rel="icon" type="image/x-icon" href="<?php echo BASE_URL . ltrim($fav_path, '/'); ?>">
-<?php endif; ?>
-<?php endif; ?>
 
 <meta property="og:site_name" content="<?php echo $site_name; ?>">
 <meta property="og:title" content="<?php echo $og_title; ?>">
@@ -221,7 +212,7 @@ if (!empty($img) && is_array($img)) {
 }
 ?>
 <?php if (!empty($og_image)): ?>
-<meta property="og:image" content="<?php echo $og_image; ?>">
+<meta property="og:image" content="<?php echo htmlspecialchars($og_image, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">
 <meta property="og:image:width" content="1200">
 <?php if ($og_image_alt !== ''): ?>
 <meta property="og:image:alt" content="<?php echo htmlspecialchars($og_image_alt, ENT_QUOTES, 'UTF-8'); ?>">
@@ -234,7 +225,7 @@ if (!empty($img) && is_array($img)) {
 <meta name="twitter:description" content="<?php echo htmlspecialchars($og_description); ?>">
 <?php endif; ?>
 <?php if (!empty($og_image)): ?>
-<meta name="twitter:image" content="<?php echo $og_image; ?>">
+<meta name="twitter:image" content="<?php echo htmlspecialchars($og_image, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">
 <?php if ($og_image_alt !== ''): ?>
 <meta name="twitter:image:alt" content="<?php echo htmlspecialchars($og_image_alt, ENT_QUOTES, 'UTF-8'); ?>">
 <?php endif; ?>
@@ -464,24 +455,13 @@ if (!empty($skin_variant_url)): ?>
 <?php
 // The compiled option blob is a cache. Rebuild it once when a CMS or skin
 // update makes it stale, then emit the repaired value on this same request.
+// The staleness test and the repair now live in ONE place,
+// snapsmack_public_css_refresh_if_stale(), because this head is the LEGACY
+// one: strict skins never include it, so while the repair existed only here
+// the whole strict fleet could never run it.
 if (isset($pdo) && !empty($active_skin)) {
     require_once __DIR__ . '/skin-css-recompile.php';
-    $_pub_target = snapsmack_public_css_target_stamp((string)$active_skin);
-    $_pub_blob_id = '/* SKIN_ID ' . $_pub_target . ' */';
-    if ($_pub_target !== '' && (($settings['custom_css_public_stamp'] ?? '') !== $_pub_target
-                                || ($settings['custom_css_public'] ?? '') === ''
-                                || !str_contains((string)($settings['custom_css_public'] ?? ''), $_pub_blob_id))) {
-        try {
-            snapsmack_recompile_public_skin_css($pdo, (string)$active_skin);
-            $_pub_rows = $pdo->query(
-                "SELECT setting_key, setting_val FROM snap_settings
-                 WHERE setting_key IN ('custom_css_public', 'custom_css_public_stamp')"
-            )->fetchAll(PDO::FETCH_KEY_PAIR);
-            $settings['custom_css_public'] = $_pub_rows['custom_css_public'] ?? '';
-            $settings['custom_css_public_stamp'] = $_pub_rows['custom_css_public_stamp'] ?? $_pub_target;
-        } catch (Throwable $e) { /* rendering must not fail over cached option CSS */ }
-    }
-    unset($_pub_target, $_pub_blob_id, $_pub_rows);
+    snapsmack_public_css_refresh_if_stale($pdo, (string)$active_skin, $settings);
 }
 ?>
 

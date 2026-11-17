@@ -172,7 +172,7 @@ def list_profiles() -> List[str]:
             continue
         if isinstance(data, dict) and str(data.get("name", "")).strip():
             names.append(data["name"])
-    return sorted(names)
+    return sorted(names, key=lambda n: (n.casefold(), n))
 
 
 def load_profile(name: str) -> Optional[Dict]:

@@ -19,6 +19,9 @@
 
 
 require_once 'core/auth-smack.php';
+require_once __DIR__ . '/core/skin-registry.php';
+require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/skin-css-recompile.php';
 
 // --- MANIFEST (best-effort: skin-specific options if it loads; not required for core controls) ---
 // $settings is not populated until admin-header.php (included far below), so read the
@@ -38,16 +41,56 @@ if ($active_skin) {
 }
 // Skin manifest options flagged admin_page=>'archive' rendered here if manifest loaded.
 $archive_manifest_opts = [];
+$archive_owns_thumb_size = false;
+$archive_owns_gap = false;
+// One thumbnail-size control, not two. Thumbnail size is presentation, so a skin
+// that ships its own thumbnail-size control (one that emits the shared
+// --ss-thumb-size variable, e.g. NEW HORIZON's archive_thumb_size from SS-1185)
+// owns it; the global Archive Appearance thumb_size control is HIDDEN on that
+// skin so the owner sees exactly one. This is manifest-driven -- it reads what
+// the active skin declares, never a skin-name list -- and the CMS does NOT feed
+// its thumb_size into any skin variable; it only decides whether to show its own
+// control. A skin with no such control keeps the global one unchanged.
+$skin_has_own_thumb_size = false;
 if (is_array($manifest)) {
+    foreach ($manifest['options'] ?? [] as $o) {
+        if (is_array($o) && ($o['property'] ?? '') === '--ss-thumb-size') {
+            $skin_has_own_thumb_size = true;
+            break;
+        }
+    }
     foreach ($manifest['options'] ?? [] as $k => $o) {
         if (($o['admin_page'] ?? 'skin') === 'archive') {
             $archive_manifest_opts[$k] = $o;
+            if (($o['property'] ?? '') === '--ss-thumb-size') $archive_owns_thumb_size = true;
+            if (($o['property'] ?? '') === '--ss-gap') $archive_owns_gap = true;
         }
     }
 }
 
 // --- POST HANDLER ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearance'])) {
+    // Skin controls retain the same signed-package boundary and scoped storage
+    // as Skin Admin, even when their editing surface is Archive Appearance.
+    $archive_skin_values = [];
+    $posted_archive_skin = is_array($_POST['archive_skin_opt'] ?? null) ? $_POST['archive_skin_opt'] : [];
+    foreach ($posted_archive_skin as $key => $value) {
+        $meta = $archive_manifest_opts[$key] ?? null;
+        if (!is_array($meta) || !is_scalar($value)) continue;
+        if (($meta['type'] ?? '') === 'range' && is_numeric($value)) {
+            $archive_skin_values[$key] = snapsmack_skin_migrated_value((string)$value, $meta);
+        } elseif (($meta['type'] ?? '') === 'select' && isset($meta['options'][(string)$value])) {
+            $archive_skin_values[$key] = (string)$value;
+        }
+    }
+    if ($archive_skin_values) {
+        $reason = null;
+        if (!skin_registry_verify_installed_provenance($pdo, $active_skin, $reason)) {
+            $_SESSION['gallery_flash'] = 'No archive setting was changed: ' . $reason;
+            header('Location: smack-appearance-archive.php');
+            exit;
+        }
+    }
     if (isset($_POST['settings']) && is_array($_POST['settings'])) {
         // 0.7.79: archive_layouts_available is no longer authoritative — kept
         // for legacy reads but pinned to 'thumbs,masonry' regardless of input.
@@ -74,6 +117,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
             $_POST['settings']['archive_thumb_style'] = 'cropped';
         }
 
+        // 988D: the GUTTER slider always posts its position (default 4) even when
+        // the owner never dragged it. Persisting 4 made a value nobody chose
+        // override the skin's own gap (TRUE GRIT looked crammed). 4 means "use the
+        // skin's spacing", so at 4 we DELETE the key -- resetting to the skin
+        // default -- rather than storing a phantom override. Any other value is a
+        // real choice and is stored normally. (See snapsmack_owner_gutter_px.)
+        if (array_key_exists('archive_gutter', $_POST['settings'])
+            && (string)$_POST['settings']['archive_gutter'] === '4'
+            && (string)($_POST['settings']['archive_gutter_mode'] ?? '') !== 'custom') {
+            $pdo->prepare("DELETE FROM snap_settings WHERE setting_key = 'archive_gutter'")->execute();
+            unset($_POST['settings']['archive_gutter']);
+        }
+
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
         foreach ($_POST['settings'] as $k => $v) {
             $stmt->execute([$k, $v, $v]);
@@ -85,50 +141,110 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
         $blob = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'custom_css_public'")->fetchColumn() ?: '');
 
         // Helper: upsert a marker-keyed CSS rule into the blob.
+        //
+        // The rule MUST land OUTSIDE the /* SKIN_START */ ... /* SKIN_END */ region.
+        // core/skin-css-recompile.php regenerates that whole region from manifest
+        // state and keeps only what sits outside it, so a rule written INSIDE it is
+        // silently deleted on the next skin recompile -- the owner's archive frame
+        // vanished while Archive Appearance still showed the preset selected. So we
+        // drop any prior copy wherever it sits (old builds wrote it before SKIN_END,
+        // i.e. inside the region) and re-place it AFTER /* SKIN_END */, where
+        // recompile leaves it alone. Existing sites heal on their next archive save.
         $upsert_rule = function(string &$blob, string $marker, string $rule): void {
-            if (strpos($blob, $marker) !== false) {
-                $blob = preg_replace('/' . preg_quote($marker, '/') . '[^\n]+/', $rule, $blob);
-            } elseif (strpos($blob, '/* SKIN_END */') !== false) {
-                $blob = str_replace('/* SKIN_END */', $rule . "\n/* SKIN_END */", $blob);
+            $blob = preg_replace('/' . preg_quote($marker, '/') . '[^\n]*\n?/', '', (string)$blob);
+            $blob = rtrim($blob);
+            // An empty rule removes the CMS preset without touching skin CSS.
+            if ($rule === '') return;
+            if (strpos($blob, '/* SKIN_END */') !== false) {
+                $blob = str_replace('/* SKIN_END */', '/* SKIN_END */' . "\n" . $rule, $blob);
             } else {
                 $blob .= ($blob !== '' ? "\n" : '') . $rule;
             }
         };
 
-        // Thumbnail frame preset — covers all grid types across all skins.
-        // Each preset carries separate CSS for grid thumbs vs justified grid:
-        //   grid: border (outside) or inset box-shadow (inside)
-        //   justified: outline with offset 0 (outside) or negative (inside)
-        $no_border_grid = 'border: none !important; box-shadow: none !important;';
-        $no_border_just = 'outline: none !important;';
-        $thumb_frame_presets = [
-            'none'                  => ['grid' => $no_border_grid,                                                              'just' => $no_border_just],
-            'out_1px_grey'          => ['grid' => 'border: 1px solid #666666 !important; box-shadow: none !important;',         'just' => 'outline: 1px solid #666666 !important; outline-offset: 0 !important;'],
-            'out_1px_white'         => ['grid' => 'border: 1px solid #ffffff !important; box-shadow: none !important;',         'just' => 'outline: 1px solid #ffffff !important; outline-offset: 0 !important;'],
-            'out_1px_dark'          => ['grid' => 'border: 1px solid #333333 !important; box-shadow: none !important;',         'just' => 'outline: 1px solid #333333 !important; outline-offset: 0 !important;'],
-            'out_3px_grey'          => ['grid' => 'border: 3px solid #666666 !important; box-shadow: none !important;',         'just' => 'outline: 3px solid #666666 !important; outline-offset: 0 !important;'],
-            'out_3px_white'         => ['grid' => 'border: 3px solid #ffffff !important; box-shadow: none !important;',         'just' => 'outline: 3px solid #ffffff !important; outline-offset: 0 !important;'],
-            'in_1px_grey'           => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 1px #666666 !important;',  'just' => 'outline: 1px solid #666666 !important; outline-offset: -1px !important;'],
-            'in_1px_white'          => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 1px #ffffff !important;',  'just' => 'outline: 1px solid #ffffff !important; outline-offset: -1px !important;'],
-            'in_3px_grey'           => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #666666 !important;',  'just' => 'outline: 3px solid #666666 !important; outline-offset: -3px !important;'],
-            'in_3px_white'          => ['grid' => 'border: none !important; box-shadow: inset 0 0 0 3px #ffffff !important;',  'just' => 'outline: 3px solid #ffffff !important; outline-offset: -3px !important;'],
-            // Double frame: 3px inner line + 5px dark gap + 1px outer line, all outside the image.
-            // Grid: layered external box-shadow. Justified: inset equivalent (external shadow overlaps tight gaps).
-            'dbl_grey'  => ['grid' => 'border: none !important; box-shadow: 0 0 0 3px #666666, 0 0 0 8px #0d0d0d, 0 0 0 9px #666666 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #666666, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #666666 !important;'],
-            'dbl_white' => ['grid' => 'border: none !important; box-shadow: 0 0 0 3px #d4d4d4, 0 0 0 8px #0d0d0d, 0 0 0 9px #d4d4d4 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #d4d4d4, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #d4d4d4 !important;'],
-            'dbl_dark'  => ['grid' => 'border: none !important; box-shadow: 0 0 0 3px #333333, 0 0 0 8px #0d0d0d, 0 0 0 9px #333333 !important;', 'just' => 'outline: none !important; box-shadow: inset 0 0 0 1px #333333, inset 0 0 0 6px #0d0d0d, inset 0 0 0 9px #333333 !important;'],
+        // Thumbnail frame preset. (987D -- the frame is drawn on a ::after OVERLAY
+        // that sits ON TOP of the thumbnail image, because that is the only place
+        // it is actually visible. Measured on Sean's live /archive: an inset
+        // box-shadow on the tile element (986D) paints UNDER the opaque image that
+        // fills the tile, and an outside box-shadow (pre-986D) is clipped by the
+        // aspect-ratio crop box. The overlay is pointer-events:none and inset:0 --
+        // edge-aligned, on top of the photo -- so every preset reads as a line at
+        // the image edge, never clipped, never under the photo, and the photo's
+        // geometry is untouched. A real-browser pixel test guards it.
+        //
+        // One inset box-shadow per preset now (the overlay is the same shape for
+        // grid and justified). out_ and in_ both read as a line at the edge; the
+        // pre-987D outside/inside distinction could not survive the clip/under-image
+        // problem and was never reliably visible. Double frame keeps 3/8/9px.
+        $thumb_frame_shadows = [
+            'none'          => 'none',
+            'out_1px_grey'  => 'inset 0 0 0 1px #666666',
+            'out_1px_white' => 'inset 0 0 0 1px #ffffff',
+            'out_1px_dark'  => 'inset 0 0 0 1px #333333',
+            'out_3px_grey'  => 'inset 0 0 0 3px #666666',
+            'out_3px_white' => 'inset 0 0 0 3px #ffffff',
+            'in_1px_grey'   => 'inset 0 0 0 1px #666666',
+            'in_1px_white'  => 'inset 0 0 0 1px #ffffff',
+            'in_3px_grey'   => 'inset 0 0 0 3px #666666',
+            'in_3px_white'  => 'inset 0 0 0 3px #ffffff',
+            'dbl_grey'      => 'inset 0 0 0 3px #666666, inset 0 0 0 8px #0d0d0d, inset 0 0 0 9px #666666',
+            'dbl_white'     => 'inset 0 0 0 3px #d4d4d4, inset 0 0 0 8px #0d0d0d, inset 0 0 0 9px #d4d4d4',
+            'dbl_dark'      => 'inset 0 0 0 3px #333333, inset 0 0 0 8px #0d0d0d, inset 0 0 0 9px #333333',
         ];
         $tfp = $_POST['settings']['archive_thumb_frame'] ?? 'none';
-        if (!isset($thumb_frame_presets[$tfp])) $tfp = 'none';
-        $tf = $thumb_frame_presets[$tfp];
-        $grid_sel = '.square-grid .thumb-link, .cropped-grid .thumb-link, .fsog-archive-item .fsog-thumb, .rg-archive-item .rg-thumb';
-        $grid_rule    = "/* arch_opt:grid_border */ {$grid_sel} { {$tf['grid']} }";
-        $masonry_rule = "/* arch_opt:masonry_border */ #justified-grid .justified-item { {$tf['just']} }";
+        if (!isset($thumb_frame_shadows[$tfp])) $tfp = 'none';
+        $frameShadow = $thumb_frame_shadows[$tfp];
+        // WHICH ARCHIVES THIS CAN REACH, measured 6 November 2026 by rendering
+        // all 30 skins' archives in square, cropped and masonry and asking the
+        // DOM. It reaches FIVE: 50 SHADES and CHAPLIN via .fsog-archive-item,
+        // CHAPLIN, IMPACT PRINTER, NEW HORIZON and TRUE GRIT via
+        // .square-grid/.cropped-grid .thumb-link. On the other 25 skins this
+        // rule matches nothing, which is why the tip below names them.
+        //
+        // .rg-archive-item .rg-thumb IS KEPT AND MATCHES NOTHING TODAY. No
+        // layout and no page component emits rg-archive-item -- RATIONAL GEO
+        // styles that class in its own stylesheet and does not render it,
+        // which is also on the SS-1211 shortlist. It stays because removing it
+        // would quietly drop the owner's border the day that skin starts
+        // emitting the class again, and a selector that matches nothing costs
+        // nothing. It is recorded here rather than left to be rediscovered.
+        $grid_sel   = '.square-grid .thumb-link, .cropped-grid .thumb-link, .fsog-archive-item .fsog-thumb, .rg-archive-item .rg-thumb';
+        // The ::after selector list, one per grid selector.
+        $grid_after = implode(', ', array_map(
+            static fn(string $s): string => trim($s) . '::after',
+            explode(',', $grid_sel)
+        ));
+        // The overlay: a transparent layer on top of the image, clicks pass
+        // through, the frame drawn as the chosen inset shadow. box-sizing is set
+        // so a future border-based preset would also stay inside the edge.
+        $overlay = "content: '' !important; position: absolute !important; inset: 0 !important; "
+                 . "pointer-events: none !important; box-sizing: border-box !important; box-shadow: {$frameShadow} !important;";
+        // GRID: the tile is static, so it needs a positioning context for the
+        // overlay. position:relative does not move an in-flow element, so photo
+        // geometry is unchanged.
+        $grid_rule = "/* arch_opt:grid_border */ {$grid_sel} { position: relative !important; } {$grid_after} { {$overlay} }";
+        // JUSTIFIED/MASONRY: the wall engine positions each item ABSOLUTELY, so it
+        // is already a containing block for its ::after -- do NOT set position here
+        // or the wall layout breaks. Just the overlay.
+        $masonry_rule = "/* arch_opt:masonry_border */ #justified-grid .justified-item::after { {$overlay} }";
+        // None means no CMS frame declarations, including positioning/overlays.
+        // Remove both old marker rules so the skin's own shadow remains intact.
+        if ($tfp === 'none') {
+            $grid_rule = '';
+            $masonry_rule = '';
+        }
         $upsert_rule($blob, '/* arch_opt:grid_border */', $grid_rule);
         $upsert_rule($blob, '/* arch_opt:masonry_border */', $masonry_rule);
 
         $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('custom_css_public', ?)")
             ->execute([$blob]);
+    }
+    if ($archive_skin_values) {
+        $skin_stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?");
+        foreach ($archive_skin_values as $key => $value) {
+            $skin_stmt->execute([$active_skin . '__' . $key, $value, $value]);
+        }
+        snapsmack_recompile_public_skin_css($pdo, $active_skin);
     }
     header("Location: smack-appearance-archive.php?msg=SAVED");
     exit;
@@ -137,6 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_archive_appearan
 $page_title = "Archive Appearance";
 include 'core/admin-header.php';
 include 'core/sidebar.php';
+if ($active_skin !== '') snapsmack_apply_skin_settings($settings, $active_skin);
 
 // 0.7.79: layout vocabulary is just thumbs | masonry.
 // Thumb style (square or cropped) is admin's separate choice and applies
@@ -218,7 +335,45 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>THUMB STYLE <span class="field-tip" data-tip="In the Thumbs layout: NATURAL ASPECT keeps each photograph&#039;s own proportions, so tiles differ in height. SQUARE CROP crops every photograph to a 1:1 tile, so the grid is even. Applies to whichever skin is active.">ⓘ</span></label>
+                    <?php
+                    /* IT DOES NOT APPLY TO WHICHEVER SKIN IS ACTIVE, AND SAYING SO WAS THE FAULT.
+                     *
+                     * The old tip ended "Applies to whichever skin is active." Measured on
+                     * 6 November 2026 against all thirty installed skins, that is wrong for
+                     * twenty-seven of them.
+                     *
+                     * METHOD, so this can be rechecked rather than believed: every skin is
+                     * schema_version 2, so every skin renders through its own layout or its
+                     * whole-page component and NONE falls through to archive.php -- which
+                     * means archive.php's own thumb-style branch (the `$grid_layout =
+                     * $archive_thumb_style` at archive.php:232) cannot reach any skin in the
+                     * current fleet. A skin therefore honours this setting only if its own
+                     * layout reads the prepared value. Grepping each layout plus the page
+                     * component it calls for `thumb_style` and `archive_grid`:
+                     *
+                     *   HONOUR IT: 50 SHADES, CHAPLIN, IMPACT PRINTER.
+                     *   TRUE GRIT reads archive_grid and then hardcodes square-grid, so the
+                     *     setting does nothing there. That is SS-1043.
+                     *   NEW HORIZON hardcodes square-grid and reads neither value.
+                     *   HIP-TO-BE-SQUARE is square by design -- the owner ruled on
+                     *     6 November that it stays square and is documented, not fixed.
+                     *   The remaining skins do not read it at all.
+                     *
+                     * WHY THIS IS A SENTENCE AND NOT A HIDDEN CONTROL. The coordinator asked
+                     * for either wording or hiding the setting where it does nothing. Hiding
+                     * needs a capability to test, and there is none: features.thumbs_supported
+                     * defaults to true and NO skin sets it false, so the only flag that could
+                     * gate this says all thirty support thumbs. Adding a real flag means
+                     * touching thirty manifests and bumping thirty skin versions, which is a
+                     * release, not a tooltip. Ticketed separately.
+                     *
+                     * The named list will rot the day a skin starts or stops reading the
+                     * value -- I have just spent a day fixing a test that hardcoded a skin
+                     * name -- so the date and the method are in the tip itself, which is the
+                     * best a static string can do.
+                     */
+                    ?>
+                    <label>THUMB STYLE <span class="field-tip" data-tip="In the Thumbs layout: NATURAL ASPECT keeps each photograph&#039;s own proportions, so tiles differ in height. SQUARE CROP crops every photograph to a 1:1 tile, so the grid is even.&#10;&#10;IT DOES NOT APPLY TO EVERY SKIN. It only changes anything on a skin whose archive reads this setting. Measured 6 Nov 2026 by rendering every skin both ways, that is 7 skins: 50 SHADES, CHAPLIN, GLIDE, IMPACT PRINTER, NEW HORIZON, ONYX and TRUE GRIT. GLIDE, NEW HORIZON and TRUE GRIT began honouring it in this build. HIP-TO-BE-SQUARE is square by design and ignores it deliberately. The other 23 skins do not read it, so changing it will look like nothing happened -- because nothing did.">ⓘ</span></label>
                     <select name="settings[archive_thumb_style]">
                         <option value="cropped" <?php echo $thumb_style === 'cropped' ? 'selected' : ''; ?>>NATURAL ASPECT (DEFAULT)</option>
                         <option value="square"  <?php echo $thumb_style === 'square'  ? 'selected' : ''; ?>>SQUARE CROP (1:1)</option>
@@ -244,6 +399,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                     <p style="margin:8px 0 0; font-size:0.78em; opacity:0.6;">Visitors who change these preferences have their choice cookied for a year.</p>
                 </div>
 
+                <?php if (!$skin_has_own_thumb_size): ?>
                 <div class="lens-input-wrapper">
                     <label>THUMBNAIL SIZE <span class="field-tip" data-tip="Applies to square and cropped grid modes.">ⓘ</span></label>
                     <select name="settings[thumb_size]">
@@ -254,6 +410,12 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <?php elseif (!$archive_owns_thumb_size): ?>
+                <div class="lens-input-wrapper">
+                    <label>THUMBNAIL SIZE <span class="field-tip" data-tip="This skin has its own thumbnail-size control in Skin Settings, which is used instead.">ⓘ</span></label>
+                    <p class="field-note">Set in this skin's own Skin Settings &mdash; shown there to keep one control.</p>
+                </div>
+                <?php endif; ?>
 
                 <div class="lens-input-wrapper">
                     <label>COLUMNS <span class="field-tip" data-tip="How many columns across on desktop. Applies to square and cropped grid modes.">ⓘ</span></label>
@@ -267,7 +429,8 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                 </div>
 
                 <div class="lens-input-wrapper">
-                    <label>GUTTER <span class="field-tip" data-tip="Gap between grid tiles.">ⓘ</span></label>
+                    <?php if (!$archive_owns_gap): ?>
+                    <label>GUTTER <span class="field-tip" data-tip="Gap between grid tiles on skins that use this control. The default position 4 leaves spacing to the skin. A skin-owned gap control appears below when available.">ⓘ</span></label>
                     <div class="flex-mid gap-12">
                         <input type="range" name="settings[archive_gutter]"
                                min="0" max="40" step="2"
@@ -275,6 +438,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
                         <span style="min-width:36px; font-family:monospace;"><?php echo $current_gutter; ?>px</span>
                     </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="lens-input-wrapper">
@@ -313,6 +477,18 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
             ?>
                 <div class="lens-input-wrapper">
                     <label><?php echo strtoupper($o['label']); ?></label>
+                    <?php if (($o['type'] ?? '') === 'range'): ?>
+                    <div class="flex-mid gap-12">
+                        <input type="range" name="archive_skin_opt[<?php echo htmlspecialchars($k); ?>]"
+                               min="<?php echo htmlspecialchars((string)($o['min'] ?? 0)); ?>"
+                               max="<?php echo htmlspecialchars((string)($o['max'] ?? 100)); ?>"
+                               step="<?php echo htmlspecialchars((string)($o['step'] ?? 1)); ?>"
+                               value="<?php echo htmlspecialchars((string)$val); ?>"
+                               oninput="this.nextElementSibling.textContent=this.value">
+                        <output><?php echo htmlspecialchars((string)$val); ?></output>
+                        <span><?php echo htmlspecialchars((string)($o['unit'] ?? '')); ?></span>
+                    </div>
+                    <?php else: ?>
                     <select name="settings[<?php echo htmlspecialchars($k); ?>]">
                         <?php foreach ($o['options'] ?? [] as $opt_val => $opt_data):
                             $opt_label = is_array($opt_data) ? ($opt_data['label'] ?? $opt_val) : $opt_data;
@@ -322,6 +498,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
             </div>
@@ -394,7 +571,7 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
         ];
         ?>
         <div class="box">
-            <h3>THUMBNAIL FRAME <span class="field-tip" data-tip="Border style applied to archive thumbnails in all grid modes and all skins.">ⓘ</span></h3>
+            <h3>THUMBNAIL FRAME <span class="field-tip" data-tip="Border around archive thumbnails on the 5 skins whose archives this can reach: 50 SHADES OF NOAH GREY, CHAPLIN, IMPACT PRINTER, NEW HORIZON and TRUE GRIT. On the other 25 nothing will happen. IMPACT PRINTER is reached in square and cropped but not masonry. Whether it reaches masonry on a live page has not been measured on any skin.">ⓘ</span></h3>
             <div class="dash-grid">
                 <div class="lens-input-wrapper">
                     <label>FRAME STYLE</label>

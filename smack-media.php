@@ -68,6 +68,7 @@ if (!function_exists('snap_media_safe_ext')) {
 $pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_border_width TINYINT UNSIGNED NOT NULL DEFAULT 0");
 $pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_border_color VARCHAR(7) NOT NULL DEFAULT '#000000'");
 $pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_alt VARCHAR(500) DEFAULT NULL");
+$pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_caption VARCHAR(500) DEFAULT NULL");
 
 // --- ALT SAVE (AJAX) ---
 // Persists per-asset accessibility ALT text. Rendered everywhere [img:ID] embeds
@@ -77,6 +78,23 @@ if (isset($_POST['alt_id'])) {
     $alt_val = snap_sanitize_alt($_POST['asset_alt'] ?? '');
     $ok = $pdo->prepare("UPDATE snap_assets SET asset_alt = ? WHERE id = ?")
               ->execute([$alt_val, $alt_id]);
+    header('Content-Type: application/json');
+    echo json_encode(['status' => $ok ? 'success' : 'error']);
+    exit;
+}
+
+// --- CAPTION SAVE (AJAX) ---
+// Persists the per-asset display CAPTION shown in the media-image lightbox
+// (SS-1216), separate from ALT. Its own endpoint, so an ALT or border save never
+// touches it and a partial save cannot blank it. Empty is allowed and means no
+// caption at all. Stored as plain text; every render path escapes it, and the
+// lightbox sets it via textContent, so tags are stripped here as defence in depth.
+if (isset($_POST['caption_id'])) {
+    $caption_id  = (int)$_POST['caption_id'];
+    $caption_val = trim(strip_tags((string)($_POST['asset_caption'] ?? '')));
+    $caption_val = function_exists('mb_substr') ? mb_substr($caption_val, 0, 500) : substr($caption_val, 0, 500);
+    $ok = $pdo->prepare("UPDATE snap_assets SET asset_caption = ? WHERE id = ?")
+              ->execute([$caption_val, $caption_id]);
     header('Content-Type: application/json');
     echo json_encode(['status' => $ok ? 'success' : 'error']);
     exit;
@@ -293,6 +311,17 @@ include 'core/sidebar.php';
                                        style="flex:1;min-width:0;">
                             </label>
                             <span class="alt-saved-note"></span>
+                        </div>
+
+                        <div class="asset-caption-control mt-6">
+                            <label class="border-label" style="align-items:flex-start;gap:6px;">CAPTION
+                                <input type="text" class="asset-caption-input" maxlength="500"
+                                       value="<?php echo htmlspecialchars($a['asset_caption'] ?? '', ENT_QUOTES); ?>"
+                                       placeholder="Display caption (shown in the image lightbox)"
+                                       data-asset-id="<?php echo $a['id']; ?>"
+                                       style="flex:1;min-width:0;">
+                            </label>
+                            <span class="caption-saved-note"></span>
                         </div>
 
                         <div class="asset-actions">

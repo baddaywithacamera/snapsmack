@@ -120,10 +120,16 @@ def _open_secret_checked(blob: str) -> tuple:
     if sc is not None:
         try:
             return (sc.open_local(blob), True)
+        except sc.LegacyCredentialDecodeError:
+            return ('', False)
         except Exception:
             pass
     try:
-        return (base64.b64decode(str(blob).encode()).decode(), True)
+        encoded = str(blob).encode('ascii')
+        decoded = base64.b64decode(encoded, validate=True)
+        if base64.b64encode(decoded) != encoded:
+            raise ValueError('non-canonical legacy base64')
+        return (decoded.decode('utf-8'), True)
     except Exception:
         return ('', False)
 
@@ -133,10 +139,18 @@ def _open_secret(blob: str) -> str:
     if sc is not None:
         try:
             return sc.open_local(blob)
+        except sc.LegacyCredentialDecodeError:
+            return ''
         except Exception:
             pass
     try:                                     # legacy base64 (pre-vault installs)
-        return base64.b64decode(str(blob).encode()).decode() if blob else ''
+        if not blob:
+            return ''
+        encoded = str(blob).encode('ascii')
+        decoded = base64.b64decode(encoded, validate=True)
+        if base64.b64encode(decoded) != encoded:
+            return ''
+        return decoded.decode('utf-8')
     except Exception:
         return ''
 
@@ -447,21 +461,21 @@ def save(data: dict) -> None:
     api_key_enc = _seal_or_keep('api_key', data.get('api_key', ''))
     smackpress_key_enc = _seal_or_keep('smackpress_key', data.get('smackpress_key', ''))
     cfg['auth'] = {
-        'username': data.get('username', '') if data.get('remember') else '',
+        'username': data.get('username', _existing.get('auth', 'username', fallback='')),
         'password': password_enc,
-        'remember': str(data.get('remember', False)),
+        'remember': str(data.get('remember', _existing.getboolean('auth', 'remember', fallback=False))),
         'api_key':  api_key_enc,
         'smackpress_key': smackpress_key_enc,
     }
 
     cfg['defaults'] = {
-        'category': data.get('default_category', ''),
-        'album':    data.get('default_album', ''),
+        'category': data.get('default_category', _existing.get('defaults', 'category', fallback='')),
+        'album':    data.get('default_album', _existing.get('defaults', 'album', fallback='')),
     }
 
     cfg['paths'] = {
-        'last_image_folder':  data.get('last_image_folder', ''),
-        'last_manifest_file': data.get('last_manifest_file', ''),
+        'last_image_folder':  data.get('last_image_folder', _existing.get('paths', 'last_image_folder', fallback='')),
+        'last_manifest_file': data.get('last_manifest_file', _existing.get('paths', 'last_manifest_file', fallback='')),
     }
 
     cfg['google'] = {
@@ -475,7 +489,7 @@ def save(data: dict) -> None:
     }
 
     cfg['metadata'] = {
-        'copyright_text': data.get('copyright_text', ''),
+        'copyright_text': data.get('copyright_text', _existing.get('metadata', 'copyright_text', fallback='')),
     }
 
     with open(_config_path(), 'w') as f:

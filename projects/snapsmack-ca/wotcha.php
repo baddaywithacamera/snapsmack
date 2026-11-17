@@ -158,6 +158,9 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>All Posts</h3>
             <ol>
+                <li><span class="idx-date">Nov 8</span><a href="#tilez-first-smacktalk">TILEZ: The First SMACKTALK Skin</a></li>
+                <li><span class="idx-date">Nov 8</span><a href="#glide">GLIDE Goes Beyond the Old Photoblog</a></li>
+                <li><span class="idx-date">Nov 4</span><a href="#closed-beta-delay">We Missed the Closed Beta Date. Here Is Why, and I&rsquo;m Sorry.</a></li>
                 <li><span class="idx-date">Sep 13</span><a href="#ai-heal-free-tier">We Accidentally Replaced Half a Canva Subscription</a></li>
                 <li><span class="idx-date">Aug 30</span><a href="#snap-slapper-editor">SNAP SLAPPER Is Ready for the Box O&rsquo; Tricks</a></li>
                 <li>
@@ -338,6 +341,36 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="tilez-first-smacktalk">
+                <div class="post-meta"><span class="post-date">November 8, 2026</span><span class="post-tag">Skins</span></div>
+                <h2><a href="#tilez-first-smacktalk">TILEZ: The First SMACKTALK Skin</a></h2>
+                <p>Some photographs need a caption. Some need the whole damn story. <strong>TILEZ is the first SMACKTALK skin</strong>, built for photography and writing that deserve equal billing.</p>
+                <p>The front page is a vertical column based masonry wall, with dates and story titles laid over the images. Open a tile and there is room for a proper post: paragraphs, multiple photographs, and an editorial sidebar. The photograph gets you through the door; the story has somewhere to go.</p>
+                <p>It is running on <a href="https://baddaywithacamera.ca" target="_blank" rel="noopener">A Bad Day With a Camera</a>, where travel, everyday observations, and photography share the same home. No need to split the words and the pictures between two services.</p>
+                <p><a href="skins.php">See TILEZ and its screenshots in the skin gallery &rarr;</a></p>
+            </article>
+
+            <article class="post" id="glide">
+                <div class="post-meta"><span class="post-date">November 8, 2026</span><span class="post-tag">Skins</span></div>
+                <h2><a href="#glide">GLIDE Goes Beyond the Old Photoblog</a></h2>
+                <p>Pixelpost gave us a photograph, a page, and a reason to come back tomorrow. <strong>GLIDE is a SMACKONEOUT skin doing things Pixelpost never dreamed of back in the day.</strong></p>
+                <p>Tilted bands of photographs glide in opposing directions across the screen. Pick an image and it flips into the foreground. Move through the photographs, then return to the wall. Open the archive, Blogroll, or About page and the photography keeps moving behind the darkened overlay.</p>
+                <p>The point is movement that serves the photographs: a living contact sheet you can explore, with the image still taking centre stage. The <a href="https://portalproject.photoblogs.fyi" target="_blank" rel="noopener">Portal Project</a> is its home, turning a collection of doors and entrances into a wall that never quite sits still.</p>
+                <p><a href="skins.php">See GLIDE and its screenshots in the skin gallery &rarr;</a></p>
+            </article>
+
+            <article class="post" id="closed-beta-delay">
+                <div class="post-meta"><span class="post-date">November 4, 2026</span><span class="post-tag">Project</span></div>
+                <h2><a href="#closed-beta-delay">We Missed the Closed Beta Date. Here Is Why, and I&rsquo;m Sorry.</a></h2>
+                <p>SnapSmack's closed beta was supposed to open on November 4. That was my birthday, and I picked the date on purpose. It didn't happen, and there is no new date yet. I'd rather tell you that plainly than invent one.</p>
+                <p>The reason is a regression, and it cost us about six weeks. On September 28 a large conversion of how skins run was merged. It was meant to make things safer. It also quietly broke things that had worked: features disappeared from some skins, pages lost parts of themselves, and the tests that were supposed to catch it only checked that a file existed, not that the feature worked. Nobody noticed until I looked at real sites in a real browser, over and over, for weeks. Every fix turned up another thing the conversion had dropped.</p>
+                <p>I'm not a programmer. SnapSmack is built by AI tools under my direction, and that is stated openly everywhere on this site. That is exactly why the checking matters, and this month the checking was not good enough. The AI wrote the code, the AI wrote the tests, and for a while both were wrong in the same way. What caught it was a person looking at the actual page.</p>
+                <p>What we changed: tests now have to prove a feature behaves, not that a line of code exists. Nothing is called fixed until it has been checked live on a real site by someone other than the one who wrote the fix. Updates now roll out one site at a time instead of all at once. We also found and fixed a bug where two sites updating at the same moment could trip each other's security monitor. That one was real. The fix is in 0.7.993D and is rolling out one site at a time.</p>
+                <p>I'm sorry to the people who were waiting, and to the ones who were kind about it. You were promised a date and I missed it.</p>
+                <p>When the beta opens I'll post the date here first, after it has been tested, not before.</p>
+                <p>It's because this is all I am working on right now.</p>
+            </article>
 
             <article class="post" id="ai-heal-free-tier">
                 <div class="post-meta">

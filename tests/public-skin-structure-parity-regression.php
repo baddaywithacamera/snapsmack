@@ -12,7 +12,10 @@ $contracts = [
     '50-shades-of-noah-grey' => ['fsog-header', 'fsog-header-inside', 'fsog-photobox', 'fsog-photo-wrap', 'fsog-image', 'justified-grid', 'ss-masonry-item', 'masonry_layout', 'ss-square-wall'],
     'rational-geo' => ['rg-header', 'rg-header-inner', 'rg-photobox', 'rg-photo-wrap', 'rg-image', 'rg-single', 'rg-drawer-inner', 'rg-exif-section'],
     '52-card-pickup' => ['pickup-header', 'pickup-photo-wrap', 'pickup-image', 'pickup-tabletop', 'data-mayhem', 'pickup-ghost-footer'],
-    'true-grit' => ['tg-header', 'tg-header-inside', 'tg-photobox', 'tg-photo-wrap', 'tg-image', 'tg-pagination', 'previous_page', 'next_page'],
+    // 987D: archive/hashtag paging moved from the inline tg-pagination nav to the
+    // shared core feed-pager component (prepared next_url), so the paging hooks are
+    // now the component call and next_url rather than tg-pagination/previous_page.
+    'true-grit' => ['tg-header', 'tg-header-inside', 'tg-photobox', 'tg-photo-wrap', 'tg-image', 'feed-pager', 'next_url', 'next_page'],
 ];
 
 foreach ($contracts as $skin => $needles) {

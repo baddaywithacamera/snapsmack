@@ -18,10 +18,71 @@ function snap_escape_attr(mixed $value): string {
     return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-function snap_escape_url(mixed $value): string {
+/**
+ * The scheme check, on its own, so the raw and escaped paths share ONE rule.
+ *
+ * Returns the url unchanged when it is safe to emit, or '' when it is not:
+ * anything protocol-relative, and any scheme that is not http or https. This
+ * was inline in snap_escape_url(); it is factored out so snap_route_url_raw()
+ * validates identically rather than carrying a second copy of the rule.
+ */
+function snap_validate_url(mixed $value): string {
     $url = trim((string)$value);
     $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
     if (str_starts_with($url, '//') || ($scheme !== '' && !in_array($scheme, ['http', 'https'], true))) return '';
+    return $url;
+}
+
+/**
+ * A route url reduced to SAME-ORIGIN PATH AND QUERY, or '' if it cannot be.
+ *
+ * The coordinator's ruling on the paging contract: the urls handed to a skin
+ * must be "raw, validated, relative (same-origin route output, no scheme/host,
+ * no control characters)". Raw and validated they already were; relative they
+ * were NOT. BASE_URL is absolute on every install -- index.php builds it from
+ * site_url -- so snap_route_url_raw() returns
+ * https://photowalk.ing/archive?category=7&page=4 on a live site, scheme and
+ * host included. I measured that rather than assuming the fixture's '/' was
+ * what a site sees.
+ *
+ * WHY THE HOST IS WORTH REMOVING from a value a template will print: it cannot
+ * be cross-origin by construction today, but it only stays same-origin while
+ * BASE_URL stays trustworthy, and a host in a paging link is a host that
+ * follows a site to a new domain and sends its own visitors somewhere else.
+ * Path and query is all a paging link needs.
+ *
+ * A SUBDIRECTORY INSTALL KEEPS ITS DIRECTORY: parse_url's path on
+ * https://site.test/blog/archive is /blog/archive, so the base path survives.
+ *
+ * CONTROL CHARACTERS ARE REFUSED, NOT STRIPPED. Stripping edits a url into a
+ * different url and emits it as though it were the one asked for; refusing
+ * emits nothing and the link is simply absent. htmlspecialchars does not
+ * touch control characters, so a raw value carrying one would reach the
+ * attribute intact -- which is the whole reason this is checked here and not
+ * left to the escaper.
+ */
+function snap_same_origin_path(mixed $value): string {
+    $url = snap_validate_url($value);
+    if ($url === '') return '';
+    // Every C0 control byte, plus DEL. Also refuses a literal newline or
+    // tab, which can
+    // break an attribute apart.
+    if (preg_match('/[\x00-\x1F\x7F]/', $url)) return '';
+    if (str_starts_with($url, '//')) return '';
+    $parts = parse_url($url);
+    if ($parts === false) return '';
+    $path = (string)($parts['path'] ?? '');
+    if ($path === '') $path = '/';
+    if (!str_starts_with($path, '/')) $path = '/' . $path;
+    $query = isset($parts['query']) && $parts['query'] !== '' ? '?' . $parts['query'] : '';
+    $out = $path . $query;
+    // Belt and braces: whatever came in, what goes out is one leading slash.
+    return str_starts_with($out, '//') ? '' : $out;
+}
+
+function snap_escape_url(mixed $value): string {
+    $url = snap_validate_url($value);
+    if ($url === '') return '';
     return htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
@@ -47,7 +108,31 @@ function snap_asset_url(string $handle): string {
     return snap_escape_url($base . ltrim($path, '/'));
 }
 
-function snap_route_url(string $route, array $parameters = []): string {
+/**
+ * A route URL with NO HTML ESCAPING -- validated, but raw.
+ *
+ * WHY THIS EXISTS. snap_route_url() escapes its own output, so everything it
+ * returns is already HTML-escaped and cannot survive being escaped again. A
+ * strict skin has no choice about escaping: core/skin-security-policy.php
+ * refuses any echo in a layout that does not begin with one of seven output
+ * helpers, so a template MUST write snap_escape_url(...) around a URL it
+ * prints. For a one-parameter route that is harmless, because there is nothing
+ * to escape. For a FILTERED, PAGED archive it breaks the link:
+ *
+ *   core emits    /archive?category=street&amp;page=2
+ *   skin escapes  /archive?category=street&amp;amp;page=2
+ *
+ * and the filter is lost on the second page. Codex hit this wiring GLIDE's
+ * paging to the slices I shipped in ca230aab, and he was right.
+ *
+ * So values that a TEMPLATE will escape are built with this, and values a
+ * template prints directly keep snap_route_url(). Escape once, at output.
+ *
+ * RAW DOES NOT MEAN UNVALIDATED. The scheme check that snap_escape_url()
+ * performs is repeated here, so a route can still never produce a javascript:
+ * or protocol-relative URL. The only thing left out is htmlspecialchars.
+ */
+function snap_route_url_raw(string $route, array $parameters = []): string {
     $routes = [
         'home' => '', 'archive' => 'archive', 'search' => 'search', 'hashtag' => 'tag',
         'post' => 'post', 'photo' => 'photo', 'page' => 'page', 'albums' => 'albums',
@@ -56,22 +141,63 @@ function snap_route_url(string $route, array $parameters = []): string {
         'game-scores' => 'game-on-scores.php',
     ];
     if (!array_key_exists($route, $routes)) return '';
-    $allowed = array_intersect_key($parameters, array_flip(['slug', 'id', 'page', 'query', 'album', 'category']));
+    // 'q' is the PUBLIC name of the search term: index.php:431 reads the
+    // request parameter named q and hands it to the runtime as 'query', so
+    // 'query' is an INTERNAL key and emitting it in a url produces a
+    // parameter nothing reads. Both are allowed here: callers pass 'q', and
+    // 'query' stays permitted so an older caller is not silently stripped.
+    //
+    // The request superglobal is deliberately NOT named in this file. The
+    // security ratchet in tests/skin-render-helpers-regression.php refuses it
+    // anywhere in these helpers, because a render helper must never read
+    // request state -- and it reads the source text, so even a comment
+    // quoting it trips the guard. It was right to refuse mine; the guard
+    // stays as it is and the comment says the name in words.
+    $allowed = array_intersect_key($parameters, array_flip(['slug', 'id', 'page', 'q', 'query', 'album', 'category']));
     foreach ($allowed as $key => $value) {
         if (!is_scalar($value)) unset($allowed[$key]);
         else $allowed[$key] = (string)$value;
     }
     $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
     if (($route === 'page' || $route === 'post' || $route === 'photo') && !empty($allowed['slug'])) {
-        return snap_escape_url($base . rawurlencode($allowed['slug']));
+        return snap_validate_url($base . rawurlencode($allowed['slug']));
     }
     if ($route === 'hashtag' && !empty($allowed['slug'])) {
         $allowed['tag'] = $allowed['slug'];
         unset($allowed['slug']);
-        return snap_escape_url($base . '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986));
+        return snap_validate_url($base . '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986));
+    }
+    // SEARCH IS A QUERY ROUTE, NOT A PATH ROUTE, and this emitted a path.
+    //
+    // core/public-runtime.php:67 resolves a path by name from a closed list --
+    // archive, albums, collections, collection, photo, post, page, blogroll,
+    // blog -- and 'search' IS NOT IN IT. A search is reached only as ?q=, the
+    // way a tag is reached as ?tag=. So /search?query=blue was wrong twice:
+    // wrong path, and a parameter the router does not read.
+    //
+    // Codex found it wiring GLIDE's search: the strict request in index.php
+    // reads the q parameter, while prepared search paging urls used query. Page
+    // two of a search dropped the search term, which is the same silent wrong
+    // answer the filtered-archive paging had.
+    if ($route === 'search') {
+        if (isset($allowed['query']) && !isset($allowed['q'])) {
+            $allowed['q'] = $allowed['query'];
+        }
+        unset($allowed['query']);
+        if (($allowed['q'] ?? '') === '') return '';
+        return snap_validate_url($base . '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986));
     }
     $path = $routes[$route];
-    return snap_escape_url($base . $path . ($allowed ? '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986) : ''));
+    return snap_validate_url($base . $path . ($allowed ? '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986) : ''));
+}
+
+/**
+ * The escaping route helper every skin already calls. One source of truth for
+ * how a route is built: this is the raw builder plus the escape, so the two
+ * can never drift apart the way four copies of the skin-to-prefix map did.
+ */
+function snap_route_url(string $route, array $parameters = []): string {
+    return snap_escape_url(snap_route_url_raw($route, $parameters));
 }
 
 /**
@@ -144,6 +270,36 @@ function snap_page_hero_html(array $item, string $title = ''): string {
         . '</div></div>';
 }
 
+/**
+ * THE 'before_assets' SLOT ON A COMPLETE-PAGE WRAPPER.
+ *
+ * Five of these components render a WHOLE document, doctype through </html>:
+ * 50-shades-page, chaplin-page, galleria-page, impact-printer-page, onyx-page.
+ * A skin that uses one has a layout.php containing nothing but the call, so it
+ * has no seam of its own to print anything into. Emitting before the call puts
+ * markup ahead of the doctype; emitting after puts it outside </html>. Codex
+ * raised this in Brain Trust for the three wrappers he had reached; galleria
+ * and onyx are the same shape, so all five carry the slot rather than leaving
+ * two to be found later.
+ *
+ * Each of the five echoes $view['before_assets'] immediately BEFORE it renders
+ * the 'registered-assets' component. A skin fills it by passing the key in the
+ * same array it already passes:
+ *
+ *     $view['before_assets'] = snap_render_component('scroll-time', $view);
+ *     echo snap_render_html(snap_render_component('impact-printer-page', $view));
+ *
+ * IT IS GENERIC ON PURPOSE AND IT IS NOT A GRANT. The slot knows nothing about
+ * scroll time; it is a placement seam for any trusted fragment a wrapper skin
+ * needs inside the document before the asset tags. Nothing is auto-requested
+ * by skin name -- the contract stays what it was, a manifest that declares the
+ * capability and a skin that asks for it. An unfilled slot prints the empty
+ * string and adds no whitespace, so a wrapper that never uses it renders
+ * byte-identically to before.
+ *
+ * rational-geo-page is deliberately NOT in that list: despite the name it is a
+ * fragment, with no doctype and no </html>, so it has no such seam to offer.
+ */
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
     if (in_array($name, ['50-shades-page', 'chaplin-page', 'galleria-page', 'impact-printer-page', 'onyx-page', 'rational-geo-page'], true)) {
@@ -263,6 +419,74 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             if ($count > 1) $html .= '<span class="pg-carousel-badge" aria-label="' . $count . ' photos">&#x29C9;</span>';
             $html .= '</a>';
         }
+    } elseif ($name === 'feed-pager') {
+        // THE ENDLESS-SCROLL SENTINEL AND ITS NO-JS FALLBACK, IN ONE PLACE.
+        // (SS-986D, named by function per AGENTS.md -- a pager serves the feed,
+        // landing and hashtag across skins, so it is NOT named for the smacktalk
+        // family. Markup lives on the CMS rail; the skin owns only the CSS and
+        // the two selector values it passes in.)
+        //
+        // ss-engine-tag-infinite.js finds "#<prefix>-sentinel" and reads the
+        // data-* below. A skin whose grid/tile classes do not follow the
+        // .<prefix>-grid / .<prefix>-tile convention (the smacktalk feed, GLIDE
+        // hashtag, TRUE-GRIT landing) passes grid_selector / item_selector and
+        // the engine honours them; omit them and the convention applies.
+        //
+        // THE FALLBACK IS A REAL LINK, in <noscript>, so paging still works with
+        // JavaScript off or failed -- the one case infinite scroll cannot cover.
+        // Its >=44px touch target is skin CSS on .ss-feed-pager-link (the stylesheet
+        // rail); core emits the semantic, navigable anchor and nothing visual.
+        $prefix = preg_replace('/[^a-z0-9]/', '', strtolower((string)($data['prefix'] ?? '')));
+        if ($prefix === '') $prefix = 'feed';
+        $nextUrl  = (string)($data['next_url'] ?? '');
+        $nextPage = (int)($data['next_page'] ?? 0);
+        // Nothing to render once there is no next page. next_url is the prepared,
+        // filter-safe url (core/public-runtime.php for strict skins, index.php for
+        // the smacktalk feed); next_page alone still drives the historic p=N path.
+        if ($nextUrl !== '' || $nextPage > 0) {
+            $isFeed = !empty($data['feed']);
+            $tag    = (string)($data['tag'] ?? '');
+            $base   = (string)($data['base'] ?? '');
+            $gridSel = (string)($data['grid_selector'] ?? '');
+            $itemSel = (string)($data['item_selector'] ?? '');
+            $label   = (string)($data['label'] ?? 'Load more');
+            $attrs  = 'id="' . snap_escape_attr($prefix) . '-sentinel" class="ss-feed-sentinel"';
+            // One of data-feed / data-tag is required, plus data-base, or the
+            // engine ignores the sentinel. Hashtag carries the tag; everything
+            // else is a feed/landing.
+            if ($isFeed || $tag === '') $attrs .= ' data-feed';
+            else $attrs .= ' data-tag="' . snap_escape_attr($tag) . '"';
+            if ($base !== '')    $attrs .= ' data-base="' . snap_escape_url($base) . '"';
+            if ($nextPage > 0)   $attrs .= ' data-next="' . snap_escape_attr((string)$nextPage) . '"';
+            if ($nextUrl !== '') $attrs .= ' data-next-url="' . snap_escape_url($nextUrl) . '"';
+            if ($gridSel !== '') $attrs .= ' data-grid-selector="' . snap_escape_attr($gridSel) . '"';
+            if ($itemSel !== '') $attrs .= ' data-item-selector="' . snap_escape_attr($itemSel) . '"';
+            $html = '<nav class="ss-feed-pager ' . snap_escape_attr($prefix) . '-feed-pager" aria-label="Pagination">'
+                . '<div ' . $attrs . ' data-has-more="1" aria-hidden="true"></div>';
+            // The no-JS fallback only makes sense when there is a real url to go
+            // to; a p=N-only skin without a prepared url has no link to print.
+            if ($nextUrl !== '') {
+                $html .= '<noscript><a class="ss-feed-pager-link ' . snap_escape_attr($prefix) . '-feed-pager-link" '
+                    . 'href="' . snap_escape_url($nextUrl) . '" rel="next">' . snap_escape_html($label) . '</a></noscript>';
+            }
+            $html .= '</nav>';
+        }
+    } elseif ($name === 'tile-like') {
+        // SS-1323. The heart for one photograph, already decided.
+        //
+        // This component COMPUTES NOTHING. The fragment, including whether
+        // this visitor has already liked the photograph, was prepared once
+        // for the whole page in core/public-runtime.php, because a strict
+        // skin may not call a helper or run a query and because asking per
+        // tile would be one query per photograph on a conveyor of forty.
+        //
+        // So a strict layout prints snap_render_component('tile-like',
+        // ['item' => $item]) inside its tile and that is the entire contract.
+        // An item with no prepared fragment -- a skin that never asked for
+        // hearts, or likes switched off -- renders nothing at all, which is
+        // the correct answer rather than an empty button.
+        $item = is_array($data['item'] ?? null) ? $data['item'] : [];
+        $html = (string)($item['tile_like'] ?? '');
     } elseif ($name === 'wall-tile') {
         // One photograph in a wall. The page renderer and the endless-scroll
         // JSON endpoint both build their tiles here, so a tile fetched on
@@ -525,6 +749,39 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . '</div>';
         }
         $html = $body === '' ? '' : '<div class="chap-frame-deco" aria-hidden="true">' . $body . '</div>';
+    } elseif ($name === 'scroll-time') {
+        // THE SKIN ASKS; THE CMS PROVIDES IF IT IS SAFE.
+        //
+        // Sean's model: a skin requests a function in its manifest, the
+        // function lives in the CMS, and the CMS hands it over if it exists and
+        // is safe. A skin CANNOT call snapsmack_scrolltime_tag() itself --
+        // core/skin-security-policy.php allows exactly eight function names
+        // inside a strict layout and that is not one of them -- so the request
+        // arrives through the component registry, which is already allowlisted
+        // and is how the dock, the footer and registered-assets reach a skin.
+        //
+        // THE GRANT: the skin must list the page in scrolltime_pages in its own
+        // manifest. Core reads that to decide WHETHER this skin gets the
+        // capability at all, never WHERE to emit -- the template decides where
+        // by choosing to call this. So there is no per-skin placement logic in
+        // core, and a skin that asks for nothing gets nothing.
+        //
+        // Named by function, not by skin.
+        $slug = (string)($data['site']['skin_slug'] ?? '');
+        $granted = false;
+        if ($slug !== '' && function_exists('load_skin_manifest')) {
+            $mf = load_skin_manifest($slug);
+            $pages = is_array($mf['scrolltime_pages'] ?? null) ? $mf['scrolltime_pages'] : [];
+            $granted = $pages !== [];
+        }
+        // snapsmack_scrolltime_tag() keeps every safety check it already had:
+        // a real logged hit, the site-mode sanity test, and its one-shot guard
+        // so two calls in one request cannot emit two tags.
+        if ($granted && function_exists('snapsmack_scrolltime_tag')) {
+            ob_start();
+            snapsmack_scrolltime_tag($GLOBALS['settings'] ?? []);
+            $html .= (string)ob_get_clean();
+        }
     } elseif ($name === 'registered-assets') {
         $assets=is_array($data['assets']??null)?$data['assets']:[];
         foreach(($assets['styles']??[]) as $url)$html.='<link rel="stylesheet" href="'.snap_escape_url($url).'">';
@@ -544,6 +801,15 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         if (function_exists('snapsmack_consent_banner_tag')) {
             ob_start();
             snapsmack_consent_banner_tag();
+            $html .= (string)ob_get_clean();
+        }
+        // And the anonymous Thomas discover-ping id, same place and reason: a
+        // hidden data attribute the Easter-egg engine reads, since the inline
+        // window.ssUid it used to ride is blocked by the strict public CSP and
+        // lived only on the legacy footer path. See core/thomas-uid.php.
+        if (function_exists('snapsmack_thomas_uid_tag')) {
+            ob_start();
+            snapsmack_thomas_uid_tag();
             $html .= (string)ob_get_clean();
         }
     } elseif ($name === 'navigation') {
@@ -609,6 +875,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             'home'      => '<path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8"/>',
             'archive'   => '<path d="M4 7h16v13H4zM3 4h18v3H3zm6 7h6" fill="none" stroke="currentColor" stroke-width="1.8"/>',
             'people'    => '<circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 20c0-4 2-6 6-6s6 2 6 6M16 5a3 3 0 0 1 0 6m1 3c2.7.3 4 2.3 4 6" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+            'about'     => '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 11v6m0-10v2" fill="none" stroke="currentColor" stroke-width="1.8"/>',
         ];
         $fallback = '<circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/>';
         $html = '<div class="ss-grid-nav-links">';
@@ -622,6 +889,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 $probe = strtolower($label);
                 if (str_contains($probe, 'home')) $icon = 'home';
                 elseif (str_contains($probe, 'blogroll') || str_contains($probe, 'friend')) $icon = 'people';
+                elseif (preg_match('/\babout\b/i', $label)) $icon = 'about';
                 elseif (str_contains($probe, 'archive') || str_contains($probe, 'album')) $icon = 'archive';
             }
             $html .= '<a class="ss-grid-nav-link" href="' . snap_escape_url($item['url'] ?? '')
@@ -654,7 +922,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . ' title="' . snap_escape_attr($title) . '">' . snap_escape_html($label) . '</a>';
         };
         $html = '<div class="nav-links"><span class="left">'
-            . $link($destination($data['previous'] ?? []), '« PREV', 'Previous Entry', $current, 'prev')
+            . $link($destination($data['next'] ?? []), '« NEXT', 'Next Entry', $current, 'next')
             . '<span class="sep">|</span>'
             . $link($destination($data['first'] ?? []), 'FIRST', 'Jump to First Entry', $current)
             . '</span><span class="sep">|</span><span class="center"><a href="#" id="show-details">INFO</a>';
@@ -662,15 +930,28 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $html .= '</span><span class="sep">|</span><span class="right">'
             . $link($destination($data['last'] ?? []), 'LAST', 'Jump to Latest Entry', $current)
             . '<span class="sep">|</span>'
-            . $link($destination($data['next'] ?? []), 'NEXT »', 'Next Entry', $current, 'next')
+            . $link($destination($data['previous'] ?? []), 'PREV »', 'Previous Entry', $current, 'prev')
             . '</span></div>';
     } elseif ($name === 'image') {
         $class = trim((string)($data['class'] ?? ''));
         $lightboxSource = trim((string)($data['attributes']['data-lightbox-src'] ?? ''));
         $width = filter_var($data['attributes']['data-w'] ?? null, FILTER_VALIDATE_INT);
         $height = filter_var($data['attributes']['data-h'] ?? null, FILTER_VALIDATE_INT);
+        // SS-1386: the smaller m_ candidate, READ rather than passed. Every
+        // skin already calls this component with a url and an alt; adding an
+        // argument would mean editing, bumping, repackaging and reinstalling
+        // about thirty skins, which OPAUDIT 025 records the result of. The
+        // runtime prepares a map keyed by this same url, and a photograph with
+        // no m_ derivative is absent from it, so this is '' and the tag is
+        // exactly what it was before. COMPUTES NOTHING: it looks up a string.
+        $srcset = function_exists('snap_image_srcset')
+            ? snap_image_srcset((string)($data['url'] ?? '')) : '';
         $html = '<img' . ($class !== '' ? ' class="' . snap_escape_attr($class) . '"' : '') . ' src="' . snap_escape_url($data['url'] ?? '') . '" alt="'
-            . snap_escape_attr($data['alt'] ?? '') . '"' . ($lightboxSource !== '' ? ' data-lightbox-src="' . snap_escape_url($lightboxSource) . '"' : '')
+            . snap_escape_attr($data['alt'] ?? '') . '"'
+            . ($srcset !== '' ? ' srcset="' . snap_escape_attr($srcset) . '" sizes="'
+                . snap_escape_attr(defined('SNAPSMACK_GRID_IMAGE_SIZES')
+                    ? SNAPSMACK_GRID_IMAGE_SIZES : '100vw') . '"' : '')
+            . ($lightboxSource !== '' ? ' data-lightbox-src="' . snap_escape_url($lightboxSource) . '"' : '')
             . ($width !== false && $width > 0 ? ' data-w="' . $width . '"' : '')
             . ($height !== false && $height > 0 ? ' data-h="' . $height . '"' : '')
             . ' loading="lazy">';

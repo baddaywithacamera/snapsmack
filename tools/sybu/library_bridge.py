@@ -1,5 +1,6 @@
 """SYBU producer bridge for the shared per-site offline library."""
 
+import logging
 import os
 import sys
 from urllib.parse import urlparse
@@ -90,9 +91,84 @@ def record_enrichment(site: str, image_path: str, entry, *, session=None) -> dic
         raw_response=getattr(entry, '_enrichment_raw_response', '') or '',
         accepted={key: True for key, value in _bundle(entry).items() if value != ''},
         prompt_version=prompt_version, source='desktop',
+        base_prompt_hash=snap_enrichment_cache.prompt_sha256(
+            getattr(entry, '_enrichment_base_prompt', '') or prompt),
     )
     propagated = _push_cache(session, site, saved)
     return {'asset': asset, 'cache': saved, 'propagated': propagated}
+
+
+def enrichment_save_failure_message(file_name: str, exc) -> str:
+    """What the owner is told when a PAID enrichment did not reach the library.
+
+    SS-1137. It names the file, says plainly the result is not saved, and says
+    what to do -- the thing at stake is money already spent.
+    """
+    return ("SAVE FAILED — %s: %s. The Gemini result for this photograph is NOT "
+            "in your library and will be charged again. Re-enrich this one."
+            % (file_name or 'photograph', exc))
+
+
+def save_enrichment_to_library(site, image_path, entry, *, session=None,
+                               recorder=None, audit=None):
+    """Persist one paid enrichment. Returns (saved, failure_message).
+
+    SS-1137, THE SWALLOWED SAVE. This was four lines inline in main.py's enrich
+    callback:
+
+        except Exception as exc:
+            print(f"[shared library] enrichment save failed: {exc}")
+
+    and the next statement set the status to "enriched" regardless. Two faults
+    in four lines. print() REACHES NOBODY IN A BUILT EXE -- there is no console
+    -- so a paid Gemini result could fail to persist leaving no trace anywhere;
+    and the row still read as enriched, so the one item needing his attention
+    looked identical to the ones that worked.
+
+    It lives HERE rather than in main.py because main.py cannot be imported: a
+    60-second timed import produced nothing at all, so nothing defined in that
+    file can be reached by a test. A fix whose correctness can only be checked
+    by breaking the library on a real machine and watching is not checked.
+
+    `recorder` and `audit` are injected so a test can make the save fail and
+    read exactly what the owner would have been told.
+    """
+    record = recorder or record_enrichment
+    try:
+        record(site, image_path, entry, session=session)
+        return True, ''
+    except Exception as exc:
+        message = enrichment_save_failure_message(
+            os.path.basename(image_path or ''), exc)
+        # The audit log is a FILE, so this survives a built exe with no console,
+        # a closed window and a crash. That is the whole point of the change.
+        try:
+            (audit or logging.getLogger('sybu')).error(
+                'ENRICHMENT SAVE FAILED — %s — %s', image_path, exc)
+        except Exception:
+            pass
+        return False, message
+
+
+def restore_enrichment(site: str, image_path: str, base_prompt: str, model: str):
+    """Enrichment already paid for, for this photograph and this prompt.
+
+    SS-1137. Returns the stored bundle dict, with where it came from, or None.
+    Called BEFORE the Gemini call: a hit means the API is never reached.
+
+    The hash is of the file's CONTENT, so a renamed or copied photograph is
+    recognised as the same one -- which is exactly the case that was costing
+    money, the same picture carried to a second blog.
+    """
+    if not image_path or not os.path.isfile(image_path):
+        return None
+    hit = snap_enrichment_cache.find_reusable(
+        snap_enrichment_cache.image_sha256(image_path),
+        model or '',
+        snap_enrichment_cache.prompt_sha256(base_prompt or ''),
+        prefer_site=site or None,
+    )
+    return hit
 
 
 def record_post_success(site: str, image_path: str, entry, post_id: int,

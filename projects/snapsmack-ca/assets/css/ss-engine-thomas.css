@@ -24,13 +24,13 @@
 
 #thomas-dedication {
     position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
-    background: rgba(10,10,10,0.92); border: 1px solid #4ecdc4;
+    background: rgba(10,10,10,0.92); border: 1px solid var(--red);
     color: #ccc; padding: 16px 28px;
     font-family: 'Courier New', monospace; font-size: 11px;
     letter-spacing: 2px; text-transform: uppercase; text-align: center;
     z-index: 999999; opacity: 0; transition: opacity 0.8s ease;
     pointer-events: none; white-space: nowrap;
 }
-#thomas-dedication span { color: #4ecdc4; }
+#thomas-dedication span { color: var(--red); }
 #thomas-dedication.visible { opacity: 1; }
 /* ===== SNAPSMACK EOF ===== */

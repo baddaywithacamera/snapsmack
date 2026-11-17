@@ -1,7 +1,8 @@
 {
     "schema_version": 2,
     "name": "SCROLL",
-    "version": "0.1.77",
+    "version": "0.1.79",
+    "scrolltime_pages": ["landing", "archive"],
     "author": "Sean McCormick, Claude, OpenAI Codex",
     "description": "A solo photoblog skin with a typographic masthead and selectable native-shape photo walls: columns, rows, square, or asymmetric dense-pack masonry. Built for photographs that refuse to show the whole damn car.",
     "status": "stable",
@@ -136,7 +137,7 @@
             "label": "Masthead Font",
             "hint": "The big tilted landing masthead AND the small blog-name running head in the sticky bar. Page titles have their own font below.",
             "default": "Archivo Black",
-            "selector": ".scroll-masthead, .scroll-sticky-nav .ss-grid-nav-name, .scroll-horizontal-title",
+            "selector": ".scroll-masthead, .scroll-sticky-nav .ss-grid-nav-name",
             "property": "font-family"
         },
         "scroll_body_font": {
@@ -682,24 +683,6 @@
             "selector": ":root",
             "property": "--scroll-static-width",
             "unit": "px"
-        },
-        "scroll_horizontal_title_font": {
-            "section": "STATIC & BLOG",
-            "type": "select",
-            "is_font": true,
-            "font_source": "google",
-            "label": "Page Title Font & Size (About, etc.)",
-            "hint": "Font and size of the big page title at the top of static pages such as About. The size slider sits directly under the font. Independent of the masthead and the blogroll headings.",
-            "default": "Archivo Black",
-            "selector": ".scroll-horizontal-title",
-            "property": "font-family",
-            "size": {
-                "min": "1.5",
-                "max": "6",
-                "step": "0.1",
-                "default": "3.4",
-                "unit": "rem"
-            }
         },
         "page_title_font_weight": {
             "section": "SOLO PAGE",

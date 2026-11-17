@@ -20,6 +20,16 @@ $inbox = substr($fedi, strpos($fedi, 'function sv_handle_inbox'),
 $forward = substr($fedi, strpos($fedi, 'function sv_forward_to_followers'),
     strpos($fedi, 'function sv_handle_inbox') - strpos($fedi, 'function sv_forward_to_followers'));
 
+// Count guarded resolver calls, rather than unrelated host checks (Flag also checks hosts).
+function feedback_resolvers_guarded(string $source): bool {
+    preg_match_all('/sv_resolve_target\((\$[a-zA-Z_][a-zA-Z0-9_]*),\s*\$pdo\)/', $source, $calls);
+    foreach ($calls[1] as $argument) {
+        $guard = '/sv_url_is_ours\(' . preg_quote($argument, '/') . ',\s*\$settings\)\)?\s*\?\s*sv_resolve_target\(' . preg_quote($argument, '/') . ',\s*\$pdo\)/';
+        if (preg_match_all($guard, $source) !== count(array_keys($calls[1], $argument, true))) return false;
+    }
+    return true;
+}
+
 $checks = [
     'own-host helper exists' => str_contains($fedi, 'function sv_url_is_ours(string $url, array $settings): bool'),
     'helper compares against sv_domain' => str_contains($fedi, "return \$h !== '' && \$h === strtolower(sv_domain(\$settings));"),
@@ -28,7 +38,10 @@ $checks = [
     'boost target must be on our host' => str_contains($inbox, 'sv_url_is_ours($boosted, $settings) ? sv_resolve_target($boosted, $pdo)'),
     'undo target must be on our host' => str_contains($inbox, 'sv_url_is_ours($obj, $settings)) ? sv_resolve_target($obj, $pdo)'),
     'delete target must be on our host' => str_contains($inbox, 'sv_url_is_ours($obj_id, $settings) ? sv_resolve_target($obj_id, $pdo)'),
-    'no unguarded resolve_target left in the inbox' => substr_count($inbox, 'sv_resolve_target($') === substr_count($inbox, 'sv_url_is_ours('),
+    'no unguarded resolve_target left in the inbox' => feedback_resolvers_guarded($inbox),
+    'extra host check does not hide resolver coverage' => feedback_resolvers_guarded($inbox . '\nsv_url_is_ours($report, $settings);'),
+    'unguarded resolver is rejected' => !feedback_resolvers_guarded($inbox . '\nsv_resolve_target($foreign, $pdo);'),
+    'duplicate unguarded resolver is rejected' => !feedback_resolvers_guarded($inbox . '\nsv_resolve_target($in_reply, $pdo);'),
     'a forwarded copy is never forwarded again' => str_contains($inbox, "&& empty(\$actor_doc['_forwarded_by'])) {\n                sv_forward_to_followers("),
     'forward dedupes per object per inbox' => str_contains($forward, "'fwd:' . substr(hash('sha256', \$obj_id . '|' . \$inbox), 0, 60)")
         && str_contains($forward, 'sv_queue_delivery($pdo, $inbox, $json, $dedupe);'),

@@ -64,6 +64,17 @@ $resource   = $parts[1] ?? '';   // heartbeat, comments, posts, etc.
 $sub_action = $parts[2] ?? '';   // pending, action, recent, etc.
 $method     = $_SERVER['REQUEST_METHOD'];
 
+// --- SECAUDIT 064: the action-aware half of the breach write gate --------
+// api.php deliberately does not gate 'multisite', because the front door
+// cannot see which action this is and three of them MUST keep working on a
+// breached site: the signed update (the way out), smackback/report (the
+// alarm) and run-crons (the housekeeping -- SS-1055 says gating it in the
+// wrong place takes fleet cron down). Now that the action is parsed, gate
+// everything else. run-crons is matched by RESOURCE, not by method, because
+// :530 below has no method check at all.
+require_once __DIR__ . '/breach-write-gate.php';
+snap_breach_write_gate_multisite($pdo, $resource, $sub_action, $method);
+
 // --- SETTINGS ---
 try {
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -602,6 +613,10 @@ if ($resource === 'fediverse' && $sub_action === 'status' && $method === 'GET') 
 // as if the operator pressed JOIN NETWORK on its portal. FULL api_key_local auth.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'fediverse' && $sub_action === 'relay-join' && $method === 'POST') {
+    // SS-1055: hub->spoke only. One secret authenticates inbound at both ends, so
+    // without this a spoke presenting the hub->spoke key could drive this spoke
+    // into a relay join. The same role guard the posts/create path already uses.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may command a relay join on this node', 403);
     require_once __DIR__ . '/fediverse.php';
     if (!sv_enabled($settings)) {
         ms_err('Federation is not enabled on this blog.');
@@ -1114,9 +1129,9 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
         $has_today = false;
         foreach ($stats as $r) { if (($r['stat_date'] ?? '') === $today) { $has_today = true; break; } }
         if (!$has_today) {
-            $tv = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=0")->fetchColumn();
-            $tu = (int)$pdo->query("SELECT COUNT(DISTINCT ip_hash) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=0")->fetchColumn();
-            $tb = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=1")->fetchColumn();
+            $tv = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE hit_at >= CURDATE() AND hit_at < CURDATE() + INTERVAL 1 DAY AND is_bot=0")->fetchColumn();
+            $tu = (int)$pdo->query("SELECT COUNT(DISTINCT ip_hash) FROM snap_stats WHERE hit_at >= CURDATE() AND hit_at < CURDATE() + INTERVAL 1 DAY AND is_bot=0")->fetchColumn();
+            $tb = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE hit_at >= CURDATE() AND hit_at < CURDATE() + INTERVAL 1 DAY AND is_bot=1")->fetchColumn();
             if ($tv || $tu || $tb) {
                 array_unshift($stats, [
                     'stat_date'       => $today,
@@ -1436,6 +1451,10 @@ if ($resource === 'backup' && $sub_action === 'export' && $method === 'GET') {
 // the single-site suyb-complete.php contract. (0.7.261)
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'backup' && $sub_action === 'report' && $method === 'POST') {
+    // SS-1055: hub->spoke only. The report is written by SUYB on the hub side; the
+    // scoped backup key sits on this spoke's hub row, so a legitimate caller is
+    // always role='hub'. The scope guard above already pins it to backup/*.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may report a backup on this node', 403);
     $b_status = in_array(($_POST['status'] ?? ''), ['ok', 'failed'], true) ? $_POST['status'] : 'ok';
     $b_size   = isset($_POST['size'])  ? (string)(int)$_POST['size'] : '';
     $b_dest   = substr(trim((string)($_POST['dest'] ?? '')), 0, 100);
@@ -1672,9 +1691,26 @@ if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
             VALUES (?, ?, ?, ?, ?)
         ");
     }
+    // WHICH CATEGORY IS THE OWNER'S OWN SITES. The hub knows; a spoke cannot
+    // work it out. These arrive as ordinary rows in an ordinary category, and
+    // source_hub_url marks EVERY hub-synced category, not just this one, so
+    // after the sync the only thing distinguishing "My Blogs" from "Antiques"
+    // is the text of the name -- and the name is configurable on the hub.
+    //
+    // So the hub now sends is_own on the entries it synthesises from the mesh,
+    // and the spoke records their category name under the same settings key
+    // the hub uses for it. A page can then ask "is this the owner's group?"
+    // without any skin matching on a literal string.
+    //
+    // Backward compatible both ways: an older hub sends no is_own and the
+    // spoke simply learns nothing new, keeping whatever it had.
+    $own_cat_seen = '';
     foreach ($entries as $e) {
         $url = trim($e['peer_url'] ?? '');
         if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) continue;
+        if (!empty($e['is_own']) && trim((string)($e['category'] ?? '')) !== '') {
+            $own_cat_seen = trim((string)$e['category']);
+        }
         $entry_cat_id = $resolve_cat((string)($e['category'] ?? ''));
         $row = [
             substr(trim($e['peer_name'] ?? ''), 0, 255) ?: parse_url($url, PHP_URL_HOST),
@@ -1688,7 +1724,15 @@ if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
         $inserted++;
     }
 
-    ms_ok(['inserted' => $inserted, 'hub_url' => $hub_url]);
+    if ($own_cat_seen !== '') {
+        $pdo->prepare(
+            "INSERT INTO snap_settings (setting_key, setting_val)
+             VALUES ('blogroll_my_blogs_cat', ?)
+             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+        )->execute([substr($own_cat_seen, 0, 100)]);
+    }
+
+    ms_ok(['inserted' => $inserted, 'hub_url' => $hub_url, 'own_category' => $own_cat_seen]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1696,6 +1740,10 @@ if ($resource === 'blogroll' && $sub_action === 'sync' && $method === 'POST') {
 // Hub is revoking its own access. Wipe the node record.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($resource === 'disconnect' && $method === 'POST') {
+    // SS-1055: hub->spoke only. Only the hub may revoke its own access and wipe this
+    // node row; a spoke-role caller must not delete the relationship from here. A
+    // spoke that wants to leave uses the local disconnect_hub path, not this route.
+    if ($node['role'] !== 'hub') ms_err('Only a hub may disconnect this node', 403);
     $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE id = ?")->execute([$node_id]);
 
     // Clear all hub_controls_* flags — the spoke is now standalone and its settings
@@ -1960,27 +2008,54 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
     // verified) update package — mirrors the local SYSTEM UPDATES path
     // (smack-update.php). Without this the spoke's freshly-replaced files no
     // longer match its OLD manifest, so SMACKBACK false-breaches on the next
-    // scan. Must run while the zip still exists (the signed in-zip manifest is
-    // the trusted baseline), so it precedes the unlink below.
-    if (file_exists($zip_path)) {
-        require_once __DIR__ . '/smackback.php';
-        // Re-baseline from the freshly-extracted, Ed25519-verified disk — NOT the
-        // in-zip manifest. The signed manifest can't enumerate per-install files
-        // (db.php, sc-config.php, release-pubkey.php), so baselining a hub-pushed
-        // update from it left those reading UNEXPECTED under PARANOID → this is the
-        // path that LOCKED THE WHOLE FLEET at once. Disk == the signed release here
-        // (verified before staging); init_from_disk captures the full monitored state
-        // and prunes orphans, so auto-clearing the stale breach is safe.
-        // (See project_smackback_false_breach_lockout.)
-        if (function_exists('smackback_init_from_disk') && smackback_init_from_disk()) {
-            if (function_exists('smackback_resolve_breach')) {
-                $smack_prev = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'")->fetchColumn();
-                if ($smack_prev === 'breach') {
-                    smackback_resolve_breach('update');
-                }
-            }
+    // scan.
+    //
+    // SS-1284: this block used to be wrapped in `if (file_exists($zip_path))` and
+    // to DISCARD the return value of smackback_init_from_disk(). That gave two
+    // silent skips stacked on each other: a package deleted by another vhost's
+    // cleanup (shared temp dir, fixed at updater.php UPDATER_TEMP_DIR) skipped the
+    // whole block, and a re-baseline that returned false was thrown away. Either
+    // way the hub stamped the version, answered OK, and left the spoke with a
+    // manifest describing its PRE-UPDATE files — which the next cron verify reads
+    // as tampering. The re-baseline does not read the package, so it is no longer
+    // gated on it; both failure modes are now reported to the hub instead.
+    $smack_zip_missing = !file_exists($zip_path);
+    $smack_ok          = false;
+    require_once __DIR__ . '/smackback.php';
+    // Re-baseline from the freshly-extracted, Ed25519-verified disk — NOT the
+    // in-zip manifest. The signed manifest can't enumerate per-install files
+    // (db.php, sc-config.php, release-pubkey.php), so baselining a hub-pushed
+    // update from it left those reading UNEXPECTED under PARANOID → this is the
+    // path that LOCKED THE WHOLE FLEET at once. Disk == the signed release here
+    // (verified before staging); init_from_disk captures the full monitored state
+    // and prunes orphans, so auto-clearing the stale breach is safe.
+    // (See project_smackback_false_breach_lockout.)
+    if (function_exists('smackback_init_from_disk')) {
+        $smack_ok = smackback_init_from_disk();
+    }
+    // Auto-clear a stale breach only when we can vouch for the update. A package
+    // that vanished mid-update means we cannot, so the breach stands.
+    if ($smack_ok && !$smack_zip_missing && function_exists('smackback_resolve_breach')) {
+        $smack_prev = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'")->fetchColumn();
+        if ($smack_prev === 'breach') {
+            smackback_resolve_breach('update');
         }
     }
+    if ($smack_zip_missing) {
+        error_log('SnapSmack hub update: package missing at finalize (' . $zip_path
+            . ') — shared temp dir or premature cleanup. See SS-1284.');
+    }
+    if (!$smack_ok) {
+        error_log('SnapSmack hub update: SMACKBACK re-baseline FAILED — the manifest '
+            . 'still describes the PRE-UPDATE files and the next verify will '
+            . 'false-breach this spoke. See SS-1284.');
+    }
+    // Reported to the hub so a spoke that updated but could not re-baseline is
+    // visible on the fleet board instead of reading as a clean success.
+    $smack_report = [
+        'baseline_refreshed' => $smack_ok,
+        'package_missing'    => $smack_zip_missing,
+    ];
 
     @unlink($zip_path);
 
@@ -2041,6 +2116,10 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
             $cron_failures
         )),
         'public_site'   => $public_reconcile,
+        // SS-1284: a spoke that updated but could not re-baseline is NOT a clean
+        // success. The hub shows this so the next cron verify's false breach is
+        // expected rather than alarming, and so the operator can act before it.
+        'smackback'     => $smack_report,
         'errors'        => $extract['errors'],
     ]);
 }

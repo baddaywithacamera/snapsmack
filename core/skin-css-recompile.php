@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/font-stack.php';
 /**
  * SNAPSMACK — Isolated public skin-CSS recompiler.
  *
@@ -80,6 +81,8 @@ function snapsmack_recompile_public_skin_css(PDO $pdo, string $active_skin): voi
     foreach ($manifest['options'] as $key => $meta) {
         $val  = ($all_settings[$key] ?? '') !== '' ? $all_settings[$key] : ($meta['default'] ?? '');
         $prop = $meta['property'] ?? '';
+        if (!empty($meta['omit_if_default']) && in_array($meta['type'] ?? '', ['color', 'colour'], true)
+            && strcasecmp((string)$val, (string)($meta['default'] ?? '')) === 0) continue;
 
         if ($prop === '')                    continue; // handled in PHP, not CSS
         if ($val === '')                     continue; // empty → skin style.css fallback wins
@@ -95,12 +98,7 @@ function snapsmack_recompile_public_skin_css(PDO $pdo, string $active_skin): voi
         if ($meta['type'] === 'select' && isset($meta['options'][$val]['css'])) {
             $generated_public .= "{$meta['selector']} {$meta['options'][$val]['css']}\n";
         } elseif ($prop === 'font-family') {
-            $fallback = 'sans-serif';
-            if (stripos($val, 'DotMatrix') !== false || stripos($val, 'Mono') !== false
-                || stripos($val, 'Courier') !== false || stripos($val, 'Tiny5') !== false
-                || stripos($val, 'Anonymous') !== false) {
-                $fallback = "'Courier New', monospace";
-            }
+            $fallback = snapsmack_font_family_generic_fallback($val);
             $generated_public .= "{$meta['selector']} { font-family: \"{$val}\", {$fallback}; }\n";
             if (!empty($meta['selector']) && empty($meta['no_size_slider'])) {
                 $sz_key = $key . '_size';
@@ -211,6 +209,68 @@ function snapsmack_public_css_target_stamp(string $active_skin, ?array $manifest
     if ($manifest === null) $manifest = load_skin_manifest($active_skin);
     if (!is_array($manifest) || empty($manifest['options']) || !is_array($manifest['options'])) return '';
     $cms = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0';
-    return $active_skin . '@' . (string)($manifest['version'] ?? '0') . '+cms@' . $cms;
+    // MANIFEST-CONTENT HASH (986D, PM 19:00). The version alone is not enough:
+    // the skin content digest excludes manifest.json, so a selector or property
+    // can change WITHOUT a version bump (SS-1214 repointed header_font_family
+    // from .logo-area a to .site-title-text under the same NH 1.3.30). Keying the
+    // stamp on the version only, the compiled option CSS would keep targeting the
+    // old selector until the CMS version happened to move. Folding a hash of the
+    // options into the stamp makes any option change -- selector, property, unit,
+    // default -- move the stamp and force a recompile, same version or not.
+    $opt = substr(sha1((string)json_encode($manifest['options'])), 0, 12);
+    return $active_skin . '@' . (string)($manifest['version'] ?? '0') . '+cms@' . $cms . '+opt@' . $opt;
 }
+/**
+ * Repair the compiled public option CSS if it has gone stale, and hand the
+ * caller the repaired values.
+ *
+ * WHY THIS IS A FUNCTION AND NOT A BLOCK IN THE HEAD. This logic lived inline
+ * in core/meta.php. core/meta.php is the LEGACY head, and strict public skins
+ * do not include it -- core/public-runtime.php:21 says so, and index.php's
+ * strict branches exit before the first skin-meta include. So on the entire
+ * strict fleet the repair could never run: the blob was refreshed only when an
+ * admin happened to press Save on the appearance screen.
+ *
+ * Four skins print ONLY this blob (STANLEY, TELEGRAM, TILEZ, WRITING WITH
+ * IMPACT, per Muse's control-consumption scan), so while it was stale every
+ * declared CSS control on them silently did nothing. That is one of the shapes
+ * of Sean's "I smell disconnected controls".
+ *
+ * $settings is taken BY REFERENCE because the caller is about to print from it
+ * on this same request. Repairing the database and leaving the caller holding
+ * the stale copy would fix nothing a visitor can see.
+ *
+ * @return bool true if it recompiled; false if there was nothing to do, the
+ *              skin is unknown, or the repair failed.
+ */
+function snapsmack_public_css_refresh_if_stale(PDO $pdo, string $active_skin, array &$settings): bool
+{
+    $target = snapsmack_public_css_target_stamp($active_skin);
+    if ($target === '') return false;      // no manifest or no options: nothing to compile
+
+    $blob     = (string)($settings['custom_css_public'] ?? '');
+    $stamp    = (string)($settings['custom_css_public_stamp'] ?? '');
+    $identity = '/* SKIN_ID ' . $target . ' */';
+
+    // Three ways to be stale: the stamp moved, there is no blob at all, or the
+    // blob was compiled for a different skin or version and still carries that
+    // identity. The third is what happens after a skin switch.
+    if ($stamp === $target && $blob !== '' && str_contains($blob, $identity)) return false;
+
+    try {
+        snapsmack_recompile_public_skin_css($pdo, $active_skin);
+        $rows = $pdo->query(
+            "SELECT setting_key, setting_val FROM snap_settings
+             WHERE setting_key IN ('custom_css_public', 'custom_css_public_stamp')"
+        )->fetchAll(PDO::FETCH_KEY_PAIR);
+        $settings['custom_css_public'] = $rows['custom_css_public'] ?? '';
+        $settings['custom_css_public_stamp'] = $rows['custom_css_public_stamp'] ?? $target;
+        return true;
+    } catch (Throwable $e) {
+        // A page must never fail over a cache. The controls stay stale for this
+        // request, which is the situation we were already in.
+        return false;
+    }
+}
+
 // ===== SNAPSMACK EOF =====

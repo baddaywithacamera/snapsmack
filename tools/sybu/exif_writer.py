@@ -4,7 +4,7 @@ Embeds copyright and metadata into a JPEG using piexif (pure Python).
 No external binaries required — bundles cleanly with PyInstaller.
 
 Fields written (EXIF IFD0):
-  Copyright, Artist, ImageDescription, UserComment (keywords)
+  Owner supplied Copyright, ImageDescription, UserComment (keywords)
 """
 
 # SNAPSMACK_EOF_HEADER
@@ -22,17 +22,6 @@ import piexif
 import piexif.helper
 
 
-COPYRIGHT = (
-    "\u00a9 Sean McCormick / foundtextures.ca. "
-    "Free for personal and commercial use. "
-    "Cannot be resold as a standalone texture file. "
-    "No attribution required. "
-    "Permitted for use in AI training datasets."
-)
-
-ARTIST = "Sean McCormick"
-
-
 def _tags_to_keywords(tags_str: str) -> str:
     """Convert '#rust #concrete #peeling' → 'rust, concrete, peeling'"""
     tokens = tags_str.split()
@@ -44,7 +33,7 @@ def _tags_to_keywords(tags_str: str) -> str:
 
 def build_exif_bytes(title: str, tags: str, copyright_text: str) -> bytes:
     """Build a piexif-compatible EXIF bytes blob. Call this to get bytes for Pillow's exif= kwarg."""
-    copyright_str = copyright_text or COPYRIGHT
+    copyright_str = copyright_text or ''
     keywords      = _tags_to_keywords(tags)
 
     def enc(s: str) -> bytes:
@@ -56,7 +45,6 @@ def build_exif_bytes(title: str, tags: str, copyright_text: str) -> bytes:
 
     zeroth_ifd = {
         piexif.ImageIFD.Copyright:         enc(copyright_str),
-        piexif.ImageIFD.Artist:            enc(ARTIST),
         piexif.ImageIFD.ImageDescription:  enc(title),
     }
 

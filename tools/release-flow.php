@@ -337,13 +337,77 @@ function rf_require_release_gate(?string $commit = null): void {
     if ($problem !== '') rf_fail($problem);
 }
 
+/**
+ * SS-1206. REFUSE BEFORE THE BROWSER TESTS, NAMING WHAT IS MISSING.
+ *
+ * The browser half of the gate needs @playwright/test from
+ * tools/browser-tests/node_modules. That directory is NOT committed, so it
+ * exists only in whichever checkout somebody has installed it in -- and EVERY
+ * git worktree lacks it. tests/browser-release-runner-regression.cjs also sets
+ * the child's NODE_PATH to that directory inside the checkout under test,
+ * overriding whatever the caller exported, so pointing a shared NODE_PATH at an
+ * installed copy elsewhere does not help.
+ *
+ * The release flow requires a clean tree on dev, and a separate clean worktree
+ * is the sensible way to get one while other work is in flight. So the
+ * RECOMMENDED way to cut a release was also the way that tripped this, and it
+ * cost 977D a full gate restart: the run died on a Node module-resolution
+ * stack trace in the middle of the suite instead of saying what was wrong.
+ *
+ * Needing a dependency installed is reasonable. Finding out as a stack trace is
+ * not. This is the same standard the skin registry now meets -- a failure names
+ * the URL it tried and the transport that failed, instead of blaming the
+ * firewall.
+ *
+ * The check is deliberately for the package's own directory rather than just
+ * node_modules: a half-finished or pruned install has the parent and not the
+ * package, and that fails in exactly the same confusing way.
+ */
+function rf_browser_dependency_problem(): string {
+    $dir = __DIR__ . '/browser-tests';
+    $pkg = $dir . '/node_modules/@playwright/test';
+    if (is_dir($pkg)) return '';
+    $has_parent = is_dir($dir . '/node_modules');
+    return "the browser tests cannot run: @playwright/test is not installed.\n"
+         . '  LOOKED FOR: ' . $pkg . "\n"
+         . '  node_modules ' . ($has_parent ? "exists but does not contain that package\n"
+                                            : "does not exist in that directory\n")
+         . "  FIX IT WITH:  cd " . $dir . " && npm ci\n"
+         . "  This is per-checkout. node_modules is not committed, so a fresh\n"
+         . "  worktree never has it, and exporting NODE_PATH does not help because\n"
+         . "  the runner test sets NODE_PATH itself. SS-1206.";
+}
+
 function rf_browser_tests(): void {
+    $problem = rf_browser_dependency_problem();
+    if ($problem !== '') rf_fail($problem);
     rf_run(['node', __DIR__ . '/../tests/browser-release-runner-regression.cjs']);
     rf_run(['node', __DIR__ . '/browser-tests/run-regressions.cjs']);
 }
 
 function rf_tests(): void {
-    foreach (glob(__DIR__ . '/../tests/*regression.php') ?: [] as $test) {
+    // EVERY TEST FILE, NOT THE ONES WHOSE NAMES HAPPEN TO SAY "regression".
+    //
+    // This globbed tests/*regression.php and therefore NEVER RAN TWENTY TEST
+    // FILES, among them the two that were failing in 0.7.977D while it was
+    // being served to the fleet: thomas-the-bear-reaches-every-skin.php and
+    // help-and-consent-reach-every-skin.php. The gate passed because it could
+    // not see them. Also missed: every-page-kind-renders-a-whole-document.php
+    // (the fault that sent eight skins a blogroll page with no <head>),
+    // engines-reach-every-controller.php, strict-path-asset-parity.php,
+    // agreed-rules-gate.php, and both promote-stable gate checks -- the checks
+    // on the release machinery itself.
+    //
+    // A filename pattern is not a test selection. The same narrow pattern hid
+    // two failures from my own sweeps for a whole day, and I was quoting "3 of
+    // 316" when the real number was 3 of 337. The directory is the suite.
+    //
+    // *.php, not *.cjs: the node tests run in rf_browser_tests(). Helper
+    // includes in tests/ use the .inc extension precisely so they are not
+    // picked up here.
+    $tests = glob(__DIR__ . '/../tests/*.php') ?: [];
+    if ($tests === []) rf_fail('no test files found in tests/ -- the suite glob is broken');
+    foreach ($tests as $test) {
         rf_run([PHP_BINARY, $test]);
     }
     rf_run([PHP_BINARY, '-l', __DIR__ . '/../smack-central/sc-release.php']);
@@ -402,9 +466,31 @@ if ($command === 'push-dev') {
 }
 
 if ($command === 'tag-dev') {
+    // --no-push: CREATE THE TAG AND STOP, LEAVING THE PUSH TO SEAN.
+    //
+    // This command ran every gate and then pushed dev and the tag
+    // unconditionally, so there was no way to prepare a tag for the owner to
+    // push. Codex hit that preparing 977D under a local-tag-only instruction
+    // and correctly refused to work around it. Pushing a tag is the owner's,
+    // and a tool with no way to express that invites someone to bypass it.
+    //
+    // EVERY GATE STILL RUNS. This is not a shortcut: the branch check, the
+    // clean check, the version and changelog checks, the tag-collision check,
+    // the test suite and the release gate all happen exactly as before, and
+    // the tag is only created if all of them pass. The single difference is
+    // the two pushes at the end. Default behaviour is untouched.
+    $no_push = in_array('--no-push', $argv, true);
+    // The version was $argv[2]. Take the first non-flag argument instead, so
+    // the flag can sit on either side of it.
+    $version_arg = '';
+    for ($i = 2; $i < count($argv); $i++) {
+        if (strncmp((string)$argv[$i], '--', 2) === 0) continue;
+        $version_arg = (string)$argv[$i];
+        break;
+    }
     rf_require_dev();
     rf_require_clean();
-    $version = rf_version($argv[2] ?? '');
+    $version = rf_version($version_arg);
     $dev_version = $version . 'D';
     if (rf_source_version() !== $dev_version) {
         rf_fail("source version is " . rf_source_version() . "; expected {$dev_version}");
@@ -418,6 +504,19 @@ if ($command === 'tag-dev') {
     rf_tests();
     rf_require_release_gate();
     rf_git(['tag', $tag]);
+    if ($no_push) {
+        $sha = rf_git(['rev-parse', $tag . '^{commit}']);
+        echo "BETA TAGGED LOCALLY: {$tag} at {$sha}\n";
+        echo "NOT PUSHED. Nothing has left this machine, so the tag can still be\n";
+        echo "moved or deleted. Once it is pushed it is immutable.\n\n";
+        echo "FOR SEAN, when he is ready:\n";
+        echo "  git push Github dev\n";
+        echo "  git push Github {$tag}\n\n";
+        echo "Both are needed and in that order: pushing the tag without the branch\n";
+        echo "leaves a tag pointing at a commit origin has never seen.\n";
+        echo "Then build it only in Smack Central's BITCHIN' panel.\n";
+        exit(0);
+    }
     rf_git(['push', 'Github', 'dev'], false);
     rf_git(['push', 'Github', $tag], false);
     echo "BETA TAGGED: {$tag}. Build it only in Smack Central's BITCHIN' panel.\n";
@@ -527,6 +626,9 @@ if ($command === 'gate-note') {
         if (!preg_match('/^--([a-z-]+)=(.+)$/', $arg, $m)) {
             rf_fail("unrecognised argument '{$arg}'; expected --name=value");
         }
+        // Repeatable, so it is collected separately below rather than
+        // overwriting itself in $flags.
+        if ($m[1] === 'skin-render-change') continue;
         $flags[$m[1]] = $m[2];
     }
     $required = [
@@ -557,6 +659,57 @@ if ($command === 'gate-note') {
     $skinNames = array_map(static fn (string $manifest): string => basename(dirname($manifest)), $skinDirs);
     sort($skinNames, SORT_STRING);
 
+    // SKIN RENDER CHANGES ARE DERIVED, NOT ASSUMED EMPTY.
+    //
+    // This field was hardcoded to []. On 0.7.997D that was simply untrue:
+    // GLIDE, RATIONAL GEO, GALLERIA and TILEZ all had skin files change since
+    // v0.7.996D, so signing the note as written would have recorded an empty
+    // render-change list for a release that moved four skins. Codex caught it
+    // while preparing the evidence and refused to sign rather than work round
+    // it, which is exactly right: a gate note is a record, and a field the
+    // tool fills in wrongly is worse than one it asks about.
+    //
+    // WHICH skins changed is derivable, so the tool derives it. WHY each
+    // changed, and what it was compared against, are judgements, so the tool
+    // REFUSES until the signer states them -- naming the skins it found. You
+    // cannot sign [] for a release that moved a skin, and you cannot be made
+    // to invent a reason either.
+    $previousTag = trim((string)@shell_exec('git tag --merged HEAD --list "v*D" --sort=-v:refname'));
+    $previousTag = $previousTag === '' ? '' : (string)strtok($previousTag, "
+");
+    $changed = [];
+    if ($previousTag !== '') {
+        $diff = (string)@shell_exec('git diff --name-only '
+            . escapeshellarg($previousTag) . ' HEAD -- skins/');
+        foreach (preg_split('/\R/', $diff) ?: [] as $line) {
+            if (preg_match('~^skins/([^/]+)/~', trim($line), $m)) $changed[$m[1]] = true;
+        }
+    }
+    $changedSkins = array_values(array_intersect(array_keys($changed), $skinNames));
+    sort($changedSkins, SORT_STRING);
+
+    $renderChanges = [];
+    foreach (array_slice($argv, 2) as $arg) {
+        if (preg_match('/^--skin-render-change=([^:]+):([^:]+):(.+)$/', $arg, $m)) {
+            $renderChanges[] = ['skin' => trim($m[1]), 'reason' => trim($m[2]),
+                                'pre_strip_reference' => trim($m[3])];
+        }
+    }
+    $declared = array_map(static fn (array $c): string => $c['skin'], $renderChanges);
+    $undeclared = array_values(array_diff($changedSkins, $declared));
+    if ($undeclared !== []) {
+        rf_fail("these skins changed since {$previousTag} and the note would record none of them:
+"
+            . '  ' . implode(', ', $undeclared) . "
+"
+            . "  Declare each one:
+"
+            . "    --skin-render-change=<skin>:<reason>:<what it was compared against>
+"
+            . '  Nothing is assumed empty any more.');
+    }
+
+
     $note = [
         'commit' => $head,
         'security' => 'pass',
@@ -566,7 +719,7 @@ if ($command === 'gate-note') {
         'skin_count' => count($skinNames),
         'skin_inventory_sha256' => hash('sha256', implode("
 ", $skinNames)),
-        'skin_render_changes' => [],
+        'skin_render_changes' => $renderChanges,
         'browser_regressions' => 'pass',
     ];
     if (isset($flags['tests'])) $note['tests'] = $flags['tests'];
@@ -585,5 +738,8 @@ if ($command === 'gate-note') {
     exit(0);
 }
 
-rf_fail('unknown command; use status, gate-check, gate-note, push-dev, tag-dev, or promote-stable');
+rf_fail("unknown command; use status, gate-check, gate-note, push-dev, "
+      . "tag-dev [--no-push], or promote-stable\n"
+      . "  tag-dev --no-push  runs every gate and creates the tag LOCALLY, "
+      . "leaving both pushes to Sean");
 // ===== SNAPSMACK EOF =====

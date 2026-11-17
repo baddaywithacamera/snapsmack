@@ -40,24 +40,44 @@
 
         var isFeed    = sentinel.hasAttribute('data-feed');
         var justified = (P === 'justified');
-        var grid = justified ? document.getElementById('justified-grid')
-                             : document.querySelector('.' + P + '-grid');
+        // A skin whose grid/item classes do not follow the .<prefix>-grid /
+        // .<prefix>-tile convention (the SMACKTALK feed's #browse-grid.smacktalk-feed
+        // with .smacktalk-feed-item, GLIDE's .archive-grid with .glide-archive-item,
+        // etc.) states them outright on the sentinel: data-grid-selector and
+        // data-item-selector. When absent, the convention (and the justified
+        // special case) is unchanged, so every existing sentinel pages as before.
+        var gridSel = sentinel.dataset.gridSelector;
+        var itemSelAttr = sentinel.dataset.itemSelector;
+        var grid = gridSel ? document.querySelector(gridSel)
+                 : (justified ? document.getElementById('justified-grid')
+                              : document.querySelector('.' + P + '-grid'));
         if (!grid) return;
-        var itemSel = justified ? '#justified-grid > .justified-row'
-                                : '.' + P + '-grid .' + P + '-tile';
+        var itemSel = itemSelAttr ? itemSelAttr
+                    : (justified ? '#justified-grid > .justified-row'
+                                 : '.' + P + '-grid .' + P + '-tile');
 
         var loading = false;
         var nextPg  = parseInt(sentinel.dataset.next, 10);
         var tag     = sentinel.dataset.tag;
         var base    = sentinel.dataset.base;
+        // SS-1185/NH paging: a skin whose route carries filters (archive
+        // ?category=&page=, hashtag) cannot be paged by appending p=N to a base,
+        // because that drops the filter. Core prepares the exact next-page URL and
+        // the skin hands it over as data-next-url on the sentinel. When present we
+        // fetch THAT url verbatim (filters preserved) and copy the fetched batch's
+        // own data-next-url for the step after. When absent, the historic p=N path
+        // is untouched, so every other skin pages exactly as before.
+        var nextUrl = sentinel.dataset.nextUrl;
 
         var obs = new IntersectionObserver(function (entries) {
             if (!entries[0].isIntersecting || loading) return;
             loading = true;
 
-            var url = isFeed
-                ? base + (base.indexOf('?') === -1 ? '?' : '&') + 'p=' + nextPg
-                : base + '?tag=' + encodeURIComponent(tag) + '&p=' + nextPg;
+            var url = nextUrl
+                ? nextUrl
+                : (isFeed
+                    ? base + (base.indexOf('?') === -1 ? '?' : '&') + 'p=' + nextPg
+                    : base + '?tag=' + encodeURIComponent(tag) + '&p=' + nextPg);
             fetch(url, { credentials: 'same-origin' })
                 .then(function (r) { return r.text(); })
                 .then(function (html) {
@@ -80,6 +100,9 @@
                     var newSentinel = tmp.querySelector('#' + P + '-sentinel');
                     if (newSentinel) {
                         nextPg++;
+                        // Carry the fetched batch's own prepared URL for the next
+                        // step; undefined for a p=N skin, which then stays on p=N.
+                        nextUrl = newSentinel.dataset.nextUrl;
                         loading = false;
                         // Recheck even when a short batch leaves it intersecting:
                         // IntersectionObserver only reports threshold changes.

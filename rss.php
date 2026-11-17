@@ -15,9 +15,15 @@
 
 
 require_once __DIR__ . '/core/db.php';
+// The feed is a listing surface, so it honours the portfolio exclusions through
+// the SAME predicate the archive and search use. Duplicating the SQL here is
+// how a listing and its count drift apart; there is one definition of
+// exclude_from_feed and this asks for it.
+require_once __DIR__ . '/core/public-repository.php';
 
 // --- SETTINGS LOADING ---
 // Retrieves channel metadata from database
+$rss_feed_filter = (new SnapPublicRepository($pdo))->postFilter('exclude_from_feed', 'p');
 $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
 $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
@@ -38,7 +44,7 @@ $rss_stream_sql = "
            p.created_at AS item_date
       FROM snap_posts p
       JOIN snap_images i ON i.id=p.featured_image_id
-     WHERE p.post_type='longform' AND p.status='published' AND p.created_at<=?
+     WHERE p.post_type='longform' AND p.status='published' AND p.created_at<=?{$rss_feed_filter}
        AND i.img_status='published' AND i.img_date<=?
     UNION ALL
     SELECT p.slug AS item_slug,
@@ -49,7 +55,7 @@ $rss_stream_sql = "
       FROM snap_posts p
       JOIN snap_post_images pi ON pi.post_id=p.id AND pi.is_cover=1
       JOIN snap_images i ON i.id=pi.image_id
-     WHERE p.post_type<>'longform' AND p.status='published' AND p.created_at<=?
+     WHERE p.post_type<>'longform' AND p.status='published' AND p.created_at<=?{$rss_feed_filter}
        AND i.img_status='published' AND i.img_date<=?
     UNION ALL
     SELECT i.img_slug AS item_slug, i.img_title AS item_title,

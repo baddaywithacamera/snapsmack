@@ -368,6 +368,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         $src = null;
         $db_thumb_square = null;
         $db_thumb_aspect = null;
+        $db_thumb_medium = null;          // SS-1386; null until the m_ file exists
         $db_checksum     = null;
         $display_options_json = null;
 
@@ -525,12 +526,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             else { imagewebp($a_thumb, $thumb_dir . 'a_' . $new_file_name, 78); }
             imagedestroy($a_thumb);
 
+            // --- MEDIUM THUMBNAIL (m_ prefix) ----------------------------
+            // SS-1386. THIS IS THE PATH SEAN ACTUALLY POSTS THROUGH: SYBU
+            // posts here (poster.py:493), and SYBU has been his only image
+            // source since 2026-08-28. core/image-ingest.php covers the
+            // Gallery uploader; without this, the photographs he adds every
+            // day would be the ones with no m_ derivative, and the backfill
+            // would never stop growing.
+            //
+            // Same geometry function as the ingest, so the two cannot drift,
+            // and it never upscales -- m_ larger than a_ would make the
+            // srcset offer a 600w candidate bigger than the 900w one.
+            require_once __DIR__ . '/core/thumb-generator.php';
+            $medium_long = defined('SNAPSMACK_THUMB_MEDIUM_LONG') ? SNAPSMACK_THUMB_MEDIUM_LONG : 600;
+            [$m_w, $m_h] = snap_medium_thumb_box((int)$orig_w, (int)$orig_h, (int)$medium_long);
+            $m_thumb = imagecreatetruecolor($m_w, $m_h);
+            if ($mime == 'image/png' || $mime == 'image/webp') {
+                imagealphablending($m_thumb, false);
+                imagesavealpha($m_thumb, true);
+            }
+            imagecopyresampled($m_thumb, $src, 0, 0, 0, 0, $m_w, $m_h, $orig_w, $orig_h);
+            if ($mime === 'image/jpeg') { imagejpeg($m_thumb, $thumb_dir . 'm_' . $new_file_name, 82); }
+            elseif ($mime === 'image/png') { imagepng($m_thumb, $thumb_dir . 'm_' . $new_file_name, 8); }
+            else { imagewebp($m_thumb, $thumb_dir . 'm_' . $new_file_name, 78); }
+            imagedestroy($m_thumb);
+
             imagedestroy($src);
 
             // --- RECOVERY METADATA ---
             // Compute SHA-256 checksum and store relative thumb paths for disaster recovery.
             $db_thumb_square = $rel_dir . '/thumbs/t_' . $new_file_name;
             $db_thumb_aspect = $rel_dir . '/thumbs/a_' . $new_file_name;
+            // Recorded only if the file is really there: a path in a srcset
+            // that 404s is worse than no m_ at all, which the grid handles.
+            $db_thumb_medium = is_file($thumb_dir . 'm_' . $new_file_name)
+                ? $rel_dir . '/thumbs/m_' . $new_file_name
+                : null;
             $db_checksum     = hash_file('sha256', $target_path);
 
             // --- COLOUR PALETTE EXTRACTION ---
@@ -599,10 +630,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
                 download_url,
                 img_thumb_square,
                 img_thumb_aspect,
+                img_thumb_medium,
                 img_checksum,
                 img_display_options,
                 img_color_mode
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -625,6 +657,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
             $download_url,
             $db_thumb_square ?? null,
             $db_thumb_aspect ?? null,
+            $db_thumb_medium ?? null,
             $db_checksum ?? null,
             $display_options_json ?? null,
             $color_mode

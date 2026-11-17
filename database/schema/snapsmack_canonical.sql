@@ -121,6 +121,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
                         COMMENT 'Relative path to 400x400 square thumbnail (t_ prefix)',
   `img_thumb_aspect`    varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'Relative path to aspect-ratio thumbnail (a_ prefix)',
+  `img_thumb_medium`    varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                        COMMENT 'Relative path to ~600px aspect-ratio thumbnail (m_ prefix, SS-1386). NULL = not generated yet; grids fall back to img_thumb_aspect.',
   `img_checksum`        varchar(64)    COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'SHA-256 hash of main image file for recovery verification',
   `img_display_options` text           COLLATE utf8mb4_unicode_ci
@@ -152,7 +154,14 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
   -- filesort); idx_images_status_date serves the date-range filter and the
   -- published-count query.
   KEY `idx_images_status_sort` (`img_status`, `sort_order`, `id`),
-  KEY `idx_images_status_date` (`img_status`, `img_date`)
+  KEY `idx_images_status_date` (`img_status`, `img_date`),
+  -- 0.7.989D (SQL audit): post_id drives the cover/stats LEFT JOIN probes and
+  -- img_checksum the RSS orphan NOT EXISTS; both were unindexed and scanned.
+  KEY `idx_images_post_id` (`post_id`),
+  KEY `idx_images_checksum` (`img_checksum`),
+  -- 0.7.989D (SQL audit B3): img_slug drives photographBySlug on every public
+  -- photo view and the import slug-uniqueness probes; it was unindexed.
+  KEY `idx_images_slug` (`img_slug`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -215,12 +224,25 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'FEDIVERSE (0.7.393): 1 = mark the federated Note sensitive (blurred behind a CW).',
   `content_warning`   varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                       COMMENT 'FEDIVERSE (0.7.393): Note.summary content-warning text shown before a sensitive post.',
+  `portfolio_post`    tinyint(1)     NOT NULL DEFAULT 0
+                      COMMENT 'PORTFOLIO: 1 = this post is a standing portfolio page rather than a dated entry. DESIGNATION ONLY — it hides nothing by itself. Visibility is the three exclude_* flags, so a page can be marked now and its visibility decided later without a schema change.',
+  `exclude_from_archive` tinyint(1)  NOT NULL DEFAULT 0
+                      COMMENT 'PORTFOLIO: 1 = keep out of archive and landing listings, and out of the photograph archive and taxonomy counts via snap_post_images. Never affects the post own URL.',
+  `exclude_from_search` tinyint(1)   NOT NULL DEFAULT 0
+                      COMMENT 'PORTFOLIO: 1 = keep out of both halves of site search.',
+  `exclude_from_feed`  tinyint(1)    NOT NULL DEFAULT 0
+                      COMMENT 'PORTFOLIO: 1 = keep out of the RSS feed and the public profile listing. FEDIVERSE IS NOT THIS FLAG — use fedi_enabled, which already gates delivery and every outbox listing. Two switches for one surface would drift.',
+  `primary_album_id`  int unsigned   DEFAULT NULL
+                      COMMENT 'PORTFOLIO: FK to snap_albums.id. The ONE album used to build this post canonical album/category/slug URL. A photograph may belong to many albums, so something must choose deterministically and SS-1185 requires that the choice be explicit — the owner picks it rather than the system guessing by id or alphabet, because an automatic choice changes a live URL by itself the moment a membership changes. NULL = not designated, and the post keeps its flat /slug.',
+  `primary_category_id` int unsigned DEFAULT NULL
+                      COMMENT 'PORTFOLIO: FK to snap_categories.id. The ONE category used in the canonical URL, for the same reason as primary_album_id. NULL = not designated.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_slug` (`slug`),
   KEY `idx_status` (`status`),
   KEY `idx_created_at` (`created_at`),
   KEY `idx_post_type` (`post_type`),
-  KEY `idx_trigram` (`trigram_id`)
+  KEY `idx_trigram` (`trigram_id`),
+  KEY `idx_posts_signature_image` (`signature_image_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -301,6 +323,8 @@ CREATE TABLE IF NOT EXISTS `snap_albums` (
                       COMMENT 'Hero image source for album gallery views — migration 039',
   `view_count`        int NOT NULL DEFAULT 0
                       COMMENT 'Album page-view tally — incremented on archive.php?album=N',
+  `album_slug`        varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
+                      COMMENT 'URL token for the album segment of /<album>/<category>/<slug>. Minted by snap_unique_slug() in core/slug.php — the ONE place slugs are made. Set once and never changed by a rename, so a shared link survives the album being retitled. Backfilled from album_name by core/schema-sync.php, which deduplicates with -2/-3 and never overwrites a slug the owner has set. DEFAULT is empty rather than NULL so the backfill can find unset rows with one predicate on either engine; an empty slug means not yet backfilled, and the album keeps its ?album=N address until it is.',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -475,6 +499,8 @@ CREATE TABLE IF NOT EXISTS `snap_assets` (
   `asset_path`     varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
   `asset_alt`      varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
                    COMMENT 'Accessibility ALT text for inline [img:ID] assets. Falls back to asset_name on render when NULL/blank. Added 0.7.512.',
+  `asset_caption`  varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                   COMMENT 'Owner-written display caption shown in the media-image lightbox (SS-1216). Separate from asset_alt; empty = no caption, never a page/post title fallback.',
   `asset_checksum` varchar(64)  COLLATE utf8mb4_unicode_ci DEFAULT NULL
                    COMMENT 'SHA-256 hash for recovery verification',
   `asset_border_width` tinyint unsigned NOT NULL DEFAULT 0
@@ -950,6 +976,8 @@ CREATE TABLE IF NOT EXISTS `snap_mosaics` (
                COMMENT 'Block arrangement, sent to ss-engine-mosaic.js as data-emphasis: natural|balanced|landscape|portrait',
   `layout`     VARCHAR(12)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'asymmetric'
                COMMENT 'Which engine renders the block: asymmetric (ss-engine-mosaic) | columns, square (ss-engine-columns) | rows (ss-engine-rows). emphasis applies to asymmetric only',
+  `gallery_shuffle` TINYINT(1)  NOT NULL DEFAULT 0
+               COMMENT 'SS-1185: 1 = show this mosaic photographs in a random order on each view. PRESENTATION ONLY — asset_ids keeps the authored order and is never rewritten, so turning this off gives the arranged sequence back exactly. Lives here and not on snap_posts because a post may hold several mosaics and each is a separate gallery; one WordPress gallery maps to one mosaic. Default 0 so an import that says nothing keeps the authored order.',
   `created_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)

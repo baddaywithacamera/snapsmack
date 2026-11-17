@@ -63,6 +63,14 @@ ST_READY   = "ready"     # a decision and/or reply is queued to push
 ST_SYNCING = "syncing"   # in flight
 ST_SYNCED  = "synced"    # pushed + verified
 ST_FAILED  = "failed"    # push or verify failed; error retained
+# SS-1332. The spoke accepted the push, but we could NOT read it back to
+# confirm it. That is not success and it is not failure -- it is not knowing,
+# and it used to be reported as synced. A delete reported as done when nobody
+# could confirm it means the operator believes a visitor's comment is gone
+# from a live site while it may still be published, and the item is never
+# looked at again. This state keeps the work queued so the next sync
+# re-verifies it.
+ST_UNVERIFIED = "unverified"
 
 
 def _now_iso() -> str:
@@ -360,10 +368,15 @@ class Session:
     def counts(self) -> Dict[str, int]:
         items = self.list_items()
         c = {"total": len(items), "pending": 0, "ready": 0,
-             "synced": 0, "failed": 0}
+             "synced": 0, "failed": 0, "unverified": 0}
         for it in items:
             if it.status == ST_SYNCED:
                 c["synced"] += 1
+            elif it.status == ST_UNVERIFIED:
+                # Counted on its own, never folded into "ready". It is not
+                # waiting to be pushed; it has been pushed and nobody could
+                # confirm it, which is a different thing to tell the operator.
+                c["unverified"] += 1
             elif it.status == ST_FAILED:
                 c["failed"] += 1
             elif it.has_work():
@@ -524,13 +537,21 @@ def import_session(export_dir: str, store: SessionStore) -> Session:
 #
 #   apply_decision(item) -> SyncResult      # approve / delete / spam
 #   post_reply(item)     -> SyncResult      # sets remote reply id in .remote_id
-#   verify_decision(item) -> bool           # pull the comment back + confirm
-#   verify_reply(item)    -> bool           # pull the comment back + confirm reply
+#   verify_decision(item) -> bool | None    # pull the comment back + confirm
+#   verify_reply(item)    -> bool | None    # pull the comment back + confirm reply
+#
+# A verify may answer THREE ways, and the third is the point of SS-1332:
+#   True   the spoke confirms the change -> synced
+#   False  the spoke contradicts it, the change did not take -> failed
+#   None   the spoke could not be read, so NOBODY KNOWS -> unverified
+# A verifier that returns True when it could not read is not verification. It
+# is the opposite: it converts "we have no idea" into "done" and the item is
+# never looked at again.
 #
 # A SyncResult carries (ok, remote_id, message). An item is only marked synced
 # after every queued operation on it is applied AND positively verified — a
 # reply that the server accepted but that verification can't confirm leaves the
-# item failed for retry, never a silent success.
+# item failed or unverified for retry, never a silent success.
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -583,25 +604,40 @@ class SyncEngine:
         #    reply before an approve keeps the thread intact; a delete never
         #    carries a reply (validate() blocks that combination).
         if item.has_reply():
-            try:
-                res = self.poster.post_reply(item)
-            except Exception as e:
-                self._mark(item, ST_FAILED, f"reply error: {e}")
-                self._emit("failed", item, item.error)
-                return SyncResult(False, message=str(e))
-            if not res.ok:
-                self._mark(item, ST_FAILED, res.message)
-                self._emit("failed", item, res.message)
-                return res
-            item.remote_reply_id = res.remote_id
-            self.session.save_item(item)
+            # SS-1332. A retry of an UNVERIFIED item must NOT post the reply
+            # again. The first attempt already got a reply id back from the
+            # spoke; only the confirmation was missing. Re-posting would put
+            # the operator's words under a visitor's comment twice, which is
+            # worse than the problem the retry exists to solve. So when a
+            # reply id is already held, skip straight to verifying it.
+            already_posted = bool(item.remote_reply_id)
+            if not already_posted:
+                try:
+                    res = self.poster.post_reply(item)
+                except Exception as e:
+                    self._mark(item, ST_FAILED, f"reply error: {e}")
+                    self._emit("failed", item, item.error)
+                    return SyncResult(False, message=str(e))
+                if not res.ok:
+                    self._mark(item, ST_FAILED, res.message)
+                    self._emit("failed", item, res.message)
+                    return res
+                item.remote_reply_id = res.remote_id
+                self.session.save_item(item)
             # POSITIVE verification — pull the comment back and confirm the reply.
             try:
                 verified = self.poster.verify_reply(item)
             except Exception as e:
                 verified, vmsg = False, f"reply verification error: {e}"
             else:
-                vmsg = "" if verified else "reply not found on the server after posting"
+                vmsg = ("" if verified
+                        else "the spoke could not be read back, so this reply is "
+                             "NOT confirmed" if verified is None
+                             else "reply not found on the server after posting")
+            if verified is None:
+                self._mark(item, ST_UNVERIFIED, vmsg)
+                self._emit("unverified", item, vmsg)
+                return SyncResult(False, item.remote_reply_id, vmsg)
             if not verified:
                 self._mark(item, ST_FAILED, vmsg)
                 self._emit("failed", item, vmsg)
@@ -625,7 +661,14 @@ class SyncEngine:
             except Exception as e:
                 verified, vmsg = False, f"verification error: {e}"
             else:
-                vmsg = "" if verified else "server did not reflect the moderation decision"
+                vmsg = ("" if verified
+                        else "the spoke could not be read back, so this %s is NOT "
+                             "confirmed" % item.action if verified is None
+                             else "server did not reflect the moderation decision")
+            if verified is None:
+                self._mark(item, ST_UNVERIFIED, vmsg)
+                self._emit("unverified", item, vmsg)
+                return SyncResult(False, message=vmsg)
             if not verified:
                 self._mark(item, ST_FAILED, vmsg)
                 self._emit("failed", item, vmsg)

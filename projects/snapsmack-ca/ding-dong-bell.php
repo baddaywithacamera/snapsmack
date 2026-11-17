@@ -82,7 +82,7 @@ h3 { font-size: 1rem; }
     line-height: 1.3;
 }
 .state.open      { background: var(--red);      color: var(--white); }
-.state.notwatch  { background: #F3E2B3;         color: #6b4c00; border: 1px solid #d9b84e; }
+.state.notwatch  { background: var(--light-grey); color: var(--dark-grey); border: 1px solid var(--mid-grey); }
 .state.watched   { background: #1a7a3c;         color: var(--white); }
 .state.eyeball   { background: var(--black);    color: var(--white); }
 .state.nottested { background: var(--light-grey);color: var(--dark-grey); border: 1px solid #ccc; }
@@ -205,6 +205,55 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <div class="entry">
+                <div class="entry-top"><h3>OPAUDIT 035 - Green on the fixture, broken on the page</h3><span class="date">2026-11-14</span><span class="state open">Open</span></div>
+                <p><strong>What happened:</strong> Four changes passed the checks written for them and then failed when a real page, real install or real photograph reached them. A related desktop-build gap let version numbers and source repairs look current without proving that the owner&rsquo;s referenced design or the repaired code existed in the installed program.</p>
+                <p><strong>Status:</strong> Open. Real-page rendering, installed-build checks, reuse-before-rewrite and revert-first rules are now explicit. The current RATIONAL GEO instance and installed-application acceptance remain open.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-11-14-035-green-on-the-fixture-broken-on-the-page.html" target="_blank" rel="noopener">Read the full report &rarr;</a> &middot; <a class="report-link" href="opaudits/2026-11-14-035-green-on-the-fixture-broken-on-the-page.pdf" target="_blank" rel="noopener">Download PDF &darr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>OPAUDIT 034 - The gate that said no</h3><span class="date">2026-11-14</span><span class="state watched">Closed</span></div>
+                <p><strong>What happened:</strong> A hand-written fourteen-test report said the release candidate was safe, while the real release gate ran the directory and refused on 34 unexplained snapshot drifts plus a missing test-strength record.</p>
+                <p><strong>Status:</strong> Closed. The drift was traced to an intended navigation change, regenerated with the test&rsquo;s own updater, independently reviewed key by key, and the full gate then passed. The audit records the limits that still remain outside a source-tree gate.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-11-14-034-the-gate-that-said-no.html" target="_blank" rel="noopener">Read the full report &rarr;</a> &middot; <a class="report-link" href="opaudits/2026-11-14-034-the-gate-that-said-no.pdf" target="_blank" rel="noopener">Download PDF &darr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>OPAUDIT 033 - Shared updater workspace caused a false breach</h3><span class="date">2026-11-11</span><span class="state open">Open</span></div>
+                <p><strong>What happened:</strong> Virtual hosts shared one mutable update workspace. A missing staged package skipped the integrity re-baseline, then scheduled verification compared legitimate updated files with stale data and put a clean site into LOCKOUT.</p>
+                <p><strong>Status:</strong> Open. The source repair isolates each installation&rsquo;s workspace and makes baseline failure explicit. Deployment and installed acceptance remain.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-11-11-033-shared-updater-temp-directory-false-breach.html" target="_blank" rel="noopener">Read the full report &rarr;</a> &middot; <a class="report-link" href="opaudits/2026-11-11-033-shared-updater-temp-directory-false-breach.pdf" target="_blank" rel="noopener">Download PDF &darr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>OPAUDIT 032 - Wrong licence declared on our own code</h3><span class="date">2026-11-10</span><span class="state open">Open</span></div>
+                <p><strong>What happened:</strong> First-party tools and public copy declared GPL-3.0 even though SnapSmack uses the permissive SMACK PUBLIC LICENSE 2.4. No control read the declarations that reached packages and screens.</p>
+                <p><strong>Status:</strong> Open. The repository and history were corrected; downloaded copies and installed/package declarations still require verification.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-11-10-032-wrong-licence-declared.html" target="_blank" rel="noopener">Read the full report &rarr;</a> &middot; <a class="report-link" href="opaudits/2026-11-10-032-wrong-licence-declared.pdf" target="_blank" rel="noopener">Download PDF &darr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>OPAUDIT 031 - The audit register failed</h3><span class="date">2026-11-10</span><span class="state open">Open</span></div>
+                <p><strong>What happened:</strong> SECAUDITs were misfiled, left open without owners or dates, and reported as handled without a single register anyone could check.</p>
+                <p><strong>Status:</strong> Open. The register and standing rules now exist, but the register is not complete and live verification of open findings is still owed.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-11-10-031-audit-register-failure.html" target="_blank" rel="noopener">Read the full report &rarr;</a> &middot; <a class="report-link" href="opaudits/2026-11-10-031-audit-register-failure.pdf" target="_blank" rel="noopener">Download PDF &darr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>OPAUDIT 030 - SQL and search query costs</h3><span class="date">2026-11-08</span><span class="state open">Open</span></div>
+                <p><strong>What happened:</strong> The database incident prompted a sweep that found eleven risky query shapes: repeated per-row checks, random ordering, index-defeating date work, unbounded metadata reads, missing indexes, schema work on a public GET path and unmeasured search semantics.</p>
+                <p><strong>Status:</strong> Open. Seven named source repairs have evidence; random selection, search semantics, release assembly and installed behavior remain open.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-11-08-030-sql-and-search-query-costs.html" target="_blank" rel="noopener">Read the full report &rarr;</a> &middot; <a class="report-link" href="opaudits/2026-11-08-030-sql-and-search-query-costs.pdf" target="_blank" rel="noopener">Download PDF &darr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>OPAUDIT 029 - Database overload and recovery</h3><span class="date">2026-11-07</span><span class="state open">Open</span></div>
+                <p><strong>What happened:</strong> Archive visibility queries ran for several minutes and overloaded the shared database. Recovery restored service and the offending predicate was replaced with a measured 28 ms query.</p>
+                <p><strong>Status:</strong> Open. Recovery and source checks are recorded; maintenance-job compatibility, monitoring, sustained availability and a release-path MariaDB timing run remain.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-11-07-029-database-overload-and-recovery.html" target="_blank" rel="noopener">Read the full report &rarr;</a> &middot; <a class="report-link" href="opaudits/2026-11-07-029-database-overload-and-recovery.pdf" target="_blank" rel="noopener">Download PDF &darr;</a></p>
+            </div>
 
             <div class="entry">
                 <div class="entry-top"><h3>OPAUDIT 028 - Eleven weeks on the front page</h3><span class="date">2026-10-28</span><span class="state open">Open</span></div>

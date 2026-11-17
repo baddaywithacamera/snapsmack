@@ -114,6 +114,11 @@ def _orient_to_api(value: str) -> str:
     return ORIENT_DISPLAY_TO_API.get((value or 'auto').strip().lower(), 'auto')
 
 
+def merge_additional_hashtags(existing: str, additional: str) -> str:
+    """Append temporary batch hashtags without duplicating existing tags."""
+    return manifest_parser.normalize_tags(f"{existing or ''} {additional or ''}")
+
+
 # ---------------------------------------------------------------------------
 # Background op record — one active long job per key
 # ---------------------------------------------------------------------------
@@ -470,7 +475,10 @@ class Engine:
         e = self.entries[index]
         for k in ('title', 'tags', 'category', 'album', 'colors', 'caption', 'alt', 'color_mode'):
             if k in patch:
-                setattr(e, k, patch[k] or '')
+                value = patch[k] or ''
+                if k == 'tags':
+                    value = manifest_parser.normalize_tags(value)
+                setattr(e, k, value)
         if 'orientation' in patch:
             e.orientation = _orient_to_api(patch['orientation'])
         return self._serialize_entry(index)
@@ -613,6 +621,64 @@ class Engine:
         return sum(1 for i in range(len(self.entries))
                    if self.rowstate[i]['selected'] and self._already_enriched(i))
 
+    def restore_enrichment_for(self, sel, custom_prompt, cats, albums):
+        """Fill in whatever Sean has already paid for. Returns (remaining, restored).
+
+        SS-1137, the money bug. Lifted out of enrich_start so it returns values
+        a test can ask about: a cache consulted inside the paid path can only be
+        checked by watching the bill.
+
+        The prompt hashed here comes from gemini.base_prompt, the SAME function
+        enrich_batch uses, so the key written at enrich time and the key looked
+        up here cannot drift. If they ever did, every lookup would miss and he
+        would quietly pay twice again -- the exact fault this repairs.
+        """
+        try:
+            import library_bridge
+            g = _gemini()
+            base = g.base_prompt(custom_prompt, cats, albums,
+                                 cat_descriptions=getattr(self.site_data, 'cat_descriptions', None),
+                                 album_descriptions=getattr(self.site_data, 'album_descriptions', None),
+                                 existing_tags=getattr(self.site_data, 'tags', None))
+            model = getattr(g, 'MODEL_NAME', '') or ''
+        except Exception:
+            return sel, 0                       # never block enrichment on the cache
+
+        site = getattr(self.client, 'base_url', '') or self.config.get('url', '')
+        remaining, restored = [], 0
+        for i, entry in sel:
+            path = os.path.join(self.image_folder, getattr(entry, 'file', '') or '')
+            try:
+                hit = library_bridge.restore_enrichment(site, path, base, model)
+            except Exception:
+                hit = None
+            if not hit:
+                remaining.append((i, entry))
+                continue
+            bundle = hit.get('bundle') or {}
+            for field, value in bundle.items():
+                if value != '':
+                    setattr(entry, field, value)
+            # Stamp the same provenance a paid run would, so a later save
+            # writes the same key rather than a second, unmatchable one.
+            entry._enrichment_base_prompt = base
+            entry._enrichment_model = model
+            entry._enrichment_prompt = getattr(entry, '_enrichment_prompt', '') or base
+            entry._enrichment_restored_from = hit.get('reused_from_domain', '') or 'library'
+            self.rowstate[i]['status'] = 'enriched'
+            # SAY IT. Reuse must never be silent in either direction: he has to
+            # be able to see money not being spent, and know a fresh answer
+            # means ticking the image and using REDO.
+            self.rowstate[i]['message'] = ('restored from your library (%s) — no API call'
+                                           % (entry._enrichment_restored_from or 'library'))
+            try:
+                if self.recovery:
+                    self.recovery.upsert(entry, 'enriched')
+            except Exception:
+                pass
+            restored += 1
+        return remaining, restored
+
     def enrich_start(self, api_key: str, custom_prompt: str, redo: bool = False) -> dict:
         api_key = (api_key or '').strip()
         if not api_key:
@@ -630,10 +696,23 @@ class Engine:
                 raise RuntimeError("Every ticked image is already enriched. Nothing to do.")
         self.ensure_recovery(self.image_folder)
         id_to_index = {id(e): i for i, e in enumerate(self.entries)}
-        sel_entries = [e for _, e in sel]
         cats = self.categories()
         albums = self.albums()
         sd = self.site_data
+
+        # SS-1137: CONSULT THE LIBRARY BEFORE SPENDING. Anything already paid
+        # for is filled in here and never reaches Gemini.
+        # REDO means he asked for a fresh answer and is willing to pay for it,
+        # so the library is not consulted on a redo. Restoring there would make
+        # the button do nothing, which is worse than the cost.
+        restored = 0
+        if not redo:
+            sel, restored = self.restore_enrichment_for(sel, custom_prompt, cats, albums)
+        if not sel and restored:
+            raise RuntimeError(
+                "Nothing to enrich: all %d restored from your library, no API calls."
+                % restored)
+        sel_entries = [e for _, e in sel]
 
         def _target(op: Op):
             def on_progress(idx, total, entry, error):
@@ -668,6 +747,9 @@ class Engine:
                 on_progress=on_progress,
                 skip_filled=not redo,
                 custom_prompt=custom_prompt or '',
+                # A REDO must reach the API. Skipping restore_enrichment_for
+                # above is not enough: enrich_batch restores on its own.
+                restore=not redo,
                 cat_descriptions=getattr(sd, 'cat_descriptions', None),
                 album_descriptions=getattr(sd, 'album_descriptions', None),
                 existing_tags=getattr(sd, 'tags', None),
@@ -770,7 +852,7 @@ class Engine:
     def post_start(self, as_grams: bool, def_cat: str, def_album: str, def_orient: str,
                    def_color: str, copyright_text: str, drive_folder_id: str,
                    ack_no_drive: bool = False, ack_unknown_mode: bool = False,
-                   drive_enabled: bool = True) -> dict:
+                   drive_enabled: bool = True, additional_tags: str = '') -> dict:
         pf = self.post_preflight(as_grams, drive_enabled)
         if pf['blocked_enrichment']:
             raise RuntimeError("Posting blocked — %d image(s) failed enrichment. "
@@ -792,6 +874,8 @@ class Engine:
         sel = [(i, self.entries[i]) for i in range(len(self.entries)) if self.rowstate[i]['selected']]
         id_to_index = {id(e): i for i, e in enumerate(self.entries)}
         sel_entries = [e for _, e in sel]
+        for entry in sel_entries:
+            entry.tags = merge_additional_hashtags(entry.tags, additional_tags)
         image_folder = self.image_folder
         self.ensure_recovery(image_folder)
         # Managed SNAP HQ workflow: a file posted from `...\\upload` moves to its sibling
@@ -906,6 +990,35 @@ class Engine:
 
     def drive_status(self) -> dict:
         return {'connected': self.drive_service is not None}
+
+    def drive_check(self, drive_folder_id: str = '') -> dict:
+        """Is Drive actually usable? NO SITE, NO QUEUE, NO IMAGES REQUIRED.
+
+        SS-1171, the owner's words: Validate refuses an empty queue. It did --
+        validate() raises "Connect first." without a site and "Load or scan
+        images first." without entries, and then only checks the MANIFEST. It
+        never asked Drive anything. So the one button next to "Attach Google
+        Drive originals" could not tell him whether Drive worked, and
+        drive_status() only reported that authenticate() had returned an object.
+
+        This is deliberately independent of everything else: it needs no blog
+        connection, no scanned folder and no queue, because the question "will
+        my originals upload" is not a question about the queue. Read-only --
+        one files().get on the folder, no upload and no write.
+
+        Falls back to the configured folder id when none is passed, so the
+        check uses what a publish would actually use rather than whatever is
+        typed in the box at the time.
+        """
+        folder_id = (drive_folder_id or '').strip() or str(
+            self.config.get('drive_folder_id', '') or '').strip()
+        if not self.config.get('drive_enabled'):
+            return {'ok': False, 'reason': 'disabled', 'folder_id': folder_id,
+                    'detail': 'Google Drive attachment is switched off, so nothing '
+                              'would be uploaded.', 'name': ''}
+        out = _drive().probe_folder(self.drive_service, folder_id)
+        out['folder_id'] = folder_id
+        return out
 
     # ────────────────────────────────────────────────────────────────────────
     # AUDIT

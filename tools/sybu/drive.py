@@ -14,17 +14,25 @@ handles it silently — no browser, no fuss.
 
 
 
+import hashlib
 import os
 import sys
+from contextlib import contextmanager
 from typing import Optional
 
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
+
+# Bounded retry for the permission and delete calls. Not 0 (a transient hiccup
+# must not lose a grant and leave an orphan) and not the client default (that
+# loop can hang a desktop GUI for minutes). See upload().
+_PERM_RETRIES = 2
 
 
 def _token_path() -> str:
@@ -51,8 +59,17 @@ def authenticate(credentials_path: str):
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
+            try:
+                creds.refresh(Request())
+            except RefreshError as error:
+                # A revoked/expired grant needs consent again, not another refresh.
+                # Other failures (including transient service errors) must surface.
+                rejected = any(isinstance(arg, dict) and arg.get('error') == 'invalid_grant'
+                               for arg in error.args)
+                if not rejected:
+                    raise
+                creds = None
+        if not creds or not creds.valid:
             try:
                 flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
             except Exception as e:
@@ -101,33 +118,79 @@ def upload(service, file_path: str, filename: str,
         resumable=True,
     )
 
-    file = service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields='id',
-    ).execute(num_retries=0)
+    try:
+        file = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id',
+        ).execute(num_retries=0)
+    finally:
+        media.stream().close()  # Windows must be able to move the completed source
 
     file_id = file.get('id')
     if not file_id:
         raise RuntimeError('Drive did not return a file ID after upload.')
 
     # Make the file publicly readable (anyone with the link).
-    # num_retries=0 prevents the Google client's exponential-backoff loop
-    # from hanging for minutes on a transient API hiccup.
+    # _PERM_RETRIES is 2, not 0 and not the client default. It was 0 to stop the
+    # Google client's exponential-backoff loop hanging the GUI for minutes on a
+    # transient hiccup; that reason still holds, so this is a bounded retry (a
+    # few seconds at worst), not the default loop. The PM's 22:39 ruling
+    # requires a transient permission failure to retry or fail loudly.
     try:
         service.permissions().create(
             fileId=file_id,
             body={'type': 'anyone', 'role': 'reader'},
-        ).execute(num_retries=0)
+        ).execute(num_retries=_PERM_RETRIES)
     except Exception as perm_exc:
+        left = _discard_orphan(service, file_id)
+        if left:
+            raise RuntimeError(
+                f'File uploaded to Drive (ID: {file_id}) but setting public '
+                f'permissions failed: {perm_exc}\n\n'
+                f'It could not be removed either ({left}), so an unshared copy '
+                f'of "{filename}" is still in Drive. Either delete it or grant '
+                f'it "Anyone with the link - Viewer" and paste the link in.'
+            ) from perm_exc
         raise RuntimeError(
-            f'File uploaded to Drive (ID: {file_id}) but setting public '
-            f'permissions failed: {perm_exc}\n\n'
-            f'Grant "Anyone with the link – Viewer" access manually in Drive, '
-            f'then retry the upload or paste the link directly.'
+            f'Setting public permissions on "{filename}" failed: {perm_exc}\n\n'
+            f'The uploaded copy was removed, so nothing was left unshared in '
+            f'Drive and nothing was published. Retry the upload.'
         ) from perm_exc
 
-    return f"https://drive.google.com/uc?export=download&id={file_id}"
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
+
+    # THE PUBLISH GATE. A URL we built is not a URL that works: a grant that did
+    # not take, a quota page or a throttled file all leave this string looking
+    # fine. Prove it serves the image to a stranger before any caller can
+    # publish it. poster.py refuses to publish a post whose download URL is
+    # missing (:439, :700), so raising here is what stops the post.
+    receipt = public_permission_receipt(service, file_id)
+    probe = probe_public_download(url, file_path)
+
+    # Drive's grant is not always effective for an anonymous fetch the instant
+    # it is created. One short retry covers propagation; it is not a waiting
+    # period, and a second failure is a real failure.
+    if not probe['ok'] and probe['reason'] in ('status', 'html', 'network'):
+        import time
+        time.sleep(2)
+        probe = probe_public_download(url, file_path)
+
+    if not (receipt['ok'] and probe['ok']):
+        left = _discard_orphan(service, file_id)
+        why = probe['detail'] if not probe['ok'] else receipt['detail']
+        reason = probe['reason'] if not probe['ok'] else 'permission_not_set'
+        tail = (f'The uploaded copy was removed, so nothing was published.'
+                if not left else
+                f'It could not be removed either ({left}), so an unusable copy '
+                f'of "{filename}" is still in Drive.')
+        raise RuntimeError(
+            f'"{filename}" FAILED the anonymous download check '
+            f'[{reason}]: {why}\n\n'
+            f'Permission receipt: {receipt["detail"]}\n{tail}'
+        )
+
+    return url
 
 
 def rename(service, file_id: str, new_name: str) -> str:
@@ -201,11 +264,281 @@ def search(service, folder_id: str, title_query: str) -> list:
     ]
 
 
+def probe_folder(service, folder_id: str) -> dict:
+    """Read-only: can THIS token reach THIS folder? No upload, no write, no queue.
+
+    SS-1171. SYBU's only Drive signal was `drive_service is not None`, which is
+    true the moment authenticate() returns an object -- so a dead token or a
+    folder id that no longer exists both read as "connected", and the owner
+    found out at publish time. This asks Drive one question and reports which
+    of the two failed, because "it does not work" is not a diagnosis.
+
+    Returns {'ok': bool, 'reason': str, 'detail': str, 'name': str}:
+      reason 'no_service'   authenticate() has not run in this session
+      reason 'no_folder'    no folder id was given to check
+      reason 'auth'         the token is refused (401/403) -- re-authenticate
+      reason 'folder'       the folder is missing, trashed, or not shared (404)
+      reason 'not_a_folder' the id resolves to a file, not a folder
+      reason 'api'          Drive answered with something else; detail carries it
+      reason ''             ok
+    """
+    if service is None:
+        return {'ok': False, 'reason': 'no_service', 'detail':
+                'Google Drive is not connected in this session.', 'name': ''}
+    folder_id = (folder_id or '').strip()
+    if not folder_id:
+        return {'ok': False, 'reason': 'no_folder', 'detail':
+                'No Drive folder id is set, so there is nothing to check.', 'name': ''}
+    try:
+        meta = service.files().get(
+            fileId=folder_id,
+            fields='id,name,mimeType,trashed,capabilities(canAddChildren)',
+        ).execute(num_retries=0)
+    except Exception as exc:                      # googleapiclient.errors.HttpError and friends
+        status = getattr(getattr(exc, 'resp', None), 'status', None)
+        if status is None:
+            status = getattr(exc, 'status_code', None)
+        try:
+            status = int(status) if status is not None else None
+        except (TypeError, ValueError):
+            status = None
+        text = str(exc)
+        if status in (401, 403) or 'invalid_grant' in text or 'insufficient' in text.lower():
+            return {'ok': False, 'reason': 'auth', 'detail':
+                    'Google refused the saved token. Re-authenticate Drive. (%s)' % text,
+                    'name': ''}
+        if status == 404 or 'notFound' in text or 'not found' in text.lower():
+            return {'ok': False, 'reason': 'folder', 'detail':
+                    'Drive has no folder with that id, or it is not shared with '
+                    'this account. (%s)' % text, 'name': ''}
+        return {'ok': False, 'reason': 'api', 'detail': text, 'name': ''}
+
+    if meta.get('trashed'):
+        return {'ok': False, 'reason': 'folder', 'detail':
+                'That folder is in the Drive trash.', 'name': str(meta.get('name') or '')}
+    if meta.get('mimeType') != 'application/vnd.google-apps.folder':
+        return {'ok': False, 'reason': 'not_a_folder', 'detail':
+                'That id is a file, not a folder.', 'name': str(meta.get('name') or '')}
+    if not meta.get('capabilities', {}).get('canAddChildren'):
+        return {'ok': False, 'reason': 'not_writable', 'detail':
+                'This account can see the folder but cannot upload into it.',
+                'name': str(meta.get('name') or '')}
+    try:
+        account = service.about().get(fields='user(emailAddress),storageQuota').execute(num_retries=0)
+        quota = account.get('storageQuota', {})
+        free = max(0, int(quota['limit']) - int(quota.get('usage', 0))) if quota.get('limit') else None
+    except Exception:
+        return {'ok': False, 'reason': 'account', 'detail':
+                'Could not verify the Drive account and storage quota.',
+                'name': str(meta.get('name') or '')}
+    if free == 0:
+        return {'ok': False, 'reason': 'quota', 'detail': 'This Drive account has no free storage.',
+                'name': str(meta.get('name') or '')}
+    return {'ok': True, 'reason': '', 'detail': '', 'name': str(meta.get('name') or ''),
+            'account': account.get('user', {}).get('emailAddress', ''), 'free_bytes': free}
+
+
 def revoke_token() -> None:
     """Delete the saved token, forcing re-authentication next time."""
     token_path = _token_path()
     if os.path.exists(token_path):
         os.unlink(token_path)
+
+
+def _local_digest(path: str) -> tuple:
+    """(size, md5) of a local file, or (0, '') if it cannot be read."""
+    try:
+        h = hashlib.md5()
+        n = 0
+        with open(path, 'rb') as fh:
+            while True:
+                chunk = fh.read(1024 * 1024)
+                if not chunk:
+                    break
+                n += len(chunk)
+                h.update(chunk)
+        return n, h.hexdigest()
+    except OSError:
+        return 0, ''
+
+
+def _imgsafe():
+    """The shared image-safety module, or None.
+
+    Same lookup poster.py uses for snap_site_scope: each tool puts tools/_shared
+    on sys.path at a different spot, and frozen exes bundle it next to the entry
+    script.
+    """
+    try:
+        import snap_imgsafe
+        return snap_imgsafe
+    except Exception:  # noqa: BLE001
+        d = os.path.dirname(os.path.abspath(__file__))
+        for _ in range(4):
+            cand = os.path.join(d, '_shared')
+            if os.path.isdir(cand):
+                if cand not in sys.path:
+                    sys.path.insert(0, cand)
+                break
+            d = os.path.dirname(d)
+        try:
+            import snap_imgsafe
+            return snap_imgsafe
+        except Exception:  # noqa: BLE001
+            return None
+
+
+@contextmanager
+def _anonymous_get(url, **kwargs):
+    """A fresh session without ambient .netrc, proxy credentials, or saved cookies."""
+    import requests
+    with requests.Session() as session:
+        session.trust_env = False
+        session.cookies.clear()
+        with session.get(url, **kwargs) as response:
+            yield response
+
+
+def probe_public_download(url: str, local_path: str = '', *,
+                          expected_md5: str = '',
+                          timeout: int = 30) -> dict:
+    """Fetch a Drive link the way a stranger would and prove it is the image.
+
+    Anonymous on purpose: a fresh request with no OAuth header, no cookies and
+    no api_key. The owner's own browser is signed in to Drive, so a link that
+    works for him proves nothing about what a visitor gets.
+
+    Returns {'ok', 'reason', 'detail', 'bytes', 'md5'}. Reasons: no_url,
+    no_requests, network, status, html, not_image, no_imgsafe, size_mismatch,
+    md5_mismatch.
+
+    The two HTML traps are why content-type alone is not enough: Drive answers
+    the large-file confirmation page and the "too many users have viewed or
+    downloaded this file" quota page with status 200 and a body of HTML.
+    """
+    out = {'ok': False, 'reason': '', 'detail': '', 'bytes': 0, 'md5': ''}
+
+    if not (url or '').strip():
+        out['reason'] = 'no_url'
+        out['detail'] = 'No download URL to probe.'
+        return out
+
+    try:
+        import requests
+    except Exception as exc:  # noqa: BLE001
+        out['reason'] = 'no_requests'
+        out['detail'] = 'requests is unavailable: %s' % exc
+        return out
+
+    want_size, want_md5 = (0, '')
+    if local_path:
+        want_size, want_md5 = _local_digest(local_path)
+    if expected_md5:
+        want_md5 = expected_md5.strip().lower()
+
+    safe = _imgsafe()
+    if safe is None:
+        out['reason'] = 'no_imgsafe'
+        out['detail'] = ('snap_imgsafe (shared image safety module) is missing, so '
+                         'downloaded bytes cannot be verified. Refusing to pass.')
+        return out
+
+    # Read at most what the original is, plus slack for container differences,
+    # and never more than snap_imgsafe's own ceiling.
+    budget = min(getattr(safe, 'MAX_BYTES', 128 * 1024 * 1024),
+                 (want_size + 1024 * 1024) if want_size else 128 * 1024 * 1024)
+
+    try:
+        with _anonymous_get(url, timeout=timeout, stream=True,
+                            allow_redirects=True, cookies={}) as r:
+            status = r.status_code
+            ctype = (r.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+            body = bytearray()
+            for chunk in r.iter_content(64 * 1024):
+                if not chunk:
+                    continue
+                body.extend(chunk)
+                if len(body) > budget:
+                    break
+            data = bytes(body)
+    except Exception as exc:  # noqa: BLE001
+        out['reason'] = 'network'
+        out['detail'] = str(exc)
+        return out
+
+    out['bytes'] = len(data)
+
+    if status != 200:
+        out['reason'] = 'status'
+        out['detail'] = 'HTTP %s from the download URL.' % status
+        return out
+
+    if ctype.startswith('text/') or ctype in ('application/xhtml+xml',):
+        out['reason'] = 'html'
+        out['detail'] = ('Drive returned %s, not an image. This is normally the '
+                         'large-file confirmation page or the download-quota '
+                         'page, both of which answer with status 200.' % ctype)
+        return out
+
+    try:
+        safe.check_bytes(data)
+    except Exception as exc:  # noqa: BLE001
+        out['reason'] = 'not_image'
+        out['detail'] = 'Downloaded bytes are not a usable image: %s' % exc
+        return out
+
+    out['md5'] = hashlib.md5(data).hexdigest()
+
+    if want_size and len(data) != want_size:
+        out['reason'] = 'size_mismatch'
+        out['detail'] = ('downloaded %d bytes, the original is %d. Drive served '
+                         'something other than the file we uploaded.'
+                         % (len(data), want_size))
+        return out
+
+    if want_md5 and out['md5'] != want_md5:
+        out['reason'] = 'md5_mismatch'
+        out['detail'] = ('downloaded md5 %s, expected %s.' % (out['md5'], want_md5))
+        return out
+
+    out['ok'] = True
+    return out
+
+
+def public_permission_receipt(service, file_id: str) -> dict:
+    """Read back whether anyone/reader is really set on the file.
+
+    The create call returning without raising is not the same as the grant being
+    in place. Returns {'ok', 'detail'}; ok is False when the read fails, so a
+    missing receipt is never counted as a pass.
+    """
+    try:
+        resp = service.permissions().list(
+            fileId=file_id, fields='permissions(type,role)',
+        ).execute(num_retries=_PERM_RETRIES)
+    except Exception as exc:  # noqa: BLE001
+        return {'ok': False, 'detail': 'could not read permissions back: %s' % exc}
+
+    for perm in (resp.get('permissions') or []):
+        if perm.get('type') == 'anyone' and perm.get('role') in ('reader', 'writer', 'owner'):
+            return {'ok': True, 'detail': 'anyone/%s' % perm.get('role')}
+    return {'ok': False,
+            'detail': 'no anyone/reader grant is present on the file'}
+
+
+def _discard_orphan(service, file_id: str) -> str:
+    """Delete a file this upload just created and is refusing to use.
+
+    Rolling back our own failed write, seconds old and never published. It is
+    not a cleanup pass over the owner's Drive and never touches anything whose
+    id this call did not just receive. Returns '' on success, else why not, so
+    the caller can tell the owner what is left behind.
+    """
+    try:
+        service.files().delete(fileId=file_id).execute(num_retries=_PERM_RETRIES)
+        return ''
+    except Exception as exc:  # noqa: BLE001
+        return str(exc)
 
 
 def _mime(path: str) -> str:

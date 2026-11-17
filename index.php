@@ -83,7 +83,7 @@ try {
     }
 
     require_once __DIR__ . '/core/page-cache.php';
-    page_cache_serve_or_start($settings);
+    // Profile content negotiation below must run before any cached HTML is served.
 
     // Define BASE_URL from settings or fallback. Ensures trailing slash for consistent routing.
     if (!defined('BASE_URL')) {
@@ -139,7 +139,45 @@ try {
     // chosen page using the same pattern as page.php instead of the image feed.
     $path_info = $_SERVER['PATH_INFO'] ?? '';
     $requested_slug = trim($path_info, '/');
+
     if (empty($requested_slug)) $requested_slug = $_GET['s'] ?? $_GET['name'] ?? null;
+
+    // --- PORTFOLIO PATHS: /<album>/<category>/<slug> (SS-1185) ---
+    // THE ONLY PLACE IN THE PRODUCT WHERE A URL PATH BECOMES A SLUG, which is
+    // why the resolver is called here and nowhere else. The three public
+    // controllers below (SMACKTALK, strict, legacy) all read $requested_slug
+    // and all understand a flat post slug already, so turning the three
+    // segments into that slug here reaches all three without touching any of
+    // them -- and without three copies of the decision, which is the shape that
+    // let the SMACKTALK search fix land on one path while another served the
+    // site.
+    //
+    // IT MUST RUN AFTER THE ?name / ?s FALLBACK ABOVE, AND IT DID NOT. I first
+    // put this block between the PATH_INFO read and that fallback, which made
+    // the whole feature dead on every live site: the rewrite in
+    // core/htaccess-template hands the path over in ?name, NOT in PATH_INFO, so
+    // PATH_INFO is empty here and the resolver was being asked about an empty
+    // string every time. Found by serving the thing over real HTTP, where
+    // php -S showed PATH_INFO unset; reading the code, the order looked right.
+    //
+    // A one- or two-segment path gets a verdict of 'none' without a single
+    // query, so every existing URL on every site costs exactly what it cost
+    // before. core/portfolio-route.php holds the WHOLE decision; this block
+    // only applies it. There is deliberately no "has a slash in it" shortcut
+    // here -- a cheap test at the call site is still a copy of the decision,
+    // and a copy is the thing being avoided.
+    if ($requested_slug !== null && $requested_slug !== '') {
+        require_once __DIR__ . '/core/portfolio-route.php';
+        $_pf_route = snap_portfolio_route_for_request($pdo, $requested_slug);
+        if (($_pf_route['action'] ?? 'none') === 'redirect') {
+            header('Location: ' . rtrim(BASE_URL, '/') . $_pf_route['path'], true, 301);
+            exit;
+        }
+        if (($_pf_route['action'] ?? 'none') === 'serve') {
+            $requested_slug = $_pf_route['slug'];
+        }
+        unset($_pf_route);
+    }
 
     // --- FEDIVERSE public profile (fediverse actor page at instance/username) ---
     // The address a Pixelfed user expects. Content-negotiate: a fediverse server
@@ -149,7 +187,7 @@ try {
     if ($requested_slug !== null && $requested_slug !== ''
         && ($settings['fediverse_enabled'] ?? '0') === '1') {
         require_once __DIR__ . '/core/fediverse.php';
-        if (strcasecmp((string)$requested_slug, sv_handle($settings)) === 0) {
+        if (sv_enabled($settings) && strcasecmp((string)$requested_slug, sv_handle($settings)) === 0) {
             $pp_accept = $_SERVER['HTTP_ACCEPT'] ?? '';
             if (stripos($pp_accept, 'activity+json') !== false || stripos($pp_accept, 'ld+json') !== false) {
                 header('Content-Type: application/activity+json; charset=utf-8');
@@ -160,6 +198,8 @@ try {
             exit;
         }
     }
+
+    page_cache_serve_or_start($settings);
 
     // --- CMS-OWNED PUBLIC CONTROLLER ---
     // The avatar, resolved exactly as PHOTOGRAM resolved it before the strict
@@ -250,6 +290,7 @@ try {
         // is still in hand; the component that prints it has none. Same call
         // public-runtime makes, for the same reason.
         require_once __DIR__ . '/core/consent-runtime.php';
+        require_once __DIR__ . '/core/thomas-uid.php';
         $GLOBALS['snapsmack_consent'] = snapsmack_consent_prepare($pdo, $settings);
 
         $_smacktalk = snapsmack_smacktalk_request($pdo, $settings, [
@@ -280,6 +321,36 @@ try {
                     $_smacktalk['rendered_content'] = snapsmack_trusted_html((string)$_smacktalk['rendered_content']);
                 }
                 $_smacktalk['navigation'] = $skin_view['navigation'] ?? [];
+                // SS-986D: THE SMACKTALK FRONT FEED PAGES LIKE THE STRICT LANDING.
+                //
+                // The smacktalk controller never goes through snapsmack_public_runtime(),
+                // so its feed carried page/next_page but no prepared next_url -- the one
+                // the shared infinite-scroll engine fetches verbatim. A skin falling back
+                // to the engine's ?p=N construction would miss, because this router reads
+                // ?page=, not ?p=. Core prepares the link here, where snap_route_url_raw()
+                // is loaded (above) and the request context is known.
+                //
+                // THE FRONT FEED IS THE 'home' ROUTE (the empty path). DIARY is also
+                // kind 'feed' but lives at its own slug, which this build does not resolve
+                // to a paged path, so DIARY is left without a prepared url rather than
+                // given a wrong one -- absent is safe, wrong strands posts on a filter.
+                if (($_smacktalk['kind'] ?? '') === 'feed' && empty($_smacktalk['is_diary'])) {
+                    $_feedPage = max(1, (int)($_smacktalk['page'] ?? 1));
+                    $_feedNext = (int)($_smacktalk['next_page'] ?? 0);
+                    $_smacktalk['next_url'] = $_feedNext > $_feedPage
+                        ? snap_same_origin_path(snap_route_url_raw('home', ['page' => $_feedNext]))
+                        : null;
+                    $_smacktalk['previous_url'] = $_feedPage > 1
+                        ? snap_same_origin_path(snap_route_url_raw('home', $_feedPage > 2 ? ['page' => $_feedPage - 1] : []))
+                        : null;
+                }
+                // A STRICT SKIN NEVER LOADS core/meta.php, so the stale-option-CSS repair
+                // that lived in that head could never run here -- and four skins print only
+                // that compiled blob, so their declared controls silently did nothing until
+                // somebody pressed Save. Repair it before the view is built, because the view
+                // prints from $settings on this same request.
+                require_once __DIR__ . '/core/skin-css-recompile.php';
+                snapsmack_public_css_refresh_if_stale($pdo, (string)$active_skin, $settings);
                 $_strict_view = snapsmack_build_skin_view($_smacktalk, [
                     'site_name' => (string)($settings['site_name'] ?? ''),
                     'tagline' => (string)($settings['site_tagline'] ?? ''),
@@ -289,7 +360,30 @@ try {
                     'owner_name' => (string)($settings['site_author'] ?? ''),
                     'site_description' => (string)($settings['site_description'] ?? ''),
                     'avatar_url' => snapsmack_public_avatar_url($settings),
-                    'favicon_url' => !empty($settings['favicon_url']) ? (preg_match('#^https?://#i', (string)$settings['favicon_url']) ? (string)$settings['favicon_url'] : (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['favicon_url'], '/')) : '',
+            // THE HEADER LOGO, WHICH A STRICT SKIN COULD NOT GET.
+            //
+            // site.brand_logo has been in the view-model allowlist all along
+            // and NOTHING EVER POPULATED IT: a skin asking for it received
+            // nothing on every site, and there is no other logo key here --
+            // avatar_url above is the owner's portrait, not the masthead. A
+            // strict skin that wanted the logo had to do without, and GLIDE's
+            // header is the first to ask for it out loud.
+            //
+            // THE PRECEDENCE IS core/header.php's, NOT A NEW ONE. That file
+            // unifies two uploaders -- the Image Engine's HEADER LOGO ASSET
+            // (header_logo_url) and the masthead's Custom Logo Image
+            // (site_logo) -- and header_logo_url wins when both are set. A
+            // second, subtly different answer here is how one page ends up
+            // showing a different logo from another.
+            //
+            // Deliberately NOT applying header.php's header_type rule: that
+            // decides whether the LEGACY masthead draws text or an image,
+            // which is presentation. A strict skin is handed the logo it has
+            // and decides for itself whether to draw it.
+            'brand_logo' => (string)($settings['header_logo_url'] ?? '') !== ''
+                ? (string)$settings['header_logo_url']
+                : (string)($settings['site_logo'] ?? ''),
+                    'favicon_url' => snapsmack_public_favicon_url($settings, (string)$active_skin),
                     'skin_slug' => (string)$active_skin,
                     'skin_style_url' => $_active_skin_style_url,
             'base_style_url' => $_base_style_url,
@@ -304,9 +398,39 @@ try {
                 // The SMACKTALK controller exits here too, so it had the same
                 // silent hole: a converted SMACKTALK site recorded nothing.
                 $_hit_kind = (string)($_smacktalk['kind'] ?? '');
+                // AND 'single' IS A SMACKTALK KIND, which this table did not know.
+                // SS-1129 made snapsmack_scrolltime_tag() eligible for a written
+                // post on the reasoning that "a long written post is page_type
+                // 'page'". On this path it was not: the SMACKTALK controller calls
+                // one post 'single', 'single' was not a key here, so no hit was
+                // logged at all and the gate SS-1129 added could never be reached.
+                // The fix was necessary and, by itself, did nothing.
+                //
+                // COLLECTION ONLY, on the same terms SS-1129 set out: every reader
+                // of dwell_ms filters page_type IN ('landing','archive'), so mapping
+                // a post to 'page' starts recording it and moves no reported figure.
+                //
+                // AND 'feed' IS THE SMACKTALK FRONT PAGE, which was logging nothing
+                // at all: no view, no dwell. The controller calls the landing diary
+                // 'feed' and this table had no such key, so the one page a text site
+                // is read from recorded less than its archive did.
+                //
+                // THIS ONE DOES MOVE A REPORTED NUMBER, which is why I raised it as
+                // SS-1204 instead of mapping it with the rest. Every reader filters
+                // page_type IN ('landing','archive'), so a front-page row reaches
+                // the SCROLL TIME tile and changes what that figure means from this
+                // build on. The coordinator ruled on 5 Nov 2026: Sean's rule already
+                // says a SMACKTALK landing page gets a beacon, and a front page
+                // logging no hits at all is a bug. Ruled, not assumed, and the owner
+                // is being told the tile will start counting front pages.
+                //
+                // 'taxonomy' IS STILL ABSENT, by the same ruling: nobody has asked
+                // for a beacon there. The test keeps reporting it so that held does
+                // not quietly become forgotten.
                 $_hit_types = [
                     'landing' => 'landing', 'photo' => 'image', 'post' => 'image',
                     'page' => 'page', 'collection' => 'page', 'blogroll' => 'page',
+                    'single' => 'page', 'feed' => 'landing',
                     'hashtag' => 'hashtag', 'search' => 'search',
                     'archive' => 'archive', 'albums' => 'archive', 'collections' => 'archive',
                 ];
@@ -399,6 +523,13 @@ try {
             'archive_layout_cookie'   => $_COOKIE['smack_archive_layout'] ?? '',
             'archive_calendar_cookie' => $_COOKIE['smack_archive_calendar'] ?? '',
         ], $_public_settings);
+        if (!empty($_GET['viewer_comments'])
+            && in_array($_public['kind'] ?? '', ['photo', 'post'], true)) {
+            header('Cache-Control: private, no-store');
+            echo '<div class="wall-comment-content">'
+                . snap_render_html($_public['community'] ?? '') . '</div>';
+            exit;
+        }
         if (!empty($skin_view['navigation']) && is_array($skin_view['navigation'])) {
             $_public['navigation'] = $skin_view['navigation'];
         }
@@ -412,6 +543,13 @@ try {
             );
         }
         http_response_code((int)($_public['status'] ?? 500));
+        // A STRICT SKIN NEVER LOADS core/meta.php, so the stale-option-CSS repair
+        // that lived in that head could never run here -- and four skins print only
+        // that compiled blob, so their declared controls silently did nothing until
+        // somebody pressed Save. Repair it before the view is built, because the view
+        // prints from $settings on this same request.
+        require_once __DIR__ . '/core/skin-css-recompile.php';
+        snapsmack_public_css_refresh_if_stale($pdo, (string)$active_skin, $settings);
         $_strict_view = snapsmack_build_skin_view($_public, [
             'site_name' => (string)($settings['site_name'] ?? ''),
             'tagline' => (string)($settings['site_tagline'] ?? ''),
@@ -420,6 +558,32 @@ try {
             'owner_name' => (string)($settings['site_author'] ?? ''),
             'site_description' => strip_tags((string)($settings['site_description'] ?? '')),
             'avatar_url' => snapsmack_public_avatar_url($settings),
+            // THE HEADER LOGO, WHICH A STRICT SKIN COULD NOT GET.
+            //
+            // site.brand_logo has been in the view-model allowlist all along
+            // and NOTHING EVER POPULATED IT: a skin asking for it received
+            // nothing on every site, and there is no other logo key here --
+            // avatar_url above is the owner's portrait, not the masthead. A
+            // strict skin that wanted the logo had to do without, and GLIDE's
+            // header is the first to ask for it out loud.
+            //
+            // THE PRECEDENCE IS core/header.php's, NOT A NEW ONE. That file
+            // unifies two uploaders -- the Image Engine's HEADER LOGO ASSET
+            // (header_logo_url) and the masthead's Custom Logo Image
+            // (site_logo) -- and header_logo_url wins when both are set. A
+            // second, subtly different answer here is how one page ends up
+            // showing a different logo from another.
+            //
+            // Deliberately NOT applying header.php's header_type rule: that
+            // decides whether the LEGACY masthead draws text or an image,
+            // which is presentation. A strict skin is handed the logo it has
+            // and decides for itself whether to draw it.
+            'brand_logo' => (string)($settings['header_logo_url'] ?? '') !== ''
+                ? (string)$settings['header_logo_url']
+                : (string)($settings['site_logo'] ?? ''),
+            'favicon_url' => snapsmack_public_favicon_url($settings, (string)$active_skin),
+            'og_image_url' => ($_public['kind'] ?? '') === 'landing'
+                ? snapsmack_public_brand_image_url((string)($settings['og_image_override'] ?? '')) : '',
             'skin_slug' => (string)$active_skin,
             'skin_style_url' => $_active_skin_style_url,
             'base_style_url' => $_base_style_url,
@@ -842,6 +1006,56 @@ try {
             <?php
             exit;
         }
+
+        // SOFT-404. The visitor asked for a SPECIFIC path ($requested_slug) and
+        // it matched neither a published photograph (above) nor an active page
+        // (just now). On a cms_controller=smacktalk skin the post and page
+        // lookups already failed in snapsmack_smacktalk_request(), which returns
+        // handled=false so this legacy path can also try the photograph and page
+        // tables; with those exhausted the honest answer is 404, not the 200
+        // homepage/feed that renders below. Measured: unknown URLs returned 200
+        // on TILEZ and ALFRED (both cms_controller=smacktalk) while GLIDE (public
+        // controller) already 404'd -- this closes that gap for every skin that
+        // reaches the legacy fall-through. The homepage itself ($requested_slug
+        // empty) never enters this block, and any photograph or page that
+        // resolved has already exited above, so no URL that resolves on a live
+        // site changes. A 404 is not a page view, so it is not logged as a hit.
+        http_response_code(404);
+        $skin_path = 'skins/' . $active_skin;
+        if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
+            include __DIR__ . '/' . $skin_path . '/skin-meta.php';
+        }
+        ?>
+<body class="static-transmission not-found">
+    <div id="page-wrapper">
+        <div id="scroll-stage">
+            <?php
+            $header_file = __DIR__ . '/' . $skin_path . '/skin-header.php';
+            if (file_exists($header_file)) {
+                include $header_file;
+            } else {
+                include __DIR__ . '/core/header.php';
+            }
+            ?>
+            <div class="static-content">
+                <h1 class="static-page-title">404 — Not Found</h1>
+                <div class="description">
+                    <p class="dim">No signal at this address.</p>
+                </div>
+            </div>
+            <?php
+            $footer_file = __DIR__ . '/' . $skin_path . '/skin-footer.php';
+            if (file_exists($footer_file)) {
+                include $footer_file;
+            }
+            ?>
+        </div>
+    </div>
+    <?php include __DIR__ . '/core/footer-scripts.php'; ?>
+</body>
+</html>
+        <?php
+        exit;
     }
 
     // --- NAVIGATION LINKS ---

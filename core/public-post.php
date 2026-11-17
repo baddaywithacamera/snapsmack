@@ -22,7 +22,7 @@ $pk_kind = (string)($GLOBALS['pp_post_kind'] ?? 'image');
 $pk_base = rtrim(defined('BASE_URL') ? BASE_URL : sv_base($settings), '/') . '/';
 
 if ($pk_kind === 'post') {
-    $pk_row = sv_post_row($pdo, $pk_id);
+    $pk_row = sv_federated_post_row($pdo, $pk_id, $settings);
     if (!$pk_row) sv_404();
     $pk_images = sv_post_images($pdo, $pk_id);
     $pk_title  = trim((string)($pk_row['title'] ?? ''));

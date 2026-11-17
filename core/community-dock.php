@@ -59,22 +59,26 @@ if (($settings['fediverse_enabled'] ?? '0') === '1' && is_file(__DIR__ . '/fediv
     }
 }
 
+// WHO IS ASKING -- the same rule process-like.php uses when it WRITES the
+// like, now read from one place rather than copied. A read side and a write
+// side that disagree about identity show an empty heart to somebody who has
+// already liked the photograph, and nothing on screen explains it.
+require_once __DIR__ . '/like-identity.php';
+[$_like_user_id, $_guest_hash] = snap_like_identity($pdo ?? null);
+
 $user_liked = false;
-if ($community_user) {
-    $ul_stmt = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND user_id = ? LIMIT 1");
-    $ul_stmt->execute([$post_id, $community_user['id']]);
-    $user_liked = (bool)$ul_stmt->fetchColumn();
-} else {
-    // Anonymous like check via hashed IP (no PII stored)
-    try {
-        $_like_salt  = snap_ensure_download_salt($pdo ?? null); // SECAUDIT 047
-        $_guest_hash = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0') . $_like_salt);
+try {
+    if ($_like_user_id) {
+        $ul_stmt = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND user_id = ? LIMIT 1");
+        $ul_stmt->execute([$post_id, $_like_user_id]);
+    } else {
         $ul_stmt = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND guest_hash = ? LIMIT 1");
         $ul_stmt->execute([$post_id, $_guest_hash]);
-        $user_liked = (bool)$ul_stmt->fetchColumn();
-    } catch (PDOException $e) {
-        // guest_hash column doesn't exist yet — pre-migration, skip
     }
+    $user_liked = (bool)$ul_stmt->fetchColumn();
+} catch (PDOException $e) {
+    // guest_hash column doesn't exist yet -- pre-migration, skip. Kept around
+    // the signed-in branch too: the table itself can be absent on an old site.
 }
 
 // REACTIONS REMOVED (0.7.x): SnapSmack standardized on a single HEART like,

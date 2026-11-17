@@ -1,0 +1,79 @@
+/* SNAPSMACK - TILE LIKE (SS-1323)
+ *
+ * A heart in the bottom-left corner of a photograph's tile. Sean's spec:
+ * outline, appears on hover, no count.
+ *
+ * THE TOUCH RULE, WHICH THE SPEC ASKED FOR A DECISION ON. A tablet has no
+ * hover, so "appears on hover" would mean a control a touch visitor can
+ * never reach -- the exact failure the accessibility audit is being run to
+ * find. On any pointer without hover the heart is ALWAYS VISIBLE, at reduced
+ * opacity so it stays quiet against the photograph. Not visible-on-tap: the
+ * first tap would be spent revealing a control the visitor cannot know is
+ * there, and on a conveyor that tap also means "open this photograph".
+ *
+ * 44x44 MINIMUM TARGET. The glyph is 22px; the button is 44 so it meets the
+ * touch-target size the audit will measure. The visible ring is smaller than
+ * the hit area on purpose.
+ *
+ * ===== SNAPSMACK EOF =====
+ */
+
+.ss-tile-like {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    z-index: 3;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ss-tile-like-ink, #ffffff);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .16s ease, transform .16s ease;
+    /* The photograph behind it may be any colour, so the glyph carries its
+       own separation rather than relying on one. */
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55));
+}
+
+.ss-tile-like svg { fill: none; stroke: currentColor; stroke-width: 2; }
+
+/* Hover anywhere on the tile reveals it, not just hover on the heart itself
+   -- a control that only appears once you are already on it is not
+   discoverable. The ancestor is whatever the skin marks. */
+.ss-tile-like-host:hover .ss-tile-like,
+.ss-tile-like:focus-visible {
+    opacity: 1;
+}
+
+/* A visible focus ring, because this is reachable by Tab and the audit will
+   look for one. */
+.ss-tile-like:focus-visible {
+    outline: 2px solid var(--ss-tile-like-focus, #ffffff);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+.ss-tile-like.is-liked {
+    opacity: 1;                    /* a like is a state, not a hover affordance */
+}
+
+.ss-tile-like.is-liked svg {
+    fill: var(--ss-tile-like-on, #ff4f5e);
+    stroke: var(--ss-tile-like-on, #ff4f5e);
+}
+
+/* TOUCH: no hover exists, so the heart is always there. */
+@media (hover: none) {
+    .ss-tile-like { opacity: .72; }
+    .ss-tile-like.is-liked { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ss-tile-like { transition: none; }
+}
+/* ===== SNAPSMACK EOF ===== */

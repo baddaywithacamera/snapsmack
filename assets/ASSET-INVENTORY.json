@@ -115,6 +115,7 @@
             "callers": [
                 "smack-pages.php",
                 "smack-post-long.php",
+                "smack-settings.php",
                 "smack-skin.php",
                 "core/asset-security-reviews.php"
             ],
@@ -353,7 +354,8 @@
             "registry_handle": "asset:public:ss-config-bootstrap",
             "legacy_handle": null,
             "callers": [
-                "core/meta.php"
+                "core/meta.php",
+                "tools/_build/render-engine-fixtures.php"
             ],
             "security_signals": [],
             "security_review": null,
@@ -543,6 +545,23 @@
             "purpose": "Alfred skin mobile navigation toggle v1.0.0 Wires the .nav-toggle hamburger button to show/hide .mobile-navigation."
         },
         {
+            "file": "assets/js/ss-engine-archive-cascade.js",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-archive-cascade",
+            "legacy_handle": "smack-archive-cascade",
+            "callers": [
+                "core/public-runtime.php"
+            ],
+            "security_signals": [],
+            "security_review": null,
+            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
+            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
+            "vendor": false,
+            "requires": [],
+            "purpose": "Archive Cascade Reveal Engine On an archive / hashtag page, the grid of photographs reveals in a quick ordered wave -- top-to-bottom, left-to-right -- instead of appearing all at once, so a freshly..."
+        },
+        {
             "file": "assets/js/ss-engine-archive-filter.js",
             "owner": "cms",
             "scope": "public",
@@ -597,6 +616,7 @@
                 "skins/chaplin/manifest.json",
                 "skins/rational-geo/manifest.json",
                 "skins/slickr/manifest.json",
+                "projects/snapsmack-ca/opaudits/2026-10-25-027-thirty-two-restores-three-restorations.html",
                 "chaplin",
                 "rational-geo",
                 "slickr"
@@ -805,6 +825,7 @@
                 "skins/scroll/manifest.json",
                 "skins/telegram/manifest.json",
                 "skins/tilez/manifest.json",
+                "projects/snapsmack-ca/opaudits/2026-10-18-025-seven-repairs-on-the-wrong-rail.html",
                 "50-shades-of-noah-grey",
                 "chaplin",
                 "impact-printer",
@@ -838,8 +859,11 @@
             "legacy_handle": "smack-keyboard",
             "callers": [
                 "core/asset-security-reviews.php",
+                "core/consent-runtime.php",
                 "core/footer-scripts.php",
                 "core/meta.php",
+                "core/public-runtime.php",
+                "tools/_build/render-engine-fixtures.php",
                 "50-shades-of-noah-grey",
                 "52-card-pickup",
                 "aurora",
@@ -967,7 +991,10 @@
             "legacy_handle": null,
             "callers": [
                 "core/consent-banner.php",
-                "core/footer-scripts.php"
+                "core/consent-runtime.php",
+                "core/footer-scripts.php",
+                "core/public-runtime.php",
+                "tools/_build/render-engine-fixtures.php"
             ],
             "security_signals": [],
             "security_review": null,
@@ -1294,13 +1321,24 @@
             "registry_handle": "asset:public:ss-engine-glide",
             "legacy_handle": "smack-glide",
             "callers": [
+                "core/asset-security-reviews.php",
                 "skins/glide/manifest.json",
                 "skins/sliders/manifest.json",
                 "glide",
                 "sliders"
             ],
-            "security_signals": [],
-            "security_review": null,
+            "security_signals": [
+                "html-sink",
+                "network"
+            ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SS-1361",
+                "review": "HTML-SINK: five innerHTML writes (:17, :45, :161, :389, :446), every one a CONSTANT STRING with no interpolation of any kind -- chrome for the fullscreen button, the panel shell, the viewer shell, the search form and the about link. Nothing from the page, the URL or the network reaches any of them. NETWORK: two fetches (:81, :181), both passing mode same-origin, which makes a cross-origin response unreadable whatever the URL. Every caller origin-checks first as well: the pagination click path tests link.origin !== location.origin (:153), the search path tests url.origin (:429), and the About link is only built when aboutUrl.origin matches (:439). Responses are parsed with DOMParser into a DETACHED document, never executed, and script/iframe/object/embed nodes are removed before the fragment is inserted with replaceChildren (:87-88, :186-187). What it fetches is this CMS own rendered pages. The layering is the right way round: the origin test is the policy, same-origin mode is the enforcement, and the node strip is the containment."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1664,6 +1702,7 @@
                 "core/admin-content-preview.php",
                 "core/asset-sync.php",
                 "core/meta.php",
+                "core/parser.php",
                 "core/public-runtime.php",
                 "skins/50-shades-of-noah-grey/manifest.json",
                 "skins/52-card-pickup/manifest.json",
@@ -1774,7 +1813,8 @@
             "registry_handle": "asset:public:ss-engine-masonry",
             "legacy_handle": "smack-masonry",
             "callers": [
-                "core/asset-security-reviews.php"
+                "core/asset-security-reviews.php",
+                "projects/snapsmack-ca/opaudits/2026-10-25-027-thirty-two-restores-three-restorations.html"
             ],
             "security_signals": [
                 "network"
@@ -1899,6 +1939,7 @@
                 "smack-mosaics.php",
                 "core/meta.php",
                 "core/parser.php",
+                "tools/_build/capture-mosaic-golden.html",
                 "scroll",
                 "tilez"
             ],
@@ -2088,6 +2129,7 @@
             "legacy_handle": "smack-photogram",
             "callers": [
                 "core/asset-security-reviews.php",
+                "core/consent-runtime.php",
                 "skins/photogram/manifest.json",
                 "photogram"
             ],
@@ -2161,7 +2203,8 @@
             "registry_handle": "asset:public:ss-engine-public-help",
             "legacy_handle": null,
             "callers": [
-                "core/footer.php"
+                "core/footer.php",
+                "core/public-runtime.php"
             ],
             "security_signals": [],
             "security_review": null,
@@ -2199,6 +2242,7 @@
                 "core/50-shades-page-component.php",
                 "core/asset-security-reviews.php",
                 "core/meta.php",
+                "core/skin-render-helpers.php",
                 "skins/50-shades-of-noah-grey/manifest.json",
                 "skins/chaplin/manifest.json",
                 "skins/impact-printer/manifest.json",
@@ -2429,26 +2473,39 @@
             "legacy_handle": "smack-tag-infinite",
             "callers": [
                 "core/asset-security-reviews.php",
+                "core/skin-render-helpers.php",
+                "skins/alfred/manifest.json",
                 "skins/aurora/manifest.json",
                 "skins/game-on/manifest.json",
+                "skins/glide/manifest.json",
                 "skins/heuristic/manifest.json",
                 "skins/instant-camera/manifest.json",
                 "skins/jive-turkey/manifest.json",
+                "skins/new-horizon/manifest.json",
                 "skins/parade/manifest.json",
                 "skins/sliders/manifest.json",
+                "skins/stanley/manifest.json",
                 "skins/sudden-impact/manifest.json",
+                "skins/telegram/manifest.json",
                 "skins/the-grid/manifest.json",
                 "skins/true-grit/manifest.json",
+                "skins/writing-with-impact/manifest.json",
+                "alfred",
                 "aurora",
                 "game-on",
+                "glide",
                 "heuristic",
                 "instant-camera",
                 "jive-turkey",
+                "new-horizon",
                 "parade",
                 "sliders",
+                "stanley",
                 "sudden-impact",
+                "telegram",
                 "the-grid",
-                "true-grit"
+                "true-grit",
+                "writing-with-impact"
             ],
             "security_signals": [
                 "html-sink",
@@ -2475,9 +2532,12 @@
             "registry_handle": "asset:public:ss-engine-thomas",
             "legacy_handle": "smack-thomas",
             "callers": [
+                "index.php",
                 "core/asset-security-reviews.php",
                 "core/footer-scripts.php",
                 "core/meta.php",
+                "core/public-runtime.php",
+                "core/thomas-uid.php",
                 "projects/snapsmack-ca/assets/js/ss-engine-thomas.js",
                 "projects/snapsmack-ca/index.php",
                 "game-on",
@@ -2485,20 +2545,49 @@
                 "parade"
             ],
             "security_signals": [
-                "html-sink"
+                "html-sink",
+                "remote-url"
             ],
             "security_review": {
                 "signals": [
-                    "html-sink"
+                    "html-sink",
+                    "remote-url"
                 ],
-                "reviewer": "SECAUDIT-059",
-                "review": "Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+                "reviewer": "SS-1361",
+                "review": "REMOTE-URL, and this is the one that matters: the engine sends an OUTBOUND REQUEST OFF-SITE from every public page. new Image().src to https://snapsmack.ca/releases/thomas-ping.php (:52-54), carrying a 32-hex uid, a type flag and a first-session flag. It counts how often the hidden bear is found. The uid comes from core/thomas-uid.php and is a random per-install value, never the site URL or name, and the regex at :44-45 strips it to 32 hex characters before use, so nothing else can ride in it. No page content, no visitor identifier and no site identity leave the browser. It is an img GET, which the public CSP img-src allows. ACCEPTED, with the point recorded plainly: this is telemetry to the vendor from every reader page on the fleet, it is the only asset in the library that ISSUES an off-site request, and whether a photoblog phones home at all is an owner decision rather than a code one. Four other assets carry the remote-url signal without making a request -- fjGallery, shortcode-toolbar, smack-qr and ss-pixel -- where the match is a licence or header citation, a placeholder, or a data: URI; each is reviewed separately as making no remote request. The distinction is deliberate: the signal finds candidate strings, the review decides which of them actually reach the network, and only this one does. HTML-SINK: three innerHTML writes. Two are entirely literal markup (:138 the dedication panel, :191 the caption). The third (:95) interpolates baseUrl, derived from this engine own script src via scripts[i].src.replace (:87-90) -- a same-origin URL the document already loaded, not page content and not user input; anybody able to set that src already has script execution. ALSO READ, no signal raised: sessionStorage ss_thomas (:48-49) holds the literal string 1 and nothing else, marking whether this session already found the bear so a repeat is not double-counted. No identifier, no user content, wrapped in try/catch."
             },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
             "requires": [],
             "purpose": "Thomas the Bear Engine Easter egg: Ctrl+Shift+Y spawns dancing bears on the page."
+        },
+        {
+            "file": "assets/js/ss-engine-tile-like.js",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-tile-like",
+            "legacy_handle": "smack-tile-like",
+            "callers": [
+                "core/asset-security-reviews.php",
+                "core/tile-like-control.php",
+                "glide"
+            ],
+            "security_signals": [
+                "network"
+            ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SS-1323",
+                "review": "Reviewed the single call: a root-relative same-origin POST to /process-like.php carrying only an integer id, which is the endpoint and spelling the community dock already uses. IT ALSO SENDS A CSRF TOKEN WHEN THE PAGE CARRIES ONE, AND THAT BUYS NOTHING TODAY: process-like.php does not validate a token (the dock posts without one either). Saying the request carries a token, with no note that nothing checks it, reads as a protection that does not exist -- Muse flagged exactly that wording. The gap is pre-existing and is filed as SS-1385; this engine adds no new hole, because it is the same endpoint, the same table and the same rate limit. No DOM construction at all -- the engine toggles classes and ARIA attributes on markup the CMS rendered, so there is no html sink. Public CSP restricts connections to same-origin."
+            },
+            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
+            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
+            "vendor": false,
+            "requires": [],
+            "purpose": "TILE LIKE (SS-1323) A heart inside a photograph's tile."
         },
         {
             "file": "assets/js/ss-engine-updater.js",
@@ -2914,7 +3003,8 @@
                 "smack-help.php",
                 "snap-in.php",
                 "core/admin-header.php",
-                "core/asset-security-reviews.php"
+                "core/asset-security-reviews.php",
+                "core/forum-post-body.php"
             ],
             "security_signals": [
                 "concealment"
@@ -2966,6 +3056,7 @@
                 "skins/onyx/manifest.json",
                 "skins/show-n-tell/manifest.json",
                 "skins/true-grit/manifest.json",
+                "projects/snapsmack-ca/opaudits/evidence/027/2026-10-26-archive-browser-findings.json",
                 "new-horizon",
                 "onyx",
                 "show-n-tell",
@@ -2987,9 +3078,12 @@
                 "core/chaplin-page-component.php",
                 "core/meta.php",
                 "core/public-runtime.php",
+                "core/skin-presentation.php",
                 "skins/impact-printer/manifest.json",
                 "skins/true-grit/manifest.json",
                 "tools/_build/render-geometry-fixtures.php",
+                "projects/snapsmack-ca/opaudits/2026-10-25-027-thirty-two-restores-three-restorations.html",
+                "projects/snapsmack-ca/opaudits/evidence/027/2026-10-26-archive-browser-findings.json",
                 "chaplin",
                 "rational-geo",
                 "slickr"
@@ -3015,7 +3109,8 @@
             "legacy_handle": null,
             "callers": [
                 "core/meta.php",
-                "skins/slickr/manifest.json"
+                "skins/slickr/manifest.json",
+                "projects/snapsmack-ca/opaudits/evidence/027/2026-10-26-archive-browser-findings.json"
             ],
             "security_signals": [],
             "security_review": null,
@@ -3113,7 +3208,9 @@
                 "core/skin-view-model.php",
                 "skins/slickr/manifest.json",
                 "skins/tilez/manifest.json",
-                "tools/_build/render-geometry-fixtures.php"
+                "tools/_build/render-engine-fixtures.php",
+                "tools/_build/render-geometry-fixtures.php",
+                "projects/snapsmack-ca/opaudits/evidence/027/2026-10-26-archive-browser-findings.json"
             ],
             "security_signals": [
                 "concealment"
@@ -3242,6 +3339,7 @@
                 "skins/tilez/manifest.json",
                 "skins/true-grit/manifest.json",
                 "skins/writing-with-impact/manifest.json",
+                "projects/snapsmack-ca/opaudits/evidence/027/2026-10-26-archive-browser-findings.json",
                 "50-shades-of-noah-grey",
                 "52-card-pickup",
                 "alfred",
@@ -3370,6 +3468,7 @@
             "legacy_handle": "smack-keyboard:css",
             "callers": [
                 "core/footer-scripts.php",
+                "core/public-runtime.php",
                 "skins/50-shades-of-noah-grey/manifest.json",
                 "skins/52-card-pickup/manifest.json",
                 "skins/aurora/manifest.json",
@@ -3394,6 +3493,7 @@
                 "skins/sudden-impact/manifest.json",
                 "skins/the-grid/manifest.json",
                 "skins/true-grit/manifest.json",
+                "projects/snapsmack-ca/opaudits/evidence/027/2026-10-26-archive-browser-findings.json",
                 "50-shades-of-noah-grey",
                 "52-card-pickup",
                 "aurora",
@@ -3431,7 +3531,8 @@
             "registry_handle": "asset:public:ss-engine-consent",
             "legacy_handle": null,
             "callers": [
-                "core/footer-scripts.php"
+                "core/footer-scripts.php",
+                "core/public-runtime.php"
             ],
             "security_signals": [],
             "security_review": null,
@@ -3602,6 +3703,7 @@
                 "smack-mosaics.php",
                 "core/admin-content-preview.php",
                 "core/meta.php",
+                "core/public-runtime.php",
                 "skins/scroll/manifest.json",
                 "skins/tilez/manifest.json",
                 "scroll",
@@ -3747,6 +3849,7 @@
             "callers": [
                 "core/footer-scripts.php",
                 "core/meta.php",
+                "core/public-runtime.php",
                 "skins/game-on/manifest.json",
                 "skins/heuristic/manifest.json",
                 "skins/parade/manifest.json",
@@ -3858,6 +3961,23 @@
             },
             "requires": [],
             "purpose": "FEDIVERSE Pixelfed Client (faithful pixelfed.ca look)"
+        },
+        {
+            "file": "assets/css/ss-tile-like.css",
+            "owner": "cms",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-tile-like",
+            "legacy_handle": "smack-tile-like:css",
+            "callers": [
+                "core/public-runtime.php",
+                "core/tile-like-control.php",
+                "skins/glide/manifest.json",
+                "glide"
+            ],
+            "security_signals": [],
+            "security_review": null,
+            "requires": [],
+            "purpose": "TILE LIKE (SS-1323) A heart in the bottom-left corner of a photograph's tile."
         }
     ]
 }

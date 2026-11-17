@@ -7,7 +7,7 @@ from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 import os
 
-from PySide6.QtCore import QObject, QTimer, QSize, Qt
+from PySide6.QtCore import QObject, QTimer, QSize, Qt, QPoint
 from PySide6.QtGui import QImageReader, QPixmap, QIcon
 
 
@@ -89,31 +89,64 @@ class ListPhotos(QObject):
         self.generation += 1
         self._requested.clear()
 
+    def _first_visible_row(self, widget, viewport) -> int:
+        """Row of the first item intersecting the viewport, cheaply.
+
+        Scanning every item each tick (the old range(count()) loop) is O(N) on
+        the UI thread; on a several-thousand-image shelf it saturates the event
+        loop so the decode-result callbacks never paint and tabs lag. indexAt
+        jumps straight to the item under a point, so visible-only work is O(k).
+        """
+        idx = widget.indexAt(viewport.topLeft())
+        if idx.isValid():
+            return idx.row()
+        # The corner can land in grid spacing; probe across the top edge.
+        step = max(32, widget.gridSize().width() or widget.iconSize().width() or 64)
+        x = viewport.left() + 4
+        while x < viewport.right():
+            idx = widget.indexAt(QPoint(x, viewport.top() + 4))
+            if idx.isValid():
+                return idx.row()
+            x += step
+        return 0
+
     def refresh(self):
         widget = self.widget
         if not widget.isVisible():
             return
+        count = widget.count()
+        if count == 0:
+            return
         generation = self.generation
         viewport = widget.viewport().rect()
-        for row in range(widget.count()):
+        # Walk only from the first visible item downward and stop once past the
+        # viewport: items flow top-to-bottom, so nothing below the bottom edge
+        # is on screen. This keeps the per-tick cost O(visible), not O(count).
+        row = self._first_visible_row(widget, viewport)
+        while row < count:
             item = widget.item(row)
-            if not widget.visualItemRect(item).intersects(viewport):
+            if item is None:
+                row += 1
                 continue
-            path = self.path_for_item(item)
-            identity = (id(item), path)
-            if identity in self._requested:
-                continue
-            def apply(pixmap, item=item, identity=identity):
-                if generation != self.generation:
-                    return
-                try:
-                    item.setIcon(QIcon(pixmap) if pixmap else QIcon())
-                    if pixmap is None:
-                        item.setToolTip("Photo unavailable: " + str(identity[1]))
-                except RuntimeError:  # row deleted while decoding
-                    pass
-            if not self.loader.request(path, widget.iconSize().width(), apply):
+            rect = widget.visualItemRect(item)
+            if rect.top() > viewport.bottom():
                 break
-            self._requested.add(identity)
+            if rect.intersects(viewport):
+                path = self.path_for_item(item)
+                identity = (id(item), path)
+                if identity not in self._requested:
+                    def apply(pixmap, item=item, identity=identity):
+                        if generation != self.generation:
+                            return
+                        try:
+                            item.setIcon(QIcon(pixmap) if pixmap else QIcon())
+                            if pixmap is None:
+                                item.setToolTip("Photo unavailable: " + str(identity[1]))
+                        except RuntimeError:  # row deleted while decoding
+                            pass
+                    if not self.loader.request(path, widget.iconSize().width(), apply):
+                        break
+                    self._requested.add(identity)
+            row += 1
 
 # ===== SNAPSMACK EOF =====

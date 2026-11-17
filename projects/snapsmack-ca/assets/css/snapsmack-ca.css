@@ -74,7 +74,7 @@ p:last-child { margin-bottom: 0; }
     position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
     background: var(--white);
     backdrop-filter: none; -webkit-backdrop-filter: none;
-    border-bottom: 2px solid rgba(212,0,0,0.5);
+    border-bottom: 2px solid var(--red);
     padding: 8px 0;
     transform: translateY(-100%); opacity: 0;
     transition: transform 0.3s ease, opacity 0.3s ease;
@@ -113,64 +113,92 @@ p:last-child { margin-bottom: 0; }
 /* HEADER NAV ONLY. These used to be bare `nav`/`nav a` and leaked into every
    <nav> on the site (FAQ section cards, FAQ sub-nav, GOODS tabs, footer). */
 #site-header nav, #mini-header nav {
-    /* Two rows of five on desktop: room to breathe instead of ten items crammed on one line. */
-    display: grid; grid-template-columns: repeat(5, auto);
-    column-gap: 30px; row-gap: 10px;
-    margin-left: auto; text-align: left;
-    align-items: start; justify-items: start;
+    /* Two rows of five on desktop: equal-width outlined rectangle buttons. */
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    margin-left: auto; text-align: center;
+    align-items: stretch; justify-items: stretch;
 }
-#site-header nav a, #mini-header nav a {
+#mini-header nav { gap: 6px; }
+#site-header nav > a, #mini-header nav > a {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%;
     font-family: Arial Black, Arial, sans-serif;
-    font-size: 0.74rem; font-weight: 900; text-transform: uppercase;
-    letter-spacing: 0.03em; color: var(--dark-grey);
-    text-decoration: none; position: relative; padding-bottom: 4px;
+    font-size: 0.72rem; font-weight: 900; text-transform: uppercase;
+    letter-spacing: 0.03em; color: var(--black);
+    background: var(--white);
+    border: 2px solid var(--black);
+    padding: 8px 12px;
+    text-decoration: none; position: relative;
     white-space: nowrap;
-    transition: color 0.15s;
+    line-height: 1.25;
+    transition: color 0.15s, border-color 0.15s, background-color 0.15s;
 }
-#site-header nav a::after, #mini-header nav a::after {
-    content: ''; position: absolute; bottom: 0; left: 0;
-    width: 0; height: 2px; background: var(--red); transition: width 0.3s ease;
+#mini-header nav > a { padding: 6px 10px; font-size: 0.68rem; }
+#site-header nav > a::after, #mini-header nav > a::after { display: none; }
+#site-header nav > a:hover,
+#site-header nav > a:focus-visible,
+#mini-header nav > a:hover,
+#mini-header nav > a:focus-visible {
+    color: var(--red); border-color: var(--red); text-decoration: none; outline: none;
 }
-#site-header nav a:hover, #mini-header nav a:hover { color: var(--black); text-decoration: none; }
-#site-header nav a:hover::after, #mini-header nav a:hover::after { width: 100%; }
-#site-header nav a.active, #mini-header nav a.active { color: var(--black); }
-#site-header nav a.active::after, #mini-header nav a.active::after { width: 100%; }
-.nav-group { position: relative; }
+#site-header nav > a.active, #mini-header nav > a.active {
+    background: var(--black); color: var(--white); border-color: var(--black);
+}
+#site-header nav > a.active:hover,
+#site-header nav > a.active:focus-visible,
+#mini-header nav > a.active:hover,
+#mini-header nav > a.active:focus-visible {
+    background: var(--red); color: var(--white); border-color: var(--red);
+}
+.nav-group { position: relative; width: 100%; display: flex; }
 .nav-group summary {
     list-style: none;
     cursor: pointer;
     white-space: nowrap;
-    color: var(--dark-grey);
-    font: 900 0.74rem/1.3 Arial Black, Arial, sans-serif;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
 }
 /* Dropdown triggers are summary elements, not links. Pin the full treatment at
-   header specificity so they can never inherit Georgia from the page body. */
+   header specificity so they match the outlined button cells identically. */
 #site-header nav .nav-group > summary,
 #mini-header nav .nav-group > summary {
-    color: var(--dark-grey);
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    width: 100%;
+    color: var(--black);
+    background: var(--white);
+    border: 2px solid var(--black);
     font-family: Arial Black, Arial, sans-serif;
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     font-style: normal;
     font-weight: 900;
-    line-height: 1.3;
+    line-height: 1.25;
     letter-spacing: 0.03em;
     text-transform: uppercase;
-    padding-bottom: 4px;
+    padding: 8px 12px;
+    transition: color 0.15s, border-color 0.15s, background-color 0.15s;
 }
-#site-header nav > a,
-#mini-header nav > a { line-height: 1.3; }
+#mini-header nav .nav-group > summary { padding: 6px 10px; font-size: 0.68rem; }
+#site-header nav .nav-group > summary:hover,
+#site-header nav .nav-group > summary:focus-visible,
+#mini-header nav .nav-group > summary:hover,
+#mini-header nav .nav-group > summary:focus-visible {
+    color: var(--red); border-color: var(--red); outline: none;
+}
 .nav-group summary::-webkit-details-marker { display: none; }
 .nav-group summary::after { content: " +"; color: var(--red); }
 .nav-group[open] summary::after { content: " -"; }
-.nav-group.active > summary { color: var(--black); text-decoration: underline; text-decoration-color: var(--red); text-decoration-thickness: 2px; text-underline-offset: 6px; }
+#site-header nav .nav-group.active > summary,
+#mini-header nav .nav-group.active > summary {
+    background: var(--black); color: var(--white); border-color: var(--black);
+    text-decoration: none;
+}
+#site-header nav .nav-group.active > summary::after,
+#mini-header nav .nav-group.active > summary::after { color: var(--white); }
 .nav-flyout {
     position: absolute;
     z-index: 1400;
-    top: calc(100% + 12px);
+    top: calc(100% + 6px);
     right: 0;
-    min-width: 190px;
+    min-width: 240px;
     padding: 8px;
     background: var(--black);
     border-top: 3px solid var(--red);
@@ -182,10 +210,14 @@ p:last-child { margin-bottom: 0; }
 #site-header nav .nav-flyout a,
 #mini-header nav .nav-flyout a {
     display: block;
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: 0.72rem; font-weight: 900; text-transform: uppercase;
+    letter-spacing: 0.03em;
     padding: 10px 12px;
     color: var(--white);
     text-align: left;
     white-space: nowrap;
+    text-decoration: none;
 }
 #site-header nav .nav-flyout a:hover,
 #site-header nav .nav-flyout a.active,
@@ -216,6 +248,40 @@ p:last-child { margin-bottom: 0; }
 .stt-since, .stt-unavailable { margin-top: 12px; color: #888; font: .65rem/1.3 'Courier New', monospace; letter-spacing: .05em; }
 .skin-entry[data-stats]:focus-visible { outline: 3px solid var(--red); outline-offset: 5px; }
 
+/* --- GLOSSARY POPUPS --- */
+abbr.term-abbr {
+    text-decoration: none;
+    border-bottom: 1px dotted currentColor;
+    cursor: help;
+}
+abbr.term-abbr:focus-visible {
+    outline: 2px solid var(--red);
+    outline-offset: 2px;
+}
+#glossary-tooltip {
+    position: fixed;
+    z-index: 10000;
+    display: none;
+    max-width: 320px;
+    padding: 12px 14px;
+    color: var(--white);
+    background: #111111;
+    border: 1px solid #444444;
+    border-top: 3px solid var(--red);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .65);
+    font: 0.78rem/1.45 Georgia, serif;
+    pointer-events: none;
+}
+#glossary-tooltip.visible { display: block; }
+#glossary-tooltip .gt-term {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--white);
+    font: 900 0.7rem/1.2 Arial Black, Arial, sans-serif;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
 @media (min-width: 1361px) {
     #site-header { padding: 18px 0 16px; }
     .header-inner { gap: 24px; padding-left: 22px; padding-right: 22px; }
@@ -226,7 +292,28 @@ p:last-child { margin-bottom: 0; }
     #site-header nav > a,
     #site-header nav > .nav-group,
     #mini-header nav > a,
-    #mini-header nav > .nav-group { align-self: start; }
+    #mini-header nav > .nav-group { align-self: stretch; }
+}
+
+/* Large tablets keep the full navigation visible. Stack the lockup over an
+   equal five-by-two grid so every destination stays legible at 1024px. */
+@media (min-width: 1024px) and (max-width: 1360px) {
+    .header-inner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 18px;
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+    .logo-lockup { align-self: center; }
+    .header-right { width: 100%; }
+    #site-header nav {
+        width: 100%;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+        justify-items: stretch;
+        text-align: center;
+    }
 }
 
 /* --- SUBPAGE SHARED --- */
@@ -284,7 +371,7 @@ p:last-child { margin-bottom: 0; }
 }
 .goods-nav a:hover,
 .goods-nav a.active {
-    background: #fff5f3;
+    background: #f1f1f1;
     box-shadow: inset 0 -4px 0 var(--red);
     text-decoration: none;
 }
@@ -302,7 +389,7 @@ p:last-child { margin-bottom: 0; }
 .strip-list a { display: block; padding: 20px 24px; background: var(--white); color: var(--dark-grey); font-size: .98rem; line-height: 1.5; }
 .strip-list a strong { display: block; margin-bottom: 6px; color: var(--black); font: 900 .86rem/1.3 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: .02em; }
 .strip-list a strong::after { content: " \2192"; color: var(--red); white-space: nowrap; }
-.strip-list a:hover, .strip-list a:focus-visible { background: #fff5f3; color: var(--black); text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
+.strip-list a:hover, .strip-list a:focus-visible { background: #f1f1f1; color: var(--black); text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
 .strip-skins { display: flex; gap: 8px; margin-top: 10px; }
 .strip-skins img { flex: 1 1 0; min-width: 0; aspect-ratio: 16 / 10; object-fit: cover; border: 2px solid var(--border); }
 @media (max-width: 700px) {
@@ -311,7 +398,7 @@ p:last-child { margin-bottom: 0; }
 
 /* --- FOOTER --- */
 .site-discovery {
-    background: #f4f1eb;
+    background: #f1f1f1;
     border-top: 3px solid var(--red);
     padding: 48px 0 52px;
 }
@@ -331,16 +418,16 @@ p:last-child { margin-bottom: 0; }
 .footer-discovery {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    border-top: 1px solid #c9c4ba;
-    border-left: 1px solid #c9c4ba;
+    border-top: 1px solid #c8c8c8;
+    border-left: 1px solid #c8c8c8;
 }
 .footer-discovery a {
     min-height: 108px;
     padding: 20px 22px;
     color: var(--black);
     background: #fff;
-    border-right: 1px solid #c9c4ba;
-    border-bottom: 1px solid #c9c4ba;
+    border-right: 1px solid #c8c8c8;
+    border-bottom: 1px solid #c8c8c8;
     text-decoration: none;
     transition: background 120ms ease, color 120ms ease;
 }
@@ -360,7 +447,7 @@ p:last-child { margin-bottom: 0; }
 }
 .footer-discovery a:hover,
 .footer-discovery a:focus-visible {
-    background: #fff8f6;
+    background: #ececec;
     color: var(--black);
     box-shadow: inset 0 -3px 0 var(--red);
 }
@@ -423,11 +510,10 @@ p:last-child { margin-bottom: 0; }
 .nav-burger { display: none; }
 .mobile-shame { display: none; }
 
-@media (max-width: 1360px) {
+@media (max-width: 1023px) {
     html { font-size: 16px; }
-    /* The header stays one row — logo left, ☰ right — and the 8-item nav drops
-       down when the burger is toggled. Replaces the old wide 4-col nav that
-       forced horizontal overflow. Applies to every page via the shared header. */
+    /* The header stays one row — logo left, ☰ right — and the ten destinations
+       open as a clean two-column tray. */
     .header-inner { position: relative; gap: 14px; padding-left: 16px; padding-right: 16px; }
     .logo-lockup { gap: 12px; }
     .header-right { margin-left: auto; }
@@ -465,25 +551,26 @@ p:last-child { margin-bottom: 0; }
     #site-header nav {
         display: none;
         position: absolute; top: 100%; left: 0; right: 0;
-        grid-template-columns: none;
-        flex-direction: column; align-items: center; gap: 0;
-        margin: 0; padding: 4px 0 14px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch; gap: 8px;
+        margin: 0; padding: 10px 16px 14px;
         background: var(--white);
         border-bottom: 3px solid var(--red);
         z-index: 1200;
     }
-    #site-header .nav-toggle:checked ~ nav { display: flex; }
-    #site-header nav a { font-size: 0.95rem; padding: 12px 0; }
-    #site-header nav > a { align-self: center; }
-    #site-header .nav-group { width: 100%; text-align: center; }
-    #site-header .nav-group summary { padding: 12px 0; font-size: .95rem; }
+    #site-header .nav-toggle:checked ~ nav { display: grid; }
+    #site-header nav > a { font-size: 0.85rem; padding: 10px; text-align: center; width: 100%; align-self: stretch; }
+    #site-header .nav-group { position: static; width: 100%; text-align: center; }
+    #site-header nav .nav-group > summary { padding: 10px; font-size: .85rem; }
     #site-header .nav-flyout {
-        position: static;
-        min-width: 0;
+        position: absolute;
+        top: 100%; left: 0; right: 0;
+        min-width: 100%;
         padding: 0;
         border: 0;
+        border-bottom: 3px solid var(--red);
         box-shadow: none;
-        background: var(--light-grey);
+        background: var(--white);
     }
     #site-header nav .nav-flyout a { padding: 10px 0; color: var(--black); text-align: center; }
     #site-header nav .nav-flyout a:hover,
@@ -494,20 +581,20 @@ p:last-child { margin-bottom: 0; }
     #mini-header nav {
         display: none;
         position: absolute; top: 100%; left: 0; right: 0;
-        grid-template-columns: none;
-        flex-direction: column; align-items: center; gap: 0;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch; gap: 0;
         margin: 0; padding: 4px 0 12px;
         background: rgba(255,255,255,0.97);
         -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-        border-bottom: 2px solid rgba(212,0,0,0.5);
+        border-bottom: 2px solid var(--red);
         z-index: 1200;
     }
-    #mini-header .nav-toggle:checked ~ nav { display: flex; }
-    #mini-header nav a { font-size: 0.9rem; padding: 10px 0; }
-    #mini-header nav > a { align-self: center; }
-    #mini-header .nav-group { width: 100%; text-align: center; }
+    #mini-header .nav-toggle:checked ~ nav { display: grid; }
+    #mini-header nav a { font-size: 0.9rem; padding: 10px; text-align: center; }
+    #mini-header nav > a { width: 100%; align-self: stretch; }
+    #mini-header .nav-group { position: static; width: 100%; text-align: center; }
     #mini-header .nav-group summary { padding: 10px 0; font-size: .9rem; }
-    #mini-header .nav-flyout { position: static; min-width: 0; padding: 0; border: 0; box-shadow: none; background: rgba(240,240,240,.98); }
+    #mini-header .nav-flyout { position: absolute; top: 100%; left: 0; right: 0; min-width: 100%; padding: 0; border: 0; border-bottom: 2px solid var(--red); box-shadow: none; background: rgba(255,255,255,.98); }
     #mini-header nav .nav-flyout a { color: var(--black); text-align: center; }
 }
 
@@ -517,6 +604,19 @@ p:last-child { margin-bottom: 0; }
     .logo-text .snap { font-size: 1.4rem; }
     .logo-text .tagline { font-size: 0.58rem; }
     h1 { font-size: 1.55rem; overflow-wrap: normal; word-break: normal; }
+}
+
+/* --- SHARED CLOSED-BETA STATUS BANNER --- */
+.beta-delay { padding: 28px 0; color: var(--white); background: var(--black); border-top: 8px solid var(--red); }
+.beta-delay-inner { display: flex; gap: 28px; align-items: center; justify-content: space-between; }
+.beta-delay-copy { margin: 0; color: #ddd; font-size: 1rem; line-height: 1.5; }
+.beta-delay-copy strong { display: block; margin-bottom: 4px; color: var(--white); font: 900 clamp(1.05rem, 2vw, 1.35rem)/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.beta-delay-link { flex: 0 0 auto; display: inline-block; padding: 14px 22px; color: var(--white); background: var(--red); font: 900 .8rem/1 Arial Black, Arial, sans-serif; letter-spacing: .03em; text-transform: uppercase; }
+.beta-delay-link:hover { color: var(--white); background: var(--black); text-decoration: none; }
+
+@media (max-width: 700px) {
+    .beta-delay-inner { display: block; }
+    .beta-delay-link { margin-top: 18px; }
 }
 
 /* ===== SNAPSMACK EOF ===== */

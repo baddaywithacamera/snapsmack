@@ -37,8 +37,19 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                 ->fetchAll(PDO::FETCH_KEY_PAIR);
 
-if (($settings['community_enabled'] ?? '1') !== '1' ||
-    ($settings['community_likes_enabled'] ?? '1') !== '1') {
+// DEFAULT-ON, so `!== '0'` and never `=== '1'`. Both settings default ON, and
+// this endpoint was the only place in the chain reading them strictly, so a
+// row holding an EMPTY STRING -- which an admin save can leave -- refused
+// every like on a site that never asked for them to be off.
+//
+// That is not theoretical. core/community-component.php:61 draws the dock's
+// like button with `!== '0'`, so on such a site the button has been on screen
+// and returning 403 on click, with nothing to say why. SS-1323 surfaced it by
+// putting a second control on the same endpoint and Muse spotted the two
+// gates disagreeing. The repo-wide default-on-switch gate enforces this rule
+// and it is right: the strict read was the bug, not the control.
+if (($settings['community_enabled'] ?? '1') === '0' ||
+    ($settings['community_likes_enabled'] ?? '1') === '0') {
     http_response_code(403);
     echo json_encode(['error' => 'likes_disabled']);
     exit;
@@ -62,19 +73,13 @@ if (!$exists->fetchColumn()) {
 }
 
 // --- IDENTITY RESOLUTION ---
-// Authenticated community user → track by user_id (original behaviour)
-// Anonymous visitor → track by hashed IP (no PII stored, no cookie needed)
-$user = community_current_user();
-$user_id    = $user ? (int)$user['id'] : null;
-$guest_hash = null;
-
-if (!$user) {
-    // Generate a deterministic hash from IP + salt. The salt prevents
-    // rainbow-table reversal of the IP.
-    $like_salt  = snap_ensure_download_salt($pdo ?? null); // SECAUDIT 047
-    $ip         = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $guest_hash = hash('sha256', $ip . $like_salt);
-}
+// Signed-in community user by user_id; everyone else by a salted hash of
+// their IP -- no PII stored, no cookie needed. These six lines used to live
+// here AND in core/community-dock.php, where the read side asks the same
+// question; SS-1323 needed a third caller and two copies of an identity rule
+// are a bug waiting to be invisible. core/like-identity.php is the one rule.
+require_once __DIR__ . '/core/like-identity.php';
+[$user_id, $guest_hash] = snap_like_identity($pdo ?? null);
 
 // --- RATE LIMIT ---
 if (function_exists('community_rate_limit') && !community_rate_limit('likes')) {

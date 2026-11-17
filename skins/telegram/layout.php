@@ -46,7 +46,7 @@
                 </a>
             </article>
         <?php endforeach; ?>
-    </section>
+    <?php if (!empty($view['response']['next_url'])): ?><?php echo snap_render_html(snap_render_component('feed-pager', ['prefix' => 'telegram', 'feed' => true, 'base' => snap_route_url('home'), 'next_url' => $view['response']['next_url'], 'next_page' => $view['response']['next_page'] ?? 0, 'grid_selector' => '.telegram-feed', 'item_selector' => '.telegram-feed > .telegram-feed-item'])); ?><?php endif; ?></section>
 <?php elseif ($view['response']['kind'] === 'archive'): ?>
     <?php echo snap_render_html(snap_render_component('search-summary', ['term' => $view['response']['search_term'] ?? '', 'posts' => $view['response']['search_posts'] ?? [], 'tiles' => $view['response']['tiles'] ?? []])); ?><section class="telegram-archive">
         <h1><?php echo snap_escape_html($view['response']['page_title']); ?></h1>

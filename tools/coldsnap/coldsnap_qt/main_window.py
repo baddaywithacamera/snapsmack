@@ -13,6 +13,7 @@ from PySide6.QtCore import QSettings, QTimer
 from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QTabWidget, QLabel, QHBoxLayout,
+    QPushButton,
 )
 
 from _version import BUILD_VERSION
@@ -61,7 +62,8 @@ class MainWindow(QMainWindow):
         self.solo_mode = SoloMode(cfg)
         self.tabs.addTab(self.solo_mode, "COLD ONE")
         self.tabs.addTab(StackMode(cfg), "COLD STACK")
-        self.tabs.addTab(TakeMode(cfg), "COLD TAKE")
+        self.take_mode = TakeMode(cfg)
+        self.tabs.addTab(self.take_mode, "COLD TAKE")
         self.tabs.addTab(StorageMode(cfg), "COLD STORAGE")
         self.tabs.setTabToolTip(0, "One photo, one post — solo photoblog sites")
         self.tabs.setTabToolTip(1, "Carousels, stacks and trigrams — gram grid sites")
@@ -69,6 +71,18 @@ class MainWindow(QMainWindow):
         self.tabs.setTabToolTip(3, "This blog's images, offline — browse, sync more "
                               "down, AI-describe, save metadata back")
         col.addWidget(self.tabs, 1)
+
+        self._blocks_label = "BLOCKS"
+        self.blocks_btn = QPushButton()
+        self.blocks_btn.setObjectName("ShellAction")
+        self.blocks_btn.setCheckable(True)
+        self.blocks_btn.setToolTip("Open or close the COLD TAKE blocks tray (Ctrl+4)")
+        self.blocks_btn.setAccessibleName("Open or close the blocks tray")
+        self.blocks_btn.clicked.connect(self.take_mode.set_blocks_open)
+        self.connect_panel.add_header_action(self.blocks_btn)
+        self.take_mode.blocksStateChanged.connect(self._sync_blocks_action)
+        self._sync_blocks_action(
+            self.take_mode.blocks_open(), self.take_mode.blocks_header_label())
 
         self._tab_modes = (
             (O.MODE_SOLO, "COLD ONE-compatible"),
@@ -86,6 +100,8 @@ class MainWindow(QMainWindow):
 
         QShortcut(QKeySequence("F1"), self).activated.connect(
             self.connect_panel._show_help)
+        self._blocks_shortcut = QShortcut(QKeySequence("Ctrl+4"), self)
+        self._blocks_shortcut.activated.connect(self._toggle_blocks)
 
         self._handoff_timer = QTimer(self)
         self._handoff_timer.setInterval(600)
@@ -99,8 +115,28 @@ class MainWindow(QMainWindow):
     def _on_mode_changed(self, index):
         suite_mode, label = self._tab_modes[index]
         self.connect_panel.set_suite_mode(suite_mode, label)
+        self.blocks_btn.setVisible(index == 2)
         if index == 0:
             QTimer.singleShot(0, self.solo_mode.refresh_taxonomy)
+
+    def _toggle_blocks(self):
+        if self.tabs.currentIndex() == 2:
+            self.take_mode.toggle_blocks()
+
+    def _sync_blocks_action(self, opened: bool, label: str):
+        self._blocks_label = str(label or "BLOCKS")
+        suffix = "" if self.width() <= 1366 else "   Ctrl+4"
+        self.blocks_btn.blockSignals(True)
+        self.blocks_btn.setText(self._blocks_label + suffix)
+        self.blocks_btn.setChecked(bool(opened))
+        self.blocks_btn.blockSignals(False)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "take_mode") and hasattr(self, "blocks_btn"):
+            self._sync_blocks_action(
+                self.take_mode.blocks_open(),
+                self.take_mode.blocks_header_label())
 
     def _consume_handoff(self):
         request = snap_desktop_handoff.consume_request("coldsnap")

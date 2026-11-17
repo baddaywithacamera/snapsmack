@@ -37,6 +37,7 @@ if (is_file(__DIR__ . '/photochallenge.php')) require_once __DIR__ . '/photochal
 if (is_file(__DIR__ . '/smackcast-relay.php')) require_once __DIR__ . '/smackcast-relay.php'; // FEDISTRUCTURE 4.0 hub policy — inert unless explicitly enabled
 if (is_file(__DIR__ . '/curator-directory.php')) require_once __DIR__ . '/curator-directory.php'; // consent-directory curator — identity gated
 require_once __DIR__ . '/client-ip.php';  // mandatory security boundary — SECAUDIT 035
+require_once __DIR__ . '/alt-text.php';   // raw ALT resolver for JSON-LD attachments
 
 function sv_enabled(array $settings): bool {
     // SMACKTHEMUP is a non-federated mode by design (spec §5.3). Federation-off
@@ -2514,6 +2515,21 @@ function sv_is_direct(array $activity, array $obj, array $settings): bool {
     return false;
 }
 
+/** An explicit public audience is required before publishing a remote reply.
+ * Object addressing wins when supplied; a broader wrapper cannot promote a
+ * followers-only object. Older peers may supply addressing on the wrapper only. */
+function sv_reply_is_public(array $activity, array $obj): bool {
+    $addressed = array_key_exists('to', $obj) || array_key_exists('cc', $obj) ? $obj : $activity;
+    foreach ([$addressed['to'] ?? [], $addressed['cc'] ?? []] as $set) {
+        if (is_string($set)) $set = [$set];
+        if (!is_array($set)) continue;
+        foreach ($set as $recipient) {
+            if (in_array($recipient, ['https://www.w3.org/ns/activitystreams#Public', 'Public', 'as:Public'], true)) return true;
+        }
+    }
+    return false;
+}
+
 /** Derive durable DM threading metadata without fetching an untrusted parent. */
 function sv_dm_thread_metadata(PDO $pdo, array $obj, string $actor_id): array {
     $context = sv_activity_object_uri($obj['context'] ?? null);
@@ -3092,6 +3108,41 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         return 202;
     }
 
+    if ($type === 'Block') {
+        // A peer can withdraw only its own follower relationship, and only
+        // when its signed Block names this actor. Never create a global block.
+        $blocked = sv_activity_object_uri($activity['object'] ?? null);
+        if ($blocked === sv_actor_url($settings)) {
+            $pdo->prepare("UPDATE snap_ap_followers SET is_active = 0 WHERE actor_url = ?")
+                ->execute([$actor_id]);
+            sv_inbox_log($pdo, 'Block', $actor_id, $blocked, 'received — sender follower relationship deactivated');
+        } else {
+            sv_inbox_log($pdo, 'Block', $actor_id, null, 'IGNORED: Block does not target this actor');
+        }
+        return 202;
+    }
+
+    if ($type === 'Flag') {
+        // Reports belong in the authenticated inbox receipt log, not as public
+        // comments or an automatic moderation decision. Do not fetch targets.
+        $objects = $activity['object'] ?? [];
+        if (!is_array($objects) || isset($objects['id'])) $objects = [$objects];
+        $localTargets = [];
+        foreach (array_slice($objects, 0, 20) as $object) {
+            $uri = sv_activity_object_uri($object);
+            if ($uri !== '' && ($uri === sv_actor_url($settings) || sv_url_is_ours($uri, $settings))) $localTargets[$uri] = true;
+        }
+        if ($localTargets) {
+            $reason = trim(html_entity_decode(strip_tags((string)($activity['content'] ?? '')), ENT_QUOTES, 'UTF-8'));
+            $reason = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $reason) ?? '';
+            sv_inbox_log($pdo, 'Flag', $actor_id, array_key_first($localTargets),
+                'REPORT for owner review (' . count($localTargets) . ' local targets): ' . mb_strcut($reason, 0, 100, 'UTF-8'));
+        } else {
+            sv_inbox_log($pdo, 'Flag', $actor_id, null, 'IGNORED: report has no local target');
+        }
+        return 202;
+    }
+
     if ($type === 'Undo') {
         $obj   = $activity['object'] ?? [];
         $otype = is_array($obj) ? ($obj['type'] ?? '') : '';
@@ -3198,7 +3249,14 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
 
     if ($type === 'Create') {
         $obj = $activity['object'] ?? [];
-        if (!is_array($obj) || (($obj['type'] ?? '') !== 'Note' && ($obj['type'] ?? '') !== 'Image')) return 202;
+        if (!is_array($obj) || (($obj['type'] ?? '') !== 'Note' && ($obj['type'] ?? '') !== 'Image')) {
+            // A verified unsupported object is acknowledged, but must leave a
+            // diagnostic receipt. Never include its possibly private content.
+            $objectType = is_array($obj) && is_string($obj['type'] ?? null) ? $obj['type'] : 'non-object';
+            $objectType = preg_replace('/[^A-Za-z0-9_:-]/', '', $objectType) ?? '';
+            sv_inbox_log($pdo, 'Create', $actor_id, null, 'IGNORED: unsupported object type ' . substr($objectType, 0, 80));
+            return 202;
+        }
         if (function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)) {
             sc_relay_fanout($pdo, $settings, $activity, $actor_id);
             return 202;
@@ -3215,6 +3273,13 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             sv_capture_dm($pdo, $settings, $obj, $actor_id, $handle);
             // RECEIPT (0.7.611D) — no object id and no content: it's private.
             sv_inbox_log($pdo, 'Create', $actor_id, null, 'received — private message captured');
+            return 202;
+        }
+
+        // A non-DM reply may still be followers-only. Never convert that into
+        // a public comment, notification or reader row. Do not log private ids.
+        if ($in_reply !== '' && !sv_reply_is_public($activity, $obj)) {
+            sv_inbox_log($pdo, 'Create', $actor_id, null, 'received — non-public reply not published');
             return 202;
         }
 
@@ -5061,8 +5126,23 @@ function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
  * by hashtag. Same status→row shape as sv_public_timeline(), so the client's
  * feed renderer handles it unchanged.
  */
+/** Metadata retained alongside the legacy image URL list for REST photo cards. */
+function sv_rest_photo_metadata(array $status): array {
+    $attachments = [];
+    foreach (($status['media_attachments'] ?? []) as $media) {
+        if (!is_array($media) || ($media['type'] ?? '') !== 'image') continue;
+        $url = (string)($media['url'] ?? ($media['preview_url'] ?? ''));
+        if ($url === '') continue;
+        $attachments[] = ['type' => 'image', 'description' => mb_substr((string)($media['description'] ?? ''), 0, 2000)];
+    }
+    return ['attachments' => $attachments,
+        'sensitive' => !empty($status['sensitive']),
+        'summary' => mb_substr(trim((string)($status['spoiler_text'] ?? '')), 0, 5000)];
+}
+
 /** Map a Mastodon/Pixelfed status entity to the client feed-row shape, or null if it has no image. */
 function sv_map_status_row(array $st, string $fallback_host = ''): ?array {
+    $metadata = sv_rest_photo_metadata($st);
     $imgs = [];
     foreach (($st['media_attachments'] ?? []) as $m) {
         if (is_array($m) && ($m['type'] ?? '') === 'image') {
@@ -5079,6 +5159,9 @@ function sv_map_status_row(array $st, string $fallback_host = ''): ?array {
         'text'      => (isset($st['content_text']) && $st['content_text'] !== '')
                         ? (string)$st['content_text']
                         : sv_client_plain_text((string)($st['content'] ?? '')),
+        'attachments' => $metadata['attachments'],
+        'sensitive' => $metadata['sensitive'],
+        'summary' => $metadata['summary'],
         'images'    => $imgs, 'count' => count($imgs),
         'author'    => [
             'handle' => (string)($acct['acct'] ?? ''),
@@ -5208,6 +5291,7 @@ function sv_map_account_card(array $acct): array {
  *  Returns null for text-only rows (no image attachments). Shared by the
  *  public and authenticated hashtag-timeline paths so they stay in lockstep. */
 function sv_map_tag_status(array $st, string $fallback_host): ?array {
+    $metadata = sv_rest_photo_metadata($st);
     $imgs = [];
     foreach (($st['media_attachments'] ?? []) as $m) {
         if (is_array($m) && ($m['type'] ?? '') === 'image') {
@@ -5224,6 +5308,9 @@ function sv_map_tag_status(array $st, string $fallback_host): ?array {
         'text'      => (isset($st['content_text']) && $st['content_text'] !== '')
                         ? (string)$st['content_text']
                         : sv_client_plain_text((string)($st['content'] ?? '')),
+        'attachments' => $metadata['attachments'],
+        'sensitive' => $metadata['sensitive'],
+        'summary' => $metadata['summary'],
         'images'    => $imgs, 'count' => count($imgs),
         'author'    => [
             'handle' => (string)($acct['acct'] ?? ''),
@@ -5406,11 +5493,15 @@ function sv_masto_map_statuses(array $rows, int $max): array {
         $text = (isset($st['content_text']) && $st['content_text'] !== '')
             ? (string)$st['content_text']
             : trim(strip_tags((string)($st['content'] ?? '')));
+        $metadata = sv_rest_photo_metadata($st);
         $posts[] = [
             'id'        => (string)($st['uri'] ?? ($st['url'] ?? '')),   // canonical AP id for like/reply
             'url'       => (string)($st['url'] ?? ($st['uri'] ?? '')),   // HTML permalink
             'published' => (string)($st['created_at'] ?? ''),
             'text'      => $text,
+            'attachments' => $metadata['attachments'],
+            'sensitive' => $metadata['sensitive'],
+            'summary' => $metadata['summary'],
             'images'    => $imgs,
             'count'     => count($imgs),
         ];
@@ -5528,6 +5619,10 @@ function sv_fedi_bake_url(array $img, array $settings): ?string {
  * focalPoint ships only with the raw file — the bakes ARE the crop.
  */
 function sv_image_attachment(array $img, array $settings, string $alt = '', bool $derive = true): array {
+    // Authored image descriptions take precedence over caller caption/title
+    // fallbacks for singles, carousel members and longform attachments alike.
+    // JSON encoding happens at the response boundary; do not HTML-escape here.
+    $alt = snap_alt_value($img['img_alt'] ?? null, $alt);
     $bake  = sv_fedi_bake_url($img, $settings);
     $frame = $bake ?? sv_frame_url($img, $settings);
     $url   = $frame ?? (sv_base($settings) . ltrim($img['img_file'] ?? '', '/'));
@@ -5582,6 +5677,15 @@ function sv_post_row(PDO $pdo, int $id): ?array {
     $stmt->execute([$id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     return $row ?: null;
+}
+
+/** Public federation dereference: match the grouped-post outbox policy. */
+function sv_federated_post_row(PDO $pdo, int $id, array $settings): ?array {
+    $row = sv_post_row($pdo, $id);
+    if (!$row || (int)($row['fedi_enabled'] ?? 0) !== 1) return null;
+    if (($settings['site_mode'] ?? 'photoblog') === 'carousel'
+        && ($row['post_type'] ?? '') === 'longform') return null;
+    return $row;
 }
 
 /** The post's images in carousel order (is_cover first within ties). */
@@ -6668,20 +6772,8 @@ function sv_convert_to_carousel(PDO $pdo, array $settings, array $image_ids, int
 
 /** Total published, federatable content units (standalone images + grouped
  *  posts) — the same basis as the outbox totalItems. Used for NodeInfo usage. */
-function sv_public_unit_count(PDO $pdo): int {
-    $n = 0;
-    try {
-        $n  = (int)$pdo->query(
-            "SELECT COUNT(*) FROM snap_images
-             WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL"
-        )->fetchColumn();
-        $n += (int)$pdo->query(
-            "SELECT COUNT(*) FROM snap_posts
-             WHERE status = 'published' AND created_at <= NOW()
-               AND post_type IN ('single','carousel','panorama','longform')"
-        )->fetchColumn();
-    } catch (Exception $e) { /* best-effort count */ }
-    return $n;
+function sv_public_unit_count(PDO $pdo, array $settings = []): int {
+    return (int)sv_outbox_doc($pdo, $settings)['totalItems'];
 }
 
 /**
@@ -6700,7 +6792,7 @@ function sv_nodeinfo_doc(PDO $pdo, array $settings): array {
         'openRegistrations' => false,
         'usage'             => [
             'users'      => ['total' => 1, 'activeHalfyear' => 1, 'activeMonth' => 1],
-            'localPosts' => sv_public_unit_count($pdo),
+            'localPosts' => sv_public_unit_count($pdo, $settings),
         ],
         'metadata'          => [
             'nodeName'        => html_entity_decode((string)($settings['site_name'] ?? 'SnapSmack'), ENT_QUOTES | ENT_HTML5),
@@ -6730,18 +6822,23 @@ function sv_nodeinfo_doc(PDO $pdo, array $settings): array {
 function sv_outbox_doc(PDO $pdo, array $settings, int $page = 0): array {
     $outbox  = sv_outbox_url($settings);
     $perPage = 20;
+    // Carousel profiles publish grouped posts only, matching native backfill.
+    $isCarousel = (($settings['site_mode'] ?? 'photoblog') === 'carousel');
+    $standaloneGate = $isCarousel ? ' AND 1 = 0' : '';
+    $postTypes = $isCarousel ? "'single','carousel','panorama'" : "'single','carousel','panorama','longform'";
 
     // Total published content units (standalone images + grouped posts).
     $total = 0;
     try {
         $total  = (int)$pdo->query(
             "SELECT COUNT(*) FROM snap_images
-             WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL"
+             WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL{$standaloneGate}"
         )->fetchColumn();
         $total += (int)$pdo->query(
             "SELECT COUNT(*) FROM snap_posts
              WHERE status = 'published' AND created_at <= NOW()
-               AND post_type IN ('single','carousel','panorama','longform')"
+               AND fedi_enabled = 1
+               AND post_type IN ({$postTypes})"
         )->fetchColumn();
     } catch (Exception $e) { /* shell/page stay valid on error */ }
 
@@ -6781,11 +6878,12 @@ function sv_outbox_doc(PDO $pdo, array $settings, int $page = 0): array {
         $stmt = $pdo->prepare(
             "SELECT id, d, kind FROM (
                 SELECT id, COALESCE(fedi_published_at, img_date) AS d, 'image' AS kind FROM snap_images
-                  WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL
+                  WHERE img_status = 'published' AND img_date <= NOW() AND post_id IS NULL{$standaloneGate}
                 UNION ALL
                 SELECT id, COALESCE(fedi_published_at, created_at) AS d, 'post' AS kind FROM snap_posts
                   WHERE status = 'published' AND created_at <= NOW()
-                    AND post_type IN ('single','carousel','panorama','longform')
+                    AND fedi_enabled = 1
+                    AND post_type IN ({$postTypes})
              ) u
              ORDER BY d DESC, kind ASC, id DESC
              LIMIT " . (int)$perPage . " OFFSET " . (int)$offset

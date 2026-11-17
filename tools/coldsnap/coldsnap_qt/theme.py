@@ -73,6 +73,61 @@ def stylesheet() -> str:
     #Rail QScrollArea, #Rail QScrollArea > QWidget > QWidget {{
         background: {PANEL};
     }}
+    QWidget#BlockTray, QWidget#BlockTagStrip {{
+        background: {PANEL_HI};
+        border-right: 1px solid {BORDER};
+    }}
+    QWidget#BlockTray QScrollArea,
+    QWidget#BlockTray QScrollArea > QWidget > QWidget {{
+        background: {PANEL_HI};
+    }}
+    QLabel#BlockTrayShortcut, QLabel#BlockTrayState {{
+        color: {DIM}; font-size: 11px; background: transparent;
+    }}
+    QLabel#BlockTrayGroup {{
+        color: {DIM}; font-size: 11px; font-weight: 700;
+        letter-spacing: 1px; background: transparent; padding-top: 7px;
+    }}
+    QPushButton#BlockTrayToggle {{
+        background: transparent; color: {ACCENT}; border: none;
+        min-height: 30px; font-size: 22px; font-weight: 700; padding: 0;
+    }}
+    QPushButton#BlockTag {{
+        background: {FIELD}; color: {BODY}; border: 1px solid {BORDER};
+        border-radius: 5px; min-width: 38px; min-height: 30px;
+        padding: 3px 5px; font-size: 11px; font-weight: 700;
+    }}
+    QPushButton#BlockTag:hover {{ border: 1px solid {ACCENT}; color: {ACCENT}; }}
+    QPushButton#BlockAction {{
+        background: transparent; color: {BODY}; border: 1px solid transparent;
+        border-radius: 5px; min-height: 32px; padding: 5px 8px;
+        text-align: left; font-size: 13px;
+    }}
+    QPushButton#BlockAction:hover, QPushButton#BlockAction:focus {{
+        border: 1px solid {ACCENT}; color: {ACCENT}; background: {FIELD};
+    }}
+    QFrame#SelectedPhotoTools {{
+        background: {PANEL}; border-top: 1px solid {BORDER};
+    }}
+    QFrame#SlapperState {{
+        background: {FIELD}; border: 1px solid {ACCENT}; border-radius: 6px;
+    }}
+    QFrame#SlapperError {{
+        background: #25100e; border: 1px solid {DANGER}; border-radius: 6px;
+    }}
+    QPushButton#PhotoTool {{
+        background: {FIELD}; color: {BODY}; border: 1px solid {BORDER};
+        border-radius: 5px; min-height: 30px; padding: 3px 5px;
+        font-size: 11px;
+    }}
+    QPushButton#PhotoTool:hover, QPushButton#PhotoTool:focus,
+    QPushButton#PhotoTool:checked {{
+        border: 1px solid {ACCENT}; color: {ACCENT};
+    }}
+    QPushButton#PhotoSelect {{
+        background: {FIELD}; border: 1px solid {BORDER}; padding: 3px;
+    }}
+    QPushButton#PhotoSelect:checked {{ border: 2px solid {ACCENT}; }}
     QPushButton#AccordionHeader {{
         background: {PANEL_HI};
         color: {DIM};
@@ -171,6 +226,15 @@ def stylesheet() -> str:
         background: transparent; border: none; color: {DIM}; padding: 4px 8px;
     }}
     QPushButton#Quiet:hover {{ color: {ACCENT}; }}
+    QPushButton#ShellAction {{
+        background: transparent; color: {DIM}; border: 1px solid {BORDER};
+        padding: 6px 10px; font-size: 12px; font-weight: 700;
+        letter-spacing: 0.5px;
+    }}
+    QPushButton#ShellAction:hover {{ border: 1px solid {ACCENT}; color: {ACCENT}; }}
+    QPushButton#ShellAction:checked {{
+        border: 1px solid {ACCENT}; color: {ACCENT}; background: {ACCENT_DIM};
+    }}
     /* Shortcode-bar buttons — compact but still a real target (min 30px tall). */
     QPushButton#ScBtn {{
         background: {FIELD};

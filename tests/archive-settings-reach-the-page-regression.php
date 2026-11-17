@@ -66,7 +66,10 @@ function st_render(string $root, string $skin, array $siteOverrides): string {
 // Components that declare they honour THUMB STYLE. CHAPLIN is here because it
 // is what broke; IMPACT PRINTER because it is where the working code was
 // copied from, and a silent regression there would take CHAPLIN with it.
-foreach (['chaplin', 'impact-printer'] as $skin) {
+// NEW HORIZON added 2026-11-11: Sean found its archive missing controls that
+// CHAPLIN has, and this suite covering two skins is why nobody knew. It draws
+// its own layout.php, so it renders here the same way.
+foreach (['chaplin', 'impact-printer', 'new-horizon'] as $skin) {
     // The owner's real combination: DEFAULT LAYOUT thumbs, THUMB STYLE cropped.
     $cropped = st_render($root, $skin, ['archive_layout' => 'thumbs', 'archive_thumb_style' => 'cropped']);
     $square  = st_render($root, $skin, ['archive_layout' => 'thumbs', 'archive_thumb_style' => 'square']);
@@ -86,10 +89,29 @@ foreach (['chaplin', 'impact-printer'] as $skin) {
         "{$skin}: cropped asks for the natural-aspect thumbnail");
 
     // COLUMNS is a number the owner moves on a slider. It has to appear.
-    $four = st_render($root, $skin, ['archive_layout' => 'thumbs', 'archive_grid' => ['cols' => 4, 'step' => 'm']]);
-    $two  = st_render($root, $skin, ['archive_layout' => 'thumbs', 'archive_grid' => ['cols' => 2, 'step' => 'm']]);
+    //
+    // THE FIXTURE CARRIES BOTH 'cols' AND 'class', because production does.
+    // snapsmack_archive_grid_metrics() returns both, and the two skin shapes
+    // consume them differently: CHAPLIN and IMPACT PRINTER read 'cols' and
+    // assemble the class themselves, while NEW HORIZON prints 'class' whole.
+    // A fixture with only 'cols' passed for the first two and failed the third
+    // on a difference that does not exist on a real site. Supplying what the
+    // view model really supplies tests every shape honestly. (2026-11-11.)
+    $grid = static function (int $cols): array {
+        return [
+            'cols'        => $cols,
+            'step'        => 'm',
+            'thumb_width' => 250,
+            'class'       => 'cropped-grid archive-grid archive-layout-cropped'
+                           . ' archive-cols-' . $cols . ' archive-thumbs-m',
+        ];
+    };
+    $four = st_render($root, $skin, ['archive_layout' => 'thumbs', 'archive_grid' => $grid(4)]);
+    $two  = st_render($root, $skin, ['archive_layout' => 'thumbs', 'archive_grid' => $grid(2)]);
     st_test(str_contains($four, 'archive-cols-4') && str_contains($two, 'archive-cols-2'),
         "{$skin}: COLUMNS reaches the markup and follows the setting");
+    st_test($four !== $two,
+        "{$skin}: flipping COLUMNS changes the page at all");
 }
 
 if ($fail > 0) {

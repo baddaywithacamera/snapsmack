@@ -26,11 +26,12 @@ Spec, in Sean's words: _spec/SPEC-biggie-wysiwyg-in-seans-words-2026-09-09.md
 import json
 import os
 
-from PySide6.QtCore import Qt, QRect, QRectF, QSizeF, Signal
+from PySide6.QtCore import Qt, QRect, QRectF, QSize, QSizeF, Signal
 from PySide6.QtGui import (
     QColor, QFont, QPainter, QPen, QPixmap, QPixmapCache, QTextBlockFormat,
     QTextCharFormat, QTextCursor, QTextFormat, QTextFrameFormat, QTextLength,
     QTextListFormat, QTextTableFormat, QPyTextObject, QAction, QKeySequence,
+    QImageReader, QImageIOHandler,
 )
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QMenu,
@@ -40,7 +41,7 @@ from PySide6.QtWidgets import (
 
 from . import theme
 from . import biggie
-from .mosaic_layout import tile_rects, natural_height
+from .mosaic_site_layout import compute_layout as site_compute_layout
 
 # ── document vocabulary ─────────────────────────────────────────────────────
 OBJ_TYPE     = QTextFormat.UserObject + 41          # our inline objects
@@ -58,6 +59,119 @@ KIND_LABELS = {"para": "Paragraph", "h2": "Heading", "h3": "Sub-heading",
 def _block_kind(block) -> str:
     kind = block.blockFormat().property(PROP_KIND)
     return kind if kind in BLOCK_KINDS else "para"
+
+
+def _mosaic_images(canvas, data):
+    """The photographs this mosaic draws, with the dimensions the site uses.
+
+    The site composes from each photograph's real aspect ratio, so the editor
+    has to hand compute_layout the same width/height the browser would read
+    from the file. Sizes come from the header, never a decode.
+    """
+    order = list(data.get("order") or [])
+    bucket = canvas.bucket
+    if not order:
+        order = list(range(1, len(bucket) + 1))
+    paths = []
+    for identity in order:
+        if str(identity).isdigit() and 1 <= int(identity) <= len(bucket):
+            paths.append(bucket[int(identity) - 1])
+        elif str(identity) in canvas.assets:
+            paths.append(canvas.assets[str(identity)])
+    images = []
+    for path in paths:
+        width, height = _image_size(path)
+        images.append({"width": width, "height": height, "src": path})
+    return paths, images
+
+
+def _mosaic_gap(data):
+    """The saved gap, with ZERO meaning zero.
+
+    `int(data.get("gap", 4) or 4)` read a saved 0 as 4, because `0 or 4` is 4.
+    Gap 0 is a real choice -- the column schema allows 0 to 20, parser.php
+    clamps to the same range and the engine honours it -- and it is the one a
+    flush grid of photographs needs, so previewing it at 4 would show spacing
+    the published page does not have. Only a missing, blank or unparseable
+    value falls back to 4, which is the schema default for snap_mosaics.gap.
+    The range is left to compute_layout, which clamps 0 to 20 exactly as the
+    site does; clamping twice is how the two drift apart.
+    """
+    raw = data.get("gap", 4)
+    if raw is None or raw == "":
+        return 4
+    try:
+        return int(float(raw))
+    except (TypeError, ValueError):
+        return 4
+
+
+def mosaic_cells(canvas, data, width):
+    """The cells this mosaic will occupy at `width`, as the site computes them.
+
+    Separated from the painting so it can be checked. A geometry bug inside a
+    paintEvent can only be caught by looking at the screen; the same bug in a
+    function that returns numbers is caught by a test. The mutation run that
+    prompted this split had a mutant halving the composition width survive,
+    because nothing could see the width the painter used.
+    """
+    paths, images = _mosaic_images(canvas, data)
+    if not paths:
+        return [], {"items": [], "sections": [], "height": 0.0}
+    layout = data.get("layout", "asymmetric")
+    out = site_compute_layout(
+        images, width, _mosaic_gap(data), "natural",
+        "" if layout == "asymmetric" else layout)
+    return paths, out
+
+
+def mosaic_cell_problem(path):
+    """Why a mosaic cell cannot draw its photograph, or None when it can.
+
+    SS-1301 CLOSE CONDITION 3. Sean reported cells 13 and 14 as blank numbered
+    boxes in a 53-photograph mosaic and asked what they were. The editor could
+    not tell him: a missing file, a file it cannot decode and an empty path all
+    produced the same QPixmap() and the same dark box with a number on it. The
+    ticket asks for them to be distinguishable rather than silently identical,
+    and that is the whole of what this does -- it does not repair a photograph,
+    it stops the editor being silent about one.
+
+    I am NOT claiming this is why 13 and 14 were blank. I have never seen his
+    files. This makes the editor state the reason the next time it happens, in
+    the cell itself, instead of leaving him to guess from a number.
+
+    There are two states here and not the three the ticket lists. The third,
+    still loading, belongs to mode_take's PhotoLoader, which decodes off the
+    GUI thread; this path is synchronous, so a cell that has no photograph has
+    finished finding that out. Saying "still loading" here would be a lie.
+    """
+    if not path:
+        return "NO FILE"
+    if not os.path.isfile(path):
+        return "FILE MISSING"
+    width, height = _image_size(path)
+    if width <= 0 or height <= 0:
+        return "CANNOT READ"
+    return None
+
+
+def mosaic_is_approximate(count, layout):
+    """True when the preview cannot promise the published arrangement.
+
+    Exactly one case: three photographs on the default layout. The site then
+    picks one-left or one-right by hashing the page URL and alternating against
+    the previous mosaic on the page (ss-engine-mosaic.js stableTripletSide), and
+    a draft has no URL. Everything else is pinned by data-template and exact.
+    """
+    return layout == "asymmetric" and count == 3
+
+
+def mosaic_note(count, layout):
+    """The footer line. It says plainly when the preview is exact and when it
+    is not, because a preview that quietly guesses is the fault being fixed."""
+    tail = (" · ARRANGEMENT DECIDED AT PUBLISH — pick a layout to fix it"
+            if mosaic_is_approximate(count, layout) else " · matches the site")
+    return f"  MOSAIC · {count} photo(s) · {layout}{tail} · double-click to change"
 
 
 # ── inline objects: mosaic · image · spacer · hr ────────────────────────────
@@ -81,9 +195,14 @@ class _Objects(QPyTextObject):
         data = _data(fmt)
         w = self._width(doc)
         if kind == "mosaic":
-            order = data.get("order") or []
-            count = len(order) or len(self.canvas.bucket)
-            return QSizeF(w, natural_height(w, count, data.get("layout", "asymmetric")) + 22)
+            # The height the SITE will give this mosaic, computed by the same
+            # arithmetic the site uses, rather than the old w * 0.3 * ceil(n/3)
+            # guess -- which for 53 photographs returned 5.4x the column width
+            # and bore no relation to what would be published.
+            paths, out = mosaic_cells(self.canvas, data, w)
+            if not paths:
+                return QSizeF(w, 160)
+            return QSizeF(w, out["height"] + 22)
         if kind == "image":
             size = data.get("size", "full")
             align = data.get("align", "center")
@@ -120,46 +239,77 @@ class _Objects(QPyTextObject):
         painter.restore()
 
     def _draw_mosaic(self, painter, r, data):
+        """Draw the mosaic the SITE will draw.
+
+        Every cell comes from mosaic_site_layout.compute_layout, which is the
+        site's own composition in Python and is proved identical to
+        assets/js/ss-engine-mosaic.js over 350 layouts. Because the cells are
+        already each photograph's own shape, a photograph scaled to fit its
+        cell FILLS it -- the empty bands were never a scaling choice, they were
+        a uniform grid asking square cells to hold rectangular photographs.
+        """
         layout = data.get("layout", "asymmetric")
-        order = list(data.get("order") or [])
-        bucket = self.canvas.bucket
-        if not order:
-            order = list(range(1, len(bucket) + 1))
-        paths = []
-        for identity in order:
-            if str(identity).isdigit() and 1 <= int(identity) <= len(bucket):
-                paths.append(bucket[int(identity) - 1])
-            elif str(identity) in self.canvas.assets:
-                paths.append(self.canvas.assets[str(identity)])
         painter.fillRect(r, QColor("#090b0a"))
         inner = r.adjusted(0, 0, 0, -22)
-        cells = tile_rects(inner.width(), inner.height(), len(paths), layout)
-        for n, (path, cell) in enumerate(zip(paths, cells), 1):
-            tile = cell.translated(inner.topLeft())
-            pix = _pixmap(path, tile.width())
-            painter.fillRect(tile, QColor("#141714"))
-            if not pix.isNull():
-                # Whole photograph, letterboxed — a preview must never imply a
-                # crop the photographer did not choose (same rule as the dialog).
-                scaled = pix.scaled(tile.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                target = QRect(tile.left() + (tile.width() - scaled.width()) // 2,
-                               tile.top() + (tile.height() - scaled.height()) // 2,
-                               scaled.width(), scaled.height())
-                painter.drawPixmap(target, scaled)
-            painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
-            painter.drawRect(tile.adjusted(0, 0, -1, -1))
-            badge = QRect(tile.left() + 4, tile.top() + 4, 22, 18)
-            painter.fillRect(badge, QColor(0, 0, 0, 190))
-            painter.setPen(QColor("#ffffff"))
-            painter.drawText(badge, Qt.AlignCenter, str(n))
+        paths, out = mosaic_cells(self.canvas, data, inner.width())
+
         if not paths:
             painter.setPen(QColor(theme.DIM))
             painter.drawText(inner, Qt.AlignCenter,
                              "MOSAIC — add photos to the bucket to see it")
+            self._mosaic_footer(painter, r, 0, layout)
+            return
+
+        for n, tile in enumerate(out["items"], 1):
+            cell = QRect(inner.left() + int(round(tile["x"])),
+                         inner.top() + int(round(tile["y"])),
+                         max(1, int(round(tile["width"]))),
+                         max(1, int(round(tile["height"]))))
+            path = tile["image"].get("src", "")
+            painter.fillRect(cell, QColor("#141714"))
+            pix = _pixmap(path, cell.width())
+            if not pix.isNull():
+                # The cell IS the photograph's shape, so KeepAspectRatio fills
+                # it. Any residual pixel is rounding, not a band.
+                scaled = pix.scaled(cell.size(), Qt.KeepAspectRatio,
+                                    Qt.SmoothTransformation)
+                painter.drawPixmap(
+                    QRect(cell.left() + (cell.width() - scaled.width()) // 2,
+                          cell.top() + (cell.height() - scaled.height()) // 2,
+                          scaled.width(), scaled.height()), scaled)
+            else:
+                # SAY WHICH, rather than leaving a numbered blank. A cell that
+                # cannot draw used to look exactly like every other cell that
+                # cannot draw, whatever the reason.
+                painter.setPen(QColor(theme.DIM))
+                painter.drawText(cell.adjusted(2, 14, -2, -2),
+                                 Qt.AlignCenter | Qt.TextWordWrap,
+                                 mosaic_cell_problem(path) or "CANNOT READ")
+            painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
+            painter.drawRect(cell.adjusted(0, 0, -1, -1))
+            badge = QRect(cell.left() + 4, cell.top() + 4, 22, 18)
+            painter.fillRect(badge, QColor(0, 0, 0, 190))
+            painter.setPen(QColor("#ffffff"))
+            painter.drawText(badge, Qt.AlignCenter, str(n))
+
+        self._mosaic_footer(painter, r, len(paths), layout)
+
+    def _mosaic_footer(self, painter, r, count, layout):
+        """The strip under the mosaic. It says when the preview is EXACT and
+        when it is not, because a preview that quietly guesses is the fault
+        this whole change exists to fix.
+
+        The one inexact case: three photographs on the default layout. The site
+        then picks one-left or one-right by hashing the page's URL
+        (ss-engine-mosaic.js stableTripletSide) and alternates against the
+        previous mosaic on the page. A draft has no URL yet, so the editor can
+        show a true composition but not necessarily the one that will publish.
+        Saving an explicit layout makes it exact.
+        """
         foot = QRect(r.left(), r.bottom() - 20, r.width(), 20)
         painter.setPen(QColor(theme.DIM))
         painter.drawText(foot, Qt.AlignVCenter | Qt.AlignLeft,
-                         f"  MOSAIC · {len(paths)} photo(s) · {layout} · double-click to change")
+                         mosaic_note(count, layout))
 
     def _draw_image(self, painter, r, data):
         size = data.get("size", "full")
@@ -200,6 +350,38 @@ def _data(fmt) -> dict:
         return {}
 
 
+#: Qt reports the EXIF transform as flags. Bit 4 is the quarter turn, and it
+#: is the only bit that changes the SHAPE: mirroring and flipping leave the
+#: width and height alone. Measured across all eight EXIF orientation tags --
+#: 1 to 4 are unrotated, 5 to 8 all carry this bit and all swap.
+_ROTATE90 = QImageIOHandler.Transformation.TransformationRotate90
+_ROTATE90_BIT = int(_ROTATE90.value)
+
+
+def _seen_size(size, transformation):
+    """(width, height) as a VIEWER shows it, from the raw header size + flags.
+
+    QImageReader.size() reports the stored pixel grid and ignores the EXIF
+    orientation -- with setAutoTransform(True) as well, which is the part that
+    catches people. Measured: a 1500x1000 JPEG tagged Orientation=6 reports
+    1500x1000 from size() with autoTransform either way, and read() returns
+    1000x1500. There is no effectiveSize() in this PySide6 to ask instead.
+
+    So the swap is done here, from the flags, and this takes plain values so a
+    test can drive all eight orientations without eight files on disk.
+    """
+    width = int(size.width()) if hasattr(size, "width") else int(size[0])
+    height = int(size.height()) if hasattr(size, "height") else int(size[1])
+    if width <= 0 or height <= 0:
+        return (0, 0)
+    # The flags are normalised to a plain int, because Qt's Transformation enum
+    # in this PySide6 supports neither int() nor `int & Transformation`
+    # (measured -- both raise TypeError). Going through .value once here is
+    # what lets a test drive all eight orientations from literals.
+    flags = int(getattr(transformation, "value", transformation))
+    return (height, width) if flags & _ROTATE90_BIT else (width, height)
+
+
 def _pixmap(path: str, width: int) -> QPixmap:
     """Bucket photo, decoded once and cached at a sane size.
 
@@ -223,16 +405,92 @@ def _pixmap(path: str, width: int) -> QPixmap:
         stamp = os.stat(path).st_mtime_ns if path else 0
     except OSError:
         stamp = 0
-    key = f"biggie:{path}:{stamp}"
+
+    # DECODE AT THE SIZE ASKED FOR. This function has always taken a width and
+    # always ignored it: it loaded the photograph at FULL size and then scaled
+    # the result down to a flat 1200. Sean's About portrait is 2655x2655, which
+    # is about 28 MB as a QPixmap, allocated and thrown away to keep a 1200px
+    # copy -- and QPixmapCache holds 10 MB, measured, which is about TWO of
+    # those. With 53 photographs in a mosaic almost every one missed the cache
+    # and was decoded again from disk on every repaint: scroll, resize, cursor
+    # blink. QImageReader.setScaledSize decodes straight to the target, so the
+    # full-size intermediate never exists.
+    want = max(16, int(width or 0) or 1200)
+    # Bucket to 64px so a few pixels of resize do not invalidate every entry,
+    # and so the cache key is stable while a column is being dragged.
+    bucket = ((want + 63) // 64) * 64
+    key = f"biggie:{path}:{stamp}:{bucket}"
     pix = QPixmap()
     if QPixmapCache.find(key, pix) and not pix.isNull():
         return pix
-    pix = QPixmap(path) if path and os.path.isfile(path) else QPixmap()
-    if not pix.isNull() and pix.width() > 1200:
-        pix = pix.scaledToWidth(1200, Qt.SmoothTransformation)
+    if not path or not os.path.isfile(path):
+        return QPixmap()
+
+    reader = QImageReader(path)
+    reader.setAutoTransform(True)       # honour the EXIF orientation, as before
+    source = reader.size()
+    # SCALE IN THE PRE-TRANSFORM FRAME, because that is the frame setScaledSize
+    # works in: Qt scales the stored grid and THEN rotates. Asking a quarter-
+    # turned photograph for a 320-wide pixmap used to deliver a 213-wide one
+    # (measured), so the cell got an under-resolved photograph and the cache
+    # key lied about what it held. Scaling both axes by one factor off the SEEN
+    # width lands the delivered width on the bucket for all eight orientations.
+    seen_w, _seen_h = _seen_size(source, reader.transformation())
+    if source.isValid() and seen_w > bucket:
+        scale = bucket / float(seen_w)
+        reader.setScaledSize(QSize(max(1, int(round(source.width() * scale))),
+                                   max(1, int(round(source.height() * scale)))))
+    image = reader.read()
+    pix = QPixmap.fromImage(image) if not image.isNull() else QPixmap()
     if not pix.isNull():
         QPixmapCache.insert(key, pix)
     return pix
+
+
+def _image_size(path: str):
+    """(width, height) from the file HEADER, without decoding the photograph.
+
+    The site composes a mosaic from each photograph's real aspect ratio, so the
+    editor needs the dimensions of 53 files before it can draw anything. Reading
+    them with QImageReader.size() touches only the header; decoding 53 JPEGs to
+    ask how big they are is what made this editor unusable in the first place.
+    Cached on path and modification time, like everything else here, because
+    SNAP SLAPPER rewrites photographs in place.
+
+    THE EXIF ORIENTATION IS APPLIED, and it was not. A photograph tagged for a
+    quarter turn was composed from its stored landscape grid while _pixmap drew
+    it portrait, so KeepAspectRatio letterboxed it inside its own cell -- the
+    exact banding this whole change removes, back again for rotated files. The
+    test fixtures are PIL JPEGs with no EXIF, so no assertion could see it;
+    Muse read it out of the Qt API instead.
+
+    Matching the site is not a judgement call here. core/image-ingest.php:359
+    rotates the PIXELS on upload for orientation 3, 6 and 8 and then stores
+    img_width/img_height off the rotated image, which parser.php:509 emits as
+    data-w/data-h and the engine composes from. The published page therefore
+    uses the ORIENTED shape, so the editor must too.
+    """
+    try:
+        stamp = os.stat(path).st_mtime_ns if path else 0
+    except OSError:
+        return (0, 0)
+    hit = _SIZE_CACHE.get((path, stamp))
+    if hit is not None:
+        return hit
+    out = (0, 0)
+    if os.path.isfile(path):
+        reader = QImageReader(path)
+        size = reader.size()
+        if size.isValid():
+            out = _seen_size(size, reader.transformation())
+    if len(_SIZE_CACHE) > 2000:
+        _SIZE_CACHE.clear()
+    _SIZE_CACHE[(path, stamp)] = out
+    return out
+
+
+#: path+mtime -> (w, h). Bounded; header reads are cheap but not free.
+_SIZE_CACHE = {}
 
 
 # ── the canvas ───────────────────────────────────────────────────────────────

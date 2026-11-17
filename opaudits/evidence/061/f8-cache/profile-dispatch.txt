@@ -1,0 +1,1 @@
+Federation profile gate: 32 dispatch checks PASS; installed/network NOT CHECKED.

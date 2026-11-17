@@ -380,7 +380,7 @@ body {
 
 #system-footer p, #sig-text {
     color: var(--text-secondary) !important;
-    font-family: 'DM Sans', sans-serif !important;
+    font-family: 'DM Sans', sans-serif;
     font-size: 0.7rem !important;
     text-transform: uppercase !important;
     letter-spacing: 1.5px !important;

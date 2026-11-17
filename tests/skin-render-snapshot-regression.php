@@ -209,8 +209,27 @@ function snapshot_fingerprint(string $html): array
     $text = html_entity_decode(strip_tags($visible), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $text = trim((string)preg_replace('/\s+/u', ' ', $text));
     return [
-        'images'      => snapshot_matches($html, '/<img[^>]+src="([^"]*)"/i'),
-        'stylesheets' => snapshot_matches($html, '/<link[^>]+rel="stylesheet"[^>]+href="([^"]*)"/i'),
+        // \s BEFORE THE ATTRIBUTE NAME, AND A LAZY QUANTIFIER. Both matter, and
+        // the reason is a real false alarm that stopped the 977D gate.
+        //
+        // GLIDE gained data-lightbox-src, which is the full-size original while
+        // src stays the prepared whole-print file. The old pattern was
+        // <img[^>]+src="..." -- greedy, and "data-lightbox-src=" ENDS WITH the
+        // literal src=", so [^>]+ happily swallowed "data-lightbox-" and matched
+        // the LIGHTBOX value instead of the real src. The snapshot reported the
+        // wall images had changed from -whole-print to -full. NOTHING HAD
+        // CHANGED: the layout's url expression is untouched, and the wall still
+        // serves the prepared file. Blessing that baseline would have recorded
+        // the wrong attribute for ever and hidden the wall's real source.
+        //
+        // Requiring whitespace before src means the src inside another attribute
+        // name can never match, because it is preceded by a hyphen. Lazy means
+        // the FIRST real src wins regardless of attribute order.
+        'images'      => snapshot_matches($html, '/<img[^>]*?\ssrc="([^"]*)"/i'),
+        // Same hazard, same guard: a data-*-href would have been caught the same
+        // way. Attribute ORDER is deliberately left as it was -- rel before
+        // href -- so this change fixes the boundary and widens nothing else.
+        'stylesheets' => snapshot_matches($html, '/<link[^>]*?\srel="stylesheet"[^>]*?\shref="([^"]*)"/i'),
         'paragraphs'  => preg_match_all('/<p[\s>]/i', $html),
         'links'       => preg_match_all('/<a[\s>]/i', $html),
         'headings'    => preg_match_all('/<h[1-6][\s>]/i', $html),

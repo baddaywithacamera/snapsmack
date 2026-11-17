@@ -36,6 +36,8 @@ import os
 import sys
 import time
 
+from manifest_parser import normalize_tags
+
 
 # Fields persisted per item. Mirrors manifest_parser.ManifestEntry (minus file,
 # which is stored separately, and line_num, which is source-only).
@@ -178,6 +180,8 @@ class RecoveryStore:
             for fld in FIELDS:
                 val = rec.get(fld)
                 if val:
+                    if fld == 'tags':
+                        val = normalize_tags(val)
                     setattr(entry, fld, val)
                     touched = True
             if touched:

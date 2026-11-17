@@ -589,25 +589,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
 
                 // Auto-detect screenshot files and copy them to the releases screenshots directory.
                 // The gallery uses these for multi-screenshot previews of non-installed skins.
-                $screenshot_names  = [
-                    'screenshot-landing.png' => 'Landing',
-                    'screenshot-archive.png' => 'Archive',
-                    'screenshot-page.png'    => 'Text Page',
-                    'screenshot.png'         => 'Preview',
-                ];
+                // A migrated skin publishes each shot under BOTH its new positional name and
+                // its legacy alias, so a core that still reads the old names keeps working.
+                require_once __DIR__ . '/../core/skin-screenshots.php';
                 $ss_dest_dir = rtrim(RELEASES_DIR, '/') . '/skins/screenshots/' . $slug;
                 $ss_dest_url = rtrim(RELEASES_URL, '/') . '/skins/screenshots/' . $slug;
                 $detected_screenshots = [];
-                foreach ($screenshot_names as $filename => $label) {
-                    $src_file = rtrim($skin_dir, '/') . '/' . $filename;
-                    if (file_exists($src_file)) {
-                        if (!is_dir($ss_dest_dir)) @mkdir($ss_dest_dir, 0755, true);
-                        @copy($src_file, $ss_dest_dir . '/' . $filename);
-                        $detected_screenshots[] = ['src' => $ss_dest_url . '/' . $filename, 'label' => $label];
-                        // Use the landing shot (or first found) as the legacy single-screenshot field
-                        if ($screenshot === '') {
-                            $screenshot = $ss_dest_url . '/' . $filename;
-                        }
+                foreach (snapsmack_skin_screenshot_package_plan(rtrim($skin_dir, '/')) as $shot) {
+                    if (!is_dir($ss_dest_dir)) @mkdir($ss_dest_dir, 0755, true);
+                    foreach ($shot['publish'] as $pub) {
+                        @copy($shot['src'], $ss_dest_dir . '/' . $pub);
+                    }
+                    $canonical = $shot['publish'][0];
+                    $detected_screenshots[] = ['src' => $ss_dest_url . '/' . $canonical, 'label' => $shot['label']];
+                    if ($screenshot === '') {
+                        $screenshot = $ss_dest_url . '/' . $canonical;
                     }
                 }
 
@@ -650,6 +646,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                             ];
                         }
                         $file_count++;
+                    }
+                }
+
+                // Transition aliases: carry the legacy screenshot names in the package
+                // too, so a core that predates the rename still finds them on disk.
+                // Recorded in smackback_files so the integrity manifest covers them.
+                require_once __DIR__ . '/../core/skin-screenshots.php';
+                foreach (snapsmack_skin_screenshot_package_plan($skin_dir) as $shot) {
+                    foreach ($shot['publish'] as $pub) {
+                        $alias_in_zip = $slug . '/' . $pub;
+                        if (isset($smackback_files[$alias_in_zip])) continue;
+                        $zip->addFile($shot['src'], $alias_in_zip);
+                        $acontent = file_get_contents($shot['src']);
+                        if ($acontent !== false) {
+                            $smackback_files[$alias_in_zip] = [
+                                'hash' => hash('sha256', $acontent),
+                                'size' => strlen($acontent),
+                                'eof_signature' => null,
+                            ];
+                            $file_count++;
+                        }
                     }
                 }
 

@@ -1,7 +1,8 @@
 {
   "schema_version": 2,
   "name": "TRUE GRIT",
-  "version": "1.3.24",
+  "version": "1.3.29",
+    "scrolltime_pages": ["archive"],
   "author": "Sean McCormick",
   "support": "sean@baddaywithacamera.ca",
   "description": "Found-texture photography skin. Photographic wall backgrounds with opacity overlay, archival framing, justified grid, and floating photo wall. Built for foundtextures.ca.",
@@ -807,7 +808,7 @@
       "section": "TYPOGRAPHY",
       "type": "select",
       "label": "Footer Font",
-      "default": "Raleway",
+      "default": "DM Sans",
       "options": {
         "DM Sans": "DM Sans (Geometric / Clean UI body)",
         "Figtree": "Figtree (Friendly Geometric \u2014 contemporary)",
@@ -1072,16 +1073,6 @@
       "default": "#ffffff",
       "selector": ".nav-menu a:hover, .nav-menu a.active, .logo-area a:hover",
       "property": "color"
-    },
-    "footer_font_size": {
-      "section": "FOOTER",
-      "type": "range",
-      "label": "Footer Font Size (px)",
-      "default": "11",
-      "min": "8",
-      "max": "18",
-      "selector": "#system-footer p, #sig-text",
-      "property": "font-size"
     },
     "optical_lift": {
       "section": "VERTICAL LOCKS",

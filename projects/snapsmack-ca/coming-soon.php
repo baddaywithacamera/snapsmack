@@ -21,7 +21,7 @@ $page_css = <<<'CSS'
 .tier--beta { background: var(--black); color: var(--white); border-top-color: var(--red); }
 .tier--beta h2 { color: var(--red); }
 .tier--beta .lede { color: #aaa; }
-.tier--workshop { background: #f4f1eb; }
+.tier--workshop { background: var(--light-grey); }
 .tier--board { background: var(--white); }
 .tier-kicker { margin-bottom: 8px; color: var(--red); font: 700 0.7rem/1 Arial, sans-serif; letter-spacing: 0.14em; text-transform: uppercase; }
 .coming-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; margin-top: 36px; }
@@ -39,7 +39,7 @@ $page_css = <<<'CSS'
 .shipped-list a strong { display: block; font: 900 .88rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .shipped-list a strong::after { content: " \2192"; color: var(--red); }
 .shipped-list a span { display: block; margin-top: 5px; color: var(--mid-grey); font-size: .85rem; line-height: 1.45; }
-.shipped-list a:hover { background: #fff5f3; text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
+.shipped-list a:hover { background: var(--white); text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
 @media (max-width: 850px) { .coming-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .coming-grid, .shipped-list { grid-template-columns: 1fr; } .shipped-list a:last-child:nth-child(odd) { grid-column: auto; } }
 CSS;

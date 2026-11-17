@@ -10,7 +10,10 @@
  */
 
 $root = dirname(__DIR__);
-$files = ['index.php', 'archive.php', 'albums.php', 'blogroll.php', 'page.php', 'privacy-policy.php', 'process-comment.php'];
+$files = ['index.php', 'archive.php', 'albums.php', 'blogroll.php', 'page.php', 'privacy-policy.php', 'process-comment.php',
+    // SS-1158: shipped admin pages must not force error display either — a
+    // warning on an admin page still renders paths and traces to the viewer.
+    'smack-help.php'];
 
 foreach ($files as $file) {
     $source = (string)file_get_contents($root . '/' . $file);

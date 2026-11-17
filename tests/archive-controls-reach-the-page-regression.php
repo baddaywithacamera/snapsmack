@@ -411,12 +411,40 @@ foreach (['archive_layouts', 'archive_calendar', 'archive_layout_active'] as $ke
     ac_test(preg_match("/'{$key}'/", $contract) === 1 || str_contains($contract, "'{$key}'"),
         "{$key} is named in the contract");
 }
-$allowStart = strpos($contract, '$allowedResponse = [');
-$allowBlock = $allowStart === false ? '' : substr($contract, $allowStart, 1600);
+// CALL THE BUILDER, DO NOT MEASURE A WINDOW OF ITS SOURCE.
+//
+// This read substr($contract, $allowStart, 1600) -- a fixed 1600 characters
+// from the start of $allowedResponse -- and checked the key appeared inside
+// it. Then four keys and an explaining comment were added to that array for
+// GLIDE's paging, archive_layouts and archive_calendar moved past the 1600th
+// character, and BOTH ASSERTIONS FAILED ON CODE THAT WAS ENTIRELY CORRECT. I
+// proved the keys still survive by building a view before touching this.
+//
+// The question was never "does this string sit within 1600 characters of that
+// one". It is "does the key reach the skin", and that is answerable by calling
+// the function -- which also catches a key stripped by some later filter, which
+// no amount of reading the array ever would. Fifth fixed-width source window to
+// measure the wrong region today; this one is now behaviour.
+$allowProbe = snapsmack_build_skin_view(
+    ['kind' => 'archive', 'status' => 200, 'items' => [], 'item' => [],
+     'archive_controls' => '', 'archive_layouts' => ['thumbs', 'masonry'],
+     'archive_calendar' => ['enabled' => true],
+     // Not on the allowlist, on purpose: see the negative check below.
+     'ac_probe_not_allowed' => 'should never reach a skin'],
+    ['site_name' => 'Fixture', 'base_url' => '/', 'skin_slug' => 'impact-printer']
+);
+$allowProbeResponse = is_array($allowProbe['response'] ?? null) ? $allowProbe['response'] : [];
 foreach (['archive_controls', 'archive_layouts', 'archive_calendar'] as $key) {
-    ac_test(str_contains($allowBlock, "'{$key}'"),
-        "{$key} is in the allowlist, so it is not stripped out of the view");
+    ac_test(array_key_exists($key, $allowProbeResponse),
+        "{$key} survives the view-model and reaches the skin");
 }
+// THE NEGATIVE HALF, which this test never had. Three keys surviving proves
+// nothing on its own: a contract that had stopped filtering and passed
+// EVERYTHING through would satisfy all three checks above, and that is a hole
+// rather than a pass. So the probe carries a key that is deliberately not on
+// the allowlist, and it must not arrive.
+ac_test(!array_key_exists('ac_probe_not_allowed', $allowProbeResponse),
+    'a key that is NOT on the allowlist is stripped, so the filter is still filtering');
 
 echo "\nThe runtime assigns them, which is the line that never existed\n";
 $runtime = (string) file_get_contents($root . '/core/public-runtime.php');
@@ -434,8 +462,13 @@ echo "\nThe row and the stylesheet that styles it travel together\n";
 // because the engine that carries that stylesheet was hardcoded in a <script>
 // tag at the bottom of archive.php. No test could see a missing CSS file.
 // This one can: it reads what the runtime declares.
-ac_test(str_contains($runtime, "['smack-archive-toggle']"),
-    'the runtime declares the archive engine as a required asset');
+ac_test(str_contains($runtime, "'smack-archive-toggle'"),
+    'the runtime declares the archive toggle engine as a required asset');
+// The cascade reveal rides the same archive/hashtag asset list; it self-gates to
+// its phase-one skin by body class and is fail-safe off, so it is loaded fleet-
+// wide here. (Added 990D, Sean's archive fade-in request.)
+ac_test(str_contains($runtime, "'smack-archive-cascade'"),
+    'the runtime also declares the archive cascade reveal engine');
 $inventory = require $root . '/core/manifest-inventory.php';
 $toggle = $inventory['scripts']['smack-archive-toggle'] ?? [];
 ac_test(($toggle['css'] ?? '') === 'assets/css/page-archive.css',

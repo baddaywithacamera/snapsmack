@@ -80,7 +80,14 @@ if ($resource === 'album' && $method === 'POST') {
     if($title==='')stu_error('Album title is required.',400);
     $q=$pdo->prepare('SELECT id FROM snap_albums WHERE LOWER(album_name)=LOWER(?) LIMIT 1');$q->execute([$title]);
     if($id=(int)($q->fetchColumn()?:0))stu_reply(['ok'=>true,'album_id'=>$id,'created'=>false]);
-    $pdo->prepare('INSERT INTO snap_albums(album_name,album_description) VALUES(?,?)')->execute([$title,mb_substr(trim(strip_tags((string)($b['description']??''))),0,20000)]);
+    // album_slug is set here for the same reason as core/flkrfckr-api.php's
+    // insert: the column is NOT NULL DEFAULT '', so omitting it leaves the
+    // album with no address and collides with the next one once snap_albums
+    // carries a UNIQUE key on it. snap_unique_slug is the one place a slug is
+    // minted (core/slug.php).
+    require_once __DIR__ . '/slug.php';
+    $stu_album_slug = snap_unique_slug($pdo, 'snap_albums', 'album_slug', $title, null, 'album');
+    $pdo->prepare('INSERT INTO snap_albums(album_name,album_description,album_slug) VALUES(?,?,?)')->execute([$title,mb_substr(trim(strip_tags((string)($b['description']??''))),0,20000),$stu_album_slug]);
     stu_reply(['ok'=>true,'album_id'=>(int)$pdo->lastInsertId(),'created'=>true],201);
 }
 

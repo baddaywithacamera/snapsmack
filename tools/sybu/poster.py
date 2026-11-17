@@ -34,8 +34,7 @@ from PIL import Image as PILImage, ImageFilter, ImageOps
 log = logging.getLogger('sybu')
 
 import exif_writer
-from exif_writer import COPYRIGHT as _DEFAULT_COPYRIGHT
-from manifest_parser import ManifestEntry
+from manifest_parser import ManifestEntry, normalize_tags
 
 try:
     import snap_site_scope   # X-Snap-Site header (mutual-auth A1, SECAUDIT 054)
@@ -354,13 +353,14 @@ class SnapSmackClient:
         """
         Full workflow for one image. Returns PostResult — never raises.
         """
+        entry.tags = normalize_tags(entry.tags)
         src_path  = os.path.join(image_folder, entry.file)
         ext       = os.path.splitext(entry.file)[1] or '.jpg'
         web_path  = ''
         tmp_drive = ''
         notes     = []
 
-        copyright_str = copyright_text or _DEFAULT_COPYRIGHT
+        copyright_str = copyright_text or ''
 
         try:
             # ── 1. Resize → web version ───────────────────────────────
@@ -466,9 +466,9 @@ class SnapSmackClient:
                 if hex_tags:
                     post_tags = f"{post_tags} {hex_tags}" if post_tags else hex_tags
 
-            # Caption (AI or manual) becomes the post description; copyright is appended so it is never lost.
+            # Caption alone becomes the post description. Copyright belongs only in image metadata.
             _caption = (getattr(entry, 'caption', '') or '').strip()
-            post_desc = f"{_caption}\n\n{copyright_str}" if _caption else copyright_str
+            post_desc = _caption
 
             form_data: Dict[str, str] = {
                 'title':                entry.title,
@@ -679,6 +679,7 @@ def post_gram(conn: 'GramConnection', entry: ManifestEntry, image_folder: str,
     """Post one POST-tab entry as its own single gram. Never raises — always
     returns a PostResult (same shape the solo path returns, so _poll_queue reads
     .entry / .success / .exif_ok / .message with no shim)."""
+    entry.tags = normalize_tags(entry.tags)
     local_path = os.path.join(image_folder, entry.file)
     if not os.path.isfile(local_path):
         return PostResult(entry, False, f"image not found: {local_path}")
@@ -729,7 +730,7 @@ def post_gram(conn: 'GramConnection', entry: ManifestEntry, image_folder: str,
             'allow_download': 1 if drive_url else 0,
             'download_url':   drive_url,
             'images':         [controls],
-            'tags':           [t.lstrip('#') for t in (entry.tags or '').split() if t.strip()],
+            'tags':           [t.lstrip('#') for t in entry.tags.split()],
         }
         r = conn.session.post(conn._api('threeacross/gram/post'), json=payload, timeout=120)
         if r.status_code in (401, 403, 429):

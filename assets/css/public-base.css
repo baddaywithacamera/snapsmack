@@ -179,4 +179,28 @@ img[data-lightbox-src] {
     pointer-events: none;
 }
 
+/* Opt-in primary scroll surfaces only; nested controls retain their own scrollbars. */
+:is(html:has(body.ss-subtle-scrollbars), body.ss-subtle-scrollbars, .ss-scroll-surface) {
+    scrollbar-color: var(--ss-scroll-thumb, #777777) transparent;
+    scrollbar-width: auto;
+}
+body.ss-subtle-scrollbars > :not(.ss-scroll-surface), .ss-scroll-surface > * {
+    scrollbar-color: auto;
+    scrollbar-width: auto;
+}
+@supports selector(::-webkit-scrollbar) {
+    :is(html:has(body.ss-subtle-scrollbars), body.ss-subtle-scrollbars, .ss-scroll-surface) { scrollbar-color: auto; }
+    :is(html:has(body.ss-subtle-scrollbars), body.ss-subtle-scrollbars, .ss-scroll-surface)::-webkit-scrollbar { width: 12px; height: 12px; }
+    :is(html:has(body.ss-subtle-scrollbars), body.ss-subtle-scrollbars, .ss-scroll-surface)::-webkit-scrollbar-track,
+    :is(html:has(body.ss-subtle-scrollbars), body.ss-subtle-scrollbars, .ss-scroll-surface)::-webkit-scrollbar-corner { background: transparent; }
+    :is(html:has(body.ss-subtle-scrollbars), body.ss-subtle-scrollbars, .ss-scroll-surface)::-webkit-scrollbar-thumb {
+        background: var(--ss-scroll-thumb, #777777);
+        border: 3px solid transparent;
+        background-clip: padding-box;
+        border-radius: 8px;
+    }
+    :is(html:has(body.ss-subtle-scrollbars), body.ss-subtle-scrollbars, .ss-scroll-surface)::-webkit-scrollbar-thumb:hover { background-color: var(--ss-scroll-thumb-hover, #999999); }
+    :is(html:has(body.ss-subtle-scrollbars), body.ss-subtle-scrollbars, .ss-scroll-surface)::-webkit-scrollbar-thumb:active { background-color: var(--ss-scroll-thumb-active, #aaaaaa); }
+}
+
 /* ===== SNAPSMACK EOF ===== */

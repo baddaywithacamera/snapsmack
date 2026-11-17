@@ -26,6 +26,7 @@ require_once 'core/auth-smack.php';
 require_once 'core/skin-registry.php';
 require_once 'core/skin-settings.php';
 require_once 'core/skin-view-model.php';
+require_once 'core/skin-presentation.php'; // snapsmack_clamp_skin_option() for the save path
 require_once 'core/mode-guard.php';
 
 // --- SETTINGS BOOTSTRAP ---
@@ -506,6 +507,11 @@ if (isset($_POST['save_skin_settings'])) {
     $save_skin = $_requested_skin; // SECAUDIT 047 — sanitized, validated slug only
     if (isset($_POST['skin_opt'])) {
         foreach ($_POST['skin_opt'] as $s_key => $s_val) {
+            // Clamp numeric controls to their manifest bounds on the way in, so a
+            // stale or tampered POST cannot store a value under a control's floor
+            // (the render path clamps the same bounds). Non-numeric and unknown
+            // keys pass through unchanged. SECAUDIT 061 / Codex save-path repair.
+            $s_val = snapsmack_clamp_skin_option((string)$save_skin, (string)$s_key, $s_val);
             $scoped_key = $save_skin . '__' . $s_key;
             $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
                 ->execute([$scoped_key, $s_val, $s_val]);
@@ -638,6 +644,8 @@ if (isset($_POST['save_skin_settings'])) {
     foreach ($manifest['options'] as $key => $meta) {
         $val = ($all_settings[$key] ?? '') !== '' ? $all_settings[$key] : ($meta['default'] ?? '');
         $prop = $meta['property'] ?? '';
+        if (!empty($meta['omit_if_default']) && in_array($meta['type'] ?? '', ['color', 'colour'], true)
+            && strcasecmp((string)$val, (string)($meta['default'] ?? '')) === 0) continue;
 
         // Skip options with no CSS property — handled by PHP (e.g. bevel style, wood grain)
         if ($prop === '') {
@@ -1381,6 +1389,9 @@ if (!empty($google_families)) {
                                 <div class="color-picker-container">
                                     <input type="color" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
                                     <span class="hex-display"><?php echo strtoupper(htmlspecialchars($val)); ?></span>
+                                    <?php if (!empty($o['omit_if_default']) || !empty($o['reset_to_default'])): ?>
+                                    <button type="button" data-default="<?php echo htmlspecialchars($o['default'] ?? '#000000', ENT_QUOTES); ?>" onclick="var c=this.parentElement;c.querySelector('input').value=this.dataset.default;c.querySelector('.hex-display').textContent=this.dataset.default.toUpperCase();">Use skin default</button>
+                                    <?php endif; ?>
                                 </div>
                             <?php elseif ($o['type'] === 'range'):
                                 $display_unit = strtoupper($o['unit'] ?? 'px');
@@ -1750,20 +1761,10 @@ if (!empty($google_families)) {
     function skin_screenshots(string $slug): array {
         $abs_dir = SKINS_DIR . '/' . $slug;   // absolute path for file_exists
         $url_dir = BASE_URL . "skins/{$slug}"; // absolute URL for img src
-        $shots   = [];
-        $names   = [
-            'screenshot-landing.png' => 'Landing',
-            'screenshot-archive.png' => 'Archive',
-            'screenshot-page.png'    => 'Text Page',
-        ];
-        foreach ($names as $file => $label) {
-            if (file_exists("{$abs_dir}/{$file}")) {
-                $shots[] = ['file' => "{$url_dir}/{$file}", 'label' => $label];
-            }
-        }
-        // Fallback: single screenshot.png (legacy)
-        if (empty($shots) && file_exists("{$abs_dir}/screenshot.png")) {
-            $shots[] = ['file' => "{$url_dir}/screenshot.png", 'label' => 'Preview'];
+        require_once __DIR__ . '/core/skin-screenshots.php';
+        $shots = [];
+        foreach (snapsmack_skin_screenshot_shots($abs_dir) as $s) {
+            $shots[] = ['file' => "{$url_dir}/{$s['name']}", 'label' => $s['label']];
         }
         return $shots;
     }

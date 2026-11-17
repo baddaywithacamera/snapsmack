@@ -84,6 +84,47 @@ def test_create_mosaic_returns_id_and_shortcode():
     assert mid == 55 and sc == "[mosaic:55]"
 
 
+def test_create_mosaic_omits_shuffle_unless_asked():
+    """SS-1185. The key is absent, not false. A site that has not yet synced
+    the gallery_shuffle column must see byte-for-byte the request it saw
+    before, so an ordinary post keeps working through a part-done update."""
+    po = _poster()
+    po.create_mosaic([1, 2, 3], title="T", gap=6)
+    url, payload = po.session.calls[-1]
+    assert url.endswith("smackpress/mosaics"), url
+    assert "gallery_shuffle" not in payload, payload
+
+
+def test_create_mosaic_sends_shuffle_and_keeps_the_authored_order():
+    """ON sends the field, and STILL sends the ids as authored. Shuffling is
+    the site's presentation step. If the poster reordered here, the arranged
+    sequence would be gone from the only copy being sent, and turning the
+    setting off later could never give it back."""
+    po = _poster()
+    po.create_mosaic([3, 1, 2], title="T", gap=6, gallery_shuffle=True)
+    url, payload = po.session.calls[-1]
+    assert payload.get("gallery_shuffle") is True, payload
+    assert payload["asset_ids"] == [3, 1, 2], payload
+
+
+def test_marker_keyword_reaches_the_http_payload():
+    """End to end through the parts that are mine: the keyword the WordPress
+    importer writes into the body is read by the token regex and arrives in
+    the request body. The two halves are tested apart elsewhere; this is the
+    one that fails if they stop meeting."""
+    po = _poster()
+    d = _Draft([], "")
+    po._resolve_mosaics("[mosaic shuffle]", [7, 8, 9], d)
+    _, payload = po.session.calls[-1]
+    assert payload.get("gallery_shuffle") is True, payload
+    assert payload["asset_ids"] == [7, 8, 9], payload
+
+    po2 = _poster()
+    po2._resolve_mosaics("[mosaic]", [7, 8, 9], d)
+    _, plain = po2.session.calls[-1]
+    assert "gallery_shuffle" not in plain, plain
+
+
 def test_resolve_replaces_placeholder_but_not_numeric():
     po = _poster()
     d = _Draft([], "")
@@ -128,6 +169,9 @@ def test_sync_smacktalk_resolves_mosaic_and_records_to_library():
 
 if __name__ == "__main__":
     test_create_mosaic_returns_id_and_shortcode()
+    test_create_mosaic_omits_shuffle_unless_asked()
+    test_create_mosaic_sends_shuffle_and_keeps_the_authored_order()
+    test_marker_keyword_reaches_the_http_payload()
     test_resolve_replaces_placeholder_but_not_numeric()
     test_build_payload_uses_resolved_content()
     test_sync_smacktalk_resolves_mosaic_and_records_to_library()

@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.72"   # SYBU uses the agreed 0.7.x desktop-tool version line; bump_version.py +1 patch each build
+BUILD_VERSION = "0.7.77"   # SYBU uses the agreed 0.7.x desktop-tool version line; bump_version.py +1 patch each build
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -161,6 +161,8 @@ FG_DIM    = "#999999"   # labels must remain readable beside dark controls
 FG_OK     = "#4EC994"   # success
 FG_ERR    = "#FF3E3E"   # error
 FG_WARN   = "#D4872A"   # warning
+
+
 
 STATUS_COLORS = {
     'pending':  ("#2A2A2A", FG_DIM),
@@ -4417,15 +4419,19 @@ class App(tk.Tk):
                         # The enrichment and original now belong to the selected
                         # site's shared library even before posting. A later
                         # confirmed post attaches its canonical server identity.
-                        try:
-                            library_bridge.record_enrichment(
-                                self._url_var.get().strip(),
-                                os.path.join(image_folder, entry.file), entry,
-                                session=getattr(self._client, 'session', None))
-                        except Exception as exc:
-                            print(f"[shared library] enrichment save failed: {exc}")
-                        self._set_status(
-                            f"Gemini: enriched {idx} / {total} — {entry.file}", FG_OK)
+                        saved, failure = library_bridge.save_enrichment_to_library(
+                            self._url_var.get().strip(),
+                            os.path.join(image_folder, entry.file), entry,
+                            session=getattr(self._client, 'session', None))
+                        if saved:
+                            self._set_status(
+                                f"Gemini: enriched {idx} / {total} — {entry.file}", FG_OK)
+                        else:
+                            # DO NOT say "enriched" when the paid result was not
+                            # saved. The old code printed the error and then said
+                            # enriched anyway, so the one row that needed his
+                            # attention looked exactly like the ones that worked.
+                            self._set_status(failure, FG_ERR)
                 self.after(0, _ui_update)
 
             gemini_module.enrich_batch(
@@ -4442,6 +4448,9 @@ class App(tk.Tk):
                 existing_tags=self._site_data.tags if self._site_data else None,
                 existing_titles=self._site_data.titles if self._site_data else None,
                 cancel_event=self._cancel_evt,
+                # SS-1137: orders the library search, posting site first. Reuse
+                # works without it; this just makes the likeliest hit cheapest.
+                site=self._url_var.get().strip(),
             )
 
             def _done():

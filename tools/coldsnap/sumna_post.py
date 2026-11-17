@@ -43,6 +43,34 @@ from sumna_offline import (
 )
 import sumna_resize
 
+
+def _gap_value(raw):
+    """The mosaic gap, with ZERO meaning zero, clamped to the column's range.
+
+    THE PUBLISH PATH COLLAPSED A SAVED 0 TO 4, in two places -- `int(gap or 4)`
+    and `int(getattr(draft, "mosaic_gap", 4) or 4)` -- because `0 or 4` is 4.
+    Gap 0 is a real choice: snap_mosaics.gap allows 0 to 20, core/parser.php
+    clamps to the same range, and ss-engine-mosaic.js honours it. It is the
+    value a flush grid of photographs needs, and COLD SNAP could not send it.
+
+    Found while fixing the same expression in the BIGGIE preview
+    (coldsnap_qt/canvas.py:_mosaic_gap). A fault in one place on a shared value
+    means checking every place that reads it, and this is the layer that
+    decides what the SITE stores -- the preview only decides what Sean sees.
+    The two copies are deliberate: the transport must not import the Qt
+    package, and each names the other.
+
+    Only a missing, blank or unparseable value falls back to 4, the schema
+    default. Unlike the preview, this one clamps, because it is what leaves the
+    machine and the site clamps it anyway.
+    """
+    if raw is None or raw == "":
+        return 4
+    try:
+        return max(0, min(20, int(float(raw))))
+    except (TypeError, ValueError):
+        return 4
+
 try:
     import snap_site_scope   # X-Snap-Site header (mutual-auth A1, SECAUDIT 054)
 except Exception:  # noqa: BLE001
@@ -672,7 +700,14 @@ class SmacktalkPoster:
         im.uploaded_path = up   # runtime-only: the exact file that went over the wire
         fh = open(up, "rb")
         try:
-            files = {"file": (im.filename or os.path.basename(im.local_path), fh, _mime(up))}
+            # A COLD TAKE flip/crop is a JPEG derivative beside an untouched
+            # source. Give the upload the derivative's real extension instead
+            # of pairing JPEG bytes with the source's old .png/.webp name.
+            source = os.path.abspath(getattr(im, "original_path", "") or im.local_path)
+            edited = os.path.abspath(im.local_path) != source
+            upload_name = (os.path.basename(im.local_path) if edited
+                           else (im.filename or os.path.basename(im.local_path)))
+            files = {"file": (upload_name, fh, _mime(up))}
             # ALT rides the upload → snap_images.img_alt (travels with the image).
             data = {"alt": im.alt} if getattr(im, "alt", "") else None
             r = self.session.post(self._route("smackpress/media/upload"),
@@ -761,19 +796,37 @@ class SmacktalkPoster:
     # Asymmetric never matched and went to the site as literal marker text.
     _MOSAIC_LAYOUTS = ("asymmetric", "columns", "rows", "square",
                        "one-left", "one-right", "three-across", "one-top")
+    # `shuffle` (optional, after the layout) means the owner wants this gallery
+    # SHOWN in a random order. It is the only channel between the WordPress
+    # importer and the panel it creates: wp_source writes the keyword into the
+    # marker, this reads it, and create_mosaic sends gallery_shuffle. An absent
+    # keyword means authored order, which is what every existing marker means,
+    # so nothing already written changes behaviour.
     _MOSAIC_TOKEN = re.compile(
         r'\[mosaic(?:=\s*([0-9]+(?:\s*,\s*[0-9]+)*))?'
         r'(?:\s+layout=([a-z-]+))?'
+        r'(?:\s+(shuffle))?'
         r'(?::\s*(?:bucket|new|auto)\s*)?\]', re.I)
 
     def create_mosaic(self, image_ids, title="Mosaic", gap=4,
-                      layout="asymmetric") -> Tuple[int, str]:
+                      layout="asymmetric", gallery_shuffle=False) -> Tuple[int, str]:
         """Create a snap_mosaics panel from ordered Gallery image ids via
-        POST smackpress/mosaics. Returns (mosaic_id, '[mosaic:ID]')."""
+        POST smackpress/mosaics. Returns (mosaic_id, '[mosaic:ID]').
+
+        image_ids is the AUTHORED order and is sent as authored. gallery_shuffle
+        asks the site to PRESENT the panel in a random order; it never changes
+        what is stored, so turning it off afterwards gives this sequence back.
+
+        The key is omitted entirely when it is off, so a site that has not yet
+        synced the column sees exactly the request it saw before."""
+        payload = {"title": title or "Mosaic",
+                   "asset_ids": [int(i) for i in image_ids],
+                   "gap": _gap_value(gap), "layout": layout}
+        if gallery_shuffle:
+            payload["gallery_shuffle"] = True
         r = self.session.post(
             self._route("smackpress/mosaics"),
-            json={"title": title or "Mosaic", "asset_ids": [int(i) for i in image_ids],
-                  "gap": max(0, min(20, int(gap or 4))), "layout": layout},
+            json=payload,
             timeout=60)
         if r.status_code in (401, 403):
             raise RuntimeError(_resp_msg(
@@ -818,12 +871,13 @@ class SmacktalkPoster:
         content = content or ""
         if not image_ids or not self._MOSAIC_TOKEN.search(content):
             return content, []
-        gap = int(getattr(draft, "mosaic_gap", 4) or 4)
+        gap = _gap_value(getattr(draft, "mosaic_gap", 4))
         mosaic_ids = []
 
         def build(match):
             selection = match.group(1)
             layout = (match.group(2) or 'asymmetric').lower()
+            shuffle = bool(match.group(3))
             if layout not in self._MOSAIC_LAYOUTS:
                 layout = 'asymmetric'
             chosen = list(image_ids)
@@ -834,7 +888,8 @@ class SmacktalkPoster:
             if not chosen:
                 return ''
             mid, shortcode = self.create_mosaic(
-                chosen, title=(draft.title or "Mosaic"), gap=gap, layout=layout)
+                chosen, title=(draft.title or "Mosaic"), gap=gap, layout=layout,
+                gallery_shuffle=shuffle)
             mosaic_ids.append(mid)
             return shortcode
 
@@ -860,10 +915,30 @@ class SmacktalkPoster:
         if not self.key:
             return SyncResult(False, message="No SMACKTALK key set for this site (needs a 'smackpress' API key).")
         is_page = getattr(draft, "destination_type", "post") == "page"
-        if not draft.images and not is_page:
-            return SyncResult(False, message="no images on draft")
         if not (draft.title or "").strip():
             return SyncResult(False, message="a SMACKTALK post needs a title")
+        # A LONGFORM POST DOES NOT NEED A PHOTOGRAPH.
+        #
+        # This refused any post with an empty bucket -- "no images on draft" --
+        # so an essay with no picture could be written and then never sent.
+        # Nothing downstream needs one: build_payload sends featured_image_id
+        # = None with an empty bucket_image_ids, and core/smackpress-api.php
+        # requires only a title, treating the cover as optional
+        # (`!empty($body['featured_image_id']) ? ... : 0`, smackpress-api.php
+        # :631 and :691). The guard was the only thing in the way.
+        #
+        # It also ran BEFORE the title check, so a draft missing both reported
+        # the images and never mentioned the title. Title goes first now.
+        #
+        # What DOES still need photographs is a mosaic: _resolve_mosaics()
+        # returns the body untouched when there are no image ids, so a [mosaic]
+        # placeholder would publish as literal text in the middle of the essay.
+        # That is the only case left, and it now says which one it is.
+        if (not draft.images and not is_page
+                and self._MOSAIC_TOKEN.search(draft.caption or "")):
+            return SyncResult(False, message=(
+                "This post asks for a MOSAIC but has no photographs. Add the "
+                "photos, or take the mosaic out of the writing."))
         try:
             image_ids, cover_id = [], None
             for im in draft.images:

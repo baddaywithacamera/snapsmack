@@ -161,7 +161,7 @@ bp_test(str_contains($push_block, 'could not be compared'),
 // The button must not promise a full reinstall any more.
 bp_test(!str_contains($hub, 'Reinstall EVERY registry skin already present on EVERY active spoke?'),
     'the primary fleet button no longer reinstalls every skin on every spoke');
-bp_test(str_contains($hub, 'UPDATE EVERY SPOKE THAT IS BEHIND'),
+bp_test(str_contains($hub, 'UPDATE HUB AND SPOKES THAT ARE BEHIND'),
     'the primary fleet action says what it does');
 
 if ($fail > 0) {

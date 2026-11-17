@@ -155,6 +155,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['push_blogroll'])) {
                     'peer_rss'  => rtrim($sn['site_url'], '/') . '/rss.php',
                     'peer_desc' => $desc,
                     'category'  => $my_blogs_cat,
+                    // Mirrors core/blogroll-push.php. Both builders must agree
+                    // or a manual Push and an auto-heal Push would teach the
+                    // spoke different things.
+                    'is_own'    => true,
                 ];
             }
             // Also include the hub itself — spokes should see all network sites
@@ -167,6 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['push_blogroll'])) {
                     'peer_rss'  => rtrim($hub_self_url, '/') . '/rss.php',
                     'peer_desc' => trim($settings['site_tagline'] ?? ''),
                     'category'  => $my_blogs_cat,
+                    'is_own'    => true,
                 ];
             }
             usort($my_blog_entries, fn($a, $b) => strcasecmp($a['peer_name'], $b['peer_name']));

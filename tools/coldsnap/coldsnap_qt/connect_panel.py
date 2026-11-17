@@ -52,6 +52,7 @@ class ConnectPanel(QWidget):
         col.setSpacing(5)
 
         top = QHBoxLayout()
+        self.header_row = top
         site_label = QLabel("SITE")
         site_label.setObjectName("ChromeLabel")
         top.addWidget(site_label)
@@ -106,6 +107,10 @@ class ConnectPanel(QWidget):
         self._rebuild_profile_combo()
         self._reflect_status()
         self._start_mode_discovery()
+
+    def add_header_action(self, widget):
+        """Place one shell-level action before Connection details and Help."""
+        self.header_row.insertWidget(max(0, self.header_row.count() - 2), widget)
 
     # -- behaviour ------------------------------------------------------------
     def _show_help(self):

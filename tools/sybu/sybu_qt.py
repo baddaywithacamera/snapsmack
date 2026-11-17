@@ -40,6 +40,8 @@ QLabel#PageTitle {{ font-size:24px; font-weight:750; }}
 QLabel#CardTitle {{ font-size:16px; font-weight:700; }}
 QLabel#Muted {{ color:{DIM}; }}
 QLabel#Good {{ color:{GREEN}; background:#142611; border:1px solid #315d25; border-radius:10px; padding:6px 11px; font-weight:700; }}
+QLabel#LinkOn {{ color:#091006; background:{GREEN}; border:1px solid {GREEN}; border-radius:10px; padding:6px 11px; font-weight:700; }}
+QLabel#LinkOff {{ color:#969c98; background:#242a26; border:1px solid #343c36; border-radius:10px; padding:6px 11px; font-weight:700; }}
 QLabel#Warn {{ color:#ffbf47; background:#271f0f; border:1px solid #5f4821; border-radius:10px; padding:6px 11px; font-weight:700; }}
 QPushButton {{ background:#202c24; border:1px solid #34463a; border-radius:8px; padding:9px 14px; font-weight:650; min-height:18px; }}
 QPushButton:hover {{ border-color:{GREEN}; background:#26372b; }}
@@ -200,7 +202,8 @@ class Window(QMainWindow):
         head=QFrame(); head.setObjectName("Header"); hl=QHBoxLayout(head); hl.setContentsMargins(24,13,24,13)
         hl.addWidget(label("SITE","Eyebrow")); self.profile=QComboBox(); self.profile.setMinimumWidth(260); self.profile.currentTextChanged.connect(self._profile); hl.addWidget(self.profile)
         hl.addSpacing(12); hl.addWidget(label("PROMPT","Eyebrow")); self.prompt_preset=QComboBox(); self.prompt_preset.setMinimumWidth(210); self.prompt_preset.currentTextChanged.connect(self._prompt_preset_changed); hl.addWidget(self.prompt_preset); hl.addStretch(1)
-        self.status=label("● Ready to connect","Warn"); self.status.setWordWrap(False); hl.addWidget(self.status)
+        self.status=label("● CMS Disconnected","LinkOff"); self.status.setWordWrap(False); hl.addWidget(self.status)
+        self.drive_indicator=label("● Drive Disconnected","LinkOff"); self.drive_indicator.setWordWrap(False); hl.addWidget(self.drive_indicator)
         self.connect_btn=QPushButton("Connect"); self.connect_btn.clicked.connect(self._connect); hl.addWidget(self.connect_btn)
         # Progress strip: under every page, so a post started from the queue is
         # seen from the queue. Bar + words + STOP. (Was inside the Post page only —
@@ -223,13 +226,17 @@ class Window(QMainWindow):
         ai,al=card("2 · Enrich","Generate titles, tags, captions and alt text for selected images. Existing work is preserved.")
         r=QHBoxLayout(); self.prompt=QLineEdit(); self.prompt.setReadOnly(True); self.prompt.setPlaceholderText("Built-in enrichment prompt"); r.addWidget(self.prompt,1); review=QPushButton("REVIEW PROMPT…"); review.clicked.connect(self._review_prompt); r.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.clicked.connect(self._enrich); r.addWidget(enrich); al.addLayout(r); l.addWidget(ai)
         send,pl=card("3 · Publish","SOLO posts individual photographs. GRAM creates carousel posts. The site mode is checked before anything is sent.")
-        r=QHBoxLayout(); self.drive=QCheckBox("Attach Google Drive originals"); r.addWidget(self.drive); r.addStretch(1); validate=QPushButton("Validate"); validate.clicked.connect(self._validate); r.addWidget(validate); self.post_btn=QPushButton("POST"); self.post_btn.setObjectName("Primary"); self.post_btn.clicked.connect(lambda:self._post(None)); r.addWidget(self.post_btn); self.post_solo=QPushButton("POST SOLO"); self.post_solo.clicked.connect(lambda:self._post(False)); r.addWidget(self.post_solo); self.post_gram=QPushButton("POST GRAM"); self.post_gram.clicked.connect(lambda:self._post(True)); r.addWidget(self.post_gram); pl.addLayout(r)
+        r=QHBoxLayout(); self.drive=QCheckBox("Attach Google Drive originals"); r.addWidget(self.drive); self.drive_check_btn=QPushButton("Check Drive"); self.drive_check_btn.setToolTip("Ask Google Drive whether this token and folder work. Needs no queue, no images and no blog connection."); self.drive_check_btn.clicked.connect(self._drive_check); r.addWidget(self.drive_check_btn); r.addStretch(1); validate=QPushButton("Validate queue"); validate.setToolTip("Check the queue titles, categories and albums. Does not check Google Drive."); validate.clicked.connect(self._validate); r.addWidget(validate); self.post_btn=QPushButton("POST"); self.post_btn.setObjectName("Primary"); self.post_btn.clicked.connect(lambda:self._post(None)); r.addWidget(self.post_btn); self.post_solo=QPushButton("POST SOLO"); self.post_solo.clicked.connect(lambda:self._post(False)); r.addWidget(self.post_solo); self.post_gram=QPushButton("POST GRAM"); self.post_gram.clicked.connect(lambda:self._post(True)); r.addWidget(self.post_gram); pl.addLayout(r)
+        self.drive_status_line=label("Drive: Not connected", "Muted"); self.drive_status_line.setWordWrap(True); pl.addWidget(self.drive_status_line)
+        self.drive.toggled.connect(self._drive_status_changed)
+        copyright_row=QHBoxLayout(); copyright_row.addWidget(label("COPYRIGHT FOR SOLO IMAGE EXIF", "Eyebrow")); self.copyright_text=QLineEdit(); self.copyright_text.setPlaceholderText("Optional. Empty adds no copyright text."); self.copyright_text.setToolTip("Written to SOLO JPEG metadata and the Drive copy only. Never appended to captions. GRAM uploads retain the source file metadata."); copyright_row.addWidget(self.copyright_text,1); pl.addLayout(copyright_row)
         l.addWidget(send)
         act,aa=card("Activity"); self.activity_card=act; self.log=QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(72); aa.addWidget(self.log); l.addWidget(act,1); return page
 
     def _queue_page(self):
         page,l=self._page("Your posting queue","Edit the fields that matter. Selection, enrichment and posting all operate on this table.")
         tools=FlowLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); up=QPushButton("▲ Move up"); up.setToolTip("Move the highlighted row up one. You can also drag a row."); up.clicked.connect(lambda:self._move_row(-1)); tools.addWidget(up); down=QPushButton("▼ Move down"); down.setToolTip("Move the highlighted row down one. You can also drag a row."); down.clicked.connect(lambda:self._move_row(1)); tools.addWidget(down); rnd=QPushButton("Randomize"); rnd.setToolTip("Shuffle the posting order."); rnd.clicked.connect(self._randomize); tools.addWidget(rnd); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); self.qpost_btn=QPushButton("POST"); self.qpost_btn.clicked.connect(lambda:self._post(None)); tools.addWidget(self.qpost_btn); self.qpost_solo=QPushButton("POST SOLO"); self.qpost_solo.clicked.connect(lambda:self._post(False)); tools.addWidget(self.qpost_solo); self.qpost_gram=QPushButton("POST GRAM"); self.qpost_gram.clicked.connect(lambda:self._post(True)); tools.addWidget(self.qpost_gram); self.queue_count=label("0 images","Muted"); self.queue_count.setWordWrap(False); tools.addWidget(self.queue_count); l.addLayout(tools)
+        batch_tags=QHBoxLayout(); batch_tags.addWidget(label("ADDITIONAL HASHTAGS FOR THIS IMPORT", "Eyebrow")); self.additional_tags=QLineEdit(); self.additional_tags.setPlaceholderText("e.g. #photofrifall #horsconcours"); self.additional_tags.setToolTip("Appended to every selected image when this queue is published. Not saved to the site profile or enrichment prompt."); batch_tags.addWidget(self.additional_tags,1); l.addLayout(batch_tags)
         self.table=QueueTable(0,12); self.table.moved.connect(self._reorder); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         # Text columns SHARE the width the window has; nothing dictates it. FILE
         # used to size to its longest filename and squeeze title/caption/alt to
@@ -258,7 +265,7 @@ class Window(QMainWindow):
         site,sl=card("Selected site")
         self.url=QLineEdit(); self.url.setPlaceholderText("https://your-site.example"); self.key=QLineEdit(); self.key.setEchoMode(QLineEdit.Password); self.key.setPlaceholderText("Scoped API key"); sl.addWidget(self.url); sl.addWidget(self.key); l.addWidget(site)
         svc,vl=card("AI and Google Drive")
-        self.gemini=QLineEdit(); self.gemini.setEchoMode(QLineEdit.Password); self.gemini.setPlaceholderText("Gemini API key"); self.gemini.textEdited.connect(lambda _text:setattr(self,'_gemini_manually_edited',True)); self.gcreds=QLineEdit(); self.gcreds.setPlaceholderText("Google credentials JSON"); self.drive_folder=QLineEdit(); self.drive_folder.setPlaceholderText("Google Drive folder ID"); vl.addWidget(self.gemini); vl.addWidget(self.gcreds); vl.addWidget(self.drive_folder)
+        self.gemini=QLineEdit(); self.gemini.setEchoMode(QLineEdit.Password); self.gemini.setPlaceholderText("Gemini API key"); self.gemini.textEdited.connect(lambda _text:setattr(self,'_gemini_manually_edited',True)); self.gcreds=QLineEdit(); self.gcreds.setPlaceholderText("Google credentials JSON"); self.drive_folder=QLineEdit(); self.drive_folder.setPlaceholderText("Google Drive folder ID"); self.drive_folder.textChanged.connect(self._drive_status_changed); vl.addWidget(self.gemini); vl.addWidget(self.gcreds); vl.addWidget(self.drive_folder)
         self.gemini_source=label("Gemini key source: SNAP HQ shared store", "Muted"); vl.addWidget(self.gemini_source)
         row=QHBoxLayout(); choose=QPushButton("Choose credentials"); choose.clicked.connect(self._choose_creds); row.addWidget(choose)
         drive_auth=QPushButton("Connect Drive"); drive_auth.clicked.connect(self._auth_drive); row.addWidget(drive_auth)
@@ -275,12 +282,12 @@ class Window(QMainWindow):
 
     def _load(self):
         names=self.engine.profiles_list(); self.profile.blockSignals(True); self.profile.clear(); self.profile.addItems(names); self.profile.blockSignals(False)
-        c=self.engine.config_fields(); self.url.setText(c['url']); self.key.setText(c['api_key']); self.folder.setText(c['last_image_folder']); self.manifest.setText(c['last_manifest_file']); self.gemini.setText(c['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(c['google_credentials']); self.drive_folder.setText(c['drive_folder_id']); self.drive.setChecked(c['drive_enabled']); self.prompt.setText(c['gemini_last_prompt'])
+        c=self.engine.config_fields(); self.url.setText(c['url']); self.key.setText(c['api_key']); self.folder.setText(c['last_image_folder']); self.manifest.setText(c['last_manifest_file']); self.gemini.setText(c['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(c['google_credentials']); self.drive_folder.setText(c['drive_folder_id']); self.drive.setChecked(c['drive_enabled']); self.prompt.setText(c['gemini_last_prompt']); self.copyright_text.setText(c.get('copyright_text',''))
         if names: self._profile(names[0])
 
     def _profile(self,name):
         if not name:return
-        p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self._set_prompt_state(p); self.drive.setChecked(p['drive_enabled']); self._connect()
+        p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self._set_prompt_state(p); self.drive.setChecked(p['drive_enabled']); self.copyright_text.setText(p.get('copyright_text','')); self._connect()
 
     def _set_prompt_state(self,state):
         presets=state.get('prompt_presets') or {'Default':state.get('prompt','')}
@@ -302,17 +309,27 @@ class Window(QMainWindow):
         threading.Thread(target=go,daemon=True).start()
 
     def _connect(self):
-        self.status.setText("● Connecting…"); self.status.setObjectName("Warn"); self.status.style().unpolish(self.status); self.status.style().polish(self.status)
+        self.status.setText("● CMS Connecting…"); self.status.setObjectName("LinkOff"); self.status.style().unpolish(self.status); self.status.style().polish(self.status)
         self._async("connect",lambda:self.engine.connect(self.url.text(),self.key.text(),True))
 
     def _task_done(self,name,result,error):
         self.pending.pop(name,None)
-        if error: self.status.setText("● Needs attention"); self._error(str(error)); return
+        if name == 'drive_check':
+            self.drive_check_btn.setEnabled(True)
+            if error:
+                self._set_link_indicator(self.drive_indicator, 'Drive', False)
+                self.drive_status_line.setText('Drive: Check failed · ' + str(error))
+                self._error(str(error))
+            else: self._drive_check_done(result)
+            return
+        if error:
+            if name == "connect": self._set_link_indicator(self.status, "CMS", False)
+            self._error(str(error)); return
         if name=="connect":
             if result.get('needs_insecure_ack'):
                 if QMessageBox.warning(self,"Insecure connection",result['reason'],QMessageBox.Ok|QMessageBox.Cancel)==QMessageBox.Ok: self._async("connect",lambda:self.engine.connect(self.url.text(),self.key.text(),True,True))
                 return
-            self._apply_site_mode(result.get('site_mode','')); self.status.setText("● Connected · ready to post"); self.status.setObjectName("Good"); self.status.style().unpolish(self.status); self.status.style().polish(self.status); self.cat.clear(); self.cat.addItems(result['categories']); self.cat.setEditable(True); self.album.clear(); self.album.addItems(result['albums']); self.album.setEditable(True); self._say(f"Connected to {result['base_url']} · {result['site_mode'] or 'site mode unknown'}")
+            self._apply_site_mode(result.get('site_mode','')); self._set_link_indicator(self.status, "CMS", True); self.cat.clear(); self.cat.addItems(result['categories']); self.cat.setEditable(True); self.album.clear(); self.album.addItems(result['albums']); self.album.setEditable(True); self._say(f"Connected to {result['base_url']} · {result['site_mode'] or 'site mode unknown'}")
         elif name in ("scan","manifest"):
             # Saved enrichment for this folder comes back on its own (the Tk window asked
             # first; the Qt window never called apply_resume at all, so a re-scan looked
@@ -323,7 +340,7 @@ class Window(QMainWindow):
                     restored = self.engine.recovery.enriched_count_for(self.engine.entries)
                     if restored: result = self.engine.apply_resume()
             except Exception as e: self._say(f"Saved enrichment not restored: {e}")
-            self._fill_queue(result); self._show(1)
+            self.additional_tags.clear(); self._fill_queue(result); self._show(1)
             self._say(f"Loaded {result['count']} images." + (f" Restored saved enrichment for {restored} of them from the last run - no Gemini cost." if restored else ""))
             if restored: self.progress_text.setText(f"{restored} of {result['count']} images already enriched (restored from the last run).")
 
@@ -346,15 +363,11 @@ class Window(QMainWindow):
         for r,row in enumerate(rows):
             use=QTableWidgetItem(); use.setFlags(Qt.ItemIsEnabled|Qt.ItemIsUserCheckable); use.setCheckState(Qt.Checked if row['selected'] else Qt.Unchecked); self.table.setItem(r,0,use)
             preview=QLabel(); preview.setAlignment(Qt.AlignCenter)
-            try:
-                encoded=self.engine.thumb(r,108).partition(',')[2]
-                pix=QPixmap(); pix.loadFromData(base64.b64decode(encoded)); preview.setPixmap(pix)
-            except Exception:
-                preview.setText("No preview")
+            preview.setText("Loading…")
             self.table.setCellWidget(r,1,preview); self.table.setRowHeight(r,118)
             for c,k in ((2,'file'),(3,'title'),(4,'caption'),(5,'alt'),(6,'tags'),(9,'category'),(10,'album'),(11,'status')):
                 text=str(row.get(k,""))
-                if k=='status': text={'pending':'pending','enriched':'enriched','posting':'posting…','ok':'POSTED','warning':'POSTED (no EXIF)','error':'ERROR'}.get(row.get('status',''),row.get('status',''))
+                if k=='status': text={'pending':'pending','enriched':'enriched','posting':'','ok':'POSTED','warning':'POSTED (no EXIF)','error':'ERROR'}.get(row.get('status',''),row.get('status',''))
                 if k=='status' and row.get('status')=='error' and row.get('message'): text=f"ERROR: {row['message']}"
                 item=QTableWidgetItem(text)
                 if k in ('file','status'): item.setFlags(item.flags() & ~Qt.ItemIsEditable)
@@ -364,8 +377,23 @@ class Window(QMainWindow):
             orient=QComboBox()
             for text,value in (("Auto","auto"),("Landscape","0"),("Portrait","1"),("Square","2")): orient.addItem(text,value)
             orient.setFixedHeight(36); orient.setCurrentIndex(max(0,orient.findData(row.get('orientation','auto')))); self.table.setCellWidget(r,8,self._centred_control(orient))
+        self._thumb_generation = getattr(self, '_thumb_generation', 0) + 1
+        self._load_thumbnails(self._thumb_generation, len(rows))
         self._fit_rows(); self._row_fit.start()
         self.queue_count.setText(f"{data['selected']} selected · {data['count']} images")
+
+    def _load_thumbnails(self, generation, count, row=0):
+        if generation != getattr(self, '_thumb_generation', None) or row >= count:
+            return
+        preview = self.table.cellWidget(row, 1)
+        if preview is not None:
+            try:
+                encoded = self.engine.thumb(row, 108).partition(',')[2]
+                pix = QPixmap(); pix.loadFromData(base64.b64decode(encoded))
+                preview.setPixmap(pix)
+            except Exception:
+                preview.setText("No preview")
+        QTimer.singleShot(0, lambda: self._load_thumbnails(generation, count, row + 1))
 
     def _centred_control(self, control):
         host=QWidget(); host._control=control; host.setAttribute(Qt.WA_TranslucentBackground); host.setStyleSheet("background:transparent")
@@ -403,7 +431,9 @@ class Window(QMainWindow):
 
     def _select_all(self,on):
         for r in range(self.table.rowCount()):self.table.item(r,0).setCheckState(Qt.Checked if on else Qt.Unchecked)
-        self.engine.set_all_selected(on); self._fill_queue()
+        self.engine.set_all_selected(on)
+        count = self.table.rowCount()
+        self.queue_count.setText(f"{count if on else 0} selected · {count} images")
 
     def _reorder(self,src,dst):
         try:
@@ -425,7 +455,7 @@ class Window(QMainWindow):
     def _clear_queue(self):
         if not self.table.rowCount(): return
         if QMessageBox.question(self,"Clear posting queue","Remove the images from this posting queue?\n\nThe image files themselves will not be deleted. Failed rows are retained so an upload problem cannot be lost.",QMessageBox.Yes|QMessageBox.Cancel,QMessageBox.Cancel)!=QMessageBox.Yes:return
-        self._fill_queue(self.engine.clear_queue()); self._say("Posting queue cleared.")
+        self._fill_queue(self.engine.clear_queue()); self.additional_tags.clear(); self._say("Posting queue cleared.")
 
     def _enrich(self):
         try:
@@ -458,6 +488,68 @@ class Window(QMainWindow):
             self._sync_queue(); out=self.engine.validate(self.cat.currentText(),self.album.currentText()); QMessageBox.information(self,"Queue validation","Ready to post." if out['ok'] else "\n".join(out['issues'][:20]))
         except Exception as e:self._error(str(e))
 
+    def _set_link_indicator(self, indicator, service, connected):
+        indicator.setText("● %s %s" % (service, "Connected" if connected else "Disconnected"))
+        indicator.setObjectName("LinkOn" if connected else "LinkOff")
+        indicator.style().unpolish(indicator); indicator.style().polish(indicator)
+
+    def _drive_status_changed(self, *_):
+        enabled = self.drive.isChecked()
+        connected = self.engine.drive_service is not None
+        self._set_link_indicator(self.drive_indicator, "Drive", enabled and connected)
+        state = "Connected; folder not verified" if connected else "Not connected"
+        self.drive_status_line.setText("Drive: %s · %s" % ("Enabled" if enabled else "Disabled", state))
+
+    def _drive_check(self):
+        """SS-1171. Answer "does Drive work" with no queue, no scan and no blog.
+
+        The owner pressed Validate beside the Drive checkbox and was told to
+        load images first, because that button validates the MANIFEST and never
+        asked Drive anything. This asks Drive, and names which half failed.
+        """
+        if 'drive_check' in self.pending:
+            return
+        if 'post' in self.poll_seen:
+            self._error('Wait for the current publishing batch before checking Drive.')
+            return
+        folder_id = self.drive_folder.text()
+        self.engine.config['drive_enabled'] = self.drive.isChecked()
+        self.drive_check_btn.setEnabled(False)
+        self.drive_status_line.setText('Drive: Checking account and folder…')
+        self._say('Checking Google Drive account and folder…')
+        self._async('drive_check', lambda: self.engine.drive_check(folder_id))
+
+    def _drive_check_done(self, out):
+        try:
+            if out.get('ok'):
+                self._set_link_indicator(self.drive_indicator, 'Drive', self.drive.isChecked())
+                from datetime import datetime
+                self.drive_status_line.setText('Drive: %s · Connected as %s · Folder %s · Last verified %s' % ('Enabled' if self.drive.isChecked() else 'Disabled', out.get('account') or '(not reported)', out.get('name') or '(unnamed)', datetime.now().strftime('%H:%M:%S')))
+                QMessageBox.information(
+                    self, "Google Drive",
+                    "Drive is reachable and this account can upload into the folder.\n\n"
+                    "Folder: %s\nAccount: %s\nFree storage: %s"
+                    % (out.get('name') or '(unnamed)', out.get('account') or '(not reported)',
+                       ('%.2f GB' % (out['free_bytes'] / 1024**3)) if out.get('free_bytes') is not None else '(not reported)'))
+                return
+            self._set_link_indicator(self.drive_indicator, "Drive", False)
+            head = {
+                'disabled': "Drive attachment is switched off.",
+                'no_service': "Drive is not connected in this session.",
+                'no_folder': "No Drive folder id is set.",
+                'auth': "Google refused the saved token.",
+                'folder': "That folder cannot be reached.",
+                'not_a_folder': "That id is a file, not a folder.",
+                'not_writable': "This account cannot upload into the folder.",
+                'account': "The Drive account and storage could not be verified.",
+                'quota': "The Drive account has no free storage.",
+            }.get(out.get('reason', ''), "Drive check failed.")
+            self.drive_status_line.setText("Drive: %s · %s" % (head, out.get('detail', '')))
+            QMessageBox.warning(self, "Google Drive",
+                                "%s\n\n%s" % (head, out.get('detail', '')))
+        except Exception as e:
+            self._error(str(e))
+
     def _apply_site_mode(self,mode):
         """The blog decides solo vs gram (photoblog → SOLO, carousel → GRAM). One POST
         button that does the right thing; the explicit pair only when the blog's mode
@@ -469,13 +561,18 @@ class Window(QMainWindow):
         for b in (self.post_solo,self.post_gram,self.qpost_solo,self.qpost_gram): b.setVisible(not known)
 
     def _post(self,grams):
+        if 'drive_check' in self.pending:
+            self._error('Wait for the Drive check to finish before publishing.')
+            return
         if grams is None:
             grams=getattr(self,'_site_grams',None)
             if grams is None: self._error("Connect to the blog first — it decides solo or gram."); return
         try:
             self._sync_queue(); pf=self.engine.post_preflight(grams,self.drive.isChecked())
-            if QMessageBox.question(self,"Confirm publish",f"Post {pf['count']} selected image(s) to {pf['dest']} as {'GRAM' if grams else 'SOLO'}?",QMessageBox.Yes|QMessageBox.No)!=QMessageBox.Yes:return
-            out=self.engine.post_start(grams,self.cat.currentText(),self.album.currentText(),self.orient.currentText(),"",self.engine.config.get('copyright_text',''),self.drive_folder.text(),ack_no_drive=True,ack_unknown_mode=True,drive_enabled=self.drive.isChecked())
+            extra=self.additional_tags.text().strip()
+            tag_note=f"\n\nAdditional hashtags: {extra}" if extra else ""
+            if QMessageBox.question(self,"Confirm publish",f"Post {pf['count']} selected image(s) to {pf['dest']} as {'GRAM' if grams else 'SOLO'}?{tag_note}",QMessageBox.Yes|QMessageBox.No)!=QMessageBox.Yes:return
+            out=self.engine.post_start(grams,self.cat.currentText(),self.album.currentText(),self.orient.currentText(),"",self.copyright_text.text(),self.drive_folder.text(),ack_no_drive=True,ack_unknown_mode=True,drive_enabled=self.drive.isChecked(),additional_tags=extra)
             if out.get('needs_ack'): self._error("Google Drive is not connected."); return
             self.poll_seen['post']=0; self.progress.setValue(0); self.progress_text.setText(f"Publishing {pf['count']} image(s) to {pf['dest']}…"); self.stop_btn.setEnabled(True); self._fill_queue()
         except Exception as e:self._error(str(e))
@@ -521,11 +618,13 @@ class Window(QMainWindow):
                 if key=='gemini_test':
                     ok=bool(result.get('ok')) and not out.get('error'); message=result.get('message') or out.get('error') or "No response."
                     self.gemini_source.setText(("Gemini key accepted by Google: " if ok else "Gemini key rejected by Google: ")+message)
-                if key=='drive_auth' and not out.get('error'):self._say("Google Drive connected.")
+                if key=='drive_auth' and not out.get('error'):
+                    self._drive_status_changed()
+                    self._say("Google Drive connected.")
                 if out.get('error'):self._error(out['error'])
 
     def _save(self):
-        _vw=self.engine.save_config({'url':self.url.text(),'api_key':self.key.text(),'last_image_folder':self.folder.text(),'last_manifest_file':self.manifest.text(),'google_credentials':self.gcreds.text(),'drive_folder_id':self.drive_folder.text(),'gemini_api_key':self.gemini.text(),'gemini_last_prompt':self.prompt.text()}); self._gemini_manually_edited=False; self.engine.drive_toggle(self.drive.isChecked()); self.gemini_source.setText("Gemini key source: SNAP HQ shared store"); self._say("Settings saved to the shared store.")
+        _vw=self.engine.save_config({'url':self.url.text(),'api_key':self.key.text(),'last_image_folder':self.folder.text(),'last_manifest_file':self.manifest.text(),'google_credentials':self.gcreds.text(),'drive_folder_id':self.drive_folder.text(),'gemini_api_key':self.gemini.text(),'gemini_last_prompt':self.prompt.text(),'copyright_text':self.copyright_text.text()}); self._gemini_manually_edited=False; self.engine.drive_toggle(self.drive.isChecked()); self.gemini_source.setText("Gemini key source: SNAP HQ shared store"); self._say("Settings saved to the shared store.")
         if _vw: self._say("⚠ KEY NOT REMEMBERED — "+_vw); self.progress_text.setText("⚠ Key not remembered: "+_vw)
     def _post_row_event(self,ev):
         r=ev.get('index')

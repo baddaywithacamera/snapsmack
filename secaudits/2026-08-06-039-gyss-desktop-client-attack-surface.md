@@ -8,7 +8,7 @@
 | **Date** | 2026-08-06 |
 | **Severity** | **HIGH** - the app exposed three unrestricted file-system commands to its own webview while running with no Content Security Policy and `withGlobalTauri` on. Combined with unescaped rendering of server-supplied data, a hostile or intercepted site response could execute script in the webview and write an arbitrary file anywhere the user can write - a local code-execution path. Three MEDIUM items: the API bearer key is stored base64-obfuscated, key expiry was never enforced, and the key travels over plain `http://` if the operator types one. |
 | **Component** | `tools/gyss/` desktop client - `src-tauri/src/lib.rs` (file commands), `src-tauri/tauri.conf.json` (CSP / global Tauri), `src/scripts/profiles.js` (credential storage), `src/scripts/main.js` (rendering + connection), `src/scripts/api.js` (transport); server side `core/gyss-api.php` (bearer auth, endpoints) |
-| **Status** | Findings A, B, C **CLOSED in this pass** (code committed; GYSS needs a rebuild to ship). Finding D (credentials at rest) **OPEN - owner decision**, same class as 036/037. Finding E (transport) **MITIGATED** by an explicit warning + override; a hard `https://` requirement remains an owner decision. Finding F (CSP) **OPEN**, needs a live test. Finding G (rate limiting) **ACCEPTED RISK** - a $10 provider billing cap already bounds the loss. |
+| **Status** | Findings A, B, C **CLOSED in this pass** (code committed; GYSS needs a rebuild to ship). Finding D (credentials at rest) **CLOSED 2026-11-11** - the shipping Qt/PyInstaller app uses the shared 037 vault and refuses writes while it is locked; the base64 path is confined to the abandoned, unbuilt Tauri tree. Finding E (transport) **MITIGATED** by an explicit warning + override; a hard `https://` requirement remains an owner decision. Finding F (CSP) **OPEN**, needs a live test. Finding G (rate limiting) **ACCEPTED RISK** - a $10 provider billing cap already bounds the loss. |
 | **Reporter** | Sean (asked which apps still needed audits, then commissioned this one) + Claude (walked the desktop trust boundary and adversarially reviewed its own 0.7.504 additions) |
 | **Related** | **037 (sibling desktop client SUYB - same credential-at-rest class, closed by a passphrase vault)**, **036 (SmackPress desktop client, cleartext credentials, closed by OS keychain)**, 024 (SYBU recovery - GYSS copied SYBU's base64 key convention), 023 (Unzucker desktop importer). GYSS version at audit: **0.1.1-alpha**; core at **0.7.504**. |
 | **Disclosure** | No exploitation known. GYSS is a single-operator tool and every finding requires either local read access to `%APPDATA%`, an active network position (only if the operator uses `http://`), or the operator connecting the app to a hostile server. Not remotely reachable by an unauthenticated attacker. |
@@ -151,7 +151,7 @@ install is locked out.
 All four fixes use the same expiry-aware query with a fallback to the previous
 query if `expires_at` is missing, so a site mid-migration keeps working.
 
-## 5. Finding D - bearer key stored base64-obfuscated (MEDIUM) - OPEN, owner decision
+## 5. Finding D - bearer key stored base64-obfuscated (MEDIUM) - CLOSED 2026-11-11
 
 `src/scripts/profiles.js` stores the key as `btoa(raw)` in
 `%APPDATA%\GetYourShitSorted\profiles\<host>.json`. The comment is honest - "not
@@ -163,10 +163,25 @@ This is the same class as **036** (SmackPress, closed by OS keychain) and **037*
 (SUYB, closed by a scrypt + Fernet passphrase vault). GYSS should follow one of
 those, not invent a third approach.
 
-**Not implemented here** because it is a genuine UX decision with a migration:
-a passphrase vault means unlocking on launch, and existing profiles need
-converting. Recommended: match 037's vault, or the OS credential store. Sean's
-call.
+**Closure evidence.** The base64 path above is real but belongs to the abandoned
+Tauri implementation, not the shipping application. Muse independently verified
+on `origin/dev` that `tools/gyss/src` and `tools/gyss/src-tauri` are not part of
+the GYSS build: `gyss.spec` builds `gyss_qt.py` with PyInstaller, `build.bat` has
+no Tauri step, and the only build-time references into `src-tauri` are the icon
+file used by the PyInstaller specification. `tools/desktop-versions.json` also
+identifies the Tauri manifest as a stale leftover. The tree remains in the
+repository pending Sean's separate deletion decision; its presence does not make
+its credential path a shipping path.
+
+The shipping Qt application already follows 037 rather than inventing a third
+credential store. `gyss_qt.py` saves the site key through
+`snap_creds.set_site(url, 'api_key_gyss', key)`, which reaches `_seal()` and
+`snap_vault.encrypt`: the shared scrypt-derived Fernet vault with the `enc1:`
+format. `_seal()` raises when the vault is locked; there is no base64 fallback.
+When Windows Credential Manager is available, the application also writes the
+key there as the OS-keychain copy. Muse's independent code read confirmed both
+load-bearing claims: the Tauri path is unbuilt, and the live path seals through
+the shared vault. Finding D is therefore closed against the shipping product.
 
 ## 6. Finding E - key transmitted over plain http:// (MEDIUM) - MITIGATED
 
@@ -242,7 +257,7 @@ substantially or a fleet/multi-operator deployment appears.
 - [x] G - **accepted risk, no action** (a $10 provider billing cap already bounds it; see section 8)
 - [x] Sweep - expiry enforced across all `snap_ohsnap_keys` consumers; `ohsnap-api.php` additionally scoped to its own key type (section 4a)
 - [x] AI spend is now declared before a REPAIR run (image count + "one paid call per image") with a live paid-call counter during it
-- [ ] D - credential vault (owner decision: match 037's vault or OS keychain)
+- [x] D - shipping Qt/PyInstaller app uses 037's shared vault; locked vaults refuse writes, with no base64 fallback (independently verified by Muse 2026-11-11)
 - [ ] F - CSP + importmap handling, verified against a running build
 - [ ] **GYSS rebuild required** - the Rust and webview fixes only ship in a new build
 - [ ] Public `buzzers.php` entry + PDF once the fixes are in a released build

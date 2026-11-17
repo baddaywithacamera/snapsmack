@@ -69,17 +69,6 @@
             "property": "--snt-slider-interval",
             "unit": "ms"
         },
-        "htbs_slider_transition": {
-            "section": "HERO SLIDER",
-            "type": "range",
-            "label": "Transition Speed (ms)",
-            "default": "800",
-            "min": "300",
-            "max": "1500",
-            "selector": ":root",
-            "property": "--snt-slider-speed",
-            "unit": "ms"
-        },
         "htbs_slider_max": {
             "section": "HERO SLIDER",
             "type": "range",

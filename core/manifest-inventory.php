@@ -690,6 +690,14 @@ $inventory = [
             'path'         => 'assets/js/ss-engine-fingerprint.js',
             'has_settings' => false,
         ],
+        // SS-1323. The in-tile heart. Its own handle rather than riding on
+        // smack-community, because a skin may want a heart on its conveyor
+        // without the floating dock, and the two are different surfaces.
+        'smack-tile-like' => [
+            'label'        => 'Tile Like (heart on each photograph)',
+            'path'         => 'assets/js/ss-engine-tile-like.js',
+            'css'          => 'assets/css/ss-tile-like.css',
+        ],
         'smack-community' => [
             'label'        => 'Community Engine (Likes, Comments, Reactions)',
             'path'         => 'assets/js/ss-engine-community.js',
@@ -976,6 +984,15 @@ $inventory = [
             // hand-written <script> tag at the bottom of archive.php; strict
             // skins never render that file, so the panel would not open.
             'companions'   => ['assets/js/ss-engine-archive-filter.js'],
+            'has_settings' => false,
+            'admin_page'   => 'archive',
+        ],
+        'smack-archive-cascade' => [
+            'label'        => 'Archive Cascade Reveal (quick fade-in wave, top-to-bottom left-to-right)',
+            'path'         => 'assets/js/ss-engine-archive-cascade.js',
+            // No stylesheet: the reveal is applied inline by the engine at
+            // runtime and is fail-safe off, so the archive is fully visible if
+            // the engine never runs.
             'has_settings' => false,
             'admin_page'   => 'archive',
         ],

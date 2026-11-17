@@ -40,20 +40,66 @@ var _ssImageFadeSelectors = [
     'img[data-lightbox-src]'
 ];
 
+/* Does this visitor ask for less motion?
+   Checked per call rather than cached: the setting can change while the page
+   is open, and a stale "no" would keep animating at someone who just asked it
+   to stop. Wrapped because matchMedia can throw in odd embedding contexts, and
+   a thrown error here would leave every photograph invisible. */
+function _ssFadeReduceMotion() {
+    try {
+        return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) {
+        return false;
+    }
+}
+
+/* Reveal on the next frame so the transition has a start state to animate FROM.
+   Setting opacity to 0 and then to 1 in the same tick is one style computation:
+   the browser never sees the 0 and the photograph appears instantly. Two frames,
+   because one is not guaranteed to have flushed the first value in every engine.
+   Only the FIRST reveal goes through here. Every "just make it visible" path
+   (the timeout net, visibilitychange, pageshow) sets opacity directly, because
+   requestAnimationFrame does not fire in a background tab and a photograph must
+   never be left at zero waiting for a frame that is not coming. */
+function _ssFadeRaiseNextFrame(img) {
+    var raf = window.requestAnimationFrame || function (cb) { return window.setTimeout(cb, 16); };
+    raf(function () {
+        raf(function () {
+            img.style.opacity = '1';
+            img.dataset._ssFadeDone = '1';
+        });
+    });
+}
+
 function _ssImageFadeInit(root) {
     root = root || document;
     var images = root.querySelectorAll(_ssImageFadeSelectors.join(','));
+    var reduceMotion = _ssFadeReduceMotion();
 
     images.forEach(function (img) {
         // Skip if already handled (idempotent across the initial scan + modal re-scans).
         if (img.dataset._ssFadeDone) { img.style.opacity = '1'; return; }
 
-        // Skip if image is already fully loaded (cached images may have loaded before script ran).
-        if (img.complete && img.naturalHeight !== 0) {
+        /* Reduced motion: show it, do not animate it. The engine previously
+           animated everything unconditionally, which is out of step with the
+           rest of the product — the archive reveal already respects this. Note
+           the answer is "visible immediately", never "left at zero": refusing
+           to animate must not refuse to show. */
+        if (reduceMotion) {
             img.style.opacity = '1';
             img.dataset._ssFadeDone = '1';
             return;
         }
+
+        /* A CACHED PHOTOGRAPH USED TO BLINK INSTEAD OF FADING. This branch read
+           "already complete, so set opacity 1 and return" — before any
+           transition was attached. The better the browser cached, the worse the
+           site looked, so it degraded most for the owner and for returning
+           visitors, which is exactly who notices. A cached image now takes the
+           same path as any other: start at zero, then raise on a later frame so
+           the transition has something to animate. (Sean, 2026-11-10: "they
+           blink in rapidly if already loaded".) */
+        var alreadyDecoded = img.complete && img.naturalHeight !== 0;
 
         // Set initial state: invisible, but space reserved.
         img.style.opacity = '0';
@@ -66,18 +112,28 @@ function _ssImageFadeInit(root) {
             ? opacityTransition
             : existingTransition + ', ' + opacityTransition;
 
-        var fadeIn = function () { img.style.opacity = '1'; img.dataset._ssFadeDone = '1'; };
-        img.addEventListener('load', fadeIn, { once: true });
-        img.addEventListener('error', fadeIn, { once: true });
+        // The animated reveal, for the first showing of this image.
+        var fadeIn = function () { _ssFadeRaiseNextFrame(img); };
+        // The unconditional reveal, for the safety nets below. No frame needed,
+        // and none available in a background tab.
+        var showNow = function () { img.style.opacity = '1'; img.dataset._ssFadeDone = '1'; };
 
-        // Safari/Firefox: image may have loaded synchronously after addEventListener.
-        if (img.complete && img.naturalHeight !== 0) { fadeIn(); }
+        img.addEventListener('load', fadeIn, { once: true });
+        img.addEventListener('error', showNow, { once: true });
+
+        // Already decoded when we got here (cached), or completed synchronously
+        // after addEventListener as Safari and Firefox can. Either way the load
+        // event may never arrive, so reveal it ourselves — through the animated
+        // path, which is the whole point of this change.
+        if (alreadyDecoded || (img.complete && img.naturalHeight !== 0)) { fadeIn(); }
         // Some browsers complete an image while the page/tab is being resumed
         // without delivering the load callback or a visibility/pageshow event.
         // Do one bounded reconciliation so a healthy decoded image cannot stay
         // permanently washed out at the CSS initial opacity.
+        // showNow, not fadeIn: this is the net, and a net that waits for an
+        // animation frame catches nothing in a background tab.
         window.setTimeout(function () {
-            if (img.complete) fadeIn();
+            if (img.complete) showNow();
         }, 1500);
     });
 }

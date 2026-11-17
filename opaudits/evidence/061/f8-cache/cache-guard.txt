@@ -1,0 +1,12 @@
+ok: a plain browser request to a profile slug is cacheable
+ok: an activity+json request is NOT cacheable
+ok: an ld+json request is NOT cacheable
+ok: AP Accept match is case-insensitive
+ok: html content-type is storable
+ok: no content-type defaults to html (storable)
+ok: activity+json content-type is NOT storable
+ok: plain json content-type is NOT storable
+ok: lowercase header name still matches
+ok: the store callback guards on page_cache_headers_are_html(headers_list())
+
+page cache federation bypass: all checks passed

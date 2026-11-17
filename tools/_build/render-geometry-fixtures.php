@@ -39,6 +39,7 @@ require_once $root . '/core/trusted-html.php';
 require_once $root . '/core/skin-render-helpers.php';
 require_once $root . '/core/skin-view-contract.php';
 require_once $root . '/core/skin-presentation.php';
+require_once __DIR__ . '/fixture-head.php';
 require_once $root . '/core/asset-registry.php';
 require_once $root . '/core/archive-controls.php';
 
@@ -107,6 +108,21 @@ foreach (range(1, 8) as $n) {
     ];
 }
 
+// The smacktalk archive tile shape, from
+// snapsmack_smacktalk_archive_tiles() in core/smacktalk-public-controller.php.
+// Built from the SAME photographs as $items so the two response shapes
+// describe one archive and a measurement of either is comparable.
+$tiles = [];
+foreach ($items as $item) {
+    $tiles[] = [
+        'full'   => $item['img_file'],
+        'thumb'  => $item['img_thumb_aspect'],
+        'title'  => $item['img_title'],
+        'width'  => $item['img_width'],
+        'height' => $item['img_height'],
+    ];
+}
+
 $kinds = [
     'page' => [
         'kind' => 'page', 'page_title' => 'About Sean',
@@ -124,6 +140,24 @@ $kinds = [
     'archive' => [
         'kind' => 'archive', 'page_title' => 'Archive',
         'items' => $items, 'item' => [],
+        // THE FIVE SMACKTALK SKINS READ 'tiles', NOT 'items'.
+        //
+        // ALFRED, STANLEY, TELEGRAM, TILEZ and WRITING WITH IMPACT are
+        // smacktalk-only (manifest modes: ['smacktalk']) and their archive
+        // grids iterate $view['response']['tiles'], which
+        // snapsmack_smacktalk_archive_tiles() supplies on a real site. This
+        // fixture only ever supplied 'items', so all five rendered an EMPTY
+        // archive grid -- ALFRED even printing "No photographs found." Every
+        // geometry measurement and every browser gate built on this fixture
+        // has therefore been measuring 25 skins and reporting 30. Codex found
+        // it looking for why STANLEY and WRITING WITH IMPACT were unmeasured
+        // in the SS-1386 bytes gate, and those two are exactly the skins whose
+        // tiles paint largest.
+        //
+        // The shape is the real one, read from that function rather than
+        // guessed: full, thumb, title, width, height, with the paths
+        // base-prefixed the way it prefixes them.
+        'tiles' => $tiles,
         'next_page' => 2, 'has_more' => true, 'total_count' => 60, 'total_pages' => 3,
         'rendered_content' => snapsmack_trusted_html('<p>Some words.</p>'),
     ],
@@ -213,7 +247,10 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
         // The skin's own <link> tags point at a server that is not here. Drop
         // them and inline the resolved set instead, so the page is complete on
         // disk and a missing file can never masquerade as a passing layout.
-        $html = preg_replace('#<link[^>]+rel=["\']stylesheet["\'][^>]*>#i', '', $html) ?? $html;
+        // See tools/_build/fixture-head.php: the inlined css goes WHERE THE
+        // LINKS WERE, not at the end of the head, or the cascade comes out
+        // backwards and a fixture shows the skin winning where a live page
+        // shows the owner winning.
 
         // The CMS builds a hero's src as BASE_URL . path, and BASE_URL is '/'
         // here, so every hero came out as "/photo-1600x1067.svg". Under a
@@ -223,10 +260,7 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
         // that existed only in this fixture. Make it relative so the
         // photograph beside the page is the photograph that loads.
         $html = str_replace('src="/photo-', 'src="photo-', $html);
-        $style = '<style>' . $css . '</style>';
-        $html = str_contains($html, '</head>')
-            ? str_replace('</head>', $style . '</head>', $html)
-            : $style . $html;
+        $html = snapsmack_fixture_inline_styles($html, $css);
 
         $target = $out . '/' . $skin . '--' . $name . '.html';
         file_put_contents($target, $html);

@@ -1,7 +1,8 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// SS-1158: do not force display_errors/startup-errors on here. This is shipped
+// admin code; forcing error output renders PHP warnings, paths and stack traces
+// into the page for any viewer who trips one. Error visibility is the host's
+// php.ini decision, not a per-file override. Left-over debug lines, removed.
 /**
  * SNAPSMACK - User Manual
  *
@@ -2947,7 +2948,9 @@ who need those features should use Pixieset, HoneyBook, or similar dedicated too
 by one person. It works because it has to work for the person who built it. There is no
 support contract, no SLA, no guaranteed response time.</p>
 
-<p>SnapSmack is licensed under the SMACK PUBLIC LICENSE (SPL) 2.4 — public and free to read, run, and self-host. See the licence for what you may and may not do with the source.</p>
+<p>SnapSmack is licensed under the SMACK PUBLIC LICENSE (SPL) 2.4 — public and free to
+read, run, and self-host. See the licence for what you may and may not do with the
+source.</p>
 
 <p>This software was built by a photographer for photographers who want to own their work
 and their platform. If that's you, welcome.</p>

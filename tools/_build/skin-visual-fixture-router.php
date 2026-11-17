@@ -43,7 +43,7 @@ $nav = [
     ['label' => 'About', 'url' => '/page/about'],
 ];
 $requestedKind = preg_replace('/[^a-z_]/', '', strtolower((string)($_GET['kind'] ?? '')));
-$fixtureImage = '/skins/' . $slug . '/screenshot-landing.png';
+$fixtureImage = '/skins/' . $slug . '/screenshot-primary.png';
 $fixtureItems = [];
 for ($i = 1; $i <= 9; $i++) {
     $fixtureItems[] = [

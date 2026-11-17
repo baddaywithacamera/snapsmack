@@ -96,6 +96,43 @@ if (is_file(__DIR__ . '/core/fedistructure-package.php')) {
 $installer_is_fedistructure = defined('SNAPSMACK_DISTRIBUTION')
                            && SNAPSMACK_DISTRIBUTION === 'fedistructure';
 
+// --- WHICH SITE MODES THE INSTALLER MAY OFFER (SS-1197) ---
+// ONE list. It draws the cards AND it validates the POST, because two copies of
+// "which modes are ready" is how SMACKTHEMUP came to be offered on the install
+// screen before it had been tested: the card existed, the accepted-values array
+// listed it separately, and nothing tied them together.
+//
+// SMACKTHEMUP is deliberately absent. It is a real mode -- core recognises it,
+// it has a label and a default skin -- but a new owner must not be able to
+// choose it during installation until it has been tested, because the mode
+// decides the whole shape of their site and is not a casual thing to undo.
+function install_selectable_site_modes(): array {
+    return ['photoblog', 'carousel', 'smacktalk'];
+}
+
+function install_mode_is_selectable(string $mode): bool {
+    return in_array($mode, install_selectable_site_modes(), true);
+}
+
+/**
+ * The mode that may actually be written to the database.
+ *
+ * Re-checked here and not only at the POST, because a session can outlive the
+ * list: a stale 'smackthemup' left in $_SESSION by an earlier build, or by a
+ * half-finished install, would otherwise be carried into persisted site_mode
+ * without ever passing the gate again.
+ *
+ * 'fedistructure' is allowed through and is NOT in the selectable list on
+ * purpose. The installer sets it from the package it was shipped in, never from
+ * a card, so it is not something a visitor can post.
+ */
+function install_persistable_site_mode(string $mode): string {
+    if ($mode === 'fedistructure') {
+        return $mode;
+    }
+    return install_mode_is_selectable($mode) ? $mode : 'photoblog';
+}
+
 // --- INSTALLER SKIN FETCH HELPERS ---
 // Used by the Step 5 skin fetch block. Standalone so there's no dependency on
 // core/skin-registry.php (which has smackback ties not safe at install time).
@@ -351,7 +388,7 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
             }
         } else {
         $posted_mode = $_POST['site_mode'] ?? '';
-        if (in_array($posted_mode, ['photoblog', 'carousel', 'smacktalk', 'smackthemup'], true)) {
+        if (install_mode_is_selectable($posted_mode)) {
             // Mode-vs-content safety: refuse to set a mode that mismatches the
             // database's dominant existing content (e.g. choosing GRAMOFSMACK on a
             // DB full of SmackTalk essays). A normal re-install is already blocked
@@ -555,6 +592,7 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 `download_url` varchar(512) NOT NULL DEFAULT '',
                 `img_thumb_square` varchar(255) DEFAULT NULL COMMENT 'Relative path to 400x400 square thumbnail (t_ prefix)',
                 `img_thumb_aspect` varchar(255) DEFAULT NULL COMMENT 'Relative path to aspect-ratio thumbnail (a_ prefix)',
+                `img_thumb_medium` varchar(255) DEFAULT NULL COMMENT 'Relative path to ~600px aspect-ratio thumbnail (m_ prefix, SS-1386)',
                 `img_checksum` varchar(64) DEFAULT NULL COMMENT 'SHA-256 hash of main image file for recovery verification',
                 `img_display_options` text DEFAULT NULL COMMENT 'JSON: per-image frame/mat/bevel overrides and extracted colour palette',
                 `post_id` int DEFAULT NULL COMMENT 'FK to snap_posts — populated when image is wrapped in a post',
@@ -1149,19 +1187,32 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
         } else {
             $_SESSION['tables_created'] = $created;
 
-            // Stamp all numbered migration files as already applied.
-            // Fresh installs get the full schema from canonical.sql — the migration
-            // runner must not re-apply them on first admin login.
-            // This list is derived automatically from the migrations/ directory so
-            // it never needs manual updating when new migrations are added.
-            $migration_files = glob(__DIR__ . '/migrations/[0-9][0-9][0-9]_*.php') ?: [];
+            // Stamp every shipped migration as already applied.
+            // A fresh install gets the FULL schema from canonical.sql, so the
+            // migration runner must not re-apply any of them on first admin login,
+            // and the Schema Recovery panel must not list them as pending.
+            //
+            // THIS GLOB WAS DEAD FOR SIX MONTHS. It looked for
+            // migrations/[0-9][0-9][0-9]_*.php — the numbered PHP scheme used up to
+            // 0.7.159 (027_multisite_tables.php and friends). When migrations were
+            // converted to migrate-*.sql the installer's stamp was not converted
+            // with them, so the glob matched NOTHING and a fresh install recorded
+            // NOT ONE migration. Every new site then showed all ~41 known
+            // migrations PENDING from its first login, for ever, with a perfectly
+            // correct database. The comment that used to sit here claimed the list
+            // "never needs manual updating", which is why nobody looked at it.
+            // Measured on dev 2026-11-10: 38 .sql files, 0 matching the old glob.
+            $migration_files = glob(__DIR__ . '/migrations/migrate*.sql') ?: [];
             sort($migration_files);
             $stamp = $pdo->prepare(
                 "INSERT IGNORE INTO `{$prefix}migrations` (migration, applied_at)
                  VALUES (?, NOW())"
             );
             foreach ($migration_files as $mf) {
-                $stamp->execute([basename($mf, '.php')]);
+                // The updater records migrations by full filename (basename with
+                // the .sql extension). Stamp the same string or the two never
+                // match and the pending list never clears.
+                $stamp->execute([basename($mf)]);
             }
 
             $step = 4; // Advance to admin user creation
@@ -1316,80 +1367,14 @@ try {
         @chmod(__DIR__ . '/core/db.php', 0644);
     }
 
-    // --- GENERATE core/constants.php ---
-    if (empty($errors)) {
-        $constants_php = '<?php
-/**
- * SNAPSMACK - System Constants
- * ' . $installer_version_label . '
- *
- * Defines version strings and system-wide constants. Include this early in
- * the bootstrap chain (e.g., from db.php) to ensure availability throughout
- * the application.
- */
-
-define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
-define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
-define(\'SNAPSMACK_VERSION_CODENAME\', \'Shit and Git\');
-define(\'SNAPSMACK_TABLE_PREFIX\', \'' . $prefix . '\');
-
-// --- VERSION COMPARISON ---
-function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool {
-    $normalise = function (string $v): string {
-        if (preg_match(\'/^(\\d+(?:\\.\\d+)*)([a-z])$/i\', $v, $m)) {
-            return $m[1] . \'.\' . (ord(strtolower($m[2])) - ord(\'a\') + 1);
-        }
-        return $v . \'.0\';
-    };
-    return version_compare($normalise($v1), $normalise($v2), $op);
-}
-
-// --- MOBILE SKIN OVERRIDE ---
-// The slug of the skin forced onto mobile devices. This skin is not selectable
-// in the admin skin picker — it is served automatically when a phone is detected.
-define(\'SNAPSMACK_MOBILE_SKIN\', \'photogram\');
-
-/**
- * Detect mobile devices via User-Agent string.
- * Returns true for phones; tablets are treated as desktop.
- */
-function snapsmack_is_mobile(): bool {
-    $ua = $_SERVER[\'HTTP_USER_AGENT\'] ?? \'\';
-    if (empty($ua)) return false;
-
-    // Match common phone tokens. The \'Mobile\' token catches most modern phones
-    // (iOS Safari, Chrome Mobile, Samsung, etc.). Additional patterns cover
-    // older or niche handsets. Tablets (iPad, Android without \'Mobile\') are
-    // intentionally excluded so they receive the normal desktop skin.
-    return (bool) preg_match(\'/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Opera Mini|IEMobile|Windows Phone/i\', $ua);
-}
-
-// --- HTTPS DETECTION ---
-// Checks native HTTPS and reverse-proxy headers (Cloudflare Tunnel, etc.).
-function snap_is_https(): bool {
-    if (!empty($_SERVER[\'HTTPS\']) && $_SERVER[\'HTTPS\'] !== \'off\') return true;
-    if (!empty($_SERVER[\'HTTP_X_FORWARDED_PROTO\']) && $_SERVER[\'HTTP_X_FORWARDED_PROTO\'] === \'https\') return true;
-    if (!empty($_SERVER[\'HTTP_X_FORWARDED_SSL\']) && $_SERVER[\'HTTP_X_FORWARDED_SSL\'] === \'on\') return true;
-    return false;
-}
-
-// --- SECURITY HEADERS ---
-if (PHP_SAPI !== \'cli\' && !headers_sent()) {
-    header(\'X-Content-Type-Options: nosniff\');
-    header(\'X-Frame-Options: SAMEORIGIN\');
-    header(\'Referrer-Policy: strict-origin-when-cross-origin\');
-}
-';
-
-        // FIX (incident 2026-06-18): do NOT regenerate core/constants.php. The shipped
-        // package file is canonical (correct version + EOF marker, matches the SMACKBACK
-        // baseline). The old $constants_php template above had drifted (wrong codename,
-        // reordered blocks, no EOF marker) and false-breached every fresh install on first
-        // login. Its only "dynamic" value, SNAPSMACK_TABLE_PREFIX, is dead (0 read-sites;
-        // all queries hardcode snap_). Leave the shipped file untouched.
-        // TODO(cleanup): delete the now-unused $constants_php template above.
-        unset($constants_php);
-    }
+    // --- core/constants.php: NOT regenerated by the installer (SECAUDIT 026) ---
+    // The shipped package file is canonical: correct version + EOF marker, and it
+    // matches the SMACKBACK integrity baseline. A previous installer template
+    // regenerated it and drifted (wrong codename, reordered blocks, no EOF marker),
+    // false-breaching every fresh install on first login. Do NOT add a generator
+    // here; SNAPSMACK_TABLE_PREFIX, its only dynamic value, is dead (all queries
+    // hardcode snap_). 2026-06-18 incident; the dead installer constants template
+    // was removed 2026-11-10 (SECAUDIT 026 cleanup).
 
     // --- SEED DEFAULT SETTINGS ---
     if (empty($errors)) {
@@ -1401,7 +1386,9 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]);
 
-            $install_mode     = $_SESSION['site_mode'] ?? 'photoblog';
+            // SS-1197: re-gated, not trusted. A stale session value from an
+            // earlier build cannot become a persisted site_mode.
+            $install_mode     = install_persistable_site_mode((string)($_SESSION['site_mode'] ?? 'photoblog'));
             $install_distribution = $_SESSION['distribution'] ?? 'blog';
             $install_profile  = $_SESSION['distribution_profile'] ?? '';
             $install_role     = $_SESSION['node_role'] ?? '';
@@ -1700,6 +1687,27 @@ RewriteRule ^\.well-known/webfinger$ fediverse.php?ap=webfinger [L,QSA]
 RewriteRule ^\.well-known/nodeinfo$ fediverse.php?ap=nodeinfo [L,QSA]
 RewriteRule ^nodeinfo/2\.0$ fediverse.php?ap=nodeinfo2 [L,QSA]
 RewriteRule ^ap/(.+)$ fediverse.php?appath=$1 [L,QSA]
+
+# PORTFOLIO PATHS: /<album>/<category>/<slug>  (SS-1185)
+#
+# THREE SEGMENTS ONLY, AND IT HAS TO BE HERE. The catch-all below matches a
+# SINGLE segment -- no slash in its character class -- so a three-segment path
+# matched nothing at all and Apache 404'd it before PHP ever ran. The resolver
+# in core/portfolio-route.php was therefore unreachable on every live site.
+# Measured, not assumed: php -S showed PATH_INFO unset, which sent me to look
+# at what actually routes these addresses.
+#
+# It passes the joined path in ?name, the SAME mechanism the single-segment
+# rule uses, because index.php reads $_GET['name'] on these installs
+# (PATH_INFO is empty here -- the rewrite does not produce one). Reusing the
+# existing mechanism beats introducing a second one.
+#
+# TWO SEGMENTS ARE DELIBERATELY NOT ROUTED. Nothing serves them today, so
+# adding them would turn an Apache 404 into a PHP 404 for addresses that have
+# never meant anything -- a behaviour change nobody asked for. The resolver
+# falls through for one and two segments anyway.
+RewriteRule ^([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)$ index.php?name=$1/$2/$3 [L,QSA]
+
 
 RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
 
@@ -2090,36 +2098,11 @@ try { $pdo = new PDO($dsn, $user, $pass, $options); } catch (\PDOException $e) {
                             @chmod(__DIR__ . '/core/db.php', 0644);
                         }
 
-                        // Generate constants.php if it doesn't exist
-                        if (!file_exists(__DIR__ . '/core/constants.php')) {
-                            $const_php = '<?php
-define(\'SNAPSMACK_VERSION\', \'' . $installer_version_label . '\');
-define(\'SNAPSMACK_VERSION_SHORT\', \'' . $installer_version . '\');
-define(\'SNAPSMACK_VERSION_CODENAME\', \'Shit and Git\');
-define(\'SNAPSMACK_TABLE_PREFIX\', \'snap_\');
-function snap_version_compare(string $v1, string $v2, string $op = \'>\'): bool {
-    $normalise = function (string $v): string {
-        if (preg_match(\'/^(\\d+(?:\\.\\d+)*)([a-z])$/i\', $v, $m)) {
-            return $m[1] . \'.\' . (ord(strtolower($m[2])) - ord(\'a\') + 1);
-        }
-        return $v . \'.0\';
-    };
-    return version_compare($normalise($v1), $normalise($v2), $op);
-}
-define(\'SNAPSMACK_MOBILE_SKIN\', \'photogram\');
-function snapsmack_is_mobile(): bool {
-    $ua = $_SERVER[\'HTTP_USER_AGENT\'] ?? \'\';
-    if (empty($ua)) return false;
-    return (bool) preg_match(\'/Mobile|iPhone|iPod|Android.*Mobile|webOS|BlackBerry|Opera Mini|IEMobile|Windows Phone/i\', $ua);
-}
-';
-                            // FIX (incident 2026-06-18): never write a hand-built constants.php
-                            // (drifted, marker-less → false breach on first login). The package
-                            // ships the canonical file; if it is genuinely missing the package
-                            // is broken — fail loudly rather than write a bad copy.
-                            // TODO(cleanup): delete the unused $const_php template above.
-                            unset($const_php);
-                        }
+                        // core/constants.php is shipped canonical and is NOT generated here (SECAUDIT 026,
+                        // 2026-06-18 incident): a hand-built copy drifted, marker-less, and false-breached
+                        // on first login. If the package's file is genuinely missing the package is broken;
+                        // that surfaces on its own rather than being papered over with a bad copy. The dead
+                        // installer constants template here was removed 2026-11-10.
 
                         $step = 'r3';
                     }
@@ -2353,6 +2336,27 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         }
         .install-mode-card:hover .install-mode-card-inner {
             border-color: #444;
+        }
+        /* SS-1197: a mode that is shown but not offered. It must not look
+           clickable, because a card that looks selectable and does nothing
+           reads as a broken installer rather than an unfinished feature. */
+        .install-mode-card-unavailable {
+            cursor: default;
+            opacity: 0.45;
+        }
+        .install-mode-card-unavailable:hover .install-mode-card-inner {
+            border-color: #2a2a2a;
+        }
+        .install-mode-soon {
+            font-size: 0.7rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border: 1px solid #555;
+            border-radius: 3px;
+            padding: 2px 6px;
+            margin-left: 10px;
+            vertical-align: middle;
+            white-space: nowrap;
         }
         .install-mode-version {
             font-size: 2rem;
@@ -2702,16 +2706,24 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                         </div>
                     </div>
                 </label>
-                <label class="install-mode-card">
-                    <input type="radio" name="site_mode" value="smackthemup">
+                <?php /* SS-1197: SHOWN, NOT OFFERED. No input, so there is nothing
+                         to post, nothing for Tab to land on and nothing for Space
+                         to select; and not a <label>, so a click has no control to
+                         activate either. It stays on the page because a new owner
+                         deciding between modes should see what is coming, and
+                         because quietly deleting the card would make the roadmap
+                         less honest, not the installer safer. The only way to
+                         re-enable it is to add it to install_selectable_site_modes(),
+                         which is also what the server validates against. */ ?>
+                <div class="install-mode-card install-mode-card-unavailable" aria-disabled="true">
                     <div class="install-mode-card-inner">
                         <div class="install-mode-version">4.0</div>
                         <div class="install-mode-body">
-                            <div class="install-mode-name">SMACKTHEMUP</div>
+                            <div class="install-mode-name">SMACKTHEMUP <span class="install-mode-soon">Not available yet</span></div>
                             <div class="install-mode-desc">Build your public scrapbook, no fediverse. Publish photographs by dragging them from SNAP SLAPPER, organize and curate them with GYSS, moderate comments with SHOTS FIRED, and display them through any GRAMOFSMACK skin in a public three-across gallery-blog. Public web pages, desktop publishing, and no social network to join.</div>
                         </div>
                     </div>
-                </label>
+                </div>
                 <?php endif; ?>
             </div>
 

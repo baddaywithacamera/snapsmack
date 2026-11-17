@@ -24,6 +24,322 @@ final class SnapPublicRepository
         return is_array($row) ? $row : null;
     }
 
+    // ─── PORTFOLIO VISIBILITY ────────────────────────────────────────────────
+    //
+    // ONE definition of each exclusion, shared by every surface, because a
+    // listing and the count beside it MUST carry the identical predicate. When
+    // they drift the count says 100, the list yields 80, and endless scroll
+    // never completes -- an archive stuck part-way is the same defect as one
+    // stuck on page one.
+    //
+    // WHY THESE TOLERATE A MISSING COLUMN. snap_schema_sync() is called from
+    // exactly one place: core/updater.php:1588, inside
+    // updater_run_migrations(), which is reached only from smack-update.php
+    // and core/multisite-api.php. So the columns arrive when an UPDATE is RUN
+    // -- not on login, and not on a SMACKBACK pass. (I told Codex otherwise
+    // and he asked me to trace it; login and SMACKBACK call
+    // core/installer-cleanup.php, which is a different chain entirely.) So a
+    // site can be running
+    // updated core files against a database that has not gained these columns
+    // yet, and an unconditional `AND p.exclude_from_archive = 0` would be an
+    // "Unknown column" fatal on a public page. That is not hypothetical: it is
+    // recorded at core/threeacross-api.php:907 as the cause of fleet-wide
+    // "Unknown column 'fedi_enabled'" 500s on sites that never ran FEDIVERSE.
+    // So each helper returns an EMPTY STRING when the column is absent.
+    //
+    // Absent means NOT FILTERED, deliberately. Hiding nothing is a visible,
+    // reversible cosmetic regression; a 500 takes the site down. But absence is
+    // never silent -- visibilityFlagsPresent() reports it so an admin or health
+    // page can say so out loud, and a test asserts the fallback rather than
+    // leaving it to be discovered.
+    //
+    // NO DDL HERE. These run on unauthenticated page views. ALTER needs DDL
+    // rights, implicit-commits, and has no business on a reader's request.
+    // The sync path (login, SMACKBACK, update) owns adding the columns.
+
+    /** The visibility flags, so the admin side validates against this list
+     *  rather than keeping its own copy to drift. portfolio_post is NOT here:
+     *  it is a designation and filters nothing. */
+    public const VISIBILITY_FLAGS = [
+        'exclude_from_archive',
+        'exclude_from_search',
+        'exclude_from_feed',
+    ];
+
+    /** Per-request cache of which flags the live database actually has. */
+    private ?array $flagsPresent = null;
+
+    /** complete | partial | absent | undetermined. See schemaState(). */
+    private ?string $schemaState = null;
+
+    /**
+     * Measured, not assumed: which VISIBILITY_FLAGS exist on snap_posts.
+     *
+     * Asked by SELECTING the columns with a false WHERE, not by reading
+     * INFORMATION_SCHEMA. The first version of this used INFORMATION_SCHEMA and
+     * its own regression test caught it: that view is MySQL/MariaDB only, so on
+     * any other engine the probe threw and silently reported every column
+     * absent -- a feature that would have appeared to work and filtered
+     * nothing. A SELECT ... WHERE 0 is answered by every engine, returns no
+     * rows, and asks the question that actually matters, which is whether a
+     * query naming these columns can be prepared at all.
+     *
+     * One statement in the normal case. Only a failure costs a second pass, and
+     * then only to find which subset exists, so a half-applied schema still
+     * filters on the flags it does have.
+     */
+    public function visibilityFlagsPresent(): array {
+        if ($this->flagsPresent !== null) return $this->flagsPresent;
+
+        $cols = implode(', ', array_map(
+            static fn(string $f): string => "`{$f}`",
+            self::VISIBILITY_FLAGS
+        ));
+        if ($this->columnsSelectable($cols) === true) {
+            $this->schemaState = 'complete';
+            return $this->flagsPresent = self::VISIBILITY_FLAGS;
+        }
+
+        $present = [];
+        $undetermined = 0;
+        foreach (self::VISIBILITY_FLAGS as $flag) {
+            $answer = $this->columnsSelectable("`{$flag}`");
+            if ($answer === true)      $present[] = $flag;
+            elseif ($answer === null)  $undetermined++;
+        }
+        $this->schemaState = $undetermined > 0
+            ? ($present ? 'partial' : 'undetermined')
+            : ($present ? 'partial' : 'absent');
+        return $this->flagsPresent = $present;
+    }
+
+    /**
+     * Three answers, not two: TRUE selectable, FALSE genuinely unknown-column,
+     * NULL the database could not tell us.
+     *
+     * Only an unknown-column error is evidence that a column is missing. A
+     * connection failure or a revoked privilege is a different fact and gets
+     * NULL, so nothing downstream can report "schema not applied" when what
+     * actually happened was "the database would not answer".
+     *
+     * MySQL/MariaDB unknown column is SQLSTATE 42S22 (errno 1054). SQLite
+     * reports HY000 with "no such column". Anything else is not a schema
+     * answer.
+     */
+    /** null until asked. See mediumThumbSelect(). */
+    private ?bool $mediumThumbColumn = null;
+
+    /**
+     * ',img_thumb_medium' if that column can be selected, '' if it cannot.
+     *
+     * SS-1386 adds the ~600px m_ derivative and records its path in a new
+     * snap_images column. THE GRID SELECT LISTS IN THIS FILE ARE EXPLICIT,
+     * NOT SELECT *, so naming a column a site does not have turns every
+     * archive page into Unknown column -- on 25 live sites at once. The
+     * canonical schema, install.php and the shared ingest all add it, but a
+     * site deployed by direct code copy bypasses the updater's diff, which is
+     * how hekeepsdroningon.ca lost the 0.7.393 fedi columns.
+     *
+     * So it is ASKED, by the same SELECT ... WHERE 0 probe
+     * visibilityFlagsPresent() uses and for the same reason: that probe is
+     * answered by every engine, where INFORMATION_SCHEMA is MySQL and MariaDB
+     * only. One statement per request, memoised. A site without the column
+     * simply gets no m_ candidate and the grid serves a_, which is the
+     * documented fallback rather than a failure.
+     *
+     * @param string $prefix Table alias used by the calling query ('i.' or '').
+     */
+    private function mediumThumbSelect(string $prefix = ''): string {
+        if ($this->mediumThumbColumn === null) {
+            $this->mediumThumbColumn =
+                ($this->imagesColumnSelectable('`img_thumb_medium`') === true);
+        }
+        return $this->mediumThumbColumn ? ",{$prefix}img_thumb_medium" : '';
+    }
+
+    /** As columnsSelectable(), against snap_images. */
+    private function imagesColumnSelectable(string $columnList): ?bool {
+        try {
+            $stmt = $this->pdo->prepare("SELECT {$columnList} FROM snap_images WHERE 0");
+            $stmt->execute();
+            $stmt->fetchAll();
+            return true;
+        } catch (Throwable $e) {
+            return $this->looksLikeUnknownColumn($e) ? false : null;
+        }
+    }
+
+    private function columnsSelectable(string $columnList): ?bool {
+        try {
+            $stmt = $this->pdo->prepare("SELECT {$columnList} FROM snap_posts WHERE 0");
+            $stmt->execute();
+            $stmt->fetchAll();
+            return true;
+        } catch (Throwable $e) {
+            return $this->looksLikeUnknownColumn($e) ? false : null;
+        }
+    }
+
+    private function looksLikeUnknownColumn(Throwable $e): bool {
+        $state = $e instanceof PDOException ? (string)$e->getCode() : '';
+        if ($state === '42S22') return true;
+        $msg = strtolower($e->getMessage());
+        if (str_contains($msg, 'no such column')) return true;      // SQLite
+        if (str_contains($msg, 'unknown column')) return true;      // MySQL text
+        return false;
+    }
+
+    /**
+     * True when every EXCLUSION flag is present.
+     *
+     * This does NOT certify that the admin save path is ready: portfolio_post
+     * is a fifth column and is not in VISIBILITY_FLAGS, because it filters
+     * nothing. Codex raised that in review -- a save form writing five columns
+     * cannot take a four-column answer as its go-ahead. Use
+     * designationAvailable() for the fifth, or portfolioSchemaReady() for both.
+     */
+    public function visibilityFlagsComplete(): bool {
+        return $this->schemaState() === 'complete'
+            && count($this->visibilityFlagsPresent()) === count(self::VISIBILITY_FLAGS);
+    }
+
+    /** Is the portfolio_post DESIGNATION column available? Asked separately
+     *  because it is not an exclusion and never appears in a WHERE clause. */
+    public function designationAvailable(): bool {
+        return $this->columnsSelectable('`portfolio_post`') === true;
+    }
+
+    /**
+     * Are the primary album and category columns available?
+     *
+     * Separate again, and for the same reason the designation is separate: they
+     * are not exclusions and never appear in an exclusion WHERE clause. They
+     * exist so a post can build ONE canonical album/category/slug URL when a
+     * photograph belongs to several albums.
+     *
+     * The owner picks them. SS-1185 requires the choice to be deterministic,
+     * and an automatic choice -- lowest id, alphabetical -- is only
+     * deterministic until somebody adds an album, at which point a live URL
+     * changes by itself and a shared link breaks.
+     */
+    public function primaryTaxonomyAvailable(): bool {
+        return $this->columnsSelectable('`primary_album_id`, `primary_category_id`') === true;
+    }
+
+    /**
+     * Everything an admin save of the portfolio controls needs: the three
+     * exclusion flags, the designation, and the two primary-taxonomy columns.
+     *
+     * It grew from four columns to six as the feature did, which is exactly why
+     * Codex asked for a single gate rather than checking columns himself -- a
+     * form that writes six columns must not be certified by an answer about
+     * four. Gate the save on THIS, and nothing finer.
+     */
+    public function portfolioSchemaReady(): bool {
+        return $this->visibilityFlagsComplete()
+            && $this->designationAvailable()
+            && $this->primaryTaxonomyAvailable();
+    }
+
+    /**
+     * WHY THERE IS A THIRD STATE. The first version of columnsSelectable()
+     * caught every Throwable and reported "absent". Codex's review caught it:
+     * a connection drop, a revoked SELECT privilege or any other query failure
+     * is NOT evidence that a column is missing, and silently treating it as
+     * such would turn filtering off across a whole site while reporting a
+     * tidy, wrong answer about why.
+     *
+     *   'complete'     every exclusion column answered a query
+     *   'partial'      some did, some are genuinely unknown-column
+     *   'absent'       all genuinely unknown-column: schema not applied yet
+     *   'undetermined' the database could not answer at all
+     *
+     * All four behave the same way at the query boundary -- no filtering,
+     * never a fatal on a reader's page -- but they must not be CONFUSED, and
+     * 'undetermined' must never be read as "the feature is not installed" or
+     * allow anything to claim a save succeeded.
+     */
+    public function schemaState(): string {
+        $this->visibilityFlagsPresent();
+        return $this->schemaState ?? 'undetermined';
+    }
+
+    /**
+     * POST-KEYED surfaces: the listing already selects FROM snap_posts, so the
+     * flag is a column on the row being listed. Returns '' when unsupported.
+     *
+     * $alias is the snap_posts alias in the caller's query ('' for an
+     * unaliased `FROM snap_posts`).
+     */
+    public function postFilter(string $flag, string $alias = 'p'): string {
+        if (!in_array($flag, $this->visibilityFlagsPresent(), true)) return '';
+        $col = $this->qualify($alias, $flag);
+        return " AND {$col} = 0";
+    }
+
+    /**
+     * IMAGE-KEYED surfaces: the archive, the taxonomy counts and the images
+     * half of search all select FROM snap_images. A post-level flag cannot
+     * reach them except through the snap_post_images pivot.
+     *
+     * THE QUALIFYING-OWNER RULE, which is not the obvious one. An image can
+     * belong to several posts. Hiding it because ANY owner is excluded would
+     * make a photograph vanish from the archive merely because it also appears
+     * on a portfolio page. And counting a DRAFT owner as a reason to keep it
+     * visible would let unpublished content decide what the public sees.
+     *
+     * So: only a PUBLISHED, CURRENTLY VISIBLE post counts as an owner at all.
+     * The image is hidden when it has at least one such owner and EVERY one of
+     * them is excluded. An image with no qualifying owner is never touched by
+     * this feature, which leaves orphan and legacy photographs exactly as they
+     * are today.
+     *
+     * Both ownership routes are considered: the snap_post_images pivot and the
+     * legacy nullable snap_images.post_id. Considering only the pivot would let
+     * a legacy-linked image slip through.
+     *
+     * This is ANDed on top of the existing img_status / img_date filters. It
+     * never replaces them.
+     */
+    public function imageFilter(string $flag, string $imageAlias = 'i'): string {
+        if (!in_array($flag, $this->visibilityFlagsPresent(), true)) return '';
+        $img = $imageAlias === '' ? 'snap_images' : $imageAlias;
+        // INDEX-SEEKABLE REWRITE (987D, CT110 outage). The original nested an
+        // EXISTS over snap_posts AROUND an EXISTS over snap_post_images, so for
+        // every image row the planner scanned every published post and then the
+        // pivot per pair -- images x posts, cubic with the pivot inside. Measured
+        // at 280-363s per archive COUNT on the fleet DB. This is logically the
+        // SAME qualifying-owner rule, flattened so each test is an index seek:
+        // the pivot route becomes snap_post_images(image_id) -> snap_posts(PK),
+        // and the legacy snap_images.post_id route becomes its own PK lookup.
+        //   EXISTS vp (published AND (pivot(img,vp) OR img.post_id=vp))
+        //     == EXISTS(pivot->published post) OR EXISTS(published post = img.post_id)
+        // (distributing the existential over the OR -- identical result set).
+        $published = "vp.status = 'published' AND vp.created_at <= NOW()";
+        // Has at least one published owner (by either ownership route).
+        $ownerPublished = "(
+                EXISTS (SELECT 1 FROM snap_post_images vfpi
+                          JOIN snap_posts vp ON vp.id = vfpi.post_id
+                         WHERE vfpi.image_id = {$img}.id AND {$published})
+             OR EXISTS (SELECT 1 FROM snap_posts vp
+                         WHERE vp.id = {$img}.post_id AND {$published})
+            )";
+        // Has at least one published owner that does NOT exclude it.
+        $ownerVisible = "(
+                EXISTS (SELECT 1 FROM snap_post_images vgpi
+                          JOIN snap_posts vp ON vp.id = vgpi.post_id
+                         WHERE vgpi.image_id = {$img}.id AND {$published} AND vp.{$flag} = 0)
+             OR EXISTS (SELECT 1 FROM snap_posts vp
+                         WHERE vp.id = {$img}.post_id AND {$published} AND vp.{$flag} = 0)
+            )";
+        // Hidden only if a qualifying owner exists AND none of them is visible.
+        return " AND NOT ({$ownerPublished} AND NOT {$ownerVisible})";
+    }
+
+    private function qualify(string $alias, string $column): string {
+        return $alias === '' ? "`{$column}`" : "{$alias}.`{$column}`";
+    }
+
     public function photographBySlug(string $slug): ?array {
         return $this->one(
             "SELECT id,img_title,img_slug,img_description,img_alt,img_film,img_license,img_date,
@@ -103,9 +419,10 @@ final class SnapPublicRepository
     }
 
     public function photographLanding(int $limit, int $offset = 0): array {
+        $med = $this->mediumThumbSelect('');
         return $this->all(
             "SELECT id,img_title,img_slug,img_description,img_alt,img_date,img_file,img_width,img_height,
-                    img_thumb_square,img_thumb_aspect,img_color_mode,post_id,sort_order,
+                    img_thumb_square,img_thumb_aspect{$med},img_color_mode,post_id,sort_order,
                     (SELECT pi.img_size_pct FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_size_pct,
                     (SELECT pi.img_border_px FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_border_px,
                     (SELECT pi.img_border_color FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_border_color,
@@ -132,6 +449,7 @@ final class SnapPublicRepository
      * landing query; returning photographs here would split carousels apart.
      */
     public function carouselPostLanding(int $limit = 5000, int $offset = 0): array {
+        $px = $this->postFilter('exclude_from_archive', 'p');
         return $this->all(
             "SELECT p.id AS post_id,p.title,p.slug AS post_slug,p.post_type,p.trigram_id,
                     p.created_at,p.sort_order,p.post_img_size_pct,p.post_border_px,
@@ -149,7 +467,7 @@ final class SnapPublicRepository
              JOIN snap_post_images pi ON pi.post_id=p.id AND pi.is_cover=1
              JOIN snap_images i ON i.id=pi.image_id
              LEFT JOIN snap_trigrams tg ON tg.id=p.trigram_id
-             WHERE p.status='published' AND p.created_at<=NOW()
+             WHERE p.status='published' AND p.created_at<=NOW(){$px}
                AND i.img_status='published' AND i.img_date<=NOW()
              ORDER BY CASE WHEN p.sort_order>0 THEN 1 ELSE 0 END ASC,
                       p.sort_order ASC,p.id DESC
@@ -168,8 +486,9 @@ final class SnapPublicRepository
      * expose only one bounded page of prepared rows to the skin.
      */
     public function justifiedPhotographFeed(): array {
+        $med = $this->mediumThumbSelect('');
         return $this->all(
-            "SELECT id,img_title,img_slug,img_alt,img_file,img_thumb_aspect,img_width,img_height
+            "SELECT id,img_title,img_slug,img_alt,img_file,img_thumb_aspect{$med},img_width,img_height
              FROM snap_images
              WHERE img_status='published' AND img_date <= NOW()
              ORDER BY sort_order ASC,img_date DESC,id DESC"
@@ -178,7 +497,7 @@ final class SnapPublicRepository
 
     public function randomPhotographs(int $limit): array {
         return $this->all(
-            "SELECT id,img_title,img_slug,img_alt,img_file,img_width,img_height,img_thumb_square,img_thumb_aspect
+            "SELECT id,img_title,img_slug,img_alt,img_file,img_width,img_height,img_thumb_square,img_thumb_aspect,allow_comments
              FROM snap_images
              WHERE img_status='published' AND img_date <= NOW()
              ORDER BY RAND() LIMIT ?",
@@ -203,6 +522,7 @@ final class SnapPublicRepository
 
     /** CMS-owned GAME ON pool: no trigram members and no carousel cover images. */
     public function gameOnPuzzlePhotographs(int $limit = 160): array {
+        $px = $this->postFilter('exclude_from_archive', 'p');
         return $this->all(
             "SELECT i.id,i.img_title,i.img_slug,i.img_file,i.img_thumb_square,i.img_thumb_aspect,
                     pi.img_focus_x,pi.img_focus_y,pi.img_zoom,p.id AS post_id,p.title AS post_title,
@@ -212,7 +532,7 @@ final class SnapPublicRepository
              JOIN snap_images i ON i.id=pi.image_id
              LEFT JOIN snap_post_images cpi ON cpi.post_id=p.id AND cpi.is_cover=1
              LEFT JOIN snap_images ci ON ci.id=cpi.image_id
-             WHERE p.status='published' AND p.created_at <= NOW() AND p.trigram_id IS NULL
+             WHERE p.status='published' AND p.created_at <= NOW() AND p.trigram_id IS NULL{$px}
                AND i.img_status='published' AND i.img_date <= NOW()
                AND i.img_thumb_square IS NOT NULL AND i.img_thumb_square <> ''
                AND NOT (pi.is_cover=1 AND (SELECT COUNT(*) FROM snap_post_images spi WHERE spi.post_id=p.id AND spi.sort_position >= 0)>1)
@@ -260,13 +580,14 @@ final class SnapPublicRepository
     }
 
     public function longformLanding(int $limit, int $offset = 0): array {
+        $px = $this->postFilter('exclude_from_archive', 'p');
         return $this->all(
             "SELECT p.id,p.title,p.slug,p.description,p.created_at,p.updated_at,p.featured_image_id,
                     i.img_file AS featured_image_path,i.img_thumb_aspect AS featured_thumb,
                     i.img_width AS featured_width,i.img_height AS featured_height
              FROM snap_posts p LEFT JOIN snap_images i ON i.id=p.featured_image_id
                AND i.img_status='published' AND i.img_date <= NOW()
-             WHERE p.post_type='longform' AND p.status='published' AND p.created_at <= NOW()
+             WHERE p.post_type='longform' AND p.status='published' AND p.created_at <= NOW(){$px}
              ORDER BY p.created_at DESC, p.id DESC LIMIT ? OFFSET ?",
             [max(1, min(100, $limit)), max(0, $offset)]
         );
@@ -274,6 +595,7 @@ final class SnapPublicRepository
 
     /** Published writing matches accompanying the photograph search wall. */
     public function archiveSearchPosts(string $search): array {
+        $px = $this->postFilter('exclude_from_search', '');
         $terms = preg_split('/\s+/', trim($search), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         if (!$terms) return [];
         $scope = '';
@@ -284,15 +606,16 @@ final class SnapPublicRepository
         }
         return $this->all(
             "SELECT id,title,slug,description FROM snap_posts
-             WHERE status='published' AND created_at <= NOW(){$scope}
+             WHERE status='published' AND created_at <= NOW(){$px}{$scope}
              ORDER BY created_at DESC,id DESC", $params
         );
     }
 
     public function publishedPostCount(?string $type = null): int {
+        $px = $this->postFilter('exclude_from_archive', '');
         $typeSql = $type === null ? '' : ' AND post_type=?';
         $stmt = $this->pdo->prepare(
-            "SELECT COUNT(id) FROM snap_posts WHERE status='published' AND created_at <= NOW(){$typeSql}"
+            "SELECT COUNT(id) FROM snap_posts WHERE status='published' AND created_at <= NOW(){$px}{$typeSql}"
         );
         $stmt->execute($type === null ? [] : [$type]);
         return (int)$stmt->fetchColumn();
@@ -301,11 +624,32 @@ final class SnapPublicRepository
     /** Public blogroll presentation data; provenance and administrative fields stay private. */
     public function blogrollPeers(): array {
         return $this->all(
+            // snap_blogroll HAS CARRIED A sort_order COLUMN ALL ALONG AND
+            // NOTHING HAS EVER READ IT. It is in the canonical schema, int
+            // NOT NULL DEFAULT 0, and a grep of the whole repository finds no
+            // reader and no writer -- so an owner could not put their own
+            // blogroll in their own order, and the column sat there looking
+            // like the feature it was not.
+            //
+            // THE TIEBREAK MAKES THIS A NO-OP UNTIL SOMEBODY USES IT. Every
+            // existing row is 0, so ordering by sort_order and THEN by
+            // peer_name produces exactly the alphabetical order these pages
+            // already show. No live blogroll moves on the day this ships; it
+            // moves when an owner decides it should.
+            //
+            // sort_order comes second, after the category, because the page
+            // groups by category -- ordering by it first would scatter a
+            // group across the page.
+            // sort_order is NOT selected on purpose. It decides the order and
+            // nothing more: the controller rebuilds each item from name, url
+            // and description, so a selected sort_order would travel nowhere
+            // and sit in the result looking like something a skin could read.
+            // That is the exact shape of the fault this change repairs.
             "SELECT b.peer_name,b.peer_url,b.peer_desc,c.cat_name
              FROM snap_blogroll b
              LEFT JOIN snap_blogroll_cats c ON c.id=b.cat_id
              WHERE b.peer_url IS NOT NULL AND b.peer_url<>''
-             ORDER BY c.cat_name,b.peer_name"
+             ORDER BY c.cat_name,b.sort_order,b.peer_name"
         );
     }
 
@@ -337,6 +681,7 @@ final class SnapPublicRepository
     }
 
     public function archivePhotographs(int $limit, int $offset = 0, int $categoryId = 0, int $albumId = 0, string $search = ''): array {
+        $ix = $this->imageFilter('exclude_from_archive', 'i');
         $scope = '';
         $params = [];
         if ($categoryId > 0) {
@@ -381,6 +726,7 @@ final class SnapPublicRepository
         }
         $params[] = max(1, min(5000, $limit));
         $params[] = max(0, $offset);
+        $med = $this->mediumThumbSelect('i.');
         return $this->all(
             // img_orientation decides which shape a thumbnail tile takes, and
             // this query never selected it. Every archive tile reached the skin
@@ -389,8 +735,14 @@ final class SnapPublicRepository
             // pixhellated.ca came back orient-landscape. COALESCE on the
             // dimensions as well, because a row whose orientation was never
             // computed still knows its own width and height.
+            // allow_comments rides along because GLIDE's archive overlay opens
+            // a comments pane over a tile, and whether comments are OPEN on a
+            // photograph is a property of that photograph. Without it an
+            // archive item reached the skin with no way to answer the question,
+            // so an overlay could only either always offer the pane or never.
+            // One column on a query that already runs; no extra round trip.
             "SELECT i.id,i.img_title,i.img_slug,i.img_alt,i.img_file,i.img_width,i.img_height,
-                    i.img_thumb_square,i.img_thumb_aspect,
+                    i.img_thumb_square,i.img_thumb_aspect{$med},i.allow_comments,
                     CASE
                       WHEN COALESCE(NULLIF(i.img_orientation,0),0) <> 0 THEN i.img_orientation
                       WHEN i.img_height > i.img_width THEN 1
@@ -398,7 +750,7 @@ final class SnapPublicRepository
                       ELSE 0
                     END AS img_orientation
              FROM snap_images i
-             WHERE i.img_status='published' AND i.img_date <= NOW()
+             WHERE i.img_status='published' AND i.img_date <= NOW(){$ix}
                AND NOT EXISTS (
                     SELECT 1 FROM snap_posts p
                     WHERE p.signature_image_id=i.id
@@ -411,6 +763,7 @@ final class SnapPublicRepository
     }
 
     public function archivePhotographCount(int $categoryId = 0, int $albumId = 0): int {
+        $ix = $this->imageFilter('exclude_from_archive', 'i');
         $scope = '';
         $params = [];
         if ($categoryId > 0) {
@@ -423,7 +776,7 @@ final class SnapPublicRepository
         }
         $stmt = $this->pdo->prepare(
             "SELECT COUNT(i.id) FROM snap_images i
-             WHERE i.img_status='published' AND i.img_date <= NOW()
+             WHERE i.img_status='published' AND i.img_date <= NOW(){$ix}
                AND NOT EXISTS (
                     SELECT 1 FROM snap_posts p
                     WHERE p.signature_image_id=i.id
@@ -435,22 +788,46 @@ final class SnapPublicRepository
     }
 
     public function publicCategories(): array {
+        $ix = $this->imageFilter('exclude_from_archive', 'i');
+        // The cover used to be picked with
+        //   SUBSTRING_INDEX(GROUP_CONCAT(i.img_file ORDER BY i.id DESC SEPARATOR ..),..,1)
+        // which is MySQL-only: SQLite cannot parse GROUP_CONCAT's SEPARATOR
+        // clause at all, so this query could not be exercised in any harness on
+        // this machine and its behaviour went untested. A query testable on one
+        // engine is a query that mostly does not get tested.
+        //
+        // The correlated subquery below asks the SAME question -- the img_file
+        // of the highest-id qualifying image in this category -- and runs on
+        // both engines. ORDER BY i2.id is a UNIQUE key, so there are no ties to
+        // break and no tie-breaking behaviour can differ between the two forms.
+        //
+        // It carries the SAME exclusion predicate as the COUNT beside it. A
+        // cover drawn from an excluded photograph while the count excludes it is
+        // exactly the drift this feature keeps tripping over.
+        $ix2 = $this->imageFilter('exclude_from_archive', 'i2');
         return $this->all(
             "SELECT c.id,c.cat_name,COUNT(DISTINCT i.id) AS photograph_count,
-                    SUBSTRING_INDEX(GROUP_CONCAT(i.img_file ORDER BY i.id DESC SEPARATOR '\n'),'\n',1) AS cover_path
+                    (SELECT i2.img_file
+                       FROM snap_images i2
+                       JOIN snap_image_cat_map m2 ON m2.image_id=i2.id AND m2.cat_id=c.id
+                      WHERE i2.img_status='published' AND i2.img_date <= NOW(){$ix2}
+                      ORDER BY i2.id DESC LIMIT 1) AS cover_path
              FROM snap_categories c
              JOIN snap_image_cat_map m ON m.cat_id=c.id
              JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW()
-             WHERE c.show_in_archive=1
+             WHERE c.show_in_archive=1{$ix}
              GROUP BY c.id,c.cat_name ORDER BY c.cat_name ASC"
         );
     }
 
     public function search(string $term, int $limit = 50, int $offset = 0): array {
+        $ix = $this->imageFilter('exclude_from_search', 'i');
+        $px = $this->postFilter('exclude_from_search', '');
         $like = '%' . $term . '%';
         $tagLike = '%' . strtolower($term) . '%';
         $limit = max(1, min(100, $limit));
         $offset = max(0, $offset);
+        $med = $this->mediumThumbSelect('i.');
         return [
             'photographs' => $this->all(
                 // img_width and img_height are NOT optional here. A wall tile
@@ -459,11 +836,11 @@ final class SnapPublicRepository
                 // came back on their side. Every other tile query in this file
                 // already selects them; this one did not. (SS-1029, SS-1030.)
                 "SELECT DISTINCT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,
-                        i.img_file,i.img_thumb_square,i.img_thumb_aspect,i.img_width,i.img_height
+                        i.img_file,i.img_thumb_square,i.img_thumb_aspect{$med},i.img_width,i.img_height
                  FROM snap_images i
                  LEFT JOIN snap_image_tags it ON it.image_id=i.id
                  LEFT JOIN snap_tags t ON t.id=it.tag_id
-                 WHERE i.img_status='published' AND i.img_date <= NOW()
+                 WHERE i.img_status='published' AND i.img_date <= NOW(){$ix}
                    AND (i.img_title LIKE ? OR i.img_description LIKE ? OR i.img_alt LIKE ? OR t.slug LIKE ?
                         OR EXISTS (SELECT 1 FROM snap_image_album_map sam JOIN snap_albums a ON a.id=sam.album_id
                                    WHERE sam.image_id=i.id AND a.album_name LIKE ?)
@@ -475,7 +852,7 @@ final class SnapPublicRepository
             'posts' => $this->all(
                 "SELECT id,title,slug,description,post_type,created_at,featured_image_id
                  FROM snap_posts
-                 WHERE status='published' AND created_at <= NOW()
+                 WHERE status='published' AND created_at <= NOW(){$px}
                    AND (title LIKE ? OR description LIKE ? OR content LIKE ?)
                  ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?",
                 [$like, $like, $like, $limit, $offset]
@@ -484,9 +861,11 @@ final class SnapPublicRepository
     }
 
     public function hashtagPhotographs(string $slug, int $limit, int $offset = 0): array {
+        $med = $this->mediumThumbSelect('i.');
         return $this->all(
             "SELECT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,i.img_file,
-                    i.img_thumb_square,i.img_thumb_aspect,i.post_id,t.id AS tag_id,t.tag,t.slug AS tag_slug
+                    i.img_thumb_square,i.img_thumb_aspect{$med},i.img_width,i.img_height,
+                    i.post_id,t.id AS tag_id,t.tag,t.slug AS tag_slug
              FROM snap_tags t JOIN snap_image_tags it ON it.tag_id=t.id
              JOIN snap_images i ON i.id=it.image_id
              WHERE t.slug=? AND i.img_status='published' AND i.img_date <= NOW()
@@ -507,11 +886,12 @@ final class SnapPublicRepository
     }
 
     public function adjacentPosts(int $id, string $type, bool $next): ?array {
+        $px = $this->postFilter('exclude_from_archive', '');
         $op = $next ? '>' : '<';
         $direction = $next ? 'ASC' : 'DESC';
         return $this->one(
             "SELECT id,title,slug,created_at FROM snap_posts
-             WHERE post_type=? AND status='published' AND created_at <= NOW() AND id {$op} ?
+             WHERE post_type=? AND status='published' AND created_at <= NOW(){$px} AND id {$op} ?
              ORDER BY id {$direction} LIMIT 1",
             [$type, $id]
         );
@@ -535,6 +915,45 @@ final class SnapPublicRepository
              WHERE img_status='published' AND img_date <= NOW()
              ORDER BY id {$direction} LIMIT 1"
         );
+    }
+
+    /**
+     * How many approved comments each of these photographs has. ONE QUERY.
+     *
+     * GLIDE's archive overlay shows a comment count on a tile before anybody
+     * opens the pane. Asking approvedComments() per tile would be fifty
+     * queries for a page of fifty, to render fifty numbers, and the obvious
+     * next step after that is somebody deciding the count is not worth having.
+     *
+     * Returns [image_id => count] and only for ids that HAVE approved
+     * comments -- the caller reads it as `?? 0`, so a photograph with none
+     * costs nothing to represent. An empty id list returns an empty array
+     * without touching the database.
+     *
+     * Same three conditions as approvedComments(): approved, not spam, keyed
+     * on img_id. If that filter ever changes there, it has to change here, and
+     * a count that disagreed with the list it previews would be worse than no
+     * count.
+     */
+    public function approvedCommentCountsFor(array $imageIds): array {
+        $ids = [];
+        foreach ($imageIds as $id) {
+            $id = (int)$id;
+            if ($id > 0) $ids[$id] = true;
+        }
+        if ($ids === []) return [];
+        $ids = array_keys($ids);
+        $marks = implode(',', array_fill(0, count($ids), '?'));
+        $rows = $this->all(
+            "SELECT img_id, COUNT(*) AS n
+             FROM snap_comments
+             WHERE img_id IN ({$marks}) AND is_approved=1 AND is_spam=0
+             GROUP BY img_id",
+            $ids
+        );
+        $out = [];
+        foreach ($rows as $row) $out[(int)($row['img_id'] ?? 0)] = (int)($row['n'] ?? 0);
+        return $out;
     }
 
     public function approvedComments(?int $imageId, ?int $postId): array {
@@ -604,13 +1023,24 @@ final class SnapPublicRepository
     }
 
     public function publicAlbums(): array {
+        $ix = $this->imageFilter('exclude_from_archive', 'i');
+        // Same rewrite as publicCategories and for the same reason. The MANUAL
+        // cover still wins through COALESCE exactly as before; only the
+        // FALLBACK changed, from the MySQL-only GROUP_CONCAT trick to the
+        // correlated subquery that asks the same question.
+        $ix2 = $this->imageFilter('exclude_from_archive', 'i2');
         return $this->all(
             "SELECT a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id,
                     COUNT(DISTINCT i.id) AS photograph_count,
-                    COALESCE(ci.img_file,SUBSTRING_INDEX(GROUP_CONCAT(i.img_file ORDER BY i.id DESC SEPARATOR '\n'),'\n',1)) AS cover_path
+                    COALESCE(ci.img_file,
+                             (SELECT i2.img_file
+                                FROM snap_images i2
+                                JOIN snap_image_album_map m2 ON m2.image_id=i2.id AND m2.album_id=a.id
+                               WHERE i2.img_status='published' AND i2.img_date <= NOW(){$ix2}
+                               ORDER BY i2.id DESC LIMIT 1)) AS cover_path
              FROM snap_albums a
              JOIN snap_image_album_map m ON m.album_id=a.id
-             JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW()
+             JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW(){$ix}
              LEFT JOIN snap_images ci ON ci.id=COALESCE(a.cover_image_id,a.featured_post_id)
              GROUP BY a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id,ci.img_file
              ORDER BY a.album_name ASC,a.id ASC"
@@ -665,9 +1095,11 @@ final class SnapPublicRepository
     }
 
     public function collectionPhotographs(string $slug): array {
+        $med = $this->mediumThumbSelect('i.');
         return $this->all(
             "SELECT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,i.img_file,
-                    i.img_thumb_square,i.img_thumb_aspect,ci.position,ci.caption
+                    i.img_thumb_square,i.img_thumb_aspect{$med},i.img_width,i.img_height,
+                    ci.position,ci.caption
              FROM snap_collections c JOIN snap_collection_items ci ON ci.collection_id=c.id
              JOIN snap_images i ON i.id=ci.image_id
              WHERE c.slug=? AND c.published=1 AND i.img_status='published' AND i.img_date <= NOW()

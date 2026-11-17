@@ -15,7 +15,7 @@
  */
 
 $page_title       = 'BUZZERS! — SnapSmack Security Audits';
-$page_description = 'Every security audit we have run and closed. Transparency and accountability, in public.';
+$page_description = 'Every security audit we have filed, including honest open work and verified closures.';
 $page_og_url      = 'https://snapsmack.ca/buzzers.php';
 $nav_active       = 'buzzers';
 
@@ -151,7 +151,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="page-header">
         <div class="wrap">
             <h1>BUZZERS!</h1>
-            <p class="lede">Every security audit we've run and closed. Out in the open, on purpose.</p>
+            <p class="lede">Every security audit we've filed. Open or closed, out in the open on purpose.</p>
         </div>
     </div>
 
@@ -163,7 +163,7 @@ require_once __DIR__ . '/includes/header.php';
                     <cite>&mdash; Mark Twain</cite>
                 </blockquote>
                 <p>We believe a photographer should be able to see how the software guarding their life's work actually holds up — not take our word for it. So here it is: the security audits we've run on SnapSmack and its companion tools, the findings, and the releases that closed them.</p>
-                <p><strong>Transparency and accountability aren't a marketing line here, they're the deal.</strong> Claude and Codex run ongoing security audits of the codebase; high and medium-risk findings are fixed immediately, low-risk ones on a schedule. The reports below are the closed ones — issues found, issues fixed, dated and signed. What you won't find is a report describing a live, serious hole that's still open: publishing the blueprint for an unpatched break-in would put every SnapSmack site at risk, which is the opposite of protecting you. Those stay private until they're fixed, and then they show up here. That's responsible disclosure, and it's the honest version of "we take security seriously."</p>
+                <p><strong>Transparency and accountability aren't a marketing line here, they're the deal.</strong> Claude, Codex and Muse run ongoing security audits of the codebase. The register below includes closed findings and honest open work. When a finding is still open, we publish its class, severity, status and remediation direction while withholding the paths, payloads and reproduction steps that would turn a record into instructions for attacking an unpatched site. When it closes, the verification and remaining limits are added. That's responsible disclosure, and it's the honest version of "we take security seriously."</p>
                 <p><strong>And here's how we audit.</strong> The standard every one of these audits works from &mdash; the method, not the current state of any specific control &mdash; is public too: <a class="report-link" href="secaudits/SECAUDIT-PROCESS-PUBLIC.pdf" target="_blank" rel="noopener">read our audit standard &rarr;</a></p>
                 <div class="slang">
                     <p><strong>"Buzzers"?</strong> Victorian thieves' cant. To <em>buzz</em> was to pick pockets, and a <em>buzzer</em> was the pickpocket — the one working the crowd for whatever wasn't nailed down. This is the page where we show our work against the buzzers.</p>
@@ -174,9 +174,13 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="post-index">
         <div class="wrap">
-            <h3>Closed Audits</h3>
+            <h3>Audit Register</h3>
             <ol>
+                <li><span class="idx-date">Nov 15</span><a href="#a064">Breach Response &mdash; API Writes Now Stop When Integrity Is Lost</a></li>
+                <li><span class="idx-date">Nov 8</span><a href="#a065">Injection Sweep &mdash; No Working Path Found, Hardening Debt Named</a></li>
+                <li><span class="idx-date">Nov 3</span><a href="#a063">Code Placement &mdash; Skin Boundary Passed, Policy and Packaging Gaps Remain</a></li>
                 <li><span class="idx-date">Oct 21</span><a href="#a062">Upstream PHP Emergency &mdash; SnapSmack Infrastructure Patched and Verified</a></li>
+                <li><span class="idx-date">Oct 19</span><a href="#a061">Fleet Enrollment &mdash; Step-Up Provenance Can Be Manufactured</a></li>
                 <li><span class="idx-date">Oct 6</span><a href="#a060">Skin-Boundary Migration Integrity &mdash; Independent Findings and Ratcheted Closeout</a></li>
                 <li><span class="idx-date">Oct 6</span><a href="#a059">Skin Execution Boundary &mdash; Authority Removed, Presentation Follow-Up Named</a></li>
                 <li><span class="idx-date">Sep 18</span><a href="#a058">Codebase Sweep &mdash; A Photo Editor That Mailed Its Key to Google, and a Restore That Never Looked Before It Unpacked</a></li>
@@ -242,6 +246,31 @@ require_once __DIR__ . '/includes/header.php';
     <section class="posts">
         <div class="wrap">
 
+            <article class="post" id="a064">
+                <div class="post-meta"><span class="post-date">November 11, 2026 &mdash; closed in source November 15</span><span class="post-tag">High Containment Finding Closed in Source</span></div>
+                <h2>Breach Response &mdash; Detection Now Stops Authenticated API Writes</h2>
+                <p>The integrity monitor could lock the administrator interface after detecting tampered files, but the machine-facing write surfaces did not consult that state. A site could say BREACH on its own dashboard while continuing to accept remote content, configuration and relationship changes. That was a HIGH containment failure: detection existed, but it did not contain the condition it detected.</p>
+                <p>The incorporated gate now refuses authenticated writes while breach state is unresolved and fails closed when that state cannot be read. Safe reads remain available so fleet monitoring can still tell the owner what is wrong, and signed updates remain available so the owner can repair the site. Dedicated regression coverage exercises the three integrity states, read and write methods, authorization presence, exemptions, header fallbacks, default-deny fleet actions and placement before the individual API surfaces.</p>
+                <p>This is closed in source, not declared deployed everywhere. The exact patch was independently reviewed and the full top-level PHP suite passed at integration. No installed site or live fleet member was placed into breach for this audit, and owner acceptance is not checked.</p>
+                <a class="report-link" href="secaudits/2026-11-11-064-breach-response-api-write-gate.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a065">
+                <div class="post-meta"><span class="post-date">November 8, 2026</span><span class="post-tag">Sweep Complete &mdash; Hardening Findings Open</span></div>
+                <h2>Injection and Prepared Statements &mdash; 2,877 PDO Calls Classified</h2>
+                <p>The sweep classified 2,877 production PDO call sites and hand-read the dynamic-looking patterns. It found no working SQL-injection path in the classified sites: no request superglobal reached SQL text, emulated prepares were disabled, and user values at inspected prepared statements reached SQL through placeholders. That is a strong result, but not a claim that injection is impossible; this was a source-pattern review at one fixed revision, not live payload testing.</p>
+                <p>One MEDIUM semantic and performance issue remains open: percent and underscore characters in search terms retain SQL wildcard meaning. They cannot change the SQL grammar, but can widen a search and increase its cost. Three LOW items remain open too: no central query-enforcement boundary, a server date unnecessarily interpolated into one query, and a redundant integer-cast administrative re-query. Two additional shapes were recorded as trust assumptions rather than demonstrated defects.</p>
+                <a class="report-link" href="secaudits/2026-11-08-065-injection-prepared-statement-sweep.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a063">
+                <div class="post-meta"><span class="post-date">November 3, 2026</span><span class="post-tag">Boundary Passed &mdash; Policy Debt Open</span></div>
+                <h2>Code Placement &mdash; Presentation Stayed in Skins, but the Boundary Still Has Gaps</h2>
+                <p>The audited skin tree passed the central rule: thirty skins, one layout template each, no skin-owned JavaScript and no application-authority markers in those layouts. The review nevertheless found policy gaps around SVG and JSON content inspection, one relative cross-skin stylesheet import, and core files and identifiers that still name individual skins beyond what the existing quoted-slug ratchet can enforce.</p>
+                <p>The differential release builder also had no path exclusion for changed PHP tests. A reviewed fix exists on a branch but is not incorporated into the current development line, so the register says OPEN rather than pretending that prepared code is shipped code. Marketing, network additions, large commits and vendored-file checks passed at their stated evidence level. Tests were read but not run for the original audit, and no installed site was checked.</p>
+                <a class="report-link" href="secaudits/2026-11-03-063-code-placement-boundary-review.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
             <article class="post" id="a062">
                 <div class="post-meta"><span class="post-date">October 21, 2026</span><span class="post-tag">Upstream Emergency Closed</span></div>
                 <h2>PHP2Shell &mdash; The Infrastructure SnapSmack Relies On Was Patched and Checked</h2>
@@ -249,6 +278,15 @@ require_once __DIR__ . '/includes/header.php';
                 <p>The emergency response covered the infrastructure SnapSmack relies upon, including production sites, SMACK CENTRAL, forums, the skin registry and repository, directory services, and the Pixelfed applications. CT101 through CT106 were upgraded to PHP 8.4.27; CT107 and CT108 were rebuilt on PHP 8.5.12. Apache and application services were validated, both Pixelfed routes returned HTTP 200, and CT110 was confirmed to be MariaDB-only and outside PHP scope.</p>
                 <p>Cloudflare&rsquo;s managed php2shell protections were confirmed active as defense in depth; patched PHP remained the primary fix. A thirty-installation integrity sweep found twenty-nine clean sites and one already-known deliberate hotfix, with no unexplained modifications or evidence of exploitation. The audit closes the infrastructure event without mislabelling an upstream runtime failure as a SnapSmack product flaw.</p>
                 <a class="report-link" href="secaudits/2026-10-21-062-upstream-php-emergency-infrastructure-assurance.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a061">
+                <div class="post-meta"><span class="post-date">October 19, 2026</span><span class="post-tag">High Authorization Findings Open</span></div>
+                <h2>Fleet Enrollment &mdash; Database State Was Accepted as Proof of Step-Up</h2>
+                <p>SnapSmack requires password-plus-two-factor step-up before a site joins a fleet. The audit found that the durable state created by that workflow was accepted as proof that the workflow had happened. A privileged operator with database access could manufacture the expected state and create a functioning relationship without completing the protected application ceremony.</p>
+                <p>Three HIGH findings and one MEDIUM auditability finding remain open. The protocol needs a signed, scoped, short-lived grant whose signing authority is outside the database; both sides need independent approval provenance; and one append-only record must bind the two approvals to the relationship and its later revocation. The operating rule is already corrected: infrastructure access describes capability, not authorization, and no site may join a hub without explicit owner approval plus fresh protected authentication.</p>
+                <p>No external exploitation or confidentiality loss was found. While the control remains open, the public report names the class, severity, status and remediation direction but deliberately omits database field names, request paths, payloads, relationship material and reproduction steps.</p>
+                <a class="report-link" href="secaudits/2026-10-19-061-fleet-enrollment-step-up-provenance.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
             <article class="post" id="a060">
@@ -557,7 +595,7 @@ require_once __DIR__ . '/includes/header.php';
             <article class="post" id="a028">
                 <div class="post-meta"><span class="post-date">June 20, 2026</span><span class="post-tag">Closed</span></div>
                 <h2>Dev-File Leak &amp; SMACKBACK Blind Spot</h2>
-                <p>Closed a path where development-only files could be swept into a release package, plus a SMACKBACK blind spot around the release-staging directory. The integrity monitor now flags leaked central code if it ever lands on a normal install. Closed in 0.7.317.</p>
+                <p><strong>CLOSED in 0.7.992D:</strong> stale root sc-config.php removed from all affected sites.</p>
                 <a class="report-link" href="secaudits/2026-06-20-028-package-dev-file-leak-and-smackback-blindspot.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
             </article>
 
@@ -730,7 +768,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>Found Something? Tell Us.</h2>
             <p>SnapSmack is not bulletproof. No software is, and anyone who tells you theirs is, is lying. If you've found a security issue, we want to know about it — and we'd rather you tell us quietly than tell the internet.</p>
-            <p>Report it privately through the SnapSmack support forum rather than posting details in public, and give us a chance to close it before it's common knowledge. That's the same courtesy we extend to you: we don't publish the details of a serious, open issue until it's fixed. Once it's closed, it joins the list above. <a href="https://github.com/baddaywithacamera/snapsmack" target="_blank" rel="noopener">The codebase is public and open to inspection at any time</a> — if you find something we missed, that's a contribution, and it's welcome.</p>
+            <p>Report it privately through the SnapSmack support forum rather than posting details in public, and give us a chance to contain it before it becomes common knowledge. Open findings can appear above without the paths, payloads and reproduction steps that would endanger an unpatched site; closure adds the full remediation and verification record. <a href="https://github.com/baddaywithacamera/snapsmack" target="_blank" rel="noopener">The codebase is public and open to inspection at any time</a> — if you find something we missed, that's a contribution, and it's welcome.</p>
         </div>
     </section>
 </main>

@@ -386,7 +386,7 @@ class SnapSmack {
             $id = (int)$m[1];
 
             try {
-                $stmt = $this->pdo->prepare("SELECT asset_ids, focus_positions, gap, emphasis, layout FROM snap_mosaics WHERE id = ? LIMIT 1");
+                $stmt = $this->pdo->prepare("SELECT asset_ids, focus_positions, gap, emphasis, layout, gallery_shuffle FROM snap_mosaics WHERE id = ? LIMIT 1");
                 $stmt->execute([$id]);
                 $mosaic = $stmt->fetch(\PDO::FETCH_ASSOC);
             } catch (\PDOException $e) {
@@ -403,6 +403,22 @@ class SnapSmack {
 
             $image_ids = json_decode($mosaic['asset_ids'] ?? '[]', true);
             if (!is_array($image_ids) || empty($image_ids)) return '';
+
+            // SS-1185. Six of the galleries migrating from mccormickphotography.com
+            // were owner-random in WordPress. This is where that becomes visible.
+            //
+            // PRESENTATION, NOT STORAGE: asset_ids above is the authored order and
+            // is never rewritten. Turning shuffle off gives the arranged sequence
+            // back exactly, and a gallery re-randomised on disk at every page view
+            // would have no authored order left after the first view and no way
+            // back. The ordering helper is pure and proven a permutation, so no
+            // photograph is lost or repeated.
+            //
+            // The older 3-column SELECT in the fallback above has no
+            // gallery_shuffle, so an install mid-schema-sync simply keeps the
+            // authored order rather than erroring.
+            require_once __DIR__ . '/gallery-order.php';
+            $image_ids = snap_gallery_present_order($image_ids, !empty($mosaic['gallery_shuffle']));
             $focus_positions = json_decode($mosaic['focus_positions'] ?? '{}', true);
             if (!is_array($focus_positions)) $focus_positions = [];
             $gap = max(0, min(20, (int)($mosaic['gap'] ?? 4)));
@@ -883,9 +899,42 @@ class SnapSmack {
      * Looks up the asset in snap_assets first, falls back to snap_images.
      * Supports size variants (small/wall/full) and alignment (left/center/right).
      */
+    /**
+     * The first of $candidates that is really on disk, else $fallback.
+     *
+     * SS-1316. A derivative path that is merely CONVENTIONAL is a guess, and a
+     * guess rendered into an <img src> is a broken photograph on a reader's
+     * screen. Paths are relative to the install root, which is this file's
+     * parent; anything empty or containing .. is skipped rather than trusted.
+     *
+     * If the root cannot be determined the ORIGINAL is returned, never a
+     * guessed thumbnail: a full-size image is heavier but it is always there.
+     */
+    private function first_existing_image(array $candidates, string $fallback): string
+    {
+        $root = dirname(__DIR__);
+        if ($root === '' || !is_dir($root)) {
+            return $fallback;
+        }
+        foreach ($candidates as $candidate) {
+            $candidate = ltrim((string)$candidate, '/');
+            if ($candidate === '' || strpos($candidate, '..') !== false) {
+                continue;
+            }
+            if (is_file($root . '/' . $candidate)) {
+                return $candidate;
+            }
+        }
+        return $fallback;
+    }
+
     private function parseImages($content) {
         return preg_replace_callback(
-            '/\[img:\s*(g)?\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?(?:\s*\|\s*(\d{1,3})(?:%)?)?\s*\]/i',
+            // SS-1356 adds an optional trailing |decorative. Each earlier part
+            // is independently optional, so [img:5|decorative] matches with the
+            // size, align and width groups empty, and
+            // [img:5|small|left|30|decorative] matches with all of them.
+            '/\[img:\s*(g)?\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?(?:\s*\|\s*(\d{1,3})(?:%)?)?(?:\s*\|\s*(decorative))?\s*\]/i',
             function ($matches) {
                 $gallery = !empty($matches[1]);   // optional 'g' prefix ([img:gID]) forces Gallery
                 $id      = $matches[2];
@@ -894,6 +943,14 @@ class SnapSmack {
                 $width   = isset($matches[5]) && $matches[5] !== ''
                     ? max(20, min(100, (int)$matches[5]))
                     : 100;
+                // SS-1356. A DECORATIVE image is furniture, not a photograph.
+                // Sean's signature was rendered asset-full and wired into the
+                // lightbox, so it showed at full width on the-idea and counted
+                // as one of the page's two photographs; clicking it opened the
+                // photo viewer. There was no way to say "this is an image but
+                // it is not one of the pictures" -- width could be reduced and
+                // nothing else could.
+                $decorative = isset($matches[6]) && $matches[6] !== '';
 
                 $asset = false;
 
@@ -904,7 +961,7 @@ class SnapSmack {
                     // tables number from 1, so a plain [img:ID] would resolve the
                     // Library asset of the same id first. snap_images has no border
                     // columns; defaults leave it borderless.
-                    $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt, img_width as width, img_height as height FROM snap_images WHERE id = ? LIMIT 1");
+                    $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt, img_width as width, img_height as height, img_thumb_aspect as thumb_aspect, img_thumb_square as thumb_square FROM snap_images WHERE id = ? LIMIT 1");
                     $stmt->execute([$id]);
                     $asset = $stmt->fetch();
                 } else {
@@ -915,7 +972,7 @@ class SnapSmack {
                     // Fallback SELECT (no border cols) protects blogs where the schema
                     // sync hasn't added the columns yet — avoids an Unknown-column fatal.
                     try {
-                        $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name, asset_alt as alt, asset_border_width as bw, asset_border_color as bc FROM snap_assets WHERE id = ? LIMIT 1");
+                        $stmt = $this->pdo->prepare("SELECT asset_path as path, asset_name as name, asset_alt as alt, asset_caption as caption, asset_border_width as bw, asset_border_color as bc FROM snap_assets WHERE id = ? LIMIT 1");
                         $stmt->execute([$id]);
                         $asset = $stmt->fetch();
                     } catch (\PDOException $e) {
@@ -927,7 +984,7 @@ class SnapSmack {
                     // --- FALLBACK TO SNAP_IMAGES (PRIORITY 2) ---
                     // snap_images has no border columns; defaults leave it borderless.
                     if (!$asset) {
-                        $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt, img_width as width, img_height as height FROM snap_images WHERE id = ? LIMIT 1");
+                        $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt, img_width as width, img_height as height, img_thumb_aspect as thumb_aspect, img_thumb_square as thumb_square FROM snap_images WHERE id = ? LIMIT 1");
                         $stmt->execute([$id]);
                         $asset = $stmt->fetch();
                     }
@@ -951,10 +1008,59 @@ class SnapSmack {
                 $filename = basename($raw_path);
                 $folder   = str_replace($filename, '', $raw_path);
 
-                if ($size === 'small' && strpos($raw_path, 'uploads/') !== false) {
-                    $final_path = $folder . 'thumbs/t_' . $filename;
-                } elseif ($size === 'wall' && strpos($raw_path, 'uploads/') !== false) {
-                    $final_path = $folder . 'thumbs/wall_' . $filename;
+                // SS-1316. A RETIREMENT THAT LEFT ITS CALLER BEHIND. This line
+                // built 'thumbs/wall_<file>'. Those thumbnails USED to be
+                // generated and the generation was removed -- backfill-thumbs.php
+                // still tells owners so, and tells them to delete any wall_*
+                // files they still have. Nothing in the current product writes
+                // one, and this line was its only remaining builder. So the wall
+                // size has pointed at a 404 for everything uploaded since that
+                // change, and for anything whose old file was deleted on that
+                // advice.
+                //
+                // CORRECTION, after Muse: I first wrote that the file "never
+                // existed" and that this was the only occurrence of wall_ in the
+                // product. Both were overstated. It existed and was retired, and
+                // wall_ appears elsewhere as an unrelated string. The defect and
+                // the fix are unchanged; the history was wrong.
+                //
+                // It surfaced on a SMACKPRESS migration because 23 photographs
+                // went up at once and every one showed broken, while the same
+                // ids with |full rendered fine.
+                //
+                // Generating wall_ at upload would fix nothing already on disk:
+                // every photograph on every live site predates it and would
+                // still 404 until somebody backfilled 25 sites. The RENDERER
+                // falls back instead, which repairs every existing image at once
+                // and needs no migration.
+                //
+                // Each candidate is checked ON DISK before it is chosen, so a
+                // missing derivative can never be served as a broken image
+                // again. WALL takes the stored aspect thumb, then the
+                // conventional a_ path, then the original -- no square
+                // candidate, because a square crop is the wrong shape for a
+                // wall. SMALL takes its square thumb first and may fall back to
+                // the aspect one, which is the wrong shape but is a real image
+                // rather than a hole. (Muse caught this comment describing the
+                // wall order as aspect-square-original, which it is not.)
+                // FULL IS ALWAYS THE ORIGINAL. The first version of this sent
+                // every size through the fallback, and because the aspect thumb
+                // existed, |full started serving a thumbnail -- quietly degrading
+                // the one size whose entire job is to be the real photograph.
+                // The test caught it. Only the derivative sizes fall back.
+                if ($size === 'small') {
+                    $final_path = $this->first_existing_image([
+                        $folder . 'thumbs/t_' . $filename,
+                        ltrim((string)($asset['thumb_square'] ?? ''), '/'),
+                        ltrim((string)($asset['thumb_aspect'] ?? ''), '/'),
+                        $raw_path,
+                    ], $raw_path);
+                } elseif ($size === 'wall') {
+                    $final_path = $this->first_existing_image([
+                        ltrim((string)($asset['thumb_aspect'] ?? ''), '/'),
+                        $folder . 'thumbs/a_' . $filename,
+                        $raw_path,
+                    ], $raw_path);
                 } else {
                     $final_path = $raw_path;
                 }
@@ -966,14 +1072,55 @@ class SnapSmack {
                     ? sprintf(' data-w="%d" data-h="%d"', (int)$asset['width'], (int)$asset['height'])
                     : '';
 
+                // SS-1216: the owner's display CAPTION rides to the lightbox as a
+                // data attribute, emitted only when set. An empty caption emits no
+                // attribute at all, so the lightbox shows nothing -- never the
+                // surrounding page or post title.
+                $caption      = trim((string)($asset['caption'] ?? ''));
+                $caption_attr = $caption !== '' ? sprintf(' data-caption="%s"', htmlspecialchars($caption, ENT_QUOTES)) : '';
+
+                if ($decorative) {
+                    // NO data-lightbox-src AT ALL. assets/js/ss-engine-lightbox.js
+                    // wires every img[data-lightbox-src] and is behaving
+                    // correctly; the fix is not to emit the hook. Omitting the
+                    // attribute is also what keeps it out of the viewer's
+                    // previous/next sequence -- a decorative mark should never
+                    // be a step between two photographs.
+                    //
+                    // No zoom-in cursor either: a cursor that promises a click
+                    // which does nothing is worse than no affordance.
+                    //
+                    // THE MARKER IS A CLASS, NOT A data- ATTRIBUTE, and that is
+                    // not a style preference. The first version emitted
+                    // data-decorative="1" and core/trusted-html.php:109 STRIPPED
+                    // IT -- the img allow-list carries src, alt, title, class,
+                    // width, height, loading and data-lightbox-src, and nothing
+                    // else survives. My own test passed because it read the
+                    // parser's output instead of the sanitised output, which is
+                    // the wrong layer. Widening a security allow-list to carry
+                    // something `class` already carries would be the wrong trade
+                    // for a marker, so the class does the whole job.
+                    return sprintf(
+                        '<div class="snap-inline-frame snap-decorative align-%s" style="--snap-image-width:%d%%"><div class="ip-ascii-frame-inner"><img src="%s" class="%s snap-decorative-img" alt="%s" loading="lazy"%s style="%s"></div></div>',
+                        $align,
+                        $width,
+                        $full_src,
+                        $classes,
+                        snap_alt_attr($asset['alt'] ?? null, $asset['name'] ?? ''),
+                        $dimensions,
+                        $border_css
+                    );
+                }
+
                 return sprintf(
-                    '<div class="snap-inline-frame align-%s" style="--snap-image-width:%d%%"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy" data-lightbox-src="%s"%s style="cursor:zoom-in;%s"></div></div>',
+                    '<div class="snap-inline-frame align-%s" style="--snap-image-width:%d%%"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy" data-lightbox-src="%s"%s%s style="cursor:zoom-in;%s"></div></div>',
                     $align,
                     $width,
                     $full_src,
                     $classes,
                     snap_alt_attr($asset['alt'] ?? null, $asset['name'] ?? ''),
                     htmlspecialchars($full_url),
+                    $caption_attr,
                     $dimensions,
                     $border_css
                 );

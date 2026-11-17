@@ -22,7 +22,7 @@ $fedup_manifest_url = $fedup_track === 'dev'
 $fedup_target = __DIR__;
 define('FEDUP_BOOTSTRAP_VERSION', '0.7.899D');
 define('FEDUP_MINIMUM_DEV_VERSION', '0.7.899D');
-define('FEDUP_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');
+define('FEDUP_RELEASE_PUBKEY', 'c72e35ffd5a6bcf7225f749b2a4320f21bde6f4c253023290710792d7bd5c33e');
 
 if (is_file($fedup_target . '/core/fedistructure-package.php')
     && is_file($fedup_target . '/install.php')) {

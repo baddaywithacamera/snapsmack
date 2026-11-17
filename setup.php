@@ -51,7 +51,7 @@ define('SETUP_USER_AGENT', 'SnapSmack-Setup/1');
 
 // Ed25519 public key — must match core/release-pubkey.php in the release package.
 // If the installed key ever differs, smack-update.php has a repair tool.
-define('SETUP_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');
+define('SETUP_RELEASE_PUBKEY', 'c72e35ffd5a6bcf7225f749b2a4320f21bde6f4c253023290710792d7bd5c33e');
 
 // --- PHP VERSION GATE ---
 // The docblock at the top of this file has claimed "Requirements: PHP 8.3+"
@@ -175,6 +175,108 @@ function setup_dev_feed_is_stale(string $manifest_version): bool {
 
 // --- VERIFY PACKAGE ---
 /** @return string|true  Error message, or true. Return type left off: see the PHP VERSION GATE note. */
+/**
+ * A release URL with its query string replaced, safe to print on the page.
+ * SS-1293.
+ *
+ * The deployer prints the download address when a download fails, and it is the
+ * one screen where the reader has no logs, no admin and nowhere else to look —
+ * so they will reasonably screenshot it and send it to somebody for help. A
+ * query string is where a one-time token or a signing parameter lives. Today's
+ * release links carry neither, so nothing is leaking; this is the defence for
+ * the day one does, and it costs a line.
+ *
+ * The host and path are KEPT. They are the diagnostic part — wrong host, wrong
+ * channel, typo in a manifest — and dropping them would trade a real leak risk
+ * for a useless error message.
+ *
+ * Deliberately not a parser: a failed download URL may be malformed, and
+ * parse_url() returning false would turn a bad address into no address at all.
+ * Cutting at the first '?' is what is wanted and cannot fail.
+ */
+function setup_redact_url_query(string $url): string {
+    $at = strpos($url, '?');
+    return $at === false ? $url : substr($url, 0, $at) . '?[redacted]';
+}
+
+/**
+ * Say what failed, where, and why, when the release package cannot be written.
+ * SS-1198.
+ *
+ * The person reading this is standing in a browser on an empty directory with
+ * no SnapSmack installed and therefore no logs, no admin and nowhere else to
+ * look. "Check write permission" was all they got, and it is wrong as often as
+ * it is right: a read-only mount, a missing directory, a full disk, open_basedir
+ * and SELinux all land here and none of them is fixed by chmod.
+ *
+ * A pure function on purpose, so every branch can be exercised without a web
+ * server, a download or a broken disk. See
+ * tests/setup-package-write-diagnostic-regression.php.
+ *
+ * @param string     $target     The full path that was being written.
+ * @param array|null $last_error error_get_last() captured immediately after.
+ */
+function setup_write_failure_message(string $target, ?array $last_error): string {
+    $reason = '';
+    if (is_array($last_error) && isset($last_error['message']) && $last_error['message'] !== '') {
+        $reason = (string) $last_error['message'];
+
+        // REDACT FIRST, STRIP SECOND. If the write went through a stream
+        // wrapper the message can carry the URL, and a query string is exactly
+        // where a signed-URL token or a credential lives. Doing this before the
+        // prefix is removed means a URL is scrubbed whether it sits inside
+        // PHP's own call prefix or in the body of the reason — the prefix match
+        // is not something to depend on for a secret not leaking.
+        //
+        // ONE RULE, ONE PLACE (SS-1198 + SS-1293 fold). This used to carry its
+        // own copy of the pattern while the download-failure message above used
+        // setup_redact_url_query(). Two copies of a secret-handling rule is one
+        // too many: the day somebody improves one, the other keeps leaking.
+        $reason = (string) preg_replace_callback(
+            '#https?://\S+#i',
+            // A CLOSURE, NOT AN ARROW FUNCTION. setup.php must parse on PHP 7:
+            // it is the one file that runs BEFORE we know what version we are
+            // on, and PHP compiles the whole file before executing a line of
+            // it, so a PHP 8 construct anywhere in it turns the version gate's
+            // refusal into a blank white page. SS-1293 landed `static fn` here
+            // on 2026-11-11 and tests/setup-php-version-gate-regression.php has
+            // been failing since.
+            static function (array $m) {
+                return setup_redact_url_query($m[0]);
+            },
+            $reason
+        );
+
+        // PHP prefixes its own message with the failing call and repeats the
+        // path. The target is named below, so printing it twice only crowds out
+        // the part that matters.
+        $reason = (string) preg_replace('/^\s*file_put_contents\s*\([^)]*\)\s*:\s*/i', '', $reason);
+
+        $reason = trim($reason);
+    }
+
+    // Named operation, then the exact target, both escaped: a path is attacker-
+    // influenced on a shared host and this string is printed into a page.
+    $message = 'file_put_contents() failed writing the release package to '
+             . htmlspecialchars($target, ENT_QUOTES, 'UTF-8') . '.';
+
+    if ($reason !== '') {
+        $message .= ' PHP reported: ' . htmlspecialchars($reason, ENT_QUOTES, 'UTF-8') . '.';
+    } else {
+        // Silence is itself a clue, and the usual causes are the two that chmod
+        // does not touch.
+        $message .= ' PHP reported no reason, which usually points at an'
+                  . ' open_basedir restriction or SELinux rather than file mode.';
+    }
+
+    if ($reason !== '' && stripos($reason, 'permission denied') !== false) {
+        $message .= ' The web server user owns neither the file nor its directory:'
+                  . ' check ownership and ACLs on the directory, not only its mode.';
+    }
+
+    return $message;
+}
+
 function setup_verify(string $file_path, string $expected_sha256, string $signature_hex) {
     $actual = hash_file('sha256', $file_path);
     if ($actual === false) {
@@ -272,11 +374,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy'])) {
             $zip_file = $target_dir . '/snapsmack-install.zip';
             $zip_data = setup_fetch_url($release['download_url']);
             if (!$zip_data || strlen($zip_data) < 10000) {
-                $error = 'Failed to download release package from ' . htmlspecialchars($release['download_url']) . '.';
+                // SS-1293: the address is shown because it is the useful part of this
+                // failure, but without its query string. See setup_redact_url_query().
+                $error = 'Failed to download release package from '
+                       . htmlspecialchars(setup_redact_url_query((string)$release['download_url']), ENT_QUOTES, 'UTF-8') . '.';
             } else {
-                $written = file_put_contents($zip_file, $zip_data);
+                // SS-1198: the old message named only the containing directory
+                // and never asked PHP why. Somebody staring at "check write
+                // permission" has no way to tell a read-only mount from a
+                // missing directory from SELinux, and the deployer is the one
+                // place where the person reading the message has no logs yet.
+                //
+                // error_clear_last() first, error_get_last() IMMEDIATELY after:
+                // a stale warning from earlier in the request would otherwise
+                // be reported as this failure's cause, which is worse than
+                // saying nothing. @ keeps the raw warning out of the page while
+                // still recording it for error_get_last().
+                if (function_exists('error_clear_last')) { error_clear_last(); }
+                $written = @file_put_contents($zip_file, $zip_data);
                 if ($written === false) {
-                    $error = 'Could not write release package to disk — check that the web server has write permission to ' . htmlspecialchars($target_dir) . '.';
+                    $error = setup_write_failure_message($zip_file, error_get_last());
                 }
             }
         }

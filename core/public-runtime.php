@@ -12,6 +12,7 @@ require_once __DIR__ . '/public-controller.php';
 require_once __DIR__ . '/parser.php';
 require_once __DIR__ . '/archive-controls.php';
 require_once __DIR__ . '/consent-runtime.php';
+require_once __DIR__ . '/thomas-uid.php';
 
 /** Expand CMS-owned static-page shortcodes before the presentation-only skin sees them. */
 function snapsmack_public_parse_page_content(PDO $pdo, array $response): array
@@ -142,6 +143,102 @@ function snapsmack_public_community_block(PDO $pdo, array $settings, array $item
     return trim($html) === '' ? null : SnapTrustedHtml::__snapsmackCmsOnly($html);
 }
 
+/**
+ * SLICE 3: THE PREVIOUS AND NEXT PAGE AS LINKS, WITH THE FILTER IN THEM.
+ *
+ * previous_page and next_page are numbers. Turning a number into a link means
+ * knowing which route you are on and which filters are active, and a strict
+ * skin that assembled its own query string would drop the filter the moment
+ * anybody paged a filtered archive -- page 2 of "album: Doors" quietly becoming
+ * page 2 of everything. Codex asked not to assemble query strings in a layout
+ * and he is right: snap_route_url is allowlisted for skins, but the STATE to
+ * put in it is the CMS's to know.
+ *
+ * THREE PAGED ROUTES, THREE DIFFERENT STATES, which is why this is one place
+ * and not three skins:
+ *   archive  -- category and album
+ *   search   -- the query
+ *   hashtag  -- the tag slug
+ *
+ * SEARCH HAS NO previous_page AND SAYS next_page = 0 rather than null when
+ * there is no next. Both are left exactly as they are: a consumer testing
+ * !empty() cannot tell 0 from null, but one testing === 0 would break, and
+ * changing a shipped shape to tidy it is not worth that. The previous page for
+ * search is derived from the page number instead, which is the same arithmetic
+ * archive and hashtag already do for themselves.
+ *
+ * A FUNCTION RATHER THAN A BLOCK INSIDE THE RUNTIME, deliberately: inline, the
+ * only way to test it would have been to read the source and believe it, and I
+ * have spent today finding out what that is worth.
+ */
+function snapsmack_public_paging_urls(array $response): array
+{
+    // snap_route_url lives in skin-render-helpers.php. This file does not
+    // require it and I will not depend on index.php having loaded it first: an
+    // undefined function here is a fatal on every archive page on every site.
+    if (!function_exists('snap_route_url')) {
+        require_once __DIR__ . '/skin-render-helpers.php';
+    }
+    $kind = (string)($response['kind'] ?? '');
+    if (!in_array($kind, ['archive', 'search', 'hashtag', 'landing'], true)) return $response;
+
+    $pageNow = max(1, (int)($response['page'] ?? 1));
+    $state = [];
+    if ($kind === 'archive') {
+        $cat   = (int)($response['taxonomy']['category_id'] ?? 0);
+        $album = (int)($response['taxonomy']['album_id'] ?? 0);
+        if ($cat > 0)   $state['category'] = $cat;
+        if ($album > 0) $state['album'] = $album;
+    } elseif ($kind === 'search') {
+        // 'q' is what the router reads -- index.php:431 is
+        // $_GET['q'] -> runtime 'query'. Emitting the internal name produced a
+        // parameter nothing read, so page two lost the search term.
+        $q = (string)($response['query'] ?? '');
+        if ($q !== '') $state['q'] = $q;
+    } elseif ($kind === 'hashtag') {
+        $tag = (string)($response['slug'] ?? '');
+        if ($tag !== '') $state['slug'] = $tag;
+    }
+    // LANDING carries no filter, so its state stays empty -- page N of the feed
+    // and nothing else. It is here (SS-986D) so the smacktalk-feed and landing
+    // skins that page their front feed get a prepared, filter-safe next_url the
+    // same way the archive does, instead of a skin assembling ?p=N by hand (the
+    // engine's p=N fallback uses a parameter name the landing router never read).
+    // snap_route_url_raw has no 'landing' key; the landing route IS 'home' (the
+    // empty path), so the page number rides on the home route.
+    $routeName = $kind === 'landing' ? 'home' : $kind;
+
+    // next_page is a page number on archive and hashtag and 0-or-a-number on
+    // search, so read it as "a page after this one" and both shapes answer.
+    $next = (int)($response['next_page'] ?? 0);
+    $prev = (int)($response['previous_page'] ?? ($pageNow > 1 ? $pageNow - 1 : 0));
+
+    // RAW, NOT ESCAPED, and that is the contract: a strict skin MUST wrap
+    // every echo in an output helper -- core/skin-security-policy.php refuses
+    // a layout that does not -- so a pre-escaped url arrives at the browser
+    // double-escaped and the FILTER IS LOST on page two:
+    //
+    //   pre-escaped  /archive?category=street&amp;page=2
+    //   skin escapes /archive?category=street&amp;amp;page=2
+    //
+    // These two values exist to be printed by a template, so they are built
+    // with the raw helper and the template's own snap_escape_url() does the
+    // single escape. snap_route_url_raw() still applies the same scheme
+    // validation, so raw means un-escaped and never means unchecked.
+    // RELATIVE as well as raw, per the coordinator's ruling: same-origin path
+    // and query, no scheme, no host, no control characters. BASE_URL is
+    // absolute on every install, so the raw builder alone would hand a skin
+    // https://site.test/archive?... -- measured, not assumed.
+    $response['next_url'] = $next > $pageNow
+        ? snap_same_origin_path(snap_route_url_raw($routeName, $state + ['page' => $next])) : null;
+    // Page 2's previous is page 1, and page 1 is the route with NO page
+    // parameter: a ?page=1 in a link works and still looks like a mistake.
+    $response['previous_url'] = $prev >= 1
+        ? snap_same_origin_path(snap_route_url_raw($routeName, $prev > 1 ? $state + ['page' => $prev] : $state))
+        : null;
+    return $response;
+}
+
 function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): array
 {
     // OWNER CONTENT WINS over the reserved word 'archive'. Asked ONCE here,
@@ -170,6 +267,130 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
             && ((string)($settings['community_comments_enabled'] ?? '1') !== '0')
             && (($response['item']['allow_comments'] ?? '1') == '1');
     }
+    // SLICE 3: PAGING URLS WITH THE FILTER ALREADY IN THEM.
+    //
+    // previous_page and next_page are numbers. Turning a number into a link
+    // means knowing which route you are on and which filters are active, and a
+    // strict skin that assembled its own query string would drop the filter the
+    // moment anybody paged a filtered archive -- page 2 of "album: Doors"
+    // quietly becoming page 2 of everything. Codex asked not to assemble query
+    // strings in a layout and he is right: snap_route_url is allowlisted for
+    // skins, but the STATE to put in it is the CMS's to know.
+    //
+    // THREE PAGED ROUTES, THREE DIFFERENT STATES, and that is why this is one
+    // place rather than three skins:
+    //   archive  -- category and album
+    //   search   -- the query
+    //   hashtag  -- the tag slug
+    //
+    // SEARCH HAD NO previous_page AT ALL and says next_page = 0 rather than
+    // null when there is no next. Both are left exactly as they are: a consumer
+    // testing !empty() cannot tell 0 from null, but one testing === 0 would
+    // break, and changing a shipped shape to tidy it is not worth that. The
+    // previous page for search is derived here instead, from the page number,
+    // which is the same arithmetic archive and hashtag already do for
+    // themselves.
+    $response = snapsmack_public_paging_urls($response);
+
+    // AND THE SAME QUESTION, PER TILE, FOR AN ARCHIVE.
+    //
+    // GLIDE's archive overlay opens an Info/Comments pane over a tile, so it
+    // needs the two answers the single-photograph view has always had --
+    // whether comments are open on THIS photograph, and how many there are --
+    // for every item in the list. An archive item reached the skin with
+    // neither, so an overlay could only always offer the pane or never.
+    //
+    // THE RULE IS NOT RE-DERIVED, IT IS THE SAME THREE CONDITIONS as the block
+    // above: the global switch, the community-engine switch, and the
+    // photograph's own allow_comments. Writing a second, subtly different
+    // version of a permission test is how one page ends up disagreeing with
+    // another about whether comments are on.
+    //
+    // ONE QUERY FOR THE WHOLE PAGE. approvedCommentCountsFor() takes every id
+    // at once; fifty tiles do not mean fifty queries. The counts are only
+    // fetched when both site-wide switches are on, because when they are off
+    // the answer is zero for everything and the query would be waste.
+    //
+    // SEARCH IS IN THIS LIST NOW, and it is shaped differently: it returns
+    // 'results' (a map, with the photographs under 'photographs') rather than
+    // a flat 'items'. Codex found the gap wiring GLIDE's search -- "search
+    // results lack prepared comment metadata, unlike archive items" -- and
+    // said he would show only a post link when the state was unavailable. He
+    // should not have to: the same tile in a search deserves the same two
+    // answers as the same tile in an archive.
+    //
+    // Both shapes are enriched from ONE query. The ids are collected across
+    // every list first, so a search page is still a single
+    // approvedCommentCountsFor() call, and the permission test exists once --
+    // writing a second, subtly different copy is how one page ends up
+    // disagreeing with another about whether comments are on.
+    $_lists = [];
+    if (in_array(($response['kind'] ?? ''), ['archive', 'hashtag', 'albums', 'collections', 'landing'], true)
+        && is_array($response['items'] ?? null) && $response['items'] !== []) {
+        $_lists[] = ['items'];
+    }
+    if (($response['kind'] ?? '') === 'search' && is_array($response['results'] ?? null)) {
+        foreach ($response['results'] as $_group => $_rows) {
+            if (is_array($_rows) && $_rows !== []) $_lists[] = ['results', $_group];
+        }
+    }
+    if (($response['kind'] ?? '') === 'landing') {
+        foreach ($response['rows'] ?? [] as $_group => $_rows) {
+            if ($_rows !== []) $_lists[] = ['rows', $_group];
+        }
+    }
+    if ($_lists !== []) {
+        $_siteComments = ((string)($settings['global_comments_enabled'] ?? '1') !== '0')
+                      && ((string)($settings['community_comments_enabled'] ?? '1') !== '0');
+        $_counts = [];
+        if ($_siteComments) {
+            $_ids = [];
+            foreach ($_lists as $_path) {
+                $_rows = count($_path) === 1 ? $response[$_path[0]] : $response[$_path[0]][$_path[1]];
+                foreach ($_rows as $_it) {
+                    if (is_array($_it) && (int)($_it['id'] ?? 0) > 0) $_ids[] = (int)$_it['id'];
+                }
+            }
+            $_ids = array_values(array_unique($_ids));
+            if ($_ids !== []) $_counts = $repository->approvedCommentCountsFor($_ids);
+        }
+        foreach ($_lists as $_path) {
+            $_rows = count($_path) === 1 ? $response[$_path[0]] : $response[$_path[0]][$_path[1]];
+            foreach ($_rows as $_i => $_it) {
+                if (!is_array($_it)) continue;
+                $_open = $_siteComments && (($_it['allow_comments'] ?? '1') == '1');
+                $_rows[$_i]['comments_enabled'] = $_open;
+                $_rows[$_i]['comment_count'] = (int)($_counts[(int)($_it['id'] ?? 0)] ?? 0);
+            }
+            if (count($_path) === 1) $response[$_path[0]] = $_rows;
+            else $response[$_path[0]][$_path[1]] = $_rows;
+        }
+        unset($_siteComments, $_counts, $_ids, $_i, $_it, $_open, $_rows, $_path, $_group);
+    }
+    // SS-1386: the m_ candidate for every photograph on this page, prepared
+    // once and read by the image component. Keyed by the a_ path, because that
+    // is the url every skin passes the component; see core/image-srcset.php
+    // for why it is read rather than passed.
+    //
+    // THE SAME LISTS, which is the whole reason this sits here rather than in
+    // its own pass: $_lists already names every photograph list a grid prints
+    // -- items on archive, hashtag, albums, collections and landing, each
+    // search result group, and landing's rows, which are value copies made by
+    // the controller before this runs. A photograph with no m_ path is absent
+    // from the map and serves a_ alone, which is today's behaviour.
+    if ($_lists !== []) {
+        require_once __DIR__ . '/image-srcset.php';
+        $_srcsetLists = [];
+        foreach ($_lists as $_path) {
+            $_srcsetLists[] = count($_path) === 1
+                ? ($response[$_path[0]] ?? [])
+                : ($response[$_path[0]][$_path[1]] ?? []);
+        }
+        snap_image_srcset_prepare(snap_image_srcset_map($_srcsetLists));
+        unset($_srcsetLists, $_path);
+    }
+
+    unset($_lists);
     // The community block rides along with that gate: same three kinds, same
     // response. A skin renders it wherever its own stylesheet already puts
     // comments, so this reaches all 26 of them without a skin edit -- and so
@@ -197,6 +418,67 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     // so the row's stylesheet and its behaviour arrived only for the five
     // skins whose manifests happen to require those engines by name. Declaring
     // them here delivers both with the row that needs them: no manifest bump,
+    // SS-1323. THE HEART ON EACH TILE IS PREPARED HERE, NOT IN THE SKIN.
+    //
+    // A strict skin may print prepared view data and call components; it may
+    // NOT call a helper or run a query (AGENTS, and the security ratchet
+    // enforces it). So a layout cannot ask "has this visitor liked this
+    // photograph" forty times down a conveyor -- which is just as well,
+    // because forty questions is how a landing page becomes slow.
+    //
+    // One question for the whole page, asked once, here. Each item carries
+    // its own finished fragment, and the skin prints it through the
+    // 'tile-like' component. Codex found this boundary before placing the
+    // control on GLIDE and stopped, which is the reason this exists.
+    //
+    // OPT-IN BY MANIFEST. Nothing is prepared unless the active skin lists
+    // smack-tile-like in require_scripts, so a skin that has not asked for
+    // hearts neither renders them nor pays for the query. Declaring the
+    // handle is also what delivers the engine and its stylesheet, through
+    // core/asset-registry.php, so there is one switch rather than two.
+    $_tileRequires = is_array($input['skin_manifest']['require_scripts'] ?? null)
+        ? $input['skin_manifest']['require_scripts'] : [];
+    if (in_array('smack-tile-like', $_tileRequires, true)
+            && (!empty($response['items']) || !empty($response['rows']))) {
+        require_once __DIR__ . '/tile-like-control.php';
+        if (snap_tile_like_enabled($settings)) {
+            require_once __DIR__ . '/like-identity.php';
+            [$_tileUser, $_tileGuest] = snap_like_identity($pdo);
+
+            // EVERY LIST A SKIN MAY ITERATE, NOT JUST items.
+            //
+            // This annotated $response['items'] only. The controller builds
+            // $rows for GLIDE by VALUE COPY -- $rows[$index % 9][] = $item --
+            // before this runs, so a row's copy of a photograph never saw the
+            // heart, and GLIDE's layout iterates rows whenever the wall has
+            // photographs in it. The control would have appeared only on the
+            // empty-rows fallback: hearts exactly when there is nothing to
+            // like. Muse found it in final review, in the one seam the browser
+            // test could not see, because that test builds its own markup.
+            //
+            // Keyed by id and written back to both, so the two copies of the
+            // same photograph cannot disagree, and still ONE query for the
+            // page. Rows come in two shapes in this codebase -- a bare list of
+            // items, and ['items' => ..., 'full' => ...] -- and both are
+            // handled rather than assumed.
+            $_tileIds = snap_tile_like_ids($response);
+            $_tileLiked = snap_tile_like_state($pdo, $_tileIds, $_tileUser, $_tileGuest);
+            $_tileHtml = [];
+            foreach ($_tileIds as $_id) {
+                $_tileHtml[$_id] = snap_tile_like_html($_id, in_array($_id, $_tileLiked, true));
+            }
+            $response = snap_tile_like_annotate($response, $_tileHtml);
+            unset($_tileHtml);
+            $_tileAssets = snap_tile_like_assets();
+            foreach (['scripts', 'styles'] as $_kind) {
+                $response['required_assets'][$_kind] = array_values(array_unique(array_merge(
+                    (array)($response['required_assets'][$_kind] ?? []),
+                    (array)($_tileAssets[$_kind] ?? [])
+                )));
+            }
+        }
+    }
+
     // no repackage, no per-site skin update, exactly as the community block
     // and the shortcode stylesheets are delivered.
     if (in_array(($response['kind'] ?? ''), ['archive', 'hashtag'], true)) {
@@ -223,7 +505,11 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
             // engine as companions, which is the whole row: the panel that
             // opens, the search field, and the docked T/M group measuring
             // from the content column instead of the window.
-            ['smack-archive-toggle']
+            // smack-archive-cascade fades the grid in as a quick wave on load;
+            // it self-gates to the phase-one skin (NEW HORIZON) by body class
+            // and is fail-safe off, so loading it fleet-wide changes nothing on
+            // any other skin until its gate is widened.
+            ['smack-archive-toggle', 'smack-archive-cascade']
         )));
         if (!empty($_archiveControls['calendar']['enabled'])) {
             $response['required_assets']['scripts'] = array_values(array_unique(array_merge(
@@ -381,6 +667,42 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
         $engines['styles']
     )));
 
+    // SS-1315. THE ENGINES THE PREPARED CONTENT ACTUALLY NEEDS.
+    //
+    // On 0.7.993D a strict single longform page carried a valid 23-image
+    // mosaic payload and loaded neither the mosaic engine nor its stylesheet,
+    // so the mosaic rendered blank. Replacing it with 23 ordinary image
+    // shortcodes made the photographs appear but clicking them did nothing,
+    // because the same route omitted the lightbox too.
+    //
+    // WHY IT WAS MISSED: snapsmack_public_parse_page_content() registers the
+    // lightbox, but only for kind 'page' -- a STATIC page. A longform POST is
+    // a different kind and went down a branch that registered neither. Two
+    // routes, one of them taught and the other not, which is the same shape
+    // as the SMACKTALK engine gap recorded above this function.
+    //
+    // So this does not add another per-route list. It asks what the PREPARED
+    // CONTENT contains, at the one point every strict response passes
+    // through, which is what the ticket asked for: "whenever the prepared
+    // content requires them, and every strict desktop skin that renders
+    // longform content needs coverage."
+    //
+    // The handles are copied from core/admin-content-preview.php:27-30, which
+    // has had them right all along -- the admin preview rendered these
+    // mosaics correctly while the public page did not. Borrowing the working
+    // one rather than writing a second list.
+    $content_assets = snapsmack_assets_required_by_content($response);
+    if ($content_assets['scripts'] || $content_assets['styles']) {
+        $response['required_assets']['scripts'] = array_values(array_unique(array_merge(
+            (array)($response['required_assets']['scripts'] ?? []),
+            $content_assets['scripts']
+        )));
+        $response['required_assets']['styles'] = array_values(array_unique(array_merge(
+            (array)($response['required_assets']['styles'] ?? []),
+            $content_assets['styles']
+        )));
+    }
+
     // Worked out here because this is the last point that still has the
     // database. The component that prints it has neither.
     $GLOBALS['snapsmack_consent'] = snapsmack_consent_prepare($pdo, $settings);
@@ -391,6 +713,56 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
         $response[$group] = array_map(static fn($item) => is_array($item) ? $trustItem($item) : $item, $response[$group]);
     }
     return $response;
+}
+
+/**
+ * The engines a PREPARED response needs because of what is in it.
+ *
+ * SS-1315. Driven by the rendered markup, not by the route, because the route
+ * is what got this wrong: the static-page branch registered the lightbox and
+ * the longform branch did not, and every strict skin inherited the gap.
+ *
+ * The markers are what the parser actually emits, not guesses:
+ *   - core/parser.php:517 wraps a mosaic in  class="... snap-mosaic-wall"
+ *   - core/parser.php puts data-lightbox-src on every [img:] it renders
+ * Looking for the shortcode SOURCE instead would miss content that arrived
+ * already-rendered, and would fire on a shortcode inside a code sample.
+ *
+ * Every string a response might carry is searched -- the item's content and
+ * description, and the same fields on a list of items -- because a mosaic in
+ * an archive card needs the engine exactly as much as one in a post body.
+ */
+function snapsmack_assets_required_by_content(array $response): array
+{
+    $haystack = '';
+    $collect = static function ($node) use (&$haystack, &$collect): void {
+        if (is_string($node)) { $haystack .= $node; return; }
+        if (!is_array($node)) return;
+        foreach (['content', 'description', 'body', 'excerpt'] as $field) {
+            if (isset($node[$field]) && is_string($node[$field])) $haystack .= $node[$field];
+        }
+    };
+    $collect($response['item'] ?? null);
+    foreach (['items', 'photographs', 'slider_items', 'filmstrip'] as $group) {
+        if (!is_array($response[$group] ?? null)) continue;
+        foreach ($response[$group] as $entry) $collect($entry);
+    }
+    if ($haystack === '') return ['scripts' => [], 'styles' => []];
+
+    $scripts = $styles = [];
+    if (strpos($haystack, 'snap-mosaic-wall') !== false) {
+        // Handles copied from core/admin-content-preview.php:27-30.
+        $scripts[] = 'asset:public:ss-engine-mosaic';
+        $styles[]  = 'asset:public:ss-engine-mosaic:css';
+    }
+    // A mosaic is made of photographs somebody will click, so it needs the
+    // lightbox too -- that was the SECOND half of the fault, found only after
+    // the mosaic was replaced with plain images and they still did nothing.
+    if (strpos($haystack, 'data-lightbox-src') !== false
+        || strpos($haystack, 'snap-mosaic-wall') !== false) {
+        $scripts[] = 'asset:public:ss-engine-lightbox';
+    }
+    return ['scripts' => $scripts, 'styles' => $styles];
 }
 
 /**

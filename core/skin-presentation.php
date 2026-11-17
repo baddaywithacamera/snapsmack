@@ -6,6 +6,7 @@
  */
 declare(strict_types=1);
 
+require_once __DIR__ . '/font-stack.php';
 require_once __DIR__ . '/trusted-html.php';
 require_once __DIR__ . '/menu-presentation.php';
 require_once __DIR__ . '/public-skin-presentation.php';
@@ -256,6 +257,70 @@ function snapsmack_declared_skin_options(array $settings, string $skinSlug): arr
     return $out;
 }
 
+/**
+ * Clamp one posted skin-option value to the manifest before it is stored.
+ *
+ * Skin Admin's save path (smack-skin.php 4a) writes $_POST['skin_opt'] straight
+ * into scoped settings. Nothing stopped a stale or tampered POST storing a
+ * NUMBER under a control's floor -- e.g. a header font size below its minimum.
+ * The render path, snapsmack_declared_skin_options() above, already clamps the
+ * same bounds on the way out; this is the matching guard on the way in, so the
+ * floor holds at save as well as at display (defence in depth).
+ *
+ * It clamps only numeric controls: a declared range/number option, and a font
+ * control's <key>_size companion slider (sz_key_override), each to its own
+ * manifest range, mirroring the two numeric blocks above. Every other key -- and
+ * any non-numeric value -- is returned UNCHANGED, so no legitimate control
+ * (select, colour, text, checkbox) is ever rejected or truncated here; those
+ * stay validated on the render path. A key the manifest does not know is
+ * returned as-is.
+ */
+function snapsmack_clamp_skin_option(string $skinSlug, string $key, $value)
+{
+    $skinSlug = preg_replace('/[^a-z0-9-]/', '', strtolower($skinSlug));
+    if ($skinSlug === '' || !preg_match('/^[a-zA-Z0-9_-]{1,100}$/', $key)) return $value;
+    if (!is_numeric($value)) return $value;                 // only numeric controls are clamped here
+    $path = dirname(__DIR__) . '/skins/' . $skinSlug . '/manifest.json';
+    if (!is_file($path)) return $value;
+    try {
+        $manifest = json_decode((string)file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+    } catch (Throwable $e) {
+        return $value;
+    }
+    if (!is_array($manifest['options'] ?? null)) return $value;
+    $options = $manifest['options'];
+
+    // A declared numeric control: clamp to its own min/max.
+    $definition = $options[$key] ?? null;
+    if (is_array($definition)
+        && in_array(strtolower((string)($definition['type'] ?? 'text')), ['range', 'range_numeric', 'number'], true)) {
+        $min = is_numeric($definition['min'] ?? null) ? (float)$definition['min'] : -100000;
+        $max = is_numeric($definition['max'] ?? null) ? (float)$definition['max'] : 100000;
+        return snapsmack_skin_number_string(max($min, min($max, (float)$value)));
+    }
+
+    // A font control's companion size slider (<key>_size / sz_key_override),
+    // clamped to the font's own size range -- mirrors the companion block above.
+    foreach ($options as $optKey => $def) {
+        if (!is_array($def)) continue;
+        $isFont = (($def['property'] ?? '') === 'font-family') || !empty($def['is_font']);
+        if (!$isFont || !empty($def['no_size_slider'])) continue;
+        if ((string)($def['sz_key_override'] ?? ($optKey . '_size')) !== $key) continue;
+        $range = is_array($def['size'] ?? null) ? $def['size'] : [];
+        $min = is_numeric($range['min'] ?? null) ? (float)$range['min'] : 0.5;
+        $max = is_numeric($range['max'] ?? null) ? (float)$range['max'] : 4.0;
+        return snapsmack_skin_number_string(max($min, min($max, (float)$value)));
+    }
+
+    return $value;
+}
+
+/** A clamped number as a compact string, so it stores the way the POST did (no trailing .0). */
+function snapsmack_skin_number_string(float $n): string
+{
+    return ($n == (int)$n) ? (string)(int)$n : rtrim(rtrim(sprintf('%.4f', $n), '0'), '.');
+}
+
 /** CMS-owned presentation model shared by every strict skin. */
 function snapsmack_skin_presentation(array $settings, string $skinSlug): array
 {
@@ -370,7 +435,84 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
         }
     }
     snapsmack_attach_local_font_faces($presentation);
+    // THE OWNER'S GUTTER GOES LAST, so it beats a skin's own value. Appended
+    // after every skin block above on purpose -- see the function below.
+    //
+    // It goes through snapsmack_presentation_style() rather than wrapping its
+    // own markup. That helper already does exactly this, and every
+    // __snapsmackCmsOnly() call site in the product is inventoried by
+    // tests/privileged-wrapper-construction-regression.php: a new privileged
+    // wrap here would have had to be approved into that list for no reason
+    // other than my not having looked for the helper first.
+    $gutter = snapsmack_owner_gutter_px($settings);
+    if ($gutter !== null) {
+        snapsmack_presentation_style($presentation, 'snapsmack-owner-gutter',
+            ['--grid-gap' => $gutter . 'px']);
+    }
     return $presentation;
+}
+
+/**
+ * The owner's GUTTER setting as a pixel count, or null when it is not set.
+ *
+ * WHAT WAS WRONG. smack-appearance-archive.php has had a GUTTER slider since
+ * it was written. Nothing read it. The only thing that ever mapped a setting
+ * to --grid-gap is core/meta.php:35, which reads a DIFFERENT key (browse_gap)
+ * and is the legacy render path -- index.php sends every strict skin to
+ * snapsmack_public_runtime() and exits before meta.php, and all 30 renderable
+ * skins are strict. So the slider moved and nothing happened, on every site.
+ *
+ * Sean set GUTTER to 4px and reported gaps of roughly 50px. That 50px is
+ * literally the fallback in assets/css/page-archive.css -- `gap:
+ * var(--grid-gap, 50px)` at lines 27 and 53. He was measuring the CSS
+ * default, because no value was ever being emitted.
+ *
+ * WHY IT RETURNS NULL WHEN THE KEY IS ABSENT. A site that has never touched
+ * the slider must not change appearance the day this ships, so the caller
+ * emits nothing at all rather than a default. array_key_exists is the test,
+ * not a `??` default: a default would emit on every site and move spacing
+ * everywhere, which is the opposite of the intent. A key that is present but
+ * not numeric is treated as not saved -- emitting 0 there would collapse
+ * every gap on the page.
+ *
+ * ONE THING THIS GUARD DOES NOT COVER, said here because it is easy to miss:
+ * the admin form always posts settings[archive_gutter], so the first save of
+ * the archive appearance page makes the key present at whatever position the
+ * slider is showing -- 4 by default -- even if the owner never dragged it.
+ * The help text on that control says so. Making it genuinely opt-in needs a
+ * sentinel value or a second control, which is a decision, not a repair.
+ *
+ * WHY IT GOES LAST. The owner wins over the skin. Nine skins set --grid-gap
+ * in their own style.css (aurora, game-on, heuristic, instant-camera,
+ * jive-turkey, parade, sliders, sudden-impact, the-grid) and eight of those
+ * also emit it from a declared _gap option through
+ * snapsmack_grid_common_presentation(). A skin's style.css is a <link> ahead
+ * of this inline block in every strict head, and the option block is appended
+ * before this one, so at equal specificity this declaration wins both. That
+ * is the ruling: the owner's saved value beats a skin's default, and a skin's
+ * default stands until the owner touches the control.
+ *
+ * The range matches the slider in the admin -- min 0, max 40 -- so a value
+ * edited in the database cannot emit something the control could not produce.
+ */
+function snapsmack_owner_gutter_px(array $settings): ?int
+{
+    if (!array_key_exists('archive_gutter', $settings)) return null;
+    $raw = $settings['archive_gutter'];
+    if (is_bool($raw) || is_array($raw) || is_null($raw)) return null;
+    if (!is_numeric((string)$raw)) return null;
+    $val = (int)max(0, min(40, (int)(float)(string)$raw));
+    // 988D: the slider's default position (4) is posted on every save even when
+    // the owner never dragged it, so a value nobody chose used to override the
+    // skin's own gap and the archive looked crammed (TRUE GRIT after 987D). The
+    // default IS indistinguishable from an untouched save, so 4 means "use the
+    // skin's spacing" -- emit nothing and let the skin's own fallback win. Any
+    // other value is a real choice and is honoured, including on sites saved
+    // before this fix (they recover on deploy with no re-save). The explicit
+    // opt-in archive_gutter_mode=custom can still emit a literal 4.
+    if ((string)($settings['archive_gutter_mode'] ?? '') === 'custom') return $val;
+    if ($val === 4) return null;
+    return $val;
 }
 
 /**
@@ -424,6 +566,11 @@ function snapsmack_declared_skin_style(string $skinSlug, array $options): string
         if ($selector === '' || $property === '' || str_starts_with($property, 'data-')) continue;
         $value = $options[$key];
         $type = strtolower((string)($definition['type'] ?? 'text'));
+        // Optional colour overrides preserve the skin's existing cascade when
+        // reset to their advertised default, including per-element shades.
+        if (!empty($definition['omit_if_default'])
+            && in_array($type, ['color', 'colour'], true)
+            && strcasecmp((string)$value, (string)($definition['default'] ?? '')) === 0) continue;
 
         if (str_starts_with($property, 'custom-')) {
             $choice = $definition['options'][(string)$value] ?? null;
@@ -454,7 +601,7 @@ function snapsmack_declared_skin_style(string $skinSlug, array $options): string
                 $cssValue = $font;
             } else {
                 $safe = str_replace(['\\', '"'], ['\\\\', '\\"'], $font);
-                $cssValue = '"' . $safe . '", sans-serif';
+                $cssValue = '"' . $safe . '", ' . snapsmack_font_family_generic_fallback($font);
             }
         } elseif (in_array($type, ['range', 'range_numeric', 'number'], true)) {
             $cssValue = (string)$value . (string)($definition['unit'] ?? (str_starts_with($property, '--') ? '' : 'px'));

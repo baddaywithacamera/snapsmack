@@ -18,25 +18,25 @@ $page_css = <<<'CSS'
 .page-header { color: var(--white); background: var(--black); border-bottom: 8px solid var(--red); }
 .page-header h1 { color: var(--white); }
 .page-header .site-discovery-kicker { color: var(--red); }
-.lineage-intro { max-width: 820px; color: #d8d4cc; }
+.lineage-intro { max-width: 820px; color: #ddd; }
 .family-section { position: relative; overflow: hidden; border-top: 0; }
 .family-section::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 8px; background: var(--red); }
-.family-origin, .family-security { background: #eee9df; }
+.family-origin, .family-security { background: var(--light-grey); }
 .family-boundaries { background: var(--white); }
 .family-history { color: var(--white); background: var(--red); }
-.family-architecture, .family-claim { color: #e8e3da; background: var(--black); }
+.family-architecture, .family-claim { color: #ddd; background: var(--black); }
 .family-copy { max-width: 850px; }
 .family-copy > p { max-width: 74ch; margin-bottom: 1.35em; }
 .family-copy > p:last-child { margin-bottom: 0; }
 .family-kicker { color: var(--red); font: 900 .74rem/1.2 Arial Black, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
 .family-history .family-kicker, .family-history h2, .family-history a { color: var(--white); }
 .family-history a { text-decoration-color: rgba(255,255,255,.55); }
-.family-architecture .family-kicker, .family-claim .family-kicker { color: #ff3b30; }
+.family-architecture .family-kicker, .family-claim .family-kicker { color: var(--white); }
 .family-architecture h2, .family-claim h2 { color: var(--white); }
-.family-callout { margin: 30px 0 0; padding: 24px 28px; color: var(--white); background: var(--black); border-left: 6px solid var(--red); box-shadow: 12px 12px 0 rgba(215,0,0,.22); }
+.family-callout { margin: 30px 0 0; padding: 24px 28px; color: var(--white); background: var(--black); border-left: 6px solid var(--red); box-shadow: 12px 12px 0 var(--red); }
 .family-callout strong { color: var(--white); }
 .inheritance-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; margin-top: 32px; background: #3a3a3a; border: 2px solid #3a3a3a; }
-.inheritance-card { padding: 28px; color: #ddd7ce; background: #191919; }
+.inheritance-card { padding: 28px; color: #ddd; background: #191919; }
 .inheritance-card h3 { margin-bottom: 10px; color: var(--red); font-size: 1rem; }
 .inheritance-card p { margin: 0; font-size: .9rem; line-height: 1.6; }
 .claim-box { padding: clamp(28px, 5vw, 54px); border: 3px solid var(--red); background: #171717; box-shadow: 14px 14px 0 var(--red); }

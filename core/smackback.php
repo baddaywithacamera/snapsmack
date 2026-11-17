@@ -610,6 +610,87 @@ function smackback_prune_dev_dir_rows(): int {
 }
 
 /**
+ * Files that must NEVER exist on a SnapSmack install -- not CMS files, pure leak
+ * or secret shapes (SECAUDIT 028). A leaked root sc-config.php was baselined by
+ * PRESENCE (init_from_disk hashes whatever .php sits in the webroot), so the
+ * monitor ended up vouching for the leak, and deleting it read as a MISSING
+ * breach and LOCKED the site out. These are refused at baseline time (both init
+ * paths), pruned from any existing baseline, and reported in their own
+ * non-locking FORBIDDEN bucket at verify time. Because they are never baselined,
+ * the admin REMOVE action accepts them (it refuses only baselined files), so the
+ * operator can delete a leaked secret file without a breach.
+ *
+ * DELIBERATELY NON-LOCKING, like the dev-dir bucket: a forbidden file on a live
+ * install must surface loudly, never lock every admin panel at once.
+ *
+ * Empty on the Smack Central host itself (its own key/secret material lives there
+ * legitimately), matching smackback_dev_dir_prefixes().
+ */
+function smackback_forbidden_rules(): array {
+    if (is_file(SNAPSMACK_ROOT . '/smack-central/sc-config.php')) {
+        return ['exact' => [], 'suffix' => [], 'prefix' => []];
+    }
+    return [
+        // Exact webroot-relative path: the hub config behind SECAUDIT 028.
+        // (smack-central/ as a whole is already a never-trust dev dir.)
+        'exact'  => ['sc-config.php'],
+        // Secret / key material SnapSmack never ships to an install.
+        'suffix' => ['.env', '.pem', '.key', '.p12', '.pfx', '.bak'],
+        // Credential/backup directories that never belong on an install.
+        'prefix' => ['backups/'],
+    ];
+}
+
+/** True when a webroot-relative path is a never-upload secret/leak shape. */
+function smackback_is_forbidden(string $rel): bool {
+    $rel = ltrim($rel, '/');
+    if ($rel === '') {
+        return false;
+    }
+    $rules = smackback_forbidden_rules();
+    if (in_array($rel, $rules['exact'], true)) {
+        return true;
+    }
+    foreach ($rules['prefix'] as $prefix) {
+        if (strpos($rel, $prefix) === 0) {
+            return true;
+        }
+    }
+    $base = strtolower(basename($rel));
+    foreach ($rules['suffix'] as $suffix) {
+        if (substr($base, -strlen($suffix)) === $suffix) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Drop any manifest rows for forbidden files an older build laundered in via
+ * baseline-by-presence. Pruning them stops SMACKBACK vouching for the leak and
+ * makes deleting the file safe -- its removal can never read as a MISSING breach.
+ */
+function smackback_prune_forbidden_rows(): int {
+    global $pdo;
+    $pruned = 0;
+    try {
+        $rows = $pdo->query("SELECT id, file_path FROM snap_file_manifest")->fetchAll(PDO::FETCH_ASSOC);
+        $del  = $pdo->prepare("DELETE FROM snap_file_manifest WHERE id = ?");
+        foreach ($rows as $row) {
+            if (smackback_is_forbidden((string)$row['file_path'])) {
+                $del->execute([(int)$row['id']]);
+                $pruned++;
+            }
+        }
+    } catch (PDOException $e) { /* manifest table absent -- nothing to prune */ }
+    if ($pruned > 0) {
+        error_log("SMACKBACK: pruned {$pruned} forbidden-file manifest row(s) -- never-upload secret shapes (SECAUDIT 028)");
+    }
+    return $pruned;
+}
+
+
+/**
  * Convert an absolute path to a relative path from webroot.
  * Always uses forward slashes.
  *
@@ -981,6 +1062,10 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
             if (smackback_is_dev_dir($path)) {
                 continue;
             }
+            // SECAUDIT 028: never baseline a forbidden (leak/secret) file either.
+            if (smackback_is_forbidden($path)) {
+                continue;
+            }
             // Use eof_signature from manifest JSON if present (build pipeline sets this).
             // Fall back to computing from installed file on disk.
             $eof_sig = $info['eof_signature'] ?? null;
@@ -1086,6 +1171,10 @@ function smackback_init_from_disk(bool $cleanup_installers = true): bool {
 
         foreach ($files as $abs) {
             $rel     = smackback_rel($abs);
+            // SECAUDIT 028: never baseline a forbidden (leak/secret) file.
+            if (smackback_is_forbidden($rel)) {
+                continue;
+            }
             // Never-trust dev dirs (SECAUDIT 055): this is the exact laundering
             // hole — whatever sat on disk at init time got blessed. These paths
             // are never blessed; the orphan prune below then drops any rows a
@@ -1212,6 +1301,7 @@ function smackback_verify_all(string $source = 'unknown'): array {
             'missing'    => [],
             'unexpected' => [],
             'dev_dirs'   => [],
+            'forbidden'  => [],
             'ok'         => 0,
             'checked'    => 0,
             'duration'   => 0.0,
@@ -1223,6 +1313,7 @@ function smackback_verify_all(string $source = 'unknown'): array {
     $corrupted = [];
     $missing   = [];
     $dev_dirs  = [];
+    $forbidden = [];
     $ok_count  = 0;
     $now       = date('Y-m-d H:i:s');
 
@@ -1230,8 +1321,10 @@ function smackback_verify_all(string $source = 'unknown'): array {
     // laundered rows for them — prune here so this very scan stops vouching for
     // leaked files, and so the cleanup sweep can never produce MISSING rows.
     smackback_prune_dev_dir_rows();
+    smackback_prune_forbidden_rows();
     $rows = array_values(array_filter($rows, function (array $row): bool {
-        return !smackback_is_dev_dir((string)$row['file_path']);
+        return !smackback_is_dev_dir((string)$row['file_path'])
+            && !smackback_is_forbidden((string)$row['file_path']);
     }));
 
     $stmt_update = $pdo->prepare(
@@ -1293,7 +1386,9 @@ function smackback_verify_all(string $source = 'unknown'): array {
                 // Files inside a never-trust dev dir get their own bucket:
                 // loudly reported, never baselined, but NOT a lockout — they
                 // sit on the whole fleet today (SECAUDIT 055).
-                if (smackback_is_dev_dir($rel)) {
+                if (smackback_is_forbidden($rel)) {
+                    $forbidden[] = $rel;
+                } elseif (smackback_is_dev_dir($rel)) {
                     $dev_dirs[] = $rel;
                 } else {
                     $unexpected[] = $rel;
@@ -1327,6 +1422,7 @@ function smackback_verify_all(string $source = 'unknown'): array {
         'missing'    => count($missing),
         'unexpected' => count($unexpected),
         'dev_dirs'   => count($dev_dirs),
+        'forbidden'  => count($forbidden),
         'duration'   => $duration,
         'maint_lock' => snap_maint_lock_state(),
         'version'    => defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : null,
@@ -1340,6 +1436,7 @@ function smackback_verify_all(string $source = 'unknown'): array {
         'missing'    => $missing,
         'unexpected' => $unexpected,
         'dev_dirs'   => $dev_dirs,
+        'forbidden'  => $forbidden,
         'ok'         => $ok_count,
         'checked'    => count($rows),
         'duration'   => $duration,
@@ -1999,6 +2096,39 @@ function _smackback_download_zip(string $url, string $dest, string &$error = '')
 // ─── EMAIL ALERT ─────────────────────────────────────────────────────────────
 
 /**
+ * SS-1173: persist the outcome of the last breach-alert send so a failure is
+ * actionable and can be surfaced on the dashboard, instead of vanishing. Writes
+ * only non-secret facts (counts, timestamp, the admins' own addresses that
+ * failed) to snap_settings. Never throws — recording the outcome must not break
+ * the breach path.
+ *
+ * @param PDO      $pdo
+ * @param int      $sent    how many recipients were delivered to
+ * @param string[] $failed  recipient addresses the send failed for
+ * @param string   $note    optional short status note
+ */
+function smackback_record_alert_delivery($pdo, int $sent, array $failed, string $note = ''): void {
+    try {
+        $failed_to = implode(', ', $failed);
+        if (strlen($failed_to) > 500) $failed_to = substr($failed_to, 0, 497) . '...';
+        $rows = [
+            'smackback_last_alert_at'        => date('Y-m-d H:i:s'),
+            'smackback_last_alert_sent'      => (string) $sent,
+            'smackback_last_alert_failed'    => (string) count($failed),
+            'smackback_last_alert_failed_to' => $failed_to,
+            'smackback_last_alert_note'      => $note,
+        ];
+        $stmt = $pdo->prepare(
+            "INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+        );
+        foreach ($rows as $k => $v) { $stmt->execute([$k, $v]); }
+    } catch (\Throwable $e) {
+        error_log('SMACKBACK: could not record alert-delivery status: ' . $e->getMessage());
+    }
+}
+
+/**
  * Send tamper alert email.
  *
  * @param  string[] $tampered
@@ -2021,13 +2151,36 @@ function smackback_send_alert(array $tampered, array $missing, array $truncated 
     $site_name  = $settings['site_name']  ?? 'Your SnapSmack Site';
     $site_url   = $settings['site_url']   ?? '';
     $admin_mail = $settings['admin_email'] ?? '';
-    // ?: does not suppress an undefined key the way ?? does, and a fresh install
-    // never seeds smackback_alert_email -- so the breach-alert path emitted a PHP
-    // warning into the response before any header was sent. SS-1156.
-    $to         = ($settings['smackback_alert_email'] ?? '') ?: $admin_mail;
+    // SS-1173: a breach alert must reach EVERY admin, not one address. Collect the
+    // configured alert address, the legacy admin_email, and every admin-tier user
+    // with an email, de-duplicated case-insensitively. ?: (not ??) is kept for the
+    // settings reads so a fresh install that never seeds smackback_alert_email does
+    // not emit a PHP warning (SS-1156).
+    $recipients = [];
+    foreach ([($settings['smackback_alert_email'] ?? '') ?: '', $admin_mail] as $cfg) {
+        $cfg = trim((string) $cfg);
+        if ($cfg !== '') $recipients[strtolower($cfg)] = $cfg;
+    }
+    try {
+        // Admin tier is admin/administrator/owner (see auth-smack.php is_admin()).
+        $admins = $pdo->query(
+            "SELECT email FROM snap_users
+              WHERE user_role IN ('admin','administrator','owner')
+                AND email IS NOT NULL AND email <> ''"
+        )->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($admins as $addr) {
+            $addr = trim((string) $addr);
+            if ($addr !== '') $recipients[strtolower($addr)] = $addr;
+        }
+    } catch (\PDOException $e) {
+        // snap_users shape varies across installs; fall back to the settings
+        // addresses rather than failing the alert.
+        error_log('SMACKBACK: could not enumerate admin users for the alert: ' . $e->getMessage());
+    }
 
-    if (empty($to)) {
-        error_log('SMACKBACK: No alert email configured — breach alert not sent.');
+    if (!$recipients) {
+        error_log('SMACKBACK: No alert recipients configured — breach alert not sent.');
+        smackback_record_alert_delivery($pdo, 0, [], 'no recipients configured');
         return;
     }
 
@@ -2069,8 +2222,23 @@ TEXT;
 
     // Send via the central mailer (Brevo HTTPS API → direct from this box even
     // if the hub is down; falls back to mail() when Brevo isn't configured).
+    // SS-1173: send to every recipient and HANDLE each result — the return value
+    // used to be discarded, so a failed breach alert looked identical to a sent
+    // one. Record what was sent and what failed so the failure is actionable.
     require_once __DIR__ . '/mailer.php';
-    snapsmack_send_mail($to, $subject, $body, ['pdo' => $pdo]);
+    $sent = 0; $failed = [];
+    foreach ($recipients as $addr) {
+        if (snapsmack_send_mail($addr, $subject, $body, ['pdo' => $pdo])) {
+            $sent++;
+        } else {
+            $failed[] = $addr;
+        }
+    }
+    if ($failed) {
+        error_log('SMACKBACK: breach alert FAILED to ' . count($failed) . ' of '
+            . count($recipients) . ' recipient(s): ' . implode(', ', $failed));
+    }
+    smackback_record_alert_delivery($pdo, $sent, $failed);
 }
 
 // ─── BREACH RENDER ───────────────────────────────────────────────────────────

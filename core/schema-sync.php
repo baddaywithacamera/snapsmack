@@ -464,6 +464,62 @@ function snap_schema_sync(PDO $pdo): array {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // 2b. ALBUM SLUG BACKFILL — must run BEFORE the UNIQUE key below
+    //
+    // snap_albums gained album_slug for /<album>/<category>/<slug>. Existing
+    // albums have '' and need a slug derived from their name.
+    //
+    // ORDER MATTERS AND IS THE WHOLE POINT. The UNIQUE key cannot be added
+    // before the backfill, because every unset row holds '' and the second one
+    // would collide. And it must not be added after a backfill that left
+    // duplicates, because a failing ALTER on a live site is a worse outcome
+    // than a missing index -- WEB's ruling, and he is right. So: backfill
+    // first, then PRE-FLIGHT for duplicates, then add the key only if the
+    // pre-flight is clean. If it is not, the key is skipped and SAID OUT LOUD
+    // in the report rather than failing the pass.
+    //
+    // NEVER OVERWRITES A SLUG THE OWNER HAS SET: the WHERE only ever matches
+    // the empty string.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    $album_slug_ready = false;
+    try {
+        $has_album_slug = $pdo->prepare(
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_albums'
+                AND COLUMN_NAME = 'album_slug'"
+        );
+        $has_album_slug->execute();
+        if ((int)$has_album_slug->fetchColumn() === 1) {
+            require_once __DIR__ . '/slug.php';
+
+            // The backfill itself lives in core/slug.php as
+            // snap_backfill_album_slugs() rather than inline here, so the test
+            // can CALL it instead of reading this file's source text. It was
+            // inline first, and mutation proof found three mutants the test
+            // could not see -- see that function's docblock.
+            $bf = snap_backfill_album_slugs($pdo);
+            foreach ($bf['assigned'] as $aid => $aslug) {
+                $report['columns_added'][] = "album_slug #{$aid} = {$aslug}";
+            }
+
+            if ($bf['unique_ok']) {
+                $album_slug_ready = true;
+            } else {
+                $report['errors'][] = 'album_slug UNIQUE key NOT added: '
+                    . count($bf['duplicates']) . ' duplicate slug(s) and ' . $bf['unset']
+                    . ' unset row(s) remain. The index is skipped on purpose -- a '
+                    . 'failing ALTER on a live site is worse than a missing key. '
+                    . 'Duplicates: ' . implode(', ', array_map(
+                        static fn(array $d): string => $d['album_slug'] . ' x' . $d['n'],
+                        array_slice($bf['duplicates'], 0, 5)));
+            }
+        }
+    } catch (\PDOException $e) {
+        $report['errors'][] = 'album_slug backfill: ' . $e->getMessage();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // 3. INDEX ADDITIONS — idempotent via INFORMATION_SCHEMA.STATISTICS
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -478,7 +534,76 @@ function snap_schema_sync(PDO $pdo): array {
             "ALTER TABLE `snap_images` ADD INDEX `idx_images_status_sort` (`img_status`, `sort_order`, `id`)"],
         ['snap_images', 'idx_images_status_date',
             "ALTER TABLE `snap_images` ADD INDEX `idx_images_status_date` (`img_status`, `img_date`)"],
+        // 0.7.987D (CT110 outage) — the archive COUNT/LIST excludes images that
+        // are a published post's signature via NOT EXISTS (... WHERE
+        // p.signature_image_id = i.id ...). snap_posts had no index on that
+        // column, so the subquery scanned snap_posts for every image row. The
+        // imageFilter() pivot rewrite already rides existing keys (snap_post_images
+        // uq_image, snap_posts PRIMARY); this one index makes the signature
+        // exclusion an index seek too.
+        ['snap_posts', 'idx_posts_signature_image',
+            "ALTER TABLE `snap_posts` ADD INDEX `idx_posts_signature_image` (`signature_image_id`)"],
+        // 0.7.989D (SQL audit, Muse) — two unindexed snap_images columns that
+        // drove per-row scans on hot paths. post_id: the cover/stats
+        // LEFT JOIN snap_images ON i.post_id = p.id (multisite-api.php:1054,
+        // gyss-api.php cover fallbacks, smack-post-long.php, cover-assign.php)
+        // probed it with no index, so every published post scanned snap_images.
+        // img_checksum: the RSS orphan stream hides an image whose checksum
+        // matches another published image via NOT EXISTS, scanning the published
+        // set per orphan row, twice per feed hit.
+        ['snap_images', 'idx_images_post_id',
+            "ALTER TABLE `snap_images` ADD INDEX `idx_images_post_id` (`post_id`)"],
+        ['snap_images', 'idx_images_checksum',
+            "ALTER TABLE `snap_images` ADD INDEX `idx_images_checksum` (`img_checksum`)"],
+        // 0.7.989D (SQL audit B3) — img_slug unindexed, so SELECT ... WHERE
+        // img_slug = ? full-scanned: photographBySlug on every public photo view
+        // (core/public-repository.php:310) and the import slug-uniqueness probes
+        // in flkrfckr/threeacross/smackthemup/fediverse. One index seeks them all.
+        ['snap_images', 'idx_images_slug',
+            "ALTER TABLE `snap_images` ADD INDEX `idx_images_slug` (`img_slug`)"],
     ];
+
+    // The album_slug UNIQUE key is conditional on the pre-flight above, so it
+    // is appended rather than listed: an unconditional entry here would try the
+    // ALTER on a database the backfill could not clean, which is the exact
+    // failure the pre-flight exists to prevent.
+    // ─────────────────────────────────────────────────────────────────────────
+    // THE UNIQUE KEY IS HELD, AND THIS IS A DEFECT IN MY OWN EARLIER COMMIT.
+    //
+    // A clean pre-flight is NOT sufficient. album_slug is NOT NULL DEFAULT '',
+    // and THREE insert paths create an album without naming the column, so
+    // every album they make starts with the same empty slug:
+    //
+    //   smack-albums.php:97          the admin "new album" form
+    //   core/flkrfckr-api.php:399    the Flickr importer, which creates albums
+    //                                as it runs
+    //   core/smackthemup-api.php:83  the SMACK THEM UP album endpoint
+    //
+    // With the key present the FIRST such album inserts and the SECOND fails on
+    // a duplicate key. Proved rather than reasoned about: two inserts in that
+    // exact shape against a table carrying the key, and the second one raises
+    // an integrity-constraint violation. So adding the key would break album
+    // creation everywhere, and would break a Flickr import PART WAY THROUGH.
+    //
+    // Nothing is broken in the field: this sync pass is only reached from
+    // smack-update.php and core/multisite-api.php, and the commit that added
+    // the backfill has never been pushed, built or deployed. The key simply
+    // must not ship before the inserts mint a slug.
+    //
+    // THE TWO CORE INSERTS NOW CALL snap_unique_slug(). The admin form is not
+    // mine to edit, so the key stays held until that one does too -- a half
+    // repair would still break the page a person actually uses. Turning this on
+    // is a deliberate act with a one-line change, not something a clean
+    // pre-flight should decide by itself.
+    $album_slug_inserts_mint_a_slug = false;   // smack-albums.php:97 outstanding
+    if ($album_slug_ready && $album_slug_inserts_mint_a_slug) {
+        $index_additions[] = ['snap_albums', 'uq_album_slug',
+            "ALTER TABLE `snap_albums` ADD UNIQUE KEY `uq_album_slug` (`album_slug`)"];
+    } elseif ($album_slug_ready) {
+        $report['skipped'][] = 'INDEX snap_albums.uq_album_slug (held: an album '
+            . 'can still be created without a slug, so a second one would '
+            . 'collide on the empty string — see the comment at this gate)';
+    }
 
     $idx_check = $pdo->prepare(
         "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS

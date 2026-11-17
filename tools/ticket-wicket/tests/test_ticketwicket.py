@@ -193,6 +193,37 @@ def test_public_dict_omits_reporter_and_original(store):
     assert "private words" not in str(pub)
 
 
+# ── the guard's false positives (what blocked the bug sync) ───────────────────
+
+def test_css_at_rules_are_not_mistaken_for_handles():
+    # @font-face (and @media/@keyframes/@param…) blocked the bug sync: a bug
+    # body that quoted a stylesheet read as though it named a person.
+    css = "the skin has @font-face { } and @media screen and a @keyframes spin"
+    assert anonymise.check(css) == []
+    scrubbed = anonymise.scrub(css)
+    assert "@font-face" in scrubbed and "@media" in scrubbed  # left intact
+
+
+def test_a_git_sha_is_not_mistaken_for_a_key():
+    # 40-hex commit SHAs are safe to keep; our real secrets are 64/128 hex.
+    sha = "deployed in 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"  # 40 hex
+    assert len(sha.split()[-1]) == 40
+    assert anonymise.check(sha) == []
+    assert sha.split()[-1] in anonymise.scrub(sha)              # SHA survives
+
+
+def test_real_handles_and_real_keys_are_still_caught():
+    # The guard must not have gone blind: a genuine handle and a 64/128-hex key
+    # must still be flagged AND scrubbed.
+    assert anonymise.check("ping @alice@mastodon.social about it")
+    assert "@alice@mastodon.social" not in anonymise.scrub("ping @alice@mastodon.social about it")
+    key64, key128 = "a" * 64, "b" * 128
+    assert anonymise.check(f"root pubkey {key64}")
+    assert anonymise.check(f"root privkey {key128}")
+    assert key64 not in anonymise.scrub(f"root pubkey {key64}")
+    assert key128 not in anonymise.scrub(f"root privkey {key128}")
+
+
 # ── staleness: the mechanism behind "keep me honest" ─────────────────────────
 
 def test_a_wanted_ticket_is_never_stale(store):

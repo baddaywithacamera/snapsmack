@@ -38,7 +38,7 @@ $page_css = <<<'CSS'
 .wrong-shot { margin: 34px 0 0; border: 1px solid var(--border); background: var(--black); }
 .wrong-shot img { width: 100%; }
 .wrong-shot figcaption { padding: 10px 14px; color: #aaa; background: var(--black); font: .7rem/1.4 'Courier New', monospace; }
-.yellow { margin-top: 34px; padding: 24px 28px; background: #fff3c4; border-left: 6px solid #e0a800; }
+.yellow { margin-top: 34px; padding: 24px 28px; background: var(--light-grey); border-left: 6px solid var(--red); }
 .yellow h3 { color: var(--black); margin-bottom: 10px; }
 .yellow p { margin: 0 0 .8em; font-size: .95rem; }
 .yellow p:last-child { margin-bottom: 0; }
@@ -51,7 +51,7 @@ $page_css = <<<'CSS'
 .security-layer .layer-num { margin-bottom: 10px; color: var(--red); font: 900 .7rem/1 Arial Black, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
 .security-layer h3 { color: var(--white); margin-bottom: 12px; font-size: 1.1rem; }
 .security-layer p { margin: 0; color: #bbb; font-size: .9rem; line-height: 1.6; }
-.defence { border-top: 8px solid var(--black); background: #f4f1eb; }
+.defence { border-top: 8px solid var(--black); background: var(--light-grey); }
 .defence-body { max-width: 820px; }
 .defence-q { margin-top: 30px; }
 .defence-q h3 { color: var(--red); font-size: 1.1rem; margin-bottom: 8px; }
@@ -62,7 +62,7 @@ $page_css = <<<'CSS'
 .receipts-grid a strong { display: block; font: 900 .9rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .receipts-grid a strong::after { content: " \2192"; color: var(--red); }
 .receipts-grid a span { display: block; margin-top: 6px; color: var(--mid-grey); font-size: .88rem; line-height: 1.45; }
-.receipts-grid a:hover { background: #fff5f3; text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
+.receipts-grid a:hover { background: var(--white); text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
 @media (max-width: 850px) { .doctrine-grid, .wrong-steps { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .security-layers, .receipts-grid { grid-template-columns: 1fr; } }
 CSS;

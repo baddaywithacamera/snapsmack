@@ -17,12 +17,13 @@ import uuid
 
 import requests
 
-from PySide6.QtCore import Qt, QRect, QSize, Signal, QTimer
+from PySide6.QtCore import Qt, QRect, QSize, Signal, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
+    QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton,
 )
 
 import sumna_offline as O
@@ -31,9 +32,13 @@ from sumna_post import SmacktalkPoster
 
 from . import theme, biggie
 from .widgets import (Accordion, Card, build_rail, hint, field_label,
-                      big_button, thumb_label, load_pixmap)
+                      big_button, load_pixmap)
 from .photo_loader import PhotoLoader
+from .photo_edits import render_non_destructive
+from .slapper_handoff import (ReturnWatch, find_executable,
+                              focus_window, launch as launch_slapper)
 from .body_editor import BodyEditor
+from .block_tray import BlockAction, BlockTray
 from .drafts_panel import BatchRail, default_draft_row
 from .mosaic_layout import tile_rects as _tile_rects
 
@@ -167,6 +172,7 @@ class MosaicPreview(QWidget):
 
 class TakeMode(QWidget):
     SUITE_MODE = O.MODE_SMACKTALK
+    blocksStateChanged = Signal(bool, str)  # open, header label
 
     def __init__(self, app_config_provider, parent=None):
         super().__init__(parent)
@@ -174,7 +180,14 @@ class TakeMode(QWidget):
         self._editing_id = None
         self._bucket = []          # list[O.DraftImage]
         self._cover_idx = 0
+        self._selected_photo_idx = None
+        self._updating_photo_fields = False
         self._loading = False
+        self._view_settings = QSettings("SnapSmack", "COLD SNAP")
+        self._slapper_state = "idle"
+        self._slapper_watch_session = None
+        self._slapper_asset_uuid = ""
+        self._slapper_launch_error = ""
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(10, 10, 0, 0)
@@ -191,7 +204,7 @@ class TakeMode(QWidget):
 
         card = Card("COMPOSE — an essay with photos")
         # Let the editor use the centre pane instead of shrinking to sizeHint.
-        right.addWidget(card)
+        right.addWidget(card, 1)
 
         card.body.addWidget(field_label("Title"))
         self.title_edit = QLineEdit()
@@ -222,17 +235,31 @@ class TakeMode(QWidget):
         # IMG picks from THIS site's cached Media Gallery (COLD STORAGE), by picture.
         self.body.canvas.set_site_provider(
             lambda: ((self.app_config() or {}).get("url") or "").strip())
-        card.body.addWidget(self.body, 1)   # the write-up is the main event — it grows
+        # The editor used to share one scrolling card with every field below it.
+        # QScrollArea therefore kept the card at its size hint and the editor at
+        # its 160px minimum, even when the centre pane had room to spare. Keep
+        # the primary actions outside the scroll, then let the author divide the
+        # available card height between the document and its secondary fields.
+        self.compose_splitter = QSplitter(Qt.Vertical)
+        self.compose_splitter.setChildrenCollapsible(False)
+        self.compose_splitter.setHandleWidth(10)
+        self.compose_splitter.addWidget(self.body)
+
+        compose_details = QWidget()
+        details = QVBoxLayout(compose_details)
+        details.setContentsMargins(0, 0, 0, 0)
+        details.setSpacing(9)
+
         self.save_state = hint("Begin the story… changes will be safe on this computer.")
-        card.body.addWidget(self.save_state)
-        card.body.addWidget(hint(
+        details.addWidget(self.save_state)
+        details.addWidget(hint(
             "MOSAIC = a tiled grid of this post's photos at the marker. For a "
             "text grid with no photos, use COL 2 / COL 3. For one inline image "
             "from the site's Media Library, use IMG."))
 
-        card.body.addWidget(field_label("Tags (space-separated #hashtags)"))
+        details.addWidget(field_label("Tags (space-separated #hashtags)"))
         self.tags_edit = QLineEdit()
-        card.body.addWidget(self.tags_edit)
+        details.addWidget(self.tags_edit)
 
         srow = QHBoxLayout()
         srow.addWidget(field_label("Status"))
@@ -240,12 +267,25 @@ class TakeMode(QWidget):
         self.status_combo.addItems(["published", "draft"])
         srow.addWidget(self.status_combo)
         srow.addStretch(1)
-        card.body.addLayout(srow)
+        details.addLayout(srow)
+
+        self.compose_splitter.addWidget(compose_details)
+        self.compose_splitter.setStretchFactor(0, 1)
+        self.compose_splitter.setStretchFactor(1, 0)
+        splitter_state = self._view_settings.value("take/compose_splitter_state")
+        if splitter_state is None or not self.compose_splitter.restoreState(splitter_state):
+            self.compose_splitter.setSizes([560, 210])
+        self.compose_splitter.splitterMoved.connect(
+            lambda _position, _index: self._view_settings.setValue(
+                "take/compose_splitter_state", self.compose_splitter.saveState()))
+        card.body.addWidget(self.compose_splitter, 1)
 
         # -- THE PHOTOS — a rail section, opened when wanted. The count lives in
         #    the accordion header (no redundant, cramped label fighting the
         #    buttons for the 340px rail width). --------------------------------
         self.photos_sec = Accordion("THE PHOTOS — none yet")
+        self.photos_sec.setMaximumWidth(360)
+        self.photos_sec.body.setMaximumWidth(360)
         brow = QHBoxLayout()
         add_btn = QPushButton("Add photos…")
         add_btn.clicked.connect(self._add_photos)
@@ -269,6 +309,7 @@ class TakeMode(QWidget):
         self.bucket_col = QVBoxLayout()
         self.bucket_col.setSpacing(4)
         self.photos_sec.add_layout(self.bucket_col)
+        self._build_photo_tools()
 
         # No trailing stretch — the compose card (stretch 1 above) fills the
         # height itself, so there is no dead void beneath it.
@@ -294,21 +335,127 @@ class TakeMode(QWidget):
         centre.setSpacing(8)
         centre.addWidget(scroll, 1)
         centre.addLayout(act)
+        self.blocks_tray = BlockTray()
+        self.blocks_tray.stateChanged.connect(self._blocks_state_changed)
+        self.body.faceChanged.connect(self._refresh_block_actions)
+        self._refresh_block_actions(self.body.is_biggie())
+        outer.addWidget(self.blocks_tray)
         outer.addLayout(centre, 1)
 
         # The rail: photos + batch accordion open when wanted; SEND pinned.
-        outer.addWidget(build_rail(
+        self.right_rail = build_rail(
             [self.photos_sec, self.rail.section],
-            [self.rail.send_box]))
+            [self.rail.send_box], width=360)
+        outer.addWidget(self.right_rail)
         self._refresh_bucket()
         self._autosave = QTimer(self)
         self._autosave.setSingleShot(True)
         self._autosave.setInterval(900)
         self._autosave.timeout.connect(self._autosave_now)
+        self._slapper_timer = QTimer(self)
+        self._slapper_timer.setInterval(1000)
+        self._slapper_timer.timeout.connect(self._poll_slapper_return)
         self.body.changed.connect(self._changed)
         self.title_edit.textChanged.connect(self._changed)
         self.tags_edit.textChanged.connect(self._changed)
         QTimer.singleShot(0, self._recover_last_draft)
+        QTimer.singleShot(0, self._sync_block_tray_width)
+
+    def blocks_open(self) -> bool:
+        return self.blocks_tray.is_open
+
+    def blocks_header_label(self) -> str:
+        return "BLOCKS" if self.body.is_biggie() else "SHORTCODES"
+
+    def set_blocks_open(self, opened: bool):
+        self.blocks_tray.set_open(opened)
+        self.blocksStateChanged.emit(self.blocks_open(), self.blocks_header_label())
+
+    def toggle_blocks(self):
+        self.blocks_tray.toggle_open()
+        self.blocksStateChanged.emit(self.blocks_open(), self.blocks_header_label())
+
+    def _blocks_state_changed(self, opened: bool, _pinned: bool):
+        self.blocksStateChanged.emit(opened, self.blocks_header_label())
+
+    def _sync_block_tray_width(self):
+        window = self.window()
+        self.blocks_tray.set_compact_window(bool(window and window.width() <= 1366))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._sync_block_tray_width()
+
+    def _refresh_block_actions(self, visual: bool):
+        self.blocks_tray.set_actions(
+            "BLOCKS" if visual else "SHORTCODES",
+            self._visual_block_actions() if visual else self._text_block_actions())
+        self.blocksStateChanged.emit(self.blocks_open(), self.blocks_header_label())
+
+    def _visual_block_actions(self):
+        canvas = self.body.canvas
+        return [
+            BlockAction("P", "Paragraph", "WRITE", "Plain paragraph",
+                        lambda: canvas.set_kind("para")),
+            BlockAction("H", "Heading", "WRITE", "Large heading",
+                        lambda: canvas.set_kind("h2")),
+            BlockAction("SH", "Subhead", "WRITE", "Smaller heading",
+                        lambda: canvas.set_kind("h3")),
+            BlockAction("Q", "Quote", "WRITE", "Quoted passage",
+                        lambda: canvas.set_kind("quote")),
+            BlockAction("PQ", "Pull quote", "WRITE", "Words lifted out large",
+                        lambda: canvas.set_kind("pullquote")),
+            BlockAction("DC", "Drop cap", "WRITE", "A large first letter",
+                        canvas.toggle_dropcap),
+            BlockAction("BUL", "Bullets", "WRITE", "Bullet list",
+                        lambda: canvas.set_list(False)),
+            BlockAction("NUM", "Numbers", "WRITE", "Numbered list",
+                        lambda: canvas.set_list(True)),
+            BlockAction("DIV", "Divider", "PLACE", "A divider line", canvas.insert_hr),
+            BlockAction("SP", "Space", "PLACE", "A vertical gap", canvas._edit_spacer),
+            BlockAction("RAW", "Raw", "PLACE", "Shortcodes or HTML kept exactly as typed",
+                        lambda: canvas.set_kind("raw")),
+            BlockAction("MSC", "Mosaic", "PLACE", "Build a mosaic from this post's photos",
+                        self._insert_mosaic),
+            BlockAction("PHO", "Photograph", "PLACE", "Choose a local photograph",
+                        self._add_and_insert_photo),
+            BlockAction("2C", "2 columns", "PLACE", "Two columns side by side",
+                        lambda: canvas.insert_columns(2)),
+            BlockAction("3C", "3 columns", "PLACE", "Three columns",
+                        lambda: canvas.insert_columns(3)),
+            BlockAction("IMG", "Image", "PLACE", "Pick an image from the site's Media Library",
+                        canvas._edit_image),
+        ]
+
+    def _text_block_actions(self):
+        bar = self.body.bar
+        return [
+            BlockAction("H2", "Heading 2", "WRITE", "<h2>…</h2>",
+                        lambda: bar._wrap("<h2>", "</h2>")),
+            BlockAction("H3", "Heading 3", "WRITE", "<h3>…</h3>",
+                        lambda: bar._wrap("<h3>", "</h3>")),
+            BlockAction("BQ", "Blockquote", "WRITE", "<blockquote>…</blockquote>",
+                        lambda: bar._wrap("<blockquote>", "</blockquote>")),
+            BlockAction("PULL", "Pull quote", "WRITE", "[pullquote]…[/pullquote]",
+                        lambda: bar._wrap("[pullquote]", "[/pullquote]")),
+            BlockAction("HR", "Divider", "PLACE", "<hr>",
+                        lambda: bar._wrap("\n<hr>\n")),
+            BlockAction("UL", "Bullets", "WRITE", "<ul><li>…</li></ul>",
+                        lambda: bar._list("ul")),
+            BlockAction("OL", "Numbers", "WRITE", "<ol><li>…</li></ol>",
+                        lambda: bar._list("ol")),
+            BlockAction("IMG", "Image", "PLACE", "[img:ID|size|align]", bar._img),
+            BlockAction("COL 2", "2 columns", "PLACE", "[columns=2]…[/columns]",
+                        lambda: bar._columns(2)),
+            BlockAction("COL 3", "3 columns", "PLACE", "[columns=3]…[/columns]",
+                        lambda: bar._columns(3)),
+            BlockAction("DROP", "Drop cap", "WRITE", "[dropcap]…[/dropcap]",
+                        lambda: bar._wrap("[dropcap]", "[/dropcap]")),
+            BlockAction("SPACER", "Space", "PLACE", "[spacer:20]", bar._spacer),
+            BlockAction("MOSAIC", "Mosaic", "PLACE",
+                        "[mosaic=1,2 layout=asymmetric] (built from the photo picker)",
+                        self._insert_mosaic),
+        ]
 
     def _recover_last_draft(self):
         """Reopen the newest safe, unfinished essay after a restart."""
@@ -872,6 +1019,7 @@ class TakeMode(QWidget):
             return
         self._bucket = bucket
         self._cover_idx = 0
+        self._selected_photo_idx = 0 if bucket else None
         self._refresh_bucket()
         self._changed()
         self.save_state.setText(f"{len(bucket)} photographs received from GYSS")
@@ -885,10 +1033,13 @@ class TakeMode(QWidget):
                     f"An essay holds up to {O.SMACKTALK_BUCKET_MAX} photos.")
                 break
             image = O.DraftImage(local_path=p, filename=os.path.basename(p))
+            image.original_path = os.path.abspath(p)
             self._bucket.append(image)
             added.append(image)
         if paths and not self.title_edit.text().strip():
             self.title_edit.setText(os.path.splitext(os.path.basename(paths[0]))[0])
+        if added:
+            self._selected_photo_idx = len(self._bucket) - len(added)
         self._refresh_bucket()
         if insert:
             for image in added:
@@ -913,6 +1064,10 @@ class TakeMode(QWidget):
         j = idx + delta
         if 0 <= j < len(self._bucket):
             self._bucket[idx], self._bucket[j] = self._bucket[j], self._bucket[idx]
+            if self._selected_photo_idx == idx:
+                self._selected_photo_idx = j
+            elif self._selected_photo_idx == j:
+                self._selected_photo_idx = idx
             if self._cover_idx == idx:
                 self._cover_idx = j
             elif self._cover_idx == j:
@@ -922,6 +1077,10 @@ class TakeMode(QWidget):
 
     def _remove(self, idx: int):
         del self._bucket[idx]
+        if self._selected_photo_idx == idx:
+            self._selected_photo_idx = min(idx, len(self._bucket) - 1) if self._bucket else None
+        elif self._selected_photo_idx is not None and self._selected_photo_idx > idx:
+            self._selected_photo_idx -= 1
         if self._cover_idx >= len(self._bucket):
             self._cover_idx = max(0, len(self._bucket) - 1)
         self._refresh_bucket()
@@ -931,6 +1090,480 @@ class TakeMode(QWidget):
         self._cover_idx = idx
         self._refresh_bucket()
         self._changed()
+
+    def _build_photo_tools(self):
+        """Selected-photo controls; edits stay beside, never inside, the source."""
+        self.photo_tools = QFrame()
+        self.photo_tools.setObjectName("SelectedPhotoTools")
+        self.photo_tools.setMaximumWidth(340)
+        col = QVBoxLayout(self.photo_tools)
+        col.setContentsMargins(0, 8, 0, 0)
+        col.setSpacing(7)
+
+        self.selected_photo_label = QLabel("SELECT A PHOTO")
+        self.selected_photo_label.setObjectName("BlockTrayGroup")
+        col.addWidget(self.selected_photo_label)
+
+        manage = QHBoxLayout()
+        manage.setSpacing(4)
+        up = QPushButton("▲")
+        down = QPushButton("▼")
+        lead = QPushButton("★ Lead")
+        remove = QPushButton("×")
+        remove.setObjectName("Danger")
+        up.clicked.connect(lambda: self._manage_selected("up"))
+        down.clicked.connect(lambda: self._manage_selected("down"))
+        lead.clicked.connect(lambda: self._manage_selected("lead"))
+        remove.clicked.connect(lambda: self._manage_selected("remove"))
+        for button in (up, down, lead, remove):
+            manage.addWidget(button)
+        manage.addStretch(1)
+        col.addLayout(manage)
+
+        tools = QHBoxLayout()
+        tools.setSpacing(4)
+        self.flip_h_btn = QPushButton("⇆ Flip H")
+        self.flip_v_btn = QPushButton("⇅ Flip V")
+        self.crop_btn = QPushButton("Crop")
+        self.caption_btn = QPushButton("Caption")
+        self.metadata_btn = QPushButton("Metadata")
+        for button in (self.flip_h_btn, self.flip_v_btn, self.crop_btn,
+                       self.caption_btn, self.metadata_btn):
+            button.setObjectName("PhotoTool")
+            button.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+            tools.addWidget(button)
+        self.flip_h_btn.setCheckable(True)
+        self.flip_v_btn.setCheckable(True)
+        self.caption_btn.setCheckable(True)
+        self.metadata_btn.setCheckable(True)
+        self.flip_h_btn.clicked.connect(
+            lambda: self._flip_selected("edit_flip_h"))
+        self.flip_v_btn.clicked.connect(
+            lambda: self._flip_selected("edit_flip_v"))
+        self.crop_btn.clicked.connect(self._crop_selected)
+        self.caption_btn.clicked.connect(
+            lambda checked: self._show_photo_detail("caption", checked))
+        self.metadata_btn.clicked.connect(
+            lambda checked: self._show_photo_detail("metadata", checked))
+        col.addLayout(tools)
+
+        self.photo_alt = QLineEdit()
+        self.photo_alt.setPlaceholderText("ALT — one plain sentence describing this photo")
+        self.photo_alt.textEdited.connect(
+            lambda text: self._set_selected_field("alt", text.strip()))
+        col.addWidget(self.photo_alt)
+
+        self.caption_panel = QWidget()
+        caption_col = QVBoxLayout(self.caption_panel)
+        caption_col.setContentsMargins(0, 2, 0, 2)
+        caption_col.setSpacing(4)
+        caption_col.addWidget(field_label(
+            "Caption — typed against this photo, carried in the post"))
+        self.photo_caption = QPlainTextEdit()
+        self.photo_caption.setMaximumHeight(78)
+        self.photo_caption.setPlaceholderText("Caption")
+        self.photo_caption.textChanged.connect(
+            lambda: self._set_selected_field(
+                "caption", self.photo_caption.toPlainText().strip()))
+        caption_col.addWidget(self.photo_caption)
+        self.caption_panel.setVisible(False)
+        col.addWidget(self.caption_panel)
+
+        self.metadata_panel = QWidget()
+        metadata_col = QVBoxLayout(self.metadata_panel)
+        metadata_col.setContentsMargins(0, 2, 0, 2)
+        metadata_col.setSpacing(5)
+        metadata_col.addWidget(field_label("Metadata — saved with this post"))
+        form = QFormLayout()
+        form.setContentsMargins(0, 0, 0, 0)
+        form.setSpacing(5)
+        self.photo_meta_fields = {}
+        for attr, label in (
+                ("title", "Title"), ("description", "Description"),
+                ("credit", "Credit"), ("copyright", "Copyright"),
+                ("place", "Place"), ("date_taken", "Date taken"),
+                ("tags", "Keywords")):
+            edit = QLineEdit()
+            edit.textEdited.connect(
+                lambda text, attr=attr: self._set_selected_field(attr, text.strip()))
+            self.photo_meta_fields[attr] = edit
+            form.addRow(label, edit)
+        metadata_col.addLayout(form)
+        metadata_col.addWidget(hint(
+            "Kept in the post draft. Nothing is written into the image file."))
+        self.metadata_panel.setVisible(False)
+        col.addWidget(self.metadata_panel)
+
+        self.slapper_btn = QPushButton("Edit in SNAP SLAPPER  ↗")
+        self.slapper_btn.setObjectName("PhotoTool")
+        self.slapper_btn.setToolTip(
+            "Open this photograph in SNAP SLAPPER. Save a flattened copy "
+            "beside it and COLD SNAP will bring that copy back.")
+        self.slapper_btn.clicked.connect(self._start_slapper_handoff)
+        col.addWidget(self.slapper_btn)
+        self.slapper_hint = hint(
+            "COLD SNAP keeps the original. Save the edited copy beside it in "
+            "SNAP SLAPPER; COLD SNAP will notice when the file is complete.")
+        col.addWidget(self.slapper_hint)
+
+        self.slapper_state_panel = QFrame()
+        self.slapper_state_panel.setObjectName("SlapperState")
+        state_col = QVBoxLayout(self.slapper_state_panel)
+        state_col.setContentsMargins(9, 9, 9, 9)
+        state_col.setSpacing(5)
+        self.slapper_state_title = QLabel()
+        self.slapper_state_title.setObjectName("BlockTrayGroup")
+        self.slapper_state_body = QLabel()
+        self.slapper_state_body.setWordWrap(True)
+        state_col.addWidget(self.slapper_state_title)
+        state_col.addWidget(self.slapper_state_body)
+        self.slapper_use_edit = QRadioButton("Use the edited version")
+        self.slapper_use_original = QRadioButton("Use the original")
+        self.slapper_use_edit.clicked.connect(
+            lambda: self._choose_slapper_version(True))
+        self.slapper_use_original.clicked.connect(
+            lambda: self._choose_slapper_version(False))
+        state_col.addWidget(self.slapper_use_edit)
+        state_col.addWidget(self.slapper_use_original)
+        state_actions = QHBoxLayout()
+        self.slapper_primary = QPushButton()
+        self.slapper_secondary = QPushButton()
+        self.slapper_close = QPushButton("Close")
+        self.slapper_close.setObjectName("Quiet")
+        self.slapper_primary.clicked.connect(self._slapper_primary_action)
+        self.slapper_secondary.clicked.connect(self._slapper_secondary_action)
+        self.slapper_close.clicked.connect(self._stop_slapper_handoff)
+        state_actions.addWidget(self.slapper_primary)
+        state_actions.addWidget(self.slapper_secondary)
+        state_actions.addWidget(self.slapper_close)
+        state_col.addLayout(state_actions)
+        self.slapper_state_panel.setVisible(False)
+        col.addWidget(self.slapper_state_panel)
+        self.photos_sec.add(self.photo_tools)
+
+    def _start_slapper_handoff(self):
+        image = self._selected_image()
+        source = os.path.abspath(str(
+            getattr(image, "local_path", "") if image else ""))
+        if not image or not source or not os.path.isfile(source):
+            self._slapper_launch_error = "The selected photograph is not available."
+            self._set_slapper_state("launch-error")
+            return
+        configured = self._view_settings.value(
+            "snap_slapper_executable", "", type=str)
+        executable = find_executable(configured)
+        if not executable:
+            self._set_slapper_state("not-installed")
+            return
+        try:
+            watcher = ReturnWatch.start(source)
+            launch_slapper(executable, source)
+        except Exception as exc:  # noqa: BLE001 - show the local launch failure
+            self._slapper_launch_error = str(exc)
+            self._set_slapper_state("launch-error")
+            return
+        image.slapper_base_path = source
+        image.slapper_base_filename = image.filename or os.path.basename(source)
+        image.slapper_base_edit_state = {
+            name: getattr(image, name, 0)
+            for name in ("edit_flip_h", "edit_flip_v", "edit_crop_left",
+                         "edit_crop_top", "edit_crop_right", "edit_crop_bottom")
+        }
+        self._slapper_asset_uuid = str(image.asset_uuid)
+        self._slapper_watch_session = watcher
+        self._slapper_timer.start()
+        self._set_slapper_state("waiting")
+        self._changed()
+
+    def _set_slapper_state(self, state: str):
+        self._slapper_state = state
+        self.slapper_state_panel.setVisible(state != "idle")
+        returned = state == "returned"
+        self.slapper_use_edit.setVisible(returned)
+        self.slapper_use_original.setVisible(returned)
+        self.slapper_close.setVisible(state in {"returned", "not-installed", "launch-error"})
+        self.slapper_secondary.setVisible(True)
+        self.slapper_state_panel.setObjectName(
+            "SlapperError" if state in {"not-installed", "launch-error"}
+            else "SlapperState")
+        self.slapper_state_panel.style().unpolish(self.slapper_state_panel)
+        self.slapper_state_panel.style().polish(self.slapper_state_panel)
+        if state == "waiting":
+            self.slapper_state_title.setText("WAITING FOR SNAP SLAPPER")
+            self.slapper_state_body.setText(
+                "Save a flattened copy beside the original. COLD SNAP will "
+                "bring it back after the file finishes writing.")
+            self.slapper_primary.setText("Bring editor forward")
+            self.slapper_secondary.setText("Stop waiting")
+        elif state == "returned":
+            self.slapper_state_title.setText("EDITED COPY RETURNED")
+            self.slapper_state_body.setText(
+                "Both versions are safe. Choose which one this post should use.")
+            self.slapper_primary.setText("Edit again")
+            self.slapper_secondary.setText("Open folder")
+        elif state == "not-installed":
+            self.slapper_state_title.setText("SNAP SLAPPER NOT FOUND")
+            self.slapper_state_body.setText(
+                "Choose the installed SNAP SLAPPER app, then COLD SNAP can "
+                "open the selected photograph in it.")
+            self.slapper_primary.setText("Find SNAP SLAPPER…")
+            self.slapper_secondary.setVisible(False)
+        elif state == "launch-error":
+            self.slapper_state_title.setText("SNAP SLAPPER COULD NOT START")
+            self.slapper_state_body.setText(
+                self._slapper_launch_error or "Windows did not start the editor.")
+            self.slapper_primary.setText("Try again")
+            self.slapper_secondary.setText("Choose another app…")
+
+    def _slapper_primary_action(self):
+        if self._slapper_state == "waiting":
+            focus_window()
+        elif self._slapper_state == "returned":
+            self._start_slapper_handoff()
+        elif self._slapper_state == "not-installed":
+            self._browse_for_slapper()
+        elif self._slapper_state == "launch-error":
+            self._start_slapper_handoff()
+
+    def _slapper_secondary_action(self):
+        if self._slapper_state == "waiting":
+            self._stop_slapper_handoff()
+        elif self._slapper_state == "returned":
+            image = self._image_for_uuid(self._slapper_asset_uuid)
+            path = str(getattr(image, "slapper_edited_path", "") or "") if image else ""
+            folder = os.path.dirname(os.path.abspath(path)) if path else ""
+            if folder and os.path.isdir(folder) and hasattr(os, "startfile"):
+                os.startfile(folder)  # noqa: S606 - owner-requested local folder
+        elif self._slapper_state == "launch-error":
+            self._browse_for_slapper()
+
+    def _browse_for_slapper(self):
+        path, _kind = QFileDialog.getOpenFileName(
+            self, "Find SNAP SLAPPER", "", "Applications (*.exe);;All files (*)")
+        if not path:
+            return
+        self._view_settings.setValue("snap_slapper_executable", path)
+        self._start_slapper_handoff()
+
+    def _stop_slapper_handoff(self):
+        self._slapper_timer.stop()
+        self._slapper_watch_session = None
+        self._set_slapper_state("idle")
+
+    def _image_for_uuid(self, asset_uuid: str):
+        return next((image for image in self._bucket
+                     if str(image.asset_uuid) == str(asset_uuid)), None)
+
+    def _poll_slapper_return(self):
+        if self._slapper_watch_session is None:
+            self._slapper_timer.stop()
+            return
+        returned = self._slapper_watch_session.poll()
+        if not returned:
+            return
+        image = self._image_for_uuid(self._slapper_asset_uuid)
+        if image is None:
+            self._stop_slapper_handoff()
+            return
+        try:
+            from PIL import Image
+            with Image.open(returned) as opened:
+                opened.verify()
+            with Image.open(returned) as opened:
+                width, height = opened.size
+        except Exception as exc:  # noqa: BLE001 - do not accept a broken return
+            self._slapper_launch_error = f"The returned file is not a readable image: {exc}"
+            self._slapper_timer.stop()
+            self._set_slapper_state("launch-error")
+            return
+        image.slapper_edited_path = os.path.abspath(returned)
+        image.slapper_use_edited = True
+        image.local_path = image.slapper_edited_path
+        image.filename = os.path.basename(returned)
+        image.width, image.height = width, height
+        image.thumb_square = ""
+        image.thumb_aspect = ""
+        for name in ("edit_flip_h", "edit_flip_v", "edit_crop_left",
+                     "edit_crop_top", "edit_crop_right", "edit_crop_bottom"):
+            setattr(image, name, False if name.startswith("edit_flip") else 0)
+        self._slapper_timer.stop()
+        self._slapper_watch_session = None
+        self.slapper_use_edit.setChecked(True)
+        self.slapper_use_original.setChecked(False)
+        self._set_slapper_state("returned")
+        self._refresh_bucket()
+        self._changed()
+
+    def _choose_slapper_version(self, use_edited: bool):
+        image = self._image_for_uuid(self._slapper_asset_uuid)
+        if image is None or not image.slapper_edited_path:
+            return
+        image.slapper_use_edited = bool(use_edited)
+        if use_edited:
+            image.local_path = image.slapper_edited_path
+            image.filename = os.path.basename(image.slapper_edited_path)
+            for name in ("edit_flip_h", "edit_flip_v", "edit_crop_left",
+                         "edit_crop_top", "edit_crop_right", "edit_crop_bottom"):
+                setattr(image, name, False if name.startswith("edit_flip") else 0)
+        else:
+            image.local_path = image.slapper_base_path or image.original_path
+            image.filename = (image.slapper_base_filename or
+                              os.path.basename(image.local_path))
+            for name, value in (image.slapper_base_edit_state or {}).items():
+                if hasattr(image, name):
+                    setattr(image, name, value)
+        image.thumb_square = ""
+        image.thumb_aspect = ""
+        self._refresh_bucket()
+        self._changed()
+
+    def _selected_image(self):
+        index = self._selected_photo_idx
+        if index is None or not (0 <= index < len(self._bucket)):
+            return None
+        return self._bucket[index]
+
+    def _select_photo(self, idx: int):
+        if 0 <= idx < len(self._bucket):
+            self._selected_photo_idx = idx
+        self._refresh_bucket()
+
+    def _manage_selected(self, action: str):
+        index = self._selected_photo_idx
+        if index is None:
+            return
+        if action == "up":
+            self._move(index, -1)
+        elif action == "down":
+            self._move(index, 1)
+        elif action == "lead":
+            self._set_cover(index)
+        elif action == "remove":
+            self._remove(index)
+
+    def _set_selected_field(self, attr: str, value: str):
+        if self._updating_photo_fields:
+            return
+        image = self._selected_image()
+        if image is None:
+            return
+        setattr(image, attr, value)
+        self._changed()
+
+    def _show_photo_detail(self, which: str, checked: bool):
+        if which == "caption":
+            self.metadata_btn.blockSignals(True)
+            self.metadata_btn.setChecked(False)
+            self.metadata_btn.blockSignals(False)
+            self.metadata_panel.setVisible(False)
+            self.caption_panel.setVisible(bool(checked))
+        else:
+            self.caption_btn.blockSignals(True)
+            self.caption_btn.setChecked(False)
+            self.caption_btn.blockSignals(False)
+            self.caption_panel.setVisible(False)
+            self.metadata_panel.setVisible(bool(checked))
+
+    def _flip_selected(self, attr: str):
+        image = self._selected_image()
+        if image is None:
+            return
+        setattr(image, attr, not bool(getattr(image, attr, False)))
+        self._render_selected_edit()
+
+    def _crop_selected(self):
+        image = self._selected_image()
+        if image is None:
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Crop this photograph")
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(hint(
+            "Trim percentages from the four edges. The original is never changed."))
+        form = QFormLayout()
+        controls = {}
+        for attr, label in (
+                ("edit_crop_left", "Left %"),
+                ("edit_crop_top", "Top %"),
+                ("edit_crop_right", "Right %"),
+                ("edit_crop_bottom", "Bottom %")):
+            spin = QSpinBox()
+            spin.setRange(0, 90)
+            spin.setSuffix(" %")
+            spin.setValue(int(getattr(image, attr, 0) or 0))
+            controls[attr] = spin
+            form.addRow(label, spin)
+        layout.addLayout(form)
+        reset = QPushButton("Reset crop")
+        reset.clicked.connect(lambda: [control.setValue(0)
+                                      for control in controls.values()])
+        layout.addWidget(reset)
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        if dialog.exec() != QDialog.Accepted:
+            return
+        left, right = controls["edit_crop_left"].value(), controls["edit_crop_right"].value()
+        top, bottom = controls["edit_crop_top"].value(), controls["edit_crop_bottom"].value()
+        if left + right > 95 or top + bottom > 95:
+            QMessageBox.warning(
+                self, "Crop is too small",
+                "Leave at least five percent of the photograph in each direction.")
+            return
+        for attr, control in controls.items():
+            setattr(image, attr, control.value())
+        self._render_selected_edit()
+
+    def _render_selected_edit(self):
+        image = self._selected_image()
+        if image is None:
+            return
+        try:
+            render_non_destructive(image)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Could not apply photo edit", str(exc))
+            return
+        self._refresh_bucket()
+        self._changed()
+
+    def _populate_photo_tools(self):
+        image = self._selected_image()
+        enabled = image is not None
+        self.photo_tools.setEnabled(enabled)
+        if not enabled:
+            self.selected_photo_label.setText("SELECT A PHOTO")
+            if self._slapper_state != "waiting":
+                self._slapper_asset_uuid = ""
+                self._set_slapper_state("idle")
+            return
+        name = image.filename or os.path.basename(image.original_path or image.local_path)
+        edited = bool(getattr(image, "slapper_use_edited", False))
+        self.selected_photo_label.setText(
+            f"SELECTED — {name}{' · EDITED' if edited else ''}")
+        self._updating_photo_fields = True
+        try:
+            self.flip_h_btn.setChecked(bool(getattr(image, "edit_flip_h", False)))
+            self.flip_v_btn.setChecked(bool(getattr(image, "edit_flip_v", False)))
+            self.photo_alt.setText(getattr(image, "alt", "") or "")
+            self.photo_caption.setPlainText(getattr(image, "caption", "") or "")
+            for attr, edit in self.photo_meta_fields.items():
+                edit.setText(str(getattr(image, attr, "") or ""))
+        finally:
+            self._updating_photo_fields = False
+        if self._slapper_state != "waiting":
+            if getattr(image, "slapper_edited_path", ""):
+                self._slapper_asset_uuid = str(image.asset_uuid)
+                self.slapper_use_edit.blockSignals(True)
+                self.slapper_use_original.blockSignals(True)
+                self.slapper_use_edit.setChecked(edited)
+                self.slapper_use_original.setChecked(not edited)
+                self.slapper_use_edit.blockSignals(False)
+                self.slapper_use_original.blockSignals(False)
+                self._set_slapper_state("returned")
+            else:
+                self._slapper_asset_uuid = ""
+                self._set_slapper_state("idle")
 
     def _refresh_bucket(self):
         while self.bucket_col.count():
@@ -945,8 +1578,12 @@ class TakeMode(QWidget):
         self.photos_sec.header.setText(
             f"THE PHOTOS — {n} in the bucket" if n else "THE PHOTOS — none yet")
         if not self._bucket:
+            self._selected_photo_idx = None
+            self._populate_photo_tools()
             self.bucket_col.addWidget(hint("No photos yet — click “Add photos…”."))
             return
+        if self._selected_photo_idx is None or self._selected_photo_idx >= len(self._bucket):
+            self._selected_photo_idx = 0
         for i, im in enumerate(self._bucket):
             is_cover = (i == self._cover_idx)
             row = QFrame()
@@ -955,32 +1592,27 @@ class TakeMode(QWidget):
             col.setContentsMargins(6, 6, 6, 6)
             col.setSpacing(4)
             lay = QHBoxLayout()
-            lay.addWidget(thumb_label(im.thumb_square or im.local_path, 40))
+            select = QPushButton()
+            select.setObjectName("PhotoSelect")
+            select.setCheckable(True)
+            select.setChecked(i == self._selected_photo_idx)
+            select.setAccessibleName(
+                "Selected photograph" if i == self._selected_photo_idx
+                else "Select photograph")
+            select.setIcon(QIcon(load_pixmap(im.thumb_square or im.local_path, 40)))
+            select.setIconSize(QSize(40, 40))
+            select.setFixedSize(48, 48)
+            select.clicked.connect(lambda _=False, i=i: self._select_photo(i))
+            lay.addWidget(select)
             name = QLabel(("★ " if is_cover else "") +
                           (im.filename or os.path.basename(im.local_path)))
             name.setStyleSheet(
                 f"color: {theme.ACCENT if is_cover else theme.BODY}; background: transparent;")
+            name.setMinimumWidth(0)
             lay.addWidget(name, 1)
-            up = QPushButton("▲"); up.setFixedWidth(34)
-            up.clicked.connect(lambda _=False, i=i: self._move(i, -1))
-            dn = QPushButton("▼"); dn.setFixedWidth(34)
-            dn.clicked.connect(lambda _=False, i=i: self._move(i, 1))
-            lay.addWidget(up); lay.addWidget(dn)
-            if not is_cover:
-                cov = QPushButton("★ Lead")
-                cov.clicked.connect(lambda _=False, i=i: self._set_cover(i))
-                lay.addWidget(cov)
-            rm = QPushButton("✕"); rm.setObjectName("Danger"); rm.setFixedWidth(34)
-            rm.clicked.connect(lambda _=False, i=i: self._remove(i))
-            lay.addWidget(rm)
             col.addLayout(lay)
-            # Per-photo ALT — saved with the image on the site (img_alt).
-            alt = QLineEdit(getattr(im, "alt", "") or "")
-            alt.setPlaceholderText("ALT — one plain sentence describing this photo")
-            alt.textChanged.connect(lambda text, im=im: (setattr(im, "alt", text.strip()),
-                                                         self._changed()))
-            col.addWidget(alt)
             self.bucket_col.addWidget(row)
+        self._populate_photo_tools()
 
     def _ai_fill(self):
         if not self._bucket:
@@ -1032,6 +1664,7 @@ class TakeMode(QWidget):
                                                         "is_cover"}})
                         for im in draft.images]
         self._cover_idx = next((i for i, im in enumerate(self._bucket) if im.is_cover), 0)
+        self._selected_photo_idx = 0 if self._bucket else None
         self._ai_post_meta = {
             "category": getattr(draft, "category", ""),
             "album": getattr(draft, "album", ""),
@@ -1052,6 +1685,7 @@ class TakeMode(QWidget):
         self.body.clear()
         self._bucket = []
         self._cover_idx = 0
+        self._selected_photo_idx = None
         self._ai_post_meta = {}
         self._refresh_bucket()
         self._loading = False

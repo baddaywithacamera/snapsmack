@@ -29,7 +29,8 @@ def main():
         return headless.run_backup_all(silent=args.silent)
     try:
         import snap_single_instance
-        if not snap_single_instance.acquire("suyb", "SMACK UP YOUR BACKUP"):
+        _inst_key = os.environ.get("SUYB_INSTANCE_KEY", "").strip() or "suyb"
+        if not snap_single_instance.acquire(_inst_key, "SMACK UP YOUR BACKUP"):
             return 0
     except Exception:
         pass

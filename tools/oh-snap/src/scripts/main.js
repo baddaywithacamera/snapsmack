@@ -322,7 +322,7 @@ function applyLibraryState(lib) {
     if (lib.state === 'present') {
         const c = lib.counts || {};
         appendAiMessage(
-            `Shared library loaded (schema ${lib.schemaVersion}): ${c.engines || 0} skin engines, ${c.css || 0} CSS blocks, ${c.fonts || 0} fonts. I can design against the shared library.`,
+            `Shared library loaded locally (schema ${lib.schemaVersion}): ${c.engines || 0} skin engines, ${c.css || 0} CSS blocks, ${c.fonts || 0} fonts. This version does not send it to the AI; AI suggestions use the active skin only.`,
             'assistant'
         );
         return;

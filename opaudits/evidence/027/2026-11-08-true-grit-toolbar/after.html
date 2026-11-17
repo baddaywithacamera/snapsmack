@@ -1,0 +1,3144 @@
+<!doctype html><html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Archive</title><style>
+/* ===== assets/css/public-base.css ===== */
+/**
+ * SNAPSMACK - Public Base Styles
+ *
+ * Loaded on every public-facing page. Contains:
+ *   - Utility classes shared by all pages (alignment, sizing)
+ *   - Inline image frame styling (parser shortcodes)
+ *   - Content link defaults (description / static page links)
+ *   - Reverse-email anti-scraper helper
+ *   - Engine-required structural rules (image fade-load opacity:0)
+ *   - Landing-only mode header hide
+ *   - Tablet touch target enlargement
+ *
+ * Skin's style.css loads AFTER this file and overrides freely.
+ *
+ * SKIN AUTHORS: most of this is utility/structural. Override decorative
+ * bits (link colour, hover) in your skin freely. Do NOT override the image
+ * fade-load opacity:0 rule — the JS engine depends on it.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be the canonical CSS EOF marker:
+ *   slash-star, space, five equals, space, 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ */
+
+
+/* ─── 1. GLOBAL ASSET CONTAINER ──────────────────────────────────────────── */
+.snapsmack-asset {
+    display: block;
+    height: auto;
+    max-width: 100%;
+    margin-top: 25px;
+    margin-bottom: 25px;
+}
+
+/* ─── 2. SIZE UTILITIES ──────────────────────────────────────────────────── */
+.asset-small  { width: 300px !important; }
+.asset-medium { width: 600px !important; }
+.asset-full   { width: 100%  !important; }
+
+/* ─── 3. ALIGNMENT UTILITIES ─────────────────────────────────────────────── */
+.align-left  { float: left;  margin-right: 25px; margin-bottom: 15px; }
+.align-right { float: right; margin-left:  25px; margin-bottom: 15px; }
+.align-center {
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+    clear: both;
+}
+
+/* ─── 4. INLINE IMAGE FRAMES (parser shortcodes) ─────────────────────────── */
+.snap-inline-frame {
+    width: min(var(--snap-image-width, 100%), 100%);
+    max-width: 100%;
+    margin: 1.5em auto;
+    text-align: center;
+}
+.snap-inline-frame.align-left  { float: left;  margin: 0.25em 1.5em 1em 0; }
+.snap-inline-frame.align-right { float: right; margin: 0.25em 0 1em 1.5em; }
+.snap-inline-frame img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+@media (max-width: 640px) {
+    .snap-inline-frame {
+        width: 100%;
+        float: none;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+/* ─── 5. CONTENT LINKS (base fallback) ───────────────────────────────────── */
+.description a,
+.static-content a:not(.nav-menu a) {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.description a:hover,
+.static-content a:not(.nav-menu a):hover {
+    opacity: 0.8;
+}
+.description a:has(img),
+.static-content a:has(img),
+.snap-inline-frame a,
+.description a img,
+.static-content a img {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+/* ─── 6. CLEARFIX (floated images don't overflow sections) ───────────────── */
+.description::after,
+.static-content::after,
+.post-content::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+/* ─── 7. REVERSE-EMAIL (anti-scraper, applied to footer email) ───────────── */
+.reverse-email {
+    display: inline-block;
+    unicode-bidi: bidi-override;
+    direction: rtl;
+}
+
+/* ─── 8. LANDING-ONLY MODE (hides skin headers when active) ──────────────── */
+body.landing-only #header,
+body.landing-only .ge-header,
+body.landing-only .pickup-header,
+body.landing-only .snt-header,
+body.landing-only .tg-topbar { display: none; }
+
+/* ─── 9. TABLET TOUCH TARGETS ────────────────────────────────────────────── */
+@media (pointer: coarse) {
+    .nav-menu a,
+    .nav-links a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+}
+
+/* ─── 10. ENGINE: image fade-load (DO NOT OVERRIDE) ──────────────────────── */
+/* Initial opacity:0 so half-decoded images don't flash before paint.
+   ss-engine-image-fade-load.js transitions to opacity:1 on `load`. */
+.post-image,
+.fsog-image,
+.pg-post-image,
+.tg-image,
+img[data-lightbox-src] {
+    opacity: 0;
+    transition: opacity 0.4s ease-in-out;
+    /* Safety net. These start invisible and ss-engine-image-fade-load.js
+       reveals them. If that script is ever missing, blocked or broken, every
+       photograph on the page stays invisible -- which is why this stylesheet
+       was held back from the strict skins rather than shipped, and why they
+       went without the alignment and inline-frame rules they needed. The
+       animation forces full opacity shortly after paint whatever happens to
+       the script; when the script works it sets opacity inline first and
+       nothing here is ever seen. */
+    animation: snap-image-reveal-safety 0s linear 2.5s forwards;
+}
+
+@keyframes snap-image-reveal-safety {
+    to { opacity: 1; }
+}
+
+/* ─── 11. NOT FOUND / EMPTY STATE (shared) ───────────────────────────────── */
+.not-found-msg {
+    text-align: center;
+    padding: 80px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.2rem;
+    color: var(--text-dim, #999);
+}
+/* Feed paging sentinel (ss-engine-tag-infinite.js): an invisible full-width
+   row at the end of a paged landing grid. Fetching the next page starts when
+   it scrolls within reach. */
+.ss-feed-sentinel { grid-column: 1 / -1; height: 1px; margin: 0; padding: 0; }
+
+/* Editor-only notice overlays the real skin instead of replacing its layout. */
+.snap-preview-notice {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 2147483647;
+    padding: 6px 10px;
+    border: 1px solid #666;
+    background: #111;
+    color: #fff;
+    font: 11px/1.4 sans-serif;
+    letter-spacing: 1px;
+    pointer-events: none;
+}
+
+/* ===== SNAPSMACK EOF ===== */
+
+/* ===== skins/true-grit/style.css ===== */
+/**
+ * SNAPSMACK - Stylesheet for the true-grit skin
+ * Alpha v0.7.5
+ *
+ * 50 Shades chassis with photographic wall textures, opacity overlay,
+ * and archival framing. All class prefixes use tg- namespace.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
+/* ==========================================================================
+   GLOBAL STYLES
+   ========================================================================= */
+
+html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: var(--wall-bg, var(--bg-primary));
+    color: var(--text-primary);
+    font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+}
+
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--wall-bg, var(--bg-primary));
+    color: var(--text-primary);
+    font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    overflow-y: auto;
+    background-position: center center;
+}
+
+/* ==========================================================================
+   WALL TEXTURE OVERLAY (body::before pseudo-element)
+   Semi-transparent colour layer over the photographic background.
+   Opacity and colour are controlled via manifest options targeting
+   body::before so no extra HTML div is needed across page templates.
+   ========================================================================= */
+
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--overlay-color, #1a1a1a);
+    opacity: calc(var(--overlay-opacity, 40) / 100);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ==========================================================================
+   LAYOUT STRUCTURE (SNAPPING ENGINE)
+   ========================================================================= */
+
+/* THE OVERLAY PAINTS OVER THE WORDS ON EVERY PAGE THAT IS NOT THE ARCHIVE.
+   body::before above is position:fixed at z-index 0. #page-wrapper below is
+   the only thing that lifts content above it -- and the CMS emits that
+   wrapper on archive and hashtag pages ONLY. On the home page and on every
+   static page the main column is position:static with z-index:auto, so the
+   overlay is painted on top of the headings and paragraphs while a photograph,
+   which creates its own stacking context, is painted above the overlay.
+
+   That is why the owner's home page showed a pale, washed-out title over a
+   perfectly sharp photograph, and why it read as a lost font colour: the text
+   computes black at opacity 1 and is simply covered. Diagnosed live by Codex
+   on foundtextures.ca, where the overlay is rgb(245,245,245) at 0.85.
+
+   Lifting the main column is the whole repair. It moves nothing: the element
+   is already in normal flow, and on the archive it sits inside #page-wrapper,
+   which is lifted the same way. */
+main.public-content,
+#scroll-stage {
+    position: relative;
+    z-index: 1;
+}
+
+#page-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    position: relative;
+    z-index: 1;
+}
+
+#scroll-stage {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    scroll-behavior: smooth;
+    align-items: stretch;
+    min-height: 0;
+}
+
+/* ==========================================================================
+   HEADER (FIXED HEIGHT LOCK)
+   ========================================================================= */
+
+#tg-header {
+    background-color: transparent;
+    height: 80px;
+    padding: 0;
+    flex-shrink: 0;
+    z-index: 20;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+#tg-header::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--header-bg, var(--bg-primary));
+    opacity: calc(var(--header-opacity, 100) / 100);
+    pointer-events: none;
+    z-index: -1;
+}
+
+.tg-header-inside {
+    width: 100%;
+    max-width: 95%;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 40px;
+    position: relative;
+    z-index: 1;
+}
+
+.site-title-text {
+    font-family: 'Raleway', sans-serif;
+    font-weight: 300;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1;
+    display: block;
+    text-decoration: none;
+}
+
+.logo-area a {
+    text-decoration: none;
+    color: var(--text-primary);
+}
+
+.site-logo {
+    height: 50px;
+    width: auto;
+    display: block;
+}
+
+.nav-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.nav-menu a {
+    color: var(--accent);
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: color 0.2s ease;
+}
+
+.nav-menu a:hover, .nav-menu a.active {
+    color: var(--accent-hover);
+}
+
+.nav-menu .sep {
+    padding: 0 15px;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    cursor: default;
+}
+
+/* ==========================================================================
+   PHOTOBOX & IMAGE (OPTICAL LIFT ENGINE)
+   ========================================================================= */
+
+#tg-photobox {
+    background: transparent;
+    width: 100%;
+    height: calc(100dvh - 140px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    padding-bottom: 0;
+    margin: 0 !important;
+    box-sizing: border-box;
+    overflow: hidden;
+    flex-grow: 1;
+    flex-shrink: 0 !important;
+}
+
+.tg-photo-wrap {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 30px;
+    box-sizing: border-box;
+}
+
+.zoomable::after {
+    content: none !important;
+}
+
+.tg-image {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    box-sizing: border-box;
+    border: none;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 2px 10px rgba(0,0,0,0.3);
+    cursor: zoom-in !important;
+    outline: none !important;
+    opacity: 0;
+    transition: opacity 0.4s ease-in-out;
+}
+
+.tg-image[style*="opacity: 1"] {
+    opacity: 1 !important;
+}
+
+/* ==========================================================================
+   IMAGE FADE-IN (Prevent layout jumps during image load)
+   ========================================================================= */
+
+.post-image,
+.pg-post-image,
+.inline-asset:not(.snap-inline-frame) {
+    opacity: 0;
+    transition: opacity 0.4s ease-in-out;
+}
+
+.post-image[style*="opacity: 1"],
+.pg-post-image[style*="opacity: 1"],
+.inline-asset[style*="opacity: 1"] {
+    opacity: 1 !important;
+}
+
+/* ==========================================================================
+   INFOBOX (FIXED HEIGHT LOCK)
+   ========================================================================= */
+
+#infobox {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    height: 60px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    position: relative;
+    z-index: 10;
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+.nav-links {
+    display: inline-flex;
+    align-items: center;
+    gap: 40px;
+    font-family: 'DM Sans', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.nav-links .left,
+.nav-links .center,
+.nav-links .right {
+    display: inline-flex;
+    align-items: center;
+    gap: 40px;
+    margin: 0;
+}
+
+.nav-links a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.85rem;
+    padding: 6px 0;
+    display: inline-block;
+}
+
+.nav-links a:hover {
+    color: var(--accent-hover);
+}
+
+.nav-links .sep {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+}
+
+.dim {
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* ==========================================================================
+   POST CONTENT DRAWER
+   ========================================================================= */
+
+#footer {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    padding: 52px 0 0 0;
+    text-align: left;
+    display: none;
+    width: 100%;
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+.photo-title-footer,
+.description,
+.meta,
+.comment-form,
+#pane-comments {
+    max-width: 850px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 20px;
+    padding-right: 20px;
+    box-sizing: border-box;
+}
+
+.photo-title-footer {
+    font-family: 'Raleway', sans-serif;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 2rem;
+    margin: 0 auto 40px auto;
+    font-weight: 300;
+}
+
+.description {
+    font-family: 'DM Sans', sans-serif;
+    line-height: 1.8;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 40px;
+}
+
+.description a,
+.static-content a:not(.nav-menu a) {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.description a:hover,
+.static-content a:not(.nav-menu a):hover {
+    color: var(--accent-hover);
+}
+
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+/* ==========================================================================
+   THE SIGNATURE (SYSTEM FOOTER STRIP)
+   ========================================================================= */
+
+#system-footer {
+    background-color: transparent;
+    padding: 32px 0;
+    text-align: center !important;
+    position: relative;
+    width: 100% !important;
+    border-top: 1px solid var(--border) !important;
+    margin-top: auto;
+    display: none;
+}
+
+#system-footer::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--footer-bg, var(--bg-chrome));
+    opacity: calc(var(--footer-opacity, 100) / 100);
+    pointer-events: none;
+    z-index: 0;
+}
+
+#system-footer .inside,
+#system-footer p,
+#system-footer .sep,
+#sig-text {
+    position: relative;
+    z-index: 1;
+}
+
+#footer[style*="display: block"] ~ #system-footer,
+#footer[style*="display:block"] ~ #system-footer {
+    display: block !important;
+}
+
+#system-footer .inside {
+    max-width: 95% !important;
+    margin: 0 auto;
+}
+
+#system-footer p, #sig-text {
+    color: var(--text-secondary) !important;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.7rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.5px !important;
+    margin: 0 !important;
+}
+
+/* ==========================================================================
+   TECHNICAL SPECIFICATIONS
+   ========================================================================= */
+
+.meta {
+    border-top: 1px solid var(--border);
+    padding-top: 40px;
+    margin-top: 40px;
+    text-align: center;
+    padding-bottom: 60px;
+}
+
+.meta-header {
+    margin-bottom: 25px;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 4px;
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.meta-header.no-signals {
+    color: var(--text-primary) !important;
+}
+
+.exif-table {
+    margin: 0 auto;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    text-align: left;
+    width: auto;
+}
+
+.exif-label {
+    padding-right: 40px;
+    padding-bottom: 12px;
+    color: var(--text-dim);
+    font-weight: 900;
+    text-transform: uppercase;
+    font-family: 'DM Sans', sans-serif;
+    width: 160px;
+    vertical-align: top;
+}
+
+.exif-value {
+    padding-bottom: 12px;
+    color: var(--accent);
+    font-family: 'DM Mono', 'Courier New', monospace !important;
+    font-size: 1.1em;
+    letter-spacing: 0.5px;
+}
+
+/* ==========================================================================
+   COMMENTS
+   ========================================================================= */
+
+.comment-form {
+    border-top: 1px solid var(--border);
+    padding-top: 40px;
+    margin-top: 40px;
+    padding-bottom: 80px;
+}
+
+.form-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.comment-form input,
+.comment-form textarea {
+    background: var(--input-bg, var(--bg-primary));
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 15px;
+    font-family: 'DM Mono', 'Courier New', monospace;
+    font-size: 0.95rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.form-row input {
+    flex: 1;
+}
+
+.comment-form textarea {
+    height: 150px;
+    resize: vertical;
+}
+
+.comment-form button {
+    margin-top: 20px;
+    background: var(--bg-chrome);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: 12px 30px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 1px;
+    float: right;
+}
+
+/* ==========================================================================
+   ARCHIVE GRID
+   ========================================================================= */
+
+/* --- GRID A: Square & Cropped (CSS Grid layout) --- */
+#browse-grid.square-grid,
+#browse-grid.cropped-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
+    gap: var(--grid-gap, 100px);
+    max-width: 95%;
+    margin: 80px auto;
+    padding: 0 60px;
+    flex: 1 0 auto;
+}
+
+/* Archive tiles must fit the phone viewport even when desktop settings request
+   four columns and wide gutters. Keep the desktop composition unchanged. */
+@media (max-width: 600px) {
+    body.archive-page #browse-grid.square-grid,
+    body.archive-page #browse-grid.cropped-grid {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+        padding: 0 20px;
+        margin: 40px auto;
+    }
+    body.archive-page #browse-grid .thumb-container { min-width: 0; width: 100%; }
+}
+
+/* --- GRID B: Justified (Own ID, own rules) --- */
+#justified-grid {
+    display: block;
+    max-width: 95%;
+    margin: 40px auto;
+    padding: 0;
+    box-sizing: border-box;
+    flex: 1 0 auto;
+}
+
+.square-grid .thumb-container,
+.cropped-grid .thumb-container {
+    margin: 0 auto;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.square-grid .thumb-link {
+    display: block;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+}
+
+.cropped-grid .thumb-link {
+    display: block;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    width: 100%;
+}
+
+.square-grid .thumb-link img,
+.cropped-grid .thumb-link img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.3s ease;
+}
+
+.square-grid .thumb-link img:hover,
+.cropped-grid .thumb-link img:hover {
+    opacity: 0.7;
+}
+
+/* The prepared archive class chooses the derivative and its geometry together.
+   Natural thumbnails keep their own height through the inner image wrapper. */
+#browse-grid.cropped-grid .tg-thumb,
+#browse-grid.cropped-grid .thumb-link {
+    aspect-ratio: auto;
+    height: auto;
+}
+#browse-grid.cropped-grid .tg-thumb img {
+    width: 100%;
+    height: auto;
+}
+#browse-grid.square-grid .tg-thumb {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1 / 1;
+}
+
+/* --- Justified item hover --- */
+#justified-grid .justified-item img {
+    transition: opacity 0.3s ease;
+}
+#justified-grid .justified-item:hover img {
+    opacity: 0.7;
+}
+
+/* ==========================================================================
+   STATIC PAGE OVERRIDES
+   Wall texture is for the photo gallery; static pages use the variant's
+   --bg-primary (or admin-overridden --page-bg) for a clean solid background.
+   The body::before overlay is kept so the variant colour scheme applies.
+   ========================================================================= */
+
+/* body keeps its wall texture on static pages — the texture is visible
+   on either side of the centred .static-content box. */
+
+.static-transmission #scroll-stage {
+    display: block !important;
+    text-align: center !important;
+    background: transparent !important;
+}
+
+.static-transmission #footer,
+.static-transmission #system-footer,
+.archive-page #footer,
+.archive-page #system-footer {
+    display: block !important;
+    width: 100% !important;
+    visibility: visible !important;
+    position: relative;
+    z-index: 100;
+}
+
+.static-transmission #footer { background: var(--bg-secondary) !important; }
+.static-transmission #system-footer { background: transparent !important; border-top: 1px solid var(--border) !important; }
+
+.static-content {
+    max-width: var(--static-content-width, 850px) !important;
+    margin: 0 auto 0 auto !important;
+    padding: 40px 40px 50px 40px !important;
+    box-sizing: border-box;
+    background: var(--page-bg, var(--bg-primary)) !important;
+    text-align: left;
+    overflow-x: hidden;
+}
+.static-content h2,
+.static-content h3,
+.static-content h4 {
+    margin-top: 2em;
+    margin-bottom: 0.4em;
+}
+.static-content .description > :first-child h2,
+.static-content .description > :first-child h3,
+.static-content .description > h2:first-child,
+.static-content .description > h3:first-child {
+    margin-top: 0.5em;
+}
+/* Zero paragraph top margin so heading margin-bottom is the only gap between
+   a heading and its following text. Para-to-para spacing is handled by
+   the paragraph's own margin-bottom (browser default ~1em). */
+.static-content .description p {
+    margin-top: 0;
+}
+
+/* Lists: consistent with paragraph line-height and spacing */
+.static-content .description ul,
+.static-content .description ol {
+    margin-top: 0;
+    margin-bottom: 1.4em;
+    padding-left: 1.4em;
+}
+.static-content .description li {
+    line-height: 1.8;
+    margin-bottom: 0.3em;
+}
+.static-content .description li:last-child { margin-bottom: 0; }
+
+.static-content::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.static-page-title {
+    margin: 0 0 20px 0;
+    padding: 0;
+    font-family: 'Raleway', sans-serif;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 2rem;
+    font-weight: 300;
+}
+/* On static pages the title must align with the description text column
+   (max-width: 850px, centred). Without this it spans the full padded
+   static-content box (970px) while the text sits in a narrower column. */
+.static-transmission .static-page-title {
+    max-width: 850px;
+    margin-left: auto;
+    margin-right: auto;
+}
+/* Landing-only: centre the title on the homepage */
+.landing-only .static-page-title {
+    text-align: center;
+}
+
+.static-transmission .description .align-left {
+    float: left !important;
+    margin: 17px 50px 25px 10px !important;
+    border: none !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+    max-width: 40% !important;
+    height: auto !important;
+    display: block !important;
+}
+
+.static-transmission #photobox.page-hero {
+    display: block !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    float: none !important;
+    background: transparent !important;
+    /* auto left/right so the photobox centres within static-content to
+       align with the 850px description column below it. */
+    margin: 20px auto 30px auto !important;
+    max-width: 850px;
+    width: 100% !important;
+    box-sizing: border-box;
+}
+
+/* Size modifiers */
+.static-transmission #photobox.page-hero--full  .main-photo img { max-width: 100%; }
+.static-transmission #photobox.page-hero--medium .main-photo img { max-width: 60%; min-width: 200px; }
+.static-transmission #photobox.page-hero--small  .main-photo img { max-width: 35%; min-width: 120px; }
+
+/* Alignment modifiers */
+.static-transmission #photobox.page-hero--center .main-photo { text-align: center; }
+.static-transmission #photobox.page-hero--center .main-photo img { margin: 0 auto; display: block; }
+.static-transmission #photobox.page-hero--left .main-photo { text-align: left; }
+.static-transmission #photobox.page-hero--left .main-photo img { margin: 0; float: left; }
+.static-transmission #photobox.page-hero--right .main-photo { text-align: right; }
+.static-transmission #photobox.page-hero--right .main-photo img { margin: 0 0 0 auto; float: right; }
+
+/* Base: explicitly kill any shadow from the compiled CSS blob or other sources */
+.static-transmission #photobox.page-hero .main-photo img {
+    box-shadow: none !important;
+}
+
+/* Shadow modifier — opt in per page. !important needed to win over the none
+   rule above when both selectors match (same specificity, this comes later). */
+.static-transmission #photobox.page-hero--shadow .main-photo img {
+    box-shadow: 0 6px 30px rgba(0,0,0,0.25) !important;
+}
+
+.static-transmission #photobox.page-hero .post-image {
+    height: auto;
+    display: block;
+}
+
+.static-transmission .description {
+    margin-top: 10px;
+    /* .static-content already provides 40px padding on all sides.
+       Zero out the general .description side padding so text, title, and
+       hero image all align at the same left edge within the container. */
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.static-transmission .description img + br {
+    display: none !important;
+}
+
+/* ==========================================================================
+   INLINE ASSETS (PARSED SHORTCODES)
+   ========================================================================= */
+
+.inline-asset, .snapsmack-asset, .snap-inline-frame {
+    display: block;
+    height: auto;
+    box-sizing: border-box;
+    border: none !important;
+    box-shadow: none !important;
+    margin-top: 30px;
+    margin-bottom: 40px !important;
+}
+
+.asset-full   { width: 100% !important; margin-left: auto; margin-right: auto; }
+.asset-medium { width: 50%; min-width: 300px; }
+.asset-small  { width: 25%; min-width: 150px; }
+
+.align-left {
+    float: left !important;
+    margin: 17px 50px 25px 10px !important;
+}
+
+.align-right {
+    float: right !important;
+    margin: 5px 10px 25px 50px !important;
+}
+
+.align-center {
+    float: none !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+.description::after { content: ""; display: table; clear: both; }
+
+/* ==========================================================================
+   ARCHIVE CONTROLS
+   ========================================================================= */
+
+#infobox .center {
+    display: flex;
+    gap: 40px;
+    align-items: center;
+    justify-content: center;
+}
+
+#infobox .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#infobox .filter-group form {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+
+#infobox label.dim {
+    margin-right: 8px;
+    font-size: 0.7rem;
+}
+
+#infobox select {
+    background: var(--input-bg, var(--bg-primary));
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 5px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+#infobox select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+#infobox a.active {
+    color: var(--text-primary);
+    font-size: 0.75rem;
+}
+
+#infobox a.inactive {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+}
+
+.empty-sector-msg {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 100px;
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 2px;
+}
+
+/* ==========================================================================
+   NOTICE & ERROR STATES
+   ========================================================================= */
+
+.hud-msg {
+    position: fixed;
+    top: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.95);
+    color: #39FF14;
+    border: 1px solid #39FF14;
+    padding: 20px 40px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    z-index: 10000;
+    transition: top 0.6s cubic-bezier(.2,.9,.2,1);
+}
+
+.hud-msg.show {
+    top: 40px;
+}
+
+.sql-error-notice {
+    background: #200;
+    color: #f99;
+    padding: 20px;
+    font-family: monospace;
+    border: 1px solid red;
+}
+
+.empty-gallery-msg, .not-found-msg {
+    color: var(--text-primary);
+    text-align: center;
+    padding: 100px 50px;
+}
+
+/* ==========================================================================
+   FOOTER SPACING & LINKS
+   ========================================================================= */
+
+#system-footer .sep {
+    display: inline-block;
+    margin: 0 12px;
+    color: var(--text-dim);
+}
+
+.footer-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-link:hover {
+    color: var(--text-primary);
+}
+
+.rss-tag {
+    font-weight: normal;
+    letter-spacing: 1px;
+}
+
+.reverse-email {
+    unicode-bidi: bidi-override;
+    direction: rtl;
+}
+
+/* ==========================================================================
+   BLOGROLL
+   ========================================================================== */
+
+.blogroll-canvas {
+    max-width: 900px;
+    margin: 40px auto 0 auto;
+    padding: 30px 40px 50px 40px;
+    box-sizing: border-box;
+    text-align: left;
+    background: var(--bg-primary);
+}
+
+.blogroll-category-block {
+    margin-bottom: 60px;
+}
+
+.blogroll-category-heading {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin: 0 0 20px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.blogroll-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 60px;
+}
+
+.blogroll-peer {
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.blogroll-peer:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.blogroll-peer-name {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.blogroll-peer-name a {
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.blogroll-peer-name a:hover {
+    color: var(--accent-hover);
+}
+
+.blogroll-peer-desc {
+    display: block;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin: 4px 0 8px 0;
+    padding: 0;
+}
+
+.blogroll-peer-url {
+    display: block;
+    font-family: 'DM Mono', 'Courier New', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+}
+
+/* ==========================================================================
+   INLINE STYLE REMOVALS - CSS CLASSES
+   ========================================================================= */
+
+.footer-pane { display: none; }
+
+.signals-header { margin-bottom: 40px; text-align: center; }
+.signals-table { width: 100%; margin-bottom: 40px; }
+.signal-date { font-size: 0.7rem; color: #444; margin-top: 5px; }
+.signals-empty { text-align: center; }
+
+/* ==========================================================================
+   HASHTAGS (Single Post View)
+   ========================================================================= */
+
+.tg-tags {
+    max-width: 850px;
+    margin: 0 auto 40px auto;
+    padding: 0 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.tg-tag {
+    display: inline-block;
+    font-family: 'DM Mono', 'Courier New', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-decoration: none;
+    letter-spacing: 0.5px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.tg-tag:hover {
+    color: var(--accent-hover);
+    border-color: var(--accent);
+}
+
+/* ==========================================================================
+   SEARCH INPUT (Archive Infobox)
+   ========================================================================= */
+
+.archive-search-input {
+    background: var(--input-bg, var(--bg-primary));
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    width: 160px;
+}
+
+.archive-search-input::placeholder {
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.archive-search-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* ==========================================================================
+   PAGINATION (Hashtag Archive)
+   ========================================================================= */
+
+.tg-pagination {
+    text-align: center;
+    padding: 40px 0 60px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+}
+
+.tg-pagination a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.tg-pagination a:hover {
+    color: var(--accent-hover);
+}
+
+.tg-page-info {
+    color: var(--text-dim);
+}
+
+/* ==========================================================================
+   MAILERLITE EMBED OVERRIDES
+   Full-width box, inline email+button, site typography.
+   ========================================================================= */
+
+/* Kill MailerLite's own centering/width constraints so the box fills the
+   text container exactly like the paragraphs above it. */
+.ml-embedded,
+.ml-form-align-center {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+}
+
+/* Bordered box — full width, no card chrome.
+   Use an explicit mid-grey rather than --border (#333333) which is too
+   dark to read as a border on the dark background. */
+.ml-form-embedWrapper {
+    background: transparent !important;
+    border: 1px solid #666666 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 28px 32px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.ml-form-embedBody {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+}
+
+/* Title — Raleway uppercase weight 300, matches site headings */
+.ml-form-embedContent h4,
+.ml-form-embedContent h3,
+.ml-form-embedContent h2 {
+    font-family: 'Raleway', sans-serif !important;
+    font-weight: 300 !important;
+    font-size: 1rem !important;
+    letter-spacing: 1.5px !important;
+    text-transform: uppercase !important;
+    color: var(--text-primary) !important;
+    margin: 0 0 10px 0 !important;
+    padding: 0 !important;
+}
+
+/* Description — DM Sans, matches page body */
+.ml-form-embedContent p {
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.9rem !important;
+    line-height: 1.7 !important;
+    color: var(--text-secondary) !important;
+    margin: 0 0 20px 0 !important;
+    padding: 0 !important;
+}
+
+/* The form itself is the flex row — fieldRow (input) + embedSubmit (button)
+   are direct siblings inside the form, so flex goes here. */
+form.ml-block-form {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+    margin-bottom: 0 !important;
+}
+
+.ml-form-fieldRow {
+    flex: 1 1 auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+}
+
+.ml-form-fieldRow .ml-field-group {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Extra selector chain beats MailerLite's dynamically-loaded !important rules */
+.ml-embedded .ml-form-embedBody .ml-form-fieldRow input[type="email"],
+.ml-embedded .ml-form-embedBody .ml-form-fieldRow input[type="text"],
+.ml-form-fieldRow input[type="email"],
+.ml-form-fieldRow input[type="text"] {
+    width: 100% !important;
+    height: 46px !important;
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.9rem !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+}
+
+.ml-embedded .ml-form-embedBody .ml-form-fieldRow input::placeholder,
+.ml-form-fieldRow input::placeholder {
+    color: var(--text-dim) !important;
+    opacity: 1 !important;
+}
+
+/* Button — flush right, balanced width */
+.ml-form-embedSubmit {
+    flex: 0 0 180px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.ml-form-embedSubmit button,
+.ml-form-embedSubmit button.primary {
+    width: 100% !important;
+    height: 46px !important;
+    background: #3a3a3a !important;
+    color: #ffffff !important;
+    border: 1px solid #3a3a3a !important;
+    border-radius: 0 !important;
+    font-family: 'Raleway', sans-serif !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 1.5px !important;
+    text-transform: uppercase !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: background 0.2s ease, border-color 0.2s ease !important;
+}
+
+.ml-form-embedSubmit button:hover {
+    background: #1a1a1a !important;
+    border-color: #1a1a1a !important;
+}
+
+/* Success message */
+.ml-form-successBody,
+.ml-form-successContent p {
+    color: var(--text-primary) !important;
+    font-family: 'DM Sans', sans-serif !important;
+}
+
+
+/* ==========================================================================
+   NAV DROPDOWN
+   Requires ss-engine-nav-dropdown.js (loaded by core/footer.php when
+   nav_menu_json is configured). Classes emitted by core/header.php renderer.
+   ========================================================================= */
+
+.nav-has-children { position: relative; }
+
+.nav-submenu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 180px;
+    list-style: none;
+    margin: 0;
+    padding: 6px 0;
+    z-index: 500;
+    background: var(--nav-dropdown-bg, #111111);
+    border: 1px solid rgba(128,128,128,0.2);
+    border-radius: 3px;
+}
+
+.nav-has-children:hover > .nav-submenu,
+.nav-has-children.open > .nav-submenu {
+    display: block;
+}
+
+.nav-submenu li { display: block; }
+
+.nav-submenu a,
+.nav-submenu span {
+    display: block;
+    padding: 7px 18px;
+    white-space: nowrap;
+    color: var(--nav-dropdown-text, #cccccc);
+    text-decoration: none;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    transition: opacity 0.15s;
+    opacity: 0.75;
+}
+
+.nav-submenu a:hover { opacity: 1; }
+
+
+/* The menu separator. The CMS drew it until 0.7.873D, when a hard-coded
+   pipe in the shared renderer was removed because it reached every skin
+   at once -- including three that already drew their own, which then
+   showed two. The character belongs to the skin. This reuses the colour
+   and spacing this skin's own .sep span already had, so nothing changes
+   but where it comes from. */
+.nav-menu > li + li::before {
+    content: "|";
+    padding: 0 15px;
+    color: var(--text-dim);
+    cursor: default;
+}
+
+/* The masthead is an <a>, and the <a> itself must be styled.
+   The wordmark span sets its own colour and text-decoration:none, but a
+   descendant cannot cancel an underline drawn by its ancestor -- so the
+   link rendered in the browser's default blue, underlined, and purple once
+   visited. Skins written for the older markup target ".logo-area a", an
+   anchor INSIDE a container; the renderer emits the anchor AS the
+   container (<a class="site-title logo-area">), so that selector matches
+   nothing. This covers both shapes and lets the wordmark's own colour show. */
+a.site-title,
+a.logo-area,
+.site-title > a,
+.logo-area > a {
+    color: inherit;
+    text-decoration: none;
+}
+/* Temporary skin-local download presentation; remove after SS-1059 core asset delivery ships. */
+.snap-download-btn {
+    position: fixed;
+    bottom: 80px;
+    right: 30px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    transition: opacity 0.25s ease;
+    cursor: pointer;
+    text-decoration: none;
+    z-index: 100;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Full opacity on hover */
+.snap-download-btn:hover {
+    background-color: rgba(0, 0, 0, 0.9);
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: scale(1.1);
+    transition: opacity 0.25s ease, transform 0.15s ease, background-color 0.15s ease;
+}
+
+/* Pure CSS download arrow icon */
+.snap-download-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    position: relative;
+}
+
+/* Downward arrow shaft */
+.snap-download-icon::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 2px;
+    height: 12px;
+    background: #fff;
+    transform: translateX(-50%);
+}
+
+/* Arrowhead */
+.snap-download-icon::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 7px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: translateX(-50%) rotate(45deg);
+}
+
+/* Tray/base line under the arrow */
+.snap-download-icon span {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #fff;
+}
+
+/* Keep T/M/C outside the centred filter content, in the right-hand gutter. */
+.true-grit-v2 #infobox .archive-filter-inner {
+    position: static;
+    max-width: min(var(--archive-content-width, 1280px), calc(100% - 420px));
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.true-grit-v2 .archive-controls--docked {
+    position: absolute !important;
+    right: 20px !important;
+    top: 50%;
+    transform: translateY(-50%) !important;
+    margin: 0;
+    flex-shrink: 0;
+}
+.tg-search-page { max-width: 1200px; margin: 48px auto; padding: 0 30px; }
+.tg-search-result { display: inline-block; vertical-align: top; width: 28%; margin: 2%; }
+.tg-search-link { display: block; color: inherit; text-decoration: none; }
+.tg-search-link img { display: block; max-width: 100%; height: auto; box-shadow: 3px 3px 8px rgba(0,0,0,.2); }
+.tg-search-link h2 { font: inherit; margin-top: 16px; }
+.tg-search-link:focus-visible { outline: 2px solid currentColor; outline-offset: 6px; }
+
+.ss-feed-pager { text-align: center; padding: 16px; }
+.ss-feed-pager-link { display: inline-block; min-height: 44px; padding: 12px 20px; color: inherit; }
+/* ===== SNAPSMACK EOF ===== */
+
+/* ===== assets/css/page-archive.css ===== */
+/**
+ * SNAPSMACK - Archive Page Styles
+ *
+ * Loaded only on archive.php. Contains:
+ *   - Square / cropped / justified grid engines
+ *   - Filter panel (saf-*) styling
+ *   - Search form + status row
+ *   - T/M/C control bar (.archive-controls + .archive-layout-toggle + .archive-calendar-toggle)
+ *   - Archive responsive breakpoints
+ *
+ * Skin's style.css loads AFTER this file. Override anything decorative
+ * (colours, opacity, hover, position) freely. Do NOT override grid
+ * structure (display:grid, gap, aspect-ratio) — the layout depends on it.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be: slash-star, space, five equals, space,
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ */
+
+
+/* --- 1. SQUARE GRID (1:1 cropped) ----------------------------------------- */
+.square-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
+    gap: var(--grid-gap, 50px);
+    padding: 0;
+    justify-content: center;
+}
+.square-grid .thumb-container {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+}
+.square-grid .thumb-link {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    box-sizing: border-box;
+}
+.square-grid .thumb-link img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* --- 2. CROPPED GRID (clamped aspect, proportional portraits) ------------- */
+.cropped-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
+    gap: var(--grid-gap, 50px);
+    padding: 0;
+    justify-content: center;
+}
+.cropped-grid .thumb-container {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cropped-grid .thumb-link {
+    display: block !important;
+    width: 100% !important;
+    overflow: hidden;
+    aspect-ratio: 3 / 2 !important;
+}
+.cropped-grid .thumb-link.orient-portrait {
+    width: 75% !important;
+    aspect-ratio: 2 / 3 !important;
+}
+.cropped-grid .thumb-link.orient-square {
+    width: 90% !important;
+    aspect-ratio: 1 / 1 !important;
+}
+.cropped-grid .thumb-link img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    display: block;
+}
+
+/* --- 3. JUSTIFIED / MASONRY GRID ------------------------------------------ */
+#justified-grid {
+    position: relative;
+    width: 100%;
+}
+#justified-grid .justified-row {
+    display: flex;
+    gap: var(--justified-gap, 4px);
+    margin-bottom: var(--justified-gap, 4px);
+}
+#justified-grid .justified-row-last {
+    height: var(--justified-row-height, 260px);
+}
+#justified-grid .justified-row-last .justified-item {
+    flex-grow: 0 !important;
+    flex-basis: auto !important;
+    height: 100%;
+}
+#justified-grid .justified-row-last .justified-item img {
+    width: auto;
+    height: 100%;
+}
+#justified-grid .justified-item {
+    display: block;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+#justified-grid .justified-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: blur(0.3px);
+}
+#justified-grid .justified-item,
+#justified-grid .justified-item a,
+#justified-grid .justified-item img {
+    border: none !important;
+    box-shadow: none !important;
+}
+#justified-grid .justified-item {
+    outline: var(--masonry-border-width, 0px) solid var(--masonry-border-color, transparent);
+    outline-offset: calc(var(--masonry-border-width, 0px) * -1);
+}
+
+/* --- 4. UNIFIED FILTER PANEL (saf-*) -------------------------------------- */
+.saf-wrap {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+.saf-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    color: var(--nav-text, var(--text-dim, #999));
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    line-height: inherit;
+    white-space: nowrap;
+}
+.saf-btn:hover,
+.saf-btn--active { color: var(--accent, #fff); }
+.saf-btn-arrow {
+    font-size: 0.75em;
+    opacity: 0.7;
+    transition: transform 0.15s;
+}
+.saf-btn[aria-expanded="true"] .saf-btn-arrow { transform: rotate(180deg); }
+
+.saf-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 900;
+    min-width: 330px;
+    max-width: 420px;
+    max-height: 380px;
+    overflow-y: auto;
+    background: var(--nav-bg, var(--bg, #111));
+    border: 1px solid var(--border, rgba(255,255,255,0.12));
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    padding: 10px 0 6px;
+}
+.saf-panel.saf-panel--open { display: block; }
+
+.saf-search {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 12px;
+    margin-bottom: 8px;
+    background: rgba(255,255,255,0.07);
+    border: none;
+    border-bottom: 1px solid var(--border, rgba(255,255,255,0.12));
+    color: var(--text, #fff);
+    font-family: inherit;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    outline: none;
+}
+.saf-search::placeholder { color: var(--text-dim, #666); opacity: 1; }
+
+.saf-group-header {
+    padding: 6px 12px 3px;
+    font-size: 0.68rem;
+    letter-spacing: 2px;
+    color: var(--text-dim, #666);
+    text-transform: uppercase;
+    pointer-events: none;
+}
+.saf-group + .saf-group {
+    margin-top: 4px;
+    border-top: 1px solid var(--border, rgba(255,255,255,0.08));
+    padding-top: 4px;
+}
+
+.saf-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    color: var(--text, #ddd);
+    transition: background 0.1s;
+}
+.saf-item:hover { background: rgba(255,255,255,0.07); }
+.saf-checkbox {
+    flex-shrink: 0;
+    width: 13px;
+    height: 13px;
+    accent-color: var(--accent, #fff);
+    cursor: pointer;
+}
+.saf-label {
+    flex: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.3;
+}
+
+@media (max-width: 600px) {
+    .saf-panel {
+        left: auto;
+        right: 0;
+        transform: none;
+        max-width: calc(100vw - 24px);
+    }
+}
+
+/* --- 5. ARCHIVE SEARCH + STATUS ------------------------------------------- */
+.archive-search-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+}
+.archive-search-status {
+    text-align: center;
+    padding: 15px 0 0;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+}
+.archive-search-status a { color: var(--accent); }
+.archive-tags-row {
+    justify-content: center;
+    padding: 12px 0 0;
+}
+
+/* --- 6. ARCHIVE RESPONSIVE ------------------------------------------------ */
+@media (max-width: 768px) {
+    .square-grid,
+    .cropped-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .wall-nav-item { display: none !important; }
+}
+
+/* --- 7. T / M / C ARCHIVE CONTROLS ---------------------------------------- */
+/*
+ * .archive-controls wraps [T][M] segmented + [C] button. Renders inside
+ * the filter row (#infobox) when ss-engine-archive-toggle.js docks it
+ * via .archive-controls--docked, otherwise sits as its own row above the
+ * grid. Skin's style.css can override position, colour, decoration freely.
+ */
+
+.archive-controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0 14px;
+    flex-wrap: wrap;
+}
+
+.archive-controls.archive-controls--docked {
+    position: absolute;
+    right: 40px; /* JS alignDockedControls() overrides this at runtime */
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 0;
+    margin: 0;
+    flex-wrap: nowrap;
+    z-index: 1;
+}
+
+.archive-layout-toggle {
+    display: inline-flex;
+    gap: 0;
+}
+
+.archive-controls .alt-btn,
+.archive-layout-toggle .alt-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    padding: 6px 14px;
+    font-size: 0.78em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 1px solid currentColor;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.45;
+    transition: opacity 0.15s, background-color 0.15s;
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1;
+}
+
+.archive-layout-toggle .alt-btn:first-child { border-radius: 3px 0 0 3px; }
+.archive-layout-toggle .alt-btn:last-child  { border-radius: 0 3px 3px 0; margin-left: -1px; }
+.archive-layout-toggle .alt-btn:only-child  { border-radius: 3px; margin-left: 0; }
+
+.archive-calendar-toggle { border-radius: 3px; }
+
+.archive-controls .alt-btn:hover,
+.archive-layout-toggle .alt-btn:hover { opacity: 0.85; }
+.archive-controls .alt-btn--active,
+.archive-layout-toggle .alt-btn--active {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.10);
+}
+
+/* --- 7b. FILTER ROW CONTENT COLUMN ---------------------------------------
+ * The row itself is full-bleed: it carries the bar's background and borders
+ * across the window. Its CONTENTS belong to the same column as the grid, so
+ * the docked controls line up with the photographs instead of the window
+ * edge. .archive-controls--docked above falls back to right:40px measured
+ * from whatever is positioned over it, corrected at runtime by
+ * ss-engine-archive-toggle.js -- a skin that does not load that engine never
+ * received the correction, and its controls sat outside the content width.
+ * The inner wrapper is the positioning context, so no JavaScript is needed.
+ */
+.archive-filter-row { position: relative; }
+.archive-filter-row .archive-filter-inner {
+    position: relative;
+    /* A skin centres the row by making #infobox a flex container and its
+     * links an inline-flex child. Putting this column in between broke that:
+     * the column is the flex child now, so IT must centre the controls or
+     * everything bunches against the left padding. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* The row is a flex container in several skins, so the wrapper must be
+     * told to fill the line; without this it shrink-wraps to its contents and
+     * the docked controls dock to the middle of the bar. */
+    width: 100%;
+    flex: 1 1 auto;
+    max-width: var(--archive-content-width, none);
+    margin: 0 auto;
+    padding-left: var(--archive-content-padding, 40px);
+    padding-right: var(--archive-content-padding, 40px);
+    box-sizing: border-box;
+}
+.archive-filter-row .archive-controls--docked {
+    right: var(--archive-content-padding, 40px);
+}
+
+/* Breathing room between the control row and the photographs. The grids are
+ * general siblings of the row rather than adjacent ones, because two grids
+ * follow it (thumbs and wall) and whichever is hidden must not absorb the
+ * gap. A skin or site can change the distance without touching this file. */
+.archive-filter-row ~ #browse-grid,
+.archive-filter-row ~ #justified-grid,
+.archive-filter-row ~ .archive-grid {
+    margin-top: var(--archive-grid-gap, 32px);
+}
+
+
+/* --- Archive paging --------------------------------------------------------
+   archive.php printed every published photograph in one document until
+   0.7.907D -- 1,592 of them on foundtextures.ca, in 1.18 MB. It carries
+   links now. Deliberately plain: this page is served under thirty-one
+   different skins and the row has to sit quietly under all of them, so it
+   inherits its colour and borrows .alt-btn, which the archive already uses
+   for its layout controls. */
+.archive-paging {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 18px;
+    padding: 36px 20px 48px;
+    color: inherit;
+}
+
+.archive-paging-count {
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
+}
+
+@media (max-width: 480px) {
+    .archive-paging { gap: 12px; padding: 28px 16px 36px; }
+}
+
+/* ===== SNAPSMACK EOF ===== */
+
+/* ===== assets/css/ss-engine-comms.css ===== */
+/**
+ * SNAPSMACK - Communications and hotkey HUD styles
+ *
+ * Help modals, notifications, and system hints overlays.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+/* ==========================================================================
+   1. HELP MODAL - Backdrop and Panel
+   ========================================================================== */
+
+/* Backdrop — full screen overlay */
+#snap-help-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    text-transform: uppercase;
+}
+
+/* Inner panel */
+#snap-help-modal > div {
+    min-width: 320px;
+    padding: 40px;
+    border-radius: 4px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+}
+
+#snap-help-modal h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    border-bottom: 1px solid rgba(204,204,204,0.3);
+    padding-bottom: 10px;
+    text-align: center;
+}
+
+.help-footer {
+    margin-top: 25px;
+    font-size: 0.7rem;
+    text-align: center;
+    opacity: 0.4;
+    letter-spacing: 2px;
+}
+
+/* ==========================================================================
+   2. HUD NOTIFICATIONS (Top Center Toasts)
+   ========================================================================== */
+
+.hud-msg {
+    position: fixed;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.95);
+    color: #39FF14;
+    border: 1px solid #39FF14;
+    padding: 15px 30px;
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    z-index: 10000;
+    transition: top 0.4s cubic-bezier(.2,.9,.2,1);
+    pointer-events: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.hud-msg.show {
+    top: 40px;
+}
+
+/* ==========================================================================
+   3. HELP TOAST (Bottom Left)
+   ========================================================================== */
+
+#snap-help-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    padding: 12px 24px;
+    background: rgba(0,0,0,0.8);
+    color: #888;
+    border: 1px solid #333;
+    font-family: 'Courier Prime', monospace;
+    font-size: 11px;
+    z-index: 9999998;
+    pointer-events: none;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+/* ===== SNAPSMACK EOF ===== */
+
+/* ===== assets/css/fjGallery.css ===== */
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+/*
+ * fjGallery layout stylesheet, the CSS half of the Flickr Justified Gallery
+ * engine (fjGallery.min.js). Lays out a justified, gap-filled photo grid whose
+ * rows are each scaled to a common height. Third-party (MIT); pair it with the
+ * fjGallery script when a skin wants a justified gallery.
+ */
+
+
+.fj-gallery {
+  position: relative;
+  overflow: hidden;
+}
+.fj-gallery::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+.fj-gallery .fj-gallery-item {
+  float: left;
+  top: 0;
+  left: 0;
+}
+.fj-gallery .fj-gallery-item > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+/* ===== SNAPSMACK EOF ===== */
+
+/* ===== assets/css/ss-community.css ===== */
+/**
+ * SNAPSMACK - Community Component + Dock Styles
+ *
+ * Two distinct blocks:
+ *
+ *   1. .ss-community-dock  — floating FAB cluster (likes + reactions).
+ *      Fixed-position, lives outside the document flow. Mirrors the social
+ *      dock's position class system (ss-cdock-bottom-right etc.).
+ *
+ *   2. .ss-community       — in-flow comment thread block, embedded in
+ *      a skin's layout (drawer, panel, etc.).
+ *
+ * Philosophy: neutral defaults that won't clash with any skin. Skins can
+ * override via their own style.css using these selectors.
+ * No skin-specific rules live here.
+ *
+ * Loaded via require_scripts[] in skin manifests alongside
+ * ss-engine-community.js.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+/* ==========================================================================
+   CONTAINER
+   ========================================================================== */
+
+.ss-community {
+    margin-top: 32px;
+    font-family: inherit;
+    font-size: 14px;
+    color: inherit;
+}
+
+
+/* ==========================================================================
+   INTERACTION BAR (likes + reactions row)
+   ========================================================================== */
+
+.ss-community-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+
+/* --- LIKE BUTTON --- */
+
+.ss-like-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    color: inherit;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    transition: border-color 0.15s, color 0.15s;
+    user-select: none;
+}
+
+.ss-like-btn:hover {
+    border-color: rgba(128, 128, 128, 0.7);
+}
+
+.ss-like-btn.is-liked {
+    border-color: #e05252;
+    color: #e05252;
+}
+
+.ss-like-icon {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    transition: transform 0.1s;
+}
+
+.ss-like-icon svg {
+    fill: none;
+    stroke: #e05252;
+    stroke-width: 1.5;
+    transition: fill 0.15s ease;
+}
+
+.ss-like-btn.is-liked .ss-like-icon svg {
+    fill: #e05252;
+}
+
+.ss-like-btn.is-liked .ss-like-icon {
+    transform: scale(1.15);
+}
+
+.ss-like-count {
+    font-size: 12px;
+    opacity: 0.7;
+    min-width: 1ch;
+}
+
+
+/* --- REACTIONS WRAP --- */
+
+.ss-reactions-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ss-reaction-trigger {
+    background: none;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    color: inherit;
+    width: 36px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s;
+}
+
+.ss-reaction-trigger:hover,
+.ss-reaction-trigger.has-reaction {
+    border-color: rgba(128, 128, 128, 0.7);
+}
+
+.ss-reaction-add {
+    font-size: 14px;
+    opacity: 0.5;
+}
+
+.ss-reaction-picker {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    background: var(--wall-bg, #1a1a1a);
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 240px;
+    z-index: 100;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.ss-reaction-picker[hidden] {
+    display: none;
+}
+
+.ss-reaction-opt {
+    background: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: border-color 0.1s, transform 0.1s;
+    border-radius: 2px;
+}
+
+.ss-reaction-opt:hover {
+    border-color: rgba(128, 128, 128, 0.4);
+    transform: scale(1.2);
+}
+
+.ss-reaction-opt.is-active {
+    border-color: rgba(128, 128, 128, 0.6);
+    background: rgba(128, 128, 128, 0.1);
+}
+
+.ss-rx-count {
+    position: absolute;
+    bottom: 1px;
+    right: 2px;
+    font-size: 8px;
+    opacity: 0.6;
+    font-family: inherit;
+    line-height: 1;
+}
+
+
+/* --- REACTION SUMMARY --- */
+
+.ss-reaction-summary {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.ss-rx-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+
+/* --- AUTH NUDGE --- */
+
+.ss-auth-nudge {
+    font-size: 12px;
+    opacity: 0.5;
+    letter-spacing: 0.02em;
+    margin-left: auto;
+}
+
+.ss-auth-nudge a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.ss-auth-nudge a:hover {
+    opacity: 1;
+    text-decoration: none;
+}
+
+
+/* ==========================================================================
+   COMMENT THREAD
+   ========================================================================== */
+
+.ss-comments {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.ss-comment-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 24px;
+}
+
+.ss-comment {
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+.ss-comment:first-child {
+    border-top: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+
+/* --- COMMENT META ROW --- */
+
+.ss-comment-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.ss-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.ss-avatar-placeholder {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(128, 128, 128, 0.2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0;
+    flex-shrink: 0;
+}
+
+.ss-commenter {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.ss-comment-date {
+    font-size: 11px;
+    opacity: 0.4;
+}
+
+/* Reply that arrived over ActivityPub (merged from snap_comments). */
+.ss-comment-source {
+    font-size: 10px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    opacity: 0.5;
+}
+
+.ss-comment-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0;
+    font-size: 10px;
+    padding: 2px 4px;
+    margin-left: auto;
+    transition: opacity 0.15s;
+}
+
+.ss-comment:hover .ss-comment-delete {
+    opacity: 0.4;
+}
+
+.ss-comment-delete:hover {
+    opacity: 1 !important;
+}
+
+.ss-comment-body {
+    font-size: 14px;
+    line-height: 1.55;
+    opacity: 0.85;
+    padding-left: 36px; /* aligns with text after avatar */
+}
+
+
+/* ==========================================================================
+   COMMENT FORM
+   ========================================================================== */
+
+.ss-comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ss-comment-input-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.ss-comment-textarea {
+    flex: 1;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+    color: inherit;
+    font-family: inherit;
+    font-size: 14px;
+    padding: 6px 0;
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    transition: border-color 0.15s;
+    min-height: 32px;
+    overflow: hidden;
+}
+
+.ss-comment-textarea:focus {
+    border-bottom-color: rgba(128, 128, 128, 0.7);
+}
+
+.ss-comment-textarea::placeholder {
+    opacity: 0.4;
+}
+
+.ss-comment-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 38px; /* aligns with textarea */
+}
+
+.ss-comment-actions[hidden] {
+    display: none;
+}
+
+.ss-comment-author {
+    font-size: 11px;
+    opacity: 0.4;
+    letter-spacing: 0.04em;
+}
+
+.ss-comment-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.ss-comment-cancel,
+.ss-comment-submit {
+    background: none;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    color: inherit;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.ss-comment-cancel:hover {
+    border-color: rgba(128, 128, 128, 0.6);
+}
+
+.ss-comment-submit {
+    background: rgba(128, 128, 128, 0.15);
+}
+
+.ss-comment-submit:hover {
+    background: rgba(128, 128, 128, 0.3);
+    border-color: rgba(128, 128, 128, 0.6);
+}
+
+.ss-comment-submit:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.ss-comment-status {
+    font-size: 12px;
+    padding-left: 38px;
+    opacity: 0.6;
+    min-height: 1em;
+}
+
+
+/* --- NOT LOGGED IN PROMPT --- */
+
+.ss-comment-login-prompt {
+    font-size: 13px;
+    opacity: 0.5;
+    padding: 12px 0;
+    border-top: 1px solid rgba(128, 128, 128, 0.15);
+}
+
+.ss-comment-login-prompt a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.ss-comment-login-prompt a:hover {
+    opacity: 1;
+    text-decoration: none;
+}
+
+
+/* ==========================================================================
+   COMMUNITY DOCK — floating FAB cluster
+   ========================================================================== */
+
+/* --- BASE --- */
+
+.ss-community-dock {
+    position: fixed;
+    z-index: 9997;           /* below social dock (9998) and lightbox */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;    /* children re-enable as needed */
+}
+
+.ss-community-dock * {
+    pointer-events: auto;
+}
+
+
+/* --- CORNER POSITIONS --- */
+/* Mirrors ss-engine-social-dock.css naming: ss-cdock-{position} */
+
+.ss-cdock-bottom-right {
+    bottom: 84px;   /* stacks above the download button (bottom:80px) */
+    right: 30px;
+}
+
+.ss-cdock-bottom-left {
+    bottom: 84px;
+    left: 30px;
+}
+
+.ss-cdock-top-right {
+    top: 84px;
+    right: 30px;
+}
+
+.ss-cdock-top-left {
+    top: 84px;
+    left: 30px;
+}
+
+.ss-cdock-right-top {
+    right: 16px;
+    top: 84px;
+}
+
+.ss-cdock-right-bottom {
+    right: 16px;
+    bottom: 84px;
+}
+
+.ss-cdock-left-top {
+    left: 16px;
+    top: 84px;
+}
+
+.ss-cdock-left-bottom {
+    left: 16px;
+    bottom: 84px;
+}
+
+
+/* --- CONFLICT OFFSET ---
+   Applied when community dock and social dock share a corner.
+   Shifts the community dock inward so they don't overlap. */
+
+.ss-cdock-bottom-right.ss-cdock-conflict { right: 76px;  }
+.ss-cdock-bottom-left.ss-cdock-conflict  { left:  76px;  }
+.ss-cdock-top-right.ss-cdock-conflict    { right: 76px;  }
+.ss-cdock-top-left.ss-cdock-conflict     { left:  76px;  }
+.ss-cdock-right-top.ss-cdock-conflict    { bottom: 76px; }
+.ss-cdock-right-bottom.ss-cdock-conflict { bottom: 76px; }
+.ss-cdock-left-top.ss-cdock-conflict     { bottom: 76px; }
+.ss-cdock-left-bottom.ss-cdock-conflict  { bottom: 76px; }
+
+
+/* --- BUTTON CLUSTER --- */
+
+.ss-cdock-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+
+/* --- INDIVIDUAL BUTTONS --- */
+
+.ss-cdock-btn {
+    /* Chip is themeable: skins map --ss-cdock-* to their own palette (e.g. SCROLL sets
+       bg = page Background, border/icon = Footer Text). Defaults keep the original dark
+       overlay chip so other skins are unchanged. */
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid var(--ss-cdock-border, rgba(255, 255, 255, 0.25));
+    background: var(--ss-cdock-bg, rgba(0, 0, 0, 0.65));
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    color: var(--ss-cdock-icon, rgba(255, 255, 255, 0.75));
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 18px;
+    line-height: 1;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s, color 0.15s;
+    padding: 0;
+    opacity: var(--ss-cdock-opacity, 0.7);
+    text-decoration: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.ss-cdock-btn:hover {
+    background: rgba(0, 0, 0, 0.88);
+    border-color: rgba(255, 255, 255, 0.6);
+    color: #fff;
+    transform: scale(1.1);
+    opacity: 1;
+}
+
+
+/* --- TRIGGER STATES --- */
+
+.ss-cdock-react-btn.has-reaction {
+    border-color: rgba(255, 255, 255, 0.5);
+    opacity: 1;
+}
+
+.ss-cdock-react-btn.is-liked {
+    border-color: rgba(224, 82, 82, 0.8);
+    color: #e05252;
+    opacity: 1;
+}
+
+/* Heart colour is themeable via --ss-heart-color (skins can set it, e.g. white on a
+   dark chip, black on a B&W skin like CHAPLIN). Defaults to the classic red so every
+   existing skin is unchanged. Empty (outline) heart by default; FILLED when liked. */
+.ss-cdock-heart-active {
+    color: var(--ss-heart-color, #e05252);
+}
+
+/* --- SVG HEART --- */
+
+.ss-cdock-heart-svg svg {
+    fill: none;
+    stroke: var(--ss-heart-outline, var(--ss-heart-color, #e05252));
+    stroke-width: 1.5;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+/* LIKED: the heart itself goes solid red (fill AND its own outline). */
+.ss-cdock-heart.is-active .ss-cdock-heart-svg svg {
+    fill: var(--ss-heart-color, #e05252);
+    stroke: var(--ss-heart-color, #e05252);
+}
+
+/* LIKED: the CIRCLE keeps its themed colour (only the heart turns red). Skins that
+   theme the chip (--ss-cdock-bg/border) hold that colour; others keep the classic
+   red-tint. */
+.ss-cdock-heart.is-active {
+    border-color: var(--ss-cdock-border, rgba(224, 82, 82, 0.5));
+    background: var(--ss-cdock-bg, rgba(224, 82, 82, 0.12));
+}
+
+.ss-cdock-heart.is-active:hover {
+    background: var(--ss-cdock-bg, rgba(224, 82, 82, 0.2));
+}
+
+/* Heart SVG in FAB button */
+.ss-cdock-heart-active svg {
+    fill: var(--ss-heart-color, #e05252);
+    stroke: var(--ss-heart-outline, var(--ss-heart-color, #e05252));
+    stroke-width: 1.5;
+    width: 20px;
+    height: 20px;
+}
+
+/* REACTIONS REMOVED — standardized on the heart. Belt-and-suspenders: hide any legacy
+   reaction UI (dock picker/trigger, in-flow reaction picker/trigger/summary) so no emoji
+   UI can render from cached markup or the in-flow component. The dock renders heart-only
+   in PHP; this guarantees it everywhere. */
+.ss-cdock-picker,
+.ss-cdock-react-btn,
+.ss-reactions-wrap,
+.ss-reaction-trigger,
+.ss-reaction-picker,
+.ss-reaction-summary { display: none !important; }
+
+.ss-cdock-current-rx {
+    font-size: 20px;
+}
+
+.ss-cdock-react-btn svg {
+    opacity: 0.8;
+}
+
+
+/* --- REACTION PICKER --- */
+
+.ss-cdock-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.75);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 28px;
+    padding: 8px 6px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+
+    /* Slide-in animation */
+    transform-origin: bottom center;
+    animation: ss-cdock-expand 0.2s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.ss-cdock-picker[hidden] {
+    display: none;
+}
+
+@keyframes ss-cdock-expand {
+    from { opacity: 0; transform: scale(0.8) translateY(8px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0);   }
+}
+
+/* Flip direction for top-positioned docks */
+.ss-cdock-top-right .ss-cdock-picker,
+.ss-cdock-top-left  .ss-cdock-picker {
+    transform-origin: top center;
+    animation-name: ss-cdock-expand-down;
+}
+
+@keyframes ss-cdock-expand-down {
+    from { opacity: 0; transform: scale(0.8) translateY(-8px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0);    }
+}
+
+
+/* --- REACTION OPTION BUTTONS --- */
+
+.ss-cdock-reaction {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    background: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    transition: background 0.12s, border-color 0.12s, transform 0.12s;
+    padding: 0;
+    position: relative;
+}
+
+.ss-cdock-reaction:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: scale(1.2);
+}
+
+.ss-cdock-reaction.is-active {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.ss-cdock-emoji {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.ss-cdock-rx-count {
+    /* Corner badge, absolutely positioned so the heart stays centred in the chip.
+       (It used to be a flex-column sibling, which pushed the heart up off-centre when
+       a like count appeared.) */
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 14px;
+    padding: 0 4px;
+    border-radius: 10px;
+    background: var(--ss-heart-color, #e05252);
+    color: #fff;
+    font-size: 9px;
+    line-height: 16px;
+    text-align: center;
+    font-family: inherit;
+}
+
+
+/* --- RESPONSIVE --- */
+
+@media (max-width: 480px) {
+    .ss-community-dock {
+        display: none;
+    }
+}
+/* ===== SNAPSMACK EOF ===== */
+
+/* ===== assets/css/page-blogroll.css ===== */
+/**
+ * SNAPSMACK - Blogroll Page Styles
+ *
+ * Loaded only on blogroll.php. Currently minimal — most blogroll
+ * presentation is handled by skin style.css under the .static-transmission
+ * selector. This file exists as the contract endpoint for future blogroll
+ * styling and as a hook for skins that want to scope blogroll-only rules.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line MUST be: slash-star, space, five equals, space,
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ */
+
+
+.blogroll-canvas {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+/* Category label sits inline beside the peer name */
+.blogroll-peer-name {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.blogroll-peer-cat {
+    font-size: 0.65rem;
+    font-family: 'Courier New', Courier, monospace;
+    letter-spacing: 0.1em;
+    opacity: 0.45;
+    border: 1px solid currentColor;
+    padding: 1px 5px;
+    border-radius: 2px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* URL at bottom of card — styled as a muted link */
+a.blogroll-peer-url {
+    display: block;
+    font-size: 0.75rem;
+    word-break: break-all;
+    text-decoration: none;
+    opacity: 0.5;
+}
+a.blogroll-peer-url:hover {
+    opacity: 0.85;
+    text-decoration: underline;
+}
+
+/* ── Layout geometry ──────────────────────────────────────────────────────
+   STRUCTURE ONLY: no colours, no fonts, no borders -- those are the skin's.
+   Thirteen skins already style .blogroll-grid and .blogroll-peer in their own
+   stylesheets and these rules sit under them harmlessly. The other ten render
+   a blogroll and have never styled one, and without this their peers stack
+   flat down the page. One file, so a fix reaches all of them instead of ten
+   copies drifting apart. Every measurement is a custom property a skin can
+   redefine without forking anything. */
+
+.blogroll-category-block {
+    margin: 0 0 var(--blogroll-block-gap, 56px) 0;
+}
+
+.blogroll-category-block:last-child {
+    margin-bottom: 0;
+}
+
+.blogroll-grid {
+    display: grid;
+    /* The skin's Column Layout control writes grid-template-columns onto this
+       selector and wins. This is the fallback for an owner who has never
+       touched it. minmax(0,1fr) rather than 1fr so a long url cannot push its
+       column wider than its share and shove the next one off the page. */
+    grid-template-columns: repeat(var(--blogroll-columns, 2), minmax(0, 1fr));
+    gap: var(--blogroll-gap, 40px);
+    align-items: start;
+}
+
+.blogroll-peer {
+    min-width: 0;   /* let a long url wrap rather than widen the grid */
+}
+
+.blogroll-peer-desc {
+    margin: 0 0 6px 0;
+}
+
+/* A phone is too narrow for any column count the control can choose. */
+@media (max-width: 760px) {
+    .blogroll-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== SNAPSMACK EOF ===== */
+</style><style id="snapsmack-declared-skin-style">body{background-image: url('skins/true-grit/textures/paintedconcrete.jpg'); background-size: cover; background-repeat: no-repeat; background-attachment: fixed;}:root{--wall-bg:#2a2a2a;}:root{--overlay-opacity:40;}:root{--overlay-color:#1a1a1a;}:root{--header-bg:#1a1a1a;}:root{--header-opacity:100;}:root{--footer-bg:#1e1e1e;}:root{--footer-opacity:100;}.tg-header-inside, .tg-photo-wrap, #system-footer .inside, #browse-grid, #justified-grid{max-width:1280px;}.tg-header-inside, .tg-photo-wrap, #browse-grid{padding-left:40px;padding-right:40px;}.tg-header-inside{flex-direction:row;}#browse-grid{--grid-cols:4;}.square-grid .thumb-link, .cropped-grid .thumb-link{aspect-ratio: auto; overflow: visible;}.is-photo-page img.post-image, img.tg-image, .inline-asset, .snap-inline-frame, .static-transmission .description .align-left{border: none !important; box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 2px 10px rgba(0,0,0,0.3) !important;}.square-grid .thumb-link, .cropped-grid .thumb-link, .justified-item{border: none !important; box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;}.site-title-text, .logo-area a{font-family:"Raleway", sans-serif;}.static-page-title, .photo-title-footer{font-family:"Raleway", sans-serif;}.static-content, .description{font-family:"DM Sans", sans-serif;}#system-footer .inside, #system-footer p, #sig-text{font-family:"DM Sans", sans-serif;}.photo-title-footer{font-weight:300;}:root{--page-bg:#000000;}:root{--accent:#888888;}:root{--accent-hover:#ffffff;}#system-footer p, #sig-text, #system-footer .sep, #system-footer a{color:#888888;}#system-footer a:hover{color:#cccccc;}.site-title-text{font-size:50px;}.site-title-text{text-transform:uppercase;}.site-title-text{letter-spacing:3px;}.site-title-text{font-weight:300;}.nav-menu a, .site-title-text, .logo-area a{color:#cccccc;}.nav-menu a:hover, .nav-menu a.active, .logo-area a:hover{color:#ffffff;}#tg-photobox{padding-bottom:0px;}#tg-header{height:80px;}#infobox{height:50px;}#system-footer{padding-top:32px;padding-bottom:32px;}.static-content{margin-top:40px;}.blogroll-grid{grid-template-columns: 1fr;}.blogroll-canvas{max-width:900px;}.blogroll-grid{gap:60px;}.blogroll-peer-desc{display:block;}.blogroll-peer-url{display:block;}:root{--masonry-border-width:0px;}:root{--masonry-border-color:#ffffff;}</style><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin></head><body class="true-grit-v2 skin-true-grit archive-page archive-page">
+<div id="page-wrapper"><header id="tg-header" class="site-header tg-header" data-sticky-header><div class="tg-header-inside"><a class="site-title logo-area" href="/"><span class="site-title-text">found textures</span></a><nav class="navigation" aria-label="Primary"><ul class="nav-menu"><li><a href="/">Home</a></li><li><a href="/blogroll">Blogroll</a></li><li><a href="/about">About Sean</a></li><li><a href="/image-use">Image Use</a></li></ul></nav></div></header><main id="scroll-stage" class="public-content">
+<div id="infobox" class="archive-filter-row" style="--archive-content-width:1280px"><div class="archive-filter-inner"><div class="nav-links"><div class="center"><a href="/archive" class="active">[ SHOW ALL ]</a><span class="sep">/</span><div class="filter-group saf-wrap"><button id="smack-archive-filter-btn" class="saf-btn" aria-expanded="false" aria-controls="smack-archive-filter-panel" type="button"><span class="saf-btn-label">FILTER</span><span class="saf-btn-arrow">▾</span></button><div id="smack-archive-filter-panel" class="saf-panel" role="dialog" aria-label="Filter photos"><input type="text" id="smack-archive-filter-search" class="saf-search" placeholder="SEARCH FILTERS…" autocomplete="off" spellcheck="false"><div class="saf-group"><div class="saf-group-header">REGISTRY</div><label class="saf-item"><input type="checkbox" class="saf-checkbox" data-type="category" name="category[]" value="walls"><span class="saf-label">WALLS</span></label><label class="saf-item"><input type="checkbox" class="saf-checkbox" data-type="category" name="category[]" value="rust"><span class="saf-label">RUST</span></label></div><div class="saf-group"><div class="saf-group-header">ALBUMS</div><label class="saf-item"><input type="checkbox" class="saf-checkbox" data-type="album" name="album[]" value="strathmore"><span class="saf-label">STRATHMORE</span></label></div></div></div><span class="sep">|</span><div class="filter-group"><form method="GET" action="/search" class="archive-search-form" role="search"><input type="search" name="q" class="archive-search-input" autocomplete="off" aria-label="Search photographs" placeholder="SEARCH OR #TAG" value=""></form></div></div></div><div class="archive-controls archive-controls--docked" role="group" aria-label="Archive controls"><div class="archive-layout-toggle" role="group" aria-label="Layout"><a href="https://example.test/archive?layout=thumbs" class="alt-btn alt-btn--active" data-layout="thumbs" aria-current="true" title="Thumbs Layout" aria-label="Thumbs Layout">T</a><a href="https://example.test/archive?layout=masonry" class="alt-btn" data-layout="masonry" title="Masonry / Justified Layout" aria-label="Masonry / Justified Layout">M</a></div><button type="button" class="alt-btn archive-calendar-toggle" aria-pressed="false" aria-label="Toggle calendar panel" title="Toggle Calendar Panel" data-calendar-toggle="1">C</button></div></div></div><section id="browse-grid" class="square-grid archive-grid h-feed tg-grid"><article class="thumb-container tg-archive-item tg-tile"><a class="thumb-link orient-landscape" title="Photograph 1" href="/photograph-1"><div class="tg-thumb"><img src="photo-1200x800.svg" alt="Photograph 1" loading="lazy"></div></a></article><article class="thumb-container tg-archive-item tg-tile"><a class="thumb-link orient-landscape" title="Photograph 2" href="/photograph-2"><div class="tg-thumb"><img src="photo-1200x800.svg" alt="Photograph 2" loading="lazy"></div></a></article><article class="thumb-container tg-archive-item tg-tile"><a class="thumb-link orient-landscape" title="Photograph 3" href="/photograph-3"><div class="tg-thumb"><img src="photo-800x1200.svg" alt="Photograph 3" loading="lazy"></div></a></article><article class="thumb-container tg-archive-item tg-tile"><a class="thumb-link orient-landscape" title="Photograph 4" href="/photograph-4"><div class="tg-thumb"><img src="photo-1200x800.svg" alt="Photograph 4" loading="lazy"></div></a></article><article class="thumb-container tg-archive-item tg-tile"><a class="thumb-link orient-landscape" title="Photograph 5" href="/photograph-5"><div class="tg-thumb"><img src="photo-1200x800.svg" alt="Photograph 5" loading="lazy"></div></a></article><article class="thumb-container tg-archive-item tg-tile"><a class="thumb-link orient-landscape" title="Photograph 6" href="/photograph-6"><div class="tg-thumb"><img src="photo-800x1200.svg" alt="Photograph 6" loading="lazy"></div></a></article><article class="thumb-container tg-archive-item tg-tile"><a class="thumb-link orient-landscape" title="Photograph 7" href="/photograph-7"><div class="tg-thumb"><img src="photo-1200x800.svg" alt="Photograph 7" loading="lazy"></div></a></article><article class="thumb-container tg-archive-item tg-tile"><a class="thumb-link orient-landscape" title="Photograph 8" href="/photograph-8"><div class="tg-thumb"><img src="photo-1200x800.svg" alt="Photograph 8" loading="lazy"></div></a></article></section></main>
+<footer id="system-footer" class="site-footer tg-footer"><div class="inside"><span class="h-card snapsmack-indieweb-properties" hidden aria-hidden="true"><data class="p-name" value="found textures"></data><a class="u-url" href="https://example.test/"></a></span><div class="footer-metadata-bar"><p>&copy; 2026 <a class="p-name u-url footer-link" href="/">found textures</a></p></div></div></footer></div></body></html>

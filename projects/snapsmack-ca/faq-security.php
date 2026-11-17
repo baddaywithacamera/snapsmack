@@ -14,8 +14,8 @@ $faq_lede    = 'Is it secure, what SMACKBACK is, why you keep re-authenticating,
 $faq_qas = <<<'HTML'
             <div class="qa" id="q-secure">
                 <h3>Is SnapSmack secure?</h3>
-                <p>As secure as Claude and I could make it — but perfectly secure? No. Assume there are holes. Practice good file and backup hygiene, rotate passwords and API keys regularly, keep them safe. Anyone who tells you their platform is bulletproof is lying.</p>
-                <p>Hobbyist software or not, I have a duty of care to all users of the software to make it as secure as possible — protecting it from breach and tampering, and protecting your data from loss. It's important to me to uphold that duty of care. The receipts are public: see <a href="buzzers.php">BUZZERS!</a> for every audit we've run and closed.</p>
+                <p>As secure as Claude, Codex, Muse and I could make it. But perfectly secure? No. Assume there are holes. Every software package has holes they've found and aren't telling you about, and worse ones nobody has found yet. Practice good file and backup hygiene, rotate passwords and API keys regularly, and keep them safe. Anyone who tells you their platform is bulletproof is lying.</p>
+                <p>Hobbyist software or not, I have a duty of care to everyone who uses it: to make it as secure as possible, to protect it from breach and tampering, and to protect your data from loss. Upholding that matters to me. The receipts are public: <a href="buzzers.php">BUZZERS!</a> lists every audit we've run, open and closed.</p>
             </div>
 
             <div class="qa" id="q-smackback">
@@ -49,5 +49,9 @@ $faq_qas = <<<'HTML'
             </div>
 
 HTML;
-require_once __DIR__ . '/includes/faq-page.php';
+if (defined('SNAPSMACK_FAQ_ASSEMBLY')) {
+    return;
+}
+header('Location: brass-tacks.php#faq-security', true, 301);
+exit;
 // ===== SNAPSMACK EOF =====

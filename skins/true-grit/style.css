@@ -446,7 +446,7 @@ main.public-content,
 
 #system-footer p, #sig-text {
     color: var(--text-secondary) !important;
-    font-family: 'DM Sans', sans-serif !important;
+    font-family: 'DM Sans', sans-serif;
     font-size: 0.7rem !important;
     text-transform: uppercase !important;
     letter-spacing: 1.5px !important;
@@ -1472,12 +1472,19 @@ a.logo-area,
     background: #fff;
 }
 
-/* Keep the archive toggle in this skin's filter flow, clear of search. */
-.true-grit-v2 .archive-filter-inner { flex-wrap: wrap; gap: 16px; }
+/* Keep T/M/C outside the centred filter content, in the right-hand gutter. */
+.true-grit-v2 #infobox .archive-filter-inner {
+    position: static;
+    max-width: min(var(--archive-content-width, 1280px), calc(100% - 420px));
+    flex-wrap: wrap;
+    gap: 16px;
+}
 .true-grit-v2 .archive-controls--docked {
-    position: static !important;
-    transform: none !important;
-    margin-left: auto;
+    position: absolute !important;
+    right: 20px !important;
+    top: 50%;
+    transform: translateY(-50%) !important;
+    margin: 0;
     flex-shrink: 0;
 }
 .tg-search-page { max-width: 1200px; margin: 48px auto; padding: 0 30px; }
@@ -1487,4 +1494,6 @@ a.logo-area,
 .tg-search-link h2 { font: inherit; margin-top: 16px; }
 .tg-search-link:focus-visible { outline: 2px solid currentColor; outline-offset: 6px; }
 
+.ss-feed-pager { text-align: center; padding: 16px; }
+.ss-feed-pager-link { display: inline-block; min-height: 44px; padding: 12px 20px; color: inherit; }
 /* ===== SNAPSMACK EOF ===== */

@@ -122,6 +122,17 @@ function ssShortcuts() {
     // reads e.key at all, so nothing is bound on that page.
     if (ssWall()) return [];
 
+    if (document.querySelector('[data-glide-wall]') && document.querySelector('.wall-viewer')) {
+        return [
+            ['LEFT / SPACE', 'Previous photograph in the lightbox'],
+            ['RIGHT', 'Next photograph in the lightbox'],
+            ['1', 'Toggle post info in the lightbox'],
+            ['2', 'Toggle comments in the lightbox'],
+            ['F1', 'Show this help'],
+            ['ESC', 'Close the current panel or lightbox']
+        ];
+    }
+
     var rows = [];
     var gram = ssGram();
 

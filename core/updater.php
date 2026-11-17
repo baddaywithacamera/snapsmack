@@ -57,7 +57,7 @@ if (file_exists($_rpk_file)) {
 }
 if (!defined('SNAPSMACK_RELEASE_PUBKEY')
     || SNAPSMACK_RELEASE_PUBKEY === str_repeat('0', 64)) {
-    $_rpk_canonical = 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2';
+    $_rpk_canonical = 'c72e35ffd5a6bcf7225f749b2a4320f21bde6f4c253023290710792d7bd5c33e';
     $_rpk_written = @file_put_contents($_rpk_file,
           "<?php\n"
         // SECAUDIT 050-B: a self-healed copy keeps the direct-access guard too.
@@ -197,7 +197,22 @@ define('UPDATER_API_URL_FEDISTRUCTURE', 'https://snapsmack.ca/releases/latest-fe
 define('UPDATER_API_URL_FEDISTRUCTURE_DEV', 'https://snapsmack.ca/releases/latest-fedistructure-dev.json');
 define('UPDATER_BACKUP_DIR', dirname(__DIR__) . '/backups');
 define('UPDATER_MIGRATIONS_DIR', dirname(__DIR__) . '/migrations');
-define('UPDATER_TEMP_DIR', sys_get_temp_dir() . '/snapsmack_update');
+// SS-1284: ONE temp directory per INSTALL, never one shared by every vhost.
+// Until 0.7.992D this was a bare sys_get_temp_dir() . '/snapsmack_update', so
+// all 27 spokes in CT102 downloaded to, extracted from and cleaned up the SAME
+// /tmp/snapsmack_update/snapsmack-update.zip. During the fleet update of
+// 2026-11-11 one site's updater_cleanup() deleted the package another site was
+// still using: strathmore.pics logged
+//   hash_file(/tmp/snapsmack_update/snapsmack-update.zip): No such file
+// at 03:57:05, its post-update SMACKBACK re-baseline was skipped by the
+// file_exists($zip_path) guard at finalize, and the next cron verify flagged the
+// six files the update had rewritten -> false BREACH -> LOCKOUT on a live site.
+//
+// The suffix is derived from the install root, so it is STABLE across the whole
+// staged update (download, verify, extract chunks, migrate are separate requests
+// sharing $_SESSION state) and DISTINCT between vhosts. A per-REQUEST directory
+// would break the staged flow outright — do not "improve" this into one.
+define('UPDATER_TEMP_DIR', sys_get_temp_dir() . '/snapsmack_update_' . substr(hash('sha256', dirname(__DIR__)), 0, 16));
 define('UPDATER_PROTECTED_PATHS_FILE', dirname(__DIR__) . '/protected_paths.json');
 
 // ─── KNOWN MIGRATIONS ───────────────────────────────────────────────────────
@@ -215,10 +230,20 @@ define('UPDATER_PROTECTED_PATHS_FILE', dirname(__DIR__) . '/protected_paths.json
 const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-fedboard-sso.sql',
     'migrate-reactions-to-likes.sql',
-    'migrate-076.sql',
-    'migrate-077.sql',
-    'migrate-078.sql',
-    'migrate-comment-identity.sql',
+    // REMOVED 2026-11-11: migrate-076.sql, migrate-077.sql, migrate-078.sql and
+    // migrate-comment-identity.sql were deleted from the repo in eca7e4e9
+    // (v0.7.8e, 2026-04-07) but left in this list for seven months. The screen
+    // builds its PENDING list from THIS CONSTANT while the runner can only run
+    // files that exist on disk, so all four were listed as pending on every site
+    // in the fleet and nothing could ever clear them — not an update, not RUN
+    // SCHEMA SYNC, only MARK ALL MIGRATIONS APPLIED. A permanent floor of four
+    // phantom rows, and four reasons to reach for the one button that records
+    // migrations without running them.
+    // Their schema is in database/schema/snapsmack_canonical.sql, verified before
+    // removal: snap_posts (076), snap_images.img_source_file (077),
+    // snap_pages.image_size (078). migrate-comment-identity.sql was already a
+    // no-op (`SELECT 1;`). The canonical diff runs before migrations on every
+    // update, so nothing is lost by dropping them.
     'migrate-multisite-tables.sql',
     'migrate-pages-image-cols.sql',
     'migrate-users-recovery-columns.sql',
@@ -276,6 +301,11 @@ const UPDATER_KNOWN_MIGRATIONS = [
  * entries — older installs still need them flagged.
  */
 const UPDATER_DEPRECATED_FILES = [
+    // SECAUDIT 028: an obsolete Smack Central configuration copy was shipped
+    // at the install webroot on a small number of spokes. The live hub config
+    // is /smack-central/sc-config.php; this exact relative path deliberately
+    // removes only the stale root copy.
+    'sc-config.php'  => '0.7.992D',
     'smack-post.php' => '0.7.20',  // renamed to smack-post-solo.php
     'login.php'      => '0.7.155', // replaced by snap-in slug model; predictable URL attack surface
     'core/auth.php'  => '0.7.155', // renamed to core/auth-smack.php to avoid cPanel filename collision

@@ -921,7 +921,7 @@ input[type="button"],
 }
 
 .header-image {
-    background-image: url(assets/images/bg.jpg);
+    background-color: #1d1d1d;
     background-repeat: no-repeat;
     background-position: top center;
     background-size: var(--alfred-header-fit, cover);   /* Header Image Fit */
@@ -2007,6 +2007,35 @@ p.comment-form-author { margin-right: 5%; }
     margin: 40px 0;
 }
 
+/* The archive heading sits over the full-height masthead image. Keep it
+   legible against both bright skies and the dark lower gradient rather than
+   inheriting the dark body-copy colour. */
+.smacktalk-archive > h1 {
+    color: #fff;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+/* Imported static pages can contain a full-size portrait and tiny badges.
+   The shared asset class makes every image 100% wide; on ALFRED's 800px page
+   that turned a 125px badge into an 800px square and opened huge vertical
+   gaps. Static pages also do not load the shared fade engine that normally
+   reveals data-lightbox images. Shrink-wrap their frames, cap large images at
+   the reading measure, preserve small assets at natural size, and reveal them. */
+.static-page .snap-inline-frame {
+    display: table;
+    width: auto;
+    max-width: 520px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.static-page .snap-inline-frame img {
+    width: auto !important;
+    max-width: 100%;
+    height: auto;
+    opacity: 1;
+}
+
 .alfred-archive-tile {
     position: relative;
     display: block;
@@ -2177,4 +2206,6 @@ a.logo-area,
 /* The title is itself the link; retain the original white masthead colour. */
 a.site-title.blog-title { color: #fff; }
 
+.ss-feed-pager { text-align: center; padding: 16px; }
+.ss-feed-pager-link { display: inline-block; min-height: 44px; padding: 12px 20px; color: inherit; }
 /* ===== SNAPSMACK EOF ===== */

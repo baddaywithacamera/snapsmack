@@ -2,7 +2,15 @@
 
 /*
  * SNAPSMACK_EOF_HEADER
- *     /* ===== SNAPSMACK EOF ===== */
+ *     /* Quiet scrollbars keep the white page background visible. */
+html { scrollbar-color: #ccc transparent; scrollbar-width: thin; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border: 2px solid transparent; background-clip: padding-box; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background-color: #bbb; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* ===== SNAPSMACK EOF ===== */
  * Last non-empty line of this file MUST match the line above.
  * Missing or different = truncated/corrupted. Restore before saving.
  *
@@ -922,7 +930,7 @@ input[type="button"],
 }
 
 .header-image {
-    background-image: url(assets/images/bg.jpg);
+    background-color: #1d1d1d;
     background-repeat: no-repeat;
     background-position: top center;
     background-size: var(--alfred-header-fit, cover);   /* Header Image Fit */
@@ -2597,6 +2605,25 @@ body.blog, body.single, body.archive { background: #fff; }
 .tilez-page .page-record .post-header { margin: 0; border: 0; }
 .tilez-page .page-content { min-width: 0; }
 
+/* Decorative marks such as an author's signature are page furniture, not
+   full-width photographs. Match the established closing-signature scale and
+   keep the mark in the reading lane even when the shortcode requests 100%. */
+.tilez-page .page-content > .snap-decorative {
+    float: none;
+    clear: both;
+    width: min(340px, 72%);
+    max-width: 100%;
+    margin: 44px 0 24px;
+}
+.tilez-page .page-content > .snap-decorative .snap-decorative-img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 0;
+    cursor: default;
+}
+
 @media (max-width: 900px) {
     .alfred-archive-grid { --ss-cols: 3; }
     .posts.ss-masonry { --ss-cols: 2; }
@@ -2658,5 +2685,13 @@ body.blog, body.single, body.archive { background: #fff; }
 .taxonomy-links a:hover strong { color: var(--alfred-accent); }
 @media (max-width: 900px) { .taxonomy-split { grid-template-columns: 1fr; gap: 38px; } .taxonomy-record { position: static; grid-row: 1; } }
 @media (max-width: 560px) { .taxonomy-grid { grid-template-columns: 1fr; } }
+
+/* Quiet scrollbars keep the white page background visible. */
+html { scrollbar-color: #ccc transparent; scrollbar-width: thin; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border: 2px solid transparent; background-clip: padding-box; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background-color: #bbb; }
+::-webkit-scrollbar-corner { background: transparent; }
 
 /* ===== SNAPSMACK EOF ===== */

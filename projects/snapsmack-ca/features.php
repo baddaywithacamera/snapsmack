@@ -24,7 +24,7 @@ $page_css = <<<'CSS'
 .feat--dark .lede { color: #bbb; }
 .feat--dark li { color: #ccc; }
 .feat--dark strong { color: var(--white); }
-.feat.feat--sand { background: #f4f1eb; border-top: 8px solid var(--black); }
+.feat.feat--sand { background: var(--light-grey); border-top: 8px solid var(--black); }
 .feat-head { max-width: 780px; margin-bottom: 30px; }
 .feat-head .site-discovery-kicker { margin-bottom: 6px; }
 .feat-head h2 { margin-bottom: 12px; }
@@ -54,7 +54,7 @@ $page_css = <<<'CSS'
 .fed-shots img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
 .fed-shots figcaption { padding: 9px 12px; color: var(--black); font: 900 .72rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .fed-band { margin-top: 24px; padding: 22px 26px; color: var(--white); background: var(--black); font-weight: 700; }
-.fed-band-kicker { display: block; margin-top: 6px; color: #ff4b4b; font: 900 .8rem/1.25 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.fed-band-kicker { display: block; margin-top: 6px; color: var(--white); font: 900 .8rem/1.25 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .feat-link { margin-top: 26px; }
 .feat-link a { font: 900 .78rem/1 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .free-band { padding: 26px 30px; background: var(--red); color: var(--white); font: 900 clamp(1.1rem, 2.2vw, 1.5rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
@@ -101,7 +101,7 @@ require_once __DIR__ . '/includes/header.php';
                     <span class="mode-num">02 / THE GRID</span>
                     <h3>GRAMOFSMACK</h3>
                     <div class="mode-tagline">Got Zuck-fucked?</div>
-                    <p>The three-across grid Instagram abandoned when it decided video paid better. Multi-image posts, carousels, panorama rows, cover selection, ordered grids, and phone publishing through an installable PWA or <a href="https://github.com/Daniebeler/pixelix" target="_blank" rel="noopener">Pixelix</a>. <a href="https://unzucked.ca/" target="_blank" rel="noopener">Get classic Insta back.</a></p>
+                    <p>The three-across grid Instagram abandoned when it decided video paid better. Multi-image posts, carousels, panorama rows, cover selection, ordered grids, and phone publishing through an installable PWA or <a href="https://github.com/Daniebeler/pixelix" target="_blank" rel="noopener">Pixelix</a>. <a href="https://unzucked.ca/" target="_blank" rel="noopener">Get classic Insta back</a>.</p>
                 </article>
                 <article class="mode-card">
                     <span class="mode-num">03 / LONGFORM</span>
@@ -148,7 +148,7 @@ require_once __DIR__ . '/includes/header.php';
                 <article class="feat-card"><h3>Instagram in</h3><p><a href="tool-unzucker.php">THE UNZUCKER</a> brings an Instagram export home with original dates, captions, hashtags, carousels, and grid order intact.</p></article>
                 <article class="feat-card"><h3>Flickr in</h3><p><a href="tool-flkr-fckr.php">FLKR FCKR</a> imports a Flickr archive with photographs, titles, descriptions, tags, upload dates, views, comments, and likes preserved.</p></article>
                 <article class="feat-card"><h3>WordPress in</h3><p><a href="tool-smackpress.php">SMACKPRESS</a> moves a WordPress photo blog into SMACKTALK one post at a time, with a review step for each.</p></article>
-                <article class="feat-card"><h3>Blogger in</h3><p>BLOGGER FLOGGER brings an old Blogger site &mdash; posts, pages, comments, photos &mdash; into SMACKTALK from a Google Takeout. <a href="coming-soon.php">On the drawing board.</a></p></article>
+                <article class="feat-card"><h3>Blogger in</h3><p>BLOGGER FLOGGER brings an old Blogger site &mdash; posts, pages, comments, photos &mdash; into SMACKTALK from a Google Takeout. <a href="coming-soon.php">On the drawing board</a>.</p></article>
                 <article class="feat-card"><h3>Everything out</h3><p>Export the whole site as a complete, understandable local copy of your photographs and portable data. No hostage situation.</p></article>
                 <article class="feat-card"><h3>Dates survive</h3><p>Imports keep the date the photograph was actually taken and posted, so a fifteen-year archive still reads as fifteen years, not &ldquo;imported last Tuesday.&rdquo;</p></article>
             </div>
@@ -276,7 +276,7 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="feat" id="free">
         <div class="wrap">
-            <div class="free-band">Free means free. No subscription, premium tier, advertising network, or hostage situation. The CMS, the skins, and the desktop suite. <a href="hairy-muff.php">Read the licence.</a></div>
+            <div class="free-band">Free means free. No subscription, premium tier, advertising network, or hostage situation. The CMS, the skins, and the desktop suite. <a href="hairy-muff.php">Read the licence</a>.</div>
         </div>
     </section>
 </main>

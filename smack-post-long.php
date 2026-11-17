@@ -273,6 +273,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
     $cover_pos_y      = max(0,   min(100, (int)($_POST['cover_pos_y'] ?? 50)));
     $cover_zoom       = max(100, min(300, (int)($_POST['cover_zoom']  ?? 100)));
     $manual_tags      = trim($_POST['tags'] ?? '');
+
+    // SS-1185 portfolio designation. Read through the shared component so this
+    // editor and the carousel/single editor cannot drift apart. ABSENT IS NOT
+    // OFF: the stored row is passed in, so a form without the fieldset leaves
+    // a designation the API set exactly as it was.
+    require_once __DIR__ . '/core/portfolio-designation-controls.php';
+    $pf_stored = [];
+    if ($post_id) {
+        $pf_q = $pdo->prepare('SELECT portfolio_post, exclude_from_archive,
+            exclude_from_search, exclude_from_feed, primary_album_id,
+            primary_category_id FROM snap_posts WHERE id = ? LIMIT 1');
+        $pf_q->execute([$post_id]);
+        $pf_stored = $pf_q->fetch(PDO::FETCH_ASSOC) ?: [];
+    }
+    $pf = snap_portfolio_control_read($_POST, $pf_stored);
     $selected_cats    = $_POST['cat_ids'] ?? [];
     $selected_albums  = $_POST['album_ids'] ?? [];
 
@@ -312,11 +327,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
         $upd = $pdo->prepare("
             UPDATE snap_posts
             SET title=?, slug=?, content=?, status=?, allow_comments=?,
-                featured_image_id=?, show_featured_image=?, cover_pos_x=?, cover_pos_y=?, cover_zoom=?" .
+                featured_image_id=?, show_featured_image=?, cover_pos_x=?, cover_pos_y=?, cover_zoom=?,
+                portfolio_post=?, exclude_from_archive=?, exclude_from_search=?,
+                exclude_from_feed=?, primary_album_id=?, primary_category_id=?" .
                 ($custom_date ? ", created_at=?" : "") . "
             WHERE id=? AND post_type='longform'
         ");
-        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image, $show_featured, $cover_pos_x, $cover_pos_y, $cover_zoom];
+        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image, $show_featured, $cover_pos_x, $cover_pos_y, $cover_zoom,
+                   $pf['portfolio_post'], $pf['exclude_from_archive'], $pf['exclude_from_search'],
+                   $pf['exclude_from_feed'], $pf['primary_album_id'], $pf['primary_category_id']];
         if ($custom_date) $params[] = $custom_date;
         $params[] = $post_id;
         $upd->execute($params);
@@ -339,12 +358,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
         // INSERT
         $ins = $pdo->prepare("
             INSERT INTO snap_posts
-                (title, slug, content, post_type, status, allow_comments, featured_image_id, show_featured_image, cover_pos_x, cover_pos_y, cover_zoom" .
+                (title, slug, content, post_type, status, allow_comments, featured_image_id, show_featured_image, cover_pos_x, cover_pos_y, cover_zoom,
+                 portfolio_post, exclude_from_archive, exclude_from_search, exclude_from_feed, primary_album_id, primary_category_id" .
                 ($custom_date ? ", created_at" : "") . ")
-            VALUES (?, ?, ?, 'longform', ?, ?, ?, ?, ?, ?, ?" .
+            VALUES (?, ?, ?, 'longform', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?" .
                 ($custom_date ? ", ?" : "") . ")
         ");
-        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image, $show_featured, $cover_pos_x, $cover_pos_y, $cover_zoom];
+        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image, $show_featured, $cover_pos_x, $cover_pos_y, $cover_zoom,
+                   $pf['portfolio_post'], $pf['exclude_from_archive'], $pf['exclude_from_search'],
+                   $pf['exclude_from_feed'], $pf['primary_album_id'], $pf['primary_category_id']];
         if ($custom_date) $params[] = $custom_date;
         $ins->execute($params);
         $new_id = (int)$pdo->lastInsertId();
@@ -728,6 +750,18 @@ include 'core/sidebar.php';
                                onclick="this.showPicker()"
                                value="<?php echo $edit_post ? date('Y-m-d\TH:i', strtotime($edit_post['created_at'])) : date('Y-m-d\TH:i'); ?>">
                     </div>
+
+                    <?php
+                        // SS-1185. Shared component, so this editor and the
+                        // carousel/single editor cannot drift. $edit_post is
+                        // null when composing, which the renderer treats as
+                        // "nothing designated yet".
+                        require_once __DIR__ . '/core/portfolio-designation-controls.php';
+                        snap_portfolio_controls_render(
+                            is_array($edit_post) ? $edit_post : [],
+                            array_map(static fn($a) => ['id' => $a['id'], 'name' => $a['album_name']], $all_albums),
+                            array_map(static fn($c) => ['id' => $c['id'], 'name' => $c['cat_name']], $all_cats));
+                    ?>
 
                     <div class="lens-input-wrapper">
                         <label>PUBLIC SIGNALS (COMMENTS)?</label>

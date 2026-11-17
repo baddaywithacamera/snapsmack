@@ -8,6 +8,48 @@
  */
 
 require_once 'core/auth-smack.php';
+
+// FALLBACK for installs whose core/constants.php does not define
+// snap_reading_age(). SS-1337: THE FLEET BOARD STOPPED LISTING SPOKES.
+//
+// SS-1145 added snap_reading_age() to core/constants.php and called it from
+// the spoke row below. On a fresh tree that is fine. On an install upgraded
+// from 0.7.159 or earlier it is not: that install's own
+// protected_paths.json still lists core/constants.php, and
+// protected_paths.json is ITSELF in the protected list, so the 2026-08-15
+// decision to stop protecting constants.php never reached it. Its
+// constants.php is frozen, snap_reading_age() does not exist, and the row
+// loop dies on the FIRST spoke with an undefined-function Error -- the hub
+// self-row renders because it never calls it, and the remaining spokes never
+// render at all. The CONNECTED SPOKES count is computed before the table, so
+// it still says 27 while two rows are drawn.
+//
+// This is the same fallback smack-update.php and cron-version-check.php
+// already carry for snap_version_compare(), for the same reason. The lesson
+// is that a new helper in constants.php cannot be assumed present on an
+// upgraded install, and a page that needs one must carry it.
+if (!function_exists('snap_reading_age')) {
+    function snap_reading_age(int $last_seen_ts, int $now, int $stale_after = 86400): array {
+        if ($last_seen_ts <= 0) {
+            return ['known' => false, 'phrase' => 'never', 'stale' => true, 'seconds' => 0];
+        }
+        if ($now < $last_seen_ts) {
+            return ['known' => false, 'phrase' => 'clock skew', 'stale' => true, 'seconds' => 0];
+        }
+        $age = $now - $last_seen_ts;
+        if ($age < 60) {
+            $phrase = 'just now';
+        } elseif ($age < 3600) {
+            $phrase = intdiv($age, 60) . 'm ago';
+        } elseif ($age < 86400) {
+            $phrase = intdiv($age, 3600) . 'h ago';
+        } else {
+            $phrase = intdiv($age, 86400) . 'd ago';
+        }
+        return ['known' => true, 'phrase' => $phrase,
+                'stale' => $age >= $stale_after, 'seconds' => $age];
+    }
+}
 require_once 'core/skin-registry.php';
 
 // Load settings early so multisite_role is available to all POST handlers.
@@ -105,9 +147,13 @@ if (isset($_POST['gen_reg_token'])) {
     // deliberately NOT gated — see disconnect_hub — because it only reduces
     // access and may be needed in an emergency.
     require_once 'core/reauth.php';
-    $ra = reauth_verify($pdo,
-        (string)($_POST['reauth_password'] ?? ''),
-        (string)($_POST['reauth_totp'] ?? ''));
+    $username = trim((string)($_POST['reauth_username'] ?? ''));
+    $session_username = (string)($_SESSION['user_login'] ?? '');
+    $ra = $username !== '' && strcasecmp($username, $session_username) === 0
+        ? reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''),
+            (string)($_POST['reauth_totp'] ?? ''))
+        : ['ok' => false, 'error' => 'Enter the username you signed in with.'];
+
     if (!$ra['ok']) {
         $err = 'Token generation blocked: ' . $ra['error'];
     } else {
@@ -246,7 +292,9 @@ if (isset($_POST['register_spoke'])) {
         $curl_err = curl_error($ch);
         curl_close($ch);
 
-        if (!$response || $http_code !== 200) {
+        if ($http_code === 401) {
+            $err = 'The spoke rejected the registration token. Generate a fresh token in Multisite Management on the spoke for this hub address.';
+        } elseif (!$response || $http_code !== 200) {
             $err = "Failed to contact spoke: " . ($curl_err ?: "HTTP $http_code");
         } else {
             $response_data = json_decode($response, true);
@@ -393,8 +441,14 @@ if (isset($_POST['disconnect'])) {
     $node = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($node) {
-        // Best-effort notify spoke to wipe its hub record.
-        // Fire and forget — we delete our side regardless of whether the spoke responds.
+        // SS-1054: this used to be fire-and-forget — it discarded the curl result
+        // and deleted the hub's record regardless. If the spoke was down, slow or
+        // returned an error, the hub forgot it while the spoke kept its row and a
+        // LIVE api_key_local, so the admin was told access was revoked when it was
+        // not. Remove our side only once the spoke CONFIRMS it wiped its record
+        // (HTTP 200). Otherwise keep the relationship and say plainly that the
+        // spoke's key is still live, so the owner retries rather than trusting a
+        // revocation that did not happen.
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL            => rtrim($node['site_url'], '/') . '/api.php?route=multisite/disconnect',
@@ -407,12 +461,25 @@ if (isset($_POST['disconnect'])) {
             CURLOPT_TIMEOUT        => 5,
             CURLOPT_SSL_VERIFYPEER => true,
         ]);
-        curl_exec($ch);
+        $dc_resp = curl_exec($ch);
+        $dc_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $dc_err  = curl_error($ch);
         curl_close($ch);
 
-        // Delete our spoke record — clean slate for re-registration.
-        $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE id = ?")->execute([$node_id]);
-        $msg = "Spoke disconnected and removed.";
+        if ($dc_code === 200) {
+            // Spoke confirmed: it deleted its record and cleared the keys. Safe
+            // to delete our side — clean slate for re-registration.
+            $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE id = ?")->execute([$node_id]);
+            $msg = "Spoke disconnected and removed. The spoke confirmed and revoked its key.";
+        } else {
+            // Do NOT delete: the spoke still holds a live api_key_local, and
+            // forgetting it here would leave that key valid with no record of it.
+            $err = "Not removed: the spoke did not confirm the disconnect ("
+                 . ($dc_err !== '' ? $dc_err : "HTTP {$dc_code}")
+                 . "). Its key is still live. Retry when the spoke is reachable; "
+                 . "if it is permanently gone, rotate the relationship keys or take "
+                 . "the spoke down so the key cannot be used.";
+        }
     }
 }
 
@@ -734,6 +801,39 @@ if (isset($_POST['push_update']) || isset($_POST['push_update_all'])) {
                 $result['files']    = $data['files_updated'] ?? 0;
                 $result['migs']     = $data['migrations'] ?? 0;
                 $result['errors']   = $data['errors'] ?? [];
+
+                // SS-1284: HTTP 200 is not "clean". A spoke can update, stamp its
+                // version and answer OK while its SMACKBACK manifest still
+                // describes the PRE-UPDATE files — which is exactly how
+                // strathmore.pics reached LOCKOUT with the fleet board showing
+                // green. The spoke now reports this; consume it, or the report
+                // is decoration.
+                //
+                // A spoke that has not yet taken this fix sends no 'smackback'
+                // key at all. Treat that as UNKNOWN, not as a failure: it is the
+                // behaviour we have always had, and painting 27 old spokes amber
+                // would bury the real ones.
+                $sb = (isset($data['smackback']) && is_array($data['smackback'])) ? $data['smackback'] : null;
+                if ($sb === null) {
+                    $result['smackback'] = null;
+                } else {
+                    $baseline_refreshed = !empty($sb['baseline_refreshed']);
+                    $package_missing    = !empty($sb['package_missing']);
+                    $result['smackback'] = [
+                        'baseline_refreshed' => $baseline_refreshed,
+                        'package_missing'    => $package_missing,
+                    ];
+                    if (!$baseline_refreshed || $package_missing) {
+                        // The update itself succeeded, so this is not ok=false —
+                        // but it must NOT read as a clean success on the board.
+                        $result['warn']        = true;
+                        $result['warn_detail'] = !$baseline_refreshed
+                            ? 'Updated, but the SMACKBACK baseline was NOT refreshed — this spoke will false-breach on its next verify. See SS-1284.'
+                            : 'Updated, but the package was missing at finalize; an existing breach was not cleared. See SS-1284.';
+                        error_log('SnapSmack hub: spoke ' . (string)($tn['site_url'] ?? $tn['id'])
+                            . ' updated with a SMACKBACK problem — ' . $result['warn_detail']);
+                    }
+                }
                 // Refresh DB version
                 if (!empty($data['to_version'])) {
                     $clean_ver = preg_replace('/^[^0-9]+/', '', $data['to_version']);
@@ -887,6 +987,74 @@ if (isset($_POST['push_all_skins_all_spokes'])) {
             $stmt->execute();
             $target_nodes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $skin_results = [];
+
+            // THE HUB IS PART OF THE FLEET. SS-1072 fixed the single-skin fleet
+            // push (push_skin_all) to install on the hub too; this bulk handler
+            // -- "Update Every Spoke That Is Behind" (push_all_skins_all_spokes)
+            // -- is the sibling path and had the SAME gap: its target query is
+            // role='spoke' only, and nothing installed on the hub, so a bulk
+            // update left the hub on the old skins while every spoke moved. Same
+            // rule as the single push: the hub installs its OWN stale skins
+            // first (all of them under force), from the same fresh registry,
+            // before the spokes. The hub is never freshly given a skin it does
+            // not already have on disk. multisite_allow_skin is not consulted:
+            // this is the owner on their own hub admin, not a remote write.
+            require_once __DIR__ . '/core/skin-manifest.php';
+            require_once __DIR__ . '/core/skin-registry.php';
+            require_once __DIR__ . '/core/release-pubkey.php';
+            $hub_key   = defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : '';
+            $hub_label = (string)($settings['site_name'] ?? '') !== ''
+                       ? (string)$settings['site_name'] . ' (this hub)' : 'This hub';
+            $hub_updated = [];   // slug vX -> vY actually installed
+            $hub_current = [];   // already on the registry version
+            $hub_unknown = [];   // version could not be compared, sent anyway
+            $hub_failed  = [];   // install refused or errored
+            foreach (glob(__DIR__ . '/skins/*/manifest.json') ?: [] as $hub_mf_path) {
+                $hub_slug = basename(dirname($hub_mf_path));
+                $rskin = $bulk_registry[$hub_slug] ?? null;
+                if (!$rskin || empty($rskin['download_url'])) continue;  // not a registry skin
+                $hub_mf  = load_skin_manifest($hub_slug);
+                $hub_ver = trim((string)($hub_mf['version'] ?? ''));
+                $reg_ver = trim((string)($rskin['version'] ?? ''));
+                if (!$bulk_force) {
+                    if ($reg_ver === '' || $hub_ver === '') {
+                        $hub_unknown[] = $hub_slug;        // fall through and install
+                    } elseif (!snap_version_compare($reg_ver, $hub_ver, '>')) {
+                        $hub_current[] = $hub_slug . ' v' . $hub_ver;
+                        continue;
+                    }
+                }
+                $hub_res = skin_registry_install(
+                    $hub_slug, $rskin['download_url'], $rskin['signature'] ?? '',
+                    $hub_key, (int)($rskin['download_size'] ?? 0));
+                if (empty($hub_res['success'])) {
+                    $hub_failed[] = $hub_slug . ': ' . (string)($hub_res['message'] ?? 'install failed');
+                    continue;
+                }
+                $installed_manifest = json_decode((string)@file_get_contents($hub_mf_path), true);
+                $installed_version = trim((string)($installed_manifest['version'] ?? ''));
+                if ($reg_ver === '' || $reg_ver !== $installed_version) {
+                    $hub_failed[] = $hub_slug . ': version not verified (expected ' . ($reg_ver ?: 'unknown')
+                        . ', found ' . ($installed_version ?: 'unknown') . ')';
+                    continue;
+                }
+                $hub_updated[] = $hub_slug . ' v' . $installed_version;
+            }
+            if ($hub_updated || $hub_failed || $hub_current || $hub_unknown) {
+                $hub_detail = $hub_updated
+                    ? (count($hub_updated) . ' skin' . (count($hub_updated) === 1 ? '' : 's') . ' updated.')
+                    : 'Nothing to do.';
+                if ($hub_current) $hub_detail .= ' Already current: ' . implode(', ', $hub_current) . '.';
+                if ($hub_unknown) $hub_detail .= ' Version could not be compared, so reinstalled anyway: ' . implode(', ', $hub_unknown) . '.';
+                if ($hub_failed)  $hub_detail .= ' FAILED: ' . implode('; ', $hub_failed) . '.';
+                $skin_results[] = [
+                    'name'    => $hub_label,
+                    'ok'      => empty($hub_failed),
+                    'skipped' => empty($hub_updated) && empty($hub_failed),
+                    'detail'  => $hub_detail,
+                ];
+                if ($hub_updated) skin_registry_clear_cache();
+            }
 
             foreach ($target_nodes as $tn) {
                 $installed_raw = $tn['installed_skins'] ?? '';
@@ -1128,6 +1296,72 @@ if (isset($_POST['push_skin']) || isset($_POST['push_skin_all'])) {
                 } else {
                     $skin_results[] = ['name' => $tn['site_name'] ?? $tn['site_url'], 'ok' => false, 'skipped' => true,
                         'detail' => 'Skipped — spoke has not reported its installed skins yet (needs a heartbeat once it is on 0.7.343+).'];
+                }
+            }
+
+            // SS-1072: THE HUB IS PART OF THE FLEET AND WAS NOT IN THE BATCH.
+            //
+            // Both selects above read role = 'spoke', and the hub is not a row
+            // in snap_multisite_nodes at all, so a fleet-wide skin push has
+            // never touched the site running it. Found Textures is the observed
+            // case: it served TRUE GRIT 1.3.24 while the published package was
+            // 1.3.25, and nothing was broken -- it was simply never a target.
+            // Sean asked twice for fleet updates to include the hub.
+            //
+            // NO HTTP TO ITSELF. A spoke is instructed over its API because it
+            // is a different machine; the hub already has the installer in
+            // process, so it calls skin_registry_install() directly -- the same
+            // function core/multisite-api.php's reinstall endpoint calls, with
+            // the same signature verification against the same release public
+            // key. Pushing to our own URL would add a network round trip, a
+            // second authentication and a new failure mode to do what a
+            // function call does.
+            //
+            // THE TWO GATES ARE THE SPOKE GATES, READ LOCALLY. A spoke's
+            // installed_skins comes from its heartbeat; the hub's own answer is
+            // on disk, so "already has the skin" is its manifest existing and
+            // "is behind" is that manifest's version against the package. The
+            // hub is never freshly given a skin it does not have, exactly as no
+            // spoke is.
+            //
+            // ONLY ON A FLEET PUSH. push_skin names one spoke the operator
+            // chose, and silently adding the hub to a single-site action would
+            // install something they did not ask for.
+            //
+            // The remote-consent flag multisite_allow_skin is deliberately NOT
+            // consulted. It exists because a REMOTE instruction writes files to
+            // a site; this is the owner, authenticated on their own hub admin,
+            // pressing their own button. Requiring a remote-consent setting for
+            // a local action would read as the hub refusing its own operator.
+            if (isset($_POST['push_skin_all'])) {
+                $hub_label    = (string)($settings['site_name'] ?? '') !== ''
+                              ? (string)$settings['site_name'] . ' (this hub)'
+                              : 'This hub';
+                $hub_manifest = __DIR__ . '/skins/' . $skin_slug . '/manifest.json';
+                if (!is_file($hub_manifest)) {
+                    $skin_results[] = ['name' => $hub_label, 'ok' => false, 'skipped' => true,
+                        'detail' => 'Skipped — this skin is not installed on the hub.'];
+                } else {
+                    require_once __DIR__ . '/core/skin-manifest.php';
+                    $hub_mf  = load_skin_manifest($skin_slug);
+                    $hub_ver = (string)($hub_mf['version'] ?? '');
+                    if ($only_stale && $skin_version !== '' && $hub_ver !== ''
+                        && !snap_version_compare($skin_version, $hub_ver, '>')) {
+                        $skin_results[] = ['name' => $hub_label, 'ok' => true, 'skipped' => true,
+                            'detail' => 'Skipped — already up to date (v' . $hub_ver . ').'];
+                    } else {
+                        require_once __DIR__ . '/core/skin-registry.php';
+                        require_once __DIR__ . '/core/release-pubkey.php';
+                        $hub_key = defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : '';
+                        $hub_res = skin_registry_install($skin_slug, $download_url, $signature,
+                                                         $hub_key, $download_size);
+                        $skin_results[] = [
+                            'name'   => $hub_label,
+                            'ok'     => !empty($hub_res['success']),
+                            'detail' => (string)($hub_res['message'] ?? '')
+                                        . ($hub_ver !== '' ? ' (was v' . $hub_ver . ')' : ''),
+                        ];
+                    }
                 }
             }
 
@@ -1582,7 +1816,26 @@ include 'core/sidebar.php';
             <?php if (!empty($update_results)): ?>
                 <div id="update-progress-php" style="margin-bottom:18px;">
                     <?php foreach ($update_results as $ur): ?>
-                        <?php if ($ur['ok']): ?>
+                        <?php if (!empty($ur['ok']) && !empty($ur['warn'])): ?>
+                            <?php /* SS-1284: ok+warn is checked BEFORE clean ok. The spoke
+                                      updated, but it told us its SMACKBACK baseline was not
+                                      refreshed (or the package vanished at finalize), so it
+                                      WILL false-breach on its next verify. A checkmark and
+                                      alert-success here is the non-AJAX twin of the green
+                                      fleet board that let strathmore.pics reach LOCKOUT
+                                      unnoticed. This is the plain-POST path and the
+                                      no-JavaScript fallback for UPDATE ALL. */ ?>
+                            <div class="alert alert-warning mb-6">
+                                &#9888; <strong><?php echo htmlspecialchars($ur['name']); ?></strong>
+                                updated <?php echo htmlspecialchars($ur['from']); ?> &rarr; <?php echo htmlspecialchars($ur['to']); ?>
+                                (<?php echo (int)$ur['files']; ?> files<?php echo $ur['migs'] > 0 ? ', ' . (int)$ur['migs'] . ' migration' . ($ur['migs'] !== 1 ? 's' : '') : ''; ?>)
+                                &mdash; <strong>WARNING:</strong>
+                                <?php echo htmlspecialchars($ur['warn_detail'] ?? 'The SMACKBACK baseline was not refreshed. See SS-1284.'); ?>
+                                <?php if (!empty($ur['errors'])): ?>
+                                    Errors: <?php echo htmlspecialchars(implode('; ', $ur['errors'])); ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php elseif ($ur['ok']): ?>
                             <?php if (($ur['status'] ?? '') === 'already_current'): ?>
                                 <div class="alert alert-success mb-6">
                                     ✓ <strong><?php echo htmlspecialchars($ur['name']); ?></strong> — already on current version.
@@ -1724,7 +1977,12 @@ include 'core/sidebar.php';
                     catch (e) { ids = []; }
                     if (!ids.length) return;
 
-                    var total = ids.length, done = 0, okCount = 0, failCount = 0;
+                    // SS-1284: warnCount is its own tally. A spoke that updated but could
+                    // not refresh its SMACKBACK baseline is NOT an "ok" — counting it as
+                    // one produced "Finished — N updated, 0 failed" in green over a fleet
+                    // that was about to false-breach.
+                    var total = ids.length, done = 0, okCount = 0, warnCount = 0, failCount = 0;
+                    var warnLines = [];
                     var queue = ids.slice();
 
                     function esc(v) {
@@ -1744,7 +2002,7 @@ include 'core/sidebar.php';
                               'UPDATING ' + Math.min(done + 1, total) + ' OF ' + total +
                               (current ? ' &mdash; ' + esc(current) : '') +
                               '  <span class="text-muted">(' + okCount +
-                              ' ok, ' + failCount + ' failed)</span></div>' +
+                              ' ok, ' + warnCount + ' with warnings, ' + failCount + ' failed)</span></div>' +
                             '<div style="height:6px;background:rgba(255,255,255,0.12);border-radius:3px;overflow:hidden;">' +
                               '<div style="height:100%;width:' + pct + '%;background:var(--accent,#00d4d4);transition:width .2s;"></div>' +
                             '</div>';
@@ -1752,11 +2010,31 @@ include 'core/sidebar.php';
                     function finish() {
                         if (btn) btn.textContent = "DONE";   // stays disabled; reload via the link
                         if (live) {
-                            live.innerHTML =
-                                '<div class="alert ' + (failCount ? "alert-warning" : "alert-success") +
-                                '">Finished &mdash; ' + okCount + ' updated, ' +
-                                failCount + ' failed. <a href="#" onclick="location.reload();return false;">' +
-                                'Reload</a> to refresh the board.</div>';
+                            // SS-1284: a run with warnings is never alert-success, and the
+                            // warned spokes are listed by name with their reason. An amber
+                            // row outline and a hidden tooltip under a green "0 failed"
+                            // banner is exactly the kind of reassuring summary that let a
+                            // live site go into LOCKOUT without anyone noticing.
+                            var cls = failCount ? "alert-error" : (warnCount ? "alert-warning" : "alert-success");
+                            // Wording is deliberately neutral (PM ruling, SS-1284). The
+                            // earlier shouted wording overstated it: the update itself
+                            // succeeded and the files are correct. What is wrong is the
+                            // integrity BOOKKEEPING, and the per-spoke warn_detail is the
+                            // place that says which — baseline not refreshed, or package
+                            // missing. A summary that shouts does not help the operator
+                            // decide anything; the detail line does.
+                            var body = 'Finished &mdash; ' + okCount + ' updated, '
+                                     + warnCount + ' with warnings, ' + failCount + ' failed.';
+                            if (warnCount) {
+                                body += '<div style="margin-top:8px;"><strong>These spokes updated with SMACKBACK '
+                                      + 'warnings:</strong><ul style="margin:6px 0 0 18px;">';
+                                for (var i = 0; i < warnLines.length; i++) {
+                                    body += '<li>' + warnLines[i] + '</li>';
+                                }
+                                body += '</ul></div>';
+                            }
+                            body += ' <a href="#" onclick="location.reload();return false;">Reload</a> to refresh the board.';
+                            live.innerHTML = '<div class="alert ' + cls + '">' + body + '</div>';
                         }
                     }
                     function next() {
@@ -1780,7 +2058,22 @@ include 'core/sidebar.php';
                         .then(function (r) { return r.json(); })
                         .then(function (d) {
                             var res = (d && d.results && d.results[0]) || {};
-                            if (res.ok) {
+                            if (res.ok && res.warn) {
+                                // SS-1284: the update landed, but the spoke told us its
+                                // SMACKBACK baseline was not refreshed (or the package
+                                // vanished at finalize). It WILL false-breach on its next
+                                // verify. It is counted separately from ok, named in the
+                                // final summary, and the summary is not alert-success —
+                                // an outline and a tooltip are not a report.
+                                warnCount++;
+                                warnLines.push('<strong>' + esc(nm) + '</strong> &mdash; '
+                                    + esc(res.warn_detail || "Updated, but the SMACKBACK baseline was not refreshed. See SS-1284."));
+                                rowMark(id, "var(--warning,#e08c00)");
+                                var vw = document.getElementById("spoke-ver-" + id);
+                                if (vw && res.to) vw.textContent = String(res.to).replace(/^[^0-9]+/, "");
+                                var rw = document.getElementById("spoke-row-" + id);
+                                if (rw) rw.title = res.warn_detail || "Updated, but the SMACKBACK baseline was not refreshed. See SS-1284.";
+                            } else if (res.ok) {
                                 okCount++;
                                 rowMark(id, "var(--success,#2e9e4f)");
                                 var vc = document.getElementById("spoke-ver-" + id);
@@ -1895,9 +2188,51 @@ include 'core/sidebar.php';
                                     <td class="col-center" id="spoke-ver-<?php echo $n['id']; ?>" style="font-family:monospace; font-size:0.85rem;">
                                         <?php
                                             $spoke_ver = $n['software_version'] ?? '';
-                                            echo $spoke_ver ? htmlspecialchars($spoke_ver) : '—';
+                                            // SS-1145: the age of the reading travels with the version.
+                                            // A failed heartbeat leaves software_version untouched, so
+                                            // without this line a value recorded seven weeks and three
+                                            // releases ago is printed exactly like one taken a minute
+                                            // ago. The hub cannot know what is installed now; it can
+                                            // only say what it was last told, and when.
+                                            $ver_age  = snap_reading_age(
+                                                isset($n['last_seen_ts']) ? (int)$n['last_seen_ts'] : 0,
+                                                time()
+                                            );
+                                            $ver_text = $spoke_ver !== '' ? htmlspecialchars($spoke_ver) : '—';
+                                            $ver_cls  = ($spoke_ver !== '' && $ver_age['stale']) ? ' version-stale' : '';
+                                            $ver_ttl  = $ver_age['stale']
+                                                ? 'Last heard ' . $ver_age['phrase'] . ' — the last version this spoke reported, not a reading taken now.'
+                                                : 'Reported ' . $ver_age['phrase'] . '.';
+                                            echo '<span id="spoke-ver-val-' . (int)$n['id'] . '" class="version-value' . $ver_cls . '"'
+                                               . ' title="' . htmlspecialchars($ver_ttl) . '">' . $ver_text . '</span>';
                                             if ($spoke_ver && snap_version_compare(SNAPSMACK_VERSION_SHORT, $spoke_ver, '>')) {
                                                 echo ' <span class="version-behind" title="Behind hub version ' . htmlspecialchars(SNAPSMACK_VERSION_SHORT) . '">&#x25B2;</span>';
+                                            }
+                                            // KNOWN LIMIT: the UPDATE push below writes the new
+                                            // version over this whole cell, which takes the age
+                                            // line with it until the page is reloaded. The code
+                                            // that does it is inside the SS-1041 allowlisted
+                                            // inline script, which the agreed-rules gate says is
+                                            // moved to assets/js/ rather than edited in place.
+                                            // SS-1338, and the regression is mine from SS-1145. This
+                                            // line printed under EVERY spoke. .version-age is display:block
+                                            // and the VERSION column is narrow, so "read just now" wrapped
+                                            // and every row in the fleet table grew by two lines, squeezing
+                                            // the ACTION column until its buttons stacked. Sean saw it the
+                                            // moment he built 0.7.995D.
+                                            //
+                                            // A fresh reading carries no information a reader needs in the
+                                            // table: the version is simply current. Only a STALE or unknown
+                                            // reading changes what the number means, so only that prints.
+                                            // The fresh phrase is still in the .version-value tooltip above,
+                                            // which says "Reported just now."
+                                            //
+                                            // snap_reading_age() returns stale=true for both "never" and
+                                            // clock skew, so this one test covers every case worth showing.
+                                            if ($ver_age['stale']) {
+                                                echo '<span class="version-age' . $ver_cls . '" id="spoke-ver-age-' . (int)$n['id'] . '">'
+                                                   . ($ver_age['known'] ? 'read ' . htmlspecialchars($ver_age['phrase']) : htmlspecialchars($ver_age['phrase']))
+                                                   . '</span>';
                                             }
                                         ?>
                                     </td>
@@ -2118,19 +2453,19 @@ include 'core/sidebar.php';
             <?php if (!empty($registry_skins)): ?>
             <div class="skin-deploy-primary">
             <form method="POST"
-                  onsubmit="return confirm('Update every spoke that is behind on any skin? Skins already on the current version are not touched.');">
+                  onsubmit="return confirm('Update this hub and every spoke that is behind on any skin? Skins already on the current version are not touched.');">
                 <button type="submit" name="push_all_skins_all_spokes" class="master-update-btn">
-                    UPDATE EVERY SPOKE THAT IS BEHIND
+                    UPDATE HUB AND SPOKES THAT ARE BEHIND
                 </button>
             </form>
-            <p>One authenticated batch per spoke, carrying only the skins whose
+            <p>The hub updates its own installed skins and sends one authenticated batch per spoke, carrying only the skins whose
                registry version is newer than the version that spoke reports.
                A skin already on the current version is not sent. Custom and
                uninstalled skins are left alone. Each site reports what it
                updated, what was already current, and anything whose version
                could not be compared.</p>
             <form method="POST"
-                  onsubmit="return confirm('REINSTALL every registry skin on every active spoke, including ones already up to date? This downloads every skin again and may take several minutes.');">
+                  onsubmit="return confirm('REINSTALL every installed registry skin on this hub and every active spoke, including ones already up to date? This downloads every skin again and may take several minutes.');">
                 <input type="hidden" name="push_all_skins_force" value="1">
                 <button type="submit" name="push_all_skins_all_spokes" class="secondary-btn">
                     Force a full reinstall instead
@@ -2368,29 +2703,29 @@ include 'core/sidebar.php';
                     <form method="POST" class="mb-20">
                         <p class="dim" style="font-size:0.82rem; margin-bottom:12px;">
                             Joining a hub grants it admin-level access to this site, so it needs your password
-                            (plus your 2FA code if you use it). Leaving a hub never needs a password.
+                            and a current 2FA code. Leaving a hub never needs a password.
                             The grant is issued for the one hub you name and expires in 15 minutes.
                         </p>
-                        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px;">
-                            <div>
-                                <?php /* SECAUDIT 061 5.1: the grant names the hub it is for, so
-                                         a grant intended for one hub cannot be presented to
-                                         another. Required, because a grant that does not say
-                                         where it may be used is only a password with extra
-                                         steps. */ ?>
-                                <label class="overline">HUB ADDRESS</label>
-                                <input type="text" name="grant_hub_url" autocomplete="off"
-                                       placeholder="hub.example.com" class="field-input">
+                        <div class="lens-input-wrapper">
+                            <label for="enrollment-hub"><strong>HUB ADDRESS</strong></label>
+                            <input id="enrollment-hub" type="url" name="grant_hub_url" autocomplete="off"
+                                   placeholder="https://hub.example.com" class="field-input" required>
+                        </div>
+                        <div class="reauth-row">
+                            <div class="lens-input-wrapper">
+                                <label for="enrollment-username">USERNAME</label>
+                                <input id="enrollment-username" type="text" name="reauth_username" autocomplete="username"
+                                       value="<?php echo htmlspecialchars((string)($_SESSION['user_login'] ?? '')); ?>" required>
                             </div>
-                            <div>
-                                <label class="overline">PASSWORD</label>
-                                <input type="password" name="reauth_password" autocomplete="off"
-                                       class="field-input">
+                            <div class="lens-input-wrapper">
+                                <label for="enrollment-password">PASSWORD</label>
+                                <input id="enrollment-password" type="password" name="reauth_password"
+                                       autocomplete="current-password" required>
                             </div>
-                            <div>
-                                <label class="overline">2FA CODE (if enabled)</label>
-                                <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off"
-                                       class="field-input-120">
+                            <div class="lens-input-wrapper">
+                                <label for="enrollment-totp">2FA CODE</label>
+                                <input id="enrollment-totp" type="text" name="reauth_totp" inputmode="numeric"
+                                       autocomplete="one-time-code" class="input-code" required>
                             </div>
                         </div>
                         <button type="submit" name="gen_reg_token" class="master-update-btn">

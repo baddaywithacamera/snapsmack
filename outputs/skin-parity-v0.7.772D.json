@@ -1,7 +1,7 @@
 {
     "schema": "snapsmack.skin-parity-ledger.v1",
     "baseline": "v0.7.772D",
-    "baseline_commit": "6e8916b9846096f651924d024617ea22c8a10826",
+    "baseline_commit": "41c6ac4e21ea5b5187b3d2c6b4f30da912a4754c",
     "skin_count": 30,
     "baseline_only_skins": [
         "beatbox"

@@ -86,11 +86,12 @@ body {
 }
 
 /* SITE NAME / tagline on one line (Sean, 2026-09-16: "tagline BESIDE site name"). */
-.logo-area a {
+.logo-area {
     display: flex;
     align-items: baseline;
-    gap: 10px;
+    gap: 4px 10px;
     flex-wrap: wrap;
+    min-width: 0;
 }
 
 .site-tagline-text {
@@ -108,9 +109,8 @@ body {
 }
 
 .site-title-text {
-    font-family: 'Montserrat', sans-serif;
+    /* Header typography comes from Skin Admin on this exact text element. */
     font-weight: 800;
-    font-size: 1.2rem;
     text-transform: uppercase;
     letter-spacing: 1px;
     color: var(--text-bright);
@@ -287,7 +287,8 @@ img.post-image {
     flex-shrink: 0 !important;
 }
 
-.photo-title-footer, 
+.photo-title-footer,
+#pane-info > .dt-published,
 .description, 
 .meta,
 .comment-form,
@@ -298,6 +299,18 @@ img.post-image {
     padding-left: 20px;
     padding-right: 20px;
     box-sizing: border-box;
+}
+
+/* The publication date belongs to the same information lane as its title. */
+#pane-info > .dt-published {
+    display: block;
+    width: 100%;
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: var(--text-dim, #999);
+    font-family: inherit;
+    font-size: .8rem;
+    line-height: 1.5;
 }
 
 .photo-title-footer {
@@ -367,7 +380,7 @@ img.post-image {
 
 #system-footer p, #sig-text {
     color: var(--text-primary) !important;
-    font-family: 'Inter', sans-serif !important;
+    font-family: 'Inter', sans-serif;
     font-size: 0.7rem !important;
     text-transform: uppercase !important;
     letter-spacing: 1.5px !important;
@@ -485,6 +498,8 @@ img.post-image {
 
 /* --- GRID A: Square & Cropped (CSS Grid layout) --- */
 #browse-grid {
+    width: var(--ss-grid-width, 100%);
+    box-sizing: border-box;
     max-width: 95%;
     margin: 80px auto;
     padding: 0 60px;
@@ -496,16 +511,21 @@ img.post-image {
 #browse-grid.square-grid,
 #browse-grid.cropped-grid {
     display: grid;
-    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
-    gap: var(--grid-gap, 50px);
+    /* Shared archive controls keep legacy saved values as fallbacks. */
+    grid-template-columns: repeat(var(--ss-cols, var(--grid-cols, 4)), minmax(0, var(--ss-thumb-size, var(--thumb-width, 200px))));
+    gap: var(--ss-gap, var(--grid-gap, 50px));
     justify-content: center;
 }
 #browse-grid.square-grid .thumb-container,
 #browse-grid.cropped-grid .thumb-container {
     position: relative;
     overflow: hidden;
-    aspect-ratio: 1 / 1;
+    padding: var(--ss-thumb-padding, 0px);
+    width: 100%;
+    min-width: 0;
 }
+#browse-grid.square-grid .thumb-container { aspect-ratio: 1 / 1; }
+#browse-grid.cropped-grid .thumb-container { width: 100%; }
 @media (max-width: 600px) {
     #browse-grid.square-grid,
     #browse-grid.cropped-grid {
@@ -544,7 +564,9 @@ img.post-image {
 .square-grid .thumb-link,
 .cropped-grid .thumb-link {
     display: inline-block;
-    border: 3px solid var(--border-accent);
+    border-width: var(--ss-border-width, 1px);
+    border-color: var(--ss-border-color, #666);
+    border-style: var(--ss-border-style, solid);
     box-shadow: none;
     box-sizing: border-box;
 }
@@ -577,7 +599,7 @@ img.post-image {
 
 .square-grid .thumb-link img,
 .cropped-grid .thumb-link img {
-    max-width: var(--thumb-width, 400px);
+    max-width: 100%;
     height: auto;
     display: block;
     transition: opacity 0.3s ease;
@@ -603,6 +625,21 @@ img.post-image {
 .static-transmission #scroll-stage {
     display: block !important;
     text-align: center !important;
+    flex: 1 0 auto;
+    overflow-y: visible;
+}
+
+/* Keep the signature at the viewport floor when a static page is short.
+   Once the page is taller than the viewport, the body scrolls normally and
+   the signature follows the content instead of becoming a fixed overlay. */
+body.static-transmission {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+}
+
+body.static-transmission #system-footer {
+    flex: 0 0 auto;
 }
 
 .static-transmission #footer,
@@ -619,16 +656,123 @@ img.post-image {
 .static-transmission #footer { background: var(--bg-secondary) !important; }
 .static-transmission #system-footer { background: var(--bg-chrome) !important; border-top: 1px solid var(--border-accent) !important; }
 
-/* THE LANE: Centered 850px container with 20px padding for symmetry */
+/* Static pages share one 900px lane.  The title begins about 64px below the
+   navigation baseline on the supported desktop and large-tablet widths. */
 .static-content {
-    max-width: var(--static-content-width, 850px) !important;
-    margin: 40px auto 0 auto !important;
-    padding-left: 20px;
-    padding-right: 20px;
+    width: 100%;
+    max-width: 900px !important;
+    margin: 0 auto !important;
+    padding: 34px 20px 0 !important;
     box-sizing: border-box;
     background: var(--bg-page);
     text-align: left;
     overflow-x: hidden;
+}
+
+
+/* -- THE ABOUT PAGE: THE PORTRAIT BESIDE THE WORDS -------------------------
+   Sean reported the About page as one column, portrait on top and text
+   underneath, and asked what had happened to it. Nothing had: it was never
+   there. The skin DID float the portrait left -- since 0.7.159, 2026-05-20 --
+   but no version of that rule ever capped its WIDTH, and a shrink-to-fit
+   float against a large photograph fills the column. Measured on
+   curbappeal.photoblogs.fyi/about at 1920 and 1440: 802px of content, an
+   802px portrait, 0px left beside it, and 0 of 23 text line boxes anywhere
+   but underneath. A float as wide as its container leaves nothing to flow
+   past it. 20684ab4 (27 Oct) released the hero's HEIGHT, and its comment says
+   the intent out loud -- "it is an image in a column of text" -- then never
+   touched the width. This finishes that sentence.
+
+   Done as a GRID, the way 50 SHADES OF NOAH GREY does it, rather than by
+   capping the float: a float lets the text wrap back underneath the portrait
+   once it runs past the bottom, and a grid gives two true columns that stay
+   columns. Every number above and below is checked in
+   tests/new-horizon-about-two-column-regression.php.
+
+   SCOPED TO A PAGE THAT HAS A PORTRAIT. :has(#photobox.page-hero) means a
+   static page without a hero, the blogroll and the search results are
+   untouched and keep their single column -- there is no empty track to leave
+   open. That is the whole blast radius.
+
+   The widths are custom properties so the owner's Static Page Hero Position
+   control can be wired to them later without touching this geometry again,
+   exactly as 50 SHADES does. */
+.static-content:has(#photobox.page-hero) {
+    display: var(--nh-static-layout, grid);
+    grid-template-columns:
+        var(--nh-static-cols, var(--nh-static-hero-width, 42%) 1fr);
+    /* The portrait's 40px inner frame clearance and the text's 20px inset
+       both sit INSIDE the grid tracks. Together with the frame's 16px outer
+       shadow, a 48px column gap rendered as 92px of visible air. The 2px grid
+       gap below renders as 46px from the visible frame edge to the first
+       glyph: 2 + 40 + 20 - 16. */
+    column-gap: var(--nh-static-column-gap, 2px);
+    align-items: start;
+    /* Two columns inside 850px leave a 370px photograph and a 420px measure,
+       which is too mean for both. The wider cap applies ONLY in the
+       two-column case, so a single-column static page keeps the 850px measure
+       this skin has always had. */
+    max-width: var(--nh-static-two-col-width, 1100px) !important;
+}
+
+/* The heading spans both columns and KEEPS SS-1269's alignment. That ticket
+   set padding-left to 24px -- 20px baseline plus 4px frame compensation -- so
+   the words line up with the portrait's frame edge rather than its box edge.
+   The portrait still begins at the container's content edge in column 1, so
+   the same 24px lands in the same place. The only thing that has to change is
+   the 850px cap, which would otherwise hold the heading short of the wider
+   grid. The test compares the two left edges rather than trusting this. */
+.static-content:has(#photobox.page-hero) > .static-page-title {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    max-width: none !important;
+}
+
+.static-content:has(#photobox.page-hero) > #photobox.page-hero {
+    grid-column: var(--nh-static-hero-col, 1);
+    grid-row: 2;
+    float: none !important;
+    width: auto !important;
+    max-width: 100%;
+    /* The writing is taller than the photograph, so rather than leave half the
+       page empty the portrait stays with the reader as the words scroll by. */
+    position: sticky;
+    top: var(--nh-static-hero-sticky-top, 40px);
+}
+
+.static-content:has(#photobox.page-hero) > .description {
+    grid-column: var(--nh-static-text-col, 2);
+    grid-row: 2;
+    /* .description carries its own 850px cap for the single-image view where
+       it is a top-level container. In its own grid track that cap would hold
+       it short of the column. */
+    max-width: none !important;
+}
+
+/* The two grid children already share the same row start. On the desktop
+   layout, the photograph's normal 40px top clearance put the OUTER 16px
+   frame 20px below the visible top of the first text line. Twenty pixels of
+   top clearance puts those two visible edges level while preserving the
+   larger side and bottom clearances. Keep this out of the narrow stacked
+   layout, whose geometry is intentionally unchanged. */
+@media (min-width: 901px) {
+    .static-content:has(#photobox.page-hero) > #photobox.page-hero .main-photo {
+        padding-top: var(--nh-static-hero-top-inset, 20px);
+    }
+}
+
+/* One column on a narrow screen: portrait first, nothing sticky, nothing
+   floated. NEW HORIZON is a desktop and large-tablet skin, so this is the
+   graceful floor rather than a phone layout. */
+@media (max-width: 900px) {
+    .static-content:has(#photobox.page-hero) {
+        display: block;
+        max-width: var(--static-content-width, 850px) !important;
+    }
+    .static-content:has(#photobox.page-hero) > #photobox.page-hero {
+        position: static;
+        float: none !important;
+    }
 }
 
 .static-content::after { 
@@ -637,22 +781,40 @@ img.post-image {
     clear: both; 
 }
 
-/* THE TITLE: 24px Optical Snap to align with framed content below */
+/* Shared static-page title: the same tracked sans-serif voice as the nav,
+   enlarged to establish the page without turning into a second masthead. */
 .static-page-title {
     width: 100% !important;
-    max-width: 850px !important;
-    margin: 0 0 40px 0 !important;
-    padding-left: 24px !important; /* 20px baseline + 4px frame compensation */
-    padding-right: 20px !important;
+    max-width: none !important;
+    margin: 0 0 24px 0 !important;
+    padding: 0 !important;
     text-align: left !important;
     display: block !important;
     box-sizing: border-box !important;
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    color: var(--text-bright);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-size: 2rem;
-    font-weight: 700;
+    font-family: 'Inter', sans-serif !important;
+    color: var(--text-secondary) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 2px !important;
+    font-size: 24px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+}
+
+/* About uses the shared title above a 38/62 image-and-copy grid.  The image's
+   existing .main-photo frame is deliberately retained. */
+.static-content:has(#photobox.page-hero) {
+    display: grid;
+    grid-template-columns: minmax(0, 38%) minmax(0, 1fr);
+    column-gap: 48px;
+    align-items: start;
+}
+
+.static-content:has(#photobox.page-hero) > .static-page-title {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100% !important;
+    margin-top: 40px !important;
+    margin-left: 0 !important;
 }
 
 /* THE BIO IMAGE: 17px Top (Baseline Snap) and 10px Left (Lane Shift) */
@@ -682,9 +844,34 @@ img.post-image {
     height: auto !important;
     padding: 0 !important; 
     width: auto !important;
-    float: left !important; 
+    /* WAS float: left !important, from 0.7.159 (2026-05-20) until today. The
+       intent was the portrait beside the words, but nothing ever capped the
+       float's width, so it filled the column and pushed every line of text
+       underneath -- measured 802px of portrait in 802px of column, 0 of 23
+       lines beside it. The two columns are now a grid on .static-content, so
+       the float was not merely unnecessary, it was the thing that produced
+       the single column. Removed rather than overridden, so the next reader
+       does not find a float that looks load-bearing and is not. */
+    float: none !important;
     background: transparent !important;
     margin: 0 !important;
+}
+
+.static-content:has(#photobox.page-hero) > #photobox.page-hero {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 100% !important;
+    float: none !important;
+}
+
+.static-content:has(#photobox.page-hero) > .description {
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    max-width: 70ch;
+    margin: 0 0 40px !important;
+    padding: 0 !important;
 }
 
 /* Kill paragraph top interference to ensure baseline snap */
@@ -994,10 +1181,50 @@ span.dropcap {
 /* Outer canvas — width controlled by manifest blogroll_max_width */
 .blogroll-canvas {
     max-width: 900px;
-    margin: 40px auto 0 auto;
+    margin: 0 auto;
     padding: 0 20px;
     box-sizing: border-box;
     text-align: left;
+}
+
+/* The outer blogroll canvas owns the same lane and title rhythm as About.
+   The inner canvas supplied by the blogroll component must not add a second
+   inset or top margin. */
+.blogroll-page > .blogroll-canvas {
+    width: 100%;
+    max-width: 900px !important;
+    padding: 34px 20px 0 !important;
+}
+
+.blogroll-page > .blogroll-canvas > .blogroll-canvas {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+}
+
+@media (max-width: 900px) {
+    .static-content:has(#photobox.page-hero) {
+        display: block;
+    }
+
+    .static-content:has(#photobox.page-hero) > #photobox.page-hero {
+        width: min(100%, 420px) !important;
+        margin: 0 auto 24px !important;
+    }
+
+    .static-content:has(#photobox.page-hero) > .static-page-title {
+        width: min(calc(100% - 80px), 340px) !important;
+        margin-top: 0 !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+
+    .static-content:has(#photobox.page-hero) > .description {
+        max-width: 70ch;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
 }
 
 /* Category block — wraps heading + grid for each category */
@@ -1163,4 +1390,70 @@ a.logo-area,
     color: inherit;
     text-decoration: none;
 }
+#nh-sentinel {
+    height: auto;
+    min-height: 44px;
+    padding: 16px 24px;
+    text-align: center;
+}
+#nh-sentinel a { display: inline-block; padding: 12px; }
+/* Shared community markup uses ss-* classes rather than the legacy form. */
+#pane-comments .ss-community { padding: 24px 0 40px; }
+#pane-comments .ss-comments { margin-top: 20px; }
+#pane-comments .ss-comments-empty,
+#pane-comments .ss-comment-empty { margin: 0 0 20px; color: var(--text-primary, #ccc); font-size: 1rem; line-height: 1.5; }
+#pane-comments .ss-comment-guest-fields { display: flex; gap: 16px; margin-bottom: 8px; }
+#pane-comments .ss-comment-guest-fields input,
+#pane-comments .ss-comment-textarea {
+    min-width: 0;
+    min-height: 44px;
+    background: var(--bg-page, #111);
+    color: var(--text-primary, #ccc);
+    border: 1px solid var(--border-primary, #555);
+    border-radius: 0;
+    padding: 12px;
+    font: inherit;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+#pane-comments .ss-comment-guest-fields input { flex: 1; width: 100%; }
+#pane-comments .ss-comment-textarea { min-height: 96px; resize: vertical; }
+#pane-comments .ss-comment-guest-fields input::placeholder,
+#pane-comments .ss-comment-textarea::placeholder { color: var(--text-dim, #999); opacity: 1; }
+#pane-comments .ss-comment-guest-fields input:focus-visible,
+#pane-comments .ss-comment-textarea:focus-visible { outline: 2px solid var(--text-bright, #eee); outline-offset: 2px; }
+
+/* Font-role overrides keep their original shades until explicitly changed. */
+.static-page-title, .photo-title-footer { color: var(--nh-heading-colour); }
+.static-content { color: var(--nh-body-colour); }
+.description { color: var(--nh-description-colour); }
+#system-footer .inside, #system-footer p, #sig-text { color: var(--nh-footer-colour) !important; }
+
+/* Single photographs fill the remaining viewport using the actual header and
+   navigation heights. Appearance controls can change both; the old fixed
+   80 + 60 subtraction left a gap when the navigation was set to 50px. */
+body.new-horizon-v2:has(.single-image-page) {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+}
+body.new-horizon-v2 #scroll-stage:has(> .single-image-page) > .single-image-page {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    min-height: 100%;
+}
+
+.single-image-page:not(:has(> #footer[style*="display: block"])):not(:has(> #footer[style*="display:block"])) {
+    height: 100%;
+}
+
+/* Keep the photograph flexible only while the information drawer is shut.
+   Opening a drawer retains the original photo box and scrolls its content. */
+.single-image-page:not(:has(> #footer[style*="display: block"])):not(:has(> #footer[style*="display:block"])) > #photobox {
+    height: auto;
+    flex: 1 1 0 !important;
+    min-height: 0;
+}
+
 /* ===== SNAPSMACK EOF ===== */

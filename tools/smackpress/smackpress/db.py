@@ -70,4 +70,37 @@ def get_all_posts(status_filter: str | None = None) -> list[sqlite3.Row]:
 def set_note(wp_id: int, note: str) -> None:
     upsert_post(wp_id, notes=note)
 
+
+def add_note_lines(wp_id: int, lines) -> int:
+    """APPEND notes without losing what is already there, and without
+    repeating a line that is already recorded.
+
+    set_note() overwrites. The link report runs on every import and on every
+    repair, so overwriting would mean the last run's findings replaced the
+    previous run's -- and a note nobody can accumulate is a note that loses
+    the thing it was written down for. Returns how many lines were added.
+    """
+    lines = [str(line).strip() for line in (lines or []) if str(line).strip()]
+    if not lines:
+        return 0
+    row = get_post(wp_id)
+    existing = ""
+    if row is not None:
+        try:
+            existing = (row["notes"] or "")
+        except (KeyError, IndexError, TypeError):
+            existing = ""
+    have = {line.strip() for line in existing.splitlines() if line.strip()}
+    fresh = []
+    for line in lines:
+        if line not in have:
+            fresh.append(line)
+            have.add(line)
+    if not fresh:
+        return 0
+    joined = ("\n".join([existing.rstrip()] + fresh) if existing.strip()
+              else "\n".join(fresh))
+    upsert_post(wp_id, notes=joined)
+    return len(fresh)
+
 # ===== SNAPSMACK EOF =====

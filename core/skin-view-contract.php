@@ -22,6 +22,54 @@ function snapsmack_skin_navigation_url(array $items, string $wantedLabel): strin
 }
 
 /** Convert a controller response into the only data a strict skin receives. */
+/**
+ * The four prepared fields every listed photograph carries, written ONCE.
+ *
+ * thumb_url, thumb_style, orientation_class and photo_url were stamped inline
+ * on archive items only. A SEARCH returns its rows under 'results', a map
+ * keyed by group, not a flat 'items' -- so a search row had none of them, and
+ * Codex had to degrade GLIDE's search tiles to a bare post link.
+ *
+ * Extracted rather than copied into the search path: the archive gate around
+ * the original loop also prepares the archive control row, the canvas width
+ * and the route aliases, none of which belong in a search response, so the
+ * gate could not simply be widened. A second copy of a fallback chain is a
+ * second place for it to drift -- which is the reason photo_url exists at all,
+ * after the same expression had been copied into five components.
+ *
+ * @param array<string,mixed> $row
+ * @return array<string,mixed> the row with the four fields set
+ */
+function snapsmack_view_row_fields(array $row, string $thumbStyle): array
+{
+    $square = (string)($row['img_thumb_square'] ?? '');
+    $aspect = (string)($row['img_thumb_aspect'] ?? '');
+    $full   = (string)($row['img_file'] ?? '');
+    // Each style states its own preference and falls back to the other
+    // derivative before the full-size file, so a site whose square thumbs were
+    // never generated still shows a photograph instead of an empty tile.
+    $row['thumb_url'] = $thumbStyle === 'square'
+        ? ($square !== '' ? $square : ($aspect !== '' ? $aspect : $full))
+        : ($aspect !== '' ? $aspect : ($square !== '' ? $square : $full));
+    $row['thumb_style'] = $thumbStyle;
+    // 1 portrait, 2 square, anything else landscape -- the same orientation
+    // classes IMPACT PRINTER's component already emits, so a layout gets the
+    // class rather than the integer.
+    $orient = (int)($row['img_orientation'] ?? 0);
+    $row['orientation_class'] = $orient === 1
+        ? 'orient-portrait'
+        : ($orient === 2 ? 'orient-square' : 'orient-landscape');
+    // THE LINK TO THE PHOTOGRAPH, PREPARED ONCE. Every archive component in
+    // core already wrote $item['url'] ?? snap_route_url('photo', ...) -- the
+    // same expression copied into 50 SHADES, CHAPLIN, IMPACT PRINTER, ONYX and
+    // the grid fragment.
+    $slug = (string)($row['img_slug'] ?? '');
+    $row['photo_url'] = (string)($row['url'] ?? '') !== ''
+        ? (string)$row['url']
+        : ($slug !== '' ? snap_route_url('photo', ['slug' => $slug]) : '');
+    return $row;
+}
+
 function snapsmack_build_skin_view(array $response, array $presentation = []): array
 {
     $kind = (string)($response['kind'] ?? '');
@@ -82,6 +130,32 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         'albums', 'categories_label', 'albums_label', 'author', 'colophon', 'published_post_count', 'photo_count', 'photo_count_display', 'comment_count', 'comment_count_display', 'like_count', 'like_count_display', 'word_count', 'comments_enabled',
         'show_titles', 'blogroll_groups', 'taxonomy', 'groups', 'puzzle_items', 'fragment', 'autoopen',
         'first', 'last', 'next_page', 'is_homepage', 'sort', 'sort_options', 'album', 'filmstrip', 'community', 'mosaic_blocks', 'about_url', 'archive_controls',
+        // THE ARCHIVE BUILDS SEVEN PAGING VALUES AND THIS LIST WAS KEEPING
+        // FOUR OF THEM FROM THE SKIN.
+        //
+        // snapsmack_public_response() returns page, per_page, total_count,
+        // total_pages, has_more, previous_page and next_page. Only page,
+        // total_pages and next_page were allowed through, so a strict skin
+        // could render a NEXT link and the page numbers and had no way at all
+        // to render a PREVIOUS one -- previous_page was computed, then dropped
+        // here, one function later. GLIDE's explicit Previous/Next was blocked
+        // on a value the CMS had already worked out.
+        //
+        // next_page was allowed because endless scroll only ever needed the
+        // forward direction: it is what feeds the scroll-wall sentinel. Nothing
+        // decided that backwards paging should be impossible; it just never
+        // came up, so the other half was never listed.
+        //
+        // Adding keys to an allowlist cannot change a skin that does not read
+        // them, which is why this is safe for the other twenty-nine. Proved
+        // rather than asserted: the render snapshot is byte-identical across
+        // 175 pages and 25 skins.
+        'per_page', 'total_count', 'has_more', 'previous_page',
+        // Slice 3. The same two pages as links, with the active filter already
+        // in them -- category and album on an archive, the query on a search,
+        // the tag on a hashtag page. A skin assembling its own query string
+        // would drop the filter the moment anybody paged a filtered archive.
+        'previous_url', 'next_url',
         // The resolved archive controls. archive_controls is the rendered row;
         // these three are the same answer as data, for the components that
         // assemble their own row. 50 SHADES already read archive_layouts and
@@ -91,7 +165,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'base_style_url', 'skin_variant_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',
-        'favicon_url', 'footer', 'slickr_profile', 'crop_circles', 'archive_layout', 'archive_thumb_style', 'archive_grid', 'body_class'];
+        'favicon_url', 'og_image_url', 'footer', 'slickr_profile', 'crop_circles', 'archive_layout', 'archive_thumb_style', 'archive_grid', 'body_class'];
     // THE ARCHIVE'S OWN CONTROL ROW -- SHOW ALL, the filter panel, the search
     // field and the layout toggles.
     //
@@ -108,6 +182,31 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     // foundtextures.ca, where the row has been missing since the conversion.
     // A skin that wants the row prints this one value and carries no logic;
     // a skin that does not print it is completely unchanged.
+    // A SEARCH ROW GETS THE SAME FOUR FIELDS AS AN ARCHIVE TILE.
+    //
+    // Codex: "search results lack prepared comment metadata, unlike archive
+    // items; I will show only a post link when state is unavailable." The
+    // coordinator named photo_url. The same photograph deserves the same
+    // prepared answers wherever it is listed, so this stamps the identical
+    // four through the identical helper.
+    //
+    // It is a block of its own rather than an addition to the archive gate
+    // below: that gate also prepares the archive control row, the canvas width
+    // and the route aliases, and none of those belong in a search response.
+    // "Nothing else changes" was the instruction.
+    if ($kind === 'search' && is_array($response['results'] ?? null)) {
+        $_searchStyle = (string)($presentation['archive_thumb_style'] ?? 'cropped');
+        if (!in_array($_searchStyle, ['square', 'cropped'], true)) $_searchStyle = 'cropped';
+        foreach ($response['results'] as $_sg => $_srows) {
+            if (!is_array($_srows)) continue;
+            foreach ($_srows as $_si => $_srow) {
+                if (!is_array($_srow)) continue;
+                $_srows[$_si] = snapsmack_view_row_fields($_srow, $_searchStyle);
+            }
+            $response['results'][$_sg] = $_srows;
+        }
+        unset($_searchStyle, $_sg, $_srows, $_si, $_srow);
+    }
     if ($kind === 'archive' || $kind === 'hashtag') {
         // THE THUMB STYLE, RESOLVED ONCE, PER ITEM.
         //
@@ -138,27 +237,10 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         if (is_array($response['items'] ?? null)) {
             foreach ($response['items'] as $_i => $_it) {
                 if (!is_array($_it)) continue;
-                $_square = (string)($_it['img_thumb_square'] ?? '');
-                $_aspect = (string)($_it['img_thumb_aspect'] ?? '');
-                $_full   = (string)($_it['img_file'] ?? '');
-                // Each style states its own preference and falls back to the
-                // other derivative before the full-size file, so a site whose
-                // square thumbs were never generated still shows a photograph
-                // instead of an empty tile.
-                $response['items'][$_i]['thumb_url'] = $_thumbStyle === 'square'
-                    ? ($_square !== '' ? $_square : ($_aspect !== '' ? $_aspect : $_full))
-                    : ($_aspect !== '' ? $_aspect : ($_square !== '' ? $_square : $_full));
-                $response['items'][$_i]['thumb_style'] = $_thumbStyle;
-                // 1 portrait, 2 square, anything else landscape -- the same
-                // orientation classes IMPACT PRINTER's component already
-                // emits, so a layout gets the class rather than the integer.
-                $_orient = (int)($_it['img_orientation'] ?? 0);
-                $response['items'][$_i]['orientation_class'] = $_orient === 1
-                    ? 'orient-portrait'
-                    : ($_orient === 2 ? 'orient-square' : 'orient-landscape');
+                $response['items'][$_i] = snapsmack_view_row_fields($_it, $_thumbStyle);
             }
         }
-        unset($_thumbStyle, $_i, $_it, $_square, $_aspect, $_full, $_orient);
+        unset($_thumbStyle, $_i, $_it);
         $_archiveBase = defined('BASE_URL') ? (string)BASE_URL : '/';
         $_archiveAliases = (array)($presentation['route_aliases'] ?? []);
         $_archiveMode = (string)($presentation['site_mode'] ?? '');
@@ -277,9 +359,32 @@ function snapsmack_render_strict_skin_template(string $skinDir, string $template
     // Strict-controller requests do not load the legacy skin-view bootstrap,
     // so relying on that bootstrap leaves every guarded schema-v2 layout blank.
     if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
-    (static function (string $__snapsmack_template, array $view): void {
-        include $__snapsmack_template;
-    })($candidate, $view);
+    $hasHeadImage = !empty($view['site']['favicon_url']) || !empty($view['site']['og_image_url']);
+    if ($hasHeadImage) {
+        require_once __DIR__ . '/public-favicon.php';
+        $favicon = snapsmack_public_favicon_link((string)($view['site']['favicon_url'] ?? ''));
+        $ogImage = snap_escape_url($view['site']['og_image_url'] ?? '');
+        ob_start(static function (string $html) use ($favicon, $ogImage): string {
+            $headEnd = stripos($html, '</head>');
+            if ($headEnd === false) return $html;
+            $head = substr($html, 0, $headEnd);
+            $markup = '';
+            if ($favicon !== '' && !preg_match('~<link\b[^>]*\brel\s*=\s*["\x27](?:shortcut\s+)?icon["\x27]~i', $head)) {
+                $markup .= $favicon;
+            }
+            if ($ogImage !== '' && !preg_match('~<meta\b[^>]*\bproperty\s*=\s*["\x27]og:image["\x27]~i', $head)) {
+                $markup .= '<meta property="og:image" content="' . $ogImage . '">';
+            }
+            return substr_replace($html, $markup, $headEnd, 0);
+        });
+    }
+    try {
+        (static function (string $__snapsmack_template, array $view): void {
+            include $__snapsmack_template;
+        })($candidate, $view);
+    } finally {
+        if ($hasHeadImage) ob_end_flush();
+    }
     return true;
 }
 // ===== SNAPSMACK EOF =====

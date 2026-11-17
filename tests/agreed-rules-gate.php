@@ -145,7 +145,13 @@ if ($lastTag !== '') {
     $touched = [];
     foreach (array_filter(array_map('trim', explode("\n", $changed))) as $path) {
         if (!preg_match('#^skins/([^/]+)/#', $path, $m)) continue;
-        $touched[$m[1]][] = basename($path);
+        $bn = basename($path);
+        // Screenshots are catalog/preview assets, never served to visitors, so a
+        // change or rename cannot alter an installed skin and must NOT force a
+        // version bump -- the same exemption the skin content digest applies in
+        // tools/_build/generate-skin-version-baseline.php.
+        if (preg_match('#^screenshot(-[a-z0-9]+)?\.(png|jpe?g|webp)$#i', $bn)) continue;
+        $touched[$m[1]][] = $bn;
     }
     foreach ($touched as $slug => $files) {
         if (in_array('manifest.json', $files, true)) continue;   // version may have moved
@@ -342,7 +348,7 @@ $JS_IN_PHP_ALLOWLIST = [
     'smack-update.php#8834460c0891fea1' => 'SS-1041 (40 lines, was line 2546)',
     // smack-multisite.php -- 2 block(s), 157 lines
     'smack-multisite.php#9a13d58dd2b3cfb5' => 'SS-1041 (59 lines, was line 1563)',
-    'smack-multisite.php#3f5912a9bf2a2412' => 'SS-1041 (98 lines, was line 1625)',
+    'smack-multisite.php#b59e3cc6edd1ace5' => 'SS-1041 (138 lines, was line 1625)',
     // smack-settings.php -- 3 block(s), 107 lines
     'smack-settings.php#c21c2f77b86f83fb' => 'SS-1041 (38 lines, was line 1225)',
     'smack-settings.php#53316a828540bd68' => 'SS-1041 (26 lines, was line 1266)',

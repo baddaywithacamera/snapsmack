@@ -165,6 +165,13 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
         'hide_controls', 'options', 'admin_styling', 'css_variables',
         'incompatible', 'modes', 'social_dock', 'cms_media_slots', 'cms_navigation',
         'templates', 'capabilities', 'require_styles',
+        // WHICH PAGES A SKIN ASKS THE CMS FOR SCROLL-TIME ON. This is a
+        // capability REQUEST, not placement logic: the CMS grants the
+        // function if it exists and is safe, and the skin's own template
+        // decides where to call it. Core never reads this to decide where
+        // to emit. Without it here the normalizer drops the key with only
+        // an error_log, and the declaration would be dead on arrival.
+        'scrolltime_pages',
         // A skin's own colour packs. They used to be PHP arrays inside
         // core/skin-presentation.php, which meant a new flag or colourway was
         // a CMS release and the CMS held 114 hex colours belonging to three
@@ -175,7 +182,7 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
         'community_comments', 'community_likes', 'community_reactions',
     ];
     $known = array_flip(array_merge(
-        ['schema_version', 'security_policy'],
+        ['schema_version', 'security_policy', 'min_images'],
         $string_keys,
         $array_keys,
         $boolean_keys
@@ -201,6 +208,25 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
         }
         if ($key === 'security_policy') {
             if (is_int($value)) $out[$key] = $value;
+            continue;
+        }
+        // HOW MANY PHOTOGRAPHS A SKIN NEEDS BEFORE IT MAKES SENSE. A wall skin
+        // with eight pictures looks broken, so GLIDE asks for 50 and INSTANT
+        // CAMERA and SLIDERS ask for 200, and snap_skin_min_images_conflict()
+        // in core/mode-guard.php refuses activation below it.
+        //
+        // IT NEVER SAW ONE OF THEM. The key was not listed here, so the
+        // normalizer dropped it with only an error_log, and both callers --
+        // smack-skin.php:164 via load_skin_manifest() and :478 via
+        // snapsmack_load_manifest(), which delegates to the same loader -- were
+        // handed a manifest with no min_images at all. The guard read 0 and
+        // allowed everything. Three skins declared a threshold and none of
+        // them had one.
+        if ($key === 'min_images') {
+            if (is_int($value) && $value >= 0) $out[$key] = $value;
+            // A string "50" is a manifest mistake, not a threshold to guess at:
+            // dropping it keeps the old permissive behaviour rather than
+            // inventing a refusal the skin author did not write.
             continue;
         }
         if (in_array($key, $string_keys, true)) {

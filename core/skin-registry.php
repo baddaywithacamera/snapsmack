@@ -397,47 +397,109 @@ function skin_registry_fetch(string $registry_url, bool $force_fresh = false): a
         return $_SESSION[$cache_key]['data'];
     }
 
-    $json = false;
+    // ONE ATTEMPT AT ONE URL, so a second one can be made against the default.
+    //
+    // WHY A SECOND ATTEMPT EXISTS. pixhellated.ca carried
+    // snap_settings.skin_registry_url = https://snapsmack.ca/skins/registry.json,
+    // the path from before the registry moved. It 404s. The stored setting
+    // overrides the default constant, and the default was already correct, so
+    // ONE WRONG ROW stranded the whole site: every skin setting write refused
+    // for want of a signed-package integrity record, and the recovery that
+    // would have restored it could not read the registry. Sean could not change
+    // a font on his own site, and nobody knows how many other sites carry the
+    // same row.
+    //
+    // THE SETTING IS NEVER REWRITTEN. This function has no database handle and
+    // acquires none. A self-healing fetch is not permission to edit somebody's
+    // configuration behind their back; it reports what it did instead.
+    $attempt = static function (string $url, array &$why): string|false {
+        $json = false;
+        if (!function_exists('curl_init')) {
+            $why[] = 'curl is not installed on this server';
+        }
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_TIMEOUT        => 15,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_USERAGENT      => 'SnapSmack/' . (SNAPSMACK_VERSION_SHORT ?? '0.7'),
+            ]);
+            $json = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err  = curl_error($ch);
+            if ($code !== 200 || $json === false) {
+                $why[] = 'curl reached HTTP ' . (int)$code
+                    . ($err !== '' ? ' and reported: ' . $err : ' with no error text');
+                $json = false;
+            }
+        }
+        if ($json === false && !ini_get('allow_url_fopen')) {
+            $why[] = 'allow_url_fopen is off, so there was no fallback to try';
+        }
+        if ($json === false && ini_get('allow_url_fopen')) {
+            $ctx = stream_context_create(['http' => [
+                'timeout' => 15,
+                'user_agent' => 'SnapSmack/' . (SNAPSMACK_VERSION_SHORT ?? '0.7'),
+            ]]);
+            $json = @file_get_contents($url, false, $ctx);
+            if ($json === false) {
+                $e = error_get_last();
+                $why[] = 'the file_get_contents fallback also failed'
+                    . (!empty($e['message']) ? ': ' . $e['message'] : '');
+            }
+        }
+        return $json;
+    };
 
-    // Try cURL first
-    if (function_exists('curl_init')) {
-        $ch = curl_init($registry_url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => 15,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_USERAGENT      => 'SnapSmack/' . (SNAPSMACK_VERSION_SHORT ?? '0.7'),
-        ]);
-        $json = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $err  = curl_error($ch);
-        curl_close($ch);
+    $why = [];
+    $json = $attempt($registry_url, $why);
+    $notice = '';
 
-        if ($code !== 200 || $json === false) {
-            $json = false;
+    if ($json === false) {
+        $default = defined('SKIN_REGISTRY_DEFAULT_URL') ? SKIN_REGISTRY_DEFAULT_URL : '';
+        // Only when there is somewhere else to go. Retrying the same URL would
+        // just double the wait on an already slow failure.
+        if ($default !== '' && $default !== $registry_url) {
+            $configuredWhy = $why;
+            $why = [];
+            $fallback = $attempt($default, $why);
+            if ($fallback !== false) {
+                $json = $fallback;
+                $notice = 'The configured skin registry URL ' . $registry_url
+                    . ' could not be read (' . implode('. ', $configuredWhy)
+                    . '), so the built-in default ' . $default
+                    . ' was used for this request. The stored setting was NOT changed'
+                    . ' — correct skin_registry_url in Settings to stop this happening.';
+                $why = [];
+            } else {
+                $why = [
+                    'the configured ' . $registry_url . ' failed: ' . implode('. ', $configuredWhy),
+                    'and the built-in default ' . $default . ' failed too: ' . implode('. ', $why),
+                ];
+            }
         }
     }
 
-    // Fallback: file_get_contents
-    if ($json === false && ini_get('allow_url_fopen')) {
-        $ctx = stream_context_create([
-            'http' => [
-                'timeout' => 15,
-                'user_agent' => 'SnapSmack/' . (SNAPSMACK_VERSION_SHORT ?? '0.7'),
-            ]
-        ]);
-        $json = @file_get_contents($registry_url, false, $ctx);
-    }
-
     if ($json === false) {
-        return ['error' => 'Could not reach the skin registry. Check your server\'s outbound HTTPS.'];
+        // The URL is named, because "the skin registry" is not something an
+        // owner can go and look at, and a wrong or overridden
+        // snap_settings.skin_registry_url is itself one of the causes.
+        return ['error' => 'Could not reach the skin registry at ' . $registry_url . '. '
+            . ($why === [] ? 'No reason was reported.' : implode('. ', $why) . '.')];
     }
 
     $data = json_decode($json, true);
     if (!is_array($data) || !isset($data['skins'])) {
         return ['error' => 'Invalid registry format. Expected JSON with a "skins" key.'];
     }
+
+    // A site quietly working off a different URL than its settings claim is its
+    // own kind of lie, so the recovery is reported rather than hidden. Cached
+    // with the data, so the notice survives the ten-minute session cache and
+    // does not appear only on the first page load after a failure.
+    if ($notice !== '') $data['notice'] = $notice;
 
     // Cache in session
     $_SESSION[$cache_key] = ['fetched' => time(), 'data' => $data];

@@ -95,21 +95,45 @@ def _config_path() -> str:
 # Fleet — read from the shared cross-tool profile store (read-only).
 # ---------------------------------------------------------------------------
 
+class FleetLoadError(Exception):
+    """The shared profile store could not be READ.
+
+    OPAUDIT 024 ("the watchman was asleep"): CRONOMETER returned [] both when the
+    fleet was genuinely empty AND when the load failed, so a blind monitor looked
+    exactly like an idle one and stayed silent for 33 days. A failed load must now
+    raise this so the caller can tell the two apart and say which it is. A monitor
+    is not allowed to fail quietly; that is the one behaviour it exists to prevent."""
+    pass
+
+
 def load_fleet() -> list:
     """Return the fleet as a list of dicts: {'name', 'url', 'api_key'}.
 
     Source is the ONE shared per-site profile store (snap_profiles) so a blog set
     up in ANY family tool shows up here. Sites with no api_key are still returned
     (rendered as 'no key' on the board) so the operator sees the gap rather than a
-    silently-missing site. Returns [] if the shared store is unreachable."""
+    silently-missing site.
+
+    Returns [] ONLY when the store loaded cleanly and genuinely holds no sites.
+    Raises FleetLoadError when the store could not be loaded at all (OPAUDIT 024):
+    'could not read the fleet' and 'there are no sites' must never be the same
+    value. The original exception is chained so the caller can log the real cause."""
     _add_shared_to_path()
     try:
         import snap_profiles
-    except Exception:
-        return []
-    out = []
+    except Exception as exc:
+        raise FleetLoadError(
+            "could not import the shared profile store (snap_profiles) — the "
+            f"fleet cannot be read: {exc!r}") from exc
     try:
-        for prof in snap_profiles.list_profiles():
+        profiles = snap_profiles.list_profiles()
+    except Exception as exc:
+        raise FleetLoadError(
+            f"snap_profiles.list_profiles() failed — the fleet cannot be read: "
+            f"{exc!r}") from exc
+    out = []
+    for prof in profiles:
+        try:
             url = (prof.get('site_url') or '').strip()
             if not url:
                 continue
@@ -126,8 +150,13 @@ def load_fleet() -> list:
                 'url':     url,
                 'api_key': heartbeat_key,
             })
-    except Exception:
-        return []
+        except Exception as exc:
+            # One malformed profile must not blank the whole board — but it must
+            # not vanish silently either (OPAUDIT 024). Skip it loudly: the write
+            # goes to CRONOMETER's debug log (stderr is redirected there).
+            sys.stderr.write(
+                f"CRONOMETER: skipped a malformed profile in load_fleet(): {exc!r}\n")
+            continue
     return out
 
 

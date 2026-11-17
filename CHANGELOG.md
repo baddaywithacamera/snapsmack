@@ -11,10 +11,381 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.975 - 2026-11-02 - HEISENBERG DECOMPENSATOR
+## 0.7.998D — opened
 
-- Stable promotion of the matching tested 0.7.975D source; retires 0.7.670, whose CMS is incompatible with current strict skins.
+- **Generating an API key now asks for your password and a 2FA code.** An API
+  key acts for your site from anywhere, for weeks or months. Until now an
+  admin who was already signed in could mint one with no further proof. Three
+  other actions on the same page — authorising a SNAP HQ device, opening a
+  bulk-import window, enabling offline posting — already asked, and the
+  password and 2FA boxes sitting above the key generator belonged to one of
+  them, so the page looked as though it asked. It did not.
 
+  It asks now, for every key type. A refusal happens before any key material
+  exists, so a failed attempt leaves no key, no record and nothing on screen.
+  If your account has no 2FA set up you will be asked to set it up first;
+  that is the same rule the other three already follow. (SS-1410)
+
+- **Archive pages can load less.** Archive grids now offer the browser a
+  smaller image for small tiles: a photograph posted from now on gets an extra
+  ~600px copy alongside the existing 900px one, and the browser picks whichever
+  fits the space.
+
+  **Read this before expecting faster pages.** It applies only to photographs
+  posted AFTER you update, through the web uploader or the single-post form.
+  Your existing library is untouched, and the tool that will make the smaller
+  copies for photographs you already have is not built yet. Photographs posted
+  through GRAMOFSMACK or the carousel editor get no smaller copy either, so
+  even new ones are not covered on those routes. The five SMACKTALK skins
+  (ALFRED, STANLEY, TELEGRAM, TILEZ, WRITING WITH IMPACT) still serve the
+  larger image, because their pages take a different route through the CMS.
+  All of that is known and tracked, not forgotten. (SS-1386)
+
+- **The fediverse gateway logo appears again.** The mark beside "FEDIVERSE" on
+  the gateway pages was missing on every updated site. Both halves of that
+  looked fine on their own: the stylesheet asking for the image shipped, and
+  the image was committed. The image lived in a folder the updater is
+  forbidden to write to — which also means it never DELIVERS anything new
+  there — so it could not arrive, and the only symptom was a logo that was not
+  on the page. The image has moved somewhere the updater does deliver.
+  (SS-1394)
+
+- **A heart on GLIDE tiles.** GLIDE's photograph wall now carries a like
+  control on each tile, using the same like as the rest of the site: one like,
+  one row, whether you give it on the wall or on the photograph's own page.
+  (SS-1323)
+
+- **Likes worked on sites that had never saved their community settings.** The
+  like endpoint refused every like on any site whose community setting had
+  never been saved once. It no longer does.
+
+- **Archive pages stopped fetching the next page too early.** An archive could
+  begin loading a second page of photographs before the first had finished
+  painting. (SS-1373)
+
+- **Admin pages have narrower side margins.** The right-hand pane had a very
+  wide gutter; it is now 24px at every width, so there is more room for the
+  thing you are working on.
+
+- **RATIONAL GEO's archive** no longer butts against the header, and
+  **ALFRED's** archive heading is legible again with its static-page images
+  sitting properly.
+
+- **The archive shows the layout the visitor asked for.** Opening
+  `/archive?layout=thumbs` on 50 SHADES gave a wall, with the T button lit as
+  though it had given thumbnails. The resolution was never wrong:
+  `core/archive-controls.php` reads the URL, the cookie and the site default,
+  and `core/public-runtime.php` publishes the answer as
+  `response.archive_layout_active`, which is also what draws the T/M row.
+
+  **No page component read it.** All four that render an archive — 50 SHADES,
+  CHAPLIN, IMPACT PRINTER and ONYX — re-derived the layout independently from
+  `site.archive_layout`, the stored DEFAULT, which knows nothing about this
+  visitor. The control row and the page were answering different questions.
+
+  The two sides had also drifted apart in vocabulary. `archive-controls` folds
+  `square`, `cropped` and `croppedwithcalendar` into `thumbs`, leaving a
+  two-way answer; the components still tested the old four-way list and fell
+  through to a default when they met a normalised value.
+
+  **ONYX was wrong on every site, not just mismatched ones.** It compared the
+  stored setting against `'thumbs'` — a value that setting never holds — so the
+  test was false for all four real values and `#browse-grid` carried
+  `data-pane-hidden` permanently.
+
+  One resolution, one vocabulary, read in one place: `core/archive-pane.php`.
+  It fails open to the stored default, because these components render every
+  page kind and only an archive route carries the controls, so a landing page
+  must not lose its grid. Pinned by
+  `tests/archive-pane-follows-the-resolved-layout-regression.php`, which checks
+  the behaviour and that all four components ask rather than re-derive.
+
+  THIS DOES NOT EXPLAIN THE BLANK ARCHIVE reported at 1920 on photowalk.ing.
+  Measured live: the stylesheet, both engines and populated tiles were all
+  present, and exactly one pane is ever hidden, server-side. That is still open.
+
+### COLD SNAP, desktop-side only — this does not ride a CMS build
+
+- SS-1362: **a longform post with no photographs can be sent.** COLD SNAP
+  refused one before it ever left the machine, with "no images on draft", so an
+  essay written without a picture could be finished and then simply not go
+  anywhere. Nothing downstream ever needed the photograph: the payload sends
+  `featured_image_id = None` with an empty bucket, and `core/smackpress-api.php`
+  requires only a title and treats the cover as optional. The desktop guard was
+  the whole obstacle.
+
+  The same guard ran before the title check, so a draft missing both reported
+  the images and stayed silent about the title. The title is checked first now.
+
+  One case genuinely still needs photographs and keeps its refusal, with a
+  message that says which one it is: a `[mosaic]` placeholder in the body.
+  Mosaic resolution returns the text untouched when there are no image ids, so
+  sending it would publish the literal token in the middle of the essay.
+
+  Measured, not assumed: the server endpoint was read for its actual
+  requirements, and the four new tests in
+  `tools/coldsnap/tests/test_longform_without_photographs.py` all fail against
+  the old guard and pass against this one.
+
+## 0.7.997D - 2026-11-14
+
+- GLIDE direct photo pages are styled again. A post reached from photofri.day
+  rendered completely unstyled -- plain bulleted nav, default fonts, the photo
+  at native size on white -- because the direct-post route's markup carried no
+  GLIDE rules. Every PhotoFriday entry from Portal Project pointed at a page
+  like that. The skin now gives the direct-post page the dark GLIDE canvas, a
+  contained photo-led viewer, and the title and story beside the image at
+  desktop widths, stacked below at 1024. layout.php also regained its EOF
+  integrity marker, which the strict-layout rewrite had dropped.
+
+  THIS DOES NOT REACH A SITE THROUGH A CMS BUILD. GLIDE ships through the Skin
+  Packager and the registry, not in the release zip, so publishing this version
+  does not update it. Portal Project has to take the skin update separately.
+
+- Nothing else has landed in 997D yet. Candidates in flight, none merged at
+  this commit: the SS-1325 GLIDE carousel settle revert, and the SS-1345
+  RATIONAL GEO info-tray revert with its core test companion.
+
+## 0.7.996D - 2026-11-14
+
+- PHOTO CHALLENGE recovery reads far enough into a participant's outbox to
+  find their entry. pc_recover_tagged_entries() passed a hardcoded 12 to
+  pc_rescan_participants(), so each active participant's outbox was read only
+  twelve originals deep. Anyone who had posted more than twelve times since
+  entering had that entry fall off the bottom of the scan, and no number of
+  re-runs would ever find it -- which is the opposite of what a recovery pass
+  is for. Curb Appeal sat at 12 of 20 while Portal Project, whose participants
+  post less often, reached 20 of 20. The depth is now
+  PC_RECOVERY_POSTS_PER_ACTOR = 60, which is the ceiling
+  pc_rescan_participants() already clamped to, so this raises the scan to what
+  the function was written for rather than inventing a number. The page guard
+  still bounds it at six requests per actor, and the existing actor paging
+  still bounds a run. (SS-1337)
+
+- The multisite fleet table fits again. 0.7.995D printed a second line under
+  every spoke's version, "read just now". It is display:block in a narrow
+  column, so it wrapped, every row grew, and the ACTION column lost enough
+  width that ENABLE MAINT and DISCONNECT stacked. The age line now prints only
+  when the reading is STALE or the spoke has never been heard from, which is
+  the only time it says anything the version does not. A fresh reading is
+  still readable in the version tooltip. (SS-1338)
+
+- CORRECTION TO THE 0.7.995D ENTRY ABOVE, which cannot be changed because that
+  tag is published: its "(SS-1337)" is wrong. That number was written into the
+  branch and the changelog before a ticket existed for it, and TICKET WICKET
+  has since issued SS-1337 to the PHOTO CHALLENGE scan cap above -- a
+  different fault. The frozen-constants dashboard fix shipped in 0.7.995D is
+  recorded as SS-1342. Anyone following SS-1337 back from the 995D changelog
+  should read SS-1342 instead.
+
+## 0.7.995D - 2026-11-14
+
+- The multisite dashboard lists its spokes again on installs whose
+  core/constants.php is frozen. 0.7.994D's fleet board called
+  snap_reading_age(), which SS-1145 had added to core/constants.php. An
+  install upgraded from 0.7.159 or earlier still lists that file in its own
+  protected_paths.json -- and protected_paths.json is itself protected, so the
+  2026-08-15 decision to stop protecting constants.php never reached it. The
+  file stays frozen while the updater rewrites its version lines, so the site
+  reports the new version while running the old code, the function does not
+  exist, and the spoke row loop stopped on the FIRST spoke. The hub's own row
+  rendered because it never calls it, and the CONNECTED SPOKES count is
+  computed before the table, so the board showed 27 above two rows. Confirmed
+  on the live hub: it declares 0.7.994D and its constants.php has no
+  snap_reading_age. smack-multisite.php now carries a guarded fallback, the
+  same pattern smack-update.php and cron-version-check.php already use for
+  snap_version_compare. (SS-1337)
+
+## 0.7.994D - 2026-11-11
+
+- SS-1197: the installer now offers only site modes that have been tested. The same allow-list drives the visible choices and the server-side write, so an old form cannot submit an unsupported mode.
+
+- SS-1198 and SS-1293: when the bootstrap deployer cannot write or download a release package, it now names the failed operation and target and includes PHP's actual reason instead of guessing that every failure is a permission problem. Release-URL query strings are redacted through one shared rule before any error reaches the screen or log.
+
+- SS-1292: GYSS's COLD SNAP and COLD TAKE buttons use the real COLD SNAP installation-directory helper instead of calling a helper that never existed and crashing on click. Source verification is complete; the built Windows application still needs an installed check.
+
+- SS-1185: gallery shuffle now belongs to each mosaic rather than the whole layout. The canonical schema, API parser, renderer, WordPress companion, COLD SNAP and SMACKPRESS import paths all carry the owner-random flag while preserving authored order when it is off. The canonical schema's layout comment was lost when the new column was inserted into the middle of its definition, leaving two COMMENT clauses on one column - which MySQL rejects, so the schema would not have executed - and was repaired within the same release, with a new check that walks every table and fails on any column carrying more than one COMMENT.
+
+- SECAUDIT 017: RE-INITIALISE BASELINE now requires the owner's password and current 2FA code, records the action, and tells the owner to try a signed update before blessing files from disk. Its regression-strength record was refreshed to the predicates actually present.
+
+- SS-1293's neighbouring direct-access checks now resolve both sides of the path comparison, so a symlinked deployment cannot bypass the direct-request guards in maintenance-lock.php or gallery-order.php.
+
+- PhotoFri.day prompt cards keep all four border edges. The shared public stylesheet's image-link rule had enough specificity to erase the bottom edge from cards inside static content; the board stylesheet now restores that edge with a selector that wins on every affected skin. The regression inventory now records the measured 28 of 30 skin manifests instead of the earlier incorrect 25-of-31 comment; its assertions are unchanged.
+
+- Archive-settings coverage now includes NEW HORIZON and checks both values returned by the real archive-grid helper. The fixture no longer reports a difference that cannot occur on a rendered site.
+
+- NEW HORIZON 1.3.37 puts an About-page portrait beside the biography at supported desktop and large-tablet widths instead of letting the image consume the whole row. The portrait stays visible while the text scrolls and the layout collapses below 900px. A live check on an installed site remains outstanding.
+
+- IMPACT PRINTER 2.1.26 gives its About-page portrait the same two-column treatment instead of allowing the uncapped natural-width image to overflow and be clipped. The portrait stays visible while the text scrolls and the layout collapses below 900px. A live check on an installed site remains outstanding.
+
+- GLIDE 0.1.28 gives its fixed footer rule the same inset on the left and bottom, so the line no longer sits against the viewport edge.
+
+- CHAPLIN 0.2.30 through 0.2.32 reduce and space the footer band, make the archive honour the owner's column and thumbnail-size controls, and preserve sparse tablet columns.
+
+- NEW HORIZON's shared image-fade engine now fades photographs loaded from cache as well as network loads and respects reduced-motion preferences.
+
+- The missed November 4 closed-beta date and apology are now published in WOTCHA. No replacement date is claimed.
+
+- SS-1284 now has a recovery runbook for the shared updater-temporary-directory false-breach incident. The 993D serialized-rollout and CHAPLIN live-acceptance runbooks are also recorded for the next installed verification.
+
+- OPAUDIT 029 through 033 are filed in Markdown, HTML and PDF, covering database overload and recovery, SQL/search costs, the audit register failure, the wrong desktop licence declaration, and the shared updater directory false breach. The rendered lists in 031 and 032 were cleaned up after review.
+
+- SECAUDIT 039's credential documentation now describes the locked-vault behaviour accurately and records finding D as closed.
+
+## 0.7.993D - 2026-11-10
+
+- SS-1284: every site on a shared server was downloading its update into the same temporary folder, so one site finishing could delete the package another site was still using. Each install now uses its own folder. This caused a real incident: one site's post-update integrity record was never refreshed, its next scheduled check read the files the update had legitimately rewritten as tampering, and the site locked itself out. The record is no longer skipped when the package is missing, a missing package is reported instead of passing silently, and a site that updated without refreshing its record now shows on the fleet board as updated WITH WARNINGS, naming the site and the reason, rather than as a clean success.
+
+- SS-1286: the scheduled integrity check could run in the middle of an update. It runs from the command line, which is exempt from the maintenance lock that pauses a site during an update, so it compared newly replaced files against the old record and reported tampering that had not happened. It now stands aside while an update holds the lock and checks normally on its next pass. A lock it cannot read is treated as held rather than absent, which is the case that matters: the lock file exists briefly before it has been written. A lock left behind by a crashed update still expires after five minutes, so checking can never be silenced for good.
+
+- SS-1287: database changes showed as pending for ever on every site. A newly installed site records the complete schema in one go and is then meant to mark each change as already applied, but that step looked for files named in a style the project stopped using in May, so it matched nothing and marked nothing. Four more changes had been deleted from the project in April and left on the known list, so they were pending everywhere with no file to run. One shipped file was missing from that list and reported as an orphan; it duplicates the canonical schema and nothing uses it, so it has been removed. No site was ever missing any schema. Existing sites still need their records filled in once; that is a deployment step, not part of this build.
+
+- SS-1173: a SMACKBACK breach alert went to one address and the result of sending it was discarded, so a failed alert looked the same as a delivered one and no other administrator was told. The alert now reaches every administrator, each send is checked, and the outcome is recorded where the dashboard can show it.
+
+- SS-1054: removing a spoke from the hub now confirms the spoke's credentials were revoked before the hub forgets it.
+
+- SS-1158: the help page no longer forces PHP error display on, which could expose internal detail to visitors.
+
+- SECAUDIT 028 (SS-1282): SMACKBACK no longer baselines a forbidden (leak/secret-shaped) file by presence. A FORBIDDEN list (root sc-config.php, .env/.pem/.key/.p12/.pfx/.bak, backups/) is refused at baseline time (both init paths), pruned from any existing baseline, and surfaced in a non-locking FORBIDDEN bucket at verify time; because such a file is never baselined, the admin REMOVE accepts it, so a leaked secret can be deleted without a MISSING breach or lockout. Empty on the Smack Central host.
+
+- SS-1055: three hub->spoke multisite write endpoints (relay-join, backup/report, disconnect) now check the caller's role, so a spoke presenting the shared hub->spoke key can no longer drive them. run-crons (the fourth write) is held for a follow-up pending confirmation of how CRONOMETER authenticates.
+
+- SS-1170: setup.php removed from the probe-ban rule -- it is SnapSmack's own bootstrap deployer, and once install cleanup removes it the fleet post-deploy check that requests it had auto-banned the owner for 30 days. The 25 genuine scanner signatures are unchanged.
+
+## 0.7.992D - 2026-11-10
+
+- Release-key rotation in Smack Central now reaches its POST handler, verifies the exact timestamped blob shown for offline signing, checks that the proposed public key matches the active release-signing private key, uses the fleet's permanent root trust anchor, and rejects expired forms. A mismatched or only partially published rotation fails closed.
+
+- SECAUDIT 028: the hub's release Key Rotation panel verified against a root public key (d4c4256...) that no install uses; every install's trust anchor is 3287b9b... (the value 0.7.45 corrected `core/updater.php` to, while the hub copy was missed). The hub now matches the installs, so a root-signed rotation the hub accepts is the same one the fleet accepts. Hub-only change; installs already carried the correct anchor. A regression now fails if the two ever diverge.
+
+- The signed updater removes the obsolete root-level `sc-config.php` copy left on a small number of spokes. The removal is exact-path only: `/smack-central/sc-config.php` is untouched, installs without the stale root copy are a harmless no-op, and cleanup still occurs before SMACKBACK rebuilds its baseline.
+
+## 0.7.991D - 2026-11-09
+
+- NEW HORIZON 1.3.36: the single-image landing nav bar snaps to the bottom of the frame again, and an understated custom scrollbar (transparent track, subtle thumb) replaces the browser default on its primary surfaces. Desktop and large-tablet widths verified in a browser; installed and admin-save acceptance remain to be checked.
+- Archive pages reveal their photographs in a quick top-to-bottom, left-to-right fade-in wave on NEW HORIZON. The effect respects reduced-motion and the motion-warning consent, and is fail-safe: the grid is always fully visible if it does not run. Other skins are unchanged (phase one).
+- Federation REST photo responses carry attachment descriptions (ALT), the sensitive flag and a plain-text content-warning summary alongside the image list, matching the ActivityPub path.
+- Source and isolated browser checks cover these; installed fleet and owner acceptance remain to be verified after deployment.
+
+## 0.7.990D - 2026-11-08
+
+- NEW HORIZON 1.3.35 adds separate heading, body and footer colour controls for light and dark variants, with reset controls. TRUE GRIT 1.3.29 keeps the archive T/M/C toolbar outside the centered content and clear of search.
+- Federation outbox, direct post documents and NodeInfo counts respect publication and exclusion rules. Authored image ALT survives federation. Non-public replies cannot enter the public reply path; Block and Flag activities receive bounded owner-visible receipts.
+- Profile routing respects the mode-level federation gate. ActivityPub and non-HTML responses stay out of the HTML cache; old cache entries are invalidated and disabling federation clears cached pages.
+- TICKET WICKET preserves reply sender identity and thread delivery context (SS1099).
+- Source and isolated browser checks cover these fixes; installed fleet and owner acceptance remain to be verified after deployment.
+
+## 0.7.989D - 2026-11-08
+
+- NEW HORIZON 1.3.34 restores independent tagline font, size and colour controls alongside the visible tagline. The text-header size can reach 20px; IMPACT PRINTER 2.1.25 also lowers its header-size minimum to 20px. Numeric skin settings are clamped to their declared limits when saved, including font-size companion controls.
+- Add image post, checksum and slug indexes through the canonical schema and schema sync. Replace daily statistics DATE() scans with timestamp ranges, and avoid the duplicate-group scan when the library has no unfiled images. Production-sized isolated benchmarks verify the indexed query plans; installed fleet performance remains to be checked after deployment.
+
+
+- AURORA 1.0.59, INSTANT CAMERA 1.0.61, JIVE TURKEY 0.1.48, SUDDEN IMPACT 1.0.26 and THE GRID 1.3.61 remove misplaced archive continuation links from decorative background overlays. JIVE TURKEY also removes the duplicate link from its dark tile-hover overlay; the real endless-scroll fallback remains.
+
+## 0.7.988D - 2026-11-08
+
+- The Thomas the Bear Easter-egg discover ping is restored. Finding him (Ctrl+Shift+Y) or opening the Noah story (Ctrl+Shift+Z) sends one anonymous counter ping -- a random per-install id, which key was pressed, and a first-in-session flag, and nothing that identifies the site. It now reaches every skin: the id rides a hidden data attribute from the shared asset hook rather than the inline script the strict content-security-policy blocked, and the ping itself is a plain image request the policy already allows. The receiver on snapsmack.ca is live; re-install to pick up the restored ping.
+- Monospace skin fonts keep a monospace fallback again. The compiler was appending sans-serif after every chosen font, so a face like DotMatrix fell back to a proportional sans; it now falls back to 'Courier New', monospace -- what the hand-written skin CSS always intended -- so a masthead or footer reads correctly while the custom face loads or if it is unavailable. No change when the face is present.
+- The public stats endpoint adds browsing_time_ms: total engaged browsing time across non-bot landing and archive visits, for the snapsmack.ca gallery cards. It is aggregate only, with no per-visitor data, and is blank on a site that has not recorded any engaged time yet.
+- NEW HORIZON 1.3.33: the masthead tagline shows again -- the layout had dropped it even though the setting and its CSS were present -- and the logo link styling targets the right element (SS-1235). Archive Appearance now carries this skin's thumbnail size and gap controls directly, through the guarded scoped-settings path, plus an optional 0-30px inner thumbnail padding (default 0, so nothing changes until you set it).
+- Footer fonts on 50 SHADES, IMPACT PRINTER, NEW HORIZON and TRUE GRIT follow their own font control again, instead of a hardcoded family overriding it; a site that never set a footer font keeps its previous face. 50 SHADES 1.7.8, IMPACT PRINTER 2.1.24, TRUE GRIT 1.3.28.
+- TILEZ 0.2.75: a lighter scrollbar on the tile columns -- transparent track, light-grey thumb.
+
+## 0.7.987D - 2026-11-07
+
+- Archive thumbnail frames are visible again. The 986D frame was drawn behind the photo and never showed; it now draws on an overlay on top of the photo, at the image edge, clipped by nothing and without moving the photo. A real-browser pixel test guards it. Re-save Archive Appearance once after installing to apply the stored rule.
+- NEW HORIZON 1.3.32: the masthead Header Font Size control now sits directly under the Header Font picker in the Typography section, where it belongs, instead of in Header & Nav. (The size itself is unchanged; a previous rem value from the removed companion slider does not carry over — set the pixel size once.)
+- TRUE GRIT 1.3.26 and GLIDE 0.1.27: their landing, archive and hashtag pages now scroll endlessly past the first batch (through the shared pager, with a no-JS fallback link), the same as the other paged skins.
+
+## 0.7.986D - 2026-11-07
+
+- Archive, hashtag, tag and landing pages were running a per-image visibility check that scanned the whole posts table for every photograph, which pegged a site's database once its library grew (introduced one day earlier in the 983D portfolio-exclusion work). Rewritten to use the existing indexes, with identical results; the heavy query drops from minutes to milliseconds, and a prod-sized benchmark now guards it.
+- NEW HORIZON 1.3.31: the masthead Header Font control works again and is now a single control (one font picker, one size); the photo-page date sits back inside the content lane; a photo with no comments invites one ("No comments yet. Be the first.") and the guest comment form reads correctly on the dark theme.
+- Archive thumbnail double-frame presets draw inside the thumbnail (inset) instead of outside it, so an archive that crops its thumbnails no longer clips the frame away.
+- Feed, landing and hashtag pages page past the first batch through one shared core pager component (sentinel plus a no-JS fallback link): four SMACKTALK skins and nine shared-grid skins now scroll their archives endlessly; GLIDE 0.1.26.
+- The shared infinite-scroll engine accepts explicit grid/item selectors, so a skin whose markup does not follow the default convention pages without a custom script; core prepares the next-page URL for the landing feed and the SMACKTALK front feed.
+- A skin's compiled CSS now rebuilds when a manifest control's selector or property changes even without a version bump, and the skin-version gate now treats such a change as content requiring a version bump (closes the hole that hid the dead masthead selector).
+
+## 0.7.985D - 2026-11-07
+
+- NEW HORIZON 1.3.30: archive and hashtag pages now page past the first 24 photographs (endless scroll via a core-prepared next-url sentinel); the masthead font follows Skin Admin (hardcode removed).
+- Infinite-scroll engine prefers a core-prepared data-next-url so filtered routes (archive category, hashtag) page without losing the filter; p=N paths unchanged for other skins.
+- Archive thumbnail frame survives a skin recompile (it was silently wiped fleet-wide); Archive Appearance shows one thumbnail-size control, hiding its global one on skins that ship their own.
+
+## 0.7.984D - 2026-11-07
+
+- GLIDE 0.1.25: footer moved to a faded horizontal bottom-left treatment (no backing strip); and the wall no longer freezes a row when a tile holds a focus left over from a pointer or overlay interaction (SS-1217) -- genuine keyboard focus still pauses the row and stays reachable.
+- SS-1216: Media Library gains an optional per-image Caption, separate from Alt text, shown in the shared image lightbox (empty caption shows nothing; never a page/post title).
+
+## 0.7.983D - 2026-11-07
+
+- SS-1185: portfolio URLs resolve at /<album>/<category>/<slug>; the resolver falls through harmlessly on any site whose schema migration has not run yet, so no public page can 500 during a deploy.
+- Unknown public URLs on SMACKTALK skins (ALFRED, STANLEY, TELEGRAM, TILEZ, WRITING-WITH-IMPACT) now return a real 404 instead of the homepage at 200.
+- SS-1214: confirmed-dead skin controls removed from their manifests, with a new control-selector gate that fails on any new dead control.
+- Skin gallery screenshots move to positional names (primary/secondary/tertiary) with a legacy fallback; packages publish both names during the transition, so no version bump is forced.
+- The public-repository boundary gate scans code, not comments, so prose that mentions SQL keywords no longer trips it.
+- GLIDE 0.1.24: footer.
+
+## 0.7.982D - 2026-11-06
+
+- GLIDE resumes idle motion after a pointer is released outside a band.
+- GLIDE dismisses its panels when clicking outside them, keeps disabled archive chevrons visible, and uses each wall photo’s comment setting in the lightbox.
+- Public pages use the active skin avatar when the site has no dedicated favicon.
+
+## 0.7.981D - 2026-11-06
+
+- GLIDE wall photos use its flip viewer without a competing generic lightbox. Space, Info and Comments work from viewer entry, and restored photo focus lets the bands resume after closing.
+- About portraits remain visible after their entrance flip. GLIDE includes its presentation baseline and its CMS User Manual topics in the skin package.
+- F1 help lists GLIDE viewer shortcuts and opens above other dialogs. GLIDE uses a dark help panel with a white accent.
+
+
+## 0.7.980D - 2026-11-06
+
+- GLIDE defaults to 50 archive photos per page. The About overlay restores the demo typography and portrait layout, the About icon uses the information glyph, and the drag cue sits away from search. The viewer fades in and supports the demo Space shortcut.
+
+## 0.7.979D - 2026-11-06 - HEISENBERG DECOMPENSATOR
+
+- The bulk Multisite skin update ("Update Every Spoke That Is Behind") now updates the hub itself, not only the spokes. SS-1072 fixed the single-skin fleet push to include the hub; this is the sibling bulk handler, which had the same gap. Stale-only and force paths both cover the hub.
+
+## 0.7.978D - 2026-11-06 - HEISENBERG DECOMPENSATOR
+
+- Page two of a search keeps the search term. The paging links carried the term under an internal name the router never reads, and pointed at a path that does not exist, so a second page of results came back as a second page of nothing in particular.
+- Search results now carry the same comment state as archive tiles: whether comments are open and how many there are.
+- THUMB STYLE's help text named the wrong skins. It reaches six, not three: NEW HORIZON and TRUE GRIT honour it as of this build and ONYX was never listed. The text now names all six and is checked against the rendered pages.
+- A short installed-verification list for this build, so each control can be checked on a real site.
+- The geometry and engine fixtures now carry the same stylesheet order as a live page. Both inlined the skin's stylesheet after the CMS presentation block instead of before it, which reversed the cascade and made a fixture show a skin's value winning where a real site shows the owner's.
+- THUMB STYLE's help text now names GLIDE too. GLIDE began honouring the control in this build, so the count went from six skins to seven; the text and its regression test are back in step.
+- THUMBNAIL FRAME stops claiming it applies to every skin.- THUMBNAIL FRAME stops claiming it applies to every skin. It reaches five, and its help text now names them, says plainly that nothing happens on the other twenty-five, and says the masonry case is unmeasured.
+- Paging links on a filtered archive keep their filter. The next and previous URLs arrived already HTML-escaped, and a skin has to escape what it prints, so the ampersand was escaped twice and the category or album was dropped on page two.
+- The release gate now runs every test file. It matched test names against a pattern and so never ran twenty of them, including the two that were failing in the build being served to the fleet.
+- The owner's own sites go last on the blogroll, and every group tells the skin whether it is the owner's, so no skin has to recognise the words "MY BLOGS". Nothing moves on a site that has no such category.
+- The GUTTER slider on the archive appearance page now changes the gaps. It never did: it was read by nothing, and the roughly 50px gaps reported were the stylesheet's own default. The owner's value overrides a skin's spacing on the 12 skins that read it; its help text names them and names the four that fix their own gaps and will not change.
+- The blogroll can be put in the owner's own order. Each peer now has an "Order Within Category" number on the blogroll page; leave them all at 0 and the list stays alphabetical exactly as it is today.
+- The fleet skin update now includes the hub itself, so the site running the push is no longer the one site it never reached.
+- Skin templates can page an archive in both directions, with the active album, category or search already in the links, so paging a filtered archive stays filtered.
+- An archive tile carries its own photograph link, whether comments are open on it and how many there are.
+- The owner's header logo reaches skins that ask for it. It was an available setting that never arrived.
+- THUMB STYLE no longer claims to apply to every skin; its help text names the skins it changes and says plainly that on the others nothing will happen.
+- A release cut from a clean checkout now refuses with the one command that fixes it, instead of stopping on an unexplained error part way through.
+- Recorded how to put a site back: what is backed up, what is not, and the limits on how far back a release or a skin can be taken.
+
+## 0.7.977D - 2026-11-05 - HEISENBERG DECOMPENSATOR
+
+- Linked photographs open the lightbox without navigating away. GLIDE waits for actual dragging before capturing the pointer, distinguishes taps from drags, and coasts after release.
+- Strict skin pages repair stale generated option CSS before rendering, including after a skin switch.
+- Add a manifest-granted scroll-time component for skin templates. Existing automatic callers remain during the transition.
+- Include GLIDE 0.1.15 hit-target repairs and IMPACT PRINTER 2.1.22 archive width and scrollbar repairs in the source bundle; installed skins still update through the Skin Packager.
+- The admin skin picker enforces each skin's minimum published-photograph count when activating a skin.
+- A stale configured skin registry URL falls back to the built-in default for that request without changing the saved setting. Failures name the requested URL and the transport error.
+- SMACKTALK records scroll time on written posts and the diary front page. Front-page visits enter the reported Scroll Time figure from this build forward; historical figures are not revised.
+- Whole-page skin components provide an internal placement slot for template-requested scroll-time tracking.
+- Opt-in wall motion follows the local track axis while pointer input uses the screen axis, keeping vertical columns in place beneath the skin's visual lean.
+
+## 0.7.976D - 2026-11-04 - HEISENBERG DECOMPENSATOR
+
+- Separate the spoke enrollment hub address from the username, password and 2FA fields. Give password managers an explicit username field and require a full hub URL.
+- Explain enrollment token rejections on the hub, including where to obtain the correct token.
 
 ## 0.7.975D - 2026-11-02 - HEISENBERG DECOMPENSATOR
 

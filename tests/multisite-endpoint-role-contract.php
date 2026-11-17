@@ -140,9 +140,8 @@ ep_test(($o['invented#POST']['writes'] ?? null) === true,
  * gate in the wrong place takes the fleet down -- see SS-1055 acceptance.
  */
 $OPEN_BY_OMISSION = [
-    'run-crons#ANY'              => 'WRITES snap_settings. CRONOMETER calls it; which key it presents is UNCONFIRMED.',
+    'run-crons#ANY'              => 'WRITES snap_settings. The LAST ungated write (SS-1055): CRONOMETER drives it and which key it presents is still UNCONFIRMED, so it is not gated until that is established -- a role gate in the wrong place takes fleet cron down.',
     'fediverse/status#GET'       => 'reads',
-    'fediverse/relay-join#POST'  => 'WRITES snap_settings. Sets the relay URL and joins signed with the target key. Hub->spoke; gateable.',
     'fediverse/relay-admit#POST' => 'no direct SQL in the block, which is not the same as no effect',
     'heartbeat#GET'              => 'reads. DIRECTION NOT ESTABLISHED -- do not gate until it is.',
     'comments#ANY'               => 'NOT AN ENDPOINT: a schema preamble that runs an ALTER TABLE to add snap_comments.is_spam. Reachable by any authenticated caller with no role check. All five real comment routes -- pending, list, action, get, reply -- ARE hub-gated, writers included.',
@@ -153,9 +152,7 @@ $OPEN_BY_OMISSION = [
     'backup/log#GET'             => 'reads',
     'backup/config#GET'          => 'reads. Exposes cloud provider and folder id.',
     'backup/export#GET'          => 'reads A FULL SQL DUMP, held only by the owner consent flag. SUYB calls it with the scoped key -- do NOT gate naively.',
-    'backup/report#POST'         => 'WRITES snap_settings. No caller anywhere in this repository; unknown is not unused.',
     'blogroll/list#GET'          => 'reads. Hub->spoke; gateable.',
-    'disconnect#POST'            => 'WRITES snap_multisite_nodes AND clears hub_controls_*. Hub->spoke; gateable.',
 ];
 
 echo "\nNo endpoint joins the un-gated set without being named\n";
@@ -186,6 +183,9 @@ echo "\nThe privileged writes that ARE gated stay gated\n";
 foreach ([
     'provision-key#POST'   => 'minting an OH SNAP key',
     'posts/create#POST'    => 'creating a post on another site',
+    'fediverse/relay-join#POST' => 'commanding a relay join (SS-1055)',
+    'backup/report#POST'   => 'recording a backup (SS-1055)',
+    'disconnect#POST'      => 'disconnecting a node (SS-1055)',
     'settings/push#POST'   => 'pushing settings',
     'auth/sso-token#POST'  => 'issuing an SSO token',
     'maintenance/set#POST' => 'putting a site into maintenance',

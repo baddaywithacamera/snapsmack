@@ -83,6 +83,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status       = $_POST['img_status']           ?? 'published';
     $pano_rows    = max(1, min(3, (int)($_POST['panorama_rows'] ?? 1)));
     $allow_cmt    = (int)($_POST['allow_comments'] ?? 1);
+
+    // SS-1185 portfolio designation, through the shared component so this
+    // editor and smack-post-long.php cannot drift. ABSENT IS NOT OFF: the
+    // stored row goes in, so a submit without the fieldset leaves whatever
+    // the API or the other editor set.
+    require_once __DIR__ . '/core/portfolio-designation-controls.php';
+    $pf_q = $pdo->prepare('SELECT portfolio_post, exclude_from_archive,
+        exclude_from_search, exclude_from_feed, primary_album_id,
+        primary_category_id FROM snap_posts WHERE id = ? LIMIT 1');
+    $pf_q->execute([$post_id]);
+    $pf = snap_portfolio_control_read($_POST, $pf_q->fetch(PDO::FETCH_ASSOC) ?: []);
     $allow_dl     = (int)($_POST['allow_download'] ?? 0);
     $dl_url       = trim($_POST['download_url']    ?? '');
     // FEDIVERSE (0.7.367): per-post federation toggle + fediverse date-LABEL
@@ -161,7 +172,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             post_img_size_pct = ?, post_border_px = ?, post_border_color = ?,
             post_bg_color = ?, post_shadow = ?,
             fedi_enabled = ?, fedi_published_at = ?,
-            is_pinned = ?, is_sensitive = ?, content_warning = ?
+            is_pinned = ?, is_sensitive = ?, content_warning = ?,
+            portfolio_post = ?, exclude_from_archive = ?, exclude_from_search = ?,
+            exclude_from_feed = ?, primary_album_id = ?, primary_category_id = ?
         WHERE id = ?
     ")->execute([$title, $desc, $status, $post_date,
                  $pano_rows, $allow_cmt, $allow_dl, $dl_url,
@@ -169,6 +182,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  $post_style_bg,   $post_style_shadow,
                  $fedi_enabled, $fedi_pub,
                  $is_pinned, $is_sensitive, $content_warning,
+                 $pf['portfolio_post'], $pf['exclude_from_archive'],
+                 $pf['exclude_from_search'], $pf['exclude_from_feed'],
+                 $pf['primary_album_id'], $pf['primary_category_id'],
                  $post_id]);
 
     // --- Cascade status + date to this post's images ---
@@ -821,6 +837,19 @@ include 'core/sidebar.php';
                                onclick="this.showPicker()"
                                value="<?php echo date('Y-m-d\TH:i', strtotime($post['created_at'])); ?>">
                     </div>
+
+                    <?php
+                        // SS-1185. Same component as smack-post-long.php, and in
+                        // its OWN block. Muse caught the first version rendering
+                        // it INSIDE the comments wrapper, between that label and
+                        // its select, so the screen showed portfolio controls
+                        // under an "ALLOW PUBLIC COMMENTS?" heading.
+                        require_once __DIR__ . '/core/portfolio-designation-controls.php';
+                        snap_portfolio_controls_render(
+                            is_array($post) ? $post : [],
+                            array_map(static fn($a) => ['id' => $a['id'], 'name' => $a['album_name']], $all_albums ?? []),
+                            array_map(static fn($c) => ['id' => $c['id'], 'name' => $c['cat_name']], $all_cats ?? []));
+                    ?>
 
                     <div class="lens-input-wrapper">
                         <label>ALLOW PUBLIC COMMENTS?</label>

@@ -20,6 +20,14 @@ require_once 'core/auth-recovery.php';
 require_once 'core/totp.php';
 require_once 'core/client-ip.php';
 
+// SECAUDIT 049: the login portal must emit the same security headers as every
+// other page. snap-in.php does not load the core/constants.php -> skin-manifest.php
+// chain that pulls these in elsewhere, so without this the CSP/HSTS are absent on
+// the login response for installs that rely on the PHP headers rather than server
+// config. Idempotent (guarded by SNAPSMACK_SECURITY_HEADERS_EMITTED); must stay
+// above any output so headers_sent() is still false.
+require_once 'core/http-security-headers.php';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // LOGIN PROTECTION HELPERS
 // ─────────────────────────────────────────────────────────────────────────────

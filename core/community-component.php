@@ -392,6 +392,12 @@ if (empty($GLOBALS['snapsmack_engine_css_emitted']['assets/css/ss-community.css'
             </div>
             <?php endforeach; ?>
         </div>
+        <?php else: ?>
+        <?php // EMPTY STATE (PM 19:00): a photo with zero comments must read as an
+              // invitation, not a blank area. Text only; the skin styles
+              // .ss-comments-empty. Shown whenever comments are on and the thread
+              // is empty, so it reaches every skin through the shared component. ?>
+        <p class="ss-comments-empty">No comments yet. Be the first.</p>
         <?php endif; ?>
 
         <?php if ($community_user): ?>

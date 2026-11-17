@@ -56,12 +56,20 @@ $ok(sv_enabled(['site_mode' => 'carousel', 'fediverse_enabled' => '0']) === fals
 
 // --- Installer + router wiring (source-level, mirrors existing fed tests) -------
 $install = (string)file_get_contents($root . '/install.php');
-$ok(str_contains($install, "value=\"smackthemup\""),
-    'installer offers the SMACKTHEMUP radio card');
+// SS-1197 INVERTED THESE TWO, DELIBERATELY. They asserted that the installer
+// OFFERS SMACKTHEMUP and ACCEPTS it as a posted site_mode. Both were true, and
+// that was the defect: a mode nobody has tested was selectable by a new owner
+// on the one screen where the choice shapes their whole site and is not casual
+// to undo. A green run here was proving the unwanted behaviour.
+// Everything above this line still stands -- SMACKTHEMUP is a real mode, core
+// recognises it, it has a label, no web composer and federation off. What
+// changed is only whether the INSTALLER may offer it.
+$ok(!str_contains($install, "value=\"smackthemup\""),
+    'installer does NOT offer a SMACKTHEMUP radio (SS-1197)');
+$ok(!str_contains($install, "'photoblog', 'carousel', 'smacktalk', 'smackthemup'"),
+    'installer does NOT accept smackthemup as a posted site_mode (SS-1197)');
 $ok(str_contains($install, '>4.0<') && strpos($install, 'SMACKTHEMUP') !== false,
-    'installer shows SMACKTHEMUP as version 4.0');
-$ok(str_contains($install, "'photoblog', 'carousel', 'smacktalk', 'smackthemup'"),
-    'installer accepts smackthemup as a posted site_mode');
+    'installer still SHOWS SMACKTHEMUP as version 4.0, as a card without a control');
 
 $fedrouter = (string)file_get_contents($root . '/fediverse.php');
 $ok(str_contains($fedrouter, "=== 'smackthemup'"),

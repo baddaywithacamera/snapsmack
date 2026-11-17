@@ -62,14 +62,19 @@ if (isset($_POST['save_peer'])) {
     $cat_id = (int)$_POST['cat_id'];
     $rss    = trim($_POST['peer_rss']);
     $desc   = trim($_POST['peer_desc']);
+    // The column existed in the schema from the start and nothing read or
+    // wrote it, so the owner could not order their own blogroll. Default 0,
+    // which is what every existing row already holds, so saving a peer
+    // without touching this field leaves the page exactly as it was.
+    $order  = (int)($_POST['sort_order'] ?? 0);
 
     if ($id) {
-        $stmt = $pdo->prepare("UPDATE snap_blogroll SET peer_name=?, peer_url=?, cat_id=?, peer_rss=?, peer_desc=? WHERE id=?");
-        $stmt->execute([$name, $url, $cat_id, $rss, $desc, $id]);
+        $stmt = $pdo->prepare("UPDATE snap_blogroll SET peer_name=?, peer_url=?, cat_id=?, peer_rss=?, peer_desc=?, sort_order=? WHERE id=?");
+        $stmt->execute([$name, $url, $cat_id, $rss, $desc, $order, $id]);
         $msg = "updated";
     } else {
-        $stmt = $pdo->prepare("INSERT INTO snap_blogroll (peer_name, peer_url, cat_id, peer_rss, peer_desc) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$name, $url, $cat_id, $rss, $desc]);
+        $stmt = $pdo->prepare("INSERT INTO snap_blogroll (peer_name, peer_url, cat_id, peer_rss, peer_desc, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$name, $url, $cat_id, $rss, $desc, $order]);
         $msg = "added";
     }
     header("Location: smack-blogroll.php?msg=" . $msg);
@@ -89,7 +94,7 @@ $peers = $pdo->query(
     "SELECT b.*, c.cat_name
      FROM snap_blogroll b
      LEFT JOIN snap_blogroll_cats c ON b.cat_id = c.id
-     ORDER BY c.cat_name ASC, b.peer_name ASC"
+     ORDER BY c.cat_name ASC, b.sort_order ASC, b.peer_name ASC"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $edit_peer = null;
@@ -175,6 +180,12 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>RSS Feed URL (Optional)</label>
                         <input type="url" name="peer_rss" value="<?php echo htmlspecialchars($edit_peer['peer_rss'] ?? ''); ?>" placeholder="Used for tactical polling">
+                    </div>
+
+                    <div class="lens-input-wrapper">
+                        <label>Order Within Category</label>
+                        <input type="number" name="sort_order" step="1" value="<?php echo (int)($edit_peer['sort_order'] ?? 0); ?>" placeholder="0">
+                        <p class="field-hint">Lower numbers come first. Leave every peer at 0 and the list stays alphabetical.</p>
                     </div>
 
                     <div class="lens-input-wrapper lens-input-wrapper--grow">

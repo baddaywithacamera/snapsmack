@@ -48,12 +48,14 @@ class FakeSession:
     def __init__(self):
         self.headers = {}
         self.uploads = 0
+        self.upload_names = []
         self.post_calls = []
         self.last_json = None
     def post(self, url, files=None, data=None, json=None, timeout=None):
         self.post_calls.append(url)
         if "smackpress/media/upload" in url:
             self.uploads += 1
+            self.upload_names.append(files["file"][0])
             return FakeResp(200, {"image_id": 100 + self.uploads})
         if "smackpress/posts" in url:
             self.last_json = json
@@ -94,6 +96,18 @@ def _checks():
     assert res.ok, res.message
     assert res.remote_post_id == 777, res.remote_post_id
     assert fake.uploads == 3, fake.uploads
+    n += 1
+
+    # A non-destructive edit uploads under the derivative's real extension,
+    # not the untouched source's old name.
+    edited_path = os.path.join(tmp, "edited-version.jpg"); _img(edited_path)
+    edited = DraftImage(local_path=edited_path, original_path=p1,
+                        filename="original.png", edit_flip_h=True)
+    edited_fake = FakeSession()
+    edited_poster = P.SmacktalkPoster(
+        "https://smacktalk.example", "deadbeef", session=edited_fake)
+    assert edited_poster._upload_one(edited) == 101
+    assert edited_fake.upload_names == ["edited-version.jpg"], edited_fake.upload_names
     n += 1
 
     # A WordPress Page uses the static-page endpoint and cannot become a
@@ -174,12 +188,13 @@ def _checks():
     # 8. A composed mosaic can select/reorder bucket positions and carry an
     # explicit three-photo layout through to mosaic creation.
     calls = []
-    poster.create_mosaic = lambda ids, title="Mosaic", gap=4, layout="asymmetric": (
-        calls.append((list(ids), layout)) or (55, "[mosaic:55]"))
+    poster.create_mosaic = (
+        lambda ids, title="Mosaic", gap=4, layout="asymmetric", gallery_shuffle=False: (
+            calls.append((list(ids), layout, gallery_shuffle)) or (55, "[mosaic:55]")))
     resolved, mids = poster._resolve_mosaics(
         "before\n[mosaic=3,1,2 layout=one-top]\nafter", [101, 102, 103, 104], draft)
     assert resolved == "before\n[mosaic:55]\nafter", resolved
-    assert mids == [55] and calls == [([103, 101, 102], "one-top")], calls
+    assert mids == [55] and calls == [([103, 101, 102], "one-top", False)], calls
     n += 1
 
     # 9. A four-photo bucket can use only its bottom three, in their chosen order.
@@ -187,7 +202,33 @@ def _checks():
     resolved, mids = poster._resolve_mosaics(
         "[mosaic=2,3,4 layout=three-across]", [101, 102, 103, 104], draft)
     assert resolved == "[mosaic:55]", resolved
-    assert mids == [55] and calls == [([102, 103, 104], "three-across")], calls
+    assert mids == [55] and calls == [([102, 103, 104], "three-across", False)], calls
+    n += 1
+
+    # 10. SS-1185: an owner-random gallery. The `shuffle` keyword the WordPress
+    # importer writes reaches create_mosaic as gallery_shuffle=True, and the ids
+    # are still handed over IN THE AUTHORED ORDER - the randomising is the
+    # site's presentation step, not something the poster does on the way out. A
+    # poster that scrambled here would destroy the arrangement irrecoverably.
+    calls.clear()
+    resolved, mids = poster._resolve_mosaics(
+        "[mosaic=1,2,3 layout=rows shuffle]", [101, 102, 103, 104], draft)
+    assert resolved == "[mosaic:55]", resolved
+    assert calls == [([101, 102, 103], "rows", True)], calls
+    n += 1
+
+    # 11. The same marker without the keyword is unchanged: OFF, not absent.
+    # This is the pair that proves the keyword is read rather than ignored.
+    calls.clear()
+    poster._resolve_mosaics("[mosaic=1,2,3 layout=rows]", [101, 102, 103], draft)
+    assert calls == [([101, 102, 103], "rows", False)], calls
+    n += 1
+
+    # 12. shuffle with no layout, and shuffle on a whole-bucket marker: both are
+    # shapes the importer can emit, and neither may lose the flag.
+    calls.clear()
+    poster._resolve_mosaics("[mosaic shuffle]", [101, 102], draft)
+    assert calls == [([101, 102], "asymmetric", True)], calls
     n += 1
 
     return n
@@ -214,10 +255,99 @@ def _mosaic_token_checks():
         assert m and m.group(2) == name, name
     assert rx.search("[mosaic]") and rx.search("[mosaic:bucket]")
     assert not rx.search("[mosaic:123]"), "numeric mosaic ids are the site's, left alone"
-    return 3
+
+    # SS-1185: the shuffle keyword, in every shape the importer can write, and
+    # asserted ABSENT where it is not written. Group 3 is the flag.
+    for text in ("[mosaic=1,2 layout=rows shuffle]", "[mosaic shuffle]",
+                 "[mosaic=1,2 shuffle]", "[mosaic=1,2 layout=rows SHUFFLE]"):
+        m = rx.search(text)
+        assert m and m.group(3), text
+    for text in ("[mosaic=1,2 layout=rows]", "[mosaic]", "[mosaic:bucket]"):
+        m = rx.search(text)
+        assert m and not m.group(3), text
+    # The layout must survive alongside it rather than swallowing the keyword.
+    m = rx.search("[mosaic=1,2 layout=one-top shuffle]")
+    assert m and m.group(2) == "one-top" and m.group(3), m.groups()
+    # A word that merely starts the same is not the flag.
+    m = rx.search("[mosaic=1,2 layout=rows shuffled]")
+    assert (m is None) or not m.group(3), "shuffled is not shuffle"
+    return 8
+
+
+def _gap_checks():
+    """SS-1301: the mosaic gap, with ZERO meaning zero, on the PUBLISH path.
+
+    `int(gap or 4)` and `int(getattr(draft, "mosaic_gap", 4) or 4)` both read a
+    saved 0 as 4, because `0 or 4` is 4. snap_mosaics.gap allows 0 to 20,
+    core/parser.php clamps to the same range and ss-engine-mosaic.js honours
+    it, so a flush grid of photographs was a layout COLD SNAP could not send --
+    not a preview nit but what the site ends up storing.
+
+    Muse found the same expression in the BIGGIE preview. This is the rest of
+    the path, which is why it is checked here as well as there.
+    """
+    n = 0
+    assert P._gap_value(0) == 0, "a gap of 0 must stay 0"
+    assert P._gap_value("0") == 0, "a gap of '0' must stay 0"
+    assert P._gap_value(0.0) == 0, "a gap of 0.0 must stay 0"
+    n += 3
+    assert P._gap_value(12) == 12 and P._gap_value("12") == 12
+    n += 1
+    # Only absence falls back to the schema default.
+    assert P._gap_value(None) == 4 and P._gap_value("") == 4
+    assert P._gap_value("wide") == 4, "garbage falls back rather than raising"
+    n += 2
+    # This layer clamps, because it is what leaves the machine.
+    assert P._gap_value(99) == 20 and P._gap_value(-5) == 0
+    n += 1
+
+    # AND THE PAYLOAD ITSELF, which is what the site stores. A mutation run
+    # put the old `int(gap or 4)` back on this line and nothing failed: every
+    # check above stubs create_mosaic out, so the draft -> gap step was proved
+    # and the gap -> payload step was not. This drives the real method.
+    class _MosaicSession:
+        def __init__(self):
+            self.headers = {}
+            self.sent = []
+
+        def post(self, url, files=None, data=None, json=None, timeout=None):
+            if "smackpress/mosaics" in url:
+                self.sent.append(json)
+                return FakeResp(200, {"mosaic_id": 9})
+            return FakeResp(404, {})
+
+        def get(self, url, timeout=None, params=None):
+            return FakeResp(200, {})
+
+    for value, expected in ((0, 0), (4, 4), (20, 20), (99, 20), (None, 4),
+                            ("", 4), ("7", 7)):
+        sess = _MosaicSession()
+        mid, token = P.SmacktalkPoster("https://x", "k", session=sess).create_mosaic(
+            [1, 2, 3], gap=value)
+        assert sess.sent and sess.sent[0]["gap"] == expected, (value, sess.sent)
+        assert (mid, token) == (9, "[mosaic:9]"), (mid, token)
+        n += 1
+
+    # And end to end: a draft carrying gap 0 reaches create_mosaic as 0.
+    from sumna_offline import Draft, KIND_SMACKTALK, MODE_SMACKTALK
+    seen = []
+    poster = P.SmacktalkPoster.__new__(P.SmacktalkPoster)
+    poster.create_mosaic = (
+        lambda ids, title="Mosaic", gap=4, layout="asymmetric",
+        gallery_shuffle=False: (seen.append(gap) or (7, "[mosaic:7]")))
+    for value, expected in ((0, 0), (4, 4), (11, 11), (None, 4)):
+        seen.clear()
+        draft = Draft(draft_id="g", kind=KIND_SMACKTALK, mode=MODE_SMACKTALK,
+                      title="t", caption="[mosaic]", tags="")
+        draft.mosaic_gap = value
+        poster._resolve_mosaics("[mosaic]", [1, 2, 3], draft)
+        assert seen == [expected], (value, seen, expected)
+        n += 1
+    return n
 
 
 if __name__ == "__main__":
-    passed = _checks() + _mosaic_token_checks() + _bucket_img_checks()
+    passed = (_checks() + _mosaic_token_checks() + _bucket_img_checks()
+              + _gap_checks())
     print(f"OK - {passed} checks passed")
 # ===== SNAPSMACK EOF =====

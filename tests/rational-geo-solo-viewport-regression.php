@@ -20,6 +20,15 @@ $expect(
     && str_contains($css, 'flex-direction: column;'),
     'RATIONAL GEO solo pages must use the real strict-layout body/main flex column.'
 );
+// SS-1345 restored this assertion to what it was before SS-1322. The in-flow
+// tray that the SS-1322 wording pinned is the one Sean reported as broken on a
+// live post: with INFO open the photograph left the viewport entirely and could
+// not be scrolled back. Codex measured it on his own Water on the Brain post --
+// at 1920 the image sat at top -716, bottom -52, with the stage still
+// overflow:hidden. skins/rational-geo/style.css is now byte-for-byte the
+// pre-SS-1322 blob 3fad39b1, so the test has to describe THAT geometry: the
+// image well yields space to the navigation row instead of reserving the whole
+// viewport minus the tray.
 $expect(
     preg_match('/\.rg-photo-wrap\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;[^}]*height:\s*auto;/s', $css) === 1,
     'RATIONAL GEO image well must yield space to the navigation row.'

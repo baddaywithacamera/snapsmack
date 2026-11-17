@@ -114,7 +114,7 @@ if ($table_exists) {
     $t1_unique_visitors = (int)$stmt->fetchColumn();
 
     // Views today
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at) = CURDATE() AND is_bot = 0");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_stats WHERE hit_at >= CURDATE() AND hit_at < CURDATE() + INTERVAL 1 DAY AND is_bot = 0");
     $stmt->execute();
     $t1_views_today = (int)$stmt->fetchColumn();
 

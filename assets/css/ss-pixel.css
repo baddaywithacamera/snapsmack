@@ -58,9 +58,47 @@ button{ font-family:inherit; cursor:pointer; }
 .sx-brand{ display:flex; align-items:center; gap:9px; font-weight:800; font-size:1.28rem; letter-spacing:-.01em; }
 .sx-brand-copy{ display:flex; flex-direction:column; line-height:1.05; }
 .sx-brand-copy small{ margin-top:3px; color:var(--muted); font-size:.58rem; font-weight:500; letter-spacing:0; }
+/* SS-1355. THE MARK IS SEAN'S OWN LOGO, as an asset -- not drawn in CSS.
+
+   History, because it is the rule and not just a change: this was a rainbow
+   conic gradient in a rounded square sitting beside the word "pixelfed", and
+   together they read as Pixelfed's own logo. It became a plain ring, and Sean
+   then answered the ring-or-nothing question with his own artwork -- the
+   SnapSmack fediverse logo, a black camera with horns and tail over a
+   six-blade aperture -- and then ruled it should be BIGGER than the 26px the
+   old gradient occupied.
+
+   44px, from his 40-48 range. The header row is 62px tall, so 44 leaves 9px
+   of breathing room above and below and does not change the row. Shipped at
+   160px, which covers 44 at 3x with headroom and costs 14KB instead of the
+   original's 38KB.
+
+   SOURCE: projects/snapsmack-ca/img/logo-fediverse-snapsmack.png, 454x454,
+   the file Sean re-saved. Its art reaches every edge of the frame, unlike the
+   earlier 1000px version which sat in a black margin.
+
+   IT HAS NO ALPHA, which is the artwork as supplied and is not something to
+   guess a transparent cut out of. On the DARK reader the black meets the page
+   and only the camera and aperture read. On the LIGHT reader it is a dark
+   tile on white; the radius is so that tile looks deliberate rather than like
+   a rectangle somebody forgot. Measured at the rendered 44px: 55% of the tile
+   is visible ink and 46% is bright, so it reads as a shape rather than a dark
+   blob -- which is the question behind "does his camera read at this size".
+
+   If a transparent version is wanted for the light reader, that is Sean's
+   file to supply; nothing here invents one. */
 .sx-brand .sx-mark{
-  width:26px; height:26px; border-radius:8px; flex:0 0 auto;
-  background:conic-gradient(from 210deg,#f9317f,#ff7a45,#ffd23f,#37d67a,#3897f0,#8b5cf6,#f9317f);
+  width:44px; height:44px; border-radius:8px; flex:0 0 auto;
+  /* SS-1394. THIS WAS ../img/, WHICH NEVER ARRIVES ON AN UPDATING SITE.
+     assets/img/ is a PROTECTED PATH (protected_paths.json, beside
+     img_uploads/ and media_assets/) because sites keep their own images
+     there, so the updater must not overwrite it -- and therefore never
+     delivers anything new in it either. This stylesheet shipped, the PNG did
+     not, and the mark was simply absent on every updated site while the
+     version said 0.7.997D. Sean reported it missing on foundtextures.ca.
+     assets/brand/ is for product assets the updater DOES deliver. */
+  background-image:url("../brand/fediverse-mark-160.png");
+  background-size:cover; background-position:center; background-repeat:no-repeat;
 }
 .sx-search{ position:relative; }
 .sx-search input{
@@ -246,7 +284,13 @@ button{ font-family:inherit; cursor:pointer; }
 .sx-reader-mastodon .sx-top-in,
 .sx-reader-mastodon .sx-app{ max-width:1180px; }
 .sx-reader-mastodon .sx-top-in{ grid-template-columns:240px minmax(0,620px) 280px; gap:20px; }
-.sx-reader-mastodon .sx-brand .sx-mark{ display:none; }
+/* SS-1355. THIS USED TO BE display:none, so the SMACKTALK reader had NO mark
+   at all -- it was hidden back when the mark was the rainbow gradient, which
+   would have been a Pixelfed lookalike on a Mastodon-facing page. The mark is
+   now Sean's own logo and he asked for it in BOTH reader modes, so it shows.
+   NOTE THIS IS A VISIBLE ADDITION: SMACKTALK installs gain a mark they did not
+   have. Reversible by restoring display:none on this one rule. */
+.sx-reader-mastodon .sx-brand .sx-mark{ display:block; }
 .sx-reader-mastodon .sx-brand{ align-self:center; font-size:1.05rem; }
 .sx-reader-mastodon .sx-search{ grid-column:3; }
 .sx-reader-mastodon .sx-top-right{

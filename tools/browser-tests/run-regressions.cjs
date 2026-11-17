@@ -14,7 +14,9 @@ const checks = [
   [process.execPath, 'tests/tag-infinite-paging-browser.cjs'],
   [process.execPath, 'tests/impact-archive-controls-browser.cjs'],
   [process.execPath, 'tools/browser-tests/rationalgeo-static-frame.cjs'],
+  [process.execPath, 'tests/archive-frame-overlay-visible-browser.cjs'],
   [process.execPath, 'tests/scrolltime-beacon-regression.cjs'],
+  [process.execPath, 'tools/browser-tests/archive-first-page-deferral.cjs'],
 ];
 let failed = false;
 try {
