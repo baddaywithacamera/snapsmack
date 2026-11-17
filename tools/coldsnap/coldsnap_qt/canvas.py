@@ -1299,10 +1299,9 @@ def _export_block(block, nested: bool = False) -> list:
                         blk["layout"] = str(data.get("layout") or "asymmetric")
                     out.append(blk)
                 elif okind == "image":
-                    image = {"type": "image", "img_id": str(data.get("img_id", "")),
-                             "size": data.get("size") or "full",
-                             "align": data.get("align") or "center"}
-                    for key in ("asset_uuid", "placement", "width_ratio", "crop",
+                    image = {"type": "image", "img_id": str(data.get("img_id", ""))}
+                    for key in ("gallery", "size", "align", "width", "decorative",
+                                "asset_uuid", "placement", "width_ratio", "crop",
                                 "alt", "caption", "link"):
                         if key in data:
                             image[key] = data[key]

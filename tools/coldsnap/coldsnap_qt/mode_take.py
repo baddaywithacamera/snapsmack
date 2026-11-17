@@ -292,8 +292,8 @@ class TakeMode(QWidget):
         self.page_meta.setObjectName("PageMeta")
         card_col.addWidget(self.page_meta)
         self.text_view_hint = hint(
-            "A plain text editor. Each block is a shortcode, typed or inserted "
-            "from the SHORTCODES list on the left.")
+            "A plain text editor. Each block uses CMS shortcodes from core/parser.php "
+            "(plus COLD SNAP [mosaic=…] markers resolved to [mosaic:ID] on send).")
         self.text_view_hint.setVisible(False)
         card_col.addWidget(self.text_view_hint)
         card_col.addSpacing(6)
