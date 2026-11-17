@@ -20,7 +20,7 @@ import requests
 from PySide6.QtCore import Qt, QRect, QSize, Signal, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
+    QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
     QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton, QSlider,
@@ -39,6 +39,7 @@ from .slapper_handoff import (ReturnWatch, find_executable,
                               focus_window, launch as launch_slapper)
 from .body_editor import BodyEditor
 from .block_tray import BlockAction, BlockTray
+from .photo_tray import RightPhotosTray, PhotoThumbTile
 from .drafts_panel import BatchRail, default_draft_row
 from .mosaic_layout import tile_rects as _tile_rects
 
@@ -205,6 +206,7 @@ class _PageRuler(QWidget):
 class TakeMode(QWidget):
     SUITE_MODE = O.MODE_SMACKTALK
     blocksStateChanged = Signal(bool, str)  # open, header label
+    photosStateChanged = Signal(bool)       # right photos tray open
 
     def __init__(self, app_config_provider, parent=None):
         super().__init__(parent)
@@ -242,11 +244,13 @@ class TakeMode(QWidget):
         scroll.setObjectName("CanvasWell")
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setWidgetResizable(True)
+        scroll.setMinimumWidth(0)
         host = QWidget()
         host.setObjectName("CanvasWell")
         well = QVBoxLayout(host)
         well.setContentsMargins(16, 12, 16, 18)
         well.setSpacing(10)
+        self._well_layout = well
 
         # Centered white page card + thin left gutter tag (Slice 2)
         page_row = QHBoxLayout()
@@ -318,10 +322,47 @@ class TakeMode(QWidget):
         # -- THE PHOTOS — a rail section, opened when wanted. The count lives in
         #    the accordion header (no redundant, cramped label fighting the
         #    buttons for the 340px rail width). --------------------------------
-        self.photos_sec = Accordion("THE PHOTOS — none yet")
+        self.photos_sec = Accordion("THE PHOTOS — none yet", expanded=True)
         self.photos_sec.setMaximumWidth(360)
         self.photos_sec.body.setMaximumWidth(360)
+
+        # Thumbnail zoom row (60–150%, persisted in QSettings)
+        self._thumb_zoom = int(self._view_settings.value("take/thumb_zoom", 100))
+        t_row = QHBoxLayout()
+        t_row.setContentsMargins(0, 0, 0, 2)
+        t_row.setSpacing(4)
+        t_lbl = QLabel("THUMBNAILS")
+        t_lbl.setObjectName("BlockTrayGroup")
+        t_row.addWidget(t_lbl)
+        t_out = QPushButton("-")
+        t_out.setObjectName("PreviewToggle")
+        t_out.setFixedWidth(24)
+        t_out.setFocusPolicy(Qt.NoFocus)
+        t_out.clicked.connect(lambda: self._set_thumb_zoom(self._thumb_zoom - 10))
+        t_row.addWidget(t_out)
+        self.thumb_zoom_slider = QSlider(Qt.Horizontal)
+        self.thumb_zoom_slider.setRange(60, 150)
+        self.thumb_zoom_slider.setSingleStep(10)
+        self.thumb_zoom_slider.setValue(self._thumb_zoom)
+        self.thumb_zoom_slider.valueChanged.connect(self._set_thumb_zoom)
+        t_row.addWidget(self.thumb_zoom_slider, 1)
+        t_in = QPushButton("+")
+        t_in.setObjectName("PreviewToggle")
+        t_in.setFixedWidth(24)
+        t_in.setFocusPolicy(Qt.NoFocus)
+        t_in.clicked.connect(lambda: self._set_thumb_zoom(self._thumb_zoom + 10))
+        t_row.addWidget(t_in)
+        self.thumb_zoom_lbl = hint(f"{self._thumb_zoom}%")
+        t_row.addWidget(self.thumb_zoom_lbl)
+        t_reset = QPushButton("Reset")
+        t_reset.setObjectName("PreviewToggle")
+        t_reset.setFocusPolicy(Qt.NoFocus)
+        t_reset.clicked.connect(lambda: self._set_thumb_zoom(100))
+        t_row.addWidget(t_reset)
+        self.photos_sec.add_layout(t_row)
+
         brow = QHBoxLayout()
+        brow.setSpacing(4)
         add_btn = QPushButton("Add photos…")
         add_btn.clicked.connect(self._add_photos)
         open_btn = QPushButton("Open published…")
@@ -331,19 +372,39 @@ class TakeMode(QWidget):
         ai_btn.setToolTip("Uses this site's prompt to fill all supported metadata: "
                           "post fields from the lead photo and ALT for every photo.")
         ai_btn.clicked.connect(self._ai_fill)
-        brow.addWidget(add_btn)
-        brow.addWidget(open_btn)
-        brow.addWidget(ai_btn)
+        for b in (add_btn, open_btn, ai_btn):
+            b.setStyleSheet("padding: 5px 7px; font-size: 11px;")
+            brow.addWidget(b)
         brow.addStretch(1)
         self.photos_sec.add_layout(brow)
+
+        # "In mosaics — N" summary bar (shown when photos are placed in mosaics)
+        self.in_mosaics_bar = QFrame()
+        self.in_mosaics_bar.setObjectName("InMosaicsBar")
+        im_row = QHBoxLayout(self.in_mosaics_bar)
+        im_row.setContentsMargins(8, 5, 8, 5)
+        im_row.setSpacing(6)
+        self.in_mosaics_lbl = QLabel("In mosaics — 0")
+        self.in_mosaics_lbl.setObjectName("BlockTrayGroup")
+        im_row.addWidget(self.in_mosaics_lbl)
+        self.in_mosaics_thumbs = QHBoxLayout()
+        self.in_mosaics_thumbs.setSpacing(2)
+        im_row.addLayout(self.in_mosaics_thumbs)
+        im_row.addStretch(1)
+        self.in_mosaics_bar.setVisible(False)
+        self.photos_sec.add(self.in_mosaics_bar)
+
         self.photos_sec.add(
             hint("The ★ photo leads the post. This order is the order in the post."))
         self.bucket_count = hint("")   # its own line — AI-ALT progress / status only
         self.photos_sec.add(self.bucket_count)
 
-        self.bucket_col = QVBoxLayout()
-        self.bucket_col.setSpacing(4)
-        self.photos_sec.add_layout(self.bucket_col)
+        self.bucket_host = QWidget()
+        self.bucket_host.installEventFilter(self)
+        self.bucket_col = QGridLayout(self.bucket_host)
+        self.bucket_col.setContentsMargins(0, 2, 0, 2)
+        self.bucket_col.setSpacing(6)
+        self.photos_sec.add(self.bucket_host)
         self._build_photo_tools()
 
         # No trailing stretch — the compose card (stretch 1 above) fills the
@@ -358,6 +419,7 @@ class TakeMode(QWidget):
         act = QHBoxLayout()
         act.setContentsMargins(14, 6, 14, 10)
         act.setSpacing(6)
+        self.act_layout = act
         self.details_toggle_btn = QPushButton()
         self.details_toggle_btn.setObjectName("PreviewToggle")
         self.details_toggle_btn.setCheckable(True)
@@ -370,8 +432,11 @@ class TakeMode(QWidget):
         act.addWidget(self.details_toggle_btn)
 
         self.page_state_lbl = hint("1 block")
+        self.page_state_lbl.setWordWrap(False)
         act.addWidget(self.page_state_lbl)
         self.save_state = hint("Begin the story… changes will be safe on this computer.")
+        self.save_state.setWordWrap(False)
+        self.save_state.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         act.addWidget(self.save_state, 1)
 
         save_btn = QPushButton("Save as draft")
@@ -382,13 +447,15 @@ class TakeMode(QWidget):
         clear_btn.clicked.connect(self._clear)
         act.addWidget(clear_btn)
         self.queue_btn = big_button("QUEUE POST")
-        self.queue_btn.setMaximumWidth(200)
+        self.queue_btn.setMaximumWidth(180)
         self.queue_btn.setToolTip("Add this post to the batch. Nothing publishes until SEND.")
         self.queue_btn.clicked.connect(lambda: self._save(ready=True))
         act.addWidget(self.queue_btn)
 
-        act.addSpacing(6)
-        act.addWidget(hint("Preview"))
+        act.addSpacing(4)
+        self._preview_hint_lbl = hint("Preview")
+        self._preview_hint_lbl.setWordWrap(False)
+        act.addWidget(self._preview_hint_lbl)
         self.preview_desktop_btn = QPushButton("Desktop 760")
         self.preview_phone_btn = QPushButton("Phone 360")
         for btn, w in ((self.preview_desktop_btn, 760), (self.preview_phone_btn, 360)):
@@ -399,8 +466,10 @@ class TakeMode(QWidget):
             act.addWidget(btn)
         self.preview_desktop_btn.setChecked(True)
 
-        act.addSpacing(6)
-        act.addWidget(hint("PAGE"))
+        act.addSpacing(4)
+        self._page_hint_lbl = hint("PAGE")
+        self._page_hint_lbl.setWordWrap(False)
+        act.addWidget(self._page_hint_lbl)
         self._page_zoom = int(self._view_settings.value("take/page_zoom", 100))
         zoom_out = QPushButton("-")
         zoom_out.setObjectName("PreviewToggle")
@@ -422,6 +491,7 @@ class TakeMode(QWidget):
         zoom_in.clicked.connect(lambda: self._set_page_zoom(self._page_zoom + 10))
         act.addWidget(zoom_in)
         self.page_zoom_lbl = hint(f"{self._page_zoom}%")
+        self.page_zoom_lbl.setWordWrap(False)
         act.addWidget(self.page_zoom_lbl)
         zoom_reset = QPushButton("Reset")
         zoom_reset.setObjectName("PreviewToggle")
@@ -448,11 +518,15 @@ class TakeMode(QWidget):
         outer.addWidget(self.blocks_tray)
         outer.addLayout(centre, 1)
 
-        # The rail: photos + batch accordion open when wanted; SEND pinned.
+        # The rail: collapsible right photos + batch tray (Ctrl+2), default closed.
         self.right_rail = build_rail(
             [self.photos_sec, self.rail.section],
             [self.rail.send_box], width=360)
-        outer.addWidget(self.right_rail)
+        self.photos_tray = RightPhotosTray(self.right_rail)
+        self.photos_tray.stateChanged.connect(self._on_photos_tray_changed)
+        photos_open = self._view_settings.value("take/photos_open", False, type=bool)
+        self.photos_tray.set_open(photos_open)
+        outer.addWidget(self.photos_tray)
         self._refresh_bucket()
         self._autosave = QTimer(self)
         self._autosave.setSingleShot(True)
@@ -472,7 +546,45 @@ class TakeMode(QWidget):
 
     def _sync_details_btn(self, opened: bool):
         arrow = "▼" if opened else "▲"
-        self.details_toggle_btn.setText(f"{arrow} Post details & queue  Ctrl+3")
+        window = self.window()
+        compact = bool(window and window.width() <= 1366)
+        label = f"{arrow} Post details" if compact else f"{arrow} Post details && queue  Ctrl+3"
+        self.details_toggle_btn.setText(label)
+
+    def photos_open(self) -> bool:
+        return self.photos_tray.is_open()
+
+    def set_photos_open(self, opened: bool):
+        self.photos_tray.set_open(opened)
+
+    def toggle_photos(self):
+        self.photos_tray.toggle()
+
+    def _on_photos_tray_changed(self, opened: bool):
+        self._view_settings.setValue("take/photos_open", bool(opened))
+        self.photosStateChanged.emit(bool(opened))
+
+    def _set_thumb_zoom(self, pct: int):
+        pct = max(60, min(150, int(pct or 100)))
+        if getattr(self, "_thumb_zoom", 100) == pct and hasattr(self, "thumb_zoom_lbl"):
+            return
+        self._thumb_zoom = pct
+        self._view_settings.setValue("take/thumb_zoom", pct)
+        if hasattr(self, "thumb_zoom_slider"):
+            self.thumb_zoom_slider.blockSignals(True)
+            self.thumb_zoom_slider.setValue(pct)
+            self.thumb_zoom_slider.blockSignals(False)
+        if hasattr(self, "thumb_zoom_lbl"):
+            self.thumb_zoom_lbl.setText(f"{pct}%")
+        self._refresh_bucket()
+
+    def eventFilter(self, obj, event):
+        if obj is getattr(self, "bucket_host", None) and event.type() == event.Type.Wheel:
+            if event.modifiers() & Qt.ControlModifier:
+                delta = 10 if event.angleDelta().y() > 0 else -10
+                self._set_thumb_zoom(self._thumb_zoom + delta)
+                return True
+        return super().eventFilter(obj, event)
 
     def _toggle_post_details(self, opened: bool):
         opened = bool(opened)
@@ -571,7 +683,27 @@ class TakeMode(QWidget):
 
     def _sync_block_tray_width(self):
         window = self.window()
-        self.blocks_tray.set_compact_window(bool(window and window.width() <= 1366))
+        w = window.width() if window else 1920
+        compact = w <= 1366
+        tight = w <= 1100
+        self.blocks_tray.set_compact_window(compact)
+        if hasattr(self, "photos_tray"):
+            self.photos_tray.set_compact_window(compact)
+        if hasattr(self, "details_toggle_btn"):
+            self._sync_details_btn(self.details_toggle_btn.isChecked())
+        if hasattr(self, "_preview_hint_lbl"):
+            self._preview_hint_lbl.setVisible(not compact)
+        if hasattr(self, "save_state"):
+            self.save_state.setVisible(w > 1480)
+        if hasattr(self, "page_zoom_slider"):
+            self.page_zoom_slider.setFixedWidth(50 if tight else (58 if compact else 72))
+        if hasattr(self, "act_layout"):
+            self.act_layout.setContentsMargins(8 if tight else 12, 6, 8 if tight else 12, 8)
+            self.act_layout.setSpacing(4 if tight else 6)
+        if hasattr(self, "gutter_tag"):
+            self.gutter_tag.setFixedWidth(32 if tight else 52)
+        if hasattr(self, "_well_layout"):
+            self._well_layout.setContentsMargins(6 if tight else 16, 12, 6 if tight else 16, 18)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -1762,47 +1894,71 @@ class TakeMode(QWidget):
             w = item.widget()
             if w:
                 w.deleteLater()
+        while self.in_mosaics_thumbs.count():
+            item = self.in_mosaics_thumbs.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+
         n = len(self._bucket)
         self.body.set_bucket([im.local_path for im in self._bucket])   # mosaics repaint
         self.body.canvas.set_assets({im.asset_uuid: im.local_path for im in self._bucket})
         self.bucket_count.setText("")   # count lives in the header; this line = AI progress only
+
+        # Count photos placed in mosaic blocks on the canvas
+        mosaic_paths = []
+        if hasattr(self.body, "canvas") and hasattr(self.body.canvas, "to_blocks"):
+            for blk in self.body.canvas.to_blocks():
+                if isinstance(blk, dict) and blk.get("type") == "mosaic":
+                    for p in (blk.get("paths") or blk.get("images") or []):
+                        if p and p not in mosaic_paths:
+                            mosaic_paths.append(p)
+        self.in_mosaics_lbl.setText(f"In mosaics — {len(mosaic_paths)}")
+        for p in mosaic_paths[:5]:
+            thumb = QLabel()
+            thumb.setFixedSize(18, 18)
+            thumb.setPixmap(load_pixmap(p, 18))
+            self.in_mosaics_thumbs.addWidget(thumb)
+        self.in_mosaics_bar.setVisible(bool(mosaic_paths))
+
+        left_count = max(0, n - len(mosaic_paths))
         self.photos_sec.header.setText(
-            f"THE PHOTOS — {n} in the bucket" if n else "THE PHOTOS — none yet")
+            f"THE PHOTOS — {left_count} left" if n else "THE PHOTOS — none yet")
         if not self._bucket:
             self._selected_photo_idx = None
             self._populate_photo_tools()
-            self.bucket_col.addWidget(hint("No photos yet — click “Add photos…”."))
+            self.bucket_col.addWidget(hint("No photos yet — click “Add photos…”."), 0, 0)
             return
         if self._selected_photo_idx is None or self._selected_photo_idx >= len(self._bucket):
             self._selected_photo_idx = 0
+
+        zoom = getattr(self, "_thumb_zoom", 100)
+        if zoom >= 135:
+            cols, tile_px = 2, 146
+        elif zoom >= 110:
+            cols, tile_px = 3, 96
+        elif zoom >= 85:
+            cols, tile_px = 3, 88
+        else:
+            cols, tile_px = 4, 66
+
         for i, im in enumerate(self._bucket):
             is_cover = (i == self._cover_idx)
-            row = QFrame()
-            row.setObjectName("Card")
-            col = QVBoxLayout(row)
-            col.setContentsMargins(6, 6, 6, 6)
-            col.setSpacing(4)
-            lay = QHBoxLayout()
-            select = QPushButton()
-            select.setObjectName("PhotoSelect")
-            select.setCheckable(True)
-            select.setChecked(i == self._selected_photo_idx)
-            select.setAccessibleName(
-                "Selected photograph" if i == self._selected_photo_idx
-                else "Select photograph")
-            select.setIcon(QIcon(load_pixmap(im.thumb_square or im.local_path, 40)))
-            select.setIconSize(QSize(40, 40))
-            select.setFixedSize(48, 48)
-            select.clicked.connect(lambda _=False, i=i: self._select_photo(i))
-            lay.addWidget(select)
-            name = QLabel(("★ " if is_cover else "") +
-                          (im.filename or os.path.basename(im.local_path)))
-            name.setStyleSheet(
-                f"color: {theme.ACCENT if is_cover else theme.BODY}; background: transparent;")
-            name.setMinimumWidth(0)
-            lay.addWidget(name, 1)
-            col.addLayout(lay)
-            self.bucket_col.addWidget(row)
+            is_selected = (i == self._selected_photo_idx)
+            edited = bool(getattr(im, "slapper_edited_path", ""))
+            in_slapper = (
+                self._slapper_state == "waiting"
+                and str(getattr(im, "asset_uuid", "")) == self._slapper_asset_uuid
+            )
+            pix = load_pixmap(im.thumb_square or im.local_path, tile_px)
+            tile = PhotoThumbTile(
+                i, pix, selected=is_selected, is_cover=is_cover,
+                edited=edited, in_slapper=in_slapper, tile_size=tile_px)
+            tile.setToolTip(im.filename or os.path.basename(im.local_path))
+            tile.setAccessibleName(
+                "Selected photograph" if is_selected else "Select photograph")
+            tile.clicked.connect(lambda _=False, i=i: self._select_photo(i))
+            self.bucket_col.addWidget(tile, i // cols, i % cols)
         self._populate_photo_tools()
 
     def _ai_fill(self):

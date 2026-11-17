@@ -419,6 +419,17 @@ def stylesheet() -> str:
     QPushButton#PreviewToggle:checked {{
         border: 1px solid {ACCENT}; color: {ACCENT};
     }}
+    QFrame#RightTrayCollapsed {{
+        background: {PANEL}; border-left: 1px solid {BORDER};
+    }}
+    QPushButton#RightTrayStripBtn {{
+        background: transparent; border: none; color: {ACCENT};
+        font-size: 9px; font-weight: 700; letter-spacing: 0.6px; padding: 2px;
+    }}
+    QPushButton#RightTrayStripBtn:hover {{ color: {ACCENT_HI}; }}
+    QFrame#InMosaicsBar {{
+        background: {FIELD}; border: 1px solid {BORDER}; border-radius: 6px;
+    }}
     """
 
 # ===== SNAPSMACK EOF =====

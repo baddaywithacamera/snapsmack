@@ -72,6 +72,16 @@ class MainWindow(QMainWindow):
                               "down, AI-describe, save metadata back")
         col.addWidget(self.tabs, 1)
 
+        self.photos_btn = QPushButton()
+        self.photos_btn.setObjectName("ShellAction")
+        self.photos_btn.setCheckable(True)
+        self.photos_btn.setToolTip("Open or close the COLD TAKE photos tray (Ctrl+2)")
+        self.photos_btn.setAccessibleName("Open or close the photos tray")
+        self.photos_btn.clicked.connect(self.take_mode.set_photos_open)
+        self.connect_panel.add_header_action(self.photos_btn)
+        self.take_mode.photosStateChanged.connect(self._sync_photos_action)
+        self._sync_photos_action(self.take_mode.photos_open())
+
         self._blocks_label = "BLOCKS"
         self.blocks_btn = QPushButton()
         self.blocks_btn.setObjectName("ShellAction")
@@ -100,6 +110,8 @@ class MainWindow(QMainWindow):
 
         QShortcut(QKeySequence("F1"), self).activated.connect(
             self.connect_panel._show_help)
+        self._photos_shortcut = QShortcut(QKeySequence("Ctrl+2"), self)
+        self._photos_shortcut.activated.connect(self._toggle_photos)
         self._blocks_shortcut = QShortcut(QKeySequence("Ctrl+4"), self)
         self._blocks_shortcut.activated.connect(self._toggle_blocks)
 
@@ -115,13 +127,25 @@ class MainWindow(QMainWindow):
     def _on_mode_changed(self, index):
         suite_mode, label = self._tab_modes[index]
         self.connect_panel.set_suite_mode(suite_mode, label)
+        self.photos_btn.setVisible(index == 2)
         self.blocks_btn.setVisible(index == 2)
         if index == 0:
             QTimer.singleShot(0, self.solo_mode.refresh_taxonomy)
 
+    def _toggle_photos(self):
+        if self.tabs.currentIndex() == 2:
+            self.take_mode.toggle_photos()
+
     def _toggle_blocks(self):
         if self.tabs.currentIndex() == 2:
             self.take_mode.toggle_blocks()
+
+    def _sync_photos_action(self, opened: bool):
+        suffix = "" if self.width() <= 1366 else "   Ctrl+2"
+        self.photos_btn.blockSignals(True)
+        self.photos_btn.setText("PHOTOS" + suffix)
+        self.photos_btn.setChecked(bool(opened))
+        self.photos_btn.blockSignals(False)
 
     def _sync_blocks_action(self, opened: bool, label: str):
         self._blocks_label = str(label or "BLOCKS")
@@ -133,6 +157,8 @@ class MainWindow(QMainWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        if hasattr(self, "take_mode") and hasattr(self, "photos_btn"):
+            self._sync_photos_action(self.take_mode.photos_open())
         if hasattr(self, "take_mode") and hasattr(self, "blocks_btn"):
             self._sync_blocks_action(
                 self.take_mode.blocks_open(),
