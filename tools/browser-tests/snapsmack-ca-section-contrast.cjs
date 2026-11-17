@@ -21,6 +21,10 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
       for (const pathname of pages) {
         const page = await context.newPage();
         await page.goto(`${baseUrl}/${pathname}`, { waitUntil: 'networkidle' });
+        if (pathname === 'index.php') {
+          await page.locator('#built-for-use').scrollIntoViewIfNeeded();
+          await page.waitForTimeout(300);
+        }
 
         const measured = await page.evaluate(({ pathname }) => {
           const rgb = value => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
@@ -127,7 +131,11 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
             ? ['#why-blog', '#built-for-use'].map(selector => {
                 const section = document.querySelector(selector);
                 const wrap = section ? section.querySelector(':scope > .wrap') : null;
-                const block = wrap ? wrap.querySelector(':scope > .home-rhythm-right') : null;
+                const block = wrap
+                  ? wrap.querySelector(selector === '#built-for-use'
+                    ? ':scope > .built-for-use-layout > .built-for-use-copy-wrap'
+                    : ':scope > .home-rhythm-right')
+                  : null;
                 const wrapStyle = wrap ? getComputedStyle(wrap) : null;
                 const wrapRect = wrap ? wrap.getBoundingClientRect() : null;
                 const blockRect = block ? block.getBoundingClientRect() : null;
@@ -149,6 +157,38 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
                 };
               })
             : [];
+          const receipts = pathname === 'index.php'
+            ? (() => {
+                const layout = document.querySelector('#built-for-use .built-for-use-layout');
+                const stack = document.querySelector('#built-for-use .receipt-stack');
+                const cards = Array.from(document.querySelectorAll('#built-for-use .receipt-card'));
+                const copy = document.querySelector('#built-for-use .built-for-use-copy-wrap');
+                const aside = document.querySelector('#built-for-use .receipts');
+                const copyRect = copy ? copy.getBoundingClientRect() : null;
+                const asideRect = aside ? aside.getBoundingClientRect() : null;
+                return {
+                  count: cards.length,
+                  layoutColumns: layout ? getComputedStyle(layout).gridTemplateColumns : '',
+                  stackColumns: stack ? getComputedStyle(stack).gridTemplateColumns : '',
+                  copyTop: copyRect ? copyRect.top : null,
+                  copyLeft: copyRect ? copyRect.left : null,
+                  asideTop: asideRect ? asideRect.top : null,
+                  asideRight: asideRect ? asideRect.right : null,
+                  valid: cards.every(card => {
+                    const image = card.querySelector('img');
+                    return card.target === '_blank'
+                      && card.relList.contains('noopener')
+                      && !/\b0 images\b/i.test(card.textContent || '')
+                      && image
+                      && image.loading === 'lazy'
+                      && image.width > 0
+                      && image.height > 0
+                      && image.complete
+                      && image.naturalWidth > 0;
+                  }),
+                };
+              })()
+            : null;
           return {
             pathname,
             beige,
@@ -160,6 +200,7 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
             lowContrast,
             bodyParagraphs,
             rhythmBlocks,
+            receipts,
             overflow: document.documentElement.scrollWidth > innerWidth,
           };
         }, { pathname });
@@ -195,11 +236,23 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
           for (const block of measured.rhythmBlocks) {
             assert.equal(block.exists, true, `${width} ${block.selector}: rhythm block is missing`);
             assert.ok(Math.abs(block.blockRight - block.contentRight) <= 1, `${width} ${block.selector}: rhythm block is not right-aligned`);
-            const expectedWidth = width <= 1024 ? block.contentWidth : block.contentWidth * (2 / 3);
+            const expectedWidth = width <= 1024
+              ? block.contentWidth
+              : block.selector === '#built-for-use'
+                ? (block.contentWidth - 42) * (2 / 3)
+                : block.contentWidth * (2 / 3);
             assert.ok(
               Math.abs(block.blockWidth - expectedWidth) <= 1,
               `${width} ${block.selector}: rhythm block width ${block.blockWidth} != ${expectedWidth}`,
             );
+          }
+          assert.equal(measured.receipts.count, 10, `${width}: receipt card count differs from the ten configured live sites`);
+          assert.equal(measured.receipts.valid, true, `${width}: receipt link, count, or lazy image is invalid`);
+          if (width <= 1024) {
+            assert.ok(measured.receipts.asideTop > measured.receipts.copyTop, `${width}: receipts are not below the copy`);
+            assert.equal(measured.receipts.stackColumns.split(' ').length, 2, `${width}: receipts are not a two-up grid`);
+          } else {
+            assert.ok(measured.receipts.asideRight < measured.receipts.copyLeft, `${width}: receipts are not in the left third`);
           }
           for (const band of await page.locator('main > section, main > aside').all()) {
             await band.scrollIntoViewIfNeeded();

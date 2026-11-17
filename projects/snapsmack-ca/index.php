@@ -11,6 +11,43 @@
 
 require_once __DIR__ . '/includes/skin-stats.php';
 
+// The RECEIPTS cards are a presentation of the same cached, fail-soft fleet
+// summary used elsewhere on this site. Keep the domain as the source of truth
+// for both the live URL and its statistics; a missing/zero row renders no card.
+$_receipt_sources = [
+    ['domain' => 'photowalk.ing', 'image' => '50shades-primary.png', 'width' => 1920, 'height' => 1080],
+    ['domain' => 'theschoolofhardnocks.ca', 'image' => 'gameon-primary.png', 'width' => 1920, 'height' => 1032],
+    ['domain' => 'portalproject.photoblogs.fyi', 'image' => 'glide-primary.png', 'width' => 1920, 'height' => 1080],
+    ['domain' => 'pixhellated.ca', 'image' => 'impact-primary.png', 'width' => 1920, 'height' => 1080],
+    ['domain' => 'fauxlaroid.fyi', 'image' => 'instantcam-primary.png', 'width' => 1920, 'height' => 1080],
+    ['domain' => 'craptasti.ca', 'image' => 'jturk-primary.png', 'width' => 1920, 'height' => 1080],
+    ['domain' => 'curbappeal.photoblogs.fyi', 'image' => 'newhorizon-landing.png', 'width' => 1920, 'height' => 1080],
+    ['domain' => 'foreverphotograph.ing', 'image' => 'slickr-primary.png', 'width' => 1920, 'height' => 1080],
+    ['domain' => 'baddaywithacamera.ca', 'image' => 'tilez-primary.png', 'width' => 1920, 'height' => 1080],
+    ['domain' => 'foundtextures.ca', 'image' => 'truegrit-primary.png', 'width' => 1920, 'height' => 1080],
+];
+$_receipt_cards = [];
+foreach ($_receipt_sources as $_receipt_source) {
+    $_receipt_domain = $_receipt_source['domain'];
+    $_receipt_stats = $_skin_demo_stats[$_receipt_domain] ?? null;
+    $_receipt_url = $_skin_fleet_sources[$_receipt_domain] ?? null;
+    $_receipt_count = is_array($_receipt_stats) ? (int)($_receipt_stats['posts'] ?? 0) : 0;
+    $_receipt_since = is_array($_receipt_stats) ? (string)($_receipt_stats['active_since'] ?? '') : '';
+    if (!$_receipt_url || $_receipt_count < 1 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $_receipt_since)) {
+        continue;
+    }
+    $_receipt_date = DateTimeImmutable::createFromFormat('!Y-m-d', $_receipt_since);
+    if (!$_receipt_date) {
+        continue;
+    }
+    $_receipt_source['url'] = $_receipt_url;
+    $_receipt_source['name'] = trim((string)($_receipt_stats['site_name'] ?? '')) ?: $_receipt_domain;
+    $_receipt_source['count'] = $_receipt_count;
+    $_receipt_source['since'] = $_receipt_date->format('M j, Y');
+    $_receipt_cards[] = $_receipt_source;
+}
+unset($_receipt_source, $_receipt_domain, $_receipt_stats, $_receipt_url, $_receipt_count, $_receipt_since, $_receipt_date, $_receipt_sources);
+
 $page_title       = 'SnapSmack - Self-Hosted Photo Publishing and Instagram Alternative';
 $page_description = 'What is new is old again. Free, self-hosted photo blogging that gives back the single-photo blog, long-form posting, classic Insta and Picasa-style albums, on hardware you control. Your photos. Your voice. Your style. Your dignity.';
 $page_og_url      = 'https://snapsmack.ca/';
@@ -49,9 +86,18 @@ $page_css = <<<'CSS'
 #built-for-use { padding: 68px 0; background: #404348; color: var(--white); border-top: 8px solid var(--red); }
 #built-for-use .site-discovery-kicker { color: #ffb3ad; }
 #built-for-use h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
+.built-for-use-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: start; }
 .built-for-use-copy { max-width: 920px; }
 .built-for-use-copy p { font-size: inherit; line-height: inherit; }
 .built-for-use-copy p + p { margin-top: 20px; }
+.receipts { min-width: 0; }
+.receipts h3 { margin: 0 0 14px; color: #ffb3ad; font: 900 .8rem/1.2 Arial Black, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.receipt-stack { display: grid; gap: 9px; }
+.receipt-card { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 12px; min-width: 0; padding: 8px; color: var(--white); background: #303236; border: 1px solid #686b70; }
+.receipt-card:hover, .receipt-card:focus-visible { color: var(--white); text-decoration: none; border-color: #ffb3ad; background: #25272a; }
+.receipt-card img { display: block; width: 104px; height: 62px; object-fit: cover; border: 1px solid #777a7f; }
+.receipt-card strong { display: block; overflow: hidden; color: var(--white); font: 900 .68rem/1.25 Arial Black, Arial, sans-serif; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.receipt-card span { display: block; margin-top: 5px; color: #d5d6d8; font: .66rem/1.35 'Courier New', monospace; }
 .home-rhythm-right { width: 66.6667%; margin-left: auto; }
 
 /* --- THE DELAY: the date moved; the standard did not --- */
@@ -176,6 +222,10 @@ $page_css = <<<'CSS'
 }
 @media (max-width: 1024px) {
     .home-rhythm-right { width: 100%; margin-left: 0; }
+    .built-for-use-layout { grid-template-columns: 1fr; gap: 34px; }
+    .built-for-use-layout .built-for-use-copy-wrap { order: 1; }
+    .built-for-use-layout .receipts { order: 2; }
+    .receipt-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 850px) {
     .featured-skin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -194,6 +244,7 @@ $page_css = <<<'CSS'
     .was-list { grid-template-columns: 1fr; }
     .whodat-card { display: block; }
     .whodat-portrait { margin: -22px -22px 20px; }
+    .receipt-stack { grid-template-columns: 1fr; }
 }
 CSS;
 
@@ -350,7 +401,21 @@ require_once __DIR__ . '/includes/header.php';
 
     <section id="built-for-use" aria-labelledby="built-for-use-title">
         <div class="wrap">
-            <div class="home-rhythm-right">
+            <div class="built-for-use-layout">
+<?php if (!empty($_receipt_cards)): ?>
+            <aside class="receipts" aria-labelledby="receipts-title">
+                <h3 id="receipts-title">The receipts</h3>
+                <div class="receipt-stack">
+<?php foreach ($_receipt_cards as $_receipt_card): ?>
+                    <a class="receipt-card" href="<?php echo htmlspecialchars($_receipt_card['url'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
+                        <img src="img/<?php echo htmlspecialchars($_receipt_card['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($_receipt_card['name'], ENT_QUOTES, 'UTF-8'); ?> landing page" width="<?php echo (int)$_receipt_card['width']; ?>" height="<?php echo (int)$_receipt_card['height']; ?>" loading="lazy">
+                        <span><strong><?php echo htmlspecialchars($_receipt_card['name'], ENT_QUOTES, 'UTF-8'); ?></strong><?php echo number_format((int)$_receipt_card['count']); ?> images posted since <?php echo htmlspecialchars($_receipt_card['since'], ENT_QUOTES, 'UTF-8'); ?></span>
+                    </a>
+<?php endforeach; ?>
+                </div>
+            </aside>
+<?php endif; ?>
+            <div class="built-for-use-copy-wrap">
             <p class="site-discovery-kicker">Built for the work</p>
             <h2 id="built-for-use-title">Shoot hard. Share harder.</h2>
             <div class="built-for-use-copy">
@@ -359,6 +424,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Here is the one and only catch. It's all built with AI and the support is mostly provided using AI. Straight up, I can kick ass and chew bubblegum with any camera you put in my hands. What I am not is a developer. AI handled that part for me while I made sure that what was built worked and holy shit does it ever. So, yeah. AI is all over this project and I'm not apologizing for it because it would not exist without it, and you wouldn't have a free, quality option sitting in front of you.</p>
                 <p>I get it if you don't like AI. I'm not happy about aspects of it, either. But it is the only way that SNAPSMACK could have happened or that I can provide you with quality support moving forward. I, too, wish to take photos and publish them online and the only way I can do that and do this (SNAPSMACK) is by leveraging technology in a way that benefits all of us. Let's use the new tools to return to The Old Ways. Let's bring photo blogging back.</p>
                 <p>If you don't want to use an AI product, fair. Use something else. If you can find it. I could not.</p>
+            </div>
             </div>
             </div>
         </div>
