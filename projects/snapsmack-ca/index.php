@@ -83,6 +83,15 @@ $page_css = <<<'CSS'
 .camera-blog-copy p { font-size: clamp(1.05rem, 1.7vw, 1.22rem); line-height: 1.65; }
 .camera-blog-copy p + p { margin-top: 18px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 
+/* --- WHY A BLOG: the ownership case, in one hard black band --- */
+#why-blog { padding: 64px 0; color: #ddd; background: #111; border-top: 8px solid var(--red); }
+#why-blog .site-discovery-kicker { color: #ff7b74; }
+#why-blog h2 { max-width: 900px; margin-bottom: 24px; color: var(--white); }
+.why-blog-copy { max-width: 900px; }
+.why-blog-copy p { font-size: clamp(1.05rem, 1.7vw, 1.22rem); line-height: 1.65; }
+.why-blog-copy p + p { margin-top: 18px; }
+.why-blog-copy .why-blog-pull { color: #ff7b74; font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+
 /* --- NOT ALONE: outcome, then the triptych as proof, plumbing last --- */
 #alone { padding: 64px 0 24px; }
 #alone h2 { max-width: 900px; }
@@ -138,15 +147,16 @@ $page_css = <<<'CSS'
 .custodian-points p { margin: 0; font-size: .92rem; line-height: 1.55; }
 
 #respect, #whodat { border-top: 8px solid var(--black); }
-#respect { background: var(--white); color: var(--dark-grey); border-top-color: var(--black); }
-#respect a { color: var(--red); text-decoration: underline; }
-#respect a:hover { color: var(--black); }
-#whodat { padding-top: 46px; color: #ddd; background: #2a2a2a; border-top-color: var(--red); }
-#whodat h2 { color: var(--white); }
-#whodat > .wrap > .whodat-honest a { color: #ff7b74; }
-.whodat-order { margin: -10px 0 24px; color: #aaa; font: 700 .75rem/1.4 'Courier New', monospace; text-transform: uppercase; }
+#respect { background: #1f1f1f; color: #ddd; border-top-color: var(--red); }
+#respect h2 { color: var(--white); }
+#respect a { color: #ff7b74; text-decoration: underline; }
+#respect a:hover { color: var(--white); }
+#whodat { padding-top: 46px; color: var(--dark-grey); background: #f4f4f4; border-top-color: var(--black); }
+#whodat h2 { color: var(--black); }
+#whodat > .wrap > .whodat-honest a { color: var(--red); }
+.whodat-order { margin: -10px 0 24px; color: #666; font: 700 .75rem/1.4 'Courier New', monospace; text-transform: uppercase; }
 .whodat-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 26px; }
-.whodat-card { grid-column: span 2; color: var(--dark-grey); background: var(--white); border: 1px solid var(--border); padding: 22px; }
+.whodat-card { grid-column: span 2; color: var(--dark-grey); background: var(--white); border: 1px solid #d2d2d2; padding: 22px; }
 .whodat-card:nth-last-child(2):nth-child(3n + 1) { grid-column: 2 / span 2; }
 .whodat-card a { color: var(--red); }
 .whodat-portrait { margin: -22px -22px 20px; background: var(--white); }
@@ -231,6 +241,18 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
+    <section id="why-blog" aria-labelledby="why-blog-title">
+        <div class="wrap">
+            <p class="site-discovery-kicker">Why a blog</p>
+            <h2 id="why-blog-title">Why a blog?</h2>
+            <div class="why-blog-copy">
+                <p>&ldquo;Blog&rdquo; is short for &ldquo;web log&rdquo;: a running record of your work, on a site you own, newest on top. Simple as that.</p>
+                <p>So why bother? Because somebody's going to speak for you online. Either it's some billionaire's app, deciding who sees your photos, when, and next to whose ads, or it's you, on your own terms, with no algorithm in the way.</p>
+                <p class="why-blog-pull">Are you an adult, or just a product?</p>
+            </div>
+        </div>
+    </section>
+
     <section id="running-late" aria-labelledby="running-late-title">
         <div class="wrap">
             <p class="site-discovery-kicker">Closed beta</p>
@@ -246,7 +268,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <p class="site-discovery-kicker">Not alone</p>
             <h2>Decentralized social where you hang onto your own files.</h2>
-            <p class="lede">Comments on your blog flow out to the network. Replies from out there flow back onto your blog. One conversation. You don&rsquo;t go to the social network; its replies come to you.</p>
+            <p class="lede">The fediverse is a network of independently run sites that talk to each other using a shared standard, the same way Gmail and Fastmail exchange email without being the same company. Because your SnapSmack site speaks that standard, people on Mastodon, Pixelfed, and other fediverse apps can follow your blog and reply to your photos right from their own accounts. Their comments land back on your site, and your photos stay on your own server. You don't need an account anywhere else to take part.</p>
             <p class="alone-payoff">Reach more people without leaving your home.</p>
             <div class="fed-shots">
                 <figure><button type="button" data-lightbox="img/fediverse-blog-view.png"><img src="img/fediverse-blog-view.png?v=20260814" alt="The unzucked photoblog on its own SnapSmack site" width="1920" height="1080" loading="lazy"></button><figcaption>Your blog. Your skin, your domain.</figcaption></figure>
@@ -323,10 +345,13 @@ require_once __DIR__ . '/includes/header.php';
     <section id="built-for-use" aria-labelledby="built-for-use-title">
         <div class="wrap">
             <p class="site-discovery-kicker">Built for the work</p>
-            <h2 id="built-for-use-title">Built for myself, shared with my tribe.</h2>
+            <h2 id="built-for-use-title">Shoot hard. Share harder.</h2>
             <div class="built-for-use-copy">
-                <p>I built SNAPSMACK for myself first. There was nothing left that worked for me. I am a prolific shooter and the average publishing system crumbles under the weight of my output. I still shoot that much, and I do it using SNAPSMACK day in and day out. It's not only load bearing software, it is used by me and will continue to be for years to come. However, I am an expert photographer, not an expert developer. That's why it was built with AI. That is why you will end up chatting with an AI for L1 and L2 support. I am not apologizing for this and anyone who has a problem with it should use something else, if you can find it. I could not.</p>
-                <p>I, too, wish to take photos and publish them online and the only way I can do that and do this (SNAPSMACK) is by leveraging technology in a way that benefits all of us. Let's use the new ways to return to The Old Ways. Welcome to the future where what is new is old again, and we have AI to thank for it.</p>
+                <p>I built SNAPSMACK for myself first. There was nothing left that worked for me, certainly not the last Wordpress install I turned into a smoking crater on a shared host. I'm hell on wheels with a camera and your average CMS cannot handle what I am laying down. So I made one that could.</p>
+                <p>SNAPSMACK is built to be worked hard, to be as secure as possible, to make batch posting and bulk sharing easy, big backups reliable and painless, and to do all of this without bleeding you dry because we're all tired of being billed just for breathing. Oh, and it does this with... Real. Fucking. Style.</p>
+                <p>Here is the one and only catch. It's all built with AI and the support is mostly provided using AI. Straight up, I can kick ass and chew bubblegum with any camera you put in my hands. What I am not is a developer. AI handled that part for me while I made sure that what was built worked and holy shit does it ever. So, yeah. AI is all over this project and I'm not apologizing for it because it would not exist without it, and you wouldn't have a free, quality option sitting in front of you.</p>
+                <p>I get it if you don't like AI. I'm not happy about aspects of it, either. But it is the only way that SNAPSMACK could have happened or that I can provide you with quality support moving forward. I, too, wish to take photos and publish them online and the only way I can do that and do this (SNAPSMACK) is by leveraging technology in a way that benefits all of us. Let's use the new tools to return to The Old Ways. Let's bring photo blogging back.</p>
+                <p>If you don't want to use an AI product, fair. Use something else. If you can find it. I could not.</p>
             </div>
         </div>
     </section>
