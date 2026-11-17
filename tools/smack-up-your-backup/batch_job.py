@@ -29,6 +29,9 @@ def _utc_now() -> str:
 
 
 def default_jobs_dir() -> str:
+    env_dir = os.environ.get("SUYB_BATCH_JOBS_DIR", "").strip()
+    if env_dir:
+        return env_dir
     base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
     return os.path.join(base, "SnapSmack", "suyb_batch_jobs")
 
@@ -191,6 +194,10 @@ class BatchJob:
         self.data["status"] = "abandoned"
         self.save()
 
+    def all_sites(self) -> List[str]:
+        ordered = sorted(self.data.get("sites", {}).items(), key=lambda kv: int(kv[1].get("order", 0)))
+        return [name for name, _meta in ordered]
+
     def resume_plan(self) -> Tuple[List[str], List[str]]:
         """Return (completed_sites, remaining_ordered_sites)."""
         ordered = sorted(self.data.get("sites", {}).items(), key=lambda kv: int(kv[1].get("order", 0)))
@@ -198,19 +205,61 @@ class BatchJob:
         remaining = [name for name, meta in ordered if meta.get("status") != "completed"]
         return completed, remaining
 
+    def reconcile_site_from_disk(self, site: str, zip_path: str, cloud_verified: bool = False) -> bool:
+        """If a site has a valid CRC-tested ZIP on disk and meets cloud requirements, mark completed."""
+        import zipfile
+        entry = self.data.get("sites", {}).get(site)
+        if not entry or entry.get("status") == "completed":
+            return bool(entry and entry.get("status") == "completed")
+        cloud_req = bool(entry.get("cloud_required", False))
+        if cloud_req and not cloud_verified:
+            return False
+        if not zip_path or not os.path.isfile(zip_path):
+            return False
+        try:
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                if zf.testzip() is not None:
+                    return False
+        except Exception:
+            return False
+        self.mark_site_result(
+            site,
+            zip_verified=True,
+            cloud_required=cloud_req,
+            cloud_verified=cloud_verified or not cloud_req,
+            evidence={"zip_path": zip_path, "reconciled": True},
+        )
+        return True
 
-def find_nonterminal_jobs(jobs_dir: Optional[str] = None) -> List[BatchJob]:
+
+def find_nonterminal_and_corrupt(jobs_dir: Optional[str] = None) -> Tuple[List[BatchJob], List[str]]:
+    """Return (nonterminal_jobs, quarantined_corrupt_paths)."""
     jdir = jobs_dir or default_jobs_dir()
     if not os.path.isdir(jdir):
-        return []
-    out: List[BatchJob] = []
+        return [], []
+    jobs: List[BatchJob] = []
+    quarantined: List[str] = []
     for fname in sorted(os.listdir(jdir), reverse=True):
         if not fname.endswith(".json"):
             continue
-        job = BatchJob.load(os.path.join(jdir, fname))
-        if job is not None and job.is_nonterminal:
-            out.append(job)
-    return out
+        full = os.path.join(jdir, fname)
+        job = BatchJob.load(full)
+        if job is None:
+            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            corrupt_path = f"{full}.corrupt-{ts}"
+            try:
+                os.replace(full, corrupt_path)
+                quarantined.append(corrupt_path)
+            except OSError:
+                quarantined.append(full)
+        elif job.is_nonterminal:
+            jobs.append(job)
+    return jobs, quarantined
+
+
+def find_nonterminal_jobs(jobs_dir: Optional[str] = None) -> List[BatchJob]:
+    jobs, _quarantined = find_nonterminal_and_corrupt(jobs_dir)
+    return jobs
 
 
 # ===== SNAPSMACK EOF =====

@@ -96,4 +96,93 @@ def test_start_fresh_abandon_clears_nonterminal_and_preserves_receipt(tmp_path):
     assert data["status"] == "abandoned"
 
 
+def test_corrupt_receipt_quarantined_and_reconcile_from_disk(tmp_path):
+    import zipfile
+
+    bad_path = tmp_path / "batch-bad.json"
+    bad_path.write_text("{corrupt json", encoding="utf-8")
+
+    jobs, quarantined = bj.find_nonterminal_and_corrupt(str(tmp_path))
+    assert jobs == []
+    assert len(quarantined) == 1
+    assert ".corrupt-" in quarantined[0]
+    assert not bad_path.exists()
+    assert os.path.exists(quarantined[0])
+
+    # Crash between verify and receipt write -> reconcile_site_from_disk marks complete without re-run
+    zpath = tmp_path / "site1.zip"
+    with zipfile.ZipFile(zpath, "w") as zf:
+        zf.writestr("db.sql", "SELECT 1;")
+    job = bj.BatchJob.create(["site1", "site2"], options={"cloud_required": False}, jobs_dir=str(tmp_path))
+    job.mark_site_running("site1")
+    assert job.reconcile_site_from_disk("site1", str(zpath)) is True
+    completed, remaining = job.resume_plan()
+    assert completed == ["site1"]
+    assert remaining == ["site2"]
+
+
+def test_startup_start_fresh_starts_new_batch_and_discard_does_not(tmp_path, monkeypatch):
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication, QMessageBox
+    import suyb_qt
+
+    _app = QApplication.instance() or QApplication([])
+    monkeypatch.setenv("SUYB_BATCH_JOBS_DIR", str(tmp_path))
+
+    # Stub SuybWindow without full profile/UI init
+    win = suyb_qt.SuybWindow.__new__(suyb_qt.SuybWindow)
+    win._batch_jobs_dir = str(tmp_path)
+    win.busy = lambda: False
+
+    started = []
+    win._start_backup = lambda names, **kw: started.append(list(names)) or True
+
+    job = bj.BatchJob.create(["alpha", "beta"], jobs_dir=str(tmp_path))
+    monkeypatch.setattr(suyb_qt.profile_manager, "load_profile", lambda _n: {})
+
+    class _FakeBox:
+        Information = QMessageBox.Information
+        AcceptRole = QMessageBox.AcceptRole
+        DestructiveRole = QMessageBox.DestructiveRole
+        RejectRole = QMessageBox.RejectRole
+
+        def __init__(self, *_a):
+            self._btns = {}
+            self._choice = "START FRESH"
+
+        def setWindowTitle(self, *_a): pass
+        def setIcon(self, *_a): pass
+        def setText(self, *_a): pass
+        def setInformativeText(self, *_a): pass
+        def setDefaultButton(self, *_a): pass
+
+        def addButton(self, text, _role):
+            btn = object()
+            self._btns[text] = btn
+            return btn
+
+        def exec(self): pass
+        def clickedButton(self): return self._btns[self._choice]
+
+    # 1. START FRESH abandons old job AND starts a fresh batch with the same site list
+    monkeypatch.setattr(suyb_qt, "QMessageBox", _FakeBox)
+    win._check_interrupted_batch_job()
+    assert started == [["alpha", "beta"]]
+    assert bj.BatchJob.load(job.path).status == "abandoned"
+
+    # 2. DISCARD abandons old job WITHOUT starting a batch
+    started.clear()
+    job2 = bj.BatchJob.create(["alpha", "beta"], jobs_dir=str(tmp_path))
+
+    class _DiscardBox(_FakeBox):
+        def __init__(self, *_a):
+            super().__init__(*_a)
+            self._choice = "DISCARD"
+
+    monkeypatch.setattr(suyb_qt, "QMessageBox", _DiscardBox)
+    win._check_interrupted_batch_job()
+    assert started == []
+    assert bj.BatchJob.load(job2.path).status == "abandoned"
+
+
 # ===== SNAPSMACK EOF =====

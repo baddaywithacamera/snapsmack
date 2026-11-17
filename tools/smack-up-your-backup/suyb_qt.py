@@ -748,10 +748,17 @@ class SuybWindow(QMainWindow):
         return runnable
 
     def _check_interrupted_batch_job(self):
-        """On launch, detect any nonterminal multi-site batch job and offer RESUME / START FRESH / ABANDON."""
+        """On launch, detect any nonterminal multi-site batch job and offer RESUME / START FRESH / DISCARD."""
         if self.busy():
             return
-        jobs = batch_job_module.find_nonterminal_jobs(self._batch_jobs_dir)
+        jobs, quarantined = batch_job_module.find_nonterminal_and_corrupt(self._batch_jobs_dir)
+        if quarantined:
+            QMessageBox.warning(
+                self,
+                "Corrupt batch receipt quarantined",
+                "An interrupted batch receipt could not be read and was quarantined to:\n"
+                + "\n".join(quarantined[:3]),
+            )
         if not jobs:
             return
         job = jobs[0]
@@ -769,7 +776,7 @@ class SuybWindow(QMainWindow):
         )
         resume_btn = box.addButton("RESUME", QMessageBox.AcceptRole)
         fresh_btn = box.addButton("START FRESH", QMessageBox.DestructiveRole)
-        abandon_btn = box.addButton("ABANDON", QMessageBox.RejectRole)
+        discard_btn = box.addButton("DISCARD", QMessageBox.RejectRole)
         box.setDefaultButton(resume_btn)
         box.exec()
         chosen = box.clickedButton()
@@ -783,13 +790,21 @@ class SuybWindow(QMainWindow):
                 auto_resume_checkpoints=True,
             )
         elif chosen is fresh_btn:
+            all_sites = job.all_sites()
+            opts = job.data.get("options", {})
             job.abandon()
-            for name in remaining:
+            for name in all_sites:
                 prof = profile_manager.load_profile(name) or {}
                 cp = BackupCheckpoint.load(prof.get("backup_dir", ""), prof.get("name", name))
                 if cp:
                     cp.delete()
-        elif chosen is abandon_btn:
+            if all_sites:
+                self._start_backup(
+                    all_sites,
+                    force_full=bool(opts.get("force_full", False)),
+                    unattended=False,
+                )
+        elif chosen is discard_btn:
             job.abandon()
 
     def _start_backup(self, names, force_full=False, unattended=False, batch_job=None, auto_resume_checkpoints=False):
@@ -910,6 +925,21 @@ class SuybWindow(QMainWindow):
             profile = dict(profile); profile["api_key"] = self._resolved_key(profile)
             profile["exit_package"] = bool(options["exit_package"] or profile.get("exit_package"))
             self.bridge.log.emit(f"{name}: starting backup" + (" (with exit package)" if profile["exit_package"] else ""))
+            def _on_verified(res_dict, site=name):
+                if job is not None:
+                    job.mark_site_result(
+                        site,
+                        zip_verified=bool(res_dict.get("zip_verified", False)),
+                        cloud_required=bool(res_dict.get("cloud_required", False)),
+                        cloud_verified=bool(res_dict.get("cloud_verified", False)),
+                        cancelled=bool(res_dict.get("cancelled", False)),
+                        evidence={
+                            "zip_path": res_dict.get("zip_path", ""),
+                            "files_downloaded": res_dict.get("files_downloaded", 0),
+                        },
+                        error="; ".join(res_dict.get("errors", []) or []),
+                    )
+
             engine = backup_engine.BackupEngine(
                 profile, force_full=options["force_full"], global_cloud=options["global_cloud"],
                 include_settings=options["include_settings"], global_config=options["global_config"],
@@ -919,16 +949,17 @@ class SuybWindow(QMainWindow):
                 on_stats=lambda fd, ft, ff, bd, bt, bf, site=name:
                     self.bridge.stats.emit(site, fd, ft, ff, bd, bt, bf),
                 on_log=lambda msg, site=name: self.bridge.log.emit(f"{site}: {msg}"),
-                resume_checkpoint=options["resume_points"].get(name))
+                resume_checkpoint=options["resume_points"].get(name),
+                on_before_checkpoint_clear=_on_verified)
             self.engine = engine
             if self._cancel_requested:
                 engine.cancel()
             if self._pause_requested:
                 engine.pause()
             result = engine.run() or {}
-            cloud_req = bool(options.get("global_cloud") or profile.get("cloud_provider"))
-            zip_ok = bool(result.get("success"))
-            cloud_ok = bool(result.get("cloud_verified", zip_ok)) if cloud_req else True
+            cloud_req = bool(result.get("cloud_required", bool(options.get("global_cloud") or profile.get("cloud_provider"))))
+            zip_ok = bool(result.get("zip_verified", False))
+            cloud_ok = bool(result.get("cloud_verified", False))
             if job is not None:
                 job.mark_site_result(
                     name,
