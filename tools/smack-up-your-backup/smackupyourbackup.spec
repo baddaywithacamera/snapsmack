@@ -202,16 +202,13 @@ VSVersionInfo(
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
-    name='smackupyourbackup-' + _ver,
+    exclude_binaries=True,
+    name='suyb',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
+    upx=False,
     console=False,          # debug output goes to suyb-debug.log next to the exe
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -220,4 +217,14 @@ exe = EXE(
     entitlements_file=None,
     icon=os.path.join(_src, '..', 'hub', 'icons', 'suyb.ico'),
     version=_version_file,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name='suyb',
 )
