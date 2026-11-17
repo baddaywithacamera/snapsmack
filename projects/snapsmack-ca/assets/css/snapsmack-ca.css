@@ -248,6 +248,40 @@ p:last-child { margin-bottom: 0; }
 .stt-since, .stt-unavailable { margin-top: 12px; color: #888; font: .65rem/1.3 'Courier New', monospace; letter-spacing: .05em; }
 .skin-entry[data-stats]:focus-visible { outline: 3px solid var(--red); outline-offset: 5px; }
 
+/* --- GLOSSARY POPUPS --- */
+abbr.term-abbr {
+    text-decoration: none;
+    border-bottom: 1px dotted currentColor;
+    cursor: help;
+}
+abbr.term-abbr:focus-visible {
+    outline: 2px solid var(--red);
+    outline-offset: 2px;
+}
+#glossary-tooltip {
+    position: fixed;
+    z-index: 10000;
+    display: none;
+    max-width: 320px;
+    padding: 12px 14px;
+    color: var(--white);
+    background: #111111;
+    border: 1px solid #444444;
+    border-top: 3px solid var(--red);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .65);
+    font: 0.78rem/1.45 Georgia, serif;
+    pointer-events: none;
+}
+#glossary-tooltip.visible { display: block; }
+#glossary-tooltip .gt-term {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--white);
+    font: 900 0.7rem/1.2 Arial Black, Arial, sans-serif;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
 @media (min-width: 1361px) {
     #site-header { padding: 18px 0 16px; }
     .header-inner { gap: 24px; padding-left: 22px; padding-right: 22px; }
