@@ -317,7 +317,8 @@ class _Objects(QPyTextObject):
         raw = _pixmap(path, cw)
         if raw.isNull():
             return None
-        scaled = raw.scaled(cell_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        scaled = raw if abs(raw.width() - cw) <= 64 else raw.scaled(
+            cell_size, Qt.KeepAspectRatio, Qt.FastTransformation)
         QPixmapCache.insert(ckey, scaled)
         return scaled
 

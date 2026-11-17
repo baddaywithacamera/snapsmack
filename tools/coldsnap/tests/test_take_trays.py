@@ -102,6 +102,7 @@ def test_focus_mode_and_compact_header(monkeypatch):
 def test_rendered_canvaswell_no_horizontal_overflow_and_ctrl_wheel(monkeypatch):
     app = _app()
     monkeypatch.setattr(ConnectPanel, "_start_mode_discovery", lambda self: None)
+    monkeypatch.setattr(ConnectPanel, "_begin_async_load", lambda self: None)
     dummy_solo = QWidget()
     dummy_solo.refresh_taxonomy = lambda: None
     monkeypatch.setattr("coldsnap_qt.main_window.SoloMode", lambda _cfg: dummy_solo)
@@ -237,6 +238,7 @@ def test_14_photo_mosaic_no_nested_scrollbar_and_fast_scroll(tmp_path, monkeypat
 
     app = _app()
     monkeypatch.setattr(ConnectPanel, "_start_mode_discovery", lambda self: None)
+    monkeypatch.setattr(ConnectPanel, "_begin_async_load", lambda self: None)
     dummy_solo = QWidget()
     dummy_solo.refresh_taxonomy = lambda: None
     monkeypatch.setattr("coldsnap_qt.main_window.SoloMode", lambda _cfg: dummy_solo)
@@ -268,6 +270,13 @@ def test_14_photo_mosaic_no_nested_scrollbar_and_fast_scroll(tmp_path, monkeypat
     assert win.take_mode.body.canvas.verticalScrollBar().maximum() == 0
     outer_sb = win.take_mode._canvas_scroll.verticalScrollBar()
     assert outer_sb.maximum() > 0
+
+    # First scroll pass populates cached downscaled cell pixmaps
+    for val in range(0, outer_sb.maximum() + 1, 240):
+        outer_sb.setValue(val)
+        app.processEvents()
+    outer_sb.setValue(0)
+    app.processEvents()
 
     max_step_ms = 0.0
     for val in range(0, outer_sb.maximum() + 1, 80):

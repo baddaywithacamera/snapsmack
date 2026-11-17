@@ -13,7 +13,7 @@ four credential boxes. Reuses config.py + profile_manager.py untouched.
 import concurrent.futures
 import threading
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
     QLineEdit, QMessageBox,
@@ -21,8 +21,6 @@ from PySide6.QtWidgets import (
 
 import config as cfg_module
 import profile_manager
-import snap_library
-from sumna_post import SumnaConnection
 
 from . import theme
 from .widgets import hint, field_label
@@ -32,19 +30,30 @@ class _ModeProbeBridge(QObject):
     finished = Signal(dict)
 
 
+class _SitesLoadBridge(QObject):
+    loaded = Signal(dict)
+
+
 class ConnectPanel(QWidget):
     """Owns the app-level connection config dict the modes read."""
 
+    sitesLoaded = Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.config = cfg_module.load()
+        self.config = {}
         self._suite_mode = None
         self._mode_label = ""
         self._selected_by_mode = {}
         self._discovered_modes = {}
-        self._probing_modes = True
+        self._profile_cache = {}   # name -> {"url": ..., "mode": ...}
+        self._profiles_loaded = False
+        self._startup_profile = None
+        self._probing_modes = False
         self._mode_bridge = _ModeProbeBridge(self)
         self._mode_bridge.finished.connect(self._apply_discovered_modes)
+        self._sites_bridge = _SitesLoadBridge(self)
+        self._sites_bridge.loaded.connect(self._apply_loaded_sites)
         self.setObjectName("AppHeader")
 
         col = QVBoxLayout(self)
@@ -103,10 +112,41 @@ class ConnectPanel(QWidget):
         self.details.setVisible(False)
         col.addWidget(self.details)
 
+        self.profile_combo.blockSignals(True)
+        self.profile_combo.addItem("loading sites…", "")
+        self.profile_combo.setEnabled(False)
+        self.profile_combo.blockSignals(False)
+        self.status_lbl.setText("loading sites…")
+        QTimer.singleShot(0, self._begin_async_load)
+
+    def _begin_async_load(self):
+        def _load():
+            import snap_library
+            cfg = cfg_module.load()
+            cache = {}
+            for name in profile_manager.list_profiles():
+                prof = profile_manager.load_profile(name) or {}
+                url = str(prof.get("url", "") or "").strip()
+                mode = str(prof.get("site_mode", "") or "").strip().lower()
+                if not mode and url:
+                    mode = str(snap_library.site_mode(url) or "").strip().lower()
+                cache[name] = {"url": url, "mode": mode}
+            self._sites_bridge.loaded.emit({"config": cfg, "cache": cache})
+
+        threading.Thread(target=_load, daemon=True, name="coldsnap-sites-load").start()
+
+    def _apply_loaded_sites(self, payload: dict):
+        self.config = dict(payload.get("config") or {})
+        self._profile_cache = dict(payload.get("cache") or {})
+        self._profiles_loaded = True
+        self.url_edit.setText(self.config.get("url", ""))
+        self.key_edit.setText(self.config.get("api_key", ""))
+        self.press_edit.setText(self.config.get("smackpress_key", ""))
         self._startup_profile = self._match_profile(self.config.get("url", ""))
+        self.profile_combo.setEnabled(True)
         self._rebuild_profile_combo()
         self._reflect_status()
-        self._start_mode_discovery()
+        self.sitesLoaded.emit()
 
     def add_header_action(self, widget):
         """Place one shell-level action before Connection details and Help."""
@@ -134,6 +174,11 @@ class ConnectPanel(QWidget):
         want = self._norm_url(url)
         if not want:
             return None
+        if self._profiles_loaded:
+            for name, meta in self._profile_cache.items():
+                if self._norm_url(meta.get("url", "")) == want:
+                    return name
+            return None
         for name in profile_manager.list_profiles():
             prof = profile_manager.load_profile(name) or {}
             if self._norm_url(prof.get("url", "")) == want:
@@ -159,21 +204,23 @@ class ConnectPanel(QWidget):
             self._selected_by_mode[self._suite_mode] = current
         self._suite_mode = suite_mode
         self._mode_label = label
-        self._rebuild_profile_combo()
+        if self._profiles_loaded:
+            self._rebuild_profile_combo()
 
     def _compatible_profile_names(self):
+        if not self._profiles_loaded:
+            return []
         names = []
-        for name in profile_manager.list_profiles():
-            profile = profile_manager.load_profile(name) or {}
-            mode = self._discovered_modes.get(name) or self._profile_mode(profile)
-            if not mode and profile.get("url"):
-                mode = str(snap_library.site_mode(profile["url"]) or "").strip().lower()
+        for name, meta in self._profile_cache.items():
+            mode = self._discovered_modes.get(name) or meta.get("mode", "")
             if self._suite_mode is None or mode == self._suite_mode:
                 names.append(name)
         return names
 
     def _start_mode_discovery(self):
         """Probe only destinations whose mode is not already in the shared profile/catalog."""
+        from sumna_post import SumnaConnection
+        import snap_library
         profiles = []
         for name in profile_manager.list_profiles():
             profile = profile_manager.load_profile(name) or {}

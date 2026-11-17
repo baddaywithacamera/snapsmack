@@ -135,11 +135,11 @@ class MainWindow(QMainWindow):
         self.tabs.currentChanged.connect(self._on_mode_changed)
         self.connect_panel.profile_combo.currentIndexChanged.connect(
             lambda _index: QTimer.singleShot(0, self.solo_mode.refresh_taxonomy))
+        self.connect_panel.sitesLoaded.connect(self.solo_mode.refresh_taxonomy)
         saved_tab = int(self._window_settings.value("window/active_tab", 0))
         if 0 <= saved_tab < self.tabs.count():
             self.tabs.setCurrentIndex(saved_tab)
         self._on_mode_changed(self.tabs.currentIndex())
-        QTimer.singleShot(0, self.solo_mode.refresh_taxonomy)
 
         self.setCentralWidget(central)
 
