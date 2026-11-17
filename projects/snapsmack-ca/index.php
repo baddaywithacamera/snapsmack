@@ -126,6 +126,8 @@ $page_css = <<<'CSS'
 .running-late-copy { max-width: 920px; }
 .running-late-copy p { font-size: inherit; line-height: inherit; }
 .running-late-copy p + p { margin-top: 18px; }
+.running-late-copy a { color: var(--white); text-decoration: underline; text-decoration-color: #ffb3ad; }
+.running-late-copy a:hover { color: #ffb3ad; }
 
 
 /* --- WHAT WAS: the four things taken, and their names here --- */
@@ -392,7 +394,7 @@ require_once __DIR__ . '/includes/header.php';
             <h2 id="running-late-title">Why we&rsquo;re running late.</h2>
             <div class="running-late-copy">
                 <p>First and foremost, the software isn't ready yet. It not only has rough edges and some remaining security holes we're fixing, but it is not elegant. That is important. This software is built in the memory of a deceased friend who did everything elegantly and expected the same out of every tool he used. SnapSmack doesn't ship until it reaches the point where he would have enjoyed using it.</p>
-                <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot; &mdash; and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. This is for Ray. It will ship when it's what he would approve of.</p>
+                <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot; &mdash; and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. <a href="https://baddaywithacamera.ca/rest-in-peace" target="_blank" rel="noopener">This is for Ray.</a> It will ship when it's what he would approve of.</p>
             </div>
         </div>
     </section>
