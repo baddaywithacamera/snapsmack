@@ -978,35 +978,87 @@ class SmacktalkPoster:
                       or (server_data or {}).get("url", ""),
             per_image=per_image)
 
+    @staticmethod
+    def _long_slugify(text: str) -> str:
+        s = re.sub(r"[^a-z0-9\s-]", "", (text or "").strip().lower())
+        s = re.sub(r"[\s-]+", "-", s).strip("-")
+        return s
+
+    @staticmethod
+    def _body_text_for_sync(draft) -> str:
+        raw = (getattr(draft, "caption", "") or "").strip()
+        if raw:
+            return raw
+        bjson = (getattr(draft, "body_blocks", "") or "").strip()
+        if not bjson:
+            return ""
+        try:
+            from coldsnap_qt import biggie
+            blocks = biggie.blocks_from_json(bjson)
+            if not blocks:
+                return ""
+            positions = {
+                str(getattr(im, "asset_uuid", "")): i + 1
+                for i, im in enumerate(getattr(draft, "images", []) or [])
+                if getattr(im, "asset_uuid", "")
+            }
+
+            def _wire(blk):
+                out = dict(blk)
+                if out.get("type") == "image" and out.get("asset_uuid"):
+                    pos = positions.get(str(out["asset_uuid"]))
+                    if pos:
+                        out["img_id"] = f"bucket:{pos}"
+                    for k in ("asset_uuid", "placement", "width_ratio", "crop", "alt", "caption", "link"):
+                        out.pop(k, None)
+                if out.get("type") == "mosaic" and out.get("order"):
+                    out["order"] = [positions.get(str(v), v) for v in out["order"]]
+                if out.get("type") == "columns":
+                    out["cols"] = [[_wire(c) for c in col] for col in out.get("cols", [])]
+                return out
+
+            return biggie.serialize_blocks([_wire(b) for b in blocks]).strip()
+        except Exception:
+            return ""
+
+    def _resolve_existing_post_id(self, draft) -> None:
+        if getattr(draft, "remote_post_id", 0):
+            return
+        cand = self._long_slugify(getattr(draft, "slug", "") or getattr(draft, "title", ""))
+        if not cand:
+            return
+        try:
+            posts = self.list_posts(limit=500)
+        except Exception:
+            return
+        for p in (posts or []):
+            if not isinstance(p, dict):
+                continue
+            pslug = self._long_slugify(str(p.get("slug", "") or ""))
+            pid = int(p.get("id") or 0)
+            if pslug == cand and pid > 0:
+                draft.remote_post_id = pid
+                if not getattr(draft, "slug", ""):
+                    draft.slug = p.get("slug", cand)
+                return
+
     def sync_smacktalk(self, draft) -> SyncResult:
         if not self.key:
             return SyncResult(False, message="No SMACKTALK key set for this site (needs a 'smackpress' API key).")
         is_page = getattr(draft, "destination_type", "post") == "page"
         if not (draft.title or "").strip():
             return SyncResult(False, message="a SMACKTALK post needs a title")
-        # A LONGFORM POST DOES NOT NEED A PHOTOGRAPH.
-        #
-        # This refused any post with an empty bucket -- "no images on draft" --
-        # so an essay with no picture could be written and then never sent.
-        # Nothing downstream needs one: build_payload sends featured_image_id
-        # = None with an empty bucket_image_ids, and core/smackpress-api.php
-        # requires only a title, treating the cover as optional
-        # (`!empty($body['featured_image_id']) ? ... : 0`, smackpress-api.php
-        # :631 and :691). The guard was the only thing in the way.
-        #
-        # It also ran BEFORE the title check, so a draft missing both reported
-        # the images and never mentioned the title. Title goes first now.
-        #
-        # What DOES still need photographs is a mosaic: _resolve_mosaics()
-        # returns the body untouched when there are no image ids, so a [mosaic]
-        # placeholder would publish as literal text in the middle of the essay.
-        # That is the only case left, and it now says which one it is.
+        body_text = self._body_text_for_sync(draft)
+        if not body_text and not is_page and (getattr(draft, "body_blocks", "") or "").strip():
+            return SyncResult(False, message="Draft body blocks produced empty content — refusing to overwrite with an empty post.")
         if (not draft.images and not is_page
-                and self._MOSAIC_TOKEN.search(draft.caption or "")):
+                and self._MOSAIC_TOKEN.search(body_text)):
             return SyncResult(False, message=(
                 "This post asks for a MOSAIC but has no photographs. Add the "
                 "photos, or take the mosaic out of the writing."))
         try:
+            if not is_page:
+                self._resolve_existing_post_id(draft)
             image_ids, cover_id = [], None
             for im in draft.images:
                 existing_id = int(getattr(im, "remote_image_id", 0) or 0)
@@ -1028,7 +1080,7 @@ class SmacktalkPoster:
             # gallery of this essay's photos (created from the just-uploaded Gallery
             # ids). The photographer writes text + [mosaic]; the render is a real
             # tiled gallery in place. No server change — smackpress/mosaics exists.
-            content = self._resolve_mosaics(draft.caption or "", image_ids, draft)[0]
+            content = self._resolve_mosaics(body_text, image_ids, draft)[0]
             content = self._resolve_bucket_images(content, image_ids)
 
             route = "smackpress/pages" if is_page else "smackpress/posts"
