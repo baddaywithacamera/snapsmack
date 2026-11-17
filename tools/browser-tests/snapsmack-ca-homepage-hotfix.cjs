@@ -24,6 +24,12 @@ const widths = [1920, 1440, 1024];
           runningLateColor: color('#running-late'),
           cameraCopyTop: rect('.camera-blog-copy').top,
           cameraGridTop: rect('.camera-grid').top,
+          cameraCopyCenter: rect('.camera-blog-copy').top + (rect('.camera-blog-copy').height / 2),
+          cameraGridCenter: rect('.camera-grid').top + (rect('.camera-grid').height / 2),
+          whyMediaCenter: rect('.why-blog-media').top + (rect('.why-blog-media').height / 2),
+          whyCopyCenter: rect('.why-blog-copy-wrap').top + (rect('.why-blog-copy-wrap').height / 2),
+          scaleMediaCenter: rect('.scale-media').top + (rect('.scale-media').height / 2),
+          scaleCopyCenter: rect('.scale-copy').top + (rect('.scale-copy').height / 2),
           whyHeadingColor: color('#why-blog h2'),
           whyPullColor: color('.why-blog-pull'),
           scaleHeading: document.querySelector('.scale-heading').innerText.trim(),
@@ -33,6 +39,7 @@ const widths = [1920, 1440, 1024];
           custodianTitles: [...document.querySelectorAll('.custodian-points h3')].map(node => getComputedStyle(node).color),
           dashboardLarge: document.querySelector('.why-blog-shot').getAttribute('data-lightbox'),
           dashboardThumb: document.querySelector('.why-blog-shot img').getAttribute('src'),
+          portraitButtons: document.querySelectorAll('.whodat-portrait-button[data-lightbox][data-lightbox-group="co-authors"]').length,
         };
       });
 
@@ -47,10 +54,13 @@ const widths = [1920, 1440, 1024];
       assert.equal(measured.scaleAlt, '1 hub, 27 spokes, one dashboard', `${width}: scale alt`);
       assert.equal(measured.dashboardLarge, 'img/admin-dashboard-large.png', `${width}: dashboard large image`);
       assert.equal(measured.dashboardThumb, 'img/admin-dashboard-thumb.png', `${width}: dashboard thumbnail`);
+      assert.equal(measured.portraitButtons, 5, `${width}: co-author portrait lightbox buttons`);
       assert.equal(measured.custodianTitles.length, 3, `${width}: custodian title count`);
       assert.equal(measured.custodianTitles.every(item => item === 'rgb(245, 10, 10)'), true, `${width}: custodian title colour`);
       if (width >= 1440) {
-        assert.ok(Math.abs(measured.cameraCopyTop - measured.cameraGridTop) <= 1, `${width}: camera copy and grid tops differ`);
+        assert.ok(Math.abs(measured.cameraCopyCenter - measured.cameraGridCenter) <= 1, `${width}: camera grid is not vertically centred`);
+        assert.ok(Math.abs(measured.whyMediaCenter - measured.whyCopyCenter) <= 1, `${width}: dashboard image is not vertically centred`);
+        assert.ok(Math.abs(measured.scaleMediaCenter - measured.scaleCopyCenter) <= 1, `${width}: fleet image is not vertically centred`);
       }
 
       for (const selector of ['.door-shot-thumb', '.camera-card button', '.why-blog-shot', '.scale-shot']) {
@@ -59,6 +69,17 @@ const widths = [1920, 1440, 1024];
         const outline = await target.evaluate(node => getComputedStyle(node).outlineColor);
         assert.equal(outline, 'rgb(212, 0, 0)', `${width}: ${selector} hover outline`);
       }
+
+      const portrait = page.locator('.whodat-portrait-button').first();
+      await portrait.hover();
+      assert.equal(await portrait.evaluate(node => getComputedStyle(node).outlineColor), 'rgb(212, 0, 0)', `${width}: portrait hover outline`);
+      await portrait.focus();
+      await portrait.press('Enter');
+      assert.equal(await page.locator('#ss-lightbox').getAttribute('hidden'), null, `${width}: Enter opens portrait lightbox`);
+      assert.equal(await page.locator('.ss-lightbox-caption').textContent(), 'Sean McCormick', `${width}: portrait caption`);
+      await page.keyboard.press('Escape');
+      assert.notEqual(await page.locator('#ss-lightbox').getAttribute('hidden'), null, `${width}: Escape closes portrait lightbox`);
+      assert.equal(await portrait.evaluate(node => document.activeElement === node), true, `${width}: focus returns to portrait opener`);
 
       await page.close();
     }
