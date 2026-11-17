@@ -58,6 +58,11 @@
             3
         ]
     },
+    "api-key-generation-requires-step-up-regression.php": {
+        "assertions": 17,
+        "predicates": 23,
+        "thresholds": []
+    },
     "api-key-scope-regression.php": {
         "assertions": 12,
         "predicates": 18,
