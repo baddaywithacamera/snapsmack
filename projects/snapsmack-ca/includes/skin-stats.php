@@ -26,6 +26,7 @@ $_skin_demo_sites = [
     'craptasti.ca'                    => 'https://craptasti.ca',
     'usedcarparts.photoblogs.fyi'     => 'https://usedcarparts.photoblogs.fyi',
     'allinthewrist.photoblogs.fyi'    => 'https://allinthewrist.photoblogs.fyi',
+    'curbappeal.photoblogs.fyi'       => 'https://curbappeal.photoblogs.fyi',
 ];
 
 $_skin_demo_stats = [];

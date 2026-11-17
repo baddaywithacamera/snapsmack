@@ -2093,6 +2093,14 @@
         "predicates": 0,
         "thresholds": []
     },
+    "skins-page-stats-cover-every-demo-regression.php": {
+        "assertions": 5,
+        "predicates": 2,
+        "thresholds": [
+            10,
+            10
+        ]
+    },
     "slickr-album-header-regression.php": {
         "assertions": 4,
         "predicates": 5,
