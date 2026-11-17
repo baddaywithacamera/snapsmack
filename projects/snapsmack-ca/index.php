@@ -124,11 +124,15 @@ $page_css = <<<'CSS'
 #running-late { padding: 68px 0; background: #404348; color: var(--white); border-top: 8px solid var(--black); }
 #running-late .site-discovery-kicker { color: var(--white); }
 #running-late h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
+.running-late-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 42px; align-items: center; }
 .running-late-copy { max-width: 920px; }
 .running-late-copy p { font-size: inherit; line-height: inherit; }
 .running-late-copy p + p { margin-top: 18px; }
 .running-late-copy a { color: var(--white); text-decoration: underline; text-decoration-color: var(--white); }
 .running-late-copy a:hover { color: var(--white); text-decoration-color: var(--white); text-decoration-thickness: 2px; }
+.running-late-media { display: block; width: fit-content; max-width: 100%; justify-self: end; border: 1px solid #777; }
+.running-late-media:hover, .running-late-media:focus-visible { border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
+.running-late-media img { display: block; width: auto; max-width: 100%; height: auto; max-height: 350px; }
 
 
 /* --- WHAT WAS: the four things taken, and their names here --- */
@@ -286,6 +290,9 @@ $page_css = <<<'CSS'
     .built-for-use-layout .receipts { order: 2; }
     .receipt-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .receipt-card:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - 5px); box-sizing: border-box; justify-self: center; }
+    .running-late-layout { grid-template-columns: 1fr; gap: 30px; }
+    .running-late-copy { order: 1; }
+    .running-late-media { order: 2; justify-self: start; }
     .camera-blog-layout, .why-blog-layout, .scale-layout { grid-template-columns: 1fr; gap: 30px; }
     .camera-blog-copy { order: 1; }
     .camera-grid { order: 2; width: min(100%, 720px); justify-self: start; }
@@ -403,9 +410,12 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <p class="site-discovery-kicker">Closed beta</p>
             <h2 id="running-late-title">Why we&rsquo;re running late.</h2>
-            <div class="running-late-copy">
-                <p>First and foremost, the software isn't ready yet. It not only has rough edges and some remaining security holes we're fixing, but it is not elegant. That is important. This software is built in the memory of a deceased friend who did everything elegantly and expected the same out of every tool he used. SnapSmack doesn't ship until it reaches the point where he would have enjoyed using it.</p>
-                <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot; &mdash; and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. <a href="https://baddaywithacamera.ca/rest-in-peace" target="_blank" rel="noopener">This is for Ray</a>. It will ship when it's what he would approve of.</p>
+            <div class="running-late-layout">
+                <div class="running-late-copy">
+                    <p>First and foremost, the software isn't ready yet. It not only has rough edges and some remaining security holes we're fixing, but it is not elegant. That is important. This software is built in the memory of a deceased friend who did everything elegantly and expected the same out of every tool he used. SnapSmack doesn't ship until it reaches the point where he would have enjoyed using it.</p>
+                    <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot; &mdash; and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. <a href="https://baddaywithacamera.ca/rest-in-peace" target="_blank" rel="noopener">This is for Ray</a>. It will ship when it's what he would approve of.</p>
+                </div>
+                <a class="running-late-media" href="ding-dong-bell.php"><img src="img/opaudit-sample.png" alt="Sample operability audit: OPAUDIT 027" width="1423" height="1800" loading="lazy"></a>
             </div>
         </div>
     </section>
