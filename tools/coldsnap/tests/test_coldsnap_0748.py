@@ -69,6 +69,7 @@ def test_mosaic_plus_text_publish_arrives_with_body_and_refs_and_updates_existin
         kind=O.KIND_SMACKTALK,
         mode="smacktalk",
         title="Start your engines",
+        slug="start-your-engines",
         caption="",  # Simulate empty caption when only body_blocks was persisted
         body_blocks=biggie.blocks_to_json(blocks),
         img_status="published",
@@ -81,7 +82,7 @@ def test_mosaic_plus_text_publish_arrives_with_body_and_refs_and_updates_existin
 
     sess = _MockSession(existing_posts=[{"id": 42, "slug": "start-your-engines", "title": "Start your engines"}])
     poster = SmacktalkPoster("https://example.test", "k" * 64, session=sess)
-    res = poster.sync_smacktalk(draft)
+    res = poster.sync_smacktalk(draft, confirm_overwrite_fn=lambda _p: True)
 
     assert res.ok, res.message
     assert res.remote_post_id == 42

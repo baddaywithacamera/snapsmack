@@ -1021,28 +1021,39 @@ class SmacktalkPoster:
         except Exception:
             return ""
 
-    def _resolve_existing_post_id(self, draft) -> None:
+    def _resolve_existing_post_id(self, draft, confirm_overwrite_fn=None) -> Optional[str]:
+        """Resolve an explicit draft.slug (never draft.title!) to an existing remote post_id.
+        Requires explicit confirmation before overwriting an existing post; returns an error
+        message if confirmation is missing/declined, or None when safe to proceed."""
         if getattr(draft, "remote_post_id", 0):
-            return
-        cand = self._long_slugify(getattr(draft, "slug", "") or getattr(draft, "title", ""))
-        if not cand:
-            return
+            return None
+        explicit_slug = self._long_slugify(getattr(draft, "slug", "") or "")
+        if not explicit_slug:
+            return None
         try:
             posts = self.list_posts(limit=500)
         except Exception:
-            return
+            return None
         for p in (posts or []):
             if not isinstance(p, dict):
                 continue
             pslug = self._long_slugify(str(p.get("slug", "") or ""))
             pid = int(p.get("id") or 0)
-            if pslug == cand and pid > 0:
+            if pslug == explicit_slug and pid > 0:
+                confirmed = bool(getattr(draft, "confirm_overwrite", False))
+                if not confirmed and callable(confirm_overwrite_fn):
+                    confirmed = bool(confirm_overwrite_fn(p))
+                if not confirmed:
+                    return (
+                        f"Post with slug '{explicit_slug}' already exists (id={pid}). "
+                        "Confirm overwrite before updating it."
+                    )
                 draft.remote_post_id = pid
-                if not getattr(draft, "slug", ""):
-                    draft.slug = p.get("slug", cand)
-                return
+                draft.slug = p.get("slug", explicit_slug)
+                return None
+        return None
 
-    def sync_smacktalk(self, draft) -> SyncResult:
+    def sync_smacktalk(self, draft, confirm_overwrite_fn=None) -> SyncResult:
         if not self.key:
             return SyncResult(False, message="No SMACKTALK key set for this site (needs a 'smackpress' API key).")
         is_page = getattr(draft, "destination_type", "post") == "page"
@@ -1058,7 +1069,10 @@ class SmacktalkPoster:
                 "photos, or take the mosaic out of the writing."))
         try:
             if not is_page:
-                self._resolve_existing_post_id(draft)
+                err_msg = self._resolve_existing_post_id(
+                    draft, confirm_overwrite_fn=confirm_overwrite_fn)
+                if err_msg:
+                    return SyncResult(False, message=err_msg)
             image_ids, cover_id = [], None
             for im in draft.images:
                 existing_id = int(getattr(im, "remote_image_id", 0) or 0)
