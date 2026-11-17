@@ -127,6 +127,7 @@ TOOL_ICON_FILES = {
     "SHOTS FIRED": "shotsfired-simple.ico",
     "CRONOMETER": "cronometer-simple.ico",
     "FED UP": "fed-up.ico",
+    "DRIVE BY": "driveby-simple.ico",
 }
 
 TOOL_IMAGE_FILES = {
