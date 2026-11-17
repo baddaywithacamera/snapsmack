@@ -217,7 +217,106 @@ if (_reauth_bump_counter($pdo, 'uid:7', 'reauth_fail', $tC) !== 2) {
     $failures[] = 'a bump that collided with an existing row did not increment it';
 }
 
-// ── NO SECRETS IN THE AUDIT LOG ──────────────────────────────────────────
+// -- SPREAD-OUT ATTEMPTS FROM FRESH SESSIONS STILL LOCK -------------------
+// Codex's reproducible bypass, and it is the one that mattered. My first
+// atomic increment left window_start alone, so the shared row expired 15
+// minutes after the FIRST failure instead of the last. Wrong passwords four
+// minutes apart, each from a NEW session, went 1,2,3,4,1 and never locked.
+// The session counter had been masking it: in one browser it looked fine.
+// The session is wiped between every attempt here, so only the server-side
+// budget can do the work.
+$pdo->exec("DELETE FROM snap_rate_limits");
+$tS = 2_000_000_000;
+$spread = [];
+for ($i = 0; $i < REAUTH_MAX_ATTEMPTS; $i++) {
+    $_SESSION = ['user_id' => 7];            // a brand-new session each time
+    $spread = reauth_verify($pdo, 'wrong-password', '000000', $tS + ($i * 240));
+}
+if (empty($spread['locked'])) {
+    $failures[] = 'five wrong passwords four minutes apart, each from a fresh '
+        . 'session, did not lock the account. The shared budget is expiring '
+        . 'from the FIRST failure instead of the last, so anyone willing to '
+        . 'wait four minutes between guesses has no limit at all.';
+}
+if ((int)($spread['retry_after'] ?? 0) !== 900) {
+    $failures[] = 'the spread-out lockout was ' . (int)($spread['retry_after'] ?? 0)
+        . ' seconds, expected 900';
+}
+
+// A GENUINELY QUIET PERIOD STILL FORGIVES. The counter must not become a
+// lifetime tally: four failures, then real silence, then four more is not a
+// lockout.
+$pdo->exec("DELETE FROM snap_rate_limits");
+$tQ = 2_100_000_000;
+for ($i = 0; $i < REAUTH_MAX_ATTEMPTS - 1; $i++) {
+    $_SESSION = ['user_id' => 7];
+    reauth_verify($pdo, 'wrong-password', '000000', $tQ + $i);
+}
+$_SESSION = ['user_id' => 7];
+$afterQuiet = reauth_verify($pdo, 'wrong-password', '000000',
+    $tQ + REAUTH_BASE_LOCKOUT_SECONDS + 60);
+if (!empty($afterQuiet['locked'])) {
+    $failures[] = 'four failures followed by a full quiet period still locked '
+        . 'on the next attempt; the quiet period is not being honoured';
+}
+
+// -- ONE LOCK EPISODE PER LOCK, NOT ONE PER REQUEST -----------------------
+// Two requests that both pass the budget check and both reach the threshold
+// must produce ONE episode. Before the winner election, both bumped the
+// episode row and the first offence cost 1800 seconds. Driven through
+// _reauth_record_failure directly: PHP cannot race itself, but this IS the
+// interleaving -- the second caller arrives after the first has consumed the
+// spent attempt row, which is exactly what a loser sees.
+$pdo->exec("DELETE FROM snap_rate_limits");
+$tR = 2_200_000_000;
+for ($i = 0; $i < REAUTH_MAX_ATTEMPTS - 1; $i++) {
+    _reauth_bump_counter($pdo, 'uid:7', 'reauth_fail', $tR);
+}
+$_SESSION = ['user_id' => 7];
+$firstReq = _reauth_record_failure($pdo, 7, 'bad_password', $tR);
+$_SESSION = ['user_id' => 7];
+$secondReq = _reauth_record_failure($pdo, 7, 'bad_password', $tR);
+
+$episodes = (int)$pdo->query("SELECT count FROM snap_rate_limits
+                              WHERE ip = 'uid:7' AND action = 'reauth_lock'")->fetchColumn();
+if ($episodes !== 1) {
+    $failures[] = "two requests crossing the threshold together recorded "
+        . "{$episodes} lock episodes, not 1. The owner is handed the second "
+        . 'tier for a first offence.';
+}
+if ((int)($firstReq['retry_after'] ?? 0) !== 900) {
+    $failures[] = 'the winning request did not report a 900-second lock';
+}
+if ((int)($secondReq['retry_after'] ?? 0) !== 900) {
+    $failures[] = 'the losing request reported '
+        . (int)($secondReq['retry_after'] ?? 0) . ' seconds instead of the '
+        . 'remaining time on the lock that already exists';
+}
+
+// THE WINNER ELECTION ITSELF, read as source, and labelled because it is.
+// The assertion above is satisfied by the standing-lock guard: the second
+// caller sees the lock the first one created and reports it. That guard
+// cannot cover the genuinely simultaneous case, where both requests read "no
+// lock" before either writes one, and PHP in a single process cannot produce
+// that interleaving. The election is what covers it -- the spent attempt row
+// is DELETEd and only the caller whose delete affected a row advances the
+// tier -- so the check is that the episode bump is gated on that result and
+// not run unconditionally. Without this, removing the gate passes every
+// executed assertion in this file; I checked.
+$reauthSrc = (string)php_strip_whitespace(dirname(__DIR__) . '/core/reauth.php');
+$lockedAt = strpos($reauthSrc, "'reauth_lock'");
+$electAt = strpos($reauthSrc, 'rowCount()');
+if ($electAt === false) {
+    $failures[] = 'the lock-episode transition no longer elects a single '
+        . 'winner (no rowCount() check). Two requests crossing the threshold '
+        . 'at the same instant would each advance the tier, so a first '
+        . 'offence costs the second tier.';
+} elseif ($lockedAt !== false && $electAt > strrpos($reauthSrc, "_reauth_bump_counter(\$pdo, \$key, 'reauth_lock'")) {
+    $failures[] = 'the winner election runs AFTER the episode counter is '
+        . 'bumped, which elects nothing';
+}
+
+// -- NO SECRETS IN THE AUDIT LOG ──────────────────────────────────────────
 $log = (string)@file_get_contents($logFile);
 if ($log === '') {
     $failures[] = 'nothing was written to the audit log, so the log assertions '

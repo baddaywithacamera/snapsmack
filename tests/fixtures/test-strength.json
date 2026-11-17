@@ -1687,12 +1687,15 @@
         ]
     },
     "reauth-lockout-backoff-escalates-regression.php": {
-        "assertions": 23,
-        "predicates": 4,
+        "assertions": 34,
+        "predicates": 6,
         "thresholds": [
             2,
             12,
             12,
+            900,
+            900,
+            900,
             900,
             900,
             900,

@@ -135,9 +135,19 @@ function _reauth_bump_counter(PDO $pdo, string $key, string $action, int $now): 
     } catch (PDOException $e) {
         // Row already exists - fall through to the atomic increment.
     }
+    // window_start MOVES WITH THE COUNT, and it has to be in the SAME
+    // statement. Codex's second FAIL: my first atomic version incremented the
+    // count and left window_start alone, so the row expired 15 minutes after
+    // the FIRST failure rather than 15 after the LAST. Wrong passwords spaced
+    // four minutes apart from fresh sessions then never locked anything --
+    // db_count went 1,2,3,4,1 -- and the only reason it looked right in
+    // testing is that the SESSION counter was masking the broken shared
+    // budget. window_start means "the last failure", so the quiet period is a
+    // quiet period.
     $pdo->prepare(
-        "UPDATE snap_rate_limits SET count = count + 1 WHERE ip = ? AND action = ?"
-    )->execute([$key, $action]);
+        "UPDATE snap_rate_limits SET count = count + 1, window_start = ?
+         WHERE ip = ? AND action = ?"
+    )->execute([$now_str, $key, $action]);
     $read = _reauth_read_counter($pdo, $key, $action, $now);
     return $read === null ? 1 : $read[0];
 }
@@ -222,6 +232,32 @@ function _reauth_record_failure(PDO $pdo, int $uid, string $reason, int $now): a
     $db_count = $sess_count;
     $cycle = 0;
 
+    // A LOCK THAT ALREADY EXISTS IS REPORTED, NOT RE-EARNED. reauth_verify
+    // checks the budget before it gets here, so on the ordinary path this is
+    // never true. It is true for the loser of the race above: that request
+    // passed the budget check a moment before another one locked the account.
+    // Without this it would record a fresh failure -- pre-loading the next
+    // cycle with an attempt the owner never made -- and answer as though
+    // nothing had been locked at all.
+    try {
+        $standing = _reauth_read_counter($pdo, $key, 'reauth_lock', $now);
+        if ($standing !== null) {
+            [$standing_cycle, $standing_ws] = $standing;
+            $standing_sec = _reauth_lockout_seconds($standing_cycle);
+            if ($standing_cycle > 0 && $now < $standing_ws + $standing_sec) {
+                $retry = max(1, ($standing_ws + $standing_sec) - $now);
+                $_SESSION['reauth_lock_until'] = $now + $retry;
+                $_SESSION['reauth_fail_count'] = 0;
+                _reauth_audit('blocked_while_locked', $uid,
+                    ['reason' => $reason, 'cycle' => $standing_cycle, 'retry_after' => $retry]);
+                return ['count' => REAUTH_MAX_ATTEMPTS, 'locked' => true,
+                    'retry_after' => $retry, 'cycle' => $standing_cycle];
+            }
+        }
+    } catch (PDOException $e) {
+        error_log('SnapSmack reauth: standing lock read failed - ' . $e->getMessage());
+    }
+
     try {
         // A quiet period resets the current cycle's attempts before counting
         // this one, so five scattered typos over a week are not a lockout.
@@ -239,21 +275,37 @@ function _reauth_record_failure(PDO $pdo, int $uid, string $reason, int $now): a
     $lock_sec = 0;
 
     if ($locked) {
+        // ONE LOCK EPISODE PER LOCK, however many requests arrive at once.
+        // Codex's third FAIL: every request that saw effective >= 5 bumped
+        // the episode row, so two threshold requests landing together turned
+        // one lock into cycle 2 and handed the owner half an hour for the
+        // first offence. The spent attempt row elects the winner: DELETE is
+        // atomic, exactly one caller can delete a row that exists, and that
+        // caller is the one that advances the tier. The others read the lock
+        // that was just created and report its remaining time.
+        $won = true;
+        $remaining = null;
         try {
-            // A new lock episode. The count on this row IS the tier, and it
-            // is exactly what the deleted-on-expiry version threw away.
-            $cycle = _reauth_bump_counter($pdo, $key, 'reauth_lock', $now);
-            $pdo->prepare(
-                "UPDATE snap_rate_limits SET window_start = ?
-                 WHERE ip = ? AND action = 'reauth_lock'"
-            )->execute([gmdate('Y-m-d H:i:s', $now), $key]);
-            // This cycle's attempts are spent; the next one starts clean.
-            _reauth_drop_counter($pdo, $key, 'reauth_fail');
+            $del = $pdo->prepare(
+                "DELETE FROM snap_rate_limits WHERE ip = ? AND action = 'reauth_fail'"
+            );
+            $del->execute([$key]);
+            $existing = _reauth_read_counter($pdo, $key, 'reauth_lock', $now);
+            // No row deleted AND a lock already standing means someone else
+            // got there first. No lock row at all means nobody has, whatever
+            // the delete said -- a database error must not lose the lock.
+            $won = ($del->rowCount() > 0) || ($existing === null);
+            if ($won) {
+                $cycle = _reauth_bump_counter($pdo, $key, 'reauth_lock', $now);
+            } else {
+                [$cycle, $lock_ws] = $existing;
+                $remaining = max(1, ($lock_ws + _reauth_lockout_seconds($cycle)) - $now);
+            }
         } catch (PDOException $e) {
             error_log('SnapSmack reauth: lock escalation failed - ' . $e->getMessage());
             $cycle = max(1, $cycle);
         }
-        $lock_sec = _reauth_lockout_seconds(max(1, $cycle));
+        $lock_sec = $remaining ?? _reauth_lockout_seconds(max(1, $cycle));
         $_SESSION['reauth_lock_until'] = $now + $lock_sec;
         $_SESSION['reauth_fail_count'] = 0;
         _reauth_audit('lockout', $uid, ['reason' => $reason, 'count' => $effective,
