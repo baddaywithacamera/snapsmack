@@ -57,12 +57,12 @@ $exempt = [
  * of what is broken and starts hiding the next regression.
  */
 $held = [
-    // THE GRID only. The other ten were repaired in the same change that
-    // added the component. THE GRID is edited on its own, in its own commit,
-    // because it is the one skin with a standing "it works, don't change it"
-    // note on it (Sean, 2026-11-17: that note never meant "no edits", it
-    // meant not as part of a sweep).
-    'the-grid',
+    // EMPTY, and it must stay that way. Every skin renders a search result.
+    // THE GRID was the last entry: it was repaired on its own, by hand, in
+    // its own commit, because it carries a standing "it works, don't change
+    // it" note (Sean, 2026-11-17: that never meant "no edits", it meant not
+    // as part of a sweep). A skin that cannot render kind='search' now fails
+    // this test outright.
 ];
 
 /** Does this file, or a core page component it delegates to, handle kind 'search'? */
