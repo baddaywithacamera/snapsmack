@@ -87,7 +87,7 @@ ak_ok(($r['ok'] ?? true) === false, 'an invalid 2FA code was accepted');
 
 // --- an expired code from an hour ago -----------------------------------
 $r = reauth_verify($pdo, $good, totp_code($secret, -120));
-ak_ok(($r['ok'] ?? true) === false, 'a code from two hours of steps ago was accepted');
+ak_ok(($r['ok'] ?? true) === false, 'a code from an hour of steps ago was accepted');
 
 // --- NO 2FA ENROLLED: refused, and told to enrol -------------------------
 // Codex's acceptance matrix lists "correct password / no 2FA" as a case. On
