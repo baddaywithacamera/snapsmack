@@ -23,7 +23,10 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
         await page.goto(`${baseUrl}/${pathname}`, { waitUntil: 'networkidle' });
         if (pathname === 'index.php') {
           await page.locator('#built-for-use').scrollIntoViewIfNeeded();
-          await page.waitForTimeout(300);
+          await page.waitForFunction(() => {
+            const images = Array.from(document.querySelectorAll('#built-for-use .receipt-card img'));
+            return images.length === 10 && images.every(image => image.complete && image.naturalWidth > 0);
+          });
         }
 
         const measured = await page.evaluate(({ pathname }) => {
