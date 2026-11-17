@@ -124,18 +124,17 @@ def test_rendered_canvaswell_no_horizontal_overflow_and_ctrl_wheel(monkeypatch):
             win.take_mode._fit_page_card_width()
             app.processEvents()
 
-    for w, h in ((1920, 1080), (1440, 900), (1366, 768)):
-        settle(w, h, photos=False, blocks=False, focus=False)
-        assert win.take_mode._canvas_scroll.horizontalScrollBar().maximum() == 0
-
-    for photos, blocks, focus in (
-        (False, False, False),
-        (True, False, False),
-        (True, True, False),
-        (False, False, True),
-    ):
-        settle(1024, 768, photos=photos, blocks=blocks, focus=focus)
-        assert win.take_mode._canvas_scroll.horizontalScrollBar().maximum() == 0
+    for w, h in ((1920, 1080), (1440, 900), (1366, 768), (1024, 768)):
+        for photos, blocks, focus in (
+            (False, False, False),
+            (True, False, False),
+            (True, True, False),
+            (False, False, True),
+        ):
+            settle(w, h, photos=photos, blocks=blocks, focus=focus)
+            assert win.take_mode._canvas_scroll.horizontalScrollBar().maximum() == 0, (
+                f"overflow at {w}x{h} photos={photos} blocks={blocks} focus={focus}"
+            )
 
     # Slice 7: Ctrl+scroll zooms thumbnails when over bucket_host, page when over CanvasWell
     win.set_focus_mode(False)
@@ -155,6 +154,16 @@ def test_rendered_canvaswell_no_horizontal_overflow_and_ctrl_wheel(monkeypatch):
     app.sendEvent(win.take_mode._canvas_scroll.viewport(), wheel_up)
     assert win.take_mode._page_zoom == 110
     assert win.take_mode._thumb_zoom == 110
+
+    # Ctrl+0 reset: page resets via _reset_hovered_zoom when pointer is not over bucket_host,
+    # and thumbnails reset when underMouse() is True on bucket_host.
+    win.take_mode._reset_hovered_zoom()
+    assert win.take_mode._page_zoom == 100
+    assert win.take_mode._thumb_zoom == 110
+
+    monkeypatch.setattr(win.take_mode.bucket_host, "underMouse", lambda: True)
+    win.take_mode._reset_hovered_zoom()
+    assert win.take_mode._thumb_zoom == 100
 
     win.take_mode._set_thumb_zoom(100)
     win.take_mode._set_page_zoom(100)
