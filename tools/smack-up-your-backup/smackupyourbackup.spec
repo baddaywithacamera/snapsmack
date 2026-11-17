@@ -1,4 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
 # Generic PyInstaller spec for Smack Up Your Backup.
 # The exe name's version comes from the SUYB_BUILD_VER env var, which build.bat /
 # build.sh set from bump_version.py. One spec for every build — no per-version
@@ -228,3 +232,5 @@ coll = COLLECT(
     upx_exclude=[],
     name='suyb',
 )
+
+# ===== SNAPSMACK EOF =====
