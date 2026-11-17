@@ -19,6 +19,17 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.52 — 2026-11-17
+
+- **Persistent fleet batch-job receipts & resume (SS-1404).** Multi-site backup
+  runs now write an atomic batch receipt (`batch_job.py`) tracking ordered sites,
+  options (no secrets), and per-site verification/cloud completion state. On
+  relaunch after an interruption, SUYB detects any nonterminal batch job and
+  offers **RESUME** (skipping completed sites, resuming the active site from its
+  checkpoint, and continuing with remaining sites), **START FRESH**, or **ABANDON**.
+  `last_backup_date` and `last_backup_status` reflect per-site verified + cloud
+  completion truth.
+
 ## 0.7.51 — 2026-11-17
 
 - **Case-insensitive alphabetical profile sorting (SS-1402).** `list_profiles()`
