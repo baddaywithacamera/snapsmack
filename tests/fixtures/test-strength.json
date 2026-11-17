@@ -742,6 +742,18 @@
             2000
         ]
     },
+    "fleet-summary-fails-soft-regression.php": {
+        "assertions": 12,
+        "predicates": 5,
+        "thresholds": [
+            2,
+            3,
+            3,
+            50,
+            207,
+            1219
+        ]
+    },
     "font-family-fallback-parity-regression.php": {
         "assertions": 2,
         "predicates": 5,
@@ -2092,6 +2104,14 @@
         "assertions": 5,
         "predicates": 0,
         "thresholds": []
+    },
+    "skins-page-stats-cover-every-demo-regression.php": {
+        "assertions": 5,
+        "predicates": 2,
+        "thresholds": [
+            10,
+            10
+        ]
     },
     "slickr-album-header-regression.php": {
         "assertions": 4,

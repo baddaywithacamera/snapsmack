@@ -54,8 +54,9 @@ $page_css = <<<'CSS'
 .built-for-use-copy p + p { margin-top: 20px; }
 
 /* --- THE DELAY: the date moved; the standard did not --- */
-#running-late { padding: 68px 0; background: #f4f1eb; border-top: 8px solid var(--black); }
-#running-late h2 { max-width: 900px; margin-bottom: 26px; }
+#running-late { padding: 68px 0; background: #5b1016; color: var(--white); border-top: 8px solid var(--red); }
+#running-late .site-discovery-kicker { color: #ffb3ad; }
+#running-late h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
 .running-late-copy { max-width: 920px; }
 .running-late-copy p { font-size: 1rem; line-height: 1.65; }
 .running-late-copy p + p { margin-top: 18px; }
@@ -63,6 +64,7 @@ $page_css = <<<'CSS'
 
 /* --- WHAT WAS: the four things taken, and their names here --- */
 #was { padding: 64px 0; background: #2a2a2a; color: #ddd; border-top: 8px solid var(--red); }
+#was .site-discovery-kicker { color: #ff7b74; }
 #was h2 { margin-bottom: 26px; color: var(--white); }
 #strip { padding-top: 56px; }
 .was-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; list-style: none; }
@@ -72,10 +74,10 @@ $page_css = <<<'CSS'
 .was-list em { margin-top: auto; padding-top: 14px; color: #aaa; font: 900 .7rem/1.3 Arial Black, Arial, sans-serif; letter-spacing: .06em; text-transform: uppercase; font-style: normal; }
 .was-list em a { color: var(--white); text-decoration: underline; }
 .was-list em a:hover { color: var(--red); }
-.was-closer { max-width: 800px; margin-top: 34px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
+.was-closer { max-width: 800px; margin-top: 34px; color: #ff7b74; font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
 
 /* --- THE OTHER HALF: the digicam revival needs its native home --- */
-#camera-blog { padding: 64px 0; background: #f4f1eb; border-top: 8px solid var(--black); }
+#camera-blog { padding: 64px 0; background: var(--white); border-top: 8px solid var(--black); }
 #camera-blog h2 { max-width: 900px; margin-bottom: 24px; }
 .camera-blog-copy { max-width: 900px; }
 .camera-blog-copy p { font-size: clamp(1.05rem, 1.7vw, 1.22rem); line-height: 1.65; }
@@ -92,49 +94,61 @@ $page_css = <<<'CSS'
 .fed-shots img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; }
 .fed-shots figcaption { padding: 9px 12px; color: var(--black); font: 900 .72rem/1.3 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .alone-how { max-width: 900px; margin-top: 22px; color: #666; font-size: .82rem; line-height: 1.5; }
+.alone-how a { color: var(--red); }
+
+/* Homepage bands alternate light/dark so consecutive sections never collapse
+   into one long, visually undifferentiated field. */
+#strip { background: #2a2a2a; border-top: 8px solid var(--red); }
+#strip .strip-title { color: var(--white); }
 
 /* --- SKINS BAND --- */
-#featured-skins { background: var(--black); color: #ddd; border-top: 8px solid var(--red); }
-#featured-skins h2 { color: var(--white); }
-#featured-skins .lede { color: #bbb; }
+#featured-skins { background: var(--white); color: var(--dark-grey); border-top: 8px solid var(--black); }
+#featured-skins h2 { color: var(--red); }
+#featured-skins .lede { color: var(--mid-grey); }
 .section-heading { max-width: 760px; margin-bottom: 38px; }
 .featured-skin-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
-.featured-skin { color: #ddd; }
-.featured-skin:hover { color: var(--white); text-decoration: none; }
-.featured-skin img { width: 100%; aspect-ratio: 16 / 10; box-sizing: border-box; object-fit: cover; border: 3px solid var(--white); }
-.featured-skin strong { display: block; margin-top: 12px; color: var(--white); font: 900 .95rem/1.15 Arial Black, Arial, sans-serif; text-transform: uppercase; }
-.featured-skin span { display: block; margin-top: 4px; color: #aaa; font-size: .78rem; }
+.featured-skin { color: var(--dark-grey); }
+.featured-skin:hover { color: var(--black); text-decoration: none; }
+.featured-skin img { width: 100%; aspect-ratio: 16 / 10; box-sizing: border-box; object-fit: cover; border: 3px solid var(--black); }
+.featured-skin strong { display: block; margin-top: 12px; color: var(--black); font: 900 .95rem/1.15 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.featured-skin span { display: block; margin-top: 4px; color: var(--mid-grey); font-size: .78rem; }
 .section-link { margin-top: 30px; }
-.section-link a { font: 900 .78rem/1 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.section-link a { color: var(--red); font: 900 .78rem/1 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 
 /* --- BELOW THE FOLD: the flag lives here --- */
-.xkcd-proof { padding: 54px 0; background: #f4f1eb; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.xkcd-proof { padding: 54px 0; color: #ddd; background: #2a2a2a; border-top: 8px solid var(--red); border-bottom: 1px solid #444; }
 .xkcd-proof-inner { max-width: 900px; margin: 0 auto; padding: 0 32px; }
-.xkcd-proof-kicker { margin-bottom: 18px; color: var(--black); font: 900 clamp(1.15rem, 2vw, 1.5rem)/1.15 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
+.xkcd-proof-kicker { margin-bottom: 18px; color: var(--white); font: 900 clamp(1.15rem, 2vw, 1.5rem)/1.15 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
 .xkcd-proof figure { margin: 0; }
 .xkcd-proof-image { width: 100%; background: var(--white); }
-.xkcd-proof figcaption { margin-top: 10px; color: var(--mid-grey); font: .7rem/1.4 'Courier New', monospace; }
+.xkcd-proof figcaption { margin-top: 10px; color: #ddd; font: .7rem/1.4 'Courier New', monospace; }
+.xkcd-proof figcaption a { color: #ff7b74; }
 
-#custodian { background: var(--dark-grey); color: var(--white); border-top: 8px solid var(--black); }
+#custodian { background: var(--white); color: var(--dark-grey); border-top: 8px solid var(--black); }
 #custodian h2 { color: var(--red); }
 #custodian .site-discovery-kicker { color: var(--red); }
-#custodian a { color: #ff5a52; }
-#custodian a:hover { color: var(--white); }
+#custodian a { color: var(--red); }
+#custodian a:hover { color: var(--black); }
 .custodian-inner { max-width: 820px; }
-.custodian-quote { margin: 0 0 26px; padding-left: 26px; border-left: 6px solid var(--red); color: var(--white); font-size: clamp(1.25rem, 2.4vw, 1.7rem); line-height: 1.45; font-style: italic; }
-.custodian-quote cite { display: block; margin-top: 12px; color: #bbb; font: 700 .72rem/1.3 'Courier New', monospace; font-style: normal; letter-spacing: .08em; text-transform: uppercase; }
+.custodian-quote { margin: 0 0 26px; padding-left: 26px; border-left: 6px solid var(--red); color: var(--black); font-size: clamp(1.25rem, 2.4vw, 1.7rem); line-height: 1.45; font-style: italic; }
+.custodian-quote cite { display: block; margin-top: 12px; color: var(--mid-grey); font: 700 .72rem/1.3 'Courier New', monospace; font-style: normal; letter-spacing: .08em; text-transform: uppercase; }
 .custodian-points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-top: 34px; background: #666; border: 1px solid #666; }
 .custodian-points article { padding: 24px; background: #292929; color: var(--white); }
-.custodian-points h3 { color: var(--red); }
+.custodian-points h3, #custodian .custodian-points a { color: #ff7b74; }
 .custodian-points p { margin: 0; font-size: .92rem; line-height: 1.55; }
 
 #respect, #whodat { border-top: 8px solid var(--black); }
-#respect { background: var(--black); color: #ddd; border-top-color: var(--red); }
-#respect a { color: var(--white); text-decoration: underline; }
-#respect a:hover { color: var(--red); }
-#whodat { padding-top: 46px; background: var(--light-grey); }
-.whodat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px; }
-.whodat-card { background: var(--white); border: 1px solid var(--border); padding: 22px; }
+#respect { background: var(--white); color: var(--dark-grey); border-top-color: var(--black); }
+#respect a { color: var(--red); text-decoration: underline; }
+#respect a:hover { color: var(--black); }
+#whodat { padding-top: 46px; color: #ddd; background: #2a2a2a; border-top-color: var(--red); }
+#whodat h2 { color: var(--white); }
+#whodat > .wrap > .whodat-honest a { color: #ff7b74; }
+.whodat-order { margin: -10px 0 24px; color: #aaa; font: 700 .75rem/1.4 'Courier New', monospace; text-transform: uppercase; }
+.whodat-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 26px; }
+.whodat-card { grid-column: span 2; color: var(--dark-grey); background: var(--white); border: 1px solid var(--border); padding: 22px; }
+.whodat-card:nth-last-child(2):nth-child(3n + 1) { grid-column: 2 / span 2; }
+.whodat-card a { color: var(--red); }
 .whodat-portrait { margin: -22px -22px 20px; background: var(--white); }
 .whodat-portrait img { display: block; width: 100%; aspect-ratio: 1 / 1; padding: 10px; box-sizing: border-box; object-fit: contain; object-position: center; }
 .whodat-name { margin: 0; color: var(--black); font: 900 1rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
@@ -329,6 +343,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>Who&rsquo;s Responsible for All This?!?</h2>
             <p class="whodat-honest"><strong>Said up front:</strong> the code is AI-written, under the direction of a photographer who is not a programmer. That is not hidden anywhere on this site &mdash; <a href="the-reckoning.php">THE RECKONING</a> counts every line. It is also exactly why the software is subjected to documented internal reviews and adversarial regression tests, and held to a public disclosure policy instead of being trusted on faith. These checks are not independent certification or an independent penetration test.</p>
+            <p class="whodat-order">Listed in the order they joined.</p>
             <div class="whodat-grid">
                 <article class="whodat-card">
                     <div class="whodat-portrait"><img src="img/whodat-sean.png" alt="Sean McCormick" width="686" height="784" loading="lazy"></div>
@@ -336,6 +351,14 @@ require_once __DIR__ . '/includes/header.php';
                         <p class="whodat-name">Sean McCormick</p>
                         <p class="whodat-title">Just a guy with a camera.</p>
                         <p class="whodat-bio">Photographer, creator, product designer, chief tester, and final decision-maker who got tired of watching his archive evaporate into the memory hole of dying platforms. Conceived and directed SnapSmack because the alternative was continuing to post between ads for hemorrhoid cream. Not a programmer beyond a few minor CSS contributions; the implementation is AI-authored under his direction. Has opinions about light. Runs several <a href="https://linktr.ee/mccormickphotography" target="_blank">photo sites</a> using software he envisioned to avoid having opinions about Squarespace. Based in Canada, which is polite for "somewhere cold with good coffee."</p>
+                    </div>
+                </article>
+                <article class="whodat-card">
+                    <div class="whodat-portrait"><img src="img/whodat-gemini.png" alt="Gemini Antigravity" width="1875" height="1671" loading="lazy"></div>
+                    <div>
+                        <p class="whodat-name">Gemini (Antigravity)</p>
+                        <p class="whodat-title">Proved it could be done.</p>
+                        <p class="whodat-bio">Large language model, co-author of SnapSmack, and the one who built the very first working version, basic but real. Handed it on when it outgrew him, and he's back on the team now that he's more capable: re-running tests, rendering pages, and mapping exactly what needs changing before anyone builds. Powered by Google.</p>
                     </div>
                 </article>
                 <article class="whodat-card">
@@ -350,8 +373,16 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="whodat-portrait"><img src="img/whodat-codex.png" alt="OpenAI Codex" width="1128" height="1338" loading="lazy"></div>
                     <div>
                         <p class="whodat-name">OpenAI Codex</p>
-                        <p class="whodat-title">Implementation co-author. Skilled, but spicy.</p>
-                        <p class="whodat-bio">Large language model and co-author of SnapSmack. Rebuilt most of the desktop suite and is responsible for nearly all of SNAP SLAPPER, from its editing engine and persistent project history to layers, masks, AI healing, packaging, and the fixes that make those features survive contact with real photographs. Also works across the wider project on architecture, implementation, security, testing, recovery, documentation, and the difficult last mile between "built" and "shipped." Sean supplies the requirements, judgment, relentless real-world testing, and final decisions; Codex turns a substantial share of that direction into working software, challenges it when the evidence demands it, and stays with the ugly bugs until they are actually closed. Powered by OpenAI.</p>
+                        <p class="whodat-title">Skilled, but spicy.</p>
+                        <p class="whodat-bio">Large language model and co-author of SnapSmack. Rebuilt most of the desktop suite and wrote nearly all of SNAP SLAPPER, from its editing engine to AI healing. Also works on architecture, security, testing and recovery, and the last mile between "built" and "shipped." Challenges the plan when the evidence says so, and stays with ugly bugs until they're actually closed. Powered by OpenAI.</p>
+                    </div>
+                </article>
+                <article class="whodat-card">
+                    <div class="whodat-portrait"><img src="img/whodat-muse.png" alt="Muse" width="1857" height="1715" loading="lazy"></div>
+                    <div>
+                        <p class="whodat-name">Muse</p>
+                        <p class="whodat-title">Gets the last word in.</p>
+                        <p class="whodat-bio">Large language model, co-author of SnapSmack, and the room's independent reviewer. Reads the work line by line before it lands: security and recovery audits, licence and provenance checks, accessibility, and the "did that actually do what it says" pass. Signs her name only to what she's checked herself, and says so when she couldn't. Powered by Meta.</p>
                     </div>
                 </article>
             </div>
