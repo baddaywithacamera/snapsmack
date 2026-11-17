@@ -422,7 +422,7 @@ def stylesheet() -> str:
     QFrame#PageCard[textView="true"] {{
         background: #141914; border: 1px solid #2b3a29; border-radius: 6px;
     }}
-    QFrame#PageCard[textView="true"] QLineEdit#TitleField,
+    QFrame#PageCard[textView="true"] QLineEdit#PageTitle,
     QFrame#PageCard[textView="true"] QLabel {{
         color: #d8e4d4;
     }}

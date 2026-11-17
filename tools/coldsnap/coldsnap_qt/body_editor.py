@@ -89,6 +89,7 @@ class TwiggyEditor(QPlainTextEdit):
             block = block.next()
             top = bottom
             bottom = top + round(self.blockBoundingRect(block).height())
+            block_num += 1
 
 
 class BodyEditor(QWidget):
