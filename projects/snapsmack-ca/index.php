@@ -436,7 +436,7 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="scale-copy">
                     <h2 id="scale-title">Yes, but does it scale?</h2>
                     <p class="scale-pull">Bitch, please. My last name ain't Mullenweg&hellip;</p>
-                    <p>WordPress can't do this without bolting on someone else's plugin. Ghost can't do this, period. Kirby? Get bent.</p>
+                    <p>WordPress can't do this without bolting on someone else's plugin. Ghost won't do this for free. Kirby? Get bent.</p>
                     <p>Right out of the box, day one, no charge, Bob's yer fackin' uncle. Multisite without anyone demanding an 8% cut. Who imagined such a thing was possible.</p>
                 </div>
             </div>
