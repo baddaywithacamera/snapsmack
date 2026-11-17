@@ -104,6 +104,51 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
                 })
                 .filter(item => item.ratio + 0.01 < item.required)
             : [];
+          const paragraphSelectors = [
+            '#camera-blog .camera-blog-copy > p:first-child',
+            '#why-blog .why-blog-copy > p:first-child',
+            '#running-late .running-late-copy > p:first-child',
+            '#built-for-use .built-for-use-copy > p:first-child',
+            '#respect > .wrap > p:first-of-type',
+          ];
+          const bodyParagraphs = pathname === 'index.php'
+            ? paragraphSelectors.map(selector => {
+                const node = document.querySelector(selector);
+                const style = node ? getComputedStyle(node) : null;
+                return {
+                  selector,
+                  exists: Boolean(node),
+                  fontSize: style ? Number.parseFloat(style.fontSize) : null,
+                  lineHeight: style ? Number.parseFloat(style.lineHeight) : null,
+                };
+              })
+            : [];
+          const rhythmBlocks = pathname === 'index.php'
+            ? ['#why-blog', '#built-for-use'].map(selector => {
+                const section = document.querySelector(selector);
+                const wrap = section ? section.querySelector(':scope > .wrap') : null;
+                const block = wrap ? wrap.querySelector(':scope > .home-rhythm-right') : null;
+                const wrapStyle = wrap ? getComputedStyle(wrap) : null;
+                const wrapRect = wrap ? wrap.getBoundingClientRect() : null;
+                const blockRect = block ? block.getBoundingClientRect() : null;
+                const contentLeft = wrapRect && wrapStyle
+                  ? wrapRect.left + Number.parseFloat(wrapStyle.paddingLeft)
+                  : null;
+                const contentRight = wrapRect && wrapStyle
+                  ? wrapRect.right - Number.parseFloat(wrapStyle.paddingRight)
+                  : null;
+                return {
+                  selector,
+                  exists: Boolean(block),
+                  contentLeft,
+                  contentRight,
+                  contentWidth: contentLeft !== null && contentRight !== null ? contentRight - contentLeft : null,
+                  blockLeft: blockRect ? blockRect.left : null,
+                  blockRight: blockRect ? blockRect.right : null,
+                  blockWidth: blockRect ? blockRect.width : null,
+                };
+              })
+            : [];
           return {
             pathname,
             beige,
@@ -113,6 +158,8 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
             adjacentDistances,
             whiteImageCardBands,
             lowContrast,
+            bodyParagraphs,
+            rhythmBlocks,
             overflow: document.documentElement.scrollWidth > innerWidth,
           };
         }, { pathname });
@@ -136,6 +183,24 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
             `${width}: a band containing white image cards uses a dark background`,
           );
           assert.deepEqual(measured.lowContrast, [], `${width}: homepage text falls below WCAG AA contrast`);
+          assert.equal(
+            measured.bodyParagraphs.every(item => item.exists),
+            true,
+            `${width}: a homepage body-paragraph sample is missing`,
+          );
+          const fontSizes = new Set(measured.bodyParagraphs.map(item => item.fontSize));
+          const lineHeights = new Set(measured.bodyParagraphs.map(item => item.lineHeight));
+          assert.equal(fontSizes.size, 1, `${width}: homepage body paragraph font sizes differ`);
+          assert.equal(lineHeights.size, 1, `${width}: homepage body paragraph line heights differ`);
+          for (const block of measured.rhythmBlocks) {
+            assert.equal(block.exists, true, `${width} ${block.selector}: rhythm block is missing`);
+            assert.ok(Math.abs(block.blockRight - block.contentRight) <= 1, `${width} ${block.selector}: rhythm block is not right-aligned`);
+            const expectedWidth = width <= 1024 ? block.contentWidth : block.contentWidth * (2 / 3);
+            assert.ok(
+              Math.abs(block.blockWidth - expectedWidth) <= 1,
+              `${width} ${block.selector}: rhythm block width ${block.blockWidth} != ${expectedWidth}`,
+            );
+          }
           for (const band of await page.locator('main > section, main > aside').all()) {
             await band.scrollIntoViewIfNeeded();
           }

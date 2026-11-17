@@ -46,19 +46,20 @@ $page_css = <<<'CSS'
 .btn-secondary:hover { color: var(--white); background: var(--black); }
 
 /* --- BUILT FOR USE: Sean's statement, in Sean's words --- */
-#built-for-use { padding: 68px 0; background: #5b1016; color: var(--white); border-top: 8px solid var(--red); }
+#built-for-use { padding: 68px 0; background: #404348; color: var(--white); border-top: 8px solid var(--red); }
 #built-for-use .site-discovery-kicker { color: #ffb3ad; }
 #built-for-use h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
 .built-for-use-copy { max-width: 920px; }
-.built-for-use-copy p { font-size: clamp(1.05rem, 1.65vw, 1.25rem); line-height: 1.65; }
+.built-for-use-copy p { font-size: inherit; line-height: inherit; }
 .built-for-use-copy p + p { margin-top: 20px; }
+.home-rhythm-right { width: 66.6667%; margin-left: auto; }
 
 /* --- THE DELAY: the date moved; the standard did not --- */
 #running-late { padding: 68px 0; background: #5b1016; color: var(--white); border-top: 8px solid var(--red); }
 #running-late .site-discovery-kicker { color: #ffb3ad; }
 #running-late h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
 .running-late-copy { max-width: 920px; }
-.running-late-copy p { font-size: 1rem; line-height: 1.65; }
+.running-late-copy p { font-size: inherit; line-height: inherit; }
 .running-late-copy p + p { margin-top: 18px; }
 
 
@@ -80,7 +81,7 @@ $page_css = <<<'CSS'
 #camera-blog { padding: 64px 0; background: var(--white); border-top: 8px solid var(--black); }
 #camera-blog h2 { max-width: 900px; margin-bottom: 24px; }
 .camera-blog-copy { max-width: 900px; }
-.camera-blog-copy p { font-size: clamp(1.05rem, 1.7vw, 1.22rem); line-height: 1.65; }
+.camera-blog-copy p { font-size: inherit; line-height: inherit; }
 .camera-blog-copy p + p { margin-top: 18px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 
 /* --- WHY A BLOG: the ownership case, in one hard black band --- */
@@ -88,7 +89,7 @@ $page_css = <<<'CSS'
 #why-blog .site-discovery-kicker { color: #ff7b74; }
 #why-blog h2 { max-width: 900px; margin-bottom: 24px; color: var(--white); }
 .why-blog-copy { max-width: 900px; }
-.why-blog-copy p { font-size: clamp(1.05rem, 1.7vw, 1.22rem); line-height: 1.65; }
+.why-blog-copy p { font-size: inherit; line-height: inherit; }
 .why-blog-copy p + p { margin-top: 18px; }
 .why-blog-copy .why-blog-pull { color: #ff7b74; font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 
@@ -173,6 +174,9 @@ $page_css = <<<'CSS'
        no stranded card at any of them. (Was three when the list had five cards.) */
     .was-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+@media (max-width: 1024px) {
+    .home-rhythm-right { width: 100%; margin-left: 0; }
+}
 @media (max-width: 850px) {
     .featured-skin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .was-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -235,7 +239,7 @@ require_once __DIR__ . '/includes/header.php';
             <p class="site-discovery-kicker">The other half of the look</p>
             <h2 id="camera-blog-title">You bought the camera. Where&rsquo;s the blog?</h2>
             <div class="camera-blog-copy">
-                <p>That beat-up 2006 point-and-shoot you paid way too much for on eBay? It came with a second half, and nobody told you. Back then, those photos didn't go on an app that buries them under ads by Tuesday. They went on a photoblog: your own site, one shot at a time, newest on top, no algorithm, no likes for sale. People found you through other people's blogrolls, and they came back because they wanted to.</p>
+                <p>Hey, Gen Z... That beat-up 2005 point-and-shoot you paid way too much for on eBay? It came with a second half, and nobody told you. Back then, those photos didn't go on an app that buries them under ads by Tuesday. They went on a photoblog: your own site, one shot at a time, newest on top, no algorithm, no likes for sale. People found you through other people's blogrolls, and they came back because they wanted to.</p>
                 <p>The camera's only half the look. The blog is the other half. Make your photos slap.</p>
             </div>
         </div>
@@ -243,12 +247,14 @@ require_once __DIR__ . '/includes/header.php';
 
     <section id="why-blog" aria-labelledby="why-blog-title">
         <div class="wrap">
+            <div class="home-rhythm-right">
             <p class="site-discovery-kicker">Why a blog</p>
             <h2 id="why-blog-title">Why a blog?</h2>
             <div class="why-blog-copy">
                 <p>&ldquo;Blog&rdquo; is short for &ldquo;web log&rdquo;: a running record of your work, on a site you own, newest on top. Simple as that.</p>
                 <p>So why bother? Because somebody's going to speak for you online. Either it's some billionaire's app, deciding who sees your photos, when, and next to whose ads, or it's you, on your own terms, with no algorithm in the way.</p>
                 <p class="why-blog-pull">Are you an adult, or just a product?</p>
+            </div>
             </div>
         </div>
     </section>
@@ -344,6 +350,7 @@ require_once __DIR__ . '/includes/header.php';
 
     <section id="built-for-use" aria-labelledby="built-for-use-title">
         <div class="wrap">
+            <div class="home-rhythm-right">
             <p class="site-discovery-kicker">Built for the work</p>
             <h2 id="built-for-use-title">Shoot hard. Share harder.</h2>
             <div class="built-for-use-copy">
@@ -352,6 +359,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Here is the one and only catch. It's all built with AI and the support is mostly provided using AI. Straight up, I can kick ass and chew bubblegum with any camera you put in my hands. What I am not is a developer. AI handled that part for me while I made sure that what was built worked and holy shit does it ever. So, yeah. AI is all over this project and I'm not apologizing for it because it would not exist without it, and you wouldn't have a free, quality option sitting in front of you.</p>
                 <p>I get it if you don't like AI. I'm not happy about aspects of it, either. But it is the only way that SNAPSMACK could have happened or that I can provide you with quality support moving forward. I, too, wish to take photos and publish them online and the only way I can do that and do this (SNAPSMACK) is by leveraging technology in a way that benefits all of us. Let's use the new tools to return to The Old Ways. Let's bring photo blogging back.</p>
                 <p>If you don't want to use an AI product, fair. Use something else. If you can find it. I could not.</p>
+            </div>
             </div>
         </div>
     </section>
