@@ -68,10 +68,15 @@ $page_css = <<<'CSS'
 /* --- THE DOOR: one thing wins --- */
 #door { padding: 88px 0 72px; }
 .door-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 40%); gap: 48px; align-items: center; max-width: var(--max); margin: 0 auto; padding: 0 32px; }
+.door-media { min-width: 0; }
 .door-shot { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; text-align: left; font: inherit; }
 .door-shot img { display: block; width: 100%; height: auto; border: 3px solid var(--black); box-shadow: 8px 8px 0 var(--red); }
 .door-shot:hover img, .door-shot:focus-visible img { box-shadow: 8px 8px 0 var(--black); border-color: var(--red); }
 .door-shot-cap { display: block; margin-top: 14px; color: #666; font: 900 .7rem/1.3 Arial Black, Arial, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.door-shot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.door-shot-thumb { display: block; width: 100%; padding: 0; border: 1px solid #777; background: var(--black); cursor: zoom-in; }
+.door-shot-thumb:hover, .door-shot-thumb:focus-visible { border-color: var(--red); }
+.door-shot-thumb img { display: block; width: 100%; height: auto; }
 .ss-lightbox { position: fixed; inset: 0; z-index: 9999; display: grid; grid-template-columns: 72px minmax(0, 1fr) 72px; grid-template-rows: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 24px; background: rgba(0,0,0,.92); cursor: zoom-out; }
 .ss-lightbox[hidden] { display: none; }
 .ss-lightbox img { display: block; grid-column: 2; grid-row: 1; width: 100%; height: 78vh; object-fit: contain; cursor: default; }
@@ -259,6 +264,9 @@ $page_css = <<<'CSS'
     .was-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 1024px) {
+    .door-inner { grid-template-columns: 1fr; gap: 34px; align-items: start; }
+    .door-copy { order: 1; }
+    .door-media { order: 2; }
     .home-rhythm-right { width: 100%; margin-left: 0; }
     .built-for-use-layout { grid-template-columns: 1fr; gap: 34px; }
     .built-for-use-layout .built-for-use-copy-wrap { order: 1; }
@@ -311,10 +319,18 @@ require_once __DIR__ . '/includes/header.php';
                 <a href="features.php" class="btn btn-secondary">What it does</a>
             </div>
             </div>
-            <button type="button" class="door-shot" data-lightbox="img/snapslapper-editor-adv.png" aria-label="Open a full-size screenshot of the SNAP SLAPPER photo editor">
-                <img src="img/snapslapper-editor-adv.png" alt="SNAP SLAPPER photo editor, advanced mode, editing a Banff landscape" width="1920" height="1032" loading="lazy">
-                <span class="door-shot-cap">SNAP SLAPPER &mdash; the free photo editor. Click to enlarge.</span>
-            </button>
+            <div class="door-media">
+                <button type="button" class="door-shot" data-lightbox="img/snapslapper-editor-adv.png" data-lightbox-group="snapslapper" data-lightbox-caption="SNAP SLAPPER photo editor, advanced mode, editing a Banff landscape" aria-label="Open a full-size screenshot of the SNAP SLAPPER photo editor">
+                    <img src="img/snapslapper-editor-adv.png" alt="SNAP SLAPPER photo editor, advanced mode, editing a Banff landscape" width="1920" height="1032" loading="lazy">
+                </button>
+                <div class="door-shot-grid" aria-label="More SNAP SLAPPER screenshots">
+                    <button type="button" class="door-shot-thumb" data-lightbox="img/snapslapper-editor-adv-nofilm-large.png" data-lightbox-group="snapslapper" data-lightbox-caption="SNAP SLAPPER editor, Advanced mode"><img src="img/snapslapper-editor-adv-nofilm-thumb.png" alt="SNAP SLAPPER editor, Advanced mode" width="480" height="258" loading="lazy"></button>
+                    <button type="button" class="door-shot-thumb" data-lightbox="img/snapslapper-editor-lewks-large.png" data-lightbox-group="snapslapper" data-lightbox-caption="LEWKS: one-click looks previewed on your own photo"><img src="img/snapslapper-editor-lewks-thumb.png" alt="LEWKS: one-click looks previewed on your own photo" width="480" height="258" loading="lazy"></button>
+                    <button type="button" class="door-shot-thumb" data-lightbox="img/snapslapper-genfill-01-large.png" data-lightbox-group="snapslapper" data-lightbox-caption="AI Heal: paint the defect, choose whether to send it"><img src="img/snapslapper-genfill-01-thumb.png" alt="AI Heal: paint the defect, choose whether to send it" width="480" height="270" loading="lazy"></button>
+                    <button type="button" class="door-shot-thumb" data-lightbox="img/snapslapper-library-large.png" data-lightbox-group="snapslapper" data-lightbox-caption="The photo library"><img src="img/snapslapper-library-thumb.png" alt="The photo library" width="480" height="258" loading="lazy"></button>
+                </div>
+                <span class="door-shot-cap">SNAP SLAPPER &mdash; the free photo editor. Click screenshots to enlarge.</span>
+            </div>
         </div>
     </section>
 
