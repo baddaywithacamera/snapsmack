@@ -1300,7 +1300,7 @@ def _export_block(block, nested: bool = False) -> list:
                     out.append(blk)
                 elif okind == "image":
                     image = {"type": "image", "img_id": str(data.get("img_id", ""))}
-                    for key in ("gallery", "size", "align", "width", "decorative",
+                    for key in ("gallery", "size", "align", "width", "decorative", "raw",
                                 "asset_uuid", "placement", "width_ratio", "crop",
                                 "alt", "caption", "link"):
                         if key in data:

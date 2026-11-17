@@ -82,6 +82,8 @@ def serialize_block(b: dict) -> str:
         body = "".join(f"  <li>{i}</li>\n" for i in items) or "  <li></li>\n"
         return f"<{tag}>\n{body}</{tag}>"
     if t == "image":
+        if b.get("raw"):
+            return str(b["raw"])
         prefix = "g" if b.get("gallery") else ""
         parts = [f"{prefix}{str(b.get('img_id', '')).strip()}"]
         for key in ("size", "align", "width", "decorative"):
@@ -192,7 +194,7 @@ def _classify(seg: str) -> dict:
         return {"type": "mosaic"}
     m = _RX["image"].match(seg)
     if m:
-        blk = {"type": "image", "img_id": (m.group(2) or m.group(3) or "").strip()}
+        blk = {"type": "image", "img_id": (m.group(2) or m.group(3) or "").strip(), "raw": seg}
         if m.group(1):
             blk["gallery"] = True
         if m.group(4):
