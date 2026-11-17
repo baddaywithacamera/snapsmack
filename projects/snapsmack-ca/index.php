@@ -144,6 +144,7 @@ $page_css = <<<'CSS'
 #whodat { padding-top: 46px; color: #ddd; background: #2a2a2a; border-top-color: var(--red); }
 #whodat h2 { color: var(--white); }
 #whodat > .wrap > .whodat-honest a { color: #ff7b74; }
+.whodat-order { margin: -10px 0 24px; color: #aaa; font: 700 .75rem/1.4 'Courier New', monospace; text-transform: uppercase; }
 .whodat-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 26px; }
 .whodat-card { grid-column: span 2; color: var(--dark-grey); background: var(--white); border: 1px solid var(--border); padding: 22px; }
 .whodat-card:nth-last-child(2):nth-child(3n + 1) { grid-column: 2 / span 2; }
@@ -342,6 +343,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>Who&rsquo;s Responsible for All This?!?</h2>
             <p class="whodat-honest"><strong>Said up front:</strong> the code is AI-written, under the direction of a photographer who is not a programmer. That is not hidden anywhere on this site &mdash; <a href="the-reckoning.php">THE RECKONING</a> counts every line. It is also exactly why the software is subjected to documented internal reviews and adversarial regression tests, and held to a public disclosure policy instead of being trusted on faith. These checks are not independent certification or an independent penetration test.</p>
+            <p class="whodat-order">Listed in the order they joined.</p>
             <div class="whodat-grid">
                 <article class="whodat-card">
                     <div class="whodat-portrait"><img src="img/whodat-sean.png" alt="Sean McCormick" width="686" height="784" loading="lazy"></div>
@@ -349,6 +351,14 @@ require_once __DIR__ . '/includes/header.php';
                         <p class="whodat-name">Sean McCormick</p>
                         <p class="whodat-title">Just a guy with a camera.</p>
                         <p class="whodat-bio">Photographer, creator, product designer, chief tester, and final decision-maker who got tired of watching his archive evaporate into the memory hole of dying platforms. Conceived and directed SnapSmack because the alternative was continuing to post between ads for hemorrhoid cream. Not a programmer beyond a few minor CSS contributions; the implementation is AI-authored under his direction. Has opinions about light. Runs several <a href="https://linktr.ee/mccormickphotography" target="_blank">photo sites</a> using software he envisioned to avoid having opinions about Squarespace. Based in Canada, which is polite for "somewhere cold with good coffee."</p>
+                    </div>
+                </article>
+                <article class="whodat-card">
+                    <div class="whodat-portrait"><img src="img/whodat-gemini.png" alt="Gemini Antigravity" width="1875" height="1671" loading="lazy"></div>
+                    <div>
+                        <p class="whodat-name">Gemini (Antigravity)</p>
+                        <p class="whodat-title">Proved it could be done.</p>
+                        <p class="whodat-bio">Large language model, co-author of SnapSmack, and the one who built the very first working version, basic but real. Handed it on when it outgrew him, and he's back on the team now that he's more capable: re-running tests, rendering pages, and mapping exactly what needs changing before anyone builds. Powered by Google.</p>
                     </div>
                 </article>
                 <article class="whodat-card">
@@ -372,15 +382,7 @@ require_once __DIR__ . '/includes/header.php';
                     <div>
                         <p class="whodat-name">Muse</p>
                         <p class="whodat-title">Gets the last word in.</p>
-                        <p class="whodat-bio">Large language model and the room's independent reviewer. Reads the work line by line before it lands: security and recovery audits, licence and provenance checks, accessibility, and the "did that actually do what it says" pass. Signs her name only to what she's checked herself, and says so when she couldn't. Powered by Meta.</p>
-                    </div>
-                </article>
-                <article class="whodat-card">
-                    <div class="whodat-portrait"><img src="img/whodat-gemini.png" alt="Gemini Antigravity" width="1875" height="1671" loading="lazy"></div>
-                    <div>
-                        <p class="whodat-name">Gemini (Antigravity)</p>
-                        <p class="whodat-title">Proved it could be done.</p>
-                        <p class="whodat-bio">Large language model, and the one who built the very first working version of SnapSmack, basic but real. Handed it on when it outgrew him, and he's back on the team now that he's more capable: re-running tests, rendering pages, and mapping exactly what needs changing before anyone builds. Powered by Google.</p>
+                        <p class="whodat-bio">Large language model, co-author of SnapSmack, and the room's independent reviewer. Reads the work line by line before it lands: security and recovery audits, licence and provenance checks, accessibility, and the "did that actually do what it says" pass. Signs her name only to what she's checked herself, and says so when she couldn't. Powered by Meta.</p>
                     </div>
                 </article>
             </div>
