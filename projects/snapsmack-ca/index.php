@@ -147,7 +147,7 @@ $page_css = <<<'CSS'
 /* --- THE OTHER HALF: the digicam revival needs its native home --- */
 #camera-blog { padding: 64px 0; background: var(--white); border-top: 8px solid var(--black); }
 #camera-blog h2 { max-width: 900px; margin-bottom: 24px; }
-.camera-blog-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 42px; align-items: start; }
+.camera-blog-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 42px; align-items: center; }
 .camera-blog-copy { max-width: 900px; }
 .camera-blog-copy p { font-size: inherit; line-height: inherit; }
 .camera-blog-copy p + p { margin-top: 18px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
@@ -161,7 +161,7 @@ $page_css = <<<'CSS'
 #why-blog { padding: 64px 0; color: #ddd; background: #111; border-top: 8px solid var(--red); }
 #why-blog .site-discovery-kicker { color: var(--white); }
 #why-blog h2 { max-width: 900px; margin-bottom: 24px; color: var(--red); }
-.why-blog-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: start; }
+.why-blog-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: center; }
 .why-blog-shot { display: block; width: 100%; padding: 0; border: 1px solid #777; background: none; cursor: zoom-in; }
 .why-blog-shot:hover, .why-blog-shot:focus-visible { border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
 .why-blog-shot img { display: block; width: 100%; height: auto; }
@@ -195,7 +195,7 @@ $page_css = <<<'CSS'
 /* --- SCALE: one fleet, one dashboard --- */
 #scale { padding: 64px 0; color: #ddd; background: #000; border-top: 8px solid var(--red); }
 #scale h2 { margin: 0; color: var(--red); }
-.scale-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: start; }
+.scale-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: center; }
 .scale-shot { display: block; width: 100%; padding: 0; border: 1px solid #777; background: none; cursor: zoom-in; }
 .scale-shot:hover, .scale-shot:focus-visible { border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
 .scale-shot img { display: block; width: 100%; height: auto; }
@@ -259,6 +259,8 @@ $page_css = <<<'CSS'
 .whodat-card:nth-last-child(2):nth-child(3n + 1) { grid-column: 2 / span 2; }
 .whodat-card a { color: var(--red); }
 .whodat-portrait { margin: -22px -22px 20px; background: var(--white); }
+.whodat-portrait-button { display: block; width: 100%; height: 100%; padding: 0; border: 3px solid transparent; box-sizing: border-box; background: var(--white); cursor: zoom-in; }
+.whodat-portrait-button:hover, .whodat-portrait-button:focus-visible { border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
 .whodat-portrait img { display: block; width: 100%; aspect-ratio: 1 / 1; padding: 10px; box-sizing: border-box; object-fit: contain; object-position: center; }
 .whodat-name { margin: 0; color: var(--black); font: 900 1rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .whodat-title { margin: 5px 0 15px; color: var(--red); font: 700 .72rem/1.35 'Courier New', monospace; text-transform: uppercase; }
@@ -561,7 +563,7 @@ require_once __DIR__ . '/includes/header.php';
             <p class="whodat-order">Listed in the order they joined.</p>
             <div class="whodat-grid">
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><img src="img/whodat-sean.png" alt="Sean McCormick" width="686" height="784" loading="lazy"></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-sean.png" data-lightbox-group="co-authors" data-lightbox-caption="Sean McCormick" aria-label="Open a larger portrait of Sean McCormick"><img src="img/whodat-sean.png" alt="Sean McCormick" width="686" height="784" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">Sean McCormick</p>
                         <p class="whodat-title">Just a guy with a camera.</p>
@@ -569,7 +571,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </article>
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><img src="img/whodat-gemini.png" alt="Gemini Antigravity" width="1875" height="1671" loading="lazy"></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-gemini.png" data-lightbox-group="co-authors" data-lightbox-caption="Gemini (Antigravity)" aria-label="Open a larger portrait of Gemini Antigravity"><img src="img/whodat-gemini.png" alt="Gemini Antigravity" width="1875" height="1671" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">Gemini (Antigravity)</p>
                         <p class="whodat-title">Proved it could be done.</p>
@@ -577,7 +579,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </article>
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><img src="img/whodat-claude.png" alt="Claude" width="686" height="784" loading="lazy"></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-claude.png" data-lightbox-group="co-authors" data-lightbox-caption="Claude (Opus)" aria-label="Open a larger portrait of Claude Opus"><img src="img/whodat-claude.png" alt="Claude" width="686" height="784" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">Claude (Opus)</p>
                         <p class="whodat-title">Like HAL, but without the murder.</p>
@@ -585,7 +587,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </article>
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><img src="img/whodat-codex.png" alt="OpenAI Codex" width="1128" height="1338" loading="lazy"></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-codex.png" data-lightbox-group="co-authors" data-lightbox-caption="OpenAI Codex" aria-label="Open a larger portrait of OpenAI Codex"><img src="img/whodat-codex.png" alt="OpenAI Codex" width="1128" height="1338" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">OpenAI Codex</p>
                         <p class="whodat-title">Skilled, but spicy.</p>
@@ -593,7 +595,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </article>
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><img src="img/whodat-muse.png" alt="Muse" width="1857" height="1715" loading="lazy"></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-muse.png" data-lightbox-group="co-authors" data-lightbox-caption="Muse" aria-label="Open a larger portrait of Muse"><img src="img/whodat-muse.png" alt="Muse" width="1857" height="1715" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">Muse</p>
                         <p class="whodat-title">Gets the last word in.</p>
