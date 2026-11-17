@@ -247,6 +247,10 @@ class TakeMode(QWidget):
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setWidgetResizable(True)
         scroll.setMinimumWidth(0)
+        self._canvas_scroll = scroll
+        scroll.viewport().installEventFilter(self)
+        self.body.canvas.viewport().installEventFilter(self)
+        self.body.editor.viewport().installEventFilter(self)
         host = QWidget()
         host.setObjectName("CanvasWell")
         well = QVBoxLayout(host)
@@ -431,6 +435,7 @@ class TakeMode(QWidget):
         self.details_toggle_btn.toggled.connect(self._toggle_post_details)
         QShortcut(QKeySequence("Ctrl+3"), self).activated.connect(
             self.details_toggle_btn.toggle)
+        QShortcut(QKeySequence("Ctrl+0"), self).activated.connect(self._reset_hovered_zoom)
         act.addWidget(self.details_toggle_btn)
 
         self.page_state_lbl = hint("1 block")
@@ -575,6 +580,13 @@ class TakeMode(QWidget):
     def _on_photos_tray_changed(self, opened: bool):
         self._view_settings.setValue("take/photos_open", bool(opened))
         self.photosStateChanged.emit(bool(opened))
+        QTimer.singleShot(0, self._fit_page_card_width)
+
+    def _reset_hovered_zoom(self):
+        if hasattr(self, "bucket_host") and self.bucket_host.underMouse():
+            self._set_thumb_zoom(100)
+        else:
+            self._set_page_zoom(100)
 
     def _set_thumb_zoom(self, pct: int):
         pct = max(60, min(150, int(pct or 100)))
@@ -591,10 +603,17 @@ class TakeMode(QWidget):
         self._refresh_bucket()
 
     def eventFilter(self, obj, event):
-        if obj is getattr(self, "bucket_host", None) and event.type() == event.Type.Wheel:
-            if event.modifiers() & Qt.ControlModifier:
-                delta = 10 if event.angleDelta().y() > 0 else -10
+        if event.type() == event.Type.Wheel and (event.modifiers() & Qt.ControlModifier):
+            delta = 10 if event.angleDelta().y() > 0 else -10
+            if obj is getattr(self, "bucket_host", None):
                 self._set_thumb_zoom(self._thumb_zoom + delta)
+                return True
+            if obj in (
+                getattr(self, "_canvas_scroll", None) and self._canvas_scroll.viewport(),
+                self.body.canvas.viewport(),
+                self.body.editor.viewport(),
+            ):
+                self._set_page_zoom(self._page_zoom + delta)
                 return True
         return super().eventFilter(obj, event)
 
@@ -629,10 +648,28 @@ class TakeMode(QWidget):
         base.setPointSizeF(12.5 * (pct / 100.0))
         self.body.canvas.setFont(base)
         self.body.canvas.document().setDefaultFont(base)
-        scaled_w = int((self._preview_width * pct) / 100.0)
-        self.page_card.setFixedWidth(scaled_w + 80)
-        self.ruler.set_preview_width(scaled_w)
-        self.body.canvas.set_preview_width(scaled_w)
+        self._fit_page_card_width()
+
+    def _fit_page_card_width(self):
+        pct = getattr(self, "_page_zoom", 100)
+        desired_inner = int((self._preview_width * pct) / 100.0)
+        desired_card = desired_inner + 80
+        scroll = getattr(self, "_canvas_scroll", None)
+        if scroll is not None and scroll.viewport().width() > 0:
+            vp_w = scroll.viewport().width()
+            gutter_w = self.gutter_tag.width() + 8 if hasattr(self, "gutter_tag") else 40
+            m = self._well_layout.contentsMargins() if hasattr(self, "_well_layout") else None
+            lr = (m.left() + m.right()) if m is not None else 32
+            # 24px buffer keeps CanvasWell horizontalScrollBar().maximum() == 0
+            # even when the vertical scrollbar is present.
+            avail_card = max(280, vp_w - gutter_w - lr - 24)
+            target_card = min(desired_card, avail_card)
+        else:
+            target_card = desired_card
+        inner_w = max(200, target_card - 80)
+        self.page_card.setFixedWidth(target_card)
+        self.ruler.set_preview_width(inner_w)
+        self.body.canvas.set_preview_width(inner_w)
 
     def _set_preview_width(self, width: int):
         self._preview_width = int(width or 760)
@@ -703,6 +740,7 @@ class TakeMode(QWidget):
 
     def _blocks_state_changed(self, opened: bool, _pinned: bool):
         self.blocksStateChanged.emit(opened, self.blocks_header_label())
+        QTimer.singleShot(0, self._fit_page_card_width)
 
     def _sync_block_tray_width(self):
         window = self.window()
@@ -735,6 +773,8 @@ class TakeMode(QWidget):
             self.gutter_tag.setFixedWidth(32 if tight else 52)
         if hasattr(self, "_well_layout"):
             self._well_layout.setContentsMargins(6 if tight else 16, 12, 6 if tight else 16, 18)
+        self._fit_page_card_width()
+        QTimer.singleShot(0, self._fit_page_card_width)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

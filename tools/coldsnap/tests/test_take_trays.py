@@ -5,6 +5,8 @@ import sys
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import Qt, QPointF
+from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import QApplication, QWidget
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -93,6 +95,70 @@ def test_focus_mode_and_compact_header(monkeypatch):
     assert win.blocks_btn.text() == "BLOCKS"
     win.take_mode.set_photos_open(False)
     win.take_mode.set_details_open(False)
+    win.take_mode.set_blocks_open(False)
+    win.close()
+
+
+def test_rendered_canvaswell_no_horizontal_overflow_and_ctrl_wheel(monkeypatch):
+    app = _app()
+    monkeypatch.setattr(ConnectPanel, "_start_mode_discovery", lambda self: None)
+    dummy_solo = QWidget()
+    dummy_solo.refresh_taxonomy = lambda: None
+    monkeypatch.setattr("coldsnap_qt.main_window.SoloMode", lambda _cfg: dummy_solo)
+    monkeypatch.setattr("coldsnap_qt.main_window.StackMode", lambda _cfg: QWidget())
+    monkeypatch.setattr("coldsnap_qt.main_window.StorageMode", lambda _cfg: QWidget())
+
+    win = MainWindow()
+    win.setAttribute(Qt.WA_DontShowOnScreen, True)
+    win.tabs.setCurrentIndex(2)
+    win.show()
+    app.processEvents()
+
+    def settle(w, h, photos=False, blocks=False, focus=False):
+        win.set_focus_mode(focus)
+        win.take_mode.set_photos_open(photos)
+        win.take_mode.set_blocks_open(blocks)
+        win.resize(w, h)
+        for _ in range(3):
+            app.processEvents()
+            win.take_mode._fit_page_card_width()
+            app.processEvents()
+
+    for w, h in ((1920, 1080), (1440, 900), (1366, 768)):
+        settle(w, h, photos=False, blocks=False, focus=False)
+        assert win.take_mode._canvas_scroll.horizontalScrollBar().maximum() == 0
+
+    for photos, blocks, focus in (
+        (False, False, False),
+        (True, False, False),
+        (True, True, False),
+        (False, False, True),
+    ):
+        settle(1024, 768, photos=photos, blocks=blocks, focus=focus)
+        assert win.take_mode._canvas_scroll.horizontalScrollBar().maximum() == 0
+
+    # Slice 7: Ctrl+scroll zooms thumbnails when over bucket_host, page when over CanvasWell
+    win.set_focus_mode(False)
+    win.take_mode._set_thumb_zoom(100)
+    win.take_mode._set_page_zoom(100)
+    wheel_up = QWheelEvent(
+        QPointF(10, 10), QPointF(10, 10),
+        QWheelEvent.pixelDelta(QWheelEvent(QPointF(0, 0), QPointF(0, 0),
+                                          QPointF(0, 0).toPoint(), QPointF(0, 120).toPoint(),
+                                          Qt.NoButton, Qt.ControlModifier, Qt.NoScrollPhase, False)),
+        QPointF(0, 120).toPoint(), Qt.NoButton, Qt.ControlModifier, Qt.NoScrollPhase, False,
+    )
+    app.sendEvent(win.take_mode.bucket_host, wheel_up)
+    assert win.take_mode._thumb_zoom == 110
+    assert win.take_mode._page_zoom == 100
+
+    app.sendEvent(win.take_mode._canvas_scroll.viewport(), wheel_up)
+    assert win.take_mode._page_zoom == 110
+    assert win.take_mode._thumb_zoom == 110
+
+    win.take_mode._set_thumb_zoom(100)
+    win.take_mode._set_page_zoom(100)
+    win.take_mode.set_photos_open(False)
     win.take_mode.set_blocks_open(False)
     win.close()
 
