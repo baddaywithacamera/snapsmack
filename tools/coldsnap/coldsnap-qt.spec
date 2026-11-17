@@ -21,7 +21,7 @@ _build_version = next(
     and any(isinstance(target, ast.Name) and target.id == 'BUILD_VERSION'
             for target in node.targets)
 )
-_version_tuple = tuple(int(part) for part in _build_version.split('.')) + (0,)
+_version_tuple = tuple(int(part.split('-')[0]) for part in _build_version.split('.')) + (0,)
 if len(_version_tuple) != 4 or any(part < 0 or part > 65535 for part in _version_tuple):
     raise ValueError('BUILD_VERSION must contain three Windows-compatible integers')
 _windows_version = VSVersionInfo(
