@@ -77,4 +77,54 @@ function snap_ohsnap_key_delete(PDO $pdo, int $key_id, ?int $now = null): array 
     $pdo->prepare("DELETE FROM snap_ohsnap_keys WHERE id = ?")->execute([$key_id]);
     return ['ok' => true, 'status' => 200];
 }
+
+/**
+ * Step-up verification for remote key actions with server-side 5-attempt lockout.
+ * Delegates to SS-1399 reauth_verify() when present and enforces the same
+ * snap_rate_limits budget if SS-1399 has not merged yet.
+ *
+ * @return array{ok:bool,error:string,locked?:bool}
+ */
+function snap_ohsnap_keys_stepup(PDO $pdo, string $password, string $totp_code, ?int $now = null): array {
+    $now = $now ?? time();
+    if (defined('REAUTH_MAX_ATTEMPTS')) {
+        return reauth_verify($pdo, $password, $totp_code, $now);
+    }
+
+    $uid = (int)($_SESSION['user_id'] ?? 0);
+    if ($uid <= 0) {
+        return ['ok' => false, 'error' => 'No active session.'];
+    }
+    $key = 'uid:' . $uid;
+    $stmt = $pdo->prepare("SELECT count, window_start FROM snap_rate_limits WHERE ip = ? AND action = 'reauth_fail' LIMIT 1");
+    $stmt->execute([$key]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row && (int)$row['count'] >= 5) {
+        $ws = strtotime((string)$row['window_start'] . ' UTC') ?: $now;
+        if ($now < $ws + 900) {
+            return ['ok' => false, 'locked' => true, 'error' => 'Too many failed verification attempts. Locked for 15 minute(s).'];
+        }
+        $pdo->prepare("DELETE FROM snap_rate_limits WHERE ip = ? AND action = 'reauth_fail'")->execute([$key]);
+    }
+
+    $ra = reauth_verify($pdo, $password, $totp_code);
+    if (!empty($ra['ok'])) {
+        $pdo->prepare("DELETE FROM snap_rate_limits WHERE ip = ? AND action = 'reauth_fail'")->execute([$key]);
+        return $ra;
+    }
+
+    $now_str = gmdate('Y-m-d H:i:s', $now);
+    $new_count = $row ? ((int)$row['count'] + 1) : 1;
+    if ($row) {
+        $pdo->prepare("UPDATE snap_rate_limits SET count = ?, window_start = ? WHERE ip = ? AND action = 'reauth_fail'")
+            ->execute([$new_count, $now_str, $key]);
+    } else {
+        $pdo->prepare("INSERT INTO snap_rate_limits (ip, action, count, window_start) VALUES (?, 'reauth_fail', 1, ?)")
+            ->execute([$key, $now_str]);
+    }
+    if ($new_count >= 5) {
+        $ra['locked'] = true;
+    }
+    return $ra;
+}
 // ===== SNAPSMACK EOF =====

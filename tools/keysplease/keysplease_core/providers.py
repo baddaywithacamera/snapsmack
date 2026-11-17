@@ -61,8 +61,6 @@ class FakeKeysProvider:
             raise PermissionError("Password and 6-digit TOTP required for session.")
         raw = secrets.token_hex(32)
         prefix = raw[:8]
-        # Write straight into the owning tool's vault entry; NEVER return raw key!
-        self.vault[vault_entry_name(key_type, site_url)] = raw
         self._next_id += 1
         rec = SiteKeyRecord(
             site_url=site_url,
@@ -77,6 +75,13 @@ class FakeKeysProvider:
             is_active=True,
         )
         self._records.insert(0, rec)
+        # Write straight into the owning tool's vault entry; NEVER return raw key!
+        # If vault write fails, revoke immediately so no orphan active key remains on server.
+        try:
+            self.vault[vault_entry_name(key_type, site_url)] = raw
+        except Exception:
+            rec.is_active = False
+            raise
         return rec
 
     def revoke_key(self, key_id: int, password: str, totp: str) -> SiteKeyRecord:
