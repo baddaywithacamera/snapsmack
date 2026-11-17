@@ -51,9 +51,21 @@ function snapsmack_public_parse_page_content(PDO $pdo, array $response): array
 /** Map an entry-point request into the central public controller's bounded vocabulary. */
 function snapsmack_public_runtime_request(array $input): array
 {
-    if (trim((string)($input['query'] ?? '')) !== '') return [
-        'route' => 'search', 'query' => $input['query'], 'page' => $input['page'] ?? 1,
-    ];
+    if (trim((string)($input['query'] ?? '')) !== '') {
+        // SS-1409. "#tag" GOES TO THE TAG ARCHIVE. index.php:891 carried this
+        // shortcut, but only inside the old dispatch that includes
+        // skins/<skin>/search.php -- and no skin has had a search.php since
+        // the strict conversion, so that block cannot run on any site and the
+        // shortcut has been gone fleet-wide. Restored here, where the strict
+        // path actually passes, with the same pattern guard it had: anything
+        // that is not a plain tag name stays an ordinary search.
+        $_q = trim((string)$input['query']);
+        if ($_q[0] === '#' && preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/', substr($_q, 1))) {
+            return ['route' => 'hashtag', 'slug' => strtolower(substr($_q, 1)),
+                'page' => $input['page'] ?? 1];
+        }
+        return ['route' => 'search', 'query' => $input['query'], 'page' => $input['page'] ?? 1];
+    }
     if (trim((string)($input['tag'] ?? '')) !== '') return ['route' => 'hashtag', 'slug' => $input['tag'], 'page' => $input['page'] ?? 1];
     $view = strtolower(trim((string)($input['view'] ?? '')));
     // 'blog' is here so that the image feed has an address of its own on a
