@@ -8,8 +8,7 @@
     "aurora": [
       "albums",
       "collection",
-      "collections",
-      "search"
+      "collections"
     ],
     "game-on": [
       "albums",
@@ -19,48 +18,40 @@
     "heuristic": [
       "albums",
       "collection",
-      "collections",
-      "search"
+      "collections"
     ],
     "instant-camera": [
       "albums",
       "collection",
-      "collections",
-      "search"
+      "collections"
     ],
     "jive-turkey": [
       "albums",
       "collection",
-      "collections",
-      "search"
+      "collections"
     ],
     "parade": [
       "albums",
       "collection",
-      "collections",
-      "search"
+      "collections"
     ],
     "scroll": [
       "albums",
-      "collections",
-      "search"
+      "collections"
     ],
     "show-n-tell": [
       "albums",
-      "collections",
-      "search"
+      "collections"
     ],
     "sliders": [
       "albums",
       "collection",
-      "collections",
-      "search"
+      "collections"
     ],
     "sudden-impact": [
       "albums",
       "collection",
-      "collections",
-      "search"
+      "collections"
     ],
     "the-grid": [
       "albums",

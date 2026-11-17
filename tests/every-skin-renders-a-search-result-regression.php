@@ -57,8 +57,12 @@ $exempt = [
  * of what is broken and starts hiding the next regression.
  */
 $held = [
-    'aurora', 'full-monty', 'heuristic', 'instant-camera', 'jive-turkey',
-    'parade', 'scroll', 'show-n-tell', 'sliders', 'sudden-impact', 'the-grid',
+    // THE GRID only. The other ten were repaired in the same change that
+    // added the component. THE GRID is edited on its own, in its own commit,
+    // because it is the one skin with a standing "it works, don't change it"
+    // note on it (Sean, 2026-11-17: that note never meant "no edits", it
+    // meant not as part of a sweep).
+    'the-grid',
 ];
 
 /** Does this file, or a core page component it delegates to, handle kind 'search'? */

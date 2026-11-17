@@ -18,8 +18,8 @@
             "manifest_css_sha256": "f06a8252ab0e42004734c97aedc0edd47340d2f0192064e0a5b72cdaccf1d7c0"
         },
         "aurora": {
-            "version": "1.0.59",
-            "files_sha256": "a62fa176e811c478b8d7b289d8724808b2dcad1a57f8eeb5b949e264ff212eca",
+            "version": "1.0.60",
+            "files_sha256": "84863ffd1b34e6f332ef2897890fd08d834a6e84083ea684f955634f8c82ca40",
             "manifest_css_sha256": "f67477db80f99dfe768ffabd28206817df5b3c62d90a452a6ffc4979795552d3"
         },
         "chaplin": {
@@ -28,8 +28,8 @@
             "manifest_css_sha256": "2190dc5b444023c881326610eea180b36ba855b894adf87a232d0d1038841df0"
         },
         "full-monty": {
-            "version": "0.1.10",
-            "files_sha256": "a8f62a7e14c62f81512384c5b194305f868d9d4112a40652903b2038c80f6356",
+            "version": "0.1.11",
+            "files_sha256": "f99bd02fe101ef44f8b89bf834a126ea24e6bc0981c0178e2131e6d1b88a822b",
             "manifest_css_sha256": "85c6797b236bae8cb65b0ebc1272b1f2480c2a7ddab219bfc921c68a8fb7a8be"
         },
         "galleria": {
@@ -48,8 +48,8 @@
             "manifest_css_sha256": "9ad69417b2483da3f07caa8edc3381a11c066b03c0a95a5c7154c381b23ca395"
         },
         "heuristic": {
-            "version": "0.1.20",
-            "files_sha256": "9911d4f1f3d3726de9c072f08c9e34c5392745e9c035c69cb4fcc1aec572c329",
+            "version": "0.1.21",
+            "files_sha256": "207cccfaee6f2de42325c5d6c0221929941ae6816df694f570e0ce96b2cbd220",
             "manifest_css_sha256": "cdc3124b68df1ed2adde3b6945b56d54738341ba30014969c06d8e98ea604236"
         },
         "hip-to-be-square": {
@@ -63,13 +63,13 @@
             "manifest_css_sha256": "3b8bf63241dcfebbc852fca4c126eee3e15ebd2fda9b248bf35936b21ea99715"
         },
         "instant-camera": {
-            "version": "1.0.61",
-            "files_sha256": "4df8cc859e47a7da7a81ecb23b53d66b333d5de4e1e1391a88185dcfe4be7f95",
+            "version": "1.0.62",
+            "files_sha256": "0640b8aef3a3e9f2092cd2d72b61ac5ae5bb99987c6fff2bacefbe5aea4ad83c",
             "manifest_css_sha256": "9f063a0c2f9bb2373403c8ae99ce96df101706f2b2e6b97728f72abe7122a3a0"
         },
         "jive-turkey": {
-            "version": "0.1.48",
-            "files_sha256": "aea16ca4cd5f2da5431e57f6dab7b8673e2027c24d0abab03052fbb11b4407ae",
+            "version": "0.1.49",
+            "files_sha256": "c6d360bfea34375786c56f8ab281ea4ae29748e9f7458213bff003efae1fe464",
             "manifest_css_sha256": "f5ade19134d0fe0731b124814ea8cf74151079a73356af70e3fe19cd87006aa7"
         },
         "new-horizon": {
@@ -83,8 +83,8 @@
             "manifest_css_sha256": "d140a8d1a2446bb436bf161c5223d8a1e02ba36b7607318565a7d1a9acaa09b7"
         },
         "parade": {
-            "version": "1.2.56",
-            "files_sha256": "3feb84b5def07efdd2546338da16b6814dbb8e9ce15af470b12878980dbe0f36",
+            "version": "1.2.57",
+            "files_sha256": "2e01b111ba82a29978d684aa3c5322cf34751bf8e357ef9593eed5f565a10269",
             "manifest_css_sha256": "d037815ba4381789c20187682fe43e93838442fe07473aba7a5e04f8929c51ed"
         },
         "photogram": {
@@ -98,13 +98,13 @@
             "manifest_css_sha256": "a1f5658d8ba757965e60af97702c2fbc6fa516b5fb153e1509967ae0c09a0d0f"
         },
         "scroll": {
-            "version": "0.1.79",
-            "files_sha256": "0a71ae349cedced412f0c7563cf78f309e13c2656305abe6bb5aac3fa36f74be",
+            "version": "0.1.80",
+            "files_sha256": "2468c927a15f20f4a705998dbc3f8daf3340f500d5497be3cbc1f163d02c2e77",
             "manifest_css_sha256": "3be4f7dad2f868df8925990d1e97a61a490073b7f13dcd9c4ee1a22ae9e58ec8"
         },
         "show-n-tell": {
-            "version": "1.2.14",
-            "files_sha256": "118a41750b17bf319c8524457cfad3aa535e65f770db88c28b863cd94961f35a",
+            "version": "1.2.15",
+            "files_sha256": "23f67f36a15235a086548c3c2b62dbcfda8d2fb7bd0ffb278daa82ab2aa1b4a0",
             "manifest_css_sha256": "ed224763d773f545f51e8316978fd4f725d4a4057136a31fc0a1d0bba5afc139"
         },
         "slickr": {
@@ -113,8 +113,8 @@
             "manifest_css_sha256": "00f4c68332312cba078d32b419a366b7bec518ec322a17748e5c1884bc7245df"
         },
         "sliders": {
-            "version": "0.1.20",
-            "files_sha256": "c5bb01ab700c068f46dae96e2faac19ce75a813a27f11a88309ca8caabc575ae",
+            "version": "0.1.21",
+            "files_sha256": "44cb69d3ecc2df759cc25b137b7749677523a84ace7f9f5f10d26b28a629c423",
             "manifest_css_sha256": "649ec65c436bd7740d3f1301089d767ba3de976fff4e680d652d7a5d22579267"
         },
         "stanley": {
@@ -123,8 +123,8 @@
             "manifest_css_sha256": "c3b9279f81005d1fdb3cf36f5cdb5959de66924bd72dcc0f912d93ef1666f150"
         },
         "sudden-impact": {
-            "version": "1.0.26",
-            "files_sha256": "9ede608e3e783b3fd90a90d162022b988eb38f1f5502d0a4d28b787a75c01902",
+            "version": "1.0.27",
+            "files_sha256": "3706de90636c799227117818ecc7939cdea377bbe78acefaf56d26613cb5ae73",
             "manifest_css_sha256": "79996a16f5aaad1ff09769a0188d5b3a3663bf239bc30d3ed854c84eb20d08b1"
         },
         "telegram": {
