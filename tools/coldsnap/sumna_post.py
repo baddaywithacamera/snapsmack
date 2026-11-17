@@ -339,6 +339,73 @@ class SumnaConnection:
             return MODE_UNKNOWN, True, "couldn't verify mode (server didn't report site_mode)"
         return MODE_UNKNOWN, False, locals().get("last", "unreachable")
 
+    def fetch_site_bg(self, timeout: int = 8) -> str:
+        """Resolve the target site's page background colour (#rrggbb) from
+        sybu-data.php or the site's public HTML / skin CSS. Returns '' if unknown."""
+        from urllib.parse import urljoin
+
+        def _norm_color(val: str) -> str:
+            v = str(val or "").strip()
+            if re.fullmatch(r"#[0-9a-fA-F]{6}", v):
+                return v.lower()
+            if re.fullmatch(r"#[0-9a-fA-F]{3}", v):
+                return "#" + "".join(c * 2 for c in v[1:]).lower()
+            m = re.fullmatch(r"rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*[\d.]+)?\s*\)", v)
+            if m:
+                r, g, b = (max(0, min(255, int(x))) for x in m.groups())
+                return f"#{r:02x}{g:02x}{b:02x}"
+            return ""
+
+        def _extract_from_css(css: str) -> str:
+            vars_map = {}
+            for k, v in re.findall(r"(--[a-zA-Z0-9_-]+)\s*:\s*([^;}\n]+)", css):
+                vars_map[k.strip()] = v.strip()
+            for block in re.findall(r"(?:^|[}\s])(?:html\s*,\s*)?body\s*\{([^}]+)\}", css, re.IGNORECASE):
+                for prop in ("background-color", "background"):
+                    m = re.search(rf"{prop}\s*:\s*([^;!\n]+)", block, re.IGNORECASE)
+                    if m:
+                        raw = m.group(1).strip()
+                        vm = re.match(r"var\(\s*(--[a-zA-Z0-9_-]+)(?:\s*,\s*([^)]+))?\s*\)", raw)
+                        if vm:
+                            raw = vars_map.get(vm.group(1), vm.group(2) or "")
+                        token = raw.split()[0] if raw else ""
+                        c = _norm_color(token)
+                        if c:
+                            return c
+            for vname in ("--bg-primary", "--page-bg", "--canvas-bg", "--bg", "--background"):
+                if vname in vars_map:
+                    c = _norm_color(vars_map[vname])
+                    if c:
+                        return c
+            return ""
+
+        try:
+            r = self.session.get(f"{self.base_url}/", timeout=timeout)
+            if r.status_code != 200:
+                return ""
+            html = r.text or ""
+            for style in re.findall(r"<style[^>]*>(.*?)</style>", html, re.IGNORECASE | re.DOTALL):
+                c = _extract_from_css(style)
+                if c:
+                    return c
+            hrefs = re.findall(
+                r"""<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']""",
+                html, re.IGNORECASE,
+            )
+            for href in hrefs[:4]:
+                css_url = urljoin(f"{self.base_url}/", href)
+                try:
+                    cr = self.session.get(css_url, timeout=timeout)
+                    if cr.status_code == 200:
+                        c = _extract_from_css(cr.text or "")
+                        if c:
+                            return c
+                except requests.RequestException:
+                    continue
+        except requests.RequestException:
+            return ""
+        return ""
+
 
 # ---------------------------------------------------------------------------
 # SoloPoster — BATCH SLAPPED. Reuses the smack-post-solo.php multipart contract.

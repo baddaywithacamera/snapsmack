@@ -289,19 +289,6 @@ class _Objects(QPyTextObject):
             painter.setPen(QPen(QColor(ruler), 1))
             y = r.top() + r.height() // 2
             painter.drawLine(r.left(), y, r.right(), y)
-        if pos == getattr(self.canvas, "_selected_obj_pos", None):
-            painter.setPen(QPen(QColor(theme.ACCENT), 2))
-            painter.setBrush(Qt.NoBrush)
-            painter.drawRect(r.adjusted(1, 1, -1, -1))
-            close_r = QRect(max(r.left(), r.right() - 24), r.top() + 4, 20, 20)
-            painter.fillRect(close_r, QColor("#181a18"))
-            painter.setPen(QPen(QColor("#ff4f4f"), 1))
-            painter.drawRect(close_r)
-            painter.setPen(QColor("#ffffff"))
-            painter.drawText(close_r, Qt.AlignCenter, "✕")
-            rects = getattr(self.canvas, "_obj_close_rects", None)
-            if rects is not None:
-                rects[pos] = close_r
         painter.restore()
 
     def _draw_mosaic(self, painter, r, data):
@@ -659,6 +646,9 @@ class BiggieCanvas(QTextEdit):
         self._mosaic_size_cache = {}
         self._mosaic_stat_cache = {}
         self._selected_obj_pos = None
+        self._selected_block_pos = None
+        self._block_close_rect = None
+        self._gutter_grip_rects = {}
         self._obj_close_rects = {}
         self._ruler_color = theme.DIM
         self.setStyleSheet(
@@ -670,6 +660,7 @@ class BiggieCanvas(QTextEdit):
         self.setFont(base)
         self.document().setDefaultFont(base)
         self.document().setDocumentMargin(4)
+        self._ensure_gutter_margin()
         self._objects = _Objects(self)
         self.document().documentLayout().registerHandler(OBJ_TYPE, self._objects)
         self.document().documentLayout().documentSizeChanged.connect(self._sync_canvas_height)
@@ -1057,21 +1048,166 @@ class BiggieCanvas(QTextEdit):
         pos = self.document().documentLayout().hitTest(point, Qt.FuzzyHit)
         return self._object_at(pos) if pos >= 0 else None
 
+    def _ensure_gutter_margin(self):
+        rf = self.document().rootFrame().frameFormat()
+        if rf.leftMargin() < 20:
+            rf.setLeftMargin(20)
+            self.document().rootFrame().setFrameFormat(rf)
+
+    def select_block_at(self, pos: int):
+        """Select any BIGGIE block (inline object, para, heading, quote, list, or columns)."""
+        hit = self._object_at(pos)
+        if hit:
+            self._selected_obj_pos = hit[2]
+            self._selected_block_pos = hit[2]
+        else:
+            blk = self.document().findBlock(pos)
+            if not blk.isValid():
+                self._selected_obj_pos = None
+                self._selected_block_pos = None
+                self._block_close_rect = None
+                self.viewport().update()
+                return
+            tbl = QTextCursor(blk).currentTable()
+            self._selected_obj_pos = None
+            self._selected_block_pos = tbl.firstCursorPosition().position() if tbl else blk.position()
+        self.viewport().update()
+
+    def _block_selection_rect(self, pos: int):
+        """Return viewport QRect for the selected block/table/object, or None."""
+        doc = self.document()
+        layout = doc.documentLayout()
+        off_x = -self.horizontalScrollBar().value()
+        off_y = -self.verticalScrollBar().value()
+        blk = doc.findBlock(pos)
+        if not blk.isValid():
+            return None
+        tbl = QTextCursor(blk).currentTable()
+        if tbl is not None:
+            r = layout.frameBoundingRect(tbl).toRect()
+            r.translate(off_x, off_y)
+            return r
+        r = layout.blockBoundingRect(blk).toRect()
+        r.translate(off_x, off_y)
+        if r.height() < 22:
+            r.setHeight(22)
+        return r
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self.viewport())
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        doc = self.document()
+        layout = doc.documentLayout()
+        off_y = -self.verticalScrollBar().value()
+        grips = {}
+        seen_tables = set()
+        blk = doc.begin()
+        while blk.isValid():
+            tbl = QTextCursor(blk).currentTable()
+            if tbl is not None:
+                tpos = tbl.firstCursorPosition().position()
+                if tpos not in seen_tables:
+                    seen_tables.add(tpos)
+                    br = layout.frameBoundingRect(tbl).toRect()
+                    br.translate(0, off_y)
+                    grip = QRect(2, br.top() + 2, 14, max(18, min(24, br.height())))
+                    grips[tpos] = grip
+            else:
+                br = layout.blockBoundingRect(blk).toRect()
+                br.translate(0, off_y)
+                grip = QRect(2, br.top() + 2, 14, max(18, min(24, br.height())))
+                grips[blk.position()] = grip
+            blk = blk.next()
+        self._gutter_grip_rects = grips
+
+        for bpos, grip in grips.items():
+            is_sel = (bpos == self._selected_block_pos)
+            painter.setPen(QColor(theme.ACCENT if is_sel else theme.DIM))
+            painter.drawText(grip, Qt.AlignCenter, "⋮")
+
+        self._block_close_rect = None
+        if self._selected_block_pos is not None:
+            sel_r = self._block_selection_rect(self._selected_block_pos)
+            if sel_r is not None:
+                painter.setPen(QPen(QColor(theme.ACCENT), 2))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRect(sel_r.adjusted(1, 1, -1, -1))
+                close_r = QRect(max(sel_r.left(), sel_r.right() - 24), sel_r.top() + 2, 20, 20)
+                painter.fillRect(close_r, QColor("#181a18"))
+                painter.setPen(QPen(QColor("#ff4f4f"), 1))
+                painter.drawRect(close_r)
+                painter.setPen(QColor("#ffffff"))
+                painter.drawText(close_r, Qt.AlignCenter, "✕")
+                self._block_close_rect = close_r
+        painter.end()
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             pt = event.position().toPoint()
+            if self._block_close_rect is not None and self._block_close_rect.contains(pt):
+                if self._selected_block_pos is not None:
+                    self._remove_block_at(self._selected_block_pos)
+                    return
             for obj_pos, rect in list(self._obj_close_rects.items()):
                 if rect.contains(pt):
                     self._remove_object(obj_pos)
                     return
+            for bpos, grip in list(self._gutter_grip_rects.items()):
+                if grip.contains(pt):
+                    self.select_block_at(bpos)
+                    return
             hit = self._object_under_mouse(event.position())
             if hit:
-                self._selected_obj_pos = hit[2]
-                self.viewport().update()
-            elif self._selected_obj_pos is not None:
+                self.select_block_at(hit[2])
+            elif self._selected_block_pos is not None or self._selected_obj_pos is not None:
                 self._selected_obj_pos = None
+                self._selected_block_pos = None
+                self._block_close_rect = None
                 self.viewport().update()
         super().mousePressEvent(event)
+
+    def _remove_block_at(self, pos: int):
+        """Delete any selected BIGGIE block (inline object, columns table, list, para, heading, quote)."""
+        hit = self._object_at(pos)
+        if hit:
+            self._remove_object(hit[2])
+            return
+        doc = self.document()
+        blk = doc.findBlock(pos)
+        if not blk.isValid():
+            self._selected_block_pos = None
+            self._block_close_rect = None
+            return
+        self._selected_obj_pos = None
+        self._selected_block_pos = None
+        self._block_close_rect = None
+        c = self.textCursor()
+        c.beginEditBlock()
+        tbl = QTextCursor(blk).currentTable()
+        if tbl is not None:
+            tbl.removeRows(0, tbl.rows())
+        else:
+            if blk.textList():
+                blk.textList().remove(blk)
+            if blk.next().isValid():
+                c.setPosition(blk.position())
+                c.setPosition(blk.next().position(), QTextCursor.KeepAnchor)
+                c.removeSelectedText()
+            elif blk.previous().isValid():
+                prev = blk.previous()
+                c.setPosition(prev.position() + prev.length() - 1)
+                c.setPosition(blk.position() + blk.length() - 1, QTextCursor.KeepAnchor)
+                c.removeSelectedText()
+            else:
+                c.setPosition(blk.position())
+                c.setPosition(blk.position() + blk.length() - 1, QTextCursor.KeepAnchor)
+                c.removeSelectedText()
+                c.setBlockFormat(self._block_format_for("para"))
+                c.setBlockCharFormat(self._char_format_for("para"))
+        c.endEditBlock()
+        self.setTextCursor(c)
+        self.viewport().update()
 
     def mouseDoubleClickEvent(self, event):
         hit = self._object_under_mouse(event.position())
@@ -1109,6 +1245,8 @@ class BiggieCanvas(QTextEdit):
 
     def _remove_object(self, pos: int):
         self._selected_obj_pos = None
+        self._selected_block_pos = None
+        self._block_close_rect = None
         self._obj_close_rects.pop(pos, None)
         c = self.textCursor()
         c.beginEditBlock()
@@ -1206,12 +1344,10 @@ class BiggieCanvas(QTextEdit):
     # -- typing behaviour -----------------------------------------------------------
     def keyPressEvent(self, event):
         key = event.key()
-        if self._selected_obj_pos is not None and key in (Qt.Key_Delete, Qt.Key_Backspace):
-            pos = self._selected_obj_pos
-            if self._object_at(pos):
-                self._remove_object(pos)
-                return
-            self._selected_obj_pos = None
+        sel_pos = self._selected_block_pos if self._selected_block_pos is not None else self._selected_obj_pos
+        if sel_pos is not None and key in (Qt.Key_Delete, Qt.Key_Backspace):
+            self._remove_block_at(sel_pos)
+            return
         cur = self.textCursor()
         block = cur.block()
         if key in (Qt.Key_Return, Qt.Key_Enter) and not (event.modifiers() & Qt.ShiftModifier):
@@ -1320,6 +1456,10 @@ class BiggieCanvas(QTextEdit):
         self._guard = True
         try:
             self.clear()
+            self._selected_obj_pos = None
+            self._selected_block_pos = None
+            self._block_close_rect = None
+            self._ensure_gutter_margin()
             doc = self.document()
             cur = QTextCursor(doc)
             cur.beginEditBlock()

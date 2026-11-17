@@ -338,11 +338,19 @@ class ConnectPanel(QWidget):
         def run():
             def probe(row):
                 name, url, key = row
+                conn = SumnaConnection(url, key)
                 try:
-                    mode, _reachable, _note = SumnaConnection(url, key).probe_site_mode(
-                        timeout=6)
+                    mode, _reachable, _note = conn.probe_site_mode(timeout=6)
                 except Exception:  # one offline site must not break the picker
                     mode = ""
+                try:
+                    meta = snap_library.meta(url)
+                    if not any(meta.get(k) for k in ("site_bg", "page_bg", "background_color", "bg_color")):
+                        bg = conn.fetch_site_bg(timeout=6)
+                        if bg:
+                            snap_library.set_site_bg(url, bg)
+                except Exception:
+                    pass
                 return name, str(mode or "").strip().lower()
 
             found = {}
@@ -373,6 +381,7 @@ class ConnectPanel(QWidget):
         self._pending_probe_names.clear()
         self._probing_modes = False
         self._rebuild_profile_combo()
+        self.sitesLoaded.emit()
 
     def _profile_display_label(self, name: str) -> str:
         mode = self._resolved_mode(name)
