@@ -545,6 +545,7 @@ class BackupEngine:
         global_config:    Optional[dict] = None,
         global_cloud:     Optional[dict] = None,
         resume_checkpoint: Optional["checkpoint_module.BackupCheckpoint"] = None,
+        on_before_checkpoint_clear: Optional[Callable[[dict], None]] = None,
     ):
         self.profile           = profile
         self.on_progress       = on_progress or (lambda stage, msg, pct: None)
@@ -558,6 +559,7 @@ class BackupEngine:
         self.global_cloud      = global_cloud or {}
         self._cancelled        = False
         self._resume_cp        = resume_checkpoint
+        self._on_before_cp_clear = on_before_checkpoint_clear
         self._run_gate         = threading.Event()
         self._run_gate.set()
         self._paused           = False
@@ -1214,17 +1216,24 @@ class BackupEngine:
                 ftp.disconnect()
             return result
 
+        cloud_provider = str(
+            self.profile.get("cloud_provider")
+            or (self.global_cloud or {}).get("cloud_provider")
+            or "none"
+        ).strip().lower()
+        cloud_required = cloud_provider not in ("", "none", "local", "disabled")
         cloud = cloud_module.get_cloud_client(self.profile, global_cloud=self.global_cloud)
         cloud_id = ""
+        cloud_upload_ok = False
 
         if not cloud:
-            provider = (self.profile.get("cloud_provider")
-                        or (self.global_cloud or {}).get("cloud_provider") or "none")
-            creds    = (self.profile.get("cloud_credentials_file")
-                        or (self.global_cloud or {}).get("cloud_credentials_file") or "")
-            if provider == "google_drive":
-                self._log(f"Cloud upload skipped — provider is {provider} but no credentials file is set.")
-                result["errors"].append("Cloud upload skipped — set SA key file in Settings → Global Cloud Config and click Save Defaults.")
+            if cloud_required:
+                msg = (
+                    f"Cloud upload failed — provider '{cloud_provider}' is configured "
+                    "but cloud client/credentials are unavailable."
+                )
+                self._log(f"✗ {msg}")
+                result["errors"].append(msg)
             else:
                 self._log("Cloud upload skipped — no cloud provider configured.")
 
@@ -1239,6 +1248,7 @@ class BackupEngine:
                     ),
                 )
                 result["cloud_id"] = cloud_id
+                cloud_upload_ok = bool(cloud_id)
                 self._log(f"Cloud upload complete: {cloud_id}")
 
                 # List current ZIPs for the cloud state index
@@ -1252,7 +1262,7 @@ class BackupEngine:
 
         # ── Stage 6: Verify ──────────────────────────────────────────
         self._progress("stage6", "Verifying…", 0.92)
-        verify_ok = True
+        zip_verified = True
 
         # Local verification: spot-check the zip is readable
         try:
@@ -1260,31 +1270,37 @@ class BackupEngine:
                 bad = zf.testzip()
                 if bad:
                     result["errors"].append(f"ZIP CRC error on: {bad}")
-                    verify_ok = False
+                    zip_verified = False
         except Exception as e:
             result["errors"].append(f"ZIP verification failed: {e}")
-            verify_ok = False
+            zip_verified = False
 
         # Cloud verification — content-hash check via the provider. FAIL-CLOSED:
-        # if the destination can't be verified, the backup is NOT marked clean.
-        # A backup tool that can't confirm the cloud copy is byte-identical isn't
-        # worth trusting, so "couldn't verify" is treated as failure, not success.
-        if cloud and cloud_id:
+        # if cloud is configured/required, both upload and destination verification
+        # must succeed; never report clean or clear checkpoint without it.
+        cloud_verified = False
+        if cloud and cloud_upload_ok and cloud_id:
             verifier = getattr(cloud, "verify_upload", None)
             if not callable(verifier):
                 result["errors"].append(
                     "Cloud destination provides no upload verification — "
                     "backup NOT confirmed."
                 )
-                verify_ok = False
             elif not verifier(cloud_id, zip_path):
                 result["errors"].append(
                     "Cloud verification FAILED (size or content-hash mismatch) "
                     "— backup NOT confirmed."
                 )
-                verify_ok = False
             else:
+                cloud_verified = True
                 self._log("✓ Cloud copy verified — size + content hash match.")
+        elif cloud_required and cloud and not cloud_upload_ok:
+            result["errors"].append("Cloud upload did not produce a destination object — backup NOT confirmed.")
+
+        verify_ok = zip_verified and (not cloud_required or cloud_verified)
+        result["zip_verified"] = zip_verified
+        result["cloud_required"] = cloud_required
+        result["cloud_verified"] = cloud_verified
 
         # Persist updated backup-state: HTTP mode saves it locally (read-only channel),
         # FTP/SFTP upload it back to the server as before.
@@ -1322,6 +1338,8 @@ class BackupEngine:
             result["success"] = True
             self._progress("done", f"Backup complete — {result['files_downloaded']} downloaded, {result['files_skipped']} skipped.", 1.0)
             self._log("Backup successful.")
+            if callable(self._on_before_cp_clear):
+                self._on_before_cp_clear(dict(result))
             cp.delete()
             self._log("Checkpoint cleared.")
         elif not sql_ok:
