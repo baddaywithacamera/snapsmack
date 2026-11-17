@@ -18,12 +18,12 @@ import uuid
 import requests
 
 from PySide6.QtCore import Qt, QRect, QSize, Signal, QTimer, QSettings
-from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon
+from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
-    QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton,
+    QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton, QSlider,
 )
 
 import sumna_offline as O
@@ -350,12 +350,30 @@ class TakeMode(QWidget):
         # height itself, so there is no dead void beneath it.
         scroll.setWidget(host)
 
-        # Primary action + Preview Desktop 760 / Phone 360 pinned in bottom bar
+        # Primary action + collapsible Post details (Ctrl+3) + Preview + PAGE zoom
+        self._compose_details = compose_details
+        details_open = self._view_settings.value("take/details_open", False, type=bool)
+        self._compose_details.setVisible(details_open)
+
         act = QHBoxLayout()
         act.setContentsMargins(14, 6, 14, 10)
-        act.setSpacing(8)
+        act.setSpacing(6)
+        self.details_toggle_btn = QPushButton()
+        self.details_toggle_btn.setObjectName("PreviewToggle")
+        self.details_toggle_btn.setCheckable(True)
+        self.details_toggle_btn.setChecked(details_open)
+        self.details_toggle_btn.setFocusPolicy(Qt.NoFocus)
+        self.details_toggle_btn.setToolTip("Show or hide Tags & Status (Ctrl+3)")
+        self.details_toggle_btn.toggled.connect(self._toggle_post_details)
+        QShortcut(QKeySequence("Ctrl+3"), self).activated.connect(
+            self.details_toggle_btn.toggle)
+        act.addWidget(self.details_toggle_btn)
+
+        self.page_state_lbl = hint("1 block")
+        act.addWidget(self.page_state_lbl)
         self.save_state = hint("Begin the story… changes will be safe on this computer.")
         act.addWidget(self.save_state, 1)
+
         save_btn = QPushButton("Save as draft")
         save_btn.clicked.connect(lambda: self._save(ready=False))
         act.addWidget(save_btn)
@@ -364,12 +382,12 @@ class TakeMode(QWidget):
         clear_btn.clicked.connect(self._clear)
         act.addWidget(clear_btn)
         self.queue_btn = big_button("QUEUE POST")
-        self.queue_btn.setMaximumWidth(220)
+        self.queue_btn.setMaximumWidth(200)
         self.queue_btn.setToolTip("Add this post to the batch. Nothing publishes until SEND.")
         self.queue_btn.clicked.connect(lambda: self._save(ready=True))
         act.addWidget(self.queue_btn)
 
-        act.addSpacing(8)
+        act.addSpacing(6)
         act.addWidget(hint("Preview"))
         self.preview_desktop_btn = QPushButton("Desktop 760")
         self.preview_phone_btn = QPushButton("Phone 360")
@@ -381,7 +399,40 @@ class TakeMode(QWidget):
             act.addWidget(btn)
         self.preview_desktop_btn.setChecked(True)
 
+        act.addSpacing(6)
+        act.addWidget(hint("PAGE"))
+        self._page_zoom = int(self._view_settings.value("take/page_zoom", 100))
+        zoom_out = QPushButton("-")
+        zoom_out.setObjectName("PreviewToggle")
+        zoom_out.setFixedWidth(26)
+        zoom_out.setFocusPolicy(Qt.NoFocus)
+        zoom_out.clicked.connect(lambda: self._set_page_zoom(self._page_zoom - 10))
+        act.addWidget(zoom_out)
+        self.page_zoom_slider = QSlider(Qt.Horizontal)
+        self.page_zoom_slider.setRange(70, 160)
+        self.page_zoom_slider.setSingleStep(10)
+        self.page_zoom_slider.setFixedWidth(72)
+        self.page_zoom_slider.setValue(self._page_zoom)
+        self.page_zoom_slider.valueChanged.connect(self._set_page_zoom)
+        act.addWidget(self.page_zoom_slider)
+        zoom_in = QPushButton("+")
+        zoom_in.setObjectName("PreviewToggle")
+        zoom_in.setFixedWidth(26)
+        zoom_in.setFocusPolicy(Qt.NoFocus)
+        zoom_in.clicked.connect(lambda: self._set_page_zoom(self._page_zoom + 10))
+        act.addWidget(zoom_in)
+        self.page_zoom_lbl = hint(f"{self._page_zoom}%")
+        act.addWidget(self.page_zoom_lbl)
+        zoom_reset = QPushButton("Reset")
+        zoom_reset.setObjectName("PreviewToggle")
+        zoom_reset.setFocusPolicy(Qt.NoFocus)
+        zoom_reset.clicked.connect(lambda: self._set_page_zoom(100))
+        act.addWidget(zoom_reset)
+
+        self._sync_details_btn(details_open)
+
         self.ruler = _PageRuler(self._preview_width)
+        self._set_page_zoom(self._page_zoom)
         centre = QVBoxLayout()
         centre.setContentsMargins(0, 0, 0, 0)
         centre.setSpacing(0)
@@ -419,13 +470,40 @@ class TakeMode(QWidget):
         QTimer.singleShot(0, self._recover_last_draft)
         QTimer.singleShot(0, self._sync_block_tray_width)
 
+    def _sync_details_btn(self, opened: bool):
+        arrow = "▼" if opened else "▲"
+        self.details_toggle_btn.setText(f"{arrow} Post details & queue  Ctrl+3")
+
+    def _toggle_post_details(self, opened: bool):
+        opened = bool(opened)
+        self._compose_details.setVisible(opened)
+        self._view_settings.setValue("take/details_open", opened)
+        self._sync_details_btn(opened)
+
+    def _set_page_zoom(self, pct: int):
+        pct = max(70, min(160, int(pct or 100)))
+        self._page_zoom = pct
+        self._view_settings.setValue("take/page_zoom", pct)
+        if hasattr(self, "page_zoom_slider"):
+            self.page_zoom_slider.blockSignals(True)
+            self.page_zoom_slider.setValue(pct)
+            self.page_zoom_slider.blockSignals(False)
+        if hasattr(self, "page_zoom_lbl"):
+            self.page_zoom_lbl.setText(f"{pct}%")
+        base = QFont("Georgia")
+        base.setPointSizeF(12.5 * (pct / 100.0))
+        self.body.canvas.setFont(base)
+        self.body.canvas.document().setDefaultFont(base)
+        scaled_w = int((self._preview_width * pct) / 100.0)
+        self.page_card.setFixedWidth(scaled_w + 80)
+        self.ruler.set_preview_width(scaled_w)
+        self.body.canvas.set_preview_width(scaled_w)
+
     def _set_preview_width(self, width: int):
         self._preview_width = int(width or 760)
         self.preview_desktop_btn.setChecked(self._preview_width == 760)
         self.preview_phone_btn.setChecked(self._preview_width == 360)
-        self.page_card.setFixedWidth(self._preview_width + 80)
-        self.ruler.set_preview_width(self._preview_width)
-        self.body.canvas.set_preview_width(self._preview_width)
+        self._set_page_zoom(getattr(self, "_page_zoom", 100))
 
     def _update_page_chrome(self):
         status = (self.status_combo.currentText() or "draft").strip().upper()
@@ -439,6 +517,8 @@ class TakeMode(QWidget):
             [ln for ln in self.body.editor.toPlainText().splitlines() if ln.strip()])
         from datetime import date
         self.page_meta.setText(f"{date.today().isoformat()} · {site} · {blocks} block{'s' if blocks != 1 else ''}")
+        if hasattr(self, "page_state_lbl"):
+            self.page_state_lbl.setText(f"{blocks} block{'s' if blocks != 1 else ''}")
         if self.body.is_biggie():
             self.gutter_tag.setText(self.body.canvas.current_block_tag())
             self.gutter_tag.setVisible(True)
