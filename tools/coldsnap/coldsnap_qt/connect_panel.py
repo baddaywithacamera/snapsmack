@@ -27,17 +27,46 @@ from .widgets import hint, field_label
 
 
 class _ModeProbeBridge(QObject):
-    finished = Signal(dict)
+    finished = Signal(dict, list)
 
 
 class _SitesLoadBridge(QObject):
     loaded = Signal(dict)
+    failed = Signal(str)
+
+
+def verify_site_mode(parent, conn, expected_mode: str, mode_label: str) -> bool:
+    """Re-verify the live site mode before sending; refuse if unknown or mismatched."""
+    try:
+        mode, reachable, note = conn.probe_site_mode(timeout=6)
+    except Exception as exc:  # noqa: BLE001
+        mode, reachable, note = "", False, str(exc)
+    mode = str(mode or "").strip().lower()
+    if mode not in ("photoblog", "carousel", "smacktalk"):
+        detail = f" ({note})" if note else ""
+        QMessageBox.warning(
+            parent,
+            "Site mode unknown",
+            f"COLD SNAP could not confirm this site's mode{detail}.\n\n"
+            "Nothing was uploaded. Check the site connection and retry.",
+        )
+        return False
+    if mode != expected_mode:
+        QMessageBox.warning(
+            parent,
+            "Wrong site mode",
+            f"This site reports mode '{mode}', which does not match {mode_label} "
+            f"('{expected_mode}').\n\nNothing was uploaded.",
+        )
+        return False
+    return True
 
 
 class ConnectPanel(QWidget):
     """Owns the app-level connection config dict the modes read."""
 
     sitesLoaded = Signal()
+    sitesLoadFailed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -46,14 +75,18 @@ class ConnectPanel(QWidget):
         self._mode_label = ""
         self._selected_by_mode = {}
         self._discovered_modes = {}
-        self._profile_cache = {}   # name -> {"url": ..., "mode": ...}
+        self._pending_probe_names = set()
+        self._failed_probe_names = set()
+        self._profile_cache = {}   # name -> {"url": ..., "api_key": ..., "mode": ...}
         self._profiles_loaded = False
+        self._load_error = ""
         self._startup_profile = None
         self._probing_modes = False
         self._mode_bridge = _ModeProbeBridge(self)
         self._mode_bridge.finished.connect(self._apply_discovered_modes)
         self._sites_bridge = _SitesLoadBridge(self)
         self._sites_bridge.loaded.connect(self._apply_loaded_sites)
+        self._sites_bridge.failed.connect(self._apply_load_failed)
         self.setObjectName("AppHeader")
 
         col = QVBoxLayout(self)
@@ -72,6 +105,12 @@ class ConnectPanel(QWidget):
         self.status_lbl = QLabel("")
         self.status_lbl.setObjectName("Hint")
         top.addWidget(self.status_lbl, 2)
+
+        self.retry_btn = QPushButton("Retry")
+        self.retry_btn.setObjectName("Quiet")
+        self.retry_btn.clicked.connect(self._retry_load_or_modes)
+        self.retry_btn.setVisible(False)
+        top.addWidget(self.retry_btn)
 
         self.details_btn = QPushButton("Connection details ▾")
         self.details_btn.setObjectName("Quiet")
@@ -120,22 +159,65 @@ class ConnectPanel(QWidget):
         QTimer.singleShot(0, self._begin_async_load)
 
     def _begin_async_load(self):
+        self._load_error = ""
+        self.retry_btn.setVisible(False)
+        self.profile_combo.blockSignals(True)
+        self.profile_combo.clear()
+        self.profile_combo.addItem("loading sites…", "")
+        self.profile_combo.setEnabled(False)
+        self.profile_combo.blockSignals(False)
+        self.status_lbl.setText("loading sites…")
+        self.status_lbl.setStyleSheet("")
+
         def _load():
-            import snap_library
-            cfg = cfg_module.load()
-            cache = {}
-            for name in profile_manager.list_profiles():
-                prof = profile_manager.load_profile(name) or {}
-                url = str(prof.get("url", "") or "").strip()
-                mode = str(prof.get("site_mode", "") or "").strip().lower()
-                if not mode and url:
-                    mode = str(snap_library.site_mode(url) or "").strip().lower()
-                cache[name] = {"url": url, "mode": mode}
-            self._sites_bridge.loaded.emit({"config": cfg, "cache": cache})
+            try:
+                import snap_library
+                cfg = cfg_module.load()
+                cache = {}
+                for name in profile_manager.list_profiles():
+                    prof = profile_manager.load_profile(name) or {}
+                    url = str(prof.get("url", "") or "").strip()
+                    api_key = str(prof.get("api_key", "") or "").strip()
+                    mode = str(prof.get("site_mode", "") or "").strip().lower()
+                    if not mode and url:
+                        mode = str(snap_library.site_mode(url) or "").strip().lower()
+                    cache[name] = {"url": url, "api_key": api_key, "mode": mode}
+                self._sites_bridge.loaded.emit({"config": cfg, "cache": cache})
+            except Exception as exc:  # noqa: BLE001
+                msg = str(exc).strip() or type(exc).__name__
+                self._sites_bridge.failed.emit(msg)
 
         threading.Thread(target=_load, daemon=True, name="coldsnap-sites-load").start()
 
+    def _apply_load_failed(self, reason: str):
+        self._load_error = str(reason or "Unknown error")
+        self._profiles_loaded = False
+        self.profile_combo.blockSignals(True)
+        self.profile_combo.clear()
+        self.profile_combo.addItem("— couldn't load sites —", "")
+        self.profile_combo.setEnabled(True)
+        self.profile_combo.blockSignals(False)
+        low = self._load_error.lower()
+        if any(tok in low for tok in ("vault", "locked", "unlock", "passphrase", "keyring")):
+            self.status_lbl.setText(f"Vault locked — unlock vault ({self._load_error})")
+            self.retry_btn.setText("Unlock / Retry")
+        else:
+            self.status_lbl.setText(f"Couldn't load sites: {self._load_error}")
+            self.retry_btn.setText("Retry")
+        self.status_lbl.setStyleSheet(f"color: {theme.DANGER};")
+        self.retry_btn.setVisible(True)
+        self.sitesLoadFailed.emit(self._load_error)
+
+    def _retry_load_or_modes(self):
+        if not self._profiles_loaded or self._load_error:
+            self._begin_async_load()
+        else:
+            self._failed_probe_names.clear()
+            self._start_mode_discovery()
+
     def _apply_loaded_sites(self, payload: dict):
+        self._load_error = ""
+        self.retry_btn.setVisible(False)
         self.config = dict(payload.get("config") or {})
         self._profile_cache = dict(payload.get("cache") or {})
         self._profiles_loaded = True
@@ -147,6 +229,7 @@ class ConnectPanel(QWidget):
         self._rebuild_profile_combo()
         self._reflect_status()
         self.sitesLoaded.emit()
+        self._start_mode_discovery()
 
     def add_header_action(self, widget):
         """Place one shell-level action before Connection details and Help."""
@@ -207,35 +290,50 @@ class ConnectPanel(QWidget):
         if self._profiles_loaded:
             self._rebuild_profile_combo()
 
+    def _resolved_mode(self, name: str) -> str:
+        meta = self._profile_cache.get(name, {})
+        return str(self._discovered_modes.get(name) or meta.get("mode", "") or "").strip().lower()
+
     def _compatible_profile_names(self):
         if not self._profiles_loaded:
             return []
         names = []
-        for name, meta in self._profile_cache.items():
-            mode = self._discovered_modes.get(name) or meta.get("mode", "")
-            if self._suite_mode is None or mode == self._suite_mode:
+        for name in self._profile_cache:
+            mode = self._resolved_mode(name)
+            # Never hide a profile just because its mode isn't known yet.
+            if self._suite_mode is None or mode == self._suite_mode or mode not in ("photoblog", "carousel", "smacktalk"):
                 names.append(name)
         return names
 
     def _start_mode_discovery(self):
-        """Probe only destinations whose mode is not already in the shared profile/catalog."""
+        """Probe only destinations whose mode is not already cached, off the UI thread."""
         from sumna_post import SumnaConnection
-        import snap_library
         profiles = []
-        for name in profile_manager.list_profiles():
-            profile = profile_manager.load_profile(name) or {}
-            known = self._profile_mode(profile)
-            if not known and profile.get("url"):
-                known = str(snap_library.site_mode(profile["url"]) or "").strip().lower()
+        self._pending_probe_names.clear()
+        for name, meta in self._profile_cache.items():
+            known = self._resolved_mode(name)
             if known in ("photoblog", "carousel", "smacktalk"):
                 self._discovered_modes[name] = known
-            elif profile.get("url") and profile.get("api_key"):
-                profiles.append((name, profile.get("url"), profile.get("api_key")))
+                continue
+            url = str(meta.get("url", "") or "").strip()
+            key = str(meta.get("api_key", "") or "").strip()
+            if (not url or not key):
+                prof = profile_manager.load_profile(name) or {}
+                url = url or str(prof.get("url", "") or "").strip()
+                key = key or str(prof.get("api_key", "") or "").strip()
+            if url and key:
+                profiles.append((name, url, key))
+                self._pending_probe_names.add(name)
+            else:
+                self._failed_probe_names.add(name)
 
         if not profiles:
             self._probing_modes = False
             self._rebuild_profile_combo()
             return
+
+        self._probing_modes = True
+        self._rebuild_profile_combo()
 
         def run():
             def probe(row):
@@ -245,21 +343,46 @@ class ConnectPanel(QWidget):
                         timeout=6)
                 except Exception:  # one offline site must not break the picker
                     mode = ""
-                return name, mode
+                return name, str(mode or "").strip().lower()
 
             found = {}
+            failed = []
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
                 for name, mode in pool.map(probe, profiles):
                     if mode in ("photoblog", "carousel", "smacktalk"):
                         found[name] = mode
-            self._mode_bridge.finished.emit(found)
+                    else:
+                        failed.append(name)
+            self._mode_bridge.finished.emit(found, failed)
 
         threading.Thread(target=run, daemon=True, name="coldsnap-site-modes").start()
 
-    def _apply_discovered_modes(self, modes):
-        self._discovered_modes.update(dict(modes or {}))
+    def _apply_discovered_modes(self, modes, failed=None):
+        modes = dict(modes or {})
+        self._discovered_modes.update(modes)
+        for name, mode in modes.items():
+            if name in self._profile_cache:
+                self._profile_cache[name]["mode"] = mode
+            self._failed_probe_names.discard(name)
+            try:
+                profile_manager.cache_site_mode(name, mode)
+            except Exception:  # noqa: BLE001
+                pass
+        for name in (failed or []):
+            self._failed_probe_names.add(name)
+        self._pending_probe_names.clear()
         self._probing_modes = False
         self._rebuild_profile_combo()
+
+    def _profile_display_label(self, name: str) -> str:
+        mode = self._resolved_mode(name)
+        if mode in ("photoblog", "carousel", "smacktalk"):
+            return name
+        if self._probing_modes and name in self._pending_probe_names:
+            return f"{name} (checking…)"
+        if name in self._failed_probe_names or not self._probing_modes:
+            return f"{name} (mode unknown — retry)"
+        return f"{name} (checking…)"
 
     def _rebuild_profile_combo(self):
         names = self._compatible_profile_names()
@@ -276,10 +399,15 @@ class ConnectPanel(QWidget):
                           else f"— no {self._mode_label or 'compatible'} sites saved —")
         self.profile_combo.addItem(empty_text, "")
         for name in names:
-            self.profile_combo.addItem(name, name)
+            self.profile_combo.addItem(self._profile_display_label(name), name)
         self.profile_combo.setCurrentIndex(
             self.profile_combo.findData(preferred) if preferred else 0)
         self.profile_combo.blockSignals(False)
+        if self._failed_probe_names and not self._load_error:
+            self.retry_btn.setText("Retry modes")
+            self.retry_btn.setVisible(True)
+        elif not self._load_error:
+            self.retry_btn.setVisible(False)
 
         if preferred:
             self._on_profile(self.profile_combo.currentIndex())

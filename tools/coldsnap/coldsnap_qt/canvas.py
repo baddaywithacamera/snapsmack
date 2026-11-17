@@ -27,7 +27,7 @@ import json
 import math
 import os
 
-from PySide6.QtCore import Qt, QRect, QRectF, QSize, QSizeF, Signal
+from PySide6.QtCore import Qt, QRect, QRectF, QSize, QSizeF, QTimer, Signal
 from PySide6.QtGui import (
     QColor, QFont, QPainter, QPen, QPixmap, QPixmapCache, QTextBlockFormat,
     QTextCharFormat, QTextCursor, QTextFormat, QTextFrameFormat, QTextLength,
@@ -302,7 +302,11 @@ class _Objects(QPyTextObject):
         self._mosaic_footer(painter, r, len(paths), layout)
 
     def _cached_cell_pixmap(self, path: str, cell_size: QSize):
-        """Return a cell-sized QPixmap from the 64 MB QPixmapCache (never full-size)."""
+        """Return a cell-sized QPixmap from QPixmapCache or request off-thread decode.
+
+        Never decodes on the UI thread inside paint/drawObject; returns None so
+        the caller paints a placeholder until PhotoLoader delivers the frame.
+        """
         if not path or not os.path.isfile(path):
             return None
         try:
@@ -314,13 +318,43 @@ class _Objects(QPyTextObject):
         cached = QPixmap()
         if QPixmapCache.find(ckey, cached) and not cached.isNull():
             return cached
-        raw = _pixmap(path, cw)
-        if raw.isNull():
+
+        loader = getattr(self.canvas, "_mosaic_loader", None)
+        if loader is None:
             return None
-        scaled = raw if abs(raw.width() - cw) <= 64 else raw.scaled(
-            cell_size, Qt.KeepAspectRatio, Qt.FastTransformation)
-        QPixmapCache.insert(ckey, scaled)
-        return scaled
+
+        bucket = max(64, ((max(cw, ch) + 63) // 64) * 64)
+        sync_result = [None]
+        in_sync = [True]
+
+        def _on_ready(pix):
+            if pix is None or pix.isNull():
+                return
+            scaled = pix if abs(pix.width() - cw) <= 64 else pix.scaled(
+                cell_size, Qt.KeepAspectRatio, Qt.FastTransformation)
+            QPixmapCache.insert(ckey, scaled)
+            if in_sync[0]:
+                sync_result[0] = scaled
+            else:
+                vp = self.canvas.viewport()
+                if vp is not None:
+                    vp.update()
+
+        accepted = loader.request(path, bucket, _on_ready)
+        in_sync[0] = False
+        if sync_result[0] is not None:
+            return sync_result[0]
+        if not accepted and not getattr(self.canvas, "_mosaic_retry_scheduled", False):
+            self.canvas._mosaic_retry_scheduled = True
+
+            def _retry_paint():
+                self.canvas._mosaic_retry_scheduled = False
+                vp = self.canvas.viewport()
+                if vp is not None:
+                    vp.update()
+
+            QTimer.singleShot(50, _retry_paint)
+        return None
 
     def _mosaic_footer(self, painter, r, count, layout):
         """The strip under the mosaic. It says when the preview is EXACT and
@@ -553,6 +587,7 @@ class BiggieCanvas(QTextEdit):
         self.setMinimumHeight(260)
         QPixmapCache.setCacheLimit(65536)
         self._mosaic_loader = PhotoLoader(self)
+        self._mosaic_retry_scheduled = False
         self._mosaic_layout_cache = {}
         self.setStyleSheet(
             "QTextEdit#BiggieCanvas { background: #ffffff; color: #1a1a1a;"
