@@ -101,6 +101,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
 
 // --- GENERATE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate') {
+    // SS-1410. STEP-UP BEFORE A KEY IS MINTED.
+    //
+    // An API key is a credential that acts for this site from anywhere, for
+    // weeks or months. Until now an authenticated admin session minted one
+    // with no further proof: whoever reached this page with a live session got
+    // a key. The password and 2FA boxes visible above belong to ENABLE OFFLINE
+    // POSTING, which is why the gap read as covered and was not. Sean,
+    // 2026-11-17: key generation must require the account password and a
+    // current 2FA code.
+    //
+    // THE SAME HELPER EVERY OTHER STEP-UP ON THIS PAGE USES. Device
+    // activation, bulk-import authorisation and offline posting all call
+    // reauth_verify(); only the key generator did not. One implementation, so
+    // a change to the policy reaches all four.
+    //
+    // FAIL CLOSED: the refusal returns before any key material is generated,
+    // so a failed attempt creates no row, no hash and no prefix, and there is
+    // nothing to display. The password and the code are never written
+    // anywhere -- not to $msg, not to the log, not to the session.
+    //
+    // 2FA IS REQUIRED, NOT OPTIONAL-IF-ENABLED. core/reauth.php has refused a
+    // password-only step-up since Sean's ruling of 2026-06-17, and an account
+    // with no 2FA enrolled is told to enrol rather than waved through. Flagged
+    // to the PM: the acceptance matrix lists a "correct password / no 2FA"
+    // case, and on this site that case is a refusal by standing policy.
+    require_once 'core/reauth.php';
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        $msg = 'KEY NOT GENERATED — ' . $ra['error'];
+    } else {
     $label    = trim($_POST['label'] ?? '');
     $key_type = in_array($_POST['key_type'] ?? '', ['hub','ohsnap','smackpress','bloggerflogger','flkrfckr','gyss','unzucker','suyb','sybu','tyswy','smackthemup_publish']) ? $_POST['key_type'] : 'ohsnap';
     if (!$label) $label = match($key_type) {
@@ -151,6 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
 
     $new_key_raw = $raw_key;
     $msg = '> KEY GENERATED. COPY IT NOW — IT WILL NOT BE SHOWN AGAIN.';
+    }
 }
 
 // --- REVOKE ---
@@ -490,6 +521,19 @@ include 'core/sidebar.php';
                         </select>
                         <p class="field-hint">Import keys are one-shot &mdash; 4 weeks max. Backup &amp; standing keys (THE HUB / SMACK UP YOUR BACKUP / SMACK YOUR BATCH UP) get 3 months and default to it; choosing 3 months on any other key type falls back to 4 weeks.</p>
                     </div>
+
+                    <?php /* SS-1410. The password and 2FA boxes above this point
+                       belong to ENABLE OFFLINE POSTING, which is exactly why the
+                       missing gate here read as covered. These two are this
+                       form's own, posted with it, and the server refuses
+                       without them. Same wrapper and label markup as the device
+                       activation form above so the pending admin-input
+                       normalisation themes all of them at once. */ ?>
+                    <div class="reauth-row mt-20">
+                        <div class="lens-input-wrapper"><label>YOUR PASSWORD</label><input type="password" name="reauth_password" autocomplete="off" required></div>
+                        <div class="lens-input-wrapper"><label>2FA CODE</label><input name="reauth_totp" inputmode="numeric" autocomplete="off" class="input-code" required></div>
+                    </div>
+                    <p class="field-hint">A key acts for this site from anywhere until it expires, so generating one asks for your password and a current authenticator code.</p>
 
                     <div class="lens-input-wrapper mt-20">
                         <button type="submit" class="master-update-btn">GENERATE KEY</button>
