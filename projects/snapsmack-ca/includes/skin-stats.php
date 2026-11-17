@@ -94,6 +94,48 @@ if ((empty($_skin_demo_stats) || !empty($_skin_missing_stats)) && function_exist
     }
 }
 
+// ---------------------------------------------------------------------------
+// FLEET SUMMARY for the homepage's "IT WORKS" card. SS-1386 round 2.
+//
+// Summed from the SAME per-site responses the skin cards already use, with the
+// same cache, so the card costs nothing extra and cannot disagree with the
+// cards below it.
+//
+// WHAT /stats.php ACTUALLY RETURNS, because the card copy asks for more than
+// that: site_name, posts, views_30d, unique_30d, views_all, unique_all,
+// browsing_time_ms, active_since, version. THERE IS NO photos FIELD. The
+// endpoint's 'posts' is COUNT(*) FROM snap_images WHERE img_status =
+// 'published' (stats.php:54) -- it IS the photograph count, which is why a
+// skin card reading "207 photos" is correct today.
+//
+// So this exposes SITES and PHOTOS, the two numbers the live feed can
+// actually support, and NOT a separate post count. Publishing posts and
+// photos as different figures would need a new field on /stats.php and a
+// deploy to all 28 sites, and on a SMACKTALK site the two genuinely differ.
+// Making one number up, or hard-coding yesterday's hub figures, would put a
+// wrong number on the front page and nothing on screen would show it was
+// stale.
+//
+// FAILS SOFT, DELIBERATELY: null when no site reported, so the card renders
+// without numbers rather than claiming the fleet holds zero photographs.
+$_skin_fleet_summary = null;
+$_skin_fleet_sites = 0;
+$_skin_fleet_photos = 0;
+foreach ($_skin_demo_stats as $_skin_row) {
+    if (!is_array($_skin_row)) continue;
+    // A reporter with no count is still a site that answered; it contributes
+    // to the site tally and nothing to the photographs.
+    $_skin_fleet_sites++;
+    $_skin_fleet_photos += max(0, (int)($_skin_row['posts'] ?? 0));
+}
+if ($_skin_fleet_sites > 0 && $_skin_fleet_photos > 0) {
+    $_skin_fleet_summary = [
+        'sites' => $_skin_fleet_sites,
+        'photos' => $_skin_fleet_photos,
+    ];
+}
+unset($_skin_row, $_skin_fleet_sites, $_skin_fleet_photos);
+
 if (!function_exists('ss_skin_card_stats')) {
     function ss_skin_card_stats(string $domain, array $all): string {
         return htmlspecialchars(json_encode($all[$domain] ?? null, JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
