@@ -29,6 +29,42 @@ $_skin_demo_sites = [
     'curbappeal.photoblogs.fyi'       => 'https://curbappeal.photoblogs.fyi',
 ];
 
+// The homepage fleet total is broader than the skin showcase. Keep the two
+// lists separate so adding an operational site does not quietly turn it into
+// a skin demo, while both views still use the same public endpoint and cache.
+$_skin_fleet_sources = [
+    'foundtextures.ca'                 => 'https://foundtextures.ca',
+    'acolourlesslife.ca'               => 'https://acolourlesslife.ca',
+    'allinthewrist.photoblogs.fyi'     => 'https://allinthewrist.photoblogs.fyi',
+    'baddaywithacamera.ca'             => 'https://baddaywithacamera.ca',
+    'craptasti.ca'                     => 'https://craptasti.ca',
+    'curbappeal.photoblogs.fyi'        => 'https://curbappeal.photoblogs.fyi',
+    'dithering.pixhellated.ca'         => 'https://dithering.pixhellated.ca',
+    'foreverphotograph.ing'            => 'https://foreverphotograph.ing',
+    'hal.photoblogs.fyi'               => 'https://hal.photoblogs.fyi',
+    'hekeepsdroningon.ca'              => 'https://hekeepsdroningon.ca',
+    'hockneyjoiner.com'                => 'https://hockneyjoiner.com',
+    'iswa.ca'                          => 'https://iswa.ca',
+    'crapshoot.photoblogs.fyi'         => 'https://crapshoot.photoblogs.fyi',
+    'fauxlaroid.fyi'                   => 'https://fauxlaroid.fyi',
+    'lightafterdark.ca'                => 'https://lightafterdark.ca',
+    'mccormickphotography.com'         => 'https://mccormickphotography.com',
+    'photowalk.ing'                    => 'https://photowalk.ing',
+    'pixhellated.ca'                   => 'https://pixhellated.ca',
+    'squared.pixhellated.ca'           => 'https://squared.pixhellated.ca',
+    'someshitifound.photoblogs.fyi'    => 'https://someshitifound.photoblogs.fyi',
+    'squaredstraight.ca'               => 'https://squaredstraight.ca',
+    'strathmore.pics'                  => 'https://strathmore.pics',
+    'swirlybokeh.photoblogs.fyi'       => 'https://swirlybokeh.photoblogs.fyi',
+    'portalproject.photoblogs.fyi'     => 'https://portalproject.photoblogs.fyi',
+    'theschoolofhardnocks.ca'          => 'https://theschoolofhardnocks.ca',
+    'unzucked.ca'                      => 'https://unzucked.ca',
+    'usedcarparts.photoblogs.fyi'      => 'https://usedcarparts.photoblogs.fyi',
+    'wateronthebrain.ca'               => 'https://wateronthebrain.ca',
+];
+
+$_skin_stats_sources = array_replace($_skin_fleet_sources, $_skin_demo_sites);
+
 $_skin_demo_stats = [];
 $_skin_stats_cache = __DIR__ . '/stats-cache.json';
 $_skin_stats_cache_ttl = 3600;
@@ -40,12 +76,12 @@ if (file_exists($_skin_stats_cache) && (time() - filemtime($_skin_stats_cache)) 
     }
 }
 
-$_skin_missing_stats = array_diff_key($_skin_demo_sites, $_skin_demo_stats);
+$_skin_missing_stats = array_diff_key($_skin_stats_sources, $_skin_demo_stats);
 if ((empty($_skin_demo_stats) || !empty($_skin_missing_stats)) && function_exists('curl_multi_init')) {
     $_skin_multi = curl_multi_init();
     $_skin_handles = [];
 
-    foreach ($_skin_demo_sites as $_skin_domain => $_skin_base_url) {
+    foreach ($_skin_stats_sources as $_skin_domain => $_skin_base_url) {
         $_skin_handle = curl_init($_skin_base_url . '/stats.php?t=' . (int)floor(time() / 900));   // defeat any edge cache: fresh at most every 15 min
         curl_setopt_array($_skin_handle, [
             CURLOPT_RETURNTRANSFER => true,
@@ -97,9 +133,9 @@ if ((empty($_skin_demo_stats) || !empty($_skin_missing_stats)) && function_exist
 // ---------------------------------------------------------------------------
 // FLEET SUMMARY for the homepage's "IT WORKS" card. SS-1386 round 2.
 //
-// Summed from the SAME per-site responses the skin cards already use, with the
-// same cache, so the card costs nothing extra and cannot disagree with the
-// cards below it.
+// Summed from the SAME public per-site responses the skin cards use, with the
+// same cache. The fleet source list includes operational sites that are not
+// skin demos, so the homepage reports the whole fleet rather than the gallery.
 //
 // WHAT /stats.php ACTUALLY RETURNS, because the card copy asks for more than
 // that: site_name, posts, views_30d, unique_30d, views_all, unique_all,
