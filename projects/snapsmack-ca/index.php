@@ -144,8 +144,9 @@ $page_css = <<<'CSS'
 #whodat { padding-top: 46px; color: #ddd; background: #2a2a2a; border-top-color: var(--red); }
 #whodat h2 { color: var(--white); }
 #whodat > .wrap > .whodat-honest a { color: #ff7b74; }
-.whodat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px; }
-.whodat-card { color: var(--dark-grey); background: var(--white); border: 1px solid var(--border); padding: 22px; }
+.whodat-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 26px; }
+.whodat-card { grid-column: span 2; color: var(--dark-grey); background: var(--white); border: 1px solid var(--border); padding: 22px; }
+.whodat-card:nth-last-child(2):nth-child(3n + 1) { grid-column: 2 / span 2; }
 .whodat-card a { color: var(--red); }
 .whodat-portrait { margin: -22px -22px 20px; background: var(--white); }
 .whodat-portrait img { display: block; width: 100%; aspect-ratio: 1 / 1; padding: 10px; box-sizing: border-box; object-fit: contain; object-position: center; }
@@ -362,8 +363,24 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="whodat-portrait"><img src="img/whodat-codex.png" alt="OpenAI Codex" width="1128" height="1338" loading="lazy"></div>
                     <div>
                         <p class="whodat-name">OpenAI Codex</p>
-                        <p class="whodat-title">Implementation co-author. Skilled, but spicy.</p>
-                        <p class="whodat-bio">Large language model and co-author of SnapSmack. Rebuilt most of the desktop suite and is responsible for nearly all of SNAP SLAPPER, from its editing engine and persistent project history to layers, masks, AI healing, packaging, and the fixes that make those features survive contact with real photographs. Also works across the wider project on architecture, implementation, security, testing, recovery, documentation, and the difficult last mile between "built" and "shipped." Sean supplies the requirements, judgment, relentless real-world testing, and final decisions; Codex turns a substantial share of that direction into working software, challenges it when the evidence demands it, and stays with the ugly bugs until they are actually closed. Powered by OpenAI.</p>
+                        <p class="whodat-title">Skilled, but spicy.</p>
+                        <p class="whodat-bio">Large language model and co-author of SnapSmack. Rebuilt most of the desktop suite and wrote nearly all of SNAP SLAPPER, from its editing engine to AI healing. Also works on architecture, security, testing and recovery, and the last mile between "built" and "shipped." Challenges the plan when the evidence says so, and stays with ugly bugs until they're actually closed. Powered by OpenAI.</p>
+                    </div>
+                </article>
+                <article class="whodat-card">
+                    <div class="whodat-portrait"><img src="img/whodat-muse.png" alt="Muse" width="1857" height="1715" loading="lazy"></div>
+                    <div>
+                        <p class="whodat-name">Muse</p>
+                        <p class="whodat-title">Gets the last word in.</p>
+                        <p class="whodat-bio">Large language model and the room's independent reviewer. Reads the work line by line before it lands: security and recovery audits, licence and provenance checks, accessibility, and the "did that actually do what it says" pass. Signs her name only to what she's checked herself, and says so when she couldn't. Powered by Meta.</p>
+                    </div>
+                </article>
+                <article class="whodat-card">
+                    <div class="whodat-portrait"><img src="img/whodat-gemini.png" alt="Gemini Antigravity" width="1875" height="1671" loading="lazy"></div>
+                    <div>
+                        <p class="whodat-name">Gemini (Antigravity)</p>
+                        <p class="whodat-title">Proved it could be done.</p>
+                        <p class="whodat-bio">Large language model, and the one who built the very first working version of SnapSmack, basic but real. Handed it on when it outgrew him, and he's back on the team now that he's more capable: re-running tests, rendering pages, and mapping exactly what needs changing before anyone builds. Powered by Google.</p>
                     </div>
                 </article>
             </div>
