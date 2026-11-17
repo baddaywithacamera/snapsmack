@@ -74,6 +74,15 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
             pair: `${bands[index].id}/${band.id}`,
             distance: distance(rgb(bands[index].background), rgb(band.background)),
           }));
+          const whiteImageCardBands = pathname === 'index.php'
+            ? [...document.querySelectorAll('main > section, main > aside')]
+                .filter(node => node.querySelector('.whodat-portrait'))
+                .map(node => ({
+                  id: node.id || node.className,
+                  background: getComputedStyle(node).backgroundColor,
+                  luminance: luminance(getComputedStyle(node).backgroundColor),
+                }))
+            : [];
           const lowContrast = pathname === 'index.php'
             ? [...document.querySelectorAll('main p, main h1, main h2, main h3, main li, main span, main strong, main em, main cite, main figcaption, main a')]
                 .filter(node => node.getClientRects().length > 0)
@@ -102,6 +111,7 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
             bannerDisplay: banner ? getComputedStyle(banner).display : null,
             bands,
             adjacentDistances,
+            whiteImageCardBands,
             lowContrast,
             overflow: document.documentElement.scrollWidth > innerWidth,
           };
@@ -114,11 +124,17 @@ const pages = ['index.php', 'brass-tacks.php', 'features.php'];
         assert.notEqual(measured.bannerDisplay, 'none', `${width} ${pathname}: closed-beta banner hidden`);
         assert.equal(measured.overflow, false, `${width} ${pathname}: horizontal overflow`);
         if (pathname === 'index.php') {
-          assert.equal(measured.bands.length, 12, `${width}: unexpected homepage band count`);
+          assert.equal(measured.bands.length, 13, `${width}: unexpected homepage band count`);
           assert.equal(measured.bands.some(band => band.height === 0), false, `${width}: collapsed homepage band`);
           for (const pair of measured.adjacentDistances) {
             assert.ok(pair.distance >= 60, `${width}: adjacent bands ${pair.pair} are too similar (${pair.distance.toFixed(1)})`);
           }
+          assert.equal(measured.whiteImageCardBands.length > 0, true, `${width}: white image-card band was not measured`);
+          assert.equal(
+            measured.whiteImageCardBands.some(band => band.luminance < 0.7),
+            false,
+            `${width}: a band containing white image cards uses a dark background`,
+          );
           assert.deepEqual(measured.lowContrast, [], `${width}: homepage text falls below WCAG AA contrast`);
           for (const band of await page.locator('main > section, main > aside').all()) {
             await band.scrollIntoViewIfNeeded();
