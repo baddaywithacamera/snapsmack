@@ -29,6 +29,7 @@ $_receipt_sources = [
 ];
 $_receipt_overrides = [
     'theschoolofhardnocks.ca' => ['since_override' => 'Jul 2019'],
+    'mccormickphotography.com' => ['since_override' => 'May 10, 2020'],
 ];
 $_receipt_cards = [];
 foreach ($_receipt_sources as $_receipt_source) {
@@ -126,7 +127,6 @@ $page_css = <<<'CSS'
 #was { padding: 64px 0; background: #2a2a2a; color: #ddd; border-top: 8px solid var(--red); }
 #was .site-discovery-kicker { color: #ff7b74; }
 #was h2 { margin-bottom: 26px; color: var(--white); }
-#strip { padding-top: 56px; }
 .was-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; list-style: none; }
 .was-list li { display: flex; flex-direction: column; margin: 0; padding-top: 14px; border-top: 3px solid var(--red); }
 .was-list strong { color: var(--white); font: 900 .95rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
@@ -139,20 +139,24 @@ $page_css = <<<'CSS'
 /* --- THE OTHER HALF: the digicam revival needs its native home --- */
 #camera-blog { padding: 64px 0; background: var(--white); border-top: 8px solid var(--black); }
 #camera-blog h2 { max-width: 900px; margin-bottom: 24px; }
+.camera-blog-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 42px; align-items: start; }
 .camera-blog-copy { max-width: 900px; }
 .camera-blog-copy p { font-size: inherit; line-height: inherit; }
 .camera-blog-copy p + p { margin-top: 18px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
-.camera-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin-top: 30px; }
+.camera-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .camera-card { margin: 0; }
 .camera-card button { display: block; width: 100%; padding: 0; border: 3px solid var(--black); background: var(--black); cursor: zoom-in; }
 .camera-card button:hover, .camera-card button:focus-visible { border-color: var(--red); }
 .camera-card img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
-.camera-card figcaption { margin-top: 10px; color: var(--black); font: 900 .72rem/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 
 /* --- WHY A BLOG: the ownership case, in one hard black band --- */
 #why-blog { padding: 64px 0; color: #ddd; background: #111; border-top: 8px solid var(--red); }
 #why-blog .site-discovery-kicker { color: #ff7b74; }
 #why-blog h2 { max-width: 900px; margin-bottom: 24px; color: var(--white); }
+.why-blog-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: start; }
+.why-blog-shot { display: block; width: 100%; padding: 0; border: 1px solid #777; background: none; cursor: zoom-in; }
+.why-blog-shot:hover, .why-blog-shot:focus-visible { border-color: #ff7b74; }
+.why-blog-shot img { display: block; width: 100%; height: auto; }
 .why-blog-copy { max-width: 900px; }
 .why-blog-copy p { font-size: inherit; line-height: inherit; }
 .why-blog-copy p + p { margin-top: 18px; }
@@ -161,7 +165,7 @@ $page_css = <<<'CSS'
 /* --- NOT ALONE: outcome, then the triptych as proof, plumbing last --- */
 #alone { padding: 64px 0 24px; }
 #alone h2 { max-width: 900px; }
-#alone .lede { max-width: 760px; }
+#alone .lede { max-width: none; font-size: 21.25px; line-height: 1.55; }
 .alone-payoff { max-width: 800px; margin-top: 18px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
 .fed-shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 30px 0 0; }
 .fed-shots figure { margin: 0; background: var(--white); border: 1px solid var(--border); }
@@ -171,10 +175,23 @@ $page_css = <<<'CSS'
 .alone-how { max-width: 900px; margin-top: 22px; color: #666; font-size: .82rem; line-height: 1.5; }
 .alone-how a { color: var(--red); }
 
-/* Homepage bands alternate light/dark so consecutive sections never collapse
-   into one long, visually undifferentiated field. */
-#strip { background: #2a2a2a; border-top: 8px solid var(--red); }
-#strip .strip-title { color: var(--white); }
+/* --- THREE PILLARS: the order is the policy --- */
+#three-pillars { padding: 64px 0; color: #ddd; background: #25272a; border-top: 8px solid var(--red); }
+#three-pillars h2 { color: var(--white); }
+.three-pillars-copy { width: 100%; font-size: 21.25px; line-height: 1.55; }
+.three-pillars-copy p + p { margin-top: 22px; }
+.three-pillars-copy strong { color: #ffb3ad; font-family: Arial Black, Arial, sans-serif; }
+
+/* --- SCALE: one fleet, one dashboard --- */
+#scale { padding: 64px 0; color: #ddd; background: #111; border-top: 8px solid var(--red); }
+#scale h2 { color: var(--white); }
+.scale-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: start; }
+.scale-shot { display: block; width: 100%; padding: 0; border: 1px solid #777; background: none; cursor: zoom-in; }
+.scale-shot:hover, .scale-shot:focus-visible { border-color: #ff7b74; }
+.scale-shot img { display: block; width: 100%; height: auto; }
+.scale-copy { font-size: 21.25px; line-height: 1.55; }
+.scale-copy p + p { margin-top: 22px; }
+.scale-copy .scale-pull { color: #ff7b74; font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; }
 
 /* --- SKINS BAND --- */
 #featured-skins { background: var(--white); color: var(--dark-grey); border-top: 8px solid var(--black); }
@@ -240,7 +257,6 @@ $page_css = <<<'CSS'
        clean 2x2. Measured: 1050px -> 474px cards, 900px -> 399px, 750px -> 331px,
        no stranded card at any of them. (Was three when the list had five cards.) */
     .was-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .camera-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 1024px) {
     .home-rhythm-right { width: 100%; margin-left: 0; }
@@ -249,6 +265,13 @@ $page_css = <<<'CSS'
     .built-for-use-layout .receipts { order: 2; }
     .receipt-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .receipt-card:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - 5px); box-sizing: border-box; justify-self: center; }
+    .camera-blog-layout, .why-blog-layout, .scale-layout { grid-template-columns: 1fr; gap: 30px; }
+    .camera-blog-copy { order: 1; }
+    .camera-grid { order: 2; }
+    .why-blog-copy-wrap { order: 1; }
+    .why-blog-media { order: 2; }
+    .scale-copy { order: 1; }
+    .scale-media { order: 2; }
 }
 @media (max-width: 850px) {
     .featured-skin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -313,28 +336,35 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <p class="site-discovery-kicker">The other half of the look</p>
             <h2 id="camera-blog-title">You bought the camera. Where&rsquo;s the blog?</h2>
+            <div class="camera-blog-layout">
             <div class="camera-blog-copy">
                 <p>Hey, Gen Z... That beat-up 2005 point-and-shoot you paid way too much for on eBay? It came with a second half, and nobody told you. Back then, those photos didn't go on an app that buries them under ads by Tuesday. They went on a photoblog: your own site, one shot at a time, newest on top, no algorithm, no likes for sale. People found you through other people's blogrolls, and they came back because they wanted to.</p>
                 <p>The camera's only half the look. The blog is the other half. Make your photos slap.</p>
             </div>
             <div class="camera-grid" aria-label="Four point-and-shoot cameras">
-                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-canon-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Canon Powershot S3IS, $10 thrift find"><img src="img/pointnshoot-canon-thumb.jpg" alt="Canon Powershot S3IS, $10 thrift find" width="480" height="480" loading="lazy"></button><figcaption>Canon Powershot S3IS, $10 thrift find</figcaption></figure>
-                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-fujifilm-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Fujifilm Finepix, $20 thrift find"><img src="img/pointnshoot-fujifilm-thumb.jpg" alt="Fujifilm Finepix, $20 thrift find" width="480" height="480" loading="lazy"></button><figcaption>Fujifilm Finepix, $20 thrift find</figcaption></figure>
-                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-olympus-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Olympus SP510-UZ, $15 thrift find"><img src="img/pointnshoot-olympus-thumb.jpg" alt="Olympus SP510-UZ, $15 thrift find" width="480" height="480" loading="lazy"></button><figcaption>Olympus SP510-UZ, $15 thrift find</figcaption></figure>
-                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-minolta-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Minolta DiMAGE 7, $1,527 new in 2001"><img src="img/pointnshoot-minolta-thumb.jpg" alt="Minolta DiMAGE 7, $1,527 new in 2001" width="480" height="480" loading="lazy"></button><figcaption>Minolta DiMAGE 7, $1,527 new in 2001</figcaption></figure>
+                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-canon-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Canon Powershot S3IS, $10 thrift find"><img src="img/pointnshoot-canon-thumb.jpg" alt="Canon Powershot S3IS, $10 thrift find" width="480" height="480" loading="lazy"></button></figure>
+                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-fujifilm-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Fujifilm Finepix F480, $20 thrift find"><img src="img/pointnshoot-fujifilm-thumb.jpg" alt="Fujifilm Finepix F480, $20 thrift find" width="480" height="480" loading="lazy"></button></figure>
+                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-olympus-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Olympus SP510-UZ, $15 thrift find"><img src="img/pointnshoot-olympus-thumb.jpg" alt="Olympus SP510-UZ, $15 thrift find" width="480" height="480" loading="lazy"></button></figure>
+                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-minolta-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Minolta DiMAGE 7, $1,527 new in 2001"><img src="img/pointnshoot-minolta-thumb.jpg" alt="Minolta DiMAGE 7, $1,527 new in 2001" width="480" height="480" loading="lazy"></button></figure>
+            </div>
             </div>
         </div>
     </section>
 
     <section id="why-blog" aria-labelledby="why-blog-title">
         <div class="wrap">
-            <div class="home-rhythm-right">
-            <p class="site-discovery-kicker">Why a blog</p>
+            <div class="why-blog-layout">
+            <div class="why-blog-media">
+                <button type="button" class="why-blog-shot" data-lightbox="img/admin-dashboard.png" data-lightbox-caption="The SnapSmack admin dashboard" aria-label="Open a full-size screenshot of the SnapSmack admin dashboard"><img src="img/admin-dashboard.png" alt="The SnapSmack admin dashboard" width="1920" height="1080" loading="lazy"></button>
+            </div>
+            <div class="why-blog-copy-wrap">
+            <p class="site-discovery-kicker">The burning question</p>
             <h2 id="why-blog-title">Why a blog?</h2>
             <div class="why-blog-copy">
                 <p>&ldquo;Blog&rdquo; is short for &ldquo;web log&rdquo;: a running record of your work, on a site you own, newest on top. Simple as that.</p>
                 <p>So why bother? Because somebody's going to speak for you online. Either it's some billionaire's app, deciding who sees your photos, when, and next to whose ads, or it's you, on your own terms, with no algorithm in the way.</p>
                 <p class="why-blog-pull">Are you an adult, or just a product?</p>
+            </div>
             </div>
             </div>
         </div>
@@ -355,7 +385,8 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <p class="site-discovery-kicker">Not alone</p>
             <h2>Decentralized social where you hang onto your own files.</h2>
-            <p class="lede">The fediverse is a network of independently run sites that talk to each other using a shared standard, the same way Gmail and Fastmail exchange email without being the same company. Because your SnapSmack site speaks that standard, people on Mastodon, Pixelfed, and other fediverse apps can follow your blog and reply to your photos right from their own accounts. Their comments land back on your site, and your photos stay on your own server. You don't need an account anywhere else to take part.</p>
+            <p class="lede">The photoblog was killed by social media because people go where the audience is, but that came at the cost of photographers losing control over their art. The plain truth is that a photoblog cannot survive in the present unless it also has social; that&rsquo;s why we built in fediverse compatibility from day one. SnapSmack has a foot in both the traditional Web and the fediverse.</p>
+            <p class="lede">What is the fediverse? It is a network of independently run sites that talk to each other using a shared standard, the same way Gmail and Fastmail exchange email without being the same company. Because your SnapSmack site speaks that standard, people on Mastodon, Pixelfed, and other fediverse apps can follow your blog and reply to your photos right from their own accounts. Their comments land back on your site, and your photos stay on your own server. You don't need an account anywhere else to take part. SnapSmack lets you have your cake and eat it, too.</p>
             <p class="alone-payoff">Reach more people without leaving your home.</p>
             <div class="fed-shots">
                 <figure><button type="button" data-lightbox="img/fediverse-blog-view.png"><img src="img/fediverse-blog-view.png?v=20260814" alt="The unzucked photoblog on its own SnapSmack site" width="1920" height="1080" loading="lazy"></button><figcaption>Your blog. Your skin, your domain.</figcaption></figure>
@@ -366,9 +397,33 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section id="strip" aria-label="What SnapSmack is, in one screen">
+    <section id="three-pillars" aria-labelledby="three-pillars-title">
         <div class="wrap">
-<?php require __DIR__ . '/includes/strip.php'; ?>
+            <p class="site-discovery-kicker">The order is the policy</p>
+            <h2 id="three-pillars-title">The three pillars</h2>
+            <div class="three-pillars-copy">
+                <p>SnapSmack is built on three pillars, in this order: <strong>Ethical. Secure. Functional.</strong> Nothing below gets to compromise anything above.</p>
+                <p><strong>Ethical first.</strong> We could make SnapSmack more secure by taking control of your installs for you. We won't &mdash; that would be completely unethical. It is YOUR site and YOUR content. We do not have the right to step there.</p>
+                <p>Bluesky's AT protocol is more functional than ActivityPub. We use ActivityPub anyway. Bluesky was built with VC money, and it controls infrastructure chokepoints that WILL become chokepoints in the near future, when the VCs demand returns on their investments. And it would be unethical for us to build off-ramps for services like Flickr and Meta &mdash; services that monetize and control you &mdash; only to funnel you into another service that will try to do the same. We made a less functional but more ethical choice.</p>
+                <p><strong>Secure second.</strong> Having to punch in a TOTP code and create API key after API key feels like a massive burden that wrecks functionality. It isn't as bad as it feels &mdash; but it does slow a person down. Having your blog raped by hackers is a lot worse. SnapSmack was built partly in response to past bad experiences with insecure software. We put security ahead of convenience because we know from bitter personal experience what happens when you don't.</p>
+                <p><strong>Functional third.</strong> It still has to work, and work for everyone. We routinely say no to expensive features &mdash; video, third-party add-ons &mdash; that would slow the engine down and degrade the experience for all users.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="scale" aria-labelledby="scale-title">
+        <div class="wrap">
+            <div class="scale-layout">
+                <div class="scale-media">
+                    <button type="button" class="scale-shot" data-lightbox="img/fleet-view-no-backup.png" data-lightbox-caption="27 sites, one dashboard" aria-label="Open a full-size screenshot showing 27 sites in one dashboard"><img src="img/fleet-view-no-backup.png" alt="27 sites, one dashboard" width="1832" height="1706" loading="lazy"></button>
+                </div>
+                <div class="scale-copy">
+                    <h2 id="scale-title">Yes, but does it scale?</h2>
+                    <p class="scale-pull">Bitch, please. My last name ain't Mullenweg&hellip;</p>
+                    <p>WordPress can't do this without bolting on someone else's plugin. Ghost can't do this, period. Kirby? Get bent.</p>
+                    <p>Right out of the box, day one, no charge, Bob's yer fackin' uncle. Multisite without anyone demanding an 8% cut. Who imagined such a thing was possible.</p>
+                </div>
+            </div>
         </div>
     </section>
 
