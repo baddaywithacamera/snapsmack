@@ -19,6 +19,16 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.51 — 2026-11-17
+
+- **Case-insensitive alphabetical profile sorting (SS-1402).** `list_profiles()`
+  previously used raw ASCII `sorted(names)`, putting uppercase site names
+  (`HAL 9000`, `CRAPTASTI`) ahead of lowercase ones (`a colourless life`,
+  `zed`). Now sorts with `(n.casefold(), n)` across the site combo, Choose sites
+  dialog, and Select-all run order.
+- **Onedir PyInstaller packaging.** Switched `smackupyourbackup.spec` to an
+  onedir `suyb/suyb.exe` layout for faster startup.
+
 ## 0.7.50 — 2026-10-08
 
 - **Exit packages use the key that actually authenticated the backup.** Hub-managed
