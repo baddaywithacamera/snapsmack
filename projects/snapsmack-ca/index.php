@@ -18,17 +18,24 @@ $_receipt_sources = [
     ['domain' => 'photowalk.ing', 'image' => '50shades-primary.png', 'width' => 1920, 'height' => 1080],
     ['domain' => 'theschoolofhardnocks.ca', 'image' => 'gameon-primary.png', 'width' => 1920, 'height' => 1032],
     ['domain' => 'portalproject.photoblogs.fyi', 'image' => 'glide-primary.png', 'width' => 1920, 'height' => 1080],
-    ['domain' => 'pixhellated.ca', 'image' => 'impact-primary.png', 'width' => 1920, 'height' => 1080],
+    ['domain' => 'pixhellated.ca', 'image' => 'impact-primary.png', 'width' => 1920, 'height' => 1080, 'metric_label' => 'images and stories', 'since_override' => 'Mar 8, 2026'],
     ['domain' => 'fauxlaroid.fyi', 'image' => 'instantcam-primary.png', 'width' => 1920, 'height' => 1080],
     ['domain' => 'craptasti.ca', 'image' => 'jturk-primary.png', 'width' => 1920, 'height' => 1080],
     ['domain' => 'curbappeal.photoblogs.fyi', 'image' => 'newhorizon-landing.png', 'width' => 1920, 'height' => 1080],
     ['domain' => 'foreverphotograph.ing', 'image' => 'slickr-primary.png', 'width' => 1920, 'height' => 1080],
-    ['domain' => 'baddaywithacamera.ca', 'image' => 'tilez-primary.png', 'width' => 1920, 'height' => 1080],
+    ['domain' => 'baddaywithacamera.ca', 'image' => 'tilez-primary.png', 'width' => 1920, 'height' => 1080, 'since_override' => 'Feb 1, 2024'],
     ['domain' => 'foundtextures.ca', 'image' => 'truegrit-primary.png', 'width' => 1920, 'height' => 1080],
+    ['domain' => 'allinthewrist.photoblogs.fyi', 'image' => 'allinthewrist-landing.png', 'width' => 1920, 'height' => 1080],
+];
+$_receipt_overrides = [
+    'theschoolofhardnocks.ca' => ['since_override' => 'Jul 2019'],
 ];
 $_receipt_cards = [];
 foreach ($_receipt_sources as $_receipt_source) {
     $_receipt_domain = $_receipt_source['domain'];
+    if (isset($_receipt_overrides[$_receipt_domain])) {
+        $_receipt_source = array_replace($_receipt_source, $_receipt_overrides[$_receipt_domain]);
+    }
     $_receipt_stats = $_skin_demo_stats[$_receipt_domain] ?? null;
     $_receipt_url = $_skin_fleet_sources[$_receipt_domain] ?? null;
     $_receipt_count = is_array($_receipt_stats) ? (int)($_receipt_stats['posts'] ?? 0) : 0;
@@ -43,10 +50,11 @@ foreach ($_receipt_sources as $_receipt_source) {
     $_receipt_source['url'] = $_receipt_url;
     $_receipt_source['name'] = trim((string)($_receipt_stats['site_name'] ?? '')) ?: $_receipt_domain;
     $_receipt_source['count'] = $_receipt_count;
-    $_receipt_source['since'] = $_receipt_date->format('M j, Y');
+    $_receipt_source['since'] = (string)($_receipt_source['since_override'] ?? $_receipt_date->format('M j, Y'));
+    $_receipt_source['metric_label'] = (string)($_receipt_source['metric_label'] ?? 'images');
     $_receipt_cards[] = $_receipt_source;
 }
-unset($_receipt_source, $_receipt_domain, $_receipt_stats, $_receipt_url, $_receipt_count, $_receipt_since, $_receipt_date, $_receipt_sources);
+unset($_receipt_source, $_receipt_domain, $_receipt_stats, $_receipt_url, $_receipt_count, $_receipt_since, $_receipt_date, $_receipt_sources, $_receipt_overrides);
 
 $page_title       = 'SnapSmack - Self-Hosted Photo Publishing and Instagram Alternative';
 $page_description = 'What is new is old again. Free, self-hosted photo blogging that gives back the single-photo blog, long-form posting, classic Insta and Picasa-style albums, on hardware you control. Your photos. Your voice. Your style. Your dignity.';
@@ -63,10 +71,15 @@ $page_css = <<<'CSS'
 .door-shot img { display: block; width: 100%; height: auto; border: 3px solid var(--black); box-shadow: 8px 8px 0 var(--red); }
 .door-shot:hover img, .door-shot:focus-visible img { box-shadow: 8px 8px 0 var(--black); border-color: var(--red); }
 .door-shot-cap { display: block; margin-top: 14px; color: #666; font: 900 .7rem/1.3 Arial Black, Arial, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
-.ss-lightbox { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.88); cursor: zoom-out; }
+.ss-lightbox { position: fixed; inset: 0; z-index: 9999; display: grid; grid-template-columns: 72px minmax(0, 1fr) 72px; grid-template-rows: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 24px; background: rgba(0,0,0,.92); cursor: zoom-out; }
 .ss-lightbox[hidden] { display: none; }
-.ss-lightbox img { width: 80vw; height: 80vh; object-fit: contain; }
+.ss-lightbox img { display: block; grid-column: 2; grid-row: 1; width: 100%; height: 78vh; object-fit: contain; cursor: default; }
 .ss-lightbox-close { position: absolute; top: 16px; right: 24px; width: 56px; height: 56px; border: 0; background: var(--red); color: var(--white); font: 900 2rem/1 Arial Black, Arial, sans-serif; cursor: pointer; }
+.ss-lightbox-nav { width: 56px; height: 72px; border: 2px solid var(--white); color: var(--white); background: rgba(0,0,0,.35); font: 900 2rem/1 Arial Black, Arial, sans-serif; cursor: pointer; }
+.ss-lightbox-nav:hover, .ss-lightbox-nav:focus-visible { color: var(--black); background: var(--white); }
+.ss-lightbox-prev { grid-column: 1; grid-row: 1; }
+.ss-lightbox-next { grid-column: 3; grid-row: 1; }
+.ss-lightbox-caption { grid-column: 1 / -1; grid-row: 2; margin: 0; color: var(--white); font: 900 .85rem/1.35 Arial Black, Arial, sans-serif; text-align: center; text-transform: uppercase; }
 .ss-lightbox-open { overflow: hidden; }
 .door-hook { max-width: 980px; font-size: clamp(1.9rem, 4vw, 3.3rem); }
 .door-kicker { margin-top: 6px; color: var(--red); font: 900 .82rem/1.3 'Courier New', monospace; letter-spacing: .12em; text-transform: uppercase; }
@@ -86,7 +99,7 @@ $page_css = <<<'CSS'
 #built-for-use { padding: 68px 0; background: #404348; color: var(--white); border-top: 8px solid var(--red); }
 #built-for-use .site-discovery-kicker { color: #ffb3ad; }
 #built-for-use h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
-.built-for-use-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: start; }
+.built-for-use-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 42px; align-items: start; }
 .built-for-use-copy { max-width: 920px; }
 .built-for-use-copy p { font-size: inherit; line-height: inherit; }
 .built-for-use-copy p + p { margin-top: 20px; }
@@ -129,6 +142,12 @@ $page_css = <<<'CSS'
 .camera-blog-copy { max-width: 900px; }
 .camera-blog-copy p { font-size: inherit; line-height: inherit; }
 .camera-blog-copy p + p { margin-top: 18px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.camera-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin-top: 30px; }
+.camera-card { margin: 0; }
+.camera-card button { display: block; width: 100%; padding: 0; border: 3px solid var(--black); background: var(--black); cursor: zoom-in; }
+.camera-card button:hover, .camera-card button:focus-visible { border-color: var(--red); }
+.camera-card img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+.camera-card figcaption { margin-top: 10px; color: var(--black); font: 900 .72rem/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 
 /* --- WHY A BLOG: the ownership case, in one hard black band --- */
 #why-blog { padding: 64px 0; color: #ddd; background: #111; border-top: 8px solid var(--red); }
@@ -212,6 +231,8 @@ $page_css = <<<'CSS'
 .whodat-title { margin: 5px 0 15px; color: var(--red); font: 700 .72rem/1.35 'Courier New', monospace; text-transform: uppercase; }
 .whodat-bio { font-size: .83rem; line-height: 1.55; }
 .whodat-honest { max-width: 100%; margin-bottom: 30px; }
+.whodat-why { width: 100%; margin: 0 0 28px; font-size: 21.25px; line-height: 1.55; }
+.whodat-why strong { display: block; margin-bottom: 8px; color: var(--black); font-family: Arial Black, Arial, sans-serif; }
 
 @media (max-width: 1100px) {
     /* Two, not three: with four cards a three-across row strands the fourth one
@@ -219,6 +240,7 @@ $page_css = <<<'CSS'
        clean 2x2. Measured: 1050px -> 474px cards, 900px -> 399px, 750px -> 331px,
        no stranded card at any of them. (Was three when the list had five cards.) */
     .was-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .camera-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 1024px) {
     .home-rhythm-right { width: 100%; margin-left: 0; }
@@ -226,6 +248,7 @@ $page_css = <<<'CSS'
     .built-for-use-layout .built-for-use-copy-wrap { order: 1; }
     .built-for-use-layout .receipts { order: 2; }
     .receipt-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .receipt-card:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - 5px); box-sizing: border-box; justify-self: center; }
 }
 @media (max-width: 850px) {
     .featured-skin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -245,6 +268,7 @@ $page_css = <<<'CSS'
     .whodat-card { display: block; }
     .whodat-portrait { margin: -22px -22px 20px; }
     .receipt-stack { grid-template-columns: 1fr; }
+    .receipt-card:last-child:nth-child(odd) { grid-column: auto; width: 100%; }
 }
 CSS;
 
@@ -292,6 +316,12 @@ require_once __DIR__ . '/includes/header.php';
             <div class="camera-blog-copy">
                 <p>Hey, Gen Z... That beat-up 2005 point-and-shoot you paid way too much for on eBay? It came with a second half, and nobody told you. Back then, those photos didn't go on an app that buries them under ads by Tuesday. They went on a photoblog: your own site, one shot at a time, newest on top, no algorithm, no likes for sale. People found you through other people's blogrolls, and they came back because they wanted to.</p>
                 <p>The camera's only half the look. The blog is the other half. Make your photos slap.</p>
+            </div>
+            <div class="camera-grid" aria-label="Four point-and-shoot cameras">
+                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-canon-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Canon Powershot S3IS, $10 thrift find"><img src="img/pointnshoot-canon-thumb.jpg" alt="Canon Powershot S3IS, $10 thrift find" width="480" height="480" loading="lazy"></button><figcaption>Canon Powershot S3IS, $10 thrift find</figcaption></figure>
+                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-fujifilm-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Fujifilm Finepix, $20 thrift find"><img src="img/pointnshoot-fujifilm-thumb.jpg" alt="Fujifilm Finepix, $20 thrift find" width="480" height="480" loading="lazy"></button><figcaption>Fujifilm Finepix, $20 thrift find</figcaption></figure>
+                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-olympus-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Olympus SP510-UZ, $15 thrift find"><img src="img/pointnshoot-olympus-thumb.jpg" alt="Olympus SP510-UZ, $15 thrift find" width="480" height="480" loading="lazy"></button><figcaption>Olympus SP510-UZ, $15 thrift find</figcaption></figure>
+                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-minolta-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Minolta DiMAGE 7, $1,527 new in 2001"><img src="img/pointnshoot-minolta-thumb.jpg" alt="Minolta DiMAGE 7, $1,527 new in 2001" width="480" height="480" loading="lazy"></button><figcaption>Minolta DiMAGE 7, $1,527 new in 2001</figcaption></figure>
             </div>
         </div>
     </section>
@@ -402,19 +432,6 @@ require_once __DIR__ . '/includes/header.php';
     <section id="built-for-use" aria-labelledby="built-for-use-title">
         <div class="wrap">
             <div class="built-for-use-layout">
-<?php if (!empty($_receipt_cards)): ?>
-            <aside class="receipts" aria-labelledby="receipts-title">
-                <h3 id="receipts-title">The receipts</h3>
-                <div class="receipt-stack">
-<?php foreach ($_receipt_cards as $_receipt_card): ?>
-                    <a class="receipt-card" href="<?php echo htmlspecialchars($_receipt_card['url'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
-                        <img src="img/<?php echo htmlspecialchars($_receipt_card['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($_receipt_card['name'], ENT_QUOTES, 'UTF-8'); ?> landing page" width="<?php echo (int)$_receipt_card['width']; ?>" height="<?php echo (int)$_receipt_card['height']; ?>" loading="lazy">
-                        <span><strong><?php echo htmlspecialchars($_receipt_card['name'], ENT_QUOTES, 'UTF-8'); ?></strong><?php echo number_format((int)$_receipt_card['count']); ?> images posted since <?php echo htmlspecialchars($_receipt_card['since'], ENT_QUOTES, 'UTF-8'); ?></span>
-                    </a>
-<?php endforeach; ?>
-                </div>
-            </aside>
-<?php endif; ?>
             <div class="built-for-use-copy-wrap">
             <p class="site-discovery-kicker">Built for the work</p>
             <h2 id="built-for-use-title">Shoot hard. Share harder.</h2>
@@ -426,6 +443,19 @@ require_once __DIR__ . '/includes/header.php';
                 <p>If you don't want to use an AI product, fair. Use something else. If you can find it. I could not.</p>
             </div>
             </div>
+<?php if (!empty($_receipt_cards)): ?>
+            <aside class="receipts" aria-labelledby="receipts-title">
+                <h3 id="receipts-title">The receipts</h3>
+                <div class="receipt-stack">
+<?php foreach ($_receipt_cards as $_receipt_card): ?>
+                    <a class="receipt-card" href="<?php echo htmlspecialchars($_receipt_card['url'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
+                        <img src="img/<?php echo htmlspecialchars($_receipt_card['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($_receipt_card['name'], ENT_QUOTES, 'UTF-8'); ?> landing page" width="<?php echo (int)$_receipt_card['width']; ?>" height="<?php echo (int)$_receipt_card['height']; ?>" loading="lazy">
+                        <span><strong><?php echo htmlspecialchars($_receipt_card['name'], ENT_QUOTES, 'UTF-8'); ?></strong><?php echo number_format((int)$_receipt_card['count']); ?> <?php echo htmlspecialchars($_receipt_card['metric_label'], ENT_QUOTES, 'UTF-8'); ?> posted since <?php echo htmlspecialchars($_receipt_card['since'], ENT_QUOTES, 'UTF-8'); ?></span>
+                    </a>
+<?php endforeach; ?>
+                </div>
+            </aside>
+<?php endif; ?>
             </div>
         </div>
     </section>
@@ -442,6 +472,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>Who&rsquo;s Responsible for All This?!?</h2>
             <p class="whodat-honest"><strong>Said up front:</strong> the code is AI-written, under the direction of a photographer who is not a programmer. That is not hidden anywhere on this site &mdash; <a href="the-reckoning.php">THE RECKONING</a> counts every line. It is also exactly why the software is subjected to documented internal reviews and adversarial regression tests, and held to a public disclosure policy instead of being trusted on faith. These checks are not independent certification or an independent penetration test.</p>
+            <p class="whodat-why"><strong>But WHY make them co-authors?</strong>Gap coding (what I call what I do, making software that fills gaps in what is available) is a conversational process. You say what you need, you refine it, you even spitball ideas. The fact is that AI knows a lot more about making software than I do and has better ideas for making features work right. So I used their ideas instead of mine because producing a working product trumps my male ego. That and my mother taught me you never take credit for someone else's stuff.&nbsp; They earned it. That's why.</p>
             <p class="whodat-order">Listed in the order they joined.</p>
             <div class="whodat-grid">
                 <article class="whodat-card">
@@ -490,31 +521,73 @@ require_once __DIR__ . '/includes/header.php';
 
 </main>
 
-<div class="ss-lightbox" id="ss-lightbox" hidden role="dialog" aria-modal="true" aria-label="Enlarged screenshot">
+<div class="ss-lightbox" id="ss-lightbox" hidden role="dialog" aria-modal="true" aria-label="Enlarged screenshot" tabindex="-1">
     <button type="button" class="ss-lightbox-close" aria-label="Close">&times;</button>
+    <button type="button" class="ss-lightbox-nav ss-lightbox-prev" aria-label="Previous image">&lsaquo;</button>
     <img src="" alt="">
+    <button type="button" class="ss-lightbox-nav ss-lightbox-next" aria-label="Next image">&rsaquo;</button>
+    <p class="ss-lightbox-caption" aria-live="polite"></p>
 </div>
 
 <link rel="stylesheet" href="assets/css/ss-engine-thomas.css">
 <script src="assets/js/ss-engine-thomas.js"></script>
 <script>
-// Screenshot lightbox: any [data-lightbox] opens its image at 80% of the
-// screen. Click anywhere, the X, or Escape closes it. One big target on
-// purpose - no fiddly close corner.
+// Screenshot lightbox. Grouped images get previous/next controls and arrow
+// keys; ungrouped screenshots remain single-image views.
 (function () {
     var box = document.getElementById('ss-lightbox');
     if (!box) return;
     var img = box.querySelector('img');
-    function open(src, alt) { img.src = src; img.alt = alt || ''; box.hidden = false; document.body.classList.add('ss-lightbox-open'); }
-    function close() { box.hidden = true; img.src = ''; document.body.classList.remove('ss-lightbox-open'); }
-    document.querySelectorAll('[data-lightbox]').forEach(function (el) {
+    var caption = box.querySelector('.ss-lightbox-caption');
+    var closeButton = box.querySelector('.ss-lightbox-close');
+    var previousButton = box.querySelector('.ss-lightbox-prev');
+    var nextButton = box.querySelector('.ss-lightbox-next');
+    var all = Array.prototype.slice.call(document.querySelectorAll('[data-lightbox]'));
+    var group = [];
+    var index = 0;
+    var opener = null;
+    function show() {
+        var current = group[index];
+        var thumb = current.querySelector('img');
+        img.src = current.getAttribute('data-lightbox');
+        img.alt = thumb ? thumb.alt : '';
+        caption.textContent = current.getAttribute('data-lightbox-caption') || img.alt;
+    }
+    function open(el) {
+        var name = el.getAttribute('data-lightbox-group');
+        group = name ? all.filter(function (candidate) { return candidate.getAttribute('data-lightbox-group') === name; }) : [el];
+        index = Math.max(0, group.indexOf(el));
+        opener = el;
+        previousButton.hidden = group.length < 2;
+        nextButton.hidden = group.length < 2;
+        show();
+        box.hidden = false;
+        document.body.classList.add('ss-lightbox-open');
+        closeButton.focus();
+    }
+    function close() {
+        box.hidden = true;
+        img.src = '';
+        caption.textContent = '';
+        document.body.classList.remove('ss-lightbox-open');
+        if (opener) opener.focus();
+    }
+    function step(delta) { index = (index + delta + group.length) % group.length; show(); }
+    all.forEach(function (el) {
         el.addEventListener('click', function () {
-            var thumb = el.querySelector('img');
-            open(el.getAttribute('data-lightbox'), thumb ? thumb.alt : '');
+            open(el);
         });
     });
-    box.addEventListener('click', close);
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !box.hidden) close(); });
+    closeButton.addEventListener('click', close);
+    previousButton.addEventListener('click', function (e) { e.stopPropagation(); step(-1); });
+    nextButton.addEventListener('click', function (e) { e.stopPropagation(); step(1); });
+    box.addEventListener('click', function (e) { if (e.target === box) close(); });
+    document.addEventListener('keydown', function (e) {
+        if (box.hidden) return;
+        if (e.key === 'Escape') close();
+        if (e.key === 'ArrowLeft' && group.length > 1) step(-1);
+        if (e.key === 'ArrowRight' && group.length > 1) step(1);
+    });
 })();
 </script>
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
