@@ -479,9 +479,9 @@ require_once __DIR__ . '/includes/header.php';
                     <img src="img/instantcam-primary.png" alt="Instant Camera skin running on fauxlaroid.fyi" width="1920" height="1080" loading="lazy">
                     <strong>Instant Camera</strong><span>fauxlaroid.fyi</span>
                 </a>
-                <a class="featured-skin" href="skins.php">
-                    <img src="img/gameon-primary.png" alt="GAME ON skin: a field of sliding-puzzle photographs" width="1920" height="1080" loading="lazy">
-                    <strong>GAME ON</strong><span>a sliding-puzzle photoblog. Yes, really.</span>
+                <a class="featured-skin" href="https://theschoolofhardnocks.ca" target="_blank" rel="noopener" data-stats="<?php echo ss_skin_card_stats('theschoolofhardnocks.ca', $_skin_demo_stats); ?>">
+                    <img src="img/gameon-primary.png" alt="GAME ON skin running on theschoolofhardnocks.ca" width="1920" height="1080" loading="lazy">
+                    <strong>GAME ON</strong><span>theschoolofhardnocks.ca</span>
                 </a>
             </div>
             <p class="section-link"><a href="skins.php">See every skin &rarr;</a></p>
