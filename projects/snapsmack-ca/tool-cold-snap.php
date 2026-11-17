@@ -51,7 +51,7 @@ $tool_body = <<<'HTML'
                 <li>Every image you size here is sized once, on your machine, to your site&rsquo;s contract. Your hosting account never resizes a thing.</li>
                 <li>One AI prompt per site. COLD SNAP reads the same prompt the rest of the suite uses, so the voice is consistent.</li>
             </ul>
-            <p>BIGGIE already draws mosaics as real photographs while you write, with no shortcode text on screen. What&rsquo;s still in the workshop is the rest of the block set. <a href="coming-soon.php">See what&rsquo;s coming.</a></p>
+            <p>BIGGIE already draws mosaics as real photographs while you write, with no shortcode text on screen. What&rsquo;s still in the workshop is the rest of the block set. <a href="coming-soon.php">See what&rsquo;s coming</a>.</p>
 HTML;
 $tool_shots = [
 

@@ -71,11 +71,11 @@ $page_css = <<<'CSS'
 .door-media { min-width: 0; }
 .door-shot { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; text-align: left; font: inherit; }
 .door-shot img { display: block; width: 100%; height: auto; border: 3px solid var(--black); box-shadow: 8px 8px 0 var(--red); }
-.door-shot:hover img, .door-shot:focus-visible img { box-shadow: 8px 8px 0 var(--black); border-color: var(--red); }
+.door-shot:hover img, .door-shot:focus-visible img { box-shadow: 8px 8px 0 var(--black); border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
 .door-shot-cap { display: block; margin-top: 14px; color: #666; font: 900 .7rem/1.3 Arial Black, Arial, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
 .door-shot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
 .door-shot-thumb { display: block; width: 100%; padding: 0; border: 1px solid #777; background: var(--black); cursor: zoom-in; }
-.door-shot-thumb:hover, .door-shot-thumb:focus-visible { border-color: var(--red); }
+.door-shot-thumb:hover, .door-shot-thumb:focus-visible { border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
 .door-shot-thumb img { display: block; width: 100%; height: auto; }
 .ss-lightbox { position: fixed; inset: 0; z-index: 9999; display: grid; grid-template-columns: 72px minmax(0, 1fr) 72px; grid-template-rows: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 24px; background: rgba(0,0,0,.92); cursor: zoom-out; }
 .ss-lightbox[hidden] { display: none; }
@@ -105,6 +105,7 @@ $page_css = <<<'CSS'
 #built-for-use { padding: 68px 0; background: #404348; color: var(--white); border-top: 8px solid var(--red); }
 #built-for-use .site-discovery-kicker { color: var(--white); }
 #built-for-use h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
+#built-for-use a, #built-for-use a:hover, #built-for-use a:focus-visible { color: var(--white); text-decoration: underline; }
 .built-for-use-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 42px; align-items: start; }
 .built-for-use-copy { max-width: 920px; }
 .built-for-use-copy p { font-size: inherit; line-height: inherit; }
@@ -120,7 +121,7 @@ $page_css = <<<'CSS'
 .home-rhythm-right { width: 66.6667%; margin-left: auto; }
 
 /* --- THE DELAY: the date moved; the standard did not --- */
-#running-late { padding: 68px 0; background: var(--red); color: var(--white); border-top: 8px solid var(--black); }
+#running-late { padding: 68px 0; background: #404348; color: var(--white); border-top: 8px solid var(--black); }
 #running-late .site-discovery-kicker { color: var(--white); }
 #running-late h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
 .running-late-copy { max-width: 920px; }
@@ -132,7 +133,7 @@ $page_css = <<<'CSS'
 
 /* --- WHAT WAS: the four things taken, and their names here --- */
 #was { padding: 64px 0; background: #2a2a2a; color: #ddd; border-top: 8px solid var(--red); }
-#was .site-discovery-kicker { color: var(--white); }
+#was .site-discovery-kicker { color: #F50A0A; }
 #was h2 { margin-bottom: 26px; color: var(--white); }
 .was-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; list-style: none; }
 .was-list li { display: flex; flex-direction: column; margin: 0; padding-top: 14px; border-top: 3px solid var(--red); }
@@ -141,33 +142,33 @@ $page_css = <<<'CSS'
 .was-list em { margin-top: auto; padding-top: 14px; color: #aaa; font: 900 .7rem/1.3 Arial Black, Arial, sans-serif; letter-spacing: .06em; text-transform: uppercase; font-style: normal; }
 .was-list em a { color: var(--white); text-decoration: underline; }
 .was-list em a:hover { color: var(--white); text-decoration-thickness: 2px; }
-.was-closer { max-width: 800px; margin-top: 34px; color: var(--white); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
+.was-closer { max-width: 800px; margin-top: 34px; color: #F50A0A; font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
 
 /* --- THE OTHER HALF: the digicam revival needs its native home --- */
 #camera-blog { padding: 64px 0; background: var(--white); border-top: 8px solid var(--black); }
 #camera-blog h2 { max-width: 900px; margin-bottom: 24px; }
-.camera-blog-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 42px; align-items: start; }
+.camera-blog-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 42px; align-items: start; }
 .camera-blog-copy { max-width: 900px; }
 .camera-blog-copy p { font-size: inherit; line-height: inherit; }
 .camera-blog-copy p + p { margin-top: 18px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
-.camera-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.camera-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; justify-self: end; }
 .camera-card { margin: 0; }
 .camera-card button { display: block; width: 100%; padding: 0; border: 3px solid var(--black); background: var(--black); cursor: zoom-in; }
-.camera-card button:hover, .camera-card button:focus-visible { border-color: var(--red); }
+.camera-card button:hover, .camera-card button:focus-visible { border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
 .camera-card img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
 
 /* --- WHY A BLOG: the ownership case, in one hard black band --- */
 #why-blog { padding: 64px 0; color: #ddd; background: #111; border-top: 8px solid var(--red); }
 #why-blog .site-discovery-kicker { color: var(--white); }
-#why-blog h2 { max-width: 900px; margin-bottom: 24px; color: var(--white); }
+#why-blog h2 { max-width: 900px; margin-bottom: 24px; color: var(--red); }
 .why-blog-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: start; }
 .why-blog-shot { display: block; width: 100%; padding: 0; border: 1px solid #777; background: none; cursor: zoom-in; }
-.why-blog-shot:hover, .why-blog-shot:focus-visible { border-color: var(--red); }
+.why-blog-shot:hover, .why-blog-shot:focus-visible { border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
 .why-blog-shot img { display: block; width: 100%; height: auto; }
 .why-blog-copy { max-width: 900px; }
 .why-blog-copy p { font-size: inherit; line-height: inherit; }
 .why-blog-copy p + p { margin-top: 18px; }
-.why-blog-copy .why-blog-pull { color: var(--white); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.why-blog-copy .why-blog-pull { color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 
 /* --- NOT ALONE: outcome, then the triptych as proof, plumbing last --- */
 #alone { padding: 64px 0 24px; }
@@ -193,14 +194,16 @@ $page_css = <<<'CSS'
 
 /* --- SCALE: one fleet, one dashboard --- */
 #scale { padding: 64px 0; color: #ddd; background: #000; border-top: 8px solid var(--red); }
-#scale h2 { color: var(--white); }
+#scale h2 { margin: 0; color: var(--red); }
 .scale-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: start; }
 .scale-shot { display: block; width: 100%; padding: 0; border: 1px solid #777; background: none; cursor: zoom-in; }
-.scale-shot:hover, .scale-shot:focus-visible { border-color: var(--red); }
+.scale-shot:hover, .scale-shot:focus-visible { border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
 .scale-shot img { display: block; width: 100%; height: auto; }
 .scale-copy { font-size: 21.25px; line-height: 1.55; }
 .scale-copy p + p { margin-top: 22px; }
-.scale-copy .scale-pull { color: var(--white); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; }
+.scale-heading { margin-bottom: 26px; }
+.scale-copy .scale-pull { margin: 6px 0 0; color: #D5D6D8; font: 900 clamp(1rem, 1.6vw, 1.2rem)/1.35 Arial Black, Arial, sans-serif; }
+.scale-copy .scale-heading + p { margin-top: 0; }
 
 /* --- SKINS BAND --- */
 #featured-skins { background: var(--white); color: var(--dark-grey); border-top: 8px solid var(--black); }
@@ -237,7 +240,8 @@ $page_css = <<<'CSS'
 .custodian-quote cite { display: block; margin-top: 12px; color: var(--mid-grey); font: 700 .72rem/1.3 'Courier New', monospace; font-style: normal; letter-spacing: .08em; text-transform: uppercase; }
 .custodian-points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-top: 34px; background: #666; border: 1px solid #666; }
 .custodian-points article { padding: 24px; background: #292929; color: var(--white); }
-.custodian-points h3, #custodian .custodian-points a { color: var(--white); }
+.custodian-points h3 { color: #F50A0A; }
+#custodian .custodian-points a { color: var(--white); }
 .custodian-points a:hover { color: var(--white); text-decoration: underline; }
 .custodian-points p { margin: 0; font-size: .92rem; line-height: 1.55; }
 
@@ -282,7 +286,7 @@ $page_css = <<<'CSS'
     .receipt-card:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - 5px); box-sizing: border-box; justify-self: center; }
     .camera-blog-layout, .why-blog-layout, .scale-layout { grid-template-columns: 1fr; gap: 30px; }
     .camera-blog-copy { order: 1; }
-    .camera-grid { order: 2; }
+    .camera-grid { order: 2; width: min(100%, 720px); justify-self: start; }
     .why-blog-copy-wrap { order: 1; }
     .why-blog-media { order: 2; }
     .scale-copy { order: 1; }
@@ -357,10 +361,10 @@ require_once __DIR__ . '/includes/header.php';
 
     <section id="camera-blog" aria-labelledby="camera-blog-title">
         <div class="wrap">
-            <p class="site-discovery-kicker">The other half of the look</p>
-            <h2 id="camera-blog-title">You bought the camera. Where&rsquo;s the blog?</h2>
             <div class="camera-blog-layout">
             <div class="camera-blog-copy">
+                <p class="site-discovery-kicker">The other half of the look</p>
+                <h2 id="camera-blog-title">You bought the camera. Where&rsquo;s the blog?</h2>
                 <p>Hey, Gen Z... That beat-up 2005 point-and-shoot you paid way too much for on eBay? It came with a second half, and nobody told you. Back then, those photos didn't go on an app that buries them under ads by Tuesday. They went on a photoblog: your own site, one shot at a time, newest on top, no algorithm, no likes for sale. People found you through other people's blogrolls, and they came back because they wanted to.</p>
                 <p>The camera's only half the look. The blog is the other half. Make your photos slap.</p>
             </div>
@@ -378,7 +382,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <div class="why-blog-layout">
             <div class="why-blog-media">
-                <button type="button" class="why-blog-shot" data-lightbox="img/admin-dashboard.png" data-lightbox-caption="The SnapSmack admin dashboard" aria-label="Open a full-size screenshot of the SnapSmack admin dashboard"><img src="img/admin-dashboard.png" alt="The SnapSmack admin dashboard" width="1920" height="1080" loading="lazy"></button>
+                <button type="button" class="why-blog-shot" data-lightbox="img/admin-dashboard-large.png" data-lightbox-caption="The SnapSmack admin dashboard" aria-label="Open a full-size screenshot of the SnapSmack admin dashboard"><img src="img/admin-dashboard-thumb.png" alt="The SnapSmack admin dashboard" width="480" height="442" loading="lazy"></button>
             </div>
             <div class="why-blog-copy-wrap">
             <p class="site-discovery-kicker">The burning question</p>
@@ -399,7 +403,7 @@ require_once __DIR__ . '/includes/header.php';
             <h2 id="running-late-title">Why we&rsquo;re running late.</h2>
             <div class="running-late-copy">
                 <p>First and foremost, the software isn't ready yet. It not only has rough edges and some remaining security holes we're fixing, but it is not elegant. That is important. This software is built in the memory of a deceased friend who did everything elegantly and expected the same out of every tool he used. SnapSmack doesn't ship until it reaches the point where he would have enjoyed using it.</p>
-                <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot; &mdash; and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. <a href="https://baddaywithacamera.ca/rest-in-peace" target="_blank" rel="noopener">This is for Ray.</a> It will ship when it's what he would approve of.</p>
+                <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot; &mdash; and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. <a href="https://baddaywithacamera.ca/rest-in-peace" target="_blank" rel="noopener">This is for Ray</a>. It will ship when it's what he would approve of.</p>
             </div>
         </div>
     </section>
@@ -438,11 +442,14 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <div class="scale-layout">
                 <div class="scale-media">
-                    <button type="button" class="scale-shot" data-lightbox="img/fleet-view-no-backup.png" data-lightbox-caption="27 sites, one dashboard" aria-label="Open a full-size screenshot showing 27 sites in one dashboard"><img src="img/fleet-view-no-backup.png" alt="27 sites, one dashboard" width="1832" height="1706" loading="lazy"></button>
+                    <button type="button" class="scale-shot" data-lightbox="img/fleet-view-no-backup.png" data-lightbox-caption="1 hub, 27 spokes, one dashboard" aria-label="Open a full-size screenshot showing 1 hub and 27 spokes in one dashboard"><img src="img/fleet-view-no-backup.png" alt="1 hub, 27 spokes, one dashboard" width="1832" height="1706" loading="lazy"></button>
                 </div>
                 <div class="scale-copy">
-                    <h2 id="scale-title">Yes, but does it scale?</h2>
-                    <p class="scale-pull">Bitch, please. My last name ain't Mullenweg&hellip;</p>
+                    <div class="scale-heading">
+                        <h2 id="scale-title">Yes, but does it scale?</h2>
+                        <p class="scale-pull">Bitch, please. My last name ain't Mullenweg&hellip;</p>
+                    </div>
+                    <p>28 sites. 1 hub. 27 spokes. All managed through one dashboard. Shared settings pushed from hub to spokes securely. Single sign-on. Integrated, fleet wide stats. Done securely. All of this at zero cost to you.</p>
                     <p>WordPress can't do this without bolting on someone else's plugin. Ghost won't do this for free. Kirby? Get bent.</p>
                     <p>Right out of the box, day one, no charge, Bob's yer fackin' uncle. Multisite without anyone demanding an 8% cut. Who imagined such a thing was possible.</p>
                 </div>
@@ -501,7 +508,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <div class="custodian-points">
                 <article><h3>Your site is yours</h3><p>Nobody at SnapSmack can lock you out, switch you off, or reach into your site. Not for a bug, not for a breach, not for anything. We have no right to, so we built it so we can&rsquo;t.</p></article>
-                <article><h3>You know what we know</h3><p>Security findings, breaches, and audit results are published the day we have them. <a href="buzzers.php">The audits are public</a>. <a href="ding-dong-bell.php">So are the failures.</a></p></article>
+                <article><h3>You know what we know</h3><p>Security findings, breaches, and audit results are published the day we have them. <a href="buzzers.php">The audits are public</a>. <a href="ding-dong-bell.php">So are the failures</a>.</p></article>
                 <article><h3>The door opens both ways</h3><p>Everything you put in comes back out in a form other software can read. Ownership includes the right to stop using SnapSmack.</p></article>
             </div>
         </div>
@@ -517,7 +524,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>I built SNAPSMACK for myself first. There was nothing left that worked for me, certainly not the last Wordpress install I turned into a smoking crater on a shared host. I'm hell on wheels with a camera and your average CMS cannot handle what I am laying down. So I made one that could.</p>
                 <p>SNAPSMACK is built to be worked hard, to be as secure as possible, to make batch posting and bulk sharing easy, big backups reliable and painless, and to do all of this without bleeding you dry because we're all tired of being billed just for breathing. Oh, and it does this with... <em>Real. Fucking. Style.</em></p>
                 <p>Here is the one and only catch. It's all built with AI and the support is mostly provided using AI. Straight up, I can kick ass and chew bubblegum with any camera you put in my hands. What I am not is a developer. AI handled that part for me while I made sure that what was built worked and holy shit does it ever. So, yeah. AI is all over this project and I'm not apologizing for it because it would not exist without it, and you wouldn't have a FREE, quality option sitting in front of you.</p>
-                <p>I get it if you don't like AI. I'm not happy about aspects of it, either. But it is the only way that SNAPSMACK could have happened or that I can provide you with quality support moving forward. I, too, wish to take photos and publish them online and the only way I can do that and do this (SNAPSMACK) is by leveraging technology in a way that benefits all of us. Let's use the new tools to return to The Old Ways. Let's bring photo blogging back.</p>
+                <p>I get it if you don't like AI. I'm not happy about aspects of it, either. But it is <a href="https://snapsmack.ca/the-reckoning.php" target="_blank" rel="noopener">the only way</a> that SNAPSMACK could have happened or that I can provide you with quality support moving forward. I, too, wish to take photos and publish them online and the only way I can do that and do this (SNAPSMACK) is by leveraging technology in a way that benefits all of us. Let's use the new tools to return to The Old Ways. Let's bring photo blogging back.</p>
                 <p>If you don't want to use an AI product, fair. Use something else. If you can find it. I could not.</p>
             </div>
             </div>
