@@ -172,4 +172,61 @@ def test_rendered_canvaswell_no_horizontal_overflow_and_ctrl_wheel(monkeypatch):
     win.close()
 
 
+def test_text_mode_switch_and_visual_text_roundtrip(monkeypatch):
+    _app()
+    monkeypatch.setattr(ConnectPanel, "_start_mode_discovery", lambda self: None)
+    dummy_solo = QWidget()
+    dummy_solo.refresh_taxonomy = lambda: None
+    monkeypatch.setattr("coldsnap_qt.main_window.SoloMode", lambda _cfg: dummy_solo)
+    monkeypatch.setattr("coldsnap_qt.main_window.StackMode", lambda _cfg: QWidget())
+    monkeypatch.setattr("coldsnap_qt.main_window.StorageMode", lambda _cfg: QWidget())
+
+    win = MainWindow()
+    win.tabs.setCurrentIndex(2)
+    win.resize(1366, 768)
+
+    # Switch to Text (TWIGGY) mode
+    win.take_mode.body._set_biggie(False)
+    assert not win.take_mode.body.is_biggie()
+    assert win.take_mode.page_card.property("textView") is True
+    assert win.take_mode.blocks_header_label() == "SHORTCODES"
+    assert win.blocks_btn.text() == "SHORTCODES"
+    assert "TEXT VIEW" in win.take_mode.page_eyebrow.text()
+
+    # Round-trip Visual -> Text -> Visual -> Text across every block type
+    from coldsnap_qt import biggie
+    blocks = [
+        {"type": "heading", "level": 2, "text": "Heading Two"},
+        {"type": "heading", "level": 3, "text": "Heading Three"},
+        {"type": "para", "text": "Plain paragraph text."},
+        {"type": "para", "text": "Dropcap paragraph.", "dropcap": True},
+        {"type": "quote", "text": "Quoted passage."},
+        {"type": "pullquote", "text": "Lifted pullquote."},
+        {"type": "hr"},
+        {"type": "list", "ordered": False, "items": ["First bullet", "Second bullet"]},
+        {"type": "list", "ordered": True, "items": ["Step one", "Step two"]},
+        {"type": "image", "img_id": "42", "size": "full", "align": "center"},
+        {"type": "spacer", "px": 24},
+        {"type": "mosaic", "order": [1, 2, 3], "layout": "asymmetric"},
+        {"type": "columns", "ratio": "equal", "cols": [
+            [{"type": "para", "text": "Left col"}],
+            [{"type": "para", "text": "Right col"}],
+        ]},
+        {"type": "raw", "text": "[site_name]"},
+    ]
+    win.take_mode.body._set_biggie(True)
+    win.take_mode.body.biggie.from_blocks(blocks)
+    win.take_mode.body._set_biggie(False)
+    text_first = win.take_mode.body.editor.toPlainText()
+    win.take_mode.body._set_biggie(True)
+    blocks_roundtrip = win.take_mode.body.biggie.to_blocks()
+    win.take_mode.body._set_biggie(False)
+    text_second = win.take_mode.body.editor.toPlainText()
+
+    assert text_first == text_second
+    assert biggie.serialize_blocks(blocks_roundtrip) == text_first
+    win.take_mode.body._set_biggie(True)
+    win.close()
+
+
 # ===== SNAPSMACK EOF =====

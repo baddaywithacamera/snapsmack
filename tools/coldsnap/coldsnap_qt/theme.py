@@ -419,6 +419,20 @@ def stylesheet() -> str:
     QPushButton#PreviewToggle:checked {{
         border: 1px solid {ACCENT}; color: {ACCENT};
     }}
+    QFrame#PageCard[textView="true"] {{
+        background: #141914; border: 1px solid #2b3a29; border-radius: 6px;
+    }}
+    QFrame#PageCard[textView="true"] QLineEdit#TitleField,
+    QFrame#PageCard[textView="true"] QLabel {{
+        color: #d8e4d4;
+    }}
+    QFrame#PageCard[textView="true"] QLabel#PageEyebrow {{
+        color: {ACCENT};
+    }}
+    QPlainTextEdit#TwiggyEditor {{
+        background: #141914; color: #d8e4d4; border: none;
+        selection-background-color: #295a1e; selection-color: #ffffff;
+    }}
     QFrame#RightTrayCollapsed {{
         background: {PANEL}; border-left: 1px solid {BORDER};
     }}

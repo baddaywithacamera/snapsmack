@@ -14,14 +14,81 @@ toPlainText / setPlainText / clear so the modes barely change.
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
-from PySide6.QtCore import Qt, QSettings, Signal
+from PySide6.QtCore import Qt, QRect, QSettings, QSize, Signal
+from PySide6.QtGui import QColor, QFont, QPainter
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPlainTextEdit, QPushButton, QFrame
 
 
-from . import biggie
+from . import biggie, theme
 from . import canvas as canvas_mod
 from .shortcode_bar import ShortcodeBar
 from .widgets import hint
+
+
+class _LineNumberArea(QWidget):
+    def __init__(self, editor):
+        super().__init__(editor)
+        self._editor = editor
+
+    def sizeHint(self):
+        return QSize(self._editor.line_number_area_width(), 0)
+
+    def paintEvent(self, event):
+        self._editor.line_number_area_paint_event(event)
+
+
+class TwiggyEditor(QPlainTextEdit):
+    """Dark, line-numbered plain-text shortcode editor for TWIGGY mode."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("TwiggyEditor")
+        font = QFont("Consolas")
+        font.setStyleHint(QFont.Monospace)
+        font.setPointSize(11)
+        self.setFont(font)
+        self._line_area = _LineNumberArea(self)
+        self.blockCountChanged.connect(self._update_line_area_width)
+        self.updateRequest.connect(self._update_line_area)
+        self._update_line_area_width(0)
+
+    def line_number_area_width(self) -> int:
+        digits = max(2, len(str(max(1, self.blockCount()))))
+        return 12 + self.fontMetrics().horizontalAdvance("9") * digits
+
+    def _update_line_area_width(self, _new_count: int):
+        self.setViewportMargins(self.line_number_area_width(), 0, 0, 0)
+
+    def _update_line_area(self, rect, dy):
+        if dy:
+            self._line_area.scroll(0, dy)
+        else:
+            self._line_area.update(0, rect.y(), self._line_area.width(), rect.height())
+        if rect.contains(self.viewport().rect()):
+            self._update_line_area_width(0)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        cr = self.contentsRect()
+        self._line_area.setGeometry(
+            QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height()))
+
+    def line_number_area_paint_event(self, event):
+        p = QPainter(self._line_area)
+        p.fillRect(event.rect(), QColor("#141914"))
+        block = self.firstVisibleBlock()
+        block_num = block.blockNumber()
+        top = round(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
+        bottom = top + round(self.blockBoundingRect(block).height())
+        p.setPen(QColor("#52634e"))
+        while block.isValid() and top <= event.rect().bottom():
+            if block.isVisible() and bottom >= event.rect().top():
+                p.drawText(
+                    0, top, self._line_area.width() - 6, self.fontMetrics().height(),
+                    Qt.AlignRight | Qt.AlignVCenter, str(block_num + 1))
+            block = block.next()
+            top = bottom
+            bottom = top + round(self.blockBoundingRect(block).height())
 
 
 class BodyEditor(QWidget):
@@ -92,7 +159,7 @@ class BodyEditor(QWidget):
         s = QVBoxLayout(self._simple)
         s.setContentsMargins(0, 0, 0, 0)
         s.setSpacing(4)
-        self.editor = QPlainTextEdit()
+        self.editor = TwiggyEditor()
         self.editor.setMinimumHeight(simple_height)
         self.bar = ShortcodeBar(self.editor)
         s.addWidget(self.bar)

@@ -234,6 +234,7 @@ class TakeMode(QWidget):
 
         # SIMPLE (text + the CMS shortcode bar) / BIGGIE (block stack) — one field.
         self.body = BodyEditor(allow_mosaic=True, simple_height=220)
+        self.body.bar.hide()  # SHORTCODES live in the left rail (Slice 8)
         self.body.canvas.mosaicEditRequested.connect(self._canvas_mosaic)
         self.body.canvas.photographsDropped.connect(
             lambda paths: self._add_photo_paths(paths, insert=True))
@@ -290,6 +291,11 @@ class TakeMode(QWidget):
         self.page_meta = QLabel("")
         self.page_meta.setObjectName("PageMeta")
         card_col.addWidget(self.page_meta)
+        self.text_view_hint = hint(
+            "A plain text editor. Each block is a shortcode, typed or inserted "
+            "from the SHORTCODES list on the left.")
+        self.text_view_hint.setVisible(False)
+        card_col.addWidget(self.text_view_hint)
         card_col.addSpacing(6)
 
         card_col.addWidget(self.body, 1)
@@ -679,7 +685,9 @@ class TakeMode(QWidget):
 
     def _update_page_chrome(self):
         status = (self.status_combo.currentText() or "draft").strip().upper()
-        self.page_eyebrow.setText(f"ESSAY · {status}")
+        visual = self.body.is_biggie()
+        self.page_eyebrow.setText(
+            f"ESSAY · {status}" if visual else f"ESSAY · {status} — TEXT VIEW")
         site = ((self.app_config() or {}).get("url") or "").strip()
         for prefix in ("https://", "http://"):
             if site.startswith(prefix):
@@ -781,9 +789,15 @@ class TakeMode(QWidget):
         self._sync_block_tray_width()
 
     def _refresh_block_actions(self, visual: bool):
+        self.page_card.setProperty("textView", not visual)
+        self.page_card.style().unpolish(self.page_card)
+        self.page_card.style().polish(self.page_card)
+        if hasattr(self, "text_view_hint"):
+            self.text_view_hint.setVisible(not visual)
         self.blocks_tray.set_actions(
             "BLOCKS" if visual else "SHORTCODES",
             self._visual_block_actions() if visual else self._text_block_actions())
+        self._update_page_chrome()
         self.blocksStateChanged.emit(self.blocks_open(), self.blocks_header_label())
 
     def _visual_block_actions(self):
