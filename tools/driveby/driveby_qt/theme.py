@@ -17,7 +17,7 @@ FONT      = "Segoe UI"
 def stylesheet() -> str:
     return f"""
     QMainWindow, QWidget {{
-        background: {BG}; color: {BODY}; font-family: "{FONT}"; font-size: 13px;
+        background: {BG}; color: {BODY}; font-size: 13px;
     }}
     QFrame#HeaderBar, QFrame#SummaryBar {{
         background: {PANEL}; border-bottom: 1px solid {BORDER};
