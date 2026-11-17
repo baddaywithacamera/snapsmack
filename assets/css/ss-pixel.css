@@ -89,7 +89,15 @@ button{ font-family:inherit; cursor:pointer; }
    file to supply; nothing here invents one. */
 .sx-brand .sx-mark{
   width:44px; height:44px; border-radius:8px; flex:0 0 auto;
-  background-image:url("../img/fediverse-mark-160.png");
+  /* SS-1394. THIS WAS ../img/, WHICH NEVER ARRIVES ON AN UPDATING SITE.
+     assets/img/ is a PROTECTED PATH (protected_paths.json, beside
+     img_uploads/ and media_assets/) because sites keep their own images
+     there, so the updater must not overwrite it -- and therefore never
+     delivers anything new in it either. This stylesheet shipped, the PNG did
+     not, and the mark was simply absent on every updated site while the
+     version said 0.7.997D. Sean reported it missing on foundtextures.ca.
+     assets/brand/ is for product assets the updater DOES deliver. */
+  background-image:url("../brand/fediverse-mark-160.png");
   background-size:cover; background-position:center; background-repeat:no-repeat;
 }
 .sx-search{ position:relative; }

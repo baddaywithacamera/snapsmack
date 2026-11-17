@@ -84,8 +84,17 @@ if (!preg_match('/\.sx-brand \.sx-mark\s*\{[^}]*\}/s', $css, $mark)) {
     exit(1);
 }
 $rule = $mark[0];
+// SS-1394: the PATH IS NO LONGER ASSERTED HERE, only that it is our own
+// asset file. It used to demand ../img/, which is a PROTECTED path -- the
+// updater never delivers anything new in there, so the stylesheet shipped and
+// the PNG did not and the mark was missing on every updated site. The asset
+// moved to assets/brand/, and this test now RESOLVES whatever path the
+// stylesheet gives rather than naming one, so the next move cannot leave it
+// asserting a file nobody loads. Which directory is allowed is a separate
+// rule with its own test:
+// tests/shipped-assets-never-live-under-a-protected-path-regression.php.
 $check('the brand mark is OUR LOGO ASSET, not drawn in CSS',
-    str_contains($rule, 'background-image:url("../img/fediverse-mark-'));
+    (bool)preg_match("#background-image:\s*url\([\"\x27]?([^\"\x27)]*fediverse-mark-[^\"\x27)]*)#", $rule));
 $check("and it is not a CSS-drawn lookalike of anybody else's mark",
     !preg_match('/conic-gradient|linear-gradient|radial-gradient/i', $rule));
 $colours = [];
@@ -108,8 +117,19 @@ $check("the mark is in Sean's 40-48px range, not the old 26",
     && $box[1] === $box[2]);
 $check('and it still fits the 62px header row', isset($box[1]) && (int)$box[1] <= 56);
 
-$asset = $root . '/assets/img/fediverse-mark-160.png';
-$check('the logo asset exists where the stylesheet points', is_file($asset));
+// Resolved from the stylesheet's own url(), relative to assets/css/.
+$asset = '';
+if (preg_match("#background-image:\s*url\([\"\x27]?([^\"\x27)]+)#", $rule, $u)) {
+    $parts = [];
+    foreach (explode('/', 'assets/css/' . trim($u[1])) as $seg) {
+        if ($seg === '' || $seg === '.') continue;
+        if ($seg === '..') { array_pop($parts); continue; }
+        $parts[] = $seg;
+    }
+    $asset = $root . '/' . implode('/', $parts);
+}
+$check('the logo asset exists where the stylesheet points',
+    $asset !== '' && is_file($asset));
 if (is_file($asset)) {
     $check('and it is a small derivative, not the 1000px original',
         filesize($asset) < 40000);
@@ -117,7 +137,8 @@ if (is_file($asset)) {
     $check('big enough for a 44px box at 3x (132px)', $aw >= 132 && $ah >= 132);
     $check('and not larger than any reader needs', $aw <= 256 && $ah <= 256);
     $check('the superseded 128px derivative is gone, not left behind',
-        !is_file($root . '/assets/img/fediverse-mark-128.png'));
+        !is_file($root . '/assets/img/fediverse-mark-128.png')
+        && !is_file($root . '/assets/brand/fediverse-mark-128.png'));
 }
 
 // BOTH MODES. The mark was display:none on the SMACKTALK reader, hidden back
