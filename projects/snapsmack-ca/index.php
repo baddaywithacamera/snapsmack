@@ -165,7 +165,7 @@ $page_css = <<<'CSS'
 .whodat-name { margin: 0; color: var(--black); font: 900 1rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .whodat-title { margin: 5px 0 15px; color: var(--red); font: 700 .72rem/1.35 'Courier New', monospace; text-transform: uppercase; }
 .whodat-bio { font-size: .83rem; line-height: 1.55; }
-.whodat-honest { max-width: 820px; margin-bottom: 30px; }
+.whodat-honest { max-width: 100%; margin-bottom: 30px; }
 
 @media (max-width: 1100px) {
     /* Two, not three: with four cards a three-across row strands the fourth one
