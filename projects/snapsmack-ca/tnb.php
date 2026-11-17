@@ -103,7 +103,7 @@ include __DIR__ . '/includes/header.php';
 
             <p>You can opt out of SMACK UP at any time in your admin settings. Opting out stops all further data transmission. Your site's registration record on the central server is retained but your weight is zeroed — you stop contributing to and receiving from the network.</p>
 
-            <p>SMACK UP also includes GOBSMACKED, a feature that analyses writing style to detect ban evasion. <a href="#gobsmacked">Read more below.</a></p>
+            <p>SMACK UP also includes GOBSMACKED, a feature that analyses writing style to detect ban evasion. <a href="#gobsmacked">Read more below</a>.</p>
 
             <h2 id="gobsmacked">GOBSMACKED — writing fingerprinting (Tier 3 protection)</h2>
             <p>GOBSMACKED is an additional layer of spam protection built on top of SMACK UP. It exists for a specific reason: the developer of SnapSmack was personally cyberstalked by a troll for several years — one who evaded bans by rotating IP addresses, using disposable email accounts, and clearing browser fingerprints. GOBSMACKED is built to detect that kind of evasion, so that no one using SnapSmack has to go through the same thing.</p>

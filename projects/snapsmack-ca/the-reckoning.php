@@ -34,6 +34,7 @@ $page_css = <<<'CSS'
 .cost-callout strong { display: block; margin-bottom: 9px; color: var(--white); font: 900 clamp(1.8rem, 4vw, 3rem)/1 Arial Black, Arial, sans-serif; letter-spacing: -.04em; }
 .cost-callout p { margin: 0; color: #ddd; }
 .method-note { max-width: 820px; margin: 28px 0 0; padding: 22px 25px; background: var(--light-grey); border-left: 4px solid var(--black); font-size: .9rem; }
+.term-abbr { text-decoration-line: underline; text-decoration-style: dotted; text-underline-offset: .18em; cursor: help; }
 @media (max-width: 760px) { .reckoning-premise-grid, .number-grid { grid-template-columns: 1fr; } .reckoning-premise-label { margin: 0; } }
 CSS;
 
@@ -96,7 +97,7 @@ require_once __DIR__ . '/includes/header.php';
             <h2>The FOOD NETWORK problem</h2>
             <div class="reckoning-copy">
                 <p>FOOD NETWORK once served people who wanted to cook. A larger audience preferred watching food-adjacent entertainment, so instruction gave way to contests and challenges. Photography software followed a similar path: the larger market wants feeds, video, engagement, and performance. The smaller audience still wants to practise photography, publish photographs, and keep an archive under its own control.</p>
-                <p>Under conventional economics, SNAPSMACK sits in the abandoned middle: unusually broad for a small volunteer FOSS project, too expensive for a company to commission sensibly, and aimed at a market too specialized to promise venture-scale returns. AI-assisted development changed that equation. It made substantial software for a limited community practical without requiring either mass-market revenue or a large unpaid contributor base.</p>
+                <p>Under conventional economics, SNAPSMACK sits in the abandoned middle: unusually broad for a small volunteer <abbr class="term-abbr" title="Free, Open Source Software">FOSS</abbr> project, too expensive for a company to commission sensibly, and aimed at a market too specialized to promise venture-scale returns. AI-assisted development changed that equation. It made substantial software for a limited community practical without requiring either mass-market revenue or a large unpaid contributor base.</p>
             </div>
         </div>
     </section>

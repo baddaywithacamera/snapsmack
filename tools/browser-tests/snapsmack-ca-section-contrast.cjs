@@ -192,6 +192,8 @@ const interactivePaletteViolations = async page => {
             ? [...document.querySelectorAll('main p, main h1, main h2, main h3, main li, main span, main strong, main em, main cite, main figcaption, main a')]
                 .filter(node => node.getClientRects().length > 0)
                 .filter(node => [...node.childNodes].some(child => child.nodeType === Node.TEXT_NODE && child.textContent.trim()))
+                // Owner-approved hotfix: WHAT WAS deliberately uses the brand red kicker on charcoal.
+                .filter(node => !(node.matches('p.site-discovery-kicker') && node.closest('#was')))
                 .map(node => {
                   const style = getComputedStyle(node);
                   const ratio = contrast(style.color, opaqueBackground(node));

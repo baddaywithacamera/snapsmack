@@ -135,6 +135,18 @@ const allowedColours = new Set([
             background: getComputedStyle(node).backgroundColor,
             border: getComputedStyle(node).borderColor,
           }));
+        const trailingPunctuationLinks = [...document.querySelectorAll('a')]
+          .filter(node => getComputedStyle(node).display === 'inline')
+          .filter(node => node.parentElement && (
+            node.parentElement.tagName === 'P'
+            || node.parentElement.classList.contains('free-band')
+          ))
+          .map(node => ({
+            node: label(node),
+            text: node.textContent.trim().replace(/\s+/g, ' '),
+            href: node.getAttribute('href') || '',
+          }))
+          .filter(item => /\.$/.test(item.text));
         return {
           title: document.title,
           palette: [...new Map(palette.map(item => [JSON.stringify(item), item])).values()],
@@ -142,6 +154,7 @@ const allowedColours = new Set([
           semantic,
           bannerCount: document.querySelectorAll('.beta-delay').length,
           overflow: document.documentElement.scrollWidth > innerWidth,
+          trailingPunctuationLinks,
         };
       }, { allowed: [...allowedColours] });
       await page.screenshot({ path: path.join(output, pathname.replace('.php', '.png')), fullPage: true });
@@ -155,6 +168,7 @@ const allowedColours = new Set([
     }, null, 2));
     const failures = results.filter(result => (
       result.palette.length || result.bannerCount !== 1 || result.overflow
+        || result.trailingPunctuationLinks.length
     ));
     assert.deepEqual(failures, [], `1440 public-page palette failures; see ${output}/measurements.json`);
     const contrastCount = results.reduce((total, result) => total + result.lowContrast.length, 0);
