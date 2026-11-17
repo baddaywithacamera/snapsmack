@@ -1,0 +1,20 @@
+{
+  "_meta": {
+    "source_commit": "38c519d1",
+    "source_version": "0.7.33",
+    "generator": "SmacktalkPoster.build_payload + biggie.serialize_blocks at 38c519d1",
+    "description": "Frozen 0.7.33 outgoing smackpress/posts JSON payload for the Slice 9 mixed-block essay."
+  },
+  "payload": {
+    "title": "Slice 9 Equivalence Essay",
+    "content": "<h2>Opening</h2>\n\nPlain paragraph.\n\n[dropcap]D[/dropcap]ropcap start.\n\n[pullquote]Pull quote line.[/pullquote]\n\n[columns=2]\nCol one.\n\n[col]\n\nCol two.\n[/columns]\n\n[img:42|full|center]\n\n[mosaic=1 layout=asymmetric]",
+    "status": "published",
+    "featured_image_id": 101,
+    "bucket_image_ids": [101],
+    "tags": "essay coldtake",
+    "cat_ids": [],
+    "album_ids": [],
+    "colophon": "",
+    "signature_image_id": 0
+  }
+}

@@ -1,5 +1,7 @@
-"""Slice 8 (parser-valid [img:...] round-trip) and Slice 9 (frozen 0.7.33 payload equivalence)."""
+"""Slice 8 (132-case [img:...] round-trip) and Slice 9 (frozen 0.7.33 JSON fixture equivalence)."""
 
+import itertools
+import json
 import os
 import sys
 
@@ -15,51 +17,50 @@ from coldsnap_qt.body_editor import BodyEditor
 from coldsnap_qt.mode_take import TakeMode
 
 
-# Exact outgoing smackpress/posts JSON payload recorded from frozen 0.7.33 (38c519d1)
-# for the mixed-block post below. Do not compute this with current biggie.py.
-FROZEN_0733_PAYLOAD = {
-    "title": "Slice 9 Equivalence Essay",
-    "content": (
-        "<h2>Opening</h2>\n\n"
-        "Plain paragraph.\n\n"
-        "[dropcap]D[/dropcap]ropcap start.\n\n"
-        "[pullquote]Pull quote line.[/pullquote]\n\n"
-        "[columns=2]\nCol one.\n\n[col]\n\nCol two.\n[/columns]\n\n"
-        "[img:42|full|center]\n\n"
-        "[mosaic=1 layout=asymmetric]"
-    ),
-    "status": "published",
-    "featured_image_id": 101,
-    "bucket_image_ids": [101],
-    "tags": "essay coldtake",
-    "cat_ids": [],
-    "album_ids": [],
-    "colophon": "",
-    "signature_image_id": 0,
-}
+_FIXTURE_PATH = os.path.join(
+    os.path.dirname(__file__), "fixtures", "frozen_0733_payload.json"
+)
 
 
 def _app():
     return QApplication.instance() or QApplication([])
 
 
+def _canonical_image_matrix():
+    """Generate all 128 canonical [img:...] combinations accepted by core/parser.php:937."""
+    cases = []
+    for gallery, size, align, width, deco in itertools.product(
+        ("", "g"),
+        (None, "small", "wall", "full"),
+        (None, "left", "center", "right"),
+        (None, "30"),
+        (None, "decorative"),
+    ):
+        parts = [f"{gallery}5"]
+        for opt in (size, align, width, deco):
+            if opt is not None:
+                parts.append(opt)
+        cases.append("[img:" + "|".join(parts) + "]")
+    return cases
+
+
 def test_twiggy_visual_twiggy_image_options_lossless():
-    """Every parser.php:937 [img:...] form (including whitespace/case/%) survives TWIGGY -> Visual -> TWIGGY."""
+    """All 128 canonical + 4 non-canonical parser.php:937 [img:...] forms survive TWIGGY -> Visual -> TWIGGY."""
     _app()
     editor = BodyEditor(allow_mosaic=True)
 
-    cases = [
-        "[img:5|left]",
-        "[img:5|decorative]",
-        "[img:5|small|left|30|decorative]",
-        "[img:g5|small|left]",
-        "[img:42|full|center]",
-        "[img:5]",
+    canonical = _canonical_image_matrix()
+    assert len(canonical) == 128
+
+    noncanonical = [
         "[img: g 5 | small | left | 30% | decorative ]",
         "[IMG:G5|SMALL|LEFT|30|DECORATIVE]",
         "[img:5|30%]",
         "[img:5|left|30%]",
     ]
+    cases = canonical + noncanonical
+    assert len(cases) == 132
+
     for raw in cases:
         editor._set_biggie(False)
         editor.editor.setPlainText(raw)
@@ -69,8 +70,13 @@ def test_twiggy_visual_twiggy_image_options_lossless():
 
 
 def test_slice9_end_to_end_compose_to_frozen_0733_payload(tmp_path):
-    """Mixed blocks composed in TakeMode produce the exact frozen 0.7.33 (38c519d1) payload."""
+    """Mixed blocks composed in TakeMode produce the exact frozen 0.7.33 (38c519d1) JSON fixture payload."""
     _app()
+    with open(_FIXTURE_PATH, encoding="utf-8") as fh:
+        fixture = json.load(fh)
+    assert fixture["_meta"]["source_commit"] == "38c519d1"
+    expected_payload = fixture["payload"]
+
     take = TakeMode(lambda: {"url": "https://example.invalid", "smackpress_key": "k"})
 
     img_path = tmp_path / "sample.png"
@@ -106,7 +112,7 @@ def test_slice9_end_to_end_compose_to_frozen_0733_payload(tmp_path):
     poster = SmacktalkPoster("https://example.invalid", "k")
     composed_payload = poster.build_payload(composed_draft, [101], 101)
 
-    assert composed_payload == FROZEN_0733_PAYLOAD
+    assert composed_payload == expected_payload
     take.close()
 
 
