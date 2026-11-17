@@ -112,6 +112,7 @@ ROSTER = [
     ("SMACK YOUR MOUTH",    "comments: mod + reply", [os.path.join(_R, "smack-your-mouth", "smackmouth.exe")]),
     ("SHOTS FIRED",         "schedule board",       [os.path.join(_R, "shots-fired", "shots-fired.exe")]),
     ("CRONOMETER",          "fleet cron health",    [os.path.join(_R, "cronometer", "cronometer.exe")]),
+    ("DRIVE BY",            "backup inventory & pruning", [os.path.join(_R, "driveby", "driveby.exe")]),
 ]
 
 TOOL_ICON_FILES = {
