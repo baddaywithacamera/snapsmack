@@ -85,6 +85,12 @@
   --space-2xl: 3rem;
   --space-3xl: 4rem;
 
+  /* Static-page frame clearance. The visible yellow frame begins after both
+     the hero's top margin and its internal frame inset. Archive walls reuse
+     their sum so the two page types stay aligned when either value changes. */
+  --rg-page-hero-top-margin: 40px;
+  --rg-page-hero-frame-inset: 30px;
+
   /* Z-index Scale */
   --z-content: 2;
   --z-drawer: 10;
@@ -927,10 +933,12 @@ body[data-frame="none"]   { --rg-hero-colour: transparent; }
 #justified-grid {
   max-width: var(--rg-canvas-width, 1400px);
   width: 100%;
-  margin: 0 auto;
-  /* 30 + 25. Sean, 17 Oct 2026: the wall sat against the header above and the
-     footer below. The 25px is the gap he asked for, not a round number. */
-  padding: 55px 0;
+  /* The columns engine positions tiles from the grid's own top edge, so top
+     padding cannot separate the first row from the header. Move the wall by
+     the same clearance as the static-page frame instead. */
+  margin: calc(var(--rg-page-hero-top-margin) + var(--rg-page-hero-frame-inset)) auto 0;
+  /* Sean, 17 Oct 2026: retain the requested 55px footer clearance. */
+  padding: 0 0 55px;
   box-sizing: border-box;
   flex: 1 0 auto;
   --ss-cols: var(--grid-cols, 4);
@@ -1215,8 +1223,8 @@ body.static-transmission .static-page-title {
   min-height: auto !important;
   max-width: var(--static-content-width, 1040px) !important;
   width: 100% !important;
-  margin: 40px auto 60px auto !important;  /* top: breathing room below header */
-  padding: 30px 40px !important;           /* inner padding so outline has space */
+  margin: var(--rg-page-hero-top-margin) auto 60px auto !important;
+  padding: var(--rg-page-hero-frame-inset) 40px !important;
   box-sizing: border-box !important;
   float: none !important;
   background: transparent !important;
