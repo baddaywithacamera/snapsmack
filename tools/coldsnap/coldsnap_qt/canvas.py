@@ -31,7 +31,7 @@ from PySide6.QtGui import (
     QColor, QFont, QPainter, QPen, QPixmap, QPixmapCache, QTextBlockFormat,
     QTextCharFormat, QTextCursor, QTextFormat, QTextFrameFormat, QTextLength,
     QTextListFormat, QTextTableFormat, QPyTextObject, QAction, QKeySequence,
-    QImageReader, QImageIOHandler,
+    QImageReader, QImageIOHandler, QShortcut,
 )
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QMenu,
@@ -517,21 +517,26 @@ class BiggieCanvas(QTextEdit):
         self.setUndoRedoEnabled(True)
         self.setTabChangesFocus(False)
         self.setPlaceholderText("Start writing. Enter makes a new paragraph. "
-                                "Use the bar above for headings, quotes, lists, "
-                                "photos and a MOSAIC.")
+                                "Use the BLOCKS tray on the left for headings, quotes, "
+                                "lists, photos and a MOSAIC.")
         self.setObjectName("BiggieCanvas")
         self.setStyleSheet(
-            f"QTextEdit#BiggieCanvas {{ background: {theme.CANVAS}; color: {theme.INK};"
-            f" border: 1px solid {theme.BORDER}; padding: 14px 18px; }}")
-        base = QFont(self.font())
-        base.setPointSizeF(max(11.0, base.pointSizeF() + 1.5))
+            "QTextEdit#BiggieCanvas { background: #ffffff; color: #1a1a1a;"
+            " border: none; padding: 6px 0px; selection-background-color: #c8f5be;"
+            " selection-color: #111111; }")
+        base = QFont("Georgia")
+        base.setPointSizeF(12.5)
         self.setFont(base)
         self.document().setDefaultFont(base)
-        self.document().setDocumentMargin(10)
+        self.document().setDocumentMargin(4)
         self._objects = _Objects(self)
         self.document().documentLayout().registerHandler(OBJ_TYPE, self._objects)
         self.document().contentsChange.connect(self._after_change)
         self.setContextMenuPolicy(Qt.DefaultContextMenu)
+        QShortcut(QKeySequence("Ctrl+B"), self).activated.connect(self.toggle_bold)
+        QShortcut(QKeySequence("Ctrl+I"), self).activated.connect(self.toggle_italic)
+        QShortcut(QKeySequence("Ctrl+U"), self).activated.connect(self.toggle_underline)
+        QShortcut(QKeySequence("Ctrl+K"), self).activated.connect(self.insert_link)
 
     # -- host hooks ---------------------------------------------------------
     def set_bucket(self, paths):
@@ -589,24 +594,28 @@ class BiggieCanvas(QTextEdit):
         f = QTextCharFormat()
         base = self.document().defaultFont()
         font = QFont(base)
-        f.setForeground(QColor(theme.INK))
+        f.setForeground(QColor("#1a1a1a"))
         if kind == "h2":
-            font.setPointSizeF(base.pointSizeF() * 1.7)
+            font = QFont(theme.FONT)
+            font.setPointSizeF(20.0)
             font.setBold(True)
+            f.setForeground(QColor("#111111"))
         elif kind == "h3":
-            font.setPointSizeF(base.pointSizeF() * 1.3)
+            font = QFont(theme.FONT)
+            font.setPointSizeF(15.5)
             font.setBold(True)
+            f.setForeground(QColor("#1a1a1a"))
         elif kind == "quote":
             font.setItalic(True)
-            f.setForeground(QColor(theme.BODY))
+            f.setForeground(QColor("#444444"))
         elif kind == "pullquote":
-            font.setPointSizeF(base.pointSizeF() * 1.35)
+            font.setPointSizeF(base.pointSizeF() * 1.25)
             font.setItalic(True)
-            f.setForeground(QColor(theme.ACCENT))
+            f.setForeground(QColor("#1e6610"))
         elif kind == "raw":
             font = QFont("Consolas")
-            font.setPointSizeF(base.pointSizeF() * 0.95)
-            f.setForeground(QColor(theme.DIM))
+            font.setPointSizeF(11.0)
+            f.setForeground(QColor("#222222"))
         f.setFont(font)
         return f
 
@@ -614,18 +623,72 @@ class BiggieCanvas(QTextEdit):
         b = QTextBlockFormat()
         b.setProperty(PROP_KIND, kind)
         b.setProperty(PROP_DROPCAP, bool(dropcap))
-        b.setTopMargin(6)
-        b.setBottomMargin(6)
+        b.setTopMargin(8)
+        b.setBottomMargin(8)
+        b.setLineHeight(150.0, QTextBlockFormat.ProportionalHeight.value)
         if kind in ("quote", "pullquote"):
             b.setLeftMargin(28)
             b.setRightMargin(28 if kind == "pullquote" else 0)
             b.setTopMargin(12)
             b.setBottomMargin(12)
         if kind == "h2":
-            b.setTopMargin(16)
+            b.setTopMargin(18)
         if kind == "raw":
-            b.setBackground(QColor(theme.PANEL))
+            b.setBackground(QColor("#f3f4f3"))
         return b
+
+    # -- inline formatting (B / I / U / Link) ---------------------------------
+    def toggle_bold(self):
+        cur = self.textCursor()
+        fmt = QTextCharFormat()
+        is_bold = cur.charFormat().fontWeight() >= QFont.Bold
+        fmt.setFontWeight(QFont.Normal if is_bold else QFont.Bold)
+        cur.mergeCharFormat(fmt)
+        self.mergeCurrentCharFormat(fmt)
+
+    def toggle_italic(self):
+        cur = self.textCursor()
+        fmt = QTextCharFormat()
+        fmt.setFontItalic(not cur.charFormat().fontItalic())
+        cur.mergeCharFormat(fmt)
+        self.mergeCurrentCharFormat(fmt)
+
+    def toggle_underline(self):
+        cur = self.textCursor()
+        fmt = QTextCharFormat()
+        fmt.setFontUnderline(not cur.charFormat().fontUnderline())
+        cur.mergeCharFormat(fmt)
+        self.mergeCurrentCharFormat(fmt)
+
+    def insert_link(self):
+        cur = self.textCursor()
+        url, ok = QInputDialog.getText(self, "Insert link", "URL:")
+        if not ok or not url.strip():
+            return
+        url = url.strip()
+        label = cur.selectedText() or url
+        fmt = QTextCharFormat()
+        fmt.setAnchor(True)
+        fmt.setAnchorHref(url)
+        fmt.setForeground(QColor("#1e6610"))
+        fmt.setFontUnderline(True)
+        cur.insertText(label, fmt)
+
+    def current_block_tag(self) -> str:
+        block = self.textCursor().block()
+        hit = self._object_at(block.position())
+        if hit:
+            kind = str(hit[0] or "").upper()
+            return {"MOSAIC": "MOSAIC", "IMAGE": "IMG", "HR": "DIV", "SPACER": "SP"}.get(kind, kind)
+        c = QTextCursor(block)
+        if c.currentTable() is not None:
+            return f"{c.currentTable().columns()}C"
+        if block.textList():
+            return "NUM" if block.textList().format().style() == QTextListFormat.ListDecimal else "BUL"
+        if bool(block.blockFormat().property(PROP_DROPCAP)):
+            return "DC"
+        kind = _block_kind(block)
+        return {"para": "P", "h2": "H", "h3": "SH", "quote": "Q", "pullquote": "PQ", "raw": "RAW"}.get(kind, "P")
 
     def set_kind(self, kind: str):
         """Make the current paragraph(s) this kind. Lists are left by choosing Paragraph."""

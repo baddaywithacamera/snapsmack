@@ -14,8 +14,8 @@ toPlainText / setPlainText / clear so the modes barely change.
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
-from PySide6.QtCore import QSettings, Signal
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPlainTextEdit, QPushButton
+from PySide6.QtCore import Qt, QSettings, Signal
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPlainTextEdit, QPushButton, QFrame
 
 
 from . import biggie
@@ -38,25 +38,52 @@ class BodyEditor(QWidget):
         col.setContentsMargins(0, 0, 0, 0)
         col.setSpacing(4)
 
-        # -- the toggle ---------------------------------------------------------
-        row = QHBoxLayout()
-        self.simple_btn = QPushButton("TWIGGY — TEXT")
-        self.biggie_btn = QPushButton("BIGGIE — VISUAL")
+        # -- the format strip (Slice 1: Text/Visual segmented + B I U Link) ----
+        self.format_strip = QFrame()
+        self.format_strip.setObjectName("FormatStrip")
+        row = QHBoxLayout(self.format_strip)
+        row.setContentsMargins(12, 8, 12, 8)
+        row.setSpacing(6)
+
+        seg = QFrame()
+        seg.setObjectName("FaceSegment")
+        seg_row = QHBoxLayout(seg)
+        seg_row.setContentsMargins(2, 2, 2, 2)
+        seg_row.setSpacing(2)
+        self.simple_btn = QPushButton("Text · TWIGGY")
+        self.biggie_btn = QPushButton("Visual · BIGGIE")
         for b in (self.simple_btn, self.biggie_btn):
-            b.setObjectName("ScBtn")
+            b.setObjectName("FaceToggle")
             b.setCheckable(True)
-        self.simple_btn.setToolTip("One text box + the shortcode bar — how the "
-                                   "site editor works.")
-        self.biggie_btn.setToolTip("The writing surface: click and type, Enter for a "
-                                   "new paragraph. Headings, quotes, photos and the "
-                                   "MOSAIC appear as they will on the site.")
+            b.setFocusPolicy(Qt.NoFocus)
+        self.simple_btn.setToolTip("TWIGGY · raw shortcodes — how the site editor works.")
+        self.biggie_btn.setToolTip("BIGGIE · what you see — headings, quotes, photos and "
+                                   "the MOSAIC appear as they will on the site.")
         self.simple_btn.clicked.connect(lambda: self._set_biggie(False))
         self.biggie_btn.clicked.connect(lambda: self._set_biggie(True))
-        row.addWidget(self.simple_btn)
-        row.addWidget(self.biggie_btn)
+        seg_row.addWidget(self.simple_btn)
+        seg_row.addWidget(self.biggie_btn)
+        row.addWidget(seg)
+
+        row.addSpacing(8)
+        self._inline_btns = []
+        for label, tip, action in (
+            ("B", "Bold (Ctrl+B)", "bold"),
+            ("I", "Italic (Ctrl+I)", "italic"),
+            ("U", "Underline (Ctrl+U)", "underline"),
+            ("Link  Ctrl+K", "Insert link (Ctrl+K)", "link"),
+        ):
+            btn = QPushButton(label)
+            btn.setObjectName("FormatBtn")
+            btn.setToolTip(tip)
+            btn.setFocusPolicy(Qt.NoFocus)
+            btn.clicked.connect(lambda _=False, act=action: self._apply_inline(act))
+            row.addWidget(btn)
+            self._inline_btns.append(btn)
         row.addStretch(1)
-        col.addLayout(row)
+        col.addWidget(self.format_strip)
         if not self.rich:
+            self.format_strip.hide()
             self.simple_btn.hide()
             self.biggie_btn.hide()
 
@@ -76,14 +103,11 @@ class BodyEditor(QWidget):
         self._biggie_page = QWidget()
         g = QVBoxLayout(self._biggie_page)
         g.setContentsMargins(0, 0, 0, 0)
-        g.setSpacing(4)
+        g.setSpacing(0)
         self.canvas = canvas_mod.BiggieCanvas(allow_mosaic=allow_mosaic)
         self.biggie = self.canvas          # model API: to_blocks / from_blocks / clear
-        self.canvas_bar = canvas_mod.CanvasBar(self.canvas)
-        g.addWidget(self.canvas_bar)
+        self.canvas_bar = None
         g.addWidget(self.canvas, 1)        # the canvas fills the space it is given
-        g.addWidget(hint("What you see here sends as the same shortcodes/HTML the "
-                         "TWIGGY bar makes — the site renders it identically."))
         col.addWidget(self._biggie_page, 1)
         self.editor.textChanged.connect(self.changed)
         self.canvas.textChanged.connect(self.changed)
@@ -98,6 +122,22 @@ class BodyEditor(QWidget):
         # same body, not install modes; keeping the switch visible is essential
         # to making the editor understandable and matches the bundled Help.
         self._apply_face(True)
+
+    def _apply_inline(self, action: str):
+        if self._biggie_on:
+            {
+                "bold": self.canvas.toggle_bold,
+                "italic": self.canvas.toggle_italic,
+                "underline": self.canvas.toggle_underline,
+                "link": self.canvas.insert_link,
+            }[action]()
+        else:
+            {
+                "bold": lambda: self.bar._wrap("<strong>", "</strong>"),
+                "italic": lambda: self.bar._wrap("<em>", "</em>"),
+                "underline": lambda: self.bar._wrap("<u>", "</u>"),
+                "link": self.bar._link,
+            }[action]()
 
     # -- face switching ---------------------------------------------------------
     def _apply_face(self, on: bool):

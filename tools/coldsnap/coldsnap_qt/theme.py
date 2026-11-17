@@ -358,6 +358,67 @@ def stylesheet() -> str:
     }}
     QListWidget::item:hover {{ border-color: {FIELD_HI}; }}
     QListWidget::item:selected {{ border-color: {ACCENT}; background: {ACCENT_DIM}; }}
+
+    /* --- COLD TAKE Slices 1-2: Format strip, ruler, white document page --- */
+    QFrame#FormatStrip {{
+        background: {PANEL};
+        border-bottom: 1px solid {BORDER};
+    }}
+    QFrame#FaceSegment {{
+        background: {BG};
+        border: 1px solid {BORDER};
+        border-radius: 6px;
+    }}
+    QPushButton#FaceToggle {{
+        background: transparent; color: {BODY}; border: none;
+        border-radius: 4px; padding: 5px 12px; font-size: 13px; font-weight: 600;
+    }}
+    QPushButton#FaceToggle:checked {{
+        background: {ACCENT}; color: {CANVAS}; font-weight: 700;
+    }}
+    QPushButton#FormatBtn {{
+        background: transparent; color: {BODY}; border: 1px solid transparent;
+        border-radius: 4px; padding: 4px 10px; font-size: 13px; font-weight: 700;
+        min-height: 28px;
+    }}
+    QPushButton#FormatBtn:hover {{
+        background: {FIELD}; border-color: {BORDER}; color: {ACCENT};
+    }}
+    QWidget#CanvasWell {{
+        background: {BG};
+    }}
+    QFrame#PageCard {{
+        background: #ffffff;
+        border-radius: 6px;
+    }}
+    QLabel#PageEyebrow {{
+        background: transparent; color: #1e6610;
+        font-size: 11px; font-weight: 700; letter-spacing: 1.4px;
+    }}
+    QLineEdit#PageTitle {{
+        background: transparent; color: #111111; border: none;
+        padding: 2px 0px; font-size: 26px; font-weight: 800;
+    }}
+    QLabel#PageMeta {{
+        background: transparent; color: #777777;
+        font-size: 12px;
+    }}
+    QLabel#BlockGutterTag {{
+        background: transparent; color: #1e6610;
+        font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+    }}
+    QPushButton#AddBlockPill {{
+        background: {ACCENT}; color: {CANVAS}; border: none;
+        border-radius: 13px; padding: 5px 14px; font-size: 12px; font-weight: 700;
+    }}
+    QPushButton#AddBlockPill:hover {{ background: {ACCENT_HI}; }}
+    QPushButton#PreviewToggle {{
+        background: {FIELD}; color: {BODY}; border: 1px solid {BORDER};
+        border-radius: 5px; padding: 5px 10px; font-size: 12px;
+    }}
+    QPushButton#PreviewToggle:checked {{
+        border: 1px solid {ACCENT}; color: {ACCENT};
+    }}
     """
 
 # ===== SNAPSMACK EOF =====

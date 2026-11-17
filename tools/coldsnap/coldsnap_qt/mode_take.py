@@ -170,6 +170,38 @@ class MosaicPreview(QWidget):
             self.swapRequested.emit(source, target)
 
 
+class _PageRuler(QWidget):
+    """24px ruler above the document canvas showing the active preview width."""
+
+    def __init__(self, preview_width: int = 760, parent=None):
+        super().__init__(parent)
+        self._preview_width = int(preview_width or 760)
+        self.setFixedHeight(24)
+
+    def set_preview_width(self, width: int):
+        self._preview_width = int(width or 760)
+        self.update()
+
+    def paintEvent(self, _event):
+        p = QPainter(self)
+        p.fillRect(self.rect(), QColor(theme.BG))
+        w = self.width()
+        span = min(w - 24, self._preview_width + 80)
+        left = (w - span) // 2
+        right = left + span
+        p.setPen(QPen(QColor(theme.BORDER), 1))
+        p.drawLine(left, self.height() - 1, right, self.height() - 1)
+        for x in range(left, right + 1, 16):
+            major = ((x - left) % 80) == 0
+            tick_h = 8 if major else 4
+            p.drawLine(x, self.height() - 1 - tick_h, x, self.height() - 1)
+        # Green margin markers
+        p.setBrush(QColor(theme.ACCENT))
+        p.setPen(Qt.NoPen)
+        for mx in (left + 40, right - 40):
+            p.drawRect(mx - 3, 2, 6, 5)
+
+
 class TakeMode(QWidget):
     SUITE_MODE = O.MODE_SMACKTALK
     blocksStateChanged = Signal(bool, str)  # open, header label
@@ -190,95 +222,98 @@ class TakeMode(QWidget):
         self._slapper_launch_error = ""
 
         outer = QHBoxLayout(self)
-        outer.setContentsMargins(10, 10, 0, 0)
-        outer.setSpacing(10)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
 
         self.rail = BatchRail(self.SUITE_MODE, "post", self._poster_and_url,
                               row_builder=self._rows)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        host = QWidget()
-        right = QVBoxLayout(host)
-        right.setContentsMargins(0, 0, 0, 0)
-
-        card = Card("COMPOSE — an essay with photos")
-        # Let the editor use the centre pane instead of shrinking to sizeHint.
-        right.addWidget(card, 1)
-
-        card.body.addWidget(field_label("Title"))
-        self.title_edit = QLineEdit()
-        card.body.addWidget(self.title_edit)
-
-        card.body.addWidget(field_label("The write-up"))
         # SIMPLE (text + the CMS shortcode bar) / BIGGIE (block stack) — one field.
-        self.body = BodyEditor(allow_mosaic=True, simple_height=160)
-        self.body.bar.add_button(
-            "MOSAIC",
-            "Puts a [mosaic] marker at the cursor — on send, the photos below "
-            "become a tiled grid right at that spot",
-            self._insert_mosaic)
-        # BIGGIE: the same button on the canvas bar; the canvas asks for the
-        # dialog itself on double-click / right-click of a drawn mosaic.
-        self.body.canvas_bar.add_button(
-            "MOSAIC",
-            "Build a tiled grid of this post's photos right here — you see it "
-            "in the page as you write",
-            self._insert_mosaic)
+        self.body = BodyEditor(allow_mosaic=True, simple_height=220)
         self.body.canvas.mosaicEditRequested.connect(self._canvas_mosaic)
         self.body.canvas.photographsDropped.connect(
             lambda paths: self._add_photo_paths(paths, insert=True))
         self.body.canvas.photographPasted.connect(self._paste_photo)
-        self.body.canvas_bar.add_button(
-            "ADD PHOTOGRAPH", "Choose a local photograph and place it at the caret",
-            self._add_and_insert_photo)
         # IMG picks from THIS site's cached Media Gallery (COLD STORAGE), by picture.
         self.body.canvas.set_site_provider(
             lambda: ((self.app_config() or {}).get("url") or "").strip())
-        # The editor used to share one scrolling card with every field below it.
-        # QScrollArea therefore kept the card at its size hint and the editor at
-        # its 160px minimum, even when the centre pane had room to spare. Keep
-        # the primary actions outside the scroll, then let the author divide the
-        # available card height between the document and its secondary fields.
-        self.compose_splitter = QSplitter(Qt.Vertical)
-        self.compose_splitter.setChildrenCollapsible(False)
-        self.compose_splitter.setHandleWidth(10)
-        self.compose_splitter.addWidget(self.body)
 
+        scroll = QScrollArea()
+        scroll.setObjectName("CanvasWell")
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setWidgetResizable(True)
+        host = QWidget()
+        host.setObjectName("CanvasWell")
+        well = QVBoxLayout(host)
+        well.setContentsMargins(16, 12, 16, 18)
+        well.setSpacing(10)
+
+        # Centered white page card + thin left gutter tag (Slice 2)
+        page_row = QHBoxLayout()
+        page_row.setContentsMargins(0, 0, 0, 0)
+        page_row.setSpacing(8)
+        page_row.addStretch(1)
+
+        self.gutter_tag = QLabel("P")
+        self.gutter_tag.setObjectName("BlockGutterTag")
+        self.gutter_tag.setFixedWidth(52)
+        self.gutter_tag.setAlignment(Qt.AlignRight | Qt.AlignTop)
+        page_row.addWidget(self.gutter_tag, 0, Qt.AlignTop)
+
+        self.page_card = QFrame()
+        self.page_card.setObjectName("PageCard")
+        self._preview_width = 760
+        self.page_card.setFixedWidth(self._preview_width + 80)
+        card_col = QVBoxLayout(self.page_card)
+        card_col.setContentsMargins(40, 30, 40, 26)
+        card_col.setSpacing(8)
+
+        self.page_eyebrow = QLabel("ESSAY · DRAFT")
+        self.page_eyebrow.setObjectName("PageEyebrow")
+        card_col.addWidget(self.page_eyebrow)
+
+        self.title_edit = QLineEdit()
+        self.title_edit.setObjectName("PageTitle")
+        self.title_edit.setPlaceholderText("Essay title…")
+        card_col.addWidget(self.title_edit)
+
+        self.page_meta = QLabel("")
+        self.page_meta.setObjectName("PageMeta")
+        card_col.addWidget(self.page_meta)
+        card_col.addSpacing(6)
+
+        card_col.addWidget(self.body, 1)
+
+        add_row = QHBoxLayout()
+        add_row.addStretch(1)
+        self.add_block_btn = QPushButton("+ Add block")
+        self.add_block_btn.setObjectName("AddBlockPill")
+        self.add_block_btn.setFocusPolicy(Qt.NoFocus)
+        self.add_block_btn.setToolTip("Insert a new block at the cursor (or use BLOCKS on the left)")
+        self.add_block_btn.clicked.connect(self._show_add_block_menu)
+        add_row.addWidget(self.add_block_btn)
+        add_row.addStretch(1)
+        card_col.addLayout(add_row)
+
+        page_row.addWidget(self.page_card, 0)
+        page_row.addStretch(1)
+        well.addLayout(page_row, 1)
+
+        # Compact details row (Tags + Status; four explainer hints moved to tooltips/Help)
         compose_details = QWidget()
-        details = QVBoxLayout(compose_details)
-        details.setContentsMargins(0, 0, 0, 0)
-        details.setSpacing(9)
-
-        self.save_state = hint("Begin the story… changes will be safe on this computer.")
-        details.addWidget(self.save_state)
-        details.addWidget(hint(
-            "MOSAIC = a tiled grid of this post's photos at the marker. For a "
-            "text grid with no photos, use COL 2 / COL 3. For one inline image "
-            "from the site's Media Library, use IMG."))
-
-        details.addWidget(field_label("Tags (space-separated #hashtags)"))
+        details = QHBoxLayout(compose_details)
+        details.setContentsMargins(16, 4, 16, 4)
+        details.setSpacing(10)
+        details.addWidget(field_label("Tags"))
         self.tags_edit = QLineEdit()
-        details.addWidget(self.tags_edit)
-
-        srow = QHBoxLayout()
-        srow.addWidget(field_label("Status"))
+        self.tags_edit.setPlaceholderText("#space-separated #hashtags")
+        details.addWidget(self.tags_edit, 1)
+        details.addWidget(field_label("Status"))
         self.status_combo = QComboBox()
         self.status_combo.addItems(["published", "draft"])
-        srow.addWidget(self.status_combo)
-        srow.addStretch(1)
-        details.addLayout(srow)
-
-        self.compose_splitter.addWidget(compose_details)
-        self.compose_splitter.setStretchFactor(0, 1)
-        self.compose_splitter.setStretchFactor(1, 0)
-        splitter_state = self._view_settings.value("take/compose_splitter_state")
-        if splitter_state is None or not self.compose_splitter.restoreState(splitter_state):
-            self.compose_splitter.setSizes([560, 210])
-        self.compose_splitter.splitterMoved.connect(
-            lambda _position, _index: self._view_settings.setValue(
-                "take/compose_splitter_state", self.compose_splitter.saveState()))
-        card.body.addWidget(self.compose_splitter, 1)
+        self.status_combo.currentTextChanged.connect(lambda _t: self._update_page_chrome())
+        details.addWidget(self.status_combo)
+        self.compose_splitter = None
 
         # -- THE PHOTOS — a rail section, opened when wanted. The count lives in
         #    the accordion header (no redundant, cramped label fighting the
@@ -315,13 +350,12 @@ class TakeMode(QWidget):
         # height itself, so there is no dead void beneath it.
         scroll.setWidget(host)
 
-        # Primary action pinned under the scroll — never below the fold.
+        # Primary action + Preview Desktop 760 / Phone 360 pinned in bottom bar
         act = QHBoxLayout()
-        act.addStretch(1)
-        self.queue_btn = big_button("QUEUE POST")
-        self.queue_btn.setMaximumWidth(260)
-        self.queue_btn.setToolTip("Add this post to the batch. Nothing publishes until SEND.")
-        self.queue_btn.clicked.connect(lambda: self._save(ready=True))
+        act.setContentsMargins(14, 6, 14, 10)
+        act.setSpacing(8)
+        self.save_state = hint("Begin the story… changes will be safe on this computer.")
+        act.addWidget(self.save_state, 1)
         save_btn = QPushButton("Save as draft")
         save_btn.clicked.connect(lambda: self._save(ready=False))
         act.addWidget(save_btn)
@@ -329,11 +363,32 @@ class TakeMode(QWidget):
         clear_btn.setObjectName("Quiet")
         clear_btn.clicked.connect(self._clear)
         act.addWidget(clear_btn)
+        self.queue_btn = big_button("QUEUE POST")
+        self.queue_btn.setMaximumWidth(220)
+        self.queue_btn.setToolTip("Add this post to the batch. Nothing publishes until SEND.")
+        self.queue_btn.clicked.connect(lambda: self._save(ready=True))
         act.addWidget(self.queue_btn)
 
+        act.addSpacing(8)
+        act.addWidget(hint("Preview"))
+        self.preview_desktop_btn = QPushButton("Desktop 760")
+        self.preview_phone_btn = QPushButton("Phone 360")
+        for btn, w in ((self.preview_desktop_btn, 760), (self.preview_phone_btn, 360)):
+            btn.setObjectName("PreviewToggle")
+            btn.setCheckable(True)
+            btn.setFocusPolicy(Qt.NoFocus)
+            btn.clicked.connect(lambda _=False, width=w: self._set_preview_width(width))
+            act.addWidget(btn)
+        self.preview_desktop_btn.setChecked(True)
+
+        self.ruler = _PageRuler(self._preview_width)
         centre = QVBoxLayout()
-        centre.setSpacing(8)
+        centre.setContentsMargins(0, 0, 0, 0)
+        centre.setSpacing(0)
+        centre.addWidget(self.body.format_strip)
+        centre.addWidget(self.ruler)
         centre.addWidget(scroll, 1)
+        centre.addWidget(compose_details)
         centre.addLayout(act)
         self.blocks_tray = BlockTray()
         self.blocks_tray.stateChanged.connect(self._blocks_state_changed)
@@ -356,10 +411,66 @@ class TakeMode(QWidget):
         self._slapper_timer.setInterval(1000)
         self._slapper_timer.timeout.connect(self._poll_slapper_return)
         self.body.changed.connect(self._changed)
+        self.body.changed.connect(self._update_page_chrome)
+        self.body.canvas.cursorPositionChanged.connect(self._update_page_chrome)
         self.title_edit.textChanged.connect(self._changed)
         self.tags_edit.textChanged.connect(self._changed)
+        self._update_page_chrome()
         QTimer.singleShot(0, self._recover_last_draft)
         QTimer.singleShot(0, self._sync_block_tray_width)
+
+    def _set_preview_width(self, width: int):
+        self._preview_width = int(width or 760)
+        self.preview_desktop_btn.setChecked(self._preview_width == 760)
+        self.preview_phone_btn.setChecked(self._preview_width == 360)
+        self.page_card.setFixedWidth(self._preview_width + 80)
+        self.ruler.set_preview_width(self._preview_width)
+        self.body.canvas.set_preview_width(self._preview_width)
+
+    def _update_page_chrome(self):
+        status = (self.status_combo.currentText() or "draft").strip().upper()
+        self.page_eyebrow.setText(f"ESSAY · {status}")
+        site = ((self.app_config() or {}).get("url") or "").strip()
+        for prefix in ("https://", "http://"):
+            if site.startswith(prefix):
+                site = site[len(prefix):]
+        site = site.rstrip("/") or "local draft"
+        blocks = self.body.canvas.document().blockCount() if self.body.is_biggie() else len(
+            [ln for ln in self.body.editor.toPlainText().splitlines() if ln.strip()])
+        from datetime import date
+        self.page_meta.setText(f"{date.today().isoformat()} · {site} · {blocks} block{'s' if blocks != 1 else ''}")
+        if self.body.is_biggie():
+            self.gutter_tag.setText(self.body.canvas.current_block_tag())
+            self.gutter_tag.setVisible(True)
+            self.add_block_btn.setVisible(True)
+        else:
+            self.gutter_tag.setVisible(False)
+            self.add_block_btn.setVisible(False)
+
+    def _show_add_block_menu(self):
+        from PySide6.QtWidgets import QMenu
+        menu = QMenu(self)
+        c = self.body.canvas
+        for label, cb in (
+            ("Paragraph", lambda: c.set_kind("para")),
+            ("Heading", lambda: c.set_kind("h2")),
+            ("Subhead", lambda: c.set_kind("h3")),
+            ("Quote", lambda: c.set_kind("quote")),
+            ("Pull quote", lambda: c.set_kind("pullquote")),
+            ("Drop cap", c.toggle_dropcap),
+            ("Bullet list", lambda: c.set_list(False)),
+            ("Numbered list", lambda: c.set_list(True)),
+            ("Divider", c.insert_hr),
+            ("Space", c._edit_spacer),
+            ("Mosaic", self._insert_mosaic),
+            ("Photograph", self._add_and_insert_photo),
+            ("Image from gallery", c._edit_image),
+            ("2 columns", lambda: c.insert_columns(2)),
+            ("3 columns", lambda: c.insert_columns(3)),
+            ("Raw", lambda: c.set_kind("raw")),
+        ):
+            menu.addAction(label, cb)
+        menu.exec(self.add_block_btn.mapToGlobal(self.add_block_btn.rect().bottomLeft()))
 
     def blocks_open(self) -> bool:
         return self.blocks_tray.is_open
