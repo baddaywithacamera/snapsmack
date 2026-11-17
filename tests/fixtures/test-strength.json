@@ -742,6 +742,18 @@
             2000
         ]
     },
+    "fleet-summary-fails-soft-regression.php": {
+        "assertions": 12,
+        "predicates": 5,
+        "thresholds": [
+            2,
+            3,
+            3,
+            50,
+            207,
+            1219
+        ]
+    },
     "font-family-fallback-parity-regression.php": {
         "assertions": 2,
         "predicates": 5,
