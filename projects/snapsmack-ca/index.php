@@ -98,22 +98,22 @@ $page_css = <<<'CSS'
 .btn { display: inline-block; padding: 14px 22px; border: 2px solid var(--black); color: var(--black); font: 900 .8rem/1 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: .03em; }
 .btn:hover { text-decoration: none; }
 .btn-primary { color: var(--white); background: var(--red); border-color: var(--red); }
-.btn-primary:hover { color: var(--white); background: #ad0000; }
+.btn-primary:hover { color: var(--white); background: var(--black); border-color: var(--black); }
 .btn-secondary:hover { color: var(--white); background: var(--black); }
 
 /* --- BUILT FOR USE: Sean's statement, in Sean's words --- */
 #built-for-use { padding: 68px 0; background: #404348; color: var(--white); border-top: 8px solid var(--red); }
-#built-for-use .site-discovery-kicker { color: #ffb3ad; }
+#built-for-use .site-discovery-kicker { color: var(--white); }
 #built-for-use h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
 .built-for-use-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 42px; align-items: start; }
 .built-for-use-copy { max-width: 920px; }
 .built-for-use-copy p { font-size: inherit; line-height: inherit; }
 .built-for-use-copy p + p { margin-top: 20px; }
 .receipts { min-width: 0; }
-.receipts h3 { margin: 0 0 14px; color: #ffb3ad; font: 900 .8rem/1.2 Arial Black, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.receipts h3 { margin: 0 0 14px; color: var(--white); font: 900 .8rem/1.2 Arial Black, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
 .receipt-stack { display: grid; gap: 9px; }
 .receipt-card { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 12px; min-width: 0; padding: 8px; color: var(--white); background: #303236; border: 1px solid #686b70; }
-.receipt-card:hover, .receipt-card:focus-visible { color: var(--white); text-decoration: none; border-color: #ffb3ad; background: #25272a; }
+.receipt-card:hover, .receipt-card:focus-visible { color: var(--white); text-decoration: none; border-color: var(--white); background: #25272a; }
 .receipt-card img { display: block; width: 104px; height: 62px; object-fit: cover; border: 1px solid #777a7f; }
 .receipt-card strong { display: block; overflow: hidden; color: var(--white); font: 900 .68rem/1.25 Arial Black, Arial, sans-serif; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .receipt-card span { display: block; margin-top: 5px; color: #d5d6d8; font: .66rem/1.35 'Courier New', monospace; }
@@ -121,18 +121,18 @@ $page_css = <<<'CSS'
 
 /* --- THE DELAY: the date moved; the standard did not --- */
 #running-late { padding: 68px 0; background: #5b1016; color: var(--white); border-top: 8px solid var(--red); }
-#running-late .site-discovery-kicker { color: #ffb3ad; }
+#running-late .site-discovery-kicker { color: var(--white); }
 #running-late h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
 .running-late-copy { max-width: 920px; }
 .running-late-copy p { font-size: inherit; line-height: inherit; }
 .running-late-copy p + p { margin-top: 18px; }
-.running-late-copy a { color: var(--white); text-decoration: underline; text-decoration-color: #ffb3ad; }
-.running-late-copy a:hover { color: #ffb3ad; }
+.running-late-copy a { color: var(--white); text-decoration: underline; text-decoration-color: var(--white); }
+.running-late-copy a:hover { color: var(--white); text-decoration-color: var(--white); text-decoration-thickness: 2px; }
 
 
 /* --- WHAT WAS: the four things taken, and their names here --- */
 #was { padding: 64px 0; background: #2a2a2a; color: #ddd; border-top: 8px solid var(--red); }
-#was .site-discovery-kicker { color: #ff7b74; }
+#was .site-discovery-kicker { color: var(--white); }
 #was h2 { margin-bottom: 26px; color: var(--white); }
 .was-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; list-style: none; }
 .was-list li { display: flex; flex-direction: column; margin: 0; padding-top: 14px; border-top: 3px solid var(--red); }
@@ -140,8 +140,8 @@ $page_css = <<<'CSS'
 .was-list span { margin-top: 10px; color: #ddd; font-size: .9rem; line-height: 1.5; }
 .was-list em { margin-top: auto; padding-top: 14px; color: #aaa; font: 900 .7rem/1.3 Arial Black, Arial, sans-serif; letter-spacing: .06em; text-transform: uppercase; font-style: normal; }
 .was-list em a { color: var(--white); text-decoration: underline; }
-.was-list em a:hover { color: var(--red); }
-.was-closer { max-width: 800px; margin-top: 34px; color: #ff7b74; font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
+.was-list em a:hover { color: var(--white); text-decoration-thickness: 2px; }
+.was-closer { max-width: 800px; margin-top: 34px; color: var(--white); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
 
 /* --- THE OTHER HALF: the digicam revival needs its native home --- */
 #camera-blog { padding: 64px 0; background: var(--white); border-top: 8px solid var(--black); }
@@ -158,16 +158,16 @@ $page_css = <<<'CSS'
 
 /* --- WHY A BLOG: the ownership case, in one hard black band --- */
 #why-blog { padding: 64px 0; color: #ddd; background: #111; border-top: 8px solid var(--red); }
-#why-blog .site-discovery-kicker { color: #ff7b74; }
+#why-blog .site-discovery-kicker { color: var(--white); }
 #why-blog h2 { max-width: 900px; margin-bottom: 24px; color: var(--white); }
 .why-blog-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: start; }
 .why-blog-shot { display: block; width: 100%; padding: 0; border: 1px solid #777; background: none; cursor: zoom-in; }
-.why-blog-shot:hover, .why-blog-shot:focus-visible { border-color: #ff7b74; }
+.why-blog-shot:hover, .why-blog-shot:focus-visible { border-color: var(--red); }
 .why-blog-shot img { display: block; width: 100%; height: auto; }
 .why-blog-copy { max-width: 900px; }
 .why-blog-copy p { font-size: inherit; line-height: inherit; }
 .why-blog-copy p + p { margin-top: 18px; }
-.why-blog-copy .why-blog-pull { color: #ff7b74; font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.why-blog-copy .why-blog-pull { color: var(--white); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 
 /* --- NOT ALONE: outcome, then the triptych as proof, plumbing last --- */
 #alone { padding: 64px 0 24px; }
@@ -177,6 +177,7 @@ $page_css = <<<'CSS'
 .fed-shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 30px 0 0; }
 .fed-shots figure { margin: 0; background: var(--white); border: 1px solid var(--border); }
 .fed-shots button { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.fed-shots button:hover, .fed-shots button:focus-visible { outline: 3px solid var(--red); outline-offset: -3px; }
 .fed-shots img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; }
 .fed-shots figcaption { padding: 9px 12px; color: var(--black); font: 900 .72rem/1.3 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .alone-how { max-width: 900px; margin-top: 22px; color: #666; font-size: .82rem; line-height: 1.5; }
@@ -187,18 +188,18 @@ $page_css = <<<'CSS'
 #three-pillars h2 { color: var(--white); }
 .three-pillars-copy { width: 100%; font-size: 21.25px; line-height: 1.55; }
 .three-pillars-copy p + p { margin-top: 22px; }
-.three-pillars-copy strong { color: #ffb3ad; font-family: Arial Black, Arial, sans-serif; }
+.three-pillars-copy strong { color: var(--white); font-family: Arial Black, Arial, sans-serif; }
 
 /* --- SCALE: one fleet, one dashboard --- */
 #scale { padding: 64px 0; color: #ddd; background: #111; border-top: 8px solid var(--red); }
 #scale h2 { color: var(--white); }
 .scale-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 42px; align-items: start; }
 .scale-shot { display: block; width: 100%; padding: 0; border: 1px solid #777; background: none; cursor: zoom-in; }
-.scale-shot:hover, .scale-shot:focus-visible { border-color: #ff7b74; }
+.scale-shot:hover, .scale-shot:focus-visible { border-color: var(--red); }
 .scale-shot img { display: block; width: 100%; height: auto; }
 .scale-copy { font-size: 21.25px; line-height: 1.55; }
 .scale-copy p + p { margin-top: 22px; }
-.scale-copy .scale-pull { color: #ff7b74; font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; }
+.scale-copy .scale-pull { color: var(--white); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; }
 
 /* --- SKINS BAND --- */
 #featured-skins { background: var(--white); color: var(--dark-grey); border-top: 8px solid var(--black); }
@@ -209,6 +210,7 @@ $page_css = <<<'CSS'
 .featured-skin { color: var(--dark-grey); }
 .featured-skin:hover { color: var(--black); text-decoration: none; }
 .featured-skin img { width: 100%; aspect-ratio: 16 / 10; box-sizing: border-box; object-fit: cover; border: 3px solid var(--black); }
+.featured-skin:hover img, .featured-skin:focus-visible img { border-color: var(--red); }
 .featured-skin strong { display: block; margin-top: 12px; color: var(--black); font: 900 .95rem/1.15 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .featured-skin span { display: block; margin-top: 4px; color: var(--mid-grey); font-size: .78rem; }
 .section-link { margin-top: 30px; }
@@ -221,7 +223,8 @@ $page_css = <<<'CSS'
 .xkcd-proof figure { margin: 0; }
 .xkcd-proof-image { width: 100%; background: var(--white); }
 .xkcd-proof figcaption { margin-top: 10px; color: #ddd; font: .7rem/1.4 'Courier New', monospace; }
-.xkcd-proof figcaption a { color: #ff7b74; }
+.xkcd-proof figcaption a { color: var(--white); text-decoration: underline; }
+.xkcd-proof figcaption a:hover { color: var(--white); text-decoration-thickness: 2px; }
 
 #custodian { background: var(--white); color: var(--dark-grey); border-top: 8px solid var(--black); }
 #custodian h2 { color: var(--red); }
@@ -233,13 +236,14 @@ $page_css = <<<'CSS'
 .custodian-quote cite { display: block; margin-top: 12px; color: var(--mid-grey); font: 700 .72rem/1.3 'Courier New', monospace; font-style: normal; letter-spacing: .08em; text-transform: uppercase; }
 .custodian-points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-top: 34px; background: #666; border: 1px solid #666; }
 .custodian-points article { padding: 24px; background: #292929; color: var(--white); }
-.custodian-points h3, #custodian .custodian-points a { color: #ff7b74; }
+.custodian-points h3, #custodian .custodian-points a { color: var(--white); }
+.custodian-points a:hover { color: var(--white); text-decoration: underline; }
 .custodian-points p { margin: 0; font-size: .92rem; line-height: 1.55; }
 
 #respect, #whodat { border-top: 8px solid var(--black); }
 #respect { background: #1f1f1f; color: #ddd; border-top-color: var(--red); }
 #respect h2 { color: var(--white); }
-#respect a { color: #ff7b74; text-decoration: underline; }
+#respect a { color: var(--white); text-decoration: underline; }
 #respect a:hover { color: var(--white); }
 #whodat { padding-top: 46px; color: var(--dark-grey); background: #f4f4f4; border-top-color: var(--black); }
 #whodat h2 { color: var(--black); }
@@ -338,7 +342,7 @@ require_once __DIR__ . '/includes/header.php';
 
     <section id="was" aria-label="What was, and what can be again">
         <div class="wrap">
-            <p class="site-discovery-kicker">What was taken</p>
+            <p class="site-discovery-kicker">When this baby hits 88 MPH, you're gonna see some serious shit.</p>
             <h2>What was. What can be again.</h2>
             <ul class="was-list">
                 <li><strong>The photoblog</strong><span>2003 to 2010. One photograph a day on one page, big, with the comments underneath and nothing else competing for the eye. Pixelpost, Photoblogs.org, a ring of people who looked at each other&rsquo;s work every morning and said so. It ran on your own domain, so when the ring dissolved, the work stayed put.</span><em>Again as <a href="features.php#modes">SMACKONEOUT</a></em></li>
@@ -510,8 +514,8 @@ require_once __DIR__ . '/includes/header.php';
             <h2 id="built-for-use-title">Shoot hard. Share harder.</h2>
             <div class="built-for-use-copy">
                 <p>I built SNAPSMACK for myself first. There was nothing left that worked for me, certainly not the last Wordpress install I turned into a smoking crater on a shared host. I'm hell on wheels with a camera and your average CMS cannot handle what I am laying down. So I made one that could.</p>
-                <p>SNAPSMACK is built to be worked hard, to be as secure as possible, to make batch posting and bulk sharing easy, big backups reliable and painless, and to do all of this without bleeding you dry because we're all tired of being billed just for breathing. Oh, and it does this with... Real. Fucking. Style.</p>
-                <p>Here is the one and only catch. It's all built with AI and the support is mostly provided using AI. Straight up, I can kick ass and chew bubblegum with any camera you put in my hands. What I am not is a developer. AI handled that part for me while I made sure that what was built worked and holy shit does it ever. So, yeah. AI is all over this project and I'm not apologizing for it because it would not exist without it, and you wouldn't have a free, quality option sitting in front of you.</p>
+                <p>SNAPSMACK is built to be worked hard, to be as secure as possible, to make batch posting and bulk sharing easy, big backups reliable and painless, and to do all of this without bleeding you dry because we're all tired of being billed just for breathing. Oh, and it does this with... <em>Real. Fucking. Style.</em></p>
+                <p>Here is the one and only catch. It's all built with AI and the support is mostly provided using AI. Straight up, I can kick ass and chew bubblegum with any camera you put in my hands. What I am not is a developer. AI handled that part for me while I made sure that what was built worked and holy shit does it ever. So, yeah. AI is all over this project and I'm not apologizing for it because it would not exist without it, and you wouldn't have a FREE, quality option sitting in front of you.</p>
                 <p>I get it if you don't like AI. I'm not happy about aspects of it, either. But it is the only way that SNAPSMACK could have happened or that I can provide you with quality support moving forward. I, too, wish to take photos and publish them online and the only way I can do that and do this (SNAPSMACK) is by leveraging technology in a way that benefits all of us. Let's use the new tools to return to The Old Ways. Let's bring photo blogging back.</p>
                 <p>If you don't want to use an AI product, fair. Use something else. If you can find it. I could not.</p>
             </div>

@@ -41,12 +41,12 @@ $page_css = <<<'CSS'
 .tool-card-copy h3 { margin-bottom: 8px; color: var(--black); font-size: 1.05rem; }
 .tool-card-copy h3::after { content: " \2192"; color: var(--red); }
 .tool-card-copy p { margin: 0; font-size: .9rem; line-height: 1.55; }
-.workshop { border-top: 8px solid var(--black); background: #f4f1eb; }
+.workshop { border-top: 8px solid var(--black); background: var(--light-grey); }
 .workshop-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 26px; background: var(--border); border: 1px solid var(--border); }
 .workshop-list a { display: block; padding: 18px 20px; background: var(--white); color: var(--black); }
 .workshop-list a strong { display: block; font: 900 .85rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .workshop-list a span { display: block; margin-top: 5px; color: var(--mid-grey); font-size: .82rem; line-height: 1.45; }
-.workshop-list a:hover { background: #fff5f3; text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
+.workshop-list a:hover { background: var(--white); text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
 .suite-band { padding: 22px 26px; margin-top: 34px; border-left: 5px solid var(--red); background: var(--black); color: var(--white); font: 900 clamp(1rem, 1.9vw, 1.25rem)/1.4 Arial Black, Arial, sans-serif; }
 @media (max-width: 850px) { .workshop-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .tool-cards, .workshop-list { grid-template-columns: 1fr; } }

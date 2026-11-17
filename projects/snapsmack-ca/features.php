@@ -24,7 +24,7 @@ $page_css = <<<'CSS'
 .feat--dark .lede { color: #bbb; }
 .feat--dark li { color: #ccc; }
 .feat--dark strong { color: var(--white); }
-.feat.feat--sand { background: #f4f1eb; border-top: 8px solid var(--black); }
+.feat.feat--sand { background: var(--light-grey); border-top: 8px solid var(--black); }
 .feat-head { max-width: 780px; margin-bottom: 30px; }
 .feat-head .site-discovery-kicker { margin-bottom: 6px; }
 .feat-head h2 { margin-bottom: 12px; }
@@ -54,7 +54,7 @@ $page_css = <<<'CSS'
 .fed-shots img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
 .fed-shots figcaption { padding: 9px 12px; color: var(--black); font: 900 .72rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .fed-band { margin-top: 24px; padding: 22px 26px; color: var(--white); background: var(--black); font-weight: 700; }
-.fed-band-kicker { display: block; margin-top: 6px; color: #ff4b4b; font: 900 .8rem/1.25 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.fed-band-kicker { display: block; margin-top: 6px; color: var(--white); font: 900 .8rem/1.25 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .feat-link { margin-top: 26px; }
 .feat-link a { font: 900 .78rem/1 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .free-band { padding: 26px 30px; background: var(--red); color: var(--white); font: 900 clamp(1.1rem, 2.2vw, 1.5rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }

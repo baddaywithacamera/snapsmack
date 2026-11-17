@@ -64,9 +64,9 @@ $page_css = <<<'CSS'
 .faq-jumps a strong { display: block; font: 900 .85rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .faq-jumps a strong::after { content: " \2193"; color: var(--red); }
 .faq-jumps a span { display: block; margin-top: 5px; color: var(--mid-grey); font-size: .82rem; line-height: 1.45; }
-.faq-jumps a:hover { background: #fff5f3; text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
+.faq-jumps a:hover { background: var(--white); text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
 .faq-section-group { padding: 54px 0 72px; border-top: 8px solid var(--black); scroll-margin-top: 78px; }
-.faq-section-group:nth-of-type(even) { background: #f8f6f2; }
+.faq-section-group:nth-of-type(even) { background: var(--light-grey); }
 .faq-section-heading { max-width: 820px; margin-bottom: 6px; }
 .faq-section-heading h2 { margin-bottom: 8px; }
 .faq-section-heading .lede { max-width: 72ch; margin-bottom: 0; }

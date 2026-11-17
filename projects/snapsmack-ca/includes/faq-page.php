@@ -51,13 +51,13 @@ $page_css = <<<'CSS'
 .qa ul { margin: 0 0 1.2em 1.4em; max-width: 72ch; }
 .callout a { color: var(--red); font-weight: bold; }
 .callout a:hover { color: var(--black); }
-.faq-more { padding: 40px 0 72px; border-top: 8px solid var(--black); background: #f4f1eb; }
+.faq-more { padding: 40px 0 72px; border-top: 8px solid var(--black); background: var(--light-grey); }
 .faq-more h2 { margin-bottom: 18px; }
 .faq-more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
 .faq-more-grid a { display: block; padding: 18px 20px; background: var(--white); color: var(--black); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .faq-more-grid a strong { display: block; font: 900 .85rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .faq-more-grid a span { display: block; margin-top: 5px; color: var(--mid-grey); font-size: .84rem; line-height: 1.45; }
-.faq-more-grid a:hover { background: #fff5f3; text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
+.faq-more-grid a:hover { background: var(--white); text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
 .faq-more-grid a.active { background: var(--light-grey); box-shadow: inset 0 -4px 0 var(--black); }
 @media (max-width: 700px) { .faq-more-grid { grid-template-columns: 1fr; } }
 CSS;

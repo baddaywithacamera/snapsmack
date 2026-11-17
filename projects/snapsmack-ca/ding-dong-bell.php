@@ -82,7 +82,7 @@ h3 { font-size: 1rem; }
     line-height: 1.3;
 }
 .state.open      { background: var(--red);      color: var(--white); }
-.state.notwatch  { background: #F3E2B3;         color: #6b4c00; border: 1px solid #d9b84e; }
+.state.notwatch  { background: var(--light-grey); color: var(--dark-grey); border: 1px solid var(--mid-grey); }
 .state.watched   { background: #1a7a3c;         color: var(--white); }
 .state.eyeball   { background: var(--black);    color: var(--white); }
 .state.nottested { background: var(--light-grey);color: var(--dark-grey); border: 1px solid #ccc; }
