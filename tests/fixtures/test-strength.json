@@ -1644,7 +1644,7 @@
     },
     "reader-header-never-names-a-real-instance.php": {
         "assertions": 22,
-        "predicates": 17,
+        "predicates": 18,
         "thresholds": [
             40,
             48,
@@ -1856,6 +1856,13 @@
         "assertions": 20,
         "predicates": 18,
         "thresholds": []
+    },
+    "shipped-assets-never-live-under-a-protected-path-regression.php": {
+        "assertions": 7,
+        "predicates": 3,
+        "thresholds": [
+            5
+        ]
     },
     "show-n-tell-parity-regression.php": {
         "assertions": 3,
