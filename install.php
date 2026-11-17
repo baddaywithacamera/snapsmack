@@ -592,6 +592,7 @@ if ($step === 3 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 `download_url` varchar(512) NOT NULL DEFAULT '',
                 `img_thumb_square` varchar(255) DEFAULT NULL COMMENT 'Relative path to 400x400 square thumbnail (t_ prefix)',
                 `img_thumb_aspect` varchar(255) DEFAULT NULL COMMENT 'Relative path to aspect-ratio thumbnail (a_ prefix)',
+                `img_thumb_medium` varchar(255) DEFAULT NULL COMMENT 'Relative path to ~600px aspect-ratio thumbnail (m_ prefix, SS-1386)',
                 `img_checksum` varchar(64) DEFAULT NULL COMMENT 'SHA-256 hash of main image file for recovery verification',
                 `img_display_options` text DEFAULT NULL COMMENT 'JSON: per-image frame/mat/bevel overrides and extracted colour palette',
                 `post_id` int DEFAULT NULL COMMENT 'FK to snap_posts — populated when image is wrapped in a post',

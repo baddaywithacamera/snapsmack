@@ -367,6 +367,29 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
         }
         unset($_siteComments, $_counts, $_ids, $_i, $_it, $_open, $_rows, $_path, $_group);
     }
+    // SS-1386: the m_ candidate for every photograph on this page, prepared
+    // once and read by the image component. Keyed by the a_ path, because that
+    // is the url every skin passes the component; see core/image-srcset.php
+    // for why it is read rather than passed.
+    //
+    // THE SAME LISTS, which is the whole reason this sits here rather than in
+    // its own pass: $_lists already names every photograph list a grid prints
+    // -- items on archive, hashtag, albums, collections and landing, each
+    // search result group, and landing's rows, which are value copies made by
+    // the controller before this runs. A photograph with no m_ path is absent
+    // from the map and serves a_ alone, which is today's behaviour.
+    if ($_lists !== []) {
+        require_once __DIR__ . '/image-srcset.php';
+        $_srcsetLists = [];
+        foreach ($_lists as $_path) {
+            $_srcsetLists[] = count($_path) === 1
+                ? ($response[$_path[0]] ?? [])
+                : ($response[$_path[0]][$_path[1]] ?? []);
+        }
+        snap_image_srcset_prepare(snap_image_srcset_map($_srcsetLists));
+        unset($_srcsetLists, $_path);
+    }
+
     unset($_lists);
     // The community block rides along with that gate: same three kinds, same
     // response. A skin renders it wherever its own stylesheet already puts

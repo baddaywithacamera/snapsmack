@@ -121,6 +121,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
                         COMMENT 'Relative path to 400x400 square thumbnail (t_ prefix)',
   `img_thumb_aspect`    varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'Relative path to aspect-ratio thumbnail (a_ prefix)',
+  `img_thumb_medium`    varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                        COMMENT 'Relative path to ~600px aspect-ratio thumbnail (m_ prefix, SS-1386). NULL = not generated yet; grids fall back to img_thumb_aspect.',
   `img_checksum`        varchar(64)    COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'SHA-256 hash of main image file for recovery verification',
   `img_display_options` text           COLLATE utf8mb4_unicode_ci

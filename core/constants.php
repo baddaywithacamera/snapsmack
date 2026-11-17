@@ -81,6 +81,11 @@ define("SNAPSMACK_VERSION_CODENAME", "HEISENBERG DECOMPENSATOR");
 // full img_file are SEPARATE and deliberately NOT governed by these.
 define('SNAPSMACK_THUMB_SQUARE', 400);        // t_ square centre-crop (px)
 define('SNAPSMACK_THUMB_ASPECT_LONG', 900);   // a_ aspect long-side max (px)
+define('SNAPSMACK_THUMB_MEDIUM_LONG', 600);  // m_ aspect long-side max (px)
+// Grid srcset `sizes`. MEASURED: Codex's SS-1386 browser gate, 30 skins at
+// 1920/1440/1024, 0 failures on this value and 396 on the fixed-breakpoint
+// string it replaced. Needs loading="lazy", which the image component emits.
+define('SNAPSMACK_GRID_IMAGE_SIZES', 'auto, 100vw');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.
