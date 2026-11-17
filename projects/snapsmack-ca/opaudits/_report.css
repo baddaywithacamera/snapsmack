@@ -31,7 +31,7 @@ h2 {
     font-size: 11pt;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #b00;
+    color: #D40000;
     margin: 22px 0 6px;
     padding-bottom: 3px;
     border-bottom: 1px solid #ddd;
@@ -68,7 +68,7 @@ table.meta td.k {
 }
 .chip-watched  { background: #1a7a3c; color: #fff; }
 .chip-closed   { background: #1a7a3c; color: #fff; }
-.chip-confirm  { background: #F3E2B3; color: #6b4c00; border: 1px solid #d9b84e; }
+.chip-confirm  { background: #f4f4f4; color: #333333; border: 1px solid #666666; }
 .chip-open     { background: #D40000; color: #fff; }
 .doctrine {
     background: #f4f4f4;

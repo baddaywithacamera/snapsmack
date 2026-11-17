@@ -22,7 +22,7 @@ main { margin-top: 0; }
 .content { padding: 60px 0; max-width: 820px; }
 .content p { margin-bottom: 1.5em; }
 .alert {
-    background: #fff3cd;
+    background: var(--light-grey);
     border-left: 4px solid var(--red);
     padding: 20px; margin-bottom: 40px; font-weight: 500;
 }

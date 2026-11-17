@@ -74,7 +74,7 @@ p:last-child { margin-bottom: 0; }
     position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
     background: var(--white);
     backdrop-filter: none; -webkit-backdrop-filter: none;
-    border-bottom: 2px solid rgba(212,0,0,0.5);
+    border-bottom: 2px solid var(--red);
     padding: 8px 0;
     transform: translateY(-100%); opacity: 0;
     transition: transform 0.3s ease, opacity 0.3s ease;
@@ -521,7 +521,7 @@ p:last-child { margin-bottom: 0; }
         margin: 0; padding: 4px 0 12px;
         background: rgba(255,255,255,0.97);
         -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-        border-bottom: 2px solid rgba(212,0,0,0.5);
+        border-bottom: 2px solid var(--red);
         z-index: 1200;
     }
     #mini-header .nav-toggle:checked ~ nav { display: grid; }
@@ -529,7 +529,7 @@ p:last-child { margin-bottom: 0; }
     #mini-header nav > a { width: 100%; align-self: stretch; }
     #mini-header .nav-group { position: static; width: 100%; text-align: center; }
     #mini-header .nav-group summary { padding: 10px 0; font-size: .9rem; }
-    #mini-header .nav-flyout { position: absolute; top: 100%; left: 0; right: 0; min-width: 100%; padding: 0; border: 0; border-bottom: 2px solid rgba(212,0,0,.5); box-shadow: none; background: rgba(255,255,255,.98); }
+    #mini-header .nav-flyout { position: absolute; top: 100%; left: 0; right: 0; min-width: 100%; padding: 0; border: 0; border-bottom: 2px solid var(--red); box-shadow: none; background: rgba(255,255,255,.98); }
     #mini-header nav .nav-flyout a { color: var(--black); text-align: center; }
 }
 
@@ -547,7 +547,7 @@ p:last-child { margin-bottom: 0; }
 .beta-delay-copy { margin: 0; color: #ddd; font-size: 1rem; line-height: 1.5; }
 .beta-delay-copy strong { display: block; margin-bottom: 4px; color: var(--white); font: 900 clamp(1.05rem, 2vw, 1.35rem)/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .beta-delay-link { flex: 0 0 auto; display: inline-block; padding: 14px 22px; color: var(--white); background: var(--red); font: 900 .8rem/1 Arial Black, Arial, sans-serif; letter-spacing: .03em; text-transform: uppercase; }
-.beta-delay-link:hover { color: var(--white); background: #ad0000; text-decoration: none; }
+.beta-delay-link:hover { color: var(--white); background: var(--black); text-decoration: none; }
 
 @media (max-width: 700px) {
     .beta-delay-inner { display: block; }

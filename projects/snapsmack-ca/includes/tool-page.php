@@ -45,7 +45,7 @@ $page_css = ($page_css ?? '') . <<<'CSS'
 .tool-fact { padding: 16px 18px; background: var(--white); }
 .tool-fact .label { display: block; color: var(--mid-grey); font: 700 .64rem/1.2 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; }
 .tool-fact .value { display: block; margin-top: 4px; color: var(--black); font: 900 .95rem/1.3 Arial Black, Arial, sans-serif; }
-.tool-next { padding: 48px 0 72px; border-top: 8px solid var(--black); background: #f4f1eb; }
+.tool-next { padding: 48px 0 72px; border-top: 8px solid var(--black); background: var(--light-grey); }
 .tool-next .goods-nav { margin-top: 20px; }
 CSS;
 
