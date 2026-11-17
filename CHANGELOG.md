@@ -13,6 +13,64 @@
 
 ## 0.7.998D — opened
 
+- **Generating an API key now asks for your password and a 2FA code.** An API
+  key acts for your site from anywhere, for weeks or months. Until now an
+  admin who was already signed in could mint one with no further proof. Three
+  other actions on the same page — authorising a SNAP HQ device, opening a
+  bulk-import window, enabling offline posting — already asked, and the
+  password and 2FA boxes sitting above the key generator belonged to one of
+  them, so the page looked as though it asked. It did not.
+
+  It asks now, for every key type. A refusal happens before any key material
+  exists, so a failed attempt leaves no key, no record and nothing on screen.
+  If your account has no 2FA set up you will be asked to set it up first;
+  that is the same rule the other three already follow. (SS-1410)
+
+- **Archive pages can load less.** Archive grids now offer the browser a
+  smaller image for small tiles: a photograph posted from now on gets an extra
+  ~600px copy alongside the existing 900px one, and the browser picks whichever
+  fits the space.
+
+  **Read this before expecting faster pages.** It applies only to photographs
+  posted AFTER you update, through the web uploader or the single-post form.
+  Your existing library is untouched, and the tool that will make the smaller
+  copies for photographs you already have is not built yet. Photographs posted
+  through GRAMOFSMACK or the carousel editor get no smaller copy either, so
+  even new ones are not covered on those routes. The five SMACKTALK skins
+  (ALFRED, STANLEY, TELEGRAM, TILEZ, WRITING WITH IMPACT) still serve the
+  larger image, because their pages take a different route through the CMS.
+  All of that is known and tracked, not forgotten. (SS-1386)
+
+- **The fediverse gateway logo appears again.** The mark beside "FEDIVERSE" on
+  the gateway pages was missing on every updated site. Both halves of that
+  looked fine on their own: the stylesheet asking for the image shipped, and
+  the image was committed. The image lived in a folder the updater is
+  forbidden to write to — which also means it never DELIVERS anything new
+  there — so it could not arrive, and the only symptom was a logo that was not
+  on the page. The image has moved somewhere the updater does deliver.
+  (SS-1394)
+
+- **A heart on GLIDE tiles.** GLIDE's photograph wall now carries a like
+  control on each tile, using the same like as the rest of the site: one like,
+  one row, whether you give it on the wall or on the photograph's own page.
+  (SS-1323)
+
+- **Likes worked on sites that had never saved their community settings.** The
+  like endpoint refused every like on any site whose community setting had
+  never been saved once. It no longer does.
+
+- **Archive pages stopped fetching the next page too early.** An archive could
+  begin loading a second page of photographs before the first had finished
+  painting. (SS-1373)
+
+- **Admin pages have narrower side margins.** The right-hand pane had a very
+  wide gutter; it is now 24px at every width, so there is more room for the
+  thing you are working on.
+
+- **RATIONAL GEO's archive** no longer butts against the header, and
+  **ALFRED's** archive heading is legible again with its static-page images
+  sitting properly.
+
 - **The archive shows the layout the visitor asked for.** Opening
   `/archive?layout=thumbs` on 50 SHADES gave a wall, with the T button lit as
   though it had given thumbnails. The resolution was never wrong:
