@@ -24,7 +24,7 @@ a = Analysis(
     ['driveby_qt_launcher.py'],
     pathex=[_src, _shared_dir],
     binaries=[],
-    datas=_shared_data,
+    datas=_shared_data + [(os.path.join(_src, 'assets', 'driveby.ico'), 'assets')],
     hiddenimports=_shared_mods + [
         'PySide6', 'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
     ],
@@ -49,6 +49,7 @@ exe = EXE(
     upx=False,
     console=False,
     disable_windowed_traceback=False,
+    icon=os.path.join(_src, 'assets', 'driveby.ico'),
 )
 
 coll = COLLECT(
