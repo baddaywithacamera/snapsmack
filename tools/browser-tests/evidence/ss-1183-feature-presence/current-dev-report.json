@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-18T17:35:39.047Z",
+  "generated_at": "2026-11-18T18:14:52.692Z",
   "widths": [
     1920,
     1440,
@@ -27,8 +27,8 @@
       "NOT APPLICABLE": 14
     },
     "lightbox": {
-      "PASS": 21,
-      "FAIL": 3,
+      "PASS": 22,
+      "FAIL": 2,
       "NOT CHECKED": 0,
       "NOT APPLICABLE": 6
     },
@@ -636,9 +636,9 @@
         "lightbox": {
           "requirement": "REQUIRED",
           "reason": "manifest requires smack-lightbox",
-          "status": "FAIL",
+          "status": "PASS",
           "widths": {
-            "1024": "FAIL",
+            "1024": "PASS",
             "1440": "PASS",
             "1920": "PASS"
           }
