@@ -21,6 +21,24 @@ function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+function instrumentEngineSource(engine) {
+  const source = fs.readFileSync(
+    path.join(productRoot, 'assets/js', `ss-engine-${engine}.js`),
+    'utf8',
+  );
+  const noWaitMarker = 'if (!waiting.length) { release(); return; }';
+  const settledMarker = 'var settled = function () { if (--remaining <= 0) release(); };';
+  assert.equal(source.split(noWaitMarker).length - 1, 1,
+    `${engine}: first-screen no-wait release marker changed`);
+  assert.equal(source.split(settledMarker).length - 1, 1,
+    `${engine}: first-screen settled release marker changed`);
+  return source
+    .replace(noWaitMarker,
+      'if (!waiting.length) { window.__firstScreenSettledAt = Date.now(); release(); return; }')
+    .replace(settledMarker,
+      'var settled = function () { if (--remaining <= 0) { window.__firstScreenSettledAt = Date.now(); release(); } };');
+}
+
 function svg(label) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600"><rect width="900" height="600" fill="#334"/><text x="30" y="60" fill="white">${label}</text></svg>`;
 }
@@ -35,24 +53,7 @@ function fixtureHtml(engine, scenario) {
   return `<!doctype html>
 <html><head><meta charset="utf-8"><style>
 html,body{margin:0;padding:0}#wall{width:1000px;--ss-cols:4;--ss-gap:6px}.ss-masonry-item img{display:block;width:100%;height:100%}.scroll-wall-sentinel{height:1px}
-</style><script>
-document.addEventListener('DOMContentLoaded', function () {
-  var imgs = document.querySelectorAll('#wall img');
-  var remaining = imgs.length;
-  if (!remaining) window.__firstScreenSettledAt = Date.now();
-  function settled() {
-    remaining -= 1;
-    if (remaining <= 0 && !window.__firstScreenSettledAt) window.__firstScreenSettledAt = Date.now();
-  }
-  for (var i = 0; i < imgs.length; i += 1) {
-    if (imgs[i].complete) settled();
-    else {
-      imgs[i].addEventListener('load', settled, { once: true });
-      imgs[i].addEventListener('error', settled, { once: true });
-    }
-  }
-});
-</script></head><body>
+</style></head><body>
 <main id="wall" class="${wallClass}">${tiles}</main>
 <div class="scroll-wall-sentinel" data-next="2" data-cutoff="fixture" data-has-more="1"></div>
 <script src="/assets/js/ss-engine-${engine}.js"></script>
@@ -83,6 +84,20 @@ async function runScenario(browser, engine, scenario) {
   let pageTwoRequestedAt = null;
   const pageOneDelay = scenario === 'scroll' ? 3000 : 700;
 
+  await page.addInitScript(() => {
+    const nativeFetch = window.fetch;
+    window.fetch = function () {
+      const input = arguments[0];
+      const rawUrl = typeof input === 'string' ? input : input.url || String(input);
+      const url = new URL(rawUrl, window.location.href);
+      if ((url.searchParams.get('format') === 'json' && url.searchParams.get('pg') === 'wall')
+          || url.searchParams.has('page')) {
+        if (window.__pageTwoRequestedAt === undefined) window.__pageTwoRequestedAt = Date.now();
+      }
+      return nativeFetch.apply(this, arguments);
+    };
+  });
+
   await page.route('**/*', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -93,7 +108,7 @@ async function runScenario(browser, engine, scenario) {
     if (url.pathname === `/assets/js/ss-engine-${engine}.js`) {
       return route.fulfill({
         contentType: 'application/javascript; charset=utf-8',
-        body: fs.readFileSync(path.join(productRoot, 'assets/js', `ss-engine-${engine}.js`), 'utf8'),
+        body: instrumentEngineSource(engine),
       });
     }
     if ((url.searchParams.get('format') === 'json' && url.searchParams.get('pg') === 'wall')
@@ -153,14 +168,15 @@ async function runScenario(browser, engine, scenario) {
 
   await page.waitForFunction(() => window.__firstScreenSettledAt !== undefined, null, { timeout: 2500 });
   const settledAt = await page.evaluate(() => window.__firstScreenSettledAt);
-  const requestAt = await waitForRequest(() => pageTwoRequestedAt, 1000);
+  const routedAt = await waitForRequest(() => pageTwoRequestedAt, 1000);
+  const requestAt = await page.evaluate(() => window.__pageTwoRequestedAt || null);
   const state = await page.evaluate(() => ({
     engineReady: Boolean(window.SSRows || window.SSColumns),
     wallHeight: document.querySelector('#wall')?.getBoundingClientRect().height || 0,
     sentinelTop: document.querySelector('.scroll-wall-sentinel')?.getBoundingClientRect().top || 0,
     hasMore: document.querySelector('.scroll-wall-sentinel')?.getAttribute('data-has-more') || '',
   }));
-  assert.ok(requestAt !== null,
+  assert.ok(routedAt !== null && requestAt !== null,
     `${engine}: page two was never requested after page one settled; state=${JSON.stringify(state)}`);
   const wasDeferred = requestAt >= settledAt;
   assert.equal(wasDeferred, expectDeferral,
