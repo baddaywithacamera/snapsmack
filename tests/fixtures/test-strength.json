@@ -1006,6 +1006,15 @@
         "predicates": 5,
         "thresholds": []
     },
+    "hq-device-expiry-enforced-regression.php": {
+        "assertions": 43,
+        "predicates": 16,
+        "thresholds": [
+            3,
+            403,
+            403
+        ]
+    },
     "hub-spoke-disconnect-revocation-regression.php": {
         "assertions": 10,
         "predicates": 8,

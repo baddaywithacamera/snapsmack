@@ -70,6 +70,23 @@ function da_ensure(PDO $pdo): void {
       device_id CHAR(36) NOT NULL, nonce_hash CHAR(64) NOT NULL, seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY(device_id,nonce_hash), KEY idx_desktop_nonce_seen(seen_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // THE ENFORCEMENT STAMP IS SET HERE, ON THE FIRST REQUEST OF ANY KIND.
+    //
+    // SS-1418 r2, Codex's FAIL. I had it written lazily, from inside
+    // da_in_remediation(), and that function is only reached when a device is
+    // already expired -- $renewable short-circuits on current and grace. So
+    // on a site whose devices are all healthy the stamp was never written,
+    // and the FIRST device to expire, months later, created it at that
+    // moment and collected the one-time remediation window for itself. A
+    // window meant for devices stranded by the change became a standing
+    // fortnight's reprieve for every device that ever expires. My test
+    // pre-seeded the stamp and so could not see any of it.
+    //
+    // da_ensure() runs before the dispatch on every request to this
+    // endpoint, so the stamp records when this CODE began running on this
+    // site, which is what it was always supposed to mean.
+    da_enforcement_began($pdo, time());
 }
 function da_setting(PDO $pdo, string $key): ?string {
     $q = $pdo->prepare('SELECT setting_val FROM snap_settings WHERE setting_key=? LIMIT 1'); $q->execute([$key]);
@@ -96,6 +113,93 @@ function da_install_id(PDO $pdo): string {
     if (!$id) { $id = da_uuid(); da_set($pdo, 'desktop_auth_install_id', $id); }
     return $id;
 }
+/**
+ * HOW LONG A TERM IS, IN ONE PLACE. SS-1418.
+ *
+ * These were four copies of strtotime('+3 months') and '+14 days' spread
+ * through enrol, activate and renew. Expiry rules that are written out four
+ * times are expiry rules that drift, and two of the copies were the ones
+ * handing an expired device a brand new term.
+ */
+if (!defined('DA_TERM_SECONDS'))        define('DA_TERM_SECONDS', 90 * 86400);        // three months
+if (!defined('DA_GRACE_SECONDS'))       define('DA_GRACE_SECONDS', 14 * 86400);       // the signed offline window
+if (!defined('DA_RENEW_WINDOW_SECONDS')) define('DA_RENEW_WINDOW_SECONDS', 30 * 86400); // how early a check-in may renew
+
+/**
+ * Where a device stands against its own term RIGHT NOW.
+ *
+ * SS-1418, Muse's finding: nothing asked this question. da_auth_device()
+ * checked status, signature and nonce and then returned the row, so a device
+ * whose term ended two years ago authenticated exactly like a current one.
+ * Expiry was recorded and never read.
+ *
+ * @return array{state:string,expires_at:int,grace_ends_at:int,remaining:int}
+ *         state is 'current' (inside the term), 'grace' (past expiry, inside
+ *         the signed grace window) or 'expired' (past both).
+ */
+function da_term_state(array $device, int $now): array {
+    $exp   = (int)strtotime((string)$device['expires_at']);
+    $grace = (int)strtotime((string)$device['grace_ends_at']);
+    if ($grace < $exp) {
+        // A row whose grace ends before its own expiry is corrupt or was
+        // written by hand. Treat the term as the longer of the two rather
+        // than silently giving the device less than it was sold.
+        $grace = $exp + DA_GRACE_SECONDS;
+    }
+    if ($now <= $exp)   $state = 'current';
+    elseif ($now <= $grace) $state = 'grace';
+    else                $state = 'expired';
+    return ['state'=>$state, 'expires_at'=>$exp, 'grace_ends_at'=>$grace,
+            'remaining'=>max(0, $grace - $now)];
+}
+
+/**
+ * THE REMEDIATION WINDOW, AND WHY IT EXISTS.
+ *
+ * Enforcing expiry for the first time is not like enforcing it on day two.
+ * Every device in the field was issued under code that never checked, so the
+ * moment this lands some of them may already be past a grace window nobody
+ * was counting. Refusing those outright would mean an owner opens HQ one
+ * morning and finds it will not talk to their own site -- a lockout caused
+ * by the fix, not by the fault.
+ *
+ * So the first run of this code records the moment enforcement began, and a
+ * device whose grace ended BEFORE that moment gets one window of
+ * DA_GRACE_SECONDS from it to renew itself. One window, anchored to a stamp
+ * written once: it cannot be re-triggered, and a device that lets it lapse
+ * is then held to the ordinary rules like any other.
+ *
+ * This is deliberately not silent. The response says renew_required, and the
+ * desktop shows the prompt.
+ */
+function da_enforcement_began(PDO $pdo, int $now): int {
+    $stamp = da_setting($pdo, 'desktop_auth_expiry_enforced_from');
+    if ($stamp !== null && ctype_digit((string)$stamp)) {
+        return (int)$stamp;
+    }
+    da_set($pdo, 'desktop_auth_expiry_enforced_from', (string)$now);
+    return $now;
+}
+
+/** True while a device that was already past grace when enforcement began may still renew itself. */
+function da_in_remediation(PDO $pdo, array $term, int $now): bool {
+    if ($term['state'] !== 'expired') return false;
+    $began = da_enforcement_began($pdo, $now);
+    return $term['grace_ends_at'] < $began && $now <= $began + DA_GRACE_SECONDS;
+}
+
+/**
+ * The next expiry for a renewal, ANCHORED TO THE PREVIOUS ONE.
+ *
+ * Muse's second finding: renew set expires_at to now + 3 months whatever the
+ * device's prior term, so an expired device became a current one and expiry
+ * meant nothing. Anchoring to the prior expiry stops the term being reset by
+ * the act of asking; the cap stops a device that has renewed early and often
+ * from stockpiling term beyond the documented three months.
+ */
+function da_next_expiry(int $prior_expiry, int $now): int {
+    return min($prior_expiry + DA_TERM_SECONDS, $now + DA_TERM_SECONDS);
+}
 function da_token(PDO $pdo, array $device): array {
     [$sk,$pk] = da_signing($pdo);
     $payload = [
@@ -107,7 +211,20 @@ function da_token(PDO $pdo, array $device): array {
     $encoded = da_b64u(json_encode($payload, JSON_UNESCAPED_SLASHES));
     return ['payload'=>$encoded,'signature'=>da_b64u(sodium_crypto_sign_detached($encoded,$sk)),'server_public_key'=>base64_encode($pk)];
 }
-function da_auth_device(PDO $pdo, string $raw): array {
+/**
+ * @param bool $allow_expired TRUE only for the actions that EXIST to get an
+ *        expired device back on its feet (status and renew). Everything else
+ *        is refused once the grace window has run out.
+ *
+ *        THIS FLAG IS THE WHOLE LOCKOUT QUESTION. status and renew are
+ *        reached THROUGH this function, so an expiry check that refuses here
+ *        unconditionally would make renewal unreachable by the only device
+ *        that needs it: the owner opens HQ, it is one day past grace, and
+ *        the single endpoint that could fix that is the one now turning it
+ *        away. The fix would have built a better lock than the fault did.
+ *        So the check reports, and the caller decides.
+ */
+function da_auth_device(PDO $pdo, string $raw, bool $allow_expired = false): array {
     $id = trim((string)($_SERVER['HTTP_X_SNAP_DEVICE'] ?? ''));
     $stamp = trim((string)($_SERVER['HTTP_X_SNAP_TIMESTAMP'] ?? ''));
     $nonce = trim((string)($_SERVER['HTTP_X_SNAP_NONCE'] ?? ''));
@@ -124,6 +241,17 @@ function da_auth_device(PDO $pdo, string $raw): array {
     try { $pdo->prepare('INSERT INTO snap_desktop_nonces(device_id,nonce_hash) VALUES(?,?)')->execute([$id,hash('sha256',$nonce)]); }
     catch (PDOException $e) { da_out(['ok'=>false,'error'=>'Request replay rejected.'],409); }
     $pdo->exec("DELETE FROM snap_desktop_nonces WHERE seen_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)");
+
+    // EXPIRY, FINALLY READ. SS-1418. Until now the row's expires_at and
+    // grace_ends_at were written by three code paths and consulted by none,
+    // so a device whose term ended long ago authenticated like a current one.
+    $now  = time();
+    $term = da_term_state($d, $now);
+    if ($term['state'] === 'expired' && !$allow_expired) {
+        da_out(['ok'=>false, 'error'=>'This device authorization has expired. Open SNAP HQ and renew it.',
+                'renew_required'=>true, 'expired_at'=>$term['expires_at']], 403);
+    }
+    $d['term_state'] = $term['state'];
     return $d;
 }
 
@@ -173,7 +301,7 @@ if ($action === 'enroll') {
       if ($existing && $existing['status']==='blocked') throw new RuntimeException('This device identity is blocked.');
       $active=(int)$pdo->query("SELECT COUNT(*) FROM snap_desktop_devices WHERE status='active'")->fetchColumn();
       if ((!$existing || $existing['status']!=='active') && $active>=4) throw new RuntimeException('Four devices are already active. Disable one before adding another.');
-      $id=$existing['id']??da_uuid(); $now=date('Y-m-d H:i:s'); $exp=date('Y-m-d H:i:s',strtotime('+3 months')); $grace=date('Y-m-d H:i:s',strtotime($exp.' +14 days')); $ip=da_ip();
+      $id=$existing['id']??da_uuid(); $ts=time(); $now=date('Y-m-d H:i:s',$ts); $exp=date('Y-m-d H:i:s',$ts+DA_TERM_SECONDS); $grace=date('Y-m-d H:i:s',$ts+DA_TERM_SECONDS+DA_GRACE_SECONDS); $ip=da_ip();
       $meta=[substr(trim((string)($data['device_name']??'SNAP HQ device')),0,120),substr(trim((string)($data['locale']??'')),0,40),substr(trim((string)($data['timezone']??'')),0,80),substr(trim((string)($data['os']??'')),0,160),substr(trim((string)($data['hq_version']??'')),0,40)];
       if ($existing) {
         $pdo->prepare("UPDATE snap_desktop_devices SET user_id=?,public_key=?,device_name=?,locale_name=?,timezone_name=?,os_name=?,hq_version=?,last_ip=?,status='active',term_started_at=?,expires_at=?,grace_ends_at=?,disabled_at=NULL,token_version=token_version+1 WHERE id=?")
@@ -200,7 +328,7 @@ if ($action === 'activate') {
       if ($existing && $existing['status']==='blocked') throw new RuntimeException('This device identity is blocked.');
       $active=(int)$pdo->query("SELECT COUNT(*) FROM snap_desktop_devices WHERE status='active'")->fetchColumn();
       if ((!$existing || $existing['status']!=='active') && $active>=4) throw new RuntimeException('Four devices are already active. Disable one before adding another.');
-      $id=$existing['id']??da_uuid(); $now=date('Y-m-d H:i:s'); $exp=date('Y-m-d H:i:s',strtotime('+3 months')); $grace=date('Y-m-d H:i:s',strtotime($exp.' +14 days')); $ip=da_ip();
+      $id=$existing['id']??da_uuid(); $ts=time(); $now=date('Y-m-d H:i:s',$ts); $exp=date('Y-m-d H:i:s',$ts+DA_TERM_SECONDS); $grace=date('Y-m-d H:i:s',$ts+DA_TERM_SECONDS+DA_GRACE_SECONDS); $ip=da_ip();
       $meta=[substr(trim((string)($data['device_name']??'SNAP HQ device')),0,120),substr(trim((string)($data['locale']??'')),0,40),substr(trim((string)($data['timezone']??'')),0,80),substr(trim((string)($data['os']??'')),0,160),substr(trim((string)($data['hq_version']??'')),0,40)];
       if ($existing) {
         $pdo->prepare("UPDATE snap_desktop_devices SET user_id=?,public_key=?,device_name=?,locale_name=?,timezone_name=?,os_name=?,hq_version=?,last_ip=?,status='active',term_started_at=?,expires_at=?,grace_ends_at=?,disabled_at=NULL,token_version=token_version+1 WHERE id=?")
@@ -216,19 +344,59 @@ if ($action === 'activate') {
 }
 
 if (in_array($action,['status','renew'],true)) {
-    $d=da_auth_device($pdo,$raw); $ip=da_ip();
-    // Keep an actively checking installation licensed three months ahead.  A
-    // disabled/blocked device cannot reach this point, while an offline device
-    // naturally ages into its signed 14-day grace period.
-    if ($action === 'renew' || strtotime($d['expires_at']) <= strtotime('+30 days')) {
-        $term=date('Y-m-d H:i:s'); $exp=date('Y-m-d H:i:s',strtotime('+3 months')); $grace=date('Y-m-d H:i:s',strtotime($exp.' +14 days'));
+    // allow_expired: these two actions are the way back from an expired term,
+    // so they must stay reachable by a device that has one. See da_auth_device.
+    $d=da_auth_device($pdo,$raw,true); $ip=da_ip();
+    $now=time(); $term_state=da_term_state($d,$now);
+    // Already written by da_ensure() above; read here so the anchor and the
+    // remediation test below agree on one value for this request.
+    $enforced_from=da_enforcement_began($pdo,$now);
+
+    // WHEN A CHECK-IN MAY RENEW ITSELF, AND BY HOW MUCH. SS-1418.
+    //
+    // This used to renew whenever the action was 'renew' OR the term had less
+    // than 30 days to run, and it set the new expiry to now + 3 months in
+    // both cases. Two separate faults in one line. A device could renew from
+    // any state at all, expired included, and the new term was measured from
+    // the moment of asking -- so the act of checking in reset the clock and
+    // expiry could never actually arrive. Muse's finding: "status/renew can
+    // silently reissue a fresh three-month term even after expiry and
+    // re-anchors to now".
+    //
+    // Now: only a device inside its term or its grace renews itself, the new
+    // expiry is anchored to the PREVIOUS one, and it is capped so that early
+    // renewals cannot stockpile term. A device past grace renews only inside
+    // the one-time remediation window, and otherwise is told to re-authorize.
+    $renewable = in_array($term_state['state'], ['current','grace'], true)
+                 || da_in_remediation($pdo, $term_state, $now);
+    $due = ($action === 'renew') || ($term_state['expires_at'] <= $now + DA_RENEW_WINDOW_SECONDS);
+    $renew_required = !$renewable;
+
+    if ($renewable && $due) {
+        // A device inside remediation has a prior expiry far in the past, so
+        // anchoring would hand it a term that is still expired. Its anchor is
+        // the moment enforcement began -- the point from which it was given
+        // fair warning -- not the term it let lapse.
+        $anchor = da_in_remediation($pdo, $term_state, $now)
+            ? max($term_state['expires_at'], $enforced_from)
+            : $term_state['expires_at'];
+        $exp_ts = da_next_expiry($anchor, $now);
+        $term=date('Y-m-d H:i:s',$now);
+        $exp=date('Y-m-d H:i:s',$exp_ts);
+        $grace=date('Y-m-d H:i:s',$exp_ts + DA_GRACE_SECONDS);
         $pdo->prepare('UPDATE snap_desktop_devices SET term_started_at=?,expires_at=?,grace_ends_at=?,token_version=token_version+1 WHERE id=?')
             ->execute([$term,$exp,$grace,$d['id']]);
+        $renew_required = false;
     }
     $pdo->prepare('UPDATE snap_desktop_devices SET first_used_at=COALESCE(first_used_at,NOW()),last_used_at=NOW(),last_ip=?,device_name=COALESCE(NULLIF(?,\'\'),device_name),locale_name=COALESCE(NULLIF(?,\'\'),locale_name),timezone_name=COALESCE(NULLIF(?,\'\'),timezone_name),os_name=COALESCE(NULLIF(?,\'\'),os_name),hq_version=COALESCE(NULLIF(?,\'\'),hq_version) WHERE id=?')
       ->execute([$ip,substr((string)($data['device_name']??''),0,120),substr((string)($data['locale']??''),0,40),substr((string)($data['timezone']??''),0,80),substr((string)($data['os']??''),0,160),substr((string)($data['hq_version']??''),0,40),$d['id']]);
     $q=$pdo->prepare('SELECT * FROM snap_desktop_devices WHERE id=?');$q->execute([$d['id']]);$d=$q->fetch(PDO::FETCH_ASSOC);
-    da_out(['ok'=>true,'status'=>$d['status'],'entitlement'=>da_token($pdo,$d)]);
+    $final=da_term_state($d,$now);
+    // The desktop is TOLD, rather than left to work it out from dates. An
+    // expired device still gets its (expired) entitlement back so HQ can open
+    // and show the prompt: restricted, not shut.
+    da_out(['ok'=>true,'status'=>$d['status'],'term_state'=>$final['state'],
+            'renew_required'=>$renew_required,'entitlement'=>da_token($pdo,$d)]);
 }
 
 da_out(['ok'=>false,'error'=>'Unknown desktop authorization action.'],404);
