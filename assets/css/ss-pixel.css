@@ -300,6 +300,16 @@ button{ font-family:inherit; cursor:pointer; }
 }
 .sx-reader-mastodon .fb-switcher{ flex:1; }
 .sx-reader-mastodon .fb-toggle{ width:100%; max-width:none; border:0; background:transparent; }
+/* SS-1420. On the Mastodon reader this control is fixed to the bottom-left.
+   The shared menu normally opens down from a top-bar control, which put the
+   fleet list below the viewport here. Keep the mobile/tablet stack unchanged,
+   but open upward while the bottom dock is active. */
+@media (min-width:1001px){
+  .sx-reader-mastodon .fb-menu{
+    top:auto; right:auto; bottom:calc(100% + 7px); left:0;
+    width:min(360px,calc(100vw - 36px));
+  }
+}
 .sx-reader-mastodon .fb-help,
 .sx-reader-mastodon .sx-theme{ display:none; }
 .sx-reader-mastodon .sx-account-menu{ top:auto; right:0; bottom:48px; }
