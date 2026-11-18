@@ -7,7 +7,7 @@
  */
 require_once __DIR__ . '/includes/skin-stats.php';
 
-$page_title       = 'Free SnapSmack skins — GLAD RAGS!';
+$page_title       = 'GLAD RAGS! — SnapSmack Skins | Free photoblog software';
 $page_description = 'Production-ready SnapSmack skins shown on real photography sites.';
 $page_og_url      = 'https://snapsmack.ca/skins.php';
 $nav_active       = 'goods-skins';

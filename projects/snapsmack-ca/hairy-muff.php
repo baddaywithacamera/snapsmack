@@ -10,7 +10,7 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-$page_title       = 'Free SnapSmack ethics and licence — HAIRY MUFF!';
+$page_title       = 'HAIRY MUFF! — Ethics & Licence | Free photoblog software';
 $page_description = 'How SnapSmack thinks about AI, code, training data, and why everything we build stays free forever. Fair\'s fair, innit?';
 $page_og_url      = 'https://snapsmack.ca/hairy-muff.php';
 $nav_active       = 'hairy-muff';

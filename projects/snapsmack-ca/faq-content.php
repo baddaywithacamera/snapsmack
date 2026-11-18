@@ -5,7 +5,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'Free SnapSmack FAQ: your content';
+$page_title       = 'BRASS TACKS! — Content | Free photoblog software';
 $page_description = 'SnapSmack FAQ, your content: Lock-in (none), what you can bring, and who this is for.';
 $page_og_url      = 'https://snapsmack.ca/faq-content.php';
 $faq_slug    = 'faq-content';

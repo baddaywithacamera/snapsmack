@@ -10,7 +10,7 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-$page_title       = 'Free SnapSmack emergency help — BUGGER!';
+$page_title       = 'BUGGER! — Emergency Help | Free photoblog software';
 $page_description = 'Emergency updates and critical fixes for SnapSmack. Check here if your site is down.';
 $page_og_url      = 'https://snapsmack.ca/bugger.php';
 $nav_active       = 'bugger';

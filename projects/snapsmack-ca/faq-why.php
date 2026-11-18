@@ -5,7 +5,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'Free SnapSmack FAQ: why it exists';
+$page_title       = 'BRASS TACKS! — Why SnapSmack | Free photoblog software';
 $page_description = 'SnapSmack FAQ, why snapsmack: Why it exists, where it came from, why it swears, and what the catch is.';
 $page_og_url      = 'https://snapsmack.ca/faq-why.php';
 $faq_slug    = 'faq-why';

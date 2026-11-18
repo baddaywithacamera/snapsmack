@@ -10,7 +10,7 @@
  *     // ===== SNAPSMACK EOF =====
  */
 
-$page_title       = 'Free self-hosted photoblog security — SnapSmack';
+$page_title       = 'LOCKED DOWN! — Security | Free photoblog software';
 $page_description = 'How SnapSmack protects your site and what happens when something goes wrong: local lockout only, fleet-wide same-day alerts, public audits, and a no-remote-control rule. Custodian, not landlord.';
 $page_og_url      = 'https://snapsmack.ca/security.php';
 $nav_active       = 'security';

@@ -5,7 +5,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'Free SnapSmack FAQ: fediverse and discovery';
+$page_title       = 'BRASS TACKS! — Fediverse | Free photoblog software';
 $page_description = 'SnapSmack FAQ, fediverse & discovery: The network, the directory, the weekly challenge, and why you need a password to join.';
 $page_og_url      = 'https://snapsmack.ca/faq-fediverse.php';
 $faq_slug    = 'faq-fediverse';
