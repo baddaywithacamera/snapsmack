@@ -200,4 +200,87 @@ def test_other_failures_leave_the_cache_alone(auth_home, server_key, monkeypatch
         f"an HTTP {status_code} wiped the cached entitlement")
     assert snap_device_auth.decision(after)["authorized"] is True
 
+# ── r2: Codex's FAIL. the rollback window is the OFFLINE stretch, not the
+#        gap since the last online check ────────────────────────────────────
+
+def test_long_offline_rollback_is_caught_by_the_high_water_mark(
+        auth_home, server_key, monkeypatch):
+    """Codex's exact reproduction, which my first test could not see.
+
+    Last online check 60 days BEFORE expiry. Really 30 days AFTER it. Clock
+    wound back to the day before expiry -- which is still later than
+    last_clock, so comparing against last_clock alone called it full.
+
+    The machine has been running HQ through that stretch, so the high-water
+    mark has been moving even though it never got online.
+    """
+    expires = NOW
+    state = _signed_state(server_key, expires_at=expires,
+                          grace_ends_at=expires + 14 * DAY,
+                          last_clock=expires - 60 * DAY,
+                          verified_at=expires - 60 * DAY)
+    snap_device_auth._write_state(state)
+
+    # HQ is opened now and then over the offline stretch, up to 30 days past
+    # expiry. Each run records the time it saw.
+    for day in (10, 20, 40, 60, 75, 89):
+        at = expires - 60 * DAY + day * DAY
+        monkeypatch.setattr(time, "time", lambda at=at: at)
+        snap_device_auth.decision()
+
+    recorded = int(snap_device_auth._read_state().get("clock_high_water", 0))
+    assert recorded >= expires, (
+        "the high-water mark never passed expiry, so nothing was learned "
+        "from running offline")
+
+    # Now wind the clock back to the day before expiry.
+    rolled_back = expires - DAY
+    monkeypatch.setattr(time, "time", lambda: rolled_back)
+    result = snap_device_auth.decision()
+    assert result["authorized"] is False, (
+        "a long-offline device revived an expired entitlement by rolling the "
+        "clock back to a point after its last ONLINE check")
+    assert result["reason"] == "clock_rollback"
+
+
+def test_a_wild_forward_jump_is_not_remembered(auth_home, server_key, monkeypatch):
+    """A dead BIOS battery must not restrict the machine permanently.
+
+    The absurd reading is still used for the expiry comparison -- it will
+    read as restricted while it stands -- but it is not written down, so
+    correcting the clock restores the machine without going online.
+    """
+    state = _signed_state(server_key, expires_at=NOW + 30 * DAY,
+                          grace_ends_at=NOW + 44 * DAY,
+                          last_clock=NOW, verified_at=NOW)
+    snap_device_auth._write_state(state)
+
+    monkeypatch.setattr(time, "time", lambda: NOW + 3000 * DAY)
+    snap_device_auth.decision()
+    assert int(snap_device_auth._read_state().get("clock_high_water", 0)) <= NOW, (
+        "an implausible clock reading was recorded as the high-water mark, "
+        "which would restrict this machine for good")
+
+    monkeypatch.setattr(time, "time", lambda: NOW + DAY)
+    assert snap_device_auth.decision()["authorized"] is True, (
+        "correcting the clock did not restore the machine")
+
+
+def test_inspecting_a_state_dict_does_not_write_the_real_file(
+        auth_home, server_key, monkeypatch):
+    """decision(state) is used to inspect. It must not persist scratch values."""
+    snap_device_auth._write_state(
+        _signed_state(server_key, expires_at=NOW + 30 * DAY,
+                      grace_ends_at=NOW + 44 * DAY,
+                      last_clock=NOW, verified_at=NOW))
+    before = snap_device_auth._read_state()
+
+    scratch = _signed_state(server_key, expires_at=NOW + 99 * DAY,
+                            grace_ends_at=NOW + 113 * DAY,
+                            last_clock=NOW, verified_at=NOW)
+    monkeypatch.setattr(time, "time", lambda: NOW + 500 * DAY)
+    snap_device_auth.decision(scratch)
+
+    assert snap_device_auth._read_state() == before
+
 # ===== SNAPSMACK EOF =====

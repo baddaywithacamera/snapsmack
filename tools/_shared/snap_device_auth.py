@@ -198,8 +198,46 @@ def refresh(hq_version: str = "") -> dict:
 
 CLOCK_SKEW_TOLERANCE = 300        # the same slack _verify_and_store allows
 
+# How far ahead of the last known time a reading may be and still be believed
+# as a new high-water mark. A dead BIOS battery or a bad timezone write can
+# throw a clock years forward; recording that as "the latest time we have
+# seen" would restrict the machine for good, offline, which is the lockout
+# this ticket exists to prevent. Anything beyond this is used for the expiry
+# comparison but not remembered.
+CLOCK_HIGH_WATER_SANITY = 400 * 86400
 
-def decision(state: dict | None = None) -> dict:
+# Only rewrite the state file when the mark actually moves by this much, so a
+# function that gates features is not writing to disk on every call.
+CLOCK_HIGH_WATER_STEP = 3600
+
+
+def _advance_clock_high_water(state: dict, now: int, latest_seen: int,
+                              *, persist: bool) -> None:
+    """Remember the latest plausible time this machine has reported.
+
+    Refuses to remember a reading that is absurdly far ahead, because a clock
+    that jumps to 2099 and is then corrected would otherwise leave the owner
+    restricted forever with no way back except going online.
+    """
+    if not persist or now <= latest_seen + CLOCK_HIGH_WATER_STEP:
+        return
+    if latest_seen and now > latest_seen + CLOCK_HIGH_WATER_SANITY:
+        return
+    try:
+        on_disk = _read_state()
+        if not on_disk:
+            return
+        if now > int(on_disk.get("clock_high_water", 0) or 0):
+            on_disk["clock_high_water"] = now
+            _write_state(on_disk)
+            state["clock_high_water"] = now
+    except (OSError, ValueError):
+        # A machine that cannot write its own state must still be able to
+        # use the software it has paid for.
+        pass
+
+
+def decision(state: dict | None = None, *, persist: bool | None = None) -> dict:
     """Verify the cached signature and return full/grace/restricted state.
 
     SS-1418. Two things were missing here, and both of them mattered because
@@ -231,6 +269,11 @@ def decision(state: dict | None = None) -> dict:
     'restricted', which opens HQ with a renew prompt; the way out is to go
     online, and going online re-verifies and clears them.
     """
+    # persist defaults to "only when we loaded the state ourselves": a caller
+    # that hands in a dict is inspecting, not running the machine, and must
+    # not have its scratch values written to the real file.
+    if persist is None:
+        persist = state is None
     state = state or _read_state(); entitlement = state.get("entitlement") or {}
     try:
         payload_text = str(entitlement["payload"]); public64 = str(state["server_public_key"])
@@ -238,13 +281,35 @@ def decision(state: dict | None = None) -> dict:
             _unb64u(str(entitlement["signature"])), payload_text.encode("ascii"))
         payload = json.loads(_unb64u(payload_text).decode("utf-8")); now=int(time.time())
 
+        # THE LATEST TIME THIS MACHINE HAS EVER REPORTED, not merely the last
+        # time it was online. SS-1418 r2, Codex's FAIL: comparing against
+        # last_clock alone leaves the whole offline stretch open. His repro --
+        # last online check 60 days before expiry, really 30 days after it,
+        # clock wound back to the day before expiry -- lands later than
+        # last_clock, so the rollback went unnoticed and an expired
+        # entitlement read as full. My test had set last_clock to the real
+        # current date, which is not what a long-offline device looks like,
+        # and that is why it passed.
+        #
+        # Every decision now contributes its reading, so the window an
+        # attacker can roll back into shrinks to "since HQ last ran" instead
+        # of "since HQ was last online".
+        #
+        # WHAT THIS STILL CANNOT DO, said plainly rather than implied: a
+        # machine that has never run HQ since the last online check can be
+        # set to any time after that check. Nothing local can close that --
+        # the entitlement is signed, not timestamped by a witness. It is
+        # narrowed here, not eliminated.
         last_clock = int(state.get("last_clock", 0) or 0)
-        if last_clock and now + CLOCK_SKEW_TOLERANCE < last_clock:
+        high_water = int(state.get("clock_high_water", 0) or 0)
+        latest_seen = max(last_clock, high_water)
+        if latest_seen and now + CLOCK_SKEW_TOLERANCE < latest_seen:
             return {"status":"restricted","authorized":False,"payload":payload,
                     "site_url":state.get("site_url",""),
                     "reason":"clock_rollback",
                     "error":"The system clock moved backwards since the last check. "
                             "Go online in SNAP HQ to verify authorization."}
+        _advance_clock_high_water(state, now, latest_seen, persist=persist)
 
         if now <= int(payload["expires_at"]):
             status = "full"

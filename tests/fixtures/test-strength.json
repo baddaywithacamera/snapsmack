@@ -1007,9 +1007,10 @@
         "thresholds": []
     },
     "hq-device-expiry-enforced-regression.php": {
-        "assertions": 38,
-        "predicates": 14,
+        "assertions": 43,
+        "predicates": 16,
         "thresholds": [
+            3,
             403,
             403
         ]

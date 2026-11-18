@@ -231,6 +231,49 @@ check('the enforcement stamp is never moved by a later check',
 // wants a MariaDB run.
 
 // ─────────────────────────────────────────────────────────────────────────────
+echo "\nSTAGE 4b — WHEN the enforcement stamp is written (Codex's r2 FAIL)\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// I first wrote the stamp lazily, from inside da_in_remediation(). That
+// function is only reached once a device is already expired, because
+// $renewable short-circuits on current and grace. So on a site whose devices
+// are healthy the stamp was never written at all, and the FIRST device to
+// expire -- months later -- created it at that moment and collected the
+// one-time window for itself. A reprieve for devices stranded by the change
+// had quietly become a standing fortnight for every device that ever expires.
+//
+// MY TEST COULD NOT SEE IT because it pre-seeded the stamp, which is the same
+// mistake in a different costume: a fixture that supplies the thing under
+// test. The lifecycle is what matters, so test the lifecycle.
+
+// The stamp is now written by da_ensure(), which runs before the dispatch on
+// every request to this endpoint. That is a call-site fact, so it is read
+// from the source -- weaker than running it, and said so.
+check('da_ensure writes the enforcement stamp on every request',
+      preg_match('/function da_ensure\(.*?da_enforcement_began\(\$pdo/s', $src) === 1,
+      $failures);
+check('the stamp is not reached only through the remediation check',
+      substr_count($src, 'da_enforcement_began(') >= 3, $failures);
+
+// And the consequence, executed: a site whose stamp was written at deploy
+// time, with a device that was healthy then and expires long afterwards. It
+// must get NO remediation, however long it has been expired.
+$fresh = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+$fresh->exec("CREATE TABLE snap_settings (setting_key TEXT PRIMARY KEY, setting_val TEXT)");
+$deploy = $NOW;                                    // stamp written on first contact
+$fresh->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('desktop_auth_expiry_enforced_from', ?)")
+      ->execute([(string)$deploy]);
+
+$later = device($deploy + 90 * $DAY, $deploy + 104 * $DAY);
+check('lifecycle: the device is current when enforcement begins',
+      da_term_state($later, $deploy)['state'] === 'current', $failures);
+
+$much_later = $deploy + 200 * $DAY;
+$t_later    = da_term_state($later, $much_later);
+check('lifecycle: six months on it has expired',
+      $t_later['state'] === 'expired', $failures);
+check('lifecycle: and it gets NO remediation, because it was never stranded',
+      da_in_remediation($fresh, $t_later, $much_later) === false, $failures);
+// ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 5 — the endpoint is wired to these decisions (source, not runtime)\n";
 // ─────────────────────────────────────────────────────────────────────────────
 check('da_auth_device consults the term state',

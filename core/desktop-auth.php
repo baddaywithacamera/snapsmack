@@ -70,6 +70,23 @@ function da_ensure(PDO $pdo): void {
       device_id CHAR(36) NOT NULL, nonce_hash CHAR(64) NOT NULL, seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY(device_id,nonce_hash), KEY idx_desktop_nonce_seen(seen_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // THE ENFORCEMENT STAMP IS SET HERE, ON THE FIRST REQUEST OF ANY KIND.
+    //
+    // SS-1418 r2, Codex's FAIL. I had it written lazily, from inside
+    // da_in_remediation(), and that function is only reached when a device is
+    // already expired -- $renewable short-circuits on current and grace. So
+    // on a site whose devices are all healthy the stamp was never written,
+    // and the FIRST device to expire, months later, created it at that
+    // moment and collected the one-time remediation window for itself. A
+    // window meant for devices stranded by the change became a standing
+    // fortnight's reprieve for every device that ever expires. My test
+    // pre-seeded the stamp and so could not see any of it.
+    //
+    // da_ensure() runs before the dispatch on every request to this
+    // endpoint, so the stamp records when this CODE began running on this
+    // site, which is what it was always supposed to mean.
+    da_enforcement_began($pdo, time());
 }
 function da_setting(PDO $pdo, string $key): ?string {
     $q = $pdo->prepare('SELECT setting_val FROM snap_settings WHERE setting_key=? LIMIT 1'); $q->execute([$key]);
@@ -331,6 +348,9 @@ if (in_array($action,['status','renew'],true)) {
     // so they must stay reachable by a device that has one. See da_auth_device.
     $d=da_auth_device($pdo,$raw,true); $ip=da_ip();
     $now=time(); $term_state=da_term_state($d,$now);
+    // Already written by da_ensure() above; read here so the anchor and the
+    // remediation test below agree on one value for this request.
+    $enforced_from=da_enforcement_began($pdo,$now);
 
     // WHEN A CHECK-IN MAY RENEW ITSELF, AND BY HOW MUCH. SS-1418.
     //
@@ -358,7 +378,7 @@ if (in_array($action,['status','renew'],true)) {
         // the moment enforcement began -- the point from which it was given
         // fair warning -- not the term it let lapse.
         $anchor = da_in_remediation($pdo, $term_state, $now)
-            ? max($term_state['expires_at'], da_enforcement_began($pdo, $now))
+            ? max($term_state['expires_at'], $enforced_from)
             : $term_state['expires_at'];
         $exp_ts = da_next_expiry($anchor, $now);
         $term=date('Y-m-d H:i:s',$now);
