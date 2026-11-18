@@ -263,12 +263,17 @@ def test_14_photo_mosaic_no_nested_scrollbar_and_fast_scroll(tmp_path, monkeypat
     win.take_mode.body.canvas.from_blocks([
         {"type": "mosaic", "order": list(range(1, 15)), "layout": "asymmetric"}
     ])
-    for _ in range(6):
+    from PySide6.QtTest import QTest
+    outer_sb = win.take_mode._canvas_scroll.verticalScrollBar()
+    deadline = time.monotonic() + 3.0
+    while time.monotonic() < deadline:
         app.processEvents()
+        if outer_sb.maximum() > 0:
+            break
+        QTest.qWait(20)
 
     # No nested inner scrollbar on BiggieCanvas; outer CanvasWell handles scrolling
     assert win.take_mode.body.canvas.verticalScrollBar().maximum() == 0
-    outer_sb = win.take_mode._canvas_scroll.verticalScrollBar()
     assert outer_sb.maximum() > 0
 
     # First scroll pass populates cached downscaled cell pixmaps

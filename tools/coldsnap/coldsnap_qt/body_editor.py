@@ -169,6 +169,9 @@ class BodyEditor(QWidget):
 
         # -- BIGGIE face --------------------------------------------------------
         self._biggie_page = QWidget()
+        self._biggie_page.setObjectName("BiggiePage")
+        self._biggie_page.setAttribute(Qt.WA_StyledBackground, True)
+        self._biggie_page.setStyleSheet("QWidget#BiggiePage { background: #ffffff; }")
         g = QVBoxLayout(self._biggie_page)
         g.setContentsMargins(0, 0, 0, 0)
         g.setSpacing(0)
@@ -190,6 +193,21 @@ class BodyEditor(QWidget):
         # same body, not install modes; keeping the switch visible is essential
         # to making the editor understandable and matches the bundled Help.
         self._apply_face(True)
+
+    def apply_surface_palette(self, pal: dict):
+        """Apply site theme surface colours to BiggiePage wrapper and BiggieCanvas."""
+        from PySide6.QtGui import QColor, QPalette
+        self._biggie_page.setAutoFillBackground(True)
+        bp = self._biggie_page.palette()
+        bp.setColor(QPalette.Window, QColor(pal["bg"]))
+        self._biggie_page.setPalette(bp)
+        self._biggie_page.setStyleSheet(f"QWidget#BiggiePage {{ background: {pal['bg']}; }}")
+        st = self._biggie_page.style()
+        if st is not None:
+            st.unpolish(self._biggie_page)
+            st.polish(self._biggie_page)
+        self._biggie_page.update()
+        self.canvas.apply_surface_palette(pal)
 
     def _apply_inline(self, action: str):
         if self._biggie_on:

@@ -13,7 +13,7 @@ from PySide6.QtCore import QSettings, QTimer
 from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QTabWidget, QLabel, QHBoxLayout,
-    QPushButton,
+    QPushButton, QMessageBox,
 )
 
 from _version import BUILD_VERSION
@@ -193,6 +193,7 @@ class MainWindow(QMainWindow):
         self._handoff_timer.timeout.connect(self._consume_handoff)
         self._handoff_timer.start()
         QTimer.singleShot(0, self._consume_handoff)
+        QTimer.singleShot(0, self._run_startup_session_migration)
 
         if self._restore_maximized:
             QTimer.singleShot(0, self.showMaximized)
@@ -367,6 +368,87 @@ class MainWindow(QMainWindow):
         self.raise_()
         self.activateWindow()
         self.statusBar().showMessage("Opened from GET YOUR SHIT SORTED", 5000)
+
+    def _refresh_session_rails(self):
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            rail = getattr(w, "rail", None)
+            if rail is not None and hasattr(rail, "refresh"):
+                try:
+                    rail.refresh()
+                except Exception:
+                    pass
+
+    def _run_startup_session_migration(
+        self,
+        legacy_root: str = None,
+        dest_root: str = None,
+        backup_parent: str = None,
+        ask_fn=None,
+    ):
+        """Migrate install-relative drafts to per-user storage and offer backup imports."""
+        dest = dest_root or O.default_sessions_root()
+        legacy = legacy_root or O.legacy_sessions_root()
+        try:
+            import snap_home
+            log_file = snap_home.log_path("coldsnap", "session-migration")
+        except Exception:
+            log_file = None
+
+        changed = False
+        mig = O.migrate_sessions_dir(legacy, dest, log_path=log_file)
+        if mig.get("migrated"):
+            changed = True
+            self.statusBar().showMessage(
+                f"Migrated {len(mig['migrated'])} draft file(s) to {dest}", 8000)
+
+        parent = backup_parent if backup_parent is not None else os.path.dirname(O._app_dir())
+        backups = O.discover_backup_sessions(parent, dest)
+        if backups:
+            lines = []
+            for b in backups[:10]:
+                titles = ", ".join(b["draft_titles"][:3])
+                if len(b["draft_titles"]) > 3:
+                    titles += f" (+{len(b['draft_titles']) - 3} more)"
+                lines.append(
+                    f"• {b['backup_name']} → {b['session_name']} "
+                    f"({b['draft_count']} draft(s): {titles})"
+                )
+            if len(backups) > 10:
+                lines.append(f"• … and {len(backups) - 10} more session(s)")
+            prompt = (
+                "Found unimported drafts in previous COLD SNAP backup folder(s):\n\n"
+                + "\n".join(lines)
+                + "\n\nCopy these drafts into your persistent COLD SNAP library?\n"
+                "(Originals in the backup folders are never modified or deleted.)"
+            )
+            if ask_fn is not None:
+                confirmed = bool(ask_fn(prompt))
+            else:
+                ans = QMessageBox.question(
+                    self,
+                    "Import drafts from COLD SNAP backup?",
+                    prompt,
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes,
+                )
+                confirmed = (ans == QMessageBox.Yes)
+            if confirmed:
+                seen_roots = set()
+                for b in backups:
+                    sr = b["sessions_root"]
+                    if sr in seen_roots:
+                        continue
+                    seen_roots.add(sr)
+                    imp = O.migrate_sessions_dir(sr, dest, log_path=log_file)
+                    if imp.get("migrated"):
+                        changed = True
+                if changed:
+                    self.statusBar().showMessage(
+                        "Imported drafts from COLD SNAP backup folder(s)", 8000)
+
+        if changed:
+            self._refresh_session_rails()
 
     def closeEvent(self, event):
         if not self.isMinimized():

@@ -345,10 +345,12 @@ class ConnectPanel(QWidget):
                     mode = ""
                 try:
                     meta = snap_library.meta(url)
-                    if not any(meta.get(k) for k in ("site_bg", "page_bg", "background_color", "bg_color")):
-                        bg = conn.fetch_site_bg(timeout=6)
-                        if bg:
-                            snap_library.set_site_bg(url, bg)
+                    has_bg = any(meta.get(k) for k in ("site_bg", "page_bg", "background_color", "bg_color"))
+                    has_fg = bool(meta.get("site_fg"))
+                    if not has_bg or not has_fg:
+                        bg, fg = conn.fetch_site_colors(timeout=6)
+                        if bg or fg:
+                            snap_library.set_site_colors(url, bg_color=bg, fg_color=fg)
                 except Exception:
                     pass
                 return name, str(mode or "").strip().lower()

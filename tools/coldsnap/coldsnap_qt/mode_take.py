@@ -17,13 +17,13 @@ import uuid
 
 import requests
 
-from PySide6.QtCore import Qt, QRect, QSize, Signal, QTimer, QSettings
+from PySide6.QtCore import Qt, QDate, QRect, QSize, Signal, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
-    QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton, QSlider,
+    QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton, QSlider, QDateEdit,
 )
 
 import sumna_offline as O
@@ -273,6 +273,7 @@ class TakeMode(QWidget):
 
         self.page_card = QFrame()
         self.page_card.setObjectName("PageCard")
+        self.page_card.setProperty("textView", False)
         self._preview_width = 760
         self.page_card.setFixedWidth(self._preview_width + 80)
         card_col = QVBoxLayout(self.page_card)
@@ -291,6 +292,10 @@ class TakeMode(QWidget):
         self.page_meta = QLabel("")
         self.page_meta.setObjectName("PageMeta")
         card_col.addWidget(self.page_meta)
+        self.site_colors_note = QLabel("site colours unavailable")
+        self.site_colors_note.setObjectName("SiteColorsNote")
+        self.site_colors_note.setVisible(False)
+        card_col.addWidget(self.site_colors_note)
         self.text_view_hint = hint(
             "A plain text editor. Each block uses CMS shortcodes from core/parser.php "
             "(plus COLD SNAP [mosaic=…] markers resolved to [mosaic:ID] on send).")
@@ -663,37 +668,89 @@ class TakeMode(QWidget):
         self._fit_page_card_width()
 
     @staticmethod
-    def resolve_site_bg_color(site_url: str) -> str:
+    def resolve_site_colors(site_url: str) -> tuple:
+        """Return (bg_hex, fg_hex, available_bool) for a site, falling back to white/dark."""
         from PySide6.QtGui import QColor
         url = str(site_url or "").strip()
+        bg, fg, available = "", "", False
         if url:
             try:
                 import snap_library
                 for key in ("site_bg", "page_bg", "background_color", "bg_color"):
                     val = str(snap_library.meta(url, key, "") or "").strip()
                     if val and QColor(val).isValid():
-                        return QColor(val).name()
+                        bg = QColor(val).name()
+                        available = True
+                        break
+                fg_val = str(snap_library.meta(url, "site_fg", "") or "").strip()
+                if fg_val and QColor(fg_val).isValid():
+                    fg = QColor(fg_val).name()
             except Exception:  # noqa: BLE001
                 pass
-        return theme.BG
+        if not bg:
+            return "#ffffff", "#1a1a1a", False
+        return bg, fg, available
 
-    def apply_canvas_background(self, site_url: str = "", explicit_bg: str = "") -> str:
-        from PySide6.QtGui import QColor
-        bg = explicit_bg.strip() if explicit_bg and QColor(explicit_bg.strip()).isValid() else self.resolve_site_bg_color(site_url)
-        c = QColor(bg)
-        if not c.isValid():
-            bg = theme.BG
-            c = QColor(bg)
-        lum = 0.299 * c.red() + 0.587 * c.green() + 0.114 * c.blue()
-        ruler = "#333333" if lum > 140 else theme.DIM
+    @staticmethod
+    def resolve_site_bg_color(site_url: str) -> str:
+        return TakeMode.resolve_site_colors(site_url)[0]
+
+    def apply_canvas_background(self, site_url: str = "", explicit_bg: str = "", explicit_fg: str = "") -> str:
+        from PySide6.QtGui import QColor, QPalette
+        from . import canvas as canvas_mod
+        if explicit_bg and QColor(explicit_bg.strip()).isValid():
+            bg = QColor(explicit_bg.strip()).name()
+            fg = QColor(explicit_fg.strip()).name() if explicit_fg and QColor(explicit_fg.strip()).isValid() else ""
+            available = True
+        else:
+            bg, fg, available = self.resolve_site_colors(site_url)
+
+        pal = canvas_mod.site_surface_palette(bg, fg)
+        bg = pal["bg"]
         self._canvas_bg_color = bg
+        self._surface_palette = pal
+
         if hasattr(self, "_canvas_scroll"):
             self._canvas_scroll.setStyleSheet(f"QScrollArea#CanvasWell {{ background: {bg}; border: none; }}")
         if hasattr(self, "_canvas_host"):
             self._canvas_host.setStyleSheet(f"QWidget#CanvasWell {{ background: {bg}; }}")
-        if hasattr(self, "body") and hasattr(self.body, "canvas"):
-            self.body.canvas._ruler_color = ruler
-            self.body.canvas.viewport().update()
+        if hasattr(self, "page_card"):
+            if self.page_card.property("textView") is None:
+                self.page_card.setProperty("textView", False)
+            self.page_card.setStyleSheet(
+                f'QFrame#PageCard[textView="false"] {{ background: {bg}; border-radius: 6px; }}'
+                'QFrame#PageCard[textView="true"] { background: #141914; border: 1px solid #2b3a29; border-radius: 6px; }'
+            )
+        if hasattr(self, "page_eyebrow"):
+            self.page_eyebrow.setStyleSheet(
+                f"QLabel#PageEyebrow {{ background: transparent; color: {pal['eyebrow']};"
+                " font-size: 11px; font-weight: 700; letter-spacing: 1.4px; }"
+            )
+        if hasattr(self, "title_edit"):
+            self.title_edit.setStyleSheet(
+                f"QLineEdit#PageTitle {{ background: transparent; color: {pal['heading']}; border: none;"
+                " padding: 2px 0px; font-size: 26px; font-weight: 800; }"
+            )
+            tp = self.title_edit.palette()
+            tp.setColor(QPalette.PlaceholderText, QColor(pal["placeholder"]))
+            tp.setColor(QPalette.Text, QColor(pal["heading"]))
+            self.title_edit.setPalette(tp)
+        if hasattr(self, "page_meta"):
+            self.page_meta.setStyleSheet(
+                f"QLabel#PageMeta {{ background: transparent; color: {pal['muted']}; font-size: 12px; }}"
+            )
+        if hasattr(self, "site_colors_note"):
+            self.site_colors_note.setStyleSheet(
+                f"QLabel#SiteColorsNote {{ background: transparent; color: {pal['muted']}; font-size: 11px; font-style: italic; }}"
+            )
+            self.site_colors_note.setVisible(not available)
+        if hasattr(self, "gutter_tag"):
+            self.gutter_tag.setStyleSheet(
+                f"QLabel#BlockGutterTag {{ background: transparent; color: {pal['eyebrow']};"
+                " font-size: 10px; font-weight: 700; letter-spacing: 0.8px; }"
+            )
+        if hasattr(self, "body") and hasattr(self.body, "apply_surface_palette"):
+            self.body.apply_surface_palette(pal)
         return bg
 
     def _fit_page_card_width(self):
@@ -733,8 +790,12 @@ class TakeMode(QWidget):
             if site.startswith(prefix):
                 site = site[len(prefix):]
         site = site.rstrip("/") or "local draft"
-        blocks = self.body.canvas.document().blockCount() if self.body.is_biggie() else len(
-            [ln for ln in self.body.editor.toPlainText().splitlines() if ln.strip()])
+        if self.body.is_biggie():
+            doc = self.body.canvas.document()
+            plain = self.body.canvas.toPlainText()
+            blocks = 0 if (doc.blockCount() <= 1 and not plain.strip() and "\ufffc" not in plain) else doc.blockCount()
+        else:
+            blocks = len([ln for ln in self.body.editor.toPlainText().splitlines() if ln.strip()])
         from datetime import date
         self.page_meta.setText(f"{date.today().isoformat()} · {site} · {blocks} block{'s' if blocks != 1 else ''}")
         if hasattr(self, "page_state_lbl"):
@@ -1358,6 +1419,135 @@ class TakeMode(QWidget):
         paths = pick_images(self, (self.app_config() or {}).get("url", ""))
         self._add_photo_paths(paths, insert=False)
 
+    def _build_open_published_dialog(self, posts: list):
+        ordered = sorted(
+            list(posts or []),
+            key=lambda p: (
+                str(p.get("created_at") or p.get("updated_at") or ""),
+                int(p.get("id") or 0),
+            ),
+            reverse=True,
+        )
+        truncated = len(ordered) >= 500
+        shown = ordered[:500] if len(ordered) > 500 else ordered
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Open a published post")
+        dialog.resize(740, 580)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(hint("Choose a post (newest first). COLD SNAP will load its saved bucket and keep its original date."))
+
+        filter_row = QHBoxLayout()
+        search_box = QLineEdit()
+        search_box.setPlaceholderText("Search by title, slug, status, or date…")
+        filter_row.addWidget(search_box, 1)
+
+        min_date = QDate(1900, 1, 1)
+        filter_row.addWidget(QLabel("From:"))
+        from_date = QDateEdit()
+        from_date.setCalendarPopup(True)
+        from_date.setDisplayFormat("yyyy-MM-dd")
+        from_date.setMinimumDate(min_date)
+        from_date.setSpecialValueText(" ")
+        from_date.setDate(min_date)
+        filter_row.addWidget(from_date)
+
+        filter_row.addWidget(QLabel("To:"))
+        to_date = QDateEdit()
+        to_date.setCalendarPopup(True)
+        to_date.setDisplayFormat("yyyy-MM-dd")
+        to_date.setMinimumDate(min_date)
+        to_date.setSpecialValueText(" ")
+        to_date.setDate(min_date)
+        filter_row.addWidget(to_date)
+
+        clear_btn = QPushButton("Clear")
+        filter_row.addWidget(clear_btn)
+        layout.addLayout(filter_row)
+
+        count_lbl = hint("")
+        layout.addWidget(count_lbl)
+
+        trunc_note = hint(
+            f"Showing the newest {len(shown)} posts (server 500-post limit reached). "
+            "Use the search box or date range above to filter this list."
+        )
+        trunc_note.setVisible(truncated)
+        layout.addWidget(trunc_note)
+
+        choices = QListWidget()
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Open)
+        open_btn = buttons.button(QDialogButtonBox.Open)
+
+        def _bound_iso(de: QDateEdit) -> str:
+            if not de.lineEdit().text().strip() or de.date() <= min_date:
+                return ""
+            return de.date().toString("yyyy-MM-dd")
+
+        def _populate(*_args):
+            q = str(search_box.text() or "").strip().lower()
+            from_iso = _bound_iso(from_date)
+            to_iso = _bound_iso(to_date)
+            choices.clear()
+            matched = 0
+            for post in shown:
+                title = str(post.get("title") or "Untitled")
+                slug = str(post.get("slug") or "")
+                status = str(post.get("status") or "draft")
+                created_iso = str(post.get("created_at") or "")[:10]
+                date_str = created_iso or str(post.get("updated_at") or "")[:10]
+                if from_iso and (not created_iso or created_iso < from_iso):
+                    continue
+                if to_iso and (not created_iso or created_iso > to_iso):
+                    continue
+                hay = f"{date_str} {title} {slug} {status}".lower()
+                if q and q not in hay:
+                    continue
+                label = f"{date_str}   {title}   [{status}]"
+                item = QListWidgetItem(label)
+                item.setData(Qt.UserRole, int(post.get("id") or 0))
+                choices.addItem(item)
+                matched += 1
+            count_lbl.setText(f"Showing {matched} of {len(shown)} posts")
+            if matched:
+                choices.setCurrentRow(0)
+                if open_btn is not None:
+                    open_btn.setEnabled(True)
+            else:
+                empty = QListWidgetItem("No posts in this range")
+                empty.setFlags(Qt.NoItemFlags)
+                choices.addItem(empty)
+                if open_btn is not None:
+                    open_btn.setEnabled(False)
+
+        def _reset_filters():
+            search_box.clear()
+            from_date.setDate(min_date)
+            to_date.setDate(min_date)
+            _populate()
+
+        _populate()
+        search_box.textChanged.connect(_populate)
+        from_date.dateChanged.connect(_populate)
+        to_date.dateChanged.connect(_populate)
+        clear_btn.clicked.connect(_reset_filters)
+        layout.addWidget(choices, 1)
+
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        choices.itemDoubleClicked.connect(
+            lambda item: dialog.accept() if (item.flags() & Qt.ItemIsEnabled) else None
+        )
+        layout.addWidget(buttons)
+        dialog._search_box = search_box
+        dialog._from_date = from_date
+        dialog._to_date = to_date
+        dialog._clear_btn = clear_btn
+        dialog._count_lbl = count_lbl
+        dialog._choices = choices
+        dialog._trunc_note = trunc_note
+        return dialog
+
     def _open_published(self):
         poster, _url = self._poster_and_url()
         if poster is None:
@@ -1371,28 +1561,10 @@ class TakeMode(QWidget):
             QMessageBox.information(self, "No posts yet", "This site has no long-form posts to edit.")
             return
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Open a published post")
-        dialog.resize(720, 520)
-        layout = QVBoxLayout(dialog)
-        layout.addWidget(hint("Choose a post. COLD SNAP will load its saved bucket and keep its original date."))
-        choices = QListWidget()
-        for post in posts:
-            label = f"{str(post.get('created_at') or '')[:10]}   {post.get('title') or 'Untitled'}   [{post.get('status') or 'draft'}]"
-            item = QListWidgetItem(label)
-            item.setData(Qt.UserRole, int(post.get("id") or 0))
-            choices.addItem(item)
-        if choices.count():
-            choices.setCurrentRow(0)
-        layout.addWidget(choices, 1)
-        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Open)
-        buttons.accepted.connect(dialog.accept)
-        buttons.rejected.connect(dialog.reject)
-        choices.itemDoubleClicked.connect(lambda _item: dialog.accept())
-        layout.addWidget(buttons)
-        if dialog.exec() != QDialog.Accepted or not choices.currentItem():
+        dialog = self._build_open_published_dialog(posts)
+        if dialog.exec() != QDialog.Accepted or not dialog._choices.currentItem():
             return
-        post_id = int(choices.currentItem().data(Qt.UserRole) or 0)
+        post_id = int(dialog._choices.currentItem().data(Qt.UserRole) or 0)
         try:
             post = poster.get_post(post_id)
             draft = self._draft_from_remote(post)

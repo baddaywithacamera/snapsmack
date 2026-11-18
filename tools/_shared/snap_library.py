@@ -262,18 +262,27 @@ def sync_from_sybu_data(site: str, payload: dict) -> dict:
         conn.close()
 
 
-def set_site_bg(site: str, bg_color: str) -> None:
-    """Persist the site's resolved page background colour into meta."""
+def set_site_colors(site: str, bg_color: str = "", fg_color: str = "") -> None:
+    """Persist the site's resolved page background and text colours into meta."""
     bg = str(bg_color or "").strip()
-    if not site or not bg:
+    fg = str(fg_color or "").strip()
+    if not site or (not bg and not fg):
         return
     conn = _connect(site)
     try:
         with conn:
             conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('site_url', ?)", (str(site),))
-            conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('site_bg', ?)", (bg,))
+            if bg:
+                conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('site_bg', ?)", (bg,))
+            if fg:
+                conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('site_fg', ?)", (fg,))
     finally:
         conn.close()
+
+
+def set_site_bg(site: str, bg_color: str) -> None:
+    """Persist the site's resolved page background colour into meta."""
+    set_site_colors(site, bg_color=bg_color)
 
 
 # ── Read (offline, at enrich time) ───────────────────────────────────────────

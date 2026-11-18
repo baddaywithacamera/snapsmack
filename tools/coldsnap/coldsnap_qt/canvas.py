@@ -30,7 +30,7 @@ import re
 
 from PySide6.QtCore import Qt, QRect, QRectF, QSize, QSizeF, QTimer, Signal
 from PySide6.QtGui import (
-    QColor, QFont, QPainter, QPen, QPixmap, QPixmapCache, QTextBlockFormat,
+    QColor, QFont, QPainter, QPalette, QPen, QPixmap, QPixmapCache, QTextBlockFormat,
     QTextCharFormat, QTextCursor, QTextFormat, QTextFrameFormat, QTextLength,
     QTextListFormat, QTextTableFormat, QPyTextObject, QAction, QKeySequence,
     QImageReader, QImageIOHandler, QShortcut,
@@ -299,6 +299,10 @@ class _Objects(QPyTextObject):
         m = re.search(r"background\s*:\s*(#[0-9a-fA-F]{3,8})", ss)
         if m:
             bg = QColor(m.group(1))
+        if bg is None or not bg.isValid():
+            pal = getattr(self.canvas, "_surface_palette", None)
+            if pal:
+                return pal["outline"], pal["fg"]
         if bg is None or not bg.isValid():
             bg = self.canvas.palette().color(self.canvas.viewport().backgroundRole())
         if not bg.isValid():
@@ -658,6 +662,68 @@ _SIZE_CACHE = {}
 
 
 # ── the canvas ───────────────────────────────────────────────────────────────
+def _rel_luminance(c: QColor) -> float:
+    def _lin(ch: int) -> float:
+        s = ch / 255.0
+        return s / 12.92 if s <= 0.03928 else ((s + 0.055) / 1.055) ** 2.4
+    return 0.2126 * _lin(c.red()) + 0.7152 * _lin(c.green()) + 0.0722 * _lin(c.blue())
+
+
+def compute_contrast_ratio(c1: QColor, c2: QColor) -> float:
+    """Return WCAG 2.1 contrast ratio (>= 1.0) between two QColors."""
+    l1 = _rel_luminance(c1)
+    l2 = _rel_luminance(c2)
+    hi, lo = max(l1, l2), min(l1, l2)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def site_surface_palette(bg_hex: str, fg_hex: str = "") -> dict:
+    """Derive a WCAG-contrasting editor palette for a site background colour."""
+    bg_c = QColor(str(bg_hex or "").strip())
+    if not bg_c.isValid():
+        bg_c = QColor("#ffffff")
+    bg = bg_c.name()
+    light_bg = _rel_luminance(bg_c) >= 0.179
+
+    fg_c = QColor(str(fg_hex or "").strip()) if fg_hex else QColor()
+    if fg_c.isValid() and compute_contrast_ratio(bg_c, fg_c) >= 4.5:
+        fg = fg_c.name()
+    else:
+        dark_cand = QColor("#1a1a1a")
+        light_cand = QColor("#f0f2f0")
+        fg = dark_cand.name() if compute_contrast_ratio(bg_c, dark_cand) >= compute_contrast_ratio(bg_c, light_cand) else light_cand.name()
+
+    if light_bg:
+        return {
+            "bg": bg,
+            "fg": fg,
+            "heading": "#111111" if compute_contrast_ratio(bg_c, QColor("#111111")) >= 4.5 else fg,
+            "muted": "#555555" if compute_contrast_ratio(bg_c, QColor("#555555")) >= 4.5 else fg,
+            "eyebrow": "#1e6610" if compute_contrast_ratio(bg_c, QColor("#1e6610")) >= 4.5 else fg,
+            "pullquote": "#1e6610" if compute_contrast_ratio(bg_c, QColor("#1e6610")) >= 4.5 else fg,
+            "link": "#1a5fb4",
+            "selection_bg": "#c8f5be",
+            "selection_fg": "#111111",
+            "placeholder": "#666666" if compute_contrast_ratio(bg_c, QColor("#666666")) >= 3.0 else fg,
+            "outline": "#444444",
+            "ruler": "#333333",
+        }
+    return {
+        "bg": bg,
+        "fg": fg,
+        "heading": "#ffffff" if compute_contrast_ratio(bg_c, QColor("#ffffff")) >= 4.5 else fg,
+        "muted": "#b4beb4" if compute_contrast_ratio(bg_c, QColor("#b4beb4")) >= 4.5 else fg,
+        "eyebrow": "#76ff03" if compute_contrast_ratio(bg_c, QColor("#76ff03")) >= 4.5 else fg,
+        "pullquote": "#8cff5a" if compute_contrast_ratio(bg_c, QColor("#8cff5a")) >= 4.5 else fg,
+        "link": "#7ab8ff",
+        "selection_bg": "#295a1e",
+        "selection_fg": "#ffffff",
+        "placeholder": "#9aa39b" if compute_contrast_ratio(bg_c, QColor("#9aa39b")) >= 3.0 else fg,
+        "outline": "#9aa39b",
+        "ruler": "#9aa39b",
+    }
+
+
 class BiggieCanvas(QTextEdit):
     """One writing surface. See module docstring."""
 
@@ -699,10 +765,8 @@ class BiggieCanvas(QTextEdit):
         self._gutter_grip_rects = {}
         self._obj_close_rects = {}
         self._ruler_color = theme.DIM
-        self.setStyleSheet(
-            "QTextEdit#BiggieCanvas { background: #ffffff; color: #1a1a1a;"
-            " border: none; padding: 6px 0px; selection-background-color: #c8f5be;"
-            " selection-color: #111111; }")
+        self._surface_palette = site_surface_palette("#ffffff", "#1a1a1a")
+        self.apply_surface_palette(self._surface_palette)
         base = QFont("Georgia")
         base.setPointSizeF(12.5)
         self.setFont(base)
@@ -783,33 +847,82 @@ class BiggieCanvas(QTextEdit):
             return None
         return None
 
+    def apply_surface_palette(self, pal: dict):
+        """Apply site background and contrasting text/selection/placeholder colours."""
+        self._surface_palette = dict(pal)
+        self._ruler_color = pal["ruler"]
+        self.setStyleSheet(
+            f"QTextEdit#BiggieCanvas {{ background: {pal['bg']}; color: {pal['fg']};"
+            f" border: none; padding: 6px 0px; selection-background-color: {pal['selection_bg']};"
+            f" selection-color: {pal['selection_fg']}; }}")
+        vp = self.viewport()
+        vp.setAutoFillBackground(True)
+        vp.setStyleSheet(f"background: {pal['bg']}; color: {pal['fg']};")
+        p = self.palette()
+        p.setColor(QPalette.Base, QColor(pal["bg"]))
+        p.setColor(QPalette.Window, QColor(pal["bg"]))
+        p.setColor(QPalette.Text, QColor(pal["fg"]))
+        p.setColor(QPalette.WindowText, QColor(pal["fg"]))
+        p.setColor(QPalette.PlaceholderText, QColor(pal["placeholder"]))
+        p.setColor(QPalette.Link, QColor(pal["link"]))
+        self.setPalette(p)
+        self._recolor_existing_blocks()
+        self.viewport().update()
+
+    def _recolor_existing_blocks(self):
+        """Refresh block foreground colours when switching between light and dark sites."""
+        doc = self.document()
+        if doc is None:
+            return
+        cur = QTextCursor(doc)
+        cur.beginEditBlock()
+        blk = doc.begin()
+        while blk.isValid():
+            ud = blk.userData()
+            kind = getattr(ud, "kind", "p") if ud is not None else "p"
+            col_key = {
+                "h2": "heading",
+                "h3": "heading",
+                "quote": "muted",
+                "pullquote": "pullquote",
+            }.get(kind, "fg")
+            c = QTextCursor(blk)
+            c.select(QTextCursor.BlockUnderCursor)
+            fmt = QTextCharFormat()
+            fmt.setForeground(QColor(self._surface_palette[col_key]))
+            c.mergeCharFormat(fmt)
+            c.setBlockCharFormat(fmt)
+            blk = blk.next()
+        cur.endEditBlock()
+
     # -- block kinds ----------------------------------------------------------
     def _char_format_for(self, kind: str) -> QTextCharFormat:
+        pal = self._surface_palette
         f = QTextCharFormat()
         base = self.document().defaultFont()
         font = QFont(base)
-        f.setForeground(QColor("#1a1a1a"))
+        f.setForeground(QColor(pal["fg"]))
         if kind == "h2":
             font = QFont(theme.FONT)
             font.setPointSizeF(20.0)
             font.setBold(True)
-            f.setForeground(QColor("#111111"))
+            f.setForeground(QColor(pal["heading"]))
         elif kind == "h3":
             font = QFont(theme.FONT)
             font.setPointSizeF(15.5)
             font.setBold(True)
-            f.setForeground(QColor("#1a1a1a"))
+            f.setForeground(QColor(pal["heading"]))
         elif kind == "quote":
             font.setItalic(True)
-            f.setForeground(QColor("#444444"))
+            f.setForeground(QColor(pal["muted"]))
         elif kind == "pullquote":
             font.setPointSizeF(base.pointSizeF() * 1.25)
             font.setItalic(True)
-            f.setForeground(QColor("#1e6610"))
+            f.setForeground(QColor(pal["pullquote"]))
         elif kind == "raw":
             font = QFont("Consolas")
             font.setPointSizeF(11.0)
-            f.setForeground(QColor("#222222"))
+            f.setForeground(QColor(pal["fg"]))
         f.setFont(font)
         return f
 

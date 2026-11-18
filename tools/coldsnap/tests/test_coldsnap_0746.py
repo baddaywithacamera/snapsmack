@@ -86,8 +86,8 @@ def test_canvas_background_follows_site_and_contrasts_rulers():
     assert take.body.canvas._ruler_color == "#333333"
 
     bg_fallback = take.apply_canvas_background(site_url="")
-    assert bg_fallback == theme.BG
-    assert take.body.canvas._ruler_color == theme.DIM
+    assert bg_fallback == "#ffffff"
+    assert take.body.canvas._ruler_color == "#333333"
 
     # Zoom clamping & slider sync
     take._set_page_zoom(130)

@@ -121,7 +121,7 @@ class PhotoThumbTile(QPushButton):
 
         w, h = self.width(), self.height()
         rect = QRect(1, 1, w - 2, h - 2)
-        p.fillRect(self.rect(), QColor(theme.FIELD_BG))
+        p.fillRect(self.rect(), QColor(theme.FIELD))
 
         if not self._pixmap.isNull():
             scaled = self._pixmap.scaled(
@@ -181,7 +181,7 @@ class PhotoThumbTile(QPushButton):
             p.drawText(ver_rect, Qt.AlignCenter, "v2")
 
         # Selection / hover border
-        border_col = QColor(theme.ACCENT if self._selected else theme.FIELD_EDGE)
+        border_col = QColor(theme.ACCENT if self._selected else theme.BORDER)
         border_w = 2 if self._selected else 1
         p.setPen(QPen(border_col, border_w))
         p.setBrush(Qt.NoBrush)

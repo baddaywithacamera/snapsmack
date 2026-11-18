@@ -339,9 +339,8 @@ class SumnaConnection:
             return MODE_UNKNOWN, True, "couldn't verify mode (server didn't report site_mode)"
         return MODE_UNKNOWN, False, locals().get("last", "unreachable")
 
-    def fetch_site_bg(self, timeout: int = 8) -> str:
-        """Resolve the target site's page background colour (#rrggbb) from
-        sybu-data.php or the site's public HTML / skin CSS. Returns '' if unknown."""
+    def fetch_site_colors(self, timeout: int = 8) -> Tuple[str, str]:
+        """Resolve (bg_hex, fg_hex) for the target site from its HTML / skin CSS."""
         from urllib.parse import urljoin
 
         def _norm_color(val: str) -> str:
@@ -356,38 +355,64 @@ class SumnaConnection:
                 return f"#{r:02x}{g:02x}{b:02x}"
             return ""
 
-        def _extract_from_css(css: str) -> str:
+        def _resolve_var(raw: str, vars_map: dict) -> str:
+            vm = re.match(r"var\(\s*(--[a-zA-Z0-9_-]+)(?:\s*,\s*([^)]+))?\s*\)", raw)
+            if vm:
+                return vars_map.get(vm.group(1), vm.group(2) or "")
+            return raw
+
+        def _extract_from_css(css: str) -> Tuple[str, str]:
             vars_map = {}
             for k, v in re.findall(r"(--[a-zA-Z0-9_-]+)\s*:\s*([^;}\n]+)", css):
                 vars_map[k.strip()] = v.strip()
+            bg, fg = "", ""
             for block in re.findall(r"(?:^|[}\s])(?:html\s*,\s*)?body\s*\{([^}]+)\}", css, re.IGNORECASE):
-                for prop in ("background-color", "background"):
-                    m = re.search(rf"{prop}\s*:\s*([^;!\n]+)", block, re.IGNORECASE)
+                if not bg:
+                    for prop in ("background-color", "background"):
+                        m = re.search(rf"{prop}\s*:\s*([^;!\n]+)", block, re.IGNORECASE)
+                        if m:
+                            raw = _resolve_var(m.group(1).strip(), vars_map)
+                            token = raw.split()[0] if raw else ""
+                            c = _norm_color(token)
+                            if c:
+                                bg = c
+                                break
+                if not fg:
+                    m = re.search(r"(?:^|;|\s)color\s*:\s*([^;!\n]+)", block, re.IGNORECASE)
                     if m:
-                        raw = m.group(1).strip()
-                        vm = re.match(r"var\(\s*(--[a-zA-Z0-9_-]+)(?:\s*,\s*([^)]+))?\s*\)", raw)
-                        if vm:
-                            raw = vars_map.get(vm.group(1), vm.group(2) or "")
+                        raw = _resolve_var(m.group(1).strip(), vars_map)
                         token = raw.split()[0] if raw else ""
                         c = _norm_color(token)
                         if c:
-                            return c
-            for vname in ("--bg-primary", "--page-bg", "--canvas-bg", "--bg", "--background"):
-                if vname in vars_map:
-                    c = _norm_color(vars_map[vname])
-                    if c:
-                        return c
-            return ""
+                            fg = c
+            if not bg:
+                for vname in ("--bg-primary", "--page-bg", "--canvas-bg", "--bg", "--background"):
+                    if vname in vars_map:
+                        c = _norm_color(vars_map[vname])
+                        if c:
+                            bg = c
+                            break
+            if not fg:
+                for vname in ("--text-primary", "--text", "--fg", "--foreground", "--body-color"):
+                    if vname in vars_map:
+                        c = _norm_color(vars_map[vname])
+                        if c:
+                            fg = c
+                            break
+            return bg, fg
 
+        best_bg, best_fg = "", ""
         try:
             r = self.session.get(f"{self.base_url}/", timeout=timeout)
             if r.status_code != 200:
-                return ""
+                return "", ""
             html = r.text or ""
             for style in re.findall(r"<style[^>]*>(.*?)</style>", html, re.IGNORECASE | re.DOTALL):
-                c = _extract_from_css(style)
-                if c:
-                    return c
+                b, f = _extract_from_css(style)
+                best_bg = best_bg or b
+                best_fg = best_fg or f
+                if best_bg and best_fg:
+                    return best_bg, best_fg
             hrefs = re.findall(
                 r"""<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']""",
                 html, re.IGNORECASE,
@@ -397,14 +422,20 @@ class SumnaConnection:
                 try:
                     cr = self.session.get(css_url, timeout=timeout)
                     if cr.status_code == 200:
-                        c = _extract_from_css(cr.text or "")
-                        if c:
-                            return c
+                        b, f = _extract_from_css(cr.text or "")
+                        best_bg = best_bg or b
+                        best_fg = best_fg or f
+                        if best_bg and best_fg:
+                            return best_bg, best_fg
                 except requests.RequestException:
                     continue
         except requests.RequestException:
-            return ""
-        return ""
+            return best_bg, best_fg
+        return best_bg, best_fg
+
+    def fetch_site_bg(self, timeout: int = 8) -> str:
+        """Resolve the target site's page background colour (#rrggbb)."""
+        return self.fetch_site_colors(timeout=timeout)[0]
 
 
 # ---------------------------------------------------------------------------
@@ -833,11 +864,22 @@ class SmacktalkPoster:
             payload["page_id"] = int(draft.remote_post_id)
         return payload
 
-    def list_posts(self, limit: int = 100) -> list:
+    def list_posts(self, limit: int = 500, offset: int = 0) -> list:
+        params = {"limit": max(1, min(500, int(limit)))}
+        if int(offset or 0) > 0:
+            params["offset"] = int(offset)
         r = self.session.get(self._route("smackpress/posts"),
-                             params={"limit": max(1, min(500, int(limit)))}, timeout=30)
+                             params=params, timeout=30)
         r.raise_for_status()
-        return list(r.json().get("posts") or [])
+        posts = list(r.json().get("posts") or [])
+        posts.sort(
+            key=lambda p: (
+                str(p.get("created_at") or p.get("updated_at") or ""),
+                int(p.get("id") or 0),
+            ),
+            reverse=True,
+        )
+        return posts
 
     def list_pages(self, limit: int = 500) -> list:
         r = self.session.get(self._route("smackpress/pages"),

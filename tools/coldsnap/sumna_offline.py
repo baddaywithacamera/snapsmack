@@ -31,6 +31,7 @@ first; SMACK YOUR BATCH UP (longform) is deferred.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
+import hashlib
 import json
 import os
 import shutil
@@ -45,11 +46,13 @@ try:
     # Shared, build-once thumbnailer (tools/_shared/snap_thumbs.py). On the
     # frozen exe it is bundled flat next to this module; in dev it lives one
     # directory up under _shared/. Try both.
+    import snap_home
     import snap_thumbs
 except ImportError:  # pragma: no cover - import shim for dev tree
     _shared = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '_shared')
     if _shared not in sys.path:
         sys.path.insert(0, _shared)
+    import snap_home
     import snap_thumbs
 
 
@@ -651,7 +654,21 @@ def _app_dir() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
-SESSIONS_ROOT = os.path.join(_app_dir(), "sob_sessions")
+def legacy_sessions_root() -> str:
+    """Old install-relative sob_sessions directory (0.7.45–0.7.51)."""
+    return os.path.join(_app_dir(), "sob_sessions")
+
+
+def default_sessions_root() -> str:
+    """Persistent per-user sessions directory OUTSIDE the install directory."""
+    try:
+        return os.path.join(snap_home.shared_library(), "coldsnap", "sob_sessions")
+    except Exception:  # pragma: no cover - fallback if snap_home unavailable
+        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+        return os.path.join(base, "SnapSmack", "coldsnap", "sob_sessions")
+
+
+SESSIONS_ROOT = default_sessions_root()
 
 
 class Session:
@@ -803,10 +820,10 @@ class Session:
 
 
 class SessionStore:
-    """Discovery + lifecycle for sessions under SESSIONS_ROOT."""
+    """Discovery + lifecycle for sessions under default_sessions_root()."""
 
-    def __init__(self, root: str = SESSIONS_ROOT):
-        self.root = root
+    def __init__(self, root: Optional[str] = None):
+        self.root = root if root is not None else default_sessions_root()
         os.makedirs(self.root, exist_ok=True)
 
     def create(self, name: str, mode: str) -> Session:
@@ -984,6 +1001,189 @@ def _rebase_session_images(session: Session) -> None:
                     changed = True
         if changed:
             session.save_draft(d)
+
+
+def _sha256_file(path: str) -> str:
+    """Return lowercase hex SHA-256 of a file."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(65536)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
+
+
+_MIGRATION_RECEIPT_FILE = ".migration_receipt.json"
+
+
+def _load_migration_receipt(session_dir: str) -> dict:
+    path = os.path.join(session_dir, _MIGRATION_RECEIPT_FILE)
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_migration_receipt(session_dir: str, receipt: dict) -> None:
+    path = os.path.join(session_dir, _MIGRATION_RECEIPT_FILE)
+    os.makedirs(session_dir, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(receipt, f, indent=2, sort_keys=True)
+
+
+def migrate_sessions_dir(
+    src_root: str,
+    dest_root: str,
+    log_path: Optional[str] = None,
+) -> dict:
+    """Copy sessions from src_root into dest_root with per-file SHA-256 verification.
+
+    Never deletes or modifies anything in src_root. Idempotent: identical files
+    and previously migrated-and-rebased drafts recorded in .migration_receipt.json
+    are skipped with zero conflicts; differing destination files are logged as
+    conflicts and left untouched.
+    """
+    result = {
+        "migrated": [],
+        "skipped_identical": [],
+        "conflicts": [],
+        "sessions_touched": [],
+        "log_path": "",
+    }
+    if not src_root or not os.path.isdir(src_root):
+        return result
+    if os.path.abspath(src_root) == os.path.abspath(dest_root):
+        return result
+
+    os.makedirs(dest_root, exist_ok=True)
+    log_lines: List[str] = []
+
+    for sid in sorted(os.listdir(src_root)):
+        src_session = os.path.join(src_root, sid)
+        if not os.path.isdir(src_session):
+            continue
+        if not (os.path.isfile(os.path.join(src_session, "session.json"))
+                or os.path.isdir(os.path.join(src_session, "drafts"))):
+            continue
+
+        dest_session = os.path.join(dest_root, sid)
+        receipt = _load_migration_receipt(dest_session)
+        copied_rels: List[Tuple[str, str]] = []
+        for root_dir, _, files in os.walk(src_session):
+            for fn in sorted(files):
+                if fn == _MIGRATION_RECEIPT_FILE:
+                    continue
+                src_file = os.path.join(root_dir, fn)
+                rel = os.path.relpath(src_file, src_session).replace("\\", "/")
+                dst_file = os.path.join(dest_session, os.path.relpath(src_file, src_session))
+                src_hash = _sha256_file(src_file)
+                if os.path.isfile(dst_file):
+                    dst_hash = _sha256_file(dst_file)
+                    rec = receipt.get(rel) or {}
+                    already_rebased = (
+                        rec.get("src_sha256") == src_hash
+                        and rec.get("dst_sha256") == dst_hash
+                    )
+                    if dst_hash == src_hash or already_rebased:
+                        result["skipped_identical"].append({"session_id": sid, "rel_path": rel, "sha256": dst_hash})
+                    else:
+                        result["conflicts"].append({"session_id": sid, "rel_path": rel,
+                                                    "src_sha256": src_hash, "dst_sha256": dst_hash})
+                        log_lines.append(f"[{_now_iso()}] CONFLICT {sid}/{rel} src={src_hash} dst={dst_hash}")
+                    continue
+
+                os.makedirs(os.path.dirname(dst_file), exist_ok=True)
+                shutil.copy2(src_file, dst_file)
+                dst_hash = _sha256_file(dst_file)
+                if dst_hash != src_hash:
+                    raise IOError(f"Migration hash mismatch for {sid}/{rel}: {src_hash} != {dst_hash}")
+                result["migrated"].append({"session_id": sid, "rel_path": rel, "sha256": dst_hash})
+                log_lines.append(f"[{_now_iso()}] COPIED {sid}/{rel} sha256={dst_hash}")
+                copied_rels.append((rel, src_hash))
+
+        if copied_rels:
+            result["sessions_touched"].append(sid)
+            store = SessionStore(dest_root)
+            s = store.load(sid)
+            if s is not None:
+                _rebase_session_images(s)
+            for rel, src_hash in copied_rels:
+                dst_file = os.path.join(dest_session, rel.replace("/", os.sep))
+                if os.path.isfile(dst_file):
+                    receipt[rel] = {
+                        "src_sha256": src_hash,
+                        "dst_sha256": _sha256_file(dst_file),
+                    }
+            _save_migration_receipt(dest_session, receipt)
+
+    if log_lines:
+        target_log = log_path or os.path.join(dest_root, "migration.log")
+        os.makedirs(os.path.dirname(target_log), exist_ok=True)
+        with open(target_log, "a", encoding="utf-8") as f:
+            f.write("\n".join(log_lines) + "\n")
+        result["log_path"] = target_log
+
+    return result
+
+
+def discover_backup_sessions(
+    backup_parent: Optional[str] = None,
+    dest_root: Optional[str] = None,
+) -> List[dict]:
+    """Read-only scan of coldsnap-backup-* folders for unimported draft sessions."""
+    parent = backup_parent if backup_parent is not None else os.path.dirname(_app_dir())
+    dest = dest_root if dest_root is not None else default_sessions_root()
+    if not parent or not os.path.isdir(parent):
+        return []
+
+    found: List[dict] = []
+    for entry in sorted(os.listdir(parent)):
+        if not entry.startswith("coldsnap-backup-"):
+            continue
+        bk_dir = os.path.join(parent, entry)
+        sess_root = os.path.join(bk_dir, "sob_sessions")
+        if not os.path.isdir(sess_root):
+            continue
+        bk_store = SessionStore(sess_root)
+        for s in bk_store.list():
+            drafts = s.list_drafts()
+            if not drafts:
+                continue
+            dest_session = os.path.join(dest, s.session_id)
+            receipt = _load_migration_receipt(dest_session)
+            unimported = []
+            for d in drafts:
+                rel = f"drafts/{d.draft_id}.json"
+                src_file = os.path.join(s.drafts_dir, f"{d.draft_id}.json")
+                dst_file = os.path.join(dest_session, "drafts", f"{d.draft_id}.json")
+                if not os.path.isfile(dst_file):
+                    unimported.append(d)
+                    continue
+                src_hash = _sha256_file(src_file)
+                dst_hash = _sha256_file(dst_file)
+                rec = receipt.get(rel) or {}
+                if dst_hash != src_hash and not (
+                    rec.get("src_sha256") == src_hash and rec.get("dst_sha256") == dst_hash
+                ):
+                    unimported.append(d)
+            if not unimported:
+                continue
+            found.append({
+                "backup_dir": bk_dir,
+                "backup_name": entry,
+                "sessions_root": sess_root,
+                "session_id": s.session_id,
+                "session_name": s.name,
+                "draft_count": len(unimported),
+                "draft_titles": [d.title or d.draft_id for d in unimported],
+            })
+    return found
 
 
 # ---------------------------------------------------------------------------
