@@ -741,7 +741,7 @@ class CloudSyncPage(QWidget):
                     "dst_client": dst_client, "src_client": src_client}
 
         run_in_thread(self.relay, work, self._on_cleanup_confirm,
-                      lambda exc: self._on_cleanup_done({"ok": False, "error": str(exc), "paths": paths}))
+                      lambda exc: self._on_audit_error(str(exc)))
 
     def _on_cleanup_confirm(self, payload: dict):
         import b2_integrity as bi
@@ -772,6 +772,12 @@ class CloudSyncPage(QWidget):
     def _end_cleanup(self):
         self._busy = False
         self.run_btn.setEnabled(True); self.audit_btn.setEnabled(True); self.cancel_btn.setEnabled(False)
+
+    def _on_audit_error(self, error: str):
+        self._end_cleanup()
+        self.progress.setValue(0)
+        self._append_log(f"✗ Audit failed: {error}")
+        set_status(self.status, "Audit failed", "bad")
 
 
 HELP_TOPICS = [

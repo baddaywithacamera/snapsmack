@@ -5272,8 +5272,7 @@ class CloudSyncTab(tk.Frame):
     def _audit_cleanup(self):
         """
         Inventory source and B2 destination, cross-reference by size,
-        show a confirmation summary, then delete bad versions and
-        re-transfer files with no good copy.
+        and write a read-only CSV audit report.
         """
         if self._busy:
             messagebox.showinfo("Busy", "Wait for the current sync to finish.")
@@ -5425,25 +5424,9 @@ class CloudSyncTab(tk.Frame):
         self._prog_bar.reset()
 
         if result.get("error"):
-            self._log.append(f"✗ Cleanup failed: {result['error']}")
+            self._log.append(f"✗ Audit failed: {result['error']}")
             return
-
-        d = result.get("deleted", 0)
-        r = result.get("replaced", 0)
-        f = result.get("failed", 0)
-        m = result.get("missing_from_source", 0)
-        paths = result.get("paths", {})
-
-        self._log.append(
-            f"{'✓' if f == 0 else '⚠'} Cleanup complete — "
-            f"{d} version(s) deleted, {r} file(s) re-transferred"
-            + (f", {f} failure(s)" if f else "")
-            + (f", {m} missing from source" if m else "")
-        )
-        if paths.get("cleanup_log"):
-            self._log.append(f"  Log: {paths['cleanup_log']}")
-        if paths.get("dedup_report"):
-            self._log.append(f"  Report: {paths['dedup_report']}")
+        self._log.append("✓ Audit complete (report-only).")
 
     # ------------------------------------------------------------------
     # Callbacks from _poll

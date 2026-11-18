@@ -332,6 +332,20 @@ def test_audit_confirm_then_cleanup(env, fake_engine, monkeypatch):
     assert page.run_btn.isEnabled() and page.audit_btn.isEnabled()
 
 
+def test_audit_error_reenables_ui(env, fake_engine, monkeypatch):
+    import b2_integrity as bi
+    make_job("AudErr")
+    monkeypatch.setattr(cs.cloud_module, "B2Client", lambda *a: "dst")
+    monkeypatch.setattr(cs, "_manifests_dir", lambda: str(env["tmp"] / "manifests"))
+    monkeypatch.setattr(bi, "inventory_b2", lambda c, log: (_ for _ in ()).throw(RuntimeError("b2 down")))
+
+    page = page_for()
+    page._audit_cleanup()
+    assert not page._busy
+    assert page.run_btn.isEnabled() and page.audit_btn.isEnabled()
+    assert "Audit failed: b2 down" in page.log.toPlainText()
+
+
 def test_help_topics_ported(env):
     titles = [t for t, _ in cs.CloudSyncPage(FakeWindow()).help_topics()]
     assert "Cloud Sync" in titles and "Audit B2" in titles
