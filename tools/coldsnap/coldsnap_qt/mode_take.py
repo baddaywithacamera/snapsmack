@@ -17,13 +17,13 @@ import uuid
 
 import requests
 
-from PySide6.QtCore import Qt, QRect, QSize, Signal, QTimer, QSettings
+from PySide6.QtCore import Qt, QDate, QRect, QSize, Signal, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
-    QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton, QSlider,
+    QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton, QSlider, QDateEdit,
 )
 
 import sumna_offline as O
@@ -1433,31 +1433,73 @@ class TakeMode(QWidget):
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Open a published post")
-        dialog.resize(720, 560)
+        dialog.resize(740, 580)
         layout = QVBoxLayout(dialog)
         layout.addWidget(hint("Choose a post (newest first). COLD SNAP will load its saved bucket and keep its original date."))
 
+        filter_row = QHBoxLayout()
         search_box = QLineEdit()
         search_box.setPlaceholderText("Search by title, slug, status, or date…")
-        layout.addWidget(search_box)
+        filter_row.addWidget(search_box, 1)
+
+        min_date = QDate(1900, 1, 1)
+        filter_row.addWidget(QLabel("From:"))
+        from_date = QDateEdit()
+        from_date.setCalendarPopup(True)
+        from_date.setDisplayFormat("yyyy-MM-dd")
+        from_date.setMinimumDate(min_date)
+        from_date.setSpecialValueText(" ")
+        from_date.setDate(min_date)
+        filter_row.addWidget(from_date)
+
+        filter_row.addWidget(QLabel("To:"))
+        to_date = QDateEdit()
+        to_date.setCalendarPopup(True)
+        to_date.setDisplayFormat("yyyy-MM-dd")
+        to_date.setMinimumDate(min_date)
+        to_date.setSpecialValueText(" ")
+        to_date.setDate(min_date)
+        filter_row.addWidget(to_date)
+
+        clear_btn = QPushButton("Clear")
+        filter_row.addWidget(clear_btn)
+        layout.addLayout(filter_row)
+
+        count_lbl = hint("")
+        layout.addWidget(count_lbl)
 
         trunc_note = hint(
             f"Showing the newest {len(shown)} posts (server 500-post limit reached). "
-            "Use the search box above to filter this list."
+            "Use the search box or date range above to filter this list."
         )
         trunc_note.setVisible(truncated)
         layout.addWidget(trunc_note)
 
         choices = QListWidget()
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Open)
+        open_btn = buttons.button(QDialogButtonBox.Open)
 
-        def _populate(query: str = ""):
-            q = str(query or "").strip().lower()
+        def _bound_iso(de: QDateEdit) -> str:
+            if not de.lineEdit().text().strip() or de.date() <= min_date:
+                return ""
+            return de.date().toString("yyyy-MM-dd")
+
+        def _populate(*_args):
+            q = str(search_box.text() or "").strip().lower()
+            from_iso = _bound_iso(from_date)
+            to_iso = _bound_iso(to_date)
             choices.clear()
+            matched = 0
             for post in shown:
                 title = str(post.get("title") or "Untitled")
                 slug = str(post.get("slug") or "")
                 status = str(post.get("status") or "draft")
-                date_str = str(post.get("created_at") or post.get("updated_at") or "")[:10]
+                created_iso = str(post.get("created_at") or "")[:10]
+                date_str = created_iso or str(post.get("updated_at") or "")[:10]
+                if from_iso and (not created_iso or created_iso < from_iso):
+                    continue
+                if to_iso and (not created_iso or created_iso > to_iso):
+                    continue
                 hay = f"{date_str} {title} {slug} {status}".lower()
                 if q and q not in hay:
                     continue
@@ -1465,19 +1507,43 @@ class TakeMode(QWidget):
                 item = QListWidgetItem(label)
                 item.setData(Qt.UserRole, int(post.get("id") or 0))
                 choices.addItem(item)
-            if choices.count():
+                matched += 1
+            count_lbl.setText(f"Showing {matched} of {len(shown)} posts")
+            if matched:
                 choices.setCurrentRow(0)
+                if open_btn is not None:
+                    open_btn.setEnabled(True)
+            else:
+                empty = QListWidgetItem("No posts in this range")
+                empty.setFlags(Qt.NoItemFlags)
+                choices.addItem(empty)
+                if open_btn is not None:
+                    open_btn.setEnabled(False)
 
-        _populate("")
+        def _reset_filters():
+            search_box.clear()
+            from_date.setDate(min_date)
+            to_date.setDate(min_date)
+            _populate()
+
+        _populate()
         search_box.textChanged.connect(_populate)
+        from_date.dateChanged.connect(_populate)
+        to_date.dateChanged.connect(_populate)
+        clear_btn.clicked.connect(_reset_filters)
         layout.addWidget(choices, 1)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Open)
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
-        choices.itemDoubleClicked.connect(lambda _item: dialog.accept())
+        choices.itemDoubleClicked.connect(
+            lambda item: dialog.accept() if (item.flags() & Qt.ItemIsEnabled) else None
+        )
         layout.addWidget(buttons)
         dialog._search_box = search_box
+        dialog._from_date = from_date
+        dialog._to_date = to_date
+        dialog._clear_btn = clear_btn
+        dialog._count_lbl = count_lbl
         dialog._choices = choices
         dialog._trunc_note = trunc_note
         return dialog
