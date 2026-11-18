@@ -82,11 +82,13 @@ function fp_inline_assets(string $html, string $root, array $assets, string $ski
 $hero = fp_photo($out, 1200, 800, 'current');
 $previous = fp_photo($out, 1200, 800, 'previous');
 $next = fp_photo($out, 1200, 800, 'next');
-$community = SnapTrustedHtml::__snapsmackCmsOnly(
+$community = snapsmack_trusted_html(
     '<section class="ss-community" data-image-id="42" aria-label="Community">'
     . '<div class="ss-community-bar"><button type="button" class="ss-like-btn" aria-label="Like this photograph">Like</button></div>'
     . '<ol class="ss-comment-list"><li class="ss-comment">Fixture comment</li></ol>'
-    . '<form class="ss-comment-form"><label>Comment<textarea name="comment"></textarea></label><button type="submit">Post comment</button></form>'
+    . '<form class="ss-comment-form" method="post" action="/">'
+    . '<input type="search" class="ss-comment-textarea" name="comment_text" placeholder="Add a comment..." aria-label="Comment">'
+    . '<button type="submit" class="ss-comment-submit">Post comment</button></form>'
     . '</section>'
 );
 $nav = [
