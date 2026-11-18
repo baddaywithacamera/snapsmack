@@ -1330,7 +1330,11 @@ class SuybWindow(QMainWindow):
                   "api_key": self.key_edit.text().strip(), "backup_dir": self.dir_edit.text().strip()})
         if not p["name"] or not p["site_url"]:
             QMessageBox.warning(self, "Missing details", "Profile name and site URL are required."); return
-        profile_manager.save_profile(p)
+        try:
+            profile_manager.save_profile(p)
+        except Exception as exc:
+            QMessageBox.critical(self, "Not saved", f"Profile was NOT saved:\n{exc}")
+            return
         if old_name and old_name != p["name"]:
             profile_manager.delete_profile(old_name)
         self._load_profiles(select=p["name"])

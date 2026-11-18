@@ -25,7 +25,7 @@ import base64
 import json
 import os
 import sys
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import secret_vault
 import config  # resolve_dir/resolve_file → shared C:\snapsmack layout
@@ -40,6 +40,10 @@ import sync_manager
 # on-disk tag (enc1: vs not) is self-describing, so a store can hold a mix during
 # migration and every value still decodes correctly.
 
+class UnreadableCredentialsError(RuntimeError):
+    """Raised when saving a profile whose stored sealed credentials could not be decrypted."""
+
+
 def _seal_pw(plain: str) -> str:
     if secret_vault.is_enabled():
         if not secret_vault.is_unlocked():
@@ -47,15 +51,21 @@ def _seal_pw(plain: str) -> str:
         return secret_vault.encrypt(plain or "")
     return _obfuscate(plain or "")
 
-def _open_pw(blob: str) -> str:
+def _open_pw_checked(blob: str) -> Tuple[str, bool]:
+    """Return (plaintext, unreadable). Never conflates corrupt/locked with absent."""
+    if not blob:
+        return "", False
     if secret_vault.is_encrypted(blob):
         if not secret_vault.is_unlocked():
-            return ""            # locked — cannot reveal
+            return "", True
         try:
-            return secret_vault.decrypt(blob)
+            return secret_vault.decrypt(blob), False
         except Exception:
-            return ""
-    return _deobfuscate(blob)    # legacy base64
+            return "", True
+    return _deobfuscate(blob), False
+
+def _open_pw(blob: str) -> str:
+    return _open_pw_checked(blob)[0]
 
 def _seal_key(plain: str) -> str:
     if secret_vault.is_enabled():
@@ -64,15 +74,21 @@ def _seal_key(plain: str) -> str:
         return secret_vault.encrypt(plain or "")
     return plain or ""           # legacy: api_key stored verbatim
 
-def _open_key(blob: str) -> str:
+def _open_key_checked(blob: str) -> Tuple[str, bool]:
+    """Return (plaintext, unreadable). Never conflates corrupt/locked with absent."""
+    if not blob:
+        return "", False
     if secret_vault.is_encrypted(blob):
         if not secret_vault.is_unlocked():
-            return ""
+            return "", True
         try:
-            return secret_vault.decrypt(blob)
+            return secret_vault.decrypt(blob), False
         except Exception:
-            return ""
-    return blob or ""            # legacy plaintext
+            return "", True
+    return blob or "", False
+
+def _open_key(blob: str) -> str:
+    return _open_key_checked(blob)[0]
 
 
 def _app_dir() -> str:
@@ -204,16 +220,64 @@ def load_profile(name: str) -> Optional[Dict]:
         return None
 
     # Unseal secrets (vault-aware; falls back to legacy encoding — see _open_*).
-    data["ftp_pass"]        = _open_pw(data.get("ftp_pass_enc", ""))
-    data["snap_admin_pass"] = _open_pw(data.get("snap_admin_pass_enc", ""))
-    data["api_key"]         = _open_key(data.get("api_key", ""))
+    unreadable: List[str] = []
+    ftp_pass, ftp_bad = _open_pw_checked(data.get("ftp_pass_enc", ""))
+    if ftp_bad:
+        unreadable.append("ftp_pass")
+    snap_pass, snap_bad = _open_pw_checked(data.get("snap_admin_pass_enc", ""))
+    if snap_bad:
+        unreadable.append("snap_admin_pass")
+    api_key, key_bad = _open_key_checked(data.get("api_key", ""))
+    if key_bad:
+        unreadable.append("api_key")
+    data["ftp_pass"]        = ftp_pass
+    data["snap_admin_pass"] = snap_pass
+    data["api_key"]         = api_key
+    if unreadable:
+        data["_unreadable_credentials"] = unreadable
     return data
+
+
+def _disk_unreadable_fields(path: str, incoming: Dict) -> List[str]:
+    """Return stored credential field names that are unreadable on disk and empty in incoming."""
+    if not os.path.isfile(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            disk = json.load(f)
+    except Exception:
+        return []
+    if not isinstance(disk, dict):
+        return []
+    bad: List[str] = []
+    for plain_key, disk_key, checker in (
+        ("ftp_pass", "ftp_pass_enc", _open_pw_checked),
+        ("snap_admin_pass", "snap_admin_pass_enc", _open_pw_checked),
+        ("api_key", "api_key", _open_key_checked),
+    ):
+        if not str(incoming.get(plain_key, "") or ""):
+            if checker(disk.get(disk_key, ""))[1]:
+                bad.append(plain_key)
+    return bad
 
 
 def save_profile(profile: Dict) -> None:
     """Save a profile. Obfuscates passwords before writing."""
     os.makedirs(PROFILES_DIR, exist_ok=True)
     data = dict(profile)
+    marked_unreadable = [
+        k for k in (data.pop("_unreadable_credentials", None) or [])
+        if not str(data.get(k, "") or "")
+    ]
+    path = _profile_path(data["name"])
+    disk_unreadable = _disk_unreadable_fields(path, data)
+    blocked = sorted(set(marked_unreadable) | set(disk_unreadable))
+    if blocked:
+        raise UnreadableCredentialsError(
+            f"Refusing to save profile '{data.get('name', '')}': stored credential(s) "
+            f"({', '.join(blocked)}) could not be decrypted. Unlock or repair the "
+            "credential vault before saving so existing secrets are not overwritten."
+        )
 
     # Seal and remove plain-text secrets (vault-aware — see _seal_*).
     data["ftp_pass_enc"]        = _seal_pw(data.pop("ftp_pass", ""))
@@ -221,7 +285,6 @@ def save_profile(profile: Dict) -> None:
     if "api_key" in data:
         data["api_key"] = _seal_key(data.get("api_key", ""))
 
-    path = _profile_path(data["name"])
     _atomic_write_bytes(path, json.dumps(data, indent=2).encode("utf-8"))
     # Owner-only where supported (SECAUDIT 037). No-op on FAT/Windows; the folder
     # itself remains secret-equivalent — see the module SECURITY note.
