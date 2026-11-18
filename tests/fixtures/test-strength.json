@@ -510,6 +510,13 @@
             30
         ]
     },
+    "every-skin-renders-a-search-result-regression.php": {
+        "assertions": 9,
+        "predicates": 13,
+        "thresholds": [
+            25
+        ]
+    },
     "exif-rebuild-regression.php": {
         "assertions": 35,
         "predicates": 8,
@@ -1833,6 +1840,13 @@
         "assertions": 0,
         "predicates": 8,
         "thresholds": []
+    },
+    "search-reaches-an-imported-caption-and-hashtag-regression.php": {
+        "assertions": 20,
+        "predicates": 17,
+        "thresholds": [
+            600
+        ]
     },
     "secaudit-008-assets-img-no-exec.php": {
         "assertions": 2,

@@ -1124,6 +1124,98 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             if ($photoCount > 0) $html .= '<h2>Photographs</h2>';
             $html .= '</section>';
         }
+    } elseif ($name === 'search-results') {
+        // SS-1409. THE WHOLE SEARCH RESULT, for every skin, in one place.
+        //
+        // Sean searched "drumheller" on fauxlaroid.fyi and got "Not found",
+        // on a site whose caption says "...in Drumheller." Nothing was wrong
+        // with the query: core/public-repository.php::search() already reads
+        // img_title, img_description, img_alt, the tag slug, album and
+        // category names, and the Instagram importer writes the caption into
+        // img_description and the hashtags into snap_tags. The rows matched.
+        // INSTANT CAMERA's layout simply had no branch for kind='search', so
+        // every search on it fell through to the catch-all and printed "Not
+        // found" -- for every term, on 16 of the 30 skins.
+        //
+        // THE SECOND FAULT, which is why this is a component and not a line
+        // of markup copied 16 times: the skins that DID render a search
+        // printed the title and nothing else. An imported Instagram
+        // photograph has an EMPTY img_title, so even where search worked it
+        // returned a list of blank, unclickable headings. The caption
+        // fallback below is the fix for that, and it has to be in one place
+        // or the next skin repeats it.
+        $results = is_array($data['results'] ?? null) ? $data['results'] : [];
+        $photographs = is_array($results['photographs'] ?? null) ? $results['photographs'] : [];
+        $posts = is_array($results['posts'] ?? null) ? $results['posts'] : [];
+        $term = trim((string)($data['query'] ?? ''));
+        $prefix = preg_match('/^[a-z][a-z0-9-]{0,15}$/', (string)($data['prefix'] ?? ''))
+            ? (string)$data['prefix'] : 'ss';
+        $heading = trim((string)($data['page_title'] ?? ''));
+        // A LABEL FOR A ROW THAT HAS NO TITLE. Plain text only: the caption is
+        // owner HTML and this is an <h2>, not a body.
+        $label = static function (array $row): string {
+            foreach (['img_title', 'title'] as $key) {
+                $value = trim((string)($row[$key] ?? ''));
+                if ($value !== '') return $value;
+            }
+            foreach (['img_description', 'description', 'img_alt'] as $key) {
+                $text = trim(preg_replace('/\s+/', ' ',
+                    (string)strip_tags((string)($row[$key] ?? ''))) ?? '');
+                if ($text === '') continue;
+                $cut = function_exists('mb_substr') ? mb_substr($text, 0, 90) : substr($text, 0, 90);
+                $long = function_exists('mb_strlen') ? mb_strlen($text) > 90 : strlen($text) > 90;
+                return $long ? rtrim($cut) . '…' : $cut;
+            }
+            return '';
+        };
+        $html = '<section class="' . $prefix . '-search-results search-results">';
+        $html .= '<h1 class="search-results-title">'
+            . snap_escape_html($heading !== '' ? $heading
+                : ($term === '' ? 'Search' : 'Search results for “' . $term . '”'))
+            . '</h1>';
+        if (!$photographs && !$posts) {
+            $html .= '<p class="search-results-empty">'
+                . snap_escape_html($term === ''
+                    ? 'Type something to search.'
+                    : 'Nothing matched “' . $term . '”.')
+                . '</p>';
+        }
+        if ($photographs) {
+            $html .= '<div class="' . $prefix . '-search-grid search-results-grid public-grid archive-grid">';
+            foreach ($photographs as $row) {
+                if (!is_array($row)) continue;
+                $slug = trim((string)($row['img_slug'] ?? ''));
+                if ($slug === '') continue;
+                $text = $label($row);
+                $thumb = (string)($row['img_thumb_aspect'] ?? $row['img_thumb_square'] ?? $row['img_file'] ?? '');
+                $html .= '<article class="' . $prefix . '-search-result search-result search-result--photograph">'
+                    . '<a class="' . $prefix . '-search-link search-result-link" href="'
+                    . snap_route_url('photo', ['slug' => $slug]) . '" title="'
+                    . snap_escape_attr($text) . '">';
+                if ($thumb !== '') {
+                    $html .= (string)snap_render_component('image', [
+                        'url' => $thumb,
+                        'alt' => $row['img_alt'] ?? $text,
+                    ]);
+                }
+                $html .= '<h2 class="search-result-title">' . snap_escape_html($text) . '</h2>'
+                    . '</a></article>';
+            }
+            $html .= '</div>';
+        }
+        if ($posts) {
+            $html .= '<ul class="' . $prefix . '-search-posts search-results-posts">';
+            foreach ($posts as $row) {
+                if (!is_array($row)) continue;
+                $slug = trim((string)($row['slug'] ?? ''));
+                if ($slug === '') continue;
+                $html .= '<li class="search-result search-result--post"><a class="search-result-link" href="'
+                    . snap_route_url('post', ['slug' => $slug]) . '">'
+                    . snap_escape_html($label($row)) . '</a></li>';
+            }
+            $html .= '</ul>';
+        }
+        $html .= '</section>';
     } elseif ($name === 'blogroll') {
         // The markup blogroll.php has always emitted, class for class. The
         // skins already style .blogroll-canvas, .blogroll-category-block,

@@ -77,7 +77,8 @@ function snapsmack_search($pdo, $q, $limit = 60) {
 
     $now          = date('Y-m-d H:i:s');
     $color_family = snapsmack_search_color_family($q);
-    $tag_term     = '%' . strtolower($q) . '%';
+    // SS-1409: a leading # is not part of the stored slug.
+    $tag_term     = '%' . ltrim(strtolower($q), '#') . '%';
     $search_term  = '%' . $q . '%';
     $limit        = max(1, (int)$limit);
 
