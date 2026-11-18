@@ -320,17 +320,25 @@ try {
     $where_clauses = ["i.img_status = 'published'", "i.img_date <= ?"];
     $params = [$now_local];
 
-    // snap_images.user_id (per-user author attribution) is only guaranteed on
-    // installs that ran the Flickr import or a clean schema sync. Older/legacy
-    // databases lack it, so probe once and degrade the author dimension rather
-    // than 500 the whole archive when the column is absent.
+    // snap_images.user_id (per-user author attribution) is declared in the
+    // canonical schema as of SS-1407 A1, so a site that has run schema sync
+    // has it. The guard stays because an install can report a new version
+    // while running old code -- SS-1342 and SS-1335 are exactly that: a
+    // protected_paths.json pinning core/constants.php rewrites the version
+    // line and leaves the code alone. Nothing here may hard-require the
+    // column.
+    //
+    // THE PROBE ITSELF MOVED TO THE HOUSE PATTERN. It used INFORMATION_SCHEMA,
+    // which is MySQL and MariaDB only. core/public-repository.php carries a
+    // comment explaining why that approach was ABANDONED there, after its own
+    // regression caught it reporting EVERY column absent on another engine --
+    // which here would silently drop the author filter on every page rather
+    // than fail visibly. "SELECT <col> FROM <table> WHERE 0" asks the engine
+    // the same question in portable SQL and costs no rows.
     $has_img_user_id = false;
     try {
-        $has_img_user_id = (bool) $pdo->query(
-            "SELECT 1 FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_images'
-               AND COLUMN_NAME = 'user_id' LIMIT 1"
-        )->fetchColumn();
+        $pdo->query("SELECT `user_id` FROM snap_images WHERE 0");
+        $has_img_user_id = true;
     } catch (Throwable $e) {
         $has_img_user_id = false;
     }
