@@ -54,6 +54,7 @@ def test_fetch_site_colors_extracts_bg_and_fg(monkeypatch):
 
 def _sample_surface_match(widget, expected_hex: str):
     pm = QPixmap(widget.size())
+    pm.fill(QColor("#ff00ff"))
     widget.render(pm)
     img = pm.toImage()
     w, h = img.width(), img.height()
