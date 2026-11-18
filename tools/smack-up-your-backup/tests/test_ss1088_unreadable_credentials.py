@@ -129,4 +129,78 @@ def test_locked_vault_marks_unreadable_and_refuses_overwrite(monkeypatch, tmp_pa
         profile_manager.save_profile(loaded)
     assert prof_path.read_bytes() == before_bytes
 
+
+def test_readable_sealed_credentials_can_be_deliberately_cleared(monkeypatch, tmp_path):
+    vault = _FakeVault(enabled=True, unlocked=True)
+    _setup_profiles(monkeypatch, tmp_path, vault)
+
+    profile_manager.save_profile({
+        "name": "ClearableSite",
+        "site_url": "https://clear.example",
+        "backup_dir": str(tmp_path / "orig"),
+        "ftp_pass": "secret-ftp",
+        "snap_admin_pass": "secret-admin",
+        "api_key": "secret-key",
+    })
+    loaded = profile_manager.load_profile("ClearableSite")
+    assert "_unreadable_credentials" not in loaded
+    assert loaded["ftp_pass"] == "secret-ftp"
+
+    loaded["ftp_pass"] = ""
+    loaded["snap_admin_pass"] = ""
+    loaded["api_key"] = ""
+    profile_manager.save_profile(loaded)
+
+    reloaded = profile_manager.load_profile("ClearableSite")
+    assert reloaded["ftp_pass"] == ""
+    assert reloaded["snap_admin_pass"] == ""
+    assert reloaded["api_key"] == ""
+
+
+def test_qt_save_profile_safe_and_backup_done_notify_user(monkeypatch, tmp_path):
+    from PySide6.QtWidgets import QApplication, QMessageBox
+    import suyb_qt
+
+    QApplication.instance() or QApplication([])
+    vault = _FakeVault(enabled=True, unlocked=True)
+    _setup_profiles(monkeypatch, tmp_path, vault)
+
+    prof_path = tmp_path / "UiCorrupt.json"
+    raw = {
+        "name": "UiCorrupt",
+        "site_url": "https://uicorrupt.example",
+        "backup_dir": str(tmp_path / "orig"),
+        "ftp_pass_enc": "enc1:CORRUPT_FTP",
+        "snap_admin_pass_enc": "enc1:CORRUPT_ADMIN",
+        "api_key": "enc1:CORRUPT_KEY",
+    }
+    prof_path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    before_bytes = prof_path.read_bytes()
+
+    alerts = []
+    monkeypatch.setattr(QMessageBox, "critical", staticmethod(lambda _p, t, m: alerts.append((t, m))))
+    monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda _p, t, m: alerts.append((t, m))))
+
+    dummy = type("DummyWin", (), {
+        "current_profile": profile_manager.load_profile("UiCorrupt"),
+        "_save_profile_safe": suyb_qt.SuybWindow._save_profile_safe,
+        "_load_profiles": lambda self, select=None: None,
+        "_update_backup_selection": lambda self: None,
+        "_page_widgets": [],
+    })()
+
+    # _dup_profile path via _save_profile_safe
+    ok = dummy._save_profile_safe(action=lambda: profile_manager.duplicate_profile("UiCorrupt", "UiCorrupt (copy)"))
+    assert ok is False
+    assert alerts and "could not be decrypted" in alerts[-1][1]
+    assert prof_path.read_bytes() == before_bytes
+
+    # _edit_profile save path via _save_profile_safe
+    edited = dict(dummy.current_profile)
+    edited["backup_dir"] = str(tmp_path / "new")
+    ok2 = dummy._save_profile_safe(edited)
+    assert ok2 is False
+    assert len(alerts) == 2
+    assert prof_path.read_bytes() == before_bytes
+
 # ===== SNAPSMACK EOF =====
