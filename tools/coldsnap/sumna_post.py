@@ -864,11 +864,22 @@ class SmacktalkPoster:
             payload["page_id"] = int(draft.remote_post_id)
         return payload
 
-    def list_posts(self, limit: int = 100) -> list:
+    def list_posts(self, limit: int = 500, offset: int = 0) -> list:
+        params = {"limit": max(1, min(500, int(limit)))}
+        if int(offset or 0) > 0:
+            params["offset"] = int(offset)
         r = self.session.get(self._route("smackpress/posts"),
-                             params={"limit": max(1, min(500, int(limit)))}, timeout=30)
+                             params=params, timeout=30)
         r.raise_for_status()
-        return list(r.json().get("posts") or [])
+        posts = list(r.json().get("posts") or [])
+        posts.sort(
+            key=lambda p: (
+                str(p.get("created_at") or p.get("updated_at") or ""),
+                int(p.get("id") or 0),
+            ),
+            reverse=True,
+        )
+        return posts
 
     def list_pages(self, limit: int = 500) -> list:
         r = self.session.get(self._route("smackpress/pages"),

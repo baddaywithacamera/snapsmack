@@ -1419,6 +1419,69 @@ class TakeMode(QWidget):
         paths = pick_images(self, (self.app_config() or {}).get("url", ""))
         self._add_photo_paths(paths, insert=False)
 
+    def _build_open_published_dialog(self, posts: list):
+        ordered = sorted(
+            list(posts or []),
+            key=lambda p: (
+                str(p.get("created_at") or p.get("updated_at") or ""),
+                int(p.get("id") or 0),
+            ),
+            reverse=True,
+        )
+        truncated = len(ordered) >= 500
+        shown = ordered[:500] if len(ordered) > 500 else ordered
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Open a published post")
+        dialog.resize(720, 560)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(hint("Choose a post (newest first). COLD SNAP will load its saved bucket and keep its original date."))
+
+        search_box = QLineEdit()
+        search_box.setPlaceholderText("Search by title, slug, status, or date…")
+        layout.addWidget(search_box)
+
+        trunc_note = hint(
+            f"Showing the newest {len(shown)} posts (server 500-post limit reached). "
+            "Use the search box above to filter this list."
+        )
+        trunc_note.setVisible(truncated)
+        layout.addWidget(trunc_note)
+
+        choices = QListWidget()
+
+        def _populate(query: str = ""):
+            q = str(query or "").strip().lower()
+            choices.clear()
+            for post in shown:
+                title = str(post.get("title") or "Untitled")
+                slug = str(post.get("slug") or "")
+                status = str(post.get("status") or "draft")
+                date_str = str(post.get("created_at") or post.get("updated_at") or "")[:10]
+                hay = f"{date_str} {title} {slug} {status}".lower()
+                if q and q not in hay:
+                    continue
+                label = f"{date_str}   {title}   [{status}]"
+                item = QListWidgetItem(label)
+                item.setData(Qt.UserRole, int(post.get("id") or 0))
+                choices.addItem(item)
+            if choices.count():
+                choices.setCurrentRow(0)
+
+        _populate("")
+        search_box.textChanged.connect(_populate)
+        layout.addWidget(choices, 1)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Open)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        choices.itemDoubleClicked.connect(lambda _item: dialog.accept())
+        layout.addWidget(buttons)
+        dialog._search_box = search_box
+        dialog._choices = choices
+        dialog._trunc_note = trunc_note
+        return dialog
+
     def _open_published(self):
         poster, _url = self._poster_and_url()
         if poster is None:
@@ -1432,28 +1495,10 @@ class TakeMode(QWidget):
             QMessageBox.information(self, "No posts yet", "This site has no long-form posts to edit.")
             return
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Open a published post")
-        dialog.resize(720, 520)
-        layout = QVBoxLayout(dialog)
-        layout.addWidget(hint("Choose a post. COLD SNAP will load its saved bucket and keep its original date."))
-        choices = QListWidget()
-        for post in posts:
-            label = f"{str(post.get('created_at') or '')[:10]}   {post.get('title') or 'Untitled'}   [{post.get('status') or 'draft'}]"
-            item = QListWidgetItem(label)
-            item.setData(Qt.UserRole, int(post.get("id") or 0))
-            choices.addItem(item)
-        if choices.count():
-            choices.setCurrentRow(0)
-        layout.addWidget(choices, 1)
-        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Open)
-        buttons.accepted.connect(dialog.accept)
-        buttons.rejected.connect(dialog.reject)
-        choices.itemDoubleClicked.connect(lambda _item: dialog.accept())
-        layout.addWidget(buttons)
-        if dialog.exec() != QDialog.Accepted or not choices.currentItem():
+        dialog = self._build_open_published_dialog(posts)
+        if dialog.exec() != QDialog.Accepted or not dialog._choices.currentItem():
             return
-        post_id = int(choices.currentItem().data(Qt.UserRole) or 0)
+        post_id = int(dialog._choices.currentItem().data(Qt.UserRole) or 0)
         try:
             post = poster.get_post(post_id)
             draft = self._draft_from_remote(post)

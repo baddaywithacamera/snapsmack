@@ -61,6 +61,7 @@ def _sample_surface_match(widget, expected_hex: str):
     app_bg_hits = 0
     matched = 0
     total = 0
+    unexpected = set()
     for y in range(12, h - 12, 6):
         c = img.pixelColor(x, y)
         total += 1
@@ -68,7 +69,9 @@ def _sample_surface_match(widget, expected_hex: str):
             app_bg_hits += 1
         if abs(c.red() - exp.red()) <= 8 and abs(c.green() - exp.green()) <= 8 and abs(c.blue() - exp.blue()) <= 8:
             matched += 1
-    return app_bg_hits, matched, total
+        else:
+            unexpected.add(c.name())
+    return app_bg_hits, matched, total, sorted(unexpected)
 
 
 def test_take_mode_white_and_black_site_surfaces(monkeypatch, tmp_path):
@@ -83,6 +86,8 @@ def test_take_mode_white_and_black_site_surfaces(monkeypatch, tmp_path):
 
     current_url = [white_url]
     mode = TakeMode(lambda: {"url": current_url[0]})
+    from PySide6.QtCore import Qt
+    mode.setAttribute(Qt.WA_DontShowOnScreen, True)
     mode.body._set_biggie(True)
     mode.body.canvas.from_blocks([{"kind": "p", "text": "Hello from the essay."}])
     mode.resize(1000, 800)
@@ -93,9 +98,9 @@ def test_take_mode_white_and_black_site_surfaces(monkeypatch, tmp_path):
         mode.apply_canvas_background(white_url)
         app.processEvents()
         assert mode.site_colors_note.isHidden()
-        hits, matched, total = _sample_surface_match(mode.body._biggie_page, "#ffffff")
+        hits, matched, total, unexp = _sample_surface_match(mode.body._biggie_page, "#ffffff")
         assert hits == 0
-        assert matched >= total * 0.7
+        assert matched >= total * 0.7, f"white matched {matched}/{total}, unexpected={unexp}"
         pal_w = mode.body.canvas._surface_palette
         assert compute_contrast_ratio(QColor(pal_w["bg"]), QColor(pal_w["fg"])) >= 4.5
 
@@ -105,9 +110,9 @@ def test_take_mode_white_and_black_site_surfaces(monkeypatch, tmp_path):
         app.processEvents()
         app.processEvents()
         assert mode.site_colors_note.isHidden()
-        hits, matched, total = _sample_surface_match(mode.body._biggie_page, "#000000")
+        hits, matched, total, unexp = _sample_surface_match(mode.body._biggie_page, "#000000")
         assert hits == 0
-        assert matched >= total * 0.7
+        assert matched >= total * 0.7, f"black matched {matched}/{total}, unexpected={unexp}"
         pal_b = mode.body.canvas._surface_palette
         assert pal_b["bg"] == "#000000"
         assert compute_contrast_ratio(QColor(pal_b["bg"]), QColor(pal_b["fg"])) >= 4.5

@@ -202,6 +202,11 @@ class BodyEditor(QWidget):
         bp.setColor(QPalette.Window, QColor(pal["bg"]))
         self._biggie_page.setPalette(bp)
         self._biggie_page.setStyleSheet(f"QWidget#BiggiePage {{ background: {pal['bg']}; }}")
+        st = self._biggie_page.style()
+        if st is not None:
+            st.unpolish(self._biggie_page)
+            st.polish(self._biggie_page)
+        self._biggie_page.update()
         self.canvas.apply_surface_palette(pal)
 
     def _apply_inline(self, action: str):
