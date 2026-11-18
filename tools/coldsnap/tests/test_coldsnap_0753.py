@@ -9,7 +9,7 @@
 import os
 import sys
 
-from PySide6.QtGui import QColor, QPalette
+from PySide6.QtGui import QColor, QPalette, QPixmap
 from PySide6.QtWidgets import QApplication
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -53,7 +53,9 @@ def test_fetch_site_colors_extracts_bg_and_fg(monkeypatch):
 
 
 def _sample_surface_match(widget, expected_hex: str):
-    img = widget.grab().toImage()
+    pm = QPixmap(widget.size())
+    widget.render(pm)
+    img = pm.toImage()
     w, h = img.width(), img.height()
     assert w > 100 and h > 100
     exp = QColor(expected_hex)
@@ -86,16 +88,16 @@ def test_take_mode_white_and_black_site_surfaces(monkeypatch, tmp_path):
 
     current_url = [white_url]
     mode = TakeMode(lambda: {"url": current_url[0]})
-    from PySide6.QtCore import Qt
-    mode.setAttribute(Qt.WA_DontShowOnScreen, True)
     mode.body._set_biggie(True)
     mode.body.canvas.from_blocks([{"kind": "p", "text": "Hello from the essay."}])
     mode.resize(1000, 800)
     mode.show()
+    app.processEvents()
 
     try:
         # 1. White site
         mode.apply_canvas_background(white_url)
+        app.processEvents()
         app.processEvents()
         assert mode.site_colors_note.isHidden()
         hits, matched, total, unexp = _sample_surface_match(mode.body._biggie_page, "#ffffff")
@@ -123,6 +125,8 @@ def test_take_mode_white_and_black_site_surfaces(monkeypatch, tmp_path):
         assert compute_contrast_ratio(QColor("#000000"), blk_fg) >= 4.5
     finally:
         mode.close()
+        mode.deleteLater()
+        app.processEvents()
 
 
 def test_take_mode_unavailable_site_colors_fallback(monkeypatch, tmp_path):
@@ -143,5 +147,7 @@ def test_take_mode_unavailable_site_colors_fallback(monkeypatch, tmp_path):
         assert compute_contrast_ratio(QColor(pal["bg"]), QColor(pal["fg"])) >= 4.5
     finally:
         mode.close()
+        mode.deleteLater()
+        app.processEvents()
 
 # ===== SNAPSMACK EOF =====
