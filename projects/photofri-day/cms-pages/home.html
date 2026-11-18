@@ -35,15 +35,11 @@
 
 <p class="pfd-follow">Following is now <strong>live</strong> &mdash; join by following <code class="pfd-handle">@participate@photofri.day</code> from your own instance.</p>
 
-<section class="pfd-countdowns" aria-label="Launch countdown">
-  <p class="pfd-countdown smack-countdown" data-until="2026-08-27T10:00:00Z" data-every="7d" data-roll-caption="Next prompt drops in" data-done="The first prompt is live.">
-    <span class="pfd-cd-caption" data-cd-caption>First prompt drops in</span>
-    <time class="pfd-cd-date" data-cd-date datetime="2026-09-03">2026-09-03</time>
-    <span class="pfd-cd-clock" data-cd-clock aria-hidden="true"><span class="pfd-cd-cell"><b data-cd="d">--</b><i>days</i></span><span class="pfd-cd-cell"><b data-cd="h">--</b><i>hrs</i></span><span class="pfd-cd-cell"><b data-cd="m">--</b><i>min</i></span><span class="pfd-cd-cell"><b data-cd="s">--</b><i>sec</i></span></span>
-  </p>
-  <p class="pfd-countdown smack-countdown" data-until="2026-09-03T10:00:00Z" data-every="7d" data-roll-caption="Next submissions open in" data-done="The first submission window is open.">
-    <span class="pfd-cd-caption" data-cd-caption>First submissions open in</span>
-    <time class="pfd-cd-date" data-cd-date datetime="2026-09-03">2026-09-03</time>
+<section class="pfd-countdowns" aria-label="Current challenge">
+  <h2>This week&rsquo;s [pc_prompt which="current" field="prompt" empty="Photo Friday"] challenge</h2>
+  <p>Post your photograph with <strong>[pc_prompt which="current" field="tag"]</strong> for [pc_prompt which="current" field="friday"]. Submissions open [pc_prompt which="current" field="open"] and close [pc_prompt which="current" field="close"].</p>
+  <p class="pfd-countdown smack-countdown" data-until='[pc_prompt which="current" field="close" format="c"]' data-done="This submission window has closed.">
+    <span class="pfd-cd-caption" data-cd-caption>[pc_prompt which="current" field="prompt" empty="Photo Friday"] submissions close in</span>
     <span class="pfd-cd-clock" data-cd-clock aria-hidden="true"><span class="pfd-cd-cell"><b data-cd="d">--</b><i>days</i></span><span class="pfd-cd-cell"><b data-cd="h">--</b><i>hrs</i></span><span class="pfd-cd-cell"><b data-cd="m">--</b><i>min</i></span><span class="pfd-cd-cell"><b data-cd="s">--</b><i>sec</i></span></span>
   </p>
 </section>
