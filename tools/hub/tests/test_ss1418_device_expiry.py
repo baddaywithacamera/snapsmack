@@ -283,4 +283,93 @@ def test_inspecting_a_state_dict_does_not_write_the_real_file(
 
     assert snap_device_auth._read_state() == before
 
+# ── r3: Codex's second FAIL. the wild-jump guard had no baseline on a
+#        state file written before r2 ──────────────────────────────────────
+
+def _legacy_state(server_key, **kw):
+    """The compatibility shape: signed entitlement, verified_at, NO last_clock.
+
+    This is what every machine's state file looks like before r2 ships, and
+    the branch deliberately keeps it working (see
+    test_no_recorded_clock_does_not_restrict). It is therefore the shape the
+    wild-jump guard most needs to survive, and the one it did not.
+    """
+    state = _signed_state(server_key, **kw)
+    state.pop("last_clock", None)
+    state.pop("clock_high_water", None)
+    return state
+
+
+def test_legacy_state_wild_jump_does_not_strand_the_owner(
+        auth_home, server_key, monkeypatch):
+    """Codex's reproduction, executed.
+
+    No last_clock, so `if latest_seen and ...` short-circuited the sanity
+    bound away and the absurd reading was written down. Correcting the clock
+    then read as a rollback and left HQ restricted offline, with no way back
+    except an online verification the owner may not be able to reach.
+    """
+    snap_device_auth._write_state(
+        _legacy_state(server_key, expires_at=NOW + 30 * DAY,
+                      grace_ends_at=NOW + 44 * DAY,
+                      last_clock=0, verified_at=NOW))
+    assert "last_clock" not in snap_device_auth._read_state()
+
+    # A dead BIOS battery, or a bad manual correction.
+    monkeypatch.setattr(time, "time", lambda: NOW + 3000 * DAY)
+    snap_device_auth.decision()
+    assert int(snap_device_auth._read_state().get("clock_high_water", 0)) == 0, (
+        "an implausible reading was recorded although the state had no "
+        "baseline to judge it against")
+
+    # The owner notices and corrects the clock. They must get their machine
+    # back without going online.
+    monkeypatch.setattr(time, "time", lambda: NOW + DAY)
+    result = snap_device_auth.decision()
+    assert result["authorized"] is True, (
+        "correcting a wildly wrong clock left the owner restricted: "
+        f"{result.get('reason')}")
+
+
+def test_legacy_state_still_builds_a_high_water_mark_normally(
+        auth_home, server_key, monkeypatch):
+    """The fix must not simply switch persistence off for legacy states, or
+    the rollback protection never starts for the machines that have it."""
+    snap_device_auth._write_state(
+        _legacy_state(server_key, expires_at=NOW + 30 * DAY,
+                      grace_ends_at=NOW + 44 * DAY,
+                      last_clock=0, verified_at=NOW))
+
+    monkeypatch.setattr(time, "time", lambda: NOW + 10 * DAY)
+    snap_device_auth.decision()
+    assert int(snap_device_auth._read_state().get("clock_high_water", 0)) == NOW + 10 * DAY, (
+        "an ordinary offline run did not advance the mark on a legacy state")
+
+    monkeypatch.setattr(time, "time", lambda: NOW + 2 * DAY)
+    assert snap_device_auth.decision()["authorized"] is False, (
+        "rollback protection never engaged for a legacy state")
+
+
+def test_a_state_with_no_baseline_at_all_records_nothing(
+        auth_home, server_key, monkeypatch):
+    """Nothing recorded, and no usable signed time either: there is no way to
+    tell a plausible reading from an absurd one, so record neither."""
+    state = _legacy_state(server_key, expires_at=NOW + 30 * DAY,
+                          grace_ends_at=NOW + 44 * DAY,
+                          last_clock=0, verified_at=NOW)
+    state["payload"]["issued_at"] = 0
+    state["payload"]["term_started_at"] = 0
+    snap_device_auth._write_state(state)
+
+    monkeypatch.setattr(time, "time", lambda: NOW + 5 * DAY)
+    # decision() re-reads the payload from the SIGNED blob, so blank the
+    # signed copy too by pointing at a freshly signed one with zeroed stamps.
+    signed = _signed_state(server_key, expires_at=NOW + 30 * DAY,
+                           grace_ends_at=NOW + 44 * DAY,
+                           last_clock=0, verified_at=0)
+    signed.pop("last_clock", None)
+    snap_device_auth._write_state(signed)
+    snap_device_auth.decision()
+    assert int(snap_device_auth._read_state().get("clock_high_water", 0)) == 0
+
 # ===== SNAPSMACK EOF =====

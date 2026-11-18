@@ -211,17 +211,61 @@ CLOCK_HIGH_WATER_SANITY = 400 * 86400
 CLOCK_HIGH_WATER_STEP = 3600
 
 
+def _signed_baseline(payload: dict) -> int:
+    """A time this machine did not choose: the server signed it.
+
+    SS-1418 r3, Codex's second FAIL. The sanity bound on the high-water mark
+    needs something to be sane RELATIVE TO, and on a state file written
+    before r2 there is no last_clock and no high-water mark to use. The
+    entitlement itself carries server-stamped times, and the signature over
+    it has already been verified by the time this is reached, so they are the
+    one clock reading on the machine that the machine cannot have invented.
+    """
+    best = 0
+    for field in ("issued_at", "term_started_at"):
+        try:
+            best = max(best, int(payload.get(field, 0) or 0))
+        except (TypeError, ValueError):
+            continue
+    return best
+
+
 def _advance_clock_high_water(state: dict, now: int, latest_seen: int,
-                              *, persist: bool) -> None:
+                              *, persist: bool, signed_baseline: int = 0) -> None:
     """Remember the latest plausible time this machine has reported.
 
     Refuses to remember a reading that is absurdly far ahead, because a clock
     that jumps to 2099 and is then corrected would otherwise leave the owner
     restricted forever with no way back except going online.
+
+    SS-1418 r3. That refusal used to read:
+
+        if latest_seen and now > latest_seen + CLOCK_HIGH_WATER_SANITY:
+
+    and the `latest_seen and` is the whole bug. On a state file written
+    before r2 there is no last_clock and no high-water mark, so latest_seen
+    is 0, the guard short-circuits away, and the absurd reading IS written
+    down. Correcting the clock afterwards then looks like a rollback and the
+    owner is restricted offline with no way back -- the exact outcome the
+    guard exists to prevent, on the exact states the branch went out of its
+    way to keep working. Codex reproduced it end to end.
+
+    This is the second time in this ticket a truthiness short-circuit has
+    skipped a check I had written correctly (the first was $renewable in the
+    PHP). Both times the test supplied the value that kept the guard alive --
+    here, last_clock=NOW in the wild-jump test.
+
+    So the bound always has a baseline now. When the machine has recorded
+    nothing, the entitlement's own signed timestamps stand in; they are not
+    this machine's opinion of the time.
     """
     if not persist or now <= latest_seen + CLOCK_HIGH_WATER_STEP:
         return
-    if latest_seen and now > latest_seen + CLOCK_HIGH_WATER_SANITY:
+    baseline = max(latest_seen, signed_baseline)
+    if now > baseline + CLOCK_HIGH_WATER_SANITY:
+        # No baseline at all would mean nothing is implausible, so a state
+        # carrying neither a recorded clock nor a usable signed time records
+        # nothing rather than recording anything.
         return
     try:
         on_disk = _read_state()
@@ -309,7 +353,8 @@ def decision(state: dict | None = None, *, persist: bool | None = None) -> dict:
                     "reason":"clock_rollback",
                     "error":"The system clock moved backwards since the last check. "
                             "Go online in SNAP HQ to verify authorization."}
-        _advance_clock_high_water(state, now, latest_seen, persist=persist)
+        _advance_clock_high_water(state, now, latest_seen, persist=persist,
+                                  signed_baseline=_signed_baseline(payload))
 
         if now <= int(payload["expires_at"]):
             status = "full"
