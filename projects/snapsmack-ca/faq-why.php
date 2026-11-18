@@ -50,9 +50,9 @@ $faq_qas = <<<'HTML'
 
             <div class="qa" id="q-ai">
                 <h3>AI? AIIIIIIEEEEE!!!</h3>
-                <p>Yes. Almost all of the code in SnapSmack is AI-produced. ETHICS.md in the repo names the AI systems involved and the role each one played. I am not a coder and have never claimed to be.</p>
-                <p>My hands are on the keyboard for CSS. I am decent with it. The visual design of the skins is shaped by me at the stylesheet level. Everything else — the architecture, the spec, the security posture, the decisions about what ships — is the curation job.</p>
-                <p>The code is AI. Said up front, in the FAQ, in the licence, in the repo. I'd rather be honest.</p>
+                <p>Yes. Almost all of the code in SNAPSMACK is AI-produced. The four AI co-authors are Claude (Anthropic), OpenAI Codex, Google Gemini, and Muse (Meta). I am not a coder and have never claimed to be.</p>
+                <p>Claude, Codex, and Gemini implement and repair the software. Gemini was there at the start and now builds and repairs the desktop apps, including COLD SNAP and SMACK UP YOUR BACKUP. Muse is read-only for code and contributes independent review, QA, accessibility, and security audits. ETHICS.md in the repo names the systems involved and the role each one played.</p>
+                <p>My hands are on the keyboard for CSS. I am decent with it. The visual design of the skins is shaped by me at the stylesheet level. Everything else — the architecture, the spec, the security posture, the decisions about what ships — is the curation job. The code is AI. Said up front, in the FAQ, in the licence, in the repo. I'd rather be honest.</p>
             </div>
 
             <div class="qa" id="q-catch">
