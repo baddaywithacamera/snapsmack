@@ -19,6 +19,13 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.53 — 2026-11-18
+
+- **Cloud backup remains write-only (SS-1413).** Google Drive destination
+  checks now report what SUYB can see without listing or deleting remote
+  backups. Audit failures are reported without changing cloud data, and the
+  error callback now receives the actual failure instead of silently losing it.
+
 ## 0.7.52 — 2026-11-17
 
 - **Persistent fleet batch-job receipts & resume (SS-1404).** Multi-site backup
