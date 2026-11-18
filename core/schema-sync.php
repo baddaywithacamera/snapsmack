@@ -561,6 +561,22 @@ function snap_schema_sync(PDO $pdo): array {
         // in flkrfckr/threeacross/smackthemup/fediverse. One index seeks them all.
         ['snap_images', 'idx_images_slug',
             "ALTER TABLE `snap_images` ADD INDEX `idx_images_slug` (`img_slug`)"],
+        // SS-1407 A1 — snap_images.user_id is declared in the canonical schema
+        // WITH its index (KEY idx_images_user_id), so a fresh install gets
+        // both. An UPGRADED install gets only the column: section 2 above
+        // diffs columns out of the canonical file and never reads its KEY
+        // lines, and section 3 is a hand-kept list. So every existing site on
+        // the fleet -- which is all of them -- would run the author filter
+        // unindexed.
+        //
+        // Two queries use it, and both are the kind that scan the largest
+        // table a photoblog has: archive.php's author filter
+        // (`WHERE i.user_id IN (...)`, archive.php:416) and the photographer
+        // filter in core/skin-view-model.php. Both are guarded and degrade
+        // quietly when the column is absent, which is why nobody noticed the
+        // index was missing either.
+        ['snap_images', 'idx_images_user_id',
+            "ALTER TABLE `snap_images` ADD INDEX `idx_images_user_id` (`user_id`)"],
     ];
 
     // The album_slug UNIQUE key is conditional on the pre-flight above, so it

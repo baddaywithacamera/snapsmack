@@ -1021,6 +1021,13 @@
             3
         ]
     },
+    "image-author-column-is-declared-and-never-required-regression.php": {
+        "assertions": 22,
+        "predicates": 23,
+        "thresholds": [
+            2
+        ]
+    },
     "image-fade-resume-regression.php": {
         "assertions": 5,
         "predicates": 4,

@@ -145,6 +145,27 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
                         COMMENT 'FEDIVERSE (0.7.393): Note.summary content-warning text shown before a sensitive image.',
   `fedi_published_at`   datetime       DEFAULT NULL
                         COMMENT 'FEDIVERSE (0.7.403): fediverse date LABEL override for a standalone SMACKONEOUT image (Note published ts). NULL = use img_date. Stamped by IMPRINT ORDER FOR FEDIVERSE, at parity with snap_posts.',
+  -- SS-1407 A1. WHO TOOK THE PHOTOGRAPH. snap_posts has carried user_id since
+  -- the canonical schema; snap_images never did, and TWO PLACES ALREADY QUERY
+  -- IT -- archive.php's author filter and core/skin-view-model.php's
+  -- photographer filter. Both are guarded and degrade quietly, so nothing is
+  -- broken today, but the feature was started and left half done: the column
+  -- existed only where an owner happened to have run the Flickr importer,
+  -- which adds it ad hoc (core/flkrfckr-api.php). Declaring it here means the
+  -- updater's schema sync gives it to every site instead.
+  --
+  -- NULLABLE, AND NOTHING BACKFILLS IT. NULL means "not recorded", which is
+  -- the truth on every existing row. Writing every unattributed photograph to
+  -- one account would be a false authorship claim baked into the database with
+  -- no way afterwards to tell which rows were guessed, and there is no
+  -- "primary admin" in the code to guess with. Attribution is Sean's decision;
+  -- this is only the column it will need.
+  --
+  -- NO FOREIGN KEY, deliberately: deleting a user must not cascade away their
+  -- photographs, and an install whose snap_users predates this cannot be
+  -- forced into referential integrity by an updater.
+  `user_id`             int unsigned   DEFAULT NULL
+                        COMMENT 'Photographer - FK-by-convention to snap_users.id. NULL = not recorded. SS-1407 A1.',
   PRIMARY KEY (`id`),
   -- 0.7.469: the feed query is
   --   WHERE img_status='published' AND img_date <= ? ORDER BY sort_order ASC, id DESC
@@ -161,7 +182,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
   KEY `idx_images_checksum` (`img_checksum`),
   -- 0.7.989D (SQL audit B3): img_slug drives photographBySlug on every public
   -- photo view and the import slug-uniqueness probes; it was unindexed.
-  KEY `idx_images_slug` (`img_slug`)
+  KEY `idx_images_slug` (`img_slug`),
+  KEY `idx_images_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
