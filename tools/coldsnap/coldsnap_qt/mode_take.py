@@ -733,8 +733,12 @@ class TakeMode(QWidget):
             if site.startswith(prefix):
                 site = site[len(prefix):]
         site = site.rstrip("/") or "local draft"
-        blocks = self.body.canvas.document().blockCount() if self.body.is_biggie() else len(
-            [ln for ln in self.body.editor.toPlainText().splitlines() if ln.strip()])
+        if self.body.is_biggie():
+            doc = self.body.canvas.document()
+            plain = self.body.canvas.toPlainText()
+            blocks = 0 if (doc.blockCount() <= 1 and not plain.strip() and "\ufffc" not in plain) else doc.blockCount()
+        else:
+            blocks = len([ln for ln in self.body.editor.toPlainText().splitlines() if ln.strip()])
         from datetime import date
         self.page_meta.setText(f"{date.today().isoformat()} · {site} · {blocks} block{'s' if blocks != 1 else ''}")
         if hasattr(self, "page_state_lbl"):

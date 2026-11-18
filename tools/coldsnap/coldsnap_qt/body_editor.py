@@ -169,6 +169,9 @@ class BodyEditor(QWidget):
 
         # -- BIGGIE face --------------------------------------------------------
         self._biggie_page = QWidget()
+        self._biggie_page.setObjectName("BiggiePage")
+        self._biggie_page.setAttribute(Qt.WA_StyledBackground, True)
+        self._biggie_page.setStyleSheet("QWidget#BiggiePage { background: #ffffff; }")
         g = QVBoxLayout(self._biggie_page)
         g.setContentsMargins(0, 0, 0, 0)
         g.setSpacing(0)
