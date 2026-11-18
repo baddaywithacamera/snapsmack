@@ -1700,6 +1700,50 @@
             40000
         ]
     },
+    "reauth-lock-opened-mid-request-regression.php": {
+        "assertions": 32,
+        "predicates": 9,
+        "thresholds": [
+            2,
+            2,
+            2,
+            2,
+            5,
+            800,
+            800,
+            900
+        ]
+    },
+    "reauth-lockout-backoff-escalates-regression.php": {
+        "assertions": 44,
+        "predicates": 4,
+        "thresholds": [
+            2,
+            2,
+            2,
+            2,
+            12,
+            12,
+            900,
+            900,
+            900,
+            900,
+            900,
+            900,
+            900,
+            1800,
+            1800,
+            3600,
+            3600
+        ]
+    },
+    "reauth-lockout-regression.php": {
+        "assertions": 20,
+        "predicates": 7,
+        "thresholds": [
+            4
+        ]
+    },
     "reconstruction-boundary-regression.php": {
         "assertions": 14,
         "predicates": 11,
