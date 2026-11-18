@@ -1757,6 +1757,16 @@ if ($resource === 'disconnect' && $method === 'POST') {
         'hub_controls_timezone', 'hub_controls_imagesize', 'hub_controls_akismet', 'hub_controls_ai', 'hub_controls_aicrawl',
         'hub_controls_smackback', 'hub_controls_comments', 'hub_controls_email', 'hub_controls_footer',
         'hub_controls_netalert',
+        // hub_controls_cache, added with the cache push group.
+        'hub_controls_cache',
+        // AND hub_controls_socialdock, WHICH WAS ALREADY MISSING. The social
+        // dock group has been pushable for a while and its lock flag was never
+        // cleared here, so a spoke that disconnected from its hub stayed locked
+        // out of its own social dock settings with no hub left to unlock it.
+        // Found while adding the line above; same one-line class of bug, so it
+        // is fixed in the same place rather than left for the next person to
+        // trip over.
+        'hub_controls_socialdock',
     ] as $_ctrl_key) {
         $clear_ctrl->execute([$_ctrl_key]);
     }
@@ -2357,6 +2367,12 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
         'network_alert_receive', 'network_alert_send',
         'hub_controls_netalert',
         'network_alert_push_registered',
+        // Page cache, pushed as one group from the hub. cache_dev_until is NOT
+        // here on purpose: developer mode is a local, temporary bypass and the
+        // hub has no business setting or clearing it. A hub that sends it gets
+        // it back in 'skipped'.
+        'cache_enabled', 'cache_ttl',
+        'hub_controls_cache',
         // Social dock: enable + appearance + profile URLs, pushed as one group
         // from the hub's Network Settings Push (Social Dock).
         'social_dock_enabled',
@@ -2419,6 +2435,29 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
         $grace_days = defined('SNAPSMACK_AI_GRACE_DAYS') ? SNAPSMACK_AI_GRACE_DAYS : 30;
         $upsert->execute(['ai_enabled_until', (string)(time() + $grace_days * 86400)]);
         $applied[] = 'ai_enabled_until';
+    }
+
+    // A PUSHED CACHE CHANGE PURGES WHAT IS ALREADY STORED.
+    //
+    // Turning caching OFF, or shortening the TTL, is meaningless while the old
+    // pages are still on disk: page-cache.php would keep serving them until
+    // each one aged out on the OLD ttl. The owner who turned it off from the
+    // hub would watch the fleet keep serving yesterday's pages and reasonably
+    // conclude the switch did nothing.
+    //
+    // Purging on ANY cache_enabled or cache_ttl change, not only on 'off' and
+    // not only on 'shorter': turning caching ON after a settings change should
+    // not inherit pages built under the old settings either, and a longer TTL
+    // applied to already-stored pages keeps them around past the point anyone
+    // chose. Purging is cheap -- the next request rebuilds -- and being wrong
+    // in that direction only costs one render.
+    $_cache_touched = array_intersect(['cache_enabled', 'cache_ttl'], $applied);
+    if ($_cache_touched) {
+        require_once __DIR__ . '/page-cache.php';
+        if (function_exists('page_cache_purge_all')) {
+            page_cache_purge_all();
+            $applied[] = 'page_cache_purged';
+        }
     }
 
     ms_ok(['applied' => $applied, 'skipped' => $skipped, 'pending_confirmation' => $pending]);

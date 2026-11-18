@@ -55,6 +55,16 @@ $push_group_keys = [
     'email'     => ['site_email', 'admin_email', 'email_from', 'email_from_name', 'brevo_api_key', 'hub_controls_email'],
     'footer'    => ['footer_slot_copyright', 'footer_slot_copyright_custom', 'footer_slot_theme', 'footer_slot_theme_custom', 'hub_controls_footer'],
     'netalert'  => ['network_alert_receive', 'network_alert_send', 'hub_controls_netalert'],
+    // PAGE CACHE. Sean, 2026-11-17: "should be a setting the hub can push to
+    // spokes." cache_enabled defaults to OFF, so most of the fleet has been
+    // serving every page uncached.
+    //
+    // cache_dev_until IS DELIBERATELY NOT HERE. Developer mode is a local,
+    // temporary bypass someone sets while working on one site; pushing it from
+    // the hub would either strand a site in bypass or cancel a bypass someone
+    // is relying on right now. The spoke's allowlist refuses it too, so a hub
+    // that sends it anyway is told the key was skipped.
+    'cache'     => ['cache_enabled', 'cache_ttl',          'hub_controls_cache'],
     // Social dock: enable + appearance + every profile URL. Your profiles are the
     // same across the fleet, so push once from here to all spokes.
     'socialdock' => [
@@ -541,6 +551,34 @@ include 'core/sidebar.php';
                 </div>
             </div>
             <?php $render_result('email'); ?>
+        </div>
+
+        <!-- ── PAGE CACHE ──────────────────────────────────────────────── -->
+        <div class="box">
+            <h3>PAGE CACHE</h3>
+            <div class="dash-grid mb-16">
+                <div class="lens-input-wrapper">
+                    <label>CACHING</label>
+                    <div class="read-only-display"><?php echo ($settings['cache_enabled'] ?? '0') === '1' ? 'ON' : 'OFF (DEFAULT)'; ?></div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>TTL (SECONDS)</label>
+                    <div class="read-only-display"><?php echo htmlspecialchars((string)($settings['cache_ttl'] ?? '300')); ?></div>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>HUB CONTROLS THIS SETTING</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" name="hub_controls[cache]" value="1"
+                               <?php echo ($settings['hub_controls_cache'] ?? '0') === '1' ? 'checked' : ''; ?>>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="dim text-0-82">When on, spokes cannot change their own page cache settings.</span>
+                </div>
+            </div>
+            <p class="dim text-0-82">Pushing a cache change PURGES each spoke's stored pages, so nothing keeps
+               serving yesterday's copy on the old TTL. Developer mode (the temporary local bypass) is never
+               pushed and is refused if sent: it belongs to whoever is working on that one site.</p>
+            <?php $render_result('cache'); ?>
         </div>
 
         <!-- ── NETWORK ALERT (SMACKATTACK) ─────────────────────────────── -->

@@ -286,6 +286,11 @@
         "predicates": 0,
         "thresholds": []
     },
+    "cache-settings-push-group-regression.php": {
+        "assertions": 20,
+        "predicates": 23,
+        "thresholds": []
+    },
     "canonical-schema-column-syntax-regression.php": {
         "assertions": 4,
         "predicates": 16,
