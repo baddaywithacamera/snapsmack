@@ -289,14 +289,20 @@ class Window(QMainWindow):
         if not name:return
         # ADDITIONAL HASHTAGS ARE FOR ONE IMPORT, SO THEY DO NOT FOLLOW THE SITE.
         #
-        # Sean's 5-image batch to theschoolofhardnocks.ca went up with
-        # #fauxlaroid #fakepolaroid on EVERY image -- tags that belong to
-        # fauxlaroid.fyi. The field is cleared when a folder is scanned and when
-        # the queue is cleared, but NOT when the site changes, so a value typed
-        # for one blog was still in the box for the next one and
-        # post_start(additional_tags=...) appended it to every image. The same
-        # append is why removing a tag from the queue rows did not stick: the
-        # rows were right and the field put it back at publish time.
+        # PREVENTATIVE ISOLATION, NOT AN INCIDENT FIX. Read the history before
+        # changing this, because the first version of this comment got it wrong
+        # and Codex caught it: the #fauxlaroid #fakepolaroid tags on the five
+        # School of Hard Nocks posts came from that site's STORED PROMPT, which
+        # instructed Gemini to add "the two required tags" (the shared pool at
+        # shared_library/prompts/gemini_prompts.json). The field was never shown
+        # to have carried them.
+        #
+        # The hole is real on its own merits, though. The field is cleared when
+        # a folder is scanned and when the queue is cleared, but it was NOT
+        # cleared when the site changed -- so a value typed for one blog stayed
+        # in the box for the next, and post_start(additional_tags=...) appends
+        # it to every image. One site's vocabulary must not be able to reach
+        # another by sitting in a text box, whether or not it has yet.
         #
         # Cleared on a site change now, and SAID OUT LOUD rather than silently,
         # because a field emptying itself is its own small surprise.

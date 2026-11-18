@@ -1,34 +1,51 @@
 # SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
-"""SYBU 0.7.77 — two faults Sean reported on 0.7.76.
+"""SYBU 0.7.77 — the clear-queue regression, plus two isolation fixes.
 
 1. CLEARING THE QUEUE NO LONGER WENT BACK TO POST. The Tk app ended
    _on_clear with "if not self._cfg_visible: self._toggle_cfg()", so clearing
    reopened the build-and-publish panel. The Qt rebuild dropped it and left
    you looking at an empty table. RESTORED, not reinvented (OPAUDIT 027).
+   This is the reported fault.
 
-2. #fauxlaroid #fakepolaroid WENT UP ON A BATCH TO ANOTHER BLOG. The
-   ADDITIONAL HASHTAGS field is for one import. It is cleared when a folder
-   is scanned and when the queue is cleared, but NOT when the site changed,
-   so a value typed for fauxlaroid.fyi was still in the box for
-   theschoolofhardnocks.ca and post_start(additional_tags=...) appended it to
-   every image. The same append is why removing a tag from the queue rows did
-   not stick: the rows were right, and the field put it back at publish.
+2. ADDITIONAL HASHTAGS NO LONGER SURVIVE A SITE CHANGE. PREVENTATIVE
+   ISOLATION, and the header has to say so, because its first version claimed
+   this field caused the #fauxlaroid #fakepolaroid tags on the five School of
+   Hard Nocks posts and that was WRONG. Codex caught it. The cause was that
+   site's STORED PROMPT, which instructed Gemini to add "the two required
+   tags", in the shared pool at shared_library/prompts/gemini_prompts.json.
+   The field was never shown to have carried them.
 
-   Checked before fixing: NO profile prompt contains those tags. All 28
-   profiles in the shared library were read; 'fauxlaroid' and 'fakepolaroid'
-   appear only in fauxlaroid.fyi's own name and site_url. So the prompt, the
-   presets and a per-site setting are all ruled out as the source.
+   The hole is real on its own merits: the field is cleared on a folder scan
+   and on a queue clear but was not cleared on a site change, so one blog's
+   vocabulary could sit in a text box and be appended to the next blog's
+   images. Fixed because it could happen, not because it did.
 
-THESE ARE SOURCE ASSERTIONS ON THE QT SHELL, which is the house pattern here
-(see test_qt_prompt_and_queue.py): the handlers need a running Qt application
-and a real engine. They are written against the handler BODIES, brace-free
-Python so sliced by indentation, so a claim about ordering is a claim about
-that handler and not about the file containing a word somewhere.
+3. "USE FOR THIS RUN" SAYS IT IS NOT SAVED. It set the prompt box and nothing
+   else, and looked exactly like saving; the next site change or launch
+   restored the stored prompt without a word. That is the mechanism behind "I
+   thought I had already removed them".
+
+WHY THERE IS NO "no prompt contains those tags" ASSERTION HERE ANY MORE. There
+was one, it read shared_library/profiles/*.json, and that is the WRONG STORE —
+the prompts SYBU uses live in shared_library/prompts/gemini_prompts.json and
+are only reached through profile_manager's fallback. So it could pass while two
+sites' prompts still ordered the tags, which is exactly the false assurance
+that sent the first diagnosis wrong. It has been replaced by a unit test on the
+merge logic with FIXTURE data (test_prompt_merge_prefers_the_profile_then_the_pool),
+which reads nothing from the machine it runs on. A test that depends on the
+state of one developer's shared library proves nothing about the product.
+
+THE QT ASSERTIONS ARE SOURCE-LEVEL, which is the house pattern here (see
+test_qt_prompt_and_queue.py): the handlers need a running Qt application and a
+real engine. They are written against the handler BODIES, sliced by
+indentation, so a claim about ordering is a claim about that handler and not
+about the file containing a word somewhere.
 """
 
 import os
 import re
 import sys
+from types import SimpleNamespace
 
 TOOL = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if TOOL not in sys.path:
@@ -126,37 +143,81 @@ def test_the_append_at_publish_is_still_shown_before_it_happens():
     )
 
 
-def test_no_profile_prompt_carries_those_tags():
-    """The claim this repair rests on, recorded.
+def test_prompt_merge_prefers_the_profile_then_the_pool():
+    """Which store wins, proved on fixture data and nothing else.
 
-    If a prompt ever does contain them, the cause is different and the fix
-    above is not enough -- so this fails rather than letting someone assume
-    the hashtag field was the whole story.
+    REPLACES a test that read shared_library/profiles/*.json from whatever
+    machine it happened to run on, asserted that no prompt there mentioned
+    those tags, and passed -- while two sites' prompts in the OTHER store,
+    shared_library/prompts/gemini_prompts.json, still ordered them. That false
+    assurance is what sent the first diagnosis wrong, so the replacement reads
+    no environment at all.
+
+    The rule it pins is the one that mattered: a blank profile prompt falls
+    back to the shared pool KEYED BY HOSTNAME. Both affected sites had a blank
+    profile prompt, which is why the pool's text was the text in use. If that
+    fallback ever stops being site-keyed, one blog's prompt answers for every
+    blog.
     """
-    try:
-        sys.path.insert(0, os.path.abspath(os.path.join(TOOL, "..", "_shared")))
-        import snap_profiles
-        directory = snap_profiles.profiles_dir()
-    except Exception:
-        return  # no shared library on this machine; nothing to check
-    if not os.path.isdir(directory):
-        return
-    offenders = []
-    for name in os.listdir(directory):
-        if not name.endswith(".json"):
-            continue
+    import profile_manager
+
+    pool = {"lightafterdark.ca": "POOL TEXT FOR LIGHT AFTER DARK",
+            "other.example": "POOL TEXT FOR SOMEONE ELSE"}
+    fake_prompts = SimpleNamespace(load=lambda: dict(pool))
+    fake_home = SimpleNamespace(site_key=lambda url: (url or "")
+                                .replace("https://", "").replace("http://", "").strip("/"))
+
+    def merged(portable_prompt, site_url):
+        saved = (sys.modules.get("snap_prompts"), sys.modules.get("snap_home"))
+        sys.modules["snap_prompts"] = fake_prompts
+        sys.modules["snap_home"] = fake_home
         try:
-            text = open(os.path.join(directory, name), encoding="utf-8").read()
-        except OSError:
-            continue
-        for needle in ("fauxlaroid", "fakepolaroid"):
-            # The site's own name and url legitimately contain it.
-            if needle in text.lower() and not name.lower().startswith("fauxlaroid"):
-                offenders.append("%s mentions %s" % (name, needle))
-    assert not offenders, (
-        "a profile other than fauxlaroid's mentions those tags, so the source "
-        "is not only the per-import field: " + "; ".join(offenders)
+            prompt = portable_prompt
+            if not str(prompt or "").strip():
+                prompt = fake_prompts.load().get(fake_home.site_key(site_url), "")
+            return prompt
+        finally:
+            for name, module in zip(("snap_prompts", "snap_home"), saved):
+                if module is None:
+                    sys.modules.pop(name, None)
+                else:
+                    sys.modules[name] = module
+
+    # A profile that HAS a prompt keeps it; the pool is not consulted.
+    assert merged("PROFILE TEXT", "https://lightafterdark.ca") == "PROFILE TEXT"
+    # Blank, whitespace-only and missing all fall through to the pool.
+    for blank in ("", "   ", None):
+        assert merged(blank, "https://lightafterdark.ca") == "POOL TEXT FOR LIGHT AFTER DARK", (
+            "a blank profile prompt did not fall back to the shared pool"
+        )
+    # And it falls back to THIS site's entry, never another's.
+    assert merged("", "https://nobody.example") == "", (
+        "a site with no pool entry picked up some other site's prompt"
     )
+    assert merged("", "https://other.example") == "POOL TEXT FOR SOMEONE ELSE"
+
+    # The behaviour above is a restatement of profile_manager's own fallback,
+    # so pin that the fallback is still there and still site-keyed. Without
+    # this, the block above is a test of itself.
+    source = open(os.path.join(TOOL, "profile_manager.py"), encoding="utf-8").read()
+    assert "snap_prompts.load()" in source, (
+        "profile_manager no longer falls back to the shared prompt pool, so "
+        "this test is describing something the product does not do"
+    )
+    assert "site_key(" in source, (
+        "the shared prompt pool is being read WITHOUT a site key: one site's "
+        "prompt would answer for every site"
+    )
+    # AND THAT THE FALLBACK IS REACHABLE. Asserting the call exists is not
+    # enough: replacing the blank-prompt guard with `if False:` leaves the call
+    # in the file, unreachable, and every assertion above still passed. I
+    # checked, which is why this is here.
+    assert re.search(r"if not str\(prompt or ''\)\.strip\(\)\s*:", source), (
+        "the blank-prompt guard is gone, so the shared-pool fallback is dead "
+        "code. A site whose profile prompt is empty -- which is both of the "
+        "sites this incident was about -- would silently get no prompt at all."
+    )
+
 
 def test_use_for_this_run_says_it_is_not_saved():
     """The illusion that explains "I thought I had already removed them".
