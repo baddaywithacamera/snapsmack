@@ -144,79 +144,109 @@ def test_the_append_at_publish_is_still_shown_before_it_happens():
 
 
 def test_prompt_merge_prefers_the_profile_then_the_pool():
-    """Which store wins, proved on fixture data and nothing else.
+    """The real function, with the real modules swapped out. Codex's second FAIL.
 
-    REPLACES a test that read shared_library/profiles/*.json from whatever
-    machine it happened to run on, asserted that no prompt there mentioned
-    those tags, and passed -- while two sites' prompts in the OTHER store,
-    shared_library/prompts/gemini_prompts.json, still ordered them. That false
-    assurance is what sent the first diagnosis wrong, so the replacement reads
-    no environment at all.
+    MY PREVIOUS VERSION REIMPLEMENTED THE RULE and then searched the source for
+    three strings. Codex's example of what that misses is exact: pass the wrong
+    URL into site_key() and the local copy still returns the right answer while
+    the source still contains "site_key(", so the test passes and the product
+    is broken. That is the same mistake as the rowCount shape check in SS-1399
+    and the wrong-store check this file already replaced -- a test that proves
+    my copy of the behaviour instead of the behaviour.
 
-    The rule it pins is the one that mattered: a blank profile prompt falls
-    back to the shared pool KEYED BY HOSTNAME. Both affected sites had a blank
-    profile prompt, which is why the pool's text was the text in use. If that
-    fallback ever stops being site-keyed, one blog's prompt answers for every
-    blog.
+    So this calls profile_manager._canonical_to_sybu() -- the function SYBU
+    actually uses to turn a SNAP HQ record into the posting UI's profile -- with
+    snap_prompts and snap_home monkeypatched and fixture records. Nothing is
+    read from the machine it runs on.
     """
     import profile_manager
 
-    pool = {"lightafterdark.ca": "POOL TEXT FOR LIGHT AFTER DARK",
+    POOL = {"lightafterdark.ca": "POOL TEXT FOR LIGHT AFTER DARK",
             "other.example": "POOL TEXT FOR SOMEONE ELSE"}
-    fake_prompts = SimpleNamespace(load=lambda: dict(pool))
-    fake_home = SimpleNamespace(site_key=lambda url: (url or "")
-                                .replace("https://", "").replace("http://", "").strip("/"))
 
-    def merged(portable_prompt, site_url):
-        saved = (sys.modules.get("snap_prompts"), sys.modules.get("snap_home"))
+    def host_only(url):
+        return (url or "").replace("https://", "").replace("http://", "").strip("/")
+
+    class RecordingPool(dict):
+        """A pool that remembers which KEY it was asked for.
+
+        Instrumenting snap_home.site_key looked like the obvious probe and was
+        wrong: snap_site_settings.handoff_paths() -- called further down the
+        same function for the upload folder -- also goes through site_key, so
+        the counter fired on the profile-wins case and my assertion failed
+        against CORRECT code. The question is which key the POOL was asked
+        for, so ask the pool.
+        """
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.asked = []
+
+        def get(self, key, default=None):
+            self.asked.append(key)
+            return super().get(key, default)
+
+    def resolve(portable_prompt, site_url, pool=None, load=None):
+        """_canonical_to_sybu with the two shared modules replaced."""
+        recorded = RecordingPool(POOL if pool is None else pool)
+        fake_prompts = SimpleNamespace(load=load or (lambda: recorded))
+        fake_home = SimpleNamespace(site_key=host_only)
+        kept = {name: sys.modules.get(name) for name in ("snap_prompts", "snap_home")}
         sys.modules["snap_prompts"] = fake_prompts
         sys.modules["snap_home"] = fake_home
         try:
-            prompt = portable_prompt
-            if not str(prompt or "").strip():
-                prompt = fake_prompts.load().get(fake_home.site_key(site_url), "")
-            return prompt
+            record = {"name": "A site", "site_url": site_url, "api_key": "k",
+                      "portable": {"prompt": portable_prompt, "jpeg_quality": 90}}
+            out = profile_manager._canonical_to_sybu(record)
+            return out, recorded.asked
         finally:
-            for name, module in zip(("snap_prompts", "snap_home"), saved):
+            for name, module in kept.items():
                 if module is None:
                     sys.modules.pop(name, None)
                 else:
                     sys.modules[name] = module
 
-    # A profile that HAS a prompt keeps it; the pool is not consulted.
-    assert merged("PROFILE TEXT", "https://lightafterdark.ca") == "PROFILE TEXT"
-    # Blank, whitespace-only and missing all fall through to the pool.
-    for blank in ("", "   ", None):
-        assert merged(blank, "https://lightafterdark.ca") == "POOL TEXT FOR LIGHT AFTER DARK", (
-            "a blank profile prompt did not fall back to the shared pool"
-        )
-    # And it falls back to THIS site's entry, never another's.
-    assert merged("", "https://nobody.example") == "", (
-        "a site with no pool entry picked up some other site's prompt"
+    # A profile that HAS a prompt keeps it, and the pool is never consulted.
+    out, asked = resolve("PROFILE TEXT", "https://lightafterdark.ca")
+    assert out["prompt"] == "PROFILE TEXT", out["prompt"]
+    assert asked == [], (
+        "the shared pool was consulted even though the profile had a prompt; "
+        "SNAP HQ's value is supposed to be authoritative"
     )
-    assert merged("", "https://other.example") == "POOL TEXT FOR SOMEONE ELSE"
 
-    # The behaviour above is a restatement of profile_manager's own fallback,
-    # so pin that the fallback is still there and still site-keyed. Without
-    # this, the block above is a test of itself.
-    source = open(os.path.join(TOOL, "profile_manager.py"), encoding="utf-8").read()
-    assert "snap_prompts.load()" in source, (
-        "profile_manager no longer falls back to the shared prompt pool, so "
-        "this test is describing something the product does not do"
+    # Blank, whitespace-only and missing all fall back to the pool.
+    for blank in ("", "   ", None):
+        out, asked = resolve(blank, "https://lightafterdark.ca")
+        assert out["prompt"] == "POOL TEXT FOR LIGHT AFTER DARK", (
+            "a blank profile prompt (%r) did not fall back to the shared pool: %r"
+            % (blank, out["prompt"])
+        )
+        # CODEX'S CASE: the key the pool is asked for must be THIS site's.
+        assert asked == ["lightafterdark.ca"], (
+            "the pool was asked for %r instead of this site's key. That is how "
+            "one blog's prompt answers for another, and the version of this "
+            "test that reimplemented the rule could not see it." % (asked,)
+        )
+
+    # A site with no pool entry gets nothing, never someone else's prompt.
+    out, _ = resolve("", "https://nobody.example")
+    assert out["prompt"] == "", (
+        "a site with no pool entry picked up another site's prompt: %r" % out["prompt"]
     )
-    assert "site_key(" in source, (
-        "the shared prompt pool is being read WITHOUT a site key: one site's "
-        "prompt would answer for every site"
+    out, _ = resolve("", "https://other.example")
+    assert out["prompt"] == "POOL TEXT FOR SOMEONE ELSE"
+
+    # An unreadable pool degrades to an empty prompt rather than raising.
+    def exploding_load():
+        raise RuntimeError("pool unreadable")
+    out, _ = resolve("", "https://lightafterdark.ca", load=exploding_load)
+    assert out["prompt"] == "", (
+        "an unreadable shared pool did not degrade to an empty prompt"
     )
-    # AND THAT THE FALLBACK IS REACHABLE. Asserting the call exists is not
-    # enough: replacing the blank-prompt guard with `if False:` leaves the call
-    # in the file, unreachable, and every assertion above still passed. I
-    # checked, which is why this is here.
-    assert re.search(r"if not str\(prompt or ''\)\.strip\(\)\s*:", source), (
-        "the blank-prompt guard is gone, so the shared-pool fallback is dead "
-        "code. A site whose profile prompt is empty -- which is both of the "
-        "sites this incident was about -- would silently get no prompt at all."
-    )
+
+    # The rest of the record must survive the lookup untouched.
+    out, _ = resolve("", "https://lightafterdark.ca")
+    assert out["portable"]["jpeg_quality"] == 90, "an unrelated portable value was lost"
+    assert out["url"] == "https://lightafterdark.ca" and out["api_key"] == "k"
 
 
 def test_use_for_this_run_says_it_is_not_saved():
