@@ -19,6 +19,16 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.54 — 2026-11-18
+
+- **A profile save cannot silently destroy credentials that SUYB could not
+  decrypt (SS-1088).** When a sealed password or API key exists but the vault
+  cannot open it, changing an unrelated setting now preserves the stored
+  ciphertext instead of replacing it with an empty value. Deliberately clearing
+  a credential still works. Every Qt profile-save path uses the same guarded
+  save and reports a failure instead of showing success after nothing was
+  safely written.
+
 ## 0.7.53 — 2026-11-18
 
 - **Cloud backup remains write-only (SS-1413).** Google Drive destination
