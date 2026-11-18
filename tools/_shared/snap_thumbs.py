@@ -38,11 +38,15 @@ from typing import Optional
 from PIL import Image as PILImage
 
 
+DEFAULT_SQ_SIZE = 400
+DEFAULT_ASP_MAX = 900
+
+
 def generate_thumbs(
     src_path: str,
     *,
-    sq_size: int = 300,
-    asp_max: int = 600,
+    sq_size: int = DEFAULT_SQ_SIZE,
+    asp_max: int = DEFAULT_ASP_MAX,
     focus_x: int = 50,
     focus_y: int = 50,
     zoom: int = 100,
@@ -54,8 +58,8 @@ def generate_thumbs(
 
     Args:
         src_path:  absolute path to a JPEG/PNG/WebP source image.
-        sq_size:   square thumbnail dimension (default 300 — img_thumb_square).
-        asp_max:   aspect thumbnail longest-edge limit (default 600 — img_thumb_aspect).
+        sq_size:   square thumbnail dimension (default 400 — SNAPSMACK_THUMB_SQUARE).
+        asp_max:   aspect thumbnail longest-edge limit (default 900 — SNAPSMACK_THUMB_ASPECT_LONG).
         focus_x:   square-crop focal point X, 0-100 (% across the spare axis). 50 = centre.
         focus_y:   square-crop focal point Y, 0-100. 50 = centre.
         zoom:      100-300. Crop window = min(w,h)/(zoom/100). 200 = 2x tighter.

@@ -214,6 +214,8 @@ def prepare(
     output_dir:   str,
     date:         Optional[datetime] = None,
     geo:          Optional[Tuple[float, float]] = None,
+    sq_size:      Optional[int] = None,
+    asp_max:      Optional[int] = None,
 ) -> PreparedImage:
     """
     Prepare one image for upload: preserve the full original (byte-for-byte for
@@ -275,8 +277,12 @@ def prepare(
     thumb_sq_path = ''
     thumb_as_path = ''
     try:
+        resolved_sq = int(sq_size) if sq_size and int(sq_size) > 0 else snap_thumbs.DEFAULT_SQ_SIZE
+        resolved_asp = int(asp_max) if asp_max and int(asp_max) > 0 else snap_thumbs.DEFAULT_ASP_MAX
         thumbs = snap_thumbs.generate_thumbs(
             main_path,
+            sq_size=resolved_sq,
+            asp_max=resolved_asp,
             thumb_dir=os.path.join(output_dir, 'thumbs'),
         )
         if thumbs:

@@ -20,7 +20,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 import requests
 
@@ -83,6 +83,7 @@ class FlkrDckrClient:
             **_site_scope(self.base_url),
         })
         self._album_cache: Dict[str, int] = {}   # name.lower() → SnapSmack album ID
+        self._thumb_sizes: Optional[Tuple[int, int]] = None
 
     # ------------------------------------------------------------------
     # Connection test
@@ -132,6 +133,39 @@ class FlkrDckrClient:
             return {'ok': False, 'message': f'Connection failed: {e}'}
         except ValueError:
             return {'ok': False, 'message': 'Unexpected server response.'}
+
+    def fetch_thumb_sizes(self) -> Tuple[int, int]:
+        """Read (sq_size, asp_max) from the site when available, falling back to 400/900."""
+        if self._thumb_sizes is not None:
+            return self._thumb_sizes
+        import snap_thumbs
+        sq_default = snap_thumbs.DEFAULT_SQ_SIZE
+        asp_default = snap_thumbs.DEFAULT_ASP_MAX
+
+        def _pos_int(val, fallback: int) -> int:
+            try:
+                n = int(val)
+                return n if n > 0 else fallback
+            except (TypeError, ValueError):
+                return fallback
+
+        info = self.check_auth()
+        if not isinstance(info, dict) or not info.get('ok'):
+            return sq_default, asp_default
+
+        sizes = info.get('thumb_sizes') if isinstance(info.get('thumb_sizes'), dict) else {}
+        sq_raw = (
+            sizes.get('square') or sizes.get('sq')
+            or info.get('thumb_square') or info.get('img_thumb_square') or info.get('sq_size')
+        )
+        asp_raw = (
+            sizes.get('aspect') or sizes.get('asp')
+            or info.get('thumb_aspect') or info.get('img_thumb_aspect') or info.get('asp_max')
+        )
+        sq = _pos_int(sq_raw, sq_default)
+        asp = _pos_int(asp_raw, asp_default)
+        self._thumb_sizes = (sq, asp)
+        return self._thumb_sizes
 
     # ------------------------------------------------------------------
     # Albums
@@ -512,11 +546,14 @@ def run_import(
             # ── 3. Prepare image (full original + EXIF + client-built t_/a_
             #       thumbnails). Building thumbs here lets the server skip its
             #       GD pass, moving that load off the shared host.
+            sq_size, asp_max = client.fetch_thumb_sizes()
             prepped = prepare(
                 source_path=photo.image_path,
                 output_dir=staging_dir,
                 date=best_date,
                 geo=photo.geo,
+                sq_size=sq_size,
+                asp_max=asp_max,
             )
             local_paths = [prepped.main_path]
             if prepped.thumb_square_path:
