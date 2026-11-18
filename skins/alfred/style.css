@@ -94,7 +94,7 @@ html {
 body {
     background: #1d1d1d;
     border: none;
-    color: #1d1d1d;
+    color: #f1f1f1;
     font-family: 'Montserrat', 'Helvetica Neue', Helvetica, sans-serif;
     -webkit-text-size-adjust: 100%;
 }
@@ -1036,7 +1036,10 @@ input[type="button"],
 /* -------------------------------------------------------------------------- */
 
 
-.post-container { background: #fff; }
+.post-container {
+    background: #fff;
+    color: #1d1d1d;
+}
 
 /* Featured Media */
 
