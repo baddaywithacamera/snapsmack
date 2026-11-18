@@ -20,6 +20,17 @@ require_once $root . '/core/mesh-helpers.php';
 require_once $root . '/core/export-engine.php';
 require_once $root . '/core/recovery-engine.php';
 
+// The guard helpers do not exist on pre-SS-1417 code. Stub them to a failing
+// answer so running this test against the unfixed tree reports every check as
+// FAIL instead of dying on the first call — the before/after proof has to be
+// reproducible by a reviewer, not just by me.
+if (!function_exists('ms_is_authenticating_fleet_key')) {
+    function ms_is_authenticating_fleet_key(string $key): bool { return true; }
+}
+if (!function_exists('ms_is_canonical_fleet_key')) {
+    function ms_is_canonical_fleet_key(string $key): bool { return false; }
+}
+
 $MARKER   = '__REDACTED__';
 $REAL_KEY = str_repeat('a1b2c3d4', 8);          // 64 lowercase hex, as issued
 $failures = [];
