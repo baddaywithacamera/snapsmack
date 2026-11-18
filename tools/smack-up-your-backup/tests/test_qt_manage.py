@@ -313,13 +313,6 @@ def test_delete_confirm_deletes_exactly_the_ticked(page, client, monkeypatch):
     assert len(page._all) == 4
 
 
-def test_delete_confirmation_truncates_long_lists(page):
-    many = [{"id": str(i), "name": f"b_backup_2026-01-{i:02d}.zip", "size_bytes": 1024} for i in range(1, 21)]
-    headline, details, full = page.delete_confirmation_text(many)
-    assert "20 backup(s)" in headline
-    assert "and 5 more" in details and len(full.splitlines()) == 20
-
-
 # -- download -------------------------------------------------------------------------
 
 def test_download_selected_to_folder(page, client, monkeypatch, folder):

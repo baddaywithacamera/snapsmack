@@ -261,7 +261,7 @@ class ManagePage(QWidget):
 
     def _build(self):
         layout = make_page(self, "Manage cloud backups",
-                           "See, sort, download, restore and delete the backups saved in your "
+                           "See, sort, download and restore the backups saved in your "
                            "backup cloud or your Backblaze buckets.")
 
         where, col = card("Where to look")
@@ -714,26 +714,6 @@ class ManagePage(QWidget):
 
     # -- delete --------------------------------------------------------------
 
-    def delete_confirmation_text(self, selection):
-        """(headline, details, full list) for the delete confirmation."""
-        n = len(selection)
-        total = sum(int(b.get("size_bytes", 0) or 0) for b in selection)
-        source = self.selected_source()
-        headline = f"Permanently delete {n} backup(s) from {source.get('label', 'the cloud')}?"
-        names = [b.get("name", "") for b in selection]
-        shown = "\n".join("  • " + nm for nm in names[:CONFIRM_NAME_LIMIT])
-        if n > CONFIRM_NAME_LIMIT:
-            shown += f"\n  … and {n - CONFIRM_NAME_LIMIT} more (Show Details lists every one)"
-        provider = ((self.window.current_profile or {}).get("cloud_provider")
-                    or (self.window.global_cloud() or {}).get("cloud_provider") or "")
-        where_it_goes = ("On Box they go to the Box Trash."
-                         if provider == "box" and source.get("kind") == "profile"
-                         else "They are removed outright.")
-        details = (f"This frees {human_size(total)} and CANNOT be undone. {where_it_goes}\n"
-                   "Only the backups listed here are deleted. Your blogs and the backups on "
-                   f"this computer are not touched.\n\n{shown}")
-        return headline, details, "\n".join(names)
-
     def _on_delete(self):
         QMessageBox.information(
             self,
@@ -890,7 +870,7 @@ Restore selected: tick ONE backup and press Restore selected. For a Google Drive
 
 Download selected: tick one or more backups, press Download selected and pick a folder. Each backup is saved there under its own name. If a file with that name is already there you are asked before it is replaced. A download that fails part-way leaves no half-finished ZIP behind.
 
-Delete selected: tick one or more backups and press Delete selected. A confirmation box says exactly how many will go, how much space it frees, and lists them by name. Nothing is deleted unless you press the red "Delete N backup(s)" button; "Keep them" (or Esc, or closing the box) cancels. This permanently removes those ZIP files from the cloud and cannot be undone. It only ever deletes the backups you ticked — your blogs and your local backups are untouched. (On Google Drive and Backblaze the files are removed outright; on Box they go to the Box Trash.)
+Delete selected: disabled under SUYB's write-only cloud policy. SUYB does not delete cloud backups; use DRIVE BY to inspect and prune cloud backups.
 """),
     ("Browse cloud (choosing a backup to restore)", """
 Browse cloud on the Restore page opens a list of the backup ZIPs in your backup cloud (Google Drive or Box), newest first, with each one's size and date. Click one and press Select (or double-click it). Cancel closes the list without changing anything.

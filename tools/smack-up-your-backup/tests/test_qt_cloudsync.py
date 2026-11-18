@@ -334,7 +334,7 @@ def test_audit_confirm_then_cleanup(env, fake_engine, monkeypatch):
 
 def test_help_topics_ported(env):
     titles = [t for t, _ in cs.CloudSyncPage(FakeWindow()).help_topics()]
-    assert "Cloud Sync" in titles and "Audit & Cleanup" in titles
+    assert "Cloud Sync" in titles and "Audit B2" in titles
 
 
 # --- credential library ------------------------------------------------------

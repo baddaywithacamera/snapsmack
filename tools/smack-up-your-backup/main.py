@@ -427,7 +427,7 @@ class SetupWizard(tk.Toplevel):
         for tab, desc in [
             ("Backup", "Run backups — differential or full, one blog or all at once"),
             ("Restore", "Upload files back to your server from a backup package"),
-            ("Manage", "View, sort, search, restore and delete your cloud backups"),
+            ("Manage", "View, sort, search and restore your cloud backups"),
             ("Audit", "Scan your server for missing, orphaned, or mismatched files"),
             ("Settings", "Manage profiles, cloud config, and global defaults"),
         ]:
@@ -2051,7 +2051,7 @@ class BackupManagerTab(tk.Frame):
         tk.Button(head, text="↻  Refresh", bg=BG_CARD, fg=FG_MAIN,
                   relief="flat", font=FONT_BODY, padx=12, pady=4, cursor="hand2",
                   command=self.refresh).pack(side="right")
-        tk.Label(head, text="View, sort, restore and delete the backups saved in your cloud folder.",
+        tk.Label(head, text="View, sort, download and restore the backups saved in your cloud folder.",
                  bg=BG_DEEP, fg=FG_DIM, font=FONT_SMALL).pack(side="left", padx=(12, 0))
 
         # Toolbar: source + search + sort + date range
@@ -4718,7 +4718,7 @@ The line under the table always shows how many backups are on screen and their t
 
 Restore selected: pick ONE backup and press ⤓ Restore selected (or double-click it). For a Google Drive / Box backup this jumps to the Restore tab with that backup already chosen; just press START RESTORE there. For a Backblaze backup it first downloads the ZIP to your computer (you choose where) and then loads it into the Restore tab as a local file — because the Restore tab restores from Google Drive/Box or a local ZIP, not directly from Backblaze. Restoring never deletes anything — it uploads files back to your server.
 
-Delete selected: pick one or more backups and press 🗑 Delete selected. A confirmation box lists exactly what will go and how much space it frees. This permanently removes those ZIP files from the cloud and cannot be undone, so it only ever deletes the backups you ticked — your blogs and your local backups are untouched. (On Google Drive and Backblaze the files are removed outright; on Box they go to the Box Trash.)
+Delete selected: disabled under SUYB's write-only cloud policy. SUYB does not delete cloud backups; use DRIVE BY to inspect and prune cloud backups.
 """),
     ("Audit tab", """
 Audit performs a three-way comparison between:
@@ -5108,7 +5108,7 @@ class CloudSyncTab(tk.Frame):
         self._cancel_btn.pack(side="left", padx=(8, 0))
 
         self._dedup_b2_btn = tk.Button(
-            btn_row, text="🔍  AUDIT & CLEANUP",
+            btn_row, text="🔍  AUDIT B2",
             bg=BG_CARD, fg=FG_DIM, font=FONT_HEAD, relief="flat",
             padx=16, pady=8, cursor="hand2", command=self._audit_cleanup,
         )
@@ -5402,59 +5402,21 @@ class CloudSyncTab(tk.Frame):
             self._log.append(f"  Report: {paths['dedup_report']}")
             return
 
+        self._busy = False
+        self._dedup_b2_btn.configure(state="normal")
+        self._run_btn.configure(state="normal")
         msg = (
-            f"Audit complete. Here's what needs to happen:\n\n"
-            f"  Versions to delete:       {summary['to_delete']:>6}\n"
-            f"  Files to re-transfer:     {summary['to_replace']:>6}\n"
-            f"  Files missing from dest:  {summary['missing']:>6}\n"
-            f"  Orphans on B2 (not in source): {summary['orphans']:>3}\n"
-            f"  Already OK:               {summary['ok']:>6}\n\n"
-            f"Deleting bad versions and re-transferring bad files cannot be undone.\n"
-            f"Proceed?"
+            f"Audit complete (report-only — SUYB is write-only in the cloud):\n"
+            f"  Extra/bad versions:       {summary['to_delete']}\n"
+            f"  Files needing re-sync:    {summary['to_replace']}\n"
+            f"  Files missing from dest:  {summary['missing']}\n"
+            f"  Orphans on B2 (not in source): {summary['orphans']}\n"
+            f"  Already OK:               {summary['ok']}\n"
+            f"  Report: {paths['dedup_report']}"
         )
-        confirmed = messagebox.askyesno("Confirm Cleanup", msg)
-        if not confirmed:
-            self._busy = False
-            self._dedup_b2_btn.configure(state="normal")
-            self._run_btn.configure(state="normal")
-            self._log.append("Cleanup cancelled.")
-            return
-
-        import sys
-        if getattr(sys, "frozen", False):
-            scratch = os.path.dirname(sys.executable)
-        else:
-            scratch = tempfile.gettempdir()
-
-        self._cleanup_cancelled = False
-
-        def _execute():
-            import b2_integrity as bi
-
-            def _log(m):
-                self._app.queue_msg(("sync_log", m))
-
-            def _progress(pct):
-                self._app.queue_msg(("sync_progress", pct))
-
-            def _cancelled():
-                return self._cleanup_cancelled
-
-            result = bi.execute_cleanup(
-                b2_client=dst_client,
-                src_client=src_client,
-                src_inventory=src_inv,
-                report=report,
-                scratch_dir=scratch,
-                on_log=_log,
-                on_progress=_progress,
-                cancelled=_cancelled,
-            )
-            bi.write_csv(result["log_rows"], paths["cleanup_log"])
-            result["paths"] = paths
-            self._app.queue_msg(("cleanup_done", result))
-
-        threading.Thread(target=_execute, daemon=True).start()
+        self._log.append(msg)
+        messagebox.showinfo("B2 Audit Complete (Read-Only)", msg)
+        return
 
     def on_cleanup_done(self, result: dict):
         self._busy = False
