@@ -34,13 +34,6 @@ connected rather than guessed at later.
   list outside the viewport. At desktop and large-tablet widths it now opens
   upward and remains scrollable. (SS-1420)
 
-- **SMACKPRESS can ask whether one exact post slug already exists.** COLD SNAP
-  no longer has to search a list capped at 500 posts and guess that a missing
-  row means a slug is free. `GET smackpress/posts?slug=<exact>` returns a
-  complete, explicitly exact answer; the ordinary capped list also reports
-  its total and whether it was truncated. This prevents a site with more than
-  500 longform posts from receiving a duplicate during an update.
-
 - **The step-up lockout escalates, and it cannot be out-waited.** Five failed
   password/2FA confirmations lock the account for 15 minutes, then 30, then an
   hour, and a clear day puts it back to 15. Earlier it documented those three
@@ -72,6 +65,97 @@ connected rather than guessed at later.
   SMACKTALK skins a search typed at the front page used to return the front
   page, silently dropping the term; it now answers properly. (SS-1409)
 
+- **SNAP HQ device authorisation now expires when it says it does.** A device
+  authorised for three months kept working indefinitely: the server checked
+  that a device was known and not blocked, and never looked at the expiry date
+  it had written down. Checking in also reset the term from the moment of
+  asking, so expiry could never arrive. Expiry and the fourteen-day grace
+  period are now enforced, and a renewal extends the previous term rather than
+  starting a new one from today.
+
+  Three things protect the owner. The actions that renew a device stay
+  reachable by a device that has expired, so the way back is always open. A
+  device that had already run past its grace when this shipped gets one
+  fourteen-day window to renew itself before it needs the password again. And
+  SNAP HQ never hard-stops: an expired device opens with a renew prompt, not a
+  locked door.
+
+  On the desktop side, winding the computer's clock backwards no longer
+  revives an expired authorisation, and a device disabled in the CMS loses its
+  cached authorisation the first time it reaches the site instead of the next
+  time it expires. A signed authorisation still cannot learn it was revoked
+  while the machine is offline; that is a property of offline tokens and is
+  recorded rather than implied away. (SS-1418)
+
+- **A redaction placeholder cannot authenticate in any capitalisation.** The
+  fleet-key guard added above rejected the exact placeholder text, and the
+  database compares text without regard to case — so a differently capitalised
+  copy of the same placeholder was not "the placeholder" to the guard and was
+  still a match to the database. The guard now answers the same way the
+  database does, and a restore clears the placeholder whatever case it was
+  written in. (SS-1424)
+
+- **Filtering an archive by photographer no longer reads the whole table.** The
+  column recording who took a photograph was created with an index on new
+  installs and without one on every site that upgraded, because the upgrade
+  step that adds columns does not read index declarations. On a large archive
+  that is the difference between a seek and a full scan. The index is now part
+  of the upgrade. (SS-1407)
+
+- **Smack Public License 2.5 corrects the project credits.** Claude
+  (Anthropic), OpenAI Codex, Google Gemini and Muse (Meta) are named with
+  their actual roles. The licence works exactly as before; the only change is
+  that the required AI co-author credit now names all four.
+
+- **ALFRED's dark variant is readable again.** On the dark setting the body
+  text was set to the same near-black as the canvas behind it, so an entire
+  long-form page rendered as blank space with a visible heading. The canvas
+  text and the white post surface are now paired explicitly, measured at
+  14.92:1 and 16.86:1 on a real browser at tablet widths. ALFRED 1.0.16.
+
+### COLD SNAP, desktop-side only — this does not ride a CMS build
+
+- **SMACK UP YOUR BACKUP cannot delete anything in your cloud storage.** It
+  is write-only there now. The cloud clients refuse a delete outright, and
+  the B2 integrity pass that used to remove objects it judged orphaned only
+  reports them — every row it would have deleted is logged REPORT_ONLY /
+  NOT_DELETED and left where it is. A backup tool that can delete from the
+  copy of last resort is one bad judgement away from taking the archive with
+  it. Deciding what to remove is yours. (SS-1413)
+
+- **SYBU 0.7.77: clearing the queue returns you to the post, and the tags do
+  not follow the site.** Clearing left the window somewhere other than where
+  you were working, and a per-site prompt could leak into the next site's
+  tags.
+
+- **SMACKPRESS can ask whether one exact post slug already exists.** COLD SNAP
+  no longer has to search a list capped at 500 posts and guess that a missing
+  row means a slug is free. `GET smackpress/posts?slug=<exact>` returns a
+  complete, explicitly exact answer; the ordinary capped list also reports
+  its total and whether it was truncated. This prevents a site with more than
+  500 longform posts from receiving a duplicate during an update.
+
+- **COLD SNAP 0.7.54 keeps unfinished work in the owner's profile instead of
+  beside the executable.** Existing sessions are migrated once, with a receipt
+  that makes the move safe to repeat, and a backup session can be imported into
+  the same store. The editor can reopen a published post from a newest-first,
+  searchable list, narrowed by date; it states that the list is capped at 500
+  posts rather than silently implying the whole archive is present. Site theme
+  colours can be edited with readable fallback colours and contrast checks,
+  and the BIGGIE canvas no longer inherits a dark background where the output
+  is meant to be white.
+
+- **COLD SNAP no longer loses a stored password it cannot read.** A profile
+  holding a credential this build could not decode was saved back with that
+  credential blank, so an unreadable password became no password at all. An
+  unreadable value is now preserved untouched unless the owner deliberately
+  clears or replaces it. (SS-1088)
+
+## 0.7.998D - 2026-11-17
+
+Tagged v0.7.998D at 83e7d155, split out of the open 999D section. Every
+entry below was merged BEFORE that tag; which side each one belongs on was
+decided with git merge-base against the tag, not from memory.
 
 - **Generating an API key now asks for your password and a 2FA code.** An API
   key acts for your site from anywhere, for weeks or months. Until now an
@@ -165,16 +249,6 @@ connected rather than guessed at later.
   present, and exactly one pane is ever hidden, server-side. That is still open.
 
 ### COLD SNAP, desktop-side only — this does not ride a CMS build
-
-- **COLD SNAP 0.7.54 keeps unfinished work in the owner's profile instead of
-  beside the executable.** Existing sessions are migrated once, with a receipt
-  that makes the move safe to repeat, and a backup session can be imported into
-  the same store. The editor can reopen a published post from a newest-first,
-  searchable list, narrowed by date; it states that the list is capped at 500
-  posts rather than silently implying the whole archive is present. Site theme
-  colours can be edited with readable fallback colours and contrast checks,
-  and the BIGGIE canvas no longer inherits a dark background where the output
-  is meant to be white.
 
 - SS-1362: **a longform post with no photographs can be sent.** COLD SNAP
   refused one before it ever left the machine, with "no images on draft", so an
