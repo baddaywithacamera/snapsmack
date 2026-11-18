@@ -130,6 +130,32 @@ if ($imagesDdl === '') {
     }
 }
 
+// ── 1b. THE INDEX HAS TO REACH A SITE THAT ALREADY EXISTS ────────────────
+// The check above reads the CANONICAL schema, which only a FRESH install
+// runs. Every site on the fleet is an upgraded one, and an upgrade gets its
+// columns from section 2 of schema-sync (a diff against the canonical file)
+// and its indexes from the hand-kept list in section 3. Section 2 never
+// reads the canonical KEY lines.
+//
+// So the canonical assertion passed, this file printed "indexed", and not
+// one existing site had the index. The claim was true of the only install
+// nobody has. That is the failure this repository calls measuring versus
+// asserting, and it was sitting in the success message.
+$sync = (string)@file_get_contents($root . '/core/schema-sync.php');
+if ($sync === '') {
+    $failures[] = 'could not read core/schema-sync.php';
+} else {
+    if (!preg_match('/\[\s*.snap_images.\s*,\s*.idx_images_user_id./', $sync)) {
+        $failures[] = 'core/schema-sync.php section 3 does not add '
+            . 'idx_images_user_id, so only a brand-new install is indexed and '
+            . 'every upgraded site runs the author filter as a table scan.';
+    }
+    if (!preg_match('/ADD\s+INDEX\s+`?idx_images_user_id`?\s*\(\s*`?user_id`?\s*\)/i', $sync)) {
+        $failures[] = 'the schema-sync entry for idx_images_user_id does not '
+            . 'index the user_id column.';
+    }
+}
+
 // ── 2. NO BACKFILL, ANYWHERE ─────────────────────────────────────────────
 // The one that matters most, and the one someone will add in good faith.
 foreach (['core/schema-sync.php', 'core/updater.php', 'database/schema/snapsmack_canonical.sql'] as $file) {
