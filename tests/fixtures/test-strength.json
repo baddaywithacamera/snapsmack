@@ -1705,6 +1705,15 @@
         "predicates": 11,
         "thresholds": []
     },
+    "recovery-kit-placeholder-credential-regression.php": {
+        "assertions": 24,
+        "predicates": 3,
+        "thresholds": [
+            2,
+            4,
+            8.1
+        ]
+    },
     "release-flow-regression.php": {
         "assertions": 58,
         "predicates": 61,
