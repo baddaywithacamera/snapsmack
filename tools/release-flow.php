@@ -33,6 +33,20 @@ function rf_git(array $args, bool $quiet = true): string {
     return rf_run(array_merge(['git'], $args), $quiet);
 }
 
+/**
+ * Run git and IGNORE a non-zero exit. Only for a step whose failure cannot
+ * make a release unsafe -- a best-effort fetch. Never for a gate.
+ */
+function rf_git_tolerant(array $args): void {
+    $escaped = array_map('escapeshellarg', array_merge(['git'], $args));
+    exec(implode(' ', $escaped) . ' 2>&1', $lines, $code);
+    if ($code !== 0) {
+        echo "note: " . implode(' ', $args) . " did not complete cleanly; "
+            . "continuing, because the check that matters asks origin directly
+";
+    }
+}
+
 function rf_branch(): string {
     return rf_git(['branch', '--show-current']);
 }
@@ -169,6 +183,51 @@ function rf_require_changelog(string $version): void {
 function rf_tag_target(string $tag): string {
     exec('git show-ref --verify --hash ' . escapeshellarg('refs/tags/' . $tag) . ' 2>&1', $lines, $code);
     return $code === 0 ? trim(implode("\n", $lines)) : '';
+}
+
+/**
+ * Does this tag already exist ON ORIGIN? Asked directly, for one tag.
+ *
+ * THE COLLISION CHECK USED TO DEPEND ON A WHOLE-REPOSITORY TAG FETCH. tag-dev
+ * ran `git fetch Github --tags --prune` so the local refs it then inspected
+ * would match origin. In this repository that fetch EXITS NON-ZERO: 1271 of
+ * 1290 local tags disagree with origin -- old alpha tags and archive/* branch
+ * snapshots, no release tags among them -- and git refuses to clobber each
+ * one. rf_run() treats any non-zero exit as fatal, so the release tool refused
+ * with a wall of "would clobber existing tag" and 0.7.998D could not be
+ * tagged at all. The two facts are unrelated: nothing about an archive tag
+ * from October bears on whether v0.7.998D is taken.
+ *
+ * Asking origin about the ONE tag is narrower AND stronger than reading local
+ * refs after a bulk fetch: origin is what decides whether a tag is taken, and
+ * the answer cannot be stale. Returns '' when the tag is free.
+ */
+function rf_remote_tag_target(string $tag): string {
+    $ref = 'refs/tags/' . $tag;
+    exec('git ls-remote --tags Github ' . escapeshellarg($ref) . ' 2>&1', $lines, $code);
+    if ($code !== 0) {
+        rf_fail('could not ask origin whether ' . $tag . ' exists: '
+            . trim(implode("
+", (array)$lines)));
+    }
+    return rf_parse_ls_remote_tag((array)$lines, $ref);
+}
+
+/**
+ * The parsing half, kept separate so it can be tested without a network.
+ *
+ * A mis-parse here is the dangerous direction: reading "not found" from a
+ * listing that DOES contain the tag would let a release re-use a tag that is
+ * already on origin and immutable.
+ */
+function rf_parse_ls_remote_tag(array $lines, string $ref): string {
+    foreach ($lines as $line) {
+        $parts = preg_split('/\s+/', trim((string)$line));
+        if (!is_array($parts) || count($parts) < 2) continue;
+        if (!preg_match('/^[0-9a-f]{40}$/i', (string)$parts[0])) continue;
+        if ($parts[1] === $ref || $parts[1] === $ref . '^{}') return (string)$parts[0];
+    }
+    return '';
 }
 
 function rf_release_declarations(): array {
@@ -496,9 +555,12 @@ if ($command === 'tag-dev') {
         rf_fail("source version is " . rf_source_version() . "; expected {$dev_version}");
     }
     rf_require_changelog($dev_version);
-    rf_git(['fetch', 'Github', '--tags', '--prune'], false);
+    // Best effort only: unrelated historical tag drift must not stop a release.
+    // The authoritative answer comes from rf_remote_tag_target() below.
+    rf_git_tolerant(['fetch', 'Github', '--tags', '--prune']);
     $tag = 'v' . $version . 'D';
-    if (rf_tag_target($tag) !== '') rf_fail("tag {$tag} already exists; use the next version");
+    if (rf_tag_target($tag) !== '') rf_fail("tag {$tag} already exists locally; use the next version");
+    if (rf_remote_tag_target($tag) !== '') rf_fail("tag {$tag} already exists ON ORIGIN and is immutable; use the next version");
     rf_require_next_dev_version($version);
     rf_require_packaged_tag_alignment($version);
     rf_tests();
@@ -557,7 +619,12 @@ if ($command === 'promote-stable') {
             . 'commit that must never be pushed to dev.');
     }
 
-    rf_git(['fetch', 'Github', '--tags', '--prune'], false);
+    // Tolerant for the same reason as tag-dev: 1271 of this repository's local
+    // tags disagree with origin, none of them release tags, and git refuses to
+    // clobber each one -- which turned a fetch nothing depends on into a gate
+    // that could not pass. The stable gate below reads refs/remotes/Github/dev,
+    // which the branch fetch above keeps current.
+    rf_git_tolerant(['fetch', 'Github', '--tags', '--prune']);
 
     $refusals = rfc_stable_candidate_refusals($version, 'HEAD', 'refs/remotes/Github/dev');
     if ($refusals !== []) {
