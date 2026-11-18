@@ -159,6 +159,65 @@ function _reauth_drop_counter(PDO $pdo, string $key, string $action): void {
 }
 
 /**
+ * Take one back off a counter row, atomically, and delete it at zero.
+ *
+ * SS-1399 r5. A request that records a failure and then discovers the account
+ * was locked while it was working has counted an attempt against the NEXT
+ * cycle that the owner never spent. Undoing it has to be as unconditional as
+ * the bump was: "SET count = count - 1" in one statement, with a WHERE that
+ * cannot take a row below zero however many requests unwind at once. The
+ * second statement removes a row that has reached nothing, so the next cycle
+ * starts from no row at all rather than from a zero that still carries an old
+ * window_start.
+ *
+ * window_start is deliberately NOT moved back. It means "the last failure",
+ * and the last failure a real person made is still the time to measure a
+ * quiet period from; rewinding it would hand an attacker a way to push the
+ * quiet period backwards by racing.
+ */
+function _reauth_unbump_counter(PDO $pdo, string $key, string $action): void {
+    $pdo->prepare(
+        "UPDATE snap_rate_limits SET count = count - 1
+         WHERE ip = ? AND action = ? AND count > 0"
+    )->execute([$key, $action]);
+    $pdo->prepare(
+        "DELETE FROM snap_rate_limits WHERE ip = ? AND action = ? AND count <= 0"
+    )->execute([$key, $action]);
+}
+
+/**
+ * Report the lock episode that is running RIGHT NOW, or null if none is.
+ *
+ * SS-1399 r5, from Codex's r4 FAIL. r4 read the standing lock once, before it
+ * counted the failure, and a lock opened after that read was invisible for
+ * the rest of the request: the loser bumped a fresh reauth_fail row to 1, saw
+ * 1 < 5, and answered "code incorrect" to an account that was already locked.
+ *
+ * One read, in one place, so the SAME question can be asked twice in a single
+ * request -- before the bump and again after it -- without the two answers
+ * being written in two different ways and drifting apart. A standing lock is
+ * a fact about the account at the instant it is read; r4's mistake was
+ * treating the first reading as if it stayed true.
+ *
+ * @return array{cycle:int,retry_after:int}|null
+ */
+function _reauth_standing_lock(PDO $pdo, string $key, int $now): ?array {
+    $standing = _reauth_read_counter($pdo, $key, 'reauth_lock', $now);
+    if ($standing === null) {
+        return null;
+    }
+    [$cycle, $ws] = $standing;
+    if ($cycle < 1) {
+        return null;
+    }
+    $lock_sec = _reauth_lockout_seconds($cycle);
+    if ($now >= $ws + $lock_sec) {
+        return null;
+    }
+    return ['cycle' => $cycle, 'retry_after' => max(1, ($ws + $lock_sec) - $now)];
+}
+
+/**
  * Advance the episode counter, but ONLY if nobody has since this caller read
  * the row. $observed is the window_start it read; the first caller through
  * changes that value, so every later caller's WHERE matches nothing and gets
@@ -357,25 +416,26 @@ function _reauth_record_failure(PDO $pdo, int $uid, string $reason, int $now): a
     // Without this it would record a fresh failure -- pre-loading the next
     // cycle with an attempt the owner never made -- and answer as though
     // nothing had been locked at all.
+    $blocked = static function (array $lock) use ($uid, $reason, $now): array {
+        $_SESSION['reauth_lock_until'] = $now + $lock['retry_after'];
+        $_SESSION['reauth_fail_count'] = 0;
+        _reauth_audit('blocked_while_locked', $uid,
+            ['reason' => $reason, 'cycle' => $lock['cycle'],
+             'retry_after' => $lock['retry_after']]);
+        return ['count' => REAUTH_MAX_ATTEMPTS, 'locked' => true,
+            'retry_after' => $lock['retry_after'], 'cycle' => $lock['cycle']];
+    };
+
     try {
-        $standing = _reauth_read_counter($pdo, $key, 'reauth_lock', $now);
+        $standing = _reauth_standing_lock($pdo, $key, $now);
         if ($standing !== null) {
-            [$standing_cycle, $standing_ws] = $standing;
-            $standing_sec = _reauth_lockout_seconds($standing_cycle);
-            if ($standing_cycle > 0 && $now < $standing_ws + $standing_sec) {
-                $retry = max(1, ($standing_ws + $standing_sec) - $now);
-                $_SESSION['reauth_lock_until'] = $now + $retry;
-                $_SESSION['reauth_fail_count'] = 0;
-                _reauth_audit('blocked_while_locked', $uid,
-                    ['reason' => $reason, 'cycle' => $standing_cycle, 'retry_after' => $retry]);
-                return ['count' => REAUTH_MAX_ATTEMPTS, 'locked' => true,
-                    'retry_after' => $retry, 'cycle' => $standing_cycle];
-            }
+            return $blocked($standing);
         }
     } catch (PDOException $e) {
         error_log('SnapSmack reauth: standing lock read failed - ' . $e->getMessage());
     }
 
+    $bumped = false;
     try {
         // A quiet period resets the current cycle's attempts before counting
         // this one, so five scattered typos over a week are not a lockout.
@@ -384,8 +444,37 @@ function _reauth_record_failure(PDO $pdo, int $uid, string $reason, int $now): a
             _reauth_drop_counter($pdo, $key, 'reauth_fail');
         }
         $db_count = _reauth_bump_counter($pdo, $key, 'reauth_fail', $now);
+        $bumped = true;
     } catch (PDOException $e) {
         error_log('SnapSmack reauth: failure record failed - ' . $e->getMessage());
+    }
+
+    // ASK AGAIN, AFTER THE BUMP. SS-1399 r5, from Codex's r4 FAIL.
+    //
+    // The check above is a reading, not a promise. Between it and the bump,
+    // another request can reach the fifth failure, drop reauth_fail, and open
+    // the lock. r4 never looked again, so that interleaving ended like this:
+    // this request's bump re-created reauth_fail at 1, "1 < 5" sent the
+    // account an ordinary "code incorrect" while it was locked, and the 1 sat
+    // there waiting to be counted against the owner's next cycle. The attempt
+    // budget leaked an attempt per lost race, and the lock went unreported to
+    // the one request best placed to report it.
+    //
+    // So the same question is asked a second time, after the counter moves.
+    // A lock found here means this failure was counted after the account had
+    // already paid for it, and the increment comes back off before anyone is
+    // told anything. Reading after the write is the only ordering that can
+    // see a write that happened during it.
+    if ($bumped) {
+        try {
+            $standing = _reauth_standing_lock($pdo, $key, $now);
+            if ($standing !== null) {
+                _reauth_unbump_counter($pdo, $key, 'reauth_fail');
+                return $blocked($standing);
+            }
+        } catch (PDOException $e) {
+            error_log('SnapSmack reauth: post-bump lock read failed - ' . $e->getMessage());
+        }
     }
 
     $effective = max($db_count, $sess_count);
