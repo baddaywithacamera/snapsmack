@@ -2282,6 +2282,13 @@
             6
         ]
     },
+    "smackpress-posts-answers-about-one-slug-regression.php": {
+        "assertions": 19,
+        "predicates": 19,
+        "thresholds": [
+            3
+        ]
+    },
     "smacktalk-archive-search-regression.php": {
         "assertions": 20,
         "predicates": 17,
