@@ -409,13 +409,14 @@ function _reauth_record_failure(PDO $pdo, int $uid, string $reason, int $now): a
     $db_count = $sess_count;
     $cycle = 0;
 
-    // A LOCK THAT ALREADY EXISTS IS REPORTED, NOT RE-EARNED. reauth_verify
-    // checks the budget before it gets here, so on the ordinary path this is
-    // never true. It is true for the loser of the race above: that request
-    // passed the budget check a moment before another one locked the account.
-    // Without this it would record a fresh failure -- pre-loading the next
-    // cycle with an attempt the owner never made -- and answer as though
-    // nothing had been locked at all.
+    // THE ANSWER A STANDING LOCK GETS, wherever it is discovered.
+    //
+    // Both checks below end here, so the account is told the same thing
+    // whether the lock was already open when the request arrived or opened
+    // while it was working: the episode and the time left on it, the session
+    // marked locked, this cycle's session count cleared so the next attempt
+    // is not double-counted, and a blocked_while_locked audit line rather
+    // than an ordinary failure.
     $blocked = static function (array $lock) use ($uid, $reason, $now): array {
         $_SESSION['reauth_lock_until'] = $now + $lock['retry_after'];
         $_SESSION['reauth_fail_count'] = 0;
@@ -426,6 +427,12 @@ function _reauth_record_failure(PDO $pdo, int $uid, string $reason, int $now): a
             'retry_after' => $lock['retry_after'], 'cycle' => $lock['cycle']];
     };
 
+    // A LOCK THAT ALREADY EXISTS IS REPORTED, NOT RE-EARNED. reauth_verify
+    // checks the budget before it gets here, so on the ordinary path this is
+    // never true. It is true for a request that passed that check a moment
+    // before another one locked the account. Without it, this failure would
+    // be counted against an account that has already stopped accepting
+    // attempts, and answered as though nothing had been locked at all.
     try {
         $standing = _reauth_standing_lock($pdo, $key, $now);
         if ($standing !== null) {
