@@ -164,6 +164,43 @@ connected rather than guessed at later.
   Measured live: the stylesheet, both engines and populated tiles were all
   present, and exactly one pane is ever hidden, server-side. That is still open.
 
+- **SNAP HQ device authorisation now expires when it says it does.** A device
+  authorised for three months kept working indefinitely: the server checked
+  that a device was known and not blocked, and never looked at the expiry date
+  it had written down. Checking in also reset the term from the moment of
+  asking, so expiry could never arrive. Expiry and the fourteen-day grace
+  period are now enforced, and a renewal extends the previous term rather than
+  starting a new one from today.
+
+  Three things protect the owner. The actions that renew a device stay
+  reachable by a device that has expired, so the way back is always open. A
+  device that had already run past its grace when this shipped gets one
+  fourteen-day window to renew itself before it needs the password again. And
+  SNAP HQ never hard-stops: an expired device opens with a renew prompt, not a
+  locked door.
+
+  On the desktop side, winding the computer's clock backwards no longer
+  revives an expired authorisation, and a device disabled in the CMS loses its
+  cached authorisation the first time it reaches the site instead of the next
+  time it expires. A signed authorisation still cannot learn it was revoked
+  while the machine is offline; that is a property of offline tokens and is
+  recorded rather than implied away. (SS-1418)
+
+- **A redaction placeholder cannot authenticate in any capitalisation.** The
+  fleet-key guard added above rejected the exact placeholder text, and the
+  database compares text without regard to case — so a differently capitalised
+  copy of the same placeholder was not "the placeholder" to the guard and was
+  still a match to the database. The guard now answers the same way the
+  database does, and a restore clears the placeholder whatever case it was
+  written in. (SS-1424)
+
+- **Filtering an archive by photographer no longer reads the whole table.** The
+  column recording who took a photograph was created with an index on new
+  installs and without one on every site that upgraded, because the upgrade
+  step that adds columns does not read index declarations. On a large archive
+  that is the difference between a seek and a full scan. The index is now part
+  of the upgrade. (SS-1407)
+
 ### COLD SNAP, desktop-side only — this does not ride a CMS build
 
 - **COLD SNAP 0.7.54 keeps unfinished work in the owner's profile instead of
