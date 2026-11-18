@@ -12,7 +12,7 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-$page_title       = 'WOTCHA! — SnapSmack News';
+$page_title       = 'Free SnapSmack news — WOTCHA!';
 $page_description = 'SnapSmack news, releases, and the occasional rant about what got built and why.';
 $page_og_url      = 'https://snapsmack.ca/wotcha.php';
 $nav_active       = 'wotcha';

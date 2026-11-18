@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'SMACK UP YOUR BACKUP - backup and recovery for SnapSmack';
+$page_title       = 'Free backup and recovery — SMACK UP YOUR BACKUP';
 $page_description = 'SMACK UP YOUR BACKUP backs up one SnapSmack site or a whole fleet to local storage and cloud providers, audits what exists where, and recovers a site even when the original installation is gone.';
 $page_og_url      = 'https://snapsmack.ca/tool-suyb.php';
 $nav_active       = 'tool-suyb';

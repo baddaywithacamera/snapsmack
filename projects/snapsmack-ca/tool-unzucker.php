@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'THE UNZUCKER - Instagram to SnapSmack importer';
+$page_title       = 'Free Instagram importer — THE UNZUCKER for SnapSmack';
 $page_description = 'THE UNZUCKER moves an Instagram data export into a SnapSmack site with images, captions, hashtags, carousels, and original dates intact, and lets you arrange the archive as the classic three-across grid.';
 $page_og_url      = 'https://snapsmack.ca/tool-unzucker.php';
 $nav_active       = 'tool-unzucker';

@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'SMACKPRESS - WordPress to SnapSmack migration';
+$page_title       = 'Free WordPress importer — SMACKPRESS for SnapSmack';
 $page_description = 'SMACKPRESS moves a WordPress photo blog into a SnapSmack SMACKTALK site one post at a time, with a review step for each post, its images, and its formatting.';
 $page_og_url      = 'https://snapsmack.ca/tool-smackpress.php';
 $nav_active       = 'tool-smackpress';

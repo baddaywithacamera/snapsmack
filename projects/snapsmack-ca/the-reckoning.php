@@ -7,7 +7,7 @@
  *     // ===== SNAPSMACK EOF =====
  */
 
-$page_title       = 'THE RECKONING! - SNAPSMACK by the Numbers';
+$page_title       = 'Free SnapSmack by the numbers — THE RECKONING!';
 $page_description = 'The measured scale of SNAPSMACK, its security process, and what software of this scope would cost under conventional pre-AI development.';
 $page_og_url      = 'https://snapsmack.ca/the-reckoning.php';
 $nav_active       = 'reckoning';

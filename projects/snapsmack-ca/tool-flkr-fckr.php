@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'FLKR FCKR - Flickr to SnapSmack importer';
+$page_title       = 'Free Flickr importer — FLKR FCKR for SnapSmack';
 $page_description = 'FLKR FCKR imports a Flickr archive into SnapSmack with photographs, titles, descriptions, tags, upload dates, views, comments, and likes preserved. Pair it with the SLICKR skin to keep the familiar look.';
 $page_og_url      = 'https://snapsmack.ca/tool-flkr-fckr.php';
 $nav_active       = 'tool-flkr-fckr';

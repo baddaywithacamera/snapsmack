@@ -14,7 +14,7 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-$page_title       = 'BUZZERS! — SnapSmack Security Audits';
+$page_title       = 'Free SnapSmack security audits — BUZZERS!';
 $page_description = 'Every security audit we have filed, including honest open work and verified closures.';
 $page_og_url      = 'https://snapsmack.ca/buzzers.php';
 $nav_active       = 'buzzers';

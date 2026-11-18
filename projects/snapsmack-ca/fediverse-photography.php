@@ -7,7 +7,7 @@
  *     <?php // ===== SNAPSMACK EOF =====
  */
 
-$page_title = 'Fediverse Photography From Your Own Website - SnapSmack';
+$page_title = 'Free fediverse photography — SnapSmack';
 $page_description = 'Photography on the fediverse from a site you own: readers on Mastodon and Pixelfed can follow, like, boost and reply while the original stays on your domain. A directory, a weekly challenge, and manners included.';
 $page_og_url = 'https://snapsmack.ca/fediverse-photography.php';
 $landing_eyebrow = 'Fediverse photography';

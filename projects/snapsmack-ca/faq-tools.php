@@ -6,7 +6,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'BRASS TACKS! - Desktop tools - SnapSmack FAQ';
+$page_title       = 'Free SnapSmack FAQ: desktop tools';
 $page_description = 'SnapSmack FAQ, desktop tools: The free Windows and Linux suite: which tool does what, where your files go, and what it never does.';
 $page_og_url      = 'https://snapsmack.ca/faq-tools.php';
 $faq_slug    = 'faq-tools';

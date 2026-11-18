@@ -10,7 +10,7 @@
  *     // ===== SNAPSMACK EOF =====
  */
 
-$page_title       = 'THE GOODS! - SnapSmack Features';
+$page_title       = 'Free photoblog features — SnapSmack';
 $page_description = 'Everything SnapSmack does: four publishing modes, a real archive, import and export, the photographers\' network, skins, desktop tools, security, AI assistance, and what it takes to run it.';
 $page_og_url      = 'https://snapsmack.ca/features.php';
 $nav_active       = 'goods';
