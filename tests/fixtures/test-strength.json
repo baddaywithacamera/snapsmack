@@ -1734,6 +1734,11 @@
             2
         ]
     },
+    "release-tag-collision-asks-origin-regression.php": {
+        "assertions": 16,
+        "predicates": 7,
+        "thresholds": []
+    },
     "release-tag-rules-regression.php": {
         "assertions": 39,
         "predicates": 24,
