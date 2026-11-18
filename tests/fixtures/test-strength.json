@@ -2511,6 +2511,16 @@
             20
         ]
     },
+    "strict-hit-map-covers-every-kind-regression.php": {
+        "assertions": 20,
+        "predicates": 14,
+        "thresholds": [
+            5,
+            5,
+            5,
+            200
+        ]
+    },
     "strict-path-asset-parity.php": {
         "assertions": 14,
         "predicates": 16,

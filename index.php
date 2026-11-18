@@ -675,9 +675,27 @@ try {
         // did not fall off; it was never written down. The strict kinds are
         // mapped onto the six page types the rest of the CMS already uses, so
         // old and new rows are comparable.
+        // 'blog' IS A ROUTE, NOT A KIND, AND THIS ENTRY IS CURRENTLY DEAD.
+        // SS-1061 was raised because 'blog' is missing here while it IS in the
+        // strict controller's route list, and a kind with no entry logs no
+        // view and no scroll time at all. Measured in source before changing
+        // anything: core/public-controller.php:483 handles route 'blog' by
+        // forcing homepage_mode to latest_post and then falling through the
+        // ordinary landing branches, which return kind 'photo' (the solo
+        // SMACKONEOUT page), kind 'landing' (a skin that owns a landing) or
+        // kind 'page'. It never returns kind 'blog'. Nothing does; the string
+        // appears as a kind nowhere in core/.
+        //
+        // So the hole the ticket describes is not open, and this line fixes
+        // no live loss. It is here because the owner ruled the mapping and
+        // because it costs nothing to be ready: the day somebody gives the
+        // blog route a kind of its own, the feed logs instead of vanishing.
+        // The regression below asserts BOTH directions, so a dead key cannot
+        // sit here unexplained and a live kind cannot go unmapped.
         $_hit_types = [
             'landing' => 'landing', 'photo' => 'image', 'post' => 'image',
             'page' => 'page', 'collection' => 'page', 'blogroll' => 'page',
+            'blog' => 'landing',
             'hashtag' => 'hashtag', 'search' => 'search',
             'archive' => 'archive', 'albums' => 'archive', 'collections' => 'archive',
         ];
