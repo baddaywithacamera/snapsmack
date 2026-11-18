@@ -146,6 +146,16 @@ connected rather than guessed at later.
 
 ### COLD SNAP, desktop-side only — this does not ride a CMS build
 
+- **COLD SNAP 0.7.54 keeps unfinished work in the owner's profile instead of
+  beside the executable.** Existing sessions are migrated once, with a receipt
+  that makes the move safe to repeat, and a backup session can be imported into
+  the same store. The editor can reopen a published post from a newest-first,
+  searchable list, narrowed by date; it states that the list is capped at 500
+  posts rather than silently implying the whole archive is present. Site theme
+  colours can be edited with readable fallback colours and contrast checks,
+  and the BIGGIE canvas no longer inherits a dark background where the output
+  is meant to be white.
+
 - SS-1362: **a longform post with no photographs can be sent.** COLD SNAP
   refused one before it ever left the machine, with "no images on draft", so an
   essay written without a picture could be finished and then simply not go
