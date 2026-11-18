@@ -131,6 +131,38 @@ def main():
     check('it says where it came from, so reuse is not silent',
           bool(hit) and hit.get('reused_from_domain') == 'baddaywithacamera.com')
 
+    # ── 3b. BUT ONE SITE'S VOCABULARY DOES NOT TRAVEL WITH IT ──────────────
+    # SS-1412's sibling, PM-approved 2026-11-17. The docstring on
+    # find_reusable claims caption, alt, TAGS, colour and orientation are "not
+    # properties of which blog it is posted to". True of the others, false of
+    # tags: #fauxlaroid belongs to fauxlaroid.fyi, not to the photograph.
+    # Three sites' prompts required that pair, every image enriched under them
+    # cached it, and the same bytes arriving at a fourth blog brought it along
+    # -- 1,073 published images across three blogs that had to be cleaned.
+    #
+    # THE MONEY IS WHAT THIS FILE IS FOR, so note what did NOT change: still
+    # one lookup, still no API call, and the fields that cost the request --
+    # title, caption, alt, colour, orientation -- all still come back.
+    check("a cross-site reuse does NOT carry the other site's tags",
+          bool(hit) and not str((hit.get('bundle') or {}).get('tags', '') or '').strip())
+    check('and it SAYS which fields it dropped, so the UI need not look forgetful',
+          bool(hit) and 'tags' in (hit.get('dropped_fields') or []))
+    check('and it is marked as a cross-domain reuse',
+          bool(hit) and hit.get('cross_domain') is True)
+    for _kept in ('title', 'caption', 'alt', 'colors', 'orientation'):
+        check('the paid-for %s still comes back -- dropping tags must not '
+              'cost the request' % _kept,
+              bool(hit) and _kept in (hit.get('bundle') or {}))
+
+    # SAME SITE keeps its own tags: they are that site's vocabulary and it is
+    # the site asking.
+    own = cache.find_reusable(image_hash, MODEL, cache.prompt_sha256(BASE_PROMPT),
+                              prefer_site=site_a)
+    check('a SAME-site reuse keeps its tags',
+          bool(own) and str((own.get('bundle') or {}).get('tags', '') or '').strip() != '')
+    check('and is not marked cross-domain',
+          bool(own) and own.get('cross_domain') is False)
+
     # ── 4. A GENUINELY DIFFERENT INSTRUCTION STILL RE-ENRICHES ─────────────
     # This is the half the ticket wanted KEPT. If this passes wrongly, Sean
     # gets a caption written to an instruction he changed.

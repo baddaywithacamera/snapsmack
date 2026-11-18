@@ -275,8 +275,55 @@ def find_reusable(image_hash: str, model: str, base_prompt_hash: str,
             result["accepted"] = json.loads(result.pop("accepted_json"))
             result["reused_from_db"] = path
             result["reused_from_domain"] = result.get("domain", "")
+            result["cross_domain"] = False
+            result["dropped_fields"] = []
+            if prefer_site:
+                own = _db_path(prefer_site)
+                if os.path.normcase(path) != os.path.normcase(own):
+                    result["cross_domain"] = True
+                    result = _strip_site_specific(result)
             return result
     return None
+
+
+# Fields that describe the PHOTOGRAPH and travel with it, and the one that
+# does not. See _strip_site_specific().
+SITE_SPECIFIC_FIELDS = ("tags",)
+
+
+def _strip_site_specific(result: dict) -> dict:
+    """Take this site's own vocabulary out of another site's enrichment.
+
+    SS-1412's sibling, approved by the PM on 2026-11-17. The docstring above
+    claims caption, alt text, TAGS, colour and orientation are "not properties
+    of which blog it is posted to". That is true of the others and false of
+    tags: #fauxlaroid is a property of fauxlaroid.fyi, not of the photograph.
+    Three sites' prompts required that pair, every image enriched under them
+    cached it, and the same bytes arriving at a fourth blog brought it along.
+
+    WHAT THIS COSTS, SAID PLAINLY, because it is not nothing: reuse exists to
+    skip the AI call, so nothing regenerates the tags. A photograph reused at a
+    second site arrives with NO tags rather than that site's own. "Let that
+    site's prompt supply its own" would mean re-enriching, which is the exact
+    request the money fix exists to avoid. Wrong tags are worse than none --
+    they are published, they build a tag archive, and someone has to clean 1,073
+    rows -- so this is the right trade, but the caller is told which fields were
+    dropped so it can say so on screen instead of looking like it forgot.
+
+    The money is untouched: no extra request, same single lookup.
+    """
+    bundle = dict(result.get("bundle") or {})
+    accepted = dict(result.get("accepted") or {})
+    dropped = []
+    for field in SITE_SPECIFIC_FIELDS:
+        if str(bundle.get(field, "") or "").strip():
+            dropped.append(field)
+        bundle.pop(field, None)
+        accepted.pop(field, None)
+    result["bundle"] = bundle
+    result["accepted"] = accepted
+    result["dropped_fields"] = dropped
+    return result
 
 
 def merge_remote(site: str, record: dict) -> dict:
