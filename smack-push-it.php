@@ -103,6 +103,25 @@ function pushit_size_preset_vals(string $preset): array {
     ];
 }
 
+/**
+ * Has the hub actually SAVED its page-cache settings?
+ *
+ * Muse's nit on the cache push group, and it is a real one: the page read
+ * ($settings['cache_enabled'] ?? '0') and ($settings['cache_ttl'] ?? '300'),
+ * so a hub that had never visited its own cache settings displayed "OFF" and
+ * "300" as though those were decisions. PUSH IT ALL then sent the group --
+ * which, with no value rows to send, pushed ONLY the lock flag. Every spoke
+ * would be locked out of its own cache settings on the strength of a default
+ * nobody chose.
+ *
+ * array_key_exists, not empty(): a saved '0' IS a decision ("off, deliberately")
+ * and must push. Only an ABSENT row means nothing has been chosen.
+ */
+function pushit_cache_is_configured(array $settings): bool {
+    return array_key_exists('cache_enabled', $settings)
+        && array_key_exists('cache_ttl', $settings);
+}
+
 // ─── cURL PUSH HELPER ────────────────────────────────────────────────────────
 function pushit_push(string $site_url, string $api_key, array $pairs): array {
     $url = rtrim($site_url, '/') . '/api.php?route=multisite/settings/push';
@@ -210,6 +229,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['csrf']) && hash_equa
         foreach (array_keys($push_group_keys) as $group) {
             $ctrl_key = 'hub_controls_' . $group;
             if (($settings[$ctrl_key] ?? '0') !== '1') continue;
+            // Refuse rather than push a lock with nothing behind it. Reported,
+            // not skipped quietly: a group that silently does nothing is how
+            // someone concludes the push is broken.
+            if ($group === 'cache' && !pushit_cache_is_configured($settings)) {
+                $push_results['cache'] = ['error' =>
+                    'Not pushed: this hub has no cache settings saved. Set them in '
+                    . 'Settings first, or every spoke would be locked out of its own '
+                    . 'cache settings on a default nobody chose.'];
+                continue;
+            }
             $push_results[$group] = pushit_push_group(
                 $spokes, $settings,
                 $push_group_keys[$group],
@@ -557,24 +586,31 @@ include 'core/sidebar.php';
         <div class="box">
             <h3>PAGE CACHE</h3>
             <div class="dash-grid mb-16">
+                <?php $cache_ready = pushit_cache_is_configured($settings); ?>
                 <div class="lens-input-wrapper">
                     <label>CACHING</label>
-                    <div class="read-only-display"><?php echo ($settings['cache_enabled'] ?? '0') === '1' ? 'ON' : 'OFF (DEFAULT)'; ?></div>
+                    <div class="read-only-display"><?php echo !$cache_ready ? 'NOT SET' : (($settings['cache_enabled'] ?? '0') === '1' ? 'ON' : 'OFF'); ?></div>
                 </div>
                 <div class="lens-input-wrapper">
                     <label>TTL (SECONDS)</label>
-                    <div class="read-only-display"><?php echo htmlspecialchars((string)($settings['cache_ttl'] ?? '300')); ?></div>
+                    <div class="read-only-display"><?php echo !$cache_ready ? 'NOT SET' : htmlspecialchars((string)($settings['cache_ttl'] ?? '300')); ?></div>
                 </div>
                 <div class="lens-input-wrapper">
                     <label>HUB CONTROLS THIS SETTING</label>
                     <label class="toggle-switch">
                         <input type="checkbox" name="hub_controls[cache]" value="1"
+                               <?php echo !$cache_ready ? 'disabled' : ''; ?>
                                <?php echo ($settings['hub_controls_cache'] ?? '0') === '1' ? 'checked' : ''; ?>>
                         <span class="toggle-slider"></span>
                     </label>
                     <span class="dim text-0-82">When on, spokes cannot change their own page cache settings.</span>
                 </div>
             </div>
+            <?php if (!$cache_ready): ?>
+            <div class="alert alert-warn">This hub has no cache settings saved; set them in Settings first.
+                Until then the cache group is not pushed — otherwise every spoke would be locked out of its own
+                cache settings on a default nobody chose.</div>
+            <?php endif; ?>
             <p class="dim text-0-82">Pushing a cache change PURGES each spoke's stored pages, so nothing keeps
                serving yesterday's copy on the old TTL. Developer mode (the temporary local bypass) is never
                pushed and is refused if sent: it belongs to whoever is working on that one site.</p>

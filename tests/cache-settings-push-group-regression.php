@@ -177,6 +177,77 @@ if (!preg_match("/\\\$render_result\('cache'\)/", $hub)) {
         . 'failed push would be invisible';
 }
 
+// ── 6. AN UNCONFIGURED HUB DOES NOT PUSH A LOCK WITH NOTHING BEHIND IT ───
+// Muse's nit, and a real one. The page read ($settings['cache_enabled'] ?? '0')
+// and ($settings['cache_ttl'] ?? '300'), so a hub that had never opened its own
+// cache settings displayed OFF and 300 as if they were decisions -- and PUSH IT
+// ALL then sent the group with no value rows to send, pushing ONLY the lock.
+// Every spoke locked out of its own cache settings on a default nobody chose.
+//
+// THE PREDICATE IS EXECUTED. It is a pure function for exactly that reason: the
+// page around it needs a request, a hub and a database.
+
+if (!function_exists('pushit_cache_is_configured')) {
+    // Pull the function out of the page without running the page.
+    $fnAt = strpos($hub, 'function pushit_cache_is_configured');
+    if ($fnAt === false) {
+        $failures[] = 'pushit_cache_is_configured() is gone, so nothing stops a '
+            . 'hub with no saved cache settings from pushing a bare lock';
+    } else {
+        $fnEnd = strpos($hub, "
+}", $fnAt);
+        eval(substr($hub, $fnAt, $fnEnd - $fnAt + 2));
+    }
+}
+if (function_exists('pushit_cache_is_configured')) {
+    // A saved '0' IS a decision and must push. Only an absent row is "not set".
+    $cases = [
+        [['cache_enabled' => '0', 'cache_ttl' => '300'], true,
+         "a deliberate OFF is a decision and must still push"],
+        [['cache_enabled' => '1', 'cache_ttl' => '60'], true, 'a configured hub pushes'],
+        [[], false, 'a hub with neither row saved must not push'],
+        [['cache_enabled' => '1'], false, 'a hub missing cache_ttl must not push'],
+        [['cache_ttl' => '300'], false, 'a hub missing cache_enabled must not push'],
+    ];
+    foreach ($cases as [$given, $want, $why]) {
+        if (pushit_cache_is_configured($given) !== $want) {
+            $failures[] = 'pushit_cache_is_configured() is wrong: ' . $why;
+        }
+    }
+}
+// And the push loop must consult it, before it pushes.
+// Anchored on the comment, not on "isset($_POST['push_all'])": escaping a $
+// inside a PHP string here put a literal backslash in the needle and the slice
+// came back empty, which failed against correct code. Third time today.
+$loopAt = strpos($hub, 'PUSH IT ALL — push every hub-controlled group');
+$loop = $loopAt === false ? '' : substr($hub, $loopAt, 1400);
+if ($loop === '') {
+    $failures[] = 'the PUSH IT ALL loop could not be found';
+} else {
+    if (!str_contains($loop, 'pushit_cache_is_configured')) {
+        $failures[] = 'PUSH IT ALL does not check whether the hub has cache '
+            . 'settings saved, so it can still push a bare lock flag';
+    }
+    $guardAt = strpos($loop, 'pushit_cache_is_configured');
+    $pushAt = strpos($loop, 'pushit_push_group(');
+    if ($guardAt !== false && $pushAt !== false && $guardAt > $pushAt) {
+        $failures[] = 'the check runs after the push, which checks nothing';
+    }
+    if (!str_contains($loop, "push_results['cache']")) {
+        $failures[] = 'a refused cache push is silent. A group that quietly does '
+            . 'nothing is how someone concludes the push is broken.';
+    }
+}
+// The page must not present unsaved defaults as saved values.
+if (preg_match("/OFF \(DEFAULT\)/", $hub)) {
+    $failures[] = 'the push page still shows "OFF (DEFAULT)" for the cache, '
+        . 'which reads as a saved decision when nothing has been chosen';
+}
+if (!str_contains($hub, 'NOT SET')) {
+    $failures[] = 'the page does not distinguish an unsaved cache setting from a '
+        . 'saved one';
+}
+
 if ($failures) {
     throw new RuntimeException("The cache push group is not safe:\n  - "
         . implode("\n  - ", $failures));

@@ -287,8 +287,8 @@
         "thresholds": []
     },
     "cache-settings-push-group-regression.php": {
-        "assertions": 20,
-        "predicates": 23,
+        "assertions": 28,
+        "predicates": 33,
         "thresholds": []
     },
     "canonical-schema-column-syntax-regression.php": {
