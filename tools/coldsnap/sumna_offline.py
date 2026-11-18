@@ -1075,17 +1075,20 @@ class SyncResult:
     ok: bool
     remote_post_id: int = 0
     message: str = ""
+    cancelled: bool = False
 
 
 class SyncEngine:
     def __init__(self, session: Session, poster,
                  on_event: Optional[Callable[[str, Draft, str], None]] = None,
-                 upload_dir: str = "", completed_dir: str = ""):
+                 upload_dir: str = "", completed_dir: str = "",
+                 confirm_overwrite_fn: Optional[Callable] = None):
         self.session = session
         self.poster = poster
         self.on_event = on_event or (lambda phase, draft, msg: None)
         self.upload_dir = os.path.abspath(upload_dir) if upload_dir else ""
         self.completed_dir = os.path.abspath(completed_dir) if completed_dir else ""
+        self.confirm_overwrite_fn = confirm_overwrite_fn
 
     def _archive_completed(self, draft: Draft) -> None:
         """Move verified source images from managed `upload` to `completed`."""
@@ -1154,19 +1157,32 @@ class SyncEngine:
             self._emit("failed", draft, draft.error)
             return SyncResult(False, message=draft.error)
 
+        prev_status = draft.status
         self._mark(draft, ST_SYNCING)
         self._emit("syncing", draft)
         try:
             if draft.kind == KIND_SOLO:
                 res = self.poster.sync_solo(draft)
             elif draft.kind == KIND_SMACKTALK:
-                res = self.poster.sync_smacktalk(draft)
+                if self.confirm_overwrite_fn is not None:
+                    try:
+                        res = self.poster.sync_smacktalk(
+                            draft, confirm_overwrite_fn=self.confirm_overwrite_fn)
+                    except TypeError:
+                        res = self.poster.sync_smacktalk(draft)
+                else:
+                    res = self.poster.sync_smacktalk(draft)
             else:
                 res = self.poster.sync_gram(draft)
         except Exception as e:
             self._mark(draft, ST_FAILED, str(e))
             self._emit("failed", draft, str(e))
             return SyncResult(False, message=str(e))
+
+        if getattr(res, "cancelled", False):
+            self._mark(draft, prev_status, "")
+            self._emit("cancelled", draft, res.message)
+            return res
 
         if not res.ok:
             self._mark(draft, ST_FAILED, res.message)

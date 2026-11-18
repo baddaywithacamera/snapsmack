@@ -1021,16 +1021,44 @@ class SmacktalkPoster:
         except Exception:
             return ""
 
-    def _resolve_existing_post_id(self, draft, confirm_overwrite_fn=None) -> Optional[str]:
+    def _slug_taken_on_server(self, slug: str, cached_posts: list) -> bool:
+        target = self._long_slugify(slug)
+        if not target:
+            return False
+        try:
+            r = self.session.get(self._route("smackpress/posts"),
+                                 params={"slug": target}, timeout=30)
+            if r.status_code == 200:
+                payload = r.json() or {}
+                if payload.get("exact"):
+                    return any(self._long_slugify(str(p.get("slug", "") or "")) == target
+                               for p in (payload.get("posts") or []) if isinstance(p, dict))
+        except Exception:
+            pass
+        return any(self._long_slugify(str(p.get("slug", "") or "")) == target
+                   for p in (cached_posts or []) if isinstance(p, dict))
+
+    def _unique_slug(self, base_slug: str, cached_posts: list) -> str:
+        base = self._long_slugify(base_slug)
+        if not base:
+            return ""
+        n = 2
+        while True:
+            cand = f"{base}-{n}"
+            if not self._slug_taken_on_server(cand, cached_posts):
+                return cand
+            n += 1
+
+    def _resolve_existing_post_id(self, draft, confirm_overwrite_fn=None) -> Tuple[Optional[str], bool]:
         """Resolve an explicit draft.slug (never draft.title!) to an existing remote post_id.
-        Requires explicit confirmation before overwriting an existing post; returns an error
-        message if confirmation is missing/declined, or None when safe to proceed."""
+        Returns (error_message_or_None, cancelled_bool)."""
         if getattr(draft, "remote_post_id", 0):
-            return None
+            return None, False
         explicit_slug = self._long_slugify(getattr(draft, "slug", "") or "")
         if not explicit_slug:
-            return None
+            return None, False
         posts = []
+        list_full = False
         try:
             r = self.session.get(self._route("smackpress/posts"),
                                  params={"slug": explicit_slug}, timeout=30)
@@ -1039,32 +1067,64 @@ class SmacktalkPoster:
                 if payload.get("exact"):
                     posts = list(payload.get("posts") or [])
                 else:
-                    posts = self.list_posts(limit=500)
+                    posts = list(payload.get("posts") or []) or self.list_posts(limit=500)
+                    list_full = bool(payload.get("truncated")) or len(posts) >= 500
             else:
                 posts = self.list_posts(limit=500)
+                list_full = len(posts) >= 500
         except Exception:
             try:
                 posts = self.list_posts(limit=500)
+                list_full = len(posts) >= 500
             except Exception:
-                return None
+                return None, False
+
+        matched = None
         for p in (posts or []):
             if not isinstance(p, dict):
                 continue
             pslug = self._long_slugify(str(p.get("slug", "") or ""))
             pid = int(p.get("id") or 0)
             if pslug == explicit_slug and pid > 0:
-                confirmed = bool(getattr(draft, "confirm_overwrite", False))
-                if not confirmed and callable(confirm_overwrite_fn):
-                    confirmed = bool(confirm_overwrite_fn(p))
-                if not confirmed:
-                    return (
-                        f"Post with slug '{explicit_slug}' already exists (id={pid}). "
-                        "Confirm overwrite before updating it."
-                    )
-                draft.remote_post_id = pid
-                draft.slug = p.get("slug", explicit_slug)
-                return None
-        return None
+                matched = p
+                break
+
+        if matched is None and not list_full:
+            return None, False
+
+        if matched is not None and bool(getattr(draft, "confirm_overwrite", False)):
+            draft.remote_post_id = int(matched["id"])
+            draft.slug = matched.get("slug", explicit_slug)
+            return None, False
+
+        if callable(confirm_overwrite_fn):
+            info = dict(matched or {
+                "id": 0,
+                "slug": explicit_slug,
+                "title": getattr(draft, "title", "") or explicit_slug,
+                "created_at": getattr(draft, "post_date", "") or "",
+            })
+            if matched is None and list_full:
+                info["list_full"] = True
+            choice = confirm_overwrite_fn(info)
+            if choice is True or choice == "update":
+                if matched is not None:
+                    draft.remote_post_id = int(matched["id"])
+                    draft.slug = matched.get("slug", explicit_slug)
+                    return None, False
+                return f"Cannot update '{explicit_slug}': exact post could not be verified from truncated list.", False
+            if choice == "new":
+                draft.remote_post_id = 0
+                draft.slug = self._unique_slug(explicit_slug, posts)
+                return None, False
+            return "Sending cancelled.", True
+
+        if matched is not None:
+            return (
+                f"Post with slug '{explicit_slug}' already exists (id={int(matched['id'])}). "
+                "Confirm overwrite before updating it."
+            ), False
+        return None, False
 
     def sync_smacktalk(self, draft, confirm_overwrite_fn=None) -> SyncResult:
         if not self.key:
@@ -1082,10 +1142,10 @@ class SmacktalkPoster:
                 "photos, or take the mosaic out of the writing."))
         try:
             if not is_page:
-                err_msg = self._resolve_existing_post_id(
+                err_msg, was_cancelled = self._resolve_existing_post_id(
                     draft, confirm_overwrite_fn=confirm_overwrite_fn)
                 if err_msg:
-                    return SyncResult(False, message=err_msg)
+                    return SyncResult(False, message=err_msg, cancelled=was_cancelled)
             image_ids, cover_id = [], None
             for im in draft.images:
                 existing_id = int(getattr(im, "remote_image_id", 0) or 0)

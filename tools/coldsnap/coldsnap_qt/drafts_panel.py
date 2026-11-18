@@ -35,6 +35,7 @@ class _SyncBridge(QObject):
     """Thread → UI marshalling for SyncEngine events."""
     progressed = Signal()
     finished = Signal(int, int)   # ok, total
+    overwrite_prompt = Signal(object, object)  # post_info, {"event": Event, "choice": str}
 
 
 class BatchRail(QWidget):
@@ -94,6 +95,7 @@ class BatchRail(QWidget):
         self._bridge = _SyncBridge()
         self._bridge.progressed.connect(self.refresh_drafts)
         self._bridge.finished.connect(self._send_done)
+        self._bridge.overwrite_prompt.connect(self._on_overwrite_prompt)
 
         self.refresh_batches()
 
@@ -288,15 +290,67 @@ class BatchRail(QWidget):
         self.sync_status.setStyleSheet(f"color: {theme.WARN};")
 
         session, bridge = self.session, self._bridge
+        confirm_fn = self._make_confirm_overwrite_fn()
 
         def worker():
             engine = O.SyncEngine(session, poster,
-                                  on_event=lambda *_: bridge.progressed.emit())
+                                  on_event=lambda *_: bridge.progressed.emit(),
+                                  confirm_overwrite_fn=confirm_fn)
             results = engine.sync_all(ready)
             ok = sum(1 for r in results.values() if r.ok)
             bridge.finished.emit(ok, len(results))
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def _show_overwrite_dialog(self, post_info: dict) -> str:
+        title = str(post_info.get("title") or post_info.get("slug") or "Untitled")
+        slug = str(post_info.get("slug") or "")
+        date_str = str(post_info.get("created_at") or post_info.get("updated_at") or "unknown date")
+        list_full = bool(post_info.get("list_full"))
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle("Existing post found")
+        if list_full:
+            box.setText(
+                f"Replace existing post '{title}' ({slug}, {date_str})?\n\n"
+                "The server returned a full post list without an exact slug match, "
+                "so Update is unavailable — you can publish as a new post or cancel."
+            )
+            update_btn = None
+        else:
+            box.setText(f"Replace existing post '{title}' ({slug}, {date_str})?")
+            update_btn = box.addButton("Update", QMessageBox.AcceptRole)
+        new_btn = box.addButton("Publish as new", QMessageBox.ActionRole)
+        cancel_btn = box.addButton("Cancel", QMessageBox.RejectRole)
+        box.setDefaultButton(cancel_btn)
+        box.setEscapeButton(cancel_btn)
+        box.exec()
+        clicked = box.clickedButton()
+        if update_btn is not None and clicked is update_btn:
+            return "update"
+        if clicked is new_btn:
+            return "new"
+        return "cancel"
+
+    def _on_overwrite_prompt(self, post_info: dict, state: dict):
+        try:
+            state["choice"] = self._show_overwrite_dialog(post_info)
+        except Exception:
+            state["choice"] = "cancel"
+        finally:
+            state["event"].set()
+
+    def _make_confirm_overwrite_fn(self):
+        def _confirm(post_info: dict) -> str:
+            if threading.current_thread() is threading.main_thread():
+                return self._show_overwrite_dialog(post_info)
+            state = {"event": threading.Event(), "choice": "cancel"}
+            self._bridge.overwrite_prompt.emit(post_info, state)
+            state["event"].wait()
+            return state["choice"]
+
+        return _confirm
 
     def _send_done(self, ok: int, total: int):
         self._sending = False
