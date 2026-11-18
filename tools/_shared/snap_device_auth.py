@@ -175,21 +175,193 @@ def refresh(hq_version: str = "") -> dict:
                "X-Snap-Nonce":nonce, "X-Snap-Signature":_b64u(key.sign(proof))}
     response = requests.post(url, data=raw, headers=headers, timeout=30); data=response.json()
     if not response.ok or not data.get("ok"):
+        # REVOCATION HAS TO LAND SOMEWHERE. SS-1418, Muse's third finding: a
+        # cached signed entitlement ignored a later revocation until its own
+        # expiry, so disabling a device in the CMS did nothing for up to three
+        # months. An offline token cannot learn it was revoked -- but the
+        # moment this machine IS online and the site says the device is
+        # disabled or blocked, the cached copy has been answered and must go.
+        #
+        # Only on an explicit 403 from the site. A timeout, a DNS failure or a
+        # 500 leaves the cache alone: losing authorization because the wifi
+        # dropped is the lockout this whole ticket is trying to avoid.
+        if response.status_code == 403:
+            state = _read_state()
+            for gone in ("entitlement", "payload"):
+                state.pop(gone, None)
+            state["revoked_at"] = int(time.time())
+            state["revoked_reason"] = str(data.get("error") or "This device was revoked.")
+            _write_state(state)
         raise RuntimeError(str(data.get("error") or f"Authorization check failed ({response.status_code})."))
     return _verify_and_store(site_url, data["entitlement"], allow_new_server_key=False)
 
 
-def decision(state: dict | None = None) -> dict:
-    """Verify the cached signature and return full/grace/restricted state."""
+CLOCK_SKEW_TOLERANCE = 300        # the same slack _verify_and_store allows
+
+# How far ahead of the last known time a reading may be and still be believed
+# as a new high-water mark. A dead BIOS battery or a bad timezone write can
+# throw a clock years forward; recording that as "the latest time we have
+# seen" would restrict the machine for good, offline, which is the lockout
+# this ticket exists to prevent. Anything beyond this is used for the expiry
+# comparison but not remembered.
+CLOCK_HIGH_WATER_SANITY = 400 * 86400
+
+# Only rewrite the state file when the mark actually moves by this much, so a
+# function that gates features is not writing to disk on every call.
+CLOCK_HIGH_WATER_STEP = 3600
+
+
+def _signed_baseline(payload: dict) -> int:
+    """A time this machine did not choose: the server signed it.
+
+    SS-1418 r3, Codex's second FAIL. The sanity bound on the high-water mark
+    needs something to be sane RELATIVE TO, and on a state file written
+    before r2 there is no last_clock and no high-water mark to use. The
+    entitlement itself carries server-stamped times, and the signature over
+    it has already been verified by the time this is reached, so they are the
+    one clock reading on the machine that the machine cannot have invented.
+    """
+    best = 0
+    for field in ("issued_at", "term_started_at"):
+        try:
+            best = max(best, int(payload.get(field, 0) or 0))
+        except (TypeError, ValueError):
+            continue
+    return best
+
+
+def _advance_clock_high_water(state: dict, now: int, latest_seen: int,
+                              *, persist: bool, signed_baseline: int = 0) -> None:
+    """Remember the latest plausible time this machine has reported.
+
+    Refuses to remember a reading that is absurdly far ahead, because a clock
+    that jumps to 2099 and is then corrected would otherwise leave the owner
+    restricted forever with no way back except going online.
+
+    SS-1418 r3. That refusal used to read:
+
+        if latest_seen and now > latest_seen + CLOCK_HIGH_WATER_SANITY:
+
+    and the `latest_seen and` is the whole bug. On a state file written
+    before r2 there is no last_clock and no high-water mark, so latest_seen
+    is 0, the guard short-circuits away, and the absurd reading IS written
+    down. Correcting the clock afterwards then looks like a rollback and the
+    owner is restricted offline with no way back -- the exact outcome the
+    guard exists to prevent, on the exact states the branch went out of its
+    way to keep working. Codex reproduced it end to end.
+
+    This is the second time in this ticket a truthiness short-circuit has
+    skipped a check I had written correctly (the first was $renewable in the
+    PHP). Both times the test supplied the value that kept the guard alive --
+    here, last_clock=NOW in the wild-jump test.
+
+    So the bound always has a baseline now. When the machine has recorded
+    nothing, the entitlement's own signed timestamps stand in; they are not
+    this machine's opinion of the time.
+    """
+    if not persist or now <= latest_seen + CLOCK_HIGH_WATER_STEP:
+        return
+    baseline = max(latest_seen, signed_baseline)
+    if now > baseline + CLOCK_HIGH_WATER_SANITY:
+        # No baseline at all would mean nothing is implausible, so a state
+        # carrying neither a recorded clock nor a usable signed time records
+        # nothing rather than recording anything.
+        return
+    try:
+        on_disk = _read_state()
+        if not on_disk:
+            return
+        if now > int(on_disk.get("clock_high_water", 0) or 0):
+            on_disk["clock_high_water"] = now
+            _write_state(on_disk)
+            state["clock_high_water"] = now
+    except (OSError, ValueError):
+        # A machine that cannot write its own state must still be able to
+        # use the software it has paid for.
+        pass
+
+
+def decision(state: dict | None = None, *, persist: bool | None = None) -> dict:
+    """Verify the cached signature and return full/grace/restricted state.
+
+    SS-1418. Two things were missing here, and both of them mattered because
+    this is the function that actually gates features -- require_full() calls
+    it, and it reads the CACHED entitlement without going near the server.
+
+    1. IT DID NOT CHECK last_clock. _verify_and_store() refuses an entitlement
+       when the clock has moved backwards, but that only runs when the machine
+       is online. decision() ran on the cached copy and compared expiry
+       against whatever time.time() said, so winding the system clock back
+       turned an expired entitlement into a current one. The rollback check
+       belongs on the side that makes the decision, not only on the side that
+       stores it.
+
+    The revocation half of the finding is NOT fixed here, because it cannot
+    be: a signed offline token is valid until it expires, and no amount of
+    local arithmetic can learn that the site revoked it. It is fixed in
+    refresh(), which now drops the cached entitlement the moment the server
+    says the device is disabled or blocked. See the note there.
+
+    I tried to shorten grace here instead -- restrict a token whose last
+    contact predated its own expiry -- and threw it away: the renew window is
+    30 days, so a device that reaches expiry at all has normally been out of
+    contact longer than the 14-day grace, and the check cut grace to nothing
+    for the ordinary case. It would have locked an owner out on the first day
+    of the window that exists to stop exactly that.
+
+    Neither check below can lock an owner out of HQ. Both produce
+    'restricted', which opens HQ with a renew prompt; the way out is to go
+    online, and going online re-verifies and clears them.
+    """
+    # persist defaults to "only when we loaded the state ourselves": a caller
+    # that hands in a dict is inspecting, not running the machine, and must
+    # not have its scratch values written to the real file.
+    if persist is None:
+        persist = state is None
     state = state or _read_state(); entitlement = state.get("entitlement") or {}
     try:
         payload_text = str(entitlement["payload"]); public64 = str(state["server_public_key"])
         Ed25519PublicKey.from_public_bytes(base64.b64decode(public64, validate=True)).verify(
             _unb64u(str(entitlement["signature"])), payload_text.encode("ascii"))
         payload = json.loads(_unb64u(payload_text).decode("utf-8")); now=int(time.time())
-        if now <= int(payload["expires_at"]): status="full"
-        elif now <= int(payload["grace_ends_at"]): status="grace"
-        else: status="restricted"
+
+        # THE LATEST TIME THIS MACHINE HAS EVER REPORTED, not merely the last
+        # time it was online. SS-1418 r2, Codex's FAIL: comparing against
+        # last_clock alone leaves the whole offline stretch open. His repro --
+        # last online check 60 days before expiry, really 30 days after it,
+        # clock wound back to the day before expiry -- lands later than
+        # last_clock, so the rollback went unnoticed and an expired
+        # entitlement read as full. My test had set last_clock to the real
+        # current date, which is not what a long-offline device looks like,
+        # and that is why it passed.
+        #
+        # Every decision now contributes its reading, so the window an
+        # attacker can roll back into shrinks to "since HQ last ran" instead
+        # of "since HQ was last online".
+        #
+        # WHAT THIS STILL CANNOT DO, said plainly rather than implied: a
+        # machine that has never run HQ since the last online check can be
+        # set to any time after that check. Nothing local can close that --
+        # the entitlement is signed, not timestamped by a witness. It is
+        # narrowed here, not eliminated.
+        last_clock = int(state.get("last_clock", 0) or 0)
+        high_water = int(state.get("clock_high_water", 0) or 0)
+        latest_seen = max(last_clock, high_water)
+        if latest_seen and now + CLOCK_SKEW_TOLERANCE < latest_seen:
+            return {"status":"restricted","authorized":False,"payload":payload,
+                    "site_url":state.get("site_url",""),
+                    "reason":"clock_rollback",
+                    "error":"The system clock moved backwards since the last check. "
+                            "Go online in SNAP HQ to verify authorization."}
+        _advance_clock_high_water(state, now, latest_seen, persist=persist,
+                                  signed_baseline=_signed_baseline(payload))
+
+        if now <= int(payload["expires_at"]):
+            status = "full"
+        elif now <= int(payload["grace_ends_at"]):
+            status = "grace"
+        else:
+            status = "restricted"
         return {"status":status,"authorized":status in ("full","grace"),"payload":payload,
                 "site_url":state.get("site_url","")}
     except Exception as exc:
