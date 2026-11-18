@@ -558,11 +558,22 @@ class SuybWindow(QMainWindow):
         except Exception:
             pass
 
+    def _save_profile_safe(self, profile=None, *, action=None, title="Profile not saved") -> bool:
+        try:
+            if action is not None:
+                action()
+            else:
+                profile_manager.save_profile(profile)
+            return True
+        except Exception as exc:
+            QMessageBox.critical(self, title, str(exc))
+            return False
+
     def _new_profile(self):
         dialog = ProfileDialog(self, title="New site")
         if dialog.exec() == QDialog.Accepted and dialog.result:
-            profile_manager.save_profile(dialog.result)
-            self._load_profiles(select=dialog.result["name"])
+            if self._save_profile_safe(dialog.result):
+                self._load_profiles(select=dialog.result["name"])
 
     def _edit_profile(self):
         if not self.current_profile:
@@ -571,7 +582,8 @@ class SuybWindow(QMainWindow):
         dialog = ProfileDialog(self, profile=self.current_profile, title="Edit site")
         if dialog.exec() == QDialog.Accepted and dialog.result:
             old_name = self.current_profile.get("name", "")
-            profile_manager.save_profile(dialog.result)
+            if not self._save_profile_safe(dialog.result):
+                return
             if old_name and old_name != dialog.result["name"]:
                 profile_manager.delete_profile(old_name)
             self._load_profiles(select=dialog.result["name"])
@@ -582,8 +594,8 @@ class SuybWindow(QMainWindow):
             return
         name = self.current_profile["name"]
         new_name = f"{name} (copy)"
-        profile_manager.duplicate_profile(name, new_name)
-        self._load_profiles(select=new_name)
+        if self._save_profile_safe(action=lambda: profile_manager.duplicate_profile(name, new_name)):
+            self._load_profiles(select=new_name)
 
     def _del_profile(self):
         if not self.current_profile:
@@ -599,8 +611,8 @@ class SuybWindow(QMainWindow):
             return
         wizard = SetupWizard(self)
         if wizard.exec() == QDialog.Accepted and wizard.result:
-            profile_manager.save_profile(wizard.result)
-            self._load_profiles(select=wizard.result["name"])
+            if self._save_profile_safe(wizard.result):
+                self._load_profiles(select=wizard.result["name"])
 
     def _choose_sites(self):
         names = profile_manager.list_profiles()
@@ -1092,6 +1104,7 @@ class SuybWindow(QMainWindow):
             else "Backup cancelled. Verified files are kept for the next run." if cancelled
             else "Backup needs attention. Details are above.")
         self._refresh_stats()
+        save_errors = []
         for item in (result or {}).get("profiles", []):
             profile = profile_manager.load_profile(item.get("name"))
             if profile:
@@ -1100,7 +1113,12 @@ class SuybWindow(QMainWindow):
                     profile["last_backup_status"] = "ok"
                 else:
                     profile["last_backup_status"] = "cancelled" if item.get("cancelled") else "failed"
-                profile_manager.save_profile(profile)
+                try:
+                    profile_manager.save_profile(profile)
+                except Exception as exc:
+                    save_errors.append(str(exc))
+        if save_errors and not unattended:
+            QMessageBox.warning(self, "Profile status not saved", "\n\n".join(save_errors))
         if self.current_profile:
             refreshed = profile_manager.load_profile(self.current_profile["name"])
             if refreshed: self.current_profile = refreshed
@@ -1330,7 +1348,8 @@ class SuybWindow(QMainWindow):
                   "api_key": self.key_edit.text().strip(), "backup_dir": self.dir_edit.text().strip()})
         if not p["name"] or not p["site_url"]:
             QMessageBox.warning(self, "Missing details", "Profile name and site URL are required."); return
-        profile_manager.save_profile(p)
+        if not self._save_profile_safe(p, title="Not saved"):
+            return
         if old_name and old_name != p["name"]:
             profile_manager.delete_profile(old_name)
         self._load_profiles(select=p["name"])
