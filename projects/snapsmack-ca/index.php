@@ -473,7 +473,7 @@ require_once __DIR__ . '/includes/header.php';
                         <h2 id="scale-title">Yes, but does it scale?</h2>
                         <p class="scale-pull">Bitch, please. My last name ain't Mullenweg&hellip;</p>
                     </div>
-                    <p>28 sites. 1 hub. 27 spokes. All managed through one dashboard. Shared settings pushed from hub to spokes securely. Single sign-on. Integrated, fleet wide stats. Done securely. All of this at zero cost to you.</p>
+                    <p>28 sites. 1 hub. 27 spokes. All managed through one dashboard. Shared settings pushed from hub to spokes securely. Single sign-on. Integrated, fleet wide stats. All of this at zero cost to you.</p>
                     <p>WordPress can't do this without bolting on someone else's plugin. Ghost won't do this for free. Kirby? Get bent.</p>
                     <p>Right out of the box, day one, no charge, Bob's yer fackin' uncle. Multisite without anyone demanding an 8% cut. Who imagined such a thing was possible.</p>
                 </div>
