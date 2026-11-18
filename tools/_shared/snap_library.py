@@ -225,6 +225,12 @@ def sync_from_sybu_data(site: str, payload: dict) -> dict:
     tags   = [t for t in (payload.get("tags", []) or []) if str(t).strip()]
     titles = [t for t in (payload.get("titles", []) or []) if str(t).strip()]
     mode   = str(payload.get("site_mode", "") or "").strip().lower()
+    bg     = ""
+    for _k in ("site_bg", "page_bg", "background_color", "bg_color"):
+        _v = str(payload.get(_k, "") or "").strip()
+        if _v:
+            bg = _v
+            break
 
     conn = _connect(site)
     try:
@@ -246,10 +252,26 @@ def sync_from_sybu_data(site: str, payload: dict) -> dict:
             conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('site_url', ?)", (str(site),))
             if mode:
                 conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('site_mode', ?)", (mode,))
+            if bg:
+                conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('site_bg', ?)", (bg,))
             conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('synced_at', ?)",
                          (time.strftime("%Y-%m-%d %H:%M:%S"),))
         return {"categories": len(cats), "albums": len(albums),
-                "tags": len(tags), "titles": len(titles), "site_mode": mode}
+                "tags": len(tags), "titles": len(titles), "site_mode": mode, "site_bg": bg}
+    finally:
+        conn.close()
+
+
+def set_site_bg(site: str, bg_color: str) -> None:
+    """Persist the site's resolved page background colour into meta."""
+    bg = str(bg_color or "").strip()
+    if not site or not bg:
+        return
+    conn = _connect(site)
+    try:
+        with conn:
+            conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('site_url', ?)", (str(site),))
+            conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('site_bg', ?)", (bg,))
     finally:
         conn.close()
 

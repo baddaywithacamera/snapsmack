@@ -18,12 +18,12 @@ import uuid
 import requests
 
 from PySide6.QtCore import Qt, QRect, QSize, Signal, QTimer, QSettings
-from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon
+from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
+    QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
-    QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton,
+    QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton, QSlider,
 )
 
 import sumna_offline as O
@@ -39,6 +39,7 @@ from .slapper_handoff import (ReturnWatch, find_executable,
                               focus_window, launch as launch_slapper)
 from .body_editor import BodyEditor
 from .block_tray import BlockAction, BlockTray
+from .photo_tray import RightPhotosTray, PhotoThumbTile
 from .drafts_panel import BatchRail, default_draft_row
 from .mosaic_layout import tile_rects as _tile_rects
 
@@ -170,9 +171,44 @@ class MosaicPreview(QWidget):
             self.swapRequested.emit(source, target)
 
 
+class _PageRuler(QWidget):
+    """24px ruler above the document canvas showing the active preview width."""
+
+    def __init__(self, preview_width: int = 760, parent=None):
+        super().__init__(parent)
+        self._preview_width = int(preview_width or 760)
+        self.setFixedHeight(24)
+
+    def set_preview_width(self, width: int):
+        self._preview_width = int(width or 760)
+        self.update()
+
+    def paintEvent(self, _event):
+        p = QPainter(self)
+        p.fillRect(self.rect(), QColor(theme.BG))
+        w = self.width()
+        span = min(w - 24, self._preview_width + 80)
+        left = (w - span) // 2
+        right = left + span
+        p.setPen(QPen(QColor(theme.BORDER), 1))
+        p.drawLine(left, self.height() - 1, right, self.height() - 1)
+        for x in range(left, right + 1, 16):
+            major = ((x - left) % 80) == 0
+            tick_h = 8 if major else 4
+            p.drawLine(x, self.height() - 1 - tick_h, x, self.height() - 1)
+        # Green margin markers
+        p.setBrush(QColor(theme.ACCENT))
+        p.setPen(Qt.NoPen)
+        for mx in (left + 40, right - 40):
+            p.drawRect(mx - 3, 2, 6, 5)
+
+
 class TakeMode(QWidget):
     SUITE_MODE = O.MODE_SMACKTALK
     blocksStateChanged = Signal(bool, str)  # open, header label
+    photosStateChanged = Signal(bool)       # right photos tray open
+    detailsStateChanged = Signal(bool)      # post details drawer open
+    exitFocusRequested = Signal()           # exit focus mode from format strip
 
     def __init__(self, app_config_provider, parent=None):
         super().__init__(parent)
@@ -190,103 +226,155 @@ class TakeMode(QWidget):
         self._slapper_launch_error = ""
 
         outer = QHBoxLayout(self)
-        outer.setContentsMargins(10, 10, 0, 0)
-        outer.setSpacing(10)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
 
         self.rail = BatchRail(self.SUITE_MODE, "post", self._poster_and_url,
                               row_builder=self._rows)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        host = QWidget()
-        right = QVBoxLayout(host)
-        right.setContentsMargins(0, 0, 0, 0)
-
-        card = Card("COMPOSE — an essay with photos")
-        # Let the editor use the centre pane instead of shrinking to sizeHint.
-        right.addWidget(card, 1)
-
-        card.body.addWidget(field_label("Title"))
-        self.title_edit = QLineEdit()
-        card.body.addWidget(self.title_edit)
-
-        card.body.addWidget(field_label("The write-up"))
         # SIMPLE (text + the CMS shortcode bar) / BIGGIE (block stack) — one field.
-        self.body = BodyEditor(allow_mosaic=True, simple_height=160)
-        self.body.bar.add_button(
-            "MOSAIC",
-            "Puts a [mosaic] marker at the cursor — on send, the photos below "
-            "become a tiled grid right at that spot",
-            self._insert_mosaic)
-        # BIGGIE: the same button on the canvas bar; the canvas asks for the
-        # dialog itself on double-click / right-click of a drawn mosaic.
-        self.body.canvas_bar.add_button(
-            "MOSAIC",
-            "Build a tiled grid of this post's photos right here — you see it "
-            "in the page as you write",
-            self._insert_mosaic)
+        self.body = BodyEditor(allow_mosaic=True, simple_height=220)
+        self.body.bar.hide()  # SHORTCODES live in the left rail (Slice 8)
         self.body.canvas.mosaicEditRequested.connect(self._canvas_mosaic)
         self.body.canvas.photographsDropped.connect(
             lambda paths: self._add_photo_paths(paths, insert=True))
         self.body.canvas.photographPasted.connect(self._paste_photo)
-        self.body.canvas_bar.add_button(
-            "ADD PHOTOGRAPH", "Choose a local photograph and place it at the caret",
-            self._add_and_insert_photo)
         # IMG picks from THIS site's cached Media Gallery (COLD STORAGE), by picture.
         self.body.canvas.set_site_provider(
             lambda: ((self.app_config() or {}).get("url") or "").strip())
-        # The editor used to share one scrolling card with every field below it.
-        # QScrollArea therefore kept the card at its size hint and the editor at
-        # its 160px minimum, even when the centre pane had room to spare. Keep
-        # the primary actions outside the scroll, then let the author divide the
-        # available card height between the document and its secondary fields.
-        self.compose_splitter = QSplitter(Qt.Vertical)
-        self.compose_splitter.setChildrenCollapsible(False)
-        self.compose_splitter.setHandleWidth(10)
-        self.compose_splitter.addWidget(self.body)
 
+        scroll = QScrollArea()
+        scroll.setObjectName("CanvasWell")
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setWidgetResizable(True)
+        scroll.setMinimumWidth(0)
+        self._canvas_scroll = scroll
+        scroll.viewport().installEventFilter(self)
+        self.body.canvas.viewport().installEventFilter(self)
+        self.body.editor.viewport().installEventFilter(self)
+        host = QWidget()
+        host.setObjectName("CanvasWell")
+        well = QVBoxLayout(host)
+        well.setContentsMargins(16, 12, 16, 18)
+        well.setSpacing(10)
+        self._well_layout = well
+
+        # Centered white page card + thin left gutter tag (Slice 2)
+        page_row = QHBoxLayout()
+        page_row.setContentsMargins(0, 0, 0, 0)
+        page_row.setSpacing(8)
+        page_row.addStretch(1)
+
+        self.gutter_tag = QLabel("P")
+        self.gutter_tag.setObjectName("BlockGutterTag")
+        self.gutter_tag.setFixedWidth(52)
+        self.gutter_tag.setAlignment(Qt.AlignRight | Qt.AlignTop)
+        page_row.addWidget(self.gutter_tag, 0, Qt.AlignTop)
+
+        self.page_card = QFrame()
+        self.page_card.setObjectName("PageCard")
+        self._preview_width = 760
+        self.page_card.setFixedWidth(self._preview_width + 80)
+        card_col = QVBoxLayout(self.page_card)
+        card_col.setContentsMargins(40, 30, 40, 26)
+        card_col.setSpacing(8)
+
+        self.page_eyebrow = QLabel("ESSAY · DRAFT")
+        self.page_eyebrow.setObjectName("PageEyebrow")
+        card_col.addWidget(self.page_eyebrow)
+
+        self.title_edit = QLineEdit()
+        self.title_edit.setObjectName("PageTitle")
+        self.title_edit.setPlaceholderText("Essay title…")
+        card_col.addWidget(self.title_edit)
+
+        self.page_meta = QLabel("")
+        self.page_meta.setObjectName("PageMeta")
+        card_col.addWidget(self.page_meta)
+        self.text_view_hint = hint(
+            "A plain text editor. Each block uses CMS shortcodes from core/parser.php "
+            "(plus COLD SNAP [mosaic=…] markers resolved to [mosaic:ID] on send).")
+        self.text_view_hint.setVisible(False)
+        card_col.addWidget(self.text_view_hint)
+        card_col.addSpacing(6)
+
+        card_col.addWidget(self.body, 1)
+
+        add_row = QHBoxLayout()
+        add_row.addStretch(1)
+        self.add_block_btn = QPushButton("+ Add block")
+        self.add_block_btn.setObjectName("AddBlockPill")
+        self.add_block_btn.setFocusPolicy(Qt.NoFocus)
+        self.add_block_btn.setToolTip("Insert a new block at the cursor (or use BLOCKS on the left)")
+        self.add_block_btn.clicked.connect(self._show_add_block_menu)
+        add_row.addWidget(self.add_block_btn)
+        add_row.addStretch(1)
+        card_col.addLayout(add_row)
+
+        page_row.addWidget(self.page_card, 0)
+        page_row.addStretch(1)
+        well.addLayout(page_row, 1)
+
+        # Compact details row (Tags + Status; four explainer hints moved to tooltips/Help)
         compose_details = QWidget()
-        details = QVBoxLayout(compose_details)
-        details.setContentsMargins(0, 0, 0, 0)
-        details.setSpacing(9)
-
-        self.save_state = hint("Begin the story… changes will be safe on this computer.")
-        details.addWidget(self.save_state)
-        details.addWidget(hint(
-            "MOSAIC = a tiled grid of this post's photos at the marker. For a "
-            "text grid with no photos, use COL 2 / COL 3. For one inline image "
-            "from the site's Media Library, use IMG."))
-
-        details.addWidget(field_label("Tags (space-separated #hashtags)"))
+        details = QHBoxLayout(compose_details)
+        details.setContentsMargins(16, 4, 16, 4)
+        details.setSpacing(10)
+        details.addWidget(field_label("Tags"))
         self.tags_edit = QLineEdit()
-        details.addWidget(self.tags_edit)
-
-        srow = QHBoxLayout()
-        srow.addWidget(field_label("Status"))
+        self.tags_edit.setPlaceholderText("#space-separated #hashtags")
+        details.addWidget(self.tags_edit, 1)
+        details.addWidget(field_label("Status"))
         self.status_combo = QComboBox()
         self.status_combo.addItems(["published", "draft"])
-        srow.addWidget(self.status_combo)
-        srow.addStretch(1)
-        details.addLayout(srow)
-
-        self.compose_splitter.addWidget(compose_details)
-        self.compose_splitter.setStretchFactor(0, 1)
-        self.compose_splitter.setStretchFactor(1, 0)
-        splitter_state = self._view_settings.value("take/compose_splitter_state")
-        if splitter_state is None or not self.compose_splitter.restoreState(splitter_state):
-            self.compose_splitter.setSizes([560, 210])
-        self.compose_splitter.splitterMoved.connect(
-            lambda _position, _index: self._view_settings.setValue(
-                "take/compose_splitter_state", self.compose_splitter.saveState()))
-        card.body.addWidget(self.compose_splitter, 1)
+        self.status_combo.currentTextChanged.connect(lambda _t: self._update_page_chrome())
+        details.addWidget(self.status_combo)
+        self.compose_splitter = None
 
         # -- THE PHOTOS — a rail section, opened when wanted. The count lives in
         #    the accordion header (no redundant, cramped label fighting the
         #    buttons for the 340px rail width). --------------------------------
-        self.photos_sec = Accordion("THE PHOTOS — none yet")
+        self.photos_sec = Accordion("THE PHOTOS — none yet", expanded=True)
         self.photos_sec.setMaximumWidth(360)
         self.photos_sec.body.setMaximumWidth(360)
+
+        # Thumbnail zoom row (60–150%, persisted in QSettings)
+        self._thumb_zoom = int(self._view_settings.value("take/thumb_zoom", 100))
+        t_row = QHBoxLayout()
+        t_row.setContentsMargins(0, 0, 0, 2)
+        t_row.setSpacing(4)
+        t_lbl = QLabel("THUMBNAILS")
+        t_lbl.setObjectName("BlockTrayGroup")
+        t_row.addWidget(t_lbl)
+        t_out = QPushButton("-")
+        t_out.setObjectName("PreviewToggle")
+        t_out.setFixedWidth(24)
+        t_out.setFocusPolicy(Qt.NoFocus)
+        t_out.clicked.connect(lambda: self._set_thumb_zoom(self._thumb_zoom - 10))
+        t_row.addWidget(t_out)
+        self.thumb_zoom_slider = QSlider(Qt.Horizontal)
+        self.thumb_zoom_slider.setRange(60, 150)
+        self.thumb_zoom_slider.setSingleStep(10)
+        self.thumb_zoom_slider.setValue(self._thumb_zoom)
+        self.thumb_zoom_slider.valueChanged.connect(self._set_thumb_zoom)
+        t_row.addWidget(self.thumb_zoom_slider, 1)
+        t_in = QPushButton("+")
+        t_in.setObjectName("PreviewToggle")
+        t_in.setFixedWidth(24)
+        t_in.setFocusPolicy(Qt.NoFocus)
+        t_in.clicked.connect(lambda: self._set_thumb_zoom(self._thumb_zoom + 10))
+        t_row.addWidget(t_in)
+        self.thumb_zoom_lbl = hint(f"{self._thumb_zoom}%")
+        t_row.addWidget(self.thumb_zoom_lbl)
+        t_reset = QPushButton("Reset")
+        t_reset.setObjectName("PreviewToggle")
+        t_reset.setFocusPolicy(Qt.NoFocus)
+        t_reset.clicked.connect(lambda: self._set_thumb_zoom(100))
+        t_row.addWidget(t_reset)
+        self.photos_sec.add_layout(t_row)
+
         brow = QHBoxLayout()
+        brow.setSpacing(4)
         add_btn = QPushButton("Add photos…")
         add_btn.clicked.connect(self._add_photos)
         open_btn = QPushButton("Open published…")
@@ -296,44 +384,161 @@ class TakeMode(QWidget):
         ai_btn.setToolTip("Uses this site's prompt to fill all supported metadata: "
                           "post fields from the lead photo and ALT for every photo.")
         ai_btn.clicked.connect(self._ai_fill)
-        brow.addWidget(add_btn)
-        brow.addWidget(open_btn)
-        brow.addWidget(ai_btn)
+        for b in (add_btn, open_btn, ai_btn):
+            b.setStyleSheet("padding: 5px 7px; font-size: 11px;")
+            brow.addWidget(b)
         brow.addStretch(1)
         self.photos_sec.add_layout(brow)
+
+        # "In mosaics — N" summary bar (shown when photos are placed in mosaics)
+        self.in_mosaics_bar = QFrame()
+        self.in_mosaics_bar.setObjectName("InMosaicsBar")
+        im_row = QHBoxLayout(self.in_mosaics_bar)
+        im_row.setContentsMargins(8, 5, 8, 5)
+        im_row.setSpacing(6)
+        self.in_mosaics_lbl = QLabel("In mosaics — 0")
+        self.in_mosaics_lbl.setObjectName("BlockTrayGroup")
+        im_row.addWidget(self.in_mosaics_lbl)
+        self.in_mosaics_thumbs = QHBoxLayout()
+        self.in_mosaics_thumbs.setSpacing(2)
+        im_row.addLayout(self.in_mosaics_thumbs)
+        im_row.addStretch(1)
+        self.in_mosaics_bar.setVisible(False)
+        self.photos_sec.add(self.in_mosaics_bar)
+
         self.photos_sec.add(
             hint("The ★ photo leads the post. This order is the order in the post."))
         self.bucket_count = hint("")   # its own line — AI-ALT progress / status only
         self.photos_sec.add(self.bucket_count)
 
-        self.bucket_col = QVBoxLayout()
-        self.bucket_col.setSpacing(4)
-        self.photos_sec.add_layout(self.bucket_col)
+        self.bucket_host = QWidget()
+        self.bucket_host.installEventFilter(self)
+        self.bucket_col = QGridLayout(self.bucket_host)
+        self.bucket_col.setContentsMargins(0, 2, 0, 2)
+        self.bucket_col.setSpacing(6)
+        self.photos_sec.add(self.bucket_host)
         self._build_photo_tools()
 
         # No trailing stretch — the compose card (stretch 1 above) fills the
         # height itself, so there is no dead void beneath it.
         scroll.setWidget(host)
 
-        # Primary action pinned under the scroll — never below the fold.
+        # Primary action + collapsible Post details (Ctrl+3) + Preview + PAGE zoom
+        self._compose_details = compose_details
+        details_open = self._view_settings.value("take/details_open", False, type=bool)
+        self._compose_details.setVisible(details_open)
+
         act = QHBoxLayout()
-        act.addStretch(1)
-        self.queue_btn = big_button("QUEUE POST")
-        self.queue_btn.setMaximumWidth(260)
-        self.queue_btn.setToolTip("Add this post to the batch. Nothing publishes until SEND.")
-        self.queue_btn.clicked.connect(lambda: self._save(ready=True))
-        save_btn = QPushButton("Save as draft")
-        save_btn.clicked.connect(lambda: self._save(ready=False))
-        act.addWidget(save_btn)
+        act.setContentsMargins(14, 6, 14, 10)
+        act.setSpacing(6)
+        self.act_layout = act
+        self.details_toggle_btn = QPushButton()
+        self.details_toggle_btn.setObjectName("PreviewToggle")
+        self.details_toggle_btn.setCheckable(True)
+        self.details_toggle_btn.setChecked(details_open)
+        self.details_toggle_btn.setFocusPolicy(Qt.NoFocus)
+        self.details_toggle_btn.setToolTip("Show or hide Tags & Status (Ctrl+3)")
+        self.details_toggle_btn.toggled.connect(self._toggle_post_details)
+        QShortcut(QKeySequence("Ctrl+3"), self).activated.connect(
+            self.details_toggle_btn.toggle)
+        QShortcut(QKeySequence("Ctrl+0"), self).activated.connect(self._reset_hovered_zoom)
+        QShortcut(QKeySequence("Ctrl+="), self).activated.connect(
+            lambda: self._set_page_zoom(self._page_zoom + 10))
+        QShortcut(QKeySequence("Ctrl++"), self).activated.connect(
+            lambda: self._set_page_zoom(self._page_zoom + 10))
+        QShortcut(QKeySequence("Ctrl+-"), self).activated.connect(
+            lambda: self._set_page_zoom(self._page_zoom - 10))
+        act.addWidget(self.details_toggle_btn)
+
+        self.page_state_lbl = hint("1 block")
+        self.page_state_lbl.setWordWrap(False)
+        act.addWidget(self.page_state_lbl)
+        self.save_state = hint("Begin the story… changes will be safe on this computer.")
+        self.save_state.setWordWrap(False)
+        self.save_state.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        act.addWidget(self.save_state, 1)
+
+        self.save_btn = QPushButton("Save as draft")
+        self.save_btn.clicked.connect(lambda: self._save(ready=False))
+        act.addWidget(self.save_btn)
         clear_btn = QPushButton("Clear")
         clear_btn.setObjectName("Quiet")
         clear_btn.clicked.connect(self._clear)
         act.addWidget(clear_btn)
+        self.queue_btn = big_button("QUEUE POST")
+        self.queue_btn.setMaximumWidth(180)
+        self.queue_btn.setToolTip("Add this post to the batch. Nothing publishes until SEND.")
+        self.queue_btn.clicked.connect(lambda: self._save(ready=True))
         act.addWidget(self.queue_btn)
 
+        act.addSpacing(4)
+        self._preview_hint_lbl = hint("Preview")
+        self._preview_hint_lbl.setWordWrap(False)
+        act.addWidget(self._preview_hint_lbl)
+        self.preview_desktop_btn = QPushButton("Desktop 760")
+        self.preview_phone_btn = QPushButton("Phone 360")
+        for btn, w in ((self.preview_desktop_btn, 760), (self.preview_phone_btn, 360)):
+            btn.setObjectName("PreviewToggle")
+            btn.setCheckable(True)
+            btn.setFocusPolicy(Qt.NoFocus)
+            btn.clicked.connect(lambda _=False, width=w: self._set_preview_width(width))
+            act.addWidget(btn)
+        self.preview_desktop_btn.setChecked(True)
+
+        act.addSpacing(4)
+        self._page_hint_lbl = hint("PAGE")
+        self._page_hint_lbl.setWordWrap(False)
+        act.addWidget(self._page_hint_lbl)
+        self._page_zoom = int(self._view_settings.value("take/page_zoom", 100))
+        zoom_out = QPushButton("-")
+        zoom_out.setObjectName("PreviewToggle")
+        zoom_out.setFixedWidth(26)
+        zoom_out.setFocusPolicy(Qt.NoFocus)
+        zoom_out.clicked.connect(lambda: self._set_page_zoom(self._page_zoom - 10))
+        act.addWidget(zoom_out)
+        self.page_zoom_slider = QSlider(Qt.Horizontal)
+        self.page_zoom_slider.setRange(70, 160)
+        self.page_zoom_slider.setSingleStep(10)
+        self.page_zoom_slider.setFixedWidth(72)
+        self.page_zoom_slider.setValue(self._page_zoom)
+        self.page_zoom_slider.valueChanged.connect(self._set_page_zoom)
+        act.addWidget(self.page_zoom_slider)
+        zoom_in = QPushButton("+")
+        zoom_in.setObjectName("PreviewToggle")
+        zoom_in.setFixedWidth(26)
+        zoom_in.setFocusPolicy(Qt.NoFocus)
+        zoom_in.clicked.connect(lambda: self._set_page_zoom(self._page_zoom + 10))
+        act.addWidget(zoom_in)
+        self.page_zoom_lbl = hint(f"{self._page_zoom}%")
+        self.page_zoom_lbl.setWordWrap(False)
+        act.addWidget(self.page_zoom_lbl)
+        zoom_reset = QPushButton("Reset")
+        zoom_reset.setObjectName("PreviewToggle")
+        zoom_reset.setFocusPolicy(Qt.NoFocus)
+        zoom_reset.clicked.connect(lambda: self._set_page_zoom(100))
+        act.addWidget(zoom_reset)
+
+        self._sync_details_btn(details_open)
+
+        self.ruler = _PageRuler(self._preview_width)
+        self._set_page_zoom(self._page_zoom)
+        self.focus_exit_btn = QPushButton("⛶ Exit focus  F11")
+        self.focus_exit_btn.setObjectName("PreviewToggle")
+        self.focus_exit_btn.setFocusPolicy(Qt.NoFocus)
+        self.focus_exit_btn.setToolTip("Exit focus mode (F11 or Esc)")
+        self.focus_exit_btn.clicked.connect(self.exitFocusRequested.emit)
+        self.focus_exit_btn.setVisible(False)
+        strip_lay = self.body.format_strip.layout()
+        if strip_lay is not None:
+            strip_lay.addWidget(self.focus_exit_btn)
+
         centre = QVBoxLayout()
-        centre.setSpacing(8)
+        centre.setContentsMargins(0, 0, 0, 0)
+        centre.setSpacing(0)
+        centre.addWidget(self.body.format_strip)
+        centre.addWidget(self.ruler)
         centre.addWidget(scroll, 1)
+        centre.addWidget(compose_details)
         centre.addLayout(act)
         self.blocks_tray = BlockTray()
         self.blocks_tray.stateChanged.connect(self._blocks_state_changed)
@@ -342,11 +547,15 @@ class TakeMode(QWidget):
         outer.addWidget(self.blocks_tray)
         outer.addLayout(centre, 1)
 
-        # The rail: photos + batch accordion open when wanted; SEND pinned.
+        # The rail: collapsible right photos + batch tray (Ctrl+2), default closed.
         self.right_rail = build_rail(
             [self.photos_sec, self.rail.section],
             [self.rail.send_box], width=360)
-        outer.addWidget(self.right_rail)
+        self.photos_tray = RightPhotosTray(self.right_rail)
+        self.photos_tray.stateChanged.connect(self._on_photos_tray_changed)
+        photos_open = self._view_settings.value("take/photos_open", False, type=bool)
+        self.photos_tray.set_open(photos_open)
+        outer.addWidget(self.photos_tray)
         self._refresh_bucket()
         self._autosave = QTimer(self)
         self._autosave.setSingleShot(True)
@@ -356,10 +565,212 @@ class TakeMode(QWidget):
         self._slapper_timer.setInterval(1000)
         self._slapper_timer.timeout.connect(self._poll_slapper_return)
         self.body.changed.connect(self._changed)
+        self.body.changed.connect(self._update_page_chrome)
+        self.body.canvas.cursorPositionChanged.connect(self._update_page_chrome)
         self.title_edit.textChanged.connect(self._changed)
         self.tags_edit.textChanged.connect(self._changed)
+        self._update_page_chrome()
         QTimer.singleShot(0, self._recover_last_draft)
         QTimer.singleShot(0, self._sync_block_tray_width)
+
+    def _sync_details_btn(self, opened: bool):
+        arrow = "▼" if opened else "▲"
+        window = self.window()
+        compact = bool(window and window.width() <= 1366)
+        label = f"{arrow} Post details" if compact else f"{arrow} Post details && queue  Ctrl+3"
+        self.details_toggle_btn.setText(label)
+
+    def photos_open(self) -> bool:
+        return self.photos_tray.is_open()
+
+    def set_photos_open(self, opened: bool):
+        self.photos_tray.set_open(opened)
+
+    def toggle_photos(self):
+        self.photos_tray.toggle()
+
+    def _on_photos_tray_changed(self, opened: bool):
+        self._view_settings.setValue("take/photos_open", bool(opened))
+        self.photosStateChanged.emit(bool(opened))
+        QTimer.singleShot(0, self._fit_page_card_width)
+
+    def _reset_hovered_zoom(self):
+        if hasattr(self, "bucket_host") and self.bucket_host.underMouse():
+            self._set_thumb_zoom(100)
+        else:
+            self._set_page_zoom(100)
+
+    def _set_thumb_zoom(self, pct: int):
+        pct = max(60, min(150, int(pct or 100)))
+        if getattr(self, "_thumb_zoom", 100) == pct and hasattr(self, "thumb_zoom_lbl"):
+            return
+        self._thumb_zoom = pct
+        self._view_settings.setValue("take/thumb_zoom", pct)
+        if hasattr(self, "thumb_zoom_slider"):
+            self.thumb_zoom_slider.blockSignals(True)
+            self.thumb_zoom_slider.setValue(pct)
+            self.thumb_zoom_slider.blockSignals(False)
+        if hasattr(self, "thumb_zoom_lbl"):
+            self.thumb_zoom_lbl.setText(f"{pct}%")
+        self._refresh_bucket()
+
+    def eventFilter(self, obj, event):
+        if event.type() == event.Type.Wheel and (event.modifiers() & Qt.ControlModifier):
+            delta = 10 if event.angleDelta().y() > 0 else -10
+            if obj is getattr(self, "bucket_host", None):
+                self._set_thumb_zoom(self._thumb_zoom + delta)
+                return True
+            if obj in (
+                getattr(self, "_canvas_scroll", None) and self._canvas_scroll.viewport(),
+                self.body.canvas.viewport(),
+                self.body.editor.viewport(),
+            ):
+                self._set_page_zoom(self._page_zoom + delta)
+                return True
+        return super().eventFilter(obj, event)
+
+    def details_open(self) -> bool:
+        return bool(self.details_toggle_btn.isChecked())
+
+    def set_details_open(self, opened: bool):
+        opened = bool(opened)
+        if self.details_toggle_btn.isChecked() != opened:
+            self.details_toggle_btn.setChecked(opened)
+        else:
+            self._toggle_post_details(opened)
+
+    def _toggle_post_details(self, opened: bool):
+        opened = bool(opened)
+        self._compose_details.setVisible(opened)
+        self._view_settings.setValue("take/details_open", opened)
+        self._sync_details_btn(opened)
+        self.detailsStateChanged.emit(opened)
+
+    def _set_page_zoom(self, pct: int):
+        pct = max(70, min(160, int(pct or 100)))
+        self._page_zoom = pct
+        self._view_settings.setValue("take/page_zoom", pct)
+        if hasattr(self, "page_zoom_slider"):
+            self.page_zoom_slider.blockSignals(True)
+            self.page_zoom_slider.setValue(pct)
+            self.page_zoom_slider.blockSignals(False)
+        if hasattr(self, "page_zoom_lbl"):
+            self.page_zoom_lbl.setText(f"{pct}%")
+        base = QFont("Georgia")
+        base.setPointSizeF(12.5 * (pct / 100.0))
+        self.body.canvas.setFont(base)
+        self.body.canvas.document().setDefaultFont(base)
+        self._fit_page_card_width()
+
+    @staticmethod
+    def resolve_site_bg_color(site_url: str) -> str:
+        from PySide6.QtGui import QColor
+        url = str(site_url or "").strip()
+        if url:
+            try:
+                import snap_library
+                for key in ("site_bg", "page_bg", "background_color", "bg_color"):
+                    val = str(snap_library.meta(url, key, "") or "").strip()
+                    if val and QColor(val).isValid():
+                        return QColor(val).name()
+            except Exception:  # noqa: BLE001
+                pass
+        return theme.BG
+
+    def apply_canvas_background(self, site_url: str = "", explicit_bg: str = "") -> str:
+        from PySide6.QtGui import QColor
+        bg = explicit_bg.strip() if explicit_bg and QColor(explicit_bg.strip()).isValid() else self.resolve_site_bg_color(site_url)
+        c = QColor(bg)
+        if not c.isValid():
+            bg = theme.BG
+            c = QColor(bg)
+        lum = 0.299 * c.red() + 0.587 * c.green() + 0.114 * c.blue()
+        ruler = "#333333" if lum > 140 else theme.DIM
+        self._canvas_bg_color = bg
+        if hasattr(self, "_canvas_scroll"):
+            self._canvas_scroll.setStyleSheet(f"QScrollArea#CanvasWell {{ background: {bg}; border: none; }}")
+        if hasattr(self, "_canvas_host"):
+            self._canvas_host.setStyleSheet(f"QWidget#CanvasWell {{ background: {bg}; }}")
+        if hasattr(self, "body") and hasattr(self.body, "canvas"):
+            self.body.canvas._ruler_color = ruler
+            self.body.canvas.viewport().update()
+        return bg
+
+    def _fit_page_card_width(self):
+        pct = getattr(self, "_page_zoom", 100)
+        desired_inner = int((self._preview_width * pct) / 100.0)
+        desired_card = desired_inner + 80
+        scroll = getattr(self, "_canvas_scroll", None)
+        if scroll is not None and scroll.viewport().width() > 0:
+            vp_w = scroll.viewport().width()
+            gutter_w = self.gutter_tag.width() + 8 if hasattr(self, "gutter_tag") else 40
+            m = self._well_layout.contentsMargins() if hasattr(self, "_well_layout") else None
+            lr = (m.left() + m.right()) if m is not None else 32
+            # 24px buffer keeps CanvasWell horizontalScrollBar().maximum() == 0
+            # even when the vertical scrollbar is present.
+            avail_card = max(280, vp_w - gutter_w - lr - 24)
+            target_card = min(desired_card, avail_card)
+        else:
+            target_card = desired_card
+        inner_w = max(200, target_card - 80)
+        self.page_card.setFixedWidth(target_card)
+        self.ruler.set_preview_width(inner_w)
+        self.body.canvas.set_preview_width(inner_w)
+
+    def _set_preview_width(self, width: int):
+        self._preview_width = int(width or 760)
+        self.preview_desktop_btn.setChecked(self._preview_width == 760)
+        self.preview_phone_btn.setChecked(self._preview_width == 360)
+        self._set_page_zoom(getattr(self, "_page_zoom", 100))
+
+    def _update_page_chrome(self):
+        status = (self.status_combo.currentText() or "draft").strip().upper()
+        visual = self.body.is_biggie()
+        self.page_eyebrow.setText(
+            f"ESSAY · {status}" if visual else f"ESSAY · {status} — TEXT VIEW")
+        site = ((self.app_config() or {}).get("url") or "").strip()
+        for prefix in ("https://", "http://"):
+            if site.startswith(prefix):
+                site = site[len(prefix):]
+        site = site.rstrip("/") or "local draft"
+        blocks = self.body.canvas.document().blockCount() if self.body.is_biggie() else len(
+            [ln for ln in self.body.editor.toPlainText().splitlines() if ln.strip()])
+        from datetime import date
+        self.page_meta.setText(f"{date.today().isoformat()} · {site} · {blocks} block{'s' if blocks != 1 else ''}")
+        if hasattr(self, "page_state_lbl"):
+            self.page_state_lbl.setText(f"{blocks} block{'s' if blocks != 1 else ''}")
+        if self.body.is_biggie():
+            self.gutter_tag.setText(self.body.canvas.current_block_tag())
+            self.gutter_tag.setVisible(True)
+            self.add_block_btn.setVisible(True)
+        else:
+            self.gutter_tag.setVisible(False)
+            self.add_block_btn.setVisible(False)
+
+    def _show_add_block_menu(self):
+        from PySide6.QtWidgets import QMenu
+        menu = QMenu(self)
+        c = self.body.canvas
+        for label, cb in (
+            ("Paragraph", lambda: c.set_kind("para")),
+            ("Heading", lambda: c.set_kind("h2")),
+            ("Subhead", lambda: c.set_kind("h3")),
+            ("Quote", lambda: c.set_kind("quote")),
+            ("Pull quote", lambda: c.set_kind("pullquote")),
+            ("Drop cap", c.toggle_dropcap),
+            ("Bullet list", lambda: c.set_list(False)),
+            ("Numbered list", lambda: c.set_list(True)),
+            ("Divider", c.insert_hr),
+            ("Space", c._edit_spacer),
+            ("Mosaic", self._insert_mosaic),
+            ("Photograph", self._add_and_insert_photo),
+            ("Image from gallery", c._edit_image),
+            ("2 columns", lambda: c.insert_columns(2)),
+            ("3 columns", lambda: c.insert_columns(3)),
+            ("Raw", lambda: c.set_kind("raw")),
+        ):
+            menu.addAction(label, cb)
+        menu.exec(self.add_block_btn.mapToGlobal(self.add_block_btn.rect().bottomLeft()))
 
     def blocks_open(self) -> bool:
         return self.blocks_tray.is_open
@@ -377,19 +788,56 @@ class TakeMode(QWidget):
 
     def _blocks_state_changed(self, opened: bool, _pinned: bool):
         self.blocksStateChanged.emit(opened, self.blocks_header_label())
+        QTimer.singleShot(0, self._fit_page_card_width)
 
     def _sync_block_tray_width(self):
         window = self.window()
-        self.blocks_tray.set_compact_window(bool(window and window.width() <= 1366))
+        w = window.width() if window else 1920
+        compact = w <= 1366
+        tight = w <= 1100
+        self.blocks_tray.set_compact_window(compact)
+        if hasattr(self, "photos_tray"):
+            self.photos_tray.set_compact_window(compact)
+        if hasattr(self, "details_toggle_btn"):
+            self._sync_details_btn(self.details_toggle_btn.isChecked())
+        if hasattr(self, "_preview_hint_lbl"):
+            self._preview_hint_lbl.setVisible(not compact)
+        if hasattr(self, "save_state"):
+            self.save_state.setVisible(w > 1480)
+        if hasattr(self, "page_zoom_slider"):
+            self.page_zoom_slider.setFixedWidth(50 if tight else (58 if compact else 72))
+        if hasattr(self, "act_layout"):
+            self.act_layout.setContentsMargins(8 if tight else 12, 6, 8 if tight else 12, 8)
+            self.act_layout.setSpacing(4 if tight else 6)
+        if hasattr(self, "save_btn"):
+            self.save_btn.setText("Save" if tight else "Save as draft")
+        if hasattr(self, "queue_btn"):
+            self.queue_btn.setText("QUEUE" if tight else "QUEUE POST")
+        if hasattr(self, "preview_desktop_btn"):
+            self.preview_desktop_btn.setText("760" if tight else "Desktop 760")
+        if hasattr(self, "preview_phone_btn"):
+            self.preview_phone_btn.setText("360" if tight else "Phone 360")
+        if hasattr(self, "gutter_tag"):
+            self.gutter_tag.setFixedWidth(32 if tight else 52)
+        if hasattr(self, "_well_layout"):
+            self._well_layout.setContentsMargins(6 if tight else 16, 12, 6 if tight else 16, 18)
+        self._fit_page_card_width()
+        QTimer.singleShot(0, self._fit_page_card_width)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._sync_block_tray_width()
 
     def _refresh_block_actions(self, visual: bool):
+        self.page_card.setProperty("textView", not visual)
+        self.page_card.style().unpolish(self.page_card)
+        self.page_card.style().polish(self.page_card)
+        if hasattr(self, "text_view_hint"):
+            self.text_view_hint.setVisible(not visual)
         self.blocks_tray.set_actions(
             "BLOCKS" if visual else "SHORTCODES",
             self._visual_block_actions() if visual else self._text_block_actions())
+        self._update_page_chrome()
         self.blocksStateChanged.emit(self.blocks_open(), self.blocks_header_label())
 
     def _visual_block_actions(self):
@@ -1571,47 +2019,71 @@ class TakeMode(QWidget):
             w = item.widget()
             if w:
                 w.deleteLater()
+        while self.in_mosaics_thumbs.count():
+            item = self.in_mosaics_thumbs.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+
         n = len(self._bucket)
         self.body.set_bucket([im.local_path for im in self._bucket])   # mosaics repaint
         self.body.canvas.set_assets({im.asset_uuid: im.local_path for im in self._bucket})
         self.bucket_count.setText("")   # count lives in the header; this line = AI progress only
+
+        # Count photos placed in mosaic blocks on the canvas
+        mosaic_paths = []
+        if hasattr(self.body, "canvas") and hasattr(self.body.canvas, "to_blocks"):
+            for blk in self.body.canvas.to_blocks():
+                if isinstance(blk, dict) and blk.get("type") == "mosaic":
+                    for p in (blk.get("paths") or blk.get("images") or []):
+                        if p and p not in mosaic_paths:
+                            mosaic_paths.append(p)
+        self.in_mosaics_lbl.setText(f"In mosaics — {len(mosaic_paths)}")
+        for p in mosaic_paths[:5]:
+            thumb = QLabel()
+            thumb.setFixedSize(18, 18)
+            thumb.setPixmap(load_pixmap(p, 18))
+            self.in_mosaics_thumbs.addWidget(thumb)
+        self.in_mosaics_bar.setVisible(bool(mosaic_paths))
+
+        left_count = max(0, n - len(mosaic_paths))
         self.photos_sec.header.setText(
-            f"THE PHOTOS — {n} in the bucket" if n else "THE PHOTOS — none yet")
+            f"THE PHOTOS — {left_count} left" if n else "THE PHOTOS — none yet")
         if not self._bucket:
             self._selected_photo_idx = None
             self._populate_photo_tools()
-            self.bucket_col.addWidget(hint("No photos yet — click “Add photos…”."))
+            self.bucket_col.addWidget(hint("No photos yet — click “Add photos…”."), 0, 0)
             return
         if self._selected_photo_idx is None or self._selected_photo_idx >= len(self._bucket):
             self._selected_photo_idx = 0
+
+        zoom = getattr(self, "_thumb_zoom", 100)
+        if zoom >= 135:
+            cols, tile_px = 2, 146
+        elif zoom >= 110:
+            cols, tile_px = 3, 96
+        elif zoom >= 85:
+            cols, tile_px = 3, 88
+        else:
+            cols, tile_px = 4, 66
+
         for i, im in enumerate(self._bucket):
             is_cover = (i == self._cover_idx)
-            row = QFrame()
-            row.setObjectName("Card")
-            col = QVBoxLayout(row)
-            col.setContentsMargins(6, 6, 6, 6)
-            col.setSpacing(4)
-            lay = QHBoxLayout()
-            select = QPushButton()
-            select.setObjectName("PhotoSelect")
-            select.setCheckable(True)
-            select.setChecked(i == self._selected_photo_idx)
-            select.setAccessibleName(
-                "Selected photograph" if i == self._selected_photo_idx
-                else "Select photograph")
-            select.setIcon(QIcon(load_pixmap(im.thumb_square or im.local_path, 40)))
-            select.setIconSize(QSize(40, 40))
-            select.setFixedSize(48, 48)
-            select.clicked.connect(lambda _=False, i=i: self._select_photo(i))
-            lay.addWidget(select)
-            name = QLabel(("★ " if is_cover else "") +
-                          (im.filename or os.path.basename(im.local_path)))
-            name.setStyleSheet(
-                f"color: {theme.ACCENT if is_cover else theme.BODY}; background: transparent;")
-            name.setMinimumWidth(0)
-            lay.addWidget(name, 1)
-            col.addLayout(lay)
-            self.bucket_col.addWidget(row)
+            is_selected = (i == self._selected_photo_idx)
+            edited = bool(getattr(im, "slapper_edited_path", ""))
+            in_slapper = (
+                self._slapper_state == "waiting"
+                and str(getattr(im, "asset_uuid", "")) == self._slapper_asset_uuid
+            )
+            pix = load_pixmap(im.thumb_square or im.local_path, tile_px)
+            tile = PhotoThumbTile(
+                i, pix, selected=is_selected, is_cover=is_cover,
+                edited=edited, in_slapper=in_slapper, tile_size=tile_px)
+            tile.setToolTip(im.filename or os.path.basename(im.local_path))
+            tile.setAccessibleName(
+                "Selected photograph" if is_selected else "Select photograph")
+            tile.clicked.connect(lambda _=False, i=i: self._select_photo(i))
+            self.bucket_col.addWidget(tile, i // cols, i % cols)
         self._populate_photo_tools()
 
     def _ai_fill(self):
@@ -1654,8 +2126,6 @@ class TakeMode(QWidget):
         self.title_edit.setText(draft.title)
         self.tags_edit.setText(draft.tags)
         self.status_combo.setCurrentText(draft.img_status)
-        self.body.set_state(draft.caption, getattr(draft, "body_blocks", ""))
-        self.body.editor.moveCursor(QTextCursor.End)   # so an insert lands where writing resumes
         self._bucket = [O.DraftImage(local_path=im.local_path, filename=im.filename,
                                      thumb_square=im.thumb_square, is_cover=im.is_cover,
                                      **{name: getattr(im, name)
@@ -1672,6 +2142,10 @@ class TakeMode(QWidget):
             "color_mode": getattr(draft, "color_mode", ""),
             "colors": getattr(draft, "ai_colors", ""),
         }
+        # Populate bucket + canvas.assets BEFORE set_state() so restored mosaics resolve immediately.
+        self._refresh_bucket()
+        self.body.set_state(draft.caption, getattr(draft, "body_blocks", ""))
+        self.body.editor.moveCursor(QTextCursor.End)   # so an insert lands where writing resumes
         self._refresh_bucket()
         self._loading = False
         self.save_state.setText("Safe on this computer")
@@ -1799,6 +2273,16 @@ class TakeMode(QWidget):
                 "Essay posting needs this site's long-form key (a 'smackpress' key "
                 "from SnapSmack Admin → API Access). Open Connection details at the "
                 "top and paste it into the long-form key box.")
+            return None, url
+        from sumna_post import SumnaConnection, InsecureTransportError
+        from .connect_panel import verify_site_mode
+        probe_key = (cfg.get("api_key") or key).strip()
+        try:
+            conn = SumnaConnection(url, probe_key)
+        except InsecureTransportError as e:
+            QMessageBox.warning(self, "Insecure connection", str(e))
+            return None, url
+        if not verify_site_mode(self, conn, "smacktalk", "TAKE"):
             return None, url
         return SmacktalkPoster(url, key, site_data=None), url
 

@@ -21,7 +21,7 @@ _build_version = next(
     and any(isinstance(target, ast.Name) and target.id == 'BUILD_VERSION'
             for target in node.targets)
 )
-_version_tuple = tuple(int(part) for part in _build_version.split('.')) + (0,)
+_version_tuple = tuple(int(part.split('-')[0]) for part in _build_version.split('.')) + (0,)
 if len(_version_tuple) != 4 or any(part < 0 or part > 65535 for part in _version_tuple):
     raise ValueError('BUILD_VERSION must contain three Windows-compatible integers')
 _windows_version = VSVersionInfo(
@@ -95,9 +95,8 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='coldsnap',
     version=_windows_version,
     icon=os.path.join(_src, 'assets', 'coldsnap.ico'),
@@ -105,12 +104,21 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name='coldsnap',
 )
 # ===== SNAPSMACK EOF =====
