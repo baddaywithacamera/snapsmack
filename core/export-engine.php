@@ -349,9 +349,30 @@ class SnapSmackExport {
             && $isSensitive((string)$row['setting_key'])) {
             $row['setting_val'] = '__REDACTED__';
         }
+        // SS-1412. EVERY SECRET-NAMED COLUMN ON THIS TABLE, not a list of two.
+        //
+        // The hand-written list covered api_key_local and api_key_remote and
+        // missed api_key_backup, which core/multisite-api.php:194 generates as
+        // 32 random bytes and the hub presents for backup-only pulls. So every
+        // Recovery Kit taken from a hub carried a live spoke credential in
+        // clear text, inside a file whose whole purpose is to be copied
+        // somewhere else and kept.
+        //
+        // THE LIST WAS THE DEFECT, not the missing entry. $isSensitive above
+        // already knows what a secret column looks like and is already trusted
+        // with snap_settings; a column added to this table tomorrow is covered
+        // now without anyone remembering this function exists.
+        //
+        // These keys are NOT needed for a restore: a node re-provisions them
+        // when it rejoins, which is why the two that were here were already
+        // being redacted. Password hashes in snap_users are deliberately NOT
+        // touched by any of this -- redacting those would hand back a kit that
+        // restores a site nobody can log into.
         if ($table === 'snap_multisite_nodes') {
-            foreach (['api_key_local', 'api_key_remote'] as $c) {
-                if (!empty($row[$c])) $row[$c] = '__REDACTED__';
+            foreach (array_keys($row) as $c) {
+                if ($isSensitive((string)$c) && !empty($row[$c])) {
+                    $row[$c] = '__REDACTED__';
+                }
             }
         }
         return $row;
