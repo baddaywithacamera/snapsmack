@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-13T03:33:06.460Z",
+  "generated_at": "2026-11-18T17:35:39.047Z",
   "widths": [
     1920,
     1440,
@@ -484,7 +484,7 @@
     },
     {
       "skin": "alfred",
-      "version": "1.0.12",
+      "version": "1.0.15",
       "kind": "single",
       "features": {
         "consent": {
@@ -604,7 +604,7 @@
     },
     {
       "skin": "aurora",
-      "version": "1.0.59",
+      "version": "1.0.60",
       "kind": "photo",
       "features": {
         "consent": {
@@ -910,7 +910,7 @@
     },
     {
       "skin": "full-monty",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "kind": "photo",
       "features": {
         "consent": {
@@ -1061,7 +1061,7 @@
     },
     {
       "skin": "galleria",
-      "version": "1.3.24",
+      "version": "1.3.25",
       "kind": "photo",
       "features": {
         "consent": {
@@ -1363,7 +1363,7 @@
     },
     {
       "skin": "glide",
-      "version": "0.1.28",
+      "version": "0.1.32",
       "kind": "photo",
       "features": {
         "consent": {
@@ -1518,7 +1518,7 @@
     },
     {
       "skin": "heuristic",
-      "version": "0.1.20",
+      "version": "0.1.21",
       "kind": "photo",
       "features": {
         "consent": {
@@ -1979,7 +1979,7 @@
     },
     {
       "skin": "instant-camera",
-      "version": "1.0.61",
+      "version": "1.0.62",
       "kind": "photo",
       "features": {
         "consent": {
@@ -2130,7 +2130,7 @@
     },
     {
       "skin": "jive-turkey",
-      "version": "0.1.48",
+      "version": "0.1.49",
       "kind": "photo",
       "features": {
         "consent": {
@@ -2591,7 +2591,7 @@
     },
     {
       "skin": "parade",
-      "version": "1.2.56",
+      "version": "1.2.57",
       "kind": "photo",
       "features": {
         "consent": {
@@ -2893,7 +2893,7 @@
     },
     {
       "skin": "rational-geo",
-      "version": "2.1.39",
+      "version": "2.1.42",
       "kind": "photo",
       "features": {
         "consent": {
@@ -3048,7 +3048,7 @@
     },
     {
       "skin": "scroll",
-      "version": "0.1.79",
+      "version": "0.1.80",
       "kind": "photo",
       "features": {
         "consent": {
@@ -3203,7 +3203,7 @@
     },
     {
       "skin": "show-n-tell",
-      "version": "1.2.14",
+      "version": "1.2.15",
       "kind": "photo",
       "features": {
         "consent": {
@@ -3513,7 +3513,7 @@
     },
     {
       "skin": "sliders",
-      "version": "0.1.20",
+      "version": "0.1.21",
       "kind": "photo",
       "features": {
         "consent": {
@@ -3784,7 +3784,7 @@
     },
     {
       "skin": "sudden-impact",
-      "version": "1.0.26",
+      "version": "1.0.27",
       "kind": "photo",
       "features": {
         "consent": {
@@ -3935,7 +3935,7 @@
     },
     {
       "skin": "telegram",
-      "version": "0.1.8",
+      "version": "0.1.10",
       "kind": "single",
       "features": {
         "consent": {
@@ -4059,7 +4059,7 @@
     },
     {
       "skin": "the-grid",
-      "version": "1.3.61",
+      "version": "1.3.62",
       "kind": "photo",
       "features": {
         "consent": {
@@ -4210,7 +4210,7 @@
     },
     {
       "skin": "tilez",
-      "version": "0.2.75",
+      "version": "0.2.78",
       "kind": "single",
       "features": {
         "consent": {
