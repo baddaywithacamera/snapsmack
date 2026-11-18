@@ -114,13 +114,21 @@ class SnapSmackRecovery {
      * column, and a recovery must not abort because one is absent.
      */
     private function clearRedactedCredentials(): array {
-        $marker  = '__REDACTED__';
+        // Upper-cased here because the statements below compare UPPER(col)
+        // against it. Writing the literal in upper case would work today
+        // and break silently the first time somebody re-cases it.
+        $marker  = strtoupper('__REDACTED__');
         $cleared = [];
 
         foreach (['api_key_local', 'api_key_remote', 'api_key_backup'] as $col) {
             try {
+                // UPPER() on both sides: SS-1424. A dump can carry any
+                // casing of the marker, and SQLite compares case-sensitively
+                // where MariaDB does not, so an exact match would clear the
+                // variants on a live site and leave them on a restore run
+                // anywhere else. Normalise and the two behave alike.
                 $st = $this->pdo->prepare(
-                    "UPDATE snap_multisite_nodes SET {$col} = '' WHERE {$col} = ?"
+                    "UPDATE snap_multisite_nodes SET {$col} = '' WHERE UPPER({$col}) = ?"
                 );
                 $st->execute([$marker]);
                 if ($st->rowCount() > 0) $cleared['snap_multisite_nodes.' . $col] = $st->rowCount();
@@ -131,7 +139,7 @@ class SnapSmackRecovery {
 
         try {
             $st = $this->pdo->prepare(
-                "UPDATE snap_settings SET setting_val = '' WHERE setting_val = ?"
+                "UPDATE snap_settings SET setting_val = '' WHERE UPPER(setting_val) = ?"
             );
             $st->execute([$marker]);
             if ($st->rowCount() > 0) $cleared['snap_settings.setting_val'] = $st->rowCount();
