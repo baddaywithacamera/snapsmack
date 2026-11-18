@@ -617,7 +617,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </article>
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-muse.png" data-lightbox-group="co-authors" data-lightbox-caption="Muse" aria-label="Open a larger portrait of Muse"><img src="img/whodat-muse.png" alt="Muse" width="1857" height="1715" loading="lazy"></button></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-muse.png?v=5a111ce9" data-lightbox-group="co-authors" data-lightbox-caption="Muse" aria-label="Open a larger portrait of Muse"><img src="img/whodat-muse.png?v=5a111ce9" alt="Muse" width="1857" height="1715" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">Muse</p>
                         <p class="whodat-title">Gets the last word in.</p>
