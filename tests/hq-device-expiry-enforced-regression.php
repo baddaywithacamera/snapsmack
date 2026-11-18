@@ -248,11 +248,22 @@ echo "\nSTAGE 4b — WHEN the enforcement stamp is written (Codex's r2 FAIL)\n";
 // The stamp is now written by da_ensure(), which runs before the dispatch on
 // every request to this endpoint. That is a call-site fact, so it is read
 // from the source -- weaker than running it, and said so.
-check('da_ensure writes the enforcement stamp on every request',
-      preg_match('/function da_ensure\(.*?da_enforcement_began\(\$pdo/s', $src) === 1,
+// Take da_ensure's body and look INSIDE it. My first version of this check
+// was a /s regex from "function da_ensure(" to the first
+// "da_enforcement_began($pdo", and it matched a call site further down the
+// file in da_in_remediation() -- so deleting the da_ensure call changed
+// nothing and the check still passed. Mutation testing found that, not
+// reading. A source assertion that spans functions asserts nothing.
+$ensure_at   = strpos($src, 'function da_ensure(');
+$ensure_end  = $ensure_at === false ? false : strpos($src, "
+function ", $ensure_at + 10);
+$ensure_body = $ensure_at === false ? '' :
+    substr($src, $ensure_at, ($ensure_end === false ? strlen($src) : $ensure_end) - $ensure_at);
+check('da_ensure itself writes the enforcement stamp, on every request',
+      $ensure_body !== '' && str_contains($ensure_body, 'da_enforcement_began($pdo'),
       $failures);
 check('the stamp is not reached only through the remediation check',
-      substr_count($src, 'da_enforcement_began(') >= 3, $failures);
+      substr_count($src, 'da_enforcement_began($pdo') >= 3, $failures);
 
 // And the consequence, executed: a site whose stamp was written at deploy
 // time, with a device that was healthy then and expires long afterwards. It
