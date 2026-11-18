@@ -69,6 +69,33 @@ $defs = preg_replace('/^\s*header\(.*$/m', '', $defs);
 $defs = preg_replace('/^<\?php/', '', (string)$defs, 1);
 eval((string)$defs);
 
+// None of the helpers below exist on the unfixed tree, so without these the
+// before-run dies on the first call and proves nothing a reviewer can see.
+// They are stubbed to what dev ACTUALLY DOES, not to something convenient:
+// dev never asked about expiry at all, so every device is effectively
+// current; dev's renewal set the new expiry to now + three months whatever
+// the prior term; dev had no remediation concept. Run this file against dev
+// and it reports dev's behaviour as a list of failures.
+if (!defined('DA_TERM_SECONDS'))  define('DA_TERM_SECONDS', 90 * 86400);
+if (!defined('DA_GRACE_SECONDS')) define('DA_GRACE_SECONDS', 14 * 86400);
+if (!function_exists('da_term_state')) {
+    function da_term_state(array $device, int $now): array {
+        return ['state' => 'current',
+                'expires_at' => (int)strtotime((string)$device['expires_at']),
+                'grace_ends_at' => (int)strtotime((string)$device['grace_ends_at']),
+                'remaining' => 0];
+    }
+}
+if (!function_exists('da_next_expiry')) {
+    function da_next_expiry(int $prior_expiry, int $now): int { return $now + DA_TERM_SECONDS; }
+}
+if (!function_exists('da_in_remediation')) {
+    function da_in_remediation(PDO $pdo, array $term, int $now): bool { return false; }
+}
+if (!function_exists('da_enforcement_began')) {
+    function da_enforcement_began(PDO $pdo, int $now): int { return $now; }
+}
+
 $DAY = 86400;
 $NOW = 1795000000;
 
