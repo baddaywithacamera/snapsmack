@@ -273,6 +273,7 @@ class TakeMode(QWidget):
 
         self.page_card = QFrame()
         self.page_card.setObjectName("PageCard")
+        self.page_card.setProperty("textView", False)
         self._preview_width = 760
         self.page_card.setFixedWidth(self._preview_width + 80)
         card_col = QVBoxLayout(self.page_card)
@@ -291,6 +292,10 @@ class TakeMode(QWidget):
         self.page_meta = QLabel("")
         self.page_meta.setObjectName("PageMeta")
         card_col.addWidget(self.page_meta)
+        self.site_colors_note = QLabel("site colours unavailable")
+        self.site_colors_note.setObjectName("SiteColorsNote")
+        self.site_colors_note.setVisible(False)
+        card_col.addWidget(self.site_colors_note)
         self.text_view_hint = hint(
             "A plain text editor. Each block uses CMS shortcodes from core/parser.php "
             "(plus COLD SNAP [mosaic=…] markers resolved to [mosaic:ID] on send).")
@@ -663,37 +668,89 @@ class TakeMode(QWidget):
         self._fit_page_card_width()
 
     @staticmethod
-    def resolve_site_bg_color(site_url: str) -> str:
+    def resolve_site_colors(site_url: str) -> tuple:
+        """Return (bg_hex, fg_hex, available_bool) for a site, falling back to white/dark."""
         from PySide6.QtGui import QColor
         url = str(site_url or "").strip()
+        bg, fg, available = "", "", False
         if url:
             try:
                 import snap_library
                 for key in ("site_bg", "page_bg", "background_color", "bg_color"):
                     val = str(snap_library.meta(url, key, "") or "").strip()
                     if val and QColor(val).isValid():
-                        return QColor(val).name()
+                        bg = QColor(val).name()
+                        available = True
+                        break
+                fg_val = str(snap_library.meta(url, "site_fg", "") or "").strip()
+                if fg_val and QColor(fg_val).isValid():
+                    fg = QColor(fg_val).name()
             except Exception:  # noqa: BLE001
                 pass
-        return theme.BG
+        if not bg:
+            return "#ffffff", "#1a1a1a", False
+        return bg, fg, available
 
-    def apply_canvas_background(self, site_url: str = "", explicit_bg: str = "") -> str:
-        from PySide6.QtGui import QColor
-        bg = explicit_bg.strip() if explicit_bg and QColor(explicit_bg.strip()).isValid() else self.resolve_site_bg_color(site_url)
-        c = QColor(bg)
-        if not c.isValid():
-            bg = theme.BG
-            c = QColor(bg)
-        lum = 0.299 * c.red() + 0.587 * c.green() + 0.114 * c.blue()
-        ruler = "#333333" if lum > 140 else theme.DIM
+    @staticmethod
+    def resolve_site_bg_color(site_url: str) -> str:
+        return TakeMode.resolve_site_colors(site_url)[0]
+
+    def apply_canvas_background(self, site_url: str = "", explicit_bg: str = "", explicit_fg: str = "") -> str:
+        from PySide6.QtGui import QColor, QPalette
+        from . import canvas as canvas_mod
+        if explicit_bg and QColor(explicit_bg.strip()).isValid():
+            bg = QColor(explicit_bg.strip()).name()
+            fg = QColor(explicit_fg.strip()).name() if explicit_fg and QColor(explicit_fg.strip()).isValid() else ""
+            available = True
+        else:
+            bg, fg, available = self.resolve_site_colors(site_url)
+
+        pal = canvas_mod.site_surface_palette(bg, fg)
+        bg = pal["bg"]
         self._canvas_bg_color = bg
+        self._surface_palette = pal
+
         if hasattr(self, "_canvas_scroll"):
             self._canvas_scroll.setStyleSheet(f"QScrollArea#CanvasWell {{ background: {bg}; border: none; }}")
         if hasattr(self, "_canvas_host"):
             self._canvas_host.setStyleSheet(f"QWidget#CanvasWell {{ background: {bg}; }}")
-        if hasattr(self, "body") and hasattr(self.body, "canvas"):
-            self.body.canvas._ruler_color = ruler
-            self.body.canvas.viewport().update()
+        if hasattr(self, "page_card"):
+            if self.page_card.property("textView") is None:
+                self.page_card.setProperty("textView", False)
+            self.page_card.setStyleSheet(
+                f'QFrame#PageCard[textView="false"] {{ background: {bg}; border-radius: 6px; }}'
+                'QFrame#PageCard[textView="true"] { background: #141914; border: 1px solid #2b3a29; border-radius: 6px; }'
+            )
+        if hasattr(self, "page_eyebrow"):
+            self.page_eyebrow.setStyleSheet(
+                f"QLabel#PageEyebrow {{ background: transparent; color: {pal['eyebrow']};"
+                " font-size: 11px; font-weight: 700; letter-spacing: 1.4px; }"
+            )
+        if hasattr(self, "title_edit"):
+            self.title_edit.setStyleSheet(
+                f"QLineEdit#PageTitle {{ background: transparent; color: {pal['heading']}; border: none;"
+                " padding: 2px 0px; font-size: 26px; font-weight: 800; }"
+            )
+            tp = self.title_edit.palette()
+            tp.setColor(QPalette.PlaceholderText, QColor(pal["placeholder"]))
+            tp.setColor(QPalette.Text, QColor(pal["heading"]))
+            self.title_edit.setPalette(tp)
+        if hasattr(self, "page_meta"):
+            self.page_meta.setStyleSheet(
+                f"QLabel#PageMeta {{ background: transparent; color: {pal['muted']}; font-size: 12px; }}"
+            )
+        if hasattr(self, "site_colors_note"):
+            self.site_colors_note.setStyleSheet(
+                f"QLabel#SiteColorsNote {{ background: transparent; color: {pal['muted']}; font-size: 11px; font-style: italic; }}"
+            )
+            self.site_colors_note.setVisible(not available)
+        if hasattr(self, "gutter_tag"):
+            self.gutter_tag.setStyleSheet(
+                f"QLabel#BlockGutterTag {{ background: transparent; color: {pal['eyebrow']};"
+                " font-size: 10px; font-weight: 700; letter-spacing: 0.8px; }"
+            )
+        if hasattr(self, "body") and hasattr(self.body, "apply_surface_palette"):
+            self.body.apply_surface_palette(pal)
         return bg
 
     def _fit_page_card_width(self):

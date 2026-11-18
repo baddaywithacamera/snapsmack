@@ -124,7 +124,10 @@ def test_discover_backup_sessions_and_explicit_import(monkeypatch, tmp_path):
     assert "Start your engines" in found[0]["draft_titles"]
 
     # Declining import must NOT copy silently
+    from coldsnap_qt.connect_panel import ConnectPanel
     from coldsnap_qt.main_window import MainWindow
+    monkeypatch.setattr(ConnectPanel, "_begin_async_load", lambda self: None)
+    monkeypatch.setattr(ConnectPanel, "_start_mode_discovery", lambda self: None)
     _app()
     win = MainWindow()
     try:

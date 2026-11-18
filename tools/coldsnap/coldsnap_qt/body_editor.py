@@ -194,6 +194,16 @@ class BodyEditor(QWidget):
         # to making the editor understandable and matches the bundled Help.
         self._apply_face(True)
 
+    def apply_surface_palette(self, pal: dict):
+        """Apply site theme surface colours to BiggiePage wrapper and BiggieCanvas."""
+        from PySide6.QtGui import QColor, QPalette
+        self._biggie_page.setAutoFillBackground(True)
+        bp = self._biggie_page.palette()
+        bp.setColor(QPalette.Window, QColor(pal["bg"]))
+        self._biggie_page.setPalette(bp)
+        self._biggie_page.setStyleSheet(f"QWidget#BiggiePage {{ background: {pal['bg']}; }}")
+        self.canvas.apply_surface_palette(pal)
+
     def _apply_inline(self, action: str):
         if self._biggie_on:
             {
