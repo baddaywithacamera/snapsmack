@@ -63,9 +63,7 @@ $pageBase = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
 <?php echo snap_render_html(snap_render_component('blogroll', ['groups' => $view['response']['blogroll_groups'] ?? []])); ?>
 </div>
 </div>
-<?php elseif (($view['response']['kind'] ?? '') === 'search'): ?>
-<section class="fsog-search-page search-results"><h1 class="static-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Search'); ?></h1><?php foreach (($view['response']['results'] ?? []) as $group): ?><?php foreach ($group as $result): ?><article><h2><?php echo snap_escape_html($result['img_title'] ?? $result['title'] ?? ''); ?></h2></article><?php endforeach; ?><?php endforeach; ?></section>
-<?php else: ?>
+<?php elseif (($view['response']['kind'] ?? '') === 'search'): ?><?php echo snap_render_html(snap_render_component('search-results', ['results' => $view['response']['results'] ?? [], 'query' => $view['response']['query'] ?? '', 'page_title' => $view['response']['page_title'] ?? ''])); ?><?php else: ?>
 <?php
 // The archive's control row, below the header and above the grids, exactly
 // where this skin has always carried it. It is a shared component: it brings

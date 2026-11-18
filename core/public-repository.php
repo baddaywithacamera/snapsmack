@@ -824,7 +824,12 @@ final class SnapPublicRepository
         $ix = $this->imageFilter('exclude_from_search', 'i');
         $px = $this->postFilter('exclude_from_search', '');
         $like = '%' . $term . '%';
-        $tagLike = '%' . strtolower($term) . '%';
+        // SS-1409. A LEADING # IS NOT PART OF THE SLUG. snap_tags stores
+        // 'drumheller', so '%#drumheller%' matched no tag and "#drumheller"
+        // only appeared to work, by hitting the # still sitting in the raw
+        // caption text. Searching with and without the hash must reach the
+        // same tag.
+        $tagLike = '%' . ltrim(strtolower($term), '#') . '%';
         $limit = max(1, min(100, $limit));
         $offset = max(0, $offset);
         $med = $this->mediumThumbSelect('i.');
