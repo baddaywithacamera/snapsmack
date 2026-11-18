@@ -656,7 +656,7 @@ class SetupWizard(_ModalBase):
         for tab, desc in [
             ("Backup", "Run backups — differential or full, one blog or all at once"),
             ("Restore", "Upload files back to your server from a backup package"),
-            ("Manage", "View, sort, search, restore and delete your cloud backups"),
+            ("Manage", "View, sort, search and restore your cloud backups"),
             ("Audit", "Scan your server for missing, orphaned, or mismatched files"),
             ("Settings", "Manage profiles, cloud config, and global defaults"),
         ]:

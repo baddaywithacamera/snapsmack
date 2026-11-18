@@ -388,10 +388,8 @@ class DriveClient:
         return all_files
 
     def delete_file(self, file_id: str, file_name: str = "") -> None:
-        """Permanently delete a file from Drive by ID (skips Trash, so cloud
-        space is freed immediately). file_name is accepted for a uniform
-        interface across cloud clients but is not needed by Drive."""
-        self._svc().files().delete(fileId=file_id).execute()
+        """Disabled (SS-1413): SUYB is write-only in the cloud."""
+        raise PermissionError("SUYB is write-only in the cloud — cloud deletion belongs to DRIVE BY.")
 
     def download_file(
         self,
@@ -677,18 +675,8 @@ class BoxClient:
         ]
 
     def delete_file(self, file_id: str, file_name: str = "") -> None:
-        """Delete a file from Box by ID. Box moves the file to its Trash, from
-        which it can be recovered (or purged) in the Box web UI. file_name is
-        accepted for a uniform interface across cloud clients."""
-        import requests
-        resp = requests.delete(
-            f"{self.API_BASE}/files/{file_id}",
-            headers=self._headers(),
-            timeout=30,
-        )
-        # 204 = deleted, 404 = already gone — both are fine.
-        if resp.status_code not in (204, 404):
-            resp.raise_for_status()
+        """Disabled (SS-1413): SUYB is write-only in the cloud."""
+        raise PermissionError("SUYB is write-only in the cloud — cloud deletion belongs to DRIVE BY.")
 
     def upload_file(
         self,
@@ -1131,23 +1119,12 @@ class B2Client:
             f.write(resp.content)
 
     def delete_file(self, file_id: str, file_name: str = "") -> None:
-        """Uniform delete entry point across cloud clients — delegates to the
-        B2 version-delete call."""
-        self.delete_file_version(file_id, file_name)
+        """Disabled (SS-1413): SUYB is write-only in the cloud."""
+        raise PermissionError("SUYB is write-only in the cloud — cloud deletion belongs to DRIVE BY.")
 
     def delete_file_version(self, file_id: str, file_name: str) -> None:
-        """Delete a specific version of a B2 file by ID."""
-        import requests
-        auth = self._auth()
-        # Prepend folder prefix back on if needed
-        full_name = (self.folder + "/" + file_name) if self.folder else file_name
-        resp = requests.post(
-            f"{auth['apiUrl']}/b2api/v2/b2_delete_file_version",
-            headers={"Authorization": auth["authorizationToken"]},
-            json={"fileId": file_id, "fileName": full_name},
-            timeout=15,
-        )
-        resp.raise_for_status()
+        """Disabled (SS-1413): SUYB is write-only in the cloud."""
+        raise PermissionError("SUYB is write-only in the cloud — cloud deletion belongs to DRIVE BY.")
 
 # ---------------------------------------------------------------------------
 # Factory

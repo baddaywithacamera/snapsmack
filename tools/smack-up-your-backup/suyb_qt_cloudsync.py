@@ -448,7 +448,7 @@ class CloudSyncPage(QWidget):
         self.cancel_btn = QPushButton("Cancel"); self.cancel_btn.setEnabled(False)
         self.cancel_btn.clicked.connect(self._cancel); buttons.addWidget(self.cancel_btn)
         buttons.addSpacing(24)
-        self.audit_btn = QPushButton("AUDIT & CLEANUP (Backblaze B2)")
+        self.audit_btn = QPushButton("AUDIT B2 (Backblaze B2)")
         self.audit_btn.clicked.connect(self._audit_cleanup); buttons.addWidget(self.audit_btn)
         buttons.addStretch(1)
         self.status = label("Ready", "StatusGood"); self.status.setWordWrap(False)
@@ -741,7 +741,7 @@ class CloudSyncPage(QWidget):
                     "dst_client": dst_client, "src_client": src_client}
 
         run_in_thread(self.relay, work, self._on_cleanup_confirm,
-                      lambda exc: self._on_cleanup_done({"ok": False, "error": str(exc), "paths": paths}))
+                      lambda exc: self._on_audit_error(str(exc)))
 
     def _on_cleanup_confirm(self, payload: dict):
         import b2_integrity as bi
@@ -755,65 +755,29 @@ class CloudSyncPage(QWidget):
             self._append_log(f"  Report: {paths['dedup_report']}")
             set_status(self.status, "Audit: no issues", "good")
             return
-        msg = (f"Audit complete. Here's what needs to happen:\n\n"
-               f"Versions to delete: {summary['to_delete']}\n"
-               f"Files to re-transfer: {summary['to_replace']}\n"
-               f"Files missing from destination: {summary['missing']}\n"
-               f"Orphans on B2 (not in source): {summary['orphans']}\n"
-               f"Already OK: {summary['ok']}\n\n"
-               f"Deleting bad versions and re-transferring bad files cannot be undone.\n"
-               f"Proceed?")
-        if not _confirm(self, "Confirm Cleanup", msg, "Delete and re-transfer", danger=True):
-            self._end_cleanup()
-            self._append_log("Cleanup cancelled.")
-            set_status(self.status, "Cleanup cancelled", "warn")
-            return
-
-        self._cleanup_cancelled = False
-        self.cancel_btn.setEnabled(True)
-        set_status(self.status, "Cleaning up…", "warn")
-        scratch = _cleanup_scratch_dir()
-        emit = self.relay.call.emit
-
-        def work():
-            result = bi.execute_cleanup(
-                b2_client=payload["dst_client"], src_client=payload["src_client"],
-                src_inventory=payload["src_inv"], report=report, scratch_dir=scratch,
-                on_log=lambda m: emit(lambda m=m: self._append_log(m)),
-                on_progress=lambda p: emit(lambda p=p: self._on_progress(p)),
-                cancelled=lambda: self._cleanup_cancelled,
-            )
-            bi.write_csv(result["log_rows"], paths["cleanup_log"])
-            result["paths"] = paths
-            return result
-
-        run_in_thread(self.relay, work, self._on_cleanup_done,
-                      lambda exc: self._on_cleanup_done({"ok": False, "error": str(exc), "paths": paths}))
+        # SS-1413: SUYB is write-only in the cloud — b2_integrity reports only and never deletes.
+        self._end_cleanup()
+        self._append_log(
+            f"Audit complete (report-only — SUYB does not delete in the cloud; use DRIVE BY to prune):\n"
+            f"  Flagged versions: {summary['to_delete']}\n"
+            f"  Files needing re-transfer: {summary['to_replace']}\n"
+            f"  Files missing from destination: {summary['missing']}\n"
+            f"  Orphans on B2 (not in source): {summary['orphans']}\n"
+            f"  Already OK: {summary['ok']}\n"
+            f"  Report: {paths['dedup_report']}"
+        )
+        set_status(self.status, "Audit complete (report only)", "warn")
+        return
 
     def _end_cleanup(self):
         self._busy = False
         self.run_btn.setEnabled(True); self.audit_btn.setEnabled(True); self.cancel_btn.setEnabled(False)
 
-    def _on_cleanup_done(self, result: dict):
+    def _on_audit_error(self, error: str):
         self._end_cleanup()
         self.progress.setValue(0)
-        if result.get("error"):
-            self._append_log(f"✗ Cleanup failed: {result['error']}")
-            set_status(self.status, "Cleanup failed", "bad")
-            return
-        d = result.get("deleted", 0); r = result.get("replaced", 0)
-        f = result.get("failed", 0); m = result.get("missing_from_source", 0)
-        paths = result.get("paths", {})
-        self._append_log(f"{'✓' if f == 0 else '⚠'} Cleanup complete — "
-                         f"{d} version(s) deleted, {r} file(s) re-transferred"
-                         + (f", {f} failure(s)" if f else "")
-                         + (f", {m} missing from source" if m else ""))
-        if paths.get("cleanup_log"):
-            self._append_log(f"  Log: {paths['cleanup_log']}")
-        if paths.get("dedup_report"):
-            self._append_log(f"  Report: {paths['dedup_report']}")
-        set_status(self.status, "Cleanup complete" if f == 0 else "Cleanup had failures",
-                   "good" if f == 0 else "bad")
+        self._append_log(f"✗ Audit failed: {error}")
+        set_status(self.status, "Audit failed", "bad")
 
 
 HELP_TOPICS = [
@@ -836,14 +800,12 @@ HELP_TOPICS = [
      "(not the bucket ID). Test connection checks them.\n\n"
      "Save writes the job straight away. Renaming a job replaces the old one. Delete job removes only the "
      "job's settings; no files in either cloud are touched."),
-    ("Audit & Cleanup",
-     "AUDIT & CLEANUP works only when the destination is a Backblaze B2 bucket. It lists every file in the "
-     "source and every stored version in the bucket, compares sizes, and writes CSV reports into the "
-     "manifests folder next to SUYB.\n\n"
-     "If nothing is wrong it says so and changes nothing. If it finds bad or duplicate versions, or files "
-     "with no good copy, it shows the counts and asks first. Confirming deletes the bad versions and sends "
-     "those files again from the source — this cannot be undone. Files in the bucket that are not in the "
-     "source (orphans) are reported but left alone."),
+    ("Audit B2",
+     "AUDIT B2 works only when the destination is a Backblaze B2 bucket. It lists every file in the "
+     "source and every stored version in the bucket, compares sizes, and writes a read-only CSV report "
+     "into the manifests folder next to SUYB.\n\n"
+     "SUYB is write-only in the cloud and never deletes or modifies existing B2 versions. Use DRIVE BY "
+     "if you want to inspect or prune cloud files."),
     ("Saved credentials",
      "The credential library remembers credentials files under a name you choose, so you pick them by name "
      "instead of hunting for the file each time. Add… registers a file, Rename… changes its name, Remove "
