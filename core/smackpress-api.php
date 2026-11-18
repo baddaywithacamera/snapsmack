@@ -582,8 +582,45 @@ function smackpress_save_bucket(PDO $pdo, int $post_id, array $body, string $con
 // ROUTE: GET smackpress/posts — desktop post picker
 // =====================================================================
 if ($sub === 'posts' && $method === 'GET') {
+    $columns = 'id,title,slug,status,created_at,updated_at,featured_image_id';
+
+    // ?slug=<exact> — ASK ABOUT ONE SLUG INSTEAD OF SEARCHING A LIST.
+    //
+    // COLD SNAP decides update-or-create by looking for its draft's slug among
+    // the posts this endpoint returns, and the list is capped at 500. On a site
+    // with more than 500 longform posts the answer was simply not in the page
+    // it received, so an existing post could be missed and a duplicate created
+    // -- and the client could not tell a real "no such slug" from "past the
+    // cap". There is no offset either, so paging was not a way out.
+    //
+    // EXACT, not LIKE: the question is whether this slug is taken, and a
+    // prefix match would answer about a different post. The slug is validated
+    // rather than trusted, so a junk value is a 400 instead of a silent empty
+    // answer that reads as "free".
+    $slug_query = trim((string)($_GET['slug'] ?? ''));
+    if ($slug_query !== '') {
+        if (!preg_match('/^[a-z0-9][a-z0-9_-]{0,254}$/i', $slug_query)) {
+            smackpress_error(400, 'slug must be a plain post slug: letters, '
+                . 'digits, hyphen or underscore, up to 255 characters.');
+        }
+        $stmt = $pdo->prepare("SELECT {$columns} FROM snap_posts
+                                WHERE post_type='longform' AND slug = ? LIMIT 1");
+        $stmt->execute([$slug_query]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $posts = [];
+        if ($row) {
+            $row['id'] = (int)$row['id'];
+            $row['featured_image_id'] = (int)($row['featured_image_id'] ?? 0);
+            $posts[] = $row;
+        }
+        // 'exact' tells the client this answer is complete for that slug, so it
+        // never has to wonder whether the cap hid something. An empty list here
+        // means the slug is genuinely free.
+        smackpress_ok(['posts' => $posts, 'exact' => true, 'slug' => $slug_query]);
+    }
+
     $limit = max(1, min(500, (int)($_GET['limit'] ?? 100)));
-    $stmt = $pdo->prepare("SELECT id,title,slug,status,created_at,updated_at,featured_image_id
+    $stmt = $pdo->prepare("SELECT {$columns}
                             FROM snap_posts WHERE post_type='longform'
                         ORDER BY updated_at DESC, id DESC LIMIT " . $limit);
     $stmt->execute();
@@ -593,7 +630,15 @@ if ($sub === 'posts' && $method === 'GET') {
         $post['featured_image_id'] = (int)($post['featured_image_id'] ?? 0);
     }
     unset($post);
-    smackpress_ok(['posts' => $posts]);
+    // 'total' so a client can STOP GUESSING. Without it the only signal that
+    // the list might be short of the truth was "I got exactly 500 back", which
+    // is also what a site with exactly 500 posts looks like. Added with the
+    // slug lookup because the same request -- is my post already here? -- is
+    // what both are for.
+    $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts WHERE post_type='longform'")
+        ->fetchColumn();
+    smackpress_ok(['posts' => $posts, 'total' => $total, 'limit' => $limit,
+        'truncated' => $total > count($posts)]);
 }
 
 // =====================================================================
