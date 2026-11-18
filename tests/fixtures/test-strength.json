@@ -1714,6 +1714,14 @@
             8.1
         ]
     },
+    "recovery-kit-redacts-every-node-key-regression.php": {
+        "assertions": 23,
+        "predicates": 11,
+        "thresholds": [
+            3,
+            6
+        ]
+    },
     "release-flow-regression.php": {
         "assertions": 58,
         "predicates": 61,
