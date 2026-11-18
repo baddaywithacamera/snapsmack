@@ -46,9 +46,48 @@ function ms_is_safe_remote_url(string $url): bool {
     return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
 }
 
+/**
+ * SS-1417: the Recovery Kit export marker must never authenticate.
+ *
+ * Recovery Kit dumps replace live fleet credentials with this public literal.
+ * Restoring such a dump writes the literal straight into an active node row,
+ * and every fleet-key lookup is a plain equality match on a non-empty string,
+ * so the marker would authenticate as that node. The literal is published in
+ * this repository and in CHANGELOG.md, so it is not a secret and not guessable
+ * only in theory — anyone can present it.
+ *
+ * Export and restore are both hardened too, but this is the layer that holds
+ * even for a dump written by an older build that we never get to rewrite.
+ */
+const MS_REDACTED_MARKER = '__REDACTED__';
+
+/**
+ * True only for a value that is allowed to authenticate as a fleet peer.
+ * Empty and the redaction marker are rejected. Compared with hash_equals so
+ * the check does not leak timing, matching the other credential paths.
+ */
+function ms_is_authenticating_fleet_key(string $key): bool {
+    $k = trim($key);
+    if ($k === '') return false;
+    if (hash_equals(MS_REDACTED_MARKER, $k)) return false;
+    return true;
+}
+
+/**
+ * True when the key has the canonical shape every key this code issues has:
+ * bin2hex(random_bytes(32)) == 64 lowercase hex. Not yet enforced as the
+ * authentication gate — see SS-1417: the live spokes have not been audited
+ * for legacy key formats, and enforcing it blind could lock working nodes
+ * out of the fleet. Used by the tests, and ready to promote once Codex
+ * reports the live formats.
+ */
+function ms_is_canonical_fleet_key(string $key): bool {
+    return (bool)preg_match('/^[a-f0-9]{64}$/', trim($key));
+}
+
 function ms_resolve_peer(PDO $pdo, string $bearer): ?array
 {
-    if ($bearer === '') return null;
+    if (!ms_is_authenticating_fleet_key($bearer)) return null;
     $stmt = $pdo->prepare(
         "SELECT * FROM snap_multisite_nodes
          WHERE api_key_local = ? AND status = 'active'

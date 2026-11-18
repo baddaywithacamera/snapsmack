@@ -325,24 +325,30 @@ def test_audit_confirm_then_cleanup(env, fake_engine, monkeypatch):
     monkeypatch.setattr(bi, "execute_cleanup", fake_cleanup)
 
     page = page_for()
-    monkeypatch.setattr(cs, "_confirm", lambda *a, **k: False)
     page._audit_cleanup()
-    assert ran == {} and "Cleanup cancelled." in page.log.toPlainText()
+    assert ran == {}
+    txt = page.log.toPlainText()
+    assert "report-only" in txt and "Files needing re-transfer: 1" in txt
     assert page.run_btn.isEnabled() and page.audit_btn.isEnabled()
 
-    questions = []
-    monkeypatch.setattr(cs, "_confirm", lambda p, title, msg, yes, danger=False: questions.append((title, msg, danger)) or True)
+
+def test_audit_error_reenables_ui(env, fake_engine, monkeypatch):
+    import b2_integrity as bi
+    make_job("AudErr")
+    monkeypatch.setattr(cs.cloud_module, "B2Client", lambda *a: "dst")
+    monkeypatch.setattr(cs, "_manifests_dir", lambda: str(env["tmp"] / "manifests"))
+    monkeypatch.setattr(bi, "inventory_b2", lambda c, log: (_ for _ in ()).throw(RuntimeError("b2 down")))
+
+    page = page_for()
     page._audit_cleanup()
-    assert questions[0][0] == "Confirm Cleanup" and questions[0][2] is True
-    assert "Files to re-transfer: 1" in questions[0][1]
-    assert ran["b2_client"] == "dst" and ran["cancelled"]() is False
-    assert "1 file(s) re-transferred" in page.log.toPlainText()
-    assert page.run_btn.isEnabled()
+    assert not page._busy
+    assert page.run_btn.isEnabled() and page.audit_btn.isEnabled()
+    assert "Audit failed: b2 down" in page.log.toPlainText()
 
 
 def test_help_topics_ported(env):
     titles = [t for t, _ in cs.CloudSyncPage(FakeWindow()).help_topics()]
-    assert "Cloud Sync" in titles and "Audit & Cleanup" in titles
+    assert "Cloud Sync" in titles and "Audit B2" in titles
 
 
 # --- credential library ------------------------------------------------------

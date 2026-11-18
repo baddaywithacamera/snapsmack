@@ -190,6 +190,14 @@ cv3.show()
 cv3.set_bucket(_paths)
 cv3.insert_mosaic([1, 2, 3], "one-left")
 shot = cv3.grab().toImage()
+import time as _time
+_deadline = _time.perf_counter() + 1.5
+while _time.perf_counter() < _deadline and (
+    shot.pixelColor(200, 200).red() <= 200 or shot.pixelColor(720, 120).green() <= 200
+):
+    app.processEvents()
+    _time.sleep(0.02)
+    shot = cv3.grab().toImage()
 # the hero tile (one-left) is the red photo: sample well inside it
 check("mosaic paints the real photos", shot.pixelColor(200, 200).red() > 200)
 check("second photo painted in its tile", shot.pixelColor(720, 120).green() > 200)

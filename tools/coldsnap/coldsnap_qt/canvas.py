@@ -24,14 +24,16 @@ Spec, in Sean's words: _spec/SPEC-biggie-wysiwyg-in-seans-words-2026-09-09.md
 """
 
 import json
+import math
 import os
+import re
 
-from PySide6.QtCore import Qt, QRect, QRectF, QSize, QSizeF, Signal
+from PySide6.QtCore import Qt, QRect, QRectF, QSize, QSizeF, QTimer, Signal
 from PySide6.QtGui import (
-    QColor, QFont, QPainter, QPen, QPixmap, QPixmapCache, QTextBlockFormat,
+    QColor, QFont, QPainter, QPalette, QPen, QPixmap, QPixmapCache, QTextBlockFormat,
     QTextCharFormat, QTextCursor, QTextFormat, QTextFrameFormat, QTextLength,
     QTextListFormat, QTextTableFormat, QPyTextObject, QAction, QKeySequence,
-    QImageReader, QImageIOHandler,
+    QImageReader, QImageIOHandler, QShortcut,
 )
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QMenu,
@@ -42,6 +44,7 @@ from PySide6.QtWidgets import (
 from . import theme
 from . import biggie
 from .mosaic_site_layout import compute_layout as site_compute_layout
+from .photo_loader import PhotoLoader
 
 # ── document vocabulary ─────────────────────────────────────────────────────
 OBJ_TYPE     = QTextFormat.UserObject + 41          # our inline objects
@@ -78,9 +81,15 @@ def _mosaic_images(canvas, data):
             paths.append(bucket[int(identity) - 1])
         elif str(identity) in canvas.assets:
             paths.append(canvas.assets[str(identity)])
+    size_cache = getattr(canvas, "_mosaic_size_cache", None)
     images = []
     for path in paths:
-        width, height = _image_size(path)
+        if size_cache is not None and path in size_cache:
+            width, height = size_cache[path]
+        else:
+            width, height = _image_size(path)
+            if size_cache is not None:
+                size_cache[path] = (width, height)
         images.append({"width": width, "height": height, "src": path})
     return paths, images
 
@@ -119,10 +128,54 @@ def mosaic_cells(canvas, data, width):
     if not paths:
         return [], {"items": [], "sections": [], "height": 0.0}
     layout = data.get("layout", "asymmetric")
-    out = site_compute_layout(
-        images, width, _mosaic_gap(data), "natural",
+    gap = _mosaic_gap(data)
+    w_int = max(1, int(round(width)))
+    cache = getattr(canvas, "_mosaic_layout_cache", None)
+    key = (tuple(paths), layout, gap, w_int)
+    if cache is not None and key in cache:
+        return cache[key]
+    # Compose at the site's 1200px desktop reference width whenever the editor
+    # card is wider than mobile (520px), then scale uniformly to the card width.
+    # Below 1200px, ss-engine-mosaic.js disables enforce_useful_size and stacks
+    # single full-width rows; composing at 1200px keeps Biggie WYSIWYG with the
+    # published desktop site at every page-zoom width.
+    ref_width = 1200.0 if width > 520 else float(width)
+    scale = (float(width) / ref_width) if ref_width > 0 else 1.0
+    raw_out = site_compute_layout(
+        images, ref_width, gap, "natural",
         "" if layout == "asymmetric" else layout)
-    return paths, out
+    if abs(scale - 1.0) > 1e-6:
+        out = {
+            "items": [
+                {
+                    **t,
+                    "x": t["x"] * scale,
+                    "y": t["y"] * scale,
+                    "width": t["width"] * scale,
+                    "height": t["height"] * scale,
+                }
+                for t in raw_out.get("items", [])
+            ],
+            "sections": [
+                {
+                    **s,
+                    "x": s.get("x", 0) * scale,
+                    "y": s.get("y", 0) * scale,
+                    "width": s.get("width", ref_width) * scale,
+                    "height": s.get("height", 0) * scale,
+                }
+                for s in raw_out.get("sections", [])
+            ],
+            "height": raw_out.get("height", 0.0) * scale,
+        }
+    else:
+        out = raw_out
+    res = (paths, out)
+    if cache is not None:
+        if len(cache) > 64:
+            cache.clear()
+        cache[key] = res
+    return res
 
 
 def mosaic_cell_problem(path):
@@ -233,10 +286,31 @@ class _Objects(QPyTextObject):
             painter.setPen(QColor(theme.FAINT))
             painter.drawText(r, Qt.AlignCenter, f"{data.get('px', 20)} px gap")
         elif kind == "hr":
-            painter.setPen(QPen(QColor(theme.DIM), 1))
+            ruler = getattr(self.canvas, "_ruler_color", theme.DIM)
+            painter.setPen(QPen(QColor(ruler), 1))
             y = r.top() + r.height() // 2
             painter.drawLine(r.left(), y, r.right(), y)
         painter.restore()
+
+    def _placeholder_colors(self):
+        """Return (outline_hex, text_hex) contrasting with the canvas page background."""
+        bg = None
+        ss = self.canvas.styleSheet() or ""
+        m = re.search(r"background\s*:\s*(#[0-9a-fA-F]{3,8})", ss)
+        if m:
+            bg = QColor(m.group(1))
+        if bg is None or not bg.isValid():
+            pal = getattr(self.canvas, "_surface_palette", None)
+            if pal:
+                return pal["outline"], pal["fg"]
+        if bg is None or not bg.isValid():
+            bg = self.canvas.palette().color(self.canvas.viewport().backgroundRole())
+        if not bg.isValid():
+            bg = QColor("#ffffff")
+        lum = 0.299 * bg.red() + 0.587 * bg.green() + 0.114 * bg.blue()
+        if lum >= 128:
+            return "#444444", "#222222"
+        return "#9aa39b", "#e4e8e4"
 
     def _draw_mosaic(self, painter, r, data):
         """Draw the mosaic the SITE will draw.
@@ -249,15 +323,32 @@ class _Objects(QPyTextObject):
         a uniform grid asking square cells to hold rectangular photographs.
         """
         layout = data.get("layout", "asymmetric")
-        painter.fillRect(r, QColor("#090b0a"))
+        outline_col, text_col = self._placeholder_colors()
         inner = r.adjusted(0, 0, 0, -22)
         paths, out = mosaic_cells(self.canvas, data, inner.width())
 
         if not paths:
-            painter.setPen(QColor(theme.DIM))
-            painter.drawText(inner, Qt.AlignCenter,
-                             "MOSAIC — add photos to the bucket to see it")
+            order = list(data.get("order") or [])
+            msg = (f"MOSAIC — {len(order)} photos not in bucket yet" if order
+                   else "MOSAIC — add photos to the bucket to see it")
+            painter.setPen(QPen(QColor(outline_col), 1, Qt.DashLine))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(inner.adjusted(0, 0, -1, -1))
+            painter.setPen(QColor(text_col))
+            painter.drawText(inner.adjusted(8, 4, -8, -4), Qt.AlignCenter | Qt.TextWordWrap, msg)
             self._mosaic_footer(painter, r, 0, layout)
+            return
+
+        missing_names = [os.path.basename(p) or "unknown" for p in paths if not p or not os.path.isfile(p)]
+        if len(missing_names) == len(paths):
+            shown = ", ".join(missing_names[:4]) + (f" (+{len(missing_names) - 4} more)" if len(missing_names) > 4 else "")
+            msg = f"MOSAIC — {len(missing_names)} of {len(paths)} photos missing: {shown}"
+            painter.setPen(QPen(QColor(outline_col), 1, Qt.DashLine))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(inner.adjusted(0, 0, -1, -1))
+            painter.setPen(QColor(text_col))
+            painter.drawText(inner.adjusted(8, 4, -8, -4), Qt.AlignCenter | Qt.TextWordWrap, msg)
+            self._mosaic_footer(painter, r, len(paths), layout)
             return
 
         for n, tile in enumerate(out["items"], 1):
@@ -266,33 +357,100 @@ class _Objects(QPyTextObject):
                          max(1, int(round(tile["width"]))),
                          max(1, int(round(tile["height"]))))
             path = tile["image"].get("src", "")
-            painter.fillRect(cell, QColor("#141714"))
-            pix = _pixmap(path, cell.width())
-            if not pix.isNull():
-                # The cell IS the photograph's shape, so KeepAspectRatio fills
-                # it. Any residual pixel is rounding, not a band.
-                scaled = pix.scaled(cell.size(), Qt.KeepAspectRatio,
-                                    Qt.SmoothTransformation)
+            pix = self._cached_cell_pixmap(path, cell.size())
+            if pix is not None and not pix.isNull():
                 painter.drawPixmap(
-                    QRect(cell.left() + (cell.width() - scaled.width()) // 2,
-                          cell.top() + (cell.height() - scaled.height()) // 2,
-                          scaled.width(), scaled.height()), scaled)
+                    QRect(cell.left() + (cell.width() - pix.width()) // 2,
+                          cell.top() + (cell.height() - pix.height()) // 2,
+                          pix.width(), pix.height()), pix)
+                painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRect(cell.adjusted(0, 0, -1, -1))
             else:
-                # SAY WHICH, rather than leaving a numbered blank. A cell that
-                # cannot draw used to look exactly like every other cell that
-                # cannot draw, whatever the reason.
-                painter.setPen(QColor(theme.DIM))
-                painter.drawText(cell.adjusted(2, 14, -2, -2),
-                                 Qt.AlignCenter | Qt.TextWordWrap,
-                                 mosaic_cell_problem(path) or "CANNOT READ")
-            painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
-            painter.drawRect(cell.adjusted(0, 0, -1, -1))
+                is_missing = not path or not os.path.isfile(path)
+                lbl = (f"MOSAIC — 1 photo missing: {os.path.basename(path) or 'unknown'}" if is_missing
+                       else f"MOSAIC — {len(paths)} photos — loading…")
+                painter.setPen(QPen(QColor(outline_col), 1, Qt.DashLine))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRect(cell.adjusted(0, 0, -1, -1))
+                painter.setPen(QColor(text_col))
+                painter.drawText(cell.adjusted(4, 18, -4, -4),
+                                 Qt.AlignCenter | Qt.TextWordWrap, lbl)
             badge = QRect(cell.left() + 4, cell.top() + 4, 22, 18)
             painter.fillRect(badge, QColor(0, 0, 0, 190))
             painter.setPen(QColor("#ffffff"))
             painter.drawText(badge, Qt.AlignCenter, str(n))
 
         self._mosaic_footer(painter, r, len(paths), layout)
+
+    def _cached_cell_pixmap(self, path: str, cell_size: QSize):
+        """Return a cell-sized QPixmap from QPixmapCache or request off-thread decode.
+
+        Never decodes on the UI thread inside paint/drawObject; returns None so
+        the caller paints a placeholder until PhotoLoader delivers the frame.
+        """
+        if not path:
+            return None
+        stat_cache = getattr(self.canvas, "_mosaic_stat_cache", None)
+        if stat_cache is not None and path in stat_cache:
+            stamp = stat_cache[path]
+        else:
+            if not os.path.isfile(path):
+                return None
+            try:
+                stamp = os.stat(path).st_mtime_ns
+            except OSError:
+                return None
+            if stat_cache is not None:
+                stat_cache[path] = stamp
+        cw, ch = max(1, cell_size.width()), max(1, cell_size.height())
+        ckey = f"biggie_cell:{path}:{stamp}:{cw}x{ch}"
+        cached = QPixmap()
+        if QPixmapCache.find(ckey, cached) and not cached.isNull():
+            return cached
+
+        loader = getattr(self.canvas, "_mosaic_loader", None)
+        if loader is None:
+            return None
+
+        bucket = max(64, ((max(cw, ch) + 63) // 64) * 64)
+        sync_result = [None]
+        in_sync = [True]
+
+        def _on_ready(pix):
+            if pix is None or pix.isNull():
+                return
+            scaled = pix if abs(pix.width() - cw) <= 64 else pix.scaled(
+                cell_size, Qt.KeepAspectRatio, Qt.FastTransformation)
+            QPixmapCache.insert(ckey, scaled)
+            if in_sync[0]:
+                sync_result[0] = scaled
+            elif not getattr(self.canvas, "_mosaic_repaint_pending", False):
+                self.canvas._mosaic_repaint_pending = True
+
+                def _flush_repaint():
+                    self.canvas._mosaic_repaint_pending = False
+                    vp = self.canvas.viewport()
+                    if vp is not None:
+                        vp.update()
+
+                QTimer.singleShot(0, _flush_repaint)
+
+        accepted = loader.request(path, bucket, _on_ready)
+        in_sync[0] = False
+        if sync_result[0] is not None:
+            return sync_result[0]
+        if not accepted and not getattr(self.canvas, "_mosaic_retry_scheduled", False):
+            self.canvas._mosaic_retry_scheduled = True
+
+            def _retry_paint():
+                self.canvas._mosaic_retry_scheduled = False
+                vp = self.canvas.viewport()
+                if vp is not None:
+                    vp.update()
+
+            QTimer.singleShot(50, _retry_paint)
+        return None
 
     def _mosaic_footer(self, painter, r, count, layout):
         """The strip under the mosaic. It says when the preview is EXACT and
@@ -307,7 +465,8 @@ class _Objects(QPyTextObject):
         Saving an explicit layout makes it exact.
         """
         foot = QRect(r.left(), r.bottom() - 20, r.width(), 20)
-        painter.setPen(QColor(theme.DIM))
+        _outline_col, text_col = self._placeholder_colors()
+        painter.setPen(QColor(text_col))
         painter.drawText(foot, Qt.AlignVCenter | Qt.AlignLeft,
                          mosaic_note(count, layout))
 
@@ -326,20 +485,29 @@ class _Objects(QPyTextObject):
         box = QRect(x, r.top() + 2, iw, r.height() - 4)
         identity = "asset:" + str(data["asset_uuid"]) if data.get("asset_uuid") else str(data.get("img_id", ""))
         pix = self.canvas.image_pixmap(identity, iw)
-        painter.fillRect(box, QColor("#141714"))
         if pix is not None and not pix.isNull():
             scaled = pix.scaled(box.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
             painter.drawPixmap(QRect(box.left() + (box.width() - scaled.width()) // 2,
                                      box.top() + (box.height() - scaled.height()) // 2,
                                      scaled.width(), scaled.height()), scaled)
+            painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(box.adjusted(0, 0, -1, -1))
         else:
-            painter.setPen(QColor(theme.DIM))
-            sid = str(data.get('img_id', '?'))
-            what = (f"this post's photo {sid[7:]} (removed from the bucket?)" if sid.lower().startswith('bucket:')
-                    else f"IMG #{sid} from the site's Media Gallery\n(not in COLD STORAGE yet)")
-            painter.drawText(box, Qt.AlignCenter, f"{what}  {size} · {align}")
-        painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
-        painter.drawRect(box.adjusted(0, 0, -1, -1))
+            outline_col, text_col = self._placeholder_colors()
+            painter.setPen(QPen(QColor(outline_col), 1, Qt.DashLine))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(box.adjusted(0, 0, -1, -1))
+            painter.setPen(QColor(text_col))
+            if data.get("asset_uuid"):
+                local_p = self.canvas.assets.get(str(data["asset_uuid"]), "")
+                fname = os.path.basename(local_p) if local_p else str(data["asset_uuid"])
+                what = f"IMAGE — file missing: {fname}"
+            else:
+                sid = str(data.get("img_id", "?"))
+                what = (f"IMAGE — photo {sid[7:]} missing from bucket" if sid.lower().startswith("bucket:")
+                        else f"IMAGE — #{sid} not in COLD STORAGE yet")
+            painter.drawText(box.adjusted(8, 4, -8, -4), Qt.AlignCenter | Qt.TextWordWrap, what)
 
 
 def _data(fmt) -> dict:
@@ -494,6 +662,68 @@ _SIZE_CACHE = {}
 
 
 # ── the canvas ───────────────────────────────────────────────────────────────
+def _rel_luminance(c: QColor) -> float:
+    def _lin(ch: int) -> float:
+        s = ch / 255.0
+        return s / 12.92 if s <= 0.03928 else ((s + 0.055) / 1.055) ** 2.4
+    return 0.2126 * _lin(c.red()) + 0.7152 * _lin(c.green()) + 0.0722 * _lin(c.blue())
+
+
+def compute_contrast_ratio(c1: QColor, c2: QColor) -> float:
+    """Return WCAG 2.1 contrast ratio (>= 1.0) between two QColors."""
+    l1 = _rel_luminance(c1)
+    l2 = _rel_luminance(c2)
+    hi, lo = max(l1, l2), min(l1, l2)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def site_surface_palette(bg_hex: str, fg_hex: str = "") -> dict:
+    """Derive a WCAG-contrasting editor palette for a site background colour."""
+    bg_c = QColor(str(bg_hex or "").strip())
+    if not bg_c.isValid():
+        bg_c = QColor("#ffffff")
+    bg = bg_c.name()
+    light_bg = _rel_luminance(bg_c) >= 0.179
+
+    fg_c = QColor(str(fg_hex or "").strip()) if fg_hex else QColor()
+    if fg_c.isValid() and compute_contrast_ratio(bg_c, fg_c) >= 4.5:
+        fg = fg_c.name()
+    else:
+        dark_cand = QColor("#1a1a1a")
+        light_cand = QColor("#f0f2f0")
+        fg = dark_cand.name() if compute_contrast_ratio(bg_c, dark_cand) >= compute_contrast_ratio(bg_c, light_cand) else light_cand.name()
+
+    if light_bg:
+        return {
+            "bg": bg,
+            "fg": fg,
+            "heading": "#111111" if compute_contrast_ratio(bg_c, QColor("#111111")) >= 4.5 else fg,
+            "muted": "#555555" if compute_contrast_ratio(bg_c, QColor("#555555")) >= 4.5 else fg,
+            "eyebrow": "#1e6610" if compute_contrast_ratio(bg_c, QColor("#1e6610")) >= 4.5 else fg,
+            "pullquote": "#1e6610" if compute_contrast_ratio(bg_c, QColor("#1e6610")) >= 4.5 else fg,
+            "link": "#1a5fb4",
+            "selection_bg": "#c8f5be",
+            "selection_fg": "#111111",
+            "placeholder": "#666666" if compute_contrast_ratio(bg_c, QColor("#666666")) >= 3.0 else fg,
+            "outline": "#444444",
+            "ruler": "#333333",
+        }
+    return {
+        "bg": bg,
+        "fg": fg,
+        "heading": "#ffffff" if compute_contrast_ratio(bg_c, QColor("#ffffff")) >= 4.5 else fg,
+        "muted": "#b4beb4" if compute_contrast_ratio(bg_c, QColor("#b4beb4")) >= 4.5 else fg,
+        "eyebrow": "#76ff03" if compute_contrast_ratio(bg_c, QColor("#76ff03")) >= 4.5 else fg,
+        "pullquote": "#8cff5a" if compute_contrast_ratio(bg_c, QColor("#8cff5a")) >= 4.5 else fg,
+        "link": "#7ab8ff",
+        "selection_bg": "#295a1e",
+        "selection_fg": "#ffffff",
+        "placeholder": "#9aa39b" if compute_contrast_ratio(bg_c, QColor("#9aa39b")) >= 3.0 else fg,
+        "outline": "#9aa39b",
+        "ruler": "#9aa39b",
+    }
+
+
 class BiggieCanvas(QTextEdit):
     """One writing surface. See module docstring."""
 
@@ -517,32 +747,65 @@ class BiggieCanvas(QTextEdit):
         self.setUndoRedoEnabled(True)
         self.setTabChangesFocus(False)
         self.setPlaceholderText("Start writing. Enter makes a new paragraph. "
-                                "Use the bar above for headings, quotes, lists, "
-                                "photos and a MOSAIC.")
+                                "Use the BLOCKS tray on the left for headings, quotes, "
+                                "lists, photos and a MOSAIC.")
         self.setObjectName("BiggieCanvas")
-        self.setStyleSheet(
-            f"QTextEdit#BiggieCanvas {{ background: {theme.CANVAS}; color: {theme.INK};"
-            f" border: 1px solid {theme.BORDER}; padding: 14px 18px; }}")
-        base = QFont(self.font())
-        base.setPointSizeF(max(11.0, base.pointSizeF() + 1.5))
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setMinimumHeight(260)
+        QPixmapCache.setCacheLimit(65536)
+        self._mosaic_loader = PhotoLoader(self)
+        self._mosaic_retry_scheduled = False
+        self._mosaic_layout_cache = {}
+        self._mosaic_size_cache = {}
+        self._mosaic_stat_cache = {}
+        self._selected_obj_pos = None
+        self._selected_block_pos = None
+        self._block_close_rect = None
+        self._gutter_grip_rects = {}
+        self._obj_close_rects = {}
+        self._ruler_color = theme.DIM
+        self._surface_palette = site_surface_palette("#ffffff", "#1a1a1a")
+        self.apply_surface_palette(self._surface_palette)
+        base = QFont("Georgia")
+        base.setPointSizeF(12.5)
         self.setFont(base)
         self.document().setDefaultFont(base)
-        self.document().setDocumentMargin(10)
+        self.document().setDocumentMargin(4)
+        self._ensure_gutter_margin()
         self._objects = _Objects(self)
         self.document().documentLayout().registerHandler(OBJ_TYPE, self._objects)
+        self.document().documentLayout().documentSizeChanged.connect(self._sync_canvas_height)
         self.document().contentsChange.connect(self._after_change)
+        self._sync_canvas_height()
         self.setContextMenuPolicy(Qt.DefaultContextMenu)
+        QShortcut(QKeySequence("Ctrl+B"), self).activated.connect(self.toggle_bold)
+        QShortcut(QKeySequence("Ctrl+I"), self).activated.connect(self.toggle_italic)
+        QShortcut(QKeySequence("Ctrl+U"), self).activated.connect(self.toggle_underline)
+        QShortcut(QKeySequence("Ctrl+K"), self).activated.connect(self.insert_link)
+
+    def _sync_canvas_height(self, _size=None):
+        doc_h = self.document().documentLayout().documentSize().height()
+        self.setFixedHeight(max(260, int(math.ceil(doc_h)) + 18))
 
     # -- host hooks ---------------------------------------------------------
     def set_bucket(self, paths):
         self.bucket = [str(p) for p in (paths or [])]
+        self._mosaic_layout_cache.clear()
+        self._mosaic_size_cache.clear()
+        self._mosaic_stat_cache.clear()
         self.document().markContentsDirty(0, self.document().characterCount())
+        self._sync_canvas_height()
         self.viewport().update()
 
     def set_assets(self, assets):
         """Provide stable local identities independently of filmstrip order."""
         self.assets = {str(key): str(path) for key, path in dict(assets or {}).items()}
+        self._mosaic_layout_cache.clear()
+        self._mosaic_size_cache.clear()
+        self._mosaic_stat_cache.clear()
         self.document().markContentsDirty(0, self.document().characterCount())
+        self._sync_canvas_height()
         self.viewport().update()
 
     def set_image_resolver(self, fn):
@@ -584,29 +847,82 @@ class BiggieCanvas(QTextEdit):
             return None
         return None
 
+    def apply_surface_palette(self, pal: dict):
+        """Apply site background and contrasting text/selection/placeholder colours."""
+        self._surface_palette = dict(pal)
+        self._ruler_color = pal["ruler"]
+        self.setStyleSheet(
+            f"QTextEdit#BiggieCanvas {{ background: {pal['bg']}; color: {pal['fg']};"
+            f" border: none; padding: 6px 0px; selection-background-color: {pal['selection_bg']};"
+            f" selection-color: {pal['selection_fg']}; }}")
+        vp = self.viewport()
+        vp.setAutoFillBackground(True)
+        vp.setStyleSheet(f"background: {pal['bg']}; color: {pal['fg']};")
+        p = self.palette()
+        p.setColor(QPalette.Base, QColor(pal["bg"]))
+        p.setColor(QPalette.Window, QColor(pal["bg"]))
+        p.setColor(QPalette.Text, QColor(pal["fg"]))
+        p.setColor(QPalette.WindowText, QColor(pal["fg"]))
+        p.setColor(QPalette.PlaceholderText, QColor(pal["placeholder"]))
+        p.setColor(QPalette.Link, QColor(pal["link"]))
+        self.setPalette(p)
+        self._recolor_existing_blocks()
+        self.viewport().update()
+
+    def _recolor_existing_blocks(self):
+        """Refresh block foreground colours when switching between light and dark sites."""
+        doc = self.document()
+        if doc is None:
+            return
+        cur = QTextCursor(doc)
+        cur.beginEditBlock()
+        blk = doc.begin()
+        while blk.isValid():
+            ud = blk.userData()
+            kind = getattr(ud, "kind", "p") if ud is not None else "p"
+            col_key = {
+                "h2": "heading",
+                "h3": "heading",
+                "quote": "muted",
+                "pullquote": "pullquote",
+            }.get(kind, "fg")
+            c = QTextCursor(blk)
+            c.select(QTextCursor.BlockUnderCursor)
+            fmt = QTextCharFormat()
+            fmt.setForeground(QColor(self._surface_palette[col_key]))
+            c.mergeCharFormat(fmt)
+            c.setBlockCharFormat(fmt)
+            blk = blk.next()
+        cur.endEditBlock()
+
     # -- block kinds ----------------------------------------------------------
     def _char_format_for(self, kind: str) -> QTextCharFormat:
+        pal = self._surface_palette
         f = QTextCharFormat()
         base = self.document().defaultFont()
         font = QFont(base)
-        f.setForeground(QColor(theme.INK))
+        f.setForeground(QColor(pal["fg"]))
         if kind == "h2":
-            font.setPointSizeF(base.pointSizeF() * 1.7)
+            font = QFont(theme.FONT)
+            font.setPointSizeF(20.0)
             font.setBold(True)
+            f.setForeground(QColor(pal["heading"]))
         elif kind == "h3":
-            font.setPointSizeF(base.pointSizeF() * 1.3)
+            font = QFont(theme.FONT)
+            font.setPointSizeF(15.5)
             font.setBold(True)
+            f.setForeground(QColor(pal["heading"]))
         elif kind == "quote":
             font.setItalic(True)
-            f.setForeground(QColor(theme.BODY))
+            f.setForeground(QColor(pal["muted"]))
         elif kind == "pullquote":
-            font.setPointSizeF(base.pointSizeF() * 1.35)
+            font.setPointSizeF(base.pointSizeF() * 1.25)
             font.setItalic(True)
-            f.setForeground(QColor(theme.ACCENT))
+            f.setForeground(QColor(pal["pullquote"]))
         elif kind == "raw":
             font = QFont("Consolas")
-            font.setPointSizeF(base.pointSizeF() * 0.95)
-            f.setForeground(QColor(theme.DIM))
+            font.setPointSizeF(11.0)
+            f.setForeground(QColor(pal["fg"]))
         f.setFont(font)
         return f
 
@@ -614,18 +930,72 @@ class BiggieCanvas(QTextEdit):
         b = QTextBlockFormat()
         b.setProperty(PROP_KIND, kind)
         b.setProperty(PROP_DROPCAP, bool(dropcap))
-        b.setTopMargin(6)
-        b.setBottomMargin(6)
+        b.setTopMargin(8)
+        b.setBottomMargin(8)
+        b.setLineHeight(150.0, QTextBlockFormat.ProportionalHeight.value)
         if kind in ("quote", "pullquote"):
             b.setLeftMargin(28)
             b.setRightMargin(28 if kind == "pullquote" else 0)
             b.setTopMargin(12)
             b.setBottomMargin(12)
         if kind == "h2":
-            b.setTopMargin(16)
+            b.setTopMargin(18)
         if kind == "raw":
-            b.setBackground(QColor(theme.PANEL))
+            b.setBackground(QColor("#f3f4f3"))
         return b
+
+    # -- inline formatting (B / I / U / Link) ---------------------------------
+    def toggle_bold(self):
+        cur = self.textCursor()
+        fmt = QTextCharFormat()
+        is_bold = cur.charFormat().fontWeight() >= QFont.Bold
+        fmt.setFontWeight(QFont.Normal if is_bold else QFont.Bold)
+        cur.mergeCharFormat(fmt)
+        self.mergeCurrentCharFormat(fmt)
+
+    def toggle_italic(self):
+        cur = self.textCursor()
+        fmt = QTextCharFormat()
+        fmt.setFontItalic(not cur.charFormat().fontItalic())
+        cur.mergeCharFormat(fmt)
+        self.mergeCurrentCharFormat(fmt)
+
+    def toggle_underline(self):
+        cur = self.textCursor()
+        fmt = QTextCharFormat()
+        fmt.setFontUnderline(not cur.charFormat().fontUnderline())
+        cur.mergeCharFormat(fmt)
+        self.mergeCurrentCharFormat(fmt)
+
+    def insert_link(self):
+        cur = self.textCursor()
+        url, ok = QInputDialog.getText(self, "Insert link", "URL:")
+        if not ok or not url.strip():
+            return
+        url = url.strip()
+        label = cur.selectedText() or url
+        fmt = QTextCharFormat()
+        fmt.setAnchor(True)
+        fmt.setAnchorHref(url)
+        fmt.setForeground(QColor("#1e6610"))
+        fmt.setFontUnderline(True)
+        cur.insertText(label, fmt)
+
+    def current_block_tag(self) -> str:
+        block = self.textCursor().block()
+        hit = self._object_at(block.position())
+        if hit:
+            kind = str(hit[0] or "").upper()
+            return {"MOSAIC": "MOSAIC", "IMAGE": "IMG", "HR": "DIV", "SPACER": "SP"}.get(kind, kind)
+        c = QTextCursor(block)
+        if c.currentTable() is not None:
+            return f"{c.currentTable().columns()}C"
+        if block.textList():
+            return "NUM" if block.textList().format().style() == QTextListFormat.ListDecimal else "BUL"
+        if bool(block.blockFormat().property(PROP_DROPCAP)):
+            return "DC"
+        kind = _block_kind(block)
+        return {"para": "P", "h2": "H", "h3": "SH", "quote": "Q", "pullquote": "PQ", "raw": "RAW"}.get(kind, "P")
 
     def set_kind(self, kind: str):
         """Make the current paragraph(s) this kind. Lists are left by choosing Paragraph."""
@@ -839,6 +1209,167 @@ class BiggieCanvas(QTextEdit):
         pos = self.document().documentLayout().hitTest(point, Qt.FuzzyHit)
         return self._object_at(pos) if pos >= 0 else None
 
+    def _ensure_gutter_margin(self):
+        rf = self.document().rootFrame().frameFormat()
+        if rf.leftMargin() < 20:
+            rf.setLeftMargin(20)
+            self.document().rootFrame().setFrameFormat(rf)
+
+    def select_block_at(self, pos: int):
+        """Select any BIGGIE block (inline object, para, heading, quote, list, or columns)."""
+        hit = self._object_at(pos)
+        if hit:
+            self._selected_obj_pos = hit[2]
+            self._selected_block_pos = hit[2]
+        else:
+            blk = self.document().findBlock(pos)
+            if not blk.isValid():
+                self._selected_obj_pos = None
+                self._selected_block_pos = None
+                self._block_close_rect = None
+                self.viewport().update()
+                return
+            tbl = QTextCursor(blk).currentTable()
+            self._selected_obj_pos = None
+            self._selected_block_pos = tbl.firstCursorPosition().position() if tbl else blk.position()
+        self.viewport().update()
+
+    def _block_selection_rect(self, pos: int):
+        """Return viewport QRect for the selected block/table/object, or None."""
+        doc = self.document()
+        layout = doc.documentLayout()
+        off_x = -self.horizontalScrollBar().value()
+        off_y = -self.verticalScrollBar().value()
+        blk = doc.findBlock(pos)
+        if not blk.isValid():
+            return None
+        tbl = QTextCursor(blk).currentTable()
+        if tbl is not None:
+            r = layout.frameBoundingRect(tbl).toRect()
+            r.translate(off_x, off_y)
+            return r
+        r = layout.blockBoundingRect(blk).toRect()
+        r.translate(off_x, off_y)
+        if r.height() < 22:
+            r.setHeight(22)
+        return r
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self.viewport())
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        doc = self.document()
+        layout = doc.documentLayout()
+        off_y = -self.verticalScrollBar().value()
+        grips = {}
+        seen_tables = set()
+        blk = doc.begin()
+        while blk.isValid():
+            tbl = QTextCursor(blk).currentTable()
+            if tbl is not None:
+                tpos = tbl.firstCursorPosition().position()
+                if tpos not in seen_tables:
+                    seen_tables.add(tpos)
+                    br = layout.frameBoundingRect(tbl).toRect()
+                    br.translate(0, off_y)
+                    grip = QRect(2, br.top() + 2, 14, max(18, min(24, br.height())))
+                    grips[tpos] = grip
+            else:
+                br = layout.blockBoundingRect(blk).toRect()
+                br.translate(0, off_y)
+                grip = QRect(2, br.top() + 2, 14, max(18, min(24, br.height())))
+                grips[blk.position()] = grip
+            blk = blk.next()
+        self._gutter_grip_rects = grips
+
+        for bpos, grip in grips.items():
+            is_sel = (bpos == self._selected_block_pos)
+            painter.setPen(QColor(theme.ACCENT if is_sel else theme.DIM))
+            painter.drawText(grip, Qt.AlignCenter, "⋮")
+
+        self._block_close_rect = None
+        if self._selected_block_pos is not None:
+            sel_r = self._block_selection_rect(self._selected_block_pos)
+            if sel_r is not None:
+                painter.setPen(QPen(QColor(theme.ACCENT), 2))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRect(sel_r.adjusted(1, 1, -1, -1))
+                close_r = QRect(max(sel_r.left(), sel_r.right() - 24), sel_r.top() + 2, 20, 20)
+                painter.fillRect(close_r, QColor("#181a18"))
+                painter.setPen(QPen(QColor("#ff4f4f"), 1))
+                painter.drawRect(close_r)
+                painter.setPen(QColor("#ffffff"))
+                painter.drawText(close_r, Qt.AlignCenter, "✕")
+                self._block_close_rect = close_r
+        painter.end()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            pt = event.position().toPoint()
+            if self._block_close_rect is not None and self._block_close_rect.contains(pt):
+                if self._selected_block_pos is not None:
+                    self._remove_block_at(self._selected_block_pos)
+                    return
+            for obj_pos, rect in list(self._obj_close_rects.items()):
+                if rect.contains(pt):
+                    self._remove_object(obj_pos)
+                    return
+            for bpos, grip in list(self._gutter_grip_rects.items()):
+                if grip.contains(pt):
+                    self.select_block_at(bpos)
+                    return
+            hit = self._object_under_mouse(event.position())
+            if hit:
+                self.select_block_at(hit[2])
+            elif self._selected_block_pos is not None or self._selected_obj_pos is not None:
+                self._selected_obj_pos = None
+                self._selected_block_pos = None
+                self._block_close_rect = None
+                self.viewport().update()
+        super().mousePressEvent(event)
+
+    def _remove_block_at(self, pos: int):
+        """Delete any selected BIGGIE block (inline object, columns table, list, para, heading, quote)."""
+        hit = self._object_at(pos)
+        if hit:
+            self._remove_object(hit[2])
+            return
+        doc = self.document()
+        blk = doc.findBlock(pos)
+        if not blk.isValid():
+            self._selected_block_pos = None
+            self._block_close_rect = None
+            return
+        self._selected_obj_pos = None
+        self._selected_block_pos = None
+        self._block_close_rect = None
+        c = self.textCursor()
+        c.beginEditBlock()
+        tbl = QTextCursor(blk).currentTable()
+        if tbl is not None:
+            tbl.removeRows(0, tbl.rows())
+        else:
+            if blk.textList():
+                blk.textList().remove(blk)
+            if blk.next().isValid():
+                c.setPosition(blk.position())
+                c.setPosition(blk.next().position(), QTextCursor.KeepAnchor)
+                c.removeSelectedText()
+            elif blk.previous().isValid():
+                prev = blk.previous()
+                c.setPosition(prev.position() + prev.length() - 1)
+                c.setPosition(blk.position() + blk.length() - 1, QTextCursor.KeepAnchor)
+                c.removeSelectedText()
+            else:
+                c.setPosition(blk.position())
+                c.setPosition(blk.position() + blk.length() - 1, QTextCursor.KeepAnchor)
+                c.removeSelectedText()
+                c.setBlockFormat(self._block_format_for("para"))
+                c.setBlockCharFormat(self._char_format_for("para"))
+        c.endEditBlock()
+        self.setTextCursor(c)
+        self.viewport().update()
+
     def mouseDoubleClickEvent(self, event):
         hit = self._object_under_mouse(event.position())
         if hit and hit[0] == "mosaic":
@@ -874,6 +1405,10 @@ class BiggieCanvas(QTextEdit):
         menu.exec(event.globalPos())
 
     def _remove_object(self, pos: int):
+        self._selected_obj_pos = None
+        self._selected_block_pos = None
+        self._block_close_rect = None
+        self._obj_close_rects.pop(pos, None)
         c = self.textCursor()
         c.beginEditBlock()
         c.setPosition(pos)
@@ -917,6 +1452,7 @@ class BiggieCanvas(QTextEdit):
     def set_preview_width(self, width):
         """Change only the composition viewport; stored responsive ratios remain unchanged."""
         self.document().setTextWidth(float(width) if width else -1)
+        self._sync_canvas_height()
         self.viewport().update()
 
     def _edit_mosaic(self, hit):
@@ -968,9 +1504,13 @@ class BiggieCanvas(QTextEdit):
 
     # -- typing behaviour -----------------------------------------------------------
     def keyPressEvent(self, event):
+        key = event.key()
+        sel_pos = self._selected_block_pos if self._selected_block_pos is not None else self._selected_obj_pos
+        if sel_pos is not None and key in (Qt.Key_Delete, Qt.Key_Backspace):
+            self._remove_block_at(sel_pos)
+            return
         cur = self.textCursor()
         block = cur.block()
-        key = event.key()
         if key in (Qt.Key_Return, Qt.Key_Enter) and not (event.modifiers() & Qt.ShiftModifier):
             kind = _block_kind(block)
             # A paragraph on an object line goes BELOW the object, never inside it.
@@ -1077,6 +1617,10 @@ class BiggieCanvas(QTextEdit):
         self._guard = True
         try:
             self.clear()
+            self._selected_obj_pos = None
+            self._selected_block_pos = None
+            self._block_close_rect = None
+            self._ensure_gutter_margin()
             doc = self.document()
             cur = QTextCursor(doc)
             cur.beginEditBlock()
@@ -1097,6 +1641,7 @@ class BiggieCanvas(QTextEdit):
                 block = block.next()
             cur.movePosition(QTextCursor.End)      # resume where the writing stopped
             self.setTextCursor(cur)
+            self._sync_canvas_height()
             self.document().clearUndoRedoStacks()
             self.document().setModified(False)
         finally:
@@ -1236,10 +1781,9 @@ def _export_block(block, nested: bool = False) -> list:
                         blk["layout"] = str(data.get("layout") or "asymmetric")
                     out.append(blk)
                 elif okind == "image":
-                    image = {"type": "image", "img_id": str(data.get("img_id", "")),
-                             "size": data.get("size") or "full",
-                             "align": data.get("align") or "center"}
-                    for key in ("asset_uuid", "placement", "width_ratio", "crop",
+                    image = {"type": "image", "img_id": str(data.get("img_id", ""))}
+                    for key in ("gallery", "size", "align", "width", "decorative", "raw",
+                                "asset_uuid", "placement", "width_ratio", "crop",
                                 "alt", "caption", "link"):
                         if key in data:
                             image[key] = data[key]

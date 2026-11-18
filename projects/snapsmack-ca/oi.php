@@ -87,17 +87,12 @@ include __DIR__ . '/includes/header.php';
                     </div>
 
                     <div class="contact-info">
-                        <label>Signal</label>
-                        <p>Available on Signal</p>
-                    </div>
-
-                    <div class="contact-info">
                         <label>Links</label>
                         <a href="https://linktr.ee/mccormickphotography" target="_blank">linktr.ee/mccormickphotography</a>
                     </div>
 
                     <div class="contact-note">
-                        <strong>Note on communication:</strong> I don't do voice or video calls due to hearing impairment. Email is best. Signal is erratic — I have a hard time keeping a normal schedule (Asperger's).
+                        <strong>Note on communication:</strong> I don't do voice or video calls due to hearing impairment. Email is best. I have a hard time keeping a normal schedule (Asperger's).
                     </div>
                 </div>
             </div>

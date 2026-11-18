@@ -287,9 +287,34 @@ class Window(QMainWindow):
 
     def _profile(self,name):
         if not name:return
+        # ADDITIONAL HASHTAGS ARE FOR ONE IMPORT, SO THEY DO NOT FOLLOW THE SITE.
+        #
+        # PREVENTATIVE ISOLATION, NOT AN INCIDENT FIX. Read the history before
+        # changing this, because the first version of this comment got it wrong
+        # and Codex caught it: the #fauxlaroid #fakepolaroid tags on the five
+        # School of Hard Nocks posts came from that site's STORED PROMPT, which
+        # instructed Gemini to add "the two required tags" (the shared pool at
+        # shared_library/prompts/gemini_prompts.json). The field was never shown
+        # to have carried them.
+        #
+        # The hole is real on its own merits, though. The field is cleared when
+        # a folder is scanned and when the queue is cleared, but it was NOT
+        # cleared when the site changed -- so a value typed for one blog stayed
+        # in the box for the next, and post_start(additional_tags=...) appends
+        # it to every image. One site's vocabulary must not be able to reach
+        # another by sitting in a text box, whether or not it has yet.
+        #
+        # Cleared on a site change now, and SAID OUT LOUD rather than silently,
+        # because a field emptying itself is its own small surprise.
+        if self.additional_tags.text().strip():
+            self.additional_tags.clear()
+            self._say("Additional hashtags cleared: they belong to one import, not to the new site.")
         p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self._set_prompt_state(p); self.drive.setChecked(p['drive_enabled']); self.copyright_text.setText(p.get('copyright_text','')); self._connect()
 
     def _set_prompt_state(self,state):
+        # Reloading the stored prompt discards any this-run-only edit, so the
+        # warning flag goes with it rather than outliving what it described.
+        self._prompt_unsaved = False
         presets=state.get('prompt_presets') or {'Default':state.get('prompt','')}
         selected=state.get('selected_prompt_preset') or state.get('default_prompt_preset') or next(iter(presets))
         self._prompt_default=state.get('default_prompt_preset') or next(iter(presets))
@@ -418,7 +443,25 @@ class Window(QMainWindow):
         buttons=QHBoxLayout(); cancel=QPushButton("CANCEL"); cancel.clicked.connect(dialog.reject); buttons.addWidget(cancel); buttons.addStretch(1)
         delete=QPushButton("DELETE PRESET"); buttons.addWidget(delete); use=QPushButton("USE FOR THIS RUN"); buttons.addWidget(use)
         save=QPushButton("SAVE PRESET"); save.setObjectName("Primary"); buttons.addWidget(save); layout.addLayout(buttons)
-        def use_text(): self.prompt.setText(editor.toPlainText().strip()); dialog.accept()
+        def use_text():
+            # "USE FOR THIS RUN" DOES NOT SAVE, and it used to look exactly like
+            # saving: the prompt box showed the edited text and nothing said it
+            # was temporary. Switch sites, or restart, and _set_prompt_state()
+            # reloads the STORED preset and the edit is gone without a word.
+            #
+            # That is what "I thought I had already removed them" looks like
+            # from the inside. Sean edited a prompt to take #fauxlaroid
+            # #fakepolaroid out, used it for a run, and the stored prompt --
+            # which really did require those two tags, in the shared pool at
+            # shared_library/prompts/gemini_prompts.json -- was still the one
+            # every later enrichment read.
+            #
+            # The edit still applies to this run, because that is the button's
+            # job. It just says so now.
+            self.prompt.setText(editor.toPlainText().strip())
+            self._prompt_unsaved = True
+            self._say("Prompt changed for THIS RUN ONLY — not saved. Use SAVE PRESET to keep it.")
+            dialog.accept()
         def save_text():
             try:
                 result=self.engine.profile_save_prompt(self.profile.currentText(),editor.toPlainText(),preset_name.text(),make_default.isChecked()); self._set_prompt_state(result); self._say(f"Prompt preset saved to SNAP HQ for {result['name']}."); dialog.accept()
@@ -456,6 +499,16 @@ class Window(QMainWindow):
         if not self.table.rowCount(): return
         if QMessageBox.question(self,"Clear posting queue","Remove the images from this posting queue?\n\nThe image files themselves will not be deleted. Failed rows are retained so an upload problem cannot be lost.",QMessageBox.Yes|QMessageBox.Cancel,QMessageBox.Cancel)!=QMessageBox.Yes:return
         self._fill_queue(self.engine.clear_queue()); self.additional_tags.clear(); self._say("Posting queue cleared.")
+        # RESTORED (SYBU 0.7.77). The Tk app ended _on_clear with
+        # "if not self._cfg_visible: self._toggle_cfg()" -- clearing the queue
+        # reopened the build-and-publish panel, because an empty queue is
+        # nothing to look at and the next thing you do is load another batch.
+        # The Qt rebuild dropped it and left you staring at an empty table.
+        # Page 0 is "Post / Build and publish".
+        #
+        # AFTER the clear, never before: the confirm above returns early on
+        # Cancel, so a cancelled clear leaves you where you were.
+        self._show(0)
 
     def _enrich(self):
         try:

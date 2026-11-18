@@ -349,9 +349,38 @@ class SnapSmackExport {
             && $isSensitive((string)$row['setting_key'])) {
             $row['setting_val'] = '__REDACTED__';
         }
+        // SS-1412 + SS-1417. Two separate defects in one block; both fixes
+        // are needed and neither is sufficient alone.
+        //
+        // SS-1412 — EVERY SECRET-NAMED COLUMN ON THIS TABLE, not a list. The
+        // hand-written list named api_key_local and api_key_remote and missed
+        // api_key_backup, which core/multisite-api.php generates as 32 random
+        // bytes and the hub presents for backup-only pulls. So every Recovery
+        // Kit taken from a hub carried a live spoke credential in cleartext,
+        // inside the one file whose whole purpose is to be copied elsewhere
+        // and kept for years. THE LIST WAS THE DEFECT, not the one missing
+        // name: $isSensitive() above already knows what a secret column looks
+        // like and is already trusted for snap_settings. Walking the row means
+        // a key column added tomorrow is covered without anyone remembering
+        // this function exists. Widening the list to three names, which is
+        // what the first SS-1417 pass did, is the same defect again.
+        //
+        // SS-1417 — the replacement value is EMPTY, never a placeholder. A
+        // placeholder is restored verbatim into an active node row, and every
+        // fleet-key gate is an equality match on a non-empty string, so the
+        // marker authenticated as that node. Empty authenticates as nothing,
+        // and is what the 0.7.261 CHANGELOG always claimed these columns do.
+        //
+        // These keys are NOT needed for a restore: a node re-provisions them
+        // when it rejoins. Password hashes in snap_users are deliberately NOT
+        // touched — a kit that restores a site nobody can log into is not a
+        // backup.
         if ($table === 'snap_multisite_nodes') {
-            foreach (['api_key_local', 'api_key_remote'] as $c) {
-                if (!empty($row[$c])) $row[$c] = '__REDACTED__';
+            foreach (array_keys($row) as $c) {
+                if ($isSensitive((string)$c)
+                    && array_key_exists($c, $row) && $row[$c] !== null) {
+                    $row[$c] = '';
+                }
             }
         }
         return $row;

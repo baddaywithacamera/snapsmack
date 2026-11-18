@@ -261,7 +261,7 @@ class ManagePage(QWidget):
 
     def _build(self):
         layout = make_page(self, "Manage cloud backups",
-                           "See, sort, download, restore and delete the backups saved in your "
+                           "See, sort, download and restore the backups saved in your "
                            "backup cloud or your Backblaze buckets.")
 
         where, col = card("Where to look")
@@ -714,87 +714,14 @@ class ManagePage(QWidget):
 
     # -- delete --------------------------------------------------------------
 
-    def delete_confirmation_text(self, selection):
-        """(headline, details, full list) for the delete confirmation."""
-        n = len(selection)
-        total = sum(int(b.get("size_bytes", 0) or 0) for b in selection)
-        source = self.selected_source()
-        headline = f"Permanently delete {n} backup(s) from {source.get('label', 'the cloud')}?"
-        names = [b.get("name", "") for b in selection]
-        shown = "\n".join("  • " + nm for nm in names[:CONFIRM_NAME_LIMIT])
-        if n > CONFIRM_NAME_LIMIT:
-            shown += f"\n  … and {n - CONFIRM_NAME_LIMIT} more (Show Details lists every one)"
-        provider = ((self.window.current_profile or {}).get("cloud_provider")
-                    or (self.window.global_cloud() or {}).get("cloud_provider") or "")
-        where_it_goes = ("On Box they go to the Box Trash."
-                         if provider == "box" and source.get("kind") == "profile"
-                         else "They are removed outright.")
-        details = (f"This frees {human_size(total)} and CANNOT be undone. {where_it_goes}\n"
-                   "Only the backups listed here are deleted. Your blogs and the backups on "
-                   f"this computer are not touched.\n\n{shown}")
-        return headline, details, "\n".join(names)
-
     def _on_delete(self):
-        sel = list(self.selected_backups())
-        if not sel or self._busy:
-            return
-        client = self._current_client()
-        if not client:
-            QMessageBox.critical(self, "No cloud", "No cloud source is available to delete from.")
-            return
-        headline, details, full = self.delete_confirmation_text(sel)
-        box = QMessageBox(self)
-        box.setIcon(QMessageBox.Warning)
-        box.setWindowTitle("Delete backups — cannot be undone")
-        box.setText(headline)
-        box.setInformativeText(details)
-        if len(sel) > CONFIRM_NAME_LIMIT:
-            box.setDetailedText(full)
-        confirm = box.addButton(f"Delete {len(sel)} backup(s)", QMessageBox.DestructiveRole)
-        keep = box.addButton("Keep them", QMessageBox.RejectRole)
-        box.setDefaultButton(keep); box.setEscapeButton(keep)
-        box._suyb_confirm = confirm
-        box.exec()
-        if box.clickedButton() is not confirm:
-            return
-
-        self._set_busy(True)
-        count = len(sel)
-        self._progress(0, f"Deleting {count} backup(s)…")
-
-        def work():
-            deleted, errors = 0, []
-            for i, b in enumerate(sel):
-                name = b.get("name", "")
-                self.relay.call.emit(lambda i=i, n=name: self._progress(
-                    i * 100 / count, f"Deleting {i + 1} of {count}: {n}"))
-                try:
-                    client.delete_file(b["id"], name)
-                    deleted += 1
-                except Exception as exc:
-                    errors.append(f"{name or '?'}: {exc}")
-            return deleted, errors
-
-        def finished(result):
-            if self._closing:
-                return
-            deleted, errors = result
-            self._set_busy(False)
-            if errors:
-                QMessageBox.warning(self, "Delete finished with errors",
-                                    f"Deleted {deleted} of {count}.\n\n" + "\n".join(errors[:10]))
-            self.refresh()
-            set_status(self.status_lbl, f"Deleted {deleted} of {count} backup(s). Reloading the list…",
-                       "bad" if errors else "good")
-
-        def failed(exc):
-            if self._closing:
-                return
-            self._set_busy(False)
-            set_status(self.status_lbl, f"Delete stopped: {exc}", "bad")
-            self.refresh()
-
-        run_in_thread(self.relay, work, finished, failed)
+        QMessageBox.information(
+            self,
+            "Write-only in the cloud",
+            "SUYB is write-only in the cloud and does not delete cloud backups.\n"
+            "Use DRIVE BY to inspect and prune cloud backups.",
+        )
+        return
 
 
 # ---------------------------------------------------------------------------
@@ -943,7 +870,7 @@ Restore selected: tick ONE backup and press Restore selected. For a Google Drive
 
 Download selected: tick one or more backups, press Download selected and pick a folder. Each backup is saved there under its own name. If a file with that name is already there you are asked before it is replaced. A download that fails part-way leaves no half-finished ZIP behind.
 
-Delete selected: tick one or more backups and press Delete selected. A confirmation box says exactly how many will go, how much space it frees, and lists them by name. Nothing is deleted unless you press the red "Delete N backup(s)" button; "Keep them" (or Esc, or closing the box) cancels. This permanently removes those ZIP files from the cloud and cannot be undone. It only ever deletes the backups you ticked — your blogs and your local backups are untouched. (On Google Drive and Backblaze the files are removed outright; on Box they go to the Box Trash.)
+Delete selected: disabled under SUYB's write-only cloud policy. SUYB does not delete cloud backups; use DRIVE BY to inspect and prune cloud backups.
 """),
     ("Browse cloud (choosing a backup to restore)", """
 Browse cloud on the Restore page opens a list of the backup ZIPs in your backup cloud (Google Drive or Box), newest first, with each one's size and date. Click one and press Select (or double-click it). Cancel closes the list without changing anything.

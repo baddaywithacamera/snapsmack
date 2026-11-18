@@ -473,7 +473,7 @@ require_once __DIR__ . '/includes/header.php';
                         <h2 id="scale-title">Yes, but does it scale?</h2>
                         <p class="scale-pull">Bitch, please. My last name ain't Mullenweg&hellip;</p>
                     </div>
-                    <p>28 sites. 1 hub. 27 spokes. All managed through one dashboard. Shared settings pushed from hub to spokes securely. Single sign-on. Integrated, fleet wide stats. Done securely. All of this at zero cost to you.</p>
+                    <p>28 sites. 1 hub. 27 spokes. All managed through one dashboard. Shared settings pushed from hub to spokes securely. Single sign-on. Integrated, fleet wide stats. All of this at zero cost to you.</p>
                     <p>WordPress can't do this without bolting on someone else's plugin. Ghost won't do this for free. Kirby? Get bent.</p>
                     <p>Right out of the box, day one, no charge, Bob's yer fackin' uncle. Multisite without anyone demanding an 8% cut. Who imagined such a thing was possible.</p>
                 </div>
@@ -617,7 +617,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </article>
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-muse.png" data-lightbox-group="co-authors" data-lightbox-caption="Muse" aria-label="Open a larger portrait of Muse"><img src="img/whodat-muse.png" alt="Muse" width="1857" height="1715" loading="lazy"></button></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-muse.png?v=5a111ce9" data-lightbox-group="co-authors" data-lightbox-caption="Muse" aria-label="Open a larger portrait of Muse"><img src="img/whodat-muse.png?v=5a111ce9" alt="Muse" width="1857" height="1715" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">Muse</p>
                         <p class="whodat-title">Gets the last word in.</p>
