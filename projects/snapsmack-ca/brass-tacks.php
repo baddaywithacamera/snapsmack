@@ -47,7 +47,7 @@ foreach ($faq_sections as &$section) {
 }
 unset($section);
 
-$page_title       = 'BRASS TACKS! — The SnapSmack FAQ';
+$page_title       = 'BRASS TACKS! — SnapSmack FAQ | Free photoblog software';
 $page_description = 'The SnapSmack FAQ. The facts, no fluff — where it came from, what it costs (nothing), the desktop tools, the fediverse, security, and why it is built the way it is.';
 $page_og_url      = 'https://snapsmack.ca/brass-tacks.php';
 $nav_active       = 'brass-tacks';

@@ -339,6 +339,104 @@ class SumnaConnection:
             return MODE_UNKNOWN, True, "couldn't verify mode (server didn't report site_mode)"
         return MODE_UNKNOWN, False, locals().get("last", "unreachable")
 
+    def fetch_site_colors(self, timeout: int = 8) -> Tuple[str, str]:
+        """Resolve (bg_hex, fg_hex) for the target site from its HTML / skin CSS."""
+        from urllib.parse import urljoin
+
+        def _norm_color(val: str) -> str:
+            v = str(val or "").strip()
+            if re.fullmatch(r"#[0-9a-fA-F]{6}", v):
+                return v.lower()
+            if re.fullmatch(r"#[0-9a-fA-F]{3}", v):
+                return "#" + "".join(c * 2 for c in v[1:]).lower()
+            m = re.fullmatch(r"rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*[\d.]+)?\s*\)", v)
+            if m:
+                r, g, b = (max(0, min(255, int(x))) for x in m.groups())
+                return f"#{r:02x}{g:02x}{b:02x}"
+            return ""
+
+        def _resolve_var(raw: str, vars_map: dict) -> str:
+            vm = re.match(r"var\(\s*(--[a-zA-Z0-9_-]+)(?:\s*,\s*([^)]+))?\s*\)", raw)
+            if vm:
+                return vars_map.get(vm.group(1), vm.group(2) or "")
+            return raw
+
+        def _extract_from_css(css: str) -> Tuple[str, str]:
+            vars_map = {}
+            for k, v in re.findall(r"(--[a-zA-Z0-9_-]+)\s*:\s*([^;}\n]+)", css):
+                vars_map[k.strip()] = v.strip()
+            bg, fg = "", ""
+            for block in re.findall(r"(?:^|[}\s])(?:html\s*,\s*)?body\s*\{([^}]+)\}", css, re.IGNORECASE):
+                if not bg:
+                    for prop in ("background-color", "background"):
+                        m = re.search(rf"{prop}\s*:\s*([^;!\n]+)", block, re.IGNORECASE)
+                        if m:
+                            raw = _resolve_var(m.group(1).strip(), vars_map)
+                            token = raw.split()[0] if raw else ""
+                            c = _norm_color(token)
+                            if c:
+                                bg = c
+                                break
+                if not fg:
+                    m = re.search(r"(?:^|;|\s)color\s*:\s*([^;!\n]+)", block, re.IGNORECASE)
+                    if m:
+                        raw = _resolve_var(m.group(1).strip(), vars_map)
+                        token = raw.split()[0] if raw else ""
+                        c = _norm_color(token)
+                        if c:
+                            fg = c
+            if not bg:
+                for vname in ("--bg-primary", "--page-bg", "--canvas-bg", "--bg", "--background"):
+                    if vname in vars_map:
+                        c = _norm_color(vars_map[vname])
+                        if c:
+                            bg = c
+                            break
+            if not fg:
+                for vname in ("--text-primary", "--text", "--fg", "--foreground", "--body-color"):
+                    if vname in vars_map:
+                        c = _norm_color(vars_map[vname])
+                        if c:
+                            fg = c
+                            break
+            return bg, fg
+
+        best_bg, best_fg = "", ""
+        try:
+            r = self.session.get(f"{self.base_url}/", timeout=timeout)
+            if r.status_code != 200:
+                return "", ""
+            html = r.text or ""
+            for style in re.findall(r"<style[^>]*>(.*?)</style>", html, re.IGNORECASE | re.DOTALL):
+                b, f = _extract_from_css(style)
+                best_bg = best_bg or b
+                best_fg = best_fg or f
+                if best_bg and best_fg:
+                    return best_bg, best_fg
+            hrefs = re.findall(
+                r"""<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']""",
+                html, re.IGNORECASE,
+            )
+            for href in hrefs[:4]:
+                css_url = urljoin(f"{self.base_url}/", href)
+                try:
+                    cr = self.session.get(css_url, timeout=timeout)
+                    if cr.status_code == 200:
+                        b, f = _extract_from_css(cr.text or "")
+                        best_bg = best_bg or b
+                        best_fg = best_fg or f
+                        if best_bg and best_fg:
+                            return best_bg, best_fg
+                except requests.RequestException:
+                    continue
+        except requests.RequestException:
+            return best_bg, best_fg
+        return best_bg, best_fg
+
+    def fetch_site_bg(self, timeout: int = 8) -> str:
+        """Resolve the target site's page background colour (#rrggbb)."""
+        return self.fetch_site_colors(timeout=timeout)[0]
+
 
 # ---------------------------------------------------------------------------
 # SoloPoster — BATCH SLAPPED. Reuses the smack-post-solo.php multipart contract.
@@ -766,11 +864,22 @@ class SmacktalkPoster:
             payload["page_id"] = int(draft.remote_post_id)
         return payload
 
-    def list_posts(self, limit: int = 100) -> list:
+    def list_posts(self, limit: int = 500, offset: int = 0) -> list:
+        params = {"limit": max(1, min(500, int(limit)))}
+        if int(offset or 0) > 0:
+            params["offset"] = int(offset)
         r = self.session.get(self._route("smackpress/posts"),
-                             params={"limit": max(1, min(500, int(limit)))}, timeout=30)
+                             params=params, timeout=30)
         r.raise_for_status()
-        return list(r.json().get("posts") or [])
+        posts = list(r.json().get("posts") or [])
+        posts.sort(
+            key=lambda p: (
+                str(p.get("created_at") or p.get("updated_at") or ""),
+                int(p.get("id") or 0),
+            ),
+            reverse=True,
+        )
+        return posts
 
     def list_pages(self, limit: int = 500) -> list:
         r = self.session.get(self._route("smackpress/pages"),
@@ -911,35 +1020,174 @@ class SmacktalkPoster:
                       or (server_data or {}).get("url", ""),
             per_image=per_image)
 
-    def sync_smacktalk(self, draft) -> SyncResult:
+    @staticmethod
+    def _long_slugify(text: str) -> str:
+        s = re.sub(r"[^a-z0-9\s-]", "", (text or "").strip().lower())
+        s = re.sub(r"[\s-]+", "-", s).strip("-")
+        return s
+
+    @staticmethod
+    def _body_text_for_sync(draft) -> str:
+        raw = (getattr(draft, "caption", "") or "").strip()
+        if raw:
+            return raw
+        bjson = (getattr(draft, "body_blocks", "") or "").strip()
+        if not bjson:
+            return ""
+        try:
+            from coldsnap_qt import biggie
+            blocks = biggie.blocks_from_json(bjson)
+            if not blocks:
+                return ""
+            positions = {
+                str(getattr(im, "asset_uuid", "")): i + 1
+                for i, im in enumerate(getattr(draft, "images", []) or [])
+                if getattr(im, "asset_uuid", "")
+            }
+
+            def _wire(blk):
+                out = dict(blk)
+                if out.get("type") == "image" and out.get("asset_uuid"):
+                    pos = positions.get(str(out["asset_uuid"]))
+                    if pos:
+                        out["img_id"] = f"bucket:{pos}"
+                    for k in ("asset_uuid", "placement", "width_ratio", "crop", "alt", "caption", "link"):
+                        out.pop(k, None)
+                if out.get("type") == "mosaic" and out.get("order"):
+                    out["order"] = [positions.get(str(v), v) for v in out["order"]]
+                if out.get("type") == "columns":
+                    out["cols"] = [[_wire(c) for c in col] for col in out.get("cols", [])]
+                return out
+
+            return biggie.serialize_blocks([_wire(b) for b in blocks]).strip()
+        except Exception:
+            return ""
+
+    def _slug_taken_on_server(self, slug: str, cached_posts: list) -> bool:
+        target = self._long_slugify(slug)
+        if not target:
+            return False
+        try:
+            r = self.session.get(self._route("smackpress/posts"),
+                                 params={"slug": target}, timeout=30)
+            if r.status_code == 200:
+                payload = r.json() or {}
+                if payload.get("exact"):
+                    return any(self._long_slugify(str(p.get("slug", "") or "")) == target
+                               for p in (payload.get("posts") or []) if isinstance(p, dict))
+        except Exception:
+            pass
+        return any(self._long_slugify(str(p.get("slug", "") or "")) == target
+                   for p in (cached_posts or []) if isinstance(p, dict))
+
+    def _unique_slug(self, base_slug: str, cached_posts: list) -> str:
+        base = self._long_slugify(base_slug)
+        if not base:
+            return ""
+        n = 2
+        while True:
+            cand = f"{base}-{n}"
+            if not self._slug_taken_on_server(cand, cached_posts):
+                return cand
+            n += 1
+
+    def _resolve_existing_post_id(self, draft, confirm_overwrite_fn=None) -> Tuple[Optional[str], bool]:
+        """Resolve an explicit draft.slug (never draft.title!) to an existing remote post_id.
+        Returns (error_message_or_None, cancelled_bool)."""
+        if getattr(draft, "remote_post_id", 0):
+            return None, False
+        explicit_slug = self._long_slugify(getattr(draft, "slug", "") or "")
+        if not explicit_slug:
+            return None, False
+        posts = []
+        list_full = False
+        try:
+            r = self.session.get(self._route("smackpress/posts"),
+                                 params={"slug": explicit_slug}, timeout=30)
+            if r.status_code == 200:
+                payload = r.json() or {}
+                if payload.get("exact"):
+                    posts = list(payload.get("posts") or [])
+                else:
+                    posts = list(payload.get("posts") or []) or self.list_posts(limit=500)
+                    list_full = bool(payload.get("truncated")) or len(posts) >= 500
+            else:
+                posts = self.list_posts(limit=500)
+                list_full = len(posts) >= 500
+        except Exception:
+            try:
+                posts = self.list_posts(limit=500)
+                list_full = len(posts) >= 500
+            except Exception:
+                return None, False
+
+        matched = None
+        for p in (posts or []):
+            if not isinstance(p, dict):
+                continue
+            pslug = self._long_slugify(str(p.get("slug", "") or ""))
+            pid = int(p.get("id") or 0)
+            if pslug == explicit_slug and pid > 0:
+                matched = p
+                break
+
+        if matched is None and not list_full:
+            return None, False
+
+        if matched is not None and bool(getattr(draft, "confirm_overwrite", False)):
+            draft.remote_post_id = int(matched["id"])
+            draft.slug = matched.get("slug", explicit_slug)
+            return None, False
+
+        if callable(confirm_overwrite_fn):
+            info = dict(matched or {
+                "id": 0,
+                "slug": explicit_slug,
+                "title": getattr(draft, "title", "") or explicit_slug,
+                "created_at": getattr(draft, "post_date", "") or "",
+            })
+            if matched is None and list_full:
+                info["list_full"] = True
+            choice = confirm_overwrite_fn(info)
+            if choice is True or choice == "update":
+                if matched is not None:
+                    draft.remote_post_id = int(matched["id"])
+                    draft.slug = matched.get("slug", explicit_slug)
+                    return None, False
+                return f"Cannot update '{explicit_slug}': exact post could not be verified from truncated list.", False
+            if choice == "new":
+                draft.remote_post_id = 0
+                draft.slug = self._unique_slug(explicit_slug, posts)
+                return None, False
+            return "Sending cancelled.", True
+
+        if matched is not None:
+            return (
+                f"Post with slug '{explicit_slug}' already exists (id={int(matched['id'])}). "
+                "Confirm overwrite before updating it."
+            ), False
+        return None, False
+
+    def sync_smacktalk(self, draft, confirm_overwrite_fn=None) -> SyncResult:
         if not self.key:
             return SyncResult(False, message="No SMACKTALK key set for this site (needs a 'smackpress' API key).")
         is_page = getattr(draft, "destination_type", "post") == "page"
         if not (draft.title or "").strip():
             return SyncResult(False, message="a SMACKTALK post needs a title")
-        # A LONGFORM POST DOES NOT NEED A PHOTOGRAPH.
-        #
-        # This refused any post with an empty bucket -- "no images on draft" --
-        # so an essay with no picture could be written and then never sent.
-        # Nothing downstream needs one: build_payload sends featured_image_id
-        # = None with an empty bucket_image_ids, and core/smackpress-api.php
-        # requires only a title, treating the cover as optional
-        # (`!empty($body['featured_image_id']) ? ... : 0`, smackpress-api.php
-        # :631 and :691). The guard was the only thing in the way.
-        #
-        # It also ran BEFORE the title check, so a draft missing both reported
-        # the images and never mentioned the title. Title goes first now.
-        #
-        # What DOES still need photographs is a mosaic: _resolve_mosaics()
-        # returns the body untouched when there are no image ids, so a [mosaic]
-        # placeholder would publish as literal text in the middle of the essay.
-        # That is the only case left, and it now says which one it is.
+        body_text = self._body_text_for_sync(draft)
+        if not body_text and not is_page and (getattr(draft, "body_blocks", "") or "").strip():
+            return SyncResult(False, message="Draft body blocks produced empty content — refusing to overwrite with an empty post.")
         if (not draft.images and not is_page
-                and self._MOSAIC_TOKEN.search(draft.caption or "")):
+                and self._MOSAIC_TOKEN.search(body_text)):
             return SyncResult(False, message=(
                 "This post asks for a MOSAIC but has no photographs. Add the "
                 "photos, or take the mosaic out of the writing."))
         try:
+            if not is_page:
+                err_msg, was_cancelled = self._resolve_existing_post_id(
+                    draft, confirm_overwrite_fn=confirm_overwrite_fn)
+                if err_msg:
+                    return SyncResult(False, message=err_msg, cancelled=was_cancelled)
             image_ids, cover_id = [], None
             for im in draft.images:
                 existing_id = int(getattr(im, "remote_image_id", 0) or 0)
@@ -961,7 +1209,7 @@ class SmacktalkPoster:
             # gallery of this essay's photos (created from the just-uploaded Gallery
             # ids). The photographer writes text + [mosaic]; the render is a real
             # tiled gallery in place. No server change — smackpress/mosaics exists.
-            content = self._resolve_mosaics(draft.caption or "", image_ids, draft)[0]
+            content = self._resolve_mosaics(body_text, image_ids, draft)[0]
             content = self._resolve_bucket_images(content, image_ids)
 
             route = "smackpress/pages" if is_page else "smackpress/posts"

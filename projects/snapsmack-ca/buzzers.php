@@ -14,7 +14,7 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-$page_title       = 'BUZZERS! — SnapSmack Security Audits';
+$page_title       = 'BUZZERS! — Security Audits | Free photoblog software';
 $page_description = 'Every security audit we have filed, including honest open work and verified closures.';
 $page_og_url      = 'https://snapsmack.ca/buzzers.php';
 $nav_active       = 'buzzers';
@@ -176,6 +176,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Audit Register</h3>
             <ol>
+                <li><span class="idx-date">Nov 17</span><a href="#a066">API Key Generation &mdash; Password and Two-Factor Step-Up Now Required</a></li>
                 <li><span class="idx-date">Nov 15</span><a href="#a064">Breach Response &mdash; API Writes Now Stop When Integrity Is Lost</a></li>
                 <li><span class="idx-date">Nov 8</span><a href="#a065">Injection Sweep &mdash; No Working Path Found, Hardening Debt Named</a></li>
                 <li><span class="idx-date">Nov 3</span><a href="#a063">Code Placement &mdash; Skin Boundary Passed, Policy and Packaging Gaps Remain</a></li>
@@ -245,6 +246,15 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a066">
+                <div class="post-meta"><span class="post-date">November 17, 2026</span><span class="post-tag">High Finding Fixed in 0.7.998D</span></div>
+                <h2>API Key Generation &mdash; Fresh Password and Two-Factor Proof Added</h2>
+                <p>An authenticated administrator session could mint a new API key without re-entering the account password or supplying a current two-factor code. Because an API key can act for a site outside the browser session and remain valid for weeks or months, creating one is a consequential action that needs fresh proof of control. The page already used the shared step-up check for three other actions; its visible password and two-factor fields belonged to offline posting rather than key generation, which made the missing protection easy to mistake for a protected flow.</p>
+                <p>SnapSmack 0.7.998D moves key generation behind the existing password-and-two-factor boundary before any key material is created or stored, and gives the form its own labelled authentication fields. Regression coverage exercises the credential outcomes against a real in-memory user table and TOTP secret, pins the handler ordering, keeps the existing CSRF control in scope, and checks that credentials and plaintext keys are not exposed. The release ancestry was independently verified; installed-build verification and owner acceptance were not checked by this audit.</p>
+                <p>Further step-up hardening is in review and will be published separately.</p>
+                <a class="report-link" href="secaudits/2026-11-17-066-api-key-generation-requires-step-up.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a064">
                 <div class="post-meta"><span class="post-date">November 11, 2026 &mdash; closed in source November 15</span><span class="post-tag">High Containment Finding Closed in Source</span></div>

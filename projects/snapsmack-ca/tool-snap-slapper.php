@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'SNAP SLAPPER - the SnapSmack photo editor';
+$page_title       = 'Free photo editor — SNAP SLAPPER for SnapSmack';
 $page_description = 'SNAP SLAPPER is a free, private, non-destructive desktop photo editor and library built beside SnapSmack. Normal and Advanced modes, layers, masks, curves, LEWKS, and LEWK AGAIN.';
 $page_og_url      = 'https://snapsmack.ca/tool-snap-slapper.php';
 $page_social_image = 'https://snapsmack.ca/img/snapslapper-editor-adv.png';

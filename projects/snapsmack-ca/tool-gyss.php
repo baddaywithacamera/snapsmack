@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'GET YOUR SHIT SORTED - offline archive sorter for SnapSmack';
+$page_title       = 'Free archive sorter — GET YOUR SHIT SORTED';
 $page_description = 'GET YOUR SHIT SORTED is an offline sorter for a whole SnapSmack blog: repair missing titles, captions, alt text, tags, categories and albums; reorder the feed; assemble carousels; then push the changes back.';
 $page_og_url      = 'https://snapsmack.ca/tool-gyss.php';
 $nav_active       = 'tool-gyss';

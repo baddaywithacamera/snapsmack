@@ -210,6 +210,13 @@
         "predicates": 4,
         "thresholds": []
     },
+    "backup-key-cannot-export-or-restore-regression.php": {
+        "assertions": 27,
+        "predicates": 22,
+        "thresholds": [
+            3
+        ]
+    },
     "biggie-layout-parser-regression.php": {
         "assertions": 4,
         "predicates": 3,
@@ -1728,6 +1735,23 @@
         "predicates": 11,
         "thresholds": []
     },
+    "recovery-kit-placeholder-credential-regression.php": {
+        "assertions": 24,
+        "predicates": 3,
+        "thresholds": [
+            2,
+            4,
+            8.1
+        ]
+    },
+    "recovery-kit-redacts-every-node-key-regression.php": {
+        "assertions": 23,
+        "predicates": 11,
+        "thresholds": [
+            3,
+            6
+        ]
+    },
     "release-flow-regression.php": {
         "assertions": 58,
         "predicates": 61,
@@ -1770,6 +1794,11 @@
         "thresholds": [
             2
         ]
+    },
+    "release-tag-collision-asks-origin-regression.php": {
+        "assertions": 16,
+        "predicates": 7,
+        "thresholds": []
     },
     "release-tag-rules-regression.php": {
         "assertions": 39,
@@ -2281,6 +2310,13 @@
             6,
             6,
             6
+        ]
+    },
+    "smackpress-posts-answers-about-one-slug-regression.php": {
+        "assertions": 19,
+        "predicates": 19,
+        "thresholds": [
+            3
         ]
     },
     "smacktalk-archive-search-regression.php": {

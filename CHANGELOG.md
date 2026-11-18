@@ -11,7 +11,67 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.998D — opened
+## 0.7.999D — opened
+
+NOT "998E". The PM's shorthand for this release was 998E, and that is not a
+number this product can carry: core/constants.php holds one version string,
+the tag pattern is v<major>.<minor>.<patch>D, and tools/release-flow.php
+requires the next dev candidate to be the highest existing v0.7.NNND plus one.
+v0.7.998D is tagged, so the next one is 0.7.999D. Recorded here because the
+shorthand will appear in the room and in tickets, and the two names need to be
+connected rather than guessed at later.
+
+- **A redaction placeholder can no longer authenticate as a fleet key.** Older
+  Recovery Kits used the literal `__REDACTED__` value in credential columns.
+  If that marker reached a restored database, the authentication path could
+  treat it as a real key. The export now writes empty credentials, restore
+  clears markers left by older kits, and every fleet-key gate rejects both an
+  empty value and the marker before it looks up a site. (SS-1417)
+
+- **The Mastodon fleet menu opens into the screen instead of below it.** On the
+  SMACKTALK fediverse reader, the site switcher is docked at the bottom-left;
+  its shared menu still opened downward like a top-bar menu, leaving the fleet
+  list outside the viewport. At desktop and large-tablet widths it now opens
+  upward and remains scrollable. (SS-1420)
+
+- **SMACKPRESS can ask whether one exact post slug already exists.** COLD SNAP
+  no longer has to search a list capped at 500 posts and guess that a missing
+  row means a slug is free. `GET smackpress/posts?slug=<exact>` returns a
+  complete, explicitly exact answer; the ordinary capped list also reports
+  its total and whether it was truncated. This prevents a site with more than
+  500 longform posts from receiving a duplicate during an update.
+
+- **The step-up lockout escalates, and it cannot be out-waited.** Five failed
+  password/2FA confirmations lock the account for 15 minutes, then 30, then an
+  hour, and a clear day puts it back to 15. Earlier it documented those three
+  tiers and could only ever reach the first, so an attacker with patience had
+  an unlimited budget in quarter-hour slices. A legitimate owner who mistypes
+  still gets a full set of attempts back when a lock lifts, and proving who
+  you are clears the history. (SS-1399)
+
+- **A backup key can no longer overwrite your site.** The key your backup tool
+  uses could also drive the disaster-recovery import, which writes a recovery
+  kit over the live site, and could pull the whole database by a second route.
+  It is a backup key now: it reads what a backup needs and nothing else.
+  Nothing about your backups changes. (SS-1414)
+
+- **Recovery Kits no longer carry a live fleet key.** A kit taken from a hub
+  included one of the keys that authenticates its own sites, in clear text, in
+  a file made to be copied elsewhere and kept. Every secret-looking column on
+  that table is now redacted rather than a list of two that had to be
+  remembered. Password hashes are deliberately still in the kit: a backup you
+  cannot log into afterwards is not a backup. (SS-1412)
+
+- **Searching actually searches, on every skin.** A search on 16 of the 30
+  skins printed "Not found" whatever you typed, because those skins had no
+  branch for a search result; the query itself was always correct. The skins
+  that did show results printed titles only, so an imported Instagram
+  photograph — which has no title — came back as a blank, unclickable line.
+  Results now carry a thumbnail, a link and, where there is no title, the
+  start of the caption. "#tag" goes to that tag's archive again. On the
+  SMACKTALK skins a search typed at the front page used to return the front
+  page, silently dropping the term; it now answers properly. (SS-1409)
+
 
 - **Generating an API key now asks for your password and a 2FA code.** An API
   key acts for your site from anywhere, for weeks or months. Until now an
@@ -105,6 +165,16 @@
   present, and exactly one pane is ever hidden, server-side. That is still open.
 
 ### COLD SNAP, desktop-side only — this does not ride a CMS build
+
+- **COLD SNAP 0.7.54 keeps unfinished work in the owner's profile instead of
+  beside the executable.** Existing sessions are migrated once, with a receipt
+  that makes the move safe to repeat, and a backup session can be imported into
+  the same store. The editor can reopen a published post from a newest-first,
+  searchable list, narrowed by date; it states that the list is capped at 500
+  posts rather than silently implying the whole archive is present. Site theme
+  colours can be edited with readable fallback colours and contrast checks,
+  and the BIGGIE canvas no longer inherits a dark background where the output
+  is meant to be white.
 
 - SS-1362: **a longform post with no photographs can be sent.** COLD SNAP
   refused one before it ever left the machine, with "no images on draft", so an

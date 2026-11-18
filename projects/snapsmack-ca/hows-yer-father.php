@@ -7,10 +7,10 @@
  *     // ===== SNAPSMACK EOF =====
  */
 
-$page_title       = "HOW'S YER FATHER? - SnapSmack Architecture and Lineage";
+$page_title       = 'HOW\'S YER FATHER? — Architecture | Free photoblog software';
 $page_description = 'Where SnapSmack came from, who taught it the good bits, and why its architecture refuses the usual answers.';
 $page_og_url      = 'https://snapsmack.ca/hows-yer-father.php';
-$page_social_title = "HOW'S YER FATHER? - The SnapSmack Family Tree";
+$page_social_title = 'HOW\'S YER FATHER? — Architecture | Free photoblog software';
 $page_social_description = 'Greymatter, Pixelpost, skin manifests, internal support, layered security, and the lessons behind SnapSmack.';
 $nav_active       = 'hows-yer-father';
 

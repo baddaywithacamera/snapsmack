@@ -860,6 +860,9 @@ class StackMode(QWidget):
         except InsecureTransportError as e:
             QMessageBox.warning(self, "Insecure connection", str(e))
             return None, url
+        from .connect_panel import verify_site_mode
+        if not verify_site_mode(self, conn, "carousel", "STACK"):
+            return None, url
         return GramPoster(conn), url
 
 # ===== SNAPSMACK EOF =====

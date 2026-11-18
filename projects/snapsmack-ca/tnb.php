@@ -10,7 +10,7 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-$page_title       = 'TWIG N BERRIES — SnapSmack Privacy';
+$page_title       = 'TWIG N BERRIES! — Privacy | Free photoblog software';
 $page_description = 'What SnapSmack knows about you and your site, and what it does with that.';
 $page_og_url      = 'https://snapsmack.ca/tnb.php';
 $nav_active       = 'tnb';

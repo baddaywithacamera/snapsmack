@@ -7,7 +7,7 @@
  *     <?php // ===== SNAPSMACK EOF =====
  */
 
-$page_title = 'Retro Photo Blog Software, Reimagined - SnapSmack';
+$page_title = 'Free photo blog software — SnapSmack';
 $page_description = 'Photo blog software the way it used to work, rebuilt: one photograph per post, the classic grid, or long-form writing with photographs inside it. Free, self-hosted, no plugins, no house style.';
 $page_og_url = 'https://snapsmack.ca/photo-blog-software.php';
 $landing_eyebrow = 'Photo blog software';
