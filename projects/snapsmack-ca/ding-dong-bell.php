@@ -17,7 +17,7 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-$page_title       = 'DING DONG BELL! — SnapSmack Operability Audits';
+$page_title       = 'Free SnapSmack operability audits — DING DONG BELL!';
 $page_description = 'Every place SnapSmack fell down, what we did about it, and — honestly — what we have not yet watched work. Operability, in public.';
 $page_og_url      = 'https://snapsmack.ca/ding-dong-bell.php';
 $nav_active       = 'ding-dong';

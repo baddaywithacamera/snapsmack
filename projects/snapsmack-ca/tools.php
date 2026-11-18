@@ -9,7 +9,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'BOX O\' TRICKS! - The SnapSmack Desktop Suite';
+$page_title       = 'Free Windows and Linux photo tools — SnapSmack';
 $page_description = 'Free Windows and Linux desktop tools for SnapSmack: a non-destructive photo editor, offline composer, batch publisher, archive sorter, importers for Instagram, Flickr and WordPress, backup, and fleet management.';
 $page_og_url      = 'https://snapsmack.ca/tools.php';
 $nav_active       = 'goods-tools';

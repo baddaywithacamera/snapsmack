@@ -57,10 +57,10 @@ foreach ($_receipt_sources as $_receipt_source) {
 }
 unset($_receipt_source, $_receipt_domain, $_receipt_stats, $_receipt_url, $_receipt_count, $_receipt_since, $_receipt_date, $_receipt_sources, $_receipt_overrides);
 
-$page_title       = 'SnapSmack - Self-Hosted Photo Publishing and Instagram Alternative';
+$page_title       = 'SnapSmack — Free, self-hosted photoblog software';
 $page_description = 'What is new is old again. Free, self-hosted photo blogging that gives back the single-photo blog, long-form posting, classic Insta and Picasa-style albums, on hardware you control. Your photos. Your voice. Your style. Your dignity.';
 $page_og_url      = 'https://snapsmack.ca/';
-$page_social_title = 'SnapSmack - Retro Photo Blogging. No Algorithm.';
+$page_social_title = 'SnapSmack — Free, self-hosted photoblog software';
 $page_social_description = 'Self-hosted photo blogging that brings back the gallery, the grid, and the photoblog. Your photos. Your voice. Your style. Your dignity.';
 $nav_active       = 'index';
 
@@ -89,6 +89,7 @@ $page_css = <<<'CSS'
 .ss-lightbox-open { overflow: hidden; }
 .door-hook { max-width: 980px; font-size: clamp(1.9rem, 4vw, 3.3rem); }
 .door-kicker { margin-top: 6px; color: var(--red); font: 900 .82rem/1.3 'Courier New', monospace; letter-spacing: .12em; text-transform: uppercase; }
+.door-free { margin-top: 16px; color: var(--red); font: 900 clamp(1rem, 1.8vw, 1.25rem)/1.3 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .door-sub { max-width: 800px; margin-top: 8px; font-size: clamp(1.15rem, 2vw, 1.4rem); line-height: 1.5; color: #333; }
 .door-editor { max-width: 800px; margin-top: 18px; font-size: clamp(1.05rem, 1.6vw, 1.2rem); line-height: 1.5; color: #333; }
 .door-editor a { color: var(--red); text-decoration: underline; }
@@ -331,6 +332,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="door-inner">
             <div class="door-copy">
             <h1 class="door-hook">Retro Photo Blogging.<br><span>No Algorithm.</span></h1>
+            <p class="door-free">Free and open source. Now and forever.</p>
             <p class="door-kicker">What&rsquo;s new is old again.</p>
             <p class="door-sub">We&rsquo;re not offering you anything new. We&rsquo;re giving back what was taken: the single-photo blog, long-form posting that hasn&rsquo;t been enshittified, classic Insta styling, and pumping images straight out of a file manager. All of it used to belong to photographers. Now it lives on hardware you control, and nobody is taking it back from you. And you do it all with software that&rsquo;s completely FREE, now and forever. No crippleware, no upsells, no bullshit.</p>
             <p class="door-editor">And a free, powerful <a href="tool-snap-slapper.php">photo editor and organizer</a> because we remember when photographers were given good software for no charge rather than being told they needed to pay monthly rent for it.</p>

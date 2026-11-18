@@ -7,7 +7,7 @@
  *     <?php // ===== SNAPSMACK EOF =====
  */
 
-$page_title = 'Self-Hosted Flickr Alternative for Photographers - SnapSmack';
+$page_title = 'Free Flickr alternative you host yourself — SnapSmack';
 $page_description = 'A Flickr alternative on your own domain: bring twenty years of photographs, titles, tags, dates, views, comments and faves to a site you own. Free, self-hosted, no subscription, no sunset.';
 $page_og_url = 'https://snapsmack.ca/flickr-alternative.php';
 $landing_eyebrow = 'Flickr alternative';

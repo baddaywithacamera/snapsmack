@@ -10,7 +10,7 @@
  *     // ===== SNAPSMACK EOF =====
  */
 
-$page_title       = 'COMING UP THE REAR! - What SnapSmack is building next';
+$page_title       = 'Free SnapSmack roadmap — COMING UP THE REAR!';
 $page_description = 'The SnapSmack pipeline, honestly sorted: what is in beta on live sites, what is built but not yet released, and what is only on the drawing board. No roadmap theatre.';
 $page_og_url      = 'https://snapsmack.ca/coming-soon.php';
 $nav_active       = 'coming';

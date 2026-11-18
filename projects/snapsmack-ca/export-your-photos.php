@@ -7,7 +7,7 @@
  *     <?php // ===== SNAPSMACK EOF =====
  */
 
-$page_title = 'Export Your Photography Archive - SnapSmack';
+$page_title = 'Free photo archive export — SnapSmack';
 $page_description = 'Get your photographs off somebody else\'s platform and into a site you own, with dates, captions and tags intact. Then keep the exit: everything in SnapSmack comes back out in a form other software reads.';
 $page_og_url = 'https://snapsmack.ca/export-your-photos.php';
 $landing_eyebrow = 'Export your photos';

@@ -60,8 +60,17 @@ $_nav = function(string $active): string {
 
 $_page_css_block = isset($page_css) && $page_css !== '' ? "\n" . $page_css . "\n" : '';
 $_canonical_url = $page_canonical ?? $page_og_url;
+$_free_claim = 'Free and open source, no upsells.';
+$_page_description_source = trim((string)$page_description);
+if (stripos($_page_description_source, $_free_claim) === false) {
+    $_page_description_source = rtrim($_page_description_source, ". \t\n\r\0\x0B") . '. ' . $_free_claim;
+}
+$page_description = $_page_description_source;
 $_social_title = $page_social_title ?? $page_title;
-$_social_description = $page_social_description ?? $page_description;
+$_social_description = trim((string)($page_social_description ?? $page_description));
+if (stripos($_social_description, $_free_claim) === false) {
+    $_social_description = rtrim($_social_description, ". \t\n\r\0\x0B") . '. ' . $_free_claim;
+}
 $_social_image = $page_social_image ?? 'https://snapsmack.ca/img/logo.png';
 $_schema = [[
     '@context' => 'https://schema.org',

@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'SNAP HQ - the SnapSmack desktop headquarters';
+$page_title       = 'Free desktop headquarters — SNAP HQ for SnapSmack';
 $page_description = 'SNAP HQ is the local headquarters for the SnapSmack desktop suite: launch every tool from one place, discover the sites in your fleet, and share protected profiles, credentials, libraries, and prompts between tools.';
 $page_og_url      = 'https://snapsmack.ca/tool-snap-hq.php';
 $nav_active       = 'tool-snap-hq';

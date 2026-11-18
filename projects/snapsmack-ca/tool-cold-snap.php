@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'COLD SNAP - offline composer for SnapSmack';
+$page_title       = 'Free COLD SNAP offline composer — SnapSmack';
 $page_description = 'COLD SNAP lets you write SnapSmack posts with no internet connection - plain text with the shortcode bar (TWIGGY) or the visual block editor (BIGGIE) - from a local cold-storage copy of your site, then sync when you are back online.';
 $page_og_url      = 'https://snapsmack.ca/tool-cold-snap.php';
 $nav_active       = 'tool-cold-snap';
