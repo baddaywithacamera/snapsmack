@@ -175,21 +175,83 @@ def refresh(hq_version: str = "") -> dict:
                "X-Snap-Nonce":nonce, "X-Snap-Signature":_b64u(key.sign(proof))}
     response = requests.post(url, data=raw, headers=headers, timeout=30); data=response.json()
     if not response.ok or not data.get("ok"):
+        # REVOCATION HAS TO LAND SOMEWHERE. SS-1418, Muse's third finding: a
+        # cached signed entitlement ignored a later revocation until its own
+        # expiry, so disabling a device in the CMS did nothing for up to three
+        # months. An offline token cannot learn it was revoked -- but the
+        # moment this machine IS online and the site says the device is
+        # disabled or blocked, the cached copy has been answered and must go.
+        #
+        # Only on an explicit 403 from the site. A timeout, a DNS failure or a
+        # 500 leaves the cache alone: losing authorization because the wifi
+        # dropped is the lockout this whole ticket is trying to avoid.
+        if response.status_code == 403:
+            state = _read_state()
+            for gone in ("entitlement", "payload"):
+                state.pop(gone, None)
+            state["revoked_at"] = int(time.time())
+            state["revoked_reason"] = str(data.get("error") or "This device was revoked.")
+            _write_state(state)
         raise RuntimeError(str(data.get("error") or f"Authorization check failed ({response.status_code})."))
     return _verify_and_store(site_url, data["entitlement"], allow_new_server_key=False)
 
 
+CLOCK_SKEW_TOLERANCE = 300        # the same slack _verify_and_store allows
+
+
 def decision(state: dict | None = None) -> dict:
-    """Verify the cached signature and return full/grace/restricted state."""
+    """Verify the cached signature and return full/grace/restricted state.
+
+    SS-1418. Two things were missing here, and both of them mattered because
+    this is the function that actually gates features -- require_full() calls
+    it, and it reads the CACHED entitlement without going near the server.
+
+    1. IT DID NOT CHECK last_clock. _verify_and_store() refuses an entitlement
+       when the clock has moved backwards, but that only runs when the machine
+       is online. decision() ran on the cached copy and compared expiry
+       against whatever time.time() said, so winding the system clock back
+       turned an expired entitlement into a current one. The rollback check
+       belongs on the side that makes the decision, not only on the side that
+       stores it.
+
+    The revocation half of the finding is NOT fixed here, because it cannot
+    be: a signed offline token is valid until it expires, and no amount of
+    local arithmetic can learn that the site revoked it. It is fixed in
+    refresh(), which now drops the cached entitlement the moment the server
+    says the device is disabled or blocked. See the note there.
+
+    I tried to shorten grace here instead -- restrict a token whose last
+    contact predated its own expiry -- and threw it away: the renew window is
+    30 days, so a device that reaches expiry at all has normally been out of
+    contact longer than the 14-day grace, and the check cut grace to nothing
+    for the ordinary case. It would have locked an owner out on the first day
+    of the window that exists to stop exactly that.
+
+    Neither check below can lock an owner out of HQ. Both produce
+    'restricted', which opens HQ with a renew prompt; the way out is to go
+    online, and going online re-verifies and clears them.
+    """
     state = state or _read_state(); entitlement = state.get("entitlement") or {}
     try:
         payload_text = str(entitlement["payload"]); public64 = str(state["server_public_key"])
         Ed25519PublicKey.from_public_bytes(base64.b64decode(public64, validate=True)).verify(
             _unb64u(str(entitlement["signature"])), payload_text.encode("ascii"))
         payload = json.loads(_unb64u(payload_text).decode("utf-8")); now=int(time.time())
-        if now <= int(payload["expires_at"]): status="full"
-        elif now <= int(payload["grace_ends_at"]): status="grace"
-        else: status="restricted"
+
+        last_clock = int(state.get("last_clock", 0) or 0)
+        if last_clock and now + CLOCK_SKEW_TOLERANCE < last_clock:
+            return {"status":"restricted","authorized":False,"payload":payload,
+                    "site_url":state.get("site_url",""),
+                    "reason":"clock_rollback",
+                    "error":"The system clock moved backwards since the last check. "
+                            "Go online in SNAP HQ to verify authorization."}
+
+        if now <= int(payload["expires_at"]):
+            status = "full"
+        elif now <= int(payload["grace_ends_at"]):
+            status = "grace"
+        else:
+            status = "restricted"
         return {"status":status,"authorized":status in ("full","grace"),"payload":payload,
                 "site_url":state.get("site_url","")}
     except Exception as exc:
