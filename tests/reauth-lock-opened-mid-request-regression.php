@@ -36,10 +36,29 @@ declare(strict_types=1);
  * the code under test: reauth.php runs unmodified against a database that
  * changes underneath it, which is what a second request IS.
  *
+ * SCOPE, stated so nobody over-reads it: STAGES 1, 2, 4 and 5 fail on r4 and
+ * pass on the fix -- 17 checks. STAGE 3 passes on BOTH, and says so in place;
+ * it guards a property that only two equal constants are currently holding
+ * up. See the note above it.
+ *
  * Run: php tests/reauth-lock-opened-mid-request-regression.php
  */
 
 require_once dirname(__DIR__) . '/core/reauth.php';
+
+// The two helpers the fix adds do not exist on r4. Stub them to a failing
+// answer so running this file against the unfixed tree reports every check as
+// FAIL instead of dying on the first call: the before/after proof has to be
+// reproducible by a reviewer, not just by me. The stubs touch nothing that
+// STAGE 2 exercises -- r4's _reauth_record_failure never calls either one,
+// which is precisely the defect -- so the behavioural stages still measure
+// the real r4 code path.
+if (!function_exists('_reauth_standing_lock')) {
+    function _reauth_standing_lock(PDO $pdo, string $key, int $now): ?array { return null; }
+}
+if (!function_exists('_reauth_unbump_counter')) {
+    function _reauth_unbump_counter(PDO $pdo, string $key, string $action): void {}
+}
 
 $failures = [];
 $logFile  = tempnam(sys_get_temp_dir(), 'ss1399_race_');
@@ -113,9 +132,19 @@ function fresh_pdo(): RacingPdo
     return $pdo;
 }
 
-/** Put a counter row in place directly, the way another request would leave it. */
+/**
+ * Put a counter row in place directly, the way another request would leave it.
+ *
+ * It clears first. snap_rate_limits is UNIQUE(ip, action), and a seed that
+ * assumed a clean slate would die on a duplicate key the moment a previous
+ * stage left a row behind -- which is exactly what happens when this file is
+ * run against the UNFIXED tree, where the undo does nothing. A fixture that
+ * cannot survive the before-state cannot prove the before-state.
+ */
 function seed_counter(PDO $pdo, string $action, int $count, int $at): void
 {
+    $pdo->prepare("DELETE FROM snap_rate_limits WHERE ip = 'uid:7' AND action = ?")
+        ->execute([$action]);
     $pdo->prepare("INSERT INTO snap_rate_limits (ip, action, count, window_start)
                    VALUES ('uid:7', ?, ?, ?)")
         ->execute([$action, $count, gmdate('Y-m-d H:i:s', $at)]);
@@ -236,11 +265,25 @@ check('B clears its own session counter, so its next attempt is not double-count
       (int)($_SESSION['reauth_fail_count'] ?? -1) === 0, $failures);
 
 // ─────────────────────────────────────────────────────────────────────────────
-echo "\nSTAGE 3 — the leaked attempt, measured as behaviour\n";
+echo "\nSTAGE 3 — the next cycle still gets a full budget (a GUARD, not a repro)\n";
 // ─────────────────────────────────────────────────────────────────────────────
-// The preloaded 1 is not just an untidy row. Carried into the next cycle it
-// locks the owner out one attempt early, for a failure nobody made. Step the
-// clock past the lock and count how many wrong codes the next cycle allows.
+// SAY WHAT THIS DOES AND DOES NOT PROVE. These two checks PASS on r4 as well,
+// so they are not part of the before/after proof.
+//
+// r4's leaked reauth_fail row does not actually cost the owner an attempt
+// today, and the reason is a coincidence of two constants: the quiet period
+// that resets a cycle (REAUTH_BASE_LOCKOUT_SECONDS, 900s) is never longer
+// than the tier-1 lock (_reauth_lockout_seconds(1), also 900s). By the time
+// the lock expires and the owner can try again, the leaked row is stale and
+// the next failure sweeps it. The harm r4 does prove is in STAGE 2: a locked
+// account is told "code incorrect", with no lock reported and no
+// blocked_while_locked audit line.
+//
+// These checks stay because that coincidence is not a design. Lower the lock
+// tier, raise the quiet period, or make either configurable, and the leak
+// becomes reachable: the owner loses an attempt to a failure nobody made.
+// Removing the undo would then be silent. Step past the lock and count what
+// the next cycle actually allows.
 $past = $NOW + 901;
 $_SESSION = ['user_id' => 7];                       // a fresh session again
 $attempts_until_lock = 0;
