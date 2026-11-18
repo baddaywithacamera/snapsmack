@@ -210,6 +210,13 @@
         "predicates": 4,
         "thresholds": []
     },
+    "backup-key-cannot-export-or-restore-regression.php": {
+        "assertions": 27,
+        "predicates": 22,
+        "thresholds": [
+            3
+        ]
+    },
     "biggie-layout-parser-regression.php": {
         "assertions": 4,
         "predicates": 3,
@@ -2029,7 +2036,7 @@
         "thresholds": []
     },
     "skin-parity-ratchet-regression.php": {
-        "assertions": 7,
+        "assertions": 8,
         "predicates": 3,
         "thresholds": []
     },

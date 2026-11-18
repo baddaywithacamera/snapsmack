@@ -144,6 +144,35 @@ if ($type === 'inventory') {
 }
 
 if ($type === 'kit') {
+    // SS-1414. A BACKUP KEY DOES NOT GET THE SERVER-BUILT RECOVERY KIT.
+    //
+    // Muse's finding named smack-disaster.php, and that page now takes no key
+    // at all. Sweeping every keyed endpoint for the same two entry points --
+    // which is the rule for a shared fault -- turned this one up as well, and
+    // it was not in the report.
+    //
+    // BE PRECISE ABOUT WHAT THIS DOES AND DOES NOT CLOSE. type=full on this
+    // same endpoint hands a backup key the entire database, snap_users
+    // password hashes included, and it MUST: that dump IS the backup, and
+    // removing it would stop the fleet backing up. So a backup key can still
+    // read everything. What it no longer gets is a second, server-assembled
+    // route to the same data plus media and skin in one file -- and SUYB never
+    // used this one: it asks for type=full, schema, inventory and file, and
+    // builds the kit itself (backup_engine.py, "Recovery kit built
+    // client-side"). An admin in a browser still gets type=kit.
+    //
+    // The boundary that actually matters for a backup key is that it cannot
+    // RESTORE. That was the keyed import on smack-disaster.php, and it is gone.
+    if (defined('SNAP_API_AUTH')) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => false, 'error' =>
+            'A backup key cannot request a server-built recovery kit. '
+            . 'Use type=full with type=inventory and type=file, which is what '
+            . 'the backup tool does, or sign in as an administrator.']);
+        exit;
+    }
+
     // Full recovery kit — .tar.gz with manifest + SQL
     try {
         $kitPath = $exporter->exportRecoveryKit();
