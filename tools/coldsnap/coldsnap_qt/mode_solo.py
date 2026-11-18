@@ -425,6 +425,9 @@ class SoloMode(QWidget):
         except InsecureTransportError as e:
             QMessageBox.warning(self, "Insecure connection", str(e))
             return None, url
+        from .connect_panel import verify_site_mode
+        if not verify_site_mode(self, conn, "photoblog", "SOLO"):
+            return None, url
         categories = snap_library.category_map(url)
         albums = snap_library.album_map(url)
         if not categories and not albums:

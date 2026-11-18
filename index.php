@@ -889,33 +889,21 @@ try {
     }
 
     // --- SEARCH ---
-    // ?q=term routes to the active skin's search.php if it exists, gated on the
-    // search_enabled setting. Photogram keeps its own ?pg=search flow (locked),
-    // so it is excluded here. Mirrors the hashtag dispatch above.
-    if (isset($_GET['q']) && ($settings['search_enabled'] ?? '0') === '1'
-        && $active_skin !== 'photogram') {
-        $search_template = __DIR__ . '/skins/' . $active_skin . '/search.php';
-        if (file_exists($search_template)) {
-            $search_q = trim((string)$_GET['q']);
-            // A #tag query jumps straight to that hashtag archive (before output).
-            if ($search_q !== '' && $search_q[0] === '#') {
-                $tag_candidate = substr($search_q, 1);
-                if (preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,49}$/', $tag_candidate)) {
-                    header('Location: ' . BASE_URL . '?tag=' . rawurlencode(strtolower($tag_candidate)));
-                    exit;
-                }
-            }
-            snapsmack_log_hit($pdo, $settings, ['page_type' => 'search', 'page_slug' => mb_substr($search_q, 0, 100)]);
-            include __DIR__ . '/skins/' . $active_skin . '/skin-meta.php';
-            ?><body class="is-search-page"><div id="page-wrapper"><?php
-            include $search_template;
-            ?></div><?php
-            include __DIR__ . '/core/footer-scripts.php';
-            ?></body></html><?php
-            exit;
-        }
-    }
-
+    // THE DISPATCH THAT USED TO BE HERE IS GONE. SS-1409. It included
+    // skins/<skin>/search.php when ?q= arrived, and NO SKIN HAS HAD A
+    // search.php SINCE THE STRICT CONVERSION -- all 30 were checked -- so the
+    // whole block was unreachable on every site in the fleet. It still read
+    // as the search implementation, which is part of why the real fault (a
+    // skin with no branch for kind='search') went unlooked-for.
+    //
+    // Search now runs entirely through the strict path: core/public-runtime.php
+    // turns ?q= into route 'search', core/public-controller.php answers it,
+    // and the skin prints the shared search-results component.
+    //
+    // THE ONE LIVE THING IN IT WAS THE "#tag JUMPS TO THE TAG ARCHIVE"
+    // SHORTCUT, which had therefore not worked on any site either. It was
+    // moved into core/public-runtime.php, on the path that does run, with the
+    // same pattern guard. It is not lost with this block.
     // --- REQUEST ROUTING (LATEST POST MODE) ---
     // --- IMAGE LOOKUP ---
     // img_date <= NOW() = the scheduling gate: a photo scheduled for the future is

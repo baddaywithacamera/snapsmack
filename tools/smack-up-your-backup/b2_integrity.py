@@ -286,23 +286,18 @@ def execute_cleanup(
         }
         result["log_rows"].append(row)
 
-    # ── Phase 1: Delete bad/duplicate versions ─────────────────────
-    on_log(f"Phase 1: Deleting {len(to_delete)} bad/duplicate version(s)…")
+    # ── Phase 1: Report bad/duplicate versions (never delete; SUYB is write-only) ──
+    on_log(f"Phase 1: Reporting {len(to_delete)} flagged version(s) (write-only; use DRIVE BY to prune)…")
+    result["reported"] = 0
     for r in to_delete:
         if cancelled():
             on_log("Cancelled.")
             break
         fname = r["filename"]
         vid   = r["b2_version_id"]
-        try:
-            b2_client.delete_file_version(vid, fname)
-            on_log(f"  ✓ Deleted: {fname}  ({_fmt(r['b2_size'])})")
-            result["deleted"] += 1
-            _log(fname, "DELETE", "OK", f"version_id={vid} size={r['b2_size']}")
-        except Exception as e:
-            on_log(f"  ✗ Delete failed: {fname} — {e}")
-            result["failed"] += 1
-            _log(fname, "DELETE", "FAILED", str(e))
+        on_log(f"  ! Flagged (not deleted — use DRIVE BY): {fname}  ({_fmt(r['b2_size'])})")
+        result["reported"] += 1
+        _log(fname, "REPORT_ONLY", "NOT_DELETED", f"version_id={vid} size={r['b2_size']}")
         done += 1
         on_progress(done / total_ops if total_ops else 1.0)
 
@@ -413,12 +408,9 @@ def execute_cleanup(
         result["replaced"] += 1
         _log(fname, "REPLACE", "OK", f"sha1={local_sha1}")
 
-        # Delete the old bad B2 versions for this file
+        # Report old bad B2 versions without deleting (SUYB is write-only; use DRIVE BY)
         for bad_vid in replace_bad_ids.get(fname, []):
-            try:
-                b2_client.delete_file_version(bad_vid, fname)
-            except Exception:
-                pass  # best-effort; version may already be gone
+            _log(fname, "REPORT_OLD_VERSION", "NOT_DELETED", f"version_id={bad_vid}")
 
         done += 1
         on_progress(done / total_ops if total_ops else 1.0)

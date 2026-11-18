@@ -138,6 +138,37 @@ def list_profiles() -> List[str]:
     return sorted(names)
 
 
+def _site_modes_path() -> str:
+    return os.path.join(PROFILES_DIR, "site_modes.json")
+
+
+def _cached_site_mode(name: str) -> str:
+    try:
+        with open(_site_modes_path(), encoding="utf-8") as f:
+            data = json.load(f)
+        return str((data or {}).get(name, "") or "").strip().lower()
+    except Exception:
+        return ""
+
+
+def cache_site_mode(name: str, mode: str) -> None:
+    """Persist a discovered site_mode locally so subsequent launches are instant."""
+    mode = str(mode or "").strip().lower()
+    if not name or mode not in ("photoblog", "carousel", "smacktalk"):
+        return
+    os.makedirs(PROFILES_DIR, exist_ok=True)
+    path = _site_modes_path()
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f) or {}
+    except Exception:
+        data = {}
+    if data.get(name) != mode:
+        data[name] = mode
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+
+
 def load_profile(name: str) -> Optional[Dict]:
     """Load a profile by display name. Prefers the SHARED store (SNAP HQ / GYSS /
     SYBU) so the site you set up in the Hub loads its url + key here; falls back to
@@ -146,7 +177,12 @@ def load_profile(name: str) -> Optional[Dict]:
         try:
             p = _shared_profiles.load_by_name(name)
             if p:
-                return _shared_to_coldsnap(p)
+                out = _shared_to_coldsnap(p)
+                if not str(out.get("site_mode", "") or "").strip():
+                    cached = _cached_site_mode(name)
+                    if cached:
+                        out["site_mode"] = cached
+                return out
         except Exception:
             pass
 
@@ -155,7 +191,7 @@ def load_profile(name: str) -> Optional[Dict]:
         # Scan all profiles for matching name field
         os.makedirs(PROFILES_DIR, exist_ok=True)
         for fname in os.listdir(PROFILES_DIR):
-            if fname.endswith('.json'):
+            if fname.endswith('.json') and fname != 'site_modes.json':
                 candidate = os.path.join(PROFILES_DIR, fname)
                 try:
                     with open(candidate) as f:
@@ -179,6 +215,10 @@ def load_profile(name: str) -> Optional[Dict]:
         # Keep the exact stored bytes available to save_profile(), including
         # during a rename when the destination file does not exist yet.
         data['_unreadable_password_enc'] = password_enc
+    if not str(data.get("site_mode", "") or "").strip():
+        cached = _cached_site_mode(name)
+        if cached:
+            data["site_mode"] = cached
     return data
 
 

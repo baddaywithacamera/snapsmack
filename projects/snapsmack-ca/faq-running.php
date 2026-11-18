@@ -5,7 +5,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'BRASS TACKS! - Running it - SnapSmack FAQ';
+$page_title       = 'BRASS TACKS! — Running It | Free photoblog software';
 $page_description = 'SnapSmack FAQ, running it: How techie you need to be, what it needs, what it runs on, and why the phone is second fiddle.';
 $page_og_url      = 'https://snapsmack.ca/faq-running.php';
 $faq_slug    = 'faq-running';

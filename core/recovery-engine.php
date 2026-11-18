@@ -91,7 +91,55 @@ class SnapSmackRecovery {
         }
 
         fclose($handle);
-        return ['imported' => $imported, 'errors' => $errors];
+
+        // SS-1417: a dump written by an older build carries the public literal
+        // __REDACTED__ in the fleet key columns, and importSqlDump() execs the
+        // dump verbatim, so the literal lands in an active node row. Fixing the
+        // export side does nothing for dumps already written to disk, and those
+        // are exactly the ones a recovery restores. Clear them here.
+        $cleared = $this->clearRedactedCredentials();
+
+        return ['imported' => $imported, 'errors' => $errors, 'cleared_placeholders' => $cleared];
+    }
+
+    /**
+     * Replace restored redaction placeholders with empty values.
+     *
+     * Empty is the honest state: the credential was stripped at export and has
+     * not been re-provisioned yet. The literal is NOT honest — it reads as a
+     * configured key and, before SS-1417 hardened the gates, authenticated as
+     * one. Returns the number of rows cleared, per table, for the restore log.
+     *
+     * Each statement is guarded: a partially migrated site may not have every
+     * column, and a recovery must not abort because one is absent.
+     */
+    private function clearRedactedCredentials(): array {
+        $marker  = '__REDACTED__';
+        $cleared = [];
+
+        foreach (['api_key_local', 'api_key_remote', 'api_key_backup'] as $col) {
+            try {
+                $st = $this->pdo->prepare(
+                    "UPDATE snap_multisite_nodes SET {$col} = '' WHERE {$col} = ?"
+                );
+                $st->execute([$marker]);
+                if ($st->rowCount() > 0) $cleared['snap_multisite_nodes.' . $col] = $st->rowCount();
+            } catch (PDOException $e) {
+                // Column or table absent on this install — nothing to clear.
+            }
+        }
+
+        try {
+            $st = $this->pdo->prepare(
+                "UPDATE snap_settings SET setting_val = '' WHERE setting_val = ?"
+            );
+            $st->execute([$marker]);
+            if ($st->rowCount() > 0) $cleared['snap_settings.setting_val'] = $st->rowCount();
+        } catch (PDOException $e) {
+            // Table absent — nothing to clear.
+        }
+
+        return $cleared;
     }
 
     // =================================================================

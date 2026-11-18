@@ -82,6 +82,23 @@ if ($presentationTotal > (int)$baseline['presentation_candidate_total']) {
     $failures[] = 'Fleet presentation-parity candidate total rose above the recorded baseline.';
 }
 
+// THE PRINTED TOTAL MUST BE THE REAL ONE. Muse's SS-1409 review found
+// route_fallthrough_total reading 43 while the fixture actually listed 32,
+// and it had already been stale at the parent commit -- because this file
+// PRINTS the stored number and never checked it. A figure nobody verifies
+// drifts, and the next reader takes it for the count. It is asserted now, so
+// the only way to move the total is to change the list it describes.
+$recordedTotal = (int)($baseline['route_fallthrough_total'] ?? -1);
+$actualTotal = 0;
+foreach ((array)($baseline['uncovered_routes'] ?? []) as $entry) {
+    $actualTotal += is_array($entry) ? count($entry) : 1;
+}
+if ($recordedTotal !== $actualTotal) {
+    $failures[] = "route_fallthrough_total says {$recordedTotal} but the "
+        . "baseline lists {$actualTotal} uncovered routes. The printed summary "
+        . 'would report a number nobody can reach from the data.';
+}
+
 if ($failures !== []) {
     fwrite(STDERR, implode("\n", $failures) . "\n");
     exit(1);

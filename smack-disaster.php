@@ -15,12 +15,35 @@
  */
 
 
-require_once __DIR__ . '/core/csrf.php';
-csrf_exempt();
-
-// SUYB scoped key (see suyb-data.php). Additive — legacy auth still works.
-$GLOBALS['SNAP_API_KEY_TYPES'] = ['suyb'];
-require_once 'core/api-auth.php';
+// SS-1414. NO API KEY REACHES THIS PAGE. SESSION ADMINS ONLY.
+//
+// This page used to accept the 'suyb' backup key as a Bearer token, because
+// core/api-auth.php takes an accepted key type and returns before session auth
+// ever runs. That made the KEY PATH MORE PERMISSIVE THAN THE BROWSER PATH: a
+// browser needed an admin session (smack-disaster.php is in the admin-only
+// list, core/auth-smack.php:327), while a key needed nothing but the key.
+// With it, an active backup key could pull a full Recovery Kit -- the whole
+// database including snap_users password hashes and any 2FA secrets, plus
+// media and skin -- and could drive import_recovery, which RESTORES over the
+// live site. No role check, and csrf_exempt() below removed the CSRF token
+// from the import for the key path's sake.
+//
+// A backup key is now backup-only, which is what its name always promised.
+// Backups do not go through this page: SUYB builds its Recovery Kit
+// CLIENT-SIDE (tools/smack-up-your-backup/backup_engine.py:1147, "Recovery
+// kit built client-side") from the SQL dumps and media it fetches through
+// suyb-data.php. Its download_recovery_kit() method, the only thing in the
+// tool that ever posted here, is defined and never called -- I checked every
+// call site in the tool, not just the one Muse named. Nothing else in the
+// repository posts to this page either.
+//
+// csrf_exempt() IS GONE WITH IT. It existed only so the keyed export could
+// work without a session token; with no key path there is nothing to exempt,
+// and both the export and the import now carry the token like every other
+// admin POST. SECAUDIT 047 had already noticed the import half of this and
+// patched around it with a conditional verify; the condition can go now
+// because the case it guarded cannot happen.
+require_once 'core/auth-smack.php';
 
 // --- RECOVERY KIT EXPORT ---
 if (isset($_POST['action']) && $_POST['action'] === 'export') {
@@ -52,12 +75,13 @@ if (isset($_POST['action']) && $_POST['action'] === 'export') {
 
 // --- RECOVERY KIT IMPORT ---
 if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
-    // SECAUDIT 047: this page is csrf_exempt() only so the API-key (SUYB) export
-    // path works without a session token. A browser/session admin importing a
-    // kit MUST carry the CSRF token — otherwise any page the admin visits could
-    // cross-post a crafted kit. (The recovery engine now also blocks executable/
-    // traversal restore targets, so a forged import can no longer reach RCE.)
-    if (!defined('SNAP_API_AUTH')) csrf_verify();
+    // SECAUDIT 047 wanted the CSRF token on a session import, and had to make it
+    // conditional because the keyed export path could not supply one. SS-1414
+    // removed that path, so the condition is gone and the token is simply
+    // required -- of the export too, via core/auth-smack.php. (The recovery
+    // engine also blocks executable and traversal restore targets, so a forged
+    // import could not reach RCE even before this.)
+    csrf_verify();
     if (!empty($_FILES['recovery_file']['tmp_name'])) {
         require_once 'core/recovery-engine.php';
         try {

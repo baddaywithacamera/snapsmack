@@ -184,6 +184,23 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     }
 
     if ($requested_slug !== '') return ['handled' => false];
+
+    // SS-1409. A BARE ?q= AT THE ROOT WAS SILENTLY IGNORED. The PM asked what
+    // a SMACKTALK skin does with one, and the answer was worse than the
+    // "Not found" the photoblog skins give: it fell through to the branch
+    // below and returned the ordinary landing feed. The visitor searched, got
+    // the front page back, and nothing on screen said the term had been
+    // dropped -- which reads as "everything matched" rather than as a search
+    // that never ran. Only ?view=archive&q= was ever read (the handler above).
+    // So a root search is sent to the address that answers it, carrying the
+    // term. 302, not 301: a search result is not a permanent address.
+    $_rootSearch = trim((string)($request['search'] ?? ''));
+    if ($_rootSearch !== '') {
+        return ['handled' => true, 'redirect_status' => 302,
+            'redirect' => snapsmack_public_route_url($base, $route_aliases, 'archive', 'archive')
+                . '?' . http_build_query(['q' => $_rootSearch])];
+    }
+
     return ['handled' => true, 'kind' => 'feed']
         + snapsmack_smacktalk_feed($pdo, $settings, $base, max(1, (int)($request['page'] ?? 1)));
 }

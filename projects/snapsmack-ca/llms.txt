@@ -1,7 +1,8 @@
 # SnapSmack
 
-SnapSmack is free, self-hosted photography publishing software for people who
-want to own their photos, website, audience, domain, and archive. It combines
+SnapSmack is free and open source, self-hosted photography publishing software
+with no upsells, for people who want to own their photos, website, audience,
+domain, and archive. It combines
 retro photo-blogging values with modern publishing, backup, export, security,
 and optional Fediverse technology.
 

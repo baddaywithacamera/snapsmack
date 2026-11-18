@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, '../..');
 const baseUrl = process.env.SNAPSMACK_CA_URL || 'http://127.0.0.1:8879';
 const output = process.env.SNAPSMACK_BROWSER_OUTPUT
   || path.join(root, 'tmp/snapsmack-ca-palette-sweep');
+const widths = [1920, 1440, 1024];
 const pages = [
   'index.php', 'features.php', 'skins.php', 'tools.php', 'security.php',
   'wotcha.php', 'brass-tacks.php', 'coming-soon.php', 'oi.php', 'tnb.php',
@@ -30,14 +31,16 @@ const allowedColours = new Set([
 (async () => {
   fs.mkdirSync(output, { recursive: true });
   const browser = await chromium.launch({ headless: true, channel: 'msedge' });
-  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const results = [];
   try {
-    for (const pathname of pages) {
-      const page = await context.newPage();
-      const response = await page.goto(`${baseUrl}/${pathname}`, { waitUntil: 'networkidle' });
-      assert.ok(response && response.ok(), `${pathname}: HTTP ${response ? response.status() : 'no response'}`);
-      const measured = await page.evaluate(({ allowed }) => {
+    for (const width of widths) {
+      const context = await browser.newContext({ viewport: { width, height: 1000 } });
+      try {
+        for (const pathname of pages) {
+          const page = await context.newPage();
+          const response = await page.goto(`${baseUrl}/${pathname}`, { waitUntil: 'networkidle' });
+          assert.ok(response && response.ok(), `${width}/${pathname}: HTTP ${response ? response.status() : 'no response'}`);
+          const measured = await page.evaluate(({ allowed }) => {
         const parse = value => {
           const parts = (value.match(/[\d.]+/g) || []).map(Number);
           return parts.length >= 3 ? [...parts.slice(0, 3), parts.length > 3 ? parts[3] : 1] : null;
@@ -147,8 +150,15 @@ const allowedColours = new Set([
             href: node.getAttribute('href') || '',
           }))
           .filter(item => /\.$/.test(item.text));
+        const metaDescription = document.querySelector('meta[name="description"]')?.content || '';
+        const ogTitle = document.querySelector('meta[property="og:title"]')?.content || '';
+        const ogDescription = document.querySelector('meta[property="og:description"]')?.content || '';
         return {
           title: document.title,
+          titleFreeCount: (document.title.match(/\bfree\b/gi) || []).length,
+          metaDescription,
+          ogTitle,
+          ogDescription,
           palette: [...new Map(palette.map(item => [JSON.stringify(item), item])).values()],
           lowContrast,
           semantic,
@@ -156,25 +166,34 @@ const allowedColours = new Set([
           overflow: document.documentElement.scrollWidth > innerWidth,
           trailingPunctuationLinks,
         };
-      }, { allowed: [...allowedColours] });
-      await page.screenshot({ path: path.join(output, pathname.replace('.php', '.png')), fullPage: true });
-      results.push({ pathname, ...measured });
-      await page.close();
+          }, { allowed: [...allowedColours] });
+          await page.screenshot({
+            path: path.join(output, `${width}-${pathname.replace('.php', '.png')}`),
+            fullPage: true,
+          });
+          results.push({ width, pathname, ...measured });
+          await page.close();
+        }
+      } finally {
+        await context.close();
+      }
     }
     fs.writeFileSync(path.join(output, 'measurements.json'), JSON.stringify({
       baseUrl,
-      note: 'Palette, beta-banner, and overflow findings fail the sweep. Contrast findings are diagnostic.',
+      note: 'Palette, SEO copy, beta-banner, punctuation-link, and overflow findings fail the sweep. Contrast findings are diagnostic.',
       results,
     }, null, 2));
     const failures = results.filter(result => (
       result.palette.length || result.bannerCount !== 1 || result.overflow
-        || result.trailingPunctuationLinks.length
+        || result.trailingPunctuationLinks.length || result.titleFreeCount !== 1
+        || !/free and open source, no upsells\./i.test(result.metaDescription)
+        || !/\bfree\b/i.test(result.ogTitle)
+        || !/free and open source, no upsells\./i.test(result.ogDescription)
     ));
-    assert.deepEqual(failures, [], `1440 public-page palette failures; see ${output}/measurements.json`);
+    assert.deepEqual(failures, [], `public-page palette/SEO failures; see ${output}/measurements.json`);
     const contrastCount = results.reduce((total, result) => total + result.lowContrast.length, 0);
-    console.log(`PASS: ${pages.length} public snapsmack.ca pages at 1440px; ${contrastCount} contrast findings recorded. ${output}`);
+    console.log(`PASS: ${pages.length} public snapsmack.ca pages at ${widths.join('/')}px; ${contrastCount} contrast findings recorded. ${output}`);
   } finally {
-    await context.close();
     await browser.close();
   }
 })().catch(error => {

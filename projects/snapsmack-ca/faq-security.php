@@ -5,7 +5,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'BRASS TACKS! - Security - SnapSmack FAQ';
+$page_title       = 'BRASS TACKS! — Security | Free photoblog software';
 $page_description = 'SnapSmack FAQ, security: Is it secure, what SMACKBACK is, why you keep re-authenticating, and what happens if you get hacked.';
 $page_og_url      = 'https://snapsmack.ca/faq-security.php';
 $faq_slug    = 'faq-security';

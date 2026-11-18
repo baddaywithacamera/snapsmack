@@ -29,6 +29,7 @@ $_receipt_sources = [
 ];
 $_receipt_overrides = [
     'theschoolofhardnocks.ca' => ['since_override' => 'Jul 2019'],
+    'portalproject.photoblogs.fyi' => ['since_override' => 'Nov 5, 2026'],
     'mccormickphotography.com' => ['since_override' => 'May 10, 2020'],
 ];
 $_receipt_cards = [];
@@ -41,26 +42,35 @@ foreach ($_receipt_sources as $_receipt_source) {
     $_receipt_url = $_skin_fleet_sources[$_receipt_domain] ?? null;
     $_receipt_count = is_array($_receipt_stats) ? (int)($_receipt_stats['posts'] ?? 0) : 0;
     $_receipt_since = is_array($_receipt_stats) ? (string)($_receipt_stats['active_since'] ?? '') : '';
-    if (!$_receipt_url || $_receipt_count < 1 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $_receipt_since)) {
+    if (!$_receipt_url || $_receipt_count < 1) {
         continue;
     }
-    $_receipt_date = DateTimeImmutable::createFromFormat('!Y-m-d', $_receipt_since);
-    if (!$_receipt_date) {
-        continue;
+    $_receipt_since_override = trim((string)($_receipt_source['since_override'] ?? ''));
+    if ($_receipt_since_override !== '') {
+        $_receipt_since_label = $_receipt_since_override;
+    } else {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $_receipt_since)) {
+            continue;
+        }
+        $_receipt_date = DateTimeImmutable::createFromFormat('!Y-m-d', $_receipt_since);
+        if (!$_receipt_date) {
+            continue;
+        }
+        $_receipt_since_label = $_receipt_date->format('M j, Y');
     }
     $_receipt_source['url'] = $_receipt_url;
     $_receipt_source['name'] = trim((string)($_receipt_stats['site_name'] ?? '')) ?: $_receipt_domain;
     $_receipt_source['count'] = $_receipt_count;
-    $_receipt_source['since'] = (string)($_receipt_source['since_override'] ?? $_receipt_date->format('M j, Y'));
+    $_receipt_source['since'] = $_receipt_since_label;
     $_receipt_source['metric_label'] = (string)($_receipt_source['metric_label'] ?? 'images');
     $_receipt_cards[] = $_receipt_source;
 }
-unset($_receipt_source, $_receipt_domain, $_receipt_stats, $_receipt_url, $_receipt_count, $_receipt_since, $_receipt_date, $_receipt_sources, $_receipt_overrides);
+unset($_receipt_source, $_receipt_domain, $_receipt_stats, $_receipt_url, $_receipt_count, $_receipt_since, $_receipt_since_override, $_receipt_since_label, $_receipt_date, $_receipt_sources, $_receipt_overrides);
 
-$page_title       = 'SnapSmack - Self-Hosted Photo Publishing and Instagram Alternative';
+$page_title       = 'SnapSmack — Free, self-hosted photoblog software';
 $page_description = 'What is new is old again. Free, self-hosted photo blogging that gives back the single-photo blog, long-form posting, classic Insta and Picasa-style albums, on hardware you control. Your photos. Your voice. Your style. Your dignity.';
 $page_og_url      = 'https://snapsmack.ca/';
-$page_social_title = 'SnapSmack - Retro Photo Blogging. No Algorithm.';
+$page_social_title = 'SnapSmack — Free, self-hosted photoblog software';
 $page_social_description = 'Self-hosted photo blogging that brings back the gallery, the grid, and the photoblog. Your photos. Your voice. Your style. Your dignity.';
 $nav_active       = 'index';
 
@@ -89,6 +99,7 @@ $page_css = <<<'CSS'
 .ss-lightbox-open { overflow: hidden; }
 .door-hook { max-width: 980px; font-size: clamp(1.9rem, 4vw, 3.3rem); }
 .door-kicker { margin-top: 6px; color: var(--red); font: 900 .82rem/1.3 'Courier New', monospace; letter-spacing: .12em; text-transform: uppercase; }
+.door-free { margin-top: 16px; color: var(--red); font: 900 clamp(1rem, 1.8vw, 1.25rem)/1.3 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .door-sub { max-width: 800px; margin-top: 8px; font-size: clamp(1.15rem, 2vw, 1.4rem); line-height: 1.5; color: #333; }
 .door-editor { max-width: 800px; margin-top: 18px; font-size: clamp(1.05rem, 1.6vw, 1.2rem); line-height: 1.5; color: #333; }
 .door-editor a { color: var(--red); text-decoration: underline; }
@@ -124,11 +135,15 @@ $page_css = <<<'CSS'
 #running-late { padding: 68px 0; background: #404348; color: var(--white); border-top: 8px solid var(--black); }
 #running-late .site-discovery-kicker { color: var(--white); }
 #running-late h2 { max-width: 900px; margin-bottom: 26px; color: var(--white); }
+.running-late-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 42px; align-items: center; }
 .running-late-copy { max-width: 920px; }
 .running-late-copy p { font-size: inherit; line-height: inherit; }
 .running-late-copy p + p { margin-top: 18px; }
 .running-late-copy a { color: var(--white); text-decoration: underline; text-decoration-color: var(--white); }
 .running-late-copy a:hover { color: var(--white); text-decoration-color: var(--white); text-decoration-thickness: 2px; }
+.running-late-media { display: block; width: fit-content; max-width: 100%; justify-self: end; border: 1px solid #777; }
+.running-late-media:hover, .running-late-media:focus-visible { border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
+.running-late-media img { display: block; width: auto; max-width: 100%; height: auto; max-height: 350px; }
 
 
 /* --- WHAT WAS: the four things taken, and their names here --- */
@@ -286,6 +301,9 @@ $page_css = <<<'CSS'
     .built-for-use-layout .receipts { order: 2; }
     .receipt-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .receipt-card:last-child:nth-child(odd) { grid-column: 1 / -1; width: calc(50% - 5px); box-sizing: border-box; justify-self: center; }
+    .running-late-layout { grid-template-columns: 1fr; gap: 30px; }
+    .running-late-copy { order: 1; }
+    .running-late-media { order: 2; justify-self: start; }
     .camera-blog-layout, .why-blog-layout, .scale-layout { grid-template-columns: 1fr; gap: 30px; }
     .camera-blog-copy { order: 1; }
     .camera-grid { order: 2; width: min(100%, 720px); justify-self: start; }
@@ -324,8 +342,9 @@ require_once __DIR__ . '/includes/header.php';
         <div class="door-inner">
             <div class="door-copy">
             <h1 class="door-hook">Retro Photo Blogging.<br><span>No Algorithm.</span></h1>
+            <p class="door-free">Free and open source. Now and forever.</p>
             <p class="door-kicker">What&rsquo;s new is old again.</p>
-            <p class="door-sub">We&rsquo;re not offering you anything new. We&rsquo;re giving back what was taken: the single-photo blog, long-form posting that hasn&rsquo;t been enshittified, classic Insta styling, and pumping images straight out of a file manager. All of it used to belong to photographers. Now it lives on hardware you control, and nobody is taking it back from you.</p>
+            <p class="door-sub">We&rsquo;re not offering you anything new. We&rsquo;re giving back what was taken: the single-photo blog, long-form posting that hasn&rsquo;t been enshittified, classic Insta styling, and pumping images straight out of a file manager. All of it used to belong to photographers. Now it lives on hardware you control, and nobody is taking it back from you. And you do it all with software that&rsquo;s completely FREE, now and forever. No crippleware, no upsells, no bullshit.</p>
             <p class="door-editor">And a free, powerful <a href="tool-snap-slapper.php">photo editor and organizer</a> because we remember when photographers were given good software for no charge rather than being told they needed to pay monthly rent for it.</p>
             <p class="door-never">Your photos. Your voice.<br>Your style. <em>Your dignity.</em></p>
             <div class="door-actions">
@@ -403,9 +422,12 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <p class="site-discovery-kicker">Closed beta</p>
             <h2 id="running-late-title">Why we&rsquo;re running late.</h2>
-            <div class="running-late-copy">
-                <p>First and foremost, the software isn't ready yet. It not only has rough edges and some remaining security holes we're fixing, but it is not elegant. That is important. This software is built in the memory of a deceased friend who did everything elegantly and expected the same out of every tool he used. SnapSmack doesn't ship until it reaches the point where he would have enjoyed using it.</p>
-                <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot; &mdash; and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. <a href="https://baddaywithacamera.ca/rest-in-peace" target="_blank" rel="noopener">This is for Ray</a>. It will ship when it's what he would approve of.</p>
+            <div class="running-late-layout">
+                <div class="running-late-copy">
+                    <p>First and foremost, the software isn't ready yet. It not only has rough edges and some remaining security holes we're fixing, but it is not elegant. That is important. This software is built in the memory of a deceased friend who did everything elegantly and expected the same out of every tool he used. SnapSmack doesn't ship until it reaches the point where he would have enjoyed using it.</p>
+                    <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot; &mdash; and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. <a href="https://baddaywithacamera.ca/rest-in-peace" target="_blank" rel="noopener">This is for Ray</a>. It will ship when it's what he would approve of.</p>
+                </div>
+                <a class="running-late-media" href="ding-dong-bell.php"><img src="img/opaudit-sample.png" alt="Sample operability audit: OPAUDIT 027" width="1423" height="1800" loading="lazy"></a>
             </div>
         </div>
     </section>
@@ -451,7 +473,7 @@ require_once __DIR__ . '/includes/header.php';
                         <h2 id="scale-title">Yes, but does it scale?</h2>
                         <p class="scale-pull">Bitch, please. My last name ain't Mullenweg&hellip;</p>
                     </div>
-                    <p>28 sites. 1 hub. 27 spokes. All managed through one dashboard. Shared settings pushed from hub to spokes securely. Single sign-on. Integrated, fleet wide stats. Done securely. All of this at zero cost to you.</p>
+                    <p>28 sites. 1 hub. 27 spokes. All managed through one dashboard. Shared settings pushed from hub to spokes securely. Single sign-on. Integrated, fleet wide stats. All of this at zero cost to you.</p>
                     <p>WordPress can't do this without bolting on someone else's plugin. Ghost won't do this for free. Kirby? Get bent.</p>
                     <p>Right out of the box, day one, no charge, Bob's yer fackin' uncle. Multisite without anyone demanding an 8% cut. Who imagined such a thing was possible.</p>
                 </div>
@@ -595,7 +617,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </article>
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-muse.png" data-lightbox-group="co-authors" data-lightbox-caption="Muse" aria-label="Open a larger portrait of Muse"><img src="img/whodat-muse.png" alt="Muse" width="1857" height="1715" loading="lazy"></button></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-muse.png?v=5a111ce9" data-lightbox-group="co-authors" data-lightbox-caption="Muse" aria-label="Open a larger portrait of Muse"><img src="img/whodat-muse.png?v=5a111ce9" alt="Muse" width="1857" height="1715" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">Muse</p>
                         <p class="whodat-title">Gets the last word in.</p>

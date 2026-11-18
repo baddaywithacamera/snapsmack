@@ -5,7 +5,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'BRASS TACKS! - Trust & the future - SnapSmack FAQ';
+$page_title       = 'BRASS TACKS! — Trust | Free photoblog software';
 $page_description = 'SnapSmack FAQ, trust & the future: Why trust it, will it stay free, and what is (and isn\'t) coming.';
 $page_og_url      = 'https://snapsmack.ca/faq-future.php';
 $faq_slug    = 'faq-future';

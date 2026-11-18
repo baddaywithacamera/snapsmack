@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'SMACK YOUR BATCH UP - batch publishing for SnapSmack';
+$page_title       = 'Free batch publisher — SMACK YOUR BATCH UP';
 $page_description = 'SMACK YOUR BATCH UP loads a whole shoot, lets you reorder and tag it, preserves EXIF copyright, and publishes every photograph to your SnapSmack site from the desktop. Optional AI writes captions and tags as the queue runs.';
 $page_og_url      = 'https://snapsmack.ca/tool-sybu.php';
 $nav_active       = 'tool-sybu';

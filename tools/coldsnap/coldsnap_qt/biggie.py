@@ -82,9 +82,18 @@ def serialize_block(b: dict) -> str:
         body = "".join(f"  <li>{i}</li>\n" for i in items) or "  <li></li>\n"
         return f"<{tag}>\n{body}</{tag}>"
     if t == "image":
-        size = b.get("size") or "full"
-        align = b.get("align") or "center"
-        return f"[img:{str(b.get('img_id', '')).strip()}|{size}|{align}]"
+        if b.get("raw"):
+            return str(b["raw"])
+        prefix = "g" if b.get("gallery") else ""
+        parts = [f"{prefix}{str(b.get('img_id', '')).strip()}"]
+        for key in ("size", "align", "width", "decorative"):
+            val = b.get(key)
+            if key == "decorative":
+                if val:
+                    parts.append("decorative")
+            elif val not in (None, ""):
+                parts.append(str(val))
+        return "[img:" + "|".join(parts) + "]"
     if t == "columns":
         cols = b.get("cols") or [[]]
         rendered = [serialize_blocks(_normalise_cell(c)) for c in cols]
@@ -128,7 +137,14 @@ _RX = {
     "dropcap_para": re.compile(r"^(\s*)\[dropcap\](.*?)\[/dropcap\](.*)$", re.DOTALL | re.IGNORECASE),
     "pullquote": re.compile(r"^\[pullquote\](.*)\[/pullquote\]$", re.DOTALL | re.IGNORECASE),
     "spacer":  re.compile(r"^\[spacer:(\d+)\]$", re.IGNORECASE),
-    "image":   re.compile(r"^\[img:([^|\]]+)(?:\|([^|\]]+))?(?:\|([^\]]+))?\]$", re.IGNORECASE),
+    "image":   re.compile(
+        r"^\[img:\s*(?:(g)\s*(\d+)|([^|\]]+?))"
+        r"(?:\s*\|\s*(small|wall|full))?"
+        r"(?:\s*\|\s*(left|center|right))?"
+        r"(?:\s*\|\s*(\d{1,3})(?:%)?)?"
+        r"(?:\s*\|\s*(decorative))?\s*\]$",
+        re.IGNORECASE,
+    ),
     "mosaic":  re.compile(r"^\[mosaic(?:=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+))?\]$", re.IGNORECASE),
     "columns": re.compile(r"^\[columns=(\d+)(?:\s+ratio=([0-9-]+))?\](.*)\[/columns\]$", re.DOTALL | re.IGNORECASE),
     "list":    re.compile(r"^<(ul|ol)>(.*)</\1>$", re.DOTALL | re.IGNORECASE),
@@ -178,9 +194,18 @@ def _classify(seg: str) -> dict:
         return {"type": "mosaic"}
     m = _RX["image"].match(seg)
     if m:
-        return {"type": "image", "img_id": m.group(1).strip(),
-                "size": (m.group(2) or "full").strip(),
-                "align": (m.group(3) or "center").strip()}
+        blk = {"type": "image", "img_id": (m.group(2) or m.group(3) or "").strip(), "raw": seg}
+        if m.group(1):
+            blk["gallery"] = True
+        if m.group(4):
+            blk["size"] = m.group(4).lower()
+        if m.group(5):
+            blk["align"] = m.group(5).lower()
+        if m.group(6):
+            blk["width"] = m.group(6)
+        if m.group(7):
+            blk["decorative"] = True
+        return blk
     m = _RX["columns"].match(seg)
     if m:
         cells = [c.strip() for c in _RX["colsep"].split(m.group(3))]

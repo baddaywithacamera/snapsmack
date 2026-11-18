@@ -210,6 +210,13 @@
         "predicates": 4,
         "thresholds": []
     },
+    "backup-key-cannot-export-or-restore-regression.php": {
+        "assertions": 27,
+        "predicates": 22,
+        "thresholds": [
+            3
+        ]
+    },
     "biggie-layout-parser-regression.php": {
         "assertions": 4,
         "predicates": 3,
@@ -508,6 +515,13 @@
         "thresholds": [
             30,
             30
+        ]
+    },
+    "every-skin-renders-a-search-result-regression.php": {
+        "assertions": 9,
+        "predicates": 13,
+        "thresholds": [
+            25
         ]
     },
     "exif-rebuild-regression.php": {
@@ -1691,6 +1705,23 @@
         "predicates": 11,
         "thresholds": []
     },
+    "recovery-kit-placeholder-credential-regression.php": {
+        "assertions": 24,
+        "predicates": 3,
+        "thresholds": [
+            2,
+            4,
+            8.1
+        ]
+    },
+    "recovery-kit-redacts-every-node-key-regression.php": {
+        "assertions": 23,
+        "predicates": 11,
+        "thresholds": [
+            3,
+            6
+        ]
+    },
     "release-flow-regression.php": {
         "assertions": 58,
         "predicates": 61,
@@ -1733,6 +1764,11 @@
         "thresholds": [
             2
         ]
+    },
+    "release-tag-collision-asks-origin-regression.php": {
+        "assertions": 16,
+        "predicates": 7,
+        "thresholds": []
     },
     "release-tag-rules-regression.php": {
         "assertions": 39,
@@ -1808,6 +1844,13 @@
         "assertions": 0,
         "predicates": 8,
         "thresholds": []
+    },
+    "search-reaches-an-imported-caption-and-hashtag-regression.php": {
+        "assertions": 20,
+        "predicates": 17,
+        "thresholds": [
+            600
+        ]
     },
     "secaudit-008-assets-img-no-exec.php": {
         "assertions": 2,
@@ -2015,7 +2058,7 @@
         "thresholds": []
     },
     "skin-parity-ratchet-regression.php": {
-        "assertions": 7,
+        "assertions": 8,
         "predicates": 3,
         "thresholds": []
     },
@@ -2237,6 +2280,13 @@
             6,
             6,
             6
+        ]
+    },
+    "smackpress-posts-answers-about-one-slug-regression.php": {
+        "assertions": 19,
+        "predicates": 19,
+        "thresholds": [
+            3
         ]
     },
     "smacktalk-archive-search-regression.php": {

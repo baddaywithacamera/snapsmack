@@ -7,7 +7,7 @@
  *     <?php // ===== SNAPSMACK EOF =====
  */
 
-$page_title = 'Build a Self-Hosted Photography Website - SnapSmack';
+$page_title = 'Free self-hosted photography website — SnapSmack';
 $page_description = 'Build a self-hosted photography website on ordinary shared hosting: free software, a real archive, your own domain, and a free desktop suite that does the heavy lifting on your own computer.';
 $page_og_url = 'https://snapsmack.ca/self-hosted-photography.php';
 $landing_eyebrow = 'Self-hosted photography website';
