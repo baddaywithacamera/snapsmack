@@ -325,19 +325,11 @@ def test_audit_confirm_then_cleanup(env, fake_engine, monkeypatch):
     monkeypatch.setattr(bi, "execute_cleanup", fake_cleanup)
 
     page = page_for()
-    monkeypatch.setattr(cs, "_confirm", lambda *a, **k: False)
     page._audit_cleanup()
-    assert ran == {} and "Cleanup cancelled." in page.log.toPlainText()
+    assert ran == {}
+    txt = page.log.toPlainText()
+    assert "report-only" in txt and "Files needing re-transfer: 1" in txt
     assert page.run_btn.isEnabled() and page.audit_btn.isEnabled()
-
-    questions = []
-    monkeypatch.setattr(cs, "_confirm", lambda p, title, msg, yes, danger=False: questions.append((title, msg, danger)) or True)
-    page._audit_cleanup()
-    assert questions[0][0] == "Confirm Cleanup" and questions[0][2] is True
-    assert "Files to re-transfer: 1" in questions[0][1]
-    assert ran["b2_client"] == "dst" and ran["cancelled"]() is False
-    assert "1 file(s) re-transferred" in page.log.toPlainText()
-    assert page.run_btn.isEnabled()
 
 
 def test_help_topics_ported(env):

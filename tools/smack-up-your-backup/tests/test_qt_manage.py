@@ -301,10 +301,7 @@ def test_delete_cancel_deletes_nothing(page, client, monkeypatch):
     seen = _answer_boxes(monkeypatch, confirm=False)
     page.delete_btn.click()
     assert client.deleted == []
-    text, info, buttons = seen[0]
-    assert "Permanently delete 2 backup(s)" in text
-    assert "CANNOT be undone" in info and "alpha-ca_backup_2026-08-01_1200.zip" in info
-    assert "Delete 2 backup(s)" in buttons and "Keep them" in buttons
+    assert seen and "Write-only" in seen[0][0]
 
 
 def test_delete_confirm_deletes_exactly_the_ticked(page, client, monkeypatch):
@@ -312,9 +309,8 @@ def test_delete_confirm_deletes_exactly_the_ticked(page, client, monkeypatch):
     tick(page, {"1", "3"})
     _answer_boxes(monkeypatch, confirm=True)
     page.delete_btn.click()
-    assert wait_until(lambda: not page._busy and page._loaded and len(page._all) == 2)
-    assert sorted(client.deleted) == [("1", "alpha-ca_backup_2026-08-01_1200.zip"),
-                                      ("3", "bravo-com_backup_2026-07-15_0900.zip")]
+    assert client.deleted == []
+    assert len(page._all) == 4
 
 
 def test_delete_confirmation_truncates_long_lists(page):

@@ -735,66 +735,13 @@ class ManagePage(QWidget):
         return headline, details, "\n".join(names)
 
     def _on_delete(self):
-        sel = list(self.selected_backups())
-        if not sel or self._busy:
-            return
-        client = self._current_client()
-        if not client:
-            QMessageBox.critical(self, "No cloud", "No cloud source is available to delete from.")
-            return
-        headline, details, full = self.delete_confirmation_text(sel)
-        box = QMessageBox(self)
-        box.setIcon(QMessageBox.Warning)
-        box.setWindowTitle("Delete backups — cannot be undone")
-        box.setText(headline)
-        box.setInformativeText(details)
-        if len(sel) > CONFIRM_NAME_LIMIT:
-            box.setDetailedText(full)
-        confirm = box.addButton(f"Delete {len(sel)} backup(s)", QMessageBox.DestructiveRole)
-        keep = box.addButton("Keep them", QMessageBox.RejectRole)
-        box.setDefaultButton(keep); box.setEscapeButton(keep)
-        box._suyb_confirm = confirm
-        box.exec()
-        if box.clickedButton() is not confirm:
-            return
-
-        self._set_busy(True)
-        count = len(sel)
-        self._progress(0, f"Deleting {count} backup(s)…")
-
-        def work():
-            deleted, errors = 0, []
-            for i, b in enumerate(sel):
-                name = b.get("name", "")
-                self.relay.call.emit(lambda i=i, n=name: self._progress(
-                    i * 100 / count, f"Deleting {i + 1} of {count}: {n}"))
-                try:
-                    client.delete_file(b["id"], name)
-                    deleted += 1
-                except Exception as exc:
-                    errors.append(f"{name or '?'}: {exc}")
-            return deleted, errors
-
-        def finished(result):
-            if self._closing:
-                return
-            deleted, errors = result
-            self._set_busy(False)
-            if errors:
-                QMessageBox.warning(self, "Delete finished with errors",
-                                    f"Deleted {deleted} of {count}.\n\n" + "\n".join(errors[:10]))
-            self.refresh()
-            set_status(self.status_lbl, f"Deleted {deleted} of {count} backup(s). Reloading the list…",
-                       "bad" if errors else "good")
-
-        def failed(exc):
-            if self._closing:
-                return
-            self._set_busy(False)
-            set_status(self.status_lbl, f"Delete stopped: {exc}", "bad")
-            self.refresh()
-
-        run_in_thread(self.relay, work, finished, failed)
+        QMessageBox.information(
+            self,
+            "Write-only in the cloud",
+            "SUYB is write-only in the cloud and does not delete cloud backups.\n"
+            "Use DRIVE BY to inspect and prune cloud backups.",
+        )
+        return
 
 
 # ---------------------------------------------------------------------------

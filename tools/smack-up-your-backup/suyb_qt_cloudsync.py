@@ -755,19 +755,19 @@ class CloudSyncPage(QWidget):
             self._append_log(f"  Report: {paths['dedup_report']}")
             set_status(self.status, "Audit: no issues", "good")
             return
-        msg = (f"Audit complete. Here's what needs to happen:\n\n"
-               f"Versions to delete: {summary['to_delete']}\n"
-               f"Files to re-transfer: {summary['to_replace']}\n"
-               f"Files missing from destination: {summary['missing']}\n"
-               f"Orphans on B2 (not in source): {summary['orphans']}\n"
-               f"Already OK: {summary['ok']}\n\n"
-               f"Deleting bad versions and re-transferring bad files cannot be undone.\n"
-               f"Proceed?")
-        if not _confirm(self, "Confirm Cleanup", msg, "Delete and re-transfer", danger=True):
-            self._end_cleanup()
-            self._append_log("Cleanup cancelled.")
-            set_status(self.status, "Cleanup cancelled", "warn")
-            return
+        # SS-1413: SUYB is write-only in the cloud — b2_integrity reports only and never deletes.
+        self._end_cleanup()
+        self._append_log(
+            f"Audit complete (report-only — SUYB does not delete in the cloud; use DRIVE BY to prune):\n"
+            f"  Flagged versions: {summary['to_delete']}\n"
+            f"  Files needing re-transfer: {summary['to_replace']}\n"
+            f"  Files missing from destination: {summary['missing']}\n"
+            f"  Orphans on B2 (not in source): {summary['orphans']}\n"
+            f"  Already OK: {summary['ok']}\n"
+            f"  Report: {paths['dedup_report']}"
+        )
+        set_status(self.status, "Audit complete (report only)", "warn")
+        return
 
         self._cleanup_cancelled = False
         self.cancel_btn.setEnabled(True)

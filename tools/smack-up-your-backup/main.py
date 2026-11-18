@@ -2546,38 +2546,12 @@ class BackupManagerTab(tk.Frame):
         names = "\n".join("  • " + b.get("name", "") for b in sel[:15])
         if len(sel) > 15:
             names += f"\n  … and {len(sel) - 15} more"
-        msg = (f"Permanently delete {len(sel)} backup(s) from the cloud?\n"
-               f"This frees {self._hsize(total)} and CANNOT be undone.\n\n"
-               f"{names}")
-        if not messagebox.askyesno("Delete backups", msg, icon="warning",
-                                   default="no"):
-            return
-
-        self._busy = True
-        self._status.configure(text=f"Deleting {len(sel)} backup(s)…")
-        self._del_btn.configure(state="disabled")
-        self._restore_btn.configure(state="disabled")
-
-        def _run():
-            done, errors = 0, []
-            for b in sel:
-                try:
-                    cloud.delete_file(b["id"], b.get("name", ""))
-                    done += 1
-                except Exception as e:
-                    errors.append(f"{b.get('name','?')}: {e}")
-
-            def _finish():
-                self._busy = False
-                if errors:
-                    messagebox.showwarning(
-                        "Delete finished with errors",
-                        f"Deleted {done} of {len(sel)}.\n\n"
-                        + "\n".join(errors[:10]))
-                self.refresh()
-            self.after(0, _finish)
-
-        threading.Thread(target=_run, daemon=True).start()
+        messagebox.showinfo(
+            "Write-only in the cloud",
+            "SUYB is write-only in the cloud and does not delete cloud backups.\n"
+            "Use DRIVE BY to inspect and prune cloud backups.",
+        )
+        return
 
 
 # ---------------------------------------------------------------------------
