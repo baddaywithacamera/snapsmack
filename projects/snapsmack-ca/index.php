@@ -29,6 +29,7 @@ $_receipt_sources = [
 ];
 $_receipt_overrides = [
     'theschoolofhardnocks.ca' => ['since_override' => 'Jul 2019'],
+    'portalproject.photoblogs.fyi' => ['since_override' => 'Nov 5, 2026'],
     'mccormickphotography.com' => ['since_override' => 'May 10, 2020'],
 ];
 $_receipt_cards = [];
@@ -41,21 +42,30 @@ foreach ($_receipt_sources as $_receipt_source) {
     $_receipt_url = $_skin_fleet_sources[$_receipt_domain] ?? null;
     $_receipt_count = is_array($_receipt_stats) ? (int)($_receipt_stats['posts'] ?? 0) : 0;
     $_receipt_since = is_array($_receipt_stats) ? (string)($_receipt_stats['active_since'] ?? '') : '';
-    if (!$_receipt_url || $_receipt_count < 1 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $_receipt_since)) {
+    if (!$_receipt_url || $_receipt_count < 1) {
         continue;
     }
-    $_receipt_date = DateTimeImmutable::createFromFormat('!Y-m-d', $_receipt_since);
-    if (!$_receipt_date) {
-        continue;
+    $_receipt_since_override = trim((string)($_receipt_source['since_override'] ?? ''));
+    if ($_receipt_since_override !== '') {
+        $_receipt_since_label = $_receipt_since_override;
+    } else {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $_receipt_since)) {
+            continue;
+        }
+        $_receipt_date = DateTimeImmutable::createFromFormat('!Y-m-d', $_receipt_since);
+        if (!$_receipt_date) {
+            continue;
+        }
+        $_receipt_since_label = $_receipt_date->format('M j, Y');
     }
     $_receipt_source['url'] = $_receipt_url;
     $_receipt_source['name'] = trim((string)($_receipt_stats['site_name'] ?? '')) ?: $_receipt_domain;
     $_receipt_source['count'] = $_receipt_count;
-    $_receipt_source['since'] = (string)($_receipt_source['since_override'] ?? $_receipt_date->format('M j, Y'));
+    $_receipt_source['since'] = $_receipt_since_label;
     $_receipt_source['metric_label'] = (string)($_receipt_source['metric_label'] ?? 'images');
     $_receipt_cards[] = $_receipt_source;
 }
-unset($_receipt_source, $_receipt_domain, $_receipt_stats, $_receipt_url, $_receipt_count, $_receipt_since, $_receipt_date, $_receipt_sources, $_receipt_overrides);
+unset($_receipt_source, $_receipt_domain, $_receipt_stats, $_receipt_url, $_receipt_count, $_receipt_since, $_receipt_since_override, $_receipt_since_label, $_receipt_date, $_receipt_sources, $_receipt_overrides);
 
 $page_title       = 'SnapSmack — Free, self-hosted photoblog software';
 $page_description = 'What is new is old again. Free, self-hosted photo blogging that gives back the single-photo blog, long-form posting, classic Insta and Picasa-style albums, on hardware you control. Your photos. Your voice. Your style. Your dignity.';
