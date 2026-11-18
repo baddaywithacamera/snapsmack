@@ -159,6 +159,124 @@ function _reauth_drop_counter(PDO $pdo, string $key, string $action): void {
 }
 
 /**
+ * Advance the episode counter, but ONLY if nobody has since this caller read
+ * the row. $observed is the window_start it read; the first caller through
+ * changes that value, so every later caller's WHERE matches nothing and gets
+ * a rowCount of 0.
+ *
+ * It is a function of its own so the guard can be TESTED: a test can hand it
+ * a window_start that is deliberately stale -- which is exactly what a
+ * request that lost this race holds -- and require that it changes nothing.
+ * Inline, the guard was unreachable from any sequential test, because by the
+ * time a second caller looks the lock is no longer expired. That is how a
+ * guard ends up removed by someone who sees every test still pass.
+ *
+ * @return int rows changed: 1 for the winner, 0 for everyone else.
+ */
+function _reauth_escalate_episode(PDO $pdo, string $key, string $observed, int $now): int {
+    $upd = $pdo->prepare(
+        "UPDATE snap_rate_limits SET count = count + 1, window_start = ?
+         WHERE ip = ? AND action = 'reauth_lock' AND window_start = ?"
+    );
+    $upd->execute([gmdate('Y-m-d H:i:s', $now), $key, $observed]);
+    return (int)$upd->rowCount();
+}
+
+/**
+ * OPEN A LOCK EPISODE, EXACTLY ONCE, WHOEVER ARRIVES.
+ *
+ * Round 4. Muse found that my first election still had a double winner:
+ *
+ *   $won = ($del->rowCount() > 0) || ($existing === null);
+ *
+ * Two requests can both read the episode row before either writes it, so
+ * $existing is null for both. A wins on the delete; B wins on the second
+ * clause having deleted nothing. Both bump, and a first offence costs the
+ * second tier. The fallback was there so a database hiccup could not lose the
+ * lock entirely, and it quietly re-opened the hole it was next to.
+ *
+ * THE DELETE WAS THE WRONG PRIMITIVE. It can only be exclusive when the row
+ * it deletes exists, and the case that matters is the one where nothing
+ * exists yet. Two operations that ARE exclusive, whatever the interleaving:
+ *
+ *   1. INSERT the episode row. snap_rate_limits is UNIQUE(ip, action), so of
+ *      any number of simultaneous callers exactly one INSERT succeeds and the
+ *      rest get a duplicate-key error. That decides the FIRST episode.
+ *   2. For a later episode, UPDATE ... WHERE window_start = <the value this
+ *      caller read>. The first update changes that value, so every other
+ *      caller's WHERE no longer matches and its rowCount is 0. That decides
+ *      each ESCALATION.
+ *
+ * A caller that loses either race re-reads and reports the lock that now
+ * exists. Nobody is turned away unlocked, and nobody pays for someone else's
+ * episode. Both statements are ordinary SQL on MySQL, MariaDB and SQLite.
+ *
+ * @return array{cycle:int,retry_after:int,opened:bool}
+ */
+function _reauth_open_lock_episode(PDO $pdo, string $key, int $now): array {
+    $now_str = gmdate('Y-m-d H:i:s', $now);
+
+    $report = static function (PDO $pdo, string $key, int $now, int $fallback): array {
+        $row = _reauth_read_counter($pdo, $key, 'reauth_lock', $now);
+        if ($row === null) {
+            // The row we just lost a race to has gone. Nothing to report but
+            // a lock, so report the shortest honest one rather than none.
+            return ['cycle' => max(1, $fallback),
+                'retry_after' => _reauth_lockout_seconds(max(1, $fallback)),
+                'opened' => false];
+        }
+        [$cycle, $ws] = $row;
+        $span = _reauth_lockout_seconds(max(1, $cycle));
+        return ['cycle' => max(1, $cycle),
+            'retry_after' => max(1, ($ws + $span) - $now),
+            'opened' => false];
+    };
+
+    // --- 1. the first episode: exclusive INSERT -------------------------
+    try {
+        $pdo->prepare(
+            "INSERT INTO snap_rate_limits (ip, action, count, window_start)
+             VALUES (?, 'reauth_lock', 1, ?)"
+        )->execute([$key, $now_str]);
+        return ['cycle' => 1, 'retry_after' => _reauth_lockout_seconds(1), 'opened' => true];
+    } catch (PDOException $e) {
+        // A row exists. Either someone just won this race, or there is a
+        // history from before. Both are handled below.
+    }
+
+    $stmt = $pdo->prepare(
+        "SELECT count, window_start FROM snap_rate_limits
+         WHERE ip = ? AND action = 'reauth_lock' LIMIT 1"
+    );
+    $stmt->execute([$key]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        return $report($pdo, $key, $now, 1);
+    }
+    $cycle = max(1, (int)$row['count']);
+    $observed = (string)$row['window_start'];
+    $ws = strtotime($observed . ' UTC');
+    if ($ws === false) {
+        $ws = $now;
+    }
+
+    // --- 2. a lock that is still running is reported, not re-earned -----
+    if ($now < $ws + _reauth_lockout_seconds($cycle)) {
+        return ['cycle' => $cycle,
+            'retry_after' => max(1, ($ws + _reauth_lockout_seconds($cycle)) - $now),
+            'opened' => false];
+    }
+
+    // --- 3. the previous lock expired: escalate, exclusively ------------
+    if (_reauth_escalate_episode($pdo, $key, $observed, $now) > 0) {
+        $next = $cycle + 1;
+        return ['cycle' => $next, 'retry_after' => _reauth_lockout_seconds($next),
+            'opened' => true];
+    }
+    return $report($pdo, $key, $now, $cycle);
+}
+
+/**
  * Inspect server-side (snap_rate_limits) + per-session failure budget.
  *
  * @return array{locked:bool,retry_after:int,count:int,cycle:int}
@@ -276,36 +394,24 @@ function _reauth_record_failure(PDO $pdo, int $uid, string $reason, int $now): a
 
     if ($locked) {
         // ONE LOCK EPISODE PER LOCK, however many requests arrive at once.
-        // Codex's third FAIL: every request that saw effective >= 5 bumped
-        // the episode row, so two threshold requests landing together turned
-        // one lock into cycle 2 and handed the owner half an hour for the
-        // first offence. The spent attempt row elects the winner: DELETE is
-        // atomic, exactly one caller can delete a row that exists, and that
-        // caller is the one that advances the tier. The others read the lock
-        // that was just created and report its remaining time.
-        $won = true;
-        $remaining = null;
+        // The whole decision is in _reauth_open_lock_episode(), which uses two
+        // exclusive statements instead of the delete-and-hope this used to do.
+        $cycle = 0;
+        $lock_sec = 0;
         try {
-            $del = $pdo->prepare(
-                "DELETE FROM snap_rate_limits WHERE ip = ? AND action = 'reauth_fail'"
-            );
-            $del->execute([$key]);
-            $existing = _reauth_read_counter($pdo, $key, 'reauth_lock', $now);
-            // No row deleted AND a lock already standing means someone else
-            // got there first. No lock row at all means nobody has, whatever
-            // the delete said -- a database error must not lose the lock.
-            $won = ($del->rowCount() > 0) || ($existing === null);
-            if ($won) {
-                $cycle = _reauth_bump_counter($pdo, $key, 'reauth_lock', $now);
-            } else {
-                [$cycle, $lock_ws] = $existing;
-                $remaining = max(1, ($lock_ws + _reauth_lockout_seconds($cycle)) - $now);
-            }
+            // This cycle's attempts are spent either way.
+            _reauth_drop_counter($pdo, $key, 'reauth_fail');
+            $episode = _reauth_open_lock_episode($pdo, $key, $now);
+            $cycle = (int)$episode['cycle'];
+            $lock_sec = (int)$episode['retry_after'];
         } catch (PDOException $e) {
             error_log('SnapSmack reauth: lock escalation failed - ' . $e->getMessage());
             $cycle = max(1, $cycle);
+            $lock_sec = _reauth_lockout_seconds($cycle);
         }
-        $lock_sec = $remaining ?? _reauth_lockout_seconds(max(1, $cycle));
+        if ($lock_sec < 1) {
+            $lock_sec = _reauth_lockout_seconds(max(1, $cycle));
+        }
         $_SESSION['reauth_lock_until'] = $now + $lock_sec;
         $_SESSION['reauth_fail_count'] = 0;
         _reauth_audit('lockout', $uid, ['reason' => $reason, 'count' => $effective,

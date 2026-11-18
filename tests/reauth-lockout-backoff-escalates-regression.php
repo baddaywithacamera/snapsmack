@@ -293,27 +293,109 @@ if ((int)($secondReq['retry_after'] ?? 0) !== 900) {
         . 'remaining time on the lock that already exists';
 }
 
-// THE WINNER ELECTION ITSELF, read as source, and labelled because it is.
-// The assertion above is satisfied by the standing-lock guard: the second
-// caller sees the lock the first one created and reports it. That guard
-// cannot cover the genuinely simultaneous case, where both requests read "no
-// lock" before either writes one, and PHP in a single process cannot produce
-// that interleaving. The election is what covers it -- the spent attempt row
-// is DELETEd and only the caller whose delete affected a row advances the
-// tier -- so the check is that the episode bump is gated on that result and
-// not run unconditionally. Without this, removing the gate passes every
-// executed assertion in this file; I checked.
-$reauthSrc = (string)php_strip_whitespace(dirname(__DIR__) . '/core/reauth.php');
-$lockedAt = strpos($reauthSrc, "'reauth_lock'");
-$electAt = strpos($reauthSrc, 'rowCount()');
-if ($electAt === false) {
-    $failures[] = 'the lock-episode transition no longer elects a single '
-        . 'winner (no rowCount() check). Two requests crossing the threshold '
-        . 'at the same instant would each advance the tier, so a first '
-        . 'offence costs the second tier.';
-} elseif ($lockedAt !== false && $electAt > strrpos($reauthSrc, "_reauth_bump_counter(\$pdo, \$key, 'reauth_lock'")) {
-    $failures[] = 'the winner election runs AFTER the episode counter is '
-        . 'bumped, which elects nothing';
+// -- THE ELECTION, EXECUTED. NO MORE SOURCE-READING FOR THIS ONE --------
+// Muse's round-3 FAIL: my previous election was
+//   $won = ($del->rowCount() > 0) || ($existing === null);
+// and two requests that both read "no episode row" before either wrote one
+// were BOTH winners -- A on the delete, B on the second clause. A first
+// offence then cost 1800 seconds. The structural check I had written only
+// asserted that a rowCount() call existed, which that code satisfied, so it
+// passed the broken version. Muse was right that it was not a test.
+//
+// The decision now lives in _reauth_open_lock_episode() and rests on two
+// exclusive statements, which means it can be EXERCISED rather than read:
+// calling it twice is precisely the losing caller's view of the race, because
+// the second call sees exactly what a request that lost the INSERT sees.
+$pdo->exec("DELETE FROM snap_rate_limits");
+$tE = 2_300_000_000;
+
+$first = _reauth_open_lock_episode($pdo, 'uid:7', $tE);
+$second = _reauth_open_lock_episode($pdo, 'uid:7', $tE);
+
+if (($first['opened'] ?? false) !== true || (int)$first['cycle'] !== 1) {
+    $failures[] = 'the first caller did not open episode 1: ' . var_export($first, true);
+}
+if (($second['opened'] ?? true) !== false) {
+    $failures[] = 'TWO callers both opened a lock episode. A request that lost '
+        . 'the race must not advance the tier.';
+}
+if ((int)($second['cycle'] ?? 0) !== 1) {
+    $failures[] = 'the losing caller reported cycle ' . (int)($second['cycle'] ?? 0)
+        . ', not 1. This is the double-winner defect: a first offence charged '
+        . 'at the second tier.';
+}
+if ((int)($second['retry_after'] ?? 0) !== 900) {
+    $failures[] = 'the losing caller reported ' . (int)($second['retry_after'] ?? 0)
+        . ' seconds instead of the 900 the standing lock has left';
+}
+$episodeRows = (int)$pdo->query("SELECT count FROM snap_rate_limits
+                                 WHERE ip = 'uid:7' AND action = 'reauth_lock'")->fetchColumn();
+if ($episodeRows !== 1) {
+    $failures[] = "two simultaneous callers left the episode counter at "
+        . "{$episodeRows}, not 1";
+}
+
+// A THIRD AND FOURTH CALLER, same instant, must change nothing either.
+_reauth_open_lock_episode($pdo, 'uid:7', $tE);
+_reauth_open_lock_episode($pdo, 'uid:7', $tE);
+$stillOne = (int)$pdo->query("SELECT count FROM snap_rate_limits
+                              WHERE ip = 'uid:7' AND action = 'reauth_lock'")->fetchColumn();
+if ($stillOne !== 1) {
+    $failures[] = "four simultaneous callers left the episode counter at "
+        . "{$stillOne}, not 1";
+}
+
+// THE ESCALATION RACE, the same way. Once the first lock has expired, two
+// callers crossing together must produce cycle 2, not cycle 3.
+$tE2 = $tE + 900 + 1;
+$esc1 = _reauth_open_lock_episode($pdo, 'uid:7', $tE2);
+$esc2 = _reauth_open_lock_episode($pdo, 'uid:7', $tE2);
+if ((int)$esc1['cycle'] !== 2 || ($esc1['opened'] ?? false) !== true) {
+    $failures[] = 'the first caller after expiry did not escalate to cycle 2: '
+        . var_export($esc1, true);
+}
+if ((int)$esc2['cycle'] !== 2 || ($esc2['opened'] ?? true) !== false) {
+    $failures[] = 'a second caller escalated again, to cycle '
+        . (int)$esc2['cycle'] . '. Two requests crossing an expired lock '
+        . 'together must share one episode.';
+}
+if ((int)($esc2['retry_after'] ?? 0) !== 1800) {
+    $failures[] = 'the losing escalator reported '
+        . (int)($esc2['retry_after'] ?? 0) . ' seconds, not the 1800 the '
+        . 'episode it joined is worth';
+}
+
+// A STALE OBSERVATION MUST CHANGE NOTHING. This is the only part of the race
+// a sequential test cannot otherwise reach: once the first caller escalates,
+// the lock is no longer expired, so a second caller never gets as far as the
+// UPDATE. Handing _reauth_escalate_episode() the window_start a losing caller
+// would still be holding IS that caller's attempt, exactly. Without this,
+// deleting the guard from the WHERE passes every other assertion in this
+// file -- I checked, which is why this is here.
+$pdo->exec("DELETE FROM snap_rate_limits");
+$tG = 2_400_000_000;
+_reauth_open_lock_episode($pdo, 'uid:7', $tG);
+$staleObserved = (string)$pdo->query("SELECT window_start FROM snap_rate_limits
+                                      WHERE ip = 'uid:7' AND action = 'reauth_lock'")
+    ->fetchColumn();
+$tG2 = $tG + 900 + 1;
+$winnerRows = _reauth_escalate_episode($pdo, 'uid:7', $staleObserved, $tG2);
+if ($winnerRows !== 1) {
+    $failures[] = 'the caller holding the current window_start did not win the '
+        . 'escalation (rows changed: ' . $winnerRows . ')';
+}
+$loserRows = _reauth_escalate_episode($pdo, 'uid:7', $staleObserved, $tG2);
+if ($loserRows !== 0) {
+    $failures[] = 'a caller holding a STALE window_start still escalated '
+        . '(rows changed: ' . $loserRows . '). The guard in the WHERE is gone, '
+        . 'so simultaneous requests crossing an expired lock each advance the '
+        . 'tier.';
+}
+$afterStale = (int)$pdo->query("SELECT count FROM snap_rate_limits
+                                WHERE ip = 'uid:7' AND action = 'reauth_lock'")->fetchColumn();
+if ($afterStale !== 2) {
+    $failures[] = "the episode counter is {$afterStale} after one legitimate "
+        . 'escalation and one stale attempt; expected 2';
 }
 
 // -- NO SECRETS IN THE AUDIT LOG ──────────────────────────────────────────

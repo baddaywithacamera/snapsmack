@@ -1694,9 +1694,12 @@
         ]
     },
     "reauth-lockout-backoff-escalates-regression.php": {
-        "assertions": 34,
-        "predicates": 6,
+        "assertions": 44,
+        "predicates": 4,
         "thresholds": [
+            2,
+            2,
+            2,
             2,
             12,
             12,
@@ -1706,6 +1709,8 @@
             900,
             900,
             900,
+            900,
+            1800,
             1800,
             3600,
             3600
@@ -2054,7 +2059,7 @@
         "thresholds": []
     },
     "skin-parity-ratchet-regression.php": {
-        "assertions": 7,
+        "assertions": 8,
         "predicates": 3,
         "thresholds": []
     },
