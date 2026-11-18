@@ -158,4 +158,64 @@ def test_no_profile_prompt_carries_those_tags():
         "is not only the per-import field: " + "; ".join(offenders)
     )
 
+def test_use_for_this_run_says_it_is_not_saved():
+    """The illusion that explains "I thought I had already removed them".
+
+    USE FOR THIS RUN sets the prompt box and nothing else. It looked exactly
+    like saving: the edited text sat in the field, and the next
+    _set_prompt_state -- a site change, or the next launch -- quietly put the
+    STORED prompt back. The stored prompt for three sites really did instruct
+    Gemini to add "the two required tags #fauxlaroid #fakepolaroid", so every
+    enrichment kept adding them while the screen showed the edited version.
+    """
+    # Sliced to the NEXT nested def, not a fixed number of characters: my
+    # first window ran on into save_text(), which legitimately calls
+    # profile_save_prompt, and the assertion below failed against correct code.
+    source = SOURCE
+    start = source.index("        def use_text()")
+    nxt = source.index("        def ", start + 10)
+    body = source[start:nxt]
+    assert "_say(" in body, (
+        "USE FOR THIS RUN no longer tells the user the change is unsaved"
+    )
+    assert "THIS RUN ONLY" in body or "not saved" in body.lower(), (
+        "the message does not say the edit is temporary, which is the whole "
+        "point: the field looks saved"
+    )
+    assert "self.prompt.setText(" in body, (
+        "the edit no longer applies to this run, which is the button's job"
+    )
+    assert "profile_save_prompt" not in body, (
+        "USE FOR THIS RUN now writes to the stored preset. That is SAVE "
+        "PRESET's job; this button must stay non-destructive."
+    )
+
+
+def test_reloading_the_stored_prompt_drops_the_unsaved_marker():
+    body = _method_body("_set_prompt_state")
+    assert "_prompt_unsaved = False" in body, (
+        "the unsaved-edit warning outlives the edit it described: "
+        "_set_prompt_state replaces the prompt with the stored one, so the "
+        "flag has to go with it"
+    )
+
+
+def test_the_shared_prompt_pool_is_keyed_by_site():
+    """Where the real prompts live, and the shape they are stored in.
+
+    The pool's own docstring describes a flat {preset_name: prompt_text} dict,
+    and SYBU writes {site_key: prompt_text} into it. Both shapes in one file is
+    how one blog's prompt ends up answering for another, so if the writer ever
+    stops keying by site this fails.
+    """
+    core = open(os.path.join(TOOL, "sybu_core.py"), encoding="utf-8").read()
+    start = core.index("def profile_save_prompt")
+    body = core[start:start + 2600]
+    assert "snap_prompts.save" in body, "the prompt is no longer mirrored to the shared pool"
+    assert "site_key(" in body, (
+        "the shared prompt pool is being written WITHOUT a site key, so one "
+        "site's prompt would be served to every other site and every other "
+        "Gemini tool"
+    )
+
 # ===== SNAPSMACK EOF =====

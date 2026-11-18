@@ -306,6 +306,9 @@ class Window(QMainWindow):
         p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self._set_prompt_state(p); self.drive.setChecked(p['drive_enabled']); self.copyright_text.setText(p.get('copyright_text','')); self._connect()
 
     def _set_prompt_state(self,state):
+        # Reloading the stored prompt discards any this-run-only edit, so the
+        # warning flag goes with it rather than outliving what it described.
+        self._prompt_unsaved = False
         presets=state.get('prompt_presets') or {'Default':state.get('prompt','')}
         selected=state.get('selected_prompt_preset') or state.get('default_prompt_preset') or next(iter(presets))
         self._prompt_default=state.get('default_prompt_preset') or next(iter(presets))
@@ -434,7 +437,25 @@ class Window(QMainWindow):
         buttons=QHBoxLayout(); cancel=QPushButton("CANCEL"); cancel.clicked.connect(dialog.reject); buttons.addWidget(cancel); buttons.addStretch(1)
         delete=QPushButton("DELETE PRESET"); buttons.addWidget(delete); use=QPushButton("USE FOR THIS RUN"); buttons.addWidget(use)
         save=QPushButton("SAVE PRESET"); save.setObjectName("Primary"); buttons.addWidget(save); layout.addLayout(buttons)
-        def use_text(): self.prompt.setText(editor.toPlainText().strip()); dialog.accept()
+        def use_text():
+            # "USE FOR THIS RUN" DOES NOT SAVE, and it used to look exactly like
+            # saving: the prompt box showed the edited text and nothing said it
+            # was temporary. Switch sites, or restart, and _set_prompt_state()
+            # reloads the STORED preset and the edit is gone without a word.
+            #
+            # That is what "I thought I had already removed them" looks like
+            # from the inside. Sean edited a prompt to take #fauxlaroid
+            # #fakepolaroid out, used it for a run, and the stored prompt --
+            # which really did require those two tags, in the shared pool at
+            # shared_library/prompts/gemini_prompts.json -- was still the one
+            # every later enrichment read.
+            #
+            # The edit still applies to this run, because that is the button's
+            # job. It just says so now.
+            self.prompt.setText(editor.toPlainText().strip())
+            self._prompt_unsaved = True
+            self._say("Prompt changed for THIS RUN ONLY — not saved. Use SAVE PRESET to keep it.")
+            dialog.accept()
         def save_text():
             try:
                 result=self.engine.profile_save_prompt(self.profile.currentText(),editor.toPlainText(),preset_name.text(),make_default.isChecked()); self._set_prompt_state(result); self._say(f"Prompt preset saved to SNAP HQ for {result['name']}."); dialog.accept()
