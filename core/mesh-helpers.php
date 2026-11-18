@@ -63,13 +63,34 @@ const MS_REDACTED_MARKER = '__REDACTED__';
 
 /**
  * True only for a value that is allowed to authenticate as a fleet peer.
- * Empty and the redaction marker are rejected. Compared with hash_equals so
- * the check does not leak timing, matching the other credential paths.
+ * Empty and the redaction marker are rejected.
+ *
+ * CASE-INSENSITIVELY, BECAUSE THE DATABASE IS. SS-1424, affecting all 27
+ * sites. SS-1417 compared the bearer to the marker exactly, and the
+ * comparison that actually decides whether a row matches does not:
+ * snap_multisite_nodes is utf8mb4_unicode_ci, so
+ *
+ *     WHERE api_key_local = '__redacted__'
+ *
+ * matches a stored '__REDACTED__'. A bearer of '__redacted__' therefore
+ * passed this guard -- not the exact marker -- and then matched the stale
+ * row anyway. Two comparisons of the same two strings disagreeing is the
+ * whole defect; this one now answers the way the database will.
+ *
+ * Whitespace is already stripped above, so padded variants fall in here too.
+ *
+ * The rule stays NARROW, per the PM's ruling in 3fe8fc91: the marker and
+ * empty, not a 64-hex format gate. A format gate would refuse any key an
+ * older build issued in another shape, and that is a fleet lockout, not a
+ * fix.
+ *
+ * hash_equals still, for constant time against the other credential paths,
+ * though the marker is a published literal and nothing here is secret.
  */
 function ms_is_authenticating_fleet_key(string $key): bool {
     $k = trim($key);
     if ($k === '') return false;
-    if (hash_equals(MS_REDACTED_MARKER, $k)) return false;
+    if (hash_equals(strtoupper(MS_REDACTED_MARKER), strtoupper($k))) return false;
     return true;
 }
 

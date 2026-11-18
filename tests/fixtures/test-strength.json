@@ -732,6 +732,14 @@
         "predicates": 4,
         "thresholds": []
     },
+    "fleet-marker-guard-rejects-case-variants-regression.php": {
+        "assertions": 18,
+        "predicates": 4,
+        "thresholds": [
+            2,
+            2
+        ]
+    },
     "fleet-post-update-finalization-regression.php": {
         "assertions": 12,
         "predicates": 9,
