@@ -2126,8 +2126,6 @@ class TakeMode(QWidget):
         self.title_edit.setText(draft.title)
         self.tags_edit.setText(draft.tags)
         self.status_combo.setCurrentText(draft.img_status)
-        self.body.set_state(draft.caption, getattr(draft, "body_blocks", ""))
-        self.body.editor.moveCursor(QTextCursor.End)   # so an insert lands where writing resumes
         self._bucket = [O.DraftImage(local_path=im.local_path, filename=im.filename,
                                      thumb_square=im.thumb_square, is_cover=im.is_cover,
                                      **{name: getattr(im, name)
@@ -2144,6 +2142,10 @@ class TakeMode(QWidget):
             "color_mode": getattr(draft, "color_mode", ""),
             "colors": getattr(draft, "ai_colors", ""),
         }
+        # Populate bucket + canvas.assets BEFORE set_state() so restored mosaics resolve immediately.
+        self._refresh_bucket()
+        self.body.set_state(draft.caption, getattr(draft, "body_blocks", ""))
+        self.body.editor.moveCursor(QTextCursor.End)   # so an insert lands where writing resumes
         self._refresh_bucket()
         self._loading = False
         self.save_state.setText("Safe on this computer")

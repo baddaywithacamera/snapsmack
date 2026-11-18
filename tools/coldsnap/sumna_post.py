@@ -1030,10 +1030,23 @@ class SmacktalkPoster:
         explicit_slug = self._long_slugify(getattr(draft, "slug", "") or "")
         if not explicit_slug:
             return None
+        posts = []
         try:
-            posts = self.list_posts(limit=500)
+            r = self.session.get(self._route("smackpress/posts"),
+                                 params={"slug": explicit_slug}, timeout=30)
+            if r.status_code == 200:
+                payload = r.json() or {}
+                if payload.get("exact"):
+                    posts = list(payload.get("posts") or [])
+                else:
+                    posts = self.list_posts(limit=500)
+            else:
+                posts = self.list_posts(limit=500)
         except Exception:
-            return None
+            try:
+                posts = self.list_posts(limit=500)
+            except Exception:
+                return None
         for p in (posts or []):
             if not isinstance(p, dict):
                 continue

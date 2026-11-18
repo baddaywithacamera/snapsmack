@@ -26,6 +26,7 @@ Spec, in Sean's words: _spec/SPEC-biggie-wysiwyg-in-seans-words-2026-09-09.md
 import json
 import math
 import os
+import re
 
 from PySide6.QtCore import Qt, QRect, QRectF, QSize, QSizeF, QTimer, Signal
 from PySide6.QtGui import (
@@ -291,6 +292,22 @@ class _Objects(QPyTextObject):
             painter.drawLine(r.left(), y, r.right(), y)
         painter.restore()
 
+    def _placeholder_colors(self):
+        """Return (outline_hex, text_hex) contrasting with the canvas page background."""
+        bg = None
+        ss = self.canvas.styleSheet() or ""
+        m = re.search(r"background\s*:\s*(#[0-9a-fA-F]{3,8})", ss)
+        if m:
+            bg = QColor(m.group(1))
+        if bg is None or not bg.isValid():
+            bg = self.canvas.palette().color(self.canvas.viewport().backgroundRole())
+        if not bg.isValid():
+            bg = QColor("#ffffff")
+        lum = 0.299 * bg.red() + 0.587 * bg.green() + 0.114 * bg.blue()
+        if lum >= 128:
+            return "#444444", "#222222"
+        return "#9aa39b", "#e4e8e4"
+
     def _draw_mosaic(self, painter, r, data):
         """Draw the mosaic the SITE will draw.
 
@@ -302,15 +319,32 @@ class _Objects(QPyTextObject):
         a uniform grid asking square cells to hold rectangular photographs.
         """
         layout = data.get("layout", "asymmetric")
-        painter.fillRect(r, QColor("#090b0a"))
+        outline_col, text_col = self._placeholder_colors()
         inner = r.adjusted(0, 0, 0, -22)
         paths, out = mosaic_cells(self.canvas, data, inner.width())
 
         if not paths:
-            painter.setPen(QColor(theme.DIM))
-            painter.drawText(inner, Qt.AlignCenter,
-                             "MOSAIC — add photos to the bucket to see it")
+            order = list(data.get("order") or [])
+            msg = (f"MOSAIC — {len(order)} photos not in bucket yet" if order
+                   else "MOSAIC — add photos to the bucket to see it")
+            painter.setPen(QPen(QColor(outline_col), 1, Qt.DashLine))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(inner.adjusted(0, 0, -1, -1))
+            painter.setPen(QColor(text_col))
+            painter.drawText(inner.adjusted(8, 4, -8, -4), Qt.AlignCenter | Qt.TextWordWrap, msg)
             self._mosaic_footer(painter, r, 0, layout)
+            return
+
+        missing_names = [os.path.basename(p) or "unknown" for p in paths if not p or not os.path.isfile(p)]
+        if len(missing_names) == len(paths):
+            shown = ", ".join(missing_names[:4]) + (f" (+{len(missing_names) - 4} more)" if len(missing_names) > 4 else "")
+            msg = f"MOSAIC — {len(missing_names)} of {len(paths)} photos missing: {shown}"
+            painter.setPen(QPen(QColor(outline_col), 1, Qt.DashLine))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(inner.adjusted(0, 0, -1, -1))
+            painter.setPen(QColor(text_col))
+            painter.drawText(inner.adjusted(8, 4, -8, -4), Qt.AlignCenter | Qt.TextWordWrap, msg)
+            self._mosaic_footer(painter, r, len(paths), layout)
             return
 
         for n, tile in enumerate(out["items"], 1):
@@ -319,21 +353,25 @@ class _Objects(QPyTextObject):
                          max(1, int(round(tile["width"]))),
                          max(1, int(round(tile["height"]))))
             path = tile["image"].get("src", "")
-            painter.fillRect(cell, QColor("#141714"))
             pix = self._cached_cell_pixmap(path, cell.size())
             if pix is not None and not pix.isNull():
                 painter.drawPixmap(
                     QRect(cell.left() + (cell.width() - pix.width()) // 2,
                           cell.top() + (cell.height() - pix.height()) // 2,
                           pix.width(), pix.height()), pix)
+                painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRect(cell.adjusted(0, 0, -1, -1))
             else:
-                problem = mosaic_cell_problem(path) if not path or not os.path.isfile(path) else None
-                painter.setPen(QColor(theme.DIM))
-                painter.drawText(cell.adjusted(2, 14, -2, -2),
-                                 Qt.AlignCenter | Qt.TextWordWrap,
-                                 problem or "Loading…")
-            painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
-            painter.drawRect(cell.adjusted(0, 0, -1, -1))
+                is_missing = not path or not os.path.isfile(path)
+                lbl = (f"MOSAIC — 1 photo missing: {os.path.basename(path) or 'unknown'}" if is_missing
+                       else f"MOSAIC — {len(paths)} photos — loading…")
+                painter.setPen(QPen(QColor(outline_col), 1, Qt.DashLine))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRect(cell.adjusted(0, 0, -1, -1))
+                painter.setPen(QColor(text_col))
+                painter.drawText(cell.adjusted(4, 18, -4, -4),
+                                 Qt.AlignCenter | Qt.TextWordWrap, lbl)
             badge = QRect(cell.left() + 4, cell.top() + 4, 22, 18)
             painter.fillRect(badge, QColor(0, 0, 0, 190))
             painter.setPen(QColor("#ffffff"))
@@ -423,7 +461,8 @@ class _Objects(QPyTextObject):
         Saving an explicit layout makes it exact.
         """
         foot = QRect(r.left(), r.bottom() - 20, r.width(), 20)
-        painter.setPen(QColor(theme.DIM))
+        _outline_col, text_col = self._placeholder_colors()
+        painter.setPen(QColor(text_col))
         painter.drawText(foot, Qt.AlignVCenter | Qt.AlignLeft,
                          mosaic_note(count, layout))
 
@@ -442,20 +481,29 @@ class _Objects(QPyTextObject):
         box = QRect(x, r.top() + 2, iw, r.height() - 4)
         identity = "asset:" + str(data["asset_uuid"]) if data.get("asset_uuid") else str(data.get("img_id", ""))
         pix = self.canvas.image_pixmap(identity, iw)
-        painter.fillRect(box, QColor("#141714"))
         if pix is not None and not pix.isNull():
             scaled = pix.scaled(box.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
             painter.drawPixmap(QRect(box.left() + (box.width() - scaled.width()) // 2,
                                      box.top() + (box.height() - scaled.height()) // 2,
                                      scaled.width(), scaled.height()), scaled)
+            painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(box.adjusted(0, 0, -1, -1))
         else:
-            painter.setPen(QColor(theme.DIM))
-            sid = str(data.get('img_id', '?'))
-            what = (f"this post's photo {sid[7:]} (removed from the bucket?)" if sid.lower().startswith('bucket:')
-                    else f"IMG #{sid} from the site's Media Gallery\n(not in COLD STORAGE yet)")
-            painter.drawText(box, Qt.AlignCenter, f"{what}  {size} · {align}")
-        painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
-        painter.drawRect(box.adjusted(0, 0, -1, -1))
+            outline_col, text_col = self._placeholder_colors()
+            painter.setPen(QPen(QColor(outline_col), 1, Qt.DashLine))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(box.adjusted(0, 0, -1, -1))
+            painter.setPen(QColor(text_col))
+            if data.get("asset_uuid"):
+                local_p = self.canvas.assets.get(str(data["asset_uuid"]), "")
+                fname = os.path.basename(local_p) if local_p else str(data["asset_uuid"])
+                what = f"IMAGE — file missing: {fname}"
+            else:
+                sid = str(data.get("img_id", "?"))
+                what = (f"IMAGE — photo {sid[7:]} missing from bucket" if sid.lower().startswith("bucket:")
+                        else f"IMAGE — #{sid} not in COLD STORAGE yet")
+            painter.drawText(box.adjusted(8, 4, -8, -4), Qt.AlignCenter | Qt.TextWordWrap, what)
 
 
 def _data(fmt) -> dict:
