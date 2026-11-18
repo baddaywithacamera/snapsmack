@@ -349,9 +349,15 @@ class SnapSmackExport {
             && $isSensitive((string)$row['setting_key'])) {
             $row['setting_val'] = '__REDACTED__';
         }
+        // SS-1417: fleet key columns export EMPTY, never a placeholder. A
+        // placeholder here is restored verbatim into an active node row and
+        // every fleet-key gate is an equality match, so the marker would
+        // authenticate as that node. Empty authenticates as nothing. This is
+        // also what the 0.7.261 CHANGELOG entry has always claimed these
+        // columns do — the code said otherwise until now.
         if ($table === 'snap_multisite_nodes') {
-            foreach (['api_key_local', 'api_key_remote'] as $c) {
-                if (!empty($row[$c])) $row[$c] = '__REDACTED__';
+            foreach (['api_key_local', 'api_key_remote', 'api_key_backup'] as $c) {
+                if (array_key_exists($c, $row) && $row[$c] !== null) $row[$c] = '';
             }
         }
         return $row;
