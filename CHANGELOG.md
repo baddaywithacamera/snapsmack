@@ -115,6 +115,19 @@ connected rather than guessed at later.
 
 ### COLD SNAP, desktop-side only — this does not ride a CMS build
 
+- **SMACK UP YOUR BACKUP cannot delete anything in your cloud storage.** It
+  is write-only there now. The cloud clients refuse a delete outright, and
+  the B2 integrity pass that used to remove objects it judged orphaned only
+  reports them — every row it would have deleted is logged REPORT_ONLY /
+  NOT_DELETED and left where it is. A backup tool that can delete from the
+  copy of last resort is one bad judgement away from taking the archive with
+  it. Deciding what to remove is yours. (SS-1413)
+
+- **SYBU 0.7.77: clearing the queue returns you to the post, and the tags do
+  not follow the site.** Clearing left the window somewhere other than where
+  you were working, and a per-site prompt could leak into the next site's
+  tags.
+
 - **SMACKPRESS can ask whether one exact post slug already exists.** COLD SNAP
   no longer has to search a list capped at 500 posts and guess that a missing
   row means a slug is free. `GET smackpress/posts?slug=<exact>` returns a
