@@ -1022,8 +1022,8 @@
         ]
     },
     "image-author-column-is-declared-and-never-required-regression.php": {
-        "assertions": 19,
-        "predicates": 21,
+        "assertions": 22,
+        "predicates": 23,
         "thresholds": [
             2
         ]
