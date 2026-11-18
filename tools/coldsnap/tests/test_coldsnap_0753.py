@@ -89,9 +89,10 @@ def test_take_mode_white_and_black_site_surfaces(monkeypatch, tmp_path):
     current_url = [white_url]
     mode = TakeMode(lambda: {"url": current_url[0]})
     mode.body._set_biggie(True)
-    mode.body.canvas.from_blocks([{"kind": "p", "text": "Hello from the essay."}])
     mode.resize(1000, 800)
     mode.show()
+    app.processEvents()
+    mode.body.canvas.from_blocks([{"kind": "p", "text": "Hello from the essay."}])
     app.processEvents()
 
     try:
