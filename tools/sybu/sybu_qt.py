@@ -287,6 +287,22 @@ class Window(QMainWindow):
 
     def _profile(self,name):
         if not name:return
+        # ADDITIONAL HASHTAGS ARE FOR ONE IMPORT, SO THEY DO NOT FOLLOW THE SITE.
+        #
+        # Sean's 5-image batch to theschoolofhardnocks.ca went up with
+        # #fauxlaroid #fakepolaroid on EVERY image -- tags that belong to
+        # fauxlaroid.fyi. The field is cleared when a folder is scanned and when
+        # the queue is cleared, but NOT when the site changes, so a value typed
+        # for one blog was still in the box for the next one and
+        # post_start(additional_tags=...) appended it to every image. The same
+        # append is why removing a tag from the queue rows did not stick: the
+        # rows were right and the field put it back at publish time.
+        #
+        # Cleared on a site change now, and SAID OUT LOUD rather than silently,
+        # because a field emptying itself is its own small surprise.
+        if self.additional_tags.text().strip():
+            self.additional_tags.clear()
+            self._say("Additional hashtags cleared: they belong to one import, not to the new site.")
         p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self._set_prompt_state(p); self.drive.setChecked(p['drive_enabled']); self.copyright_text.setText(p.get('copyright_text','')); self._connect()
 
     def _set_prompt_state(self,state):
@@ -456,6 +472,16 @@ class Window(QMainWindow):
         if not self.table.rowCount(): return
         if QMessageBox.question(self,"Clear posting queue","Remove the images from this posting queue?\n\nThe image files themselves will not be deleted. Failed rows are retained so an upload problem cannot be lost.",QMessageBox.Yes|QMessageBox.Cancel,QMessageBox.Cancel)!=QMessageBox.Yes:return
         self._fill_queue(self.engine.clear_queue()); self.additional_tags.clear(); self._say("Posting queue cleared.")
+        # RESTORED (SYBU 0.7.77). The Tk app ended _on_clear with
+        # "if not self._cfg_visible: self._toggle_cfg()" -- clearing the queue
+        # reopened the build-and-publish panel, because an empty queue is
+        # nothing to look at and the next thing you do is load another batch.
+        # The Qt rebuild dropped it and left you staring at an empty table.
+        # Page 0 is "Post / Build and publish".
+        #
+        # AFTER the clear, never before: the confirm above returns early on
+        # Cancel, so a cancelled clear leaves you where you were.
+        self._show(0)
 
     def _enrich(self):
         try:
