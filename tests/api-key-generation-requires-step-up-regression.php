@@ -47,6 +47,28 @@ require_once $root . '/core/reauth.php';
 $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $pdo->exec("CREATE TABLE snap_users (id INTEGER PRIMARY KEY, password_hash TEXT,
             totp_enabled INTEGER DEFAULT 0, totp_secret TEXT, user_role TEXT)");
+// SS-1399 gave reauth_verify a server-side failure budget in snap_rate_limits.
+// Without the table the helper still works (it catches and degrades to the
+// session budget) but it floods the log, and the cases below would be read
+// against a half-working store.
+$pdo->exec("CREATE TABLE snap_rate_limits (id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip TEXT NOT NULL, action TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 1,
+            window_start TEXT NOT NULL, UNIQUE (ip, action))");
+
+/**
+ * EACH CASE BELOW IS ITS OWN ATTEMPT, NOT THE SIXTH IN A ROW.
+ *
+ * SS-1399 locks the account after five failed step-ups, and this file tries
+ * six wrong credentials on purpose. Without a reset between them the later
+ * cases stop testing what they name and start testing the lockout -- which is
+ * exactly what happened when SS-1399 landed: the unenrolled-account case
+ * began returning "locked" instead of needs_2fa_enrollment, and the only
+ * reason it was caught is that the assertion said what it expected.
+ */
+$fresh = static function (PDO $pdo): void {
+    unset($_SESSION['reauth_fail_count'], $_SESSION['reauth_lock_until']);
+    $pdo->exec("DELETE FROM snap_rate_limits");
+};
 
 $secret = totp_generate_secret();
 $good = 'correct horse battery staple';
@@ -63,29 +85,35 @@ $_SESSION = ['user_id' => 1];
 
 // --- correct password + valid code: the only way through -----------------
 $seat($pdo, true, $hash, $secret);
+$fresh($pdo);
 $r = reauth_verify($pdo, $good, totp_code($secret));
 ak_ok(($r['ok'] ?? false) === true,
     'a correct password and a current 2FA code were refused, so no key could '
     . 'ever be generated: ' . (string)($r['error'] ?? ''));
 
 // --- wrong password ------------------------------------------------------
+$fresh($pdo);
 $r = reauth_verify($pdo, 'not the password', totp_code($secret));
 ak_ok(($r['ok'] ?? true) === false, 'a wrong password was accepted');
 
 // --- empty password ------------------------------------------------------
+$fresh($pdo);
 $r = reauth_verify($pdo, '', totp_code($secret));
 ak_ok(($r['ok'] ?? true) === false, 'an empty password was accepted');
 
 // --- right password, missing code ---------------------------------------
+$fresh($pdo);
 $r = reauth_verify($pdo, $good, '');
 ak_ok(($r['ok'] ?? true) === false, 'a missing 2FA code was accepted');
 
 // --- right password, wrong code -----------------------------------------
 $wrong = str_pad((string)((((int)totp_code($secret)) + 1) % 1000000), 6, '0', STR_PAD_LEFT);
+$fresh($pdo);
 $r = reauth_verify($pdo, $good, $wrong);
 ak_ok(($r['ok'] ?? true) === false, 'an invalid 2FA code was accepted');
 
 // --- an expired code from an hour ago -----------------------------------
+$fresh($pdo);
 $r = reauth_verify($pdo, $good, totp_code($secret, -120));
 ak_ok(($r['ok'] ?? true) === false, 'a code from an hour of steps ago was accepted');
 
@@ -96,6 +124,7 @@ ak_ok(($r['ok'] ?? true) === false, 'a code from an hour of steps ago was accept
 // post-install 2FA grace covers LOGIN only. Asserted here so the policy is
 // recorded rather than discovered by someone adding a bypass later.
 $seat($pdo, false, $hash, $secret);
+$fresh($pdo);
 $r = reauth_verify($pdo, $good, '');
 ak_ok(($r['ok'] ?? true) === false,
     'an account with no 2FA enrolled minted a key on a password alone');
@@ -107,11 +136,13 @@ ak_ok(!empty($r['needs_2fa_enrollment']),
 $seat($pdo, true, $hash, $secret);
 $keep = $_SESSION;
 $_SESSION = [];
+$fresh($pdo);
 $r = reauth_verify($pdo, $good, totp_code($secret));
 ak_ok(($r['ok'] ?? true) === false, 'an expired session still passed step-up');
 $_SESSION = $keep;
 
 // --- the result carries no secrets ---------------------------------------
+$fresh($pdo);
 $r = reauth_verify($pdo, $good, totp_code($secret));
 $dump = var_export($r, true);
 ak_ok(!str_contains($dump, $good) && !str_contains($dump, $secret),
