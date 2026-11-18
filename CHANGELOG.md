@@ -21,6 +21,26 @@ v0.7.998D is tagged, so the next one is 0.7.999D. Recorded here because the
 shorthand will appear in the room and in tickets, and the two names need to be
 connected rather than guessed at later.
 
+- **A redaction placeholder can no longer authenticate as a fleet key.** Older
+  Recovery Kits used the literal `__REDACTED__` value in credential columns.
+  If that marker reached a restored database, the authentication path could
+  treat it as a real key. The export now writes empty credentials, restore
+  clears markers left by older kits, and every fleet-key gate rejects both an
+  empty value and the marker before it looks up a site. (SS-1417)
+
+- **The Mastodon fleet menu opens into the screen instead of below it.** On the
+  SMACKTALK fediverse reader, the site switcher is docked at the bottom-left;
+  its shared menu still opened downward like a top-bar menu, leaving the fleet
+  list outside the viewport. At desktop and large-tablet widths it now opens
+  upward and remains scrollable. (SS-1420)
+
+- **SMACKPRESS can ask whether one exact post slug already exists.** COLD SNAP
+  no longer has to search a list capped at 500 posts and guess that a missing
+  row means a slug is free. `GET smackpress/posts?slug=<exact>` returns a
+  complete, explicitly exact answer; the ordinary capped list also reports
+  its total and whether it was truncated. This prevents a site with more than
+  500 longform posts from receiving a duplicate during an update.
+
 - **The step-up lockout escalates, and it cannot be out-waited.** Five failed
   password/2FA confirmations lock the account for 15 minutes, then 30, then an
   hour, and a clear day puts it back to 15. Earlier it documented those three
