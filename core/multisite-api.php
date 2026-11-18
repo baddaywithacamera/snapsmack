@@ -253,6 +253,9 @@ if ($resource === 'ping' && $method === 'GET') {
         $ping_key = $pm[1];
     }
     if (!$ping_key) ms_err('Authorization header required', 401);
+    // SS-1417: a restored Recovery Kit dump can carry the redaction marker into
+    // api_key_remote. Never let it authenticate.
+    if (!ms_is_authenticating_fleet_key($ping_key)) ms_err('Invalid key', 401);
 
     $spoke_stmt = $pdo->prepare("
         SELECT id FROM snap_multisite_nodes
@@ -313,6 +316,8 @@ if ($resource === 'peers' && $sub_action === 'list' && $method === 'GET') {
         $peers_key = $pm2[1];
     }
     if (!$peers_key) ms_err('Authorization header required', 401);
+    // SS-1417: reject the Recovery Kit redaction marker on api_key_remote.
+    if (!ms_is_authenticating_fleet_key($peers_key)) ms_err('Invalid key', 401);
 
     $caller_stmt = $pdo->prepare(
         "SELECT site_url FROM snap_multisite_nodes
@@ -342,6 +347,8 @@ if ($resource === 'search' && $method === 'POST') {
     $skey = '';
     if (preg_match('/^Bearer\s+(\S+)$/i', ms_get_auth_header(), $psm)) $skey = $psm[1];
     if (!$skey) ms_err('Authorization header required', 401);
+    // SS-1417: reject the Recovery Kit redaction marker on api_key_remote.
+    if (!ms_is_authenticating_fleet_key($skey)) ms_err('Invalid key', 401);
 
     $sstmt = $pdo->prepare(
         "SELECT id FROM snap_multisite_nodes WHERE api_key_remote = ? AND role = 'spoke' LIMIT 1"
@@ -381,6 +388,13 @@ if (preg_match('/^Bearer\s+(\S+)$/i', ms_get_auth_header(), $m)) {
 }
 if (!$api_key) {
     ms_err('Authorization header required', 401);
+}
+// SS-1417: a restored Recovery Kit dump can place the public redaction marker
+// into api_key_local / api_key_remote / api_key_backup on an active node row.
+// Reject it here, above BOTH the full-key lookup and the api_key_backup
+// fallback below, so neither gate can be opened with it.
+if (!ms_is_authenticating_fleet_key($api_key)) {
+    ms_err('Invalid key', 401);
 }
 
 $node_stmt = $pdo->prepare("
