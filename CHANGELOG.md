@@ -65,10 +65,6 @@ connected rather than guessed at later.
   SMACKTALK skins a search typed at the front page used to return the front
   page, silently dropping the term; it now answers properly. (SS-1409)
 
-- **Likes worked on sites that had never saved their community settings.** The
-  like endpoint refused every like on any site whose community setting had
-  never been saved once. It no longer does.
-
 - **SNAP HQ device authorisation now expires when it says it does.** A device
   authorised for three months kept working indefinitely: the server checked
   that a device was known and not blocked, and never looked at the expiry date
@@ -110,6 +106,12 @@ connected rather than guessed at later.
   (Anthropic), OpenAI Codex, Google Gemini and Muse (Meta) are named with
   their actual roles. The licence works exactly as before; the only change is
   that the required AI co-author credit now names all four.
+
+- **ALFRED's dark variant is readable again.** On the dark setting the body
+  text was set to the same near-black as the canvas behind it, so an entire
+  long-form page rendered as blank space with a visible heading. The canvas
+  text and the white post surface are now paired explicitly, measured at
+  14.92:1 and 16.86:1 on a real browser at tablet widths. ALFRED 1.0.16.
 
 ### COLD SNAP, desktop-side only — this does not ride a CMS build
 
@@ -183,6 +185,10 @@ decided with git merge-base against the tag, not from memory.
   control on each tile, using the same like as the rest of the site: one like,
   one row, whether you give it on the wall or on the photograph's own page.
   (SS-1323)
+
+- **Likes worked on sites that had never saved their community settings.** The
+  like endpoint refused every like on any site whose community setting had
+  never been saved once. It no longer does.
 
 - **Archive pages stopped fetching the next page too early.** An archive could
   begin loading a second page of photographs before the first had finished
