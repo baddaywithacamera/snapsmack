@@ -72,11 +72,24 @@ def _obfuscate(plain: str) -> str:
     return base64.b64encode(plain.encode()).decode()
 
 
-def _deobfuscate(blob: str) -> str:
+def _deobfuscate_checked(blob: str) -> tuple[str, bool]:
+    """Return the decoded value and whether a stored value was readable.
+
+    An empty blob means no password was stored.  A non-empty malformed blob is
+    different: treating it as an empty password lets an unrelated profile save
+    silently erase the only copy of the credential.
+    """
+    if not blob:
+        return '', True
     try:
-        return base64.b64decode(blob.encode()).decode()
-    except Exception:
-        return ''
+        raw = base64.b64decode(blob.encode('ascii'), validate=True)
+        return raw.decode('utf-8'), True
+    except (ValueError, UnicodeDecodeError):
+        return '', False
+
+
+def _deobfuscate(blob: str) -> str:
+    return _deobfuscate_checked(blob)[0]
 
 
 def _safe_filename(name: str) -> str:
@@ -158,16 +171,48 @@ def load_profile(name: str) -> Optional[Dict]:
     with open(path) as f:
         data = json.load(f)
 
-    data['password'] = _deobfuscate(data.pop('password_enc', ''))
+    password_enc = data.pop('password_enc', '')
+    password, readable = _deobfuscate_checked(password_enc)
+    data['password'] = password
+    if password_enc and not readable:
+        data['secrets_unreadable'] = ['password']
+        # Keep the exact stored bytes available to save_profile(), including
+        # during a rename when the destination file does not exist yet.
+        data['_unreadable_password_enc'] = password_enc
     return data
 
 
 def save_profile(profile: Dict) -> None:
-    """Save a profile. Obfuscates the password before writing."""
+    """Save a profile without erasing a password the caller could not read.
+
+    Omitting ``password`` preserves an existing stored value.  An explicitly
+    supplied empty password still clears a readable credential.  When
+    load_profile() reported the password unreadable, leaving that empty value
+    untouched preserves the exact stored blob instead of replacing it.
+    """
     os.makedirs(PROFILES_DIR, exist_ok=True)
     data = dict(profile)
-    data['password_enc'] = _obfuscate(data.pop('password', ''))
     path = _profile_path(data['name'])
+    existing_password_enc = ''
+    if os.path.exists(path):
+        try:
+            with open(path) as f:
+                existing = json.load(f)
+            existing_password_enc = existing.get('password_enc', '')
+        except (OSError, ValueError, TypeError):
+            pass
+
+    unreadable = set(data.pop('secrets_unreadable', ()) or ())
+    preserved_unreadable = data.pop('_unreadable_password_enc', '')
+    password_supplied = 'password' in data
+    password = data.pop('password', '')
+    if not password_supplied:
+        data['password_enc'] = existing_password_enc
+    elif 'password' in unreadable and password == '':
+        data['password_enc'] = preserved_unreadable or existing_password_enc
+    else:
+        data['password_enc'] = _obfuscate(password)
+
     with open(path, 'w') as f:
         json.dump(data, f, indent=2)
 
