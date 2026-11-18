@@ -81,10 +81,18 @@ def test_migrate_sessions_dir_copies_with_sha256_and_preserves_originals(tmp_pat
     dest_sha = hashlib.sha256(open(loaded_d.images[0].local_path, "rb").read()).hexdigest()
     assert orig_sha == dest_sha
 
-    # Second run is idempotent
+    # Second run is idempotent (zero conflicts even after image path rebasing)
     res2 = O.migrate_sessions_dir(str(legacy_root), str(dest_root), log_path=log_file)
     assert res2["migrated"] == []
+    assert res2["conflicts"] == []
     assert len(res2["skipped_identical"]) >= 3
+
+    # Genuinely modified destination draft IS reported as a conflict
+    loaded_d.title = "Edited in dest"
+    migrated_sess.save_draft(loaded_d)
+    res3 = O.migrate_sessions_dir(str(legacy_root), str(dest_root), log_path=log_file)
+    assert res3["migrated"] == []
+    assert [c["rel_path"] for c in res3["conflicts"]] == ["drafts/d1.dbrows.json", "drafts/d1.json"]
 
 
 def test_install_over_existing_preserves_drafts(monkeypatch, tmp_path):
@@ -141,6 +149,12 @@ def test_discover_backup_sessions_and_explicit_import(monkeypatch, tmp_path):
         assert imported is not None
         assert imported.load_draft("essay1").title == "Start your engines"
         assert os.path.isfile(os.path.join(s.drafts_dir, "essay1.json"))
+        # Already-imported backup session is not re-offered
+        assert O.discover_backup_sessions(str(tmp_path), dest_root) == []
+        # Same-ID draft with different content in backup IS offered
+        s.save_draft(O.Draft(draft_id="essay1", mode=O.MODE_SMACKTALK, kind=O.KIND_SMACKTALK, title="Different Version"))
+        diff_found = O.discover_backup_sessions(str(tmp_path), dest_root)
+        assert len(diff_found) == 1 and diff_found[0]["draft_titles"] == ["Different Version"]
     finally:
         win.close()
 
