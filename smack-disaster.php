@@ -189,7 +189,13 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
             // importRecoveryKit() does not report success itself -- that is
             // SS-1427's subject and its home is the engine, not this page --
             // so the boundary states it explicitly.
-            $import_result['success'] = empty($import_result['errors']);
+            // SS-1427. Success is COMPLETENESS, not the absence of errors. A
+            // missing photograph is not an error, so `empty($errors)` called a
+            // restore that left four hundred photographs behind a success.
+            // The engine decides this at its step 5 and says so; the page does
+            // not re-derive it, and a result that does not claim completeness
+            // is not complete.
+            $import_result['success'] = (($import_result['complete'] ?? false) === true);
             // AND 'refused' COMES FROM THE ENGINE, not from here. SS-1425: the
             // engine refuses several things before it touches anything -- a
             // corrupt manifest, an incompatible kit, a pre-restore snapshot it
@@ -249,8 +255,21 @@ include 'core/sidebar.php';
         // tells the owner their database was touched; after a refusal it was
         // not, and whether the restore half-ran is the first thing they need
         // to know about a destructive operation.
+        // SS-1427 adds a FOURTH outcome, and the wording is the point of it.
+        //
+        // "The database is back and your photographs are not here yet" is not
+        // an error and must not be printed as one. The ordinary kit
+        // inventories media rather than carrying it, so on a rebuilt site that
+        // is the NORMAL outcome -- and "COMPLETED WITH ERRORS" would teach the
+        // owner that the word error means nothing. It is also not a success,
+        // which is what it used to render as.
+        //
+        // So: refused, complete, partial, failed. The partial branch names
+        // what is outstanding rather than leaving four counters to be read.
         $__ok      = (($import_result['success'] ?? false) === true);
         $__refused = !empty($import_result['refused']);
+        $__remaining = array_values(array_filter((array)($import_result['remaining'] ?? [])));
+        $__partial = (!$__ok && !$__refused && empty($import_result['errors']));
         ?>
         <?php if ($__refused): ?>
             <div class="alert">> NOTHING WAS RESTORED — THIS SITE IS UNCHANGED<br>
@@ -273,12 +292,24 @@ include 'core/sidebar.php';
                     Missing files: <?php echo $import_result['missing']; ?><br>
                 <?php endif; ?>
             </div>
+        <?php elseif ($__partial): ?>
+            <div class="alert">> RECOVERY KIT IMPORTED — SOME FILES ARE NOT HERE YET<br>
+                Your database is restored. Nothing failed.<br>
+                SQL statements: <?php echo $import_result['sql_imported'] ?? 0; ?><br>
+                Files restored: <?php echo $import_result['files_restored'] ?? 0; ?><br>
+                <?php foreach ($__remaining as $what): ?>
+                    STILL TO DO: <?php echo htmlspecialchars($what); ?><br>
+                <?php endforeach; ?>
+            </div>
         <?php else: ?>
             <div class="alert">> RECOVERY KIT IMPORT COMPLETED WITH ERRORS<br>
                 SQL statements: <?php echo $import_result['sql_imported'] ?? 0; ?><br>
                 Files restored: <?php echo $import_result['files_restored'] ?? 0; ?><br>
                 <?php foreach (($import_result['errors'] ?? []) as $err): ?>
                     ERROR: <?php echo htmlspecialchars($err); ?><br>
+                <?php endforeach; ?>
+                <?php foreach ($__remaining as $what): ?>
+                    STILL TO DO: <?php echo htmlspecialchars($what); ?><br>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>

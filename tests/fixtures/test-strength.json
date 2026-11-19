@@ -1452,6 +1452,13 @@
         "predicates": 4,
         "thresholds": []
     },
+    "partial-restore-is-not-success-regression.php": {
+        "assertions": 45,
+        "predicates": 53,
+        "thresholds": [
+            2
+        ]
+    },
     "pc-prompt-shortcode-regression.php": {
         "assertions": 5,
         "predicates": 3,
@@ -1902,8 +1909,8 @@
         ]
     },
     "restore-requires-step-up-and-typed-target-regression.php": {
-        "assertions": 57,
-        "predicates": 62,
+        "assertions": 61,
+        "predicates": 67,
         "thresholds": [
             2,
             4,

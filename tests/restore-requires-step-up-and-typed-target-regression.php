@@ -208,8 +208,23 @@ echo "\nSTAGE 4b — A REFUSAL RENDERS AS A REFUSAL (Codex's review FAIL)\n";
 $tpl = handler_code(substr($src, strpos($src, '$__ok')));
 check('the renderer decides on success === true, not on the errors list',
       str_contains($tpl, "(\$import_result['success'] ?? false) === true"), $failures);
-check('and the plural errors list is no longer what decides the outcome',
-      !str_contains($tpl, "empty(\$import_result['errors'])"), $failures);
+// SS-1427 CHANGED WHAT THIS HAS TO SAY, so it is narrowed rather than dropped.
+// The template now reads empty($import_result['errors']) in ONE place: the
+// $__partial test, which separates "imported, some files are not here yet"
+// from "completed with errors". That is a legitimate use -- it is asking
+// whether anything FAILED, not whether the restore succeeded. What must stay
+// true is that the errors list does not decide $__ok, so the check now reads
+// the $__ok assignment itself instead of the whole template.
+$okLine = '';
+foreach (explode("
+", $tpl) as $line) {
+    if (str_contains($line, '$__ok') && str_contains($line, '=')) { $okLine = $line; break; }
+}
+check('the $__ok assignment was located', $okLine !== '', $failures);
+check('and the errors list is not what decides it',
+      $okLine !== '' && !str_contains($okLine, "empty(\$import_result['errors'])"), $failures);
+check('while the partial branch is allowed to ask whether anything FAILED',
+      str_contains($tpl, '$__partial'), $failures);
 check('there is ONE error key in the contract: no singular error survives',
       !str_contains($handler, "'error'   =>") && !str_contains($tpl, "['error']"),
       $failures);
@@ -344,10 +359,23 @@ if ($boundary !== '') {
         $import_result['refused'] = false;
         return $import_result;
     };
-    $out = $render($apply(['errors' => [], 'sql_imported' => 412,
+    // SS-1427: NO ERRORS IS NO LONGER ENOUGH. Success is completeness now, and
+    // the engine says so with 'complete'. A result with no errors that left
+    // photographs behind used to render the success banner, which is the whole
+    // of SS-1427. This fixture therefore claims completeness, and the case
+    // immediately below proves that withholding the claim withholds the
+    // banner.
+    $out = $render($apply(['errors' => [], 'complete' => true, 'sql_imported' => 412,
                            'files_restored' => 88, 'checksum_ok' => 88]));
-    check('an engine result with no errors renders as success through the real boundary',
+    check('a COMPLETE engine result renders as success through the real boundary',
           str_contains($out, $SUCCESS), $failures);
+    $out = $render($apply(['errors' => [], 'complete' => false, 'sql_imported' => 412,
+                           'files_restored' => 0, 'missing' => 400,
+                           'remaining' => ['400 file(s) are not on disk']]));
+    check('an INCOMPLETE result with no errors does NOT render as success (SS-1427)',
+          !str_contains($out, $SUCCESS), $failures);
+    check('and does not render as a refusal either, because the database WAS restored',
+          !str_contains($out, $REFUSED), $failures);
     $out = $render($apply(['errors' => ['SQL: table snap_images failed'],
                            'sql_imported' => 40, 'files_restored' => 0]));
     check('an engine result WITH errors does not render as success',

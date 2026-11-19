@@ -580,6 +580,8 @@ class SnapSmackRecovery {
             'snapshot'       => null,
             'media'          => null,   // SS-1426/1431, filled at step 3c
             'thumbs_generated' => 0,
+            'remaining'      => [],     // SS-1427, what is still outstanding
+            'complete'       => false,  // SS-1427, refused until step 5 says otherwise
             // REFUSED UNTIL PROVEN OTHERWISE. Every `return $result` above the
             // SQL import happens before a single destructive statement, so
             // every one of them is a refusal: this site is unchanged. Starting
@@ -957,6 +959,57 @@ class SnapSmackRecovery {
 
         if ($result['not_bundled'] > 0) {
             $this->streamProgress("{$result['not_bundled']} files inventoried but not bundled — restore via FTP or Cloud Backup.", 'info');
+        }
+
+        // --- 5. IS THIS A COMPLETE RECOVERY? (SS-1427) ---
+        //
+        // "Success must require the full declared recovery result, and partial
+        // completion must name what remains missing."
+        //
+        // Until now the page decided success as empty($errors), and a missing
+        // photograph is not an error. So a kit that brought the database back
+        // and left four hundred photographs behind rendered RECOVERY KIT
+        // IMPORTED SUCCESSFULLY, which is the last member of the family this
+        // week's tickets have been working through: a restore reporting
+        // something it did not do.
+        //
+        // THE ENGINE DECIDES, for the same reason it decides 'refused': the
+        // page cannot tell a complete recovery from a partial one by looking
+        // at an error list, because a partial one has no errors in it.
+        //
+        // A PARTIAL RECOVERY IS NOT A FAILURE AND MUST NOT READ AS ONE. The
+        // ordinary kit inventories its media rather than bundling it -- see
+        // not_bundled above -- so on a rebuilt site the ordinary outcome is
+        // "the database is back, the photographs are not here yet, fetch them
+        // from your backup". Calling that "COMPLETED WITH ERRORS" would be a
+        // lie in the other direction and would teach the owner to ignore the
+        // word error. So this is its own outcome with its own words, and
+        // 'remaining' says what is outstanding in the owner's terms rather
+        // than leaving them to read four counters.
+        $remaining = [];
+        if ($result['missing'] > 0) {
+            $remaining[] = $result['missing'] . ' file(s) the database expects are not on '
+                . 'disk and were not in the kit. Photographs, media and branding come back '
+                . 'from your own backup -- FTP, Cloud Backup or a manual upload -- not from '
+                . 'this kit.';
+        }
+        if ($result['not_bundled'] > 0) {
+            $remaining[] = $result['not_bundled'] . ' file(s) were listed in the kit but not '
+                . 'carried inside it, which is normal for a kit: it inventories your media '
+                . 'rather than copying it. Restore those the same way.';
+        }
+        if ($result['checksum_fail'] > 0) {
+            $remaining[] = $result['checksum_fail'] . ' restored file(s) did not match the '
+                . 'checksum the kit recorded. They are on disk and they are not the files '
+                . 'the kit described; treat them as suspect.';
+        }
+
+        $result['remaining'] = $remaining;
+        $result['complete']  = empty($result['errors']) && $remaining === [];
+
+        if (!$result['complete'] && empty($result['errors'])) {
+            $this->streamProgress('The database is restored. Some files are not here yet '
+                . '-- see the list above.', 'warn');
         }
 
         return $result;
