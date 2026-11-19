@@ -42,14 +42,15 @@ version forms, all three agree, so this is duplication rather than a defect.
   transparent against each card's normal and hover background. (SS-1441)
 
 - **Every Migration Centre tile in SNAP HQ has its own icon.** SMACKPRESS,
-  BLOGGER FLOGGER, UNZUCKER, FLKR FCKR, GHOSTED, and DRIVE BY now display
-  original Midnight Lime icons instead of letter placeholders, and FED UP's
-  icon is sized to match the rest of the tiles. (SS-1442)
+  BLOGGER FLOGGER, UNZUCKER, and FLKR FCKR now display original Midnight Lime
+  icons instead of letter placeholders, and FED UP's icon is sized to match
+  the rest of the tiles. (SS-1442)
 
 - **Desktop app tests cannot touch your live SNAPSMACK folder.** Running the
   test suite now refuses to open the real profile directory on disk and
-  sandboxes each test run to a temporary folder instead, so test fixtures
-  never appear in your working drafts or credential vault. (SS-1443)
+  sandboxes the COLD SNAP and GYSS test suites to temporary folders instead, so
+  test fixtures never appear in your working drafts or credential vault.
+  (SS-1443)
 
 - **Unique-visitor counts on sites behind Cloudflare were undercounted; after
   this update they will jump to the real figure. That's not a traffic spike.**
