@@ -6,7 +6,7 @@
  *   $page_title       — <title> content
  *   $page_description — meta description
  *   $page_og_url      — canonical og:url for this page
- *   $nav_active       — key matching a nav link: index|goods|goods-skins|goods-tools|tool-*|security|wotcha|brass-tacks|faq-*|coming|oi|tnb|hairy-muff|buzzers|ding-dong|reckoning|hows-yer-father|bugger
+ *   $nav_active       — key matching a nav link: index|goods|goods-skins|goods-tools|tool-*|security|support|wotcha|brass-tacks|faq-*|coming|oi|tnb|hairy-muff|buzzers|ding-dong|reckoning|hows-yer-father|bugger
  *   $page_css         — (optional) additional CSS string for page-specific styles
  */
 
@@ -38,6 +38,8 @@ $_nav = function(string $active): string {
            ss_nav_link('tools.php',       'Desktop Tools', 'goods-tools', str_starts_with($active, 'tool-') ? 'goods-tools' : $active) . "
 " .
            ss_nav_link('security.php',    'Security',    'security',    $active) . "
+" .
+           ss_nav_link('support.php',     'Support',     'support',     $active) . "
 " .
            ss_nav_link('wotcha.php',      'News',        'wotcha',      $active) . "
 " .

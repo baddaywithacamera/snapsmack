@@ -10,6 +10,7 @@ Canonical project: https://snapsmack.ca/
 FAQ and installation requirements: https://snapsmack.ca/brass-tacks.php
 Features: https://snapsmack.ca/features.php
 Security doctrine (no remote control, same-day disclosure): https://snapsmack.ca/security.php
+Hosting and support guide: https://snapsmack.ca/support.php
 Desktop tools: https://snapsmack.ca/tools.php
 Roadmap: https://snapsmack.ca/coming-soon.php
 Privacy: https://snapsmack.ca/tnb.php
