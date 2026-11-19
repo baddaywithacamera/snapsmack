@@ -82,7 +82,77 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
     // engine also blocks executable and traversal restore targets, so a forged
     // import could not reach RCE even before this.)
     csrf_verify();
-    if (!empty($_FILES['recovery_file']['tmp_name'])) {
+
+    // SS-1430. THE MOST DESTRUCTIVE ACTION IN THE PRODUCT HAD THE WEAKEST GATE.
+    // This overwrites the database and the files, and it cannot be undone from
+    // here. Until now it asked for a CSRF token -- which every form on this
+    // page carries -- and a browser confirm() dialog, which is a line of
+    // JavaScript that any client can simply not run. A POST from a script,
+    // or a mis-clicked button on a page left open, reached the SQL.
+    //
+    // Two controls, both enforced HERE on the server, because a control that
+    // lives in the form is a suggestion:
+    //
+    //  1. PASSWORD PLUS TOTP, through the same reauth_verify() every other
+    //     consequential action uses (smack-api-keys.php, the fediverse admin
+    //     actions, schema sync). Not a new mechanism -- the shared one, so it
+    //     inherits the SS-1399 attempt budget and lockout rather than needing
+    //     its own.
+    //
+    //  2. A TYPED CONFIRMATION NAMING THIS SITE. Step-up proves who you are;
+    //     it does not prove you meant THIS site. An owner with several
+    //     installs open has the same password and the same authenticator for
+    //     all of them, so step-up alone cannot stop a kit going into the
+    //     wrong one -- and restoring site A's kit over site B is the exact
+    //     accident that has no undo. site_url is used rather than site_name
+    //     because two installs can share a name and cannot share a URL.
+    //
+    // Compared with hash_equals on the trimmed value: this is not a secret,
+    // but the comparison costs nothing and keeps one habit for all of them.
+    require_once 'core/reauth.php';
+    // READ site_url FROM THE DATABASE, NOT FROM $settings. $settings is
+    // populated by core/admin-header.php, which this file includes BELOW the
+    // POST handler -- so at this point it does not exist. Using it here would
+    // have made the typed-confirmation check fail closed on every restore,
+    // permanently, with a message about a missing site address. Found by
+    // checking the variable's scope rather than by running the page, which is
+    // the only reason it is not in this commit as a bug.
+    $restore_target = '';
+    try {
+        $target_stmt = $pdo->prepare(
+            "SELECT setting_val FROM snap_settings WHERE setting_key = 'site_url' LIMIT 1"
+        );
+        $target_stmt->execute();
+        $restore_target = trim((string)($target_stmt->fetchColumn() ?: ''));
+    } catch (PDOException $e) {
+        // Leave it empty: the branch below refuses rather than proceeding.
+        error_log('SnapSmack restore: site_url lookup failed - ' . $e->getMessage());
+    }
+    $typed_target   = trim((string)($_POST['confirm_target'] ?? ''));
+    $ra = reauth_verify(
+        $pdo,
+        (string)($_POST['reauth_password'] ?? ''),
+        (string)($_POST['reauth_totp'] ?? '')
+    );
+
+    if (!$ra['ok']) {
+        $import_result = ['success' => false,
+            'error' => 'NOTHING WAS RESTORED — ' . $ra['error']];
+    } elseif ($restore_target === '') {
+        // Fail closed. With no site_url recorded there is no target to name,
+        // so the second control cannot be satisfied and must not be skipped.
+        $import_result = ['success' => false,
+            'error' => 'NOTHING WAS RESTORED — this install has no site address '
+                     . 'recorded, so the restore target cannot be confirmed. Set '
+                     . 'the site address in settings first.'];
+    } elseif (!hash_equals($restore_target, $typed_target)) {
+        $import_result = ['success' => false,
+            'error' => 'NOTHING WAS RESTORED — the confirmation did not match this '
+                     . 'site address exactly. Type it as it appears above.'];
+    } elseif (empty($_FILES['recovery_file']['tmp_name'])) {
+        $import_result = ['success' => false,
+            'error' => 'NOTHING WAS RESTORED — no recovery kit was uploaded.'];
+    } else {
         require_once 'core/recovery-engine.php';
         try {
             $recovery      = new SnapSmackRecovery($pdo, __DIR__);
@@ -91,6 +161,18 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
             $import_result = ['success' => false, 'error' => $e->getMessage()];
         }
     }
+}
+
+// The address the typed confirmation must match, for the form below. Read
+// here as well as in the POST handler because the handler only runs on a
+// POST and the form is rendered on every GET.
+$restore_target_display = '';
+try {
+    $rt = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'site_url' LIMIT 1");
+    $rt->execute();
+    $restore_target_display = trim((string)($rt->fetchColumn() ?: ''));
+} catch (PDOException $e) {
+    $restore_target_display = '';
 }
 
 $page_title = "Disaster Recovery";
@@ -179,8 +261,29 @@ include 'core/sidebar.php';
                            class="file-input-hidden"
                            onchange="document.getElementById('recovery-name').innerText = this.files[0].name;">
                 </div>
+                <!-- SS-1430. The two controls the server now requires. They are
+                     here so the action is reachable; they are NOT the control.
+                     The enforcement is in the POST handler above, because a
+                     requirement that lives in a form is a suggestion. -->
+                <label class="skin-desc-text" for="restore-target">
+                    TYPE THIS SITE'S ADDRESS TO CONFIRM THE TARGET:
+                    <strong><?php echo htmlspecialchars($restore_target_display, ENT_QUOTES); ?></strong>
+                </label>
+                <input type="text" name="confirm_target" id="restore-target"
+                       autocomplete="off" spellcheck="false" required
+                       placeholder="<?php echo htmlspecialchars($restore_target_display, ENT_QUOTES); ?>">
+
+                <label class="skin-desc-text" for="restore-pass">ACCOUNT PASSWORD</label>
+                <input type="password" name="reauth_password" id="restore-pass"
+                       autocomplete="current-password" required>
+
+                <label class="skin-desc-text" for="restore-totp">6-DIGIT AUTHENTICATOR CODE</label>
+                <input type="text" name="reauth_totp" id="restore-totp"
+                       inputmode="numeric" autocomplete="one-time-code"
+                       pattern="[0-9]{6}" maxlength="6" required>
+
                 <button type="submit" class="btn-smack btn-block"
-                        onclick="return confirm('This will overwrite your database and files. Continue?');">
+                        onclick="return confirm('This will overwrite your database and files. It cannot be undone from this page. Continue?');">
                     IMPORT RECOVERY KIT
                 </button>
             </form>

@@ -1016,7 +1016,7 @@
     },
     "hq-device-expiry-enforced-regression.php": {
         "assertions": 43,
-        "predicates": 16,
+        "predicates": 18,
         "thresholds": [
             3,
             403,
@@ -1858,6 +1858,16 @@
         "thresholds": [
             2,
             4
+        ]
+    },
+    "restore-requires-step-up-and-typed-target-regression.php": {
+        "assertions": 26,
+        "predicates": 19,
+        "thresholds": [
+            2,
+            3,
+            200,
+            400
         ]
     },
     "rfc9421-signature-regression.php": {
