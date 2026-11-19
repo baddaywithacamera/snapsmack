@@ -1284,8 +1284,34 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                     $parts[] = '&copy; ' . snap_escape_html($slot['year'] ?? '') . ' <a class="p-name u-url footer-link" href="' . snap_route_url('home') . '">' . snap_escape_html($slot['site_name'] ?? '') . '</a>';
                     break;
                 case 'email':
+                    // SAME TREATMENT AS core/footer.php:48, which is the point.
+                    //
+                    // The strict rail printed the address straight into the
+                    // markup while the classic footer reversed it and let
+                    // .reverse-email in assets/css/public-base.css turn it
+                    // back the right way round for a reader. So the same
+                    // footer_slot_email setting left an owner's address
+                    // harvestable on a strict skin and obfuscated on a classic
+                    // one, decided by which skin they happened to pick.
+                    //
+                    // It is weak protection either way -- it stops a naive
+                    // scraper reading the page text and nothing cleverer --
+                    // but one rail having it and the other not is not a
+                    // decision anybody made. mccormickphotography.com is a
+                    // strict ALFRED site, so this is the rail Sean's own
+                    // address is on.
+                    //
+                    // The href is NOT reversed: a mailto must still work when
+                    // clicked. Only the visible text is, exactly as the
+                    // classic footer does it.
                     $email = trim((string)($slot['email'] ?? ''));
-                    if (filter_var($email, FILTER_VALIDATE_EMAIL)) $parts[] = 'EMAIL: <a class="footer-link" href="mailto:' . snap_escape_attr($email) . '">' . snap_escape_html($email) . '</a>';
+                    if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        $parts[] = 'EMAIL: <a class="footer-link" href="mailto:'
+                            . snap_escape_attr($email) . '">'
+                            . '<span class="reverse-email">'
+                            . snap_escape_html(strrev($email))
+                            . '</span></a>';
+                    }
                     break;
                 case 'theme': $parts[] = 'THEME: ' . snap_escape_html($slot['name'] ?? ''); break;
                 case 'powered':

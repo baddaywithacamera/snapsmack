@@ -13,9 +13,9 @@
             "manifest_css_sha256": "53759ac9939ee3eaf2b45aca9c121d761fd38a74b98c2315e0f7505cfbeac57d"
         },
         "alfred": {
-            "version": "1.0.16",
-            "files_sha256": "02b2959e4ca39842269b4d023af00051b9a3456b11e3779f66c9b250d414c170",
-            "manifest_css_sha256": "f06a8252ab0e42004734c97aedc0edd47340d2f0192064e0a5b72cdaccf1d7c0"
+            "version": "1.0.20",
+            "files_sha256": "4b5a92fda8a8bde57c6bb14ca6b973a00d3fa77e17317376f7f5e5be33437eb4",
+            "manifest_css_sha256": "c8c709975c19e82c7f4021ad20eca7a92cbc243f97e15e2e3c55add9921cfe6f"
         },
         "aurora": {
             "version": "1.0.60",
@@ -98,9 +98,9 @@
             "manifest_css_sha256": "a1f5658d8ba757965e60af97702c2fbc6fa516b5fb153e1509967ae0c09a0d0f"
         },
         "scroll": {
-            "version": "0.1.80",
-            "files_sha256": "2468c927a15f20f4a705998dbc3f8daf3340f500d5497be3cbc1f163d02c2e77",
-            "manifest_css_sha256": "3be4f7dad2f868df8925990d1e97a61a490073b7f13dcd9c4ee1a22ae9e58ec8"
+            "version": "0.1.81",
+            "files_sha256": "f13e837ccc1440d96f36b19a9e5c3ab6f1abfd75829868703186aea3470a3237",
+            "manifest_css_sha256": "c39951476d28171ca60f02879d5aa610061c4f44266f5d20a76119da6c49cf35"
         },
         "show-n-tell": {
             "version": "1.2.15",

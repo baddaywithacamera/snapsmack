@@ -802,6 +802,11 @@
             39
         ]
     },
+    "footer-email-obfuscated-on-both-rails-regression.php": {
+        "assertions": 19,
+        "predicates": 19,
+        "thresholds": []
+    },
     "forum-board-counter-regression.php": {
         "assertions": 11,
         "predicates": 8,
@@ -1173,6 +1178,14 @@
         "predicates": 20,
         "thresholds": [
             4000
+        ]
+    },
+    "landing-layout-is-a-cms-setting-regression.php": {
+        "assertions": 32,
+        "predicates": 17,
+        "thresholds": [
+            3,
+            4
         ]
     },
     "legacy-archive-redirect-loop-regression.php": {
@@ -1933,8 +1946,8 @@
         "thresholds": []
     },
     "scroll-square-layout-regression.php": {
-        "assertions": 8,
-        "predicates": 12,
+        "assertions": 11,
+        "predicates": 15,
         "thresholds": []
     },
     "scrolltime-component-regression.php": {

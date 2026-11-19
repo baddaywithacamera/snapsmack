@@ -846,6 +846,13 @@ input[type="button"],
     color: #fff;
 }
 
+.social-menu a:focus-visible {
+    background: var(--alfred-accent);
+    color: #fff;
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
 .social-menu li a::before {
     content: '\f0c1';
     display: inline-block;
@@ -907,8 +914,9 @@ input[type="button"],
 .social-menu a[href*="xing"]::before            { content: '\f168'; font-family: 'Font Awesome 5 Brands'; }
 
 /* Header Background Image
-   The PHP template sets background-image inline from the skin option.
-   This rule provides sizing, positioning, and the gradient overlay. */
+   Sean's own storm panorama is the packaged default. A configured header
+   image is rendered above it by .header-media-image; the default remains a
+   safe fallback delivered through the skin update path. */
 
 .header-image,
 .header-image:after {
@@ -922,6 +930,7 @@ input[type="button"],
 
 .header-image {
     background-color: #1d1d1d;
+    background-image: url(assets/images/sean-storm-panorama.jpg);
     background-repeat: no-repeat;
     background-position: top center;
     background-size: var(--alfred-header-fit, cover);   /* Header Image Fit */
@@ -1638,6 +1647,16 @@ p.comment-form-author { margin-right: 5%; }
 
 #system-footer .sep { margin: 0 10px; color: #555; }
 
+#system-footer .alfred-footer-social {
+    margin: 0 0 24px;
+    padding: 0;
+}
+
+#system-footer .alfred-footer-social a {
+    width: 44px;
+    height: 44px;
+}
+
 
 /* -------------------------------------------------------------------------- */
 /*  16. No-JS Fixes                                                            */
@@ -2004,10 +2023,22 @@ p.comment-form-author { margin-right: 5%; }
    ============================================================ */
 
 .alfred-archive-grid {
+    margin: 40px 0;
+}
+
+/* The skin's original auto-fill geometry applies only to its default mode.
+   Square mode is owned completely by the shared mosaic engine. */
+.alfred-archive-grid:not(.ss-square-wall) {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     grid-gap: 4px;
-    margin: 40px 0;
+}
+
+/* The shared mosaic stylesheet owns square-wall geometry.  ALFRED owns only
+   the input from its CMS control; the extra class makes this mapping outrank
+   the engine's four-column fallback regardless of stylesheet order. */
+.alfred-archive-grid.ss-square-wall {
+    --ss-square-cols: var(--alfred-square-cols, 3);
 }
 
 /* The archive heading sits over the full-height masthead image. Keep it
