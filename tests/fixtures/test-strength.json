@@ -1453,8 +1453,8 @@
         "thresholds": []
     },
     "partial-restore-is-not-success-regression.php": {
-        "assertions": 45,
-        "predicates": 53,
+        "assertions": 53,
+        "predicates": 64,
         "thresholds": [
             2
         ]
