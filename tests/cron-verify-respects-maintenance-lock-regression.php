@@ -120,7 +120,28 @@ if (function_exists('snap_maintenance_lock_held')) {
     @mkdir($tmp, 0700, true);
     $lock = $tmp . '/maintenance.lock';
 
-    $case = function (string $label, $contents, bool $expect_held) use ($lock) {
+    // AGE-BASED CASES ARE BUILT AT CALL TIME, NOT FROM A $now CAPTURED EARLIER.
+    //
+    // This test was FLAKY, and the window was one second wide. $now was taken
+    // once, then 'valid lock exactly 300s old' wrote since = $now - 300 and
+    // expected HELD. If the wall clock ticked between capturing $now and the
+    // helper computing the age -- which it does whenever the run crosses a
+    // second boundary -- that lock became 301 seconds old and the boundary
+    // case failed on correct code. It failed once in a full-suite run and then
+    // passed seven times in a row, which is the worst way for a test to be
+    // wrong: it reads as a real intermittent fault in the lock helper.
+    //
+    // That is the CRLF fixture problem again (the same commit passing in one
+    // checkout and failing in another). A test whose result depends on when it
+    // runs cannot be used to decide whether code is correct.
+    //
+    // $ageOffset builds the timestamp immediately before the call, so the
+    // boundary is exact by construction. $contents is still accepted for the
+    // cases that are about malformed files rather than age.
+    $case = function (string $label, $contents, bool $expect_held, ?int $ageOffset = null) use ($lock) {
+        if ($ageOffset !== null) {
+            $contents = json_encode(['since' => time() - $ageOffset, 'site_name' => 'x']);
+        }
         if ($contents === null) {
             @unlink($lock);
         } else {
@@ -137,13 +158,13 @@ if (function_exists('snap_maintenance_lock_held')) {
     $case('no lock file', null, false);
 
     // A fresh, valid lock: an update is running.
-    $case('fresh valid lock', json_encode(['since' => $now, 'site_name' => 'x']), true);
-    $case('valid lock 299s old', json_encode(['since' => $now - 299]), true);
-    $case('valid lock exactly 300s old', json_encode(['since' => $now - 300]), true);
+    $case('fresh valid lock', null, true, 0);
+    $case('valid lock 299s old', null, true, 299);
+    $case('valid lock exactly 300s old', null, true, 300);
 
     // Provably stale: a crashed update must not block verification for ever.
-    $case('valid lock 301s old (provably stale)', json_encode(['since' => $now - 301]), false);
-    $case('valid lock a day old (provably stale)', json_encode(['since' => $now - 86400]), false);
+    $case('valid lock 301s old (provably stale)', null, false, 301);
+    $case('valid lock a day old (provably stale)', null, false, 86400);
 
     // THE CASE CODEX CAUGHT. Each of these is a lock we cannot prove stale, so
     // each must block. The empty and partial cases are what the file actually
