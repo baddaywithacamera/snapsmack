@@ -228,6 +228,74 @@ class SnapSmackRecovery {
         return $cleared;
     }
 
+    /**
+     * Is this database-supplied relative path safe to write inside baseDir?
+     *
+     * CODEX'S SS-1426/1431 FAIL, AND THE FAULT IS MINE. restoreImages(),
+     * restoreMediaAssets() and restoreBranding() have always joined
+     * baseDir . '/' . <value from the database> and copied, with no
+     * containment check. That was survivable while their ONLY caller was
+     * install.php, where the rows come from a fresh install.
+     *
+     * I wired all three into the kit-import path. The rows then come from the
+     * KIT'S OWN SQL DUMP, which is attacker-controlled. Codex proved it: a
+     * snap_images.img_file of "../escaped.php" plus a matching file beside the
+     * manifest writes a PHP file OUTSIDE the site root and reports
+     * restored: 1 with no errors. I reproduced it before changing anything.
+     *
+     * I took a helper that was safe in its context and made it unsafe by
+     * handing it hostile input -- and I did it four lines from the manifest
+     * phase's own SECAUDIT 047 containment check, which I had read and quoted
+     * while studying that code. Seeing a guard is not the same as noticing it
+     * is missing next door.
+     *
+     * THE RULES ARE THE MANIFEST PHASE'S, deliberately, rather than a second
+     * opinion about what is dangerous: no empty value, no NUL, no "..", no
+     * absolute or drive-lettered path, no dotfile, no executable extension in
+     * ANY dot-separated token, and the resolved parent directory must sit
+     * under baseDir -- which is what catches a symlink the string tests miss.
+     *
+     * @param string $rel the stored relative path
+     * @param string $why set to a reason when the answer is false
+     */
+    private function safeRelativeTarget(string $rel, string &$why = ''): bool {
+        $why = '';
+        $norm = str_replace('\\', '/', trim($rel));
+        if ($norm === '') { $why = 'empty path'; return false; }
+        if (strpos($norm, "\0") !== false) { $why = 'NUL byte in path'; return false; }
+        if (strpos($norm, '..') !== false) { $why = 'parent-directory traversal'; return false; }
+        if ($norm[0] === '/' || preg_match('#^[a-zA-Z]:#', $norm)) {
+            $why = 'absolute path'; return false;
+        }
+
+        $baseName = strtolower(basename($norm));
+        if ($baseName === '' || $baseName[0] === '.') { $why = 'dotfile'; return false; }
+
+        // EVERY dot-separated token, not just the final extension: Apache's
+        // AddHandler matches ".php" anywhere in the name, so "shell.php.jpg"
+        // would otherwise execute. Same list as the manifest phase.
+        $blockedExt = ['php','php3','php4','php5','php7','php8','phtml','pht',
+                       'phar','phps','cgi','pl','asp','aspx','jsp','sh','htaccess'];
+        if (array_intersect(explode('.', $baseName), $blockedExt)) {
+            $why = 'executable file extension'; return false;
+        }
+
+        // Defence in depth: the resolved parent must stay under baseDir. Only
+        // checked when the parent already exists -- a path that passes the
+        // string tests and whose parent is yet to be created cannot escape,
+        // because ".." is already refused above.
+        $baseReal   = realpath($this->baseDir);
+        $parentReal = realpath(dirname($this->baseDir . '/' . $norm));
+        if ($baseReal !== false && $parentReal !== false) {
+            $needle = rtrim($baseReal, '/\\') . DIRECTORY_SEPARATOR;
+            if (strncmp($parentReal . DIRECTORY_SEPARATOR, $needle, strlen($needle)) !== 0) {
+                $why = 'resolves outside the site directory';
+                return false;
+            }
+        }
+        return true;
+    }
+
     // =================================================================
     // IMAGE FILE RESTORATION
     // =================================================================
@@ -243,12 +311,26 @@ class SnapSmackRecovery {
         $restored = 0;
         $in_place = 0;
         $missing  = 0;
+        $blocked  = 0;
         $errors   = [];
 
         $images = $this->pdo->query("SELECT id, img_file FROM snap_images ORDER BY id")->fetchAll();
 
         foreach ($images as $img) {
             $rel_path = $img['img_file'];
+
+            // SS-1426/1431 security repair. These rows come from the kit's own
+            // SQL dump on the admin import path, so the value is attacker
+            // controlled. Checked BEFORE any join, mkdir, file_exists or copy.
+            $why = '';
+            if (!$this->safeRelativeTarget((string)$rel_path, $why)) {
+                $blocked++;
+                $errors[] = "Blocked unsafe image path ({$why}): " . $rel_path;
+                $this->streamProgress('BLOCKED unsafe image path (' . $why . '): '
+                    . htmlspecialchars((string)$rel_path), 'error');
+                continue;
+            }
+
             $abs_path = $this->baseDir . '/' . $rel_path;
 
             // Already in the correct location?
@@ -288,7 +370,7 @@ class SnapSmackRecovery {
             $this->streamProgress("MISSING: " . htmlspecialchars($rel_path) . " (id:{$img['id']})", 'warn');
         }
 
-        return compact('restored', 'in_place', 'missing', 'errors');
+        return compact('restored', 'in_place', 'missing', 'blocked', 'errors');
     }
 
     // =================================================================
@@ -428,15 +510,24 @@ class SnapSmackRecovery {
         $restored = 0;
         $in_place = 0;
         $missing  = 0;
+        $blocked  = 0;
 
         try {
             $assets = $this->pdo->query("SELECT id, asset_path FROM snap_assets ORDER BY id")->fetchAll();
         } catch (PDOException $e) {
             $this->streamProgress("snap_assets table not found — skipping media assets.", 'warn');
-            return compact('restored', 'in_place', 'missing');
+            return compact('restored', 'in_place', 'missing', 'blocked');
         }
 
         foreach ($assets as $asset) {
+            // SS-1426/1431: same attacker-controlled source as the images.
+            $why = '';
+            if (!$this->safeRelativeTarget((string)$asset['asset_path'], $why)) {
+                $blocked++;
+                $this->streamProgress('BLOCKED unsafe asset path (' . $why . '): '
+                    . htmlspecialchars((string)$asset['asset_path']), 'error');
+                continue;
+            }
             $abs_path = $this->baseDir . '/' . $asset['asset_path'];
 
             if (file_exists($abs_path)) {
@@ -476,7 +567,7 @@ class SnapSmackRecovery {
             }
         }
 
-        return compact('restored', 'in_place', 'missing');
+        return compact('restored', 'in_place', 'missing', 'blocked');
     }
 
     // =================================================================
@@ -492,6 +583,7 @@ class SnapSmackRecovery {
         $restored = 0;
         $in_place = 0;
         $missing  = 0;
+        $blocked  = 0;
 
         $keys = ['header_logo_url', 'favicon_url', 'site_logo'];
 
@@ -500,6 +592,16 @@ class SnapSmackRecovery {
             if (empty($val)) continue;
 
             $rel_path = ltrim($val, '/');
+
+            // SS-1426/1431: a restored SETTING value, equally kit-controlled.
+            $why = '';
+            if (!$this->safeRelativeTarget($rel_path, $why)) {
+                $blocked++;
+                $this->streamProgress('BLOCKED unsafe branding path for ' . $key
+                    . ' (' . $why . '): ' . htmlspecialchars($rel_path), 'error');
+                continue;
+            }
+
             $abs_path = $this->baseDir . '/' . $rel_path;
 
             if (file_exists($abs_path)) {
@@ -524,7 +626,7 @@ class SnapSmackRecovery {
             $this->streamProgress("MISSING BRANDING: {$key} → " . htmlspecialchars($rel_path), 'warn');
         }
 
-        return compact('restored', 'in_place', 'missing');
+        return compact('restored', 'in_place', 'missing', 'blocked');
     }
 
     // =================================================================
@@ -935,6 +1037,17 @@ class SnapSmackRecovery {
             // rather than hiding in a key nothing renders.
             $result['files_restored'] += (int)($r['restored'] ?? 0);
             $result['missing']        += (int)($r['missing'] ?? 0);
+            // SS-1426/1431: a BLOCKED row is not missing and not restored. It
+            // is a kit trying to write outside the site, and it is an error
+            // rather than a count, because the owner needs to know the kit
+            // attempted it -- not merely that a file did not arrive.
+            $blocked = (int)($r['blocked'] ?? 0);
+            if ($blocked > 0) {
+                $result['errors'][] = $labels[$name] . ': ' . $blocked . ' path(s) in this '
+                    . 'kit pointed outside your site and were refused. A kit should never '
+                    . 'do that; treat this kit as untrustworthy and check where it came '
+                    . 'from.';
+            }
             if ($name === 'thumbs') {
                 $result['thumbs_generated'] = (int)($r['generated'] ?? 0);
             }
