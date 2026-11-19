@@ -13,9 +13,9 @@
             "manifest_css_sha256": "53759ac9939ee3eaf2b45aca9c121d761fd38a74b98c2315e0f7505cfbeac57d"
         },
         "alfred": {
-            "version": "1.0.16",
+            "version": "1.0.18",
             "files_sha256": "02b2959e4ca39842269b4d023af00051b9a3456b11e3779f66c9b250d414c170",
-            "manifest_css_sha256": "f06a8252ab0e42004734c97aedc0edd47340d2f0192064e0a5b72cdaccf1d7c0"
+            "manifest_css_sha256": "7700b5d2ab955c5615c02c3fdfa2273e2e931881f86cf2b80388222b0b7cd422"
         },
         "aurora": {
             "version": "1.0.60",
