@@ -1174,8 +1174,8 @@
         "thresholds": []
     },
     "kit-import-restores-media-regression.php": {
-        "assertions": 30,
-        "predicates": 13,
+        "assertions": 39,
+        "predicates": 16,
         "thresholds": [
             2,
             100
@@ -1458,8 +1458,8 @@
         "thresholds": []
     },
     "partial-restore-is-not-success-regression.php": {
-        "assertions": 45,
-        "predicates": 53,
+        "assertions": 53,
+        "predicates": 64,
         "thresholds": [
             2
         ]

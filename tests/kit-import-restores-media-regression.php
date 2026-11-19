@@ -87,6 +87,26 @@ class KmDumpablePdo extends PDO {
     }
 }
 
+/**
+ * Remove a fixture directory and everything under it.
+ *
+ * Guarded to paths inside the system temp directory, because a recursive
+ * delete driven by a variable is exactly the shape of an accident, and this
+ * one runs in a test suite that people execute without reading.
+ */
+function km_rmtree(string $dir): void {
+    $tmp = realpath(sys_get_temp_dir());
+    $real = realpath($dir);
+    if ($tmp === false || $real === false) return;
+    if (strncmp($real, $tmp, strlen($tmp)) !== 0 || $real === $tmp) return;
+    foreach (new RecursiveIteratorIterator(
+                 new RecursiveDirectoryIterator($real, FilesystemIterator::SKIP_DOTS),
+                 RecursiveIteratorIterator::CHILD_FIRST) as $item) {
+        $item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
+    }
+    @rmdir($real);
+}
+
 /** A 1x1 JPEG, byte for byte, because this box has no GD to make one with. */
 function km_jpeg(): string {
     return base64_decode(
@@ -268,6 +288,126 @@ km_check('and nothing was invented on disk',
          !is_file($site2 . '/img_uploads/2026/gone.jpg'), $failures);
 
 // ─────────────────────────────────────────────────────────────────────────────
+echo "\nSTAGE 5b — A HOSTILE KIT CANNOT WRITE OUTSIDE THE SITE (Codex's FAIL)\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// THE FAULT WAS MINE AND THIS TICKET CAUSED IT. restoreImages(),
+// restoreMediaAssets() and restoreBranding() have always joined
+// baseDir . '/' . <value from the database> and copied with no containment
+// check. Survivable while install.php was their only caller, where the rows
+// come from a fresh install.
+//
+// Wiring them into the kit-import path made those rows come from the KIT'S OWN
+// SQL DUMP. Codex proved it: snap_images.img_file of "../escaped.php" plus a
+// matching file beside the manifest writes a PHP file OUTSIDE the site root
+// and reports restored: 1 with no errors. I reproduced it before changing
+// anything, and it is reproduced here so it cannot come back.
+//
+// I did this four lines from the manifest phase's own SECAUDIT 047 containment
+// check, which I had read and quoted while studying that code. Seeing a guard
+// is not the same as noticing one is missing next door.
+$evil = sys_get_temp_dir() . '/ss1426_evil_' . bin2hex(random_bytes(6));
+$evilSite = $evil . '/site';
+$evilFlat = $evil . '/flat';
+mkdir($evilSite, 0777, true);
+mkdir($evilFlat, 0777, true);
+file_put_contents($evilFlat . '/escaped.php', "<?php echo 'PWNED';");
+file_put_contents($evilFlat . '/logo.png', km_jpeg());
+
+$evilPdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+$evilPdo->exec('CREATE TABLE snap_images (id INTEGER PRIMARY KEY, img_file TEXT)');
+$evilPdo->exec('CREATE TABLE snap_assets (id INTEGER PRIMARY KEY, asset_path TEXT)');
+$evilPdo->exec('CREATE TABLE snap_settings (setting_key TEXT PRIMARY KEY, setting_val TEXT)');
+
+$evilPaths = [
+    '../escaped.php'        => 'parent-directory traversal',
+    '../../escaped.php'     => 'traversal, two levels',
+    'img/../../escaped.php' => 'traversal mid-path',
+    '/etc/escaped.php'      => 'absolute path',
+    'shell.php.jpg'         => 'executable extension in a middle token',
+    '.htaccess'             => 'dotfile',
+    'ok/.htaccess'          => 'dotfile in a subdirectory',
+];
+$i = 0;
+foreach ($evilPaths as $bad => $label) {
+    $evilPdo->prepare('INSERT INTO snap_images (id, img_file) VALUES (?, ?)')
+            ->execute([++$i, $bad]);
+}
+$evilPdo->prepare('INSERT INTO snap_assets (id, asset_path) VALUES (1, ?)')
+        ->execute(['../escaped.php']);
+$evilPdo->prepare('INSERT INTO snap_settings VALUES (?, ?)')
+        ->execute(['header_logo_url', '../escaped.php']);
+
+$evilEngine = new SnapSmackRecovery($evilPdo, $evilSite);
+ob_start();
+$ri = $evilEngine->restoreImages($evilFlat);
+$ra = $evilEngine->restoreMediaAssets($evilFlat);
+$rb = $evilEngine->restoreBranding($evilFlat);
+$evilProgress = (string)ob_get_clean();
+
+km_check('every hostile image path is BLOCKED, none restored',
+         ($ri['blocked'] ?? 0) === count($evilPaths) && ($ri['restored'] ?? 1) === 0,
+         $failures);
+km_check('and none is counted as merely missing, which would read as an absent file',
+         ($ri['missing'] ?? 1) === 0, $failures);
+km_check('a hostile asset path is BLOCKED',
+         ($ra['blocked'] ?? 0) === 1 && ($ra['restored'] ?? 1) === 0, $failures);
+km_check('a hostile branding path is BLOCKED',
+         ($rb['blocked'] ?? 0) === 1 && ($rb['restored'] ?? 1) === 0, $failures);
+km_check('each refusal says WHY, so the owner can see what the kit tried',
+         str_contains($evilProgress, 'BLOCKED unsafe image path')
+         && str_contains($evilProgress, 'BLOCKED unsafe asset path')
+         && str_contains($evilProgress, 'BLOCKED unsafe branding path'), $failures);
+
+// THE CHECK THAT MATTERS: the filesystem, whatever the counters say.
+//
+// SCOPED TO THIS FIXTURE, and that is a repair of my own. The first version
+// probed $evil . '/../escaped.php', which resolves OUT of the fixture and into
+// the shared temp directory -- where it found a PWNED file left by my own
+// earlier reproduction and failed a run that had written nothing. A test that
+// can be failed by debris from a previous run is the flake I spent this
+// afternoon fixing in the maintenance-lock test, authored again an hour later.
+//
+// baseDir is $evil/site, so the escape target for '../escaped.php' is exactly
+// $evil/escaped.php. That is the probe. Anything further out is not this
+// fixture's business and cannot be attributed to this run.
+$outside = [];
+foreach (['/escaped.php', '/etc'] as $probe) {
+    if (file_exists($evil . $probe)) $outside[] = $evil . $probe;
+}
+km_check('NOTHING was written outside the site root'
+         . ($outside ? ' — FOUND: ' . implode(', ', $outside) : ''),
+         $outside === [], $failures);
+
+$inside = array_values(array_filter((array)scandir($evilSite),
+    static fn (string $f): bool => $f !== '.' && $f !== '..'));
+km_check('and nothing was written INSIDE it either, since every path was hostile'
+         . ($inside ? ' — FOUND: ' . implode(', ', $inside) : ''),
+         $inside === [], $failures);
+
+// A LEGITIMATE path still works. Without this the stage would pass on a helper
+// that blocked its own ordinary input.
+$evilPdo->exec('DELETE FROM snap_images');
+$evilPdo->prepare('INSERT INTO snap_images (id, img_file) VALUES (1, ?)')
+        ->execute(['img_uploads/2026/logo.png']);
+ob_start();
+$good = $evilEngine->restoreImages($evilFlat);
+ob_end_clean();
+km_check('an ordinary path is still restored, so the guard refuses the hostile and not all',
+         ($good['restored'] ?? 0) === 1 && ($good['blocked'] ?? 1) === 0, $failures);
+km_check('and that file really is on disk, inside the site',
+         is_file($evilSite . '/img_uploads/2026/logo.png'), $failures);
+
+// CLEAN UP THE WHOLE TREE, not just the files this stage expected.
+//
+// My tests left 160 fixture directories and four files called escaped.php --
+// one of them containing a PHP payload -- in the owner's temp directory in a
+// single afternoon, because every one of them unlinked the files it knew about
+// and never removed the directories. Sean's drive-hygiene rule is explicit
+// about scattered folders, and a test that litters is a test that will one day
+// fail on its own litter, which is exactly what happened above.
+km_rmtree($evil);
+
+// ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 6 — the same five helpers the installer uses, read from source\n";
 // ─────────────────────────────────────────────────────────────────────────────
 // SS-1431 asks for the installer's path to be REUSED, not reimplemented. These
@@ -297,13 +437,7 @@ km_check('the media phase runs AFTER the schema sync, not before',
          $syncAt !== false && $mediaAt !== false && $syncAt < $mediaAt, $failures);
 
 // Clean up.
-foreach ([$tmp, $tmp2] as $d) {
-    foreach (['/site/img_uploads/2026/11', '/site/img_uploads/2026', '/site/img_uploads',
-              '/site/assets/img', '/site/assets', '/site', '/kit'] as $sub) {
-        foreach (glob($d . $sub . '/*') ?: [] as $f) { if (is_file($f)) @unlink($f); }
-    }
-    foreach (glob($d . '/*') ?: [] as $f) { if (is_file($f)) @unlink($f); }
-}
+foreach ([$tmp, $tmp2] as $d) { km_rmtree($d); }
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\n";

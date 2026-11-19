@@ -176,10 +176,49 @@ pr_check('errors AND missing files: the errors banner wins',
 pr_check('and the outstanding list is still shown underneath it',
          str_contains($out, 'STILL TO DO'), $failures);
 
-// FAIL CLOSED. A shape nobody planned for is not a success and not a refusal.
+// FAIL CLOSED — AND THE PARTIAL BANNER IS PART OF WHAT MUST NOT APPEAR.
+//
+// CODEX'S SECOND FAIL ON THIS TICKET, and it is this ticket's own fault class
+// reappearing inside the state I added to remove it. $__partial used to be
+// (!ok && !refused && no errors). An unrecognised result -- ['sql_imported'
+// => 0] -- satisfies all three, so the page printed SOME FILES ARE NOT HERE
+// YET above "Your database is restored. Nothing failed." for an import that
+// reported nothing at all.
+//
+// My own check here asserted "not success" and "not refused" and stopped. I
+// added a fourth banner and did not add it to the list of banners a nonsense
+// shape must not print. The reassuring branch was the easiest to reach, when
+// it should be the hardest.
 $out = $render(['sql_imported' => 0]);
 pr_check('an unrecognised shape prints neither success nor refused',
          !str_contains($out, $SUCCESS) && !str_contains($out, $REFUSED), $failures);
+pr_check('and NOT the partial banner either',
+         !str_contains($out, $PARTIAL), $failures);
+pr_check('and never the words "Nothing failed", which would be reassurance '
+         . 'invented out of silence',
+         !str_contains($out, 'Nothing failed'), $failures);
+pr_check('it says plainly that the import did not report what it did',
+         str_contains($out, 'did not report what it did'), $failures);
+pr_check('and tells the owner to keep the pre-restore copy until they have checked',
+         str_contains($out, 'pre-restore copy'), $failures);
+
+// The exact shape Codex named: complete false, no errors, nothing outstanding.
+// Not an outcome -- a missing answer.
+$out = $render(['complete' => false, 'refused' => false,
+                'errors' => [], 'remaining' => []]);
+pr_check('complete=false with no errors and nothing outstanding is NOT partial',
+         !str_contains($out, $PARTIAL) && !str_contains($out, 'Nothing failed'), $failures);
+pr_check('and lands on the fail-closed branch instead',
+         str_contains($out, $ERRORS) && str_contains($out, 'did not report what it did'),
+         $failures);
+
+// And a REAL partial is unaffected: the engine said what is outstanding.
+$out = $render(['complete' => false, 'refused' => false, 'errors' => [],
+                'remaining' => ['400 file(s) are not on disk'], 'sql_imported' => 412]);
+pr_check('a partial WITH an outstanding list still prints the partial banner',
+         str_contains($out, $PARTIAL) && str_contains($out, 'Nothing failed'), $failures);
+pr_check('and does not print the fail-closed wording',
+         !str_contains($out, 'did not report what it did'), $failures);
 $out = $render(['complete' => 'yes', 'errors' => [], 'refused' => false]);
 pr_check('a truthy-but-not-true completeness claim is not a success',
          !str_contains($out, $SUCCESS), $failures);
@@ -394,12 +433,22 @@ pr_check('the engine tells the owner, in the stream, when files are outstanding 
          . 'and nothing failed',
          str_contains($engineSrc, 'Some files are not here yet'), $failures);
 
-foreach ([$tmp] as $d) {
-    foreach (['/kit', '/kit2', '/site', '/site2'] as $sub) {
-        foreach (glob($d . $sub . '/*') ?: [] as $f) { if (is_file($f)) @unlink($f); }
+// CLEAN THE WHOLE TREE. Listing the directories a test knows about is how
+// mine left 160 fixtures in the owner's temp folder in one afternoon, and how
+// one of them later failed on its own debris.
+$pr_rmtree = static function (string $dir): void {
+    $tmpReal = realpath(sys_get_temp_dir());
+    $real    = realpath($dir);
+    if ($tmpReal === false || $real === false) return;
+    if (strncmp($real, $tmpReal, strlen($tmpReal)) !== 0 || $real === $tmpReal) return;
+    foreach (new RecursiveIteratorIterator(
+                 new RecursiveDirectoryIterator($real, FilesystemIterator::SKIP_DOTS),
+                 RecursiveIteratorIterator::CHILD_FIRST) as $item) {
+        $item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
     }
-    foreach (glob($d . '/*') ?: [] as $f) { if (is_file($f)) @unlink($f); }
-}
+    @rmdir($real);
+};
+$pr_rmtree($tmp);
 
 echo "\n";
 if ($failures) {

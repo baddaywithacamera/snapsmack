@@ -269,7 +269,23 @@ include 'core/sidebar.php';
         $__ok      = (($import_result['success'] ?? false) === true);
         $__refused = !empty($import_result['refused']);
         $__remaining = array_values(array_filter((array)($import_result['remaining'] ?? [])));
-        $__partial = (!$__ok && !$__refused && empty($import_result['errors']));
+        // SS-1427, SECOND PASS. Codex's FAIL, and it is the fault this ticket
+        // was written to remove, reappearing in the state I added to remove it.
+        //
+        // This used to be (!$__ok && !$__refused && empty($errors)). An
+        // unrecognised result -- ['sql_imported' => 0], a shape nobody planned
+        // for -- has no success, no refusal and no errors, so it satisfied
+        // every term and the page printed SOME FILES ARE NOT HERE YET above
+        // the words "Your database is restored. Nothing failed." for an import
+        // that reported nothing at all.
+        //
+        // PARTIAL NOW REQUIRES THE ENGINE TO HAVE SAID WHAT IS OUTSTANDING. An
+        // empty remaining list is not a partial recovery; it is an answer
+        // nobody gave. The reassuring branch is the one that must be hardest
+        // to reach, and it was the easiest.
+        $__partial = (!$__ok && !$__refused
+                      && empty($import_result['errors'])
+                      && $__remaining !== []);
         ?>
         <?php if ($__refused): ?>
             <div class="alert">> NOTHING WAS RESTORED — THIS SITE IS UNCHANGED<br>
@@ -305,6 +321,18 @@ include 'core/sidebar.php';
             <div class="alert">> RECOVERY KIT IMPORT COMPLETED WITH ERRORS<br>
                 SQL statements: <?php echo $import_result['sql_imported'] ?? 0; ?><br>
                 Files restored: <?php echo $import_result['files_restored'] ?? 0; ?><br>
+                <?php if (empty($import_result['errors'])): ?>
+                    <?php /* SS-1427: the fail-closed landing place. Reached when
+                             the result claims no success, no refusal, no errors
+                             and nothing outstanding -- which is not an outcome,
+                             it is a missing answer. Saying "nothing failed"
+                             here would be inventing reassurance out of
+                             silence. */ ?>
+                    The import did not report what it did. That is not the same
+                    as it having worked.<br>
+                    Check this site before you trust it, and keep the
+                    pre-restore copy of your database until you have.<br>
+                <?php endif; ?>
                 <?php foreach (($import_result['errors'] ?? []) as $err): ?>
                     ERROR: <?php echo htmlspecialchars($err); ?><br>
                 <?php endforeach; ?>
