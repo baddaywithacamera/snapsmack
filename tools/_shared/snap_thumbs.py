@@ -39,13 +39,24 @@ from PIL import Image as PILImage
 
 
 DEFAULT_SQ_SIZE = 400
+DEFAULT_MED_MAX = 600
 DEFAULT_ASP_MAX = 900
+
+
+def _scaled_box(w: int, h: int, max_edge: int) -> tuple[int, int]:
+    """Never upscale past source dimensions; matches core/thumb-generator.php."""
+    if w <= max_edge and h <= max_edge:
+        return w, h
+    if w >= h:
+        return max_edge, max(1, int(round(h * (max_edge / float(w)))))
+    return max(1, int(round(w * (max_edge / float(h))))), max_edge
 
 
 def generate_thumbs(
     src_path: str,
     *,
     sq_size: int = DEFAULT_SQ_SIZE,
+    med_max: int = DEFAULT_MED_MAX,
     asp_max: int = DEFAULT_ASP_MAX,
     focus_x: int = 50,
     focus_y: int = 50,
@@ -54,20 +65,21 @@ def generate_thumbs(
     quality: int = 85,
 ) -> Optional[dict]:
     """
-    Generate square (t_) + aspect (a_) thumbnails for src_path.
+    Generate square (t_), medium (m_), and aspect (a_) thumbnails for src_path.
 
     Args:
         src_path:  absolute path to a JPEG/PNG/WebP source image.
         sq_size:   square thumbnail dimension (default 400 — SNAPSMACK_THUMB_SQUARE).
+        med_max:   medium thumbnail longest-edge limit (default 600 — SNAPSMACK_THUMB_MEDIUM_LONG).
         asp_max:   aspect thumbnail longest-edge limit (default 900 — SNAPSMACK_THUMB_ASPECT_LONG).
         focus_x:   square-crop focal point X, 0-100 (% across the spare axis). 50 = centre.
         focus_y:   square-crop focal point Y, 0-100. 50 = centre.
         zoom:      100-300. Crop window = min(w,h)/(zoom/100). 200 = 2x tighter.
-        thumb_dir: where to write the two files. Default: <src_dir>/thumbs.
+        thumb_dir: where to write the three files. Default: <src_dir>/thumbs.
         quality:   JPEG quality (default 85 — matches the server helper).
 
     Returns:
-        {'sq_path', 'asp_path', 'width', 'height'} with ABSOLUTE local paths,
+        {'sq_path', 'med_path', 'asp_path', 'width', 'height'} with ABSOLUTE local paths,
         or None on failure (unreadable / unsupported source).
     """
     if not os.path.isfile(src_path):
@@ -107,22 +119,21 @@ def generate_thumbs(
     sq = sq.resize((sq_size, sq_size), PILImage.LANCZOS)
     sq.save(sq_path, 'JPEG', quality=quality)
 
-    # ── Aspect thumbnail (a_) ────────────────────────────────────────────────
-    if w >= h:
-        asp_w = asp_max
-        asp_h = int(round(h * (asp_max / float(w))))
-    else:
-        asp_h = asp_max
-        asp_w = int(round(w * (asp_max / float(h))))
-    asp_w = max(1, asp_w)
-    asp_h = max(1, asp_h)
+    # ── Medium thumbnail (m_) ────────────────────────────────────────────────
+    med_w, med_h = _scaled_box(w, h, med_max)
+    med_path = os.path.join(thumb_dir, 'm_' + base)
+    med = src if (med_w, med_h) == (w, h) else src.resize((med_w, med_h), PILImage.LANCZOS)
+    med.save(med_path, 'JPEG', quality=quality)
 
+    # ── Aspect thumbnail (a_) ────────────────────────────────────────────────
+    asp_w, asp_h = _scaled_box(w, h, asp_max)
     asp_path = os.path.join(thumb_dir, 'a_' + base)
-    asp = src.resize((asp_w, asp_h), PILImage.LANCZOS)
+    asp = src if (asp_w, asp_h) == (w, h) else src.resize((asp_w, asp_h), PILImage.LANCZOS)
     asp.save(asp_path, 'JPEG', quality=quality)
 
     return {
         'sq_path': sq_path,
+        'med_path': med_path,
         'asp_path': asp_path,
         'width': w,
         'height': h,
