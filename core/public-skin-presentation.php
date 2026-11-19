@@ -40,10 +40,23 @@ function snapsmack_public_skin_presentation(string $skin, array $options): array
             $layout = 'default';
         }
         $classes = ['square' => 'snap-mosaic-wall ss-square-wall'];
+        // 'square_cols' USED TO BE HERE AND IS GONE, which is a correction of
+        // my own design. Muse found it computed-but-unrendered once ALFRED's
+        // write-only data-square-cols attribute was removed: nothing read it.
+        //
+        // The number DOES reach the page, by a better route than this one.
+        // The manifest declares landing_square_cols with selector
+        // .alfred-archive-grid and property --alfred-square-cols, so the
+        // generated CSS carries it, and the skin maps that input onto the
+        // shared engine's --ss-square-cols. The CMS does not need to hand the
+        // same number to the template as well.
+        //
+        // Leaving it would have meant a value with no consumer and a test
+        // guarding it -- which is the dead-write shape this project keeps
+        // paying for, with a passing test on top to make it look deliberate.
         $out['landing'] = [
             'layout' => $layout,
             'grid_class' => $classes[$layout] ?? '',
-            'square_cols' => snapsmack_declared_option_int($options, 'landing_square_cols', 3, 5),
         ];
     }
     if ($skin === 'rational-geo') {

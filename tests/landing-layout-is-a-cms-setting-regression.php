@@ -75,8 +75,10 @@ ll_check('the layout the owner picked is reported back',
          ($p['landing']['layout'] ?? '') === 'square', $failures);
 ll_check('the CMS supplies the engine class, so the skin decides nothing',
          ($p['landing']['grid_class'] ?? '') === 'snap-mosaic-wall ss-square-wall', $failures);
-ll_check('and three across, as asked',
-         ($p['landing']['square_cols'] ?? 0) === 3, $failures);
+// The column count is NOT here any more -- see STAGE 3. ALFRED's manifest
+// declares it and the generated CSS carries it; STAGE 4 checks that end.
+ll_check('and the presentation array carries no column count',
+         !array_key_exists('square_cols', $p['landing'] ?? []), $failures);
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 2 — it is skin-agnostic\n";
@@ -88,7 +90,8 @@ $other = snapsmack_public_skin_presentation('galleria', [
 ]);
 ll_check('another skin declaring the option gets the same class',
          ($other['landing']['grid_class'] ?? '') === 'snap-mosaic-wall ss-square-wall', $failures);
-ll_check('with its own column count', ($other['landing']['square_cols'] ?? 0) === 4, $failures);
+ll_check('and no column count for that skin either, by the same rule',
+         !array_key_exists('square_cols', $other['landing'] ?? []), $failures);
 
 $src = ll_code_only((string)file_get_contents($root . '/core/public-skin-presentation.php'));
 $start = strpos($src, "array_key_exists('landing_layout'");
@@ -121,14 +124,21 @@ ll_check('a skin that does not declare the option gets no landing block',
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 3 — the values are BOUNDED, because they reach a stylesheet\n";
 // ─────────────────────────────────────────────────────────────────────────────
-foreach ([['2', 3, 'below the minimum'], ['9', 5, 'above the maximum'],
-          ['', 3, 'empty'], ['3; }  body{display:none', 3, 'an injection attempt']] as $case) {
-    [$in, $want, $what] = $case;
-    $r = snapsmack_public_skin_presentation('alfred',
-        ['landing_layout' => 'square', 'landing_square_cols' => $in]);
-    ll_check("a column count that is {$what} is clamped to {$want}",
-             ($r['landing']['square_cols'] ?? null) === $want, $failures);
-}
+// THE COLUMN COUNT IS NO LONGER IN THE PRESENTATION ARRAY, and that is the
+// point of this block now. It was computed there and nothing read it once
+// ALFRED's write-only data-square-cols attribute went; the number reaches the
+// page through the manifest's generated CSS instead. A value with no consumer
+// plus a test guarding it is the dead-write shape with a green tick on top.
+$r = snapsmack_public_skin_presentation('alfred',
+    ['landing_layout' => 'square', 'landing_square_cols' => '4']);
+ll_check('the presentation array no longer carries a column count nothing reads',
+         !array_key_exists('square_cols', $r['landing'] ?? []), $failures);
+ll_check('and still carries the grid class, which the layout DOES print',
+         ($r['landing']['grid_class'] ?? '') !== '', $failures);
+
+// The bound still matters -- it reaches a stylesheet -- but it is the
+// manifest's bound, enforced by the admin control, and STAGE 4 checks it
+// there. What must not come back is a second copy of the number here.
 
 foreach (['nonsense', 'SQUARE', '../../etc', ''] as $bad) {
     $r = snapsmack_public_skin_presentation('alfred', ['landing_layout' => $bad]);
