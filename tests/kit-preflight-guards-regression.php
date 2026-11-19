@@ -181,7 +181,37 @@ echo "\nSTAGE 6 — the guard cannot silently pass for want of its comparator\n"
 // which no-ops wherever constants.php has not been loaded -- a check that does
 // nothing when its dependency is missing, which is SS-1428 again. It now loads
 // the comparator, and refuses if it still cannot.
-$src = (string)file_get_contents($root . '/core/recovery-engine.php');
+/**
+ * A PHP file with its comments removed.
+ *
+ * THIRD TIME TODAY. A source assertion of mine matched my own prose instead
+ * of my own code: once in a build script, once on a 'confirm(' check, and
+ * here on 'snap_schema_sync(' -- which the comment above the call names in
+ * the sentence explaining where it was borrowed from. Deleting the actual
+ * call left the test green.
+ *
+ * So this is no longer treated as bad luck. Any assertion about what code
+ * DOES runs against tokenised source with T_COMMENT dropped. Searching raw
+ * file text for a function name is a defective pattern: the better a change
+ * is documented, the more places its own name appears.
+ */
+function code_only(string $php): string {
+    $out = '';
+    foreach (@token_get_all($php) as $t) {
+        if (is_array($t)) {
+            if ($t[0] === T_COMMENT || $t[0] === T_DOC_COMMENT) continue;
+            $out .= $t[1];
+            continue;
+        }
+        $out .= $t;
+    }
+    return $out;
+}
+
+$src_raw = (string)file_get_contents($root . '/core/recovery-engine.php');
+$src     = code_only($src_raw);
+check('stripping comments left the code behind rather than eating it',
+      strlen($src) > 4000 && strlen($src) < strlen($src_raw), $failures);
 $start = strpos($src, 'public function preflightKit');
 $body  = $start === false ? '' : substr($src, $start, 3500);
 check('preflightKit loads constants.php rather than hoping it is there',

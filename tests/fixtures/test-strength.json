@@ -1160,9 +1160,11 @@
         ]
     },
     "kit-preflight-guards-regression.php": {
-        "assertions": 31,
+        "assertions": 32,
         "predicates": 14,
-        "thresholds": []
+        "thresholds": [
+            4000
+        ]
     },
     "legacy-archive-redirect-loop-regression.php": {
         "assertions": 34,
