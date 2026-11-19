@@ -13,9 +13,9 @@
 | Audit date | 2026-11-17 |
 | Severity | HIGH |
 | Components | `core/reauth.php`, `core/desktop-auth.php`, `tools/_shared/snap_device_auth.py`, and SNAP HQ |
-| Read point | Fixes merged as `d5eae1b9` (SS-1399) and `ac1ef1e0` (SS-1418), including the final legacy-state repair `215c895d`; all are ancestors of SnapSmack 0.7.999D. |
-| Method | The public SnapSmack security-audit method: read-only source inspection, independent review, executed regressions where available, mutation or before-state checks, release-ancestry verification, and explicit separation of source, installed-build, live, and owner acceptance evidence. No live exploit was used. |
-| Status | FIXED - shipped in SnapSmack 0.7.999D. |
+| Read point | Fixes merged as `d5eae1b9` (SS-1399) and `ac1ef1e0` (SS-1418), including the final legacy-state repair `215c895d`; all are ancestors of SNAPSMACK 0.7.999D. |
+| Method | The public SNAPSMACK security-audit method: read-only source inspection, independent review, executed regressions where available, mutation or before-state checks, release-ancestry verification, and explicit separation of source, installed-build, live, and owner acceptance evidence. No live exploit was used. |
+| Status | FIXED - shipped in SNAPSMACK 0.7.999D. |
 | Reporters | Muse and Sean McCormick |
 
 ## 1. Findings
@@ -46,7 +46,7 @@ A signed authorization cannot learn about a server-side revocation while the mac
 
 ## 5. Authorship and review
 
-Muse identified the missing step-up attempt budget while developing the INSTANT REPLAY threat model and identified the SNAP HQ expiry and revocation gaps during read-only review. Sean McCormick identified the real-world symptom that prompted the HQ review. Claude Code built the final repairs with AI assistance recorded in the commit history. Codex performed independent runtime and source reviews, including findings that rejected earlier revisions. Muse performed independent review and recorded her own earlier misses in the audit history rather than removing them from the record.
+Muse identified the missing step-up attempt budget while developing the INSTANT REPLAY threat model and identified the SNAP HQ expiry and revocation gaps during read-only review. Sean McCormick identified the real-world symptom that prompted the HQ review. Claude Code built the final repairs with AI assistance recorded in the commit history. Codex performed independent runtime and source reviews, including findings that rejected earlier revisions. Muse performed independent review and recorded their own earlier misses in the audit history rather than removing them from the record.
 
 ## 6. Limits
 
