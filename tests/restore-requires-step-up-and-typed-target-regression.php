@@ -214,6 +214,197 @@ check('the exception path refuses too, rather than reporting success',
       str_contains($handler, 'catch (Throwable'), $failures);
 check('the template still decides success on the PLURAL key, as assumed above',
       str_contains($src, "empty(\$import_result['errors'])"), $failures);
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\nSTAGE 4c — WHAT THE PAGE ACTUALLY PRINTS (the PM's 'test the output')\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// STAGE 4b tested the renderer's DECISION by mirroring its condition. That is
+// still a shape test: it would not notice the template changing underneath it.
+// This extracts the real template block out of smack-disaster.php, runs it
+// with a given $import_result, and asserts on the characters the owner sees.
+//
+// The PM asked for exactly this after the first repair: test the output, not
+// the shape. Mirroring a condition is how I missed the bug the first time.
+// Slice from the outer `if (isset($import_result)` to its MATCHING endif,
+// counted rather than guessed.
+//
+// TWO FAULTS OF MY OWN ARE PINNED HERE, both the shape the PM named -- a
+// guard that passes because its output was never looked at.
+//
+//   1. My first attempt took the FIRST endif tag after the start, which is an
+//      inner one. The fragment was unbalanced, eval() threw a ParseError, the
+//      render produced nothing at all -- and every "is NOT printed" assertion
+//      passed happily on the empty output. So the render is asserted to have
+//      happened, below, before a single content check is trusted.
+//   2. The comment explaining fault 1 wrote the closing tag literally. A
+//      one-line // comment in PHP ENDS at a close tag, so the comment closed
+//      PHP mode and the rest of this file became HTML. php -l caught it, but
+//      only because the damage was total; a close tag inside a comment that
+//      happened to land between two statements would not have been.
+$tpl_start = strpos($src, '<?php if (isset($import_result)');
+$template  = '';
+if ($tpl_start !== false) {
+    // Scan the control tags in order rather than searching for text. `elseif`
+    // and `else` do not open a block; `if` does; `endif` closes one.
+    preg_match_all('/<\?php\s+(if|endif)\b/', $src, $tags,
+                   PREG_OFFSET_CAPTURE | PREG_PATTERN_ORDER, $tpl_start);
+    $depth = 0;
+    foreach ($tags[1] as $i => $tag) {
+        if ($tag[0] === 'if') { $depth++; continue; }
+        $depth--;
+        if ($depth === 0) {
+            $close = strpos($src, '?' . '>', $tags[0][$i][1]);
+            if ($close !== false) {
+                $template = substr($src, $tpl_start, $close + 2 - $tpl_start);
+            }
+            break;
+        }
+    }
+}
+check('the template block was extracted whole, not truncated at an inner endif',
+      $template !== '' && substr_count($template, '<?php if (') === substr_count($template, 'endif;'),
+      $failures);
+
+$render = static function (array $result) use ($template): string {
+    $import_result = $result;           // the variable the template reads
+    ob_start();
+    try {
+        eval('?>' . $template);
+    } catch (Throwable $e) {
+        ob_end_clean();
+        return 'RENDER THREW: ' . $e->getMessage();
+    }
+    return (string)ob_get_clean();
+};
+
+// Prove the harness renders before trusting a single negative assertion.
+$probe = $render(['success' => true, 'refused' => false, 'errors' => [],
+                  'sql_imported' => 7]);
+check('the harness renders the template without throwing',
+      !str_starts_with($probe, 'RENDER THREW'), $failures);
+check('and produces output, so a silent empty render cannot pass the checks below',
+      trim($probe) !== '', $failures);
+
+// THE BANNERS, NOT THE WORDING. Two mutations survived an earlier version of
+// this stage because I asserted on the phrase "NOTHING WAS RESTORED", and
+// every refusal MESSAGE begins with those words. So a render that showed the
+// wrong banner and printed the message underneath it satisfied the check.
+// These three are the banner lines themselves, which only one branch prints.
+$SUCCESS = '> RECOVERY KIT IMPORTED SUCCESSFULLY';
+$ERRORS  = '> RECOVERY KIT IMPORT COMPLETED WITH ERRORS';
+$REFUSED = '> NOTHING WAS RESTORED — THIS SITE IS UNCHANGED';
+foreach (['$SUCCESS' => $SUCCESS, '$ERRORS' => $ERRORS, '$REFUSED' => $REFUSED] as $n => $b) {
+    check("the {$n} banner line is really in the template, so its absence means something",
+          str_contains($template, $b), $failures);
+}
+
+// THE HANDLER'S OWN REFUSAL CONSTRUCTOR, not a hand-written copy of its shape.
+// Mutation proof: dropping 'refused' from $refuse() in the handler has to fail
+// this file, and it cannot if the test builds the array itself.
+$refuse_src = '';
+$rs = strpos($handler, '$refuse = static function');
+if ($rs !== false) {
+    $re = strpos($handler, "\n    };", $rs);
+    if ($re !== false) $refuse_src = substr($handler, $rs, $re - $rs + 7);
+}
+check("the handler's own refusal constructor was extracted, so this tests its shape",
+      $refuse_src !== '' && str_contains($refuse_src, 'return ['), $failures);
+$refuse = null;
+if ($refuse_src !== '') { eval($refuse_src); }
+if (is_callable($refuse)) {
+    $out = $render($refuse('step-up failed'));
+    check("the handler's own refusal renders the unchanged-site banner",
+          str_contains($out, $REFUSED), $failures);
+    check('and not the errors banner, which would say the database was touched',
+          !str_contains($out, $ERRORS), $failures);
+    check('and not the success banner',
+          !str_contains($out, $SUCCESS), $failures);
+    // The refusal branch prints the plural errors list and nothing else, so a
+    // refusal whose reason lives only under the singular key is a banner with
+    // no explanation under it. That is what SS-1427 looked like to the owner.
+    check("the handler's own refusal prints WHY, not just the banner",
+          str_contains($out, 'step-up failed'), $failures);
+}
+
+// THE HANDLER'S OWN ENGINE BOUNDARY. One line in the handler turns
+// importRecoveryKit()'s shape into the one key the renderer decides on. If
+// that line stops deriving success from the errors list -- hardcoded, or
+// reading a key the engine does not set -- a half-run restore reports success
+// again, and no amount of testing the renderer alone would notice.
+$boundary = '';
+foreach (explode("\n", $handler) as $line) {
+    if (str_contains($line, "\$import_result['success'] =")) { $boundary = trim($line); break; }
+}
+check('the engine boundary line was found in the handler',
+      $boundary !== '', $failures);
+if ($boundary !== '') {
+    $apply = static function (array $engine) use ($boundary): array {
+        $import_result = $engine;
+        eval($boundary);
+        $import_result['refused'] = false;
+        return $import_result;
+    };
+    $out = $render($apply(['errors' => [], 'sql_imported' => 412,
+                           'files_restored' => 88, 'checksum_ok' => 88]));
+    check('an engine result with no errors renders as success through the real boundary',
+          str_contains($out, $SUCCESS), $failures);
+    $out = $render($apply(['errors' => ['SQL: table snap_images failed'],
+                           'sql_imported' => 40, 'files_restored' => 0]));
+    check('an engine result WITH errors does not render as success',
+          !str_contains($out, $SUCCESS), $failures);
+    check('and renders the errors banner, naming the failure',
+          str_contains($out, $ERRORS) && str_contains($out, 'snap_images'), $failures);
+}
+
+// Every refusal the handler can produce, rendered for real.
+$refusals = [
+    'wrong password or TOTP'   => 'NOTHING WAS RESTORED — step-up failed',
+    'no site_url recorded'     => 'NOTHING WAS RESTORED — no address recorded',
+    'typed target mismatch'    => 'NOTHING WAS RESTORED — confirmation did not match',
+    'no kit uploaded'          => 'NOTHING WAS RESTORED — no recovery kit was uploaded.',
+    'an exception mid-import'  => 'NOTHING WAS RESTORED — the import failed: boom',
+];
+foreach ($refusals as $label => $message) {
+    $out = $render(['success' => false, 'refused' => true,
+                    'error' => $message, 'errors' => [$message]]);
+    check("refusal ({$label}): the success banner is NOT printed",
+          !str_contains($out, $SUCCESS), $failures);
+    check("refusal ({$label}): the unchanged-site banner is printed",
+          str_contains($out, $REFUSED), $failures);
+    check("refusal ({$label}): the errors banner is NOT printed -- nothing ran",
+          !str_contains($out, $ERRORS), $failures);
+    check("refusal ({$label}): the reason is printed",
+          str_contains($out, htmlspecialchars($message)) || str_contains($out, $message),
+          $failures);
+}
+
+// A real import that worked.
+$out = $render(['success' => true, 'refused' => false, 'errors' => [],
+                'sql_imported' => 412, 'files_restored' => 88, 'checksum_ok' => 88]);
+check('a clean import DOES print the success banner',
+      str_contains($out, $SUCCESS), $failures);
+check('and prints its counts', str_contains($out, '412'), $failures);
+check('and does not claim nothing was restored',
+      !str_contains($out, $REFUSED), $failures);
+check('and does not also print the errors banner',
+      !str_contains($out, $ERRORS), $failures);
+
+// A real import that half-ran: neither a refusal nor a success.
+$out = $render(['success' => false, 'refused' => false,
+                'errors' => ['SQL: table snap_images failed'],
+                'sql_imported' => 40, 'files_restored' => 0]);
+check('a half-done import prints the errors banner, not the success one',
+      str_contains($out, $ERRORS) && !str_contains($out, $SUCCESS), $failures);
+check('and does NOT tell the owner the site is unchanged, because it is not',
+      !str_contains($out, $REFUSED), $failures);
+check('and names the failing statement', str_contains($out, 'snap_images'), $failures);
+
+// The fail-closed property, which is the whole point of deciding on success.
+$out = $render(['sql_imported' => 0]);          // a shape nobody planned for
+check('an unrecognised result shape does NOT print the success banner',
+      !str_contains($out, $SUCCESS), $failures);
+$out = $render(['success' => 'yes', 'errors' => []]);   // truthy but not true
+check('a truthy-but-not-true success does NOT print the success banner',
+      !str_contains($out, $SUCCESS), $failures);
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 5 — the form offers the controls (reachability, not enforcement)\n";

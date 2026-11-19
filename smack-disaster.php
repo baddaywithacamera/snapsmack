@@ -128,9 +128,10 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
     $refuse = static function (string $why): array {
         $message = 'NOTHING WAS RESTORED — ' . $why;
         return [
-            'success' => false,
-            'error'   => $message,   // kept: other readers may use the singular
-            'errors'  => [$message], // what the template actually tests
+            'success' => false,   // the ONE key the renderer decides on
+            'refused' => true,    // nothing was attempted, as against half-done
+            'error'   => $message,
+            'errors'  => [$message],
         ];
     };
     // READ site_url FROM THE DATABASE, NOT FROM $settings. $settings is
@@ -176,6 +177,14 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
         try {
             $recovery      = new SnapSmackRecovery($pdo, __DIR__);
             $import_result = $recovery->importRecoveryKit($_FILES['recovery_file']['tmp_name']);
+            // ONE CONTRACT, decided here rather than inferred in the template.
+            // importRecoveryKit() does not report success itself -- that is
+            // SS-1427's subject and its home is the engine, not this page --
+            // so the boundary states it explicitly. An attempted import is
+            // never 'refused': it may be half-done, which is the distinction
+            // the owner needs most.
+            $import_result['success'] = empty($import_result['errors']);
+            $import_result['refused'] = false;
         } catch (Throwable $e) {
             // PRE-EXISTING, same contract mismatch, fixed while I am here: an
             // exception mid-import also rendered as success. Throwable rather
@@ -213,7 +222,29 @@ include 'core/sidebar.php';
 
     <?php if (isset($import_result) && is_array($import_result)): ?>
     <div class="box">
-        <?php if (empty($import_result['errors'])): ?>
+        <?php
+        // THREE OUTCOMES, NOT TWO, and success must be CLAIMED not inferred.
+        //
+        // This used to read `empty($import_result['errors'])`, so any result
+        // without that key rendered as a successful import -- which is how
+        // every gate refusal came to print RECOVERY KIT IMPORTED SUCCESSFULLY.
+        // Deciding on an explicit success flag fails closed instead: a shape
+        // nobody has thought about is not a success.
+        //
+        // And a refusal is its own outcome. "IMPORT COMPLETED WITH ERRORS"
+        // tells the owner their database was touched; after a refusal it was
+        // not, and whether the restore half-ran is the first thing they need
+        // to know about a destructive operation.
+        $__ok      = (($import_result['success'] ?? false) === true);
+        $__refused = !empty($import_result['refused']);
+        ?>
+        <?php if ($__refused): ?>
+            <div class="alert">> NOTHING WAS RESTORED — THIS SITE IS UNCHANGED<br>
+                <?php foreach (($import_result['errors'] ?? []) as $err): ?>
+                    <?php echo htmlspecialchars($err); ?><br>
+                <?php endforeach; ?>
+            </div>
+        <?php elseif ($__ok): ?>
             <div class="alert">> RECOVERY KIT IMPORTED SUCCESSFULLY<br>
                 SQL statements: <?php echo $import_result['sql_imported'] ?? 0; ?><br>
                 Files restored: <?php echo $import_result['files_restored'] ?? 0; ?><br>
@@ -232,7 +263,7 @@ include 'core/sidebar.php';
             <div class="alert">> RECOVERY KIT IMPORT COMPLETED WITH ERRORS<br>
                 SQL statements: <?php echo $import_result['sql_imported'] ?? 0; ?><br>
                 Files restored: <?php echo $import_result['files_restored'] ?? 0; ?><br>
-                <?php foreach ($import_result['errors'] as $err): ?>
+                <?php foreach (($import_result['errors'] ?? []) as $err): ?>
                     ERROR: <?php echo htmlspecialchars($err); ?><br>
                 <?php endforeach; ?>
             </div>
