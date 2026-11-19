@@ -1750,6 +1750,13 @@
             40000
         ]
     },
+    "real-client-ip-reaches-stats-and-audit-regression.php": {
+        "assertions": 28,
+        "predicates": 11,
+        "thresholds": [
+            2
+        ]
+    },
     "reauth-lock-opened-mid-request-regression.php": {
         "assertions": 32,
         "predicates": 9,

@@ -37,6 +37,17 @@ fallbacks in cron-version-check.php and smack-update.php. The fallbacks are
 one line shorter than the canonical copy. Tested on both the long and short
 version forms, all three agree, so this is duplication rather than a defect.
 
+- **Unique-visitor counts on sites behind Cloudflare were undercounted; after
+  this update they will jump to the real figure. That's not a traffic spike.**
+  Every visitor arriving through a CDN edge was counted as the same visitor,
+  because the stats logger recorded the address that connected -- the edge --
+  rather than the person behind it. The same mistake sent every visitor's
+  country to wherever that edge happened to be, and left every step-up failure
+  in the audit log carrying the same handful of addresses. All three now use
+  the one resolver that already protects the login and ban paths, which
+  believes a proxy only when the site has said to trust it. Your traffic has
+  not changed; what the dashboard says about it has. (SS-1437)
+
 ## 0.7.999D — opened
 
 NOT "998E". The PM's shorthand for this release was 998E, and that is not a

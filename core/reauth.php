@@ -21,6 +21,7 @@
  */
 
 require_once __DIR__ . '/totp.php';
+require_once __DIR__ . '/client-ip.php';   // SS-1437: the real client, not the CDN edge
 
 if (!defined('REAUTH_MAX_ATTEMPTS')) {
     define('REAUTH_MAX_ATTEMPTS', 5);
@@ -82,7 +83,21 @@ function _reauth_locked_message(int $retry_after): string {
  * Write an audit line for step-up failures and lockouts (never logs secrets).
  */
 function _reauth_audit(string $event, int $uid, array $meta = []): void {
-    $ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'cli');
+    // SS-1437. This used to log REMOTE_ADDR. On any site behind Cloudflare --
+    // which is most of the fleet -- that is the edge address, so every step-up
+    // failure in the log carried the same handful of IPs and the audit trail
+    // could not tell one attacker from another, or from the owner.
+    //
+    // NOT A LOCKOUT BUG, said precisely: the step-up budget keys on 'uid:N'
+    // (see below, two places), not on the address, so a shared edge address
+    // never locked one user out because of another. This is the forensic
+    // record only, and it was useless.
+    //
+    // snap_trusted_client_ip() is the one resolver -- SECAUDIT 035 -- and it
+    // ignores the forgeable headers unless the peer is a proxy we trust. No
+    // $pdo here, so the trusted-proxy list falls back to loopback; Cloudflare
+    // is recognised from its own published networks and needs no settings.
+    $ip = isset($_SERVER['REMOTE_ADDR']) ? snap_trusted_client_ip() : 'cli';
     $parts = ["SnapSmack reauth {$event}", "uid={$uid}", "ip={$ip}"];
     foreach ($meta as $k => $v) {
         $parts[] = "{$k}={$v}";
