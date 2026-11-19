@@ -35,7 +35,16 @@ because that is exactly when somebody wants to look inside.
 import os
 import shutil
 
+import pytest
+
 _OURS = []
+
+
+@pytest.fixture(autouse=True)
+def _sandbox_snapsmack_home(tmp_path, monkeypatch):
+    sandbox = tmp_path / "snapsmack_home"
+    sandbox.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("SNAPSMACK_HOME", str(sandbox))
 
 
 def pytest_configure(config):

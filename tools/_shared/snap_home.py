@@ -46,6 +46,7 @@ Usage:
 import os
 import re
 import shutil
+import sys
 from urllib.parse import urlparse
 
 # snap_paths is a sibling in tools/_shared/. Tools put _shared on sys.path before
@@ -56,12 +57,29 @@ from snap_paths import contained_local_path
 _DEFAULT_ROOT = r"C:\snapsmack"
 
 
+def _is_test_process() -> bool:
+    if os.environ.get("SNAPSMACK_ALLOW_REAL_HOME_IN_TESTS") == "1":
+        return False
+    return bool(
+        os.environ.get("PYTEST_CURRENT_TEST")
+        or "pytest" in sys.modules
+        or "unittest" in sys.modules
+    )
+
+
 # ── Root ─────────────────────────────────────────────────────────────────────
 def home() -> str:
     """The SnapSmack root. SNAPSMACK_HOME overrides the C:\\snapsmack default so
-    tests (and non-Windows dev) can point it at a scratch dir."""
-    root = (os.environ.get("SNAPSMACK_HOME") or "").strip() or _DEFAULT_ROOT
-    return os.path.abspath(root)
+    tests (and non-Windows dev) can point it at a scratch dir. Refuses to touch
+    the real C:\\snapsmack profile when running inside a test runner."""
+    raw = (os.environ.get("SNAPSMACK_HOME") or "").strip()
+    resolved = os.path.abspath(raw or _DEFAULT_ROOT)
+    if _is_test_process() and os.path.normcase(resolved) == os.path.normcase(os.path.abspath(_DEFAULT_ROOT)):
+        raise RuntimeError(
+            f"Refusing to access real profile path {_DEFAULT_ROOT!r} during tests. "
+            "Set SNAPSMACK_HOME to a temporary directory before calling snap_home."
+        )
+    return resolved
 
 
 def _ensure(path: str) -> str:
