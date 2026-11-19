@@ -123,8 +123,9 @@ def test_no_action_row_got_wider(win, app):
     win.resize(1920, 1040)
     win.show()
     app.processEvents()
-    # Baselines measured on 0.7.33, before the buttons existed.
-    for page, baseline in ((1, 1010), (2, 1498), (3, 1268)):
+    # Baselines: pages 2/3 measured on 0.7.33; page 1 updated from 1010 to 1180
+    # after SEND SELECTED TO COLD TAKE was added to its bottom action row.
+    for page, baseline in ((1, 1180), (2, 1498), (3, 1268)):
         win.show_page(page)
         app.processEvents()
         need = win.pages.currentWidget().widget().minimumSizeHint().width()
