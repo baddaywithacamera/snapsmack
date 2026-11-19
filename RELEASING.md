@@ -98,8 +98,17 @@ php tools/release-flow.php promote-stable 0.7.456 --yes
 refuses a dirty tree, a missing/mismatched `D` tag, a non-fast-forward master,
 or an already-used stable tag.
 
-The exact-commit release-gate note must record `skin_render_parity: "pass"` and
-`skin_render_changes`. The latter is an array and is normally empty. Every
+The exact-commit release-gate note must record `skin_render_parity: "pass"`,
+`skin_pixel_parity: "pass"` and `skin_render_changes`.
+
+`skin_render_parity` and `skin_pixel_parity` answer different questions, and
+SS-1436 is what happens when the first is read as if it answered both.
+`skin_render_parity` compares markup and asset references; a visible skin CSS
+change passes it, because it never reads a stylesheet or looks at a page.
+`skin_pixel_parity` is the real-browser comparison: it compares the rendered
+pixels of baseline and candidate fixtures in Chromium at the supported widths — 1920, 1440 and 1024,
+and 390 for the two phone skins — and compares pixels. `tag-dev` runs it, and
+refuses if the comparator is missing rather than skipping it. The latter is an array and is normally empty. Every
 intentional rendering change must name the skin, state the reason, and identify
 the approved pre-strip reference used for comparison. Missing evidence, an
 undeclared difference, or a claim that the replacement rendering is newly

@@ -350,6 +350,10 @@ function rf_release_gate_problem(string $head): string {
         'security' => 'pass',
         'parity' => 'pass',
         'skin_render_parity' => 'pass',
+        // SS-1436. skin_render_parity is a MARKUP comparison; this is the
+        // rendered-pixel one. Both are required because they answer different
+        // questions and the first was being read as if it answered both.
+        'skin_pixel_parity' => 'pass',
         'authority_review' => 'approved',
         'browser_regressions' => 'pass',
     ];
@@ -437,11 +441,54 @@ function rf_browser_dependency_problem(): string {
          . "  the runner test sets NODE_PATH itself. SS-1206.";
 }
 
+/**
+ * SS-1436. THE PIXEL CHECK HAD TO BE CALLED BY SOMETHING.
+ *
+ * The gate's render-snapshot and parity checks fingerprint markup and asset
+ * references. They do not read stylesheet contents and they do not look at a
+ * rendered page, so a visible skin CSS change passed both of them: only the
+ * version/content check noticed the file had been touched at all. A green
+ * render-parity result did not mean the skins still looked right, and
+ * skin_render_parity: "pass" in a gate note was saying less than it appeared
+ * to say.
+ *
+ * tools/browser-tests/skin-render-pixel-parity.cjs renders baseline and
+ * candidate fixtures in real Chromium at the supported widths and compares
+ * pixels. It landed on dev on 2026-11-18 (b8c8ff16) and NOTHING INVOKED IT --
+ * not this file, not the browser runner. A check nobody calls is the same
+ * shape as a check whose output nobody reads: the file existed, the ticket
+ * looked addressed, and the gate was exactly as weak as before.
+ *
+ * It is a required step now, and the note field below records that it ran.
+ * The script lives in the appearance owner's directory and is called, not
+ * edited, from here.
+ */
+function rf_pixel_parity_script(): string {
+    return __DIR__ . '/browser-tests/skin-render-pixel-parity.cjs';
+}
+
 function rf_browser_tests(): void {
     $problem = rf_browser_dependency_problem();
     if ($problem !== '') rf_fail($problem);
     rf_run(['node', __DIR__ . '/../tests/browser-release-runner-regression.cjs']);
     rf_run(['node', __DIR__ . '/browser-tests/run-regressions.cjs']);
+
+    // FAIL CLOSED IF IT IS MISSING. A release that cannot run the pixel check
+    // must not be able to claim it passed; the alternative is a silent skip,
+    // which is how this ticket happened.
+    $pixel = rf_pixel_parity_script();
+    if (!is_file($pixel)) {
+        rf_fail("the skin pixel-parity check is missing.
+"
+              . '  LOOKED FOR: ' . $pixel . "
+"
+              . "  This is a required release gate (SS-1436). Without it a visible
+"
+              . "  skin CSS change passes render parity unnoticed, so the release
+"
+              . "  cannot be signed on the strength of that field.");
+    }
+    rf_run(['node', $pixel]);
 }
 
 function rf_tests(): void {
@@ -782,6 +829,7 @@ if ($command === 'gate-note') {
         'security' => 'pass',
         'parity' => 'pass',
         'skin_render_parity' => 'pass',
+        'skin_pixel_parity' => 'pass',        // SS-1436, see the required list
         'authority_review' => 'approved',
         'skin_count' => count($skinNames),
         'skin_inventory_sha256' => hash('sha256', implode("

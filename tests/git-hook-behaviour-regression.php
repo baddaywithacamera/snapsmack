@@ -233,11 +233,19 @@ if ($python === null) {
         . ' security field, not fail to parse: ' . $out);
 
     // A note that does pass, built the way the gate asks for it.
+    //
+    // SS-1436 added skin_pixel_parity to the required set, and this fixture is
+    // the reason the change is visible rather than silent: a note written to
+    // yesterday's requirements is no longer a passing note. That is the whole
+    // point -- the field exists because a green markup-parity result did not
+    // mean the skins still looked right -- but it does mean any gate note
+    // already written must be rewritten before its commit can be tagged.
     $passing = json_encode([
         'commit' => $head,
         'security' => 'pass',
         'parity' => 'pass',
         'skin_render_parity' => 'pass',
+        'skin_pixel_parity' => 'pass',
         'authority_review' => 'approved',
         'browser_regressions' => 'pass',
         'skin_count' => 1,

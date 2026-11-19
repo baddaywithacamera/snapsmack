@@ -1715,8 +1715,8 @@
         "thresholds": []
     },
     "rational-geo-solo-viewport-regression.php": {
-        "assertions": 7,
-        "predicates": 9,
+        "assertions": 10,
+        "predicates": 13,
         "thresholds": []
     },
     "reader-header-never-names-a-real-instance.php": {
@@ -1823,6 +1823,14 @@
         "predicates": 11,
         "thresholds": [
             2
+        ]
+    },
+    "release-gate-runs-the-pixel-check-regression.php": {
+        "assertions": 22,
+        "predicates": 19,
+        "thresholds": [
+            2,
+            1000
         ]
     },
     "release-gate-scope-regression.php": {
