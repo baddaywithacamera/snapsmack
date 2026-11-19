@@ -53,6 +53,7 @@ QCheckBox { spacing:9px; }
 MIGRATION_ROSTER = [
     ("SMACKPRESS", "WordPress → SMACKTALK", [os.path.join(core._R, "smackpress", "SmackPress.exe")]),
     ("BLOGGER FLOGGER", "Blogger → SMACKTALK", [os.path.join(core._R, "blogger-flogger", "blogger-flogger.exe")]),
+    ("GHOSTED", "Ghost → SMACKTALK", [os.path.join(core._R, "ghosted", "ghosted.exe")]),
     ("UNZUCKER", "Instagram → GRAMOFSMACK", [os.path.join(core._R, "unzucker", "unzucker.exe")]),
     ("FLKR FCKR", "Flickr → SMACKONEOUT", [os.path.join(core._R, "flkr-fckr", "flkr-fckr.exe")]),
     ("FED UP", "Fediverse → SnapSmack", [os.path.join(core._R, "fed-up", "fed-up.exe")]),
