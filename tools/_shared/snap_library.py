@@ -379,6 +379,24 @@ def synced_at(site: str) -> str:
     return meta(site, "synced_at", "")
 
 
+def stats(site: str) -> dict:
+    """Read-only summary counts from an existing shared catalog without creating one."""
+    db_path = _db_path(site)
+    if not os.path.isfile(db_path):
+        return {"exists": False, "assets": 0, "posts": 0, "synced_at": ""}
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        assets = int(conn.execute("SELECT COUNT(*) FROM assets").fetchone()[0])
+        posts_n = int(conn.execute("SELECT COUNT(*) FROM posts").fetchone()[0])
+        row = conn.execute("SELECT val FROM meta WHERE key='synced_at'").fetchone()
+        synced = str(row[0]) if row and row[0] else ""
+        return {"exists": True, "assets": assets, "posts": posts_n, "synced_at": synced}
+    except sqlite3.Error:
+        return {"exists": True, "assets": 0, "posts": 0, "synced_at": ""}
+    finally:
+        conn.close()
+
+
 # ── Content mirror: media store (shared-library-post-cache-producer spec §4/§6) ─
 _EXT_MIME = {
     ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",

@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 import requests
 from PySide6.QtCore import QObject, Qt, Signal, QSize, QUrl, QSettings, QTimer
-from PySide6.QtGui import QAction, QColor, QDesktopServices, QIcon, QKeySequence, QPixmap
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QIcon, QImage, QKeySequence, QPixmap
 from PySide6.QtWidgets import (QApplication,QAbstractItemView,QCheckBox,QColorDialog,QComboBox,QDialog,QFormLayout,QFrame,QHBoxLayout,QLabel,QLineEdit,QListView,QListWidget,QListWidgetItem,QMainWindow,QMessageBox,QProgressBar,QPushButton,QScrollArea,QSpinBox,QStackedWidget,QTextEdit,QVBoxLayout,QWidget)
 
 HERE=os.path.dirname(os.path.abspath(__file__)); SHARED=os.path.abspath(os.path.join(HERE,"..","_shared")); sys.path.insert(0,SHARED)
@@ -462,7 +462,17 @@ class Window(QMainWindow):
         return rd(ip,{"images":{}}),rd(mp,{"categories":[],"albums":[],"synced_at":None})
     def library_status(self):
         if not self.profile:self.lib_status.setText("Choose a site above.");return
-        index,meta=self.local(); self.lib_status.setText(f"{len(index.get('images',{}))} photographs saved locally\nLast synced: {meta.get('synced_at') or 'never'}")
+        index,meta=self.local()
+        gyss_count=len(index.get("images",{}))
+        cat=snap_library.stats(self.profile["site_url"]) if snap_library else {"assets":0,"posts":0,"synced_at":""}
+        cat_assets=int(cat.get("assets") or 0); cat_posts=int(cat.get("posts") or 0)
+        synced=meta.get("synced_at") or cat.get("synced_at") or "never"
+        if cat_assets and gyss_count:
+            self.lib_status.setText(f"{gyss_count:,} photographs saved locally · {cat_assets:,} assets / {cat_posts:,} posts in shared catalog\nLast synced: {synced}")
+        elif cat_assets:
+            self.lib_status.setText(f"{cat_assets:,} photographs in shared catalog ({cat_posts:,} posts)\nLast synced: {synced}")
+        else:
+            self.lib_status.setText(f"{gyss_count:,} photographs saved locally\nLast synced: {synced}")
         self.meta={"categories":meta.get("categories",[]),"albums":meta.get("albums",[])};self.fill_meta()
     def sync_library(self):
         if not self.require_api():return
@@ -556,11 +566,26 @@ class Window(QMainWindow):
         self.status.setText(f"● Sent {len(photos)} photographs to COLD TAKE")
     def browse_local(self):
         if not self.profile:return
-        index,_=self.local(); rows=list(index.get("images",{}).values()); cid=self.cat.currentData();aid=self.alb.currentData()
-        if cid is not None:rows=[x for x in rows if cid in x.get("category_ids",[])]
-        if aid is not None:rows=[x for x in rows if aid in x.get("album_ids",[])]
-        if not rows:QMessageBox.information(self,"Library is empty","Sync this site first, or clear the filters.");return
-        rows=sorted(rows,key=lambda x:(x.get("sort_order",0),-int(x.get("id",0))));limit=self.limit.value();self.photos=rows[:limit];self.photo_subset_total=len(rows);self.begin_sort()
+        site_url=self.profile["site_url"]; cid=self.cat.currentData(); aid=self.alb.currentData(); limit=self.limit.value()
+        def work():
+            index,_=self.local(); rows=list(index.get("images",{}).values())
+            if cid is not None:rows=[x for x in rows if cid in x.get("category_ids",[])]
+            if aid is not None:rows=[x for x in rows if aid in x.get("album_ids",[])]
+            if not rows:return {"rows":[],"total":0,"images":[]}
+            rows=sorted(rows,key=lambda x:(x.get("sort_order",0),-int(x.get("id",0))))
+            chosen=rows[:limit]; site_dir=snap_home.site_dir(site_url); imgs=[]; total=max(len(chosen),1)
+            for n,p in enumerate(chosen,1):
+                rel=p.get("thumb_file"); path=os.path.join(site_dir,rel.replace("/",os.sep)) if rel else ""
+                imgs.append(QImage(path) if path and os.path.isfile(path) else QImage())
+                if n==1 or n==len(chosen) or n%25==0:
+                    self.worker.progress.emit("Loading local library",n,total)
+            return {"rows":chosen,"total":len(rows),"images":imgs}
+        def finished(payload):
+            if not payload["rows"]:
+                QMessageBox.information(self,"Library is empty","Sync this site first, or clear the filters.");return
+            self.photos=payload["rows"]; self.photo_subset_total=payload["total"]
+            self.begin_sort(predecoded=payload["images"])
+        self.run(work,finished)
     def pull_live(self):
         if not self.require_api():return
         f={"limit":self.limit.value()}
@@ -582,10 +607,14 @@ class Window(QMainWindow):
         self.run(work,lambda r:(setattr(self,"photos",r.get("photos",[])),self.begin_sort()))
     def thumb(self,p):
         rel=p.get("thumb_file"); path=os.path.join(snap_home.site_dir(self.profile["site_url"]),rel.replace("/",os.sep)) if rel else ""; pix=QPixmap(path) if path and os.path.exists(path) else QPixmap(); return QIcon(pix) if not pix.isNull() else QIcon()
-    def begin_sort(self):
+    def begin_sort(self,predecoded=None):
         self.original={int(p["id"]):dict(p) for p in self.photos};self.photo_list.clear()
-        for p in self.photos:
-            it=QListWidgetItem(self.thumb(p),p.get("title") or p.get("filename") or f"Photo {p['id']}");it.setData(Qt.UserRole,p);self.photo_list.addItem(it)
+        for idx,p in enumerate(self.photos):
+            if predecoded is not None and idx<len(predecoded) and not predecoded[idx].isNull():
+                icon=QIcon(QPixmap.fromImage(predecoded[idx]))
+            else:
+                icon=self.thumb(p)
+            it=QListWidgetItem(icon,p.get("title") or p.get("filename") or f"Photo {p['id']}");it.setData(Qt.UserRole,p);self.photo_list.addItem(it)
         mismatched=sum(self.shape_orientation(p) is not None and self.shape_orientation(p)!=p.get("orientation") for p in self.photos)
         self.configure_mode()
         if getattr(self,"photo_subset_total",len(self.photos))>len(self.photos):self.sort_intro.setText(self.sort_intro.text()+f" Showing {len(self.photos):,} of {self.photo_subset_total:,} matching photographs; change the Library limit or filters to choose a different working set.")
