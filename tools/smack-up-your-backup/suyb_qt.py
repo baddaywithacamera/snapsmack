@@ -37,6 +37,7 @@ import ftps_pins
 import profile_manager
 import restore_engine
 import secret_vault
+import snap_first_run
 from _version import BUILD_VERSION
 from suyb_qt_common import (
     STYLE, FitScrollArea, Relay, card as _card, engine_asker, label as _label,
@@ -48,6 +49,17 @@ from suyb_qt_profiles import ProfileDialog, SetupWizard, delete_profile_confirme
 from suyb_qt_schedule import InAppScheduler, SchedulePage
 from suyb_qt_settings import SettingsPage, global_cloud_from_config
 from suyb_qt_slaphappy import SlapHappyPage
+
+SUYB_DOES = (
+    "Backs up your SNAPSMACK site's database, settings, skins, and uploaded site files to local storage, Google Drive, or Backblaze B2.",
+    "Verifies backup manifests and checksums, and builds portable recovery kits.",
+    "Runs on-demand or scheduled SNAPSMACK site backups.",
+)
+SUYB_DOESNT = (
+    "Does NOT back up your personal photo library, RAW files, or local folders on your computer — keep your original photographs backed up separately.",
+    "Does NOT replace a full server snapshot or restore hosting, DNS, or TLS configuration.",
+    "Does NOT delete cloud backups automatically when local files change.",
+)
 
 
 def _icon_path():
@@ -508,6 +520,7 @@ class SuybWindow(QMainWindow):
         dialog = QDialog(self); dialog.setWindowTitle(f"SMACK UP YOUR BACKUP — Help · {BUILD_VERSION}")
         dialog.resize(900, 600)
         shell = QHBoxLayout(dialog)
+        left_col = QVBoxLayout()
         topic_list = QListWidget(); topic_list.setFixedWidth(260)
         body = QTextEdit(); body.setReadOnly(True)
         for title, _text in topics: topic_list.addItem(title)
@@ -515,7 +528,13 @@ class SuybWindow(QMainWindow):
             title, text = topics[max(0, row)]
             body.setHtml(f"<h2>{title}</h2><p>{text.replace(chr(10) + chr(10), '</p><p>').replace(chr(10), '<br>')}</p>")
         topic_list.currentRowChanged.connect(show_topic)
-        shell.addWidget(topic_list); shell.addWidget(body, 1)
+        left_col.addWidget(topic_list, 1)
+        about_btn = QPushButton("What this app does && doesn't do")
+        about_btn.clicked.connect(lambda: snap_first_run.show_from_help(
+            "suyb", "SMACK UP YOUR BACKUP", SUYB_DOES, SUYB_DOESNT, parent=dialog
+        ))
+        left_col.addWidget(about_btn)
+        shell.addLayout(left_col); shell.addWidget(body, 1)
         topic_list.setCurrentRow(first_topic.get(self.pages.currentIndex(), 0))
         dialog.exec()
 
@@ -606,7 +625,10 @@ class SuybWindow(QMainWindow):
             self._load_profiles()
 
     def _first_run(self):
-        """No sites yet: the setup wizard, as the Tk window did on first launch."""
+        """First-run 'what this app does/doesn't do' screen, then setup wizard if no sites yet."""
+        snap_first_run.show_if_needed(
+            "suyb", "SMACK UP YOUR BACKUP", SUYB_DOES, SUYB_DOESNT, parent=self
+        )
         if profile_manager.list_profiles():
             return
         wizard = SetupWizard(self)
