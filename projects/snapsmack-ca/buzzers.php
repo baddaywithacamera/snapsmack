@@ -176,6 +176,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Audit Register</h3>
             <ol>
+                <li><span class="idx-date">Nov 17</span><a href="#a069">Step-Up and SNAP HQ &mdash; Attempt Limits and Device Expiry Now Enforced</a></li>
                 <li><span class="idx-date">Nov 17</span><a href="#a066">API Key Generation &mdash; Password and Two-Factor Step-Up Now Required</a></li>
                 <li><span class="idx-date">Nov 15</span><a href="#a064">Breach Response &mdash; API Writes Now Stop When Integrity Is Lost</a></li>
                 <li><span class="idx-date">Nov 8</span><a href="#a065">Injection Sweep &mdash; No Working Path Found, Hardening Debt Named</a></li>
@@ -246,6 +247,15 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a069">
+                <div class="post-meta"><span class="post-date">November 17, 2026 &mdash; deployed November 18</span><span class="post-tag">High Findings Fixed in 0.7.999D</span></div>
+                <h2>Step-Up and SNAP HQ &mdash; Attempt Limits and Device Expiry Enforced</h2>
+                <p>The shared password-and-two-factor step-up check did not have an effective attempt budget, and SNAP HQ device authorisation recorded expiry information without enforcing it end to end. Earlier lockout work could reach only its first delay tier and still had a request race; an expired HQ device could renew outside the documented window, cached authorisation could outlive server-side disablement until the next check-in, and legacy desktop state did not always have a trusted clock baseline.</p>
+                <p>SnapSmack 0.7.999D gives step-up five attempts before escalating 15-minute, 30-minute and one-hour locks, while preserving a full new attempt budget for a legitimate owner after each lock. It enforces HQ expiry and grace on the server, anchors renewals to the previous term, keeps a clear recovery route open, refreshes revocation state on contact, and derives a trusted clock baseline for older signed entitlements. Independent reviews rejected earlier revisions and passed the final repairs; focused regressions cover the exact races and legacy-state failures those reviews found.</p>
+                <p>A signed offline authorisation still cannot learn about a revocation that happened after its last contact. That boundary is stated in the report rather than presented as an unfixed implementation defect. The public report follows the audit method linked above, records its AI-assisted authorship, and separates source evidence from installed-build and owner acceptance checks.</p>
+                <a class="report-link" href="secaudits/2026-11-17-069-step-up-attempt-budget-and-hq-device-expiry.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a066">
                 <div class="post-meta"><span class="post-date">November 17, 2026</span><span class="post-tag">High Finding Fixed in 0.7.998D</span></div>
