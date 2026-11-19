@@ -326,9 +326,10 @@ UPDATE ss_forum_installs SET is_moderator = 1 WHERE role >= 2 AND is_moderator =
 -- INSERT IGNORE so re-running is safe.
 -- ------------------------------------------------------------
 INSERT IGNORE INTO ss_forum_categories (slug, name, description, sort_order) VALUES
-    ('getting-started',  'Getting Started',       'New to SnapSmack? Questions, setup help, first steps.',                         1),
+    ('getting-started',  'Getting Started',       'New to SNAPSMACK? Questions, setup help, first steps.',                         1),
     ('skins',            'Skins & Customisation', 'Skin questions, CSS tweaks, manifest help, building new skins.',                 2),
-    ('bug-reports',      'Roach Motel',           'Something broken? Post here. Include your SnapSmack version and active skin.',   3),
+    ('bug-reports',      'Roach Motel',           'Something broken? Post here. Include your SNAPSMACK version and active skin.',   3),
     ('feature-requests', 'Feature Requests',      'Ideas for what comes next. Vote with replies.',                                  4),
-    ('show-and-tell',    'Show & Tell',           'Share your site. Show what you\'ve built with SnapSmack.',                      5);
+    ('show-and-tell',    'Show & Tell',           'Share your site. Show what you\'ve built with SNAPSMACK.',                      5);
+UPDATE ss_forum_categories SET description = REPLACE(description, 'SnapSmack', 'SNAPSMACK') WHERE BINARY description LIKE '%SnapSmack%';
 -- ===== SNAPSMACK EOF =====
