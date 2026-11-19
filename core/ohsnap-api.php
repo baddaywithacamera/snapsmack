@@ -14,7 +14,8 @@
  *   GET  ohsnap/library       — shared resources library (asset inventory), the
  *                               canonical route every tool fetches; serve-time
  *                               validated (200 present / 409 incomplete / 404 missing)
- *   POST ohsnap/skin/push     — upload a skin zip and optionally activate it
+ *   POST ohsnap/skin/push     — REMOVED 2026-08-09. Returns 410 always. See
+ *                               the note at the endpoint; do not re-add it.
  *   POST ohsnap/skin/vars     — push CSS variable overrides (stored + served live)
  */
 
@@ -367,13 +368,31 @@ if ($resource === 'skin' && $sub === 'push') {
 
 // =============================================================================
 // ENDPOINT: POST ohsnap/skin/vars
-// Push CSS variable overrides from Oh Snap! directly onto the active skin
-// without needing a full skin zip. Stores values in snap_settings under
-// the key "ohsnap_vars_{skin_slug}" as a JSON blob.
+// Push CSS variable overrides from Oh Snap! onto the active skin without a
+// full skin zip. Stores values in snap_settings under the key
+// "ohsnap_vars_{skin_slug}" as a JSON blob.
 //
 // Request body (JSON): { "vars": { "--bg-page": "#000", ... } }
-// The meta system reads this blob and injects it as a :root block after the
-// compiled skin CSS, so changes appear immediately on the live site.
+//
+// WARNING — THIS WRITE CURRENTLY HAS NO READER, SO THE PUSH CHANGES NOTHING.
+// This comment used to say "The meta system reads this blob and injects it as
+// a :root block after the compiled skin CSS, so changes appear immediately on
+// the live site." That is not true in this codebase: `ohsnap_vars_` appears
+// exactly twice, both in this file, and nothing in core/ or index.php reads a
+// setting by that name. An owner can push variables from the desktop app,
+// receive a success response, and see no change on their site.
+//
+// Found by Muse's OH SNAP review (2026-11-19) and verified here by grep. The
+// validation below is sound and is not the problem; the missing half is a
+// reader. Either wire one or stop offering the push -- that is a product
+// decision and it is with the PM, so nothing is changed here but the comment.
+//
+// WHY THE COMMENT IS BEING CORRECTED AS ITS OWN COMMIT: I read this file's
+// header to answer the PM's question about what OH SNAP can do today, and
+// reported that it can "upload a skin zip and optionally activate it". The
+// header said so. The implementation has returned 410 since 2026-08-09. A
+// comment is not evidence, and two comments in this one file describe an API
+// that does not exist.
 // =============================================================================
 if ($resource === 'skin' && $sub === 'vars' && $method === 'POST') {
     $active_skin = $settings['active_skin'] ?? '';
