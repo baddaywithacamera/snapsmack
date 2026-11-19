@@ -1016,7 +1016,7 @@
     },
     "hq-device-expiry-enforced-regression.php": {
         "assertions": 43,
-        "predicates": 16,
+        "predicates": 18,
         "thresholds": [
             3,
             403,
@@ -1158,6 +1158,11 @@
             6001,
             6001
         ]
+    },
+    "kit-preflight-guards-regression.php": {
+        "assertions": 31,
+        "predicates": 14,
+        "thresholds": []
     },
     "legacy-archive-redirect-loop-regression.php": {
         "assertions": 34,

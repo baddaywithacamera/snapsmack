@@ -497,6 +497,8 @@ class SnapSmackRecovery {
             'missing'        => 0,
             'not_bundled'    => 0,
             'errors'         => [],
+            'warnings'       => [],
+            'schema_sync'    => null,
         ];
 
         // If it's a .tar.gz, extract it first
@@ -536,6 +538,40 @@ class SnapSmackRecovery {
 
         $this->streamProgress("Recovery Kit: {$manifest['site_name']} — exported {$manifest['export_date']}", 'info');
         $this->streamProgress("SnapSmack version: {$manifest['snapsmack_version']}", 'info');
+
+        // --- 0. PREFLIGHT, BEFORE ANYTHING IS OVERWRITTEN ---
+        // SS-1428 + SS-1429. Until now the two lines above were the whole of
+        // it: the kit's version and site were PRINTED and never checked, and
+        // validateManifest() had no caller anywhere in the codebase.
+        $here = [];
+        try {
+            $here = $this->pdo->query(
+                "SELECT setting_key, setting_val FROM snap_settings
+                  WHERE setting_key IN ('installed_version','site_mode','site_url','site_uuid')"
+            )->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+        } catch (PDOException $e) {
+            // A site with no readable settings cannot be compared against. Say
+            // so rather than treating unknown as compatible.
+            $result['errors'][] = 'Could not read this site settings to check kit '
+                . 'compatibility: ' . $e->getMessage();
+            if ($needsCleanup) $this->recursiveDelete($extractDir);
+            return $result;
+        }
+
+        $pre = $this->preflightKit($manifest, $here);
+        foreach ($pre['warnings'] as $w) {
+            $this->streamProgress($w, 'warn');
+            $result['warnings'][] = $w;
+        }
+        if (!empty($pre['refusals'])) {
+            foreach ($pre['refusals'] as $r) {
+                $result['errors'][] = $r;
+                $this->streamProgress($r, 'error');
+            }
+            $this->streamProgress('NOTHING WAS CHANGED. The kit was not applied.', 'error');
+            if ($needsCleanup) $this->recursiveDelete($extractDir);
+            return $result;
+        }
 
         // --- 1. IMPORT SQL DUMP ---
         $sqlPath = $kitRoot . '/database.sql';
@@ -660,6 +696,47 @@ class SnapSmackRecovery {
         // --- 3. ENSURE DIRECTORIES ---
         $this->ensureDirectories();
 
+        // --- 3b. BRING THE SCHEMA UP TO THIS BUILD ---
+        // SS-1429, the other half. A kit from an older build carries an older
+        // schema, and the preflight above deliberately ALLOWS that because it
+        // is the ordinary recovery case: the dump is the data you still have.
+        // What made it dangerous was that nothing afterwards closed the gap,
+        // so the site came back running this build's code over last month's
+        // tables -- missing columns, missing indexes, and every guarded reader
+        // in core/ quietly degrading because that is what they are built to
+        // do. The restore looked like it worked.
+        //
+        // snap_schema_sync() is the same function the updater runs at
+        // core/updater.php:1618, which is the one place this has always been
+        // done properly. Borrowed rather than reimplemented.
+        //
+        // It runs AFTER the SQL and BEFORE the caller is told this succeeded,
+        // and a failure here is an error on the result rather than an
+        // exception: the data is already in: telling the owner the restore
+        // exploded would be less true than telling them the schema still
+        // needs a pass.
+        try {
+            require_once __DIR__ . '/schema-sync.php';
+            if (function_exists('snap_schema_sync')) {
+                $this->streamProgress('Synchronising the database schema to this build...', 'info');
+                $sync = snap_schema_sync($this->pdo);
+                $result['schema_sync'] = $sync;
+                $added = count($sync['columns_added'] ?? []);
+                $syncErrors = $sync['errors'] ?? [];
+                $this->streamProgress("Schema sync: {$added} change(s) applied, "
+                    . count($syncErrors) . ' error(s).', $syncErrors ? 'warn' : 'ok');
+                foreach ($syncErrors as $se) {
+                    $result['errors'][] = "Schema sync: {$se}";
+                }
+            } else {
+                $result['errors'][] = 'Schema sync unavailable: the restored data may '
+                    . 'be on an older schema than this build expects.';
+            }
+        } catch (Throwable $e) {
+            $result['errors'][] = 'Schema sync failed after the data was restored: '
+                . $e->getMessage() . '. The data is in; the schema still needs a pass.';
+        }
+
         // --- 4. CLEANUP ---
         if ($needsCleanup) {
             $this->recursiveDelete($extractDir);
@@ -679,6 +756,104 @@ class SnapSmackRecovery {
     /**
      * Validates a recovery kit manifest. Returns array of issues (empty = valid).
      */
+    /**
+     * EVERYTHING THAT MUST BE TRUE BEFORE ANY DESTRUCTIVE WORK.
+     *
+     * SS-1428 and SS-1429. validateManifest() existed as a public method with
+     * no caller anywhere -- a validator nobody ran -- and the import printed
+     * the kit's version and site name without ever comparing them to this
+     * install. A kit from a different site, a different mode, or a newer
+     * build was applied exactly like the right one.
+     *
+     * WHAT IS REFUSED, and why only these:
+     *
+     *   A NEWER KIT. A kit from a later SnapSmack carries a later schema.
+     *   Applying it to an older install leaves tables this build does not
+     *   understand and columns its queries do not know about. The reverse --
+     *   an older kit into this build -- is the ordinary recovery case and
+     *   must keep working, which is what the schema sync below is for.
+     *
+     *   A MODE MISMATCH. A SMACKTALK kit into a photoblog install, or the
+     *   reverse, produces a site whose content and whose renderer disagree
+     *   about what it is. Nothing downstream reconciles that.
+     *
+     * WHAT IS REPORTED BUT NOT REFUSED, and this is the part worth reading:
+     *
+     *   A DIFFERENT site_uuid OR site_url. My first instinct was to refuse
+     *   these and it would have broken the product's whole purpose. In a real
+     *   disaster recovery the database is GONE: you install fresh, which
+     *   mints a NEW site_uuid, and then import the kit. The kit's identity
+     *   never matches the install's -- that is the normal path, not the
+     *   exception, and refusing it would mean the recovery tool refuses to
+     *   recover.
+     *
+     *   The thing that distinguishes the right target from the wrong one is
+     *   the operator's intent, and that is captured a layer up: SS-1430 makes
+     *   smack-disaster.php require this site's own address typed out before
+     *   it calls in here. So a mismatch is surfaced loudly and the import
+     *   proceeds. What happens to identity AFTER the restore -- a clone
+     *   inheriting the original's uuid and joining the fleet as it -- is
+     *   SS-1434 and is not settled here.
+     *
+     * @return array{refusals:string[],warnings:string[]}
+     */
+    public function preflightKit(array $manifest, array $settings): array {
+        $refusals = $this->validateManifest($manifest);
+        $warnings = [];
+
+        // snap_version_compare() is LOADED, not hoped for. My first version
+        // wrote `function_exists('snap_version_compare') && ...`, which means
+        // that in any context where constants.php has not been included the
+        // version guard silently passes everything -- a check that does
+        // nothing when its dependency is missing, which is precisely the
+        // SS-1428 fault this method exists to fix. If the comparator cannot
+        // be loaded the kit is refused, because an unanswerable question
+        // about schema compatibility is not a yes.
+        if (!function_exists('snap_version_compare')) {
+            @require_once __DIR__ . '/constants.php';
+        }
+        $kitVersion = trim((string)($manifest['snapsmack_version'] ?? ''));
+        $here       = trim((string)($settings['installed_version'] ?? ''));
+        if (!function_exists('snap_version_compare')) {
+            $refusals[] = 'The version comparator is unavailable, so this kit cannot '
+                . 'be checked against this build. Refusing rather than guessing.';
+        } elseif ($kitVersion === '') {
+            $refusals[] = 'The kit does not say which SnapSmack version produced it.';
+        } elseif ($here !== '' && snap_version_compare($kitVersion, $here, '>')) {
+            $refusals[] = "This kit was made by SnapSmack {$kitVersion} and this site runs "
+                . "{$here}. A kit cannot be restored into an older build: it carries a "
+                . 'schema this one does not understand. Update this site first.';
+        }
+
+        $kitMode = trim((string)($manifest['site_mode'] ?? ''));
+        $hereMode = trim((string)($settings['site_mode'] ?? ''));
+        if ($kitMode === '') {
+            $refusals[] = 'The kit does not say which site mode it came from.';
+        } elseif ($hereMode !== '' && $kitMode !== $hereMode) {
+            $refusals[] = "This kit is from a '{$kitMode}' site and this install is "
+                . "'{$hereMode}'. Restoring it would leave the content and the renderer "
+                . 'disagreeing about what this site is.';
+        }
+
+        // Identity: reported, never refused. See the note above.
+        $kitUuid  = trim((string)($manifest['site_uuid'] ?? ''));
+        $hereUuid = trim((string)($settings['site_uuid'] ?? ''));
+        if ($kitUuid !== '' && $hereUuid !== '' && $kitUuid !== $hereUuid) {
+            $warnings[] = 'This kit came from a DIFFERENT installation. That is normal '
+                . 'for a rebuild after a failure, and wrong if you meant to restore this '
+                . "site's own kit. After the restore this site will carry the original "
+                . "site's identity.";
+        }
+        $kitUrl  = rtrim(trim((string)($manifest['site_url'] ?? '')), '/');
+        $hereUrl = rtrim(trim((string)($settings['site_url'] ?? '')), '/');
+        if ($kitUrl !== '' && $hereUrl !== '' && $kitUrl !== $hereUrl) {
+            $warnings[] = "This kit was exported from {$kitUrl} and this site is "
+                . "{$hereUrl}.";
+        }
+
+        return ['refusals' => $refusals, 'warnings' => $warnings];
+    }
+
     public function validateManifest(array $manifest): array {
         $issues = [];
 
@@ -698,6 +873,20 @@ class SnapSmackRecovery {
 
         if (!isset($manifest['files']['database.sql'])) {
             $issues[] = 'No database.sql in file manifest (SQL dump missing).';
+        }
+
+        // SS-1428. core/export-engine.php writes every one of these into the
+        // manifest of a recovery kit, unconditionally. A kit missing any of
+        // them was not produced by this product, or was edited by hand, and
+        // either way the compatibility checks in preflightKit() cannot be
+        // made. Absent is refused rather than skipped: a guard that quietly
+        // does nothing when its input is missing is the shape of SS-1428
+        // itself.
+        foreach (['snapsmack_version', 'site_mode', 'site_url', 'site_uuid'] as $field) {
+            if (!array_key_exists($field, $manifest)) {
+                $issues[] = "Manifest has no {$field}, so this kit cannot be checked "
+                    . 'for compatibility with this site.';
+            }
         }
 
         return $issues;
