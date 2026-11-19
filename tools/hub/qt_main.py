@@ -40,6 +40,7 @@ QFrame#header { background:#0e1310; border-bottom:1px solid #243028; }
 QFrame#section { background:#101511; border:1px solid #29342c; border-radius:14px; }
 QFrame#tool { background:#171d19; border:1px solid #27332b; border-radius:10px; }
 QFrame#tool:hover { background:#202b23; border-color:#63ef3d; }
+QLabel { background:transparent; }
 QLabel#brand { color:#63ef3d; font-size:27px; font-weight:900; }
 QLabel#sectionTitle { color:#63ef3d; font-size:12px; font-weight:800; }
 QLabel#toolTitle { font-size:13px; font-weight:800; }
@@ -54,7 +55,7 @@ QTextEdit { background:#0b0f0c; border:1px solid #334238; border-radius:8px; pad
 QComboBox { background:#0b0f0c; border:1px solid #334238; border-radius:8px; padding:8px; }
 QComboBox QAbstractItemView { background:#0b0f0c; selection-background-color:#243129; }
 QScrollArea { border:0; }
-QCheckBox { spacing:9px; }
+QCheckBox { background:transparent; spacing:9px; }
 """
 
 
