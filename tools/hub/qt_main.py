@@ -11,10 +11,11 @@ import sys
 import requests
 
 from PySide6.QtCore import QObject, QSettings, QThread, Qt, QTimer, Signal, Slot
-from PySide6.QtGui import QGuiApplication, QIcon, QPixmap
+from PySide6.QtGui import QAction, QGuiApplication, QIcon, QPixmap
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QFileDialog,
-    QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
-    QMessageBox, QProgressBar, QPushButton, QScrollArea, QTextEdit, QVBoxLayout, QWidget)
+    QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu,
+    QMessageBox, QProgressBar, QPushButton, QScrollArea, QSystemTrayIcon, QTextEdit,
+    QVBoxLayout, QWidget)
 
 import main as core
 import snap_creds
@@ -430,14 +431,51 @@ class Window(QMainWindow):
         self._restore_maximized = self.settings.value("window/maximized", False, type=bool)
         if self._restore_maximized:
             QTimer.singleShot(0, self.showMaximized)
+        self._init_tray()
 
-    def closeEvent(self, event):
+    def _init_tray(self):
+        self.tray_menu = QMenu(self)
+        self.tray_show_action = QAction("Show SNAP HQ", self)
+        self.tray_show_action.triggered.connect(self._restore_from_tray)
+        self.tray_quit_action = QAction("Quit SNAP HQ", self)
+        self.tray_quit_action.triggered.connect(self.quit_app)
+        self.tray_menu.addAction(self.tray_show_action)
+        self.tray_menu.addSeparator()
+        self.tray_menu.addAction(self.tray_quit_action)
+        self.tray_icon = None
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            icon_path = _icon_path("SNAP HQ")
+            tray = QSystemTrayIcon(QIcon(icon_path) if icon_path else self.windowIcon(), self)
+            tray.setToolTip("SNAP HQ")
+            tray.setContextMenu(self.tray_menu)
+            tray.show()
+            self.tray_icon = tray
+
+    def _restore_from_tray(self):
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def quit_app(self):
+        self._save_window_geometry()
+        if self.tray_icon:
+            self.tray_icon.hide()
+        app = QApplication.instance()
+        if app:
+            app.quit()
+
+    def _save_window_geometry(self):
         if not self.isMinimized():
             self.settings.setValue("window/geometry_schema", WINDOW_GEOMETRY_SCHEMA)
             self.settings.setValue("window/maximized", self.isMaximized())
             if not self.isMaximized():
                 self.settings.setValue("window/normal_geometry", self.saveGeometry())
             self.settings.sync()
+
+    def closeEvent(self, event):
+        self._save_window_geometry()
+        if self.tray_icon:
+            self.tray_icon.hide()
         super().closeEvent(event)
 
     def _restore_saved_geometry(self):

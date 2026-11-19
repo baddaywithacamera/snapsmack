@@ -45,6 +45,13 @@ if errorlevel 1 (
 )
 
 echo.
+echo Checking for running SNAP HQ...
+"%BUILD_PYTHON%" "%~dp0..\_shared\snap_hq_process.py" --prompt
+if errorlevel 1 (
+    echo ERROR: Close SNAP HQ before installing.
+    pause
+    exit /b 1
+)
 echo Building SNAP HQ...
 if not exist C:\snapsmack\hub mkdir C:\snapsmack\hub
 "%BUILD_PYTHON%" -m PyInstaller --clean hub.spec --distpath "C:\snapsmack\hub"
