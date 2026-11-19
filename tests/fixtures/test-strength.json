@@ -1383,6 +1383,14 @@
         "predicates": 5,
         "thresholds": []
     },
+    "ohsnap-contract-is-not-stale-regression.php": {
+        "assertions": 14,
+        "predicates": 3,
+        "thresholds": [
+            2,
+            2
+        ]
+    },
     "ohsnap-regression.php": {
         "assertions": 14,
         "predicates": 10,

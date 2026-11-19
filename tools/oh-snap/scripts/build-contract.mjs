@@ -63,8 +63,20 @@ modes.FEDISTRUCTURE.user_selectable=false;
 modes.SMACKTALK.profile='smacktalk';
 modes.FEDISTRUCTURE.profile='photoblog';
 const contract = { contract_schema:'2.0', generated_at:new Date().toISOString(), source_inventory_schema:inventory.schema_version, package_lane:'SHAREABLE', modes, starter_template:starterTemplate, previews, supported_scripts:[], supported_styles:[], asset_inventory:inventory, project_schema:2, package_rules:{forbidden_extensions:['phtml','phar','htaccess','exe','dll','bat','cmd','ps1','sh'],forbidden_names:['.htaccess'],max_file_bytes:5000000,max_package_bytes:25000000} };
-const outDir = path.join(toolRoot,'src','data');
+// --out <file> WRITES SOMEWHERE ELSE, so the committed contract can be checked
+// for staleness without a test writing into the repository. Muse found this
+// file three weeks out of date (94 JS / 39 CSS against 104 / 40), which meant
+// a skin author using OH SNAP could not see ten engines or the shared
+// stylesheets the inventory had gained -- including public-base.css and
+// ss-engine-mosaic.css, the two sheets we most want reused. A generated file
+// with no staleness check goes stale; that is not a surprise, it is a
+// guarantee. tests/ohsnap-contract-is-not-stale-regression.php uses this.
+const outArgIndex = process.argv.indexOf('--out');
+const outFile = outArgIndex !== -1 && process.argv[outArgIndex + 1]
+  ? path.resolve(process.argv[outArgIndex + 1])
+  : path.join(toolRoot,'src','data','skin-kit-contract.js');
+const outDir = path.dirname(outFile);
 fs.mkdirSync(outDir,{recursive:true});
-fs.writeFileSync(path.join(outDir,'skin-kit-contract.js'),`/** SNAPSMACK_EOF_HEADER — generated contract. */\nwindow.OH_SNAP_CONTRACT = ${JSON.stringify(contract)};\n// ===== SNAPSMACK EOF =====\n`,'utf8');
-console.log(`OH SNAP contract: ${Object.keys(modes).length} modes, ${inventory.javascript?.length || 0} JS assets, ${inventory.fonts?.length || 0} fonts.`);
+fs.writeFileSync(outFile,`/** SNAPSMACK_EOF_HEADER — generated contract. */\nwindow.OH_SNAP_CONTRACT = ${JSON.stringify(contract)};\n// ===== SNAPSMACK EOF =====\n`,'utf8');
+console.log(`OH SNAP contract: ${Object.keys(modes).length} modes, ${inventory.javascript?.length || 0} JS assets, ${inventory.css?.length || 0} CSS, ${inventory.fonts?.length || 0} fonts -> ${outFile}`);
 // ===== SNAPSMACK EOF =====
