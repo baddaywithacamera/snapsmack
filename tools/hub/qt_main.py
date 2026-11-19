@@ -144,7 +144,8 @@ class CredentialTestWorker(QObject):
 class ToolCard(QFrame):
     def __init__(self, name, description, paths, parent=None):
         super().__init__(parent); self.setObjectName("tool"); self.setFixedHeight(82); self.setMinimumWidth(0)
-        self.exe = core._find_exe(paths); self.name = name
+        self.inert = not paths
+        self.exe = None if self.inert else core._find_exe(paths); self.name = name
         self.row = QHBoxLayout(self); self.row.setContentsMargins(16, 13, 13, 13); self.row.setSpacing(13)
         self.icon = QLabel(); self.icon.setFixedSize(42, 42); self.icon.setAlignment(Qt.AlignCenter)
         self.icon_path = _icon_path(name)
@@ -155,9 +156,9 @@ class ToolCard(QFrame):
         self.row.addWidget(self.icon)
         self.words = QVBoxLayout(); self.words.setSpacing(3)
         self.title = QLabel(name); self.title.setObjectName("toolTitle"); self.title.setWordWrap(True); self.words.addWidget(self.title)
-        self.sub = QLabel(description if self.exe else description + " · not installed"); self.sub.setObjectName("muted"); self.sub.setWordWrap(True); self.words.addWidget(self.sub)
+        self.sub = QLabel(description if (self.exe or self.inert) else description + " · not installed"); self.sub.setObjectName("muted"); self.sub.setWordWrap(True); self.words.addWidget(self.sub)
         self.row.addLayout(self.words, 1)
-        self.launch = QPushButton("OPEN" if self.exe else "MISSING"); self.launch.setEnabled(bool(self.exe))
+        self.launch = QPushButton("OPEN" if (self.exe or self.inert) else "MISSING"); self.launch.setEnabled(bool(self.exe or self.inert))
         self.launch.clicked.connect(self._launch); self.row.addWidget(self.launch)
 
     def apply_scale(self, scale):
@@ -171,6 +172,8 @@ class ToolCard(QFrame):
         self.launch.setMinimumHeight(px(36)); self.launch.setMinimumWidth(px(64))
 
     def _launch(self):
+        if self.inert:
+            return
         ok, error = core._launch(self.exe, parent=None)
         if not ok: QMessageBox.critical(self, "Could not open " + self.name, error)
 
