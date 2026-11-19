@@ -14,6 +14,38 @@ function snapsmack_public_skin_presentation(string $skin, array $options): array
             'retina'=>$on('retina_logo'), 'show_tagline'=>$on('show_tagline'),
         ];
     }
+    // LANDING LAYOUT -- A CMS FACT, NOT SKIN LOGIC. SS-1446.
+    //
+    // Keyed by FUNCTION ('landing'), not by skin name, and gated on the option
+    // existing rather than on a list of skins. Any skin that declares
+    // landing_layout gets this; none of them has to be named here. The six
+    // files that key page components by skin name are what broke CHAPLIN, and
+    // this is the place that would have become the seventh.
+    //
+    // WHAT THE SKIN RECEIVES is a bare class name and a bounded number. The
+    // skin prints the class on its grid and does not decide anything: no
+    // branch on the layout word, no CSS assembled here, no inline style. The
+    // column count reaches the stylesheet as --ss-square-cols through the
+    // manifest's own selector/property declaration, which is the mechanism
+    // every other numeric control in this product already uses.
+    //
+    // 'square' is the only layout wired so far, because it is the one Sean
+    // asked for and the only one whose rules exist to point at. The other
+    // three words are accepted and map to no class on purpose: an owner who
+    // picks one gets the skin's own grid rather than a half-wired engine, and
+    // whoever wires the next layout adds one line here.
+    if (array_key_exists('landing_layout', $options)) {
+        $layout = (string)($options['landing_layout'] ?? '');
+        if (!in_array($layout, ['default', 'square', 'columns', 'rows', 'mosaic'], true)) {
+            $layout = 'default';
+        }
+        $classes = ['square' => 'snap-mosaic-wall ss-square-wall'];
+        $out['landing'] = [
+            'layout' => $layout,
+            'grid_class' => $classes[$layout] ?? '',
+            'square_cols' => snapsmack_declared_option_int($options, 'landing_square_cols', 3, 5),
+        ];
+    }
     if ($skin === 'rational-geo') {
         // No colours and no CSS are decided here. The owner's choice travels
         // as the bare word they picked; the stylesheet turns it into a colour,

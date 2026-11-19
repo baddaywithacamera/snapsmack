@@ -11,7 +11,7 @@
         "default": "layout.php"
     },
     "name": "ALFRED",
-  "version": "1.0.16",
+    "version": "1.0.18",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A SMACKTALK skin for photographers who write. Faithful recreation of Anders Norén's Hitchcock WordPress theme — dark navigation, Montserrat headings, Droid Serif body text, full-width header image. Named for Alfred Hitchcock.",
@@ -37,10 +37,11 @@
         ]
     },
     "require_scripts": [
-    "smack-tag-infinite",
+        "smack-tag-infinite",
         "smack-alfred-nav",
         "smack-footer",
-        "smack-community"
+        "smack-community",
+        "smack-mosaic"
     ],
     "community_comments": "1",
     "community_likes": "0",
@@ -133,6 +134,30 @@
                 "On hover only",
                 "Always visible"
             ]
+        },
+        "landing_layout": {
+            "section": "LANDING",
+            "type": "select",
+            "label": "Landing Layout",
+            "hint": "Square uses the shared SNAPSMACK mosaic engine as an even cropped grid. Default leaves the skin's own grid alone.",
+            "default": "square",
+            "options": {
+                "default": "Skin default",
+                "square": "Square (even cropped grid)"
+            }
+        },
+        "landing_square_cols": {
+            "section": "LANDING",
+            "type": "range",
+            "label": "Squares Across",
+            "hint": "Choose 3-5 square photographs per row. The skin's square-wall rules read this; it has no effect until they are in place.",
+            "enable_when": {
+                "landing_layout": "square"
+            },
+            "default": "3",
+            "min": "3",
+            "max": "5",
+            "step": "1"
         },
         "post_content_width": {
             "section": "LAYOUT",
