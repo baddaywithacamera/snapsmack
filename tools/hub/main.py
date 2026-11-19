@@ -113,6 +113,7 @@ ROSTER = [
     ("SHOTS FIRED",         "schedule board",       [os.path.join(_R, "shots-fired", "shots-fired.exe")]),
     ("CRONOMETER",          "fleet cron health",    [os.path.join(_R, "cronometer", "cronometer.exe")]),
     ("INSTANT REPLAY",      "test-blog restore",    [os.path.join(_R, "instantreplay", "instantreplay.exe")]),
+    ("KEYS PLEASE",         "API key manager & audit", [os.path.join(_R, "keysplease", "keysplease.exe")]),
 ]
 
 TOOL_ICON_FILES = {
@@ -129,6 +130,7 @@ TOOL_ICON_FILES = {
     "FED UP": "fed-up.ico",
     "INSTANT REPLAY": "instantreplay-simple.ico",
     "GHOSTED": "ghosted-simple.ico",
+    "KEYS PLEASE": "keysplease-simple.ico",
 }
 
 TOOL_IMAGE_FILES = {
