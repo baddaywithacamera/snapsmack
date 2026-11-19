@@ -158,9 +158,9 @@
                 'found him and smiled, most never knowing whose bear he was or why he was there.</p>' +
                 '<p>Google discontinued Picasa in 2016. Thomas went with it — no ceremony, ' +
                 'no acknowledgment. Just gone.</p>' +
-                '<p style="margin-bottom:0;">SnapSmack carries the shortcut forward because photo software ' +
+                '<p style="margin-bottom:0;">SNAPSMACK carries the shortcut forward because photo software ' +
                 'should know what it is built on. Ctrl+Shift+Y still summons Thomas here. ' +
-                'He belongs wherever photographs are made.</p>' +
+                'Thomas belongs wherever photographs are made or shared.</p>' +
             '</div>' +
             '<div style="margin-top:24px;text-align:center;font-size:11px;' +
                 'letter-spacing:2px;text-transform:uppercase;opacity:0.7;">' +
