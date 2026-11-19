@@ -30,4 +30,14 @@ SHARED = os.path.abspath(os.path.join(TOOL, "..", "_shared"))
 if os.path.isdir(SHARED) and SHARED not in sys.path:
     sys.path.insert(0, SHARED)
 
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _sandbox_snapsmack_home(tmp_path, monkeypatch):
+    sandbox = tmp_path / "snapsmack_home"
+    sandbox.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("SNAPSMACK_HOME", str(sandbox))
+
 # ===== SNAPSMACK EOF =====

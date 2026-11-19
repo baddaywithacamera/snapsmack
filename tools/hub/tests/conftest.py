@@ -45,4 +45,14 @@ def pytest_sessionfinish(session, exitstatus):
     for scratch in _OURS:
         shutil.rmtree(scratch, ignore_errors=True)
 
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _sandbox_snapsmack_home(tmp_path, monkeypatch):
+    sandbox = tmp_path / "snapsmack_home"
+    sandbox.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("SNAPSMACK_HOME", str(sandbox))
+
 # ===== SNAPSMACK EOF =====
