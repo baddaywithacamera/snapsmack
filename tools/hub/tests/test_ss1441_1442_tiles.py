@@ -5,6 +5,7 @@
 
 import os
 import sys
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -29,5 +30,10 @@ def test_every_migration_roster_entry_has_an_icon():
         assert img and os.path.isfile(img), f"Missing PNG icon for {name}: {img}"
         ico = os.path.join(HUB_DIR, "icons", core.TOOL_ICON_FILES[name])
         assert os.path.isfile(ico), f"Missing ICO icon for {name}: {ico}"
+
+
+def test_packaged_hq_includes_non_simple_fed_up_icon():
+    spec = Path(HUB_DIR, "hub.spec").read_text(encoding="utf-8")
+    assert "os.path.join(_icon_dir, 'fed-up.png')" in spec
 
 # ===== SNAPSMACK EOF =====
