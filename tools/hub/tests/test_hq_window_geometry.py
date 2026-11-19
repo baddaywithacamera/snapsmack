@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 QT_SOURCE = ROOT / "qt_main.py"
 MAIN_SOURCE = ROOT / "main.py"
+SPEC_SOURCE = ROOT / "hub.spec"
 
 
 def _function(name):
@@ -57,6 +58,15 @@ def test_fed_up_subtitle_uses_product_casing():
     source = QT_SOURCE.read_text(encoding="utf-8")
     assert '("FED UP", "Fediverse → SNAPSMACK"' in source
     assert 'Fediverse → SnapSmack' not in source
+
+
+def test_hq_build_embeds_the_authoritative_windows_version():
+    source = SPEC_SOURCE.read_text(encoding="utf-8")
+    assert "from PyInstaller.utils.win32.versioninfo import" in source
+    assert "target.id == 'BUILD_VERSION'" in source
+    assert "StringStruct('FileVersion', _build_version)" in source
+    assert "StringStruct('ProductVersion', _build_version)" in source
+    assert "version=_windows_version" in source
 
 
 def test_first_launch_uses_full_taskbar_safe_height():

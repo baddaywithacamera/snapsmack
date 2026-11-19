@@ -3,10 +3,40 @@
 # Shared modules are copied flat and force-imported,
 # so snap_creds / snap_profiles / snap_discovery / snap_home / snap_stepup can
 # never be silently dropped from the frozen exe.
-import os, glob, sys
+import os, glob, sys, ast
+from PyInstaller.utils.win32.versioninfo import (
+    VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable, StringStruct,
+    VarFileInfo, VarStruct,
+)
 sys.setrecursionlimit(sys.getrecursionlimit() * 5)
 
 _src = SPECPATH
+
+# Stamp the same build version the application displays into Windows file
+# properties. Parsing the source keeps a single version authority.
+with open(os.path.join(_src, 'main.py'), encoding='utf-8') as _vf:
+    _version_tree = ast.parse(_vf.read())
+_build_version = next(
+    ast.literal_eval(node.value) for node in _version_tree.body
+    if isinstance(node, ast.Assign)
+    and any(isinstance(target, ast.Name) and target.id == 'BUILD_VERSION'
+            for target in node.targets)
+)
+_version_tuple = tuple(int(part) for part in _build_version.split('.')) + (0,)
+if len(_version_tuple) != 4 or any(part < 0 or part > 65535 for part in _version_tuple):
+    raise ValueError('BUILD_VERSION must contain three Windows-compatible integers')
+_windows_version = VSVersionInfo(
+    ffi=FixedFileInfo(filevers=_version_tuple, prodvers=_version_tuple,
+                      mask=0x3f, flags=0, OS=0x40004, fileType=1, subtype=0, date=(0, 0)),
+    kids=[StringFileInfo([StringTable('040904B0', [
+        StringStruct('FileVersion', _build_version),
+        StringStruct('ProductVersion', _build_version),
+        StringStruct('FileDescription', 'SNAP HQ'),
+        StringStruct('ProductName', 'SNAP HQ'),
+        StringStruct('CompanyName', 'Sean McCormick'),
+        StringStruct('OriginalFilename', 'SNAP HQ.exe'),
+    ])]), VarFileInfo([VarStruct('Translation', [0x0409, 1200])])],
+)
 
 _py_files   = [os.path.join(_src, 'main.py'), os.path.join(_src, 'qt_main.py')]
 _local_data = [(f, '.') for f in _py_files]
@@ -77,4 +107,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=os.path.join(_icon_dir, 'snap-hq.ico'),
+    version=_windows_version,
 )
