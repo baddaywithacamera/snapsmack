@@ -1,3 +1,5 @@
+<!-- SNAPSMACK_EOF_HEADER: preserve the final EOF marker. -->
+
 # Browser tests
 
 Playwright is installed here as a development-only dependency. Run commands
@@ -6,6 +8,17 @@ from `C:\dev\snapsmack\tools\browser-tests`.
 - `npm test`: run tests in Chromium, Firefox and WebKit.
 - `npm run regressions`: required Chromium checks for CHAPLIN archive geometry,
   archive paging and generated mosaic preview, plus the Node scroll-time check.
+- `npm run pixel-parity -- BASELINE_DIR CANDIDATE_DIR`: render both generated
+  fixture sets in Chromium and compare the actual pixels at each skin's
+  supported widths. Use `--output REPORT.json` and `--evidence-dir DIR` to
+  retain the machine-readable result and before/after captures for differences.
+- `npm run pixel-parity -- --self-test`: prove that identical renders pass and
+  a visible CSS colour mutation fails at 1920, 1440 and 1024.
+- `npm run rational-geo-tray -- --evidence-dir DIR`: render the real strict-skin
+  RATIONAL GEO photo route at its supported tablet and desktop viewports, open
+  INFO, and prove that the photograph stays visible while the in-flow page
+  grows and scrolls. This uses the repository's local visual-fixture router;
+  it does not rebuild the failed SS-1322 synthetic markup.
 - `npm run test:ui`: open the interactive test runner.
 - `npm run report`: open the last HTML report.
 - `npm ci` then `npm run browsers`: reproduce the installation on another machine.
@@ -40,4 +53,8 @@ The browser runner creates a fresh temporary fixture directory per run and
 retains it on failure. It never relies on an earlier agent's temporary files.
 
 These checks cover named regressions, not all skin controls, all browsers or
-live deployment. The all-skin geometry matrix is separate work.
+live deployment. The all-skin geometry matrix is separate work. Pixel parity
+is deliberately a change detector, not a design judge: an intended difference
+still needs rendered review before the release signer can accept it.
+
+<!-- ===== SNAPSMACK EOF ===== -->

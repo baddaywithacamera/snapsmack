@@ -25,6 +25,18 @@ import snap_settings_sync
 import snap_site_settings
 
 
+# Schema 1 was written by the first 0.7.54 build after it restored the old
+# compact launcher height.  Invalidate it once so the repaired build measures
+# both sections against the current screen.  Sizes saved after this repair use
+# schema 2 and remain the owner's deliberate choice.
+WINDOW_GEOMETRY_SCHEMA = 2
+
+
+def _frame_intersects_any_screen(frame, screens):
+    """Return whether any usable screen contains at least part of the window."""
+    return any(screen.availableGeometry().intersects(frame) for screen in screens)
+
+
 STYLE = """
 QWidget { background:#090b0a; color:#eef2ed; font-family:'Segoe UI'; font-size:13px; }
 QMainWindow,QDialog { background:#090b0a; }
@@ -32,6 +44,7 @@ QFrame#header { background:#0e1310; border-bottom:1px solid #243028; }
 QFrame#section { background:#101511; border:1px solid #29342c; border-radius:14px; }
 QFrame#tool { background:#171d19; border:1px solid #27332b; border-radius:10px; }
 QFrame#tool:hover { background:#202b23; border-color:#63ef3d; }
+QLabel { background:transparent; }
 QLabel#brand { color:#63ef3d; font-size:27px; font-weight:900; }
 QLabel#sectionTitle { color:#63ef3d; font-size:12px; font-weight:800; }
 QLabel#toolTitle { font-size:13px; font-weight:800; }
@@ -46,16 +59,17 @@ QTextEdit { background:#0b0f0c; border:1px solid #334238; border-radius:8px; pad
 QComboBox { background:#0b0f0c; border:1px solid #334238; border-radius:8px; padding:8px; }
 QComboBox QAbstractItemView { background:#0b0f0c; selection-background-color:#243129; }
 QScrollArea { border:0; }
-QCheckBox { spacing:9px; }
+QCheckBox { background:transparent; spacing:9px; }
 """
 
 
 MIGRATION_ROSTER = [
     ("SMACKPRESS", "WordPress → SMACKTALK", [os.path.join(core._R, "smackpress", "SmackPress.exe")]),
     ("BLOGGER FLOGGER", "Blogger → SMACKTALK", [os.path.join(core._R, "blogger-flogger", "blogger-flogger.exe")]),
+    ("GHOSTED", "Ghost → SMACKTALK", [os.path.join(core._R, "ghosted", "ghosted.exe")]),
     ("UNZUCKER", "Instagram → GRAMOFSMACK", [os.path.join(core._R, "unzucker", "unzucker.exe")]),
     ("FLKR FCKR", "Flickr → SMACKONEOUT", [os.path.join(core._R, "flkr-fckr", "flkr-fckr.exe")]),
-    ("FED UP", "Fediverse → SnapSmack", [os.path.join(core._R, "fed-up", "fed-up.exe")]),
+    ("FED UP", "Fediverse → SNAPSMACK", [os.path.join(core._R, "fed-up", "fed-up.exe")]),
 ]
 
 
@@ -130,7 +144,8 @@ class CredentialTestWorker(QObject):
 class ToolCard(QFrame):
     def __init__(self, name, description, paths, parent=None):
         super().__init__(parent); self.setObjectName("tool"); self.setFixedHeight(82); self.setMinimumWidth(0)
-        self.exe = core._find_exe(paths); self.name = name
+        self.inert = not paths
+        self.exe = None if self.inert else core._find_exe(paths); self.name = name
         self.row = QHBoxLayout(self); self.row.setContentsMargins(16, 13, 13, 13); self.row.setSpacing(13)
         self.icon = QLabel(); self.icon.setFixedSize(42, 42); self.icon.setAlignment(Qt.AlignCenter)
         self.icon_path = _icon_path(name)
@@ -141,9 +156,9 @@ class ToolCard(QFrame):
         self.row.addWidget(self.icon)
         self.words = QVBoxLayout(); self.words.setSpacing(3)
         self.title = QLabel(name); self.title.setObjectName("toolTitle"); self.title.setWordWrap(True); self.words.addWidget(self.title)
-        self.sub = QLabel(description if self.exe else description + " · not installed"); self.sub.setObjectName("muted"); self.sub.setWordWrap(True); self.words.addWidget(self.sub)
+        self.sub = QLabel(description if (self.exe or self.inert) else description + " · not installed"); self.sub.setObjectName("muted"); self.sub.setWordWrap(True); self.words.addWidget(self.sub)
         self.row.addLayout(self.words, 1)
-        self.launch = QPushButton("OPEN" if self.exe else "MISSING"); self.launch.setEnabled(bool(self.exe))
+        self.launch = QPushButton("OPEN" if (self.exe or self.inert) else "MISSING"); self.launch.setEnabled(bool(self.exe or self.inert))
         self.launch.clicked.connect(self._launch); self.row.addWidget(self.launch)
 
     def apply_scale(self, scale):
@@ -157,6 +172,8 @@ class ToolCard(QFrame):
         self.launch.setMinimumHeight(px(36)); self.launch.setMinimumWidth(px(64))
 
     def _launch(self):
+        if self.inert:
+            return
         ok, error = core._launch(self.exe, parent=None)
         if not ok: QMessageBox.critical(self, "Could not open " + self.name, error)
 
@@ -417,20 +434,33 @@ class Window(QMainWindow):
         self.migration = ToolSection("MIGRATION CENTRE", MIGRATION_ROSTER); self.body.addWidget(self.migration)
         self.body.setAlignment(Qt.AlignTop); scroll.setWidget(content); shell.addWidget(scroll, 1); self.setCentralWidget(root)
         self._scale = 1.0; self._apply_settings(); self._fit_to_screen()
-        geometry = self.settings.value("window/normal_geometry")
-        if geometry:
-            self.restoreGeometry(geometry)
+        self._restore_saved_geometry()
         self._restore_maximized = self.settings.value("window/maximized", False, type=bool)
         if self._restore_maximized:
             QTimer.singleShot(0, self.showMaximized)
 
     def closeEvent(self, event):
         if not self.isMinimized():
+            self.settings.setValue("window/geometry_schema", WINDOW_GEOMETRY_SCHEMA)
             self.settings.setValue("window/maximized", self.isMaximized())
             if not self.isMaximized():
                 self.settings.setValue("window/normal_geometry", self.saveGeometry())
             self.settings.sync()
         super().closeEvent(event)
+
+    def _restore_saved_geometry(self):
+        geometry = self.settings.value("window/normal_geometry")
+        schema = self.settings.value("window/geometry_schema", 0, type=int)
+        if schema != WINDOW_GEOMETRY_SCHEMA or not geometry:
+            # Old builds saved the deliberately compact launcher size. Reset
+            # it once so the newly added sections are not reopened below the
+            # fold, then remember the owner's next size and position normally.
+            self.settings.setValue("window/geometry_schema", WINDOW_GEOMETRY_SCHEMA)
+            return
+        restored = self.restoreGeometry(geometry)
+        if not restored or not _frame_intersects_any_screen(
+                self.frameGeometry(), QGuiApplication.screens()):
+            self._fit_to_screen()
 
     def _fit_to_screen(self):
         available = QGuiApplication.primaryScreen().availableGeometry()
@@ -445,7 +475,9 @@ class Window(QMainWindow):
         self._reflow(width - 40)
         self.body.activate(); self.content.adjustSize()
         wanted = self.header.sizeHint().height() + self.content.sizeHint().height()
-        height = min(max(460, wanted), max(460, int(available.height() * .88)))
+        # availableGeometry already excludes the taskbar. Use all of it when
+        # necessary so every section is visible before the scroll fallback.
+        height = min(max(460, wanted), available.height())
         self.resize(width, height)
         self.move(available.center() - self.rect().center())
 

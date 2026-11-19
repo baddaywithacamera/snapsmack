@@ -56,12 +56,33 @@ function engine(): SnapSmackRecovery {
     return new SnapSmackRecovery($pdo, dirname(__DIR__));
 }
 
+/**
+ * THE BUILD THIS TEST IS RUNNING AS, and why every version case is derived
+ * from it rather than written out.
+ *
+ * Codex's integration FAIL. My first repair reversed the precedence correctly
+ * -- the running SNAPSMACK_VERSION_SHORT decides, the settings row is only a
+ * record -- and then left the test cases written in yesterday's numbers:
+ * 0.7.999D as "this site" and 0.7.1000D as "newer". The moment 1000D landed
+ * on dev those sentences stopped being true. A 1000D kit is not newer than a
+ * 1000D site, a row reading 999D is now a STALE row and correctly warns, and
+ * four of these checks failed on correct code.
+ *
+ * The test was asserting against a snapshot of the world instead of against
+ * the rule. Every version case below is now relative to the running build, so
+ * the file keeps meaning the same thing after the next version bump, and
+ * nothing here needs editing at release time.
+ */
+$running = defined('SNAPSMACK_VERSION_SHORT') ? (string)SNAPSMACK_VERSION_SHORT : '';
+
 /** A manifest as core/export-engine.php actually writes one. */
 function kit(array $over = []): array {
+    global $running;
     return array_merge([
         'export_type'       => 'recovery-kit',
         'export_date'       => '2026-11-18T12:00:00+00:00',
-        'snapsmack_version' => '0.7.999D',
+        // Same build as the code running this test: the ordinary case.
+        'snapsmack_version' => $running,
         'site_name'         => 'Found Textures',
         'site_url'          => 'https://foundtextures.ca',
         'site_mode'         => 'photoblog',
@@ -72,8 +93,13 @@ function kit(array $over = []): array {
 
 /** This install, as the preflight reads it out of snap_settings. */
 function here(array $over = []): array {
+    global $running;
     return array_merge([
-        'installed_version' => '0.7.999D',
+        // The settings row AGREES with the running build. A row that disagrees
+        // is a real condition with its own warning, and it is tested on
+        // purpose further down -- it must not be the silent default here, or
+        // every case in this file carries a stale-row warning it did not mean.
+        'installed_version' => $running,
         'site_mode'         => 'photoblog',
         'site_url'          => 'https://foundtextures.ca',
         'site_uuid'         => 'uuid-aaa',
@@ -116,29 +142,42 @@ check('a kit whose manifest lists no database.sql is refused',
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 3 — a NEWER kit is refused; an older one is the recovery case\n";
 // ─────────────────────────────────────────────────────────────────────────────
-$r = $e->preflightKit(kit(['snapsmack_version' => '0.7.1000D']), here(['installed_version' => '0.7.999D']));
+check('the test knows which build it is running as',
+      $running !== '', $failures);
+
+// NEWER THAN THE RUNNING BUILD, whatever the running build is. 9.9.999D is
+// above every version this product will ship, so this case cannot expire.
+$r = $e->preflightKit(kit(['snapsmack_version' => '9.9.999D']), here());
 check('a kit from a newer build is refused',
       $r['refusals'] !== [], $failures);
 check('and the refusal names both versions, so the owner knows what to update',
-      $r['refusals'] !== [] && str_contains(implode(' ', $r['refusals']), '0.7.1000D')
-      && str_contains(implode(' ', $r['refusals']), '0.7.999D'), $failures);
+      $r['refusals'] !== [] && str_contains(implode(' ', $r['refusals']), '9.9.999D')
+      && str_contains(implode(' ', $r['refusals']), $running), $failures);
 
+// OLDER. 0.0.1D is below every version this product has shipped.
 check('a kit from an OLDER build is allowed — that is what recovery is',
-      $e->preflightKit(kit(['snapsmack_version' => '0.7.998D']),
-                       here(['installed_version' => '0.7.999D']))['refusals'] === [],
+      $e->preflightKit(kit(['snapsmack_version' => '0.0.1D']), here())['refusals'] === [],
       $failures);
 check('the same build is allowed',
-      $e->preflightKit(kit(['snapsmack_version' => '0.7.999D']),
-                       here(['installed_version' => '0.7.999D']))['refusals'] === [],
+      $e->preflightKit(kit(['snapsmack_version' => $running]), here())['refusals'] === [],
       $failures);
-check('four digits compare numerically here too: 999D kit into a 1000D site is allowed',
-      $e->preflightKit(kit(['snapsmack_version' => '0.7.999D']),
-                       here(['installed_version' => '0.7.1000D']))['refusals'] === [],
-      $failures);
-check('and a 1000D kit into a 999D site is refused',
-      $e->preflightKit(kit(['snapsmack_version' => '0.7.1000D']),
-                       here(['installed_version' => '0.7.999D']))['refusals'] !== [],
-      $failures);
+
+// FOUR DIGITS vs THREE, which is what the 999D -> 1000D transition broke
+// everywhere else in this product: as text, "0.7.1000D" sorts BELOW
+// "0.7.999D". This belongs to the comparator, not to the preflight -- the
+// preflight no longer reads the settings row for this decision, so a test
+// that went through it was really asking the comparator a question by proxy.
+// Asked directly, it keeps working after every version bump.
+check('the comparator is available to be asked',
+      function_exists('snap_version_compare'), $failures);
+if (function_exists('snap_version_compare')) {
+    check('four digits compare numerically: 0.7.999D is OLDER than 0.7.1000D',
+          snap_version_compare('0.7.999D', '0.7.1000D', '<') === true, $failures);
+    check('and 0.7.1000D is NEWER than 0.7.999D, which string order gets backwards',
+          snap_version_compare('0.7.1000D', '0.7.999D', '>') === true, $failures);
+    check('so a 1000D kit would be refused on a 999D build',
+          snap_version_compare('0.7.1000D', '0.7.999D', '>') === true, $failures);
+}
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 3b — a MISSING LOCAL VERSION cannot skip the check (Codex's FAIL)\n";
 // ─────────────────────────────────────────────────────────────────────────────
@@ -154,9 +193,7 @@ echo "\nSTAGE 3b — a MISSING LOCAL VERSION cannot skip the check (Codex's FAIL
 $noVersion = ['site_mode' => 'photoblog', 'site_url' => 'https://foundtextures.ca',
               'site_uuid' => 'uuid-aaa'];   // deliberately no installed_version
 
-$running = defined('SNAPSMACK_VERSION_SHORT') ? (string)SNAPSMACK_VERSION_SHORT : '';
-check('the test knows what build it is running, so the two below mean something',
-      $running !== '', $failures);
+
 
 // A kit NEWER than the running build, with no stored version: must refuse.
 $newer = $e->preflightKit(kit(['snapsmack_version' => '9.9.999D']), $noVersion);

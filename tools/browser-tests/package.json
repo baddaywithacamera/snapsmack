@@ -4,6 +4,8 @@
   "scripts": {
     "test": "playwright test",
     "regressions": "node run-regressions.cjs",
+    "pixel-parity": "node skin-render-pixel-parity.cjs",
+    "rational-geo-tray": "node rationalgeo-tray-direction.cjs",
     "test:ui": "playwright test --ui",
     "report": "playwright show-report",
     "browsers": "playwright install"

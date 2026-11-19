@@ -25,7 +25,7 @@ from datetime import datetime
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.52"
+BUILD_VERSION = "0.7.54"
 
 # Ã¢â€â‚¬Ã¢â€â‚¬ shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) Ã¢â€â‚¬Ã¢â€â‚¬
 def _add_shared_to_path():
@@ -112,6 +112,9 @@ ROSTER = [
     ("SMACK YOUR MOUTH",    "comments: mod + reply", [os.path.join(_R, "smack-your-mouth", "smackmouth.exe")]),
     ("SHOTS FIRED",         "schedule board",       [os.path.join(_R, "shots-fired", "shots-fired.exe")]),
     ("CRONOMETER",          "fleet cron health",    [os.path.join(_R, "cronometer", "cronometer.exe")]),
+    ("INSTANT REPLAY",      "test-blog restore",    [os.path.join(_R, "instantreplay", "instantreplay.exe")]),
+    ("KEYS PLEASE",         "API key manager & audit", [os.path.join(_R, "keysplease", "keysplease.exe")]),
+    ("DRIVE BY",            "cloud drive file manager", []),
 ]
 
 TOOL_ICON_FILES = {
@@ -126,6 +129,14 @@ TOOL_ICON_FILES = {
     "SHOTS FIRED": "shotsfired-simple.ico",
     "CRONOMETER": "cronometer-simple.ico",
     "FED UP": "fed-up.ico",
+    "INSTANT REPLAY": "instantreplay-simple.ico",
+    "GHOSTED": "ghosted-simple.ico",
+    "KEYS PLEASE": "keysplease-simple.ico",
+    "SMACKPRESS": "smackpress-simple.ico",
+    "BLOGGER FLOGGER": "blogger-flogger-simple.ico",
+    "UNZUCKER": "unzucker-simple.ico",
+    "FLKR FCKR": "flkr-fckr-simple.ico",
+    "DRIVE BY": "driveby-simple.ico",
 }
 
 TOOL_IMAGE_FILES = {
@@ -146,7 +157,10 @@ def _tool_image(name):
     if path and os.path.isfile(path):
         return path
     bundled = os.path.join(getattr(sys, "_MEIPASS", ""), "icons", filename) if filename else ""
-    return bundled if bundled and os.path.isfile(bundled) else ""
+    if bundled and os.path.isfile(bundled):
+        return bundled
+    source = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", filename) if filename else ""
+    return source if source and os.path.isfile(source) else ""
 
 
 def _find_exe(paths):

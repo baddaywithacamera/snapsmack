@@ -1,0 +1,127 @@
+"""HTTPS client for the scoped GHOSTED / SMACKTALK destination API."""
+
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line must be the Python SNAPSMACK EOF marker.
+
+from __future__ import annotations
+
+import mimetypes
+from pathlib import Path
+from urllib.parse import urlencode, urlparse
+
+import requests
+
+try:
+    import snap_site_scope
+except Exception:  # noqa: BLE001
+    import os as _sso
+    import sys as _sss
+    _d = _sso.path.dirname(_sso.path.abspath(__file__))
+    for _up in range(4):
+        _cand = _sso.path.join(_d, "_shared")
+        if _sso.path.isdir(_cand):
+            if _cand not in _sss.path:
+                _sss.path.insert(0, _cand)
+            break
+        _d = _sso.path.dirname(_d)
+    try:
+        import snap_site_scope
+    except Exception:  # noqa: BLE001
+        snap_site_scope = None
+
+
+def _site_scope(site_url):
+    return snap_site_scope.header(site_url) if snap_site_scope else {}
+
+
+class DestinationError(RuntimeError):
+    pass
+
+
+class DestinationClient:
+    def __init__(self, site_url: str, api_key: str, *, session=None, timeout=90):
+        site_url = site_url.strip().rstrip("/")
+        parsed = urlparse(site_url)
+        if parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+            raise DestinationError("The destination must use HTTPS.")
+        self.base = site_url + "/api.php/bloggerflogger"
+        self.api_key = api_key.strip()
+        self.session = session or requests.Session()
+        self.timeout = timeout
+        self._page_slug_cache: dict[str, int] | None = None
+
+    def _request(self, method, path, *, json_body=None, params=None, files=None, data=None):
+        url = self.base + path
+        if params:
+            url += "?" + urlencode(params)
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Accept": "application/json",
+            **_site_scope(self.base),
+        }
+        try:
+            response = self.session.request(
+                method, url, json=json_body, files=files, data=data,
+                headers=headers, timeout=self.timeout, allow_redirects=False,
+            )
+        except requests.RequestException as exc:
+            raise DestinationError(f"Could not reach the destination: {exc}") from exc
+        if 300 <= response.status_code < 400:
+            raise DestinationError("The destination redirected the authenticated request; refused.")
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise DestinationError(f"Destination returned HTTP {response.status_code}, not JSON.") from exc
+        if response.status_code >= 400 or payload.get("status") != "ok":
+            raise DestinationError(payload.get("message") or f"Destination returned HTTP {response.status_code}.")
+        return payload
+
+    def preflight(self):
+        return self._request("GET", "/preflight")
+
+    def lookup(self, source_site_id: str, source_type: str, source_id: str):
+        return self._request("GET", "/import-map", params={
+            "source_site_id": source_site_id, "source_type": source_type, "source_id": source_id,
+        })
+
+    def find_by_slug(self, kind: str, slug: str) -> int | None:
+        if not slug:
+            return None
+        if kind == "post":
+            res = self._request("GET", "/posts", params={"slug": slug})
+            posts = res.get("posts") or []
+            for p in posts:
+                if str(p.get("slug") or "").lower() == slug.lower():
+                    return int(p["id"])
+            return None
+        if kind == "page":
+            if self._page_slug_cache is None:
+                res = self._request("GET", "/pages")
+                self._page_slug_cache = {
+                    str(pg.get("slug") or "").lower(): int(pg["id"])
+                    for pg in (res.get("pages") or []) if pg.get("slug") and pg.get("id")
+                }
+            return self._page_slug_cache.get(slug.lower())
+        return None
+
+    def upload_media(self, path: str | Path, source_site_id: str, source_id: str,
+                     *, alt="", source_checksum=""):
+        path = Path(path)
+        mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        with path.open("rb") as stream:
+            return self._request("POST", "/media", files={"file": (path.name, stream, mime)}, data={
+                "source_site_id": source_site_id, "source_type": "media",
+                "source_id": source_id, "source_checksum": source_checksum, "alt": alt,
+            })
+
+    def create_post(self, body: dict):
+        return self._request("POST", "/posts", json_body=body)
+
+    def create_page(self, body: dict):
+        self._page_slug_cache = None
+        return self._request("POST", "/pages", json_body=body)
+
+    def verify(self, destination_type: str, destination_id: int):
+        return self._request("GET", f"/verify/{destination_type}/{int(destination_id)}")
+
+# ===== SNAPSMACK EOF =====

@@ -1159,8 +1159,17 @@
             6001
         ]
     },
+    "keys-please-api-regression.php": {
+        "assertions": 15,
+        "predicates": 5,
+        "thresholds": [
+            2,
+            5,
+            409
+        ]
+    },
     "kit-preflight-guards-regression.php": {
-        "assertions": 44,
+        "assertions": 46,
         "predicates": 20,
         "thresholds": [
             4000
@@ -1713,8 +1722,8 @@
         "thresholds": []
     },
     "rational-geo-solo-viewport-regression.php": {
-        "assertions": 7,
-        "predicates": 9,
+        "assertions": 10,
+        "predicates": 13,
         "thresholds": []
     },
     "reader-header-never-names-a-real-instance.php": {
@@ -1865,6 +1874,16 @@
         "thresholds": [
             2,
             4
+        ]
+    },
+    "restore-requires-step-up-and-typed-target-regression.php": {
+        "assertions": 57,
+        "predicates": 62,
+        "thresholds": [
+            2,
+            4,
+            200,
+            400
         ]
     },
     "rfc9421-signature-regression.php": {

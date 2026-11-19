@@ -11,6 +11,32 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.1000D — opened
+
+FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,
+and it is the first time the patch component has needed four of them. A
+read-only audit of everything that parses or compares a version ran before
+this was opened, because a gate that compares versions as text would rank
+"0.7.1000D" BELOW "0.7.999D" -- the digit 1 sorts before 9 -- and would have
+told the fleet there was nothing to update to.
+
+Every decision point was executed rather than read:
+- snap_version_compare() in core/constants.php, which is what each install
+  uses to decide an update exists: correct across seven four-digit cases.
+- tools/release-flow.php: version_compare() for the highest tag, integer
+  arithmetic for the next number, git's own -v:refname version sort.
+- tools/_build/deployed-version.sh: unbounded match, numeric -gt comparison.
+- tests/agreed-rules-gate.php: unbounded match, exact equality against tags.
+- smack-central/sc-release-sequence.php: 0.7.1000D parses, and its
+  predecessor resolves to 0.7.999D.
+No pattern anywhere limits the patch component to three digits.
+
+One thing the audit found and did not fix, recorded so it is not lost:
+snap_version_compare() exists three times -- core/constants.php and inline
+fallbacks in cron-version-check.php and smack-update.php. The fallbacks are
+one line shorter than the canonical copy. Tested on both the long and short
+version forms, all three agree, so this is duplication rather than a defect.
+
 ## 0.7.999D — opened
 
 NOT "998E". The PM's shorthand for this release was 998E, and that is not a
