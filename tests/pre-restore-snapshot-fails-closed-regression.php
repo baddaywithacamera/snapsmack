@@ -409,11 +409,25 @@ check('and leaves no file behind to be mistaken for a backup',
       !is_file($tmp . '/nope.sql'), $failures);
 
 // Clean up.
-foreach (glob($tmp . '/prune/*') ?: [] as $f) @unlink($f);
-foreach (glob($tmp . '/backups/*') ?: [] as $f) @unlink($f);
-foreach (glob($tmp . '/kit/*') ?: [] as $f) @unlink($f);
-@unlink($archive);
-@rmdir($tmp . '/prune'); @rmdir($tmp . '/backups'); @rmdir($tmp . '/kit'); @rmdir($tmp);
+// CLEAN THE WHOLE TREE. This listed the directories it knew about and missed
+// the ones STAGE 4b creates (site2, and the snapshot's own backups folder
+// under it), so every run left a fixture behind. Between this file and its
+// neighbours that came to 160 directories in the owner's temp folder in one
+// afternoon -- against an explicit drive-hygiene rule -- and one of them
+// failed a later run on its own litter.
+$prs_rmtree = static function (string $dir) use (&$prs_rmtree): void {
+    $tmpReal = realpath(sys_get_temp_dir());
+    $real    = realpath($dir);
+    if ($tmpReal === false || $real === false) return;
+    if (strncmp($real, $tmpReal, strlen($tmpReal)) !== 0 || $real === $tmpReal) return;
+    foreach (new RecursiveIteratorIterator(
+                 new RecursiveDirectoryIterator($real, FilesystemIterator::SKIP_DOTS),
+                 RecursiveIteratorIterator::CHILD_FIRST) as $item) {
+        $item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
+    }
+    @rmdir($real);
+};
+$prs_rmtree($tmp);
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\n";
