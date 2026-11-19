@@ -9,7 +9,6 @@ import json
 import os
 from typing import Sequence
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox, QDialog, QFrame, QHBoxLayout, QLabel, QPushButton,
     QVBoxLayout,
@@ -134,10 +133,13 @@ class FirstRunDialog(QDialog):
         footer.addWidget(ok_btn)
         root.addLayout(footer)
 
-    def accept(self):
+    def _persist_dismissal(self):
         if self.tool_key:
             set_dismissed(self.tool_key, self.dont_show_check.isChecked())
-        super().accept()
+
+    def done(self, result):
+        self._persist_dismissal()
+        super().done(result)
 
 
 def show_if_needed(

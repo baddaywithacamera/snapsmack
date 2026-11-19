@@ -55,4 +55,29 @@ def test_suyb_first_run_shows_once_when_dismissed(monkeypatch):
     assert shown == ["SMACK UP YOUR BACKUP"]
     win.close()
 
+
+def test_suyb_help_dialog_can_reopen_first_run_screen(monkeypatch):
+    QApplication.instance() or QApplication([])
+    reopened = []
+    monkeypatch.setattr(
+        snap_first_run, "show_from_help",
+        lambda *a, **kw: (reopened.append((a[0], a[1])), 1)[1],
+    )
+    clicked = []
+
+    def fake_exec(self):
+        from PySide6.QtWidgets import QPushButton
+        btns = [b for b in self.findChildren(QPushButton) if "What this app does" in b.text()]
+        assert len(btns) == 1
+        btns[0].click()
+        clicked.append(True)
+        return 0
+
+    monkeypatch.setattr(suyb_qt.QDialog, "exec", fake_exec)
+    win = suyb_qt.SuybWindow()
+    win._show_help()
+    assert clicked == [True]
+    assert reopened == [("suyb", "SMACK UP YOUR BACKUP")]
+    win.close()
+
 # ===== SNAPSMACK EOF =====

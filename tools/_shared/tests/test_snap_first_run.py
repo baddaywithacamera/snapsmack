@@ -44,13 +44,21 @@ def test_first_run_dismissal_persists_under_snapsmack_home():
     expected = os.path.join(snap_home.config_dir("suyb"), "first_run.json")
     assert os.path.isfile(expected)
 
-    # Unchecking re-enables first-run display
+    # Unchecking and closing via reject/window-X also persists
     dlg2 = snap_first_run.FirstRunDialog(
         "SMACK UP YOUR BACKUP", ["A"], ["B"], tool_key="suyb",
     )
     assert dlg2.dont_show_check.isChecked() is True
     dlg2.dont_show_check.setChecked(False)
-    dlg2.accept()
+    dlg2.reject()
     assert snap_first_run.should_show("suyb") is True
+
+    # Re-checking and closing via reject/X persists True as well
+    dlg3 = snap_first_run.FirstRunDialog(
+        "SMACK UP YOUR BACKUP", ["A"], ["B"], tool_key="suyb",
+    )
+    dlg3.dont_show_check.setChecked(True)
+    dlg3.reject()
+    assert snap_first_run.should_show("suyb") is False
 
 # ===== SNAPSMACK EOF =====
