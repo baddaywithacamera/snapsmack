@@ -64,7 +64,7 @@ MIGRATION_ROSTER = [
     ("GHOSTED", "Ghost → SMACKTALK", [os.path.join(core._R, "ghosted", "ghosted.exe")]),
     ("UNZUCKER", "Instagram → GRAMOFSMACK", [os.path.join(core._R, "unzucker", "unzucker.exe")]),
     ("FLKR FCKR", "Flickr → SMACKONEOUT", [os.path.join(core._R, "flkr-fckr", "flkr-fckr.exe")]),
-    ("FED UP", "Fediverse → SnapSmack", [os.path.join(core._R, "fed-up", "fed-up.exe")]),
+    ("FED UP", "Fediverse → SNAPSMACK", [os.path.join(core._R, "fed-up", "fed-up.exe")]),
 ]
 
 

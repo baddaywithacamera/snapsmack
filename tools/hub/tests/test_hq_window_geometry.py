@@ -39,7 +39,24 @@ def _source_segment(node):
 
 def test_release_bumps_for_window_geometry_repair():
     source = MAIN_SOURCE.read_text(encoding="utf-8")
-    assert re.search(r'^BUILD_VERSION = "0\.7\.53"$', source, re.M)
+    assert re.search(r'^BUILD_VERSION = "0\.7\.54"$', source, re.M)
+
+
+def test_source_build_uses_repository_icons_before_letter_placeholders():
+    source = MAIN_SOURCE.read_text(encoding="utf-8")
+    assert 'os.path.dirname(os.path.abspath(__file__))' in source
+    assert '"INSTANT REPLAY": "instantreplay-simple.ico"' in source
+    assert '"GHOSTED": "ghosted-simple.ico"' in source
+    assert '"KEYS PLEASE": "keysplease-simple.ico"' in source
+    assert (ROOT / "icons" / "instantreplay-simple.png").is_file()
+    assert (ROOT / "icons" / "ghosted-simple.png").is_file()
+    assert (ROOT / "icons" / "keysplease-simple.png").is_file()
+
+
+def test_fed_up_subtitle_uses_product_casing():
+    source = QT_SOURCE.read_text(encoding="utf-8")
+    assert '("FED UP", "Fediverse → SNAPSMACK"' in source
+    assert 'Fediverse → SnapSmack' not in source
 
 
 def test_first_launch_uses_full_taskbar_safe_height():
