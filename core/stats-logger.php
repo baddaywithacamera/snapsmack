@@ -33,6 +33,7 @@
 // than the one SS-1083 reports. require_once is cheap and the salt is
 // static-cached after the first read.
 require_once __DIR__ . '/secret-store.php';
+require_once __DIR__ . '/client-ip.php';   // SS-1437: the real client, not the CDN edge
 
 function snapsmack_maybe_rollup($pdo) {
     $yesterday = date('Y-m-d', strtotime('-1 day'));
@@ -232,7 +233,7 @@ function snapsmack_hash_ip($ip) {
  *
  * @return string|null  Uppercase 2-letter ISO country code, or null.
  */
-function snapsmack_geoip_country() {
+function snapsmack_geoip_country(?string $client_ip = null) {
     $candidates = [
         $_SERVER['MM_COUNTRY_CODE']         ?? null, // mod_maxminddb (preferred)
         $_SERVER['GEOIP_COUNTRY_CODE']      ?? null, // mod_geoip (legacy)
@@ -260,8 +261,15 @@ function snapsmack_geoip_country() {
         $db = defined('SNAPSMACK_GEOIP_DB') ? SNAPSMACK_GEOIP_DB : '/usr/share/GeoIP/country.mmdb';
         if (is_string($db) && is_readable($db)) {
             try {
-                $ip = snapsmack_client_ip();
-                if ($ip) {
+                // SS-1437. This used to call snapsmack_client_ip(), a SECOND
+                // address resolver living in this file. Behind Cloudflare the
+                // edge address is a valid PUBLIC address, so that function
+                // returned it and never looked at CF-Connecting-IP: every
+                // visitor geolocated to wherever the edge was. The caller now
+                // passes the address snap_trusted_client_ip() resolved, and
+                // the duplicate resolver is gone.
+                $ip = $client_ip ?? snap_trusted_client_ip();
+                if ($ip !== '' && $ip !== '0.0.0.0') {
                     static $geoip_reader = null;
                     if ($geoip_reader === null) {
                         $geoip_reader = new \MaxMind\Db\Reader($db);
@@ -287,32 +295,21 @@ function snapsmack_geoip_country() {
 }
 
 /**
- * Resolve the real visitor IP for local GeoIP lookup, accounting for a reverse
- * proxy. Trusts REMOTE_ADDR when it is already a public address; otherwise
- * takes the first public address from X-Forwarded-For. XFF is spoofable, but
- * this feeds country STATS only (never auth or access control), so best-effort
- * is acceptable — and it never trusts a private/reserved hop.
+ * SS-1437: snapsmack_client_ip() USED TO BE HERE, and it was the second
+ * address resolver in the codebase.
  *
- * @return string|null
+ * It trusted REMOTE_ADDR whenever that address was public, and only consulted
+ * X-Forwarded-For when it was not. A Cloudflare edge address IS public, so on
+ * a site behind Cloudflare it returned the edge every time and never looked at
+ * CF-Connecting-IP. Its own comment said X-Forwarded-For is spoofable but this
+ * feeds country stats only, so best-effort is acceptable -- true as far as it
+ * went, and it meant the stats were quietly wrong rather than dangerous.
+ *
+ * core/client-ip.php has been the one resolver since SECAUDIT 035. Everything
+ * in this file now uses it. There is no replacement function here on purpose:
+ * a thin wrapper would be a second name for the same thing and the next person
+ * would not know which to call.
  */
-function snapsmack_client_ip() {
-    $pub = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;
-
-    $remote = $_SERVER['REMOTE_ADDR'] ?? '';
-    if ($remote && filter_var($remote, FILTER_VALIDATE_IP, $pub)) {
-        return $remote;
-    }
-
-    $xff = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
-    foreach (explode(',', $xff) as $hop) {
-        $ip = trim($hop);
-        if ($ip && filter_var($ip, FILTER_VALIDATE_IP, $pub)) {
-            return $ip;
-        }
-    }
-
-    return $remote !== '' ? $remote : null;
-}
 
 /**
  * Count published POSTS and IMAGES for this install, mode-aware.
@@ -397,7 +394,22 @@ function snapsmack_log_hit($pdo, $settings, $meta = []) {
 
     $ua       = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $referrer = $_SERVER['HTTP_REFERER'] ?? '';
-    $ip       = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    // SS-1437, AND THIS IS THE SITE THE TICKET DID NOT NAME. The ticket asked
+    // for snapsmack_client_ip() and _reauth_audit() to be pointed at the
+    // trusted resolver. This line is neither: it reads REMOTE_ADDR directly
+    // and its value is hashed into snap_stats.ip_hash, which is what unique
+    // visitors are counted from.
+    //
+    // Behind Cloudflare every visitor arrives from one of a small set of edge
+    // addresses, so every visitor hashed to the same value and the unique
+    // count collapsed to roughly the number of edges that served the site
+    // that day. Fixing only the two sites named would have corrected the
+    // country column and the audit log and left the uniques wrong.
+    //
+    // $pdo is in scope here, so this is also the call that loads the site's
+    // trusted_proxies setting; snap_trusted_proxies() caches it for the rest
+    // of the request.
+    $ip       = snap_trusted_client_ip($pdo);
 
     // Skip empty UA (almost always a bot or scanner)
     if (empty($ua)) return 0;
@@ -427,7 +439,7 @@ function snapsmack_log_hit($pdo, $settings, $meta = []) {
             null, // parse broad browser/OS, but do not retain the fingerprintable UA
             $parsed['browser'],
             $parsed['os'],
-            snapsmack_geoip_country(), // local webserver GeoIP env var; null if unconfigured
+            snapsmack_geoip_country($ip), // local webserver GeoIP env var; null if unconfigured
             snapsmack_hash_ip($ip),
             $is_bot,
             null, // search phrases are not necessary for first-party traffic stats
