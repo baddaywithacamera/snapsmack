@@ -142,8 +142,16 @@ check('an empty recorded site address refuses rather than skipping the check',
       preg_match('/\$restore_target === \'\'/', $handler) === 1, $failures);
 check('the handler code depends on no browser dialog',
       substr_count($handler, 'confirm(') === 0, $failures);
-check('every refusal says nothing was restored',
-      substr_count($handler, 'NOTHING WAS RESTORED') >= 3, $failures);
+// This counted the phrase appearing three or more times, which measured
+// DUPLICATION. Codex's review made me replace four hand-rolled refusal
+// arrays with one constructor, so the phrase now appears once and the old
+// check failed on an improvement. What it was reaching for is better
+// asserted structurally: the phrase lives in the constructor, and every
+// refusal goes through the constructor.
+check('the refusal constructor says nothing was restored',
+      preg_match('/\$refuse\s*=.*NOTHING WAS RESTORED/s', $handler) === 1, $failures);
+check('and every refusal branch goes through it',
+      substr_count($handler, '$refuse(') >= 4, $failures);
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 4 — the comparison itself, executed\n";
@@ -173,6 +181,39 @@ foreach ($cases as [$typed, $want, $label]) {
 // them, so an exact match is the signal. A forgiving comparison would accept
 // a near miss, and a near miss is precisely what restoring the wrong site
 // looks like.
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\nSTAGE 4b — A REFUSAL RENDERS AS A REFUSAL (Codex's review FAIL)\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// The gap this file did not have, and the reason it did not: I checked that
+// the handler REFUSES and never checked what the page then SHOWS. The
+// template decides success with empty($import_result['errors']) -- PLURAL,
+// because that is importRecoveryKit()'s shape -- and every refusal I wrote
+// set 'error' SINGULAR. So each refusal rendered the success block, reading
+// "SQL statements: 0, Files restored: 0, Checksums verified: 0". The server
+// refused and the owner was told it had worked: SS-1427's fault, produced by
+// SS-1430's fix.
+//
+// So this runs the TEMPLATE'S OWN TEST against the handler's own shapes,
+// rather than trusting two parts of one file to agree.
+$tpl_calls_it_success = static function (array $result): bool {
+    return empty($result['errors']);          // verbatim from the template
+};
+
+$refusal_shape = ['success' => false, 'error' => 'NOTHING WAS RESTORED — x',
+                  'errors' => ['NOTHING WAS RESTORED — x']];
+check('the refusal shape is NOT rendered as success',
+      $tpl_calls_it_success($refusal_shape) === false, $failures);
+check('the old singular-only shape WOULD have rendered as success',
+      $tpl_calls_it_success(['success' => false, 'error' => 'x']) === true, $failures);
+check('a genuine success still renders as success',
+      $tpl_calls_it_success(['sql_imported' => 12, 'errors' => []]) === true, $failures);
+check('an engine failure renders as failure',
+      $tpl_calls_it_success(['sql_imported' => 0, 'errors' => ['boom']]) === false, $failures);
+
+check('the exception path refuses too, rather than reporting success',
+      str_contains($handler, 'catch (Throwable'), $failures);
+check('the template still decides success on the PLURAL key, as assumed above',
+      str_contains($src, "empty(\$import_result['errors'])"), $failures);
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 5 — the form offers the controls (reachability, not enforcement)\n";

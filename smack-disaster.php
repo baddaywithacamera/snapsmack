@@ -110,6 +110,29 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
     // Compared with hash_equals on the trimmed value: this is not a secret,
     // but the comparison costs nothing and keeps one habit for all of them.
     require_once 'core/reauth.php';
+
+    // A REFUSAL MUST RENDER AS A REFUSAL. Codex's SS-1430 review FAIL, and it
+    // is mine coming and going.
+    //
+    // The template below decides success with `empty($import_result['errors'])`
+    // -- PLURAL, because that is the shape importRecoveryKit() returns. Every
+    // refusal I wrote set 'error' SINGULAR and no plural key, so `empty()` was
+    // true and a refused restore rendered the SUCCESS block: "SQL statements:
+    // 0, Files restored: 0, Checksums verified: 0". The gate refused correctly
+    // on the server and then told the owner it had worked.
+    //
+    // That is the SS-1427 fault -- a restore reporting success it did not have
+    // -- introduced by the commit that was adding safety. Two shapes for one
+    // outcome is the whole defect, so there is one constructor now and no
+    // branch hand-rolls the array.
+    $refuse = static function (string $why): array {
+        $message = 'NOTHING WAS RESTORED — ' . $why;
+        return [
+            'success' => false,
+            'error'   => $message,   // kept: other readers may use the singular
+            'errors'  => [$message], // what the template actually tests
+        ];
+    };
     // READ site_url FROM THE DATABASE, NOT FROM $settings. $settings is
     // populated by core/admin-header.php, which this file includes BELOW the
     // POST handler -- so at this point it does not exist. Using it here would
@@ -136,29 +159,29 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
     );
 
     if (!$ra['ok']) {
-        $import_result = ['success' => false,
-            'error' => 'NOTHING WAS RESTORED — ' . $ra['error']];
+        $import_result = $refuse($ra['error']);
     } elseif ($restore_target === '') {
         // Fail closed. With no site_url recorded there is no target to name,
         // so the second control cannot be satisfied and must not be skipped.
-        $import_result = ['success' => false,
-            'error' => 'NOTHING WAS RESTORED — this install has no site address '
-                     . 'recorded, so the restore target cannot be confirmed. Set '
-                     . 'the site address in settings first.'];
+        $import_result = $refuse('this install has no site address recorded, so '
+            . 'the restore target cannot be confirmed. Set the site address in '
+            . 'settings first.');
     } elseif (!hash_equals($restore_target, $typed_target)) {
-        $import_result = ['success' => false,
-            'error' => 'NOTHING WAS RESTORED — the confirmation did not match this '
-                     . 'site address exactly. Type it as it appears above.'];
+        $import_result = $refuse('the confirmation did not match this site '
+            . 'address exactly. Type it as it appears above.');
     } elseif (empty($_FILES['recovery_file']['tmp_name'])) {
-        $import_result = ['success' => false,
-            'error' => 'NOTHING WAS RESTORED — no recovery kit was uploaded.'];
+        $import_result = $refuse('no recovery kit was uploaded.');
     } else {
         require_once 'core/recovery-engine.php';
         try {
             $recovery      = new SnapSmackRecovery($pdo, __DIR__);
             $import_result = $recovery->importRecoveryKit($_FILES['recovery_file']['tmp_name']);
-        } catch (Exception $e) {
-            $import_result = ['success' => false, 'error' => $e->getMessage()];
+        } catch (Throwable $e) {
+            // PRE-EXISTING, same contract mismatch, fixed while I am here: an
+            // exception mid-import also rendered as success. Throwable rather
+            // than Exception because a TypeError or Error in the engine is not
+            // a successful restore either.
+            $import_result = $refuse('the import failed: ' . $e->getMessage());
         }
     }
 }

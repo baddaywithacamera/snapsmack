@@ -1861,11 +1861,11 @@
         ]
     },
     "restore-requires-step-up-and-typed-target-regression.php": {
-        "assertions": 26,
-        "predicates": 19,
+        "assertions": 33,
+        "predicates": 22,
         "thresholds": [
             2,
-            3,
+            4,
             200,
             400
         ]
