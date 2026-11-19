@@ -1168,6 +1168,14 @@
             409
         ]
     },
+    "kit-import-restores-media-regression.php": {
+        "assertions": 30,
+        "predicates": 13,
+        "thresholds": [
+            2,
+            100
+        ]
+    },
     "kit-preflight-guards-regression.php": {
         "assertions": 46,
         "predicates": 20,

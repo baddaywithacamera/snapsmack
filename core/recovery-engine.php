@@ -578,6 +578,8 @@ class SnapSmackRecovery {
             'warnings'       => [],
             'schema_sync'    => null,
             'snapshot'       => null,
+            'media'          => null,   // SS-1426/1431, filled at step 3c
+            'thumbs_generated' => 0,
             // REFUSED UNTIL PROVEN OTHERWISE. Every `return $result` above the
             // SQL import happens before a single destructive statement, so
             // every one of them is a refusal: this site is unchanged. Starting
@@ -850,6 +852,99 @@ class SnapSmackRecovery {
             $result['errors'][] = 'Schema sync failed after the data was restored: '
                 . $e->getMessage() . '. The data is in; the schema still needs a pass.';
         }
+
+        // --- 3c. THE MEDIA, WHICH THE KIT PATH NEVER RECONCILED (SS-1426 + SS-1431) ---
+        //
+        // THE DIAGNOSIS, CORRECTED. I had this down as "three helpers with no
+        // callers". They have callers: install.php:3146-3179 runs
+        // ensureDirectories, restoreImages, regenerateAndChecksum,
+        // restoreMediaAssets and restoreBranding as five numbered phases, and
+        // that path works. What was missing is that the ADMIN kit-import path
+        // never called any of it. A kit import restored the database and the
+        // bundled files, synced the schema, and left every photograph,
+        // thumbnail, asset and branding file unreconciled -- so snap_images
+        // rows pointed at files that may not be on disk, and nothing counted
+        // them. SS-1431 says it plainly: reuse the established installer path.
+        //
+        // So this is the installer's sequence, copied, not a second
+        // implementation of it. The helpers are unchanged.
+        //
+        // ONE DELIBERATE DEVIATION FROM THE INSTALLER'S ORDER, and the reason
+        // matters. The installer regenerates thumbnails at its phase 3, before
+        // assets and branding. Here the whole media phase runs AFTER the
+        // schema sync above, because regenerateAndChecksum() writes
+        // img_thumb_square, img_thumb_aspect and img_checksum -- columns a kit
+        // from an older build may not have until snap_schema_sync() adds them.
+        // The installer never meets that case: its schema is this build's.
+        // Running it before the sync would fail on exactly the kits this
+        // ticket is about.
+        //
+        // THE FLAT DIRECTORY IS THE KIT ROOT, and what that does and does not
+        // reach is worth stating. The helpers look for basename() in ONE
+        // directory, so media sitting beside manifest.json is found and media
+        // nested deeper is not. A kit that only INVENTORIES its media (the
+        // ordinary case -- see not_bundled above) therefore restores nothing
+        // here and reports an honest missing count instead, which is the
+        // combined result SS-1426 asks for. Making the search recursive is a
+        // change to the helpers and to the installer's behaviour with them,
+        // and it is not this ticket.
+        $this->streamProgress('Reconciling photographs, thumbnails, assets and '
+            . 'branding against the restored database...', 'info');
+
+        // EACH PHASE'S COUNTS FOLD IN AS IT FINISHES, not all four at the end.
+        //
+        // My first version did them at the end, inside one try. Writing the
+        // test found what that costs: regenerateAndChecksum() reaches
+        // imagecreatefromjpeg() through loadImage(), which is a FATAL Error on
+        // a box without the GD extension rather than a handled failure. So on
+        // such a box the photographs were copied to disk and then the throw
+        // skipped the accounting, and the owner was told 0 files restored
+        // while the files were sitting there. Reporting less than happened is
+        // the same class of lie as reporting more.
+        $media = ['images' => null, 'thumbs' => null, 'assets' => null, 'branding' => null];
+        $phases = [
+            'images'   => fn(): array => $this->restoreImages($kitRoot),
+            'thumbs'   => fn(): array => $this->regenerateAndChecksum(),
+            'assets'   => fn(): array => $this->restoreMediaAssets($kitRoot),
+            'branding' => fn(): array => $this->restoreBranding($kitRoot),
+        ];
+        $labels = ['images' => 'Images', 'thumbs' => 'Thumbnails',
+                   'assets' => 'Assets', 'branding' => 'Branding'];
+
+        foreach ($phases as $name => $run) {
+            try {
+                $r = $run();
+            } catch (Throwable $e) {
+                // The data is already in, and so is whatever earlier phases
+                // restored. Name the phase that failed instead of reporting
+                // the whole restore as exploded.
+                $result['errors'][] = $labels[$name] . ' could not be reconciled after '
+                    . 'the data was restored: ' . $e->getMessage() . '. The database is '
+                    . 'in, and so is anything listed as restored above; this part still '
+                    . 'needs a pass.';
+                $this->streamProgress($labels[$name] . ' FAILED: ' . $e->getMessage(), 'error');
+                continue;
+            }
+
+            $media[$name] = $r;
+            foreach (($r['errors'] ?? []) as $e) {
+                $result['errors'][] = $labels[$name] . ": {$e}";
+            }
+            // THE COUNTS THE OWNER READS. files_restored and missing are what
+            // the page already prints, so the media totals fold into them
+            // rather than hiding in a key nothing renders.
+            $result['files_restored'] += (int)($r['restored'] ?? 0);
+            $result['missing']        += (int)($r['missing'] ?? 0);
+            if ($name === 'thumbs') {
+                $result['thumbs_generated'] = (int)($r['generated'] ?? 0);
+            }
+            $this->streamProgress($labels[$name] . ': ' . (int)($r['restored'] ?? 0)
+                . ' restored, ' . (int)($r['in_place'] ?? 0) . ' already in place, '
+                . (int)($r['missing'] ?? 0) . ' missing'
+                . ($name === 'thumbs' ? ', ' . (int)($r['generated'] ?? 0) . ' generated' : ''),
+                ((int)($r['missing'] ?? 0) > 0) ? 'warn' : 'ok');
+        }
+        $result['media'] = $media;
 
         // --- 4. CLEANUP ---
         if ($needsCleanup) {
