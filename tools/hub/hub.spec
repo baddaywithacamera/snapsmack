@@ -50,6 +50,7 @@ _shared_data  = [(f, '.') for f in _shared_files]
 _shared_mods  = [os.path.splitext(os.path.basename(f))[0] for f in _shared_files]
 _icon_dir     = os.path.join(_src, 'icons')
 _ui_icons     = glob.glob(os.path.join(_icon_dir, '*-simple.png')) + [
+    os.path.join(_icon_dir, 'fed-up.png'),
     os.path.join(_icon_dir, 'snap-hq.png'),
     os.path.join(_icon_dir, 'sybu-taskbar.png'),
 ]
