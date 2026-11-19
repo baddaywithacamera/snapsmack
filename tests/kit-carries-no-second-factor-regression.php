@@ -287,7 +287,23 @@ sf_check('and tells the owner what to do after an import',
 sf_check('and that their password still works for the first sign-in',
          str_contains($help, 'still works for that first'), $failures);
 
-foreach (glob($tmp . '/kit/*') ?: [] as $f) @unlink($f);
+// CLEAN THE WHOLE TREE, and do it before the failure block so a FAILING run
+// does not litter either -- the earlier version unlinked one directory's files
+// and left the rest, which is how these tests put 160 fixtures in the owner's
+// temp folder in an afternoon.
+$sf_rmtree = static function (string $dir): void {
+    $tmpReal = realpath(sys_get_temp_dir());
+    $real    = realpath($dir);
+    if ($tmpReal === false || $real === false) return;
+    if (strncmp($real, $tmpReal, strlen($tmpReal)) !== 0 || $real === $tmpReal) return;
+    foreach (new RecursiveIteratorIterator(
+                 new RecursiveDirectoryIterator($real, FilesystemIterator::SKIP_DOTS),
+                 RecursiveIteratorIterator::CHILD_FIRST) as $item) {
+        $item->isDir() ? @rmdir($item->getPathname()) : @unlink($item->getPathname());
+    }
+    @rmdir($real);
+};
+$sf_rmtree($tmp);
 @unlink($archive);
 
 echo "\n";
