@@ -375,6 +375,43 @@ class SnapSmackExport {
         // when it rejoins. Password hashes in snap_users are deliberately NOT
         // touched — a kit that restores a site nobody can log into is not a
         // backup.
+        // SS-1433. ACCOUNT SECOND FACTORS DO NOT TRAVEL IN A KIT.
+        //
+        // snap_users was dumped verbatim, so every kit carried the TOTP seed,
+        // the TOTP recovery codes and the account recovery-code hash. A kit is
+        // a file made to be copied elsewhere and kept for years, which makes
+        // it a reusable second factor: a year-old kit still generates valid
+        // codes today.
+        //
+        // AN EXPLICIT LIST, AND THE OPPOSITE OF SS-1412'S LESSON ON PURPOSE.
+        // There a hand-written list of node key columns WAS the defect,
+        // because every secret-shaped column had to go. Here one credential
+        // column must SURVIVE -- password_hash -- because a kit that restores
+        // a site nobody can log into is not a backup. $isSensitive() would
+        // empty it, so these names are deliberate. Two of them would not have
+        // been caught by it anyway: recovery_code_hash and totp_recovery_json
+        // match none of its fragments.
+        //
+        // EMPTY, NEVER A MARKER, for SS-1417's reason: a placeholder is
+        // restored verbatim and anything doing an equality check on a
+        // non-empty string then matches it.
+        //
+        // This cannot reach a kit somebody already made. The restore side
+        // revokes them unconditionally for exactly that reason -- see
+        // SnapSmackRecovery::revokeRestoredSecondFactors().
+        if ($table === 'snap_users') {
+            foreach (['totp_secret', 'totp_recovery_json', 'recovery_code_hash'] as $c) {
+                if (array_key_exists($c, $row) && $row[$c] !== null && $row[$c] !== '') {
+                    $row[$c] = '';
+                }
+            }
+            if (array_key_exists('totp_enabled', $row)) {
+                // Without this the restored account demands a factor nothing
+                // can satisfy. Clearing the seed and leaving the flag is a
+                // lockout, not a security improvement.
+                $row['totp_enabled'] = 0;
+            }
+        }
         if ($table === 'snap_multisite_nodes') {
             foreach (array_keys($row) as $c) {
                 if ($isSensitive((string)$c)

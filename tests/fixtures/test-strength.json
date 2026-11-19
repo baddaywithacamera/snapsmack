@@ -1168,6 +1168,11 @@
             409
         ]
     },
+    "kit-carries-no-second-factor-regression.php": {
+        "assertions": 39,
+        "predicates": 24,
+        "thresholds": []
+    },
     "kit-import-restores-media-regression.php": {
         "assertions": 30,
         "predicates": 13,

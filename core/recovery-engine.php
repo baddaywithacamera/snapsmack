@@ -28,6 +28,78 @@ class SnapSmackRecovery {
         $this->baseDir = rtrim($baseDir, '/');
     }
 
+    /**
+     * SS-1433. Every second factor in the restored database is revoked.
+     *
+     * A Recovery Kit's dump carries snap_users verbatim, so it carries TOTP
+     * secrets, the TOTP recovery codes and the account recovery-code hash. Two
+     * consequences, and the second is the one the ticket is really about:
+     *
+     *   - the kit is a reusable second factor. Anyone holding a year-old kit
+     *     holds the TOTP seed that still generates valid codes today.
+     *   - restoring an OLDER kit silently REVIVES credentials revoked since it
+     *     was taken. The owner rotated a recovery code after a scare; the kit
+     *     predates that; the restore puts the old one back and nothing says so.
+     *
+     * So this runs after every import, unconditionally, and it does not look
+     * for a redaction marker. Marker-clearing (clearRedactedCredentials) only
+     * helps kits made by a build that redacts. EVERY KIT ALREADY IN EXISTENCE
+     * carries the real values, and those kits are the whole problem: an export
+     * change cannot reach a file somebody made last March.
+     *
+     * PASSWORD HASHES ARE DELIBERATELY KEPT. The export engine's own note says
+     * it and it is right: a kit that restores a site nobody can log into is not
+     * a backup. force_password_change is set instead, so the owner gets in and
+     * is then made to choose a new one.
+     *
+     * totp_enabled IS CLEARED WITH THE SECRET, and that is not optional. A row
+     * left with totp_enabled = 1 and no secret is an account demanding a second
+     * factor that nothing can satisfy -- the owner locked out of their own site
+     * by a security fix. Clearing both is what "2FA re-enrolment" means.
+     *
+     * @return array<string,int> column => rows affected, for the report
+     */
+    private function revokeRestoredSecondFactors(): array {
+        $revoked = [];
+
+        // AN EXPLICIT LIST HERE, AND THE OPPOSITE OF SS-1412'S LESSON ON
+        // PURPOSE. There, a hand-written list of node key columns WAS the
+        // defect, because every secret-shaped column on that table had to go
+        // and a list goes stale. On snap_users one credential column must
+        // SURVIVE -- password_hash -- so a generic sweep of secret-shaped
+        // columns would empty the one thing a restore needs. The names are
+        // therefore deliberate, and the test pins that password_hash is not
+        // among them.
+        $clear = [
+            'totp_secret'        => null,
+            'totp_recovery_json' => null,
+            'recovery_code_hash' => null,
+        ];
+        foreach ($clear as $col => $to) {
+            try {
+                $st = $this->pdo->prepare(
+                    "UPDATE snap_users SET {$col} = ? WHERE {$col} IS NOT NULL"
+                );
+                $st->execute([$to]);
+                if ($st->rowCount() > 0) $revoked['snap_users.' . $col] = $st->rowCount();
+            } catch (PDOException $e) {
+                // Column absent on this install's schema -- nothing to revoke.
+            }
+        }
+
+        foreach (['totp_enabled' => 0, 'force_password_change' => 1] as $col => $to) {
+            try {
+                $st = $this->pdo->prepare("UPDATE snap_users SET {$col} = ?");
+                $st->execute([$to]);
+                if ($st->rowCount() > 0) $revoked['snap_users.' . $col] = $st->rowCount();
+            } catch (PDOException $e) {
+                // Column absent -- nothing to set.
+            }
+        }
+
+        return $revoked;
+    }
+
     // =================================================================
     // PRE-RESTORE SNAPSHOT (SS-1425)
     // =================================================================
@@ -580,6 +652,7 @@ class SnapSmackRecovery {
             'snapshot'       => null,
             'media'          => null,   // SS-1426/1431, filled at step 3c
             'thumbs_generated' => 0,
+            'second_factors_revoked' => [],  // SS-1433
             'remaining'      => [],     // SS-1427, what is still outstanding
             'complete'       => false,  // SS-1427, refused until step 5 says otherwise
             // REFUSED UNTIL PROVEN OTHERWISE. Every `return $result` above the
@@ -853,6 +926,34 @@ class SnapSmackRecovery {
         } catch (Throwable $e) {
             $result['errors'][] = 'Schema sync failed after the data was restored: '
                 . $e->getMessage() . '. The data is in; the schema still needs a pass.';
+        }
+
+        // --- 3b-ii. REVOKE EVERY RESTORED SECOND FACTOR (SS-1433) ---
+        //
+        // After the schema sync, because install.php:280 lists totp_secret,
+        // totp_recovery_json, recovery_code_hash and force_password_change
+        // among the columns the sync adds: on a kit from a build that predates
+        // them the UPDATEs would find no columns at all and silently revoke
+        // nothing. Before the media phase, because this is about who can log
+        // in and that matters more than thumbnails.
+        try {
+            $revoked = $this->revokeRestoredSecondFactors();
+            $result['second_factors_revoked'] = $revoked;
+            if ($revoked !== []) {
+                $this->streamProgress('Second factors revoked: every account must set a new '
+                    . 'password and re-enrol 2FA. A kit carries the old ones, and an older '
+                    . 'kit carries ones you had already replaced.', 'warn');
+                $result['warnings'][] = 'Every account on this site must set a new password '
+                    . 'and re-enrol two-factor authentication. The kit carried the second '
+                    . 'factors as they were when it was made, so they have been revoked '
+                    . 'rather than restored. Passwords still work for the first sign-in.';
+            }
+        } catch (Throwable $e) {
+            // Fail LOUD: a restore that could not revoke them has put live
+            // second factors back, and the owner must know that specifically.
+            $result['errors'][] = 'Could not revoke the second factors this kit restored: '
+                . $e->getMessage() . '. Treat every TOTP secret and recovery code on this '
+                . 'site as compromised and reset them by hand.';
         }
 
         // --- 3c. THE MEDIA, WHICH THE KIT PATH NEVER RECONCILED (SS-1426 + SS-1431) ---

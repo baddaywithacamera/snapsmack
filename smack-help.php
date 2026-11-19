@@ -2156,10 +2156,24 @@ to full disaster recovery.</p>
 <h4>Recovery Kit</h4>
 <ul>
     <li><strong>Export Recovery Kit</strong> — generates a single encrypted ZIP file containing
-    your database dump, settings, user credentials, and metadata. This is the fastest way to
+    your database dump, settings, and metadata. This is the fastest way to
     do a full restore. The ZIP is password-protected with AES-256 encryption.</li>
+    <li><strong>What a kit does and does not carry.</strong> Account passwords are included,
+    because a kit that restores a site nobody can log into is not a backup. Second factors
+    are <em>not</em>: two-factor secrets, two-factor recovery codes and account recovery
+    codes are left out, and fleet or hub keys are left out too. A kit is a file you copy
+    elsewhere and keep for years, so anything in it that could be used to sign in later
+    does not belong in it.</li>
+    <li><strong>Kits made before version 0.7.1000D DO contain those second factors.</strong>
+    Treat an older kit as a sensitive file. Importing one is safe — the import revokes every
+    second factor it finds rather than restoring it — but the file itself still holds them,
+    so store it as carefully as you would a password.</li>
     <li><strong>Import Recovery Kit</strong> — upload a previously exported recovery kit ZIP
-    to restore your site. This overwrites the database with the kit's contents.</li>
+    to restore your site. This overwrites the database with the kit's contents. Afterwards
+    every account must set a new password and set up two-factor authentication again: the
+    kit's second factors are revoked rather than restored, because an older kit can carry
+    ones you had already replaced. Your existing password still works for that first
+    sign-in.</li>
 </ul>
 
 <h4>Database Dumps</h4>
