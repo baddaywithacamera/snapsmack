@@ -1,3 +1,5 @@
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+
 # GHOSTED
 
 Ghost -> SNAPSMACK (`SMACKTALK`) importer for SNAP HQ's Migration Centre.
@@ -8,3 +10,5 @@ Ghost -> SNAPSMACK (`SMACKTALK`) importer for SNAP HQ's Migration Centre.
 - Reports leftover Ghost cards/shortcodes (`kg-*` cards, mobiledoc/lexical cards, `[shortcode]` tags) rather than silently dropping them.
 - Dry-run first with exact counts (`posts`, `pages`, `images`, `tags`).
 - Idempotent re-run with no duplicates (tracks by Ghost post ID + destination `import-map` + slug lookup).
+
+<!-- ===== SNAPSMACK EOF ===== -->
