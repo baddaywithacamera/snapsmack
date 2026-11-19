@@ -128,6 +128,7 @@ TOOL_ICON_FILES = {
     "CRONOMETER": "cronometer-simple.ico",
     "FED UP": "fed-up.ico",
     "INSTANT REPLAY": "instantreplay-simple.ico",
+    "GHOSTED": "ghosted-simple.ico",
 }
 
 TOOL_IMAGE_FILES = {
