@@ -106,9 +106,22 @@ SS-1436 is what happens when the first is read as if it answered both.
 `skin_render_parity` compares markup and asset references; a visible skin CSS
 change passes it, because it never reads a stylesheet or looks at a page.
 `skin_pixel_parity` is the real-browser comparison: it compares the rendered
-pixels of baseline and candidate fixtures in Chromium at the supported widths — 1920, 1440 and 1024,
-and 390 for the two phone skins — and compares pixels. `tag-dev` runs it, and
-refuses if the comparator is missing rather than skipping it. The latter is an array and is normally empty. Every
+pixels of a BASELINE fixture tree against a CANDIDATE tree rendered from this
+commit, in Chromium at the supported widths — 1920, 1440 and 1024,
+and 390 for the two phone skins — and compares pixels. `tag-dev` generates the candidate tree with
+`tools/_build/render-geometry-fixtures.php`, passes both paths to the
+comparator, and keeps the report. It refuses if the comparator is missing
+rather than skipping it.
+
+**The baseline is not configured yet, and that is a decision, not an
+oversight.** `SNAPSMACK_PIXEL_BASELINE_DIR` is the single place it goes. The
+two defensible answers are a committed fixture tree, as
+`tests/fixtures/skin-render-snapshot.json` already is for the markup check,
+or generation at gate time from a named git ref in a temporary worktree. The
+first is reviewable in a diff and puts rendered images into git history; the
+second adds a checkout and a render pass to every gate run. Until it is set,
+`tag-dev` refuses and names the choice. Comparing a commit against itself
+would pass always, which is worse than refusing. The latter is an array and is normally empty. Every
 intentional rendering change must name the skin, state the reason, and identify
 the approved pre-strip reference used for comparison. Missing evidence, an
 undeclared difference, or a claim that the replacement rendering is newly

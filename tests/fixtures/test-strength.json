@@ -1826,9 +1826,11 @@
         ]
     },
     "release-gate-runs-the-pixel-check-regression.php": {
-        "assertions": 22,
-        "predicates": 19,
+        "assertions": 43,
+        "predicates": 43,
         "thresholds": [
+            2,
+            2,
             2,
             1000
         ]

@@ -467,6 +467,66 @@ function rf_pixel_parity_script(): string {
     return __DIR__ . '/browser-tests/skin-render-pixel-parity.cjs';
 }
 
+/**
+ * Where the pixel BASELINE comes from.
+ *
+ * CODEX'S SS-1436 FAIL, and he was right. My first wiring ran the comparator
+ * with NO ARGUMENTS. It takes two positional directories -- BASELINE_DIR and
+ * CANDIDATE_DIR -- unless --self-test is passed, so every rf_browser_tests()
+ * would have died on a usage error and no gate note could ever be written. It
+ * failed closed, which is the least bad way to be wrong, and it was still not
+ * a usable gate.
+ *
+ * Worse, my own regression passed, because it asserted that the argument-free
+ * call EXISTED. That is the third time this week I have tested the shape of a
+ * thing instead of the thing, and the second time after writing the lesson
+ * into another test file in this same repository. The regression now EXECUTES
+ * the comparator's argument contract.
+ *
+ * WHAT THE BASELINE IS, IS A RELEASE-POLICY DECISION AND NOT MINE. It decides
+ * what "appearance unchanged" means at release time, and there are two
+ * defensible answers with different costs:
+ *
+ *   (i)  A COMMITTED fixture tree, which is the convention this repository
+ *        already uses for the markup-level check -- tests/fixtures/
+ *        skin-render-snapshot.json. Reviewable in a diff, deterministic, and
+ *        it puts 172 rendered images per release into git history.
+ *   (ii) GENERATED AT GATE TIME from a named git ref (the previous dev tag,
+ *        say) in a temporary worktree. No repository weight, and it needs a
+ *        second checkout and a second render pass every time the gate runs.
+ *
+ * Until that is decided this refuses, and it refuses by NAMING THE DECISION
+ * rather than by failing obscurely. SNAPSMACK_PIXEL_BASELINE_DIR is the one
+ * place the answer goes.
+ */
+function rf_pixel_baseline_problem(): string {
+    if (!defined('SNAPSMACK_PIXEL_BASELINE_DIR')) {
+        return "the pixel baseline is not configured, so the pixel gate cannot run.
+"
+             . "  SS-1436. The comparator needs a BASELINE fixture tree to compare this
+"
+             . "  commit against, and what that baseline IS is a release-policy decision:
+"
+             . "    (i)  a committed fixture tree, as tests/fixtures/skin-render-snapshot.json
+"
+             . "         already is for the markup check; or
+"
+             . "    (ii) generated at gate time from a named git ref in a temp worktree.
+"
+             . "  Define SNAPSMACK_PIXEL_BASELINE_DIR once the choice is made. Refusing
+"
+             . "  rather than comparing a commit against itself, which would pass always.";
+    }
+    $dir = (string)SNAPSMACK_PIXEL_BASELINE_DIR;
+    if (!is_dir($dir)) {
+        return 'the pixel baseline directory does not exist: ' . $dir;
+    }
+    if (!is_file($dir . '/index.json')) {
+        return 'the pixel baseline has no index.json, so it is not a fixture tree: ' . $dir;
+    }
+    return '';
+}
+
 function rf_browser_tests(): void {
     $problem = rf_browser_dependency_problem();
     if ($problem !== '') rf_fail($problem);
@@ -488,7 +548,25 @@ function rf_browser_tests(): void {
 "
               . "  cannot be signed on the strength of that field.");
     }
-    rf_run(['node', $pixel]);
+
+    $baselineProblem = rf_pixel_baseline_problem();
+    if ($baselineProblem !== '') rf_fail($baselineProblem);
+
+    // THE CANDIDATE TREE IS THIS COMMIT, rendered now. The generator is the
+    // same one the geometry matrix uses, which is why it is called rather than
+    // a second fixture builder being written.
+    $candidate = sys_get_temp_dir() . '/snapsmack-pixel-candidate-'
+        . substr(hash('sha256', dirname(__DIR__)), 0, 16);
+    rf_run(['php', __DIR__ . '/_build/render-geometry-fixtures.php', $candidate]);
+
+    // THE REPORT IS KEPT. A gate that proves something and throws the proof
+    // away cannot be cited in a gate note, and the note is the whole point.
+    $report   = $candidate . '/pixel-parity.json';
+    $evidence = $candidate . '/evidence';
+    rf_run(['node', $pixel, (string)SNAPSMACK_PIXEL_BASELINE_DIR, $candidate,
+            '--output', $report, '--evidence-dir', $evidence]);
+    echo "  pixel-parity report: {$report}
+";
 }
 
 function rf_tests(): void {
