@@ -114,7 +114,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
     // A REFUSAL MUST RENDER AS A REFUSAL. Codex's SS-1430 review FAIL, and it
     // is mine coming and going.
     //
-    // The template below decides success with `empty($import_result['errors'])`
+    // The template used to decide success with `empty($import_result['errors'])`
     // -- PLURAL, because that is the shape importRecoveryKit() returns. Every
     // refusal I wrote set 'error' SINGULAR and no plural key, so `empty()` was
     // true and a refused restore rendered the SUCCESS block: "SQL statements:
@@ -125,13 +125,21 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
     // -- introduced by the commit that was adding safety. Two shapes for one
     // outcome is the whole defect, so there is one constructor now and no
     // branch hand-rolls the array.
+    //
+    // ONE CONTRACT, THREE KEYS, NO SINGULAR 'error'. My first repair kept a
+    // singular 'error' alongside the plural list "in case something reads it".
+    // Nothing does -- grep says so -- and a second key carrying the same text
+    // is how the first fault happened: two shapes for one outcome, and the
+    // next person picks the wrong one. Removed.
+    //
+    //   success  bool   true ONLY for a completed import with no errors
+    //   refused  bool   true when nothing was attempted, as against half-done
+    //   errors   array  every reason, which both failure branches print
     $refuse = static function (string $why): array {
-        $message = 'NOTHING WAS RESTORED — ' . $why;
         return [
-            'success' => false,   // the ONE key the renderer decides on
-            'refused' => true,    // nothing was attempted, as against half-done
-            'error'   => $message,
-            'errors'  => [$message],
+            'success' => false,
+            'refused' => true,
+            'errors'  => ['NOTHING WAS RESTORED — ' . $why],
         ];
     };
     // READ site_url FROM THE DATABASE, NOT FROM $settings. $settings is

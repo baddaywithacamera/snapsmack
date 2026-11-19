@@ -193,27 +193,28 @@ echo "\nSTAGE 4b — A REFUSAL RENDERS AS A REFUSAL (Codex's review FAIL)\n";
 // refused and the owner was told it had worked: SS-1427's fault, produced by
 // SS-1430's fix.
 //
-// So this runs the TEMPLATE'S OWN TEST against the handler's own shapes,
-// rather than trusting two parts of one file to agree.
-$tpl_calls_it_success = static function (array $result): bool {
-    return empty($result['errors']);          // verbatim from the template
-};
-
-$refusal_shape = ['success' => false, 'error' => 'NOTHING WAS RESTORED — x',
-                  'errors' => ['NOTHING WAS RESTORED — x']];
-check('the refusal shape is NOT rendered as success',
-      $tpl_calls_it_success($refusal_shape) === false, $failures);
-check('the old singular-only shape WOULD have rendered as success',
-      $tpl_calls_it_success(['success' => false, 'error' => 'x']) === true, $failures);
-check('a genuine success still renders as success',
-      $tpl_calls_it_success(['sql_imported' => 12, 'errors' => []]) === true, $failures);
-check('an engine failure renders as failure',
-      $tpl_calls_it_success(['sql_imported' => 0, 'errors' => ['boom']]) === false, $failures);
-
+// MY FIRST REPAIR OF THIS STAGE WAS ALSO WRONG, and Codex caught that too.
+// It copied the template's `empty($result['errors'])` condition into a local
+// lambda and tested hand-built arrays against the copy. That pins the broken
+// condition rather than the fixed behaviour: the renderer could change
+// underneath it and the copy would keep passing. One of its checks was worse
+// than that -- it asserted the string empty($import_result['errors']) was
+// still in the file, and after the repair the only place that string survives
+// is the COMMENT explaining what it used to be. A test matching my own
+// documentation for the third time this week.
+//
+// So this stage is now ONE contract check against comment-stripped code, and
+// STAGE 4c renders the real template. $handler is already comment-stripped.
+$tpl = handler_code(substr($src, strpos($src, '$__ok')));
+check('the renderer decides on success === true, not on the errors list',
+      str_contains($tpl, "(\$import_result['success'] ?? false) === true"), $failures);
+check('and the plural errors list is no longer what decides the outcome',
+      !str_contains($tpl, "empty(\$import_result['errors'])"), $failures);
+check('there is ONE error key in the contract: no singular error survives',
+      !str_contains($handler, "'error'   =>") && !str_contains($tpl, "['error']"),
+      $failures);
 check('the exception path refuses too, rather than reporting success',
       str_contains($handler, 'catch (Throwable'), $failures);
-check('the template still decides success on the PLURAL key, as assumed above',
-      str_contains($src, "empty(\$import_result['errors'])"), $failures);
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 4c — WHAT THE PAGE ACTUALLY PRINTS (the PM's 'test the output')\n";
 // ─────────────────────────────────────────────────────────────────────────────
@@ -365,7 +366,7 @@ $refusals = [
 ];
 foreach ($refusals as $label => $message) {
     $out = $render(['success' => false, 'refused' => true,
-                    'error' => $message, 'errors' => [$message]]);
+                    'errors' => [$message]]);
     check("refusal ({$label}): the success banner is NOT printed",
           !str_contains($out, $SUCCESS), $failures);
     check("refusal ({$label}): the unchanged-site banner is printed",
