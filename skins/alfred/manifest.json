@@ -11,7 +11,7 @@
         "default": "layout.php"
     },
     "name": "ALFRED",
-    "version": "1.0.18",
+    "version": "1.0.19",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A SMACKTALK skin for photographers who write. Faithful recreation of Anders Norén's Hitchcock WordPress theme — dark navigation, Montserrat headings, Droid Serif body text, full-width header image. Named for Alfred Hitchcock.",
@@ -150,14 +150,16 @@
             "section": "LANDING",
             "type": "range",
             "label": "Squares Across",
-            "hint": "Choose 3-5 square photographs per row. The skin's square-wall rules read this; it has no effect until they are in place.",
+            "hint": "Choose 3-5 square photographs per row. The shared mosaic engine keeps every tile evenly cropped.",
             "enable_when": {
                 "landing_layout": "square"
             },
             "default": "3",
             "min": "3",
             "max": "5",
-            "step": "1"
+            "step": "1",
+            "selector": ".alfred-archive-grid",
+            "property": "--alfred-square-cols"
         },
         "post_content_width": {
             "section": "LAYOUT",

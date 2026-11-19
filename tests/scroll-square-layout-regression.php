@@ -31,6 +31,10 @@ if(!(str_contains($__fontStyle, '/font.php?family=Special') || (str_contains($__
 if(str_contains($fontStyle,'font-family:""')||str_contains($fontStyle,"font-family:''"))throw new RuntimeException('An empty optional SCROLL font overrode the selected masthead font.');
 $scrollCss=(string)file_get_contents($dir.'/style.css');
 if(!str_contains($scrollCss,'font-size: max(2rem, var(--scroll-solo-name-size, 2rem))'))throw new RuntimeException('SCROLL lost the known-good desktop solo masthead scale.');
+$sharedSquareCss=(string)file_get_contents($root.'/assets/css/ss-engine-mosaic.css');
+foreach(['.ss-square-wall {','repeat(var(--ss-square-cols)', 'aspect-ratio: 1 / 1', 'object-fit: cover'] as $rule)if(!str_contains($sharedSquareCss,$rule))throw new RuntimeException("The shared mosaic stylesheet lost square-wall geometry: {$rule}");
+if(str_contains($scrollCss,'.ss-square-wall .ss-masonry-item {'))throw new RuntimeException('SCROLL copied square-wall geometry instead of using the shared mosaic stylesheet.');
+if(!str_contains($scrollCss,'--ss-square-cols: var(--scroll-square-cols, 4)'))throw new RuntimeException('SCROLL stopped mapping its owner control into the shared square-wall engine.');
 echo "PASS: scroll behavior is CMS-owned and its presentation contract is strict.
 ";
 // ===== SNAPSMACK EOF =====

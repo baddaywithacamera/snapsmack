@@ -2023,10 +2023,22 @@ p.comment-form-author { margin-right: 5%; }
    ============================================================ */
 
 .alfred-archive-grid {
+    margin: 40px 0;
+}
+
+/* The skin's original auto-fill geometry applies only to its default mode.
+   Square mode is owned completely by the shared mosaic engine. */
+.alfred-archive-grid:not(.ss-square-wall) {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     grid-gap: 4px;
-    margin: 40px 0;
+}
+
+/* The shared mosaic stylesheet owns square-wall geometry.  ALFRED owns only
+   the input from its CMS control; the extra class makes this mapping outrank
+   the engine's four-column fallback regardless of stylesheet order. */
+.alfred-archive-grid.ss-square-wall {
+    --ss-square-cols: var(--alfred-square-cols, 3);
 }
 
 /* The archive heading sits over the full-height masthead image. Keep it

@@ -2,9 +2,8 @@
  * SNAPSMACK_EOF_HEADER
  * Last non-empty line must be: // ===== SNAPSMACK EOF =====
  *
- * SS-1446 / SS-1447 — browser evidence for the ALFRED footer and packaged
- * storm fallback at every supported width. The square landing itself remains
- * outside this file until the PM assigns the shared engine CSS edit.
+ * SS-1446 / SS-1447 — browser evidence for ALFRED's shared square landing,
+ * footer, and packaged storm fallback at every supported width.
  */
 'use strict';
 
@@ -21,6 +20,9 @@ const stormData = 'data:image/jpeg;base64,' + fs.readFileSync(
   path.join(skinDir, 'assets', 'images', 'sean-storm-panorama.jpg')
 ).toString('base64');
 const widths = [1920, 1440, 1024];
+const tileImage = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#555"/></svg>'
+);
 
 const html = `<!doctype html><html><head><base href="${baseHref}"></head>
 <body class="alfred-v2"><div id="page" class="alfred">
@@ -30,6 +32,9 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
   </div></header>
   <div id="content"><main id="scroll-stage" class="content post-inner reading-column longform">
     <article class="smacktalk-post post-container"><div class="post-content"><p>Fixture content.</p></div></article>
+    <div id="browse-grid" class="alfred-archive-grid ss-square-wall">
+      ${Array.from({ length: 10 }, (_, index) => `<article class="ss-masonry-item"><img src="${tileImage}" alt="Tile ${index + 1}"></article>`).join('')}
+    </div>
   </main></div>
   <footer id="system-footer" class="site-footer"><div id="footer" class="inside">
     <ul class="social-menu alfred-footer-social" aria-label="Social links">
@@ -47,6 +52,7 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
       const page = await browser.newPage({ viewport: { width, height: 900 } });
       await page.setContent(html, { waitUntil: 'load' });
       await page.addStyleTag({ path: path.join(root, 'assets', 'css', 'public-base.css') });
+      await page.addStyleTag({ path: path.join(root, 'assets', 'css', 'ss-engine-mosaic.css') });
       await page.addStyleTag({ path: path.join(skinDir, 'style.css') });
 
       const result = await page.evaluate(async (stormSource) => {
@@ -67,12 +73,36 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
           return { width: rect.width, height: rect.height, visible: rect.width > 0 && rect.height > 0 };
         });
         const rect = header.getBoundingClientRect();
+        const grid = document.getElementById('browse-grid');
+        const measureGrid = () => {
+          const style = getComputedStyle(grid);
+          const tiles = Array.from(grid.children).map((tile) => {
+            const tileRect = tile.getBoundingClientRect();
+            const imageStyle = getComputedStyle(tile.querySelector('img'));
+            return {
+              width: tileRect.width,
+              height: tileRect.height,
+              objectFit: imageStyle.objectFit,
+            };
+          });
+          return {
+            display: style.display,
+            columns: style.gridTemplateColumns.split(' ').filter(Boolean).length,
+            tiles,
+          };
+        };
+        const squareLayouts = {};
+        for (const columns of [3, 4, 5]) {
+          grid.style.setProperty('--alfred-square-cols', String(columns));
+          squareLayouts[columns] = measureGrid();
+        }
         const email = getComputedStyle(document.getElementById('email'));
         return {
           background: headerStyle.backgroundImage,
           loaded,
           header: { left: rect.left, right: rect.right, height: rect.height },
           controls,
+          squareLayouts,
           email: { direction: email.direction, unicodeBidi: email.unicodeBidi },
           overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         };
@@ -88,11 +118,19 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
       }
       assert.equal(result.email.direction, 'rtl', `${width}: reversed email is turned back for readers`);
       assert.match(result.email.unicodeBidi, /bidi-override/, `${width}: email reversal is visual, not a broken address`);
+      for (const columns of [3, 4, 5]) {
+        const layout = result.squareLayouts[columns];
+        assert.equal(layout.display, 'grid', `${width}: square landing uses CSS grid at ${columns} columns`);
+        assert.equal(layout.columns, columns, `${width}: square landing renders ${columns} columns`);
+        for (const tile of layout.tiles) {
+          assert.ok(Math.abs(tile.width - tile.height) <= 1, `${width}: ${columns}-column tiles remain square`);
+          assert.equal(tile.objectFit, 'cover', `${width}: ${columns}-column images crop with object-fit cover`);
+        }
+      }
       assert.ok(result.overflow <= 1, `${width}: no horizontal overflow`);
       await page.close();
     }
-    console.log('PASS: ALFRED storm fallback, footer identities, email reversal, and overflow at 1920/1440/1024.');
-    console.log('NOT CHECKED: square landing geometry; shared square-wall CSS ownership is awaiting PM assignment.');
+    console.log('PASS: ALFRED 3/4/5-column square landing, storm fallback, footer identities, email reversal, and overflow at 1920/1440/1024.');
   } finally {
     await browser.close();
   }

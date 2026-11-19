@@ -46,6 +46,38 @@
     filter: brightness(1.05);
 }
 
+/* ── SHARED SQUARE WALL ────────────────────────────────────────────────────
+ *
+ * A skin selects this mode by adding .ss-square-wall to a container whose
+ * children use the shared .ss-masonry-item hook.  The skin may set
+ * --ss-square-cols and --ss-gap; the engine owns the square crop.
+ *
+ * These rules originally lived in SCROLL.  ALFRED uses the same engine and
+ * markup contract, so keeping the geometry here prevents the two skins from
+ * carrying copies that can drift apart.
+ */
+
+.ss-square-wall {
+    --ss-square-cols: 4;
+    display: grid;
+    grid-template-columns: repeat(var(--ss-square-cols), minmax(0, 1fr));
+    gap: var(--ss-gap, 6px);
+    width: 100%;
+}
+
+.ss-square-wall .ss-masonry-item {
+    box-sizing: border-box;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.ss-square-wall .ss-masonry-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 /* ── ADMIN PREVIEW ───────────────────────────────────────────────────────── */
 
 .mosaic-preview-wrap {

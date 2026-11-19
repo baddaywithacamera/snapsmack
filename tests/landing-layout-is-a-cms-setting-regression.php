@@ -166,32 +166,19 @@ ll_check('bounded 3 to 5 in the declaration too, not only in PHP',
          (string)($opts['landing_square_cols']['min'] ?? '') === '3'
          && (string)($opts['landing_square_cols']['max'] ?? '') === '5', $failures);
 
-// NO selector/property YET, AND THAT IS DELIBERATE -- the interesting part of
-// this ticket so far.
-//
-// I declared them first: selector .ss-square-wall, property --ss-square-cols,
-// which is how every other numeric control reaches a stylesheet. The control
-// ratchet immediately reported a NEWLY DEAD selector, and it was right:
-// .ss-square-wall exists only in skins/scroll/style.css, so on ALFRED the
-// generated CSS would point at nothing.
-//
-// tools/_build/control-selector-baseline.json says in its own header "never
-// grow to silence a regression", so baselining it was not an option, and it
-// should not have been -- a control that generates CSS nobody reads is a
-// control that does not work.
-//
-// Where the engine's square-wall rules SHOULD live is a real question and not
-// mine to settle: assets/css/ss-engine-mosaic.css ships with the engine and
-// SCROLL already loads it, so adding rules there reaches SCROLL's live wall
-// too, and I cannot measure a rendered SCROLL page from here. It is with the
-// PM. Until it is answered the control stores a bounded number and the skin
-// half reads it; whoever adds the rules adds the two declaration keys in the
-// same commit, and this check is what will tell them to.
-ll_check('no selector/property is declared while the rules do not exist',
-         !isset($opts['landing_square_cols']['selector'])
-         && !isset($opts['landing_square_cols']['property']), $failures);
-ll_check('and the hint says plainly that it does nothing yet',
-         stripos((string)($opts['landing_square_cols']['hint'] ?? ''), 'until') !== false,
+// The PM placed the reusable square-wall rules with the mosaic engine.  The
+// setting can therefore use the normal declared-option CSS path instead of a
+// skin-specific inline style or a data attribute interpreted by new code.
+ll_check('the column control targets ALFRED\'s stable grid hook',
+         ($opts['landing_square_cols']['selector'] ?? '') === '.alfred-archive-grid', $failures);
+ll_check('and writes the skin-owned input mapped to the shared engine',
+         ($opts['landing_square_cols']['property'] ?? '') === '--alfred-square-cols', $failures);
+$alfredCss = (string)file_get_contents($root . '/skins/alfred/style.css');
+ll_check('the skin maps that input to the shared engine variable without copying geometry',
+         str_contains($alfredCss, '.alfred-archive-grid.ss-square-wall')
+         && str_contains($alfredCss, '--ss-square-cols: var(--alfred-square-cols, 3)'), $failures);
+ll_check('and the hint names the shared engine that now owns the crop',
+         stripos((string)($opts['landing_square_cols']['hint'] ?? ''), 'shared mosaic engine') !== false,
          $failures);
 ll_check('and only shown when square is chosen',
          ($opts['landing_square_cols']['enable_when']['landing_layout'] ?? '') === 'square',
@@ -223,9 +210,7 @@ if ($failures) {
 echo "SS-1446 PASS — the landing layout is a CMS setting keyed by function, its\n";
 echo "values are bounded, ALFRED declares it square and three across, and the\n";
 echo "column count reaches the stylesheet as generated CSS.\n";
-echo "NOT COVERED, and it is the other half of the ticket: the markup that\n";
-echo "prints the class and the stylesheet rules behind it belong to the\n";
-echo "appearance owner. .ss-square-wall exists only in skins/scroll/style.css\n";
-echo "today, so the class alone changes nothing visible on ALFRED yet. Nothing\n";
-echo "here has been rendered or deployed.\n";
+echo "The appearance owner moved the square-wall geometry into the shared\n";
+echo "mosaic stylesheet. Rendered ALFRED and SCROLL geometry is verified by\n";
+echo "the separate browser matrix and is not claimed by this source test.\n";
 // ===== SNAPSMACK EOF =====

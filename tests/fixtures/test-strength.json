@@ -1181,7 +1181,7 @@
         ]
     },
     "landing-layout-is-a-cms-setting-regression.php": {
-        "assertions": 29,
+        "assertions": 31,
         "predicates": 16,
         "thresholds": [
             3,
@@ -1946,8 +1946,8 @@
         "thresholds": []
     },
     "scroll-square-layout-regression.php": {
-        "assertions": 8,
-        "predicates": 12,
+        "assertions": 11,
+        "predicates": 15,
         "thresholds": []
     },
     "scrolltime-component-regression.php": {
