@@ -48,6 +48,20 @@ version forms, all three agree, so this is duplication rather than a defect.
   believes a proxy only when the site has said to trust it. Your traffic has
   not changed; what the dashboard says about it has. (SS-1437)
 
+<!--
+  NOT OWNER-VISIBLE YET, recorded here so the reason travels with the file
+  rather than living in a chat message.
+
+  SS-1436 — the real-browser skin pixel comparator landed on dev, but the
+  release gate that calls it is held until after the next tag (PM's decision:
+  127 existing gate notes go stale the moment it lands, and nobody should meet
+  that mid-cycle). Nothing an owner can see has changed, so there is no entry
+  to write. It gets one when the gate lands.
+
+  tools/_build/changelog-completeness.php names every merged ticket with no
+  entry. It asks for "an entry or a stated reason" — this is the stated reason.
+-->
+
 - **A Recovery Kit import now asks who you are and which site you meant, and a
   refusal says so plainly.** Importing a kit overwrites your database, and the
   page used to report "RECOVERY KIT IMPORTED SUCCESSFULLY" even when it had
