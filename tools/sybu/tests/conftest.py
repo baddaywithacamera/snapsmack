@@ -35,9 +35,8 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def _sandbox_snapsmack_home(tmp_path, monkeypatch):
-    sandbox = tmp_path / "snapsmack_home"
-    sandbox.mkdir(parents=True, exist_ok=True)
+def _sandbox_snapsmack_home(tmp_path_factory, monkeypatch):
+    sandbox = tmp_path_factory.mktemp("snapsmack_home")
     monkeypatch.setenv("SNAPSMACK_HOME", str(sandbox))
 
 # ===== SNAPSMACK EOF =====
