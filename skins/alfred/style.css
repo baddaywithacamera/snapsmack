@@ -914,8 +914,9 @@ input[type="button"],
 .social-menu a[href*="xing"]::before            { content: '\f168'; font-family: 'Font Awesome 5 Brands'; }
 
 /* Header Background Image
-   The PHP template sets background-image inline from the skin option.
-   This rule provides sizing, positioning, and the gradient overlay. */
+   Sean's own storm panorama is the packaged default. A configured header
+   image is rendered above it by .header-media-image; the default remains a
+   safe fallback delivered through the skin update path. */
 
 .header-image,
 .header-image:after {
@@ -929,6 +930,7 @@ input[type="button"],
 
 .header-image {
     background-color: #1d1d1d;
+    background-image: url(assets/images/sean-storm-panorama.jpg);
     background-repeat: no-repeat;
     background-position: top center;
     background-size: var(--alfred-header-fit, cover);   /* Header Image Fit */
