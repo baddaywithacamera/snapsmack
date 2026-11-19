@@ -846,6 +846,13 @@ input[type="button"],
     color: #fff;
 }
 
+.social-menu a:focus-visible {
+    background: var(--alfred-accent);
+    color: #fff;
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
 .social-menu li a::before {
     content: '\f0c1';
     display: inline-block;
@@ -1637,6 +1644,16 @@ p.comment-form-author { margin-right: 5%; }
 #system-footer .footer-link:hover { color: var(--alfred-accent); }
 
 #system-footer .sep { margin: 0 10px; color: #555; }
+
+#system-footer .alfred-footer-social {
+    margin: 0 0 24px;
+    padding: 0;
+}
+
+#system-footer .alfred-footer-social a {
+    width: 44px;
+    height: 44px;
+}
 
 
 /* -------------------------------------------------------------------------- */
