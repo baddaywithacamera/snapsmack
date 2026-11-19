@@ -24,15 +24,12 @@ declare(strict_types=1);
  *
  * WHAT THE SKIN RECEIVES: a bare class name and a bounded number. It prints
  * the class and branches on nothing. The column count reaches the stylesheet
- * as --ss-square-cols through the manifest's own selector/property
- * declaration, the same mechanism every other numeric control uses, so no CSS
- * is assembled in PHP and there is no inline style.
+ * through the manifest's selector/property declaration into a skin-owned
+ * custom property, which the skin maps to the shared --ss-square-cols input.
+ * No CSS is assembled in PHP and there is no inline style.
  *
- * WHAT THIS DOES NOT COVER, and it is half the ticket: the markup that prints
- * the class and the stylesheet rules behind it are the appearance owner's.
- * `.ss-square-wall` currently exists only in skins/scroll/style.css, so until
- * ALFRED has those rules the class alone changes nothing visible. That
- * boundary is in the ticket and is reported, not assumed.
+ * Rendered geometry remains the appearance owner's browser-test concern. This
+ * source test proves only the CMS contract, declared control, and adapter.
  */
 
 $root = dirname(__DIR__);
@@ -183,6 +180,9 @@ ll_check('and the hint names the shared engine that now owns the crop',
 ll_check('and only shown when square is chosen',
          ($opts['landing_square_cols']['enable_when']['landing_layout'] ?? '') === 'square',
          $failures);
+$alfredLayout = (string)file_get_contents($root . '/skins/alfred/layout.php');
+ll_check('and the layout does not print a write-only column-count attribute',
+         !str_contains($alfredLayout, 'data-square-cols'), $failures);
 
 // The shared engine has to be loaded, or the class means nothing even once
 // the rules exist.

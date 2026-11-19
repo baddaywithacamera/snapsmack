@@ -1181,8 +1181,8 @@
         ]
     },
     "landing-layout-is-a-cms-setting-regression.php": {
-        "assertions": 31,
-        "predicates": 16,
+        "assertions": 32,
+        "predicates": 17,
         "thresholds": [
             3,
             4
