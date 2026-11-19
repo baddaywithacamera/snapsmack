@@ -830,18 +830,28 @@ class SnapSmackRecovery {
         // case where its INPUT is missing wide open: half a fail-closed
         // check, which reads as a whole one.
         //
-        // A note on which source is authoritative, said rather than quietly
-        // chosen: the question here is whether the kit's schema is newer
-        // than the CODE that will query it, and the code's own version is
-        // SNAPSMACK_VERSION_SHORT. The stored installed_version is a record
-        // and can lag, mid-update for instance. I still read the stored
-        // value first, because that is the value the rest of this engine
-        // reasons about, and fall back to the constant. If somebody decides
-        // the constant should win outright, that is a defensible change and
-        // this comment is where to argue it.
-        $here = trim((string)($settings['installed_version'] ?? ''));
-        if ($here === '' && defined('SNAPSMACK_VERSION_SHORT')) {
-            $here = trim((string)SNAPSMACK_VERSION_SHORT);
+        // WHICH SOURCE IS AUTHORITATIVE. Ruled by the PM, and it is the right
+        // way round: the question here is whether the kit carries a schema
+        // newer than the CODE that will query it, so the truth is the code's
+        // own version, SNAPSMACK_VERSION_SHORT. The snap_settings row is a
+        // record of what was installed and can lag -- mid-update, or after a
+        // file-level restore that moved the code and not the database. My
+        // first version read the row first and fell back to the constant,
+        // which gets this backwards on exactly the sites that need the check
+        // most.
+        //
+        // The stored value is still read, for one purpose: when the two
+        // disagree, say so. That disagreement is itself worth knowing before
+        // a destructive operation.
+        $here = defined('SNAPSMACK_VERSION_SHORT')
+            ? trim((string)SNAPSMACK_VERSION_SHORT) : '';
+        $recorded = trim((string)($settings['installed_version'] ?? ''));
+        if ($here === '') {
+            $here = $recorded;          // no constant: the record is all there is
+        } elseif ($recorded !== '' && $recorded !== $here) {
+            $warnings[] = "This site runs SnapSmack {$here} but its settings still "
+                . "record {$recorded}. The running code decides whether a kit's schema "
+                . 'can be read, so the check below uses ' . $here . '.';
         }
         if ($here === '') {
             $refusals[] = 'This site does not report which SnapSmack version it '

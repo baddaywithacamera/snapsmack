@@ -1160,8 +1160,8 @@
         ]
     },
     "kit-preflight-guards-regression.php": {
-        "assertions": 41,
-        "predicates": 17,
+        "assertions": 44,
+        "predicates": 20,
         "thresholds": [
             4000
         ]

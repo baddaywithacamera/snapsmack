@@ -178,11 +178,29 @@ $blank = $e->preflightKit(kit(['snapsmack_version' => '9.9.999D']),
 check('a blank installed_version is treated as absent, not as a pass',
       $blank['refusals'] !== [], $failures);
 
-// The stored value still wins when it is there.
-$stored = $e->preflightKit(kit(['snapsmack_version' => '0.7.500D']),
-                           array_merge($noVersion, ['installed_version' => '0.7.400D']));
-check('a stored installed_version is still used when present',
-      $stored['refusals'] !== [], $failures);
+// WHICH SOURCE DECIDES. The PM ruled the running build decides, because it is
+// the code that has to read the kit's schema; the snap_settings row is only a
+// record of what was installed and can lag a mid-update or a file-only
+// restore. My first repair read the row first and fell back to the constant,
+// which is backwards: a site whose row says 0.7.400D while the code is
+// 0.7.1000D would have refused a 0.7.500D kit it can read perfectly well.
+$stale = $e->preflightKit(kit(['snapsmack_version' => '0.7.500D']),
+                          array_merge($noVersion, ['installed_version' => '0.7.400D']));
+check('a kit NEWER than a stale settings row but older than the running code is allowed',
+      $stale['refusals'] === [], $failures);
+check('and the disagreement between the row and the running build is reported',
+      $stale['warnings'] !== []
+      && str_contains(implode(' ', $stale['warnings']), '0.7.400D')
+      && str_contains(implode(' ', $stale['warnings']), $running), $failures);
+
+// And the row cannot wave a kit through that the running code cannot read.
+$rowTooNew = $e->preflightKit(kit(['snapsmack_version' => '9.9.999D']),
+                              array_merge($noVersion, ['installed_version' => '9.9.999D']));
+check('a row claiming a build this code is not cannot let a newer kit through',
+      $rowTooNew['refusals'] !== [], $failures);
+check('and the refusal quotes the running build, not the row',
+      $rowTooNew['refusals'] !== []
+      && str_contains(implode(' ', $rowTooNew['refusals']), $running), $failures);
 
 
 // ─────────────────────────────────────────────────────────────────────────────
