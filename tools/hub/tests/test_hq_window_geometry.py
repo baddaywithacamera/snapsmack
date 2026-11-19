@@ -82,7 +82,7 @@ def test_geometry_is_versioned_saved_and_restored():
     restore = _source_segment(_window_method("_restore_saved_geometry"))
     close = _source_segment(_window_method("closeEvent"))
 
-    assert "WINDOW_GEOMETRY_SCHEMA = 1" in source
+    assert "WINDOW_GEOMETRY_SCHEMA = 2" in source
     assert 'self.settings.value("window/normal_geometry")' in restore
     assert 'self.settings.value("window/geometry_schema", 0, type=int)' in restore
     assert "self.restoreGeometry(geometry)" in restore

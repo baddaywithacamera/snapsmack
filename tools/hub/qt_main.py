@@ -25,7 +25,11 @@ import snap_settings_sync
 import snap_site_settings
 
 
-WINDOW_GEOMETRY_SCHEMA = 1
+# Schema 1 was written by the first 0.7.54 build after it restored the old
+# compact launcher height.  Invalidate it once so the repaired build measures
+# both sections against the current screen.  Sizes saved after this repair use
+# schema 2 and remain the owner's deliberate choice.
+WINDOW_GEOMETRY_SCHEMA = 2
 
 
 def _frame_intersects_any_screen(frame, screens):
