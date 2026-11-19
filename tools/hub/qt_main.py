@@ -25,6 +25,14 @@ import snap_settings_sync
 import snap_site_settings
 
 
+WINDOW_GEOMETRY_SCHEMA = 1
+
+
+def _frame_intersects_any_screen(frame, screens):
+    """Return whether any usable screen contains at least part of the window."""
+    return any(screen.availableGeometry().intersects(frame) for screen in screens)
+
+
 STYLE = """
 QWidget { background:#090b0a; color:#eef2ed; font-family:'Segoe UI'; font-size:13px; }
 QMainWindow,QDialog { background:#090b0a; }
@@ -56,7 +64,7 @@ MIGRATION_ROSTER = [
     ("GHOSTED", "Ghost → SMACKTALK", [os.path.join(core._R, "ghosted", "ghosted.exe")]),
     ("UNZUCKER", "Instagram → GRAMOFSMACK", [os.path.join(core._R, "unzucker", "unzucker.exe")]),
     ("FLKR FCKR", "Flickr → SMACKONEOUT", [os.path.join(core._R, "flkr-fckr", "flkr-fckr.exe")]),
-    ("FED UP", "Fediverse → SnapSmack", [os.path.join(core._R, "fed-up", "fed-up.exe")]),
+    ("FED UP", "Fediverse → SNAPSMACK", [os.path.join(core._R, "fed-up", "fed-up.exe")]),
 ]
 
 
@@ -418,20 +426,33 @@ class Window(QMainWindow):
         self.migration = ToolSection("MIGRATION CENTRE", MIGRATION_ROSTER); self.body.addWidget(self.migration)
         self.body.setAlignment(Qt.AlignTop); scroll.setWidget(content); shell.addWidget(scroll, 1); self.setCentralWidget(root)
         self._scale = 1.0; self._apply_settings(); self._fit_to_screen()
-        geometry = self.settings.value("window/normal_geometry")
-        if geometry:
-            self.restoreGeometry(geometry)
+        self._restore_saved_geometry()
         self._restore_maximized = self.settings.value("window/maximized", False, type=bool)
         if self._restore_maximized:
             QTimer.singleShot(0, self.showMaximized)
 
     def closeEvent(self, event):
         if not self.isMinimized():
+            self.settings.setValue("window/geometry_schema", WINDOW_GEOMETRY_SCHEMA)
             self.settings.setValue("window/maximized", self.isMaximized())
             if not self.isMaximized():
                 self.settings.setValue("window/normal_geometry", self.saveGeometry())
             self.settings.sync()
         super().closeEvent(event)
+
+    def _restore_saved_geometry(self):
+        geometry = self.settings.value("window/normal_geometry")
+        schema = self.settings.value("window/geometry_schema", 0, type=int)
+        if schema != WINDOW_GEOMETRY_SCHEMA or not geometry:
+            # Old builds saved the deliberately compact launcher size. Reset
+            # it once so the newly added sections are not reopened below the
+            # fold, then remember the owner's next size and position normally.
+            self.settings.setValue("window/geometry_schema", WINDOW_GEOMETRY_SCHEMA)
+            return
+        restored = self.restoreGeometry(geometry)
+        if not restored or not _frame_intersects_any_screen(
+                self.frameGeometry(), QGuiApplication.screens()):
+            self._fit_to_screen()
 
     def _fit_to_screen(self):
         available = QGuiApplication.primaryScreen().availableGeometry()
@@ -446,7 +467,9 @@ class Window(QMainWindow):
         self._reflow(width - 40)
         self.body.activate(); self.content.adjustSize()
         wanted = self.header.sizeHint().height() + self.content.sizeHint().height()
-        height = min(max(460, wanted), max(460, int(available.height() * .88)))
+        # availableGeometry already excludes the taskbar. Use all of it when
+        # necessary so every section is visible before the scroll fallback.
+        height = min(max(460, wanted), available.height())
         self.resize(width, height)
         self.move(available.center() - self.rect().center())
 

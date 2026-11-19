@@ -25,7 +25,7 @@ from datetime import datetime
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.52"
+BUILD_VERSION = "0.7.54"
 
 # Ã¢â€â‚¬Ã¢â€â‚¬ shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) Ã¢â€â‚¬Ã¢â€â‚¬
 def _add_shared_to_path():
@@ -151,7 +151,10 @@ def _tool_image(name):
     if path and os.path.isfile(path):
         return path
     bundled = os.path.join(getattr(sys, "_MEIPASS", ""), "icons", filename) if filename else ""
-    return bundled if bundled and os.path.isfile(bundled) else ""
+    if bundled and os.path.isfile(bundled):
+        return bundled
+    source = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", filename) if filename else ""
+    return source if source and os.path.isfile(source) else ""
 
 
 def _find_exe(paths):
