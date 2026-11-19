@@ -29,6 +29,84 @@ class SnapSmackRecovery {
     }
 
     // =================================================================
+    // PRE-RESTORE SNAPSHOT (SS-1425)
+    // =================================================================
+
+    /**
+     * Take a snapshot of the live database before anything is overwritten.
+     *
+     * WHY THERE IS NO TRANSACTION HERE, so nobody adds one later thinking it
+     * was an oversight. The obvious fix for "a failed restore leaves a mixed
+     * old-and-new database" is to wrap importSqlDump() in beginTransaction()
+     * and rollBack(). It would roll back NOTHING. The kit's dump carries DDL
+     * -- core/export-engine.php:458 writes DROP TABLE IF EXISTS and the output
+     * of SHOW CREATE TABLE for every table -- and in MySQL and MariaDB a DDL
+     * statement causes an IMPLICIT COMMIT. Every DROP TABLE in that dump
+     * commits the transaction out from under you, so a failure half way
+     * through leaves exactly the mixed state the ticket describes, while the
+     * code reads as if it were protected. That is worse than the honest
+     * position, which is: there is no rollback, so take a copy first.
+     *
+     * A staged swap -- import into a temp schema and rename the tables in -- is
+     * the genuinely atomic option. It is a much larger change, it is not this
+     * ticket, and it is filed as a WANTED follow-up.
+     *
+     * FAIL CLOSED. The caller must refuse the restore if this returns an
+     * error. A restore with no way back is the fault being repaired, so "could
+     * not take a copy" has to stop the operation, not sit as a warning above
+     * it.
+     *
+     * @return array{file: ?string, bytes: int, pruned: int, error: ?string}
+     */
+    public function snapshotBeforeRestore(): array {
+        $out = ['file' => null, 'bytes' => 0, 'pruned' => 0, 'error' => null];
+
+        require_once __DIR__ . '/db-dump.php';
+        if (!function_exists('snap_dump_database')) {
+            $out['error'] = 'The database dumper is unavailable, so no pre-restore '
+                . 'copy can be taken. Refusing to overwrite this site with no way back.';
+            return $out;
+        }
+
+        // The same directory the updater's pre-update dumps go to, so there is
+        // one place an owner looks for "the copy from before", and one deny
+        // rule covering both.
+        $dir = defined('UPDATER_BACKUP_DIR')
+            ? UPDATER_BACKUP_DIR
+            : $this->baseDir . '/backups';
+
+        $secure = snap_backup_dir_secure($dir);
+        if ($secure === null) {
+            $out['error'] = 'Could not create or write to ' . $dir . ', so no '
+                . 'pre-restore copy can be taken. Refusing to overwrite this site '
+                . 'with no way back.';
+            return $out;
+        }
+
+        // .sql ON PURPOSE. The root .htaccess install.php:1723 writes denies
+        // *.sql by extension, and that is what has been protecting the
+        // updater's unredacted pre-update dumps all along. A snapshot named
+        // anything else would sit in the webroot uncovered.
+        $version = defined('SNAPSMACK_VERSION_SHORT') ? (string)SNAPSMACK_VERSION_SHORT : 'unknown';
+        $safe    = preg_replace('/[^a-zA-Z0-9._-]/', '', $version);
+        $file    = $secure . '/pre-restore_' . $safe . '_' . date('Y-m-d_H-i-s') . '.sql';
+
+        $error = '';
+        $bytes = snap_dump_database($this->pdo, $file, 'pre-restore DB snapshot', $error);
+        if ($bytes === false) {
+            $out['error'] = 'The pre-restore copy of this database could not be '
+                . 'written: ' . $error . '. Refusing to overwrite this site with no '
+                . 'way back.';
+            return $out;
+        }
+
+        $out['file']   = $file;
+        $out['bytes']  = $bytes;
+        $out['pruned'] = snap_prune_dumps($secure, 'pre-restore_', 3);
+        return $out;
+    }
+
+    // =================================================================
     // SQL DUMP IMPORT
     // =================================================================
 
@@ -499,6 +577,14 @@ class SnapSmackRecovery {
             'errors'         => [],
             'warnings'       => [],
             'schema_sync'    => null,
+            'snapshot'       => null,
+            // REFUSED UNTIL PROVEN OTHERWISE. Every `return $result` above the
+            // SQL import happens before a single destructive statement, so
+            // every one of them is a refusal: this site is unchanged. Starting
+            // at true and clearing it at the point the overwriting begins means
+            // a NEW early return is a refusal without anybody remembering to
+            // say so, which is the opposite of how the SS-1430 fault worked.
+            'refused'        => true,
         ];
 
         // If it's a .tar.gz, extract it first
@@ -572,6 +658,34 @@ class SnapSmackRecovery {
             if ($needsCleanup) $this->recursiveDelete($extractDir);
             return $result;
         }
+
+        // --- 0b. SNAPSHOT, BEFORE ANY DESTRUCTIVE STATEMENT (SS-1425) ---
+        //
+        // This is the last point at which this site is still itself. The next
+        // step runs DROP TABLE. See snapshotBeforeRestore() for why there is
+        // no transaction wrapping that, and why this fails closed.
+        $this->streamProgress('Taking a copy of this database before anything is '
+            . 'overwritten...', 'info');
+        $snapshot = $this->snapshotBeforeRestore();
+        $result['snapshot'] = $snapshot;
+        if ($snapshot['error'] !== null) {
+            $result['errors'][] = $snapshot['error'];
+            $this->streamProgress($snapshot['error'], 'error');
+            $this->streamProgress('NOTHING WAS CHANGED. The kit was not applied.', 'error');
+            if ($needsCleanup) $this->recursiveDelete($extractDir);
+            return $result;
+        }
+        $kb = (int)round($snapshot['bytes'] / 1024);
+        $this->streamProgress('Copy written: ' . $snapshot['file'] . ' (' . $kb
+            . ' KB). If this restore goes wrong, that file is the way back.', 'ok');
+        $result['warnings'][] = 'A copy of this database as it was before the restore '
+            . 'is at ' . $snapshot['file'] . ' (' . $kb . ' KB). There is no automatic '
+            . 'rollback: restoring it is a deliberate act.';
+
+        // FROM HERE ON, THIS SITE IS BEING CHANGED. Anything that goes wrong
+        // below is a half-done restore, not a refusal, and the owner must be
+        // told the difference: the snapshot above is their way back.
+        $result['refused'] = false;
 
         // --- 1. IMPORT SQL DUMP ---
         $sqlPath = $kitRoot . '/database.sql';

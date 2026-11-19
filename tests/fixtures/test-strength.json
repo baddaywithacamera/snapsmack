@@ -1608,6 +1608,16 @@
         "predicates": 19,
         "thresholds": []
     },
+    "pre-restore-snapshot-fails-closed-regression.php": {
+        "assertions": 54,
+        "predicates": 41,
+        "thresholds": [
+            2,
+            3,
+            3,
+            6
+        ]
+    },
     "print-skin-image-scaling-regression.php": {
         "assertions": 3,
         "predicates": 5,

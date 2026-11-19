@@ -188,11 +188,17 @@ if (isset($_POST['action']) && $_POST['action'] === 'import_recovery') {
             // ONE CONTRACT, decided here rather than inferred in the template.
             // importRecoveryKit() does not report success itself -- that is
             // SS-1427's subject and its home is the engine, not this page --
-            // so the boundary states it explicitly. An attempted import is
-            // never 'refused': it may be half-done, which is the distinction
-            // the owner needs most.
+            // so the boundary states it explicitly.
             $import_result['success'] = empty($import_result['errors']);
-            $import_result['refused'] = false;
+            // AND 'refused' COMES FROM THE ENGINE, not from here. SS-1425: the
+            // engine refuses several things before it touches anything -- a
+            // corrupt manifest, an incompatible kit, a pre-restore snapshot it
+            // could not write -- and this page cannot tell those from a
+            // half-done import by looking at the error list. It used to hardcode
+            // false, which meant every one of them rendered "IMPORT COMPLETED
+            // WITH ERRORS": the owner told their database had been touched when
+            // nothing ran. Only the engine knows, so the engine says.
+            $import_result['refused'] = !empty($import_result['refused']);
         } catch (Throwable $e) {
             // PRE-EXISTING, same contract mismatch, fixed while I am here: an
             // exception mid-import also rendered as success. Throwable rather
