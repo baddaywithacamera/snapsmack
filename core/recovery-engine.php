@@ -813,13 +813,51 @@ class SnapSmackRecovery {
             @require_once __DIR__ . '/constants.php';
         }
         $kitVersion = trim((string)($manifest['snapsmack_version'] ?? ''));
-        $here       = trim((string)($settings['installed_version'] ?? ''));
+
+        // WHICH VERSION THIS SITE IS, AND WHAT IF WE CANNOT TELL.
+        //
+        // Codex's SS-1428/1429 review FAIL. My first version read only
+        // $settings['installed_version'] and then wrote
+        // `$here !== '' && snap_version_compare(...)`, so on a site where
+        // that row is absent or blank the whole version comparison was
+        // skipped and a NEWER kit sailed through. He reproduced it: kit
+        // 0.7.1000D, matching mode and identity, no installed_version, and
+        // the result was {"refusals":[],"warnings":[]}.
+        //
+        // That contradicted the rule written four lines below it in the same
+        // method -- an unanswerable compatibility question is not a yes. I
+        // had guarded the case where the COMPARATOR is missing and left the
+        // case where its INPUT is missing wide open: half a fail-closed
+        // check, which reads as a whole one.
+        //
+        // A note on which source is authoritative, said rather than quietly
+        // chosen: the question here is whether the kit's schema is newer
+        // than the CODE that will query it, and the code's own version is
+        // SNAPSMACK_VERSION_SHORT. The stored installed_version is a record
+        // and can lag, mid-update for instance. I still read the stored
+        // value first, because that is the value the rest of this engine
+        // reasons about, and fall back to the constant. If somebody decides
+        // the constant should win outright, that is a defensible change and
+        // this comment is where to argue it.
+        $here = trim((string)($settings['installed_version'] ?? ''));
+        if ($here === '' && defined('SNAPSMACK_VERSION_SHORT')) {
+            $here = trim((string)SNAPSMACK_VERSION_SHORT);
+        }
+        if ($here === '') {
+            $refusals[] = 'This site does not report which SnapSmack version it '
+                . 'runs, so the kit cannot be checked for schema compatibility. '
+                . 'Refusing rather than guessing.';
+        }
+
         if (!function_exists('snap_version_compare')) {
             $refusals[] = 'The version comparator is unavailable, so this kit cannot '
                 . 'be checked against this build. Refusing rather than guessing.';
         } elseif ($kitVersion === '') {
             $refusals[] = 'The kit does not say which SnapSmack version produced it.';
         } elseif ($here !== '' && snap_version_compare($kitVersion, $here, '>')) {
+            // $here !== '' is kept only so this branch is skipped when the
+            // refusal above has already fired; it is no longer the thing
+            // deciding whether the check runs at all.
             $refusals[] = "This kit was made by SnapSmack {$kitVersion} and this site runs "
                 . "{$here}. A kit cannot be restored into an older build: it carries a "
                 . 'schema this one does not understand. Update this site first.';

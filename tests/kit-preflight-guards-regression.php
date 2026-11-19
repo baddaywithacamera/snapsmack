@@ -139,6 +139,51 @@ check('and a 1000D kit into a 999D site is refused',
       $e->preflightKit(kit(['snapsmack_version' => '0.7.1000D']),
                        here(['installed_version' => '0.7.999D']))['refusals'] !== [],
       $failures);
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\nSTAGE 3b — a MISSING LOCAL VERSION cannot skip the check (Codex's FAIL)\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// My first version read only $settings['installed_version'] and wrote
+// `$here !== '' && snap_version_compare(...)`, so on a site where that row is
+// absent the comparison was skipped entirely and a NEWER kit was allowed.
+// Codex reproduced it: kit 0.7.1000D, matching identity, no installed_version
+// -> {"refusals":[],"warnings":[]}.
+//
+// I had guarded the case where the COMPARATOR is missing and left the case
+// where its INPUT is missing wide open -- half a fail-closed check, which
+// reads like a whole one. These pin the repair.
+$noVersion = ['site_mode' => 'photoblog', 'site_url' => 'https://foundtextures.ca',
+              'site_uuid' => 'uuid-aaa'];   // deliberately no installed_version
+
+$running = defined('SNAPSMACK_VERSION_SHORT') ? (string)SNAPSMACK_VERSION_SHORT : '';
+check('the test knows what build it is running, so the two below mean something',
+      $running !== '', $failures);
+
+// A kit NEWER than the running build, with no stored version: must refuse.
+$newer = $e->preflightKit(kit(['snapsmack_version' => '9.9.999D']), $noVersion);
+check('with no stored installed_version, a newer kit is REFUSED',
+      $newer['refusals'] !== [], $failures);
+check('and the refusal names the running build, so the fallback is visible',
+      $newer['refusals'] !== []
+      && str_contains(implode(' ', $newer['refusals']), $running), $failures);
+
+// An OLDER kit with no stored version must still be allowed: the fallback
+// must not turn into a blanket refusal.
+$older = $e->preflightKit(kit(['snapsmack_version' => '0.0.1D']), $noVersion);
+check('with no stored installed_version, an OLDER kit is still allowed',
+      $older['refusals'] === [], $failures);
+
+// A blank value behaves as an absent one.
+$blank = $e->preflightKit(kit(['snapsmack_version' => '9.9.999D']),
+                          array_merge($noVersion, ['installed_version' => '   ']));
+check('a blank installed_version is treated as absent, not as a pass',
+      $blank['refusals'] !== [], $failures);
+
+// The stored value still wins when it is there.
+$stored = $e->preflightKit(kit(['snapsmack_version' => '0.7.500D']),
+                           array_merge($noVersion, ['installed_version' => '0.7.400D']));
+check('a stored installed_version is still used when present',
+      $stored['refusals'] !== [], $failures);
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 4 — a mode mismatch is refused\n";
@@ -216,6 +261,16 @@ $start = strpos($src, 'public function preflightKit');
 $body  = $start === false ? '' : substr($src, $start, 3500);
 check('preflightKit loads constants.php rather than hoping it is there',
       str_contains($body, "require_once __DIR__ . '/constants.php'"), $failures);
+// Codex's SS-1428/1429 FAIL, source half: with NEITHER a stored
+// installed_version NOR the constant, the code must refuse. That branch
+// cannot be reached in-process, because constants.php is loaded by the
+// time preflightKit() runs and the constant is therefore always defined.
+// So it is asserted from source and the limitation is stated rather than
+// hidden. The executed half is STAGE 3b.
+check('with neither version source available, the code refuses rather than guessing',
+      preg_match('/\$here === \'\'\)\s*\{\s*\$refusals\[\]/', $src) === 1, $failures);
+check('and it falls back to the running build before refusing',
+      str_contains($src, 'SNAPSMACK_VERSION_SHORT'), $failures);
 check('and refuses when the comparator is still unavailable',
       preg_match('/!function_exists\(.snap_version_compare.\)\)\s*\{\s*\$refusals/', $body) === 1,
       $failures);
