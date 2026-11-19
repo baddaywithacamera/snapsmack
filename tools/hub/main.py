@@ -131,6 +131,10 @@ TOOL_ICON_FILES = {
     "INSTANT REPLAY": "instantreplay-simple.ico",
     "GHOSTED": "ghosted-simple.ico",
     "KEYS PLEASE": "keysplease-simple.ico",
+    "SMACKPRESS": "smackpress-simple.ico",
+    "BLOGGER FLOGGER": "blogger-flogger-simple.ico",
+    "UNZUCKER": "unzucker-simple.ico",
+    "FLKR FCKR": "flkr-fckr-simple.ico",
 }
 
 TOOL_IMAGE_FILES = {
