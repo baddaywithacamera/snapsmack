@@ -37,6 +37,21 @@ fallbacks in cron-version-check.php and smack-update.php. The fallbacks are
 one line shorter than the canonical copy. Tested on both the long and short
 version forms, all three agree, so this is duplication rather than a defect.
 
+- **SNAP HQ tile labels match their card backgrounds.** Tool titles and descriptions
+  in SNAP HQ no longer sit inside dark mismatched boxes; labels now stay
+  transparent against each card's normal and hover background. (SS-1441)
+
+- **Every Migration Centre tile in SNAP HQ has its own icon.** SMACKPRESS,
+  BLOGGER FLOGGER, UNZUCKER, and FLKR FCKR now display original Midnight Lime
+  icons instead of letter placeholders, and FED UP's icon is sized to match
+  the rest of the tiles. (SS-1442)
+
+- **Desktop app tests cannot touch your live SNAPSMACK folder.** Running the
+  test suite now refuses to open the real profile directory on disk and
+  sandboxes the COLD SNAP and GYSS test suites to temporary folders instead, so
+  test fixtures never appear in your working drafts or credential vault.
+  (SS-1443)
+
 - **Unique-visitor counts on sites behind Cloudflare were undercounted; after
   this update they will jump to the real figure. That's not a traffic spike.**
   Every visitor arriving through a CDN edge was counted as the same visitor,
