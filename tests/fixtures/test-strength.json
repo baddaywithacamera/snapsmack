@@ -1846,6 +1846,15 @@
             6
         ]
     },
+    "relay-fanout-honours-blocks-regression.php": {
+        "assertions": 15,
+        "predicates": 3,
+        "thresholds": [
+            250,
+            250,
+            250
+        ]
+    },
     "release-flow-regression.php": {
         "assertions": 58,
         "predicates": 61,

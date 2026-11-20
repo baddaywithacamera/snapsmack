@@ -204,6 +204,98 @@ function sc_relay_actor_blocked(PDO $pdo, string $actor_url): bool {
     return false;
 }
 
+/**
+ * May the hub still relay for this source, right now?
+ *
+ * SS-1481 finding 5. sc_relay_join() consults snap_relay_blocklist once, at
+ * the moment a member joins (:229), and sc_relay_actor_blocked() is consulted
+ * on RECEIVE (:444). Neither is consulted on the way OUT: sc_relay_fanout()
+ * and sc_relay_refresh() asked only whether the actor was a relay source. So a
+ * domain blocklisted AFTER it joined, or an actor added to snap_ap_blocks, kept
+ * being broadcast to every member until its subscriber row happened to change
+ * state. A block that a site has recorded should take effect on the next post,
+ * not at the next join.
+ *
+ * This adds no new policy. It reuses sc_relay_actor_blocked() -- which already
+ * covers snap_ap_blocks by actor and by domain, plus pc_is_blocked() -- and
+ * adds the one source it does not cover, the relay's own domain blocklist, read
+ * exactly as sc_relay_join() reads it.
+ *
+ * ON FAILURE THIS SAYS "BLOCKED". sc_relay_actor_blocked() swallows a schema
+ * error and answers false, which is right for receiving: a syncing schema
+ * should not stop a post arriving. Relaying outward is the other way round --
+ * if the hub cannot tell whether a domain is blocked, broadcasting to every
+ * member is the move it cannot take back. Refusing is recoverable; the posts
+ * relay on the next tick once the table answers.
+ */
+function sc_relay_source_may_relay(PDO $pdo, string $actor_url): bool {
+    if ($actor_url === '') return false;
+    if (sc_relay_actor_blocked($pdo, $actor_url)) return false;
+
+    $domain = strtolower(rtrim((string)(parse_url($actor_url, PHP_URL_HOST) ?: ''), '.'));
+    if ($domain === '') return false;
+    try {
+        $q = $pdo->prepare("SELECT 1 FROM snap_relay_blocklist WHERE domain = ? LIMIT 1");
+        $q->execute([$domain]);
+        if ($q->fetchColumn()) return false;
+    } catch (Throwable $e) {
+        error_log('SnapSmack relay: blocklist unreadable, refusing to relay '
+            . $domain . ' — ' . $e->getMessage());
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Retract everything this hub has already relayed for one actor.
+ *
+ * The companion to the check above: stopping future fan-out does nothing about
+ * the posts already sitting in every member's reader. Reuses sc_relay_retract()
+ * per object rather than building a second Undo, and PAGES the intake rows
+ * instead of taking a fixed slice, so a prolific actor is fully retracted.
+ *
+ * Called when a block is recorded. NOTE, because it is worth saying plainly:
+ * at the time of writing nothing in the repo INSERTs into snap_relay_blocklist
+ * or snap_ap_blocks -- both tables are read-only in code and populated by hand.
+ * So this function has no automatic trigger yet; it is the piece an admin
+ * control will call, and it is callable now from a one-off script. That gap is
+ * reported rather than papered over with an invented admin page.
+ *
+ * @return int objects retracted
+ */
+function sc_relay_retract_actor(PDO $pdo, array $settings, string $actor_url,
+                                string $activity_id = '', int $page = 200): int {
+    if ($actor_url === '') return 0;
+    $retracted = 0;
+    $lastId = 0;
+    $page = max(1, min(1000, $page));
+    while (true) {
+        try {
+            $q = $pdo->prepare("SELECT id, object_id FROM snap_relay_intake
+                                 WHERE origin_actor_url = ? AND id > ?
+                                 ORDER BY id ASC LIMIT {$page}");
+            $q->execute([$actor_url, $lastId]);
+            $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            error_log('SnapSmack relay: retract paging failed for ' . $actor_url
+                . ' — ' . $e->getMessage());
+            break;
+        }
+        if (!$rows) break;
+        foreach ($rows as $row) {
+            $lastId = (int)$row['id'];
+            $object_id = (string)$row['object_id'];
+            if ($object_id === '') continue;
+            if (sc_relay_retract($pdo, $settings, $actor_url, $object_id,
+                                 $activity_id !== '' ? $activity_id : $object_id) > 0) {
+                $retracted++;
+            }
+        }
+        if (count($rows) < $page) break;
+    }
+    return $retracted;
+}
+
 function sc_relay_actor_owns_object(string $actor_url, string $object_id): bool {
     $actor_host = strtolower(rtrim((string)(parse_url($actor_url, PHP_URL_HOST) ?: ''), '.'));
     $object_host = strtolower(rtrim((string)(parse_url($object_id, PHP_URL_HOST) ?: ''), '.'));
@@ -291,6 +383,9 @@ function sc_relay_announce_feed(array $activity): string {
 /** Queue exactly one Announce per destination/object; snap_relay_intake dedups intake. */
 function sc_relay_fanout(PDO $pdo, array $settings, array $activity, string $actor_url): int {
     if (!sc_relay_actor_is_source($pdo, $actor_url)) return 0;
+    // SS-1481 finding 5: a block recorded after this source joined must stop
+    // the next post, not wait for a state change on its subscriber row.
+    if (!sc_relay_source_may_relay($pdo, $actor_url)) return 0;
     $object = $activity['object'] ?? [];
     if (!is_array($object) || !in_array(($object['type'] ?? ''), ['Note','Image'], true)) return 0;
     if (($object['inReplyTo'] ?? null) || !sc_relay_is_discoverable($activity, $object)) return 0;
@@ -321,6 +416,8 @@ function sc_relay_fanout(PDO $pdo, array $settings, array $activity, string $act
 /** Refresh a relayed object after a verified origin Update. */
 function sc_relay_refresh(PDO $pdo, array $settings, array $activity, string $actor_url): int {
     if (!sc_relay_actor_is_source($pdo, $actor_url)) return 0;
+    // Same gate as fan-out: an Update is another broadcast to every member.
+    if (!sc_relay_source_may_relay($pdo, $actor_url)) return 0;
     $object = $activity['object'] ?? [];
     if (!is_array($object) || !in_array(($object['type'] ?? ''), ['Note','Image'], true)) return 0;
     $object_id = (string)($object['id'] ?? '');

@@ -27,6 +27,22 @@ are pushed and waiting on review.
   come from your own backup" is the normal result on a rebuilt site, not a
   fault. (SS-1426, SS-1431, SS-1427)
 
+
+## 0.7.1001D — opened
+
+Opened because 0.7.1000D is IN SERVICE on the fleet. The agreed-rules gate
+refused the next commit while the source still said 1000D -- "a deployed tag
+must never move" -- which is the fold rule working as intended rather than a
+new decision.
+
+- **A site you have blocked is no longer relayed to the network.** The relay
+  checked its blocklist when a site joined, and when a post arrived, but never
+  when passing a post on. So a site blocked AFTER it joined kept being
+  broadcast to every member of the relay until its membership happened to
+  change. Blocks now take effect on the next post, for new posts and edits
+  alike, and if the relay cannot read its own blocklist it refuses to pass
+  anything on rather than guessing. (SS-1481)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,
