@@ -2694,6 +2694,13 @@
             200
         ]
     },
+    "sv-home-feed-is-gone-regression.php": {
+        "assertions": 12,
+        "predicates": 8,
+        "thresholds": [
+            100
+        ]
+    },
     "sybu-images-regression.php": {
         "assertions": 2,
         "predicates": 16,

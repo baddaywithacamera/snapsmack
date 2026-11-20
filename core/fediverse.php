@@ -5963,39 +5963,13 @@ function sv_fetch_gallery(array $actor, int $max = 36): array {
     return sv_crawl_outbox((string)($actor['outbox'] ?? ''), $max);
 }
 
-/**
- * Home feed by live crawl: merge the recent photos of the accounts the blog
- * FOLLOWS (accepted only), newest first. No ingest tables — this pulls on
- * demand, bounded by an account cap and an ~18s wall-clock budget so a busy
- * follow list can't stall the request. A push/ingest timeline is the Phase-3
- * upgrade for scale; this lights up Home now.
- */
-function sv_home_feed(PDO $pdo, int $per_account = 6, int $max = 40): array {
-    $rows = $pdo->query(
-        "SELECT actor_url FROM snap_ap_following WHERE state='accepted' ORDER BY followed_at DESC LIMIT 15"
-    )->fetchAll(PDO::FETCH_COLUMN);
-
-    $feed = [];
-    $deadline = microtime(true) + 18.0;
-    foreach ($rows as $actor_url) {
-        if (microtime(true) > $deadline) break;
-        $actor = sv_crawl_actor((string)$actor_url);
-        if ($actor === null) continue;
-        foreach (sv_fetch_gallery($actor, $per_account) as $p) {
-            $p['author'] = [
-                'handle' => $actor['handle'],
-                'name'   => $actor['name'],
-                'avatar' => $actor['avatar'],
-                'id'     => $actor['id'],
-                'host'   => $actor['host'],
-                'url'    => $actor['url'],
-            ];
-            $feed[] = $p;
-        }
-    }
-    usort($feed, static function ($a, $b) { return strcmp((string)$b['published'], (string)$a['published']); });
-    return array_slice($feed, 0, $max);
-}
+// SS-1481 finding 16: sv_home_feed() was removed here. It was a live
+// merge-crawl of up to 15 followed accounts on an 18-second budget, run while
+// the owner waited for the Home tab. The inbound ingest timeline
+// (sv_home_timeline) replaced it, and the ONLY thing still referring to it was
+// tests/pixel-home-latency-regression.php asserting the Home handler never
+// calls it -- 26 lines that could not run, beside a guard whose job was to stop
+// them running. tests/sv-home-feed-is-gone-regression.php keeps it gone.
 
 // ─── Notes (one published snap_image = one Note, mirroring rss.php) ─────────
 
