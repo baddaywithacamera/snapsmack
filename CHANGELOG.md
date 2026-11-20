@@ -68,6 +68,13 @@ new decision.
   belonging to an account that no longer existed, with nothing coming to clear
   them. There is no longer a limit. (SS-1481)
 
+- **A deleted account's posts now actually disappear.** When a remote account is
+  purged, its site sends a notice that can never be verified — the account and
+  its key are already gone — so the notice was ignored and the posts stayed in
+  your reader for good. The notice is now acted on when, and only when, the
+  account really is unreachable. If it still exists, the notice is refused as
+  before. (SS-1481)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,

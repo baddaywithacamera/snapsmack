@@ -923,6 +923,85 @@ function sv_last_fetch_error(?string $set = null): string {
     return $reason;
 }
 
+/**
+ * The HTTP status of the last sv_fetch_ap() that got one, or 0.
+ *
+ * SS-1481 finding 7. sv_fetch_ap() returns null for every failure, so a caller
+ * could not tell an actor that is GONE from a fetch that merely failed. The
+ * difference matters exactly once: deciding whether an unverifiable Delete is
+ * routine account-purge garbage or a forgery.
+ *
+ * Set on a non-2xx and reset by the caller before a fetch it intends to judge,
+ * because a stale value is worse than none. Same shape as sv_last_sig_reject().
+ */
+function sv_last_fetch_status(?int $set = null): int {
+    static $status = 0;
+    if ($set !== null) $status = $set;
+    return $status;
+}
+
+/**
+ * An unverifiable Delete: act on it only if the actor really is gone.
+ *
+ * SS-1481 finding 7. The inbox answers 202 to a Delete whose signature cannot
+ * be verified and takes no action, which is right in general and was wrong in
+ * one specific way: a remote instance purging an account broadcasts a Delete
+ * AFTER the actor and its signing key have gone, so verification can never
+ * succeed. The retract path therefore never ran for exactly the accounts whose
+ * posts should disappear, and no second Delete is ever coming.
+ *
+ * So ask the one question that separates routine garbage collection from a
+ * forgery: does the actor still exist? 404 or 410 means gone, and the Delete is
+ * almost certainly genuine. Anything else -- it resolves, it times out, it 500s
+ * -- and nothing happens, exactly as before.
+ *
+ * THE TRADE-OFF, stated because this is the only place in the inbox that acts
+ * on an unverified activity. What a forger gains is the power to retract the
+ * posts of an account that no longer exists, by forging a Delete for an actor
+ * they can also see is 404 -- the same outcome the real Delete would have had.
+ * They cannot touch a live account: that fetch succeeds and nothing happens.
+ * The alternative is what we had, which is dead accounts' posts sitting in the
+ * fleet permanently.
+ *
+ * SELF-DELETE ONLY. object must equal actor. A Delete naming some other object
+ * is ignored however gone the actor is, because an actor being unreachable says
+ * nothing about who may delete a particular note.
+ *
+ * @return bool true when cleanup ran
+ */
+function sv_unverifiable_delete_cleanup(PDO $pdo, array $settings, array $activity): bool {
+    $actor = is_array($activity['actor'] ?? null)
+        ? (string)($activity['actor']['id'] ?? '') : (string)($activity['actor'] ?? '');
+    $object = is_array($activity['object'] ?? null)
+        ? (string)($activity['object']['id'] ?? '') : (string)($activity['object'] ?? '');
+    if ($actor === '' || $object !== $actor) return false;
+
+    sv_last_fetch_status(0);                    // never judge on a stale status
+    $still_there = sv_fetch_ap($actor, $settings);
+    $code = sv_last_fetch_status();
+    if ($still_there !== null || ($code !== 404 && $code !== 410)) return false;
+
+    try {
+        if (function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)
+            && function_exists('sc_relay_retract_actor')) {
+            sc_relay_retract_actor($pdo, $settings, $actor, (string)($activity['id'] ?? $actor));
+            if (function_exists('sc_relay_leave')) sc_relay_leave($pdo, $actor);
+        }
+        $pdo->prepare("UPDATE snap_ap_followers SET is_active = 0 WHERE actor_url = ?")
+            ->execute([$actor]);
+        if (function_exists('sv_inbox_log')) {
+            sv_inbox_log($pdo, 'Delete', $actor, null,
+                'unverifiable self-delete, actor gone (HTTP ' . $code
+                . ') — retracted and deactivated');
+        }
+    } catch (Throwable $e) {
+        error_log('SnapSmack: unverifiable-delete cleanup failed for '
+            . $actor . ' — ' . $e->getMessage());
+        return false;
+    }
+    return true;
+}
+
 function sv_fetch_ap(string $url, ?array $settings = null): ?array {
     sv_last_fetch_error('');   // reset for this attempt
     // Every failure path logs a DISTINCT reason (HTTP code, curl errno,
@@ -976,6 +1055,12 @@ function sv_fetch_ap(string $url, ?array $settings = null): ?array {
             return [null, 'transport error curl_errno=' . $cerr . ' (' . ($cmsg !== '' ? $cmsg : 'none') . ') http=' . $code];
         }
         if ($code < 200 || $code >= 300) {
+            // SS-1481 finding 7. The status is stashed so a CALLER can tell
+            // "this actor is gone" (404/410) from "this fetch failed" --
+            // everything here returned null for both, which is why the
+            // unverifiable-Delete path had nothing to reason about. Same
+            // pattern as sv_last_sig_reject() rather than a new mechanism.
+            sv_last_fetch_status($code);
             return [null, 'HTTP ' . $code . ' ctype=' . ($ctype !== '' ? $ctype : '?') . ' bytes=' . strlen((string)$body)];
         }
         if (strlen($body) > 524288) {

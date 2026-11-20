@@ -2825,6 +2825,14 @@
         "predicates": 2,
         "thresholds": []
     },
+    "unverifiable-delete-retracts-a-gone-actor-regression.php": {
+        "assertions": 15,
+        "predicates": 4,
+        "thresholds": [
+            200,
+            300
+        ]
+    },
     "updater-bounded-backup-regression.php": {
         "assertions": 1,
         "predicates": 9,

@@ -297,6 +297,39 @@ switch ($ap) {
             // under thousands of them. Verification is untouched for everything
             // else (Follow/Like/reply still fail-closed and logged).
             if ($log_verb === 'Delete') {
+                // SS-1481 finding 7. Dropping these silently had a cost nobody
+                // had written down: the retract path never ran for exactly the
+                // accounts whose posts SHOULD disappear. A deleted account's
+                // posts stayed in every reader, and in a hub's relay, for good
+                // -- no second Delete is ever coming, because the account is
+                // gone.
+                //
+                // So before dropping it, ask the one question that can tell a
+                // routine purge from a forgery: does the actor still exist? If
+                // the actor document answers 404 or 410, the account really is
+                // gone and the Delete is almost certainly genuine. If it still
+                // resolves, an unverifiable Delete naming it is a forgery, and
+                // is dropped exactly as before.
+                //
+                // THE TRADE-OFF, stated plainly. This acts on an UNVERIFIED
+                // activity, which the rest of this endpoint never does. What an
+                // attacker gains is the ability to retract the posts of an
+                // account that no longer exists, by forging a Delete for an
+                // actor they can also see is 404 -- which is the same outcome
+                // the real Delete would have had. They cannot touch a live
+                // account: that fetch succeeds and the Delete is refused. The
+                // alternative is what we had, which is leaving dead accounts'
+                // posts in the fleet permanently.
+                //
+                // Only a SELF-delete acts (object === actor). A Delete naming
+                // some other object stays dropped, because an actor being gone
+                // says nothing about who may delete a particular note.
+                // The decision itself lives in core/ so it can be tested. An
+                // endpoint script cannot be, and logic that cannot be tested is
+                // how the silent drop survived this long.
+                if (function_exists('sv_unverifiable_delete_cleanup')) {
+                    sv_unverifiable_delete_cleanup($pdo, $settings, $activity);
+                }
                 http_response_code(202); exit;
             }
             // Everything else: log the rejection so a Like/reply that fails
