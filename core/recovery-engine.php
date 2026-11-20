@@ -372,18 +372,63 @@ class SnapSmackRecovery {
         // baseDir. The first component that does not exist ends the walk,
         // because nothing beneath a directory that is not there can exist.
         //
-        // is_link() is NOT used for this. On Windows it returns false for a
-        // junction -- measured on the reproduction above, where is_link() and
-        // is_dir() were both false while realpath() pointed straight out of
-        // the site. Resolution is the only test that sees through all three of
-        // symlink, junction and directory-symlink.
+        // The walk itself is in pathStaysInsideBase(), because the manifest
+        // phase needs the identical check and HAVING TWO COPIES IS WHAT CAUSED
+        // THIS. I wrote this helper by copying the manifest phase's guard, so
+        // I copied its bug too, and repairing one left the other holding the
+        // same hole. One implementation, two callers.
+        return $this->pathStaysInsideBase($norm, $why);
+    }
+
+    /**
+     * Is this relative path contained inside baseDir once the filesystem has
+     * had its say?
+     *
+     * THE ONLY CONTAINMENT CHECK IN THIS FILE. Both the media phase
+     * (safeRelativeTarget) and the manifest phase call it. It assumes the
+     * caller has already run the string tests -- no "..", no absolute path, no
+     * NUL -- and answers the one question those cannot: where does this
+     * actually land.
+     *
+     * None of the string tests can see a symbolic link or a Windows junction.
+     * An ancestor directory inside the site can point anywhere on the disk,
+     * and "link/new/proof.jpg" escapes without containing one "..". That is
+     * not hypothetical for a host either: moving a media directory onto a
+     * bigger volume with a link is an ordinary hosting arrangement.
+     *
+     * WHAT THE OLD CHECK DID, in both copies: realpath(dirname($target)),
+     * skipped when that returned false. With "link" an existing junction and
+     * "link/new" not yet created, realpath() returns false, so the check was
+     * SKIPPED -- not failed, skipped -- and the copy then created the missing
+     * directory THROUGH the link and wrote outside the site. Measured both
+     * times before changing anything: the media phase reported restored 1,
+     * blocked 0, errors none; the manifest phase reported files_restored 1
+     * with nothing blocked. Codex found the first; I found the second while
+     * auditing my own repair.
+     *
+     * SO IT WALKS. Every component that already exists must resolve back
+     * inside baseDir. The first component that does not exist ends the walk,
+     * because nothing beneath a directory that is not there can exist -- and
+     * ending the walk rather than refusing is what keeps an ordinary new
+     * photograph four directories deep working.
+     *
+     * is_link() is deliberately NOT the test. On Windows it returns false for
+     * a junction -- measured, with is_link() and is_dir() both false while
+     * realpath() pointed straight out of the site. A guard written on is_link()
+     * passes on Linux and ships the hole on Windows. Resolution is the only
+     * test that sees symlink, junction and directory-symlink alike.
+     *
+     * @param string $norm  forward-slashed relative path, string tests passed
+     * @param string $why   set to a reason when the answer is false
+     */
+    private function pathStaysInsideBase(string $norm, string &$why = ''): bool {
         $baseReal = realpath($this->baseDir);
         if ($baseReal === false) {
             $why = 'site directory cannot be resolved';
             return false;
         }
-        $needle  = rtrim($baseReal, '/\\') . DIRECTORY_SEPARATOR;
-        $walked  = rtrim($baseReal, '/\\');
+        $needle = rtrim($baseReal, '/\\') . DIRECTORY_SEPARATOR;
+        $walked = rtrim($baseReal, '/\\');
 
         foreach (explode('/', $norm) as $piece) {
             if ($piece === '' || $piece === '.') { continue; }
@@ -982,17 +1027,26 @@ class SnapSmackRecovery {
             $sourcePath = $kitRoot . '/' . $manifestKey;
             $targetPath = $this->baseDir . '/' . $restoreTo;
 
-            // Defense-in-depth: the resolved target directory must stay under
-            // baseDir (catches symlink tricks that the string checks miss).
-            $baseReal = realpath($this->baseDir);
-            $parentReal = realpath(dirname($targetPath));
-            if ($baseReal !== false && $parentReal !== false) {
-                $needle = rtrim($baseReal, '/\\') . DIRECTORY_SEPARATOR;
-                if (strncmp($parentReal . DIRECTORY_SEPARATOR, $needle, strlen($needle)) !== 0) {
-                    $result['errors'][] = "Restore target escapes base dir: {$restoreTo}";
-                    $this->streamProgress("BLOCKED path escape: {$restoreTo}", 'warn');
-                    continue;
-                }
+            // Defence in depth: the target must stay under baseDir once the
+            // filesystem has had its say, which catches the symlink and
+            // junction tricks the string checks above cannot see.
+            //
+            // THIS USED TO BE ITS OWN COPY of the check, written as
+            // realpath(dirname($targetPath)) and skipped when that returned
+            // false. It had the same hole Codex found in the media phase, for
+            // the same reason, and it was the copy I originally learned the
+            // check FROM. Measured here before changing it: a manifest aiming
+            // at "media/new/notes.txt", with "media" an existing junction and
+            // "media/new" absent, reported files_restored 1 with nothing
+            // blocked and wrote the bundled file outside the site.
+            //
+            // Now it calls the one implementation. Two copies of a containment
+            // check is how one of them stays broken.
+            $escapeWhy = '';
+            if (!$this->pathStaysInsideBase($relTarget, $escapeWhy)) {
+                $result['errors'][] = "Restore target escapes base dir ({$escapeWhy}): {$restoreTo}";
+                $this->streamProgress("BLOCKED path escape ({$escapeWhy}): {$restoreTo}", 'warn');
+                continue;
             }
 
             if (!file_exists($sourcePath)) {
