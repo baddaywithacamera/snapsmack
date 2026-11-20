@@ -50,6 +50,8 @@ function snap_use_private_session_store(): bool {
             === rtrim(snap_private_session_dir(), '/\\');
     }
 
+    snap_apply_session_cookie_params();
+
     $dir = snap_private_session_dir();
     if (!is_dir($dir)) {
         @mkdir($dir, 0700, true);
@@ -73,5 +75,37 @@ function snap_use_private_session_store(): bool {
 /** Absolute path of the private session directory. */
 function snap_private_session_dir(): string {
     return dirname(__DIR__) . '/data/sessions';
+}
+
+/**
+ * Shape the session cookie, identically wherever a session is started.
+ *
+ * These values were inline in core/auth-smack.php and are unchanged: a day's
+ * lifetime, site-wide path, secure when the request is HTTPS directly or
+ * through a proxy, HttpOnly, SameSite Lax. The gc_maxlifetime goes with them
+ * because it governs the SHARED store -- a public request that started a
+ * session with PHP's shorter default could let garbage collection remove the
+ * owner's session file early, which is the same class of surprise SS-1470 was.
+ *
+ * WHY THE GATE NEEDS THIS AT ALL, since it only ever resumes. Measured: a
+ * resume emits no Set-Cookie, so on this box these params are never used by
+ * the gate. But session.use_strict_mode is 0 here and a hardened host may set
+ * it to 1, and there PHP answers an unknown session id by minting a NEW
+ * session and sending a cookie -- which, without this call, would go out from
+ * a public page with PHP's defaults: no HttpOnly, no SameSite, not secure.
+ * Rare, and a cookie nobody is logged in to, but it costs one call to be the
+ * same everywhere rather than correct only where I happened to test.
+ */
+function snap_apply_session_cookie_params(): void {
+    if (session_status() !== PHP_SESSION_NONE) return;
+    session_set_cookie_params([
+        'lifetime' => 86400,
+        'path'     => '/',
+        'secure'   => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
+                   || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    ini_set('session.gc_maxlifetime', '86400');
 }
 // ===== SNAPSMACK EOF =====

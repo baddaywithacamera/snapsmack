@@ -1239,10 +1239,13 @@
         "thresholds": []
     },
     "maintenance-lets-the-owner-through-regression.php": {
-        "assertions": 15,
-        "predicates": 11,
+        "assertions": 19,
+        "predicates": 12,
         "thresholds": [
-            2
+            2,
+            2,
+            86400,
+            86400
         ]
     },
     "manifest-option-change-requires-version-bump-regression.php": {

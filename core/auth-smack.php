@@ -54,17 +54,13 @@ if (session_status() === PHP_SESSION_NONE) {
     // inline here, and the gate's own session_start() had no equivalent, so a
     // logged-in owner was invisible to the gate and got the holding page on
     // their own site.
+    // The cookie params and gc_maxlifetime moved into the same helper, with
+    // the same values. The gate needs them too on a host with
+    // session.use_strict_mode on, where an unknown session id makes PHP mint a
+    // new session and send a cookie; without them that cookie would leave a
+    // public page carrying PHP's defaults.
     require_once __DIR__ . '/session-store.php';
     snap_use_private_session_store();
-    session_set_cookie_params([
-        'lifetime' => 86400,
-        'path'     => '/',
-        'secure'   => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
-                   || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https'),
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
-    ini_set('session.gc_maxlifetime', 86400);
     session_start();
 }
 

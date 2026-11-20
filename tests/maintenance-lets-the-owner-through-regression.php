@@ -71,17 +71,50 @@ function mo_run_gate(string $root, ?string $sessionId, string $maintenance): str
     return implode("\n", $out);
 }
 
-/** Write a session file into the private store exactly as PHP would. */
+/**
+ * Write a session file into the private store exactly as PHP would.
+ *
+ * Cleanup is registered at the same moment the file is created, not left to
+ * the end of the script. The first version of this test only tidied up on the
+ * success path, so every FAILING run -- which is every mutation run, the exact
+ * thing the file exists to produce -- left a session file behind in the
+ * install's own data directory. Seven of them, before I looked.
+ */
 function mo_write_session(string $root, string $login): string {
     $dir = $root . '/data/sessions';
     if (!is_dir($dir)) mkdir($dir, 0700, true);
     $id = 'ss1470' . bin2hex(random_bytes(10));
-    file_put_contents($dir . '/sess_' . $id,
-        'user_login|' . serialize($login) . 'user_role|' . serialize('admin'));
+    $file = $dir . '/sess_' . $id;
+    file_put_contents($file, 'user_login|' . serialize($login)
+        . 'user_role|' . serialize('admin'));
     return $id;
 }
 
+/** Remove session files left by an earlier run that died before cleaning up. */
+function mo_sweep_stale(string $root): int {
+    $swept = 0;
+    foreach (glob($root . '/data/sessions/sess_ss1470*') ?: [] as $stale) {
+        if (@unlink($stale)) $swept++;
+    }
+    return $swept;
+}
+
 echo "SS-1470 — maintenance mode lets the owner through\n\n";
+
+// Sweep before AND after, on every exit path.
+//
+// Two separate sources of litter, and I only found the second by looking at
+// the directory: the session file this test writes, and the ones PHP itself
+// writes IN THE CHILD PROCESS when the gate starts a session for the
+// deliberately-bogus cookie id. Those are zero-byte files I never created and
+// would never have thought to unlink by name. Sweeping the whole ss1470
+// pattern catches both, and registering it as a shutdown handler means a
+// failing run -- which is every mutation run -- cleans up too. The first
+// version tidied only on success and left seven files in the install.
+mo_sweep_stale($root);
+register_shutdown_function(static function () use ($root): void {
+    mo_sweep_stale($root);
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "STAGE 1 — the premise: both entry points must agree on the store\n";
@@ -96,6 +129,42 @@ foreach (['core/auth-smack.php', 'core/maintenance-gate.php'] as $caller) {
     mo_check("{$caller} uses the shared helper",
              str_contains($src, 'snap_use_private_session_store('), $failures);
 }
+
+// The cookie shaping moved into the helper alongside the save path, so both
+// entry points start a session the same way. These are the values that were
+// inline in auth-smack.php, executed rather than read, because the point of
+// moving them was that they must not differ.
+//
+// IN A CHILD PROCESS, and that is not fussiness. PHP refuses
+// session_set_cookie_params() once any output has been sent, so calling it
+// after this file's own echo statements silently warns and changes nothing --
+// which made my first version of this check fail against correct code. The
+// same constraint is real in production: anything that prints before the
+// session is started defeats these settings.
+$cookieProbe = $root . '/data/sessions/_ss1470_params_' . bin2hex(random_bytes(4)) . '.php';
+if (!is_dir($root . '/data/sessions')) mkdir($root . '/data/sessions', 0700, true);
+file_put_contents($cookieProbe, "<?php\n"
+    . "\$_SERVER['HTTPS'] = 'on';\n"
+    . "require " . var_export($root . '/core/session-store.php', true) . ";\n"
+    . "snap_apply_session_cookie_params();\n"
+    . "echo json_encode(session_get_cookie_params()"
+    . " + ['gc' => (int)ini_get('session.gc_maxlifetime')]);\n");
+$probeOut = [];
+exec('php ' . escapeshellarg($cookieProbe) . ' 2>&1', $probeOut);
+@unlink($cookieProbe);
+$cookie = json_decode(implode('', $probeOut), true) ?: [];
+
+mo_check('the cookie probe ran cleanly, with no PHP warning',
+         $cookie !== [] && !str_contains(implode(' ', $probeOut), 'Warning'), $failures);
+mo_check('the shared helper shapes the session cookie as auth-smack did',
+         ($cookie['lifetime'] ?? null) === 86400
+         && ($cookie['path'] ?? null) === '/'
+         && ($cookie['httponly'] ?? null) === true
+         && ($cookie['samesite'] ?? '') === 'Lax', $failures);
+mo_check('and marks it secure on an HTTPS request',
+         ($cookie['secure'] ?? null) === true, $failures);
+mo_check('and keeps the day-long garbage-collection lifetime on the shared store',
+         ($cookie['gc'] ?? null) === 86400, $failures);
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 2 — AN AUTHENTICATED OWNER GETS THROUGH (the defect)\n";
@@ -138,9 +207,10 @@ $offOut = mo_run_gate($root, null, '0');
 mo_check('with maintenance off a visitor passes through untouched',
          str_contains($offOut, 'GATE_PASSED_THROUGH'), $failures);
 
-// Clean up the session file this test wrote. data/sessions/ is gitignored, but
-// leaving credentials-shaped litter in an install directory is not acceptable
-// regardless of what git thinks.
+// The session file is removed by the shutdown handler registered when it was
+// created, so it goes whether this run passes or fails. data/sessions/ is
+// gitignored, but leaving session-shaped litter in an install directory is not
+// acceptable regardless of what git thinks.
 @unlink($root . '/data/sessions/sess_' . $sessionId);
 mo_check('the test removed the session file it created',
          !is_file($root . '/data/sessions/sess_' . $sessionId), $failures);
