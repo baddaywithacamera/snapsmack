@@ -63,6 +63,77 @@ version forms, all three agree, so this is duplication rather than a defect.
   believes a proxy only when the site has said to trust it. Your traffic has
   not changed; what the dashboard says about it has. (SS-1437)
 
+<!--
+  NOT OWNER-VISIBLE YET, recorded here so the reason travels with the file
+  rather than living in a chat message.
+
+  SS-1436 — the real-browser skin pixel comparator landed on dev, but the
+  release gate that calls it is held until after the next tag (PM's decision:
+  127 existing gate notes go stale the moment it lands, and nobody should meet
+  that mid-cycle). Nothing an owner can see has changed, so there is no entry
+  to write. It gets one when the gate lands.
+
+  tools/_build/changelog-completeness.php names every merged ticket with no
+  entry. It asks for "an entry or a stated reason" — this is the stated reason.
+-->
+
+- **A Recovery Kit import now asks who you are and which site you meant, and a
+  refusal says so plainly.** Importing a kit overwrites your database, and the
+  page used to report "RECOVERY KIT IMPORTED SUCCESSFULLY" even when it had
+  refused to do anything. It now requires your password, your two-factor code
+  and the site's own address typed out, and if it refuses you are told
+  NOTHING WAS RESTORED — THIS SITE IS UNCHANGED, which is the first thing you
+  need to know about an operation that replaces everything. (SS-1430)
+
+- **A kit is checked against this site before anything is overwritten.** A kit
+  from a newer build, or from a different kind of site, is refused with the
+  reason given, rather than applied and left to fail afterwards. A kit from a
+  DIFFERENT installation is allowed — that is what rebuilding after a failure
+  looks like — but you are told, because it is also what restoring the wrong
+  kit looks like. Afterwards the database structure is brought up to this
+  build, so an older kit's data is not left on last month's schema.
+  (SS-1428, SS-1429)
+
+- **Your database is copied before a restore replaces it, and the restore
+  refuses if that copy cannot be written.** The copy is unredacted and lands
+  beside your update backups, so it is the way back if a restore goes wrong.
+  There is no automatic rollback and the code says why: the kit's own dump
+  drops and recreates tables, which in MySQL and MariaDB ends any transaction
+  wrapped around it, so a transaction here would protect nothing while looking
+  as though it did. Restoring the copy is a deliberate act, and it is yours to
+  make. (SS-1425)
+
+- **A restore brings your photographs back, and tells you honestly when it
+  cannot.** The admin restore path never reconciled media: database rows came
+  back pointing at photographs, thumbnails, assets and branding that were not
+  on disk, and nothing counted them. It now runs the same five steps the
+  installer's recovery has always run. And a restore that left files behind no
+  longer claims success — it says SOME FILES ARE NOT HERE YET, states plainly
+  that nothing failed, and names what is outstanding. A kit inventories your
+  media rather than carrying it, so "the database is back, your photographs
+  come from your own backup" is the normal result on a rebuilt site, not a
+  fault. (SS-1426, SS-1431, SS-1427)
+
+- **ALFRED's front page changes to a three-across square grid.** If you run
+  ALFRED, your landing page will look different after this update: photographs
+  are cropped to squares, three to a row, with titles appearing on hover
+  instead of under each tile. That is the new default and it applies to
+  existing ALFRED sites, not only new ones. Squares Across is a setting — three
+  to five — and Landing Layout can be set back to the skin's own grid if you
+  preferred it. The layout itself now comes from the shared SNAPSMACK mosaic
+  engine rather than from the skin, so the same control will work the same way
+  on any skin that adopts it. (SS-1446)
+
+- **The footer email address is hidden from scrapers on every skin.** It was
+  obscured on some skins and printed in plain sight on others, decided by
+  nothing more than which skin you had chosen. Clicking it still opens your
+  mail program exactly as before. This is a low fence, not a wall: it stops a
+  scraper that reads the page text and nothing more determined. (SS-1446)
+
+- **ALFRED's storm panorama is back as its packaged header image.** The file
+  restored is byte-for-byte the one that was there before, verified against the
+  original rather than re-exported. (SS-1447)
+
 ## 0.7.999D — opened
 
 NOT "998E". The PM's shorthand for this release was 998E, and that is not a
