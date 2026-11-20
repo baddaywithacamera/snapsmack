@@ -2812,6 +2812,11 @@
             2
         ]
     },
+    "undo-announce-removes-the-boosted-post-regression.php": {
+        "assertions": 13,
+        "predicates": 2,
+        "thresholds": []
+    },
     "updater-bounded-backup-regression.php": {
         "assertions": 1,
         "predicates": 9,

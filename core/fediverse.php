@@ -3199,6 +3199,38 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 if (function_exists('pc_remove_engagement')) {
                     try { pc_remove_engagement($pdo, $settings, $boosted, $actor_id, 'boost'); } catch (Throwable $e) {}
                 }
+
+                // SS-1481 finding 6. Un-boosting dropped the notification and
+                // the tally and left the POST itself sitting in the reader. The
+                // only reason it was there was the boost, so withdrawing the
+                // boost should withdraw the post.
+                //
+                // BOUNDED TO THE ROW THE BOOST CREATED, deliberately. The
+                // timeline is UNIQUE on object_id, so one row serves every
+                // reason a post might be present. Deleting on object_id alone
+                // would take out a post the owner follows the author of. The
+                // conditions are therefore is_boost = 1 AND boosted_by = this
+                // actor: a row ingested as this actor's boost and nothing else.
+                // A post that arrived on its own merits has is_boost = 0,
+                // because ingest keeps the first arrival's values, and is left
+                // alone.
+                //
+                // Relay memberships are not touched here. A relayed post's
+                // presence is recorded in snap_ap_timeline_membership and
+                // removing that is sc_relay_remove_membership()'s job on a
+                // relay retract, not this branch's.
+                //
+                // RESIDUAL: if a post arrived as a boost FIRST and the owner
+                // also follows its author, the row goes and does not come back
+                // until that author posts again or a refresh re-ingests it.
+                // Narrow, and better than a withdrawn boost leaving the post
+                // behind for good.
+                try {
+                    $pdo->prepare(
+                        "DELETE FROM snap_ap_timeline
+                          WHERE object_id = ? AND is_boost = 1 AND boosted_by = ?"
+                    )->execute([$boosted, $actor_id]);
+                } catch (Exception $e) { /* table may lag on a fresh install */ }
             }
         }
         return 202;

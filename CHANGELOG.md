@@ -56,6 +56,12 @@ new decision.
   local. A GLOBAL post could appear in LOCAL after a single edit. The feed is
   now carried on edits exactly as it is on new posts. (SS-1481)
 
+- **When someone takes back a share, the post goes with it.** Un-sharing removed
+  the notification and the share count but left the post itself in your reader,
+  so you kept seeing something nobody was sharing any more. It is now removed —
+  but only the copy that share put there. A post you see because you follow its
+  author, or because someone else also shared it, stays. (SS-1481)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,
