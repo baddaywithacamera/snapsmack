@@ -1177,6 +1177,14 @@
             100
         ]
     },
+    "kit-manifest-cannot-escape-the-site-regression.php": {
+        "assertions": 21,
+        "predicates": 11,
+        "thresholds": [
+            2,
+            2
+        ]
+    },
     "kit-preflight-guards-regression.php": {
         "assertions": 46,
         "predicates": 20,
