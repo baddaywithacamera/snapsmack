@@ -280,15 +280,62 @@ class SnapSmackRecovery {
             $why = 'executable file extension'; return false;
         }
 
-        // Defence in depth: the resolved parent must stay under baseDir. Only
-        // checked when the parent already exists -- a path that passes the
-        // string tests and whose parent is yet to be created cannot escape,
-        // because ".." is already refused above.
-        $baseReal   = realpath($this->baseDir);
-        $parentReal = realpath(dirname($this->baseDir . '/' . $norm));
-        if ($baseReal !== false && $parentReal !== false) {
-            $needle = rtrim($baseReal, '/\\') . DIRECTORY_SEPARATOR;
-            if (strncmp($parentReal . DIRECTORY_SEPARATOR, $needle, strlen($needle)) !== 0) {
+        // Defence in depth, and the part with the teeth. None of the string
+        // tests above can see a symbolic link or a Windows junction: an
+        // ancestor directory inside the site can point anywhere on the disk,
+        // and "link/new/proof.jpg" escapes without containing one "..".
+        //
+        // THE COMMENT THAT USED TO BE HERE WAS WRONG, and Codex proved it on
+        // 63fb53d1. It said a path whose parent does not exist yet cannot
+        // escape because ".." is refused. With "link" an existing junction to
+        // a sibling directory and "link/new" not yet created,
+        // realpath(dirname(...)) returned false, so the whole check was
+        // SKIPPED, restoreImages() created "new" THROUGH the junction and
+        // copied the file outside the site: restored 1, blocked 0, errors
+        // none. I reproduced that before changing anything, and the
+        // reproduction is in the regression.
+        //
+        // The repair is to stop asking about the parent and walk the path:
+        // every component that already exists must resolve back inside
+        // baseDir. The first component that does not exist ends the walk,
+        // because nothing beneath a directory that is not there can exist.
+        //
+        // is_link() is NOT used for this. On Windows it returns false for a
+        // junction -- measured on the reproduction above, where is_link() and
+        // is_dir() were both false while realpath() pointed straight out of
+        // the site. Resolution is the only test that sees through all three of
+        // symlink, junction and directory-symlink.
+        $baseReal = realpath($this->baseDir);
+        if ($baseReal === false) {
+            $why = 'site directory cannot be resolved';
+            return false;
+        }
+        $needle  = rtrim($baseReal, '/\\') . DIRECTORY_SEPARATOR;
+        $walked  = rtrim($baseReal, '/\\');
+
+        foreach (explode('/', $norm) as $piece) {
+            if ($piece === '' || $piece === '.') { continue; }
+            $walked .= DIRECTORY_SEPARATOR . $piece;
+
+            // Nothing here yet, so nothing below it either. A link whose
+            // target is gone is caught by the next test, not this one:
+            // file_exists() is false for a broken link but is_link() is true.
+            if (!file_exists($walked) && !is_link($walked)) { break; }
+
+            $pieceReal = realpath($walked);
+            if ($pieceReal === false) {
+                // It exists but resolves nowhere -- a broken link, or a name
+                // the filesystem will not resolve. Refuse rather than guess.
+                //
+                // NOT EXERCISED ON WINDOWS, and measured rather than assumed:
+                // after its target is removed a junction reports file_exists
+                // false, is_link false and realpath false, so the break above
+                // takes it and this line is unreachable. It is reachable with
+                // a real symlink, which is what a Linux or macOS host has.
+                $why = 'path component cannot be resolved';
+                return false;
+            }
+            if (strncmp($pieceReal . DIRECTORY_SEPARATOR, $needle, strlen($needle)) !== 0) {
                 $why = 'resolves outside the site directory';
                 return false;
             }
