@@ -49,15 +49,13 @@ if (!defined('BASE_URL')) {
 // touches. session_set_cookie_params() is also more reliable than
 // ini_set('session.cookie_lifetime') on shared hosts.
 if (session_status() === PHP_SESSION_NONE) {
-    $ss_session_dir = dirname(__DIR__) . '/data/sessions';
-    if (!is_dir($ss_session_dir)) {
-        @mkdir($ss_session_dir, 0700, true);
-        // Drop a deny-all .htaccess so session files aren't web-accessible
-        @file_put_contents($ss_session_dir . '/.htaccess', "Order deny,allow\nDeny from all\n");
-    }
-    if (is_dir($ss_session_dir) && is_writable($ss_session_dir)) {
-        session_save_path($ss_session_dir);
-    }
+    // SS-1470: the directory and save_path now come from core/session-store.php
+    // so that core/maintenance-gate.php reads the SAME store. It used to be
+    // inline here, and the gate's own session_start() had no equivalent, so a
+    // logged-in owner was invisible to the gate and got the holding page on
+    // their own site.
+    require_once __DIR__ . '/session-store.php';
+    snap_use_private_session_store();
     session_set_cookie_params([
         'lifetime' => 86400,
         'path'     => '/',

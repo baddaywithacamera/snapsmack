@@ -24,7 +24,17 @@ if (!$_mg_maint && !$_mg_breach) {
 // Resume an existing session to check login state — never create a new one
 // for visitors who will just see the holding page. If no cookie exists, there
 // is no logged-in session to check, so skip session_start entirely.
+//
+// SS-1470: THE SAVE PATH HAS TO COME FIRST. SnapSmack keeps sessions in a
+// private directory inside the install (shared cPanel hosts purge /tmp/sess_*
+// on their own cron). core/auth-smack.php set that path inline; this gate did
+// not, so session_start() here opened PHP's DEFAULT store, found no file, and
+// read user_login as empty. The owner was then shown their own holding page.
+// Reproduced on a live 0.7.999D install. The branch below was right all along
+// and simply never ran.
+require_once __DIR__ . '/session-store.php';
 if (session_status() === PHP_SESSION_NONE && !empty($_COOKIE[session_name()])) {
+    snap_use_private_session_store();
     session_start();
 }
 

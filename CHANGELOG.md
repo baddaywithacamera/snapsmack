@@ -105,6 +105,13 @@ version forms, all three agree, so this is duplication rather than a defect.
   reason: desktop tool, test version, its own release.
 -->
 
+- **Maintenance mode no longer shuts you out of your own site.** With the
+  maintenance page on, you were served it too — so there was no way to look at
+  your site privately before showing it to anyone. Logged in, you now see the
+  real pages at full size while everyone else still gets the holding page.
+  Sessions live in a private folder inside your install, and the maintenance
+  check was looking in the wrong place for them. (SS-1470)
+
 - **COLD SNAP no longer wipes a stored password it cannot read.** Opening an
   older profile and saving it could clear the secrets it had not managed to
   load, so an unreadable credential became no credential. (SS-1088)

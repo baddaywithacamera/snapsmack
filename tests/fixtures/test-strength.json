@@ -1238,6 +1238,13 @@
         "predicates": 9,
         "thresholds": []
     },
+    "maintenance-lets-the-owner-through-regression.php": {
+        "assertions": 15,
+        "predicates": 11,
+        "thresholds": [
+            2
+        ]
+    },
     "manifest-option-change-requires-version-bump-regression.php": {
         "assertions": 0,
         "predicates": 3,
