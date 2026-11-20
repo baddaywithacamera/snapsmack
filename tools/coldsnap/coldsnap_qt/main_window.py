@@ -404,6 +404,9 @@ class MainWindow(QMainWindow):
 
         parent = backup_parent if backup_parent is not None else os.path.dirname(O._app_dir())
         backups = O.discover_backup_sessions(parent, dest)
+        dismissed = set(self._window_settings.value("backup_import/handled", []) or [])
+        backups = [b for b in backups
+                   if f"{b['backup_name']}::{b['session_id']}" not in dismissed]
         if backups:
             lines = []
             for b in backups[:10]:
@@ -446,6 +449,11 @@ class MainWindow(QMainWindow):
                 if changed:
                     self.statusBar().showMessage(
                         "Imported drafts from COLD SNAP backup folder(s)", 8000)
+            if confirmed or ask_fn is None:
+                for b in backups:
+                    dismissed.add(f"{b['backup_name']}::{b['session_id']}")
+                self._window_settings.setValue("backup_import/handled", sorted(dismissed))
+                self._window_settings.sync()
 
         if changed:
             self._refresh_session_rails()

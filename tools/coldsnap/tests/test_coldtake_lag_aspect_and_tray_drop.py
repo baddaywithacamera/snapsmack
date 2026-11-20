@@ -98,4 +98,51 @@ def test_tray_drop_hides_used_photo_and_restores_on_remove(tmp_path):
     img_action = next(a for a in take._visual_block_actions() if a.tag == "IMG")
     img_action.callback()
     assert take.photos_tray._opened is True
+    take.close()
+    take.deleteLater()
+
+
+def test_backup_import_prompt_remembered_after_answer(tmp_path):
+    _app()
+    from PySide6.QtCore import QSettings
+    from coldsnap_qt.main_window import MainWindow
+
+    settings_path = tmp_path / "test_settings.ini"
+    bk_parent = tmp_path / "app_parent"
+    bk_sess = bk_parent / "coldsnap-backup-0.7.45-20261117-215838" / "sob_sessions"
+    store_bk = O.SessionStore(str(bk_sess))
+    s_bk = store_bk.create("Test", O.MODE_SMACKTALK)
+    d = O.Draft(draft_id="d_bk", kind=O.KIND_SMACKTALK, mode=O.MODE_SMACKTALK, title="Start your engines")
+    s_bk.save_draft(d)
+
+    dest = tmp_path / "dest_sessions"
+    # Pre-create a conflicting destination draft with different content
+    s_dest = O.Session(os.path.join(str(dest), s_bk.session_id), dict(s_bk.meta))
+    s_dest.save_draft(O.Draft(draft_id="d_bk", kind=O.KIND_SMACKTALK, mode=O.MODE_SMACKTALK, title="Newer local edit"))
+    legacy = tmp_path / "legacy_sessions"
+
+    win = type("DummyWin", (), {})()
+    win._window_settings = QSettings(str(settings_path), QSettings.IniFormat)
+    win._refresh_session_rails = lambda: None
+    win.statusBar = lambda: type("SB", (), {"showMessage": lambda *a: None})()
+
+    asked = []
+    MainWindow._run_startup_session_migration(
+        win,
+        dest_root=str(dest),
+        legacy_root=str(legacy),
+        backup_parent=str(bk_parent),
+        ask_fn=lambda p: (asked.append(p), True)[1],
+    )
+    assert len(asked) == 1
+
+    # Second launch must NOT re-prompt for the same backup session even on conflict
+    MainWindow._run_startup_session_migration(
+        win,
+        dest_root=str(dest),
+        legacy_root=str(legacy),
+        backup_parent=str(bk_parent),
+        ask_fn=lambda p: (asked.append(p), True)[1],
+    )
+    assert len(asked) == 1
 # ===== SNAPSMACK EOF =====
