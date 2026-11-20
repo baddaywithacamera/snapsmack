@@ -781,6 +781,11 @@
             1219
         ]
     },
+    "followers-only-posts-stay-out-of-the-reader-regression.php": {
+        "assertions": 14,
+        "predicates": 4,
+        "thresholds": []
+    },
     "font-family-fallback-parity-regression.php": {
         "assertions": 2,
         "predicates": 5,

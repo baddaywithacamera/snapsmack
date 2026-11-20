@@ -43,6 +43,13 @@ new decision.
   alike, and if the relay cannot read its own blocklist it refuses to pass
   anything on rather than guessing. (SS-1481)
 
+- **A post someone shared only with their followers no longer lands in your
+  reader.** The check that keeps a restricted *reply* out was never applied to
+  a restricted *post*, so a followers-only post from an account you follow went
+  into your home timeline. It was never shown to the public — the reader is
+  yours alone — but it was somewhere it could be passed on from. Public and
+  unlisted posts are unaffected. (SS-1481)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,

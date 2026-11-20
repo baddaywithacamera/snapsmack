@@ -3371,6 +3371,26 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         // RECEIPT (0.7.611D): both forks leave an inbox-log row. A verified
         // Create that missed the following match used to 202 with no trace —
         // indistinguishable from "never delivered" when hunting a lost post.
+        // SS-1481 finding 12. The gate above catches a followers-only REPLY,
+        // because it is conditioned on $in_reply !== ''. A followers-only
+        // TOP-LEVEL post from an account we follow had no gate at all and went
+        // straight into the reader.
+        //
+        // Mitigated but still wrong: the reader is owner-only, so this never
+        // published to the public web. It does put a post its author restricted
+        // to their own followers into a timeline it can be boosted onward from.
+        //
+        // sv_reply_is_public() is the right test despite its name -- it asks
+        // whether an explicit public audience is addressed in to or cc, with
+        // object addressing winning over the wrapper. Public and unlisted both
+        // pass (unlisted puts Public in cc); followers-only has neither, so it
+        // does not. For a reply this is a second, harmless check: the gate
+        // above already proved it.
+        if (sv_is_following($pdo, $actor_id) && !sv_reply_is_public($activity, $obj)) {
+            sv_inbox_log($pdo, 'Create', $actor_id, null,
+                'received — non-public post not ingested to reader');
+            return 202;
+        }
         if (sv_is_following($pdo, $actor_id)) {
             sv_cache_actor($pdo, $actor_doc);
             $ing = sv_ingest_timeline($pdo, $obj, $actor_id, $handle);
@@ -3428,6 +3448,22 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                     $pdo->prepare("UPDATE snap_comments SET comment_text = ? WHERE ap_object_id = ? AND ap_source = 'fediverse' AND ap_actor_url = ?")
                         ->execute([$text, $oid, $actor_id]);
                 } catch (Exception $e) { /* column lag */ }
+                // SS-1481 finding 12, the Update half. An Update carries its own
+                // addressing, so a post can be edited from public to
+                // followers-only. Ingesting that would put the restricted
+                // version into the reader by the same route the Create gate now
+                // refuses.
+                //
+                // RESIDUAL, stated because it is a real gap and not this
+                // finding: a post already in the reader that is later
+                // restricted is left as it was rather than withdrawn. Removing
+                // it is a retraction decision, not a visibility check, and it
+                // belongs with the Undo/Delete work rather than here.
+                if (sv_is_following($pdo, $actor_id) && !sv_reply_is_public($activity, $obj)) {
+                    sv_inbox_log($pdo, 'Update', $actor_id, $oid,
+                        'received — non-public update not ingested to reader');
+                    return 202;
+                }
                 if (sv_is_following($pdo, $actor_id)) {
                     $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
                     $ing = sv_ingest_timeline($pdo, $obj, $actor_id, $handle);
