@@ -426,11 +426,24 @@ function sc_relay_refresh(PDO $pdo, array $settings, array $activity, string $ac
     if ($object_id === '' || $attributed !== $actor_url
         || !sc_relay_actor_owns_object($actor_url, $object_id)
         || !sc_relay_is_discoverable($activity, $object)) return 0;
+    // SS-1481 finding 3. This Announce used to carry no feed key, while
+    // sc_relay_fanout's does. An untagged Announce is read as LOCAL by
+    // sc_relay_announce_feed() -- deliberately, for pre-681D hubs -- so one
+    // edit to a GLOBAL curator-sourced post added a local membership to it and
+    // the post appeared in a tab it was never meant to be in. The tag has to
+    // be the same on both paths, derived the same way, or an Update silently
+    // reclassifies the post it is refreshing.
+    //
+    // The @context gains the photoblogs feed mapping for the same reason
+    // fan-out has it: an extension term nobody declares is an extension term
+    // a strict consumer may drop.
     $announce = json_encode([
-        '@context'=>'https://www.w3.org/ns/activitystreams',
+        '@context'=>['https://www.w3.org/ns/activitystreams',
+            ['photoblogs' => 'https://photoblogs.fyi/ns#', 'feed' => 'photoblogs:feed']],
         'id'=>sv_actor_url($settings).'#announce-update-'.hash('sha256',(string)($activity['id'] ?? $object_id)),
         'type'=>'Announce','actor'=>sv_actor_url($settings),'object'=>$object_id,
         'to'=>['https://www.w3.org/ns/activitystreams#Public'],
+        'feed'=>sc_relay_origin_feed($pdo, $actor_url),
     ], JSON_UNESCAPED_SLASHES);
     return sc_relay_queue_to_members($pdo, $actor_url, $announce,
         'relay-update:' . hash('sha256', (string)($activity['id'] ?? $object_id)));

@@ -1852,8 +1852,8 @@
         ]
     },
     "relay-fanout-honours-blocks-regression.php": {
-        "assertions": 15,
-        "predicates": 3,
+        "assertions": 23,
+        "predicates": 8,
         "thresholds": [
             250,
             250,

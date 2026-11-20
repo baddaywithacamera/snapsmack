@@ -50,6 +50,12 @@ new decision.
   yours alone — but it was somewhere it could be passed on from. Public and
   unlisted posts are unaffected. (SS-1481)
 
+- **Editing a post no longer moves it into the wrong tab.** When a post that
+  reached you through the wider network was edited, the relay passed the edit on
+  without saying which feed it belonged to, and the receiving site filed it as
+  local. A GLOBAL post could appear in LOCAL after a single edit. The feed is
+  now carried on edits exactly as it is on new posts. (SS-1481)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,

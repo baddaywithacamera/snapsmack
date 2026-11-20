@@ -91,6 +91,12 @@ function rb_pdo(): PDO {
     $pdo->exec("CREATE TABLE snap_ap_blocks (kind TEXT, value TEXT)");
     $pdo->exec('CREATE TABLE snap_relay_blocklist (domain TEXT)');
     $pdo->exec('CREATE TABLE snap_relay_allowlist (domain TEXT)');
+    // A curator-directory source is ALSO a relay source (sc_relay_actor_is_source)
+    // and resolves to the GLOBAL feed, which is the case a local-only fixture
+    // cannot see. A mutation that hardcoded the refresh feed to 'local'
+    // SURVIVED until these two tables were here.
+    $pdo->exec('CREATE TABLE snap_curator_directory (actor_url TEXT, follow_row_id INTEGER, state TEXT)');
+    $pdo->exec('CREATE TABLE snap_ap_following (id INTEGER PRIMARY KEY, state TEXT)');
     $pdo->exec("INSERT INTO snap_relay_subscribers
                  (actor_url, domain, inbox_url, state)
                  VALUES ('https://member.invalid/ap/actor', 'member.invalid',
@@ -230,6 +236,68 @@ rb_check('and an Undo went out for each',
 rb_check('the Undo really is an Undo of an Announce',
          str_contains($GLOBALS['rb_queued'][0]['json'] ?? '', '"type":"Undo"')
          && str_contains($GLOBALS['rb_queued'][0]['json'] ?? '', '"type":"Announce"'), $failures);
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "
+STAGE 7 — AN UPDATE KEEPS THE POST'S FEED (SS-1481 #3)
+";
+// ─────────────────────────────────────────────────────────────────────────────
+// sc_relay_refresh used to build its Announce with no feed key, while
+// sc_relay_fanout tags its own. An untagged Announce is read as LOCAL by
+// sc_relay_announce_feed() -- deliberately, for pre-681D hubs -- so one edit to
+// a GLOBAL post added a local membership and the post turned up in a tab it was
+// never meant to be in.
+//
+// sc_relay_origin_feed() returns 'local' for an ACTIVE subscriber and 'global'
+// for anything else, so the two cases below are an active member and an actor
+// with no subscriber row.
+$pdo = rb_pdo();
+rb_add_source($pdo, $source);
+$GLOBALS['rb_queued'] = [];
+$upd = rb_activity($source, 'https://source.invalid/ap/note/7');
+$upd['type'] = 'Update';
+sc_relay_refresh($pdo, $settings, $upd, $source);
+$localJson = $GLOBALS['rb_queued'][0]['json'] ?? '';
+rb_check('an Update from an active member is tagged local, not left untagged',
+         str_contains($localJson, '"feed":"local"'), $failures);
+rb_check('and it declares the photoblogs feed term so a strict consumer keeps it',
+         str_contains($localJson, 'photoblogs:feed'), $failures);
+rb_check('the tag matches what fan-out would have put on the same source',
+         str_contains($localJson, '"feed":"' . sc_relay_origin_feed($pdo, $source) . '"'),
+         $failures);
+
+// A GLOBAL source: curator-followed, no active subscriber row of its own.
+$pdo = rb_pdo();
+$pdo->prepare("INSERT INTO snap_relay_subscribers (actor_url, domain, inbox_url, state)
+               VALUES (?, ?, ?, 'pending')")
+    ->execute(['https://curator.invalid/ap/actor', 'curator.invalid',
+               'https://curator.invalid/ap/inbox']);
+rb_check('a non-member source resolves to the global feed',
+         sc_relay_origin_feed($pdo, 'https://curator.invalid/ap/actor') === 'global', $failures);
+
+// A GLOBAL source that is a real relay source: curator-followed, not a member.
+// This is the case that makes the feed tag matter. Without it, 'local' can be
+// hardcoded and every check above still passes.
+$curator = 'https://curator.invalid/ap/actor';
+$pdo = rb_pdo();
+$pdo->exec("INSERT INTO snap_ap_following (id, state) VALUES (1, 'accepted')");
+$pdo->prepare("INSERT INTO snap_curator_directory (actor_url, follow_row_id, state)
+               VALUES (?, 1, 'following')")->execute([$curator]);
+rb_check('a curator-followed actor IS a relay source',
+         sc_relay_actor_is_source($pdo, $curator), $failures);
+rb_check('and resolves to the GLOBAL feed',
+         sc_relay_origin_feed($pdo, $curator) === 'global', $failures);
+
+$GLOBALS['rb_queued'] = [];
+$gupd = rb_activity($curator, 'https://curator.invalid/ap/note/9');
+$gupd['type'] = 'Update';
+$gupd['object']['attributedTo'] = $curator;
+sc_relay_refresh($pdo, $settings, $gupd, $curator);
+$globalJson = $GLOBALS['rb_queued'][0]['json'] ?? '';
+rb_check('an Update to a GLOBAL post is tagged global, not local',
+         str_contains($globalJson, '"feed":"global"'), $failures);
+rb_check('so an edit cannot move a GLOBAL post into the LOCAL tab',
+         !str_contains($globalJson, '"feed":"local"'), $failures);
 
 // An actor with nothing relayed retracts nothing, rather than erroring.
 $pdo = rb_pdo();
