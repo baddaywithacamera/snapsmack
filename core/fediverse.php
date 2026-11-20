@@ -2442,6 +2442,42 @@ function sv_target_image_id(PDO $pdo, array $target): int {
 // ─── Reader / engagement ingest (0.7.365) ───────────────────────────────────
 
 /** Upsert a remote actor doc into the render cache (avatar/name/handle/inbox). */
+/**
+ * Has this actor been seen, and confirmed to exist, within $ttl seconds?
+ *
+ * SS-1481 finding 9, the half of it that is real. snap_ap_actors is written on
+ * every ingest and never read back, so paths that only need to know "does this
+ * actor exist and is its id what it claims" re-fetched the actor document over
+ * the network every time.
+ *
+ * DELIBERATELY NARROW. The cache stores a SUBSET of the actor document --
+ * handle, name, avatar, inboxes, summary, profile url, migration metadata --
+ * and NOT publicKey. It can therefore never stand in for a fetch whose result
+ * is used for signature verification or for anything reading a field it does
+ * not hold. The only question it can answer is the liveness one, and that is
+ * the only thing it is used for.
+ *
+ * THE COST, stated: a cache hit skips a liveness check, so for up to $ttl a
+ * just-deleted actor's post can still be ingested. That is why the TTL is
+ * minutes rather than the row's lifetime, and why the caller passes it.
+ *
+ * Compared in PHP rather than with an INTERVAL in SQL so this is portable --
+ * and so a test can exercise it without a MySQL server.
+ */
+function sv_actor_seen_recently(PDO $pdo, string $actor_url, int $ttl = 900): bool {
+    if ($actor_url === '' || $ttl <= 0) return false;
+    try {
+        $q = $pdo->prepare("SELECT fetched_at FROM snap_ap_actors WHERE actor_url = ? LIMIT 1");
+        $q->execute([$actor_url]);
+        $seen = (string)$q->fetchColumn();
+    } catch (Throwable $e) {
+        return false;   // no cache, no shortcut: fetch as before
+    }
+    if ($seen === '') return false;
+    $ts = strtotime($seen);
+    return $ts !== false && (time() - $ts) <= $ttl;
+}
+
 function sv_cache_actor(PDO $pdo, array $actor_doc): void {
     $url = (string)($actor_doc['id'] ?? '');
     if ($url === '') return;

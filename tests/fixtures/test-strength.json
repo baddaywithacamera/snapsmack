@@ -1868,6 +1868,13 @@
             250
         ]
     },
+    "relay-reuses-the-actor-cache-regression.php": {
+        "assertions": 21,
+        "predicates": 9,
+        "thresholds": [
+            2
+        ]
+    },
     "release-flow-regression.php": {
         "assertions": 58,
         "predicates": 61,

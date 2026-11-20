@@ -553,8 +553,22 @@ function sc_relay_receive_announce(PDO $pdo, array $settings, string $relay, str
     if ($actor === '' || !sc_relay_actor_owns_object($actor, $object_id)
         || sc_relay_actor_blocked($pdo, $actor)
         || !sc_relay_is_discoverable([], $object)) return true;
-    $actor_doc = sv_fetch_ap($actor, $settings);
-    if (!is_array($actor_doc) || (string)($actor_doc['id'] ?? '') !== $actor) return true;
+    // SS-1481 finding 9. This fetch establishes one thing: the attributed actor
+    // resolves and its id is what it claims. The document is then discarded --
+    // it is not passed to the ingest below. So on a relay with traffic it was
+    // one network round trip per Announce to re-answer a question we had
+    // already answered minutes ago and written into snap_ap_actors.
+    //
+    // A recent cache row answers it. The cache does NOT hold publicKey, so it
+    // could never stand in for a fetch used in verification; the liveness
+    // question is all it is asked. The cost of the shortcut is that for up to
+    // the TTL a just-deleted actor's post can still arrive, which is why the
+    // window is 15 minutes rather than the row's lifetime.
+    if (!sv_actor_seen_recently($pdo, $actor, 900)) {
+        $actor_doc = sv_fetch_ap($actor, $settings);
+        if (!is_array($actor_doc) || (string)($actor_doc['id'] ?? '') !== $actor) return true;
+        if (function_exists('sv_cache_actor')) sv_cache_actor($pdo, $actor_doc);
+    }
     sv_ingest_timeline($pdo, $object, $actor, '', false, null, $feed, $relay);
     $pdo->prepare("DELETE FROM snap_relay_ingest_jobs WHERE relay_actor_url=? AND object_id=?")
         ->execute([$relay, $object_id]);
