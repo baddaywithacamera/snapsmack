@@ -11,6 +11,22 @@
 # SnapSmack Changelog
 ## Unreleased
 
+Written and tested, NOT on dev, and NOT in 0.7.1000D. These sat in the 1000D
+section until the tag was being assembled, which would have told owners their
+photographs come back in a build that does not carry the change. The branches
+are pushed and waiting on review.
+
+- **A restore brings your photographs back, and tells you honestly when it
+  cannot.** The admin restore path never reconciled media: database rows came
+  back pointing at photographs, thumbnails, assets and branding that were not
+  on disk, and nothing counted them. It now runs the same five steps the
+  installer's recovery has always run. And a restore that left files behind no
+  longer claims success — it says SOME FILES ARE NOT HERE YET, states plainly
+  that nothing failed, and names what is outstanding. A kit inventories your
+  media rather than carrying it, so "the database is back, your photographs
+  come from your own backup" is the normal result on a rebuilt site, not a
+  fault. (SS-1426, SS-1431, SS-1427)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,
@@ -75,7 +91,28 @@ version forms, all three agree, so this is duplication rather than a defect.
 
   tools/_build/changelog-completeness.php names every merged ticket with no
   entry. It asks for "an entry or a stated reason" — this is the stated reason.
+
+  The five below are the rest of what the tool names, one stated reason each.
+  Every one was checked against what actually merged, not against the ticket's
+  band: all five have real work on dev.
+
+  SS-1345 — RATIONAL GEO tray repair (c49570b8). Skin-only; skins ship through
+  the registry and the Skin Packager, not in the core zip, so this build does
+  not carry it.
+  SS-1363 — INSTANT REPLAY 0.1.0-test (d27c2043). A desktop tool at a test
+  version, released separately from the CMS; nothing in this build changes.
+  SS-1398 — KEYS PLEASE 0.1.0-test desktop app (73320755, 386a908e). Same
+  reason: desktop tool, test version, its own release.
 -->
+
+- **COLD SNAP no longer wipes a stored password it cannot read.** Opening an
+  older profile and saving it could clear the secrets it had not managed to
+  load, so an unreadable credential became no credential. (SS-1088)
+
+- **A live API key must be revoked before it can be deleted.** The API Keys
+  page and the endpoints behind it now refuse to delete a key that is still
+  active and offer Revoke first, enforced on the server rather than by hiding
+  a button. (SS-1400)
 
 - **A Recovery Kit import now asks who you are and which site you meant, and a
   refusal says so plainly.** Importing a kit overwrites your database, and the
@@ -102,17 +139,6 @@ version forms, all three agree, so this is duplication rather than a defect.
   wrapped around it, so a transaction here would protect nothing while looking
   as though it did. Restoring the copy is a deliberate act, and it is yours to
   make. (SS-1425)
-
-- **A restore brings your photographs back, and tells you honestly when it
-  cannot.** The admin restore path never reconciled media: database rows came
-  back pointing at photographs, thumbnails, assets and branding that were not
-  on disk, and nothing counted them. It now runs the same five steps the
-  installer's recovery has always run. And a restore that left files behind no
-  longer claims success — it says SOME FILES ARE NOT HERE YET, states plainly
-  that nothing failed, and names what is outstanding. A kit inventories your
-  media rather than carrying it, so "the database is back, your photographs
-  come from your own backup" is the normal result on a rebuilt site, not a
-  fault. (SS-1426, SS-1431, SS-1427)
 
 - **ALFRED's front page changes to a three-across square grid.** If you run
   ALFRED, your landing page will look different after this update: photographs
