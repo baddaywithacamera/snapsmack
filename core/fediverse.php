@@ -2059,6 +2059,128 @@ function sv_refresh_follower_inbox(PDO $pdo, string $bad_url): ?string {
 // ─── Delivery queue ──────────────────────────────────────────────────────────
 
 /** Queue one activity JSON for a remote inbox and return its queue id. */
+/**
+ * The duplicate-delivery tripwire (Sean's order, 2026-11-20).
+ *
+ * A DETECTOR, NOT A FILTER. It never blocks a send. SS-1481 #10 found the relay
+ * re-delivering already-sent posts every ten minutes, and the reason it went
+ * unnoticed for so long is that nothing anywhere counted a second delivery of
+ * the same object to the same inbox. A successful queue row is DELETED, so the
+ * queue itself cannot answer "have we sent this before".
+ *
+ * So a small record of (object, inbox) pairs is kept, with a 7-day TTL matching
+ * the recovery window, and the delivery worker asks it before each send. A hit
+ * logs a warning naming the object, the inbox, the activity type and the caller,
+ * and increments a counter the admin can show. Above zero means something is
+ * re-sending, which is a bug worth finding rather than a condition to suppress.
+ *
+ * WHY NOT BLOCK IN v1: a filter that is wrong refuses a legitimate re-send --
+ * and legitimate re-sends exist, which is why sv_queue_delivery's comment says
+ * "a later deliberate re-send remains possible after the prior send lands". A
+ * detector that is wrong costs a log line. Blocking can come after the counter
+ * has sat at zero for a while and we know what trips it.
+ */
+function sv_delivery_tripwire_table(PDO $pdo): bool {
+    // Cached PER PROCESS, not per connection. A web request has one handle, so
+    // this is one CREATE TABLE IF NOT EXISTS per request instead of one per
+    // send. Only a test driving two handles in one process sees the
+    // difference, and it is noted here so that surprise costs a minute rather
+    // than an hour.
+    static $ready = null;
+    if ($ready !== null) return $ready;
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_delivered` (
+            `object_id`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+            `inbox_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+            `delivered_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY `uq_ap_delivered` (`object_id`(191), `inbox_url`(191)),
+            KEY `idx_ap_delivered_at` (`delivered_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $ready = true;
+    } catch (Throwable $e) {
+        // A detector must never be the reason a post fails to go out.
+        $ready = false;
+    }
+    return $ready;
+}
+
+/** The object id an activity is about, for tripwire purposes, or ''. */
+function sv_activity_subject_id(string $activity_json): string {
+    $a = json_decode($activity_json, true);
+    if (!is_array($a)) return '';
+    $o = $a['object'] ?? null;
+    if (is_array($o)) return trim((string)($o['id'] ?? ''));
+    if (is_string($o) && $o !== '') return trim($o);
+    return trim((string)($a['id'] ?? ''));
+}
+
+/**
+ * Has this exact object already gone to this exact inbox? Warn and count if so.
+ *
+ * Called BEFORE the send and never blocks it. Returns true when it tripped,
+ * which is what the test asserts on.
+ */
+function sv_delivery_tripwire_check(PDO $pdo, string $inbox_url, string $activity_json,
+                                    string $caller = 'delivery-worker'): bool {
+    $object_id = sv_activity_subject_id($activity_json);
+    if ($object_id === '' || $inbox_url === '') return false;
+    if (!sv_delivery_tripwire_table($pdo)) return false;
+
+    try {
+        $q = $pdo->prepare("SELECT 1 FROM snap_ap_delivered
+                             WHERE object_id = ? AND inbox_url = ? LIMIT 1");
+        $q->execute([$object_id, $inbox_url]);
+        if (!$q->fetchColumn()) return false;
+    } catch (Throwable $e) {
+        return false;
+    }
+
+    $a = json_decode($activity_json, true);
+    $type = is_array($a) ? (string)($a['type'] ?? '?') : '?';
+    error_log('SnapSmack DUPLICATE DELIVERY: ' . $type . ' for object ' . $object_id
+        . ' is being sent to ' . $inbox_url . ' again (caller: ' . $caller
+        . '). Already delivered successfully within the last 7 days. Not blocked.');
+
+    try {
+        $pdo->exec("INSERT INTO snap_settings (setting_key, setting_val)
+                    VALUES ('fedi_duplicate_delivery_count', '1')
+                    ON DUPLICATE KEY UPDATE setting_val = CAST(setting_val AS UNSIGNED) + 1");
+    } catch (Throwable $e) { /* the warning is the signal; the counter is a convenience */ }
+
+    return true;
+}
+
+/** Record a SUCCESSFUL delivery, and prune anything past the recovery window. */
+function sv_delivery_tripwire_record(PDO $pdo, string $inbox_url, string $activity_json): void {
+    $object_id = sv_activity_subject_id($activity_json);
+    if ($object_id === '' || $inbox_url === '') return;
+    if (!sv_delivery_tripwire_table($pdo)) return;
+    try {
+        $pdo->prepare("INSERT INTO snap_ap_delivered (object_id, inbox_url, delivered_at)
+                       VALUES (?, ?, NOW())
+                       ON DUPLICATE KEY UPDATE delivered_at = NOW()")
+            ->execute([substr($object_id, 0, 500), substr($inbox_url, 0, 500)]);
+        // Pruned here rather than on a schedule: this table only grows when
+        // deliveries happen, so the write path is the right place to bound it.
+        // 1-in-50 so a busy fleet is not running a DELETE on every send.
+        if (random_int(1, 50) === 1) {
+            $pdo->exec("DELETE FROM snap_ap_delivered
+                         WHERE delivered_at < DATE_SUB(NOW(), INTERVAL 7 DAY)");
+        }
+    } catch (Throwable $e) { /* never block a send over bookkeeping */ }
+}
+
+/** How many duplicate deliveries the tripwire has seen. For the admin. */
+function sv_duplicate_delivery_count(PDO $pdo): int {
+    try {
+        $q = $pdo->query("SELECT setting_val FROM snap_settings
+                           WHERE setting_key = 'fedi_duplicate_delivery_count' LIMIT 1");
+        return (int)$q->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
 function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json, ?string $dedupe_key = null,
                            ?int $priority = null): int {
     // A delivery may be requested by publish, SEED, RE-IMPRINT and a manual
@@ -2142,6 +2264,10 @@ function sv_finish_delivery_row(PDO $pdo, array $primary_settings, array $row): 
         if (($row['actor_role'] ?? 'primary') === 'curator' && function_exists('sc_curator_settings')) {
             $delivery_settings = sc_curator_settings($pdo, $primary_settings, true);
         }
+        // The tripwire asks its question BEFORE the send and never changes the
+        // outcome. Sean's order: detect, do not filter.
+        sv_delivery_tripwire_check($pdo, (string)$row['inbox_url'],
+                                   (string)$row['activity_json'], 'delivery-worker');
         $r    = sv_deliver($delivery_settings, $row['inbox_url'], $row['activity_json']);
         $ok   = (bool)($r[0] ?? false);
         $info = (string)($r[1] ?? '');
@@ -2151,6 +2277,9 @@ function sv_finish_delivery_row(PDO $pdo, array $primary_settings, array $row): 
         $info = 'delivery worker error: ' . substr($e->getMessage(), 0, 176);
     }
     if ($ok) {
+        // Record the SUCCESS before the queue row goes, because the queue row
+        // going is precisely why nothing could answer "have we sent this".
+        sv_delivery_tripwire_record($pdo, (string)$row['inbox_url'], (string)$row['activity_json']);
         $pdo->prepare("DELETE FROM snap_ap_deliveries WHERE id = ?")->execute([$row['id']]);
         return ['sent' => true, 'cooldown' => 0];
     }

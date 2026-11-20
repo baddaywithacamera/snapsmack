@@ -483,6 +483,13 @@
         "predicates": 8,
         "thresholds": []
     },
+    "duplicate-delivery-tripwire-regression.php": {
+        "assertions": 37,
+        "predicates": 9,
+        "thresholds": [
+            2
+        ]
+    },
     "dwell-beacon-is-bound-to-its-hit.php": {
         "assertions": 31,
         "predicates": 18,

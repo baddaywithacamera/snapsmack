@@ -94,6 +94,15 @@ new decision.
   minutes — including an empty one, which was the worst case — so refreshing a
   quiet tab no longer costs somebody else two requests each time. (SS-1481)
 
+- **SnapSmack now notices if it ever sends the same post twice.** The fault
+  above went unseen for a long time because nothing counted a repeat delivery —
+  once a send succeeds its queue entry is deleted, so there was no record to
+  check against. There is now, kept for seven days, and a repeat writes a line
+  to your error log and raises a count shown on the Fediverse page. It does not
+  block anything: a deliberate re-send is still allowed, and this is a smoke
+  alarm rather than a lock. If that number is ever above zero, something is
+  re-sending and it is worth telling us.
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,
