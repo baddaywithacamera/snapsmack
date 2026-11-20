@@ -632,6 +632,29 @@ function sc_relay_recover_member_outboxes(PDO $pdo, array $settings, int $member
     $q = $pdo->query("SELECT actor_url FROM snap_relay_subscribers WHERE state='active'
         ORDER BY COALESCE(last_outbox_check_at,'1970-01-01') ASC LIMIT {$members}");
     $checked = 0; $recovered = 0; $cutoff = time() - 604800;
+
+    // SS-1481 finding 10. This loop re-reads the first $items of each member's
+    // outbox every tick, and called sc_relay_fanout() on every Create it found
+    // -- including ones relayed days ago.
+    //
+    // snap_relay_intake's UNIQUE key swallows the duplicate intake, so it LOOKS
+    // harmless. It is not. The Announce still reaches sv_queue_delivery(),
+    // whose ON DUPLICATE KEY UPDATE sets attempts = 0, status = 'queued' and
+    // pulls next_try_at back to NOW. And because a SUCCESSFUL delivery row is
+    // deleted, there is no row left to collide with -- so a fresh one is
+    // inserted and the Announce is DELIVERED AGAIN. Every tick. For every
+    // already-relayed post still inside the window.
+    //
+    // At the defaults that is up to 5 members x 20 items of repeat deliveries
+    // every ten minutes, and it also resets the backoff of anything genuinely
+    // still retrying.
+    //
+    // The cheapest correct fix is the one Muse proposed: skip what we have
+    // already taken in. snap_relay_intake is exactly that record -- fanout
+    // writes it -- so no new column and no cursor to keep in step.
+    $seen = $pdo->prepare("SELECT 1 FROM snap_relay_intake
+                            WHERE object_id = ? AND origin_actor_url = ? LIMIT 1");
+
     foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $actor_url) {
         $actor = sv_fetch_ap((string)$actor_url, $settings);
         $outbox_url = is_array($actor) ? (string)($actor['outbox'] ?? '') : '';
@@ -649,6 +672,24 @@ function sc_relay_recover_member_outboxes(PDO $pdo, array $settings, int $member
             if (!is_array($object)) continue;
             $published = strtotime((string)($object['published'] ?? $activity['published'] ?? ''));
             if ($published !== false && $published < $cutoff) continue;
+
+            // Already taken in from this actor? Then it has already been
+            // relayed, and re-announcing it would re-deliver it.
+            $object_id = (string)($object['id'] ?? '');
+            if ($object_id !== '') {
+                try {
+                    $seen->execute([$object_id, (string)$actor_url]);
+                    if ($seen->fetchColumn()) continue;
+                } catch (Throwable $e) {
+                    // Cannot tell: fall through and let fanout's own intake
+                    // insert decide. Recovery exists to catch MISSED posts, so
+                    // the failure that matters is skipping one, not sending a
+                    // duplicate the member's server will drop by id.
+                    error_log('SnapSmack relay: intake lookup failed during recovery — '
+                        . $e->getMessage());
+                }
+            }
+
             $recovered += sc_relay_fanout($pdo, $settings, $activity, (string)$actor_url) > 0 ? 1 : 0;
         }
         $pdo->prepare("UPDATE snap_relay_subscribers SET last_outbox_check_at=NOW() WHERE actor_url=?")

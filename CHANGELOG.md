@@ -82,6 +82,12 @@ new decision.
   forms the standard allows, and it can only ever make us wait longer, never
   shorter. (SS-1481)
 
+- **The relay no longer re-sends posts it has already passed on.** A recovery
+  pass that exists to catch posts missed during an outage was re-reading each
+  member's recent posts every ten minutes and sending every one of them again,
+  because the record of what had already been sent was never consulted. It is
+  now. Genuinely missed posts are still picked up. (SS-1481)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,

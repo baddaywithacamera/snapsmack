@@ -82,10 +82,37 @@ foreach (['sv_is_direct', 'sv_reply_is_public', 'sv_activity_object_uri', 'sv_ha
 $actor = 'https://leaving.invalid/users/gone';
 $total = 620;   // past the old cap, and not a multiple of the page size
 
-$pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+/**
+ * Register a SQL function on a sqlite handle, on old and new PHP.
+ *
+ * PDO::sqliteCreateFunction() is deprecated from PHP 8.5 in favour of
+ * Pdo\Sqlite::createFunction(), and a deprecation notice in test output is
+ * noise that hides real warnings. Prefer the new name where it exists.
+ */
+function ad_sql_function(PDO $pdo, string $name, callable $fn, int $argc): void {
+    if (method_exists($pdo, 'createFunction')) { $pdo->createFunction($name, $fn, $argc); return; }
+    $pdo->sqliteCreateFunction($name, $fn, $argc);
+}
+
+/**
+ * An in-memory sqlite handle that supports createFunction() where PHP offers it.
+ *
+ * On PHP 8.4+ PDO::connect() returns a Pdo\Sqlite, which has the modern
+ * createFunction(); plain `new PDO` does not, and its sqliteCreateFunction() is
+ * deprecated from 8.5. Constructing through connect() keeps the test output free
+ * of deprecation notices, which matter because a notice nobody reads is a
+ * notice that hides the next real warning.
+ */
+function ad_sqlite(): PDO {
+    $opts = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION];
+    if (method_exists('PDO', 'connect')) return PDO::connect('sqlite::memory:', null, null, $opts);
+    return new PDO('sqlite::memory:', null, null, $opts);
+}
+
+$pdo = ad_sqlite();
 // sc_relay_leave() is real MySQL code and uses NOW(). Teach sqlite the one
 // function rather than editing the code under test or stubbing the function.
-$pdo->sqliteCreateFunction('NOW', static fn (): string => date('Y-m-d H:i:s'), 0);
+ad_sql_function($pdo, 'NOW', static fn (): string => date('Y-m-d H:i:s'), 0);
 $pdo->exec('CREATE TABLE snap_relay_intake (id INTEGER PRIMARY KEY AUTOINCREMENT,
              activity_id TEXT UNIQUE, object_id TEXT, origin_actor_url TEXT)');
 $pdo->exec("CREATE TABLE snap_relay_subscribers (actor_url TEXT, domain TEXT,

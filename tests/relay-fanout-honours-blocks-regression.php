@@ -63,7 +63,11 @@ if (!function_exists('sv_is_following')) {
     function sv_is_following(PDO $pdo, string $actor): bool { return true; }
 }
 if (!function_exists('sv_fetch_ap')) {
-    function sv_fetch_ap(string $url, array $settings): ?array { return null; }
+    // Returns null by default; STAGE 8 fills $GLOBALS['rb_outbox'] so the
+    // recovery loop can read a member's actor document and outbox.
+    function sv_fetch_ap(string $url, array $settings): ?array {
+        return $GLOBALS['rb_outbox'][$url] ?? null;
+    }
 }
 if (!function_exists('sv_ingest_timeline')) {
     function sv_ingest_timeline(...$args): void {}
@@ -81,8 +85,35 @@ if (!function_exists('sv_queue_delivery')) {
 require_once $root . '/core/smackcast-relay.php';
 
 /** A fixture hub: one active member, one relay source, the block tables empty. */
+/**
+ * Register a SQL function on a sqlite handle, on old and new PHP.
+ *
+ * PDO::sqliteCreateFunction() is deprecated from PHP 8.5 in favour of
+ * Pdo\Sqlite::createFunction(), and a deprecation notice in test output is
+ * noise that hides real warnings. Prefer the new name where it exists.
+ */
+function rb_sql_function(PDO $pdo, string $name, callable $fn, int $argc): void {
+    if (method_exists($pdo, 'createFunction')) { $pdo->createFunction($name, $fn, $argc); return; }
+    $pdo->sqliteCreateFunction($name, $fn, $argc);
+}
+
+/**
+ * An in-memory sqlite handle that supports createFunction() where PHP offers it.
+ *
+ * On PHP 8.4+ PDO::connect() returns a Pdo\Sqlite, which has the modern
+ * createFunction(); plain `new PDO` does not, and its sqliteCreateFunction() is
+ * deprecated from 8.5. Constructing through connect() keeps the test output free
+ * of deprecation notices, which matter because a notice nobody reads is a
+ * notice that hides the next real warning.
+ */
+function rb_sqlite(): PDO {
+    $opts = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION];
+    if (method_exists('PDO', 'connect')) return PDO::connect('sqlite::memory:', null, null, $opts);
+    return new PDO('sqlite::memory:', null, null, $opts);
+}
+
 function rb_pdo(): PDO {
-    $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $pdo = rb_sqlite();
     $pdo->exec('CREATE TABLE snap_relay_subscribers (actor_url TEXT, domain TEXT,
                  inbox_url TEXT, shared_inbox_url TEXT, follow_id TEXT, state TEXT,
                  last_seen_at TEXT)');
@@ -274,6 +305,65 @@ $pdo->prepare("INSERT INTO snap_relay_subscribers (actor_url, domain, inbox_url,
                'https://curator.invalid/ap/inbox']);
 rb_check('a non-member source resolves to the global feed',
          sc_relay_origin_feed($pdo, 'https://curator.invalid/ap/actor') === 'global', $failures);
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "
+STAGE 8 — RECOVERY DOES NOT RE-RELAY WHAT IT ALREADY TOOK IN (#10)
+";
+// ─────────────────────────────────────────────────────────────────────────────
+// sc_relay_recover_member_outboxes() re-reads each member's outbox every tick
+// and used to fan out every Create it found, including ones relayed days ago.
+// snap_relay_intake's UNIQUE swallowed the duplicate intake so it looked
+// harmless, but the Announce still reached the delivery queue -- and because a
+// successful delivery row is DELETED, there was nothing left to collide with,
+// so the post was delivered again. Every tick.
+$rec = rb_pdo();
+rb_add_source($rec, $source);
+$rec->exec("CREATE TABLE IF NOT EXISTS snap_settings (setting_key TEXT, setting_val TEXT)");
+// The recovery loop reads and writes last_outbox_check_at.
+$rec->exec('ALTER TABLE snap_relay_subscribers ADD COLUMN last_outbox_check_at TEXT');
+rb_sql_function($rec, 'NOW', static fn (): string => date('Y-m-d H:i:s'), 0);
+
+$hubSettings = [
+    'site_mode' => 'fedistructure', 'distribution' => 'fedistructure',
+    'node_role' => 'hub', 'distribution_profile' => 'smackcast',
+    'smackcast_relay_enabled' => '1',
+    'smackcast_outbox_recovery_enabled' => '1',
+];
+
+$recent = gmdate('c');
+$noteId = 'https://source.invalid/ap/note/recovered';
+$GLOBALS['rb_outbox'] = [
+    $source => ['id' => $source, 'type' => 'Person',
+                'outbox' => 'https://source.invalid/ap/outbox'],
+    'https://source.invalid/ap/outbox' => ['type' => 'OrderedCollection',
+        'orderedItems' => [[
+            'id' => $noteId . '#create', 'type' => 'Create', 'published' => $recent,
+            'to' => ['https://www.w3.org/ns/activitystreams#Public'],
+            'object' => ['id' => $noteId, 'type' => 'Note', 'attributedTo' => $source,
+                         'published' => $recent,
+                         'to' => ['https://www.w3.org/ns/activitystreams#Public']],
+        ]]],
+];
+
+// First pass: nothing taken in yet, so the post SHOULD be recovered.
+$GLOBALS['rb_queued'] = [];
+list($checked1, $recovered1) = sc_relay_recover_member_outboxes($rec, $hubSettings, 5, 20);
+rb_check('FIRST pass recovers a post that was never taken in',
+         $recovered1 === 1 && count($GLOBALS['rb_queued']) === 1, $failures);
+rb_check('and it is now recorded in intake',
+         (int)$rec->query("SELECT COUNT(*) FROM snap_relay_intake WHERE object_id='"
+             . $noteId . "'")->fetchColumn() === 1, $failures);
+
+// Second pass, same outbox: it must NOT be relayed again.
+$GLOBALS['rb_queued'] = [];
+list($checked2, $recovered2) = sc_relay_recover_member_outboxes($rec, $hubSettings, 5, 20);
+rb_check('SECOND pass over the same outbox relays NOTHING',
+         $recovered2 === 0, $failures);
+rb_check('and queues no delivery, so the post is not sent twice',
+         $GLOBALS['rb_queued'] === [], $failures);
+rb_check('while the member was still checked, so recovery still runs',
+         $checked2 >= 1, $failures);
 
 // A GLOBAL source that is a real relay source: curator-followed, not a member.
 // This is the case that makes the feed tag matter. Without it, 'local' can be
