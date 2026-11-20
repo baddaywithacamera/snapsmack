@@ -1640,6 +1640,13 @@
             6
         ]
     },
+    "preview-carries-the-shared-shortcode-styles.php": {
+        "assertions": 18,
+        "predicates": 17,
+        "thresholds": [
+            3
+        ]
+    },
     "print-skin-image-scaling-regression.php": {
         "assertions": 3,
         "predicates": 5,

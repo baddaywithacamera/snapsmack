@@ -24,8 +24,43 @@ function snapsmack_admin_content_preview(PDO $pdo, array $settings, array $input
     $kind = ($input['preview_kind'] ?? '') === 'post' ? 'post' : 'page';
     $content = is_string($input['content'] ?? null) ? $input['content'] : '';
     $title = is_string($input['title'] ?? null) ? $input['title'] : '';
+    // THE SHARED SHORTCODE STYLES COME FROM THE CMS RAIL, NOT FROM THE SKIN.
+    // A public page gets shortcodes.css and columns.css from core/meta.php:294
+    // whenever the page runs parseContent(). This preview runs the same
+    // parseContent() and then built its own asset list, which named only the
+    // mosaic engine -- so the two lists drifted and the preview was missing
+    // stylesheets the real page has.
+    //
+    // Codex found it on mccormickphotography: the owner's visual check could
+    // not prove the public layout because the gallery stacked in the preview.
+    //
+    // MEASURED: 2 of 31 skins declare these handles in their own manifests.
+    // The other 29 got neither stylesheet in the preview. Which two is not
+    // core's business and is deliberately not named here -- the agreed-rules
+    // gate counts skin slugs in core and refused this file when it named them,
+    // correctly: core must not learn about an individual skin, not even in a
+    // comment. The names are in
+    // tests/preview-carries-the-shared-shortcode-styles.php, which is where a
+    // reader should go for the specifics.
+    //
+    // AND THE SUITE COULD NOT SEE IT. The suite's one preview test renders
+    // with a skin that declares the files itself, so it asserted the
+    // stylesheets were present and was right -- on that skin. A test pinned to
+    // the single configuration where a gap is invisible passes forever.
+    //
+    // This is the markup-on-the-CMS-rail, stylesheet-on-the-skin-rail split
+    // that has broken a skin before. A shared shortcode's own stylesheet is
+    // the CMS's to supply, for every skin.
+    //
+    // Registry handles, not paths, and the merge de-duplicates
+    // (core/asset-registry.php:57 array_unique), so the four skins that
+    // already declare them are unaffected.
     $assets = snapsmack_merge_registered_assets(snapsmack_skin_declared_assets($manifest), [
-        'styles' => ['asset:public:ss-engine-mosaic:css'],
+        'styles' => [
+            'asset:public:ss-engine-mosaic:css',
+            'asset:public:shortcodes',
+            'asset:public:columns',
+        ],
         'scripts' => ['asset:public:ss-engine-mosaic', 'asset:public:ss-engine-lightbox'],
     ]);
     $version = rawurlencode((string)($manifest['version'] ?? '1'));
