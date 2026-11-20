@@ -4,6 +4,14 @@
         "predicates": 11,
         "thresholds": []
     },
+    "actor-delete-retracts-every-relayed-post-regression.php": {
+        "assertions": 12,
+        "predicates": 6,
+        "thresholds": [
+            202,
+            500
+        ]
+    },
     "admin-content-preview-regression.php": {
         "assertions": 7,
         "predicates": 7,

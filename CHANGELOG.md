@@ -62,6 +62,12 @@ new decision.
   but only the copy that share put there. A post you see because you follow its
   author, or because someone else also shared it, stays. (SS-1481)
 
+- **A deleted account's posts are all withdrawn, not the first five hundred.**
+  When a site on the network deleted its account, the hub withdrew up to 500 of
+  the posts it had passed on and left the rest in everyone's reader — posts
+  belonging to an account that no longer existed, with nothing coming to clear
+  them. There is no longer a limit. (SS-1481)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,

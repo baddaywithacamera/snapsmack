@@ -3521,12 +3521,19 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         $obj = sv_activity_object_uri($activity['object'] ?? null);
         if (function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)) {
             if ($obj === $actor_id) {
-                $q = $pdo->prepare("SELECT object_id FROM snap_relay_intake WHERE origin_actor_url=? LIMIT 500");
-                $q->execute([$actor_id]);
-                foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $known_object) {
-                    sc_relay_retract($pdo, $settings, $actor_id, (string)$known_object,
-                        (string)($activity['id'] ?? $actor_id));
-                }
+                // SS-1481 finding 13. This was a flat LIMIT 500. An actor that
+                // had relayed more than 500 objects kept the remainder in every
+                // member's reader after deleting itself -- the posts of an
+                // account that no longer exists, with no further Delete coming
+                // to clean them up.
+                //
+                // sc_relay_retract_actor() pages through snap_relay_intake and
+                // calls the same sc_relay_retract() this loop did, so the
+                // behaviour per object is unchanged; only the ceiling is gone.
+                // Written for finding 5's block retraction and reused here
+                // rather than paging this loop separately.
+                sc_relay_retract_actor($pdo, $settings, $actor_id,
+                    (string)($activity['id'] ?? $actor_id));
                 sc_relay_leave($pdo, $actor_id);
             } elseif (is_string($obj) && $obj !== '') {
                 sc_relay_retract($pdo, $settings, $actor_id, $obj,
