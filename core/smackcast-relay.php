@@ -509,7 +509,40 @@ function sc_relay_add_membership(PDO $pdo, string $object_id, string $feed, stri
             $has_membership_table = false;
         }
     }
-    if (!$has_membership_table) return;
+    if (!$has_membership_table) {
+        // SS-1481 finding 4. This used to be a bare `return`, and the silence
+        // was the problem rather than the inertness.
+        //
+        // Membership is what makes the LOCAL and GLOBAL tabs deterministic:
+        // snap_ap_timeline_membership's primary key is (timeline_id, feed), so
+        // a direct follow and a relay arrival of the same post each add their
+        // own row. Without the table the reader falls back to the single
+        // `source` column, and sv_ingest_timeline() never updates source on a
+        // duplicate -- so FIRST ARRIVAL WINS and a post can simply miss a tab.
+        //
+        // The table is created by schema-sync, not by runtime self-heal, so a
+        // hub whose sync has not run looks like it is working while quietly
+        // filing posts in the wrong tab. Nothing said so.
+        //
+        // IT ONLY COMPLAINS WHEN MEMBERSHIP WAS EXPECTED. This function runs on
+        // every timeline ingest on every site, and an ordinary blog has no
+        // relay tables by design -- logging there would be noise on every post
+        // forever, which is its own way of saying nothing. A 'home' feed needs
+        // no membership row. A 'local' or 'global' feed is a relay arrival, and
+        // that is when the absence matters.
+        //
+        // Once per request, because the point is to be noticed, not to bury the
+        // log under one line per post.
+        static $warned = false;
+        if (!$warned && ($feed === 'local' || $feed === 'global')) {
+            $warned = true;
+            error_log('SMACKCAST: snap_ap_timeline_membership is MISSING while '
+                . 'ingesting a ' . $feed . ' relay post. LOCAL/GLOBAL tabs will '
+                . 'fall back to the single source column, so first arrival wins '
+                . 'and posts can miss a tab. Run schema-sync on this install.');
+        }
+        return;
+    }
     $s = $pdo->prepare("SELECT id FROM snap_ap_timeline WHERE object_id=? LIMIT 1");
     $s->execute([$object_id]);
     $timeline_id = (int)$s->fetchColumn();

@@ -1326,6 +1326,13 @@
         "predicates": 7,
         "thresholds": []
     },
+    "missing-membership-table-is-loud-regression.php": {
+        "assertions": 13,
+        "predicates": 7,
+        "thresholds": [
+            2
+        ]
+    },
     "mobile-skin-routing-regression.php": {
         "assertions": 0,
         "predicates": 6,
@@ -2432,7 +2439,7 @@
     },
     "smackcast-relay-regression.php": {
         "assertions": 48,
-        "predicates": 54,
+        "predicates": 55,
         "thresholds": [
             3
         ]
