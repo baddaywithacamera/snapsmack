@@ -239,6 +239,8 @@ class TakeMode(QWidget):
         self.body.canvas.photographsDropped.connect(
             lambda paths: self._add_photo_paths(paths, insert=True))
         self.body.canvas.photographPasted.connect(self._paste_photo)
+        self.body.canvas.trayPhotoDropped.connect(self._drop_tray_photo_biggie)
+        self.body.editor.setAcceptDrops(True)
         # IMG picks from THIS site's cached Media Gallery (COLD STORAGE), by picture.
         self.body.canvas.set_site_provider(
             lambda: ((self.app_config() or {}).get("url") or "").strip())
@@ -620,6 +622,27 @@ class TakeMode(QWidget):
         self._refresh_bucket()
 
     def eventFilter(self, obj, event):
+        if obj is self.body.editor.viewport():
+            from .photo_tray import TRAY_PHOTO_MIME
+            if event.type() in (event.Type.DragEnter, event.Type.DragMove):
+                if event.mimeData().hasFormat(TRAY_PHOTO_MIME):
+                    event.acceptProposedAction()
+                    return True
+            if event.type() == event.Type.Drop:
+                if event.mimeData().hasFormat(TRAY_PHOTO_MIME):
+                    import json as _json
+                    try:
+                        data = _json.loads(bytes(event.mimeData().data(TRAY_PHOTO_MIME)).decode("utf-8"))
+                    except Exception:
+                        data = {}
+                    cursor = self.body.editor.cursorForPosition(event.position().toPoint())
+                    self.body.editor.setTextCursor(cursor)
+                    self._drop_tray_photo_twiggy(
+                        str(data.get("asset_uuid") or ""),
+                        data.get("index"),
+                    )
+                    event.acceptProposedAction()
+                    return True
         if event.type() == event.Type.Wheel and (event.modifiers() & Qt.ControlModifier):
             delta = 10 if event.angleDelta().y() > 0 else -10
             if obj is getattr(self, "bucket_host", None):
@@ -825,7 +848,7 @@ class TakeMode(QWidget):
             ("Space", c._edit_spacer),
             ("Mosaic", self._insert_mosaic),
             ("Photograph", self._add_and_insert_photo),
-            ("Image from gallery", c._edit_image),
+            ("Photo from tray", self._open_photos_tray_for_img),
             ("2 columns", lambda: c.insert_columns(2)),
             ("3 columns", lambda: c.insert_columns(3)),
             ("Raw", lambda: c.set_kind("raw")),
@@ -932,8 +955,8 @@ class TakeMode(QWidget):
                         lambda: canvas.insert_columns(2)),
             BlockAction("3C", "3 columns", "PLACE", "Three columns",
                         lambda: canvas.insert_columns(3)),
-            BlockAction("IMG", "Image", "PLACE", "Pick an image from the site's Media Library",
-                        canvas._edit_image),
+            BlockAction("IMG", "Image", "PLACE", "Open the post's photos tray to drag a photo onto the page",
+                        self._open_photos_tray_for_img),
         ]
 
     def _text_block_actions(self):
@@ -953,7 +976,8 @@ class TakeMode(QWidget):
                         lambda: bar._list("ul")),
             BlockAction("OL", "Numbers", "WRITE", "<ol><li>…</li></ol>",
                         lambda: bar._list("ol")),
-            BlockAction("IMG", "Image", "PLACE", "[img:ID|size|align]", bar._img),
+            BlockAction("IMG", "Image", "PLACE", "Open the post's photos tray to drag a photo onto the page",
+                        self._open_photos_tray_for_img),
             BlockAction("COL 2", "2 columns", "PLACE", "[columns=2]…[/columns]",
                         lambda: bar._columns(2)),
             BlockAction("COL 3", "3 columns", "PLACE", "[columns=3]…[/columns]",
@@ -1120,28 +1144,42 @@ class TakeMode(QWidget):
         from the canvas, so both are resolved here the same way _canvas_mosaic
         already resolves them.
         """
+        return self._used_photo_indices(include_images=False, keep=keep)
+
+    def _used_photo_indices(self, *, include_images: bool = True, keep=None):
+        """0-based bucket indices already placed in mosaics (and image blocks)."""
         uuid_to_index = {str(image.asset_uuid): index
                          for index, image in enumerate(self._bucket)}
         used = set()
 
+        def _claim(identity):
+            key = str(identity or "").strip()
+            if key in uuid_to_index:
+                used.add(uuid_to_index[key])
+            elif key.startswith("asset:") and key[6:] in uuid_to_index:
+                used.add(uuid_to_index[key[6:]])
+            elif key.startswith("bucket:") and key[7:].isdigit():
+                pos = int(key[7:])
+                if 1 <= pos <= len(self._bucket):
+                    used.add(pos - 1)
+            elif key.isdigit() and 1 <= int(key) <= len(self._bucket):
+                used.add(int(key) - 1)
+
         def walk(node):
-            """Mosaics can sit inside a columns block, so this recurses rather
-            than reading only the top level."""
+            """Mosaics and images can sit inside a columns block, so recurse."""
             if isinstance(node, dict):
-                if node.get("type") == "mosaic":
+                kind = node.get("type")
+                if kind == "mosaic":
                     order = node.get("order") or []
                     if not order:
-                        # A BARE [mosaic] MEANS EVERY PHOTOGRAPH IN THE BUCKET
-                        # (biggie.py:46). Treating that as "all used" would hand
-                        # him an empty picker and no way forward, so it counts
-                        # as claiming nothing and the pool stays whole.
                         return
                     for identity in order:
-                        key = str(identity)
-                        if key in uuid_to_index:
-                            used.add(uuid_to_index[key])
-                        elif key.isdigit() and 1 <= int(key) <= len(self._bucket):
-                            used.add(int(key) - 1)
+                        _claim(identity)
+                elif include_images and kind == "image":
+                    if node.get("asset_uuid"):
+                        _claim(node.get("asset_uuid"))
+                    elif node.get("img_id"):
+                        _claim(node.get("img_id"))
                 for value in node.values():
                     walk(value)
             elif isinstance(node, (list, tuple)):
@@ -1151,11 +1189,43 @@ class TakeMode(QWidget):
         try:
             walk(self.body.authoring_blocks())
         except Exception:
-            # A body that cannot be parsed must not block mosaic building. The
-            # worst case of returning nothing is the old behaviour.
             return set()
 
         return used - set(keep or [])
+
+    def _open_photos_tray_for_img(self):
+        """Open the post's photos tray so the writer can drag a photo onto the page."""
+        self.photos_tray.set_open(True)
+        if hasattr(self.photos_sec, "set_open"):
+            self.photos_sec.set_open(True)
+
+    def _find_bucket_image(self, asset_uuid: str, index_hint=None):
+        target = str(asset_uuid or "").strip()
+        if target:
+            for idx, im in enumerate(self._bucket):
+                if str(getattr(im, "asset_uuid", "")) == target:
+                    return idx, im
+        if isinstance(index_hint, int) and 0 <= index_hint < len(self._bucket):
+            return index_hint, self._bucket[index_hint]
+        return None, None
+
+    def _drop_tray_photo_biggie(self, asset_uuid: str):
+        _, im = self._find_bucket_image(asset_uuid)
+        if im is None:
+            return
+        self.body.canvas.insert_image("asset:" + im.asset_uuid,
+                                      alt=im.alt, caption=im.caption)
+
+    def _drop_tray_photo_twiggy(self, asset_uuid: str, index_hint=None):
+        idx, _ = self._find_bucket_image(asset_uuid, index_hint)
+        if idx is None:
+            return
+        shortcode = f"[img:bucket:{idx + 1}|full|center]"
+        cursor = self.body.editor.textCursor()
+        if cursor.positionInBlock() > 0:
+            shortcode = "\n" + shortcode
+        cursor.insertText(shortcode + "\n")
+        self.body.editor.setTextCursor(cursor)
 
     def _mosaic_dialog(self, existing_order, existing_layout):
         """The one mosaic builder (live preview, tick photos, drag order, layout,
@@ -2218,7 +2288,9 @@ class TakeMode(QWidget):
             self.in_mosaics_thumbs.addWidget(thumb)
         self.in_mosaics_bar.setVisible(bool(mosaic_paths))
 
-        left_count = max(0, n - len(mosaic_paths))
+        used_indices = self._used_photo_indices()
+        self._last_used_indices = frozenset(used_indices)
+        left_count = max(0, n - len(used_indices))
         self.photos_sec.header.setText(
             f"THE PHOTOS — {left_count} left" if n else "THE PHOTOS — none yet")
         if not self._bucket:
@@ -2239,7 +2311,10 @@ class TakeMode(QWidget):
         else:
             cols, tile_px = 4, 66
 
+        visible_pos = 0
         for i, im in enumerate(self._bucket):
+            if i in used_indices:
+                continue
             is_cover = (i == self._cover_idx)
             is_selected = (i == self._selected_photo_idx)
             edited = bool(getattr(im, "slapper_edited_path", ""))
@@ -2247,15 +2322,21 @@ class TakeMode(QWidget):
                 self._slapper_state == "waiting"
                 and str(getattr(im, "asset_uuid", "")) == self._slapper_asset_uuid
             )
-            pix = load_pixmap(im.thumb_square or im.local_path, tile_px)
+            pix = load_pixmap(im.thumb_aspect or im.local_path, tile_px)
             tile = PhotoThumbTile(
                 i, pix, selected=is_selected, is_cover=is_cover,
-                edited=edited, in_slapper=in_slapper, tile_size=tile_px)
+                edited=edited, in_slapper=in_slapper, tile_size=tile_px,
+                asset_uuid=str(getattr(im, "asset_uuid", "")))
             tile.setToolTip(im.filename or os.path.basename(im.local_path))
             tile.setAccessibleName(
                 "Selected photograph" if is_selected else "Select photograph")
             tile.clicked.connect(lambda _=False, i=i: self._select_photo(i))
-            self.bucket_col.addWidget(tile, i // cols, i % cols)
+            self.bucket_col.addWidget(tile, visible_pos // cols, visible_pos % cols)
+            visible_pos += 1
+        if visible_pos == 0:
+            self.bucket_col.addWidget(
+                hint("All photos are placed on the page — remove one from the page to return it here."),
+                0, 0)
         self._populate_photo_tools()
 
     def _ai_fill(self):
@@ -2340,6 +2421,10 @@ class TakeMode(QWidget):
     def _changed(self):
         if self._loading:
             return
+        if self._bucket:
+            used = frozenset(self._used_photo_indices())
+            if used != getattr(self, "_last_used_indices", frozenset()):
+                self._refresh_bucket()
         self.save_state.setText("Saving…")
         self._autosave.start()
 
@@ -2361,13 +2446,14 @@ class TakeMode(QWidget):
             return out
         return [convert(block) for block in blocks]
 
-    def _build_draft(self, session):
+    def _build_draft(self, session, *, authored=None):
         draft = (session.load_draft(self._editing_id) if self._editing_id else None) \
             or O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK, mode=self.SUITE_MODE)
         self._editing_id = draft.draft_id
         draft.title = self.title_edit.text().strip()
         draft.tags = self.tags_edit.text().strip()
-        authored = self.body.authoring_blocks()
+        if authored is None:
+            authored = self.body.authoring_blocks()
         draft.body_blocks = biggie.blocks_to_json(authored)
         draft.caption = biggie.serialize_blocks(self._wire_blocks(authored)).strip()
         draft.img_status = self.status_combo.currentText()
@@ -2390,15 +2476,16 @@ class TakeMode(QWidget):
             return
         try:
             session = self.rail.ensure_session()
-            draft = self._build_draft(session)
+            authored = self.body.authoring_blocks()
+            draft = self._build_draft(session, authored=authored)
             O.generate_draft_thumbs(draft)
             session.add_draft(draft)
-            self._mirror_sqlite(draft)
+            self._mirror_sqlite(draft, authored=authored)
             self.save_state.setText("Safe on this computer")
         except Exception as exc:  # noqa: BLE001
             self.save_state.setText(f"Needs attention — could not save: {exc}")
 
-    def _mirror_sqlite(self, draft):
+    def _mirror_sqlite(self, draft, *, authored=None):
         site = ((self.app_config() or {}).get("url") or "").strip()
         if not site:
             return
@@ -2413,7 +2500,8 @@ class TakeMode(QWidget):
                     site, draft.draft_id, image.local_path, alt_text=image.alt,
                     caption=image.caption, asset_uuid=image.asset_uuid)
         snap_library.save_draft(site, draft.draft_id, title=draft.title,
-                                status=draft.status, blocks=self.body.authoring_blocks())
+                                status=draft.status,
+                                blocks=authored if authored is not None else self.body.authoring_blocks())
 
     def _save(self, ready: bool):
         session = self.rail.ensure_session()

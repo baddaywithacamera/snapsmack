@@ -1,11 +1,15 @@
 """Collapsible right-hand PHOTOS tray + zoomable thumbnail tiles for COLD TAKE."""
 
-from PySide6.QtCore import Qt, QRect, Signal
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPixmap
+import json
+
+from PySide6.QtCore import QMimeData, QPoint, Qt, QRect, Signal
+from PySide6.QtGui import QColor, QDrag, QFont, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QStackedLayout,
-    QVBoxLayout, QWidget,
+    QApplication, QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy,
+    QStackedLayout, QVBoxLayout, QWidget,
 )
+
+TRAY_PHOTO_MIME = "application/x-coldsnap-tray-photo"
 
 from . import theme
 
@@ -98,21 +102,45 @@ class PhotoThumbTile(QPushButton):
 
     def __init__(self, index: int, pixmap: QPixmap, selected: bool = False,
                  is_cover: bool = False, edited: bool = False,
-                 in_slapper: bool = False, tile_size: int = 92, parent=None):
+                 in_slapper: bool = False, tile_size: int = 92,
+                 asset_uuid: str = "", parent=None):
         super().__init__(parent)
         self._index = index
+        self._asset_uuid = str(asset_uuid or "")
         self._pixmap = pixmap
         self._selected = selected
         self._is_cover = is_cover
         self._edited = edited
         self._in_slapper = in_slapper
         self._tile_size = max(56, int(tile_size))
+        self._drag_start: QPoint | None = None
         self.setObjectName("PhotoThumbTile")
         self.setCheckable(True)
         self.setChecked(selected)
         self.setFixedSize(self._tile_size, self._tile_size)
         self.setCursor(Qt.PointingHandCursor)
         self.setFocusPolicy(Qt.NoFocus)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._drag_start = event.position().toPoint()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if ((event.buttons() & Qt.LeftButton) and self._drag_start is not None
+                and (event.position().toPoint() - self._drag_start).manhattanLength()
+                >= QApplication.startDragDistance()):
+            self._drag_start = None
+            drag = QDrag(self)
+            mime = QMimeData()
+            payload = json.dumps({"asset_uuid": self._asset_uuid, "index": self._index}).encode("utf-8")
+            mime.setData(TRAY_PHOTO_MIME, payload)
+            drag.setMimeData(mime)
+            if not self._pixmap.isNull():
+                drag.setPixmap(self._pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            drag.exec(Qt.CopyAction)
+            return
+        super().mouseMoveEvent(event)
 
     def paintEvent(self, _event):
         p = QPainter(self)
@@ -124,11 +152,12 @@ class PhotoThumbTile(QPushButton):
         p.fillRect(self.rect(), QColor(theme.FIELD))
 
         if not self._pixmap.isNull():
+            box_w, box_h = max(1, w - 4), max(1, h - 4)
             scaled = self._pixmap.scaled(
-                w - 4, h - 4, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
-            sx = max(0, (scaled.width() - (w - 4)) // 2)
-            sy = max(0, (scaled.height() - (h - 4)) // 2)
-            p.drawPixmap(2, 2, scaled, sx, sy, w - 4, h - 4)
+                box_w, box_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            dx = 2 + (box_w - scaled.width()) // 2
+            dy = 2 + (box_h - scaled.height()) // 2
+            p.drawPixmap(dx, dy, scaled)
 
         if self._in_slapper:
             p.fillRect(rect, QColor(10, 14, 10, 185))

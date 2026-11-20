@@ -733,6 +733,7 @@ class BiggieCanvas(QTextEdit):
     mosaicEditRequested = Signal(list, str)
     photographsDropped = Signal(list)
     photographPasted = Signal(object)
+    trayPhotoDropped = Signal(str)
 
     def __init__(self, parent=None, *, allow_mosaic: bool = True):
         super().__init__(parent)
@@ -1128,10 +1129,23 @@ class BiggieCanvas(QTextEdit):
 
     # -- local photograph input -----------------------------------------------
     def canInsertFromMimeData(self, source):
-        return bool(source.hasImage() or any(url.isLocalFile() for url in source.urls())) \
+        from .photo_tray import TRAY_PHOTO_MIME
+        return bool(source.hasFormat(TRAY_PHOTO_MIME) or source.hasImage()
+                    or any(url.isLocalFile() for url in source.urls())) \
             or super().canInsertFromMimeData(source)
 
     def insertFromMimeData(self, source):
+        from .photo_tray import TRAY_PHOTO_MIME
+        if source.hasFormat(TRAY_PHOTO_MIME):
+            import json as _json
+            try:
+                data = _json.loads(bytes(source.data(TRAY_PHOTO_MIME)).decode("utf-8"))
+            except Exception:
+                data = {}
+            asset_uuid = str(data.get("asset_uuid") or "")
+            if asset_uuid:
+                self.trayPhotoDropped.emit(asset_uuid)
+            return
         paths = [url.toLocalFile() for url in source.urls() if url.isLocalFile()]
         if paths:
             self.photographsDropped.emit(paths)

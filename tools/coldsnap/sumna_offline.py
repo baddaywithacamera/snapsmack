@@ -520,7 +520,8 @@ def draft_db_rows(draft: Draft) -> dict:
 # Thumbnails — generate the CMS-identical t_/a_ pair for every image in a draft.
 # ---------------------------------------------------------------------------
 
-def generate_draft_thumbs(draft: Draft, *, sq_size: int = 400, asp_max: int = 400) -> Draft:
+def generate_draft_thumbs(draft: Draft, *, sq_size: int = 400, asp_max: int = 400,
+                          force: bool = False) -> Draft:
     """
     Populate width/height/thumb_square/thumb_aspect for each image using the
     shared snap_thumbs port, baking each image's focal point + zoom into the
@@ -531,6 +532,10 @@ def generate_draft_thumbs(draft: Draft, *, sq_size: int = 400, asp_max: int = 40
     """
     for im in draft.images:
         if not im.local_path or not os.path.isfile(im.local_path):
+            continue
+        if (not force and im.width > 0 and im.height > 0
+                and im.thumb_square and os.path.isfile(im.thumb_square)
+                and im.thumb_aspect and os.path.isfile(im.thumb_aspect)):
             continue
         res = snap_thumbs.generate_thumbs(
             im.local_path, sq_size=sq_size, asp_max=asp_max,
