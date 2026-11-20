@@ -107,6 +107,40 @@ function km_rmtree(string $dir): void {
     @rmdir($real);
 }
 
+/**
+ * Make a directory link at $link pointing at $target, or return false.
+ *
+ * Three mechanisms because the escape works through all three and the box
+ * decides which one is available: symlink() needs SeCreateSymbolicLink on
+ * Windows and usually fails unelevated, so a directory JUNCTION via mklink /J
+ * is the fallback, and that needs no privilege at all. On Linux and macOS the
+ * first call simply works.
+ */
+function km_make_dir_link(string $target, string $link): bool {
+    if (@symlink($target, $link)) return true;
+    if (DIRECTORY_SEPARATOR !== '\\') return false;
+    $w = str_replace('/', DIRECTORY_SEPARATOR, $link);
+    $t = str_replace('/', DIRECTORY_SEPARATOR, $target);
+    @exec('cmd /c mklink /J "' . $w . '" "' . $t . '" 2>&1', $out, $rc);
+    return $rc === 0 && (realpath($link) !== false);
+}
+
+/**
+ * Remove a directory link WITHOUT following it.
+ *
+ * This matters more than it looks. km_rmtree() walks with
+ * RecursiveDirectoryIterator, which follows a link, so cleaning the fixture
+ * while a junction to the outside directory is still in it would delete the
+ * contents of the link's TARGET. In this fixture the target is a sibling in
+ * the same temp tree, so the damage would be invisible -- which is exactly how
+ * a recursive delete through a link gets shipped.
+ */
+function km_drop_dir_link(string $link): void {
+    if (DIRECTORY_SEPARATOR === '\\') { @rmdir($link); @unlink($link); return; }
+    @unlink($link);
+    @rmdir($link);
+}
+
 /** A 1x1 JPEG, byte for byte, because this box has no GD to make one with. */
 function km_jpeg(): string {
     return base64_decode(
@@ -408,6 +442,158 @@ km_check('and that file really is on disk, inside the site',
 km_rmtree($evil);
 
 // ─────────────────────────────────────────────────────────────────────────────
+echo "\nSTAGE 5c — AND NOT THROUGH A SYMLINK EITHER (Codex's SECOND FAIL)\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// THE SAME HOLE, THE SECOND TIME. My repair in 5b blocked every string the
+// first FAIL used, and I wrote in the source that a path whose parent does not
+// exist yet cannot escape "because '..' is already refused". That sentence was
+// wrong, and Codex disproved it on 63fb53d1.
+//
+// The escape: an ancestor directory inside the site is a symbolic link or a
+// Windows junction pointing outside. The restored path is "link/new/proof.jpg"
+// and "link/new" does NOT exist yet, so realpath(dirname(target)) returned
+// false and the containment block was skipped entirely. restoreImages() then
+// created "new" through the link and copied the photograph outside the site.
+// Measured on 63fb53d1 before the repair: restored 1, blocked 0, errors none,
+// and the file sitting in the sibling directory.
+//
+// Two things this stage pins that a reader would otherwise get wrong:
+//   1. The deeper child must NOT exist. With "link/new" already present the
+//      old parent check caught it, which is why the first repair looked sound.
+//   2. is_link() does not see a Windows junction. On this box, with the
+//      junction in place, is_link() and is_dir() both returned false while
+//      realpath() pointed straight out of the site. A guard written on
+//      is_link() would pass this stage on Linux and ship the hole on Windows.
+$lnk     = sys_get_temp_dir() . '/ss1426_link_' . bin2hex(random_bytes(6));
+$lnkSite = $lnk . '/site';
+$lnkOut  = $lnk . '/outside';
+$lnkFlat = $lnk . '/flat';
+mkdir($lnkSite, 0777, true);
+mkdir($lnkOut, 0777, true);
+mkdir($lnkFlat, 0777, true);
+file_put_contents($lnkFlat . '/proof.jpg', km_jpeg());
+file_put_contents($lnkFlat . '/logo.png', km_jpeg());
+
+$linkPath = $lnkSite . '/link';
+$haveLink = km_make_dir_link($lnkOut, $linkPath);
+
+if (!$haveLink) {
+    echo "  NOT CHECKED  this box cannot create a directory link, so the\n";
+    echo "               symlink escape is UNVERIFIED here. Not a pass.\n";
+    $failures[] = 'NOT CHECKED: symlink/junction escape could not be exercised';
+} else {
+    km_check('the fixture really has a link inside the site pointing outside',
+             realpath($linkPath) !== false
+             && realpath($linkPath) === realpath($lnkOut), $failures);
+    km_check('and the deeper child does NOT exist, which is what skipped the old check',
+             realpath($linkPath . '/new') === false, $failures);
+
+    $lp = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $lp->exec('CREATE TABLE snap_images (id INTEGER PRIMARY KEY, img_file TEXT)');
+    $lp->exec('CREATE TABLE snap_assets (id INTEGER PRIMARY KEY, asset_path TEXT)');
+    $lp->exec('CREATE TABLE snap_settings (setting_key TEXT PRIMARY KEY, setting_val TEXT)');
+
+    // Every shape of the same escape: through a missing deeper directory,
+    // straight into the link, and with the link in the middle of the path.
+    $linkPaths = [
+        'link/new/proof.jpg'      => 'link, then a directory that does not exist yet',
+        'link/proof.jpg'          => 'straight into the link',
+        'link/deep/deeper/x.jpg'  => 'two missing levels past the link',
+    ];
+    $n = 0;
+    foreach ($linkPaths as $bad => $label) {
+        $lp->prepare('INSERT INTO snap_images (id, img_file) VALUES (?, ?)')
+           ->execute([++$n, $bad]);
+    }
+    // Codex asked for the same guard on all three targets, so all three are
+    // exercised rather than assumed to share the helper.
+    $lp->prepare('INSERT INTO snap_assets (id, asset_path) VALUES (1, ?)')
+       ->execute(['link/new/asset.css']);
+    $lp->prepare('INSERT INTO snap_settings VALUES (?, ?)')
+       ->execute(['header_logo_url', 'link/new/brand.png']);
+
+    $lnkEngine = new SnapSmackRecovery($lp, $lnkSite);
+    ob_start();
+    $li = $lnkEngine->restoreImages($lnkFlat);
+    $la = $lnkEngine->restoreMediaAssets($lnkFlat);
+    $lb = $lnkEngine->restoreBranding($lnkFlat);
+    $lnkProgress = (string)ob_get_clean();
+
+    km_check('every path through the link is BLOCKED, none restored',
+             ($li['blocked'] ?? 0) === count($linkPaths)
+             && ($li['restored'] ?? 1) === 0, $failures);
+    km_check('and none is counted missing, which would read as an absent file',
+             ($li['missing'] ?? 1) === 0, $failures);
+    km_check('an asset path through the link is BLOCKED',
+             ($la['blocked'] ?? 0) === 1 && ($la['restored'] ?? 1) === 0, $failures);
+    km_check('a branding path through the link is BLOCKED',
+             ($lb['blocked'] ?? 0) === 1 && ($lb['restored'] ?? 1) === 0, $failures);
+    km_check('the refusal says it resolves outside the site, not something vaguer',
+             str_contains($lnkProgress, 'resolves outside the site directory'), $failures);
+
+    // THE CHECK THAT MATTERS, and the one that failed on 63fb53d1: the
+    // filesystem on the far side of the link, whatever the counters say.
+    $leaked = [];
+    foreach (['/new/proof.jpg', '/proof.jpg', '/new', '/deep',
+              '/new/asset.css', '/new/brand.png'] as $probe) {
+        if (file_exists($lnkOut . $probe)) $leaked[] = $lnkOut . $probe;
+    }
+    km_check('NOTHING was written through the link, and no directory was created there'
+             . ($leaked ? ' — FOUND: ' . implode(', ', $leaked) : ''),
+             $leaked === [], $failures);
+
+    // A SIBLING WHOSE NAME STARTS WITH THE SITE'S NAME. Not in Codex's
+    // report; it is the next hole along, and it costs three lines to close.
+    // baseDir here is ".../site" and the link points at ".../sitextra", so a
+    // containment test written as a bare string prefix -- without the
+    // directory separator on the end of the needle -- reads "sitextra" as
+    // being inside "site" and lets the write through. Shared hosting puts
+    // "site" and "site-backup" next to each other constantly.
+    $pfxOut = $lnk . '/sitextra';
+    mkdir($pfxOut, 0777, true);
+    $pfxLink = $lnkSite . '/pfx';
+    if (km_make_dir_link($pfxOut, $pfxLink)) {
+        $lp->exec('DELETE FROM snap_images');
+        $lp->prepare('INSERT INTO snap_images (id, img_file) VALUES (1, ?)')
+           ->execute(['pfx/new/proof.jpg']);
+        ob_start();
+        $lpfx = $lnkEngine->restoreImages($lnkFlat);
+        ob_end_clean();
+        km_check('a link to a sibling whose name merely STARTS with the site name is BLOCKED',
+                 ($lpfx['blocked'] ?? 0) === 1 && ($lpfx['restored'] ?? 1) === 0, $failures);
+        km_check('and nothing was written into that sibling',
+                 !file_exists($pfxOut . '/new/proof.jpg')
+                 && !file_exists($pfxOut . '/new'), $failures);
+        km_drop_dir_link($pfxLink);
+    } else {
+        echo "  NOT CHECKED  prefix-sibling link could not be created here\n";
+        $failures[] = 'NOT CHECKED: prefix-sibling link escape could not be exercised';
+    }
+
+    // A LEGITIMATE DEEP PATH WHOSE DIRECTORIES DO NOT EXIST YET MUST STILL
+    // WORK. This is the half of the repair that can go wrong in the other
+    // direction: walking the components is only correct if a missing component
+    // ends the walk instead of refusing the path. Without this check the stage
+    // would pass on a guard that blocked every new photograph on every import.
+    $lp->exec('DELETE FROM snap_images');
+    $lp->prepare('INSERT INTO snap_images (id, img_file) VALUES (1, ?)')
+       ->execute(['img_uploads/2026/12/31/logo.png']);
+    ob_start();
+    $lgood = $lnkEngine->restoreImages($lnkFlat);
+    ob_end_clean();
+    km_check('a legitimate path four directories deep, none of them existing, is RESTORED',
+             ($lgood['restored'] ?? 0) === 1 && ($lgood['blocked'] ?? 1) === 0, $failures);
+    km_check('and it really is on disk, inside the site',
+             is_file($lnkSite . '/img_uploads/2026/12/31/logo.png'), $failures);
+
+    // Drop the link BEFORE the recursive delete, or the delete follows it.
+    km_drop_dir_link($linkPath);
+    km_check('the link is gone before cleanup walks the tree',
+             realpath($linkPath) === false, $failures);
+}
+km_rmtree($lnk);
+
+// ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 6 — the same five helpers the installer uses, read from source\n";
 // ─────────────────────────────────────────────────────────────────────────────
 // SS-1431 asks for the installer's path to be REUSED, not reimplemented. These
@@ -453,5 +639,10 @@ echo "NOT COVERED: no GD on this box, so a thumbnail is never actually\n";
 echo "generated here -- the phase failing is asserted instead, because a\n";
 echo "GD-less host is a real host. Branding and media-asset restoration are\n";
 echo "exercised through the import but have no rows to act on in these\n";
-echo "fixtures. Nothing rendered, installed or deployed.\n";
+echo "fixtures. The symlink escape is exercised through a Windows JUNCTION\n";
+echo "here, because symlink() needs a privilege this box does not have; the\n";
+echo "guard's broken-link branch is therefore NOT reached on Windows, where a\n";
+echo "dangling junction reports file_exists, is_link and realpath all false.\n";
+echo "That branch needs a host with real symlinks. Nothing rendered,\n";
+echo "installed or deployed.\n";
 // ===== SNAPSMACK EOF =====

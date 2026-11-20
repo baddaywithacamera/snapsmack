@@ -1169,9 +1169,10 @@
         ]
     },
     "kit-import-restores-media-regression.php": {
-        "assertions": 39,
-        "predicates": 16,
+        "assertions": 54,
+        "predicates": 17,
         "thresholds": [
+            2,
             2,
             100
         ]
