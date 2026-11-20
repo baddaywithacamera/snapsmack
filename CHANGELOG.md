@@ -75,6 +75,13 @@ new decision.
   account really is unreachable. If it still exists, the notice is refused as
   before. (SS-1481)
 
+- **SNAPSMACK now does as it is asked when another server says slow down.**
+  When a site on the network answered "try again in ten minutes", that was
+  thrown away and we retried on our own schedule — which is how a well-behaved
+  server starts refusing you outright. Its answer is now honoured, in both
+  forms the standard allows, and it can only ever make us wait longer, never
+  shorter. (SS-1481)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,

@@ -941,6 +941,53 @@ function sv_last_fetch_status(?int $set = null): int {
 }
 
 /**
+ * The raw Retry-After the last fetch was given, or '' if none.
+ *
+ * SS-1481 finding 11. The OUTBOUND delivery queue has honoured Retry-After for
+ * a long time; inbound fetching threw it away and retried on a fixed
+ * 5min * 2^n schedule regardless of what the origin asked for. Ignoring a
+ * server that is telling you to slow down is how a polite instance starts
+ * rate-limiting you harder.
+ *
+ * Kept raw because the header has two legal forms, and the caller decides.
+ */
+function sv_last_retry_after(?string $set = null): string {
+    static $value = '';
+    if ($set !== null) $value = $set;
+    return $value;
+}
+
+/**
+ * Seconds to wait from a Retry-After header, or null when it says nothing usable.
+ *
+ * BOTH LEGAL FORMS, because servers send both: delta-seconds ("120") and an
+ * HTTP-date ("Wed, 21 Oct 2026 07:28:00 GMT"). A date in the past, a negative
+ * number, or anything unparseable returns null -- the caller then uses its own
+ * backoff, which is the safe direction.
+ *
+ * Clamped to $max. A remote cannot park our queue for a week by asking.
+ */
+function sv_retry_after_seconds(string $header, int $max = 86400): ?int {
+    $header = trim($header);
+    if ($header === '') return null;
+    if (preg_match('/^\d+$/', $header)) {
+        $secs = (int)$header;
+        return $secs > 0 ? min($secs, $max) : null;
+    }
+    // Only a value that LOOKS like an HTTP-date goes near strtotime(). Measured
+    // before writing the test: strtotime('-5') returns a time 18000 seconds
+    // ahead, because it reads it as the timezone offset -05:00 -- so a
+    // nonsense "-5" became a five-hour wait. An HTTP-date always carries a
+    // month name or GMT, so requiring a letter rejects every numeric-ish form
+    // that is not a plain delta-seconds.
+    if (!preg_match('/[A-Za-z]/', $header)) return null;
+    $when = strtotime($header);
+    if ($when === false) return null;
+    $secs = $when - time();
+    return $secs > 0 ? min($secs, $max) : null;
+}
+
+/**
  * An unverifiable Delete: act on it only if the actor really is gone.
  *
  * SS-1481 finding 7. The inbox answers 202 to a Delete whose signature cannot
@@ -1044,7 +1091,19 @@ function sv_fetch_ap(string $url, ?array $settings = null): ?array {
             CURLOPT_TIMEOUT        => 8,
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_HTTPHEADER     => $req_hdrs,
+            // SS-1481 finding 11. The one response header worth reading. An
+            // origin answering 429 or 503 tells us how long to wait, and we
+            // were throwing that away and retrying on our own schedule --
+            // which is how a polite instance ends up rate-limiting us harder.
+            // Only Retry-After is kept; nothing else is collected.
+            CURLOPT_HEADERFUNCTION => static function ($ch, string $line): int {
+                if (stripos($line, 'retry-after:') === 0) {
+                    sv_last_retry_after(trim(substr($line, 12)));
+                }
+                return strlen($line);
+            },
         ]);
+        sv_last_retry_after('');     // this attempt's answer only
         $body  = curl_exec($ch);
         $code  = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $cerr  = curl_errno($ch);

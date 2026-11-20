@@ -1100,6 +1100,22 @@
             1900
         ]
     },
+    "inbound-fetch-honours-retry-after-regression.php": {
+        "assertions": 23,
+        "predicates": 4,
+        "thresholds": [
+            60,
+            90,
+            120,
+            290,
+            300,
+            300,
+            600,
+            1800,
+            86400,
+            86400
+        ]
+    },
     "indieweb-semantics-regression.php": {
         "assertions": 16,
         "predicates": 12,

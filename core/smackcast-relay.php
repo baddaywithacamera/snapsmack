@@ -594,6 +594,25 @@ function sc_relay_process_ingest_jobs(PDO $pdo, array $settings, int $limit = 20
         $attempts = (int)$job['attempts'] + 1;
         $shelve = $attempts >= 8 || strtotime((string)$job['created_at']) < time() - 604800;
         $delay = min(86400, 300 * (2 ** min(8, $attempts - 1)));
+
+        // SS-1481 finding 11. If the origin answered the fetch that just failed
+        // with a Retry-After, wait that long instead of our own backoff. The
+        // outbound delivery queue has honoured this for a long time; inbound
+        // ingest did not, and retrying on our own schedule against a server
+        // asking us to slow down is how a polite instance starts rate-limiting
+        // us harder.
+        //
+        // The accessor holds the header from the fetch inside the call above,
+        // which is synchronous, so it belongs to THIS job and no other.
+        //
+        // WE TAKE THE LONGER OF THE TWO, deliberately. Honouring a Retry-After
+        // SHORTER than our own backoff would let a remote pull us back into a
+        // tight retry loop after we had already decided to back off -- so the
+        // header can only ever slow us down, never speed us up.
+        if (function_exists('sv_last_retry_after') && function_exists('sv_retry_after_seconds')) {
+            $asked = sv_retry_after_seconds(sv_last_retry_after());
+            if ($asked !== null) $delay = max($delay, $asked);
+        }
         $pdo->prepare("UPDATE snap_relay_ingest_jobs SET attempts=?,status=?,next_try_at=DATE_ADD(NOW(),INTERVAL ? SECOND) WHERE id=?")
             ->execute([$attempts, $shelve ? 'shelved' : 'queued', $delay, $job['id']]);
         $retry++;
