@@ -199,7 +199,7 @@ if (isset($_GET['ajax'])) {
             exit;
         }
         @set_time_limit(30);
-        echo json_encode(['ok' => true, 'items' => sv_public_timeline($host, $panel === 'local', 30)], JSON_UNESCAPED_SLASHES);
+        echo json_encode(['ok' => true, 'items' => sv_public_timeline($host, $panel === 'local', 30, $pdo)], JSON_UNESCAPED_SLASHES);
         exit;
     }
 

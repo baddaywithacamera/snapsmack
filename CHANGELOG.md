@@ -88,6 +88,12 @@ new decision.
   because the record of what had already been sent was never consulted. It is
   now. Genuinely missed posts are still picked up. (SS-1481)
 
+- **An empty Fediverse tab stops hammering the other site.** When your local or
+  global tab had nothing in it, SnapSmack asked the remote instance for its
+  public timeline twice on every single view. That answer is now kept for ten
+  minutes — including an empty one, which was the worst case — so refreshing a
+  quiet tab no longer costs somebody else two requests each time. (SS-1481)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,

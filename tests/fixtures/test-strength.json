@@ -1773,6 +1773,14 @@
             2
         ]
     },
+    "public-timeline-fallback-is-cached-regression.php": {
+        "assertions": 19,
+        "predicates": 2,
+        "thresholds": [
+            2,
+            2
+        ]
+    },
     "rational-geo-info-drawer-regression.php": {
         "assertions": 3,
         "predicates": 2,

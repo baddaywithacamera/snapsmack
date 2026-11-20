@@ -5332,9 +5332,51 @@ function sv_client_plain_text(string $html): string {
 }
 
 /** Local/Global discovery: a chosen instance's public timeline via REST. */
-function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
+/**
+ * A remote instance's public timeline, cached briefly.
+ *
+ * SS-1481 finding 15. This runs when the owner's local or global tab is empty,
+ * and it made TWO live JSON requests per view -- the Pixelfed endpoint, then
+ * the Mastodon one as a fallback -- from two different callers, with no cache
+ * at all. Refreshing an empty tab was two network round trips every time.
+ *
+ * Low risk, which is why it is in the efficiency group and not the first one:
+ * the data is already public and the request identifies us honestly. It is
+ * simply wasteful, and wasteful against someone else's server.
+ *
+ * The cache is OPTIONAL: pass a $pdo and it is used, leave it out and the
+ * behaviour is exactly as before. Stored in snap_settings with a timestamp,
+ * copying the shape core/network-alert.php:187 already uses for its 30-minute
+ * poll throttle rather than introducing a second caching idea.
+ *
+ * ANY PROBLEM READING OR WRITING IT FALLS BACK TO A LIVE FETCH. A truncated or
+ * unparseable payload is a cache miss, not corruption, and the row is capped
+ * well under the column's limit so a large timeline cannot half-write itself.
+ */
+function sv_public_timeline(string $host, bool $local, int $limit = 30,
+                            ?PDO $pdo = null, int $ttl = 600): array {
     $host = trim($host);
     if ($host === '') return [];
+
+    $cache_key = 'fedi_public_tl_' . substr(hash('sha256',
+        strtolower($host) . "\n" . ($local ? 'local' : 'global') . "\n" . $limit), 0, 40);
+
+    if ($pdo !== null && $ttl > 0) {
+        try {
+            $q = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = ? LIMIT 1");
+            $q->execute([$cache_key]);
+            $raw = (string)$q->fetchColumn();
+            if ($raw !== '') {
+                $hit = json_decode($raw, true);
+                if (is_array($hit) && isset($hit['at'], $hit['items'])
+                    && is_array($hit['items'])
+                    && (time() - (int)$hit['at']) < $ttl) {
+                    return $hit['items'];
+                }
+            }
+        } catch (Throwable $e) { /* no cache: fetch live, as before */ }
+    }
+
     $base = 'https://' . $host;
     $q = 'limit=' . max(1, min($limit, 40)) . '&only_media=true' . ($local ? '&local=true' : '');
     $rows = sv_fetch_json($base . '/api/pixelfed/v1/timelines/public?' . $q);
@@ -5370,6 +5412,21 @@ function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
         ];
         if (count($out) >= $limit) break;
     }
+
+    // Store even an EMPTY result. An instance that is down or has nothing to
+    // show is the case that would otherwise be re-fetched twice on every
+    // refresh, which is the worst version of this fault rather than the best.
+    if ($pdo !== null && $ttl > 0) {
+        $payload = json_encode(['at' => time(), 'items' => $out], JSON_UNESCAPED_SLASHES);
+        if (is_string($payload) && strlen($payload) <= 60000) {
+            try {
+                $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+                               ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+                    ->execute([$cache_key, $payload]);
+            } catch (Throwable $e) { /* cache is a convenience, never a dependency */ }
+        }
+    }
+
     return $out;
 }
 
