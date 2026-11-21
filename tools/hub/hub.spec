@@ -38,7 +38,7 @@ _windows_version = VSVersionInfo(
     ])]), VarFileInfo([VarStruct('Translation', [0x0409, 1200])])],
 )
 
-_py_files   = [os.path.join(_src, 'main.py'), os.path.join(_src, 'qt_main.py')]
+_py_files   = [os.path.join(_src, 'main.py'), os.path.join(_src, 'qt_main.py'), os.path.join(_src, 'app_cli.py')]
 _local_data = [(f, '.') for f in _py_files]
 _local_mods = [os.path.splitext(os.path.basename(f))[0]
                for f in _py_files
