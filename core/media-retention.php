@@ -25,9 +25,19 @@ declare(strict_types=1);
  * WHAT THIS IS NOT. It is not video. Remote video is linked, never cached:
  * core/fediverse.php stores the URL and type in media_video_json, the player
  * streams it from the origin with preload="none", and the proxy's allowlist
- * refuses anything that is not one of five image types. Sean's standing ruling
- * of 2026-11-20: owners may VIEW remote video; SNAPSMACK never caches,
- * proxies, re-publishes, boosts or shares it, and never accepts video uploads.
+ * refuses anything that is not one of five image types.
+ *
+ * Sean's ruling as REVISED on 2026-11-21, which supersedes his first one of
+ * 2026-11-20 and is the rule in force: SNAPSMACK never caches, proxies,
+ * re-encodes, stores or uploads video, and no post originating here carries
+ * video. BOOSTING a remote post that contains video IS allowed, video-only or
+ * mixed, because a boost is an Announce referencing the remote object and this
+ * server never touches the bytes.
+ *
+ * The superseded sentence said "never ... boosts or shares video" and survived
+ * the behaviour change in this file and in smack-media-proxy.php — Codex's
+ * FAIL 3. A comment that contradicts the code is worse than no comment,
+ * because the next reader trusts it.
  *
  * THE NUMBERS ARE SEAN'S, not mine. 512 MB total, owner-settable. 4 MB per
  * file -- a CACHE limit, not a fetch limit: a larger image is still fetched
@@ -269,7 +279,30 @@ function snap_timeline_retention(PDO $pdo, ?int $days = null, ?int $perFeed = nu
     try {
         foreach (array_chunk($doomed, 500) as $chunk) {
             $marks = implode(',', array_fill(0, count($chunk), '?'));
-            // Memberships go first and by hand. The canonical schema cascades,
+            // THE BOOST RECORD GOES TOO, and it has to go first, while the
+            // timeline rows it is keyed against still exist: it is keyed on
+            // object_id, not on the timeline's id, so once the row is deleted
+            // there is nothing left to look the object up by.
+            //
+            // Codex's FAIL 2. snap_ap_timeline_boosts arrived with the
+            // finding-2 repair on the other branch, and the merge brought the
+            // two together without this. Orphan boost rows would then grow
+            // outside every ceiling here, and a post re-ingested later would
+            // read as still having live boosters that withdrew months ago.
+            // Adding a table and not teaching retention about it is the same
+            // omission as adding one and not declaring it in the schema.
+            //
+            // Guarded separately, because a site that has never federated may
+            // not have this table at all and that must not stop the prune.
+            try {
+                $pdo->prepare("DELETE FROM snap_ap_timeline_boosts
+                                WHERE object_id IN (SELECT object_id FROM snap_ap_timeline
+                                                     WHERE id IN ({$marks}))")->execute($chunk);
+            } catch (Throwable $e) {
+                error_log('SnapSmack timeline retention: boost records not pruned — '
+                    . $e->getMessage());
+            }
+            // Memberships next, and by hand. The canonical schema cascades,
             // but a site whose table was made before the constraint existed
             // would otherwise keep orphan membership rows for ever.
             $pdo->prepare("DELETE FROM snap_ap_timeline_membership

@@ -65,13 +65,21 @@ if (!is_string($body)) {
     $ctype = strtolower(trim(explode(';', (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE))[0]));
     $error = curl_errno($ch);
     curl_close($ch);
-    // FIVE IMAGE TYPES, AND VIDEO IS EXCLUDED ON PURPOSE. Sean's standing
-    // ruling, 2026-11-20: an owner may VIEW remote video -- it is linked,
-    // click to play, preload="none", streamed from the origin -- but SNAPSMACK
-    // never caches, proxies, re-publishes, boosts or shares video, and never
-    // accepts video uploads. Adding a video/* type here would quietly make
-    // this server a video host for other people's files. It is not an
-    // oversight and it is not a to-do.
+    // FIVE IMAGE TYPES, AND VIDEO IS EXCLUDED ON PURPOSE. Sean's ruling as
+    // revised on 2026-11-21: SNAPSMACK never caches, proxies, re-encodes,
+    // stores or uploads video, and no post originating here carries video.
+    // Remote video is linked, click to play, preload="none", streamed from the
+    // origin. Adding a video/* type here would quietly make this server a
+    // video host for other people's files. It is not an oversight and it is
+    // not a to-do.
+    //
+    // BOOSTING a remote post that contains video is a different question and
+    // is ALLOWED, because a boost is an Announce referencing the object and
+    // this server never touches the bytes. This allowlist is about bytes. The
+    // first version of this comment also forbade boosting, and outlived the
+    // ruling it was quoting — Codex's FAIL 3. The regression now refuses that
+    // sentence anywhere in this file, which is why it is described here rather
+    // than quoted: a quotation of a retired rule reads like the rule.
     $allowed = ['image/jpeg','image/png','image/gif','image/webp','image/avif'];
     if ($too_large || $error !== 0 || $code < 200 || $code >= 300 || !in_array($ctype, $allowed, true)) {
         http_response_code(502); exit;

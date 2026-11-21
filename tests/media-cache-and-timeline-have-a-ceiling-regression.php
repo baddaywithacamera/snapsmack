@@ -196,9 +196,22 @@ foreach (['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'] as
 }
 mc_check('and carries no video type at all',
          !preg_match("~'video/~", $proxy), $failures);
-mc_check('with a comment saying the exclusion is deliberate, not a to-do',
-         stripos($proxy, 'never caches, proxies, re-publishes, boosts or shares video') !== false,
-         $failures);
+// THE COMMENT HAS TO MATCH THE RULE IN FORCE, and this check used to REQUIRE
+// the superseded sentence — "never ... boosts or shares video" — which the
+// 2026-11-21 revision made false while the test held it in place. Codex's
+// FAIL 3. So the assertion is now on what the proxy forbids (bytes) and on the
+// absence of the sentence the ruling retired.
+mc_check('the comment says the exclusion is deliberate, not a to-do',
+         stripos($proxy, 'not an oversight and it is') !== false, $failures);
+mc_check('and names what is actually forbidden: caching, proxying, storing',
+         stripos($proxy, 'never caches, proxies, re-encodes,') !== false, $failures);
+mc_check('and NO LONGER claims boosting video is forbidden, which it is not',
+         stripos($proxy, 'boosts or shares video') === false, $failures);
+foreach (['core/media-retention.php', 'smack-media-proxy.php'] as $file) {
+    mc_check("{$file} carries no copy of the superseded rule",
+             stripos((string)file_get_contents($root . '/' . $file),
+                     're-publishes, boosts or shares') === false, $failures);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 6 — THE READER KEEPS 90 DAYS OR 2,000 PER FEED\n";
@@ -213,6 +226,12 @@ function mc_pdo(): PDO {
                  PRIMARY KEY (timeline_id, feed))');
     $pdo->exec('CREATE TABLE snap_ap_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT,
                  ntype TEXT, actor_url TEXT, object_id TEXT)');
+    // The boost record the finding-2 repair added on the other branch. The
+    // merge brought the two together, and Codex's FAIL 2 was that retention
+    // never pruned it -- a fixture without this table cannot see that.
+    $pdo->exec('CREATE TABLE snap_ap_timeline_boosts (object_id TEXT, actor_url TEXT,
+                 seen_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                 UNIQUE(object_id, actor_url))');
     return $pdo;
 }
 
@@ -299,6 +318,53 @@ $survivors = $pdo->query('SELECT object_id FROM snap_ap_timeline ORDER BY object
 mc_check('only the two notified posts survived a prune that wanted everything',
          $survivors === ['https://a.invalid/x/3', 'https://a.invalid/x/7'], $failures);
 
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\nSTAGE 7a — PRUNING A POST TAKES ITS BOOST RECORD WITH IT\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// CODEX'S FAIL 2. snap_ap_timeline_boosts is keyed on object_id, not on the
+// timeline row's id, so deleting the row leaves the boost rows behind with
+// nothing left to find them by. They then grow outside every ceiling in this
+// file, and a post re-ingested later reads as still boosted by actors who
+// withdrew months ago.
+//
+// The table arrived with the finding-2 repair on the other branch and the
+// merge brought the two together without this. Adding a table and not teaching
+// retention about it is the same omission as adding one and not declaring it
+// in the schema.
+$pdo = mc_pdo();
+$ins = $pdo->prepare('INSERT INTO snap_ap_timeline_boosts (object_id, actor_url) VALUES (?,?)');
+for ($i = 0; $i < 6; $i++) {
+    mc_row($pdo, 'https://a.invalid/b/' . $i, 300 + $i);
+    $ins->execute(['https://a.invalid/b/' . $i, 'https://booster.invalid/u/1']);
+    $ins->execute(['https://a.invalid/b/' . $i, 'https://booster.invalid/u/2']);
+}
+mc_row($pdo, 'https://a.invalid/keep', 1);
+$ins->execute(['https://a.invalid/keep', 'https://booster.invalid/u/3']);
+
+mc_check('the fixture holds twelve boost records plus one for the recent post',
+         (int)$pdo->query('SELECT COUNT(*) FROM snap_ap_timeline_boosts')->fetchColumn() === 13,
+         $failures);
+$r = snap_timeline_retention($pdo, 90, 0);
+mc_check('the six old posts were pruned', $r['deleted'] === 6, $failures);
+mc_check('  and their boost records went with them',
+         (int)$pdo->query('SELECT COUNT(*) FROM snap_ap_timeline_boosts')->fetchColumn() === 1,
+         $failures);
+mc_check('  leaving only the surviving post\'s record',
+         (string)$pdo->query('SELECT object_id FROM snap_ap_timeline_boosts')->fetchColumn()
+             === 'https://a.invalid/keep', $failures);
+mc_check('  and no boost record orphaned from a post',
+         (int)$pdo->query('SELECT COUNT(*) FROM snap_ap_timeline_boosts b
+                            WHERE NOT EXISTS (SELECT 1 FROM snap_ap_timeline t
+                                               WHERE t.object_id = b.object_id)')
+                  ->fetchColumn() === 0, $failures);
+
+// A site that has never federated may not have the table at all, and that must
+// not stop the prune.
+$noBoosts = mc_pdo();
+for ($i = 0; $i < 4; $i++) { mc_row($noBoosts, 'https://a.invalid/nb/' . $i, 300 + $i); }
+$noBoosts->exec('DROP TABLE snap_ap_timeline_boosts');
+$r = snap_timeline_retention($noBoosts, 90, 0);
+mc_check('a missing boost table does not stop the prune', $r['deleted'] === 4, $failures);
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 8 — IT IS BOUNDED, AND IT NEVER TAKES THE SITE DOWN\n";
 // ─────────────────────────────────────────────────────────────────────────────

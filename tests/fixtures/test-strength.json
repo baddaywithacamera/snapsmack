@@ -1300,8 +1300,8 @@
         ]
     },
     "media-cache-and-timeline-have-a-ceiling-regression.php": {
-        "assertions": 77,
-        "predicates": 21,
+        "assertions": 86,
+        "predicates": 24,
         "thresholds": [
             2,
             2,
@@ -1310,8 +1310,12 @@
             3,
             3,
             4,
+            4,
+            4,
             5,
             5,
+            6,
+            6,
             6,
             6,
             10,
@@ -1322,6 +1326,7 @@
             10,
             12,
             12,
+            13,
             16,
             20,
             30,
@@ -2911,9 +2916,10 @@
         ]
     },
     "undo-announce-removes-the-boosted-post-regression.php": {
-        "assertions": 41,
-        "predicates": 6,
+        "assertions": 49,
+        "predicates": 11,
         "thresholds": [
+            2,
             2
         ]
     },
