@@ -121,13 +121,14 @@ new decision.
   Anything you were notified about is never removed, so a notification can
   never point at a post that has gone. (SS-1481)
 
-- **Video is never re-published, and now the share button says so.** Remote
-  video plays from the server that hosts it, and nothing downloads until you
-  press play — that has always been true of the proxy, which accepts five
-  image types and nothing else. But the boost button would happily pass a
-  video-only post to all your followers. It no longer does: it refuses, and
-  tells you that you can link to it in a post of your own instead. A
-  photograph that happens to carry a clip is unaffected. (SS-1481)
+- **Video still never touches your server, and sharing one is now explicitly
+  allowed.** Remote video plays from the server that hosts it and nothing
+  downloads until you press play — your server accepts five image types and
+  nothing else, so it never stores, re-encodes or serves anybody's video.
+  Sharing a post that contains video is fine and always was: a share is a
+  pointer to the original, and the people who see it fetch the video from
+  where it already lives. Your server is not in the middle of it. Posts you
+  make here still carry photographs only. (SS-1481)
 
 ## 0.7.1000D — opened
 

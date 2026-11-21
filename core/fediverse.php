@@ -5261,20 +5261,24 @@ function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
         }
     }
 
-    // SEAN'S VIDEO RULING, 2026-11-20, checked here because this is the ONE
-    // door every boost goes through: pixel.php, smack-pixelfed.php and
-    // photochallenge's auto-boost all call this function. An owner may watch
-    // remote video; this site does not re-publish it to its followers.
+    // VIDEO IS NOT REFUSED HERE, and that is deliberate.
     //
-    // Refused BEFORE the test-mode branch, so a test boost cannot do what a
-    // real one may not. The message says what the owner can still do, because
-    // "no" without "but" reads as a fault.
-    if (sv_post_is_video_only($obj)) {
-        return [false, 'That post is video only, so it is not boosted. '
-            . 'SnapSmack never re-publishes, caches or hosts video — you can '
-            . 'watch it here, and it plays from the server it lives on. Link '
-            . 'to it in a post of your own if you want to share it.'];
-    }
+    // Sean's first ruling (2026-11-20) said no boosting of video, and this
+    // function refused a video-only post. He revised it on 2026-11-21: a boost
+    // is an Announce that REFERENCES the remote object by id. Receiving servers
+    // fetch the media from its origin; this server never touches the bytes, so
+    // boosting a post that contains video re-publishes nothing.
+    //
+    // What stays forbidden is unchanged and enforced elsewhere: caching,
+    // proxying, re-encoding, storing or uploading video, and video in posts
+    // that originate here. smack-media-proxy.php's allowlist is five image
+    // types and refuses everything else.
+    //
+    // tests/media-cache-and-timeline-have-a-ceiling-regression.php stage 9
+    // proves the boost path makes no HTTP request for any video URL and writes
+    // nothing to the cache, which is the property the ruling actually turns on.
+    // sv_post_is_video_only() is kept because that test needs it to build the
+    // case, and because a future rule about ORIGINATING video will want it.
 
     // TESTING WHITELIST: send the boost ONLY to whitelisted test accounts that
     // follow this blog — never Public, never the real follower crowd, not the author.

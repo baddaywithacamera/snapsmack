@@ -334,11 +334,15 @@ echo "\n";
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 9 — A VIDEO-ONLY POST IS NOT BOOSTED\n";
 // ─────────────────────────────────────────────────────────────────────────────
-// Sean's standing ruling, 2026-11-20: an owner may VIEW remote video, but
-// SNAPSMACK never caches, proxies, re-publishes, BOOSTS or shares it.
-// sv_boost_remote() is the one door every boost goes through -- pixel.php,
-// smack-pixelfed.php and photochallenge's auto-boost all call it -- so the
-// gate lives there, and this drives the predicate behind it.
+// sv_post_is_video_only() answers one question and is no longer a gate: Sean's
+// revised ruling of 2026-11-21 allows boosting a post that contains video,
+// because a boost references the object and this server never touches the
+// bytes. The predicate stays because Stage 10 needs it to build those cases,
+// and because a rule about video ORIGINATING here will want it.
+//
+// sv_boost_remote() is still the one door every boost goes through -- pixel.php,
+// smack-pixelfed.php and photochallenge's auto-boost all call it -- which is
+// why one place is enough to assert any of this.
 $fedi  = (string)file_get_contents($root . '/core/fediverse.php');
 $start = strpos($fedi, 'function sv_post_is_video_only(');
 $chunk = substr($fedi, $start, strpos($fedi, "\nfunction ", $start + 1) - $start);
@@ -382,13 +386,6 @@ mc_check('and an unfetchable post is NOT video-only, so a failed fetch never '
 // boost cannot do what a real one may not.
 $boost = substr($fedi, strpos($fedi, 'function sv_boost_remote('));
 $boost = substr($boost, 0, strpos($boost, "\nfunction ", 1));
-mc_check('sv_boost_remote() asks the question',
-         str_contains($boost, 'sv_post_is_video_only($obj)'), $failures);
-mc_check('  and asks it BEFORE the test-mode branch',
-         strpos($boost, 'sv_post_is_video_only($obj)')
-             < strpos($boost, 'photochallenge_test_mode'), $failures);
-mc_check('  and refuses rather than silently dropping it',
-         str_contains($boost, 'video only, so it is not boosted'), $failures);
 mc_check('every boost caller goes through that one function',
          substr_count((string)file_get_contents($root . '/pixel.php'), 'sv_boost_remote(') === 1
          && substr_count((string)file_get_contents($root . '/smack-pixelfed.php'), 'sv_boost_remote(') === 1,
@@ -400,10 +397,15 @@ mc_check('every boost caller goes through that one function',
 // kind of green check this project has been bitten by. So sv_boost_remote()
 // itself is evaluated here with test mode ON and a video-only post, and the
 // refusal has to come back before anything is queued.
-$GLOBALS['mc_fetched']  = null;
-$GLOBALS['mc_queued']   = [];
+$GLOBALS['mc_fetched']   = null;
+$GLOBALS['mc_queued']    = [];
+$GLOBALS['mc_json']      = [];
+$GLOBALS['mc_fetch_log'] = [];
 if (!function_exists('sv_fetch_ap')) {
     function sv_fetch_ap(string $url, ?array $settings = null): ?array {
+        // Every URL this path asks for is recorded. Stage 10 asserts on what is
+        // ABSENT from that list: no video URL is ever requested.
+        $GLOBALS['mc_fetch_log'][] = $url;
         return $GLOBALS['mc_fetched'];
     }
 }
@@ -421,7 +423,9 @@ if (!function_exists('sv_follower_inboxes')) {
 }
 if (!function_exists('sv_queue_delivery')) {
     function sv_queue_delivery(PDO $pdo, string $inbox, string $json, ?string $d = null, ?int $p = null): int {
-        $GLOBALS['mc_queued'][] = $inbox; return 1;
+        $GLOBALS['mc_queued'][] = $inbox;
+        $GLOBALS['mc_json'][]   = $json;   // Stage 10 reads the activity itself
+        return 1;
     }
 }
 if (!function_exists('sv_process_deliveries')) {
@@ -442,41 +446,107 @@ eval(substr($mc_boost_src, 0, strrpos($mc_boost_src, "\n}") + 2));
 $mc_db = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 
 // TEST MODE ON. This is the branch a gate placed too late would skip.
-$GLOBALS['mc_fetched'] = mc_att([$vid]);
-$GLOBALS['mc_queued']  = [];
-$res = sv_boost_remote($mc_db, ['photochallenge_test_mode' => '1'], 'https://a.invalid/n/1');
-mc_check('IN TEST MODE a video-only post is refused', $res[0] === false, $failures);
-mc_check('  with nothing queued to the whitelist', $GLOBALS['mc_queued'] === [], $failures);
-mc_check('  and the owner is told why, and what they can still do',
-         str_contains((string)$res[1], 'video only')
-         && str_contains((string)$res[1], 'Link'), $failures);
-
-// LIVE MODE, the same post.
-$GLOBALS['mc_queued'] = [];
-$res = sv_boost_remote($mc_db, [], 'https://a.invalid/n/1');
-mc_check('IN LIVE MODE a video-only post is refused', $res[0] === false, $failures);
-mc_check('  with nothing queued to the followers', $GLOBALS['mc_queued'] === [], $failures);
-
-// AND AN ORDINARY POST STILL BOOSTS. A gate that refuses everything would pass
-// every check above.
 $GLOBALS['mc_fetched'] = mc_att([$img]);
 $GLOBALS['mc_queued']  = [];
 $res = sv_boost_remote($mc_db, [], 'https://a.invalid/n/1');
-mc_check('a photograph post still boosts', $res[0] === true, $failures);
+mc_check('an ordinary photograph post boosts', $res[0] === true, $failures);
 mc_check('  and was actually queued', $GLOBALS['mc_queued'] !== [], $failures);
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\nSTAGE 10 — BOOSTING VIDEO TOUCHES NO VIDEO BYTES\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// SEAN'S REVISED RULING, 2026-11-21 00:17, superseding "no boosting of video".
+// A boost is an Announce that REFERENCES the remote object by id; receiving
+// servers fetch the media from its origin, so this server never touches the
+// bytes. Boosting a post that contains video is therefore allowed, video-only
+// or mixed. What stays forbidden is caching, proxying, re-encoding, storing or
+// uploading video, and video in posts that originate here.
+//
+// So the question this stage asks is not "did it refuse" but "did it TOUCH
+// anything". The stubs above count every sv_fetch_ap() call and every cache
+// write, and the assertions are about those counts.
+$GLOBALS['mc_fetch_log'] = [];
+
+$mc_before = count(snap_media_cache_entries($mc_tmp));
+
+$GLOBALS['mc_fetched'] = mc_att([$vid]);
+$GLOBALS['mc_queued']  = [];
+$GLOBALS['mc_json']    = [];
+$res = sv_boost_remote($mc_db, [], 'https://a.invalid/n/1');
+mc_check('a VIDEO-ONLY post boosts, under the revised ruling',
+         $res[0] === true, $failures);
+mc_check('  and it was queued to somebody', $GLOBALS['mc_queued'] !== [], $failures);
+
+$mc_sent = json_decode((string)($GLOBALS['mc_json'][0] ?? '{}'), true) ?: [];
+mc_check('  the activity is an Announce', ($mc_sent['type'] ?? '') === 'Announce', $failures);
+mc_check('  that REFERENCES the object by id, rather than embedding it',
+         ($mc_sent['object'] ?? null) === 'https://a.invalid/n/1', $failures);
+
+// THE BYTES. Only the object and its author were fetched, to find the inbox;
+// no attachment URL was ever requested.
+$mc_video_fetches = array_values(array_filter($GLOBALS['mc_fetch_log'],
+    static fn (string $u): bool => str_contains($u, '.mp4')));
+mc_check('  NO request was made for the video URL',
+         $mc_video_fetches === [], $failures);
+mc_check('  and nothing was written to the media cache',
+         count(snap_media_cache_entries($mc_tmp)) === $mc_before, $failures);
+
+// A MIXED post, the case the first ruling's code refused and the revised one
+// allows. Codex's FAIL was that refusing only video-ONLY was wider permission
+// than the instruction then said; under the revised instruction both boost.
+$GLOBALS['mc_fetched'] = mc_att([$img, $vid]);
+$GLOBALS['mc_queued']  = [];
+$GLOBALS['mc_json']    = [];
+$res = sv_boost_remote($mc_db, [], 'https://a.invalid/n/1');
+mc_check('a MIXED photograph-and-video post boosts too', $res[0] === true, $failures);
+$mc_sent = json_decode((string)($GLOBALS['mc_json'][0] ?? '{}'), true) ?: [];
+mc_check('  still by reference, not by value',
+         ($mc_sent['object'] ?? null) === 'https://a.invalid/n/1', $failures);
+mc_check('  and still without fetching the clip',
+         array_values(array_filter($GLOBALS['mc_fetch_log'],
+             static fn (string $u): bool => str_contains($u, '.mp4'))) === [], $failures);
+
+// NO PROXY URL ANYWHERE IN THE ACTIVITY. If a future change ever embeds the
+// object instead of referencing it, the media must still point at the origin:
+// a proxy URL here would mean this server had offered to serve the bytes.
+$mc_body = (string)($GLOBALS['mc_json'][0] ?? '');
+mc_check('  and the activity names no proxy URL of ours',
+         !str_contains($mc_body, 'smack-media-proxy'), $failures);
+
+// AND THE PROXY ITSELF STILL REFUSES VIDEO. The ruling narrowed to boosting;
+// it did not open the cache.
+mc_check('the media proxy allowlist is still image-only',
+         !preg_match("~'video/~", $proxy), $failures);
+
+// The predicate is kept, unused by the boost path, because this stage needs it
+// to build the cases and a rule about ORIGINATING video will want it.
+mc_check('sv_boost_remote() no longer refuses on video',
+         !str_contains($boost, 'video only, so it is not boosted'), $failures);
 
 if ($failures) {
     fwrite(STDERR, 'SS-1481 #14 FAILED — ' . count($failures) . " check(s):\n");
     foreach ($failures as $f) fwrite(STDERR, "  - {$f}\n");
     exit(1);
 }
-echo "SS-1481 #14 PASS — the image cache has an owner-settable ceiling, refuses\n";
-echo "to KEEP anything over 4 MB while still serving it, enforces the 7-day TTL\n";
-echo "on every store and evicts oldest-first instead of by dice roll; the reader\n";
-echo "keeps 90 days or N per feed, whichever is more generous, and never a post\n";
-echo "the owner was notified about; and video is still refused by the proxy.\n";
-echo "NOT COVERED: the proxy endpoint end to end (it needs an authenticated\n";
-echo "request and a remote server) and the admin page's rendering. Stage 5 reads\n";
-echo "the proxy's source and says so.\n";
+echo "SS-1481 #14 PASS - the image cache has an owner-settable ceiling, refuses to
+";
+echo "KEEP anything over 4 MB while still serving it, enforces the 7-day TTL on
+";
+echo "every store and evicts oldest-first instead of by dice roll; the reader keeps
+";
+echo "90 days or N per feed, whichever is more generous, and never a post the owner
+";
+echo "was notified about; and boosting a post that contains video sends an Announce
+";
+echo "referencing the object, fetching no video URL and writing nothing to the
+";
+echo "cache, which is what Sean's revised ruling of 2026-11-21 turns on.
+";
+echo "NOT COVERED: the proxy endpoint end to end (it needs an authenticated request
+";
+echo "and a remote server) and the admin page's rendering. Stage 5 reads the proxy's
+";
+echo "source and says so.
+";
 // ===== SNAPSMACK EOF =====

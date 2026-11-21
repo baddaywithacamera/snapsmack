@@ -1300,8 +1300,8 @@
         ]
     },
     "media-cache-and-timeline-have-a-ceiling-regression.php": {
-        "assertions": 73,
-        "predicates": 22,
+        "assertions": 77,
+        "predicates": 21,
         "thresholds": [
             2,
             2,
