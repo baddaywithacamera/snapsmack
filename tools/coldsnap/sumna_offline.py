@@ -1081,6 +1081,7 @@ def migrate_sessions_dir(
     src_root: str,
     dest_root: str,
     log_path: Optional[str] = None,
+    mark_imported: bool = False,
 ) -> dict:
     """Copy sessions from src_root into dest_root with per-file SHA-256 verification.
 
@@ -1115,6 +1116,7 @@ def migrate_sessions_dir(
         dest_session = os.path.join(dest_root, sid)
         receipt = _load_migration_receipt(dest_session)
         copied_rels: List[Tuple[str, str]] = []
+        marked_rels: List[Tuple[str, str]] = []
         for root_dir, _, files in os.walk(src_session):
             for fn in sorted(files):
                 if fn == _MIGRATION_RECEIPT_FILE:
@@ -1128,7 +1130,7 @@ def migrate_sessions_dir(
                     rec = receipt.get(rel) or {}
                     already_rebased = (
                         rec.get("src_sha256") == src_hash
-                        and rec.get("dst_sha256") == dst_hash
+                        and (rec.get("dst_sha256") == dst_hash or bool(rec.get("imported")) or mark_imported)
                     )
                     if dst_hash == src_hash or already_rebased:
                         result["skipped_identical"].append({"session_id": sid, "rel_path": rel, "sha256": dst_hash})
@@ -1136,6 +1138,8 @@ def migrate_sessions_dir(
                         result["conflicts"].append({"session_id": sid, "rel_path": rel,
                                                     "src_sha256": src_hash, "dst_sha256": dst_hash})
                         log_lines.append(f"[{_now_iso()}] CONFLICT {sid}/{rel} src={src_hash} dst={dst_hash}")
+                    if mark_imported:
+                        marked_rels.append((rel, src_hash))
                     continue
 
                 os.makedirs(os.path.dirname(dst_file), exist_ok=True)
@@ -1147,18 +1151,21 @@ def migrate_sessions_dir(
                 log_lines.append(f"[{_now_iso()}] COPIED {sid}/{rel} sha256={dst_hash}")
                 copied_rels.append((rel, src_hash))
 
-        if copied_rels:
-            result["sessions_touched"].append(sid)
-            store = SessionStore(dest_root)
-            s = store.load(sid)
-            if s is not None:
-                _rebase_session_images(s)
-            for rel, src_hash in copied_rels:
+        if copied_rels or marked_rels:
+            if copied_rels:
+                result["sessions_touched"].append(sid)
+                store = SessionStore(dest_root)
+                s = store.load(sid)
+                if s is not None:
+                    _rebase_session_images(s)
+            for rel, src_hash in copied_rels + marked_rels:
                 dst_file = os.path.join(dest_session, rel.replace("/", os.sep))
                 if os.path.isfile(dst_file):
+                    prev_imported = bool((receipt.get(rel) or {}).get("imported"))
                     receipt[rel] = {
                         "src_sha256": src_hash,
                         "dst_sha256": _sha256_file(dst_file),
+                        "imported": bool(mark_imported or prev_imported),
                     }
             _save_migration_receipt(dest_session, receipt)
 
@@ -1208,9 +1215,7 @@ def discover_backup_sessions(
                 src_hash = _sha256_file(src_file)
                 dst_hash = _sha256_file(dst_file)
                 rec = receipt.get(rel) or {}
-                if dst_hash != src_hash and not (
-                    rec.get("src_sha256") == src_hash and rec.get("dst_sha256") == dst_hash
-                ):
+                if dst_hash != src_hash and rec.get("src_sha256") != src_hash:
                     unimported.append(d)
             if not unimported:
                 continue
