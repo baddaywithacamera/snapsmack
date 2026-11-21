@@ -110,6 +110,7 @@ class BoothWindow(QMainWindow):
         self.unread_by_room: dict[str, int] = {}
         self.pair_expires_at: float = 0.0
         self._pair_active_code: str = ""
+        self._pair_active_actor: str = ""
         self.setWindowTitle(f"BRAIN TRUST - build {__version__}")
         self.setWindowIcon(_icon())
         self.resize(1320, 820)
@@ -309,6 +310,7 @@ class BoothWindow(QMainWindow):
         self.pair_code.clear()
         self.pair_expires_at = 0.0
         self._pair_active_code = ""
+        self._pair_active_actor = ""
         token = self._worker_token()
         if not token:
             return
@@ -330,13 +332,14 @@ class BoothWindow(QMainWindow):
         automatically generates a fresh 5-minute single-use code."""
         self.generate_pair_code()
 
-    def _on_pair_actor_text_changed(self, _text: str) -> None:
+    def _on_pair_actor_text_changed(self, text: str) -> None:
         """If the actor text is edited after a code was shown, blank it immediately
         so a code for one agent is never displayed next to another agent's name."""
-        if self._pair_active_code:
+        if self._pair_active_code and text.strip().lower() != self._pair_active_actor:
             self.pair_code.clear()
             self.pair_expires_at = 0.0
             self._pair_active_code = ""
+            self._pair_active_actor = ""
             self.pair_countdown.setText("Agent changed — previous code cleared.")
 
     def generate_pair_code(self) -> None:
@@ -371,6 +374,7 @@ class BoothWindow(QMainWindow):
         code = str(result["code"])
         ttl = int(result.get("expires_in") or PAIR_TTL_SECONDS)
         self._pair_active_code = code
+        self._pair_active_actor = actor
         self.pair_expires_at = time.monotonic() + ttl
         self.pair_code.setText(code)
         self.pair_code.selectAll()
