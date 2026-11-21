@@ -2911,9 +2911,11 @@
         ]
     },
     "undo-announce-removes-the-boosted-post-regression.php": {
-        "assertions": 21,
-        "predicates": 2,
-        "thresholds": []
+        "assertions": 41,
+        "predicates": 6,
+        "thresholds": [
+            2
+        ]
     },
     "unverifiable-delete-retracts-a-gone-actor-regression.php": {
         "assertions": 15,
