@@ -1,9 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
-
+import os
+_root = os.path.abspath(os.path.join(SPECPATH, '..'))
 
 a = Analysis(
-    ['C:/dev/snapsmack/tools/troll-booth/desktop_entry.py'],
-    pathex=[],
+    [os.path.join(_root, 'desktop_entry.py')],
+    pathex=[_root],
     binaries=[],
     datas=[],
     hiddenimports=['pymysql', 'win32crypt'],
@@ -30,7 +31,7 @@ exe = EXE(
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
-    icon=['C:/dev/snapsmack/tools/troll-booth/assets/brain-trust.ico'],
+    icon=[os.path.join(_root, 'assets', 'brain-trust.ico')],
     codesign_identity=None,
     entitlements_file=None,
 )
