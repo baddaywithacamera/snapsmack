@@ -95,7 +95,8 @@ def load_state():
         "settings": cfg,
         # Which fields are secrets (rendered as password inputs), matching the
         # tkinter `show='•'` fields.
-        "secret_fields": ["db_password", "api_key"],
+        "secret_fields": ["db_password", "api_key", "admin_token"],
+        "has_keyring":   cfg_module.has_keyring(),
     }
 
 
@@ -108,8 +109,13 @@ def save_and_test(values):
         for k in cfg_module.DEFAULTS:
             if k in values and values[k] is not None:
                 cfg[k] = str(values[k]).strip()
-    cfg_module.save(cfg)
+    try:
+        cfg_module.save(cfg)
+    except Exception as e:
+        return {"ok": False, "message": f"{e}"}
     _cfg = cfg_module.load()
+    if not _cfg.get("db_name"):
+        return {"ok": True, "message": "Settings saved (OS credential store updated)."}
 
     if _conn is not None:
         try:
@@ -252,6 +258,54 @@ def upload_to_hub(row_id):
             db_module.mark_reviewed(conn, rid)
         return {"ok": True, "message": "Uploaded to hub."}
     return {"ok": False, "message": f"Hub error: {body.get('error', 'unknown')}"}
+
+
+@app.api
+def pull_and_analyze_central():
+    """SS-1457: Pull non-expired 25-float vectors from SMACK CENTRAL and run local cosine clustering."""
+    cfg = _cfg or _load_cfg()
+    api_url = (cfg.get("api_url") or "").strip()
+    token = (cfg.get("admin_token") or cfg_module.get_secret("admin_token", api_url)).strip()
+    if not api_url or not token:
+        return {
+            "ok": False,
+            "message": "Configure the Central API URL and Admin Token (stored in OS keyring) in Settings first.",
+        }
+    try:
+        pulled = core.pull_central_vectors(api_url, token)
+        res = core.analyze_central_vectors(
+            pulled.get("vectors") or [],
+            pulled.get("dismissed_pairs") or [],
+        )
+        return {"ok": True, **res}
+    except Exception as e:
+        return {"ok": False, "message": f"{e}"}
+
+
+@app.api
+def upload_central_results(payload):
+    """SS-1457: Upload computed stylometric cluster results and operator decisions to SMACK CENTRAL."""
+    cfg = _cfg or _load_cfg()
+    api_url = (cfg.get("api_url") or "").strip()
+    token = (cfg.get("admin_token") or cfg_module.get_secret("admin_token", api_url)).strip()
+    if not api_url or not token:
+        return {
+            "ok": False,
+            "message": "Configure the Central API URL and Admin Token (stored in OS keyring) in Settings first.",
+        }
+    body = payload if isinstance(payload, dict) else {}
+    try:
+        res = core.upload_central_results(
+            api_url,
+            token,
+            clusters=body.get("clusters") or [],
+            outcomes=body.get("outcomes") or [],
+            dismiss_pairs=body.get("dismiss_pairs") or [],
+            escalations=body.get("escalations") or [],
+        )
+        return {"ok": True, "response": res}
+    except Exception as e:
+        return {"ok": False, "message": f"{e}"}
 
 
 if __name__ == "__main__":
