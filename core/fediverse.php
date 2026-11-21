@@ -3548,10 +3548,16 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             // Undo wraps the original Announce, whose `object` is the boosted Note.
             $boosted = sv_activity_object_uri($obj['object'] ?? null);
             if (is_string($boosted) && $boosted !== '') {
-                $pdo->prepare(
-                    "DELETE FROM snap_ap_notifications
-                     WHERE ntype = 'boost' AND actor_url = ? AND object_id = ?"
-                )->execute([$actor_id, $boosted]);
+                // Guarded like its neighbours. Found while testing finding 2:
+                // this was the one statement in the branch that was not, so an
+                // Undo arriving at an install whose snap_ap_notifications had
+                // not been created yet threw out of the whole handler.
+                try {
+                    $pdo->prepare(
+                        "DELETE FROM snap_ap_notifications
+                         WHERE ntype = 'boost' AND actor_url = ? AND object_id = ?"
+                    )->execute([$actor_id, $boosted]);
+                } catch (Exception $e) { /* table may lag on a fresh install */ }
                 // Drop the per-post boost tally too, mirroring Undo Like, so the
                 // count decrements in step with the notification. Guarded.
                 try {
@@ -3585,17 +3591,59 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 // removing that is sc_relay_remove_membership()'s job on a
                 // relay retract, not this branch's.
                 //
-                // RESIDUAL: if a post arrived as a boost FIRST and the owner
-                // also follows its author, the row goes and does not come back
-                // until that author posts again or a refresh re-ingests it.
-                // Narrow, and better than a withdrawn boost leaving the post
-                // behind for good.
+                // AND NOT WHILE ANOTHER BOOST IS STILL LIVE. Codex's review
+                // finding 2: the timeline is UNIQUE on object_id and keeps the
+                // FIRST boosted_by, and duplicate ingest does not update it. So
+                // `is_boost = 1 AND boosted_by = <this actor>` cannot tell "the
+                // last boost was withdrawn" from "one of several was".
+                //
+                // The boost notifications are the record of who is boosting
+                // what, and this actor's was deleted a few lines above. So what
+                // remains for this object is every OTHER live boost. None left
+                // means the post has no reason to be in the reader; one left
+                // means it does.
+                //
+                // When a boost remains and the row names THIS actor as its
+                // booster, ownership is re-pointed at an actor who is still
+                // boosting. Without that, the first booster's undo leaves the
+                // row naming someone who has withdrawn, and the LAST undo then
+                // matches nothing and the post stays in the reader for good --
+                // which is the same fault one withdrawal later.
                 try {
-                    $pdo->prepare(
-                        "DELETE FROM snap_ap_timeline
-                          WHERE object_id = ? AND is_boost = 1 AND boosted_by = ?"
-                    )->execute([$boosted, $actor_id]);
+                    $others = $pdo->prepare(
+                        "SELECT actor_url FROM snap_ap_notifications
+                          WHERE ntype = 'boost' AND object_id = ? AND actor_url <> ?
+                          LIMIT 1");
+                    $others->execute([$boosted, $actor_id]);
+                    $still_boosting = (string)($others->fetchColumn() ?: '');
+                    if ($still_boosting === '') {
+                        $pdo->prepare(
+                            "DELETE FROM snap_ap_timeline
+                              WHERE object_id = ? AND is_boost = 1 AND boosted_by = ?"
+                        )->execute([$boosted, $actor_id]);
+                    } else {
+                        $pdo->prepare(
+                            "UPDATE snap_ap_timeline SET boosted_by = ?
+                              WHERE object_id = ? AND is_boost = 1 AND boosted_by = ?"
+                        )->execute([$still_boosting, $boosted, $actor_id]);
+                    }
                 } catch (Exception $e) { /* table may lag on a fresh install */ }
+
+                // RESIDUAL, now narrower but still real. Two of them.
+                //
+                // A post that arrived as a boost FIRST, whose author the owner
+                // also follows, still goes when the last boost is withdrawn,
+                // and does not come back until that author posts again or a
+                // refresh re-ingests it. is_boost records how the row arrived,
+                // not every reason it should stay.
+                //
+                // And this reasons from the NOTIFICATIONS. A boost whose
+                // notification was never written, or has since been pruned,
+                // counts as not boosting -- so the row could be removed while
+                // that boost is live. That is the same exposure the previous
+                // code had on its own, not a new one, and the honest fix is a
+                // boost record for remote objects: snap_ap_boosts holds only
+                // local targets (sv_url_is_ours gates the write above).
             }
         }
         return 202;

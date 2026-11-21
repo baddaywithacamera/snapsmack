@@ -67,7 +67,12 @@ function ua_pdo(string $objectId, int $isBoost, ?string $boostedBy): PDO {
     $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     $pdo->exec('CREATE TABLE snap_ap_timeline (id INTEGER PRIMARY KEY AUTOINCREMENT,
                  object_id TEXT UNIQUE, is_boost INTEGER DEFAULT 0, boosted_by TEXT)');
-    $pdo->exec('CREATE TABLE snap_ap_notifications (ntype TEXT, actor_url TEXT, object_id TEXT)');
+    // Shaped like the real table (database/schema/snapsmack_canonical.sql):
+    // id and created_at included, because a fixture missing a column the
+    // code may order or filter on hides a fault instead of finding it.
+    $pdo->exec('CREATE TABLE snap_ap_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 ntype TEXT, actor_url TEXT, object_id TEXT,
+                 created_at TEXT DEFAULT CURRENT_TIMESTAMP)');
     $pdo->exec('CREATE TABLE snap_ap_boosts (target_type TEXT, target_id INTEGER, actor_url TEXT)');
     $pdo->prepare('INSERT INTO snap_ap_timeline (object_id, is_boost, boosted_by) VALUES (?,?,?)')
         ->execute([$objectId, $isBoost, $boostedBy]);
@@ -156,16 +161,99 @@ $threw = false;
 try { ua_undo($pdo, $booster, $objectId); } catch (Throwable $e) { $threw = true; }
 ua_check('the Undo survives a missing timeline table', !$threw, $failures);
 
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\nSTAGE 5 — TWO LIVE BOOSTS: ONE WITHDRAWAL IS NOT THE LAST\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// Codex's review finding 2. snap_ap_timeline is UNIQUE on object_id and keeps
+// the FIRST boosted_by; duplicate ingest does not update boost ownership. So
+// `is_boost = 1 AND boosted_by = <actor>` could not tell "the last boost was
+// withdrawn" from "one of several was", and the first withdrawal took the post
+// out of the reader while somebody else was still boosting it.
+//
+// The boost NOTIFICATIONS are the record of who is boosting what, so the branch
+// now asks them. Both orders are driven, because they fail differently.
+
+/** A timeline row plus a boost notification for each actor given. */
+function ua_boosted_by(string $objectId, string $owner, array $actors): PDO {
+    $pdo = ua_pdo($objectId, 1, $owner);
+    $ins = $pdo->prepare("INSERT INTO snap_ap_notifications (ntype, actor_url, object_id)
+                          VALUES ('boost', ?, ?)");
+    foreach ($actors as $a) { $ins->execute([$a, $objectId]); }
+    return $pdo;
+}
+
+function ua_owner(PDO $pdo, string $objectId): string {
+    $q = $pdo->prepare('SELECT boosted_by FROM snap_ap_timeline WHERE object_id = ?');
+    $q->execute([$objectId]);
+    return (string)($q->fetchColumn() ?: '');
+}
+
+// THE ROW'S OWN BOOSTER GOES FIRST. This is the order that used to delete the
+// post out from under the other booster.
+$pdo = ua_boosted_by($objectId, $booster, [$booster, $other]);
+ua_undo($pdo, $booster, $objectId);
+ua_check('the post STAYS while another actor is still boosting it',
+         ua_rows($pdo, $objectId) === 1, $failures);
+ua_check('  and the row now names the actor who IS still boosting',
+         ua_owner($pdo, $objectId) === $other, $failures);
+ua_undo($pdo, $other, $objectId);
+ua_check('  and when that last boost is withdrawn, the post goes',
+         ua_rows($pdo, $objectId) === 0, $failures);
+
+// THE OTHER ORDER. Here the row keeps naming its original booster throughout,
+// so the only question is whether the final withdrawal still matches it.
+$pdo = ua_boosted_by($objectId, $booster, [$booster, $other]);
+ua_undo($pdo, $other, $objectId);
+ua_check('a non-owner withdrawing leaves the post, and the row, alone',
+         ua_rows($pdo, $objectId) === 1 && ua_owner($pdo, $objectId) === $booster, $failures);
+ua_undo($pdo, $booster, $objectId);
+ua_check('  and the owner withdrawing last takes the post with it',
+         ua_rows($pdo, $objectId) === 0, $failures);
+
+// THREE BOOSTS, so "one left" is not quietly "exactly two".
+$third = 'https://third.invalid/users/d';
+$pdo = ua_boosted_by($objectId, $booster, [$booster, $other, $third]);
+ua_undo($pdo, $booster, $objectId);
+ua_undo($pdo, ua_owner($pdo, $objectId), $objectId);
+ua_check('with three boosters the post survives two withdrawals',
+         ua_rows($pdo, $objectId) === 1, $failures);
+ua_undo($pdo, ua_owner($pdo, $objectId), $objectId);
+ua_check('  and goes on the third', ua_rows($pdo, $objectId) === 0, $failures);
+
+// A missing notifications table must not strand the post: the Undo still has
+// to answer, and the branch is wrapped for exactly that.
+$pdo = ua_pdo($objectId, 1, $booster);
+$pdo->exec('DROP TABLE snap_ap_notifications');
+$threw = false;
+try { ua_undo($pdo, $booster, $objectId); } catch (Throwable $e) { $threw = true; }
+ua_check('the Undo survives a missing notifications table', !$threw, $failures);
+
 echo "\n";
 if ($failures) {
     fwrite(STDERR, 'SS-1481 #6 FAILED — ' . count($failures) . " check(s):\n");
     foreach ($failures as $f) fwrite(STDERR, "  - {$f}\n");
     exit(1);
 }
-echo "SS-1481 #6 PASS — withdrawing a boost removes the post it pulled in, and\n";
-echo "leaves another actor's boost, a post present on its own merits, and\n";
-echo "unrelated posts untouched.\n";
-echo "NOT COVERED: relay memberships, which belong to the relay retract path;\n";
-echo "and a post that arrived as a boost first whose author the owner also\n";
-echo "follows -- its row goes and returns on the next arrival.\n";
+echo "SS-1481 #6 PASS — withdrawing a boost removes the post it pulled in, and
+";
+echo "leaves another actor's boost, a post present on its own merits, and
+";
+echo "unrelated posts untouched. A boost withdrawn while OTHERS are still live
+";
+echo "leaves the post, and moves the row's boost ownership to an actor who is
+";
+echo "still boosting, so the LAST withdrawal still matches and still removes it.
+";
+echo "NOT COVERED: relay memberships, which belong to the relay retract path; a
+";
+echo "post that arrived as a boost first whose author the owner also follows --
+";
+echo "its row goes and returns on the next arrival; and a boost whose
+";
+echo "notification was never written or has since been pruned, which reads here
+";
+echo "as not boosting. snap_ap_boosts would answer that, but it holds local
+";
+echo "targets only.
+";
 // ===== SNAPSMACK EOF =====
