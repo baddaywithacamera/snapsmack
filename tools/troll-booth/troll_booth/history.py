@@ -1,14 +1,100 @@
 from __future__ import annotations
+# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.
 
+import csv
 import hashlib
+import io
 import json
 import os
 import secrets
 import sqlite3
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
+
+
+CSV_COLUMNS = (
+    "id",
+    "room_id",
+    "sender",
+    "body",
+    "ticket_id",
+    "task_id",
+    "created_at",
+    "previous_hash",
+    "message_hash",
+    "member_sequence",
+    "attachments",
+)
+
+
+def format_messages_as_text(
+    room_id: str,
+    room_title: str,
+    messages: list[dict[str, Any]],
+) -> str:
+    """Format a chronological room transcript with local timestamps, sender,
+    message ID, sequence number, and hash-chain values (SS-1474)."""
+    lines = [
+        f"BRAIN TRUST ROOM EXPORT — {room_title} ({room_id})",
+        f"Exported: {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')}",
+        f"Messages: {len(messages)}",
+        "=" * 78,
+        "",
+    ]
+    for idx, msg in enumerate(messages, start=1):
+        seq = msg.get("member_sequence")
+        seq_val = seq if seq is not None else idx
+        ts = int(msg.get("created_at") or 0)
+        local_dt = datetime.fromtimestamp(ts).astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+        lines.append(
+            f"[#{seq_val}] {local_dt} | sender={msg.get('sender', '')} | id={msg.get('id', '')}"
+        )
+        if msg.get("ticket_id") or msg.get("task_id"):
+            lines.append(
+                f"  ticket_id={msg.get('ticket_id') or ''}  task_id={msg.get('task_id') or ''}"
+            )
+        lines.append(f"  previous_hash: {msg.get('previous_hash') or 'None'}")
+        lines.append(f"  message_hash:  {msg.get('message_hash') or ''}")
+        lines.append("")
+        lines.append(str(msg.get("body") or ""))
+        lines.append("-" * 78)
+        lines.append("")
+    return "\n".join(lines)
+
+
+def format_messages_as_csv(messages: list[dict[str, Any]]) -> str:
+    """Export one row per database row with columns matching the messages table
+    exactly: id, room_id, sender, body, ticket_id, task_id, created_at,
+    previous_hash, message_hash, member_sequence, attachments (SS-1474)."""
+    buf = io.StringIO(newline="")
+    writer = csv.writer(buf, quoting=csv.QUOTE_MINIMAL, lineterminator="\r\n")
+    writer.writerow(CSV_COLUMNS)
+    for idx, msg in enumerate(messages, start=1):
+        seq = msg.get("member_sequence")
+        if seq is None:
+            seq = idx
+        attachments = msg.get("attachments")
+        if isinstance(attachments, str):
+            att_cell = attachments
+        else:
+            att_cell = json.dumps(attachments if attachments is not None else [], ensure_ascii=False)
+        writer.writerow([
+            msg.get("id") or "",
+            msg.get("room_id") or "",
+            msg.get("sender") or "",
+            msg.get("body") or "",
+            "" if msg.get("ticket_id") is None else msg.get("ticket_id"),
+            "" if msg.get("task_id") is None else msg.get("task_id"),
+            "" if msg.get("created_at") is None else msg.get("created_at"),
+            "" if msg.get("previous_hash") is None else msg.get("previous_hash"),
+            msg.get("message_hash") or "",
+            seq,
+            att_cell,
+        ])
+    return buf.getvalue()
 
 
 class ConversationStore:
@@ -35,7 +121,9 @@ class ConversationStore:
                     title TEXT NOT NULL,
                     ticket_id TEXT,
                     task_id TEXT,
-                    created_at INTEGER NOT NULL
+                    created_at INTEGER NOT NULL,
+                    archived_at INTEGER,
+                    removed_at INTEGER
                 );
                 CREATE TABLE IF NOT EXISTS messages (
                     id TEXT PRIMARY KEY,
@@ -70,6 +158,13 @@ class ConversationStore:
                 CREATE INDEX IF NOT EXISTS scope_claims_expiry ON scope_claims(expires_at);
                 """
             )
+            existing_cols = {
+                row["name"]
+                for row in db.execute("PRAGMA table_info(rooms)").fetchall()
+            }
+            for col in ("archived_at", "removed_at"):
+                if col not in existing_cols:
+                    db.execute(f"ALTER TABLE rooms ADD COLUMN {col} INTEGER")
 
     def ensure_room(
         self, room_id: str, title: str, ticket_id: str | None = None, task_id: str | None = None
@@ -82,6 +177,43 @@ class ConversationStore:
                 "task_id=COALESCE(rooms.task_id,excluded.task_id)",
                 (room_id, title, ticket_id, task_id, int(time.time())),
             )
+
+    def rename_room(self, room_id: str, new_title: str) -> bool:
+        """SS-1474: Rename display title only; room_id and message hash chain are untouched."""
+        rid = room_id.strip()
+        title = new_title.strip()
+        if not rid or not title:
+            raise ValueError("room_id and new_title are required")
+        with self._connect() as db:
+            changed = db.execute(
+                "UPDATE rooms SET title=? WHERE id=?", (title, rid)
+            ).rowcount
+        return changed == 1
+
+    def archive_room(self, room_id: str, archived: bool = True) -> bool:
+        """SS-1474: Soft-archive or restore a room. archived rooms are read-only in UI."""
+        rid = room_id.strip()
+        stamp = int(time.time()) if archived else None
+        with self._connect() as db:
+            changed = db.execute(
+                "UPDATE rooms SET archived_at=? WHERE id=?", (stamp, rid)
+            ).rowcount
+        return changed == 1
+
+    def soft_remove_room(self, room_id: str, removed: bool = True) -> bool:
+        """SS-1474: Soft-remove (hide) or restore a room. Keeps all rows and hash chain intact."""
+        rid = room_id.strip()
+        stamp = int(time.time()) if removed else None
+        with self._connect() as db:
+            changed = db.execute(
+                "UPDATE rooms SET removed_at=? WHERE id=?", (stamp, rid)
+            ).rowcount
+        return changed == 1
+
+    def room_info(self, room_id: str) -> dict[str, Any] | None:
+        with self._connect() as db:
+            row = db.execute("SELECT * FROM rooms WHERE id=?", (room_id,)).fetchone()
+        return dict(row) if row else None
 
     def append(
         self,
@@ -152,12 +284,24 @@ class ConversationStore:
             db.commit()
         return message_id
 
-    def rooms(self, limit: int = 100) -> list[dict[str, Any]]:
+    def rooms(
+        self,
+        limit: int = 100,
+        *,
+        include_archived: bool = False,
+        include_removed: bool = False,
+    ) -> list[dict[str, Any]]:
         limit = max(1, min(limit, 500))
+        clauses = []
+        if not include_removed:
+            clauses.append("r.removed_at IS NULL")
+        if not include_archived:
+            clauses.append("r.archived_at IS NULL")
+        where_sql = ("WHERE " + " AND ".join(clauses) + " ") if clauses else ""
         with self._connect() as db:
             rows = db.execute(
                 "SELECT r.*, COUNT(m.id) AS message_count, MAX(m.created_at) AS last_message_at "
-                "FROM rooms r LEFT JOIN messages m ON m.room_id=r.id "
+                f"FROM rooms r LEFT JOIN messages m ON m.room_id=r.id {where_sql}"
                 "GROUP BY r.id ORDER BY last_message_at DESC, r.created_at DESC LIMIT ?",
                 (limit,),
             ).fetchall()
@@ -165,7 +309,7 @@ class ConversationStore:
 
     def messages(self, room_id: str, limit: int = 200, before: int | None = None) -> list[dict[str, Any]]:
         limit = max(1, min(limit, 1000))
-        sql = "SELECT * FROM messages WHERE room_id=?"
+        sql = "SELECT rowid AS member_sequence, * FROM messages WHERE room_id=?"
         params: list[Any] = [room_id]
         if before is not None:
             sql += " AND created_at<?"
@@ -178,12 +322,55 @@ class ConversationStore:
         results.reverse()
         return results
 
+    def all_messages(
+        self,
+        room_id: str,
+        *,
+        since: int | None = None,
+        until: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Chronological full export of a room's messages (no 1000-row cap)."""
+        sql = "SELECT rowid AS member_sequence, * FROM messages WHERE room_id=?"
+        params: list[Any] = [room_id]
+        if since is not None:
+            sql += " AND created_at>=?"
+            params.append(int(since))
+        if until is not None:
+            sql += " AND created_at<=?"
+            params.append(int(until))
+        sql += " ORDER BY created_at ASC, rowid ASC"
+        with self._connect() as db:
+            rows = db.execute(sql, params).fetchall()
+        return [self._message_dict(row) for row in rows]
+
+    def export_text(
+        self,
+        room_id: str,
+        *,
+        since: int | None = None,
+        until: int | None = None,
+    ) -> str:
+        info = self.room_info(room_id)
+        title = info["title"] if info else room_id
+        msgs = self.all_messages(room_id, since=since, until=until)
+        return format_messages_as_text(room_id, title, msgs)
+
+    def export_csv(
+        self,
+        room_id: str,
+        *,
+        since: int | None = None,
+        until: int | None = None,
+    ) -> str:
+        msgs = self.all_messages(room_id, since=since, until=until)
+        return format_messages_as_csv(msgs)
+
     def search(self, query: str, room_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         if not query.strip():
             return []
         limit = max(1, min(limit, 200))
         sql = (
-            "SELECT m.*, bm25(messages_fts) AS rank FROM messages_fts "
+            "SELECT m.rowid AS member_sequence, m.*, bm25(messages_fts) AS rank FROM messages_fts "
             "JOIN messages m ON m.id=messages_fts.message_id WHERE messages_fts MATCH ?"
         )
         params: list[Any] = [query]
@@ -289,7 +476,8 @@ class MariaConversationStore:
         statements = [
             """CREATE TABLE IF NOT EXISTS troll_rooms (
                 id VARCHAR(191) PRIMARY KEY, title VARCHAR(255) NOT NULL,
-                ticket_id VARCHAR(191) NULL, task_id VARCHAR(191) NULL, created_at BIGINT NOT NULL
+                ticket_id VARCHAR(191) NULL, task_id VARCHAR(191) NULL, created_at BIGINT NOT NULL,
+                archived_at BIGINT NULL, removed_at BIGINT NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""",
             """CREATE TABLE IF NOT EXISTS troll_messages (
                 id VARCHAR(191) PRIMARY KEY, room_id VARCHAR(191) NOT NULL,
@@ -311,6 +499,11 @@ class MariaConversationStore:
             with db.cursor() as cursor:
                 for statement in statements:
                     cursor.execute(statement)
+                cursor.execute("SHOW COLUMNS FROM troll_rooms")
+                existing_cols = {row["Field"] for row in cursor.fetchall()}
+                for col in ("archived_at", "removed_at"):
+                    if col not in existing_cols:
+                        cursor.execute(f"ALTER TABLE troll_rooms ADD COLUMN {col} BIGINT NULL")
             db.commit()
 
     def ensure_room(self, room_id: str, title: str, ticket_id: str | None = None, task_id: str | None = None) -> None:
@@ -322,6 +515,45 @@ class MariaConversationStore:
                     (room_id, title, ticket_id, task_id, int(time.time())),
                 )
             db.commit()
+
+    def rename_room(self, room_id: str, new_title: str) -> bool:
+        rid = room_id.strip()
+        title = new_title.strip()
+        if not rid or not title:
+            raise ValueError("room_id and new_title are required")
+        with self._connect() as db:
+            with db.cursor() as cursor:
+                cursor.execute("UPDATE troll_rooms SET title=%s WHERE id=%s", (title, rid))
+                changed = cursor.rowcount
+            db.commit()
+        return changed >= 1
+
+    def archive_room(self, room_id: str, archived: bool = True) -> bool:
+        rid = room_id.strip()
+        stamp = int(time.time()) if archived else None
+        with self._connect() as db:
+            with db.cursor() as cursor:
+                cursor.execute("UPDATE troll_rooms SET archived_at=%s WHERE id=%s", (stamp, rid))
+                changed = cursor.rowcount
+            db.commit()
+        return changed >= 1
+
+    def soft_remove_room(self, room_id: str, removed: bool = True) -> bool:
+        rid = room_id.strip()
+        stamp = int(time.time()) if removed else None
+        with self._connect() as db:
+            with db.cursor() as cursor:
+                cursor.execute("UPDATE troll_rooms SET removed_at=%s WHERE id=%s", (stamp, rid))
+                changed = cursor.rowcount
+            db.commit()
+        return changed >= 1
+
+    def room_info(self, room_id: str) -> dict[str, Any] | None:
+        with self._connect() as db:
+            with db.cursor() as cursor:
+                cursor.execute("SELECT * FROM troll_rooms WHERE id=%s", (room_id,))
+                row = cursor.fetchone()
+        return dict(row) if row else None
 
     def append(self, room_id: str, sender: str, body: str, *, title: str | None = None,
                ticket_id: str | None = None, task_id: str | None = None,
@@ -345,14 +577,26 @@ class MariaConversationStore:
             db.commit()
         return message_id
 
-    def rooms(self, limit: int = 100) -> list[dict[str, Any]]:
+    def rooms(
+        self,
+        limit: int = 100,
+        *,
+        include_archived: bool = False,
+        include_removed: bool = False,
+    ) -> list[dict[str, Any]]:
+        clauses = []
+        if not include_removed:
+            clauses.append("r.removed_at IS NULL")
+        if not include_archived:
+            clauses.append("r.archived_at IS NULL")
+        where_sql = ("WHERE " + " AND ".join(clauses) + " ") if clauses else ""
         with self._connect() as db:
             with db.cursor() as cursor:
                 cursor.execute(
                     "SELECT r.*,COALESCE(m.message_count,0) message_count,m.last_message_at "
                     "FROM troll_rooms r LEFT JOIN ("
                     "SELECT room_id,COUNT(*) message_count,MAX(created_at) last_message_at "
-                    "FROM troll_messages GROUP BY room_id) m ON m.room_id=r.id "
+                    f"FROM troll_messages GROUP BY room_id) m ON m.room_id=r.id {where_sql}"
                     "ORDER BY m.last_message_at DESC,r.created_at DESC LIMIT %s",
                     (max(1, min(limit, 500)),),
                 )
@@ -368,6 +612,46 @@ class MariaConversationStore:
                 cursor.execute(sql, params); rows = list(cursor.fetchall())
         rows.reverse()
         return [self._message_dict(row) for row in rows]
+
+    def all_messages(
+        self,
+        room_id: str,
+        *,
+        since: int | None = None,
+        until: int | None = None,
+    ) -> list[dict[str, Any]]:
+        sql, params = "SELECT * FROM troll_messages WHERE room_id=%s", [room_id]
+        if since is not None:
+            sql += " AND created_at>=%s"; params.append(int(since))
+        if until is not None:
+            sql += " AND created_at<=%s"; params.append(int(until))
+        sql += " ORDER BY created_at ASC, id ASC"
+        with self._connect() as db:
+            with db.cursor() as cursor:
+                cursor.execute(sql, params); rows = list(cursor.fetchall())
+        return [self._message_dict(row) for row in rows]
+
+    def export_text(
+        self,
+        room_id: str,
+        *,
+        since: int | None = None,
+        until: int | None = None,
+    ) -> str:
+        info = self.room_info(room_id)
+        title = info["title"] if info else room_id
+        msgs = self.all_messages(room_id, since=since, until=until)
+        return format_messages_as_text(room_id, title, msgs)
+
+    def export_csv(
+        self,
+        room_id: str,
+        *,
+        since: int | None = None,
+        until: int | None = None,
+    ) -> str:
+        msgs = self.all_messages(room_id, since=since, until=until)
+        return format_messages_as_csv(msgs)
 
     def search(self, query: str, room_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         if not query.strip(): return []
@@ -434,3 +718,5 @@ def open_conversation_store(*, allow_offline_cache: bool = True):
         raise RuntimeError("TROLL_BOOTH_MARIADB_URL is not configured")
     path = Path(os.environ.get("TROLL_BOOTH_OFFLINE_CACHE", Path.home() / ".troll-booth" / "history.sqlite3"))
     return ConversationStore(path), "OFFLINE CACHE"
+
+# ===== SNAPSMACK EOF =====

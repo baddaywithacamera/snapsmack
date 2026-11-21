@@ -190,11 +190,16 @@ async def worker_heartbeat(request: Request) -> JSONResponse:
 
 
 @mcp.custom_route("/worker/pair-code", methods=["POST"])
+@mcp.custom_route("/owner/pair-code", methods=["POST"])
 async def worker_pair_code(request: Request) -> JSONResponse:
-    """Let the authenticated local app create the code shown in its UI."""
+    """Let the authenticated local app create or invalidate the code shown in its UI."""
     if not _worker_authorized(request):
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     data = await request.json()
+    if data.get("invalidate"):
+        actor_filter = str(data.get("actor", "")).strip().lower() or None
+        removed = store.invalidate_pair_codes(actor_filter)
+        return JSONResponse({"invalidated": True, "removed": removed})
     actor = str(data.get("actor", "")).strip().lower()
     if not actor or len(actor) > 64 or not all(character.isalnum() or character in "-_" for character in actor):
         return JSONResponse({"error": "invalid actor"}, status_code=400)
@@ -202,6 +207,17 @@ async def worker_pair_code(request: Request) -> JSONResponse:
     scopes = ["booth:read", "booth:write"] if write else ["booth:read"]
     code = store.issue_pair_code(actor, scopes, ttl=300)
     return JSONResponse({"code": code, "actor": actor, "scopes": scopes, "expires_in": 300})
+
+
+@mcp.custom_route("/owner/pair-code/status", methods=["POST"])
+async def owner_pair_code_status(request: Request) -> JSONResponse:
+    """Check whether a pairing code is still unconsumed and active."""
+    if not _worker_authorized(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    data = await request.json()
+    code = str(data.get("code", "")).strip()
+    active = bool(code) and store.is_pair_code_active(code)
+    return JSONResponse({"active": active})
 
 
 @mcp.custom_route("/worker/claim", methods=["POST"])

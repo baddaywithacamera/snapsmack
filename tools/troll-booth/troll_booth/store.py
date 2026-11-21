@@ -83,13 +83,37 @@ class BoothStore:
         code = "-".join((secrets.token_hex(2), secrets.token_hex(2), secrets.token_hex(2))).upper()
         now = int(time.time())
         with self._connect() as db:
-            db.execute("DELETE FROM pair_codes WHERE expires_at < ? OR used_at IS NOT NULL", (now,))
+            # SS-1475: Issuing a new pairing code invalidates all previously
+            # issued unconsumed pairing codes server-side so a stale or switched
+            # code can never pair even if someone copied it.
+            db.execute("DELETE FROM pair_codes")
             db.execute(
                 "INSERT INTO pair_codes(code_hash,actor,scopes_json,expires_at) VALUES(?,?,?,?)",
                 (self._hash_code(code), actor, json.dumps(scopes), now + ttl),
             )
         self.audit(actor, "pair-code.issued", {"expires_at": now + ttl, "scopes": scopes})
         return code
+
+    def invalidate_pair_codes(self, actor: str | None = None) -> int:
+        """SS-1475: Invalidate unconsumed pairing codes server-side."""
+        with self._connect() as db:
+            if actor:
+                changed = db.execute("DELETE FROM pair_codes WHERE actor=?", (actor,)).rowcount
+            else:
+                changed = db.execute("DELETE FROM pair_codes").rowcount
+        self.audit(actor or "owner", "pair-code.invalidated", {"count": changed})
+        return changed
+
+    def is_pair_code_active(self, code: str) -> bool:
+        """True if this pairing code exists, is unconsumed, and has not expired."""
+        now = int(time.time())
+        digest = self._hash_code(code.strip().upper())
+        with self._connect() as db:
+            row = db.execute(
+                "SELECT 1 FROM pair_codes WHERE code_hash=? AND used_at IS NULL AND expires_at>=?",
+                (digest, now),
+            ).fetchone()
+        return row is not None
 
     def consume_pair_code(self, code: str) -> dict[str, Any] | None:
         now = int(time.time())

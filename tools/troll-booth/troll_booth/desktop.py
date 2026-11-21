@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime
@@ -12,12 +13,15 @@ from PySide6.QtCore import QLockFile, QTimer, Qt, Signal
 from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
     QFormLayout,
     QFrame,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -35,6 +39,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from . import __version__
 from .history import open_conversation_store
 from .secret_config import public_mariadb_settings, save_mariadb_settings
 
@@ -44,6 +49,8 @@ AGREEMENT = Path(os.environ.get("TROLL_BOOTH_AGREEMENT", ROOT / "working-agreeme
 APPS = Path(os.environ.get("TROLL_BOOTH_APPS", ROOT / "apps.json"))
 SERVER = os.environ.get("TROLL_BOOTH_SERVER", "https://trollbooth.photoblogs.fyi").rstrip("/")
 WORKER_TOKEN_FILE = Path(os.environ.get("TROLL_BOOTH_WORKER_TOKEN_FILE", ROOT / "worker-token"))
+
+PAIR_TTL_SECONDS = 300
 
 
 def _icon() -> QIcon:
@@ -101,7 +108,9 @@ class BoothWindow(QMainWindow):
         self._rendered_query = ""
         self.seen_message_ids: set[str] = set()
         self.unread_by_room: dict[str, int] = {}
-        self.setWindowTitle("BRAIN TRUST")
+        self.pair_expires_at: float = 0.0
+        self._pair_active_code: str = ""
+        self.setWindowTitle(f"BRAIN TRUST - build {__version__}")
         self.setWindowIcon(_icon())
         self.resize(1320, 820)
         self.setMinimumSize(960, 620)
@@ -114,6 +123,9 @@ class BoothWindow(QMainWindow):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh_visible_data)
         self.timer.start(2500)
+        self.pair_timer = QTimer(self)
+        self.pair_timer.timeout.connect(self._tick_pair_countdown)
+        self.pair_timer.start(1000)
 
     def _build_ui(self) -> None:
         root = QWidget()
@@ -122,7 +134,7 @@ class BoothWindow(QMainWindow):
         header = QFrame()
         header.setObjectName("header")
         header_layout = QHBoxLayout(header)
-        brand = QLabel("BRAIN TRUST")
+        brand = QLabel(f"BRAIN TRUST · v{__version__}")
         brand.setObjectName("brand")
         self.status = QLabel("LOCAL · STARTING")
         self.status.setObjectName("status")
@@ -152,14 +164,29 @@ class BoothWindow(QMainWindow):
         box.addWidget(title)
         self.room_search = QLineEdit()
         self.room_search.setPlaceholderText("Filter rooms")
-        self.room_search.textChanged.connect(self.refresh_rooms)
+        self.room_search.textChanged.connect(lambda: self.refresh_rooms(preserve=True))
         box.addWidget(self.room_search)
+        filter_row = QHBoxLayout()
+        self.show_archived_cb = QCheckBox("Show archived")
+        self.show_archived_cb.toggled.connect(lambda: self.refresh_rooms(preserve=True))
+        self.show_removed_cb = QCheckBox("Show removed")
+        self.show_removed_cb.toggled.connect(lambda: self.refresh_rooms(preserve=True))
+        filter_row.addWidget(self.show_archived_cb)
+        filter_row.addWidget(self.show_removed_cb)
+        box.addLayout(filter_row)
         self.rooms = QListWidget()
+        self.rooms.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.rooms.customContextMenuRequested.connect(self._show_room_context_menu)
         self.rooms.currentItemChanged.connect(self._room_selected)
         box.addWidget(self.rooms, 1)
+        room_actions = QHBoxLayout()
         new_room = QPushButton("+ NEW ROOM")
         new_room.clicked.connect(self.create_room)
-        box.addWidget(new_room)
+        self.room_menu_button = QPushButton("ROOM ACTIONS ▾")
+        self.room_menu_button.clicked.connect(self._show_current_room_menu)
+        room_actions.addWidget(new_room, 1)
+        room_actions.addWidget(self.room_menu_button, 1)
+        box.addLayout(room_actions)
         return panel
 
     def _conversation_panel(self) -> QWidget:
@@ -181,9 +208,9 @@ class BoothWindow(QMainWindow):
         self.composer.setPlaceholderText("Write a request or message…")
         self.composer.setMaximumHeight(110)
         box.addWidget(self.composer)
-        send = QPushButton("POST AS SEAN")
-        send.clicked.connect(self.post_message)
-        box.addWidget(send, 0, Qt.AlignmentFlag.AlignRight)
+        self.send_button = QPushButton("POST AS SEAN")
+        self.send_button.clicked.connect(self.post_message)
+        box.addWidget(self.send_button, 0, Qt.AlignmentFlag.AlignRight)
         return panel
 
     def _control_panel(self) -> QWidget:
@@ -194,6 +221,7 @@ class BoothWindow(QMainWindow):
         self.control_stack = QStackedWidget()
         tabs.currentIndexChanged.connect(self.control_stack.setCurrentIndex)
         box.addWidget(tabs)
+        self.control_tabs = tabs
 
         apps_page = QWidget()
         apps_box = QVBoxLayout(apps_page)
@@ -227,15 +255,19 @@ class BoothWindow(QMainWindow):
         # the server decides what any actor may do, and refuses a name it does
         # not know.
         self.pair_actor.addItems(["claude", "codex", "muse", "gemini"])
+        self.pair_actor.activated.connect(self._on_pair_actor_selected)
+        self.pair_actor.currentTextChanged.connect(self._on_pair_actor_text_changed)
         access_box.addWidget(self.pair_actor)
-        pair_button = QPushButton("GENERATE 5-MINUTE PAIRING CODE")
-        pair_button.clicked.connect(self.generate_pair_code)
-        access_box.addWidget(pair_button)
+        self.pair_button = QPushButton("REGENERATE 5-MINUTE PAIRING CODE")
+        self.pair_button.clicked.connect(self.generate_pair_code)
+        access_box.addWidget(self.pair_button)
         self.pair_code = QLineEdit()
         self.pair_code.setReadOnly(True)
-        self.pair_code.setPlaceholderText("The pairing code will appear here")
+        self.pair_code.setPlaceholderText("Select an agent to generate a 5-minute pairing code")
         access_box.addWidget(self.pair_code)
-        access_box.addWidget(QLabel("Code stays here for five minutes. Select it to copy when ready."))
+        self.pair_countdown = QLabel("No active pairing code. Select an agent or click Regenerate.")
+        self.pair_countdown.setObjectName("status")
+        access_box.addWidget(self.pair_countdown)
         cli = QPlainTextEdit()
         cli.setReadOnly(True)
         cli.setPlainText(
@@ -261,15 +293,61 @@ class BoothWindow(QMainWindow):
         box.addWidget(self.control_stack, 1)
         return panel
 
-    def generate_pair_code(self) -> None:
-        actor = self.pair_actor.currentText().strip().lower()
+    # -- SS-1475: Pairing code lifecycle (blank + invalidate + auto-gen + countdown) --
+
+    def _worker_token(self) -> str:
         token = os.environ.get("TROLL_BOOTH_WORKER_TOKEN", "").strip()
         if not token:
             try:
                 token = WORKER_TOKEN_FILE.read_text(encoding="utf-8").strip()
             except FileNotFoundError:
                 token = ""
+        return token
+
+    def _invalidate_active_pair_code(self) -> None:
+        """SS-1475: Blank current pairing code in UI and invalidate it server-side."""
+        self.pair_code.clear()
+        self.pair_expires_at = 0.0
+        self._pair_active_code = ""
+        token = self._worker_token()
         if not token:
+            return
+        payload = json.dumps({"invalidate": True}).encode("utf-8")
+        request = urllib.request.Request(
+            f"{SERVER}/owner/pair-code",
+            data=payload,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=5):
+                pass
+        except Exception:
+            pass
+
+    def _on_pair_actor_selected(self, _index: int) -> None:
+        """SS-1475: Selecting an agent blanks & invalidates the old code and
+        automatically generates a fresh 5-minute single-use code."""
+        self.generate_pair_code()
+
+    def _on_pair_actor_text_changed(self, _text: str) -> None:
+        """If the actor text is edited after a code was shown, blank it immediately
+        so a code for one agent is never displayed next to another agent's name."""
+        if self._pair_active_code:
+            self.pair_code.clear()
+            self.pair_expires_at = 0.0
+            self._pair_active_code = ""
+            self.pair_countdown.setText("Agent changed — previous code cleared.")
+
+    def generate_pair_code(self) -> None:
+        actor = self.pair_actor.currentText().strip().lower()
+        self._invalidate_active_pair_code()
+        if not actor:
+            self.pair_countdown.setText("Choose an agent first.")
+            return
+        token = self._worker_token()
+        if not token:
+            self.pair_countdown.setText("Worker token not configured.")
             QMessageBox.warning(
                 self,
                 "Pairing is not configured",
@@ -287,11 +365,176 @@ class BoothWindow(QMainWindow):
             with urllib.request.urlopen(request, timeout=15) as response:
                 result = json.loads(response.read().decode("utf-8"))
         except (OSError, ValueError, urllib.error.URLError) as exc:
+            self.pair_countdown.setText("Pairing code request failed.")
             QMessageBox.critical(self, "Pairing failed", f"Could not reach the BRAIN TRUST connector: {exc}")
             return
-        self.pair_code.setText(str(result["code"]))
+        code = str(result["code"])
+        ttl = int(result.get("expires_in") or PAIR_TTL_SECONDS)
+        self._pair_active_code = code
+        self.pair_expires_at = time.monotonic() + ttl
+        self.pair_code.setText(code)
         self.pair_code.selectAll()
         self.pair_code.setFocus()
+        self._tick_pair_countdown()
+
+    def _tick_pair_countdown(self) -> None:
+        if not self._pair_active_code or self.pair_expires_at <= 0:
+            return
+        remaining = int(round(self.pair_expires_at - time.monotonic()))
+        if remaining <= 0:
+            self._invalidate_active_pair_code()
+            self.pair_code.setPlaceholderText("Pairing code expired — select agent or click Regenerate")
+            self.pair_countdown.setText("Code expired and cleared.")
+            return
+        mins, secs = divmod(remaining, 60)
+        actor = self.pair_actor.currentText().strip().lower()
+        self.pair_countdown.setText(
+            f"Single-use code for {actor} expires in {mins}:{secs:02d} — select to copy."
+        )
+
+    def mark_pair_code_consumed(self) -> None:
+        """SS-1475: Once an agent pairs with the active code, clear it from screen."""
+        self.pair_code.clear()
+        self.pair_expires_at = 0.0
+        self._pair_active_code = ""
+        self.pair_code.setPlaceholderText("Pairing code consumed (single-use)")
+        self.pair_countdown.setText("Code used — single-use code spent and cleared.")
+
+    # -- SS-1474: Per-room management (rename, archive, soft remove, export text/CSV) --
+
+    def _room_meta(self, room_id: str) -> dict | None:
+        if hasattr(self.store, "room_info"):
+            return self.store.room_info(room_id)
+        for r in self.store.rooms(include_archived=True, include_removed=True):
+            if r["id"] == room_id:
+                return r
+        return None
+
+    def _build_room_menu(self, room_id: str) -> QMenu:
+        menu = QMenu(self)
+        meta = self._room_meta(room_id) or {"id": room_id, "title": room_id}
+        is_archived = bool(meta.get("archived_at"))
+        is_removed = bool(meta.get("removed_at"))
+
+        rename_act = QAction("Rename display title…", menu)
+        rename_act.triggered.connect(lambda: self.rename_room_dialog(room_id))
+        menu.addAction(rename_act)
+
+        arch_label = "Restore from archive" if is_archived else "Archive room (read-only)"
+        arch_act = QAction(arch_label, menu)
+        arch_act.triggered.connect(lambda: self.toggle_archive_room(room_id, not is_archived))
+        menu.addAction(arch_act)
+
+        rem_label = "Restore removed room" if is_removed else "Remove room (soft hide, keeps hash chain)"
+        rem_act = QAction(rem_label, menu)
+        rem_act.triggered.connect(lambda: self.toggle_remove_room(room_id, not is_removed))
+        menu.addAction(rem_act)
+
+        menu.addSeparator()
+        exp_txt = QAction("Export room as Text (.txt)…", menu)
+        exp_txt.triggered.connect(lambda: self.export_room_dialog(room_id, fmt="text"))
+        menu.addAction(exp_txt)
+
+        exp_csv = QAction("Export room as CSV (.csv)…", menu)
+        exp_csv.triggered.connect(lambda: self.export_room_dialog(room_id, fmt="csv"))
+        menu.addAction(exp_csv)
+        return menu
+
+    def _show_room_context_menu(self, pos) -> None:
+        item = self.rooms.itemAt(pos)
+        if not item:
+            return
+        room_id = str(item.data(Qt.ItemDataRole.UserRole))
+        menu = self._build_room_menu(room_id)
+        menu.exec(self.rooms.viewport().mapToGlobal(pos))
+
+    def _show_current_room_menu(self) -> None:
+        room_id = self.current_room
+        if not room_id:
+            return
+        menu = self._build_room_menu(room_id)
+        menu.exec(self.room_menu_button.mapToGlobal(self.room_menu_button.rect().bottomLeft()))
+
+    def rename_room_dialog(self, room_id: str) -> None:
+        meta = self._room_meta(room_id) or {"id": room_id, "title": room_id}
+        new_title, ok = QInputDialog.getText(
+            self,
+            "Rename room",
+            f"Display name for room '{room_id}' (room_id stays unchanged):",
+            text=str(meta.get("title") or room_id),
+        )
+        if not ok or not new_title.strip():
+            return
+        self.store.rename_room(room_id, new_title.strip())
+        self.refresh_rooms(preserve=True)
+        if self.current_room == room_id:
+            self._update_room_header(room_id)
+
+    def toggle_archive_room(self, room_id: str, archived: bool) -> None:
+        self.store.archive_room(room_id, archived)
+        self.refresh_rooms(preserve=True)
+        if self.current_room == room_id:
+            self._update_room_header(room_id)
+
+    def toggle_remove_room(self, room_id: str, removed: bool) -> None:
+        if removed:
+            answer = QMessageBox.question(
+                self,
+                "Remove room (soft hide)",
+                f"Hide room '{room_id}' from the room list?\n\n"
+                "All messages and their cryptographic hash chain remain intact in the database "
+                "and can be restored at any time via 'Show removed'.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+        self.store.soft_remove_room(room_id, removed)
+        if removed and self.current_room == room_id and not self.show_removed_cb.isChecked():
+            self.current_room = ""
+        self.refresh_rooms(preserve=True)
+        self.refresh_messages()
+
+    def export_room_dialog(self, room_id: str, *, fmt: str) -> None:
+        warn = QMessageBox.warning(
+            self,
+            "Security notice before export",
+            "This room may contain unfixed security or DOOR OPEN details.\n\n"
+            "Do not share or publish exported files outside authorized review.\n"
+            "Continue with export?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+        )
+        if warn != QMessageBox.StandardButton.Yes:
+            return
+        ext = "csv" if fmt == "csv" else "txt"
+        filt = "CSV files (*.csv)" if fmt == "csv" else "Text files (*.txt)"
+        default_name = str(ROOT / f"{room_id}-export.{ext}")
+        target, _ = QFileDialog.getSaveFileName(self, f"Export room '{room_id}'", default_name, filt)
+        if not target:
+            return
+        content = self.store.export_csv(room_id) if fmt == "csv" else self.store.export_text(room_id)
+        Path(target).write_text(content, encoding="utf-8", newline="")
+        self.statusBar().showMessage(f"Exported {room_id} to {target}", 4000)
+
+    def _update_room_header(self, room_id: str) -> None:
+        meta = self._room_meta(room_id) or {"id": room_id, "title": room_id}
+        title = str(meta.get("title") or room_id).upper()
+        is_archived = bool(meta.get("archived_at"))
+        is_removed = bool(meta.get("removed_at"))
+        badges = []
+        if is_archived:
+            badges.append("ARCHIVED · READ-ONLY")
+        if is_removed:
+            badges.append("REMOVED")
+        suffix = f"  [{', '.join(badges)}]" if badges else ""
+        self.room_title.setText(f"{title}{suffix}")
+        read_only = is_archived or is_removed
+        self.composer.setReadOnly(read_only)
+        self.send_button.setEnabled(not read_only)
+        self.composer.setPlaceholderText(
+            "Room is archived/read-only — restore it from Room Actions to post."
+            if read_only
+            else "Write a request or message…"
+        )
 
     def _build_tray(self) -> None:
         # The notification area is not always there -- it can be missing or
@@ -356,15 +599,27 @@ class BoothWindow(QMainWindow):
     def refresh_rooms(self, *_args, preserve: bool = False) -> None:
         selected = self.current_room if preserve else (self.current_room or "")
         needle = self.room_search.text().strip().lower() if hasattr(self, "room_search") else ""
+        inc_arch = hasattr(self, "show_archived_cb") and self.show_archived_cb.isChecked()
+        inc_rem = hasattr(self, "show_removed_cb") and self.show_removed_cb.isChecked()
         self.rooms.blockSignals(True)
         self.rooms.clear()
         chosen = None
-        for room in self.store.rooms():
+        try:
+            room_rows = self.store.rooms(include_archived=inc_arch, include_removed=inc_rem)
+        except TypeError:
+            room_rows = self.store.rooms()
+        for room in room_rows:
             if needle and needle not in room["title"].lower() and needle not in room["id"].lower():
                 continue
             unread = self.unread_by_room.get(room["id"], 0)
             suffix = f" · {unread} NEW" if unread else ""
-            item = QListWidgetItem(f'{room["title"]}\n{room["message_count"]} messages{suffix}')
+            flags = []
+            if room.get("archived_at"):
+                flags.append("ARCHIVED")
+            if room.get("removed_at"):
+                flags.append("REMOVED")
+            flag_str = f" [{', '.join(flags)}]" if flags else ""
+            item = QListWidgetItem(f'{room["title"]}{flag_str}\n{room["message_count"]} messages{suffix}')
             item.setData(Qt.ItemDataRole.UserRole, room["id"])
             self.rooms.addItem(item)
             if room["id"] == selected:
@@ -379,7 +634,7 @@ class BoothWindow(QMainWindow):
         if current:
             self.current_room = str(current.data(Qt.ItemDataRole.UserRole))
             self.unread_by_room.pop(self.current_room, None)
-            self.room_title.setText(current.text().splitlines()[0].upper())
+            self._update_room_header(self.current_room)
             self.refresh_messages()
 
     def _prime_message_notifications(self) -> None:
@@ -455,6 +710,14 @@ class BoothWindow(QMainWindow):
             return
         if not self.current_room:
             self.current_room = "general"
+        meta = self._room_meta(self.current_room)
+        if meta and (meta.get("archived_at") or meta.get("removed_at")):
+            QMessageBox.information(
+                self,
+                "Room is read-only",
+                "This room is archived or removed. Restore it from Room Actions before posting.",
+            )
+            return
         self.store.append(self.current_room, "sean", body, title=self.current_room)
         self.composer.clear()
         self.refresh_rooms(preserve=True)
@@ -561,6 +824,8 @@ QListWidget::item { padding: 10px; border-bottom: 1px solid #182a1d; }
 QListWidget::item:selected { background: #15261a; color: #72ff48; }
 QPushButton { background: #72ff48; color: #071009; border: 0; border-radius: 5px; padding: 9px 14px; font-weight: 800; }
 QPushButton:hover { background: #94ff73; }
+QPushButton:disabled { background: #263328; color: #738075; }
+QCheckBox { color: #93a894; font-size: 9pt; }
 QSplitter::handle { background: #29432e; width: 1px; }
 QTextBrowser { padding: 12px; }
 """
