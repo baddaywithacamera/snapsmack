@@ -136,6 +136,20 @@ function rb_pdo(): PDO {
 }
 
 /** An ordinary public Note from the source, shaped as fan-out expects. */
+/**
+ * The site-wide block check sc_relay_actor_blocked() consults when it exists.
+ *
+ * Defined here so its FAILURE can be driven: it is the third source of a block
+ * answer, and Codex's review finding 1 is about a source whose failure went
+ * unreported. Inert unless $GLOBALS['rb_pc_blocked'] says otherwise, so every
+ * other stage runs exactly as it did before this function existed.
+ */
+function pc_is_blocked(PDO $pdo, string $actor_url): bool {
+    $mode = $GLOBALS['rb_pc_blocked'] ?? 'off';
+    if ($mode === 'throw') { throw new RuntimeException('block store unavailable'); }
+    return $mode === 'yes';
+}
+
 function rb_activity(string $source, string $objectId): array {
     return [
         'id' => $objectId . '#create',
@@ -235,13 +249,59 @@ echo "\nSTAGE 5 — FAIL CLOSED when the blocklist cannot be read\n";
 // ─────────────────────────────────────────────────────────────────────────────
 // Relaying outward is the move that cannot be taken back, so an unreadable
 // blocklist must refuse rather than broadcast. Proven by dropping the table.
+// EVERY source, not just one. Codex's review finding 1: this stage dropped
+// snap_relay_blocklist only, and sc_relay_actor_blocked() swallows an
+// unreadable snap_ap_blocks and answers "not blocked" -- correct for receiving,
+// where a syncing schema must not stop a post arriving. So with snap_ap_blocks
+// absent and snap_relay_blocklist readable, the hub broadcast. Each table is
+// now dropped on its own, and then both together.
+$n = 6;
+foreach ([
+    ['snap_relay_blocklist'],
+    ['snap_ap_blocks'],
+    ['snap_ap_blocks', 'snap_relay_blocklist'],
+] as $drop) {
+    $pdo = rb_pdo();
+    rb_add_source($pdo, $source);
+    foreach ($drop as $table) { $pdo->exec('DROP TABLE ' . $table); }
+    $GLOBALS['rb_queued'] = [];
+    $relayed = sc_relay_fanout($pdo, $settings,
+        rb_activity($source, 'https://source.invalid/ap/note/' . $n++), $source);
+    rb_check('with ' . implode(' and ', $drop) . ' unreadable, it refuses to relay',
+             $relayed === 0 && $GLOBALS['rb_queued'] === [], $failures);
+}
+
+// And the helper itself reports WHY, so the two readings of a failure are
+// visible rather than inferred from the outcome above.
 $pdo = rb_pdo();
-rb_add_source($pdo, $source);
-$pdo->exec('DROP TABLE snap_relay_blocklist');
-$GLOBALS['rb_queued'] = [];
-rb_check('an unreadable blocklist refuses to relay rather than broadcasting',
-         sc_relay_fanout($pdo, $settings, rb_activity($source, 'https://source.invalid/ap/note/6'), $source) === 0
-         && $GLOBALS['rb_queued'] === [], $failures);
+$conclusive = null;
+rb_check('with every table present the answer is conclusive',
+         sc_relay_actor_blocked($pdo, $source, $conclusive) === false && $conclusive === true,
+         $failures);
+$pdo->exec('DROP TABLE snap_ap_blocks');
+$conclusive = null;
+rb_check('with snap_ap_blocks gone it still answers "not blocked" for RECEIVING',
+         sc_relay_actor_blocked($pdo, $source, $conclusive) === false, $failures);
+rb_check('  but says the answer was NOT conclusive', $conclusive === false, $failures);
+rb_check('  and relaying outward refuses on that',
+         sc_relay_source_may_relay($pdo, $source) === false, $failures);
+
+// The third source. pc_is_blocked() is the site-wide check, consulted when it
+// exists, and its failure was swallowed the same way.
+$pdo = rb_pdo();
+$GLOBALS['rb_pc_blocked'] = 'yes';
+rb_check('the site-wide block list can block on its own',
+         sc_relay_actor_blocked($pdo, $source) === true, $failures);
+rb_check('  and relaying refuses', sc_relay_source_may_relay($pdo, $source) === false, $failures);
+
+$GLOBALS['rb_pc_blocked'] = 'throw';
+$conclusive = null;
+rb_check('a site-wide block list that FAILS answers "not blocked" for receiving',
+         sc_relay_actor_blocked($pdo, $source, $conclusive) === false, $failures);
+rb_check('  but says the answer was NOT conclusive', $conclusive === false, $failures);
+rb_check('  and relaying outward refuses on that',
+         sc_relay_source_may_relay($pdo, $source) === false, $failures);
+$GLOBALS['rb_pc_blocked'] = 'off';
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 6 — RETRACTION PAGES, rather than stopping at a fixed slice\n";

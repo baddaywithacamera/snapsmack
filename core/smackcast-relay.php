@@ -190,16 +190,36 @@ function sc_relay_is_discoverable(array $activity, array $object): bool {
     return false;
 }
 
-function sc_relay_actor_blocked(PDO $pdo, string $actor_url): bool {
+/**
+ * Is this actor blocked?
+ *
+ * $conclusive, when passed, says whether every source could actually be READ.
+ * This function answers false for an unreadable snap_ap_blocks, which is right
+ * for RECEIVING -- a syncing schema must not stop a post arriving -- and wrong
+ * for relaying outward, where "I could not tell" has to mean "do not
+ * broadcast". Codex's review finding 1: sc_relay_source_may_relay() called
+ * this and so inherited the swallow, and only a snap_relay_blocklist failure
+ * closed the gate. With snap_ap_blocks absent and snap_relay_blocklist
+ * readable, the hub relayed.
+ *
+ * One implementation, two readings of a failure. The caller decides which it
+ * needs rather than a second copy of the policy existing somewhere.
+ */
+function sc_relay_actor_blocked(PDO $pdo, string $actor_url, ?bool &$conclusive = null): bool {
+    $conclusive = true;
     $domain = strtolower(rtrim((string)(parse_url($actor_url, PHP_URL_HOST) ?: ''), '.'));
     try {
         $q = $pdo->prepare("SELECT 1 FROM snap_ap_blocks
             WHERE (kind='actor' AND value=?) OR (kind='domain' AND value=?) LIMIT 1");
         $q->execute([$actor_url, $domain]);
         if ($q->fetchColumn()) return true;
-    } catch (Throwable $e) { /* schema may be syncing */ }
+    } catch (Throwable $e) {
+        // schema may be syncing — receiving carries on, relaying must not
+        $conclusive = false;
+    }
     if (function_exists('pc_is_blocked')) {
-        try { if (pc_is_blocked($pdo, $actor_url)) return true; } catch (Throwable $e) {}
+        try { if (pc_is_blocked($pdo, $actor_url)) return true; }
+        catch (Throwable $e) { $conclusive = false; }
     }
     return false;
 }
@@ -221,16 +241,26 @@ function sc_relay_actor_blocked(PDO $pdo, string $actor_url): bool {
  * adds the one source it does not cover, the relay's own domain blocklist, read
  * exactly as sc_relay_join() reads it.
  *
- * ON FAILURE THIS SAYS "BLOCKED". sc_relay_actor_blocked() swallows a schema
- * error and answers false, which is right for receiving: a syncing schema
- * should not stop a post arriving. Relaying outward is the other way round --
- * if the hub cannot tell whether a domain is blocked, broadcasting to every
+ * ON FAILURE THIS SAYS "BLOCKED", for EVERY source it consults. If the hub
+ * cannot tell whether an actor or a domain is blocked, broadcasting to every
  * member is the move it cannot take back. Refusing is recoverable; the posts
- * relay on the next tick once the table answers.
+ * relay on the next tick once the tables answer.
+ *
+ * That used to hold for only one of the two. Codex's review finding 1:
+ * sc_relay_actor_blocked() swallows an unreadable snap_ap_blocks and answers
+ * false -- correct for receiving, where a syncing schema must not stop a post
+ * arriving -- so with that table absent and snap_relay_blocklist readable, this
+ * said MAY RELAY. It now asks that helper whether its answer was conclusive.
  */
 function sc_relay_source_may_relay(PDO $pdo, string $actor_url): bool {
     if ($actor_url === '') return false;
-    if (sc_relay_actor_blocked($pdo, $actor_url)) return false;
+    $conclusive = true;
+    if (sc_relay_actor_blocked($pdo, $actor_url, $conclusive)) return false;
+    if (!$conclusive) {
+        error_log('SnapSmack relay: block list unreadable, refusing to relay '
+            . $actor_url);
+        return false;
+    }
 
     $domain = strtolower(rtrim((string)(parse_url($actor_url, PHP_URL_HOST) ?: ''), '.'));
     if ($domain === '') return false;
