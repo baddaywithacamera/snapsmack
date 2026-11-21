@@ -77,6 +77,11 @@ if (!function_exists('sv_ingest_timeline')) {
 $GLOBALS['rb_queued'] = [];
 if (!function_exists('sv_queue_delivery')) {
     function sv_queue_delivery(PDO $pdo, string $inbox, string $json, string $dedupe): int {
+        // STAGE 9 sets this to drive the case Codex's finding 4 is about: the
+        // queue failing AFTER fan-out has decided to relay.
+        if (!empty($GLOBALS['rb_queue_throws'])) {
+            throw new RuntimeException('delivery queue unavailable');
+        }
         $GLOBALS['rb_queued'][] = ['inbox' => $inbox, 'json' => $json, 'dedupe' => $dedupe];
         return 1;
     }
@@ -454,6 +459,53 @@ $pdo = rb_pdo();
 $GLOBALS['rb_queued'] = [];
 rb_check('an actor with nothing relayed retracts nothing',
          sc_relay_retract_actor($pdo, $settings, 'https://nobody.invalid/ap/actor') === 0, $failures);
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\nSTAGE 9 — A FAILED QUEUE DOES NOT MAKE RECOVERY SKIP THE POST\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// Codex's review finding 4. The intake row used to go in BEFORE the queueing
+// call, and Stage 8's recovery skip (SS-1481 #10) skips any object that has an
+// intake row. So a request that died, or a queue that threw, after that insert
+// left the post marked "taken in" and never delivered -- and recovery, the one
+// thing that would have caught it, would skip it for good. The fix for one
+// fault would have built a worse one.
+//
+// Driven by making the delivery queue throw, which is the failure Codex
+// reproduced, and then asking the intake table what it believes.
+$pdo = rb_pdo();
+rb_add_source($pdo, $source);
+$lost = 'https://source.invalid/ap/note/lost';
+$GLOBALS['rb_queued'] = [];
+$GLOBALS['rb_queue_throws'] = true;
+$threw = false;
+try { sc_relay_fanout($pdo, $settings, rb_activity($source, $lost), $source); }
+catch (Throwable $e) { $threw = true; }
+$GLOBALS['rb_queue_throws'] = false;
+
+rb_check('the queue failure reaches the caller rather than being swallowed',
+         $threw, $failures);
+rb_check('nothing was queued', $GLOBALS['rb_queued'] === [], $failures);
+
+$intake = $pdo->prepare("SELECT COUNT(*) FROM snap_relay_intake
+                          WHERE object_id = ? AND origin_actor_url = ?");
+$intake->execute([$lost, $source]);
+rb_check('and NO intake row claims the post was taken in',
+         (int)$intake->fetchColumn() === 0, $failures);
+
+// So the next attempt relays it, which is the whole point of the ordering.
+$GLOBALS['rb_queued'] = [];
+rb_check('the next attempt relays the post that was nearly lost',
+         sc_relay_fanout($pdo, $settings, rb_activity($source, $lost), $source) === 1, $failures);
+$intake->execute([$lost, $source]);
+rb_check('and the intake row is written only now that it actually went out',
+         (int)$intake->fetchColumn() === 1, $failures);
+
+// A second fan-out of the same object must still not duplicate the intake row.
+$GLOBALS['rb_queued'] = [];
+sc_relay_fanout($pdo, $settings, rb_activity($source, $lost), $source);
+$intake->execute([$lost, $source]);
+rb_check('a repeat fan-out leaves exactly one intake row',
+         (int)$intake->fetchColumn() === 1, $failures);
 
 echo "\n";
 if ($failures) {

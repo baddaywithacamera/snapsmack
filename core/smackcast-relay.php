@@ -425,12 +425,6 @@ function sc_relay_fanout(PDO $pdo, array $settings, array $activity, string $act
         ? (string)($object['attributedTo']['id'] ?? '') : (string)($object['attributedTo'] ?? '');
     if ($object_id === '' || $attributed !== $actor_url
         || !sc_relay_actor_owns_object($actor_url, $object_id)) return 0;
-    try {
-        $pdo->prepare("INSERT INTO snap_relay_intake (activity_id, object_id, origin_actor_url) VALUES (?,?,?)")
-            ->execute([$activity_id, $object_id, $actor_url]);
-    } catch (PDOException $e) {
-        if ((string)$e->getCode() !== '23000') throw $e;
-    }
     $announce = json_encode([
         '@context' => ['https://www.w3.org/ns/activitystreams',
             ['photoblogs' => 'https://photoblogs.fyi/ns#', 'feed' => 'photoblogs:feed']],
@@ -439,8 +433,28 @@ function sc_relay_fanout(PDO $pdo, array $settings, array $activity, string $act
         'object' => $object_id, 'to' => ['https://www.w3.org/ns/activitystreams#Public'],
         'feed' => sc_relay_origin_feed($pdo, $actor_url),
     ], JSON_UNESCAPED_SLASHES);
-    return sc_relay_queue_to_members($pdo, $actor_url, $announce,
+
+    // QUEUE FIRST, THEN RECORD THE INTAKE. Codex's review finding 4: the intake
+    // row went in before this call, and the recovery loop skips any object with
+    // an intake row (SS-1481 finding 10). So if the request died or queueing
+    // threw after the insert, recovery would PERMANENTLY skip the very post it
+    // exists to recover -- the fix for one fault building a worse one.
+    //
+    // This order cannot lose a post. A throw here leaves no intake row, so the
+    // next recovery tick takes the post in and relays it. The cost is that the
+    // same object could be queued twice in a race, and sv_queue_delivery()'s
+    // dedupe_key -- 'relay-create:' + hash(object) per inbox -- collapses that
+    // to one row, which is what made the intake UNIQUE key redundant as a
+    // dedupe in the first place.
+    $queued = sc_relay_queue_to_members($pdo, $actor_url, $announce,
         'relay-create:' . hash('sha256', $object_id));
+    try {
+        $pdo->prepare("INSERT INTO snap_relay_intake (activity_id, object_id, origin_actor_url) VALUES (?,?,?)")
+            ->execute([$activity_id, $object_id, $actor_url]);
+    } catch (PDOException $e) {
+        if ((string)$e->getCode() !== '23000') throw $e;
+    }
+    return $queued;
 }
 
 /** Refresh a relayed object after a verified origin Update. */
