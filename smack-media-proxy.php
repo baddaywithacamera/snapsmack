@@ -9,6 +9,7 @@
 
 require_once __DIR__ . '/core/auth-smack.php';
 require_once __DIR__ . '/core/fediverse.php';
+require_once __DIR__ . '/core/media-retention.php';
 
 $proxy_settings = $pdo->query("SELECT setting_key,setting_val FROM snap_settings")
     ->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -28,7 +29,7 @@ if (!is_string($url) || stripos($url, 'https://') !== 0) { http_response_code(40
 $resolved = sv_resolve_public($url);
 if ($resolved === null || !function_exists('curl_init')) { http_response_code(400); exit; }
 
-$cache_dir = __DIR__ . '/cache/fedi-media';
+$cache_dir = snap_media_cache_dir();
 $cache_key = hash('sha256', $url);
 $cache_body = $cache_dir . '/' . $cache_key . '.bin';
 $cache_meta = $cache_dir . '/' . $cache_key . '.json';
@@ -64,6 +65,13 @@ if (!is_string($body)) {
     $ctype = strtolower(trim(explode(';', (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE))[0]));
     $error = curl_errno($ch);
     curl_close($ch);
+    // FIVE IMAGE TYPES, AND VIDEO IS EXCLUDED ON PURPOSE. Sean's standing
+    // ruling, 2026-11-20: an owner may VIEW remote video -- it is linked,
+    // click to play, preload="none", streamed from the origin -- but SNAPSMACK
+    // never caches, proxies, re-publishes, boosts or shares video, and never
+    // accepts video uploads. Adding a video/* type here would quietly make
+    // this server a video host for other people's files. It is not an
+    // oversight and it is not a to-do.
     $allowed = ['image/jpeg','image/png','image/gif','image/webp','image/avif'];
     if ($too_large || $error !== 0 || $code < 200 || $code >= 300 || !in_array($ctype, $allowed, true)) {
         http_response_code(502); exit;
@@ -75,15 +83,15 @@ if (!is_string($body)) {
         http_response_code(415); exit;
     }
     $body = $data;
-    if ((is_dir($cache_dir) || @mkdir($cache_dir, 0750, true)) && is_writable($cache_dir)) {
-        if (random_int(1, 100) === 1) {
-            foreach (glob($cache_dir . '/*.{bin,json}', GLOB_BRACE) ?: [] as $old) {
-                if (is_file($old) && filemtime($old) < time() - 604800) @unlink($old);
-            }
-        }
-        @file_put_contents($cache_body, $body, LOCK_EX);
-        @file_put_contents($cache_meta, json_encode(['type'=>$ctype]), LOCK_EX);
-    }
+    // SS-1481 #14. Was: a 1-in-100 dice roll that deleted anything past the
+    // 7-day TTL, and no total cap at all. A cache with no ceiling is a disk
+    // that fills, and an eviction nobody can predict is an eviction nobody can
+    // test. snap_media_cache_store() keeps the TTL, adds the owner's ceiling,
+    // refuses to KEEP anything over 4 MB (it is still served), and sweeps
+    // oldest-first every time. Returning false means "served, not cached",
+    // which is not an error.
+    snap_media_cache_store($cache_dir, $cache_key, $body, $ctype,
+                           snap_media_cache_limit_bytes($proxy_settings));
 }
 
 header('Content-Type: ' . $ctype);

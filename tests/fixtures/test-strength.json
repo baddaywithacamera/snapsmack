@@ -1299,6 +1299,43 @@
             14
         ]
     },
+    "media-cache-and-timeline-have-a-ceiling-regression.php": {
+        "assertions": 73,
+        "predicates": 22,
+        "thresholds": [
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            4,
+            5,
+            5,
+            6,
+            6,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            12,
+            12,
+            16,
+            20,
+            30,
+            30,
+            40,
+            40,
+            512,
+            512,
+            1024,
+            32768,
+            4194304,
+            15728640
+        ]
+    },
     "medium-thumb-column-and-size-regression.php": {
         "assertions": 12,
         "predicates": 7,

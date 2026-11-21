@@ -5205,6 +5205,40 @@ function sv_has_liked(PDO $pdo, string $object_id): bool {
  * hears about it. Origin delivery happens even with zero followers, so boosting
  * works before you've built an audience.
  */
+/**
+ * Is this post nothing but video?
+ *
+ * Sean's standing ruling, 2026-11-20: an owner may VIEW remote video, but
+ * SNAPSMACK never caches, proxies, re-publishes, BOOSTS or SHARES it, and
+ * never accepts video uploads.
+ *
+ * VIDEO-ONLY, not video-at-all. A post carrying a photograph and a clip is a
+ * photograph post; refusing it would quietly make the rule wider than Sean
+ * wrote it. A post with no attachments at all is text, not video, and is
+ * boostable as it always was.
+ *
+ * Both shapes count as video: an attachment whose mediaType begins "video/",
+ * and one whose ActivityStreams `type` is Video. A Pixelfed clip uses the
+ * first; a Peertube object uses the second.
+ */
+function sv_post_is_video_only(?array $obj): bool {
+    if (!is_array($obj)) return false;
+    // An Announce or Create wrapping the real object.
+    if (isset($obj['object']) && is_array($obj['object'])) { $obj = $obj['object']; }
+    $att = $obj['attachment'] ?? null;
+    if (is_array($att) && isset($att['url'])) { $att = [$att]; }   // a lone object
+    if (!is_array($att) || !$att) return false;
+    $video = 0; $other = 0;
+    foreach ($att as $a) {
+        if (!is_array($a)) { $other++; continue; }
+        $mt   = strtolower(trim((string)($a['mediaType'] ?? '')));
+        $type = strtolower(trim((string)($a['type'] ?? '')));
+        if (str_starts_with($mt, 'video/') || $type === 'video') { $video++; }
+        else { $other++; }
+    }
+    return $video > 0 && $other === 0;
+}
+
 function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
     $object_id = trim($object_id);
     if ($object_id === '' || stripos($object_id, 'https://') !== 0) return [false, 'That post has no usable id.'];
@@ -5225,6 +5259,21 @@ function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
                 if ($cand !== '' && sv_url_is_public($cand)) $author_inbox = $cand;
             }
         }
+    }
+
+    // SEAN'S VIDEO RULING, 2026-11-20, checked here because this is the ONE
+    // door every boost goes through: pixel.php, smack-pixelfed.php and
+    // photochallenge's auto-boost all call this function. An owner may watch
+    // remote video; this site does not re-publish it to its followers.
+    //
+    // Refused BEFORE the test-mode branch, so a test boost cannot do what a
+    // real one may not. The message says what the owner can still do, because
+    // "no" without "but" reads as a fault.
+    if (sv_post_is_video_only($obj)) {
+        return [false, 'That post is video only, so it is not boosted. '
+            . 'SnapSmack never re-publishes, caches or hosts video — you can '
+            . 'watch it here, and it plays from the server it lives on. Link '
+            . 'to it in a post of your own if you want to share it.'];
     }
 
     // TESTING WHITELIST: send the boost ONLY to whitelisted test accounts that

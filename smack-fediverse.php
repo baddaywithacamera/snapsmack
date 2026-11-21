@@ -335,6 +335,51 @@ if ($sv_dupe_deliveries > 0): ?>
     </div>
 <?php endif; ?>
 
+<?php
+// SS-1481 #14. What the fediverse is allowed to keep on your disk. Shown
+// always, unlike the tripwire above: this one is a control, and a control the
+// owner cannot find is a control they do not have.
+require_once __DIR__ . '/core/media-retention.php';
+$sv_cache_limit = snap_media_cache_limit_bytes($settings);
+$sv_cache_used  = 0;
+foreach (snap_media_cache_entries(snap_media_cache_dir()) as $sv_ce) {
+    $sv_cache_used += $sv_ce['size'];
+}
+?>
+    <div class="box mt-30">
+        <h3>WHAT THE FEDIVERSE KEEPS ON YOUR DISK</h3>
+        <p class="skin-desc-text">
+            Photographs from other people's posts are fetched through this
+            server so the people you follow never see your readers' addresses.
+            Those copies are kept for a week and then deleted. Right now they
+            use <strong><?php echo round($sv_cache_used / 1048576, 1); ?> MB</strong>
+            of the <strong><?php echo intdiv($sv_cache_limit, 1048576); ?> MB</strong>
+            allowed. When the limit is reached the oldest go first. A single
+            image over 4 MB is shown to your readers but never kept.
+        </p>
+        <p class="skin-desc-text">
+            <strong>Video is never kept, never re-published and never
+            uploaded.</strong> Remote video plays straight from the server that
+            hosts it, and nothing starts loading until the reader presses play.
+        </p>
+        <p class="skin-desc-text">
+            Posts in your reader are kept for
+            <strong><?php echo snap_timeline_retention_days(); ?> days</strong>,
+            or the most recent
+            <strong><?php echo number_format(snap_timeline_retention_rows()); ?></strong>
+            per tab, whichever leaves you more. Anything you were notified
+            about is never removed.
+        </p>
+        <form method="POST" class="signal-search-group mb-14">
+            <input type="hidden" name="action" value="save_media_cache">
+            <label for="media_cache_mb">Image cache limit, in megabytes</label>
+            <input type="number" id="media_cache_mb" name="media_cache_mb"
+                   min="16" max="32768" step="16"
+                   value="<?php echo intdiv($sv_cache_limit, 1048576); ?>">
+            <button type="submit" class="btn-smack">SAVE LIMIT</button>
+        </form>
+    </div>
+
     <div class="box mt-30">
         <h3>INBOX LOG <span style="opacity:0.6; font-size:0.8rem; letter-spacing:1px;">— DIAGNOSTIC</span></h3>
         <p class="skin-desc-text">Every inbound fediverse activity and what happened to it — so a like or reply that never landed is visible instead of silently gone. <strong>REJECTED</strong> = signature failed (never got in); <strong>UNRESOLVED</strong> = we couldn't match the liked post to a local one; <strong>recorded</strong> = it worked. Newest first.</p>

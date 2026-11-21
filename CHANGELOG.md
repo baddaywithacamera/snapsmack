@@ -103,6 +103,32 @@ new decision.
   alarm rather than a lock. If that number is ever above zero, something is
   re-sending and it is worth telling us.
 
+- **The fediverse can no longer fill your disk.** Photographs from other
+  people's posts are fetched through your server so the people you follow never
+  see your readers' addresses, and those copies had a one-week life but no
+  limit on how many. There is now a ceiling you set yourself — 512 MB to start,
+  on the Fediverse page — and when it is reached the oldest go first. A single
+  image over 4 MB is still shown to your readers; it is simply not kept. The
+  weekly clear-out used to depend on a one-in-a-hundred chance each time an
+  image was cached, so on a quiet site it might not run for days; it now runs
+  every time, and the page shows what the cache is actually using. (SS-1481)
+
+- **Your reader keeps three months, or the last two thousand posts per tab,
+  whichever leaves you more.** Posts from the accounts and relays you follow
+  were kept for ever. They are now trimmed on a schedule, and the two rules
+  work together so a quiet feed keeps its three months even if that is forty
+  posts, and a busy one keeps two thousand even if that is a fortnight.
+  Anything you were notified about is never removed, so a notification can
+  never point at a post that has gone. (SS-1481)
+
+- **Video is never re-published, and now the share button says so.** Remote
+  video plays from the server that hosts it, and nothing downloads until you
+  press play — that has always been true of the proxy, which accepts five
+  image types and nothing else. But the boost button would happily pass a
+  video-only post to all your followers. It no longer does: it refuses, and
+  tells you that you can link to it in a post of your own instead. A
+  photograph that happens to carry a clip is unaffected. (SS-1481)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,
