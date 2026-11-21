@@ -34,4 +34,26 @@ def test_snap_home_allows_temp_directory(tmp_path, monkeypatch):
     monkeypatch.setenv("SNAPSMACK_HOME", str(sandbox))
     assert snap_home.home() == os.path.abspath(str(sandbox))
 
+
+def test_snap_home_guard_never_trips_in_frozen_build(monkeypatch):
+    monkeypatch.delenv("SNAPSMACK_HOME", raising=False)
+    monkeypatch.delenv("SNAPSMACK_ALLOW_REAL_HOME_IN_TESTS", raising=False)
+    monkeypatch.setenv("PYTEST_CURRENT_TEST", "simulated::test")
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    assert snap_home._is_test_process() is False
+    assert snap_home.home() == os.path.abspath(r"C:\snapsmack")
+
+
+def test_snap_home_guard_ignores_transitive_unittest_import_outside_pytest(monkeypatch):
+    monkeypatch.delenv("SNAPSMACK_HOME", raising=False)
+    monkeypatch.delenv("SNAPSMACK_ALLOW_REAL_HOME_IN_TESTS", raising=False)
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    monkeypatch.setattr(sys, "frozen", False, raising=False)
+    monkeypatch.delitem(sys.modules, "pytest", raising=False)
+    monkeypatch.delitem(sys.modules, "_pytest", raising=False)
+    import unittest.mock  # noqa: F401 — transitive import as pulled in by setuptools
+    assert "unittest" in sys.modules
+    assert snap_home._is_test_process() is False
+    assert snap_home.home() == os.path.abspath(r"C:\snapsmack")
+
 # ===== SNAPSMACK EOF =====
