@@ -218,6 +218,7 @@ class TakeMode(QWidget):
         self._bucket = []          # list[O.DraftImage]
         self._cover_idx = 0
         self._selected_photo_idx = None
+        self._selected_photo_indices = []
         self._updating_photo_fields = False
         self._loading = False
         self._view_settings = QSettings("SnapSmack", "COLD SNAP")
@@ -397,6 +398,21 @@ class TakeMode(QWidget):
             brow.addWidget(b)
         brow.addStretch(1)
         self.photos_sec.add_layout(brow)
+
+        insert_row = QHBoxLayout()
+        insert_row.setContentsMargins(0, 2, 0, 2)
+        insert_row.setSpacing(6)
+        self.insert_into_post_btn = big_button("INSERT INTO POST")
+        self.insert_into_post_btn.setToolTip("Place the selected photo into the post at the cursor")
+        self.insert_into_post_btn.clicked.connect(self.insert_selected_into_post)
+        self.insert_into_post_btn.setVisible(False)
+        insert_row.addWidget(self.insert_into_post_btn)
+        self.insert_mosaic_btn = big_button("INSERT MOSAIC")
+        self.insert_mosaic_btn.setToolTip("Insert the selected photos as a mosaic block at the cursor")
+        self.insert_mosaic_btn.clicked.connect(lambda: self.insert_selected_mosaic_into_post())
+        self.insert_mosaic_btn.setVisible(False)
+        insert_row.addWidget(self.insert_mosaic_btn)
+        self.photos_sec.add_layout(insert_row)
 
         # "In mosaics — N" summary bar (shown when photos are placed in mosaics)
         self.in_mosaics_bar = QFrame()
@@ -927,6 +943,14 @@ class TakeMode(QWidget):
         super().resizeEvent(event)
         self._sync_block_tray_width()
 
+    def closeEvent(self, event):
+        if hasattr(self, "_autosave"):
+            self._autosave.stop()
+        if hasattr(self, "_slapper_timer"):
+            self._slapper_timer.stop()
+        self._thumb_job = None
+        super().closeEvent(event)
+
     def _refresh_block_actions(self, visual: bool):
         self.page_card.setProperty("textView", not visual)
         self.page_card.style().unpolish(self.page_card)
@@ -1228,8 +1252,9 @@ class TakeMode(QWidget):
         _, im = self._find_bucket_image(asset_uuid)
         if im is None:
             return
+        default_cap = (im.caption or im.title or "").strip()
         self.body.canvas.insert_image("asset:" + im.asset_uuid,
-                                      alt=im.alt, caption=im.caption)
+                                      alt=im.alt, caption=default_cap)
 
     def _drop_tray_photo_twiggy(self, asset_uuid: str, index_hint=None):
         idx, _ = self._find_bucket_image(asset_uuid, index_hint)
@@ -1241,6 +1266,64 @@ class TakeMode(QWidget):
             shortcode = "\n" + shortcode
         cursor.insertText(shortcode + "\n")
         self.body.editor.setTextCursor(cursor)
+
+    def selected_tray_indices(self) -> list:
+        """Return ordered list of currently selected unplaced 0-based bucket indices."""
+        used = self._used_photo_indices()
+        return [
+            i for i in getattr(self, "_selected_photo_indices", [])
+            if 0 <= i < len(self._bucket) and i not in used
+        ]
+
+    def select_tray_photos(self, indices):
+        """Select one or more unplaced tray photos by 0-based bucket index."""
+        used = self._used_photo_indices()
+        clean = []
+        for idx in (indices or []):
+            i = int(idx)
+            if 0 <= i < len(self._bucket) and i not in used and i not in clean:
+                clean.append(i)
+        self._selected_photo_indices = clean
+        self._selected_photo_idx = clean[0] if clean else None
+        self._refresh_bucket()
+
+    def insert_selected_into_post(self) -> bool:
+        """Place the single selected tray photo at the cursor (same result as dragging)."""
+        sel = self.selected_tray_indices()
+        if len(sel) != 1:
+            return False
+        idx = sel[0]
+        im = self._bucket[idx]
+        if self.body.is_biggie():
+            self._drop_tray_photo_biggie(im.asset_uuid)
+        else:
+            self._drop_tray_photo_twiggy(im.asset_uuid, idx)
+        self._selected_photo_indices = []
+        self._refresh_bucket()
+        self._changed()
+        return True
+
+    def insert_selected_mosaic_into_post(self, layout: str = "asymmetric") -> bool:
+        """Insert 2+ selected tray photos as a mosaic block at the cursor."""
+        sel = self.selected_tray_indices()
+        if len(sel) < 2:
+            return False
+        layout_name = str(layout or "asymmetric").strip().lower() or "asymmetric"
+        if self.body.is_biggie():
+            stable = [str(self._bucket[i].asset_uuid) for i in sel]
+            self.body.canvas.insert_mosaic(stable, layout_name)
+        else:
+            chosen_1based = [i + 1 for i in sel]
+            marker = "[mosaic=" + ",".join(map(str, chosen_1based)) + " layout=" + layout_name + "]"
+            cursor = self.body.editor.textCursor()
+            if cursor.positionInBlock() > 0:
+                marker = "\n" + marker
+            cursor.insertText(marker + "\n")
+            self.body.editor.setTextCursor(cursor)
+        self._selected_photo_indices = []
+        self._refresh_bucket()
+        self._changed()
+        return True
 
     def _mosaic_dialog(self, existing_order, existing_layout):
         """The one mosaic builder (live preview, tick photos, drag order, layout,
@@ -2128,8 +2211,21 @@ class TakeMode(QWidget):
             return None
         return self._bucket[index]
 
-    def _select_photo(self, idx: int):
-        if 0 <= idx < len(self._bucket):
+    def _select_photo(self, idx: int, *, toggle: bool = False):
+        if not (0 <= idx < len(self._bucket)):
+            return
+        used = self._used_photo_indices()
+        cur = [i for i in getattr(self, "_selected_photo_indices", [])
+               if 0 <= i < len(self._bucket) and i not in used]
+        if toggle:
+            if idx in cur:
+                cur.remove(idx)
+            else:
+                cur.append(idx)
+            self._selected_photo_indices = cur
+            self._selected_photo_idx = cur[-1] if cur else None
+        else:
+            self._selected_photo_indices = [idx] if idx not in used else []
             self._selected_photo_idx = idx
         self._refresh_bucket()
 
@@ -2285,6 +2381,12 @@ class TakeMode(QWidget):
         n = len(self._bucket)
         self.body.set_bucket([im.local_path for im in self._bucket])   # mosaics repaint
         self.body.canvas.set_assets({im.asset_uuid: im.local_path for im in self._bucket})
+        default_caps = {}
+        for i, im in enumerate(self._bucket):
+            cap_val = (im.caption or im.title or "").strip()
+            default_caps[str(im.asset_uuid)] = cap_val
+            default_caps[f"bucket:{i + 1}"] = cap_val
+        self.body.canvas.default_captions = default_caps
         self.bucket_count.setText("")   # count lives in the header; this line = AI progress only
 
         # Count photos placed in mosaic blocks on the canvas
@@ -2310,11 +2412,37 @@ class TakeMode(QWidget):
             f"THE PHOTOS — {left_count} left" if n else "THE PHOTOS — none yet")
         if not self._bucket:
             self._selected_photo_idx = None
+            self._selected_photo_indices = []
+            if hasattr(self, "insert_into_post_btn"):
+                self.insert_into_post_btn.setVisible(False)
+            if hasattr(self, "insert_mosaic_btn"):
+                self.insert_mosaic_btn.setVisible(False)
             self._populate_photo_tools()
             self.bucket_col.addWidget(hint("No photos yet — click “Add photos…”."), 0, 0)
             return
-        if self._selected_photo_idx is None or self._selected_photo_idx >= len(self._bucket):
+
+        unplaced = [i for i in range(len(self._bucket)) if i not in used_indices]
+        cur_sel = [
+            i for i in getattr(self, "_selected_photo_indices", [])
+            if 0 <= i < len(self._bucket) and i not in used_indices
+        ]
+        if not cur_sel:
+            if (self._selected_photo_idx is not None
+                    and 0 <= self._selected_photo_idx < len(self._bucket)
+                    and self._selected_photo_idx not in used_indices):
+                cur_sel = [self._selected_photo_idx]
+            elif unplaced:
+                cur_sel = [unplaced[0]]
+        self._selected_photo_indices = cur_sel
+        if cur_sel:
+            if self._selected_photo_idx not in cur_sel:
+                self._selected_photo_idx = cur_sel[0]
+        elif self._selected_photo_idx is None or self._selected_photo_idx >= len(self._bucket):
             self._selected_photo_idx = 0
+        if hasattr(self, "insert_into_post_btn"):
+            self.insert_into_post_btn.setVisible(len(cur_sel) == 1)
+        if hasattr(self, "insert_mosaic_btn"):
+            self.insert_mosaic_btn.setVisible(len(cur_sel) >= 2)
 
         zoom = getattr(self, "_thumb_zoom", 100)
         if zoom >= 135:
@@ -2326,12 +2454,13 @@ class TakeMode(QWidget):
         else:
             cols, tile_px = 4, 66
 
+        selected_set = set(self._selected_photo_indices)
         visible_pos = 0
         for i, im in enumerate(self._bucket):
             if i in used_indices:
                 continue
             is_cover = (i == self._cover_idx)
-            is_selected = (i == self._selected_photo_idx)
+            is_selected = (i in selected_set)
             edited = bool(getattr(im, "slapper_edited_path", ""))
             in_slapper = (
                 self._slapper_state == "waiting"
@@ -2345,7 +2474,8 @@ class TakeMode(QWidget):
             tile.setToolTip(im.filename or os.path.basename(im.local_path))
             tile.setAccessibleName(
                 "Selected photograph" if is_selected else "Select photograph")
-            tile.clicked.connect(lambda _=False, i=i: self._select_photo(i))
+            tile.selectionClicked.connect(
+                lambda idx, toggle: self._select_photo(idx, toggle=toggle))
             self.bucket_col.addWidget(tile, visible_pos // cols, visible_pos % cols)
             visible_pos += 1
         if visible_pos == 0:
@@ -2448,12 +2578,24 @@ class TakeMode(QWidget):
         positions = {str(im.asset_uuid): i + 1 for i, im in enumerate(self._bucket)}
         def convert(block):
             out = dict(block)
-            if out.get("type") == "image" and out.get("asset_uuid"):
-                pos = positions.get(str(out["asset_uuid"]))
-                if pos:
-                    out["img_id"] = f"bucket:{pos}"
-                for key in ("asset_uuid", "placement", "width_ratio", "crop", "alt", "caption", "link"):
-                    out.pop(key, None)
+            if out.get("type") == "image":
+                show_cap = bool(out.get("show_caption"))
+                cap_text = str(out.get("caption") or "").strip()
+                if out.get("asset_uuid"):
+                    pos = positions.get(str(out["asset_uuid"]))
+                    if pos:
+                        out["img_id"] = f"bucket:{pos}"
+                        if cap_text and 1 <= pos <= len(self._bucket):
+                            self._bucket[pos - 1].caption = cap_text
+                    for key in ("asset_uuid", "placement", "width_ratio", "crop", "alt", "link"):
+                        out.pop(key, None)
+                if show_cap and cap_text:
+                    out["show_caption"] = True
+                    out["caption"] = cap_text
+                    out.pop("raw", None)
+                else:
+                    out.pop("caption", None)
+                    out.pop("show_caption", None)
             if out.get("type") == "mosaic" and out.get("order"):
                 out["order"] = [positions.get(str(value), value) for value in out["order"]]
             if out.get("type") == "columns":

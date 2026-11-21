@@ -100,6 +100,8 @@ class RightPhotosTray(QWidget):
 class PhotoThumbTile(QPushButton):
     """Square thumbnail tile with selection border and status badges."""
 
+    selectionClicked = Signal(int, bool)  # (bucket_index, toggle_multi)
+
     def __init__(self, index: int, pixmap: QPixmap, selected: bool = False,
                  is_cover: bool = False, edited: bool = False,
                  in_slapper: bool = False, tile_size: int = 92,
@@ -121,9 +123,16 @@ class PhotoThumbTile(QPushButton):
         self.setCursor(Qt.PointingHandCursor)
         self.setFocusPolicy(Qt.NoFocus)
 
+    def _check_rect(self) -> QRect:
+        return QRect(4, 22 if self._edited else 4, 18, 18)
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self._drag_start = event.position().toPoint()
+            mods = event.modifiers()
+            in_check = self._check_rect().contains(self._drag_start)
+            toggle = bool((mods & (Qt.ControlModifier | Qt.ShiftModifier)) or in_check)
+            self.selectionClicked.emit(self._index, toggle)
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -208,6 +217,16 @@ class PhotoThumbTile(QPushButton):
             p.drawRoundedRect(ver_rect, 3, 3)
             p.setPen(QColor("#ffffff"))
             p.drawText(ver_rect, Qt.AlignCenter, "v2")
+
+        # Multi-select check badge (top-left, or below EDITED badge)
+        chk_rect = self._check_rect()
+        p.setPen(QPen(QColor(theme.ACCENT if self._selected else "#9aa39b"), 1))
+        p.setBrush(QColor(theme.ACCENT) if self._selected else QColor(10, 12, 10, 185))
+        p.drawRoundedRect(chk_rect, 3, 3)
+        if self._selected:
+            p.setPen(QColor("#0a1407"))
+            p.setFont(f_badge)
+            p.drawText(chk_rect, Qt.AlignCenter, "✓")
 
         # Selection / hover border
         border_col = QColor(theme.ACCENT if self._selected else theme.BORDER)

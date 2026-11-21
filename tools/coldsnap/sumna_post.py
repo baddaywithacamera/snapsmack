@@ -980,21 +980,52 @@ class SmacktalkPoster:
     # longer exists — photo removed after writing — drops the tag rather than
     # sending the site a broken one.
     _BUCKET_IMG_TOKEN = re.compile(r'\[img:(g)?bucket:(\d+)((?:\|[^\]]*)?)\]', re.I)
+    _CAPTION_IMG_TOKEN = re.compile(
+        r'\[img:([^\]]*?)\s*\|\s*caption=([^|\]]+)((?:\s*\|[^\]]*)?)\]', re.I
+    )
 
     def _resolve_bucket_images(self, content, image_ids) -> str:
+        import html as _html
         content = content or ""
-        if not self._BUCKET_IMG_TOKEN.search(content):
-            return content
-        ids = list(image_ids or [])
+        if self._BUCKET_IMG_TOKEN.search(content):
+            ids = list(image_ids or [])
 
-        def swap(match):
-            gallery = "g" if match.group(1) else ""
-            pos = int(match.group(2))
-            if 1 <= pos <= len(ids):
-                return "[img:%s%d%s]" % (gallery, int(ids[pos - 1]), match.group(3) or "")
-            return ""
+            def swap(match):
+                gallery = "g" if match.group(1) else ""
+                pos = int(match.group(2))
+                if 1 <= pos <= len(ids):
+                    return "[img:%s%d%s]" % (gallery, int(ids[pos - 1]), match.group(3) or "")
+                return ""
 
-        return self._BUCKET_IMG_TOKEN.sub(swap, content)
+            content = self._BUCKET_IMG_TOKEN.sub(swap, content)
+
+        if self._CAPTION_IMG_TOKEN.search(content):
+            def wrap_caption(match):
+                prefix = (match.group(1) or "").strip()
+                cap_raw = (match.group(2) or "").strip()
+                tail = (match.group(3) or "").strip()
+                inner = f"[img:{prefix}{tail}]"
+                if not cap_raw:
+                    return inner
+                esc = _html.escape(cap_raw, quote=False)
+                return f'<figure class="snap-image-figure">{inner}<figcaption>{esc}</figcaption></figure>'
+
+            content = self._CAPTION_IMG_TOKEN.sub(wrap_caption, content)
+            # Ensure plain-text paragraph chunks are wrapped in <p> when <figure> is present
+            # so smack_autop_long in core/smackpress-api.php treats the post as block HTML.
+            chunks = re.split(r"\n\n+", content.replace("\r\n", "\n"))
+            out_chunks = []
+            for ch in chunks:
+                t = ch.strip()
+                if not t:
+                    continue
+                if (t.startswith("<")
+                        or re.match(r"^\[(?:img|mosaic|spacer|columns|pullquote)\b", t, re.I)):
+                    out_chunks.append(t)
+                else:
+                    out_chunks.append("<p>" + _html.escape(t, quote=False).replace("\n", "<br>\n") + "</p>")
+            content = "\n\n".join(out_chunks)
+        return content
 
     def _resolve_mosaics(self, content, image_ids, draft) -> Tuple[str, list]:
         """Turn a [mosaic] placeholder in the body into a real [mosaic:ID] gallery of
@@ -1071,12 +1102,22 @@ class SmacktalkPoster:
 
             def _wire(blk):
                 out = dict(blk)
-                if out.get("type") == "image" and out.get("asset_uuid"):
-                    pos = positions.get(str(out["asset_uuid"]))
-                    if pos:
-                        out["img_id"] = f"bucket:{pos}"
-                    for k in ("asset_uuid", "placement", "width_ratio", "crop", "alt", "caption", "link"):
-                        out.pop(k, None)
+                if out.get("type") == "image":
+                    show_cap = bool(out.get("show_caption"))
+                    cap_text = str(out.get("caption") or "").strip()
+                    if out.get("asset_uuid"):
+                        pos = positions.get(str(out["asset_uuid"]))
+                        if pos:
+                            out["img_id"] = f"bucket:{pos}"
+                        for k in ("asset_uuid", "placement", "width_ratio", "crop", "alt", "link"):
+                            out.pop(k, None)
+                    if show_cap and cap_text:
+                        out["show_caption"] = True
+                        out["caption"] = cap_text
+                        out.pop("raw", None)
+                    else:
+                        out.pop("caption", None)
+                        out.pop("show_caption", None)
                 if out.get("type") == "mosaic" and out.get("order"):
                     out["order"] = [positions.get(str(v), v) for v in out["order"]]
                 if out.get("type") == "columns":

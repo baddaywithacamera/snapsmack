@@ -59,6 +59,7 @@ def test_ss1492_backspace_after_image_selects_then_deletes_and_undo_restores(mon
     mode.resize(1400, 900)
     mode.show()
     app.processEvents()
+    mode._clear()
     try:
         mode._add_photo_paths([p1], insert=False)
         uid = mode._bucket[0].asset_uuid
@@ -176,6 +177,7 @@ def test_ss1493_no_huge_gap_after_image_and_consistent_fonts(monkeypatch, tmp_pa
     mode.resize(1400, 900)
     mode.show()
     app.processEvents()
+    mode._clear()
     try:
         mode._add_photo_paths([p1], insert=False)
         uid = mode._bucket[0].asset_uuid
@@ -220,6 +222,7 @@ def test_ss1493_add_block_inserts_at_cursor_not_end(monkeypatch, tmp_path):
     mode.resize(1400, 900)
     mode.show()
     app.processEvents()
+    mode._clear()
     try:
         mode._add_photo_paths([p1], insert=False)
         uid = mode._bucket[0].asset_uuid
