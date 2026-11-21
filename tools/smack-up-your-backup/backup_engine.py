@@ -712,6 +712,7 @@ class BackupEngine:
 
         if resuming:
             # ── Restore state from checkpoint ────────────────────────
+            cp.reset_for_resume()
             timestamp       = cp.data["timestamp"]
             kit_path        = cp.data["kit_path"]
             sql_full_path   = cp.data.get("sql_full_path", "")
@@ -722,7 +723,7 @@ class BackupEngine:
             already_done    = cp.already_processed()
             result["files_downloaded"] = cp.data.get("files_downloaded", 0)
             result["files_skipped"]    = cp.data.get("files_skipped", 0)
-            result["files_failed"]     = cp.data.get("files_failed", 0)
+            result["files_failed"]     = 0
             result["sql_full_path"]    = sql_full_path
             result["sql_schema_path"]  = sql_schema_path
             self._log(f"Resuming interrupted backup from {cp.data.get('created_at', 'unknown time')}.")
@@ -849,7 +850,34 @@ class BackupEngine:
 
         os.makedirs(local_media_dir, exist_ok=True)
 
-        # Check if all files are already done (crash during packaging)
+        # Check if all files are already done (crash during packaging).
+        # SS-1486: verify every 'already_downloaded' file is actually present on
+        # disk (and matches its expected size if recorded). If any staged file is
+        # missing or truncated, drop it from already_done so Stage 3 re-downloads it.
+        verified_done = set()
+        for key, record in media_files.items():
+            if key not in already_done:
+                continue
+            if key in cp.already_downloaded() if cp else False:
+                try:
+                    lp = _safe_local_download_path(local_media_dir, record.restores_to)
+                except ValueError:
+                    continue
+                if not os.path.isfile(lp):
+                    continue
+                if record.size and os.path.getsize(lp) != record.size:
+                    continue
+                if not record.checksum:
+                    record.checksum = ftp_module.FTPClient.sha256_file(lp)
+            verified_done.add(key)
+        if resuming and len(verified_done) != len(already_done):
+            result["files_downloaded"] = sum(
+                1 for k in verified_done if cp and k in cp.already_downloaded()
+            )
+            result["files_skipped"] = sum(
+                1 for k in verified_done if cp and k not in cp.already_downloaded()
+            )
+        already_done = verified_done
         remaining = {k: v for k, v in media_files.items() if k not in already_done}
         need_ftp  = bool(remaining)
 
@@ -1014,9 +1042,14 @@ class BackupEngine:
                 cp.record(key, downloaded=True)
                 consec_failures = 0   # reset streak on success
             elif self._cancelled:
-                # In-flight file interrupted by cancel — not a real failure
+                # In-flight file interrupted by cancel — not a real failure.
+                # Do NOT record as failed in checkpoint, and remove any partial file.
                 result["files_cancelled"] += 1
-                cp.record(key, failed=True)
+                try:
+                    if os.path.exists(local_path):
+                        os.unlink(local_path)
+                except OSError:
+                    pass
                 self._log(f"↩ Cancelled: {record.restores_to}")
             else:
                 result["files_failed"] += 1

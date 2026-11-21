@@ -52,23 +52,27 @@ class BackupCheckpoint:
                 data = json.load(f)
             if data.get("version") != cls.VERSION:
                 return None
+            cp = cls(path)
+            cp.data = data
+            cp._replay_journal()
             # The recovery kit is assembled only after every media file has
             # downloaded.  Requiring it here made every mid-download checkpoint
             # impossible to resume.  Stage 3 can resume when its saved inventory,
             # SQL dump and media staging directory still exist.
-            timestamp = str(data.get("timestamp", ""))
-            blog_name = str(data.get("blog_name", ""))
+            timestamp = str(cp.data.get("timestamp", ""))
+            cp_blog = str(cp.data.get("blog_name", ""))
             inventory = os.path.join(
                 backup_dir,
-                f"{_filename_token_from_checkpoint(data)}_inventory_{timestamp}.json",
+                f"{_filename_token_from_checkpoint(cp.data)}_inventory_{timestamp}.json",
             )
-            if (not timestamp or not blog_name or not os.path.isfile(inventory)
-                    or not os.path.isfile(data.get("sql_full_path", ""))
-                    or not os.path.isdir(data.get("local_media_dir", ""))):
+            sql_full = str(cp.data.get("sql_full_path", ""))
+            media_dir = str(cp.data.get("local_media_dir", ""))
+            if not (timestamp and cp_blog and os.path.isfile(inventory) and os.path.isfile(sql_full)):
                 return None
-            cp = cls(path)
-            cp.data = data
-            cp._replay_journal()
+            downloaded = cp.already_downloaded()
+            if downloaded and not os.path.isdir(media_dir):
+                return None
+            os.makedirs(media_dir, exist_ok=True)
             return cp
         except Exception:
             return None
@@ -132,6 +136,17 @@ class BackupCheckpoint:
             self.data["files_failed"] = self.data.get("files_failed", 0) + 1
             self._append_journal(key, "failed")
         self.data["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    def reset_for_resume(self) -> None:
+        """Reset transient failure counter at the start of a resumed attempt so
+        files that failed during the earlier interrupted run are retried cleanly."""
+        self.data["files_failed"] = 0
+        self.data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        self._write()
+        try:
+            os.unlink(self.path + self.JOURNAL_SUFFIX)
+        except FileNotFoundError:
+            pass
 
     def already_downloaded(self) -> Set[str]:
         """Set of file keys already confirmed downloaded."""

@@ -1,25 +1,23 @@
 @echo off
 REM ─────────────────────────────────────────────────────────────────────────
-REM  Smack Up Your Backup — build script
-REM  Requires: Python 3.11+, pip install -r requirements.txt
-REM  Output:   C:\snapsmack\suyb\smackupyourbackup-{version}.exe
-REM  Portable app: the exe + its config.ini live together in this stable folder,
-REM  so settings persist across rebuilds. Never deploy into %APPDATA%.
+REM  Smack Up Your Backup — onedir build & install script (SS-1419)
+REM  Requires: Python 3.10+, pip install -r requirements.txt
+REM  Output:   C:\snapsmack\suyb\suyb.exe (+ _internal)
 REM ─────────────────────────────────────────────────────────────────────────
+pushd "%~dp0"
+if errorlevel 1 exit /b 1
 
-REM ── Auto-increment the patch version in main.py, then read it back ────────
-REM  bump_version.py bumps BUILD_VERSION and prints the new value on stdout.
-for /f "delims=" %%V in ('python bump_version.py') do set BUILD_VER=%%V
-if "%BUILD_VER%"=="" (
-    echo ERROR: version bump failed ^(bump_version.py^). Aborting.
-    pause
+for /f "delims=" %%V in ('python -c "import _version, pathlib, re, sys; v=_version.BUILD_VERSION; cl=pathlib.Path('CHANGELOG.md').read_text(encoding='utf-8'); sys.exit(0 if re.search(r'^##\s+'+re.escape(v)+r'\b', cl, re.M) else 1); print(v)"') do set CHECK_OK=%%V
+for /f "delims=" %%V in ('python -c "import _version; print(_version.BUILD_VERSION)"') do set BUILD_VER=%%V
+python -c "import _version, pathlib, re, sys; v=_version.BUILD_VERSION; cl=pathlib.Path('CHANGELOG.md').read_text(encoding='utf-8'); sys.exit(0 if re.search(r'^##\s+'+re.escape(v)+r'\b', cl, re.M) else 1)"
+if errorlevel 1 (
+    echo ERROR: BUILD_VERSION %BUILD_VER% has no matching "## %BUILD_VER%" entry in CHANGELOG.md.
+    popd
     exit /b 1
 )
-set EXE_NAME=smackupyourbackup-%BUILD_VER%.exe
-echo Build version: %BUILD_VER%  ^(auto-incremented^)
-echo Output name:   %EXE_NAME%
 
-REM ── Clean stale build artifacts (prevents OneDrive / AV lock errors) ──────
+echo Build version: %BUILD_VER% (verified in CHANGELOG.md)
+
 if exist build (
     echo Cleaning previous build folder...
     rmdir /s /q build
@@ -29,30 +27,42 @@ if exist dist (
     rmdir /s /q dist
 )
 
-echo Installing dependencies...
-pip install -r requirements.txt
-
-REM ── Build with the single generic spec (version comes from the env var) ──────
 set SUYB_BUILD_VER=%BUILD_VER%
 echo.
-echo Building %EXE_NAME% using smackupyourbackup.spec...
-pyinstaller --clean smackupyourbackup.spec
+echo Building onedir dist\suyb\suyb.exe using smackupyourbackup.spec...
+pyinstaller --noconfirm --clean smackupyourbackup.spec
+if errorlevel 1 (
+    echo ERROR: PyInstaller build failed.
+    popd
+    exit /b 1
+)
+
+if not exist "dist\suyb\suyb.exe" (
+    echo ERROR: dist\suyb\suyb.exe was not produced.
+    popd
+    exit /b 1
+)
 
 echo.
-if exist dist\%EXE_NAME% (
-    echo Build successful: dist\%EXE_NAME%
-    echo.
-    echo Deploying to C:\snapsmack\suyb...
-    if not exist C:\snapsmack\suyb mkdir C:\snapsmack\suyb
-    copy /Y dist\%EXE_NAME% C:\snapsmack\suyb\%EXE_NAME%
-    copy /B /Y dist\%EXE_NAME% C:\snapsmack\suyb\suyb.exe.new >nul
-    if errorlevel 1 exit /b 1
-    move /Y C:\snapsmack\suyb\suyb.exe.new C:\snapsmack\suyb\suyb.exe >nul
-    if errorlevel 1 exit /b 1
-    C:\dev\snapsmack\.python-build\python.exe ..\hub\trust-installed-exe.py C:\snapsmack\suyb\suyb.exe
-    if errorlevel 1 exit /b 1
-    echo Done. Launch: C:\snapsmack\suyb\%EXE_NAME%
-) else (
-    echo Build FAILED. Check output above for errors.
+echo Staging and backing up existing C:\snapsmack\suyb install...
+if exist "C:\snapsmack\suyb\suyb.exe" (
+    for /f "delims=" %%T in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set TS=%%T
+    powershell -NoProfile -Command "Copy-Item -Recurse -Force 'C:\snapsmack\suyb' ('C:\snapsmack\suyb-backup-%BUILD_VER%-' + '%TS%'); Copy-Item -Force 'C:\snapsmack\suyb\suyb.exe' 'C:\snapsmack\suyb\suyb.exe.bak'"
 )
-pause
+if not exist "C:\snapsmack\suyb" mkdir "C:\snapsmack\suyb"
+robocopy "dist\suyb" "C:\snapsmack\suyb" /E /NFL /NDL /NJH /NJS >nul
+if errorlevel 8 (
+    echo ERROR: robocopy deployment failed.
+    popd
+    exit /b 1
+)
+
+python ..\hub\trust-installed-exe.py "C:\snapsmack\suyb\suyb.exe"
+if errorlevel 1 (
+    echo ERROR: Failed to record trusted executable pin for SNAP HQ.
+    popd
+    exit /b 1
+)
+
+echo Build and deployment complete: C:\snapsmack\suyb\suyb.exe (v%BUILD_VER%)
+popd

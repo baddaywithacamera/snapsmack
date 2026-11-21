@@ -294,6 +294,25 @@ class SuybWindow(QMainWindow):
 
     def _overview_page(self):
         page, layout = self._page("Your backup cockpit", "One clear view of the selected site, its latest safety copy, and what happens next.")
+        self.incomplete_card, inc_col = _card(
+            "Incomplete backup ready to resume",
+            "An interrupted backup checkpoint is on disk. Resume picks up where it left off without re-downloading completed files."
+        )
+        self.incomplete_label = _label("", "StatusWarn")
+        inc_col.addWidget(self.incomplete_label)
+        inc_btns = QHBoxLayout()
+        inc_btns.addStretch(1)
+        self.discard_incomplete_btn = QPushButton("DISCARD CHECKPOINT")
+        self.discard_incomplete_btn.setObjectName("Danger")
+        self.discard_incomplete_btn.clicked.connect(self._discard_incomplete_checkpoint)
+        self.resume_incomplete_btn = QPushButton("RESUME INCOMPLETE BACKUP")
+        self.resume_incomplete_btn.setObjectName("Primary")
+        self.resume_incomplete_btn.clicked.connect(self._resume_incomplete_checkpoint)
+        inc_btns.addWidget(self.discard_incomplete_btn)
+        inc_btns.addWidget(self.resume_incomplete_btn)
+        inc_col.addLayout(inc_btns)
+        self.incomplete_card.setVisible(False)
+        layout.addWidget(self.incomplete_card)
         summary, row = _card("Selected site")
         self.site_summary = _label("Choose a site above.", "Muted"); row.addWidget(self.site_summary)
         layout.addWidget(summary)
@@ -658,6 +677,53 @@ class SuybWindow(QMainWindow):
         self.site_summary.setText(
             f"{p.get('name', 'No site')}\n{shown or 'No URL'}\n"
             f"Last successful run: {p.get('last_backup_date') or 'Not yet recorded'}")
+        self._refresh_incomplete_banner()
+
+    def _default_backup_dir(self, profile: dict) -> str:
+        return (profile or {}).get("backup_dir", "") or os.path.join(
+            (os.environ.get("SNAPSMACK_HOME") or "").strip() or r"C:\snapsmack", "staging")
+
+    def _active_checkpoint_for_profile(self, profile: dict):
+        if not profile:
+            return None
+        bdir = self._default_backup_dir(profile)
+        bname = profile.get("name", "blog")
+        return BackupCheckpoint.load(bdir, bname) if bdir and bname else None
+
+    def _refresh_incomplete_banner(self):
+        if not hasattr(self, "incomplete_card"):
+            return
+        if getattr(self, "engine", None):
+            self.incomplete_card.setVisible(False)
+            return
+        p = self.current_profile or {}
+        cp = self._active_checkpoint_for_profile(p)
+        if not cp:
+            self.incomplete_card.setVisible(False)
+            return
+        created = str(cp.data.get("created_at", "unknown time"))[:16].replace("T", " ")
+        dl = int(cp.data.get("files_downloaded", 0))
+        sk = int(cp.data.get("files_skipped", 0))
+        fl = int(cp.data.get("files_failed", 0))
+        self.incomplete_label.setText(
+            f"{p.get('name', 'Site')} — INCOMPLETE job from {created}: "
+            f"{dl:,} downloaded, {sk:,} unchanged skipped"
+            + (f", {fl:,} failed (will retry on resume)" if fl else "")
+        )
+        self.incomplete_card.setVisible(True)
+
+    def _resume_incomplete_checkpoint(self):
+        if not self.current_profile or self.engine:
+            return
+        name = self.current_profile["name"]
+        self._start_backup([name], force_full=False, unattended=False, auto_resume_checkpoints=True)
+
+    def _discard_incomplete_checkpoint(self):
+        p = self.current_profile or {}
+        cp = self._active_checkpoint_for_profile(p)
+        if cp:
+            cp.delete()
+        self._refresh_incomplete_banner()
 
     def _update_backup_selection(self):
         names = list(self.selected_profile_names)
@@ -772,6 +838,7 @@ class SuybWindow(QMainWindow):
                 + "\n".join(quarantined[:3]),
             )
         if not jobs:
+            self._check_orphan_profile_checkpoints()
             return
         job = jobs[0]
         completed, remaining = job.resume_plan()
@@ -819,6 +886,44 @@ class SuybWindow(QMainWindow):
         elif chosen is discard_btn:
             job.abandon()
 
+    def _check_orphan_profile_checkpoints(self):
+        """SS-1486: If no nonterminal batch job exists, scan profiles for any
+        unfinished per-site checkpoint on launch and offer RESUME / DISCARD."""
+        if self.busy():
+            return
+        for name in profile_manager.list_profiles():
+            prof = profile_manager.load_profile(name) or {}
+            cp = self._active_checkpoint_for_profile(prof)
+            if not cp:
+                continue
+            box = QMessageBox(self)
+            box.setWindowTitle("Interrupted backup found")
+            box.setIcon(QMessageBox.Information)
+            box.setText(f"Resume unfinished backup for {name}?")
+            box.setInformativeText(
+                f"Started: {str(cp.data.get('created_at', 'unknown time'))[:16].replace('T', ' ')}\n"
+                f"Downloaded: {int(cp.data.get('files_downloaded', 0)):,} file(s) · "
+                f"Skipped: {int(cp.data.get('files_skipped', 0)):,} file(s)"
+            )
+            resume_btn = box.addButton("RESUME", QMessageBox.AcceptRole)
+            fresh_btn = box.addButton("START FRESH", QMessageBox.DestructiveRole)
+            discard_btn = box.addButton("DISCARD", QMessageBox.RejectRole)
+            box.setDefaultButton(resume_btn)
+            box.exec()
+            chosen = box.clickedButton()
+            if chosen is resume_btn:
+                self._start_backup([name], force_full=bool(cp.data.get("force_full", False)),
+                                   unattended=False, auto_resume_checkpoints=True)
+            elif chosen is fresh_btn:
+                cp.delete()
+                self._refresh_incomplete_banner()
+                self._start_backup([name], force_full=bool(cp.data.get("force_full", False)),
+                                   unattended=False)
+            elif chosen is discard_btn:
+                cp.delete()
+                self._refresh_incomplete_banner()
+            break
+
     def _start_backup(self, names, force_full=False, unattended=False, batch_job=None, auto_resume_checkpoints=False):
         resume_points = {}
         if unattended:
@@ -833,8 +938,7 @@ class SuybWindow(QMainWindow):
                 return False
             for name in names:
                 profile = profile_manager.load_profile(name) or {}
-                cp = BackupCheckpoint.load(
-                    profile.get("backup_dir", ""), profile.get("name", name))
+                cp = self._active_checkpoint_for_profile(profile)
                 if not cp:
                     continue
                 if auto_resume_checkpoints:
@@ -1368,6 +1472,25 @@ class SuybWindow(QMainWindow):
         if self._quitting:
             event.accept(); return
         if self.engine:
+            # SS-1486: Closing SUYB while a backup is running asks "A backup is in
+            # progress, quit anyway?" before exiting (or lets the owner keep it running
+            # minimized on the taskbar).
+            box = QMessageBox(self)
+            box.setWindowTitle("Backup in progress")
+            box.setIcon(QMessageBox.Warning)
+            box.setText("A backup is in progress, quit anyway?")
+            box.setInformativeText(
+                "If you quit now, the current run will stop and its verified checkpoint "
+                "will be saved so you can resume on the next launch."
+            )
+            keep_btn = box.addButton("KEEP RUNNING (MINIMIZE)", QMessageBox.RejectRole)
+            quit_btn = box.addButton("QUIT ANYWAY", QMessageBox.DestructiveRole)
+            box.setDefaultButton(keep_btn)
+            box.exec()
+            if box.clickedButton() is quit_btn:
+                event.accept()
+                self._quit()
+                return
             event.ignore()
             self.showMinimized()
             self._tray_message(
