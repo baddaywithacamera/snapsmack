@@ -36,14 +36,11 @@ function ra_check(string $label, bool $ok, array &$failures): void {
     else { echo "  FAIL  {$label}\n"; $failures[] = $label; }
 }
 
+// The whole file, not two functions lifted out of it by eval. Stage 6 drives
+// sv_fetch_ap() itself, and a function cannot be executed in isolation from
+// the early returns that are the point of that stage.
 $src = (string)file_get_contents($root . '/core/fediverse.php');
-foreach (['sv_last_retry_after', 'sv_retry_after_seconds'] as $name) {
-    $start = strpos($src, 'function ' . $name . '(');
-    if ($start === false) { fwrite(STDERR, "missing {$name}\n"); exit(1); }
-    $end  = strpos($src, "\nfunction ", $start + 1);
-    $body = substr($src, $start, $end - $start);
-    eval(substr($body, 0, strrpos($body, "\n}") + 2));
-}
+require_once $root . '/core/fediverse.php';
 
 echo "SS-1481 #11 — an inbound fetch honours Retry-After\n\n";
 
@@ -121,6 +118,37 @@ ra_check('a SHORTER Retry-After does NOT shorten a long backoff',
          $applied(6, 60) === $backoff(6), $failures);
 ra_check('and nothing exceeds the day cap',
          $applied(8, 86400) <= 86400, $failures);
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\nSTAGE 6 — A FETCH THAT NEVER REACHES CURL STILL CLEARS THE HEADER\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// Codex's review finding 3, reproduced before it was fixed. The reset lived
+// INSIDE the curl attempt, so every return before it -- no curl extension, an
+// unresolvable or SSRF-refused host -- left the previous job's Retry-After
+// standing in the process, and the next ingest job could inherit a delay it
+// was never given.
+//
+// Driven through the real sv_fetch_ap(), not a source check: the whole fault
+// was which side of a `return` one line sat on, and a source check cannot see
+// that. Each case uses a host the SSRF guard refuses or cannot resolve, so no
+// packet leaves this machine.
+foreach ([
+    'not-a-url'                     => 'a malformed URL',
+    'http://127.0.0.1/ap/actor'     => 'a loopback address the SSRF guard refuses',
+    'http://169.254.169.254/latest' => 'the cloud metadata address',
+    'http://nonexistent.invalid/x'  => 'a host that cannot resolve',
+] as $url => $what) {
+    sv_last_retry_after('7200');          // the previous job's two-hour answer
+    sv_last_fetch_status(503);            // and its status
+    $got = sv_fetch_ap($url, []);
+    ra_check("{$what} fails", $got === null, $failures);
+    ra_check("  and does NOT inherit the earlier Retry-After",
+             sv_last_retry_after() === '', $failures);
+    ra_check("  so no stale delay is applied",
+             sv_retry_after_seconds(sv_last_retry_after()) === null, $failures);
+    ra_check("  and the earlier HTTP status is cleared too",
+             sv_last_fetch_status() === 0, $failures);
+}
 
 echo "\n";
 if ($failures) {

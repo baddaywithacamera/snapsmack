@@ -1051,6 +1051,16 @@ function sv_unverifiable_delete_cleanup(PDO $pdo, array $settings, array $activi
 
 function sv_fetch_ap(string $url, ?array $settings = null): ?array {
     sv_last_fetch_error('');   // reset for this attempt
+    // SS-1481 review finding 3 (Codex). These two were reset INSIDE the curl
+    // attempt, so every return before it -- no curl extension, an unresolvable
+    // or SSRF-refused host -- left the PREVIOUS job's values standing in the
+    // process. Reproduced: set Retry-After 7200, fetch 'not-a-url', and the
+    // accessor still answered 7200, so the next ingest job could inherit a
+    // two-hour delay it was never given. Reset at the door, before any return
+    // can be taken, and again per attempt so the authorized-fetch retry does
+    // not inherit the unsigned attempt's answer.
+    sv_last_retry_after('');
+    sv_last_fetch_status(0);
     // Every failure path logs a DISTINCT reason (HTTP code, curl errno,
     // resolver block, oversize, non-JSON) so the caller's blanket "could not
     // fetch signer actor" reject can be diagnosed: 401 = the remote wants an
