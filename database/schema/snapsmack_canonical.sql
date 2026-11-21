@@ -1329,6 +1329,33 @@ CREATE TABLE IF NOT EXISTS `snap_ap_deliveries` (
   KEY `idx_ap_due` (`status`, `next_try_at`, `priority`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- The duplicate-delivery tripwire's record of what has already gone out
+-- (2026-11-20). A successful queue row is DELETED, so the queue cannot answer
+-- "have we sent this before"; SS-1481 finding 10 found the relay re-delivering
+-- the same posts every ten minutes and nothing anywhere counted it.
+--
+-- It is a DETECTOR, never a filter: no row here stops a send. Rows older than
+-- seven days are pruned, so this is a short window, not an archive.
+--
+-- Declared here because a new table belongs in the canonical schema. It is
+-- also created at runtime, which is NOT the same thing: on a host where the
+-- CREATE cannot run the detector silently switches itself off, and that is
+-- what Codex's review finding 6 is about.
+-- Keyed on the ACTIVITY, not the object. Codex's review finding 5: keying on
+-- (object, inbox) counted a Create and its later Update, and the relay Announce
+-- and the deliberate refresh Announce, as duplicates -- so a non-zero counter
+-- meant nothing. Those carry distinct activity ids (`#announce-` versus
+-- `#announce-update-`), while the SS-1481 #10 repeat re-sent the identical
+-- deterministic id, which is exactly the case this must still catch.
+CREATE TABLE IF NOT EXISTS `snap_ap_delivered` (
+  `activity_key` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `inbox_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `object_id`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `delivered_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_ap_delivered` (`activity_key`(170), `inbox_url`(170)),
+  KEY `idx_ap_delivered_at` (`delivered_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `snap_ap_replays` (
   `fingerprint` char(64) COLLATE ascii_bin NOT NULL,
   `seen_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,

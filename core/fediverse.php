@@ -2098,20 +2098,61 @@ function sv_delivery_tripwire_table(PDO $pdo): bool {
     // than an hour.
     static $ready = null;
     if ($ready !== null) return $ready;
-    try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_delivered` (
-            `object_id`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+    // Declared in database/schema/snapsmack_canonical.sql as well, which is
+    // where a new table belongs (Codex's review finding 6). This runtime CREATE
+    // is not a substitute for that: where it cannot run, the detector switches
+    // itself off, and a canonical declaration is what makes a fresh install
+    // carry the table without depending on a send path to make it.
+    $create = "CREATE TABLE IF NOT EXISTS `snap_ap_delivered` (
+            `activity_key` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
             `inbox_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+            `object_id`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
             `delivered_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY `uq_ap_delivered` (`object_id`(191), `inbox_url`(191)),
+            UNIQUE KEY `uq_ap_delivered` (`activity_key`(170), `inbox_url`(170)),
             KEY `idx_ap_delivered_at` (`delivered_at`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+    try {
+        $pdo->exec($create);
+        // A table from this tripwire's FIRST shape (keyed on object+inbox, no
+        // activity_key) is dropped and rebuilt rather than migrated. It holds
+        // at most seven days of detector bookkeeping, nothing a site needs, and
+        // a half-migrated unique key would make the detector answer wrongly.
+        $cols = $pdo->query("SHOW COLUMNS FROM `snap_ap_delivered` LIKE 'activity_key'");
+        if ($cols !== false && $cols->fetch() === false) {
+            $pdo->exec("DROP TABLE `snap_ap_delivered`");
+            $pdo->exec($create);
+        }
         $ready = true;
     } catch (Throwable $e) {
         // A detector must never be the reason a post fails to go out.
         $ready = false;
     }
     return $ready;
+}
+
+/**
+ * What makes this activity THIS activity, for tripwire purposes.
+ *
+ * Codex's review finding 5. The tripwire keyed on (object, inbox), so a Create
+ * and the Update that followed it, and the relay Announce and the deliberate
+ * refresh Announce, all read as the same delivery twice -- and a detector whose
+ * non-zero number means nothing gets switched off.
+ *
+ * Those cases carry DISTINCT activity ids. sc_relay_fanout() builds
+ * `#announce-<hash of object>` and sc_relay_refresh() builds
+ * `#announce-update-<hash>`. Meanwhile the SS-1481 #10 repeat re-sent the
+ * IDENTICAL deterministic id every ten minutes, which is the case this has to
+ * keep catching. So the activity id is the right key, and the test that said
+ * two Announces of the same post necessarily differ had it backwards.
+ *
+ * An activity with no id of its own is keyed by a hash of its JSON, so a
+ * repeat of the same bytes is still a repeat.
+ */
+function sv_activity_identity(string $activity_json): string {
+    $a = json_decode($activity_json, true);
+    if (!is_array($a)) return '';
+    $id = trim((string)($a['id'] ?? ''));
+    return $id !== '' ? $id : 'sha256:' . hash('sha256', $activity_json);
 }
 
 /** The object id an activity is about, for tripwire purposes, or ''. */
@@ -2132,14 +2173,15 @@ function sv_activity_subject_id(string $activity_json): string {
  */
 function sv_delivery_tripwire_check(PDO $pdo, string $inbox_url, string $activity_json,
                                     string $caller = 'delivery-worker'): bool {
-    $object_id = sv_activity_subject_id($activity_json);
-    if ($object_id === '' || $inbox_url === '') return false;
+    $activity_key = sv_activity_identity($activity_json);
+    $object_id    = sv_activity_subject_id($activity_json);
+    if ($activity_key === '' || $inbox_url === '') return false;
     if (!sv_delivery_tripwire_table($pdo)) return false;
 
     try {
         $q = $pdo->prepare("SELECT 1 FROM snap_ap_delivered
-                             WHERE object_id = ? AND inbox_url = ? LIMIT 1");
-        $q->execute([$object_id, $inbox_url]);
+                             WHERE activity_key = ? AND inbox_url = ? LIMIT 1");
+        $q->execute([$activity_key, $inbox_url]);
         if (!$q->fetchColumn()) return false;
     } catch (Throwable $e) {
         return false;
@@ -2147,9 +2189,11 @@ function sv_delivery_tripwire_check(PDO $pdo, string $inbox_url, string $activit
 
     $a = json_decode($activity_json, true);
     $type = is_array($a) ? (string)($a['type'] ?? '?') : '?';
-    error_log('SnapSmack DUPLICATE DELIVERY: ' . $type . ' for object ' . $object_id
+    error_log('SnapSmack DUPLICATE DELIVERY: ' . $type . ' ' . $activity_key
+        . ' for object ' . $object_id
         . ' is being sent to ' . $inbox_url . ' again (caller: ' . $caller
-        . '). Already delivered successfully within the last 7 days. Not blocked.');
+        . '). The SAME activity already delivered successfully within the last '
+        . '7 days. Not blocked.');
 
     try {
         $pdo->exec("INSERT INTO snap_settings (setting_key, setting_val)
@@ -2162,14 +2206,16 @@ function sv_delivery_tripwire_check(PDO $pdo, string $inbox_url, string $activit
 
 /** Record a SUCCESSFUL delivery, and prune anything past the recovery window. */
 function sv_delivery_tripwire_record(PDO $pdo, string $inbox_url, string $activity_json): void {
-    $object_id = sv_activity_subject_id($activity_json);
-    if ($object_id === '' || $inbox_url === '') return;
+    $activity_key = sv_activity_identity($activity_json);
+    $object_id    = sv_activity_subject_id($activity_json);
+    if ($activity_key === '' || $inbox_url === '') return;
     if (!sv_delivery_tripwire_table($pdo)) return;
     try {
-        $pdo->prepare("INSERT INTO snap_ap_delivered (object_id, inbox_url, delivered_at)
-                       VALUES (?, ?, NOW())
+        $pdo->prepare("INSERT INTO snap_ap_delivered (activity_key, inbox_url, object_id, delivered_at)
+                       VALUES (?, ?, ?, NOW())
                        ON DUPLICATE KEY UPDATE delivered_at = NOW()")
-            ->execute([substr($object_id, 0, 500), substr($inbox_url, 0, 500)]);
+            ->execute([substr($activity_key, 0, 500), substr($inbox_url, 0, 500),
+                       substr($object_id, 0, 500)]);
         // Pruned here rather than on a schedule: this table only grows when
         // deliveries happen, so the write path is the right place to bound it.
         // 1-in-50 so a busy fleet is not running a DELETE on every send.
