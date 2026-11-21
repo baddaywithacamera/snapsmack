@@ -3063,6 +3063,74 @@ function sv_timeline_audience(array $obj): array {
 }
 
 /** Ingest a remote Note into the home timeline (image + video posts, de-duped). */
+/**
+ * Who is boosting a timeline object. Three functions, one table.
+ *
+ * WHY A TABLE AND NOT A QUERY. snap_ap_timeline is UNIQUE on object_id -- one
+ * row serves every reason a post is present -- and keeps the FIRST booster in
+ * `boosted_by`, which duplicate ingest never updates. So the row cannot answer
+ * "is anyone still boosting this", and that is the whole of Codex's finding 2.
+ * The first repair tried to infer it from the boost NOTIFICATIONS and was
+ * wrong: those are written only for boosts of this site's own posts.
+ *
+ * Declared in database/schema/snapsmack_canonical.sql as well. Created at
+ * runtime too, because a site upgrading into this build has no other chance to
+ * get it, and the readiness answer is cached per process.
+ */
+function sv_timeline_boost_table(PDO $pdo): bool {
+    static $ready = null;
+    if ($ready !== null) return $ready;
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_timeline_boosts` (
+            `object_id`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+            `actor_url`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+            `seen_at`    datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY `uq_ap_tl_boost` (`object_id`(170), `actor_url`(170)),
+            KEY `idx_ap_tl_boost_obj` (`object_id`(170))
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $ready = true;
+    } catch (Throwable $e) {
+        $ready = false;
+    }
+    return $ready;
+}
+
+/** Record that this actor is boosting this object. */
+function sv_timeline_boost_record(PDO $pdo, string $object_id, string $actor_url): void {
+    if ($object_id === '' || $actor_url === '') return;
+    if (!sv_timeline_boost_table($pdo)) return;
+    $pdo->prepare("INSERT IGNORE INTO snap_ap_timeline_boosts (object_id, actor_url)
+                   VALUES (?, ?)")
+        ->execute([substr($object_id, 0, 500), substr($actor_url, 0, 500)]);
+}
+
+/**
+ * Forget this actor's boost, and name another actor still boosting, or ''.
+ *
+ * Both halves in one call because the caller needs them together and in this
+ * order: remove mine, then ask what is left. Two calls would invite a future
+ * edit that asks first.
+ */
+function sv_timeline_boost_withdraw(PDO $pdo, string $object_id, string $actor_url): string {
+    if ($object_id === '' || !sv_timeline_boost_table($pdo)) return '';
+    try {
+        if ($actor_url !== '') {
+            $pdo->prepare("DELETE FROM snap_ap_timeline_boosts
+                            WHERE object_id = ? AND actor_url = ?")
+                ->execute([$object_id, $actor_url]);
+        }
+        $q = $pdo->prepare("SELECT actor_url FROM snap_ap_timeline_boosts
+                             WHERE object_id = ? LIMIT 1");
+        $q->execute([$object_id]);
+        return (string)($q->fetchColumn() ?: '');
+    } catch (Throwable $e) {
+        // Unreadable means "I cannot tell". The caller treats that as "somebody
+        // may still be boosting" and keeps the post, because leaving a post in
+        // the reader is recoverable and removing one is not.
+        return "\0unknown";
+    }
+}
+
 function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $handle = '',
                             bool $is_boost = false, ?string $boosted_by = null,
                             string $feed = 'home', ?string $discovered_via = null): ?string {
@@ -3216,6 +3284,32 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
         // structure, not bound values, so no post content leaks.
         return 'DB error: ' . get_class($e) . ' — ' . mb_substr($e->getMessage(), 0, 400);
     }
+    // WHO IS BOOSTING THIS, recorded rather than inferred.
+    //
+    // Codex's second review of finding 2. The first repair asked
+    // snap_ap_notifications which other actors were boosting an object, and
+    // those rows are written ONLY when somebody boosts one of THIS site's own
+    // posts (sv_notify is inside the sv_url_is_ours branch of the Announce
+    // handler). The ordinary reader case -- a remote post boosted by accounts
+    // the owner follows -- lands here with no notification at all, so the
+    // first Undo saw no other booster and deleted the row while another boost
+    // was still live. My regression inserted those notification rows by hand,
+    // so it passed around the fault instead of finding it. That is the second
+    // time on this ticket that a fixture built the state production does not.
+    //
+    // The timeline is UNIQUE on object_id and keeps the first boosted_by, so
+    // the row itself cannot hold a set of boosters. This table can. One row
+    // per (object, booster), written on every boost ingest, removed on Undo.
+    if ($is_boost && $boosted_by) {
+        try {
+            sv_timeline_boost_record($pdo, $object_id, (string)$boosted_by);
+        } catch (Throwable $e) {
+            // Bookkeeping must never turn a good post into an inbox 500.
+            error_log('SnapSmack boost record skipped for ' . $object_id
+                . ' — ' . $e->getMessage());
+        }
+    }
+
     // Relay membership is optional metadata, not part of accepting the Note.
     // The relay policy file ships on every site while its tables exist only on
     // a SMACKCAST hub.  A missing/lagging relay table must never turn a
@@ -3597,11 +3691,18 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 // `is_boost = 1 AND boosted_by = <this actor>` cannot tell "the
                 // last boost was withdrawn" from "one of several was".
                 //
-                // The boost notifications are the record of who is boosting
-                // what, and this actor's was deleted a few lines above. So what
-                // remains for this object is every OTHER live boost. None left
-                // means the post has no reason to be in the reader; one left
-                // means it does.
+                // MY FIRST REPAIR ASKED THE WRONG TABLE. It read boost rows out
+                // of snap_ap_notifications, and those exist only for boosts of
+                // THIS site's own posts -- sv_notify() sits inside the
+                // sv_url_is_ours branch of the Announce handler. The ordinary
+                // reader case, a remote post boosted by accounts the owner
+                // follows, has no notification at all, so the first Undo still
+                // deleted the row. Codex caught it on the second review; my
+                // fixture had inserted those rows by hand and passed around the
+                // fault.
+                //
+                // snap_ap_timeline_boosts is the record, written by
+                // sv_ingest_timeline() on every boost ingest, remote or local.
                 //
                 // When a boost remains and the row names THIS actor as its
                 // booster, ownership is re-pointed at an actor who is still
@@ -3610,13 +3711,17 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 // matches nothing and the post stays in the reader for good --
                 // which is the same fault one withdrawal later.
                 try {
-                    $others = $pdo->prepare(
-                        "SELECT actor_url FROM snap_ap_notifications
-                          WHERE ntype = 'boost' AND object_id = ? AND actor_url <> ?
-                          LIMIT 1");
-                    $others->execute([$boosted, $actor_id]);
-                    $still_boosting = (string)($others->fetchColumn() ?: '');
-                    if ($still_boosting === '') {
+                    $still_boosting = sv_timeline_boost_withdraw($pdo, $boosted, $actor_id);
+                    // "\0unknown" means the table could not be read, so TOUCH
+                    // NOTHING: keep the post and leave boost ownership as it
+                    // was. Leaving a post in the reader is recoverable;
+                    // removing one, or writing a booster who may not exist, is
+                    // not. An earlier draft of this wrote a placeholder into
+                    // boosted_by, which would have corrupted the row to record
+                    // a failure.
+                    if ($still_boosting === "\0unknown") {
+                        // nothing
+                    } elseif ($still_boosting === '') {
                         $pdo->prepare(
                             "DELETE FROM snap_ap_timeline
                               WHERE object_id = ? AND is_boost = 1 AND boosted_by = ?"
