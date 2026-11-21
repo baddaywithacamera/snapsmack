@@ -187,6 +187,10 @@ class DraftImage:
     focus_y:      int = 50         # 0-100
     zoom:         int = 100        # 100-300 square-crop zoom — bakes into the t_ thumb
     split:        bool = False     # post this image as its own separate post
+    # What the current t_/a_ pair was generated FROM (source file identity +
+    # focal point + zoom + sizes). Thumbs are only regenerated when this no
+    # longer matches, so autosave never re-decodes untouched originals.
+    thumb_params: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -533,22 +537,53 @@ def generate_draft_thumbs(draft: Draft, *, sq_size: int = 400, asp_max: int = 40
     for im in draft.images:
         if not im.local_path or not os.path.isfile(im.local_path):
             continue
-        if (not force and im.width > 0 and im.height > 0
-                and im.thumb_square and os.path.isfile(im.thumb_square)
-                and im.thumb_aspect and os.path.isfile(im.thumb_aspect)):
+        if not force and image_thumbs_current(im, sq_size=sq_size, asp_max=asp_max):
             continue
-        res = snap_thumbs.generate_thumbs(
-            im.local_path, sq_size=sq_size, asp_max=asp_max,
-            focus_x=im.focus_x, focus_y=im.focus_y, zoom=im.zoom)
-        if res:
-            im.width = res["width"]
-            im.height = res["height"]
-            im.thumb_square = res["sq_path"]
-            im.thumb_aspect = res["asp_path"]
-            if not im.filename:
-                im.filename = os.path.basename(im.local_path)
+        generate_image_thumbs(im, sq_size=sq_size, asp_max=asp_max)
     draft.touch()
     return draft
+
+
+def thumb_signature(im: "DraftImage", *, sq_size: int = 400, asp_max: int = 400) -> str:
+    """Identity of everything the t_/a_ pair is baked from. '' if no source."""
+    path = im.local_path or ""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return ""
+    return "|".join(str(v) for v in (
+        os.path.abspath(path), st.st_mtime_ns, st.st_size,
+        im.focus_x, im.focus_y, im.zoom, sq_size, asp_max))
+
+
+def image_thumbs_current(im: "DraftImage", *, sq_size: int = 400, asp_max: int = 400) -> bool:
+    """True when the image's thumbs exist AND were made from today's source,
+    focal point and zoom — i.e. regenerating would produce the same files."""
+    if not (im.width > 0 and im.height > 0
+            and im.thumb_square and os.path.isfile(im.thumb_square)
+            and im.thumb_aspect and os.path.isfile(im.thumb_aspect)):
+        return False
+    sig = thumb_signature(im, sq_size=sq_size, asp_max=asp_max)
+    return bool(sig) and im.thumb_params == sig
+
+
+def generate_image_thumbs(im: "DraftImage", *, sq_size: int = 400, asp_max: int = 400) -> bool:
+    """(Re)generate one image's thumbs. Safe to call off the UI thread on a
+    private copy of the DraftImage (it touches only that object and disk)."""
+    sig = thumb_signature(im, sq_size=sq_size, asp_max=asp_max)
+    res = snap_thumbs.generate_thumbs(
+        im.local_path, sq_size=sq_size, asp_max=asp_max,
+        focus_x=im.focus_x, focus_y=im.focus_y, zoom=im.zoom)
+    if not res:
+        return False
+    im.width = res["width"]
+    im.height = res["height"]
+    im.thumb_square = res["sq_path"]
+    im.thumb_aspect = res["asp_path"]
+    im.thumb_params = sig
+    if not im.filename:
+        im.filename = os.path.basename(im.local_path)
+    return True
 
 
 # ---------------------------------------------------------------------------

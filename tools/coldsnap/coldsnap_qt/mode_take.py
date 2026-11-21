@@ -209,6 +209,7 @@ class TakeMode(QWidget):
     photosStateChanged = Signal(bool)       # right photos tray open
     detailsStateChanged = Signal(bool)      # post details drawer open
     exitFocusRequested = Signal()           # exit focus mode from format strip
+    _thumbsReady = Signal(object)           # background thumb job finished (queued to UI thread)
 
     def __init__(self, app_config_provider, parent=None):
         super().__init__(parent)
@@ -568,6 +569,10 @@ class TakeMode(QWidget):
         self._autosave.setSingleShot(True)
         self._autosave.setInterval(900)
         self._autosave.timeout.connect(self._autosave_now)
+        # Thumbnails are baked off the UI thread, one job at a time.
+        self._thumb_executor = None
+        self._thumb_job = None
+        self._thumbsReady.connect(self._apply_thumb_results)
         self._slapper_timer = QTimer(self)
         self._slapper_timer.setInterval(1000)
         self._slapper_timer.timeout.connect(self._poll_slapper_return)
@@ -2475,15 +2480,81 @@ class TakeMode(QWidget):
             self.save_state.setText("Begin the story… changes will be safe on this computer.")
             return
         try:
+            # Typing must never decode originals: only photos whose thumbs are
+            # missing or stale (new photo, crop/focus/zoom change, new edit)
+            # are baked, and that happens on a worker thread.
+            self._queue_stale_thumbs()
             session = self.rail.ensure_session()
             authored = self.body.authoring_blocks()
             draft = self._build_draft(session, authored=authored)
-            O.generate_draft_thumbs(draft)
-            session.add_draft(draft)
+            # Autosave records the draft only; copying photos into the
+            # session store happens on an explicit save.
+            session.add_draft(draft, copy_images=False)
             self._mirror_sqlite(draft, authored=authored)
             self.save_state.setText("Safe on this computer")
         except Exception as exc:  # noqa: BLE001
             self.save_state.setText(f"Needs attention — could not save: {exc}")
+
+    def _queue_stale_thumbs(self):
+        """Start a background thumb job for bucket photos whose thumbs are stale."""
+        if self._thumb_job is not None:
+            return  # the finishing job re-triggers autosave, which re-checks
+        stale = [im for im in self._bucket
+                 if im.local_path and os.path.isfile(im.local_path)
+                 and not O.image_thumbs_current(im)]
+        if not stale:
+            return
+        jobs = [O.DraftImage.from_dict(im.to_dict()) for im in stale]
+        if self._thumb_executor is None:
+            from concurrent.futures import ThreadPoolExecutor
+            self._thumb_executor = ThreadPoolExecutor(
+                max_workers=1, thread_name_prefix="coldtake-thumbs")
+
+        def work(copies):
+            done = []
+            for copy in copies:
+                try:
+                    if O.generate_image_thumbs(copy):
+                        done.append(copy)
+                except Exception:  # noqa: BLE001 - one bad photo must not stop the rest
+                    pass
+            return done
+
+        self._thumb_job = self._thumb_executor.submit(work, jobs)
+        self._thumb_job.add_done_callback(self._thumbsReady.emit)
+
+    def _apply_thumb_results(self, future):
+        """UI thread: copy finished thumbs onto photos that have not changed since."""
+        if future is not self._thumb_job:
+            return
+        self._thumb_job = None
+        try:
+            done = future.result()
+        except Exception:  # noqa: BLE001
+            done = []
+        applied = 0
+        for copy in done:
+            image = self._image_for_uuid(copy.asset_uuid)
+            if image is None or O.thumb_signature(image) != copy.thumb_params:
+                continue  # removed, or edited again while baking: next pass redoes it
+            for name in ("width", "height", "thumb_square", "thumb_aspect", "thumb_params"):
+                setattr(image, name, getattr(copy, name))
+            if not image.filename:
+                image.filename = copy.filename
+            applied += 1
+        if applied and not self._loading:
+            self._autosave.start()  # persist the thumbs; re-checks for newer staleness
+
+    def _wait_for_thumbs(self, timeout=None):
+        """Block until the current background thumb job is applied (tests/explicit save)."""
+        job = self._thumb_job
+        if job is None:
+            return
+        try:
+            job.result(timeout=timeout)
+        except Exception:  # noqa: BLE001
+            pass
+        self._apply_thumb_results(job)
 
     def _mirror_sqlite(self, draft, *, authored=None):
         site = ((self.app_config() or {}).get("url") or "").strip()
@@ -2508,6 +2579,7 @@ class TakeMode(QWidget):
         if not self._bucket:
             QMessageBox.warning(self, "No photos", "Add at least one photo first.")
             return
+        self._wait_for_thumbs()  # reuse any background bake already in flight
         draft = self._build_draft(session)
         O.generate_draft_thumbs(draft)
         problems = draft.validate()
