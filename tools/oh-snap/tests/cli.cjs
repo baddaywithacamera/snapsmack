@@ -2,8 +2,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const {spawnSync}=require('node:child_process');
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'ohsnap-cli-')),cli=path.resolve(__dirname,'../scripts/cli.cjs');
-function call(...args){const r=spawnSync(process.execPath,[cli,...args],{encoding:'utf8',env:process.env});return {code:r.status,result:JSON.parse(r.stdout)};}
+const testEnv={...process.env,SNAPSMACK_HOME:tmp};
+function call(...args){const r=spawnSync(process.execPath,[cli,...args],{encoding:'utf8',env:testEnv});return {code:r.status,result:JSON.parse(r.stdout)};}
 const project=path.join(tmp,'new.ohsnap'),edit=path.join(tmp,'edit.json'),edited=path.join(tmp,'edited.ohsnap');
+assert.equal(call('capabilities').code,3);
+const hqCfgDir=path.join(tmp,'config_files','snap-hq');fs.mkdirSync(hqCfgDir,{recursive:true});
+fs.writeFileSync(path.join(hqCfgDir,'desktop_cli.json'),JSON.stringify({cli_enabled:true,stepup_policy:'30_days'}));
 assert.equal(call('new','--mode','SMACKTHEMUP','--output',project).code,0);
 fs.writeFileSync(edit,JSON.stringify({overrides:{'--bg-page':'#17212b','--grid-gap':'28px'},user_css:'.single-post { border: 2px solid #b9e678; }'}));
 assert.equal(call('edit','--project',project,'--input',edit,'--output',edited).code,0);

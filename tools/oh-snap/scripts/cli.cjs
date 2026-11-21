@@ -17,6 +17,13 @@ function zip(files){
     const catalog=Buffer.concat(directory),end=Buffer.alloc(22);end.writeUInt32LE(0x06054b50);end.writeUInt16LE(files.length,8);end.writeUInt16LE(files.length,10);end.writeUInt32LE(catalog.length,12);end.writeUInt32LE(offset,16);
     return Buffer.concat([...parts,catalog,end]);
 }
+function requireHqCliSwitch(){
+    const snapHome=(process.env.SNAPSMACK_HOME||'C:\\snapsmack').trim()||'C:\\snapsmack';
+    const cfgPath=path.join(snapHome,'config_files','snap-hq','desktop_cli.json');
+    let enabled=false;
+    try{const raw=JSON.parse(fs.readFileSync(cfgPath,'utf8'));enabled=Boolean(raw&&raw.cli_enabled);}catch{}
+    if(!enabled){const err=new Error('Desktop CLI is turned off in SNAP HQ. Open SNAP HQ Settings to turn it on.');err.code='permission';throw err;}
+}
 async function main(){
     const argv=process.argv.slice(2),opts={};let command=argv.shift(),resultFile=null,browser,server;
     let envelope,code=0;
@@ -33,6 +40,7 @@ async function main(){
         if(resultFile&&protectedPaths.includes(path.resolve(resultFile))){resultFile=null;throw Error('--result must differ from input/output files');}
         const commands=['capabilities','new','inspect','edit','validate','render','export'];
         if(!commands.includes(command))throw Error('Unknown command '+command);
+        requireHqCliSwitch();
         if(command==='capabilities'){
             envelope={ok:true,protocol:1,app:'ohsnap',data:{commands,paid_ai_fallback:false,result_file:true,scope:'Saved offline projects; actual UI policy, preview and package generator'}};
         }else{
@@ -113,7 +121,7 @@ async function main(){
             }
             envelope={ok:true,protocol:1,app:'ohsnap',data};
         }
-    }catch(error){code=2;envelope={ok:false,protocol:1,app:'ohsnap',error:{code:'operation',message:error.message}};}
+    }catch(error){code=error&&error.code==='permission'?3:2;envelope={ok:false,protocol:1,app:'ohsnap',error:{code:code===3?'permission':'operation',message:error.message}};}
     finally{if(browser)await browser.close();if(server)await new Promise(resolve=>server.close(resolve));}
     if(resultFile)atomic(resultFile,JSON.stringify(envelope,null,2)+'\n');else console.log(JSON.stringify(envelope));process.exitCode=code;
 }

@@ -35,6 +35,24 @@ fn operation(args: &[String]) -> Result<Value, String> {
     Ok(json!({"output":output}))
 }
 
+fn require_hq_cli_switch() -> Result<(), String> {
+    let home = std::env::var("SNAPSMACK_HOME")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| r"C:\snapsmack".to_string());
+    let cfg_path = Path::new(&home).join("config_files").join("snap-hq").join("desktop_cli.json");
+    let enabled = fs::read_to_string(&cfg_path)
+        .ok()
+        .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+        .and_then(|v| v.get("cli_enabled").and_then(Value::as_bool))
+        .unwrap_or(false);
+    if !enabled {
+        return Err("Desktop CLI is turned off in SNAP HQ. Open SNAP HQ Settings to turn it on.".into());
+    }
+    Ok(())
+}
+
 pub fn run(args: &[String]) -> i32 {
     let result = args.windows(2).find(|pair| pair[0] == "--result").map(|pair| pair[1].clone());
     // Refuse result/input aliases before emitting anything to disk.
@@ -55,9 +73,12 @@ pub fn run(args: &[String]) -> i32 {
             if same { eprintln!("--result must differ from all input/output files"); return 2; }
         }
     }
-    let (envelope, code) = match operation(args) {
-        Ok(data) => (json!({"ok":true,"protocol":1,"app":"ohsnap","data":data}), 0),
-        Err(message) => (json!({"ok":false,"protocol":1,"app":"ohsnap","error":{"code":"operation","message":message}}), 2),
+    let (envelope, code) = match require_hq_cli_switch() {
+        Err(message) => (json!({"ok":false,"protocol":1,"app":"ohsnap","error":{"code":"permission","message":message}}), 3),
+        Ok(()) => match operation(args) {
+            Ok(data) => (json!({"ok":true,"protocol":1,"app":"ohsnap","data":data}), 0),
+            Err(message) => (json!({"ok":false,"protocol":1,"app":"ohsnap","error":{"code":"operation","message":message}}), 2),
+        },
     };
     let text = serde_json::to_string_pretty(&envelope).unwrap();
     if let Some(target) = result {

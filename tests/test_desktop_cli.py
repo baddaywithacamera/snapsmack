@@ -15,6 +15,9 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "tools/_shared"), str(ROOT / "tools/hub")]
 import snap_cli
+import snap_hq_gate
+import snap_session_gate
+import snap_stepup
 
 
 def adapter(folder):
@@ -25,11 +28,25 @@ def adapter(folder):
 
 class DesktopCLI(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
+        self.temp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.env = patch.dict(os.environ, {"SNAPSMACK_HOME": str(self.root / "home")})
+        self.env = patch.dict(os.environ, {
+            "SNAPSMACK_HOME": str(self.root / "home"),
+            "SNAPSMACK_DEVICE_ID": "device-alpha",
+        })
         self.env.start(); self.addCleanup(self.env.stop)
+        snap_hq_gate.set_cli_settings(cli_enabled=True, stepup_policy=snap_hq_gate.POLICY_30_DAYS)
+
+    def seed_stepup_trust(self, *, device_id="device-alpha", now=None, days=30):
+        ok_auth = lambda base_url, route, api_key, u, p, t: snap_stepup.AuthResult(
+            ok=True, message="Authorized", username=u, totp_window_days=days
+        )
+        return snap_session_gate.authorize(
+            "https://fixture.invalid", "gyss/authorize", "test-key",
+            "sean", "correct-password", "123456",
+            now=now, device_id=device_id, requester=ok_auth,
+        )
 
     def invoke(self, module, argv):
         stdout = io.StringIO()
@@ -140,14 +157,15 @@ class DesktopCLI(unittest.TestCase):
         cli = adapter("hub")
         data = self.save("lewk.json", {"name": "TEST", "adjustments": {"exposure": 0.2}})
         output = self.root / "safe.lewk"
-        with patch("snap_device_auth.require_full", side_effect=PermissionError("Authorization required")):
-            code, result = self.invoke(cli, ["lewk-save", "--input", data, "--output", str(output)])
+        snap_hq_gate.set_cli_settings(cli_enabled=False)
+        code, result = self.invoke(cli, ["lewk-save", "--input", data, "--output", str(output)])
         self.assertEqual(code, 3); self.assertFalse(output.exists())
 
     def test_gyss_dry_run_and_partial_failure_exit(self):
         cli = adapter("gyss")
         payload = self.save("updates.json", {"updates": [{"id": 12, "expected_modified_at": "2026-10-26 12:00:00", "hashtags": "#prairie"}]})
         sys.path.insert(0, str(ROOT / "tools/gyss"))
+        self.seed_stepup_trust()
         with patch("snap_cli.profile", return_value={"site_url": "https://fixture.invalid", "api_key": "test"}), patch("gyss_api.API.batch", return_value={"applied": 0, "conflicts": [{"id": 12}], "failed": []}) as batch:
             code, result = self.invoke(cli, ["metadata-update", "--site", "https://fixture.invalid", "--input", payload])
             self.assertEqual(code, 0); batch.assert_not_called()
@@ -249,6 +267,171 @@ class DesktopCLI(unittest.TestCase):
             self.assertEqual(self.invoke(cli, ["set-note", "--db", str(database), "--id", "12", "--note", "Reviewed", "--apply"])[0], 0)
         with sqlite3.connect(database) as conn:
             self.assertEqual(conn.execute("SELECT notes FROM posts WHERE wp_id=12").fetchone()[0], "Reviewed")
+
+    def test_cli_refused_when_hq_switch_is_off_by_default(self):
+        """1. Refused when the SNAP HQ switch is off (including fresh default state)."""
+        cfg_file = Path(snap_hq_gate._cli_config_path())
+        if cfg_file.exists():
+            cfg_file.unlink()
+        self.assertFalse(snap_hq_gate.cli_enabled())
+
+        gyss_cli = adapter("gyss")
+        coldsnap_cli = adapter("coldsnap")
+        shots_cli = adapter("shots-fired")
+
+        code, res = self.invoke(coldsnap_cli, ["draft-create", "--site", "fixture.invalid", "--title", "Blocked", "--apply"])
+        self.assertEqual(code, 3)
+        self.assertIn("turned off in SNAP HQ", res["error"]["message"])
+
+        payload = self.save("upd.json", {"updates": [{"id": 1, "expected_modified_at": "2026-11-20 10:00:00", "sort_order": 2}]})
+        code, res = self.invoke(gyss_cli, ["metadata-update", "--site", "https://fixture.invalid", "--input", payload, "--apply"])
+        self.assertEqual(code, 3)
+        self.assertIn("turned off in SNAP HQ", res["error"]["message"])
+
+        code, res = self.invoke(shots_cli, ["reschedule", "--site", "https://fixture.invalid", "--id", "5", "--date", "2026-12-01 09:00:00", "--apply"])
+        self.assertEqual(code, 3)
+
+        sys.path.insert(0, str(ROOT / "tools/smackpress"))
+        import repair_existing
+        with self.assertRaises(PermissionError):
+            repair_existing.main(["--state-dir", str(self.root), "--destination", "https://fixture.invalid", "--apply"])
+
+    def test_live_site_writes_refused_with_no_stepup(self):
+        """2. Refused with no step-up while local-only commands need only the HQ switch."""
+        sys.path.insert(0, str(ROOT / "tools/gyss"))
+        sys.path.insert(0, str(ROOT / "tools/shots-fired"))
+        sys.path.insert(0, str(ROOT / "tools/smackpress"))
+        import schedule_client
+        import repair_existing
+
+        # Local-only command succeeds with only the HQ switch ON and no step-up:
+        coldsnap_cli = adapter("coldsnap")
+        code, local_res = self.invoke(coldsnap_cli, ["draft-create", "--site", "fixture.invalid", "--title", "Local OK", "--apply"])
+        self.assertEqual(code, 0, local_res)
+
+        gyss_cli = adapter("gyss")
+        shots_cli = adapter("shots-fired")
+        payload = self.save("upd.json", {"updates": [{"id": 1, "expected_modified_at": "2026-11-20 10:00:00", "sort_order": 2}]})
+
+        with patch("snap_cli.profile", return_value={"name": "Fix", "site_url": "https://fixture.invalid", "api_key": "test"}), \
+             patch("gyss_api.API.batch") as mock_batch, \
+             patch("gyss_api.API.call") as mock_call, \
+             patch.object(schedule_client, "reschedule") as mock_resched:
+            code, res = self.invoke(gyss_cli, ["metadata-update", "--site", "https://fixture.invalid", "--input", payload, "--apply"])
+            self.assertEqual(code, 3)
+            self.assertIn("Step-up", res["error"]["message"])
+            mock_batch.assert_not_called()
+
+            code, res = self.invoke(gyss_cli, ["enrichment-sync", "--site", "https://fixture.invalid", "--apply"])
+            self.assertEqual(code, 3)
+            self.assertIn("Step-up", res["error"]["message"])
+            mock_call.assert_not_called()
+
+            code, res = self.invoke(shots_cli, ["reschedule", "--site", "https://fixture.invalid", "--id", "5", "--date", "2026-12-01 09:00:00", "--apply"])
+            self.assertEqual(code, 3)
+            self.assertIn("Step-up", res["error"]["message"])
+            mock_resched.assert_not_called()
+
+        with patch("snap_connections.resolve", return_value={"site_url": "https://fixture.invalid", "api_key": "test"}), \
+             patch.object(repair_existing, "SmacktalkPoster") as mock_poster:
+            with self.assertRaises(PermissionError):
+                repair_existing.main(["--state-dir", str(self.root), "--destination", "https://fixture.invalid", "--apply"])
+            mock_poster.assert_not_called()
+
+    def test_post_and_sort_accepted_within_30_day_trust_and_every_use_policy(self):
+        """3. Accepted within 30-day trust for post/sort/reschedule/sync; refused under every_use without fresh TOTP."""
+        sys.path.insert(0, str(ROOT / "tools/gyss"))
+        sys.path.insert(0, str(ROOT / "tools/shots-fired"))
+        sys.path.insert(0, str(ROOT / "tools/smackpress"))
+        import schedule_client
+        import repair_existing
+
+        self.seed_stepup_trust(device_id="device-alpha")
+        gyss_cli = adapter("gyss")
+        shots_cli = adapter("shots-fired")
+        sort_payload = self.save("sort.json", {"updates": [{"id": 1, "expected_modified_at": "2026-11-20 10:00:00", "sort_order": 3}]})
+
+        with patch("snap_cli.profile", return_value={"name": "Fix", "site_url": "https://fixture.invalid", "api_key": "test"}), \
+             patch("gyss_api.API.batch", return_value={"ok": True, "applied": 1, "conflicts": [], "failed": []}) as mock_batch, \
+             patch.object(schedule_client, "reschedule", return_value=schedule_client.RescheduleResult(schedule_client.ApiStatus.OK, "rescheduled")) as mock_resched:
+            code, res = self.invoke(gyss_cli, ["metadata-update", "--site", "https://fixture.invalid", "--input", sort_payload, "--apply"])
+            self.assertEqual(code, 0, res)
+            mock_batch.assert_called_once()
+
+            code, res = self.invoke(gyss_cli, ["enrichment-sync", "--site", "https://fixture.invalid", "--apply"])
+            self.assertEqual(code, 0, res)
+
+            code, res = self.invoke(shots_cli, ["reschedule", "--site", "https://fixture.invalid", "--id", "5", "--date", "2026-12-01 09:00:00", "--apply"])
+            self.assertEqual(code, 0, res)
+            mock_resched.assert_called_once()
+
+        with patch("snap_connections.resolve", return_value={"site_url": "https://fixture.invalid", "api_key": "test"}), \
+             patch.object(repair_existing, "_all_source", return_value=[]), \
+             patch.object(repair_existing.db, "get_all_posts", return_value=[]), \
+             patch.object(repair_existing, "SmacktalkPoster") as mock_poster:
+            mock_poster.return_value.list_posts.return_value = []
+            mock_poster.return_value.list_pages.return_value = []
+            rc = repair_existing.main(["--state-dir", str(self.root), "--destination", "https://fixture.invalid", "--apply"])
+            self.assertEqual(rc, 0)
+
+        # If owner switches SNAP HQ policy to every_use, cached 30-day trust is not enough:
+        snap_hq_gate.set_cli_settings(cli_enabled=True, stepup_policy=snap_hq_gate.POLICY_EVERY_USE)
+        with patch("snap_cli.profile", return_value={"name": "Fix", "site_url": "https://fixture.invalid", "api_key": "test"}), \
+             patch("gyss_api.API.batch") as mock_batch:
+            code, res = self.invoke(gyss_cli, ["metadata-update", "--site", "https://fixture.invalid", "--input", sort_payload, "--apply"])
+            self.assertEqual(code, 3)
+            self.assertIn("every live-site write", res["error"]["message"])
+            mock_batch.assert_not_called()
+
+    def test_delete_always_refused_without_fresh_totp_even_inside_30_day_trust(self):
+        """4. Delete refused without fresh TOTP every time, even with active 30-day device trust."""
+        self.seed_stepup_trust(device_id="device-alpha")
+
+        with self.assertRaises(PermissionError) as ctx:
+            snap_session_gate.require_stepup_for_write(
+                "https://fixture.invalid", "gyss/authorize", "test-key",
+                action="delete",
+            )
+        self.assertIn("Deleting always requires a fresh password and 2FA TOTP code", str(ctx.exception))
+
+        calls = []
+        def fake_requester(base_url, route, api_key, u, p, t):
+            calls.append((u, p, t))
+            return snap_stepup.AuthResult(ok=True, message="Authorized", username=u)
+
+        state = snap_session_gate.require_stepup_for_write(
+            "https://fixture.invalid", "gyss/authorize", "test-key",
+            action="delete",
+            username="sean", password="secret", totp_code="654321",
+            requester=fake_requester,
+        )
+        self.assertEqual(calls, [("sean", "secret", "654321")])
+        self.assertEqual(state.username, "sean")
+
+    def test_new_or_different_device_forces_fresh_totp(self):
+        """5. A new or different device forces fresh TOTP even within the 30-day window."""
+        sys.path.insert(0, str(ROOT / "tools/gyss"))
+        self.seed_stepup_trust(device_id="device-alpha")
+        gyss_cli = adapter("gyss")
+        sort_payload = self.save("sort.json", {"updates": [{"id": 1, "expected_modified_at": "2026-11-20 10:00:00", "sort_order": 4}]})
+
+        with patch.dict(os.environ, {"SNAPSMACK_DEVICE_ID": "device-beta"}), \
+             patch("snap_cli.profile", return_value={"name": "Fix", "site_url": "https://fixture.invalid", "api_key": "test"}), \
+             patch("gyss_api.API.batch", return_value={"ok": True, "applied": 1, "conflicts": [], "failed": []}) as mock_batch:
+            code, res = self.invoke(gyss_cli, ["metadata-update", "--site", "https://fixture.invalid", "--input", sort_payload, "--apply"])
+            self.assertEqual(code, 3)
+            self.assertIn("New or different device", res["error"]["message"])
+            mock_batch.assert_not_called()
+
+            with patch("snap_stepup.request_authorization", return_value=snap_stepup.AuthResult(ok=True, message="OK", username="sean")) as mock_auth:
+                code, res = self.invoke(gyss_cli, [
+                    "metadata-update", "--site", "https://fixture.invalid", "--input", sort_payload, "--apply",
+                    "--stepup-user", "sean", "--stepup-password", "pw", "--stepup-totp", "999888",
+                ])
+                self.assertEqual(code, 0, res)
+                mock_auth.assert_called_once()
+                mock_batch.assert_called_once()
+                self.assertEqual(snap_session_gate.load().device_id, "device-beta")
 
 
 if __name__ == "__main__":
