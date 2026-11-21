@@ -407,12 +407,14 @@ class SumnaConnection:
             if r.status_code != 200:
                 return "", ""
             html = r.text or ""
-            for style in re.findall(r"<style[^>]*>(.*?)</style>", html, re.IGNORECASE | re.DOTALL):
-                b, f = _extract_from_css(style)
-                best_bg = best_bg or b
-                best_fg = best_fg or f
-                if best_bg and best_fg:
-                    return best_bg, best_fg
+            is_maintenance_holding = "<!-- Wrench SVG" in html
+            if not is_maintenance_holding:
+                for style in re.findall(r"<style[^>]*>(.*?)</style>", html, re.IGNORECASE | re.DOTALL):
+                    b, f = _extract_from_css(style)
+                    best_bg = best_bg or b
+                    best_fg = best_fg or f
+                    if best_bg and best_fg:
+                        return best_bg, best_fg
             hrefs = re.findall(
                 r"""<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']""",
                 html, re.IGNORECASE,
@@ -429,6 +431,28 @@ class SumnaConnection:
                             return best_bg, best_fg
                 except requests.RequestException:
                     continue
+            if (not best_bg or not best_fg) and is_maintenance_holding:
+                try:
+                    sr = self.session.get(f"{self.base_url}/sybu-data.php", timeout=timeout)
+                    if sr.status_code == 200:
+                        sdata = sr.json() if hasattr(sr, "json") else {}
+                        for k in ("site_bg", "page_bg", "background_color", "bg_color"):
+                            c = _norm_color(sdata.get(k, ""))
+                            if c:
+                                best_bg = best_bg or c
+                                break
+                        fg_c = _norm_color(sdata.get("site_fg", ""))
+                        if fg_c:
+                            best_fg = best_fg or fg_c
+                        skin_slug = str(sdata.get("active_skin") or "").strip()
+                        if (not best_bg or not best_fg) and skin_slug:
+                            cr = self.session.get(f"{self.base_url}/skins/{skin_slug}/style.css", timeout=timeout)
+                            if cr.status_code == 200:
+                                b, f = _extract_from_css(cr.text or "")
+                                best_bg = best_bg or b
+                                best_fg = best_fg or f
+                except Exception:
+                    pass
         except requests.RequestException:
             return best_bg, best_fg
         return best_bg, best_fg

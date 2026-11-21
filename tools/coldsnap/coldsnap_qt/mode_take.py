@@ -689,10 +689,6 @@ class TakeMode(QWidget):
             self.page_zoom_slider.blockSignals(False)
         if hasattr(self, "page_zoom_lbl"):
             self.page_zoom_lbl.setText(f"{pct}%")
-        base = QFont("Georgia")
-        base.setPointSizeF(12.5 * (pct / 100.0))
-        self.body.canvas.setFont(base)
-        self.body.canvas.document().setDefaultFont(base)
         self._fit_page_card_width()
 
     @staticmethod
@@ -800,7 +796,8 @@ class TakeMode(QWidget):
         inner_w = max(200, target_card - 80)
         self.page_card.setFixedWidth(target_card)
         self.ruler.set_preview_width(inner_w)
-        self.body.canvas.set_preview_width(inner_w)
+        self.body.canvas.set_preview_width(self._preview_width)
+        self.body.canvas.set_zoom_scale(inner_w / float(max(1, self._preview_width)))
 
     def _set_preview_width(self, width: int):
         self._preview_width = int(width or 760)
@@ -836,19 +833,28 @@ class TakeMode(QWidget):
             self.gutter_tag.setVisible(False)
             self.add_block_btn.setVisible(False)
 
-    def _show_add_block_menu(self):
+    def _build_add_block_menu(self):
         from PySide6.QtWidgets import QMenu
         menu = QMenu(self)
         c = self.body.canvas
+        sel_pos = c._selected_block_pos if c._selected_block_pos is not None else c._selected_obj_pos
+        on_object = bool(
+            (sel_pos is not None and c._object_at(sel_pos) is not None)
+            or c._object_at(c.textCursor().block().position()) is not None
+        )
+        if on_object:
+            menu.addAction("Paragraph before", lambda: c.insert_block_at_cursor("para", position="before"))
+            menu.addAction("Paragraph after", lambda: c.insert_block_at_cursor("para", position="after"))
+            menu.addSeparator()
         for label, cb in (
-            ("Paragraph", lambda: c.set_kind("para")),
-            ("Heading", lambda: c.set_kind("h2")),
-            ("Subhead", lambda: c.set_kind("h3")),
-            ("Quote", lambda: c.set_kind("quote")),
-            ("Pull quote", lambda: c.set_kind("pullquote")),
-            ("Drop cap", c.toggle_dropcap),
-            ("Bullet list", lambda: c.set_list(False)),
-            ("Numbered list", lambda: c.set_list(True)),
+            ("Paragraph", lambda: c.insert_block_at_cursor("para", position="after")),
+            ("Heading", lambda: c.insert_block_at_cursor("h2", position="after")),
+            ("Subhead", lambda: c.insert_block_at_cursor("h3", position="after")),
+            ("Quote", lambda: c.insert_block_at_cursor("quote", position="after")),
+            ("Pull quote", lambda: c.insert_block_at_cursor("pullquote", position="after")),
+            ("Drop cap", lambda: c.insert_block_at_cursor("para", position="after", dropcap=True)),
+            ("Bullet list", lambda: c.insert_block_at_cursor("para", position="after", ordered_list=False)),
+            ("Numbered list", lambda: c.insert_block_at_cursor("para", position="after", ordered_list=True)),
             ("Divider", c.insert_hr),
             ("Space", c._edit_spacer),
             ("Mosaic", self._insert_mosaic),
@@ -856,9 +862,13 @@ class TakeMode(QWidget):
             ("Photo from tray", self._open_photos_tray_for_img),
             ("2 columns", lambda: c.insert_columns(2)),
             ("3 columns", lambda: c.insert_columns(3)),
-            ("Raw", lambda: c.set_kind("raw")),
+            ("Raw", lambda: c.insert_block_at_cursor("raw", position="after")),
         ):
             menu.addAction(label, cb)
+        return menu
+
+    def _show_add_block_menu(self):
+        menu = self._build_add_block_menu()
         menu.exec(self.add_block_btn.mapToGlobal(self.add_block_btn.rect().bottomLeft()))
 
     def blocks_open(self) -> bool:

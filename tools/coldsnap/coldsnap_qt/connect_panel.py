@@ -309,44 +309,61 @@ class ConnectPanel(QWidget):
         """Probe only destinations whose mode is not already cached, off the UI thread."""
         from sumna_post import SumnaConnection
         profiles = []
+        color_only_profiles = []
         self._pending_probe_names.clear()
         for name, meta in self._profile_cache.items():
             known = self._resolved_mode(name)
-            if known in ("photoblog", "carousel", "smacktalk"):
-                self._discovered_modes[name] = known
-                continue
             url = str(meta.get("url", "") or "").strip()
             key = str(meta.get("api_key", "") or "").strip()
             if (not url or not key):
                 prof = profile_manager.load_profile(name) or {}
                 url = url or str(prof.get("url", "") or "").strip()
-                key = key or str(prof.get("api_key", "") or "").strip()
+                key = key or str(prof.get("api_key", "") or prof.get("smackpress_key", "") or "").strip()
+            if known in ("photoblog", "carousel", "smacktalk"):
+                self._discovered_modes[name] = known
+                if url:
+                    try:
+                        has_bg = any(
+                            snap_library.meta(url, k, "")
+                            for k in ("site_bg", "page_bg", "background_color", "bg_color")
+                        )
+                        has_fg = bool(snap_library.meta(url, "site_fg", ""))
+                    except Exception:
+                        has_bg, has_fg = False, False
+                    if not has_bg or not has_fg:
+                        color_only_profiles.append((name, url, key, known))
+                continue
             if url and key:
                 profiles.append((name, url, key))
                 self._pending_probe_names.add(name)
             else:
                 self._failed_probe_names.add(name)
 
-        if not profiles:
+        if not profiles and not color_only_profiles:
             self._probing_modes = False
             self._rebuild_profile_combo()
             return
 
-        self._probing_modes = True
+        self._probing_modes = bool(profiles)
         self._rebuild_profile_combo()
 
         def run():
             def probe(row):
-                name, url, key = row
+                name, url, key = row[:3]
+                preset_mode = row[3] if len(row) > 3 else ""
                 conn = SumnaConnection(url, key)
+                mode = preset_mode
+                if not mode:
+                    try:
+                        mode, _reachable, _note = conn.probe_site_mode(timeout=6)
+                    except Exception:  # one offline site must not break the picker
+                        mode = ""
                 try:
-                    mode, _reachable, _note = conn.probe_site_mode(timeout=6)
-                except Exception:  # one offline site must not break the picker
-                    mode = ""
-                try:
-                    meta = snap_library.meta(url)
-                    has_bg = any(meta.get(k) for k in ("site_bg", "page_bg", "background_color", "bg_color"))
-                    has_fg = bool(meta.get("site_fg"))
+                    has_bg = any(
+                        snap_library.meta(url, k, "")
+                        for k in ("site_bg", "page_bg", "background_color", "bg_color")
+                    )
+                    has_fg = bool(snap_library.meta(url, "site_fg", ""))
                     if not has_bg or not has_fg:
                         bg, fg = conn.fetch_site_colors(timeout=6)
                         if bg or fg:
@@ -357,8 +374,9 @@ class ConnectPanel(QWidget):
 
             found = {}
             failed = []
+            all_rows = list(profiles) + list(color_only_profiles)
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
-                for name, mode in pool.map(probe, profiles):
+                for name, mode in pool.map(probe, all_rows):
                     if mode in ("photoblog", "carousel", "smacktalk"):
                         found[name] = mode
                     else:
