@@ -61,6 +61,72 @@ _AT_NONHANDLE = frozenset({
 })
 
 
+# Hosts that belong to nobody whose privacy this guard exists to protect: the
+# vendor's own public website, and the reserved names a ticket uses when it
+# needs to SHOW a hostname rather than report one.
+#
+# Why this list exists. On 20 November 2026 the backlog went to the board and
+# 24 tickets were refused for naming "someone" they did not name. Eleven said
+# snapsmack.ca -- the vendor site, the one a prospective user reads, discussed
+# as the subject of the ticket. One cited schema.org for JSON-LD. One used
+# example.com the way every RFC does. Blocking those protects no reporter and
+# costs a published ticket, and the refusal reads as though the body leaked a
+# person, which sends whoever is posting looking for something that is not
+# there.
+#
+# The list is EXACT hostnames, not suffixes, and that is the whole safety of
+# it: a customer site at anything.snapsmack.ca is still caught, because a
+# wildcard here would publish exactly the sites this guard is for.
+_PUBLIC_HOSTS = frozenset({
+    "snapsmack.ca", "www.snapsmack.ca",            # the vendor's own site
+    "schema.org", "www.schema.org", "w3.org", "www.w3.org",   # specs
+    "example.com", "example.org", "example.net",   # RFC 2606 documentation
+})
+
+# Reporter values that name nobody. The store records WHO reported a ticket so
+# that the gate can refuse a body that still says it; a role word recorded in
+# that field carries no identity, and treating it as one blocks the ordinary
+# English the ticket needs. Twelve tickets had the reporter recorded as the
+# literal word "owner", so every sentence containing "the owner" -- the phrase
+# the product itself uses -- was read as naming the reporter.
+#
+# A real name stays a real name. Only these exact role words are ignored.
+_GENERIC_REPORTERS = frozenset({
+    "owner", "admin", "administrator", "agent", "agents", "anon", "anonymous",
+    "customer", "guest", "internal", "member", "none", "reporter", "staff",
+    "support", "team", "unknown", "user", "users", "visitor",
+})
+
+
+def _url_is_public(url: str) -> bool:
+    """True if a URL points at a host on the public list.
+
+    The host is taken as the text between the scheme and the first '/', '?' or
+    '#', with any userinfo and port removed. A URL anywhere else is still
+    replaced whole, because its path carries album slugs and its query carries
+    search terms.
+    """
+    rest = re.sub(r"(?i)^https?://", "", url)
+    host = re.split(r"[/?#]", rest, 1)[0]
+    host = host.rsplit("@", 1)[-1].split(":", 1)[0]
+    return bool(host) and host.lower() in _PUBLIC_HOSTS
+
+
+def _is_identifying_domain(token: str) -> bool:
+    """True if a hostname belongs to someone this guard protects.
+
+    Matched EXACTLY against _PUBLIC_HOSTS, so a subdomain of the vendor's site
+    -- which is how the fleet's own sites are addressed -- is still caught.
+    """
+    return token.lower() not in _PUBLIC_HOSTS
+
+
+def _identifying_terms(extra) -> list:
+    """The reporter identifiers worth looking for: real ones, not role words."""
+    return [t for t in (extra or [])
+            if t and len(t) > 3 and t.strip().lower() not in _GENERIC_REPORTERS]
+
+
 def _is_handle(token: str) -> bool:
     """True if an @token is a real fediverse handle, not a CSS at-rule or a
     docblock/decorator tag (@font-face, @media, @param, @staticmethod…)."""
@@ -81,17 +147,17 @@ def scrub(text: str, extra=None) -> str:
     slugs; addresses next; secrets last.
     """
     out = text or ""
-    for term in sorted({t for t in (extra or []) if t and len(t) > 3},
-                       key=len, reverse=True):
+    for term in sorted(set(_identifying_terms(extra)), key=len, reverse=True):
         out = re.sub(re.escape(term), "[removed]", out, flags=re.IGNORECASE)
-    out = _URL.sub("[a site]", out)
+    out = _URL.sub(lambda m: m.group(0) if _url_is_public(m.group(0)) else "[a site]", out)
     out = _WINPATH.sub("[a path]", out)
     out = _NIXPATH.sub("[a path]", out)
     out = _QUERY.sub("", out)
     out = _EMAIL.sub("[an address]", out)
     out = _IPV4.sub("[an address]", out)
     out = _IPV6.sub("[an address]", out)
-    out = _DOMAIN.sub("[a site]", out)
+    out = _DOMAIN.sub(
+        lambda m: "[a site]" if _is_identifying_domain(m.group(0)) else m.group(0), out)
     out = _HANDLE.sub(lambda m: "[a handle]" if _is_handle(m.group(0)) else m.group(0), out)
     out = _KEYISH.sub(lambda m: "[a key]" if _is_keyish(m.group(0)) else m.group(0), out)
     out = _SELF.sub("someone", out)
@@ -106,14 +172,14 @@ def check(text: str, extra=None) -> list:
     """
     problems = []
     body = text or ""
-    for term in (extra or []):
-        if term and len(term) > 3 and re.search(re.escape(term), body, re.IGNORECASE):
+    for term in _identifying_terms(extra):
+        if re.search(re.escape(term), body, re.IGNORECASE):
             problems.append(f"the reporter's own identifier: {term}")
     for label, pattern, keep in (
         ("an email address", _EMAIL, None),
         ("an IP address", _IPV4, None),
-        ("a URL", _URL, None),
-        ("a domain", _DOMAIN, None),
+        ("a URL", _URL, lambda u: not _url_is_public(u)),
+        ("a domain", _DOMAIN, _is_identifying_domain),
         ("a filesystem path", _WINPATH, None),
         ("a filesystem path", _NIXPATH, None),
         ("a fediverse handle", _HANDLE, _is_handle),
