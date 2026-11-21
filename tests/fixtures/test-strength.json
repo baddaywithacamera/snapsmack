@@ -1276,11 +1276,13 @@
         "thresholds": []
     },
     "maintenance-lets-the-owner-through-regression.php": {
-        "assertions": 19,
-        "predicates": 12,
+        "assertions": 26,
+        "predicates": 20,
         "thresholds": [
             2,
             2,
+            3,
+            40,
             86400,
             86400
         ]

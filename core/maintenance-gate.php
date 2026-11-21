@@ -43,6 +43,28 @@ if (!empty($_SESSION['user_login'])) {
     return;
 }
 
+// NEVER LET ANYTHING CACHE THE HOLDING PAGE.
+//
+// SS-1470 again, from the other direction. The gate was serving this page with
+// HTTP 200 and no cache headers at all, so any intermediary was free to store
+// it — and the fleet sits behind Cloudflare, where a cache-everything rule
+// stores HTML. A stored holding page is then returned from the edge before PHP
+// runs, which means the owner's cookie is never seen and the session fix above
+// cannot help: they get the holding page while logged in, exactly the symptom
+// SS-1470 was filed for.
+//
+// Reported on mccormickphotography.com on 2026-11-21 while the owner was
+// logged in. I had checked that the gate reads the right session and stopped
+// there, which is the same mistake as last time in a new place: proving a
+// branch runs is not proving the response reaches the browser.
+//
+// private + no-store keeps it out of shared caches and the browser's own;
+// Vary: Cookie tells a cache that still chooses to store it that a request
+// carrying a session is a different request.
+header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Vary: Cookie');
+
 // Breach path: send 503 (temporary, keeps crawlers from indexing the holding
 // page) and, when this is a pure breach (not also explicit maintenance), use a
 // neutral message — never reveal a breach to the public.

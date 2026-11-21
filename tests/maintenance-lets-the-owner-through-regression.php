@@ -215,16 +215,117 @@ mo_check('with maintenance off a visitor passes through untouched',
 mo_check('the test removed the session file it created',
          !is_file($root . '/data/sessions/sess_' . $sessionId), $failures);
 
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\nSTAGE 5 — THE HOLDING PAGE IS NEVER CACHEABLE\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// REPORTED LIVE 2026-11-21 on the owner's main portfolio: logged in as owner,
+// still shown the holding page. Stage 2 proves the gate reads the right
+// session, and that was all I checked the first time. It is not enough.
+//
+// The gate served this page with HTTP 200 and NO cache headers. The fleet sits
+// behind Cloudflare, where a cache-everything rule stores HTML, and a stored
+// holding page is returned FROM THE EDGE before PHP runs — so the owner's
+// cookie is never seen and the session fix cannot help. Proving a branch runs
+// is not proving the response reaches the browser.
+//
+// SO THIS READS THE RESPONSE OFF THE WIRE, and it has to. A header() call
+// cannot be intercepted from PHP, because an internal function cannot be
+// redeclared — my first attempt at this stage died on exactly that. And
+// headers_list() is empty under the CLI SAPI; I measured it rather than
+// assuming, having assumed wrongly once already. PHP's own built-in server is
+// the smallest thing that answers the real question: what does a browser
+// receive. It binds to 127.0.0.1 on a random high port and nothing leaves this
+// machine.
+function mo_serve_and_read_headers(string $root, string $maintenance): array {
+    $docroot = $root . '/data/sessions';
+    if (!is_dir($docroot)) { @mkdir($docroot, 0700, true); }
+    $router = $docroot . '/_ss1470_router_' . bin2hex(random_bytes(4)) . '.php';
+    file_put_contents($router, "<?php\n"
+        . "\$settings = ['maintenance_mode' => " . var_export($maintenance, true) . "];\n"
+        . "require " . var_export($root . '/core/maintenance-gate.php', true) . ";\n"
+        . "echo 'GATE_PASSED_THROUGH';\n");
+
+    $raw = '';
+    $port = 0;
+    $proc = null;
+    // An ARRAY command, so no shell sits between this process and the server:
+    // proc_terminate() then reaches the server itself rather than a cmd.exe
+    // that outlives it.
+    for ($attempt = 0; $attempt < 3 && $raw === ''; $attempt++) {
+        $port = random_int(14000, 15999);
+        $proc = proc_open(
+            ['php', '-S', '127.0.0.1:' . $port, basename($router)],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes, $docroot);
+        if (!is_resource($proc)) { $proc = null; continue; }
+        // Cleanup registered the MOMENT the server exists, not left to the end
+        // of the stage -- the same lesson as the session files above. An
+        // earlier run of this file died mid-stage and left a php -S listening
+        // on a high port until I noticed it in the process list.
+        register_shutdown_function(static function () use (&$proc): void {
+            if (is_resource($proc)) { proc_terminate($proc); proc_close($proc); $proc = null; }
+        });
+
+        for ($try = 0; $try < 40; $try++) {
+            usleep(100000);
+            $sock = @fsockopen('127.0.0.1', $port, $errno, $errstr, 0.5);
+            if (!$sock) { continue; }
+            stream_set_timeout($sock, 3);
+            fwrite($sock, "GET / HTTP/1.0\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
+            while (!feof($sock)) {
+                $chunk = fread($sock, 8192);
+                if ($chunk === false) { break; }
+                $raw .= $chunk;
+            }
+            fclose($sock);
+            break;
+        }
+        foreach ($pipes as $pipe) { if (is_resource($pipe)) fclose($pipe); }
+        proc_terminate($proc);
+        proc_close($proc);
+        $proc = null;
+    }
+    @unlink($router);
+
+    if ($raw === '') { return ['__error' => 'the built-in server never answered']; }
+    $head = explode("\r\n\r\n", $raw, 2)[0];
+    return array_values(array_filter(array_map('trim', explode("\r\n", $head))));
+}
+
+$hdrs = mo_serve_and_read_headers($root, '1');
+mo_check('a real HTTP response was read back'
+         . (isset($hdrs['__error']) ? ' — ' . (string)$hdrs['__error'] : ''),
+         !isset($hdrs['__error']) && $hdrs !== [], $failures);
+
+$joined = strtolower(implode(' | ', array_filter((array)$hdrs, 'is_string')));
+mo_check('it is the holding page, served 200',
+         str_contains($joined, '200'), $failures);
+mo_check('the holding page says no-store, so no cache may keep it',
+         str_contains($joined, 'no-store'), $failures);
+mo_check('  and private, so a shared cache is excluded explicitly',
+         str_contains($joined, 'private'), $failures);
+mo_check('  and max-age=0, for a cache that ignores the rest',
+         str_contains($joined, 'max-age=0'), $failures);
+mo_check('  and varies on Cookie, so a request carrying a session is never '
+         . 'answered from an anonymous copy',
+         str_contains($joined, 'vary: cookie'), $failures);
+mo_check('  with a Pragma for the older intermediaries that read it',
+         str_contains($joined, 'pragma: no-cache'), $failures);
+
 echo "\n";
 if ($failures) {
     fwrite(STDERR, 'SS-1470 FAILED — ' . count($failures) . " check(s):\n");
-    foreach ($failures as $f) fwrite(STDERR, "  - {$f}\n");
+    foreach ($failures as $f) { fwrite(STDERR, "  - {$f}\n"); }
     exit(1);
 }
 echo "SS-1470 PASS — with maintenance on, an authenticated owner reaches the\n";
 echo "site and an anonymous visitor gets the holding page. Both outcomes are\n";
 echo "executed in a child process, not read from the source, because the\n";
-echo "branch that was broken had always been present.\n";
-echo "NOT COVERED: breach lockout, which is a separate trigger, and the\n";
-echo "appearance of the holding page. Nothing installed or deployed.\n";
+echo "branch that was broken had always been present. The holding page itself\n";
+echo "is served with private, no-store, max-age=0 and Vary: Cookie, read back\n";
+echo "off a real HTTP response, so no cache in front of the site can store it\n";
+echo "and hand it to a logged-in owner.\n";
+echo "NOT COVERED: breach lockout, which is a separate trigger; the appearance\n";
+echo "of the holding page; and whether any particular CDN honours the headers.\n";
+echo "Nothing installed or deployed.\n";
 // ===== SNAPSMACK EOF =====
