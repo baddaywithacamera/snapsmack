@@ -2,8 +2,9 @@
  * SNAPSMACK_EOF_HEADER
  * Last non-empty line must be: // ===== SNAPSMACK EOF =====
  *
- * SS-1446 / SS-1447 — browser evidence for ALFRED's shared square landing,
- * footer, and packaged storm fallback at every supported width.
+ * SS-1446 / SS-1447 — browser evidence for ALFRED's configured logo,
+ * shared square landing, SNAPSMACK social dock, footer, and packaged storm
+ * fallback at every supported width.
  */
 'use strict';
 
@@ -15,20 +16,27 @@ const { chromium } = require('playwright');
 
 const root = path.resolve(__dirname, '..', '..');
 const skinDir = path.join(root, 'skins', 'alfred');
+const evidenceDir = path.join(__dirname, 'evidence', 'ss-1446-alfred-site-restore');
+fs.mkdirSync(evidenceDir, { recursive: true });
 const baseHref = pathToFileURL(skinDir + path.sep).href;
 const stormData = 'data:image/jpeg;base64,' + fs.readFileSync(
   path.join(skinDir, 'assets', 'images', 'sean-storm-panorama.jpg')
 ).toString('base64');
+const skinCss = fs.readFileSync(path.join(skinDir, 'style.css'), 'utf8');
+assert.match(skinCss, /background-image:\s*url\(assets\/images\/sean-storm-panorama\.jpg\)/, 'ALFRED CSS references the packaged storm fallback');
 const widths = [1920, 1440, 1024];
 const tileImage = 'data:image/svg+xml,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#555"/></svg>'
 );
+const logoImage = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="683" height="162"><rect width="683" height="162" fill="#eee"/></svg>'
+);
 
 const html = `<!doctype html><html><head><base href="${baseHref}"></head>
 <body class="alfred-v2"><div id="page" class="alfred">
-  <div class="header-image" aria-hidden="true"></div>
+  <div class="header-image" aria-hidden="true"><img class="header-media-image" src="${stormData}" alt=""></div>
   <header id="header" class="site-header header section-inner"><div class="inside">
-    <a class="site-title logo-area blog-title" href="#"><span class="site-title-text">Sean McCormick Photography</span></a>
+    <a class="site-title logo-area blog-title" href="#"><img class="site-logo" src="${logoImage}" alt="Sean McCormick Photography"></a>
   </div></header>
   <div id="content"><main id="scroll-stage" class="content post-inner reading-column longform">
     <article class="smacktalk-post post-container"><div class="post-content"><p>Fixture content.</p></div></article>
@@ -37,12 +45,12 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
     </div>
   </main></div>
   <footer id="system-footer" class="site-footer"><div id="footer" class="inside">
-    <ul class="social-menu alfred-footer-social" aria-label="Social links">
-      <li><a id="bsky" href="https://bsky.app/profile/example.test" target="_blank" rel="me noopener noreferrer"><span class="screen-reader-text">Bluesky</span></a></li>
-      <li><a id="linktree" href="https://linktr.ee/example" target="_blank" rel="me noopener noreferrer"><span class="screen-reader-text">Linktree</span></a></li>
-    </ul>
     <div class="footer-metadata-bar"><p>EMAIL: <a class="footer-link" href="mailto:sean@mccormickphotography.ca"><span id="email" class="reverse-email">ac.yhpargotohpkcimroccm@naes</span></a></p></div>
   </div></footer>
+</div>
+<div class="social-dock dock-bottom-right" data-dock-position="bottom-right">
+  <a href="https://bsky.app/profile/example.test" target="_blank" rel="me noopener" title="Bluesky" class="dock-link u-url"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg></a>
+  <a href="https://linktr.ee/example" target="_blank" rel="me noopener" title="Linktree" class="dock-link u-url"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14"/></svg></a>
 </div></body></html>`;
 
 (async () => {
@@ -53,6 +61,7 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
       await page.setContent(html, { waitUntil: 'load' });
       await page.addStyleTag({ path: path.join(root, 'assets', 'css', 'public-base.css') });
       await page.addStyleTag({ path: path.join(root, 'assets', 'css', 'ss-engine-mosaic.css') });
+      await page.addStyleTag({ path: path.join(root, 'assets', 'css', 'ss-engine-social-dock.css') });
       await page.addStyleTag({ path: path.join(skinDir, 'style.css') });
 
       const result = await page.evaluate(async (stormSource) => {
@@ -68,10 +77,12 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
             image.src = stormSource;
           });
         }
-        const controls = Array.from(document.querySelectorAll('.alfred-footer-social a')).map((node) => {
+        const controls = Array.from(document.querySelectorAll('.social-dock .dock-link')).map((node) => {
           const rect = node.getBoundingClientRect();
           return { width: rect.width, height: rect.height, visible: rect.width > 0 && rect.height > 0 };
         });
+        const logo = document.querySelector('.site-logo').getBoundingClientRect();
+        const logoArea = document.querySelector('.header.section-inner').getBoundingClientRect();
         const rect = header.getBoundingClientRect();
         const grid = document.getElementById('browse-grid');
         const measureGrid = () => {
@@ -96,12 +107,16 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
           grid.style.setProperty('--alfred-square-cols', String(columns));
           squareLayouts[columns] = measureGrid();
         }
+        grid.style.setProperty('--alfred-square-cols', '3');
         const email = getComputedStyle(document.getElementById('email'));
         return {
           background: headerStyle.backgroundImage,
           loaded,
           header: { left: rect.left, right: rect.right, height: rect.height },
+          logo: { left: logo.left, right: logo.right, width: logo.width },
+          logoArea: { left: logoArea.left, right: logoArea.right, width: logoArea.width },
           controls,
+          legacySocialCount: document.querySelectorAll('.alfred-footer-social, .social-menu').length,
           squareLayouts,
           email: { direction: email.direction, unicodeBidi: email.unicodeBidi },
           overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -112,7 +127,11 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
       assert.ok(result.loaded.width >= 2000 && result.loaded.height >= 700, `${width}: packaged storm image loads at its 2292x750 native resolution`);
       assert.ok(Math.abs(result.header.left) < 0.5 && Math.abs(result.header.right - width) < 0.5, `${width}: masthead spans the viewport`);
       assert.ok(result.header.height >= 890, `${width}: masthead retains the intended full-height presentation`);
-      assert.equal(result.controls.length, 2, `${width}: Bluesky and Linktree are present`);
+      assert.ok(result.logoArea.width <= 600.5 && result.logoArea.width >= Math.min(600, width * 0.9) - 1, `${width}: logo area uses the Hitchcock-style 600px measure`);
+      assert.ok(result.logo.width > 0 && result.logo.width <= result.logoArea.width + 0.5, `${width}: configured logo loads inside the skin header`);
+      assert.ok(Math.abs((result.logo.left + result.logo.right) / 2 - width / 2) <= 1, `${width}: configured logo is centred`);
+      assert.equal(result.controls.length, 2, `${width}: Bluesky and Linktree use the SNAPSMACK social dock`);
+      assert.equal(result.legacySocialCount, 0, `${width}: ALFRED does not render the old Hitchcock social menu`);
       for (const control of result.controls) {
         assert.ok(control.visible && control.width >= 44 && control.height >= 44, `${width}: footer social target is at least 44px`);
       }
@@ -128,9 +147,13 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
         }
       }
       assert.ok(result.overflow <= 1, `${width}: no horizontal overflow`);
+      await page.screenshot({
+        path: path.join(evidenceDir, `alfred-${width}.png`),
+        fullPage: true,
+      });
       await page.close();
     }
-    console.log('PASS: ALFRED 3/4/5-column square landing, storm fallback, footer identities, email reversal, and overflow at 1920/1440/1024.');
+    console.log('PASS: ALFRED configured logo, 3/4/5-column square landing, SNAPSMACK social dock, storm fallback, email reversal, and overflow at 1920/1440/1024.');
   } finally {
     await browser.close();
   }
