@@ -9,7 +9,7 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QLockFile, QTimer, Qt, Signal
+from PySide6.QtCore import QEvent, QLockFile, QTimer, Qt, Signal
 from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -105,6 +105,8 @@ class BoothWindow(QMainWindow):
         self.current_room = ""
         self._rendered_room = ""
         self._rendered_message_count = -1
+        self._rendered_first_message_id = ""
+        self._rendered_last_message_id = ""
         self._rendered_query = ""
         self.seen_message_ids: set[str] = set()
         self.unread_by_room: dict[str, int] = {}
@@ -589,6 +591,11 @@ class BoothWindow(QMainWindow):
         self.raise_()
         self.activateWindow()
 
+    def changeEvent(self, event) -> None:
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.ActivationChange and self.isActiveWindow():
+            self.refresh_visible_data()
+
     def refresh_visible_data(self) -> None:
         self.notify_new_messages()
         self.refresh_status()
@@ -684,7 +691,15 @@ class BoothWindow(QMainWindow):
         was_at_bottom = scrollbar.value() >= scrollbar.maximum() - 4
         previous_value = scrollbar.value()
         message_count = len(messages)
-        if not room_changed and query == self._rendered_query and message_count == self._rendered_message_count:
+        first_message_id = str(messages[0]["id"]) if messages else ""
+        last_message_id = str(messages[-1]["id"]) if messages else ""
+        if (
+            not room_changed
+            and query == self._rendered_query
+            and message_count == self._rendered_message_count
+            and first_message_id == self._rendered_first_message_id
+            and last_message_id == self._rendered_last_message_id
+        ):
             return
         chunks = []
         for message in messages:
@@ -695,6 +710,8 @@ class BoothWindow(QMainWindow):
         self.transcript.setHtml("".join(chunks) or "<p>No messages here yet.</p>")
         self._rendered_room = self.current_room
         self._rendered_message_count = message_count
+        self._rendered_first_message_id = first_message_id
+        self._rendered_last_message_id = last_message_id
         self._rendered_query = query
         if room_changed or was_at_bottom:
             # QTextBrowser finalises its scrollbar range on the next event-loop
