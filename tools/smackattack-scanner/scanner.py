@@ -187,4 +187,41 @@ def similarity_colour(sim: float) -> str:
     if sim >= 0.70: return '#D4872A'
     if sim >= 0.55: return '#D4D400'
     return '#4EC994'
+
+
+# ─── SMACK CENTRAL confidence scale (matches core/ste-style.php & sc-enemy-admin.php) ─
+
+CENTRAL_CLUSTER_THRESHOLD = 0.80
+CENTRAL_STRONG_THRESHOLD  = 0.95
+CENTRAL_LIKELY_THRESHOLD  = 0.90
+
+STE_COLOUR_ORDER = {
+    'green':  0,
+    'yellow': 1,
+    'orange': 2,
+    'red':    3,
+    'black':  4,
+}
+
+
+def central_confidence(sim: float) -> str:
+    """Confidence tier matching core/ste-style.php:235-240 & sc-enemy-admin.php:217-219."""
+    if sim >= CENTRAL_STRONG_THRESHOLD:
+        return 'STRONG MATCH'
+    if sim >= CENTRAL_LIKELY_THRESHOLD:
+        return 'LIKELY MATCH'
+    if sim >= CENTRAL_CLUSTER_THRESHOLD:
+        return 'POSSIBLE MATCH'
+    return 'NO MATCH'
+
+
+def central_confidence_colour(confidence: str) -> str:
+    """Hex colour for SMACK CENTRAL cluster confidence tiers."""
+    if confidence == 'STRONG MATCH':
+        return '#FF3E3E'
+    if confidence == 'LIKELY MATCH':
+        return '#D4872A'
+    if confidence == 'POSSIBLE MATCH':
+        return '#D4D400'
+    return '#4EC994'
 # ===== SNAPSMACK EOF =====

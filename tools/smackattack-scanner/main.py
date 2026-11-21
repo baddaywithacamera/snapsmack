@@ -27,6 +27,7 @@ from typing import Optional
 import config as cfg_module
 import db as db_module
 import scanner as scanner_module
+import smackattack_core as core_module
 
 # ─── Debug log ────────────────────────────────────────────────────────────────
 
@@ -163,10 +164,12 @@ class App(tk.Tk):
         self._tab_settings = SettingsTab(nb, self)
         self._tab_scan     = ScanTab(nb, self)
         self._tab_results  = ResultsTab(nb, self)
+        self._tab_central  = SmackCentralTab(nb, self)
 
         nb.add(self._tab_settings, text='  SETTINGS  ')
         nb.add(self._tab_scan,     text='  SCAN  ')
         nb.add(self._tab_results,  text='  RESULTS  ')
+        nb.add(self._tab_central,  text='  SMACK CENTRAL  ')
 
         self._nb = nb
 
@@ -229,12 +232,20 @@ class SettingsTab(ttk.Frame):
         self._field(db_frame, "Password", 'db_password', show='•')
 
         ttk.Label(pad, text="", style='Dim.TLabel').pack()
-        ttk.Label(pad, text="SMACKATTACK HUB API  (optional)", style='Accent.TLabel').pack(anchor='w', pady=(10, 16))
+        ttk.Label(pad, text="SMACK CENTRAL ADMIN API  (SS-1457)", style='Accent.TLabel').pack(anchor='w', pady=(10, 16))
 
         api_frame = ttk.Frame(pad)
         api_frame.pack(fill='x')
-        self._field(api_frame, "Hub API URL",  'api_url')
-        self._field(api_frame, "API Key",      'api_key', show='•')
+        self._field(api_frame, "Central API URL", 'api_url')
+        self._field(api_frame, "Admin Token",     'admin_token', show='•')
+        kr_note = (
+            "Stored in OS Credential Store (keyring) only — never written to gobsmacked-scanner.ini."
+            if cfg_module.has_keyring()
+            else "⚠ OS Credential Store (keyring) unavailable — Admin Token cannot be saved to disk."
+        )
+        ttk.Label(pad, text=kr_note,
+                  style='OK.TLabel' if cfg_module.has_keyring() else 'Err.TLabel').pack(
+                  anchor='w', padx=(180, 0), pady=(0, 8))
 
         ttk.Label(pad, text="", style='Dim.TLabel').pack()
         ttk.Label(pad, text="SCAN PARAMETERS", style='Accent.TLabel').pack(anchor='w', pady=(10, 16))
@@ -264,7 +275,16 @@ class SettingsTab(ttk.Frame):
         global _cfg, _conn
         for k, var in self._entries.items():
             _cfg[k] = var.get().strip()
-        cfg_module.save(_cfg)
+        try:
+            cfg_module.save(_cfg)
+        except Exception as e:
+            self._conn_lbl.configure(text=f"✗ {e}", foreground=FG_ERR)
+            self._app.set_status(f"Save failed: {e}", FG_ERR)
+            return
+        if not _cfg.get('db_name'):
+            self._conn_lbl.configure(text="✓ Settings saved", foreground=FG_OK)
+            self._app.set_status("Settings saved (OS credential store updated).", FG_OK)
+            return
         self._conn_lbl.configure(text="Connecting…", foreground=FG_DIM)
         self.update_idletasks()
 
@@ -545,7 +565,6 @@ class ResultsTab(ttk.Frame):
         act = ttk.Frame(pad)
         act.pack(fill='x', pady=(10, 0))
         ttk.Button(act, text="MARK REVIEWED", command=self._mark_reviewed).pack(side='left')
-        ttk.Button(act, text="UPLOAD TO HUB",  command=self._upload_selected).pack(side='left', padx=10)
         self._act_lbl = ttk.Label(act, text="", style='Dim.TLabel')
         self._act_lbl.pack(side='left', padx=10)
 
@@ -609,57 +628,259 @@ class ResultsTab(ttk.Frame):
             db_module.mark_reviewed(_conn, db_id)
         self.refresh()
 
-    def _upload_selected(self):
-        iid = self._selected_iid()
-        if not iid:
-            self._act_lbl.configure(text="Select a row first.", foreground=FG_WARN)
-            return
-        api_url = _cfg.get('api_url', '').strip()
-        api_key = _cfg.get('api_key', '').strip()
-        if not api_url or not api_key:
-            messagebox.showinfo("No API Config",
-                "Enter the hub API URL and key in Settings to enable uploads.")
-            return
-        vals  = self._tree.item(iid, 'values')
-        db_id = self._row_ids.get(iid, 0)
-        threading.Thread(target=self._upload_thread,
-                         args=(api_url, api_key, iid, db_id, vals), daemon=True).start()
 
-    def _upload_thread(self, url, key, iid, db_id, vals):
-        import urllib.error
-        import urllib.request
-        payload = json.dumps({
-            'action':      'gobsmacked_report',
-            'author_key':  vals[2] if len(vals) > 2 else '',
-            'matched_key': vals[3] if len(vals) > 3 else '',
-            'match_type':  vals[1] if len(vals) > 1 else '',
-            'similarity':  vals[0] if len(vals) > 0 else '',
-        }).encode()
-        req = urllib.request.Request(url, data=payload,
-                                     headers={'Content-Type': 'application/json',
-                                              'Authorization': f'Bearer {key}'})
+# ─────────────────────────────────────────────────────────────────────────────
+# TAB: SMACK CENTRAL  (SS-1457 Desktop Stylometric Analysis Engine)
+# ─────────────────────────────────────────────────────────────────────────────
 
-        # urllib re-sends every header on a redirect, Authorization included —
-        # refuse redirects so the hub key can't be handed to another host
-        # (SECAUDIT 053 F / 054). requests strips it cross-host; urllib does not.
-        class _RefuseRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, r, fp, code, msg, headers, newurl):
-                raise urllib.error.HTTPError(
-                    r.full_url, code, "redirect refused: request carried a credential", headers, fp)
-        opener = urllib.request.build_opener(_RefuseRedirect)
+class SmackCentralTab(ttk.Frame):
+    """
+    SS-1457 Desktop Stylometric Analysis Engine (deterministic v1).
+    Pulls non-expired 25-float vectors from SMACK CENTRAL via
+    GET ?route=admin/style/vectors, computes pairwise cosine similarity and
+    connected clusters (>= 0.80; STRONG >= 0.95 / LIKELY >= 0.90 / POSSIBLE >= 0.80)
+    entirely on Sean's desktop, and uploads results + operator decisions via
+    POST ?route=admin/style/results.
+    """
+    def __init__(self, parent, app: App):
+        super().__init__(parent)
+        self._app = app
+        self._running = False
+        self._clusters: list[dict] = []
+        self._outcomes: list[dict] = []
+        self._pending_dismiss: list[list[int]] = []
+        self._pending_escalations: list[dict] = []
+        self._cluster_by_iid: dict[str, dict] = {}
+        self._build()
+
+    def _build(self):
+        pad = ttk.Frame(self)
+        pad.pack(fill='both', expand=True, padx=24, pady=16)
+
+        ttk.Label(pad, text="SMACK CENTRAL STYLOMETRIC ENGINE  (SS-1457)",
+                  style='Accent.TLabel').pack(anchor='w', pady=(0, 4))
+        ttk.Label(pad,
+            text="Pulls 25-float style vectors from SMACK CENTRAL (GET ?route=admin/style/vectors), runs deterministic\n"
+                 "cosine clustering locally (≥ 80% POSSIBLE, ≥ 90% LIKELY, ≥ 95% STRONG — zero server compute, no AI key,\n"
+                 "no raw text), and uploads cluster confidence & operator actions (POST ?route=admin/style/results).",
+            style='Dim.TLabel').pack(anchor='w', pady=(0, 14))
+
+        # Stats bar
+        stats_frame = tk.Frame(pad, bg=BG_CARD, padx=16, pady=10)
+        stats_frame.pack(fill='x', pady=(0, 12))
+        self._lbl_vectors = tk.Label(stats_frame, text="—", bg=BG_CARD, fg=ACCENT, font=("Inter", 16, "bold"))
+        self._lbl_vectors.grid(row=0, column=0, padx=16)
+        tk.Label(stats_frame, text="VECTORS\nPULLED", bg=BG_CARD, fg=FG_DIM, font=FONT_SM).grid(row=0, column=1, padx=4)
+        self._lbl_pairs = tk.Label(stats_frame, text="—", bg=BG_CARD, fg=ACCENT, font=("Inter", 16, "bold"))
+        self._lbl_pairs.grid(row=0, column=2, padx=16)
+        tk.Label(stats_frame, text="PAIRS\nCOMPARED", bg=BG_CARD, fg=FG_DIM, font=FONT_SM).grid(row=0, column=3, padx=4)
+        self._lbl_clusters = tk.Label(stats_frame, text="—", bg=BG_CARD, fg=FG_WARN, font=("Inter", 16, "bold"))
+        self._lbl_clusters.grid(row=0, column=4, padx=16)
+        tk.Label(stats_frame, text="CLUSTERS\n(≥ 80%)", bg=BG_CARD, fg=FG_DIM, font=FONT_SM).grid(row=0, column=5, padx=4)
+
+        # Controls
+        ctrl = ttk.Frame(pad)
+        ctrl.pack(fill='x', pady=(0, 10))
+        self._btn_pull = ttk.Button(ctrl, text="PULL & ANALYSE VECTORS", command=self._pull_and_analyse)
+        self._btn_pull.pack(side='left')
+        self._btn_upload = ttk.Button(ctrl, text="UPLOAD RESULTS TO SMACK CENTRAL", command=self._upload_results)
+        self._btn_upload.pack(side='left', padx=10)
+        self._info_lbl = ttk.Label(ctrl, text="", style='Dim.TLabel')
+        self._info_lbl.pack(side='left', padx=10)
+
+        # Clusters tree
+        cols = ('cluster', 'confidence', 'max_sim', 'members', 'target', 'hashes', 'sites')
+        self._tree = ttk.Treeview(pad, columns=cols, show='headings', selectmode='browse')
+        headers = {
+            'cluster':    ('CLUSTER',     80),
+            'confidence': ('CONFIDENCE', 130),
+            'max_sim':    ('MAX SIM',     85),
+            'members':    ('MEMBERS',     80),
+            'target':     ('TARGET LVL',  95),
+            'hashes':     ('FINGERPRINTS', 220),
+            'sites':      ('REPORTED BY', 220),
+        }
+        for col, (heading, width) in headers.items():
+            self._tree.heading(col, text=heading)
+            self._tree.column(col, width=width, minwidth=60, anchor='w')
+
+        vsb = ttk.Scrollbar(pad, orient='vertical', command=self._tree.yview)
+        self._tree.configure(yscrollcommand=vsb.set)
+        self._tree.pack(side='top', fill='both', expand=True)
+        vsb.pack(side='right', fill='y')
+
+        self._tree.tag_configure('strong_match',   foreground= FG_ERR)
+        self._tree.tag_configure('likely_match',   foreground= FG_WARN)
+        self._tree.tag_configure('possible_match', foreground= FG_YELL)
+
+        # Cluster operator actions
+        act = ttk.Frame(pad)
+        act.pack(fill='x', pady=(10, 0))
+        ttk.Button(act, text="QUEUE ESCALATE CLUSTER", command=self._queue_escalate).pack(side='left')
+        ttk.Button(act, text="QUEUE DISMISS PAIR",     command=self._queue_dismiss).pack(side='left', padx=10)
+        self._act_lbl = ttk.Label(act, text="", style='Dim.TLabel')
+        self._act_lbl.pack(side='left', padx=10)
+
+    def _credentials(self) -> Optional[tuple[str, str]]:
+        api_url = (_cfg.get('api_url') or '').strip()
+        token = (_cfg.get('admin_token') or cfg_module.get_secret('admin_token', api_url)).strip()
+        if not api_url or not token:
+            messagebox.showinfo(
+                "SMACK CENTRAL Credentials Required",
+                "Configure the Central API URL and Admin Token (stored in OS keyring) in Settings first."
+            )
+            return None
+        return api_url, token
+
+    def _pull_and_analyse(self):
+        if self._running:
+            return
+        creds = self._credentials()
+        if not creds:
+            return
+        api_url, token = creds
+        self._running = True
+        self._btn_pull.configure(state='disabled')
+        self._info_lbl.configure(text="Pulling vectors from SMACK CENTRAL…", foreground=FG_DIM)
+        threading.Thread(
+            target=self._pull_thread, args=(api_url, token), daemon=True
+        ).start()
+
+    def _pull_thread(self, api_url: str, token: str):
         try:
-            with opener.open(req, timeout=10) as resp:
-                body = json.loads(resp.read())
-            if body.get('ok'):
-                _post(self._act_lbl.configure, text="✓ Uploaded to hub.", foreground=FG_OK)
-                if db_id and _conn:
-                    db_module.mark_reviewed(_conn, db_id)
-                _post(self.refresh)
-            else:
-                _post(self._act_lbl.configure,
-                      text=f"Hub error: {body.get('error','unknown')}", foreground=FG_ERR)
+            pulled = core_module.pull_central_vectors(api_url, token)
+            vectors = pulled.get("vectors") or []
+            dismissed = pulled.get("dismissed_pairs") or []
+            _post(self._info_lbl.configure,
+                  text=f"Analysing {len(vectors)} vector(s) locally…", foreground=FG_DIM)
+            res = core_module.analyze_central_vectors(vectors, dismissed)
+            _post(self._apply_analysis, res)
         except Exception as e:
-            _post(self._act_lbl.configure, text=f"Upload failed: {e}", foreground=FG_ERR)
+            _post(self._info_lbl.configure, text=f"✗ {e}", foreground=FG_ERR)
+            _post(self._app.set_status, f"SMACK CENTRAL analysis failed: {e}", FG_ERR)
+        finally:
+            self._running = False
+            _post(self._btn_pull.configure, state='normal')
+
+    def _apply_analysis(self, res: dict):
+        self._clusters = res.get("clusters") or []
+        self._outcomes = res.get("outcomes") or []
+        self._pending_dismiss.clear()
+        self._pending_escalations.clear()
+        self._lbl_vectors.configure(text=str(res.get("vector_count", 0)))
+        self._lbl_pairs.configure(text=str(res.get("pairs_compared", 0)))
+        self._lbl_clusters.configure(text=str(len(self._clusters)))
+        self._refresh_tree()
+        self._info_lbl.configure(
+            text=f"✓ Local analysis complete — {len(self._clusters)} cluster(s) found.",
+            foreground=FG_OK if not self._clusters else FG_WARN,
+        )
+        self._app.set_status(
+            f"SMACK CENTRAL analysis complete — {len(self._clusters)} cluster(s) across {res.get('vector_count', 0)} vectors",
+            FG_OK if not self._clusters else FG_WARN,
+        )
+
+    def _refresh_tree(self):
+        self._tree.delete(*self._tree.get_children())
+        self._cluster_by_iid.clear()
+        for cl in self._clusters:
+            conf = cl.get("confidence", "POSSIBLE MATCH")
+            tag = conf.lower().replace(" ", "_")
+            members = cl.get("members") or []
+            hashes = ", ".join(str(m.get("ban_value", ""))[:12] + "…" for m in members)
+            sites = ", ".join(sorted({
+                s.strip()
+                for m in members
+                for s in str(m.get("reporting_sites") or "").split(",")
+                if s.strip()
+            })) or "—"
+            iid = self._tree.insert('', 'end', tags=(tag,), values=(
+                f"#{cl.get('cluster_id')}",
+                conf,
+                f"{float(cl.get('max_sim', 0.0)):.1%}",
+                str(len(members)),
+                str(cl.get("target_colour", "yellow")).upper(),
+                hashes,
+                sites,
+            ))
+            self._cluster_by_iid[iid] = cl
+
+    def _selected_cluster(self) -> Optional[dict]:
+        sel = self._tree.selection()
+        if not sel:
+            self._act_lbl.configure(text="Select a cluster first.", foreground=FG_WARN)
+            return None
+        return self._cluster_by_iid.get(sel[0])
+
+    def _queue_escalate(self):
+        cl = self._selected_cluster()
+        if not cl:
+            return
+        fp_ids = [int(m["fingerprint_id"]) for m in (cl.get("members") or []) if "fingerprint_id" in m]
+        target = str(cl.get("target_colour") or "yellow")
+        if fp_ids:
+            self._pending_escalations.append({
+                "fingerprint_ids": fp_ids,
+                "target_colour":   target,
+            })
+            self._act_lbl.configure(
+                text=f"Queued escalation of {len(fp_ids)} fingerprints to {target.upper()} ({len(self._pending_escalations)} pending).",
+                foreground=FG_OK,
+            )
+
+    def _queue_dismiss(self):
+        cl = self._selected_cluster()
+        if not cl:
+            return
+        members = cl.get("members") or []
+        if len(members) != 2:
+            self._act_lbl.configure(
+                text="Dismiss is only available for 2-member clusters.", foreground=FG_WARN)
+            return
+        a = int(members[0]["fingerprint_id"])
+        b = int(members[1]["fingerprint_id"])
+        pair = [min(a, b), max(a, b)]
+        if pair not in self._pending_dismiss:
+            self._pending_dismiss.append(pair)
+        self._act_lbl.configure(
+            text=f"Queued false-positive dismissal for pair ({pair[0]}, {pair[1]}) ({len(self._pending_dismiss)} pending).",
+            foreground=FG_OK,
+        )
+
+    def _upload_results(self):
+        if self._running:
+            return
+        creds = self._credentials()
+        if not creds:
+            return
+        api_url, token = creds
+        self._running = True
+        self._btn_upload.configure(state='disabled')
+        self._info_lbl.configure(text="Uploading results to SMACK CENTRAL…", foreground=FG_DIM)
+        threading.Thread(
+            target=self._upload_thread, args=(api_url, token), daemon=True
+        ).start()
+
+    def _upload_thread(self, api_url: str, token: str):
+        try:
+            core_module.upload_central_results(
+                api_url,
+                token,
+                clusters=self._clusters,
+                outcomes=self._outcomes,
+                dismiss_pairs=self._pending_dismiss,
+                escalations=self._pending_escalations,
+            )
+            _post(self._pending_dismiss.clear)
+            _post(self._pending_escalations.clear)
+            _post(self._info_lbl.configure,
+                  text="✓ Uploaded results to SMACK CENTRAL.", foreground=FG_OK)
+            _post(self._act_lbl.configure, text="", foreground=FG_DIM)
+        except Exception as e:
+            _post(self._info_lbl.configure, text=f"✗ Upload failed: {e}", foreground=FG_ERR)
+        finally:
+            self._running = False
+            _post(self._btn_upload.configure, state='normal')
 
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
