@@ -3064,7 +3064,21 @@ function sv_timeline_audience(array $obj): array {
 
 /** Ingest a remote Note into the home timeline (image + video posts, de-duped). */
 /**
- * Who is boosting a timeline object. Three functions, one table.
+ * "I cannot tell whether anyone is still boosting this."
+ *
+ * A named constant because it is now returned from two places and read in
+ * one, and Codex's FAIL 1 was an early return that answered '' instead of
+ * this. A magic string repeated is a magic string one caller will get wrong.
+ *
+ * A PRINTABLE value, not a NUL byte. My first attempt at this constant wrote a
+ * literal NUL into the source, which the pre-commit hook rejects and rightly:
+ * a null byte in a PHP file is how truncation hides. No object id or actor URL
+ * can collide with this, because neither may contain a space.
+ */
+const SV_BOOST_UNKNOWN = '[boost record unavailable]';
+
+/**
+ * Who is boosting a timeline object. Four functions, one table.
  *
  * WHY A TABLE AND NOT A QUERY. snap_ap_timeline is UNIQUE on object_id -- one
  * row serves every reason a post is present -- and keeps the FIRST booster in
@@ -3112,22 +3126,53 @@ function sv_timeline_boost_record(PDO $pdo, string $object_id, string $actor_url
  * edit that asks first.
  */
 function sv_timeline_boost_withdraw(PDO $pdo, string $object_id, string $actor_url): string {
-    if ($object_id === '' || !sv_timeline_boost_table($pdo)) return '';
+    if ($object_id === '') return '';
+    // TABLE UNAVAILABLE IS "I CANNOT TELL", NOT "NOBODY IS BOOSTING".
+    //
+    // Codex's second review, FAIL 1. This line returned '' when the table
+    // could not be created or read, and the caller reads '' as "no booster
+    // remains" and deletes the timeline row. So the exact fail-open I had
+    // claimed to close was still here, one branch above the catch that closes
+    // it. My own test missed it because it only drops the table AFTER the
+    // per-process readiness flag is already true, which never exercises a
+    // CREATE or readiness failure.
+    if (!sv_timeline_boost_table($pdo)) return SV_BOOST_UNKNOWN;
     try {
-        if ($actor_url !== '') {
+        // DOES THE RECORD KNOW ABOUT THIS ACTOR'S BOOST AT ALL? That is what
+        // separates "the last boost has been withdrawn" from "this record has
+        // never seen this object" -- the upgraded-install case in Codex's
+        // FAIL 1. Both end with zero rows for the object; only the first one
+        // means nobody is boosting.
+        $knew = $pdo->prepare("SELECT 1 FROM snap_ap_timeline_boosts
+                                WHERE object_id = ? AND actor_url = ? LIMIT 1");
+        $knew->execute([$object_id, $actor_url]);
+        $recorded = (bool)$knew->fetchColumn();
+
+        if ($actor_url !== '' && $recorded) {
             $pdo->prepare("DELETE FROM snap_ap_timeline_boosts
                             WHERE object_id = ? AND actor_url = ?")
                 ->execute([$object_id, $actor_url]);
         }
+        // The `<> ?` is REDUNDANT as this function stands, because this
+        // actor's row has just been deleted, and no mutation of it can be
+        // distinguished by any test — I tried. It stays as a guard against a
+        // future edit that stops deleting, or deletes later, and it is noted
+        // as redundant so nobody spends an afternoon writing the test that
+        // cannot exist.
         $q = $pdo->prepare("SELECT actor_url FROM snap_ap_timeline_boosts
-                             WHERE object_id = ? LIMIT 1");
-        $q->execute([$object_id]);
-        return (string)($q->fetchColumn() ?: '');
+                             WHERE object_id = ? AND actor_url <> ? LIMIT 1");
+        $q->execute([$object_id, $actor_url]);
+        $other = (string)($q->fetchColumn() ?: '');
+        if ($other !== '') return $other;
+        // No other booster recorded. Say "nobody" only when this actor's boost
+        // WAS in the record, so the record is demonstrably tracking this
+        // object. Otherwise it is silent, not empty.
+        return $recorded ? '' : SV_BOOST_UNKNOWN;
     } catch (Throwable $e) {
         // Unreadable means "I cannot tell". The caller treats that as "somebody
         // may still be boosting" and keeps the post, because leaving a post in
         // the reader is recoverable and removing one is not.
-        return "\0unknown";
+        return SV_BOOST_UNKNOWN;
     }
 }
 
@@ -3712,14 +3757,24 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 // which is the same fault one withdrawal later.
                 try {
                     $still_boosting = sv_timeline_boost_withdraw($pdo, $boosted, $actor_id);
-                    // "\0unknown" means the table could not be read, so TOUCH
-                    // NOTHING: keep the post and leave boost ownership as it
-                    // was. Leaving a post in the reader is recoverable;
-                    // removing one, or writing a booster who may not exist, is
-                    // not. An earlier draft of this wrote a placeholder into
-                    // boosted_by, which would have corrupted the row to record
-                    // a failure.
-                    if ($still_boosting === "\0unknown") {
+                    // SV_BOOST_UNKNOWN means the record could not be read or
+                    // made, so TOUCH NOTHING: keep the post and leave boost
+                    // ownership as it was. Leaving a post in the reader is
+                    // recoverable; removing one, or writing a booster who may
+                    // not exist, is not. An earlier draft of this wrote a
+                    // placeholder into boosted_by, which would have corrupted
+                    // the row to record a failure.
+                    //
+                    // AN UPGRADED INSTALL ANSWERS THE SAME WAY. Codex's FAIL 1,
+                    // second half: a site upgrading into this build already has
+                    // boosted timeline rows and an empty boost table, so an
+                    // Undo would read that empty record as authoritative and
+                    // delete a post somebody else is still boosting. The row's
+                    // own is_boost/boosted_by is the only evidence those
+                    // installs have, and it cannot answer "how many", so the
+                    // honest answer is "I cannot tell" until the record has
+                    // seen this object at least once.
+                    if ($still_boosting === SV_BOOST_UNKNOWN) {
                         // nothing
                     } elseif ($still_boosting === '') {
                         $pdo->prepare(
@@ -5310,6 +5365,40 @@ function sv_has_liked(PDO $pdo, string $object_id): bool {
  * hears about it. Origin delivery happens even with zero followers, so boosting
  * works before you've built an audience.
  */
+/**
+ * Is this post nothing but video?
+ *
+ * Sean's standing ruling, 2026-11-20: an owner may VIEW remote video, but
+ * SNAPSMACK never caches, proxies, re-publishes, BOOSTS or SHARES it, and
+ * never accepts video uploads.
+ *
+ * VIDEO-ONLY, not video-at-all. A post carrying a photograph and a clip is a
+ * photograph post; refusing it would quietly make the rule wider than Sean
+ * wrote it. A post with no attachments at all is text, not video, and is
+ * boostable as it always was.
+ *
+ * Both shapes count as video: an attachment whose mediaType begins "video/",
+ * and one whose ActivityStreams `type` is Video. A Pixelfed clip uses the
+ * first; a Peertube object uses the second.
+ */
+function sv_post_is_video_only(?array $obj): bool {
+    if (!is_array($obj)) return false;
+    // An Announce or Create wrapping the real object.
+    if (isset($obj['object']) && is_array($obj['object'])) { $obj = $obj['object']; }
+    $att = $obj['attachment'] ?? null;
+    if (is_array($att) && isset($att['url'])) { $att = [$att]; }   // a lone object
+    if (!is_array($att) || !$att) return false;
+    $video = 0; $other = 0;
+    foreach ($att as $a) {
+        if (!is_array($a)) { $other++; continue; }
+        $mt   = strtolower(trim((string)($a['mediaType'] ?? '')));
+        $type = strtolower(trim((string)($a['type'] ?? '')));
+        if (str_starts_with($mt, 'video/') || $type === 'video') { $video++; }
+        else { $other++; }
+    }
+    return $video > 0 && $other === 0;
+}
+
 function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
     $object_id = trim($object_id);
     if ($object_id === '' || stripos($object_id, 'https://') !== 0) return [false, 'That post has no usable id.'];
@@ -5331,6 +5420,25 @@ function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
             }
         }
     }
+
+    // VIDEO IS NOT REFUSED HERE, and that is deliberate.
+    //
+    // Sean's first ruling (2026-11-20) said no boosting of video, and this
+    // function refused a video-only post. He revised it on 2026-11-21: a boost
+    // is an Announce that REFERENCES the remote object by id. Receiving servers
+    // fetch the media from its origin; this server never touches the bytes, so
+    // boosting a post that contains video re-publishes nothing.
+    //
+    // What stays forbidden is unchanged and enforced elsewhere: caching,
+    // proxying, re-encoding, storing or uploading video, and video in posts
+    // that originate here. smack-media-proxy.php's allowlist is five image
+    // types and refuses everything else.
+    //
+    // tests/media-cache-and-timeline-have-a-ceiling-regression.php stage 9
+    // proves the boost path makes no HTTP request for any video URL and writes
+    // nothing to the cache, which is the property the ruling actually turns on.
+    // sv_post_is_video_only() is kept because that test needs it to build the
+    // case, and because a future rule about ORIGINATING video will want it.
 
     // TESTING WHITELIST: send the boost ONLY to whitelisted test accounts that
     // follow this blog — never Public, never the real follower crowd, not the author.
