@@ -484,9 +484,10 @@
         "thresholds": []
     },
     "duplicate-delivery-tripwire-regression.php": {
-        "assertions": 37,
-        "predicates": 9,
+        "assertions": 56,
+        "predicates": 17,
         "thresholds": [
+            2,
             2
         ]
     },
@@ -1108,8 +1109,8 @@
         ]
     },
     "inbound-fetch-honours-retry-after-regression.php": {
-        "assertions": 23,
-        "predicates": 4,
+        "assertions": 26,
+        "predicates": 2,
         "thresholds": [
             60,
             90,
@@ -1898,7 +1899,7 @@
         ]
     },
     "relay-fanout-honours-blocks-regression.php": {
-        "assertions": 28,
+        "assertions": 45,
         "predicates": 8,
         "thresholds": [
             250,
@@ -2873,7 +2874,7 @@
         ]
     },
     "undo-announce-removes-the-boosted-post-regression.php": {
-        "assertions": 13,
+        "assertions": 21,
         "predicates": 2,
         "thresholds": []
     },
