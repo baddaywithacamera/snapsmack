@@ -23,9 +23,11 @@ class RightPhotosTray(QWidget):
     """
 
     stateChanged = Signal(bool)
+    deletePressed = Signal()
 
     def __init__(self, rail_widget: QWidget, parent=None):
         super().__init__(parent)
+        self.setFocusPolicy(Qt.ClickFocus)
         self._opened = False
         self._pinned = True
         self._compact = False
@@ -96,6 +98,13 @@ class RightPhotosTray(QWidget):
             self._stack.setCurrentWidget(self._collapsed_bar)
             self.setFixedWidth(30)
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Delete and self._opened:
+            self.deletePressed.emit()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
 
 def photo_orientation_badge(width: int, height: int, path: str = "") -> tuple:
     """Return (badge_code, ratio) where badge_code is 'P', 'L', or 'SQ'."""
@@ -128,6 +137,7 @@ class PhotoThumbTile(QPushButton):
 
     selectionClicked = Signal(int, bool)  # (bucket_index, toggle_multi)
     setFeaturedRequested = Signal(int)    # (bucket_index)
+    removeRequested = Signal(int)         # (bucket_index)
 
     def __init__(self, index: int, pixmap: QPixmap, selected: bool = False,
                  is_cover: bool = False, edited: bool = False,
@@ -157,6 +167,12 @@ class PhotoThumbTile(QPushButton):
         return QRect(4, 22 if self._edited else 4, 18, 18)
 
     def mousePressEvent(self, event):
+        w = self.parentWidget()
+        while w is not None:
+            if isinstance(w, RightPhotosTray):
+                w.setFocus(Qt.MouseFocusReason)
+                break
+            w = w.parentWidget()
         if event.button() == Qt.LeftButton:
             self._drag_start = event.position().toPoint()
             mods = event.modifiers()
@@ -186,9 +202,13 @@ class PhotoThumbTile(QPushButton):
         menu = QMenu(self)
         act_feat = menu.addAction("★ Set as featured (landing tile)")
         act_feat.setEnabled(not self._is_cover)
+        menu.addSeparator()
+        act_rem = menu.addAction("Remove from tray")
         chosen = menu.exec(event.globalPos())
         if chosen is act_feat:
             self.setFeaturedRequested.emit(self._index)
+        elif chosen is act_rem:
+            self.removeRequested.emit(self._index)
 
     def paintEvent(self, _event):
         p = QPainter(self)

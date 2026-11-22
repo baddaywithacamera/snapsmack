@@ -615,6 +615,7 @@ class TakeMode(QWidget):
             [self.rail.send_box], width=360)
         self.photos_tray = RightPhotosTray(self.right_rail)
         self.photos_tray.stateChanged.connect(self._on_photos_tray_changed)
+        self.photos_tray.deletePressed.connect(lambda: self._remove_from_tray())
         photos_open = self._view_settings.value("take/photos_open", False, type=bool)
         self.photos_tray.set_open(photos_open)
         outer.addWidget(self.photos_tray)
@@ -2559,15 +2560,163 @@ class TakeMode(QWidget):
             self._changed()
 
     def _remove(self, idx: int):
-        del self._bucket[idx]
-        if self._selected_photo_idx == idx:
-            self._selected_photo_idx = min(idx, len(self._bucket) - 1) if self._bucket else None
-        elif self._selected_photo_idx is not None and self._selected_photo_idx > idx:
-            self._selected_photo_idx -= 1
-        if self._cover_idx >= len(self._bucket):
-            self._cover_idx = max(0, len(self._bucket) - 1)
+        self._remove_from_tray([idx])
+
+    def _strip_photos_from_blocks(self, remove_indices: list[int]):
+        """Remove blocks/entries referencing removed tray indices and remap 1-based refs."""
+        remove_set = set(remove_indices)
+        remove_uuids = {
+            str(getattr(self._bucket[i], "asset_uuid", "") or "")
+            for i in remove_set
+            if 0 <= i < len(self._bucket) and getattr(self._bucket[i], "asset_uuid", "")
+        }
+        remove_pos = {i + 1 for i in remove_set}
+
+        def _matches(identity) -> bool:
+            key = str(identity or "").strip()
+            if not key:
+                return False
+            if key in remove_uuids:
+                return True
+            if key.startswith("asset:") and key[6:] in remove_uuids:
+                return True
+            if key.startswith("bucket:") and key[7:].isdigit():
+                return int(key[7:]) in remove_pos
+            if key.isdigit():
+                return int(key) in remove_pos
+            return False
+
+        def _remap_identity(identity):
+            key = str(identity or "").strip()
+            if key.startswith("bucket:") and key[7:].isdigit():
+                pos = int(key[7:])
+                shift = sum(1 for r in remove_set if r < pos - 1)
+                return f"bucket:{pos - shift}"
+            if key.isdigit():
+                pos = int(key)
+                shift = sum(1 for r in remove_set if r < pos - 1)
+                return str(pos - shift)
+            return identity
+
+        def _clean_list(items):
+            out = []
+            for node in items:
+                if not isinstance(node, dict):
+                    continue
+                kind = node.get("type")
+                if kind == "image":
+                    ident = node.get("asset_uuid") or node.get("img_id")
+                    if _matches(ident):
+                        continue
+                    copied = dict(node)
+                    if not copied.get("asset_uuid") and copied.get("img_id"):
+                        copied["img_id"] = _remap_identity(copied["img_id"])
+                    out.append(copied)
+                elif kind == "mosaic":
+                    order = node.get("order") or []
+                    kept = [_remap_identity(x) for x in order if not _matches(x)]
+                    if order and not kept:
+                        continue
+                    copied = dict(node)
+                    copied["order"] = kept
+                    out.append(copied)
+                elif kind == "columns":
+                    copied = dict(node)
+                    cols = node.get("columns") or []
+                    copied["columns"] = [_clean_list(col) for col in cols]
+                    out.append(copied)
+                else:
+                    out.append(dict(node))
+            return out
+
+        try:
+            blocks = self.body.authoring_blocks()
+        except Exception:
+            return
+        cleaned = _clean_list(blocks)
+        if getattr(self.body, "_biggie_on", False):
+            self.body.biggie.from_blocks(cleaned)
+        else:
+            from . import biggie
+            self.body.editor.setPlainText(biggie.serialize_blocks(cleaned))
+
+    def _remove_from_tray(self, indices=None, *, in_post_fn=None) -> bool:
+        """Remove one or more photos from the tray only (never deletes from disk)."""
+        if not self._bucket:
+            return False
+        selected = [
+            i for i in getattr(self, "_selected_photo_indices", [])
+            if 0 <= i < len(self._bucket)
+        ]
+        if indices is not None:
+            raw = [int(i) for i in indices if 0 <= int(i) < len(self._bucket)]
+            if len(raw) == 1 and raw[0] in selected and len(selected) > 1:
+                targets = sorted(set(selected))
+            else:
+                targets = sorted(set(raw))
+        else:
+            if selected:
+                targets = sorted(set(selected))
+            elif self._selected_photo_idx is not None and 0 <= self._selected_photo_idx < len(self._bucket):
+                targets = [self._selected_photo_idx]
+            else:
+                targets = []
+        if not targets:
+            return False
+
+        used = self._used_photo_indices()
+        in_post = [i for i in targets if i in used]
+        if in_post:
+            if in_post_fn is not None:
+                choice = in_post_fn(in_post)
+            else:
+                box = QMessageBox(self)
+                box.setWindowTitle("Photo already in post")
+                noun = "This photo is" if len(in_post) == 1 else f"{len(in_post)} selected photos are"
+                box.setText(f"{noun} already placed in the post.")
+                box.setInformativeText("Remove from the post as well, or leave in the post?")
+                btn_both = box.addButton("Remove from post too", QMessageBox.DestructiveRole)
+                btn_leave = box.addButton("Leave in post", QMessageBox.AcceptRole)
+                box.addButton("Cancel", QMessageBox.RejectRole)
+                box.exec()
+                clicked = box.clickedButton()
+                if clicked == btn_both:
+                    choice = "remove_both"
+                elif clicked == btn_leave:
+                    choice = "leave_in_post"
+                else:
+                    choice = "cancel"
+            if choice == "cancel":
+                return False
+            if choice == "leave_in_post":
+                targets = [i for i in targets if i not in used]
+                if not targets:
+                    return False
+            elif choice == "remove_both":
+                self._strip_photos_from_blocks(targets)
+            else:
+                return False
+
+        if self._cover_idx in targets:
+            self._cover_idx = -1
+        elif self._cover_idx >= 0:
+            self._cover_idx -= sum(1 for i in targets if i < self._cover_idx)
+
+        for idx in sorted(targets, reverse=True):
+            del self._bucket[idx]
+
+        self._selected_photo_indices = []
+        if not self._bucket:
+            self._selected_photo_idx = None
+        elif self._selected_photo_idx is not None:
+            if self._selected_photo_idx in targets:
+                self._selected_photo_idx = min(targets[0], len(self._bucket) - 1)
+            else:
+                self._selected_photo_idx -= sum(1 for i in targets if i < self._selected_photo_idx)
+
         self._refresh_bucket()
         self._changed()
+        return True
 
     def _set_cover(self, idx: int):
         self._cover_idx = idx
@@ -3176,6 +3325,7 @@ class TakeMode(QWidget):
             tile.selectionClicked.connect(
                 lambda idx, toggle: self._select_photo(idx, toggle=toggle))
             tile.setFeaturedRequested.connect(self._set_featured_photo)
+            tile.removeRequested.connect(lambda idx: self._remove_from_tray([idx]))
             self.bucket_col.addWidget(tile, visible_pos // cols, visible_pos % cols)
             visible_pos += 1
         if visible_pos == 0:
