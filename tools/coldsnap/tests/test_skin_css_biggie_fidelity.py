@@ -79,3 +79,51 @@ def test_biggie_applies_skin_typography_and_shows_approximate_when_unloaded(monk
         assert canvas._image_margin_bottom == 52.0
     finally:
         mode.close()
+
+
+def test_sybu_data_skin_block_is_authoritative_over_css_fallback(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
+    import snap_library
+    from coldsnap_qt import skin_css
+
+    site = "https://authoritative.example"
+    snap_library.sync_from_sybu_data(site, {
+        "site_mode": "smacktalk",
+        "skin": {
+            "slug": "writing-with-impact",
+            "name": "Writing With Impact",
+            "version": "1.0.0",
+            "options": {
+                "ink_color": "#112233",
+                "body_font_family": "Palatino, serif",
+                "post_content_width": 800,
+            },
+        },
+    })
+    skin_css._SITE_CACHE[site] = {
+        "loaded": True,
+        "bg": "#fafafa",
+        "fg": "#999999",
+        "body_font": "Arial",
+        "body_pt": 14.0,
+        "line_height_pct": 165.0,
+        "para_margin_bottom_px": 24.0,
+        "image_margin_top_px": 40.0,
+        "image_margin_bottom_px": 40.0,
+    }
+    app = _app()
+    app.setStyleSheet(theme.stylesheet())
+    mode = TakeMode(lambda: {"url": site})
+    mode.resize(1400, 900)
+    mode.show()
+    app.processEvents()
+    try:
+        bg = mode.apply_canvas_background(site)
+        assert bg == "#fafafa"  # CSS fallback filled undeclared bg
+        assert mode.body.canvas._body_font_family == "Palatino"  # sybu-data won over CSS Arial
+        assert mode._preview_width == 800
+        assert not mode.site_colors_note.isHidden()
+        assert "css fallback" in mode.site_colors_note.text().lower()
+    finally:
+        skin_css._SITE_CACHE.pop(site, None)
+        mode.close()

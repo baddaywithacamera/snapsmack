@@ -127,6 +127,54 @@ def parse_skin_css(css_text: str) -> dict:
     }
 
 
+def parse_sybu_skin(skin: dict) -> dict:
+    """Extract authoritative declared skin values from sybu-data.php's `skin` block.
+
+    Absence is information: keys not declared by the skin manifest are left empty/0
+    so callers can fall back deliberately to the stylesheet parser and report honestly.
+    """
+    if not isinstance(skin, dict):
+        return {}
+    opts = skin.get("options") if isinstance(skin.get("options"), dict) else {}
+    bg = ""
+    for k in ("bg_color", "background_color", "page_bg", "wall_color", "htbs_wall_color"):
+        v = str(opts.get(k) or "").strip()
+        if re.match(r"^#[0-9a-fA-F]{3,8}$", v):
+            bg = v
+            break
+    fg = ""
+    for k in ("ink_color", "fg_color", "text_color", "body_color"):
+        v = str(opts.get(k) or "").strip()
+        if re.match(r"^#[0-9a-fA-F]{3,8}$", v):
+            fg = v
+            break
+    body_font = ""
+    for k in ("body_font_family", "font_family"):
+        v = str(opts.get(k) or "").strip()
+        if v:
+            body_font = v.split(",")[0].strip(" '\"")
+            break
+    content_width = 0
+    raw_w = opts.get("post_content_width")
+    if raw_w not in (None, ""):
+        try:
+            w = int(float(raw_w))
+            if 280 <= w <= 2400:
+                content_width = w
+        except (TypeError, ValueError):
+            pass
+    return {
+        "skin_slug": str(skin.get("slug") or ""),
+        "skin_name": str(skin.get("name") or ""),
+        "skin_version": str(skin.get("version") or ""),
+        "bg": bg,
+        "fg": fg,
+        "body_font": body_font,
+        "post_content_width": content_width,
+        "has_sybu": bool(skin.get("slug") or opts),
+    }
+
+
 def fetch_site_skin_styles(site_url: str, *, timeout: float = 6.0) -> dict:
     """Fetch the site's <head> skin stylesheet and return parsed skin styles."""
     url = str(site_url or "").strip()

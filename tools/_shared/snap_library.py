@@ -225,6 +225,7 @@ def sync_from_sybu_data(site: str, payload: dict) -> dict:
     tags   = [t for t in (payload.get("tags", []) or []) if str(t).strip()]
     titles = [t for t in (payload.get("titles", []) or []) if str(t).strip()]
     mode   = str(payload.get("site_mode", "") or "").strip().lower()
+    skin   = payload.get("skin") if isinstance(payload.get("skin"), dict) else None
     bg     = ""
     for _k in ("site_bg", "page_bg", "background_color", "bg_color"):
         _v = str(payload.get(_k, "") or "").strip()
@@ -254,6 +255,8 @@ def sync_from_sybu_data(site: str, payload: dict) -> dict:
                 conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('site_mode', ?)", (mode,))
             if bg:
                 conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('site_bg', ?)", (bg,))
+            if skin is not None:
+                conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('skin_json', ?)", (json.dumps(skin),))
             conn.execute("INSERT OR REPLACE INTO meta(key, val) VALUES ('synced_at', ?)",
                          (time.strftime("%Y-%m-%d %H:%M:%S"),))
         return {"categories": len(cats), "albums": len(albums),

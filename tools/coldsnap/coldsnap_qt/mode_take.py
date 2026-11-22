@@ -770,50 +770,90 @@ class TakeMode(QWidget):
         return TakeMode.resolve_site_colors(site_url)[0]
 
     def apply_canvas_background(self, site_url: str = "", explicit_bg: str = "", explicit_fg: str = "") -> str:
+        import json
         from PySide6.QtGui import QColor, QPalette
         from . import canvas as canvas_mod
         from . import skin_css
 
         url = str(site_url or "").strip()
-        cached_skin = skin_css._SITE_CACHE.get(url) if url else None
+        sybu_skin = {}
+        if url:
+            try:
+                raw_skin = snap_library.meta(url, "skin_json", "")
+                if raw_skin:
+                    sybu_skin = skin_css.parse_sybu_skin(json.loads(raw_skin))
+            except Exception:  # noqa: BLE001
+                sybu_skin = {}
 
+        cached_skin = skin_css._SITE_CACHE.get(url) if url else None
+        css_loaded = bool(cached_skin and cached_skin.get("loaded"))
+
+        # Authoritative sybu-data values win whenever declared; CSS parse fills gaps.
+        eff_bg = sybu_skin.get("bg") or (cached_skin.get("bg") if css_loaded else "")
+        eff_fg = sybu_skin.get("fg") or (cached_skin.get("fg") if css_loaded else "")
+        eff_font = sybu_skin.get("body_font") or (cached_skin.get("body_font") if css_loaded else "")
+        eff_pt = float((cached_skin.get("body_pt") if css_loaded else 0.0) or 0.0)
+        eff_lh = float((cached_skin.get("line_height_pct") if css_loaded else 0.0) or 0.0)
+        eff_pmb = float((cached_skin.get("para_margin_bottom_px") if css_loaded else 0.0) or 0.0)
+        eff_imt = float((cached_skin.get("image_margin_top_px") if css_loaded else 0.0) or 0.0)
+        eff_imb = float((cached_skin.get("image_margin_bottom_px") if css_loaded else 0.0) or 0.0)
+        decl_width = int(sybu_skin.get("post_content_width") or 0)
+        if decl_width > 0 and getattr(self, "_preview_width", 760) != 360:
+            self._preview_width = decl_width
+            if hasattr(self, "preview_desktop_btn"):
+                self.preview_desktop_btn.setText(f"Desktop {decl_width}")
+
+        note_msg = ""
         if explicit_bg and QColor(explicit_bg.strip()).isValid():
             bg = QColor(explicit_bg.strip()).name()
             fg = QColor(explicit_fg.strip()).name() if explicit_fg and QColor(explicit_fg.strip()).isValid() else ""
             available = True
-        elif cached_skin and cached_skin.get("loaded"):
-            bg = cached_skin.get("bg") or "#ffffff"
-            fg = cached_skin.get("fg") or "#1a1a1a"
-            available = True
+        elif eff_bg or eff_fg or eff_font or css_loaded:
+            fallback_bg, fallback_fg, _ = self.resolve_site_colors(url)
+            bg = eff_bg or fallback_bg
+            fg = eff_fg or fallback_fg
             if hasattr(self, "body") and hasattr(self.body, "canvas"):
                 self.body.canvas.set_skin_typography(
-                    body_font=cached_skin.get("body_font", ""),
-                    body_pt=float(cached_skin.get("body_pt") or 0.0),
-                    line_height_pct=float(cached_skin.get("line_height_pct") or 0.0),
-                    para_margin_bottom=float(cached_skin.get("para_margin_bottom_px") or 0.0),
-                    image_margin_top=float(cached_skin.get("image_margin_top_px") or 0.0),
-                    image_margin_bottom=float(cached_skin.get("image_margin_bottom_px") or 0.0),
+                    body_font=eff_font,
+                    body_pt=eff_pt,
+                    line_height_pct=eff_lh,
+                    para_margin_bottom=eff_pmb,
+                    image_margin_top=eff_imt,
+                    image_margin_bottom=eff_imb,
                 )
+            if sybu_skin.get("has_sybu") and (not eff_bg or not eff_font) and not css_loaded:
+                available = False
+                note_msg = "approximate: skin styles not loaded"
+            elif sybu_skin.get("has_sybu") and (not sybu_skin.get("bg") or not sybu_skin.get("body_font")) and css_loaded:
+                available = False
+                note_msg = "approximate: undeclared skin styles read from CSS fallback"
+            else:
+                available = True
         else:
             bg, fg, available = self.resolve_site_colors(url)
-            if url.startswith(("http://", "https://")) and not getattr(self, "_skin_fetch_inflight", None) == url:
-                self._skin_fetch_inflight = url
+            note_msg = "approximate: skin styles not loaded"
 
-                def _bg_fetch(u=url):
-                    res = skin_css.fetch_site_skin_styles(u)
-                    if res.get("loaded"):
-                        try:
-                            import shiboken6
-                            if shiboken6.isValid(self):
-                                QMetaObject.invokeMethod(
-                                    self, "_on_skin_styles_loaded", Qt.QueuedConnection
-                                )
-                        except Exception:  # noqa: BLE001
-                            pass
+        if not css_loaded and url.startswith(("http://", "https://")) and getattr(self, "_skin_fetch_inflight", None) != url:
+            self._skin_fetch_inflight = url
 
-                if not hasattr(self, "_skin_executor") or self._skin_executor is None:
-                    self._skin_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="coldtake-skin")
-                self._skin_executor.submit(_bg_fetch)
+            def _bg_fetch(u=url):
+                res = skin_css.fetch_site_skin_styles(u)
+                if res.get("loaded"):
+                    try:
+                        import shiboken6
+                        if shiboken6.isValid(self):
+                            QMetaObject.invokeMethod(
+                                self, "_on_skin_styles_loaded", Qt.QueuedConnection
+                            )
+                    except Exception:  # noqa: BLE001
+                        pass
+
+            if not hasattr(self, "_skin_executor") or self._skin_executor is None:
+                self._skin_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="coldtake-skin")
+            self._skin_executor.submit(_bg_fetch)
+
+        if hasattr(self, "site_colors_note") and note_msg:
+            self.site_colors_note.setText(note_msg)
 
         pal = canvas_mod.site_surface_palette(bg, fg)
         bg = pal["bg"]
