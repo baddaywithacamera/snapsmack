@@ -44,7 +44,10 @@ def _first_prop(bodies: list, prop: str) -> str:
 
 def parse_skin_css(css_text: str) -> dict:
     """Extract typography, colours, and post-spacing rules from a skin stylesheet."""
-    body_rules = _extract_rule_bodies(css_text, r"body")
+    body_rules = _extract_rule_bodies(
+        css_text,
+        r"(?:[^{};]*,\s*)?body(?:\.(?:blog|single|archive|post|tilez-v2))?(?:\s*,[^{};]*)?",
+    )
     entry_rules = _extract_rule_bodies(css_text, r"(?:\.entry-content|\.post-content)")
     p_rules = _extract_rule_bodies(css_text, r"\.entry-content\s*>\s*p(?:\s*,[^{]*)?")
     frame_rules = _extract_rule_bodies(css_text, r"\.entry-content\s*>\s*\.snap-inline-frame")

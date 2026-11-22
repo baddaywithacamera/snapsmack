@@ -137,3 +137,15 @@ def test_sybu_data_skin_block_is_authoritative_over_css_fallback(monkeypatch, tm
     finally:
         skin_css._SITE_CACHE.pop(site, None)
         mode.close()
+
+
+def test_tilez_stylesheet_picks_post_bg_fff_over_early_1d1d1d():
+    css_path = os.path.join(os.path.dirname(_ROOT), "..", "skins", "tilez", "style.css")
+    if not os.path.isfile(css_path):
+        return
+    with open(css_path, encoding="utf-8") as fh:
+        parsed = parse_skin_css(fh.read())
+    assert parsed["bg"].lower() in ("#fff", "#ffffff")
+    assert parsed["caption_color"] == "#666"
+    assert parsed["caption_pt"] == 10.5
+    assert parsed["caption_italic"] is True
