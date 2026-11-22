@@ -41,6 +41,7 @@ class _ProxmoxMockServer:
         self.ticket_value = "PVE:proxvox@pve:1234ABCD::sig"
         self.csrf_value = "6789EF01:csrf-secret-value"
         self.tfa_challenge_mode = False
+        self.empty_csrf_mode = False
         self.force_401 = False
         server_ref = self
 
@@ -68,7 +69,9 @@ class _ProxmoxMockServer:
                     if (parsed_form.get("password") == ["good-pass"]
                             and parsed_form.get("otp") == ["123456"]):
                         if server_ref.tfa_challenge_mode:
-                            payload = {"data": {"ticket": "PVE:!tfa!challenge", "CSRFPreventionToken": ""}}
+                            payload = {"data": {"ticket": "PVE:!tfa!challenge", "CSRFPreventionToken": server_ref.csrf_value}}
+                        elif server_ref.empty_csrf_mode:
+                            payload = {"data": {"ticket": server_ref.ticket_value, "CSRFPreventionToken": ""}}
                         else:
                             payload = {
                                 "data": {
@@ -190,6 +193,21 @@ class ProxVoxP3Tests(unittest.TestCase):
         with self.assertRaises(Refused):
             wc.authorize("proxvox@pve", "good-pass", "123456")
         self.assertFalse(wc.is_authorized())
+        # Pre-request write_auth_attempt must be logged before /access/ticket responds
+        self.assertIn('"action":"write_auth_attempt"', self.server.audit_snapshots[0])
+
+        self.server.tfa_challenge_mode = False
+        self.server.empty_csrf_mode = True
+        with self.assertRaises(Refused):
+            wc.authorize("proxvox@pve", "good-pass", "123456")
+        self.assertFalse(wc.is_authorized())
+
+        # Failed HTTP 401 auth must still leave write_auth_attempt on disk
+        self.server.empty_csrf_mode = False
+        with self.assertRaises(urllib.error.HTTPError):
+            wc.authorize("proxvox@pve", "wrong-pass", "123456")
+        actions = [r["action"] for r in self.audit.records()]
+        self.assertEqual(actions.count("write_auth_attempt"), 3)
 
     def test_authorized_session_allows_full_writes_until_expiry_and_hides_secrets(self):
         wc = self._client(ticket_ttl=7200)
