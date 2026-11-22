@@ -14,8 +14,9 @@
  * core/fediverse.php is guarded by function_exists()+pc_enabled().
  *
  * No image belonging to a participant is ever stored: the board reads
- * snap_ap_timeline, which holds only the origin permalink + hotlinked image
- * URL. Teaser-only, canonical -> origin, tease-then-eject. (FEDISTRUCTURE §10/§11.)
+ * snap_ap_timeline, which holds only origin-hosted preview metadata and the
+ * canonical post permalink. Teaser-only, canonical -> origin, tease-then-eject.
+ * (FEDISTRUCTURE §10/§11.)
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -870,8 +871,11 @@ function pc_cron_maintain(PDO $pdo, array &$settings, int $limit = 25): array {
         $finalized++;
     }
     $limit = max(1, min(100, $limit));
-    $rows = $pdo->query("SELECT * FROM pc_admissions WHERE status='active'
-        ORDER BY COALESCE(last_checked_at,'1970-01-01'),id LIMIT {$limit}")->fetchAll(PDO::FETCH_ASSOC);
+    $rows = $pdo->query("SELECT a.*,t.url AS post_url,t.attachments_json,t.media_json
+        FROM pc_admissions a JOIN snap_ap_timeline t ON t.object_id=a.object_id WHERE a.status='active'
+        ORDER BY COALESCE(a.last_checked_at,'1970-01-01'),a.id LIMIT {$limit}")->fetchAll(PDO::FETCH_ASSOC);
+    $preview_backfills = [];
+    $preview_stopped_hosts = [];
     foreach ($rows as $admission) {
         $object = function_exists('sv_fetch_ap') ? sv_fetch_ap((string)$admission['object_id'], $settings) : null;
         if (!is_array($object)) {
@@ -883,6 +887,20 @@ function pc_cron_maintain(PDO $pdo, array &$settings, int $limit = 25): array {
         }
         $attr = is_array($object['attributedTo'] ?? null) ? (string)($object['attributedTo']['id'] ?? '') : (string)($object['attributedTo'] ?? '');
         if ($attr !== $admission['actor_url']) { pc_withdraw_object($pdo,$settings,(string)$admission['object_id'],'moderated'); $withdrawn++; $checked++; continue; }
+        $stored_attachments = json_decode((string)($admission['attachments_json'] ?? '[]'), true) ?: [];
+        $stored_media = json_decode((string)($admission['media_json'] ?? '[]'), true) ?: [];
+        $known = pc_board_media_view($stored_media, $stored_attachments);
+        $api_url = pc_preview_status_api_url((string)($admission['post_url'] ?? ''), (string)($admission['object_id'] ?? ''));
+        $preview_host = strtolower((string)parse_url($api_url, PHP_URL_HOST));
+        if ($known['thumb'] === ''
+            && pc_preview_backfill_host_available($preview_host, $preview_backfills, $preview_stopped_hosts)) {
+            $result = pc_backfill_one_board_preview($pdo, $settings, $admission, $object);
+            $object = $result['object'];
+            if (!empty($result['attempted'])) {
+                $preview_backfills[$preview_host] = (int)($preview_backfills[$preview_host] ?? 0) + 1;
+            }
+            if (!empty($result['stop_host'])) $preview_stopped_hosts[$preview_host] = true;
+        }
         sv_ingest_timeline($pdo,$object,$attr,'');
         $pdo->prepare("UPDATE pc_admissions SET last_checked_at=NOW(),check_failures=0 WHERE id=?")->execute([$admission['id']]);
         pc_reconcile_object($pdo,$settings,(string)$admission['object_id']);
@@ -1217,9 +1235,55 @@ function pc_refresh_prompt_pointers(PDO $pdo, array &$settings): void {
 }
 
 /**
+ * Prepare one board image without ever falling back to a remote original.
+ * Legacy Mastodon rows can be repaired deterministically because its media
+ * storage keeps the small derivative beside the original. Other origins need
+ * an explicit preview URL; absence produces the existing no-preview card.
+ *
+ * @return array{thumb:string,width:int,height:int,original:string}
+ */
+function pc_board_media_view(array $media, array $attachments): array {
+    $original = is_string($media[0] ?? null) ? trim((string)$media[0]) : '';
+    $attachment = is_array($attachments[0] ?? null) ? $attachments[0] : [];
+    $preview = trim((string)($attachment['preview_url'] ?? ''));
+    if ($preview === '' && preg_match('#/original/#', $original)) {
+        $preview = (string)preg_replace('#/original/#', '/small/', $original, 1);
+    }
+    if ($preview === '' && preg_match('#/(?:thumbs?|small|preview)/#i', $original)) {
+        $preview = $original;
+    }
+    if ($preview !== '' && !preg_match('#^https?://#i', $preview)) $preview = '';
+
+    $width = max(0, (int)($attachment['preview_width'] ?? 0));
+    $height = max(0, (int)($attachment['preview_height'] ?? 0));
+    if ($width < 1 || $height < 1) {
+        $width = max(0, (int)($attachment['width'] ?? 0));
+        $height = max(0, (int)($attachment['height'] ?? 0));
+    }
+    if ($width < 1 || $height < 1) {
+        $preview = '';
+        $width = 0;
+        $height = 0;
+    }
+    return ['thumb' => $preview, 'width' => $width, 'height' => $height, 'original' => $original];
+}
+
+/** Render a prepared board preview with geometry present before CSS arrives. */
+function pc_board_preview_html(array $row, string $class = '', string $alt = ''): string {
+    $url = trim((string)($row['thumb'] ?? ''));
+    $width = max(0, (int)($row['thumb_width'] ?? 0));
+    $height = max(0, (int)($row['thumb_height'] ?? 0));
+    if ($url === '' || $width < 1 || $height < 1 || !preg_match('#^https?://#i', $url)) return '';
+    $esc = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    return '<img' . ($class !== '' ? ' class="' . $esc($class) . '"' : '')
+        . ' loading="lazy" decoding="async" width="' . $width . '" height="' . $height
+        . '" src="' . $esc($url) . '" alt="' . $esc($alt) . '">';
+}
+
+/**
  * The current board: photo posts carrying the challenge tag, published inside
  * the active window. Reads the CMS's own snap_ap_timeline — no image is stored
- * here, only the origin permalink + hotlinked thumb. Newest first (ranking by
+ * here, only the origin permalink + hotlinked preview. Newest first (ranking by
  * likes/boosts is the next layer — see NOTE below).
  *
  * @return array<int,array{handle:string,actor_url:string,url:string,thumb:string,
@@ -1237,7 +1301,7 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
     $rows = [];
     try {
         $st = $pdo->prepare(
-            "SELECT t.object_id,t.actor_url,t.actor_handle,t.content,t.media_json,t.tags_json,t.url,
+            "SELECT t.object_id,t.actor_url,t.actor_handle,t.content,t.media_json,t.attachments_json,t.tags_json,t.url,
                     t.published,t.is_boost,a.horsconcours,p.state AS pstate
                FROM pc_admissions a
                JOIN snap_ap_timeline t ON t.object_id=a.object_id
@@ -1252,6 +1316,8 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
             if (!in_array($tag, $tags, true)) continue;
             $media = json_decode((string)($r['media_json'] ?? '[]'), true) ?: [];
             if (count($media) !== 1 || !is_string($media[0]) || trim($media[0]) === '') continue;
+            $attachments = json_decode((string)($r['attachments_json'] ?? '[]'), true) ?: [];
+            $media_view = pc_board_media_view($media, $attachments);
             $handle = trim((string)($r['actor_handle'] ?? ''));
             if ($handle === '') {
                 $actor_url = (string)($r['actor_url'] ?? '');
@@ -1266,7 +1332,9 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
                 'handle'       => $handle,
                 'actor_url'    => (string)($r['actor_url'] ?? ''),
                 'url'          => (string)($r['url'] ?? ''),          // origin permalink (canonical)
-                'thumb'        => (string)($media[0] ?? ''),          // hotlinked, origin-hosted
+                'thumb'        => $media_view['thumb'],               // hotlinked preview, never original
+                'thumb_width'  => $media_view['width'],
+                'thumb_height' => $media_view['height'],
                 'excerpt'      => mb_substr((string)($r['content'] ?? ''), 0, 240),
                 'published'    => (string)($r['published'] ?? ''),
                 'is_boost'     => ((int)($r['is_boost'] ?? 0)) === 1,
@@ -1612,6 +1680,97 @@ function pc_participant_recovery_rows(PDO $pdo, array $settings, string $tag,
     return ['rows'=>$rows,'actors'=>$actors,'errors'=>$errors];
 }
 
+/** Carry REST preview metadata into the authoritative AP object before ingest. */
+function pc_recovery_object_with_previews(array $object, array $row): array {
+    $remote = is_array($row['attachments'] ?? null) ? $row['attachments'] : [];
+    $object_attachments = is_array($object['attachment'] ?? null) ? $object['attachment'] : [];
+    foreach ($object_attachments as $index => &$attachment) {
+        if (!is_array($attachment) || !is_array($remote[$index] ?? null)) continue;
+        $preview = trim((string)($remote[$index]['preview_url'] ?? ''));
+        if ($preview === '' || !preg_match('#^https?://#i', $preview)) continue;
+        $attachment['preview_url'] = $preview;
+        $attachment['preview_width'] = max(0, (int)($remote[$index]['preview_width'] ?? 0));
+        $attachment['preview_height'] = max(0, (int)($remote[$index]['preview_height'] ?? 0));
+    }
+    unset($attachment);
+    $object['attachment'] = $object_attachments;
+    return $object;
+}
+
+/** Resolve a Mastodon-compatible status endpoint from a canonical post/object URL. */
+function pc_preview_status_api_url(string $post_url, string $object_id = ''): string {
+    foreach ([$post_url, $object_id] as $candidate) {
+        $candidate = trim($candidate);
+        $host = strtolower((string)parse_url($candidate, PHP_URL_HOST));
+        $path = trim((string)parse_url($candidate, PHP_URL_PATH), '/');
+        $last = $path === '' ? '' : (string)basename($path);
+        if ($host !== '' && ctype_digit($last)) return 'https://' . $host . '/api/v1/statuses/' . $last;
+        $query = [];
+        parse_str((string)parse_url($candidate, PHP_URL_QUERY), $query);
+        foreach (['id', 'post'] as $key) {
+            $status_id = (string)($query[$key] ?? '');
+            if ($host !== '' && ctype_digit($status_id)) return 'https://' . $host . '/api/v1/statuses/' . $status_id;
+        }
+    }
+    return '';
+}
+
+/** Whether this host still has room in the current sequential cron batch. */
+function pc_preview_backfill_host_available(string $host, array $counts, array $stopped, int $limit = 20): bool {
+    return $host !== '' && empty($stopped[$host]) && (int)($counts[$host] ?? 0) < max(1, $limit);
+}
+
+/**
+ * Enrich one non-derivable board image. The caller runs these sequentially,
+ * caps each host, and stops that host when this result says to stop. Host
+ * backoff is persisted; HTTP 429 uses the origin's Retry-After value.
+ *
+ * @return array{object:array,host:string,attempted:bool,stop_host:bool}
+ */
+function pc_backfill_one_board_preview(PDO $pdo, array &$settings, array $timeline_row, array $object): array {
+    $api_url = pc_preview_status_api_url((string)($timeline_row['post_url'] ?? ''), (string)($timeline_row['object_id'] ?? ''));
+    if ($api_url === '' || !function_exists('sv_fetch_json_meta')) {
+        return ['object' => $object, 'host' => '', 'attempted' => false, 'stop_host' => false];
+    }
+    $host = strtolower((string)parse_url($api_url, PHP_URL_HOST));
+    $backoffs = json_decode((string)($settings['photochallenge_preview_backoff_json'] ?? '{}'), true);
+    if (!is_array($backoffs)) $backoffs = [];
+    if ((int)($backoffs[$host] ?? 0) > time()) {
+        return ['object' => $object, 'host' => $host, 'attempted' => false, 'stop_host' => true];
+    }
+
+    $token = '';
+    if (function_exists('sv_active_search_accounts') && function_exists('sv_search_token_decrypt') && function_exists('sv_search_salt')) {
+        $salt = sv_search_salt($pdo, $settings);
+        foreach (sv_active_search_accounts($pdo) as $account) {
+            if (strtolower((string)($account['instance_host'] ?? '')) !== $host) continue;
+            $token = sv_search_token_decrypt((string)($account['token_enc'] ?? ''), $salt);
+            break;
+        }
+    }
+    [$status, $meta] = sv_fetch_json_meta($api_url, 8, $token);
+    if (!is_array($status)) {
+        $wait = (int)($meta['code'] ?? 0) === 429
+            ? max(60, min(86400, (int)($meta['retry_after'] ?? 900) ?: 900))
+            : 3600;
+        $backoffs[$host] = time() + $wait;
+        sv_set_setting($pdo, $settings, 'photochallenge_preview_backoff_json', json_encode($backoffs, JSON_UNESCAPED_SLASHES));
+        return ['object' => $object, 'host' => $host, 'attempted' => true, 'stop_host' => true];
+    }
+    $metadata = function_exists('sv_rest_photo_metadata') ? sv_rest_photo_metadata($status) : ['attachments' => []];
+    $enriched = pc_recovery_object_with_previews($object, $metadata);
+    $preview = trim((string)($enriched['attachment'][0]['preview_url'] ?? ''));
+    if ($preview !== '') unset($backoffs[$host]);
+    else $backoffs[$host] = time() + 3600;
+    sv_set_setting($pdo, $settings, 'photochallenge_preview_backoff_json', json_encode($backoffs, JSON_UNESCAPED_SLASHES));
+    return [
+        'object' => $enriched,
+        'host' => $host,
+        'attempted' => true,
+        'stop_host' => $preview === '',
+    ];
+}
+
 /** Discover current-tag posts through search accounts AND participant outboxes, then recover them. */
 function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40,
                                    int $actor_offset = 0, int $actor_limit = 0,
@@ -1657,6 +1816,7 @@ function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40,
         if (!is_array($object) || empty($object['id'])) {
             pc_log_entry_failure($pdo,$row,'object_fetch_failed','The origin did not return an ActivityPub object.','open',$run_token); $out['failed']++; continue;
         }
+        $object = pc_recovery_object_with_previews($object, $row);
         // The live admission path deliberately allows #horsconcours outside the
         // competitive window. Recovery used to reject on the timestamp before
         // fetching the object, so it could never see that exception. Read the
@@ -1738,9 +1898,7 @@ function pc_board_html(PDO $pdo, array $settings): string {
     $out .= '<ul class="pc-grid">';
     foreach ($rows as $r) {
         $badge = $r['horsconcours'] ? '<span class="pc-hc" title="hors concours - shown, not ranked">hc</span>' : '';
-        $thumb = $r['thumb'] !== ''
-            ? '<img loading="lazy" src="' . $esc($r['thumb']) . '" alt="">'
-            : '';
+        $thumb = pc_board_preview_html($r);
         /* SECAUDIT 047: scheme-guard federation URL — non-http(s) can never be a live href */
         $__u = (string)($r['url'] ?? ''); $__safe = preg_match('#^https?://#i', $__u) ? $__u : '';
         $out .= '<li class="pc-card">'
@@ -2038,7 +2196,7 @@ function pc_board_embed_html(PDO $pdo, array $settings, ?array $window = null, b
         $safe = preg_match('#^https?://#i', $u) ? $u : '';
         $out .= '<a class="card" href="' . ($safe !== '' ? $esc($safe) : '#') . '" rel="canonical noopener" target="_blank" title="' . $esc($r['excerpt'] ?? '') . '">';
         if (($r['thumb'] ?? '') !== '') {
-            $out .= '<img class="thumb" loading="lazy" src="' . $esc($r['thumb']) . '" alt="Photo by ' . $esc($r['handle'] ?? '') . '">';
+            $out .= pc_board_preview_html($r, 'thumb', 'Photo by ' . (string)($r['handle'] ?? ''));
         } else {
             $out .= '<span class="thumb none">no preview</span>';
         }

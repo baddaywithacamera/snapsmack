@@ -2718,14 +2718,26 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
         $u  = $att['url'] ?? '';
         if (is_array($u)) $u = $u['href'] ?? ($u[0]['href'] ?? '');
         $u  = (string)$u;
+        $preview = $att['preview_url'] ?? ($att['previewUrl'] ?? '');
+        if (is_array($preview)) $preview = $preview['href'] ?? ($preview[0]['href'] ?? '');
+        $preview = (string)$preview;
         $scheme = strtolower((string)parse_url($u, PHP_URL_SCHEME));
         if ($u === '' || ($scheme !== 'http' && $scheme !== 'https')) continue;
+        $preview_scheme = strtolower((string)parse_url($preview, PHP_URL_SCHEME));
+        if ($preview !== '' && $preview_scheme !== 'http' && $preview_scheme !== 'https') $preview = '';
+        if ($preview === '' && preg_match('#/original/#', $u)) {
+            $preview = (string)preg_replace('#/original/#', '/small/', $u, 1);
+        }
+        $preview_meta = is_array($att['meta']['small'] ?? null) ? $att['meta']['small'] : [];
         $meta = [
             'url' => substr($u, 0, 1200),
+            'preview_url' => substr($preview, 0, 1200),
             'type' => substr($mt, 0, 100),
             'description' => mb_substr(trim((string)($att['name'] ?? $att['summary'] ?? '')), 0, 2000),
             'width' => max(0, min(100000, (int)($att['width'] ?? 0))),
             'height' => max(0, min(100000, (int)($att['height'] ?? 0))),
+            'preview_width' => max(0, min(100000, (int)($att['preview_width'] ?? ($preview_meta['width'] ?? 0)))),
+            'preview_height' => max(0, min(100000, (int)($att['preview_height'] ?? ($preview_meta['height'] ?? 0)))),
             'blurhash' => mb_substr((string)($att['blurhash'] ?? ''), 0, 200),
         ];
         $focus = $att['focalPoint'] ?? $att['focus'] ?? null;
@@ -5133,7 +5145,19 @@ function sv_rest_photo_metadata(array $status): array {
         if (!is_array($media) || ($media['type'] ?? '') !== 'image') continue;
         $url = (string)($media['url'] ?? ($media['preview_url'] ?? ''));
         if ($url === '') continue;
-        $attachments[] = ['type' => 'image', 'description' => mb_substr((string)($media['description'] ?? ''), 0, 2000)];
+        $preview = (string)($media['preview_url'] ?? '');
+        $original_meta = is_array($media['meta']['original'] ?? null) ? $media['meta']['original'] : [];
+        $preview_meta = is_array($media['meta']['small'] ?? null) ? $media['meta']['small'] : [];
+        $attachments[] = [
+            'type' => 'image',
+            'url' => $url,
+            'preview_url' => $preview,
+            'width' => max(0, (int)($original_meta['width'] ?? 0)),
+            'height' => max(0, (int)($original_meta['height'] ?? 0)),
+            'preview_width' => max(0, (int)($preview_meta['width'] ?? 0)),
+            'preview_height' => max(0, (int)($preview_meta['height'] ?? 0)),
+            'description' => mb_substr((string)($media['description'] ?? ''), 0, 2000),
+        ];
     }
     return ['attachments' => $attachments,
         'sensitive' => !empty($status['sensitive']),
@@ -5435,6 +5459,58 @@ function sv_fetch_json(string $url, int $timeout = 12): ?array {
     if (strlen($body) > 2097152) return null;   // 2MB
     $doc = json_decode($body, true);
     return is_array($doc) ? $doc : null;
+}
+
+/**
+ * Fetch one REST document with status and Retry-After metadata. Used by slow,
+ * cron-driven enrichment jobs that must back an entire host off on HTTP 429.
+ *
+ * @return array{0:?array,1:array{code:int,retry_after:int}}
+ */
+function sv_photochallenge_retry_after_seconds(string $value, ?int $now = null, int $max = 86400): ?int {
+    $value = trim($value);
+    $max = max(0, $max);
+    if (preg_match('/^\d+$/', $value)) return min($max, (int)$value);
+    if ($value === '' || preg_match('/^[+-]/', $value)) return null;
+    $when = strtotime($value);
+    if ($when === false) return null;
+    $seconds = $when - ($now ?? time());
+    return $seconds < 0 ? null : min($max, $seconds);
+}
+
+function sv_fetch_json_meta(string $url, int $timeout = 12, string $token = ''): array {
+    $meta = ['code' => 0, 'retry_after' => 0];
+    if (!function_exists('curl_init')) return [null, $meta];
+    $res = sv_resolve_public($url);
+    if ($res === null) return [null, $meta];
+    $headers = [
+        'Accept: application/json',
+        'User-Agent: SnapSmack-FEDIVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+    ];
+    if ($token !== '') $headers[] = 'Authorization: Bearer ' . $token;
+    $retry_after = 0;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_RESOLVE => $res['pin'],
+        CURLOPT_TIMEOUT => $timeout,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_HEADERFUNCTION => static function ($ch, string $header) use (&$retry_after): int {
+            if (stripos($header, 'Retry-After:') === 0) {
+                $retry_after = sv_photochallenge_retry_after_seconds(substr($header, 12)) ?? 0;
+            }
+            return strlen($header);
+        },
+    ]);
+    $body = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    $meta = ['code' => $code, 'retry_after' => $retry_after];
+    if ($body === false || $code < 200 || $code >= 300 || strlen($body) > 2097152) return [null, $meta];
+    $doc = json_decode($body, true);
+    return [is_array($doc) ? $doc : null, $meta];
 }
 
 /**

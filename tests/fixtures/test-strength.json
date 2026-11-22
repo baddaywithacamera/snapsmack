@@ -1494,6 +1494,21 @@
         "predicates": 10,
         "thresholds": []
     },
+    "photochallenge-board-preview-regression.php": {
+        "assertions": 25,
+        "predicates": 6,
+        "thresholds": [
+            120,
+            200,
+            400,
+            400,
+            640,
+            640,
+            2000,
+            3000,
+            86400
+        ]
+    },
     "photochallenge-cron-guard-regression.php": {
         "assertions": 0,
         "predicates": 1,
