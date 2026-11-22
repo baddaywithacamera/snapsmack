@@ -45,7 +45,7 @@ def _first_prop(bodies: list, prop: str) -> str:
 def parse_skin_css(css_text: str) -> dict:
     """Extract typography, colours, and post-spacing rules from a skin stylesheet."""
     body_rules = _extract_rule_bodies(css_text, r"body")
-    entry_rules = _extract_rule_bodies(css_text, r"\.entry-content")
+    entry_rules = _extract_rule_bodies(css_text, r"(?:\.entry-content|\.post-content)")
     p_rules = _extract_rule_bodies(css_text, r"\.entry-content\s*>\s*p(?:\s*,[^{]*)?")
     frame_rules = _extract_rule_bodies(css_text, r"\.entry-content\s*>\s*\.snap-inline-frame")
     owned_rules = _extract_rule_bodies(css_text, r"\.smacktalk-owned-photo")
@@ -170,7 +170,7 @@ def parse_sybu_skin(skin: dict) -> dict:
             fg = v
             break
     body_font = ""
-    for k in ("body_font_family", "font_family"):
+    for k in ("body_font_family", "body_font", "font_family"):
         v = str(opts.get(k) or "").strip()
         if v:
             body_font = v.split(",")[0].strip(" '\"")

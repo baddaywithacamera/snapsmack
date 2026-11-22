@@ -529,11 +529,12 @@ class _Objects(QPyTextObject):
             painter.drawText(box.adjusted(8, 4, -8, -4), Qt.AlignCenter | Qt.TextWordWrap, what)
         if cap_text and cap_h > 0:
             cap_font, cap_color = self.canvas.caption_font_and_color()
+            cap_align = str(self.canvas._caption_style.get("align") or "left").lower()
             painter.save()
             painter.setFont(cap_font)
             painter.setPen(QColor(cap_color))
             cap_rect = QRect(x, box.bottom() + 2, iw, cap_h - 2)
-            align_flag = Qt.AlignLeft if align == "left" else (Qt.AlignRight if align == "right" else Qt.AlignHCenter)
+            align_flag = Qt.AlignHCenter if cap_align == "center" else (Qt.AlignRight if cap_align == "right" else Qt.AlignLeft)
             painter.drawText(cap_rect, align_flag | Qt.AlignVCenter, cap_text)
             painter.restore()
 
@@ -806,6 +807,7 @@ class BiggieCanvas(QTextEdit):
             "font_pt": 10.5,
             "color": "",
             "italic": True,
+            "align": "left",
         }
         self.default_captions = {}       # asset_uuid or img_id -> default caption/title
         self._preview_width = 760
@@ -846,6 +848,7 @@ class BiggieCanvas(QTextEdit):
     def set_skin_typography(self, *, body_font: str = "", body_pt: float = 0.0,
                             caption_font: str = "", caption_pt: float = 0.0,
                             caption_color: str = "", caption_italic: bool = True,
+                            caption_align: str = "",
                             line_height_pct: float = 0.0, para_margin_bottom: float = 0.0,
                             image_margin_top: float = 0.0, image_margin_bottom: float = 0.0):
         if body_font and str(body_font).strip():
@@ -868,6 +871,8 @@ class BiggieCanvas(QTextEdit):
             self._caption_style["font_pt"] = float(caption_pt)
         self._caption_style["color"] = str(caption_color or "").strip()
         self._caption_style["italic"] = bool(caption_italic)
+        if caption_align and str(caption_align).strip().lower() in ("left", "center", "right"):
+            self._caption_style["align"] = str(caption_align).strip().lower()
         self.apply_surface_palette(self._surface_palette)
         self._refresh_block_spacing()
         self.document().markContentsDirty(0, self.document().characterCount())
