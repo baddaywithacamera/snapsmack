@@ -97,15 +97,42 @@ class RightPhotosTray(QWidget):
             self.setFixedWidth(30)
 
 
+def photo_orientation_badge(width: int, height: int, path: str = "") -> tuple:
+    """Return (badge_code, ratio) where badge_code is 'P', 'L', or 'SQ'."""
+    w, h = int(width or 0), int(height or 0)
+    if (w <= 0 or h <= 0) and path:
+        try:
+            from PySide6.QtGui import QImageReader, QImageIOHandler
+            reader = QImageReader(path)
+            sz = reader.size()
+            if sz.isValid():
+                w, h = sz.width(), sz.height()
+                rot_bit = int(QImageIOHandler.Transformation.TransformationRotate90.value)
+                flags = int(getattr(reader.transformation(), "value", reader.transformation()))
+                if flags & rot_bit:
+                    w, h = h, w
+        except Exception:
+            pass
+    if w <= 0 or h <= 0:
+        return ("", 1.0)
+    ratio = w / float(max(1, h))
+    if ratio > 1.08:
+        return ("L", ratio)
+    if ratio < 0.92:
+        return ("P", ratio)
+    return ("SQ", ratio)
+
+
 class PhotoThumbTile(QPushButton):
-    """Square thumbnail tile with selection border and status badges."""
+    """Square thumbnail tile with letterboxed true-aspect preview and status badges."""
 
     selectionClicked = Signal(int, bool)  # (bucket_index, toggle_multi)
 
     def __init__(self, index: int, pixmap: QPixmap, selected: bool = False,
                  is_cover: bool = False, edited: bool = False,
                  in_slapper: bool = False, tile_size: int = 92,
-                 asset_uuid: str = "", parent=None):
+                 asset_uuid: str = "", orientation: str = "",
+                 ratio_text: str = "", parent=None):
         super().__init__(parent)
         self._index = index
         self._asset_uuid = str(asset_uuid or "")
@@ -114,6 +141,8 @@ class PhotoThumbTile(QPushButton):
         self._is_cover = is_cover
         self._edited = edited
         self._in_slapper = in_slapper
+        self._orientation = str(orientation or "")
+        self._ratio_text = str(ratio_text or "")
         self._tile_size = max(56, int(tile_size))
         self._drag_start: QPoint | None = None
         self.setObjectName("PhotoThumbTile")
@@ -211,12 +240,28 @@ class PhotoThumbTile(QPushButton):
             p.setFont(f_sm)
             p.drawText(ed_rect, Qt.AlignCenter, "EDITED")
 
-            ver_rect = QRect(w - 27, h - 20, 22, 15)
+            ver_rect = QRect(w - 27, h - 38 if self._orientation else h - 20, 22, 15)
             p.setPen(Qt.NoPen)
             p.setBrush(QColor(10, 12, 10, 210))
             p.drawRoundedRect(ver_rect, 3, 3)
             p.setPen(QColor("#ffffff"))
             p.drawText(ver_rect, Qt.AlignCenter, "v2")
+
+        # Bottom-right P / L / SQ orientation badge (+ optional ratio)
+        if self._orientation:
+            ori_txt = f"{self._orientation} · {self._ratio_text}" if self._ratio_text else self._orientation
+            badge_w = max(22, len(ori_txt) * 6 + 10)
+            ori_rect = QRect(w - badge_w - 5, h - 20, badge_w, 15)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(10, 12, 10, 220))
+            p.drawRoundedRect(ori_rect, 3, 3)
+            ori_col = (
+                "#6ecbff" if self._orientation == "P"
+                else ("#39FF14" if self._orientation == "L" else "#f5b82e")
+            )
+            p.setPen(QColor(ori_col))
+            p.setFont(f_badge)
+            p.drawText(ori_rect, Qt.AlignCenter, ori_txt)
 
         # Multi-select check badge (top-left, or below EDITED badge)
         chk_rect = self._check_rect()

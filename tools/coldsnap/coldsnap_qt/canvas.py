@@ -1222,14 +1222,17 @@ class BiggieCanvas(QTextEdit):
         self.setFocus()
 
     def insert_block_at_cursor(self, kind: str = "para", *, position: str = "after",
-                               ordered_list=None, dropcap: bool = False):
+                               ordered_list=None, dropcap: bool = False, block_pos=None):
         """Insert a new block directly after (or before) the currently focused/selected block."""
         if kind not in BLOCK_KINDS:
             kind = "para"
         doc = self.document()
-        sel_pos = self._selected_block_pos if self._selected_block_pos is not None else self._selected_obj_pos
+        sel_pos = (
+            block_pos if block_pos is not None
+            else (self._selected_block_pos if self._selected_block_pos is not None else self._selected_obj_pos)
+        )
         if sel_pos is not None:
-            block = doc.findBlock(sel_pos)
+            block = doc.findBlock(int(sel_pos))
         else:
             block = self.textCursor().block()
         if not block.isValid():

@@ -39,7 +39,7 @@ from .slapper_handoff import (ReturnWatch, find_executable,
                               focus_window, launch as launch_slapper)
 from .body_editor import BodyEditor
 from .block_tray import BlockAction, BlockTray
-from .photo_tray import RightPhotosTray, PhotoThumbTile
+from .photo_tray import RightPhotosTray, PhotoThumbTile, photo_orientation_badge
 from .drafts_panel import BatchRail, default_draft_row
 from .mosaic_layout import tile_rects as _tile_rects
 
@@ -92,9 +92,12 @@ class MosaicPreview(QWidget):
             # not ask again.
             self.update()
 
-        # False means the loader already has four decodes in flight. Nothing to
-        # do: those will finish, call their callbacks, and repaint us.
-        self._photos.request(path, edge, arrived)
+        # False means the loader already has four decodes in flight. Schedule a
+        # brief retry so large mosaics never stall after the first four tiles.
+        if not self._photos.request(path, edge, arrived):
+            if not getattr(self, "_retry_pending", False):
+                self._retry_pending = True
+                QTimer.singleShot(60, lambda: (setattr(self, "_retry_pending", False), self.update()))
         return self._ready.get(key)
 
     @staticmethod
@@ -105,6 +108,15 @@ class MosaicPreview(QWidget):
     def paintEvent(self, _event):
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor("#090b0a"))
+        if not self._tiles:
+            self._rects = []
+            painter.setPen(QColor(theme.DIM))
+            painter.drawText(
+                self.rect().adjusted(12, 12, -12, -12),
+                Qt.AlignCenter | Qt.TextWordWrap,
+                "LIVE PREVIEW — tick 1 or more photos below",
+            )
+            return
         inner = self.rect().adjusted(7, 7, -7, -7)
         cells = self.tile_rects(inner.width(), inner.height(), len(self._tiles),
                                 self._layout_name)
@@ -854,23 +866,27 @@ class TakeMode(QWidget):
         menu = QMenu(self)
         c = self.body.canvas
         sel_pos = c._selected_block_pos if c._selected_block_pos is not None else c._selected_obj_pos
+        target_block_pos = (
+            int(sel_pos) if sel_pos is not None
+            else c.textCursor().block().position()
+        )
         on_object = bool(
             (sel_pos is not None and c._object_at(sel_pos) is not None)
-            or c._object_at(c.textCursor().block().position()) is not None
+            or c._object_at(target_block_pos) is not None
         )
         if on_object:
-            menu.addAction("Paragraph before", lambda: c.insert_block_at_cursor("para", position="before"))
-            menu.addAction("Paragraph after", lambda: c.insert_block_at_cursor("para", position="after"))
+            menu.addAction("Paragraph before", lambda bp=target_block_pos: c.insert_block_at_cursor("para", position="before", block_pos=bp))
+            menu.addAction("Paragraph after", lambda bp=target_block_pos: c.insert_block_at_cursor("para", position="after", block_pos=bp))
             menu.addSeparator()
         for label, cb in (
-            ("Paragraph", lambda: c.insert_block_at_cursor("para", position="after")),
-            ("Heading", lambda: c.insert_block_at_cursor("h2", position="after")),
-            ("Subhead", lambda: c.insert_block_at_cursor("h3", position="after")),
-            ("Quote", lambda: c.insert_block_at_cursor("quote", position="after")),
-            ("Pull quote", lambda: c.insert_block_at_cursor("pullquote", position="after")),
-            ("Drop cap", lambda: c.insert_block_at_cursor("para", position="after", dropcap=True)),
-            ("Bullet list", lambda: c.insert_block_at_cursor("para", position="after", ordered_list=False)),
-            ("Numbered list", lambda: c.insert_block_at_cursor("para", position="after", ordered_list=True)),
+            ("Paragraph", lambda bp=target_block_pos: c.insert_block_at_cursor("para", position="after", block_pos=bp)),
+            ("Heading", lambda bp=target_block_pos: c.insert_block_at_cursor("h2", position="after", block_pos=bp)),
+            ("Subhead", lambda bp=target_block_pos: c.insert_block_at_cursor("h3", position="after", block_pos=bp)),
+            ("Quote", lambda bp=target_block_pos: c.insert_block_at_cursor("quote", position="after", block_pos=bp)),
+            ("Pull quote", lambda bp=target_block_pos: c.insert_block_at_cursor("pullquote", position="after", block_pos=bp)),
+            ("Drop cap", lambda bp=target_block_pos: c.insert_block_at_cursor("para", position="after", dropcap=True, block_pos=bp)),
+            ("Bullet list", lambda bp=target_block_pos: c.insert_block_at_cursor("para", position="after", ordered_list=False, block_pos=bp)),
+            ("Numbered list", lambda bp=target_block_pos: c.insert_block_at_cursor("para", position="after", ordered_list=True, block_pos=bp)),
             ("Divider", c.insert_hr),
             ("Space", c._edit_spacer),
             ("Mosaic", self._insert_mosaic),
@@ -878,7 +894,7 @@ class TakeMode(QWidget):
             ("Photo from tray", self._open_photos_tray_for_img),
             ("2 columns", lambda: c.insert_columns(2)),
             ("3 columns", lambda: c.insert_columns(3)),
-            ("Raw", lambda: c.insert_block_at_cursor("raw", position="after")),
+            ("Raw", lambda bp=target_block_pos: c.insert_block_at_cursor("raw", position="after", block_pos=bp)),
         ):
             menu.addAction(label, cb)
         return menu
@@ -1116,7 +1132,8 @@ class TakeMode(QWidget):
             existing_span = (block.position() + existing.start(),
                              block.position() + existing.end())
 
-        result = self._mosaic_dialog(existing_order, existing_layout)
+        preselected = [] if existing_order else self.selected_tray_indices()
+        result = self._mosaic_dialog(existing_order, existing_layout, preselected_order=preselected)
         if not result:
             return
         chosen, layout_name = result
@@ -1143,7 +1160,12 @@ class TakeMode(QWidget):
                 existing_order.append(uuid_to_index[str(identity)])
             elif str(identity).isdigit() and 1 <= int(identity) <= len(self._bucket):
                 existing_order.append(int(identity) - 1)
-        result = self._mosaic_dialog(existing_order, (layout or "").lower() or None)
+        preselected = [] if existing_order else self.selected_tray_indices()
+        result = self._mosaic_dialog(
+            existing_order,
+            (layout or "").lower() or None,
+            preselected_order=preselected,
+        )
         if not result:
             self.body.canvas._pending_obj_pos = None
             return
@@ -1325,38 +1347,34 @@ class TakeMode(QWidget):
         self._changed()
         return True
 
-    def _mosaic_dialog(self, existing_order, existing_layout):
-        """The one mosaic builder (live preview, tick photos, drag order, layout,
-        rotate). Returns (chosen 1-based bucket positions, layout) or None."""
+    def _mosaic_dialog(self, existing_order, existing_layout, preselected_order=None):
+        """The one mosaic builder (live preview, thumbnail grid, drag/move order,
+        layout, rotate). Returns (chosen 1-based bucket positions, layout) or None."""
         existing = bool(existing_order)
+        initial_checked = list(existing_order) if existing else [
+            int(i) for i in (preselected_order or []) if 0 <= int(i) < len(self._bucket)
+        ]
         rotation_originals = {}
         dialog = QDialog(self)
         dialog.setWindowTitle("Edit mosaic" if existing else "Build mosaic")
-        dialog.resize(900, 760)
+        dialog.resize(940, 780)
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel(
-            "Choose exactly which photos belong in this mosaic. Drag them—or use "
-            "the controls—to set its order. The post's photo order is unchanged."))
+            "Choose which photos belong in this mosaic. Click tiles to include/exclude, "
+            "or drag in the preview to swap positions. Hover a tile for its filename."))
         preview = MosaicPreview()
         layout.addWidget(preview)
         preview_hint = QLabel("LIVE PREVIEW — drag one image onto another to swap them")
         preview_hint.setAlignment(Qt.AlignCenter)
         layout.addWidget(preview_hint)
-        photos = QListWidget()
-        # Without this the thumbnails above are drawn at the ~16px default and
-        # are no more use than the filename was.
-        photos.setIconSize(QSize(96, 96))
-        photos.setDragDropMode(QListWidget.InternalMove)
-        # Checkboxes own inclusion. Row selection is only the current photo for
-        # move/rotate controls, avoiding Windows Ctrl-click multi-select rules.
-        photos.setSelectionMode(QAbstractItemView.SingleSelection)
+
         # SS-1049: photographs already used by OTHER mosaics in this post are
-        # not offered again. The ones belonging to the mosaic being edited stay,
-        # ticked, which is what existing_order is doing here.
+        # not offered again.
         _used = self._mosaic_used_indices(existing_order)
-        display_order = existing_order + [i for i in range(len(self._bucket))
-                                          if i not in existing_order
-                                          and i not in _used]
+        display_order = list(initial_checked) + [
+            i for i in range(len(self._bucket))
+            if i not in initial_checked and i not in _used
+        ]
         if not display_order:
             QMessageBox.information(
                 self, "Every photo is already in a mosaic",
@@ -1367,36 +1385,22 @@ class TakeMode(QWidget):
                 "instead of starting another."
                 % len(self._bucket))
             return None
+
         for bucket_index in display_order:
             image = self._bucket[bucket_index]
             if bucket_index not in rotation_originals:
                 rotation_originals[bucket_index] = (
                     image.local_path, image.original_path, image.width, image.height)
-            shape, ratio = self._image_shape(image)
-            name = image.filename or os.path.basename(image.local_path)
-            item = QListWidgetItem(f"{name}    {shape} · {ratio:.2f}:1")
-            # A thumbnail, because a filename is not how a photographer knows
-            # which photograph is which. This list was name + shape + ratio and
-            # nothing else, which is SS-1033: with 53 in the bucket the operator
-            # could not tell them apart, and that is what stopped the post.
-            # thumb_square is the pre-made small file every other list in this
-            # app already uses for its icons -- see the bucket rail below, which
-            # does exactly this. Falling back to the original only when there is
-            # no thumbnail yet.
-            icon = load_pixmap(image.thumb_square or image.local_path, 96)
-            if icon:
-                item.setIcon(QIcon(icon))
-            else:
-                # An explicit state rather than a silently blank row, so a
-                # photograph that will not decode is visible as a problem.
-                item.setToolTip("This photograph could not be previewed: "
-                                + (image.local_path or name))
-            item.setData(Qt.UserRole, bucket_index)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsDragEnabled)
-            item.setCheckState(Qt.Checked if existing and bucket_index in existing_order
-                               else Qt.Unchecked)
-            photos.addItem(item)
-        layout.addWidget(photos, 1)
+
+        tile_scroll = QScrollArea()
+        tile_scroll.setWidgetResizable(True)
+        tile_scroll.setFrameShape(QFrame.NoFrame)
+        tile_host = QWidget()
+        tile_grid = QGridLayout(tile_host)
+        tile_grid.setContentsMargins(4, 4, 4, 4)
+        tile_grid.setSpacing(8)
+        tile_scroll.setWidget(tile_host)
+        layout.addWidget(tile_scroll, 1)
 
         selection_row = QHBoxLayout()
         select_all = QPushButton("Select all")
@@ -1416,8 +1420,8 @@ class TakeMode(QWidget):
         layout.addLayout(preset_row)
 
         arrows = QHBoxLayout()
-        up = QPushButton("Move up")
-        down = QPushButton("Move down")
+        up = QPushButton("Move earlier")
+        down = QPushButton("Move later")
         rotate_left = QPushButton("↶ Rotate left")
         rotate_right = QPushButton("↷ Rotate right")
         suggest = QPushButton("✨ Suggest arrangement")
@@ -1426,65 +1430,115 @@ class TakeMode(QWidget):
         arrows.addStretch(1); arrows.addWidget(suggest)
         layout.addLayout(arrows)
 
-        def checked_count():
-            return sum(photos.item(i).checkState() == Qt.Checked
-                       for i in range(photos.count()))
+        checked_set = set(initial_checked)
+        active_bucket_idx = [display_order[0] if display_order else None]
+        tiles_by_idx = {}
+
+        def checked_indices():
+            return [bi for bi in display_order if bi in checked_set]
 
         def refresh_preview():
-            tiles = []
-            for i in range(photos.count()):
-                item = photos.item(i)
-                if item.checkState() == Qt.Checked:
-                    bucket_index = int(item.data(Qt.UserRole))
-                    tiles.append((i, self._bucket[bucket_index].local_path))
-            preview.set_mosaic(tiles, preset.currentData())
+            tiles = [
+                (pos, self._bucket[bi].local_path)
+                for pos, bi in enumerate(display_order)
+                if bi in checked_set
+            ]
+            preview.set_mosaic(tiles, preset.currentData() or "asymmetric")
 
         def refresh_layouts():
-            count = checked_count()
+            inc = checked_indices()
+            count = len(inc)
             previous = preset.currentData()
             preset.blockSignals(True)
             preset.clear()
-            for label, value in self._mosaic_layouts(count):
-                preset.addItem(label, value)
-            old = preset.findData(previous)
-            preset.setCurrentIndex(old if old >= 0 else 0)
+            layouts_list = self._mosaic_layouts(count)
+            if layouts_list:
+                for label, value in layouts_list:
+                    preset.addItem(label, value)
+                preset.setEnabled(True)
+                old = preset.findData(previous)
+                preset.setCurrentIndex(old if old >= 0 else 0)
+            else:
+                preset.addItem("(tick 1+ photos to choose layout)", "")
+                preset.setEnabled(False)
             preset.blockSignals(False)
-            # SS-1049 acceptance (c), the coordinator's suggestion: say how many
-            # of the bucket are still unused, so he can see he has not missed
-            # any. Only shown once something IS used -- on a first mosaic
-            # "53 of 53 unused" is noise.
             if _used:
                 selected_count.setText(
-                    f"{count} of {photos.count()} included "
+                    f"{count} of {len(display_order)} included "
                     f"— {len(self._bucket) - len(_used)} of "
                     f"{len(self._bucket)} unused in this post")
             else:
-                selected_count.setText(f"{count} of {photos.count()} included")
+                selected_count.setText(f"{count} of {len(display_order)} included")
             refresh_preview()
 
+        def rebuild_grid():
+            while tile_grid.count():
+                item = tile_grid.takeAt(0)
+                w = item.widget()
+                if w:
+                    w.deleteLater()
+            tiles_by_idx.clear()
+            cols = 6
+            tile_px = 122
+            for grid_pos, bi in enumerate(display_order):
+                image = self._bucket[bi]
+                ori_code, ratio = photo_orientation_badge(
+                    image.width, image.height, image.local_path)
+                name = image.filename or os.path.basename(image.local_path)
+                pix = load_pixmap(image.thumb_aspect or image.local_path, tile_px) or QPixmap()
+                is_inc = bi in checked_set
+                tile = PhotoThumbTile(
+                    bi,
+                    pix,
+                    selected=is_inc,
+                    is_cover=(bi == self._cover_idx),
+                    edited=bool(getattr(image, "slapper_edited_path", "")),
+                    tile_size=tile_px,
+                    asset_uuid=str(getattr(image, "asset_uuid", "")),
+                    orientation=ori_code,
+                    ratio_text=f"{ratio:.2f}:1",
+                )
+                tile.setToolTip(f"{name}\n{ori_code} · {ratio:.2f}:1")
+                if not pix or pix.isNull():
+                    tile.setToolTip("This photograph could not be previewed: " + (image.local_path or name))
+
+                def _on_tile_click(b_idx=bi):
+                    active_bucket_idx[0] = b_idx
+                    if b_idx in checked_set:
+                        checked_set.remove(b_idx)
+                    else:
+                        checked_set.add(b_idx)
+                    rebuild_grid()
+                    refresh_layouts()
+
+                tile.clicked.connect(lambda _=False, b_idx=bi: _on_tile_click(b_idx))
+                tiles_by_idx[bi] = tile
+                tile_grid.addWidget(tile, grid_pos // cols, grid_pos % cols)
+
         def set_all(state):
-            for i in range(photos.count()):
-                photos.item(i).setCheckState(state)
+            if state == Qt.Checked:
+                checked_set.update(display_order)
+            else:
+                checked_set.clear()
+            rebuild_grid()
+            refresh_layouts()
 
         def swap_rows(first, second):
             if first == second or first < 0 or second < 0:
                 return
-            low, high = sorted((first, second))
-            high_item = photos.takeItem(high)
-            low_item = photos.takeItem(low)
-            photos.insertItem(low, high_item)
-            photos.insertItem(high, low_item)
+            if first >= len(display_order) or second >= len(display_order):
+                return
+            display_order[first], display_order[second] = display_order[second], display_order[first]
+            rebuild_grid()
             refresh_preview()
 
         def rotate_current(degrees):
-            row = photos.currentRow()
-            if row < 0:
+            bi = active_bucket_idx[0]
+            if bi is None or bi not in display_order:
                 QMessageBox.information(dialog, "Choose a photo",
-                                        "Click one photo row before rotating it.")
+                                        "Click one photo tile before rotating it.")
                 return
-            item = photos.item(row)
-            bucket_index = int(item.data(Qt.UserRole))
-            image = self._bucket[bucket_index]
+            image = self._bucket[bi]
             try:
                 from PIL import Image, ImageOps
                 target_dir = os.path.join(tempfile.gettempdir(), "coldsnap-rotated")
@@ -1503,58 +1557,70 @@ class TakeMode(QWidget):
                 if not image.original_path:
                     image.original_path = image.local_path
                 image.local_path = target
-                shape, ratio = self._image_shape(image)
-                name = image.filename or os.path.basename(image.local_path)
-                item.setText(f"{name}    {shape} · {ratio:.2f}:1")
+                image.thumb_aspect = ""
+                image.thumb_square = ""
+                rebuild_grid()
                 refresh_preview()
             except Exception as exc:
                 QMessageBox.warning(dialog, "Could not rotate photo", str(exc))
 
         def suggest_arrangement():
-            included = [photos.item(i) for i in range(photos.count())
-                        if photos.item(i).checkState() == Qt.Checked]
-            if not included:
+            inc = checked_indices()
+            if not inc:
                 return
-            # Local, deterministic assist: similar shapes stay together and a
-            # three-photo hero is chosen from the strongest outlier.
-            included.sort(key=lambda item: self._image_shape(
-                self._bucket[int(item.data(Qt.UserRole))])[1])
-            excluded = [photos.item(i) for i in range(photos.count())
-                        if photos.item(i).checkState() != Qt.Checked]
-            while photos.count():
-                photos.takeItem(0)
-            for item in included + excluded:
-                photos.addItem(item)
-            if len(included) == 3:
-                ratios = [self._image_shape(self._bucket[int(i.data(Qt.UserRole))])[1]
-                          for i in included]
-                preset.setCurrentIndex(preset.findData(
-                    "one-top" if sum(r > 1.08 for r in ratios) >= 2 else "one-left"))
-            elif len(included) >= 4:
-                preset.setCurrentIndex(preset.findData("asymmetric"))
+            # Group by orientation (P, SQ, L) and aspect ratio so similar shapes sit cleanly
+            ori_rank = {"P": 0, "SQ": 1, "L": 2, "": 3}
+            def _key(bi):
+                im = self._bucket[bi]
+                ori, r = photo_orientation_badge(im.width, im.height, im.local_path)
+                return (ori_rank.get(ori, 3), r)
+            inc.sort(key=_key)
+            exc = [bi for bi in display_order if bi not in checked_set]
+            display_order[:] = inc + exc
+            oris = [photo_orientation_badge(self._bucket[bi].width, self._bucket[bi].height, self._bucket[bi].local_path)[0]
+                    for bi in inc]
+            ratios = [photo_orientation_badge(self._bucket[bi].width, self._bucket[bi].height, self._bucket[bi].local_path)[1]
+                      for bi in inc]
+            if len(inc) == 3:
+                if all(o == "P" for o in oris) or all(o == "SQ" for o in oris):
+                    target_layout = "three-across"
+                elif sum(o == "L" for o in oris) >= 2:
+                    target_layout = "one-top"
+                else:
+                    target_layout = "one-left"
+                idx_l = preset.findData(target_layout)
+                if idx_l >= 0:
+                    preset.setCurrentIndex(idx_l)
+            elif len(inc) == 2:
+                target_layout = "rows" if all(r > 1.3 for r in ratios) else "asymmetric"
+                idx_l = preset.findData(target_layout)
+                if idx_l >= 0:
+                    preset.setCurrentIndex(idx_l)
+            elif len(inc) >= 4:
+                target_layout = "square" if all(o == "SQ" for o in oris) else "asymmetric"
+                idx_l = preset.findData(target_layout)
+                if idx_l >= 0:
+                    preset.setCurrentIndex(idx_l)
+            rebuild_grid()
+            refresh_preview()
 
         select_all.clicked.connect(lambda: set_all(Qt.Checked))
         clear_all.clicked.connect(lambda: set_all(Qt.Unchecked))
         rotate_left.clicked.connect(lambda: rotate_current(90))
         rotate_right.clicked.connect(lambda: rotate_current(-90))
         suggest.clicked.connect(suggest_arrangement)
-        photos.itemChanged.connect(lambda _item: refresh_layouts())
-        photos.model().rowsMoved.connect(lambda *_args: refresh_preview())
         preset.currentIndexChanged.connect(lambda _index: refresh_preview())
         preview.swapRequested.connect(swap_rows)
-        refresh_layouts()
-        if existing_layout:
-            found = preset.findData(existing_layout)
-            if found >= 0:
-                preset.setCurrentIndex(found)
 
         def move(delta):
-            row = photos.currentRow()
-            target = row + delta
-            if row >= 0 and 0 <= target < photos.count():
-                item = photos.takeItem(row)
-                photos.insertItem(target, item)
-                photos.setCurrentRow(target)
+            bi = active_bucket_idx[0]
+            if bi is None or bi not in display_order:
+                return
+            pos = display_order.index(bi)
+            target = pos + delta
+            if 0 <= target < len(display_order):
+                display_order[pos], display_order[target] = display_order[target], display_order[pos]
+                rebuild_grid()
                 refresh_preview()
 
         up.clicked.connect(lambda: move(-1))
@@ -1563,15 +1629,29 @@ class TakeMode(QWidget):
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
+
+        # Expose dialog internals for headless/UI regression tests
+        dialog._mosaic_preview = preview
+        dialog._mosaic_preset = preset
+        dialog._mosaic_tiles = tiles_by_idx
+        dialog._mosaic_checked_indices = checked_indices
+        dialog._mosaic_selected_count_lbl = selected_count
+        dialog._mosaic_suggest_btn = suggest
+
+        rebuild_grid()
+        refresh_layouts()
+        if existing_layout:
+            found = preset.findData(existing_layout)
+            if found >= 0:
+                preset.setCurrentIndex(found)
+
         if dialog.exec() != QDialog.Accepted:
             for bucket_index, state in rotation_originals.items():
                 image = self._bucket[bucket_index]
                 image.local_path, image.original_path, image.width, image.height = state
             return None
 
-        chosen = [int(photos.item(i).data(Qt.UserRole)) + 1
-                  for i in range(photos.count())
-                  if photos.item(i).checkState() == Qt.Checked]
+        chosen = [bi + 1 for bi in display_order if bi in checked_set]
         if not chosen:
             for bucket_index, state in rotation_originals.items():
                 image = self._bucket[bucket_index]
@@ -1580,7 +1660,7 @@ class TakeMode(QWidget):
             return None
         # A rotate changed a working copy: the canvas must repaint from the new file.
         self.body.set_bucket([im.local_path for im in self._bucket])
-        return chosen, str(preset.currentData())
+        return chosen, str(preset.currentData() or "asymmetric")
 
     def _add_photos(self):
         from .pickers import pick_images
@@ -2467,11 +2547,14 @@ class TakeMode(QWidget):
                 and str(getattr(im, "asset_uuid", "")) == self._slapper_asset_uuid
             )
             pix = load_pixmap(im.thumb_aspect or im.local_path, tile_px)
+            ori_code, ratio = photo_orientation_badge(im.width, im.height, im.local_path)
             tile = PhotoThumbTile(
                 i, pix, selected=is_selected, is_cover=is_cover,
                 edited=edited, in_slapper=in_slapper, tile_size=tile_px,
-                asset_uuid=str(getattr(im, "asset_uuid", "")))
-            tile.setToolTip(im.filename or os.path.basename(im.local_path))
+                asset_uuid=str(getattr(im, "asset_uuid", "")),
+                orientation=ori_code)
+            name = im.filename or os.path.basename(im.local_path)
+            tile.setToolTip(f"{name}\n{ori_code} · {ratio:.2f}:1" if ori_code else name)
             tile.setAccessibleName(
                 "Selected photograph" if is_selected else "Select photograph")
             tile.selectionClicked.connect(
