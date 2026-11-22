@@ -16,6 +16,17 @@ section until the tag was being assembled, which would have told owners their
 photographs come back in a build that does not carry the change. The branches
 are pushed and waiting on review.
 
+- **TILEZ (skin package, 0.2.79): you can set how your photo captions look.**
+  Five new settings in a CAPTIONS section — colour, size, italic or upright,
+  the gap above the caption, and alignment. **Nothing changes unless you move
+  one**: every setting starts at exactly what TILEZ already renders, so an
+  existing site looks identical after this update. Alignment starts at
+  "Follow the post text", which is what captions have always done. These are
+  also the values COLD SNAP's preview reads, so what you see before
+  publishing matches the page instead of being approximated. The caption font
+  is not here yet; it is waiting on the fallback repair in this same release.
+  **Repackage TILEZ 0.2.79 + reinstall to ship.** (SS-1495)
+
 - **A restore brings your photographs back, and tells you honestly when it
   cannot.** The admin restore path never reconciled media: database rows came
   back pointing at photographs, thumbnails, assets and branding that were not
