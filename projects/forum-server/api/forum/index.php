@@ -1111,6 +1111,19 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && cty
             api_error(400, 'INVALID_FLAG', 'flag must be one of: none, chat, support, question, brag.');
         }
         $pdo->prepare("UPDATE ss_forum_threads SET flag = ? WHERE id = ?")->execute([$flag, $thread_id]);
+
+        // A moderator changing what KIND of post somebody else's thread is --
+        // support, question, chat, brag -- changes how it is read and where it
+        // surfaces. Own thread is ordinary use.
+        //
+        // NOTE THE NAME: 'thread.flag' (singular) is THIS, the post kind.
+        // 'thread.flags' (plural) is pin/lock, a few lines below. Those two
+        // being one letter apart is asking for trouble and I have said so in
+        // the room rather than rename a value on my own.
+        if (!$is_own) {
+            forum_log_mod_action($pdo, $install, 'thread.flag', 'thread', $thread_id,
+                'set flag=' . $flag . " on another install's thread");
+        }
         respond(['status' => 'updated', 'flag' => $flag]);
     }
 
@@ -1416,6 +1429,16 @@ if (count($parts) === 3 && $parts[0] === 'replies' && ctype_digit($parts[1]) && 
         $pdo->prepare(
             "UPDATE ss_forum_threads SET is_solved = 1, solved_reply_id = ? WHERE id = ?"
         )->execute([$reply_id, $thread_id]);
+
+        // Accepting an answer on SOMEBODY ELSE'S thread is moderator power: it
+        // changes what the thread says the answer is. The thread author doing
+        // it on their own thread is ordinary use, same distinction as edit and
+        // delete. Missed first time round -- the migration comment promised
+        // answer.accept and nothing wrote it, which Muse caught.
+        if (!$is_thread_author) {
+            forum_log_mod_action($pdo, $install, 'answer.accept', 'reply', $reply_id,
+                'accepted an answer on thread ' . $thread_id);
+        }
         respond(['status' => 'solved', 'solved_reply_id' => $reply_id]);
     }
 
@@ -1423,6 +1446,14 @@ if (count($parts) === 3 && $parts[0] === 'replies' && ctype_digit($parts[1]) && 
         $pdo->prepare(
             "UPDATE ss_forum_threads SET is_solved = 0, solved_reply_id = NULL WHERE id = ?"
         )->execute([$thread_id]);
+
+        // Taking an accepted answer away from someone else's thread is the
+        // same power in reverse, and arguably the one more worth having on the
+        // record.
+        if (!$is_thread_author) {
+            forum_log_mod_action($pdo, $install, 'answer.unaccept', 'thread', $thread_id,
+                'removed the accepted answer');
+        }
         respond(['status' => 'unsolved']);
     }
 }

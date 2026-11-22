@@ -825,8 +825,8 @@
         ]
     },
     "forum-moderation-is-logged-regression.php": {
-        "assertions": 31,
-        "predicates": 21,
+        "assertions": 40,
+        "predicates": 31,
         "thresholds": [
             7,
             42,

@@ -4,7 +4,26 @@ declare(strict_types=1);
 // SNAPSMACK_EOF_HEADER
 // Last non-empty line must be: // ===== SNAPSMACK EOF =====
 
-// EVERY ACT OF MODERATOR POWER LEAVES A ROW. (SS-1510)
+// ACTS OF MODERATOR POWER LEAVE A ROW. (SS-1510)
+//
+// THIS FILE USED TO CLAIM "EVERY", AND THAT WAS FALSE. Muse's review of
+// 692c9b01 found two mutating moderator powers writing no row: accepting or
+// un-accepting an answer on someone else's thread, and setting the post flag
+// on someone else's thread. Thirteen of fifteen were logged. Both are fixed
+// now, but the headline is corrected too, because the reason the gap survived
+// was this test.
+//
+// WHY IT SURVIVED, which matters more than the two missing calls. Stage 2 below
+// checks a HAND-WRITTEN list of action names against the source -- and that
+// list came out of the same reading of the code that decided what to log. It
+// could not possibly catch a power I had not thought of: the question it asked
+// was "is everything on my list logged", not "is everything that needs logging
+// on my list". A test built from the same assumption as the code it checks
+// confirms the assumption, it does not test it.
+//
+// So Stage 2 now also derives the set of mutating, moderator-gated routes FROM
+// THE SOURCE and demands each one log something, with exemptions named
+// individually. A new power added later fails this by default.
 //
 // Nothing did, before this. No audit table existed in any forum schema and no
 // logging call existed anywhere in the API: deletions, locks, board changes
@@ -92,7 +111,7 @@ catch (Throwable $e) { $threw = true; }
 $check('with no log table it returns false and does NOT throw', !$threw && ($ok ?? true) === false);
 
 // ─────────────────────────────────────────────────────────────────────────────
-echo "\nSTAGE 2 — EVERY MODERATOR POWER HAS A CALL SITE\n";
+echo "\nSTAGE 2 — THE MODERATOR POWERS HAVE CALL SITES\n";
 // ─────────────────────────────────────────────────────────────────────────────
 // Read, not run. If a power exists with no logging call beside it, the trail
 // has a hole exactly where someone would look.
@@ -113,6 +132,13 @@ foreach ([
     'attachment.hide'    => "hiding another install's image",
     'attachment.restore' => 'restoring a hidden image',
     'install.role'       => 'promoting or demoting an install',
+    // The three Muse's review found missing. 'thread.flag' (singular) is the
+    // post KIND -- support/question/chat/brag. 'thread.flags' (plural), above,
+    // is pin/lock. One letter apart, which I have flagged in the room as worth
+    // renaming rather than renaming a value on my own.
+    'answer.accept'      => "accepting an answer on another install's thread",
+    'answer.unaccept'    => 'removing an accepted answer',
+    'thread.flag'        => "setting the post kind on another install's thread",
 ] as $action => $what) {
     // The action name has to appear AS AN ARGUMENT to the logger, not merely
     // somewhere in the file. The first version of this checked the two
@@ -120,6 +146,116 @@ foreach ([
     // satisfied it while nothing was logged at all.
     $check("{$what} is logged ({$action})",
            preg_match('/forum_log_mod_action\(\$pdo,[^;]*\'' . preg_quote($action, '/') . '\'/s', $src) === 1);
+}
+
+// ── Stage 2b: the list above cannot prove completeness, so this does ────────
+// Derived from the source rather than from my understanding of it. Every route
+// block that BOTH mutates a forum table AND consults a moderator distinction
+// must contain a logging call. Anything that legitimately does not is named
+// here, one by one, with the reason -- so a power added later fails this check
+// until somebody either logs it or writes down why it is not a power.
+//
+// WHAT THIS DOES NOT CATCH, said plainly so nobody trusts it further than it
+// goes: it works per ROUTE BLOCK, so a route that logs ONE branch and forgets
+// another passes. That is exactly the shape of the second fault Muse found --
+// PATCH /threads/{id} already logged thread.edit and thread.flags, so the
+// missing flag branch sat inside a block that looked covered. This check would
+// have caught the solve route, which logged nothing at all, and would have
+// missed the flag branch. Branch-level completeness still needs a reader.
+$exempt = [
+    'the shared prelude: defines and helper functions, not a route',
+    'GET a thread: bumps the view counter; reading is not moderator power',
+    'POST threads: creating your own thread, with the board counter',
+    'POST a reply: creating your own reply, with the counters',
+    'react on a thread: your own reaction',
+    'react on a reply: your own reaction',
+];
+$chunks = preg_split('/\n\/\/ ─{10,}\n/u', $src);
+$mutates = '/\b(?:UPDATE ss_forum_|INSERT INTO ss_forum_|DELETE FROM ss_forum_)/';
+$modgate = '/is_install_mod\(|\bis_mod\(\)|\$has_power|\$is_own|\$is_thread_author|\$is_mod_caller/';
+$unlogged = 0;
+foreach ($chunks as $chunk) {
+    if (preg_match($mutates, $chunk) !== 1) { continue; }
+    if (preg_match($modgate, $chunk) !== 1) { continue; }
+    if (!str_contains($chunk, 'forum_log_mod_action(')) { $unlogged++; }
+}
+$check('every mutating, moderator-gated route logs, bar the ' . count($exempt)
+       . ' written down as not powers',
+       $unlogged === count($exempt));
+if ($unlogged !== count($exempt)) {
+    echo "        expected " . count($exempt) . " unlogged blocks, found {$unlogged}.\n";
+    echo "        A NEW ONE MEANS: log it, or add it to \$exempt with a reason.\n";
+}
+
+// ── Stage 2c: the two things mutation testing found unverified ──────────────
+// Both added because a mutation survived, and both are the same lesson twice:
+// a fix without a test is a fix waiting to be undone.
+
+// THE OWN-VERSUS-OTHER DISTINCTION. Logging the thread author accepting an
+// answer on their OWN thread would fill the moderation trail with ordinary use,
+// which makes the trail useless in the other direction -- too much is as bad as
+// too little when somebody is trying to read what a moderator did. Forcing the
+// guard to always-true survived every check until this one.
+foreach ([
+    'answer.accept'   => '$is_thread_author',
+    'answer.unaccept' => '$is_thread_author',
+    'thread.flag'     => '$is_own',
+] as $action => $guard) {
+    // ANCHORED ON THE CALL, NOT THE BARE STRING. Looking for "'thread.flag'"
+    // found a CODE COMMENT first -- one I wrote myself, explaining that
+    // thread.flag and thread.flags are different things -- and measured back
+    // from there, so the check failed on correct code. Same family of mistake
+    // as the one already recorded in Stage 2: a string can appear in a comment
+    // as easily as in a call, and a check has to say which it wants.
+    $at = false;
+    if (preg_match('/forum_log_mod_action\(\$pdo, \$install, \'' . preg_quote($action, '/') . '\'/',
+                   $src, $m, PREG_OFFSET_CAPTURE) === 1) {
+        $at = $m[0][1];
+    }
+    $before = $at === false ? '' : substr($src, max(0, $at - 400), 400);
+    $check("{$action} is logged only when it is NOT the author's own ({$guard})",
+           $at !== false && str_contains($before, 'if (!' . $guard . ')'));
+}
+
+// THE MIGRATION RUNS BEFORE THE CODE THAT NEEDS IT.
+// This is the fix for the first half of Muse's FAIL on 692c9b01, and it had no
+// test of its own until a mutation moved the schema sync back after the file
+// copy and nothing noticed. The order is the whole point: the logger FAILS
+// OPEN, so new API files on a database with no ss_forum_mod_log record nothing
+// and report nothing wrong. A missing audit trail does not announce itself.
+$upd_path = $root . '/smack-central/sc-update.php';
+$check('the updater exists where this test expects it', is_file($upd_path));
+if (is_file($upd_path)) {
+    $upd       = (string) file_get_contents($upd_path);
+    $schema_at = strpos($upd, 'forum-schema.sql');
+    $copy_at   = strpos($upd, "dirname(__DIR__) . '/api/forum/'");
+    $check('the updater applies the forum schema at all', $schema_at !== false);
+    $check('and copies the forum API files at all', $copy_at !== false);
+    $check('THE SCHEMA IS APPLIED BEFORE THE API FILES ARE COPIED',
+           $schema_at !== false && $copy_at !== false && $schema_at < $copy_at);
+
+    // AND THE BLOCK IS STILL REACHABLE. The check above is a position check: it
+    // compares where two strings appear. A mutation that replaced the block's
+    // guard with if (false) left both strings exactly where they were, so the
+    // ordering check passed while the schema never ran at all. Position and
+    // reachability are different properties and the first does not imply the
+    // second. Pinning the real guard is the cheapest way to hold the second.
+    $check('and the schema block is guarded on sc_forum_db() existing, not disabled',
+           str_contains($upd, "if (function_exists('sc_forum_db')) {"));
+    $check('and it is the forum DB it applies the schema to',
+           str_contains($upd, 'sc_apply_schema($forum_db'));
+}
+
+// AND THE MANUAL UPGRADE PATH, which the self-updater does not cover. The
+// README listed v2 and v3 and stopped, while v4, v5 and v6 shipped -- so anyone
+// upgrading by hand never applied them and had no reason to suspect it.
+$readme_path = $root . '/projects/forum-server/README.md';
+if (is_file($readme_path)) {
+    $readme = (string) file_get_contents($readme_path);
+    foreach (['v2', 'v3', 'v4', 'v5', 'v6'] as $v) {
+        $check("the README tells a manual upgrader to apply {$v}",
+               str_contains($readme, "forum-schema-{$v}-migration.sql"));
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,7 +325,9 @@ if ($failures) {
 }
 echo "SS-1510 PASS — the logger was run against a real database and records who,\n";
 echo "what, which and when (and says \"god\" rather than leaving a blank); all\n";
-echo "thirteen moderator powers have a call site; nothing can edit the log; the\n";
+echo "SIXTEEN moderator powers have a call site, and no mutating moderator-gated\n";
+echo "route is unlogged beyond the six named as not powers; nothing can edit the\n";
+echo "log; the\n";
 echo "table ships in both schemas; and the panel no longer holds the God key.\n";
 echo "NOT PROVED HERE: the call sites firing. The router dispatches on include\n";
 echo "and cannot be executed by a test, so Stage 2 reads it. A live check needs\n";
