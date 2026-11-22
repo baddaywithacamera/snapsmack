@@ -23,16 +23,19 @@ are pushed and waiting on review.
   images — and crossed the footer as well. It now sits behind everything, and
   the map itself is unchanged: same artwork, same opacity slider, same
   on/off switch, still showing in the margins around your pictures.
-  **Repackage RATIONAL GEO 2.1.45 + reinstall to ship.** (SS-1518)
+  Also in this version: on a tablet held upright, the archive wall picks up
+  the same narrower margin the header uses there, so the two line up at that
+  size as well — the 1024 and wider case shipped in 2.1.44 above.
+  **Repackage RATIONAL GEO 2.1.45 + reinstall to ship.** (SS-1518, SS-1517)
 
 - **RATIONAL GEO (skin package, 2.1.44): the archive no longer has two
   different left margins.** On screens between roughly 1025 and 1400 pixels
   wide — most laptops, and a tablet held landscape — the wall of photographs
   ran right to both edges of the screen while the site name above it stayed
   indented, so the page looked misaligned. The wall now sits in the same
-  measure as the header at every supported width. Nothing about your photo
-  sizes, columns or Content Width setting changes. **Repackage RATIONAL GEO
-  2.1.44 + reinstall to ship.** (SS-1517)
+  measure as the header, checked at 1024, 1280, 1366 and 1920. Nothing about
+  your photo sizes, columns or Content Width setting changes. **Repackage
+  RATIONAL GEO 2.1.44 + reinstall to ship.** (SS-1517)
 
 - **A restore brings your photographs back, and tells you honestly when it
   cannot.** The admin restore path never reconciled media: database rows came

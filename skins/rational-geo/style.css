@@ -1679,6 +1679,14 @@ input[type="reset"]:active {
     padding: 0 var(--space-md);
   }
 
+  /* The wall follows the header down to this step too. Muse caught the gap on
+     review: the 1024 step was matched and this one was not, so the two parted
+     company by 8px here — the same fault one breakpoint lower. (SS-1517) */
+  #justified-grid {
+    padding-left: var(--space-md);
+    padding-right: var(--space-md);
+  }
+
   .rg-masthead {
     font-size: 1.2rem;
   }

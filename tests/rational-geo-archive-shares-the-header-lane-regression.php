@@ -81,6 +81,19 @@ $check('  and the wall steps down with it, to the same token',
        preg_match('/#justified-grid\s*\{[^}]*padding-left:\s*var\(--space-lg\)/s', $narrow) === 1
        && preg_match('/#justified-grid\s*\{[^}]*padding-right:\s*var\(--space-lg\)/s', $narrow) === 1);
 
+// EVERY STEP THE HEADER TAKES, not just the first one. The 768 step was
+// missed on the first pass and Muse caught it on review: the header narrowed
+// again and the wall did not, which is the same 8px parting one breakpoint
+// lower. Checked as a pair at each breakpoint so a future step cannot be
+// added to one and forgotten on the other.
+$narrower = substr($css, (int)strpos($css, '@media (max-width: 768px)'));
+$narrower = substr($narrower, 0, (int)strpos($narrower, '@media (max-width: 480px)'));
+$check('at 768 the header steps down again',
+       preg_match('/\.rg-header-inside\s*\{[^}]*var\(--space-md\)/s', $narrower) === 1);
+$check('  and the wall steps down with it there too',
+       preg_match('/#justified-grid\s*\{[^}]*padding-left:\s*var\(--space-md\)/s', $narrower) === 1
+       && preg_match('/#justified-grid\s*\{[^}]*padding-right:\s*var\(--space-md\)/s', $narrower) === 1);
+
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 2 — THE ARCHIVE STILL RENDERS, AND STILL HAS NO archive-page CLASS\n";
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,9 +161,10 @@ if ($failures) {
     foreach ($failures as $f) { fwrite(STDERR, "  - {$f}\n"); }
     exit(1);
 }
-echo "SS-1517 PASS — the wall takes the header's own spacing token at both\n";
-echo "steps, the archive still renders through the real strict path with no\n";
-echo "archive-page class, and the dead masonry rules are gone.\n";
+echo "SS-1517 PASS — the wall takes the header's own spacing token at every\n";
+echo "step the header makes, the archive still renders through the real strict\n";
+echo "path with no archive-page class, and the dead masonry rules are gone.\n";
 echo "NOT PROVED HERE: the rendered geometry. It was measured in a browser at\n";
-echo "1024/1280/1366/1920 and those numbers are in the commit message.\n";
+echo "768, 1024, 1280, 1366 and 1920, and those numbers are in the commit\n";
+echo "messages.\n";
 // ===== SNAPSMACK EOF =====
