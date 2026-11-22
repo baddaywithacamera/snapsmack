@@ -16,6 +16,20 @@ section until the tag was being assembled, which would have told owners their
 photographs come back in a build that does not carry the change. The branches
 are pushed and waiting on review.
 
+- **A deleted forum thread can be brought back.** Deleting a thread or a reply
+  only ever marked it deleted and left it in the database, but there was no way
+  to reach it again: the only undo in the whole forum API was for images. So a
+  thread removed by mistake was gone in practice, and getting it back meant
+  hand-written SQL against the live forum database. There are now two
+  moderator-only routes that undo a deletion, and they put the board's counters
+  back exactly as they were — a thread's replies return with it, a reply
+  deleted while its thread was deleted does not get counted onto a board that
+  cannot show it, and a stored count that has drifted is recomputed from the
+  replies themselves rather than trusted. A restored reply does not silently
+  become the accepted answer again; a moderator marks it. Being able to put a
+  thread back is not permission to take one down: the command-line tool still
+  refuses to delete, deliberately.
+
 - **A restore brings your photographs back, and tells you honestly when it
   cannot.** The admin restore path never reconciled media: database rows came
   back pointing at photographs, thumbnails, assets and branding that were not

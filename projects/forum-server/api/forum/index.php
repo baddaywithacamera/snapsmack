@@ -17,6 +17,7 @@
  *   POST   threads/{id}/follow                Follow a thread
  *   DELETE threads/{id}/follow                Unfollow a thread
  *   DELETE threads/{id}                       Soft-delete own thread (mod: any)
+ *   POST   threads/{id}/restore               Undo a soft-deleted thread (mod)
  *   POST   threads/{id}/replies               Add a reply (rate-limited)
  *   POST   threads/{id}/attachments           Attach an image to a thread (own/mod; multipart "image")
  *   POST   replies/{id}/attachments           Attach an image to a reply (own/mod; multipart "image")
@@ -24,6 +25,7 @@
  *   POST   attachments/{id}/restore           Un-hide an image (mod)
  *   PATCH  replies/{id}                       Edit own reply body (mod: any)
  *   DELETE replies/{id}                       Soft-delete own reply (mod: any)
+ *   POST   replies/{id}/restore               Undo a soft-deleted reply (mod)
  *   POST   replies/{id}/solve                 Mark reply as accepted answer (thread author or mod)
  *   DELETE replies/{id}/solve                 Unmark accepted answer (thread author or mod)
  *   POST   threads/{id}/react                 Add / toggle emoji reaction on thread
@@ -55,6 +57,7 @@ require_once __DIR__ . '/config.php';
 // behaviour can be executed by a test; this router cannot be (it dispatches
 // on include), which is why the other forum regressions read it instead.
 require_once __DIR__ . '/mod-log.php';
+require_once __DIR__ . '/restore.php';
 
 // ── Attachment / upload config (guarded defaults — override in config.php) ─────
 if (!defined('FORUM_UPLOAD_DIR'))       define('FORUM_UPLOAD_DIR', __DIR__ . '/uploads');
@@ -1226,6 +1229,48 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'threads' && ct
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// POST /threads/{id}/restore  — bring back a soft-deleted thread (mod only).
+//
+// The delete above only sets is_deleted = 1, so the row was always still here
+// — but until this route existed there was no way back to it except hand-written
+// SQL against the live database. A soft delete with no undo is a hard delete
+// with extra steps. POST /attachments/{id}/restore has done this for images
+// since the start; threads and replies simply never got the matching half.
+//
+// THE COUNTERS ARE THE WHOLE DIFFICULTY. Deleting a thread took its replies off
+// the board's reply_count as well as its thread_count, so restoring has to put
+// both back. Getting that arithmetic wrong is not hypothetical: the comment on
+// the delete path above records "0 THREADS / 1 REPLY" on foundtextures.ca,
+// shipped because delete did half the sum. This route is the same risk from the
+// other direction.
+//
+// So the live reply count is RECOUNTED from the replies table rather than taken
+// from the stored thread.reply_count. The stored value should agree, but if it
+// has drifted for any reason, trusting it would write that drift onto the
+// board's counter permanently. Recounting also repairs the thread's own figure.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($method === 'POST' && count($parts) === 3 && $parts[0] === 'threads'
+    && ctype_digit($parts[1]) && $parts[2] === 'restore') {
+    $mod     = is_mod();
+    $install = $mod ? null : require_auth();
+    if (!$mod && !is_install_mod($install)) {
+        api_error(403, 'FORBIDDEN', 'Only moderators can restore a deleted thread.');
+    }
+    $thread_id = (int)$parts[1];
+    $pdo       = get_pdo();
+
+    // The arithmetic is in restore.php so a test can run it. See that file.
+    $result = forum_restore_thread($pdo, $thread_id);
+    if (isset($result['error'])) {
+        api_error(404, 'THREAD_NOT_FOUND', 'No deleted thread with that id.');
+    }
+
+    forum_log_mod_action($pdo, $install, 'thread.restore', 'thread', $thread_id,
+        'restored with ' . (int)$result['reply_count'] . ' live replies');
+    respond($result);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /threads/{id}/replies
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'POST'
@@ -1384,6 +1429,41 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'replies' && ct
             "deleted another install's reply");
     }
     respond(['status' => 'deleted']);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /replies/{id}/restore  — bring back a soft-deleted reply (mod only).
+//
+// Mirrors the reply delete above, including the part that is easy to get wrong:
+// the board's reply_count is only touched WHEN THE PARENT THREAD IS LIVE.
+// Deleting a thread already removed all of its replies from the board's figure,
+// so adding this one back while the thread is still deleted would count a reply
+// the board cannot see. The delete path guards the same case in the same way and
+// says why; this is that guard in reverse.
+//
+// Restoring a reply does NOT re-solve the thread. Deleting the accepted answer
+// unsolves it, but whether the restored reply is still the accepted answer is a
+// human judgement, and silently reinstating it would change a thread's answer
+// without anyone choosing to. The moderator can mark it solved again.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($method === 'POST' && count($parts) === 3 && $parts[0] === 'replies'
+    && ctype_digit($parts[1]) && $parts[2] === 'restore') {
+    $mod     = is_mod();
+    $install = $mod ? null : require_auth();
+    if (!$mod && !is_install_mod($install)) {
+        api_error(403, 'FORBIDDEN', 'Only moderators can restore a deleted reply.');
+    }
+    $reply_id = (int)$parts[1];
+    $pdo      = get_pdo();
+
+    $result = forum_restore_reply($pdo, $reply_id);
+    if (isset($result['error'])) {
+        api_error(404, 'REPLY_NOT_FOUND', 'No deleted reply with that id.');
+    }
+
+    forum_log_mod_action($pdo, $install, 'reply.restore', 'reply', $reply_id,
+        'thread_id=' . (int)$result['thread_id']);
+    respond(['status' => 'restored']);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -419,6 +419,21 @@ class Forum:
     def follow(self, thread_id: int) -> None:
         self._call("POST", f"threads/{thread_id}/follow", {})
 
+    # ── undo a deletion ──────────────────────────────────────────────────────
+    # There is no delete method on this client ON PURPOSE, and adding restore
+    # does not change that: deleting stays something a human does. What was
+    # missing is the way BACK from a delete someone else already made. A thread
+    # or reply that has been soft-deleted is still in the database with
+    # is_deleted = 1, but until the server grew these two routes the only way to
+    # recover one was hand-written SQL against the live forum database.
+    #
+    # Mod-only at the server, which will answer 403 for an ordinary install.
+    def restore_thread(self, thread_id: int) -> dict:
+        return self._call("POST", f"threads/{thread_id}/restore", {})
+
+    def restore_reply(self, reply_id: int) -> dict:
+        return self._call("POST", f"replies/{reply_id}/restore", {})
+
     # ── who am I ─────────────────────────────────────────────────────────────
     def me(self) -> dict:
         """This key's own identity and rank. GET /me, added for exactly this.

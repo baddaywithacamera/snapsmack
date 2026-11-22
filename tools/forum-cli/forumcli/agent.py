@@ -12,7 +12,9 @@ ENTRY = "fc"
 
 REFUSALS = [
     "THERE IS NO DELETE. Threads and replies soft-delete through the API and "
-    "this tool does not expose it. Ask a human.",
+    "this tool does not expose it. Ask a human. `restore` is the other "
+    "direction and IS exposed: it undoes a soft-delete somebody already made. "
+    "Being able to put a thread back is not permission to take one down.",
     "It is inert without a key. A stolen copy of this tool is a dead thing.",
     "It will not invent a board. `board-new` needs role 3, and says so when "
     "the key has less.",
@@ -114,6 +116,17 @@ COMMANDS = [
 
     {"name": "pin", "does": "Pin or unpin a thread.", "returns": "status",
      "args": ["ID", "--off"], "example": ENTRY + " pin 42", "notes": "Role 2."},
+
+    {"name": "restore", "does": "Undo a soft-deleted thread, or a reply with "
+                                "--reply.",
+     "returns": "status, reply_count (threads)", "args": ["ID", "--reply"],
+     "example": ENTRY + " restore 42",
+     "notes": "Role 2. The only way back from a delete: the row was never "
+              "gone, but nothing could reach it. Refuses an id that is not "
+              "actually deleted, because restoring a live thread would count "
+              "it onto the board a second time. A restored reply does NOT "
+              "become the accepted answer again; mark it solved if it should "
+              "be."},
 
     {"name": "move", "does": "Move a thread to another board.",
      "returns": "status, category_id, moved_from", "args": ["ID", "--board N"],

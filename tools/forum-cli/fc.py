@@ -392,6 +392,20 @@ def cmd_pin(args):
     return 0
 
 
+def cmd_restore(args):
+    if args.reply:
+        res = _forum(args).restore_reply(args.id)
+        _out(args, res, "Reply " + str(args.id) + " restored.")
+        return 0
+    res = _forum(args).restore_thread(args.id)
+    count = res.get("reply_count") if isinstance(res, dict) else None
+    note = "Thread " + str(args.id) + " restored."
+    if count is not None:
+        note += " " + str(count) + " live replies came back with it."
+    _out(args, res, note)
+    return 0
+
+
 def cmd_move(args):
     res = _forum(args).move_thread(args.id, args.board)
     _out(args, res, "Thread " + str(args.id) + " moved to board "
@@ -540,6 +554,12 @@ def build_parser():
     pn.add_argument("id", type=int)
     pn.add_argument("--off", action="store_true")
     pn.set_defaults(func=cmd_pin)
+
+    rs = sub.add_parser("restore")
+    rs.add_argument("id", type=int)
+    rs.add_argument("--reply", action="store_true",
+                    help="the id is a reply id, not a thread id")
+    rs.set_defaults(func=cmd_restore)
 
     mv = sub.add_parser("move")
     mv.add_argument("id", type=int)
