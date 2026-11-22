@@ -177,3 +177,60 @@ def test_ss1514_open_published_runs_off_gui_thread(monkeypatch, tmp_path):
         assert "Loaded after delay." in mode.body.toPlainText()
     finally:
         mode.close()
+
+
+def test_ss1514_open_draft_button_lists_and_loads_saved_draft(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
+    app = _app()
+    app.setStyleSheet(theme.stylesheet())
+    mode = TakeMode(lambda: {"url": "https://example.com"})
+    mode.resize(1400, 900)
+    mode.show()
+    app.processEvents()
+    mode._clear()
+    try:
+        from PySide6.QtWidgets import QDialog, QPushButton
+        open_draft_btns = [b for b in mode.findChildren(QPushButton) if b.text() == "Open draft…"]
+        assert len(open_draft_btns) == 1
+
+        p1 = _make_photo(tmp_path / "draft01.jpg")
+        mode._add_photo_paths([p1], insert=False)
+        uid = mode._bucket[0].asset_uuid
+        mode.title_edit.setText("Saved Local Story")
+        mode.body.canvas.from_blocks([
+            {"type": "para", "text": "Paragraph one."},
+            {"type": "image", "img_id": f"asset:{uid}", "asset_uuid": uid, "width_ratio": 1.0},
+            {"type": "para", "text": "Paragraph two."},
+        ])
+        mode._changed()
+        mode._autosave_now()
+        saved_id = mode._editing_id
+        draft_path = mode.rail.ensure_session()._draft_path(saved_id)
+        mtime_before = os.stat(draft_path).st_mtime_ns
+
+        # Clear editor to simulate landing on an empty published post
+        mode._clear()
+        assert mode.title_edit.text() == ""
+
+        seen = {}
+        orig_build = TakeMode._build_open_draft_dialog
+
+        def _auto_pick(self_mode, entries):
+            dlg = orig_build(self_mode, entries)
+            seen["item_text"] = dlg._choices.item(0).text()
+            dlg._choices.setCurrentRow(0)
+            QTimer.singleShot(0, dlg.accept)
+            return dlg
+
+        monkeypatch.setattr(TakeMode, "_build_open_draft_dialog", _auto_pick)
+        mode._open_draft()
+        app.processEvents()
+
+        assert "Saved Local Story" in seen["item_text"]
+        assert "3 blocks" in seen["item_text"]
+        assert mode._editing_id == saved_id
+        assert mode.title_edit.text() == "Saved Local Story"
+        assert len(mode.body.canvas.to_blocks()) == 3
+        assert os.stat(draft_path).st_mtime_ns == mtime_before
+    finally:
+        mode.close()

@@ -418,11 +418,14 @@ class TakeMode(QWidget):
         open_btn = QPushButton("Open published…")
         open_btn.setToolTip("Bring an existing site post and its bucket into COLD TAKE")
         open_btn.clicked.connect(self._open_published)
+        open_draft_btn = QPushButton("Open draft…")
+        open_draft_btn.setToolTip("Open a saved local draft from your COLD TAKE session")
+        open_draft_btn.clicked.connect(self._open_draft)
         ai_btn = QPushButton("✨ AI FILL")
         ai_btn.setToolTip("Uses this site's prompt to fill all supported metadata: "
                           "post fields from the lead photo and ALT for every photo.")
         ai_btn.clicked.connect(self._ai_fill)
-        for b in (add_btn, open_btn, ai_btn):
+        for b in (add_btn, open_btn, open_draft_btn, ai_btn):
             b.setStyleSheet("padding: 5px 7px; font-size: 11px;")
             brow.addWidget(b)
         brow.addStretch(1)
@@ -1441,11 +1444,33 @@ class TakeMode(QWidget):
         tile_grid.setContentsMargins(4, 4, 4, 4)
         tile_grid.setSpacing(8)
         tile_scroll.setWidget(tile_host)
+        tile_scroll.setMinimumHeight(290)
+        preview_pane.setMinimumHeight(240)
         splitter = QSplitter(Qt.Vertical)
         splitter.addWidget(preview_pane)
         splitter.addWidget(tile_scroll)
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 1)
+        splitter.setChildrenCollapsible(False)
+        splitter.setStretchFactor(0, 55)
+        splitter.setStretchFactor(1, 45)
+        _settings = QSettings("SnapSmack", "ColdSnap")
+        _saved_sizes = _settings.value("take/mosaic_splitter_sizes")
+        if isinstance(_saved_sizes, (list, tuple)) and len(_saved_sizes) == 2:
+            try:
+                _s0, _s1 = int(_saved_sizes[0]), int(_saved_sizes[1])
+                if _s0 >= 240 and _s1 >= 290:
+                    splitter.setSizes([_s0, _s1])
+                else:
+                    splitter.setSizes([400, 330])
+            except (TypeError, ValueError):
+                splitter.setSizes([400, 330])
+        else:
+            splitter.setSizes([400, 330])
+
+        def _save_splitter(*_args):
+            _settings.setValue("take/mosaic_splitter_sizes", splitter.sizes())
+
+        splitter.splitterMoved.connect(_save_splitter)
+        dialog.finished.connect(_save_splitter)
         layout.addWidget(splitter, 1)
 
         selection_row = QHBoxLayout()
@@ -1906,6 +1931,95 @@ class TakeMode(QWidget):
         if "error" in outcome:
             raise outcome["error"]
         return outcome.get("value")
+
+    @staticmethod
+    def _draft_block_count(draft) -> int:
+        import json
+        raw_blocks = getattr(draft, "blocks_json", "") or ""
+        if raw_blocks:
+            try:
+                parsed = json.loads(raw_blocks)
+                if isinstance(parsed, list):
+                    return len(parsed)
+            except (TypeError, ValueError):
+                pass
+        cap = (getattr(draft, "caption", "") or "").strip()
+        if not cap:
+            return 0
+        return len([p for p in re.split(r"\n\s*\n", cap) if p.strip()])
+
+    def _collect_local_drafts(self):
+        """Return (session, draft) pairs for all local drafts in this mode, newest first."""
+        seen = set()
+        entries = []
+        active_session = self.rail.ensure_session()
+        sessions = [active_session]
+        try:
+            for s in O.SessionStore().list():
+                if s.mode == self.SUITE_MODE and s.session_id != active_session.session_id:
+                    sessions.append(s)
+        except Exception:  # noqa: BLE001
+            pass
+        for s in sessions:
+            try:
+                for d in s.list_drafts():
+                    if d.draft_id not in seen:
+                        seen.add(d.draft_id)
+                        entries.append((s, d))
+            except Exception:  # noqa: BLE001
+                continue
+        entries.sort(
+            key=lambda pair: (str(getattr(pair[1], "updated_at", "") or ""),
+                              str(getattr(pair[1], "created_at", "") or "")),
+            reverse=True,
+        )
+        return entries
+
+    def _build_open_draft_dialog(self, entries):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Open local draft")
+        dialog.resize(620, 440)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel("Choose a saved local draft to load into COLD TAKE:"))
+
+        choices = QListWidget()
+        for idx, (_sess, draft) in enumerate(entries):
+            title = str(getattr(draft, "title", "") or "Untitled")
+            date_s = str(getattr(draft, "updated_at", "") or getattr(draft, "post_date", "") or getattr(draft, "created_at", "") or "")[:19].replace("T", " ")
+            n_blocks = self._draft_block_count(draft)
+            n_photos = len(getattr(draft, "images", None) or [])
+            linked = f" · linked #{draft.remote_post_id}" if getattr(draft, "remote_post_id", None) else ""
+            label = f"{title}   [{n_blocks} blocks, {n_photos} photos{linked}]"
+            if date_s:
+                label += f"   — {date_s}"
+            item = QListWidgetItem(label)
+            item.setData(Qt.UserRole, idx)
+            choices.addItem(item)
+        if choices.count() > 0:
+            choices.setCurrentRow(0)
+        layout.addWidget(choices, 1)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Open)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        choices.itemDoubleClicked.connect(lambda _item: dialog.accept())
+        layout.addWidget(buttons)
+        dialog._choices = choices
+        return dialog
+
+    def _open_draft(self):
+        entries = self._collect_local_drafts()
+        if not entries:
+            QMessageBox.information(self, "No saved drafts", "There are no saved drafts in your COLD TAKE sessions yet.")
+            return
+        dialog = self._build_open_draft_dialog(entries)
+        if dialog.exec() != QDialog.Accepted or not dialog._choices.currentItem():
+            return
+        idx = int(dialog._choices.currentItem().data(Qt.UserRole))
+        _sess, draft = entries[idx]
+        n_blocks = self._draft_block_count(draft)
+        self._edit(draft)
+        self.save_state.setText(f"Opened draft \"{draft.title or 'Untitled'}\" ({n_blocks} blocks)")
 
     def _open_published(self, *, choose_fn=None):
         poster, _url = self._poster_and_url()

@@ -73,7 +73,7 @@ def test_mosaic_preview_matches_biggie_and_site_geometry(tmp_path):
 
             # Also verify against mosaic_site_layout.compute_layout directly
             images = [{"width": w, "height": h, "src": p} for (w, h), p in zip(sizes, paths)]
-            ref_w = 1200.0 if col_width > 520 else float(col_width)
+            ref_w = 1200.0 if (col_width > 520 and len(images) >= 5) else float(col_width)
             scale = float(col_width) / ref_w
             site_out = compute_layout(images, ref_w, 4, "natural", "" if layout_name == "asymmetric" else layout_name)
             for pt, st in zip(prev_out["items"], site_out["items"]):
@@ -81,6 +81,48 @@ def test_mosaic_preview_matches_biggie_and_site_geometry(tmp_path):
                 assert abs(pt["y"] - st["y"] * scale) < 1e-4
                 assert abs(pt["width"] - st["width"] * scale) < 1e-4
                 assert abs(pt["height"] - st["height"] * scale) < 1e-4
+
+
+def _is_two_by_two(items):
+    """Detect a 2-col x 2-row grid (even within 10% tolerance)."""
+    if len(items) != 4:
+        return False
+    ys = sorted(set(round(t["y"]) for t in items))
+    xs = sorted(set(round(t["x"]) for t in items))
+    # Cluster into <= 2 rows and <= 2 cols
+    row_ys = []
+    for y in ys:
+        if not row_ys or abs(y - row_ys[-1]) > 10:
+            row_ys.append(y)
+    col_xs = []
+    for x in xs:
+        if not col_xs or abs(x - col_xs[-1]) > 10:
+            col_xs.append(x)
+    if len(row_ys) != 2 or len(col_xs) != 2:
+        return False
+    ws = [t["width"] for t in items]
+    hs = [t["height"] for t in items]
+    return (max(ws) - min(ws)) <= 0.1 * max(ws) and (max(hs) - min(hs)) <= 0.1 * max(hs)
+
+
+def test_four_photos_never_produce_two_by_two_grid(tmp_path):
+    _app()
+    shape_sets = {
+        "landscape": [(900, 600)] * 4,
+        "portrait": [(600, 900)] * 4,
+        "square": [(800, 800)] * 4,
+        "mixed": [(900, 600), (600, 900), (800, 800), (900, 600)],
+    }
+    for label, sizes in shape_sets.items():
+        paths = [_make_photo(tmp_path / f"{label}_{i}.jpg", sz) for i, sz in enumerate(sizes)]
+        tiles = [(i, p) for i, p in enumerate(paths)]
+        for layout_name in ("asymmetric", "columns", "rows", "square"):
+            preview = MosaicPreview(content_width=760)
+            preview.set_mosaic(tiles, layout_name, gap=4)
+            out = preview.computed_cells()
+            assert not _is_two_by_two(out["items"]), (
+                f"4-photo {label}/{layout_name} produced 2x2 grid: {out['items']}"
+            )
 
 
 def test_mosaic_dialog_is_maximisable_and_uses_preview_width(monkeypatch, tmp_path):

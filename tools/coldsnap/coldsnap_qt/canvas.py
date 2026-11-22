@@ -135,12 +135,10 @@ def mosaic_cells(canvas, data, width):
     key = (tuple(paths), layout, gap, w_int)
     if cache is not None and key in cache:
         return cache[key]
-    # Compose at the site's 1200px desktop reference width whenever the editor
-    # card is wider than mobile (520px), then scale uniformly to the card width.
-    # Below 1200px, ss-engine-mosaic.js disables enforce_useful_size and stacks
-    # single full-width rows; composing at 1200px keeps Biggie WYSIWYG with the
-    # published desktop site at every page-zoom width.
-    ref_width = 1200.0 if width > 520 else float(width)
+    # For 1-4 photos, compose at the actual column width (760px/360px) so
+    # buildSection() matches ss-engine-mosaic.js (never falling back to 2x2).
+    # For 5+ photos on desktop, compose at 1200px so multi-image rows pack cleanly.
+    ref_width = 1200.0 if (width > 520 and len(images) >= 5) else float(width)
     scale = (float(width) / ref_width) if ref_width > 0 else 1.0
     raw_out = site_compute_layout(
         images, ref_width, gap, "natural",
