@@ -2618,6 +2618,17 @@
             2
         ]
     },
+    "strict-skins-can-place-the-shared-social-dock-regression.php": {
+        "assertions": 30,
+        "predicates": 29,
+        "thresholds": [
+            2,
+            2,
+            2,
+            2,
+            2
+        ]
+    },
     "strict-stats-logging-regression.php": {
         "assertions": 10,
         "predicates": 9,
