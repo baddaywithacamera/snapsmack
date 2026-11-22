@@ -3219,6 +3219,11 @@ class TakeMode(QWidget):
             slug = str(getattr(self, "_remote_slug", "") or "").strip().lstrip("/")
             loc = f"/{slug}" if slug else f"#{rid}"
             self.linked_post_lbl.setText(f"Editing: {t}  {loc}")
+            col = (getattr(self, "_surface_palette", None) or {}).get("eyebrow", "#2b7a1e")
+            self.linked_post_lbl.setStyleSheet(
+                f"QLabel#LinkedPostStatus {{ background: transparent; color: {col};"
+                " font-size: 11px; font-weight: 700; }}"
+            )
             self.linked_post_lbl.setVisible(True)
         else:
             self.linked_post_lbl.setVisible(False)
