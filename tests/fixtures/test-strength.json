@@ -2517,6 +2517,14 @@
             20
         ]
     },
+    "solo-photo-swipe-goes-where-the-arrows-go-regression.php": {
+        "assertions": 14,
+        "predicates": 11,
+        "thresholds": [
+            2,
+            2
+        ]
+    },
     "special-skin-v2-regression.php": {
         "assertions": 15,
         "predicates": 13,

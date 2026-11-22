@@ -28,6 +28,26 @@ are pushed and waiting on review.
   size as well — the 1024 and wider case shipped in 2.1.44 above.
   **Repackage RATIONAL GEO 2.1.45 + reinstall to ship.** (SS-1518, SS-1517)
 
+- **Swipe between photographs on a tablet.** On a touch screen the only way
+  to the next photograph was the small PREV and NEXT text links: the arrow
+  keys a desktop reader uses have no equivalent on glass, and the swipe the
+  lightbox has always had only works when a gallery holds more than one
+  image, which a single photograph page never does. Swiping left or right on
+  a photograph now moves to the next or previous one — the same two
+  destinations the arrow keys use, so the two can never disagree. Scrolling
+  is untouched: a swipe has to travel more than 50 pixels and be more
+  sideways than vertical, a second finger makes it a zoom instead, and a
+  sideways-scrolling table keeps its own gesture.
+
+  WHERE IT WORKS, counted rather than assumed: ten skins — CHAPLIN, GALLERIA,
+  HIP TO BE SQUARE, IMPACT PRINTER, NEW HORIZON, ONYX, RATIONAL GEO, SCROLL,
+  SLICKR and TRUE GRIT. Those are the skins whose photograph pages render the
+  previous/next links the gesture steers by. Fourteen more load the engine
+  but print no such links, so on those the swipe finds nowhere to go and does
+  nothing — the same reason their arrow keys do nothing, which is already
+  logged as its own job (SS-1095, SS-1118). PHOTOGRAM and TELEGRAM, the two
+  phone skins, are not in either group and get no swipe from this.
+
 - **RATIONAL GEO (skin package, 2.1.44): the archive no longer has two
   different left margins.** On screens between roughly 1025 and 1400 pixels
   wide — most laptops, and a tablet held landscape — the wall of photographs

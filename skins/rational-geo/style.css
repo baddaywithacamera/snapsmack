@@ -119,7 +119,15 @@ html {
 }
 
 /* Flex column viewport lock — mirrors New Horizon snapping engine.
-   z-index: 1 ensures content sits above body::after (the map pseudo at z:0). */
+   NOTHING IN THIS LAYOUT RENDERS #page-wrapper, so this rule is dead. It is
+   kept because other RATIONAL GEO rules still address the element and
+   removing one of them piecemeal would be worse than leaving the set intact;
+   see the note on the body.archive-page section.
+   Its comment used to say "z-index: 1 ensures content sits above body::after
+   (the map pseudo at z:0)". That was stale twice over — the map is now at
+   z-index -1 and keeps itself behind the page, and this wrapper was never
+   rendered to lift anything above it in the first place. Muse caught it on
+   review of SS-1518. (SS-1518) */
 #page-wrapper {
   display: flex;
   flex-direction: column;
