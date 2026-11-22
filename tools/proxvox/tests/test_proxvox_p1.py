@@ -132,18 +132,100 @@ class ProxVoxP1(unittest.TestCase):
             self.broker().call("DELETE", "/nodes/pve/lxc/102")
         self.assertEqual(_Fake.seen, [])
 
-    def test_an_ungranted_path_is_never_requested(self):
-        for path in ("/access/users", "/cluster/config", "/access"):
+    def test_the_whole_server_is_readable(self):
+        """Sean's ruling, 2026-11-22: 100% read access at all times.
+
+        These three paths were REFUSED by P1 until that ruling, and this test
+        asserted the refusal. It is inverted deliberately rather than deleted,
+        so the change of grant is visible in the history instead of looking
+        like a test somebody quietly dropped.
+        """
+        for path in ("/access/users", "/cluster/config", "/access", "/storage"):
+            _Fake.seen = []
+            self.broker().get(path)
+            self.assertEqual(len(_Fake.seen), 1, "%s should now be readable" % path)
+            self.assertEqual(_Fake.seen[0]["method"], "GET")
+
+    def test_a_path_that_merely_starts_like_a_scope_is_allowed_now(self):
+        # /nodes-secret had its own test because a careless prefix check would
+        # have admitted it while the allowlist was /nodes, /vms, /storage.
+        # With the grant at / there is no prefix to get wrong, so the thing
+        # this guarded against cannot happen. Kept as a read, not a refusal.
+        self.broker().get("/nodes-secret/thing")
+        self.assertEqual(len(_Fake.seen), 1)
+
+    # ── what the old allowlist was also doing ───────────────────────────
+    # Widening to / removed a prefix check that had been refusing a lot more
+    # than out-of-scope reads. These are the parts worth keeping.
+
+    def test_a_path_cannot_point_at_another_host(self):
+        """With the token in the header, a broker that can be aimed at another
+        host is not a read-only broker; it is an open proxy carrying Sean's
+        credential. The old prefix check blocked this by accident.
+
+        ACCURATE ABOUT TODAY'S RISK, rather than overstating it: the URL is
+        built by string concatenation with lstrip("/"), so a "//host/x" path
+        would currently land on Sean's own server as
+        /api2/json/host/x -- it does NOT escape today. The guard is here
+        because that safety is an accident of string concatenation. Swap the
+        builder for urljoin(), which is the obvious tidy-up, and
+        urljoin("https://pve/api2/json/", "//evil/x") returns
+        "https://evil/x". This refuses it at the door so that change cannot
+        quietly open a hole.
+
+        The "https://..." cases are refused on their own merit regardless.
+        """
+        for path in ("https://evil.example/api2/json/nodes",
+                     "//evil.example/nodes",
+                     "http://127.0.0.1:9/nodes"):
+            _Fake.seen = []
+            with self.assertRaises(Refused, msg="%s was not refused" % path):
+                self.broker().get(path)
+            self.assertEqual(_Fake.seen, [], "%s reached a server" % path)
+
+    def test_a_path_cannot_climb_out_of_the_api_root(self):
+        for path in ("../../etc/passwd", "/nodes/../../..", "/nodes/../.."):
+            _Fake.seen = []
+            with self.assertRaises(Refused, msg="%s was not refused" % path):
+                self.broker().get(path)
+            self.assertEqual(_Fake.seen, [])
+
+    def test_a_path_refusal_is_written_down_like_any_other(self):
+        """Added because a mutation survived: deleting the audit record from
+        the PATH refusal branch changed nothing any test could see. The
+        existing refusal test only covered the METHOD branch.
+
+        This is the branch where it matters most. A refused method is usually
+        our own bug; a refused path is somebody trying to aim the broker
+        somewhere it should not go, and a log that holds only successes makes
+        that look like a quiet afternoon."""
+        broker = self.broker()
+        before = len(broker.audit.records())
+        with self.assertRaises(Refused):
+            broker.get("https://evil.example/nodes")
+        records = broker.audit.records()
+        self.assertEqual(len(records), before + 1, "the refusal was not recorded")
+        last = records[-1]
+        self.assertEqual(last["action"], "refused")
+        self.assertEqual(last["detail"]["why"], "unsafe path")
+        # And the refused path itself has to be in there, or the record does
+        # not say what was attempted.
+        self.assertIn("evil.example", last["detail"]["path"])
+
+    def test_an_empty_path_is_refused_rather_than_read_as_the_root(self):
+        for path in ("", "   "):
             with self.assertRaises(Refused):
                 self.broker().get(path)
-        self.assertEqual(_Fake.seen, [], "an ungranted path was requested")
-
-    def test_a_path_that_merely_starts_like_a_scope_is_refused(self):
-        # /nodes-secret is not under /nodes, and a prefix check written
-        # carelessly would let it through.
-        with self.assertRaises(Refused):
-            self.broker().get("/nodes-secret/thing")
         self.assertEqual(_Fake.seen, [])
+
+    def test_a_write_is_still_refused_everywhere_the_read_grant_reaches(self):
+        """The grant widened; the method did not. /access is readable now, and
+        a POST to it must still never leave the machine."""
+        for method in ("POST", "PUT", "DELETE", "PATCH"):
+            _Fake.seen = []
+            with self.assertRaises(Refused):
+                self.broker().call(method, "/access/users")
+            self.assertEqual(_Fake.seen, [], "%s to /access reached the server" % method)
 
     # ── the secret ──────────────────────────────────────────────────────
     def test_the_secret_travels_in_the_header_and_not_the_url(self):
