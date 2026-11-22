@@ -2627,6 +2627,15 @@
             200
         ]
     },
+    "sybu-data-carries-the-skins-declared-values-regression.php": {
+        "assertions": 30,
+        "predicates": 23,
+        "thresholds": [
+            2,
+            5,
+            5
+        ]
+    },
     "sybu-images-regression.php": {
         "assertions": 2,
         "predicates": 16,
