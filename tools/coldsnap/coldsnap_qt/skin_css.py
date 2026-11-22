@@ -191,7 +191,7 @@ def parse_sybu_skin(skin: dict) -> dict:
             cap_font = v.split(",")[0].strip(" '\"")
             break
     cap_pt = 0.0
-    for k in ("caption_font_size", "figcaption_font_size"):
+    for k in ("caption_size", "caption_font_size", "figcaption_font_size"):
         v = str(opts.get(k) or "").strip()
         if v:
             px = _parse_len_px(v, 16.0)
@@ -199,8 +199,19 @@ def parse_sybu_skin(skin: dict) -> dict:
                 cap_pt = round(px * 0.75, 2)
             break
     cap_italic = None
-    if "caption_italic" in opts:
+    if "caption_style" in opts and str(opts.get("caption_style") or "").strip():
+        cap_italic = str(opts.get("caption_style")).strip().lower() != "normal"
+    elif "caption_italic" in opts:
         cap_italic = str(opts.get("caption_italic")).strip().lower() not in ("0", "false", "no", "normal")
+    cap_align = ""
+    raw_align = str(opts.get("caption_align") or "").strip().lower()
+    if raw_align in ("left", "center", "right"):
+        cap_align = raw_align
+    elif raw_align == "inherit":
+        cap_align = "left"
+    cap_gap_px = 0.0
+    if opts.get("caption_gap") not in (None, ""):
+        cap_gap_px = _parse_len_px(str(opts.get("caption_gap")), 16.0)
     content_width = 0
     raw_w = opts.get("post_content_width")
     if raw_w not in (None, ""):
@@ -221,6 +232,8 @@ def parse_sybu_skin(skin: dict) -> dict:
         "caption_font": cap_font,
         "caption_pt": cap_pt,
         "caption_italic": cap_italic,
+        "caption_align": cap_align,
+        "caption_gap_px": cap_gap_px,
         "post_content_width": content_width,
         "has_sybu": bool(skin.get("slug") or opts),
     }

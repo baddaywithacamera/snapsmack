@@ -57,6 +57,45 @@ def test_parse_tilez_skin_css_extracts_font_line_height_and_margins():
     assert parsed["caption_color"] == "#666"
     assert parsed["caption_pt"] == 10.5
     assert parsed["caption_italic"] is True
+
+
+def test_alfred_sybu_data_caption_controls_flow_into_biggie(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
+    import snap_library
+
+    site = "https://alfred-captions.example"
+    snap_library.sync_from_sybu_data(site, {
+        "site_mode": "smacktalk",
+        "skin": {
+            "slug": "alfred",
+            "name": "ALFRED",
+            "version": "1.0.21",
+            "options": {
+                "post_content_width": "800",
+                "caption_color": "#cc0000",
+                "caption_size": "20",
+                "caption_style": "normal",
+                "caption_gap": "40",
+                "caption_align": "center",
+            },
+        },
+    })
+    app = _app()
+    app.setStyleSheet(theme.stylesheet())
+    mode = TakeMode(lambda: {"url": site})
+    mode.resize(1400, 900)
+    mode.show()
+    app.processEvents()
+    try:
+        mode.apply_canvas_background(site)
+        f, col = mode.body.canvas.caption_font_and_color()
+        assert col == "#cc0000"
+        assert f.pointSizeF() == 15.0  # 20px * 0.75
+        assert f.italic() is False
+        assert mode.body.canvas._caption_style["align"] == "center"
+        assert mode._preview_width == 800
+    finally:
+        mode.close()
     assert abs(parsed["caption_padding_top_px"] - 12.0) < 1e-6
 
 
@@ -149,3 +188,42 @@ def test_tilez_stylesheet_picks_post_bg_fff_over_early_1d1d1d():
     assert parsed["caption_color"] == "#666"
     assert parsed["caption_pt"] == 10.5
     assert parsed["caption_italic"] is True
+
+
+def test_alfred_sybu_data_caption_controls_flow_into_biggie(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
+    import snap_library
+
+    site = "https://alfred-captions.example"
+    snap_library.sync_from_sybu_data(site, {
+        "site_mode": "smacktalk",
+        "skin": {
+            "slug": "alfred",
+            "name": "ALFRED",
+            "version": "1.0.21",
+            "options": {
+                "post_content_width": "800",
+                "caption_color": "#cc0000",
+                "caption_size": "20",
+                "caption_style": "normal",
+                "caption_gap": "40",
+                "caption_align": "center",
+            },
+        },
+    })
+    app = _app()
+    app.setStyleSheet(theme.stylesheet())
+    mode = TakeMode(lambda: {"url": site})
+    mode.resize(1400, 900)
+    mode.show()
+    app.processEvents()
+    try:
+        mode.apply_canvas_background(site)
+        f, col = mode.body.canvas.caption_font_and_color()
+        assert col == "#cc0000"
+        assert f.pointSizeF() == 15.0  # 20px * 0.75
+        assert f.italic() is False
+        assert mode.body.canvas._caption_style["align"] == "center"
+        assert mode._preview_width == 800
+    finally:
+        mode.close()

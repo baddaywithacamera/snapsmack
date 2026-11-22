@@ -808,6 +808,7 @@ class TakeMode(QWidget):
             sybu_skin["caption_italic"] if sybu_skin.get("caption_italic") is not None
             else (bool(cached_skin.get("caption_italic", True)) if css_loaded else True)
         )
+        eff_cap_align = sybu_skin.get("caption_align") or ""
         decl_width = int(sybu_skin.get("post_content_width") or 0)
         if decl_width > 0 and getattr(self, "_preview_width", 760) != 360:
             self._preview_width = decl_width
@@ -819,7 +820,7 @@ class TakeMode(QWidget):
             bg = QColor(explicit_bg.strip()).name()
             fg = QColor(explicit_fg.strip()).name() if explicit_fg and QColor(explicit_fg.strip()).isValid() else ""
             available = True
-        elif eff_bg or eff_fg or eff_font or css_loaded:
+        elif eff_bg or eff_fg or eff_font or eff_cap_color or eff_cap_pt or eff_cap_font or eff_cap_align or css_loaded:
             fallback_bg, fallback_fg, _ = self.resolve_site_colors(url)
             bg = eff_bg or fallback_bg
             fg = eff_fg or fallback_fg
@@ -831,6 +832,7 @@ class TakeMode(QWidget):
                     caption_pt=eff_cap_pt,
                     caption_color=eff_cap_color,
                     caption_italic=eff_cap_italic,
+                    caption_align=eff_cap_align,
                     line_height_pct=eff_lh,
                     para_margin_bottom=eff_pmb,
                     image_margin_top=eff_imt,
