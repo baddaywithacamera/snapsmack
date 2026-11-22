@@ -10,6 +10,7 @@ mosaic marker keeps its one-line plain-words explainer right beside the button.
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
+import math
 import os
 import re
 import tempfile
@@ -17,11 +18,12 @@ import uuid
 
 import requests
 
-from PySide6.QtCore import Qt, QDate, QRect, QSize, Signal, QTimer, QSettings
+from concurrent.futures import ThreadPoolExecutor
+from PySide6.QtCore import Qt, QDate, QEventLoop, QMetaObject, QRect, QSize, Signal, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit,
-    QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
+    QComboBox, QPushButton, QFileDialog, QMessageBox, QProgressDialog, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
     QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton, QSlider, QDateEdit,
 )
@@ -31,6 +33,7 @@ import snap_library
 from sumna_post import SmacktalkPoster
 
 from . import theme, biggie
+from .canvas import mosaic_cells as _mosaic_cells
 from .widgets import (Accordion, Card, build_rail, hint, field_label,
                       big_button, load_pixmap)
 from .photo_loader import PhotoLoader
@@ -45,30 +48,60 @@ from .mosaic_layout import tile_rects as _tile_rects
 
 
 class MosaicPreview(QWidget):
-    """Large live preview; dragging one tile onto another swaps their slots."""
+    """Large live WYSIWYG preview matching BIGGIE and ss-engine-mosaic.js geometry."""
 
     swapRequested = Signal(int, int)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, content_width: int = 760, gap: int = 4):
         super().__init__(parent)
-        self.setMinimumHeight(210)
+        self._content_width = max(240, int(content_width or 760))
+        self._gap = max(0, min(20, int(gap)))
+        self.setMinimumSize(self._content_width + 16, 220)
+        self.setFixedWidth(self._content_width + 16)
         self.setToolTip("Drag one preview tile onto another to swap them.")
         self._tiles, self._rects = [], []
         self._layout_name, self._drag_from = "asymmetric", None
+        self.bucket = []
+        self.assets = {}
+        self._mosaic_size_cache = {}
+        self._mosaic_layout_cache = {}
         # Codex's loader, c0b621f3. Decoding happens off the GUI thread with
         # QImageReader.setScaledSize, so a photograph is never decoded at full
         # resolution at all -- which is the part caching alone could not fix.
         self._photos = PhotoLoader(self)
         self._ready = {}
 
-    def set_mosaic(self, tiles, layout_name):
+    def set_content_width(self, width: int):
+        self._content_width = max(240, int(width or 760))
+        self.setFixedWidth(self._content_width + 16)
+        self._sync_height()
+        self.update()
+
+    def set_mosaic(self, tiles, layout_name, gap: int = 4):
         self._tiles = list(tiles)  # (row-in-list, local-path), in mosaic order
         self._layout_name = str(layout_name or "asymmetric")
-        # Keep what is already decoded: ticking a 54th photograph must not make
-        # the other 53 reload. The loader's own cache is keyed on
-        # (path, mtime, size) and is the real store; this is just the widget's
-        # view of it, bounded below.
+        self._gap = max(0, min(20, int(gap)))
+        self.bucket = [path for _row, path in self._tiles]
+        self._mosaic_layout_cache.clear()
+        self._sync_height()
         self.update()
+
+    def computed_cells(self):
+        """Return exact site/BIGGIE cell geometry at `self._content_width`."""
+        if not self._tiles:
+            return {"items": [], "sections": [], "height": 0.0}
+        data = {
+            "order": list(range(1, len(self.bucket) + 1)),
+            "layout": self._layout_name,
+            "gap": self._gap,
+        }
+        _paths, out = _mosaic_cells(self, data, self._content_width)
+        return out
+
+    def _sync_height(self):
+        out = self.computed_cells()
+        h = max(220, int(math.ceil(float(out.get("height") or 0.0))) + 16)
+        self.setFixedHeight(h)
 
     def _tile_pixmap(self, path, edge):
         """The decoded tile, or None while it is still being read.
@@ -102,7 +135,6 @@ class MosaicPreview(QWidget):
 
     @staticmethod
     def tile_rects(width, height, count, layout_name, gap=5):
-        # One geometry for the dialog preview AND the BIGGIE canvas (mosaic_layout.py).
         return _tile_rects(width, height, count, layout_name, gap)
 
     def paintEvent(self, _event):
@@ -117,47 +149,32 @@ class MosaicPreview(QWidget):
                 "LIVE PREVIEW — tick 1 or more photos below",
             )
             return
-        inner = self.rect().adjusted(7, 7, -7, -7)
-        cells = self.tile_rects(inner.width(), inner.height(), len(self._tiles),
-                                self._layout_name)
-        self._rects = [(row, rect.translated(inner.topLeft()))
-                       for (row, _path), rect in zip(self._tiles, cells)]
+        out = self.computed_cells()
+        items = out.get("items") or []
+        ox, oy = 8, 8
+        self._rects = []
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        for position, ((row, path), cell) in enumerate(zip(self._tiles, cells), 1):
-            rect = cell.translated(inner.topLeft())
-            # THIS LINE WAS THE FREEZE. It was QPixmap(path): a full-resolution
-            # decode from disk, uncached, for EVERY tile on EVERY paint event.
-            # paintEvent runs on every repaint -- ticking a photo, resizing,
-            # dragging a tile, the window regaining focus -- so a mosaic of 53
-            # SNAP SLAPPER originals re-decoded all 53 at full size each time,
-            # on the GUI thread. That is why the mosaic step stopped responding.
-            #
-            # It now goes through Codex's PhotoLoader (c0b621f3), which decodes
-            # OFF the GUI thread and at reduced size via
-            # QImageReader.setScaledSize -- so these photographs are never
-            # decoded at full resolution at all. Caching alone fixed the
-            # repaints but left the first paint doing 53 full decodes, about
-            # 2.8 seconds; this removes that too.
-            #
-            # The size is still quantised to 64px steps because it is part of
-            # the cache key, and without that a slow drag-resize would ask for
-            # a size it had never seen on every single frame.
-            #
-            # Deliberately NOT thumb_square, which the lists use: that is a
-            # square crop, and this preview exists to show the whole
-            # photograph -- see the comment below, which predates me.
+        for position, ((row, path), tile) in enumerate(zip(self._tiles, items), 1):
+            rect = QRect(
+                ox + int(round(tile["x"])),
+                oy + int(round(tile["y"])),
+                max(1, int(round(tile["width"]))),
+                max(1, int(round(tile["height"]))),
+            )
+            self._rects.append((row, rect))
             edge = max(64, -(-max(rect.width(), rect.height()) // 64) * 64)
             pix = self._tile_pixmap(path, edge) or QPixmap()
             if not pix.isNull():
-                # Preview the whole photograph.  Cropping here made the composer
-                # imply a crop the photographer had never chosen.
-                scaled = pix.scaled(rect.size(), Qt.KeepAspectRatio,
+                # Match ss-engine-mosaic.css (.mosaic-item img { width:100%; height:100%; object-fit:cover })
+                scaled = pix.scaled(rect.size(), Qt.KeepAspectRatioByExpanding,
                                     Qt.SmoothTransformation)
-                painter.fillRect(rect, QColor("#141714"))
+                painter.save()
+                painter.setClipRect(rect)
                 target = QRect(rect.left() + (rect.width() - scaled.width()) // 2,
                                rect.top() + (rect.height() - scaled.height()) // 2,
                                scaled.width(), scaled.height())
                 painter.drawPixmap(target, scaled)
+                painter.restore()
             else:
                 painter.fillRect(rect, QColor("#202320"))
             painter.setPen(QPen(QColor("#35ff14"), 2 if row == self._drag_from else 1))
@@ -1357,16 +1374,40 @@ class TakeMode(QWidget):
         rotation_originals = {}
         dialog = QDialog(self)
         dialog.setWindowTitle("Edit mosaic" if existing else "Build mosaic")
-        dialog.resize(940, 780)
+        dialog.setWindowFlags(
+            dialog.windowFlags()
+            | Qt.Window
+            | Qt.WindowMinimizeButtonHint
+            | Qt.WindowMaximizeButtonHint
+            | Qt.WindowCloseButtonHint
+        )
+        dialog.setSizeGripEnabled(True)
+        dialog.resize(max(980, self._preview_width + 80), 820)
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel(
             "Choose which photos belong in this mosaic. Click tiles to include/exclude, "
             "or drag in the preview to swap positions. Hover a tile for its filename."))
-        preview = MosaicPreview()
-        layout.addWidget(preview)
-        preview_hint = QLabel("LIVE PREVIEW — drag one image onto another to swap them")
+
+        preview = MosaicPreview(content_width=self._preview_width)
+        preview_scroll = QScrollArea()
+        preview_scroll.setWidgetResizable(False)
+        preview_scroll.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        preview_scroll.setFrameShape(QFrame.NoFrame)
+        preview_scroll.setStyleSheet("QScrollArea { background: #090b0a; border: 1px solid #262926; }")
+        preview_scroll.setWidget(preview)
+        preview_scroll.setMinimumHeight(260)
+
+        preview_hint = QLabel(
+            f"LIVE WYSIWYG PREVIEW ({self._preview_width}px column) — drag one image onto another to swap them"
+        )
         preview_hint.setAlignment(Qt.AlignCenter)
-        layout.addWidget(preview_hint)
+
+        preview_pane = QWidget()
+        preview_pane_lay = QVBoxLayout(preview_pane)
+        preview_pane_lay.setContentsMargins(0, 0, 0, 0)
+        preview_pane_lay.setSpacing(4)
+        preview_pane_lay.addWidget(preview_scroll, 1)
+        preview_pane_lay.addWidget(preview_hint)
 
         # SS-1049: photographs already used by OTHER mosaics in this post are
         # not offered again.
@@ -1400,7 +1441,12 @@ class TakeMode(QWidget):
         tile_grid.setContentsMargins(4, 4, 4, 4)
         tile_grid.setSpacing(8)
         tile_scroll.setWidget(tile_host)
-        layout.addWidget(tile_scroll, 1)
+        splitter = QSplitter(Qt.Vertical)
+        splitter.addWidget(preview_pane)
+        splitter.addWidget(tile_scroll)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 1)
+        layout.addWidget(splitter, 1)
 
         selection_row = QHBoxLayout()
         select_all = QPushButton("Select all")
@@ -1796,12 +1842,77 @@ class TakeMode(QWidget):
         dialog._trunc_note = trunc_note
         return dialog
 
-    def _open_published(self):
+    def _has_open_draft_content(self) -> bool:
+        """True when the editor currently holds any authored title, body, or photos."""
+        if self.title_edit.text().strip():
+            return True
+        if self._bucket:
+            return True
+        if self.body.is_biggie():
+            plain = self.body.canvas.toPlainText()
+            if plain.strip() or "\ufffc" in plain:
+                return True
+        elif self.body.editor.toPlainText().strip():
+            return True
+        return False
+
+    def _ask_open_published_action(self, post_title: str, choose_fn=None) -> str:
+        """Ask how to handle an open draft before opening a published post.
+        Returns 'attach', 'separate', or 'cancel'.
+        """
+        if choose_fn is not None:
+            return str(choose_fn(post_title) or "cancel")
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle("You have a draft open")
+        box.setText(
+            f"You already have a draft open in the editor.\n\n"
+            f"How do you want to open \"{post_title or 'this published post'}\"?"
+        )
+        attach_btn = box.addButton("Attach this draft to the published post", QMessageBox.AcceptRole)
+        separate_btn = box.addButton("Open separately", QMessageBox.ActionRole)
+        box.addButton("Cancel", QMessageBox.RejectRole)
+        box.exec()
+        clicked = box.clickedButton()
+        if clicked is attach_btn:
+            return "attach"
+        if clicked is separate_btn:
+            return "separate"
+        return "cancel"
+
+    def _run_off_thread(self, fn, label: str = "Loading…"):
+        """Run blocking network work off the GUI thread so the window never freezes."""
+        prog = QProgressDialog(label, None, 0, 0, self)
+        prog.setWindowTitle("COLD TAKE")
+        prog.setWindowModality(Qt.WindowModal)
+        prog.setCancelButton(None)
+        prog.setMinimumDuration(150)
+
+        loop = QEventLoop(self)
+        outcome = {}
+
+        def _worker():
+            try:
+                outcome["value"] = fn()
+            except Exception as exc:  # noqa: BLE001
+                outcome["error"] = exc
+            finally:
+                QMetaObject.invokeMethod(loop, "quit", Qt.QueuedConnection)
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            pool.submit(_worker)
+            loop.exec()
+        prog.close()
+        if "error" in outcome:
+            raise outcome["error"]
+        return outcome.get("value")
+
+    def _open_published(self, *, choose_fn=None):
         poster, _url = self._poster_and_url()
         if poster is None:
             return
         try:
-            posts = poster.list_posts()
+            posts = self._run_off_thread(poster.list_posts, "Loading published posts…")
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Could not load posts", str(exc))
             return
@@ -1813,14 +1924,48 @@ class TakeMode(QWidget):
         if dialog.exec() != QDialog.Accepted or not dialog._choices.currentItem():
             return
         post_id = int(dialog._choices.currentItem().data(Qt.UserRole) or 0)
+        selected_row = next((p for p in posts if int(p.get("id") or 0) == post_id), {})
+        selected_title = str(selected_row.get("title") or f"Post #{post_id}")
+
+        action = "separate"
+        if self._has_open_draft_content():
+            action = self._ask_open_published_action(selected_title, choose_fn=choose_fn)
+            if action not in ("attach", "separate"):
+                return
+
+        if action == "attach":
+            session = self.rail.ensure_session()
+            draft = self._build_draft(session)
+            draft.remote_post_id = post_id
+            if not getattr(draft, "post_date", ""):
+                draft.post_date = str(selected_row.get("created_at") or "")
+            session.add_draft(draft, copy_images=False)
+            self._mirror_sqlite(draft)
+            self.rail.refresh_batches()
+            self.save_state.setText(
+                f"Attached open draft to published post #{post_id} — your draft is intact"
+            )
+            return
+
+        # Save the open draft before opening a separate published post so nothing is ever lost.
+        if self._has_open_draft_content():
+            session = self.rail.ensure_session()
+            open_draft = self._build_draft(session)
+            session.add_draft(open_draft, copy_images=False)
+            self._mirror_sqlite(open_draft)
+
         try:
-            post = poster.get_post(post_id)
-            draft = self._draft_from_remote(post)
+            def _fetch():
+                post = poster.get_post(post_id)
+                return self._draft_from_remote(post)
+
+            draft = self._run_off_thread(_fetch, f"Opening \"{selected_title}\"…")
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Could not open post", str(exc))
             return
         session = self.rail.ensure_session()
         session.add_draft(draft)
+        self.rail.refresh_batches()
         self._edit(draft)
         self.save_state.setText("Published post loaded — changes will update this post")
 
@@ -1839,22 +1984,29 @@ class TakeMode(QWidget):
         cache = os.path.join(tempfile.gettempdir(), "coldsnap-published",
                              str(draft.remote_post_id))
         os.makedirs(cache, exist_ok=True)
-        for pos, row in enumerate(post.get("bucket") or []):
+        rows = list(post.get("bucket") or [])
+
+        def _fetch_one(item):
+            pos, row = item
             image_id = int(row.get("id") or 0)
             source_url = str(row.get("url") or row.get("thumb_url") or "")
             filename = os.path.basename(source_url.split("?", 1)[0]) or f"image-{image_id}.jpg"
             target = os.path.join(cache, f"{image_id}-{filename}")
-            if not os.path.isfile(target):
+            if not os.path.isfile(target) and source_url:
                 response = requests.get(source_url, timeout=90)
                 response.raise_for_status()
                 with open(target, "wb") as handle:
                     handle.write(response.content)
-            draft.images.append(O.DraftImage(
+            return O.DraftImage(
                 local_path=target, original_path=target, filename=filename,
                 width=int(row.get("width") or 0), height=int(row.get("height") or 0),
                 alt=str(row.get("img_alt") or ""), title=str(row.get("img_title") or ""),
                 remote_path=str(row.get("img_file") or ""), remote_image_id=image_id,
-                sort_position=pos, is_cover=(image_id == cover_id)))
+                sort_position=pos, is_cover=(image_id == cover_id))
+
+        if rows:
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                draft.images = list(pool.map(_fetch_one, enumerate(rows)))
         if draft.images and not any(image.is_cover for image in draft.images):
             draft.images[0].is_cover = True
         return draft

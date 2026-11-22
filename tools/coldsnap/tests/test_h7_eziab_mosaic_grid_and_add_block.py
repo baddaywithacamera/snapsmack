@@ -159,6 +159,9 @@ def test_add_block_real_mouse_click_inserts_above_image(monkeypatch, tmp_path):
         ])
         app.processEvents()
 
+        canvas.verticalScrollBar().setValue(0)
+        app.processEvents()
+
         # Real mouse click in the paragraph ABOVE the image
         doc = canvas.document()
         b0 = doc.begin()
