@@ -138,12 +138,25 @@ if (!function_exists('snapsmack_font_family_generic_fallback')) {
             'jost'                             => "sans-serif",
             'kalam'                            => "cursive",
             'kanit'                            => "sans-serif",
-            'keybinds'                         => "'Courier New', monospace",
+            // NOT monospace, and I had it wrong. Muse read the font file and
+            // I confirmed it against the bytes: post.isFixedPitch is 0 and
+            // the 215 glyphs carry two different advance widths, 1916 and
+            // 2048. It is a proportional key-cap face. Before SS-1519 it fell
+            // back to sans-serif by accident, and my entry turned that into
+            // Courier — so this line was a regression I introduced, on HIP TO
+            // BE SQUARE's default body font. sans-serif also matches the
+            // skin's own body stack.
+            'keybinds'                         => "sans-serif",
             'krona one'                        => "sans-serif",
             'lato'                             => "sans-serif",
             'lexend'                           => "sans-serif",
             'libre baskerville'                => "serif",
-            'linuxbiolinumkeyboard'            => "'Courier New', monospace",
+            // The same mistake, which Muse did not have to find because the
+            // first one sent me to the files: 687 glyphs, 134 distinct
+            // advance widths, isFixedPitch 0. It is the keyboard-symbol cut
+            // of Linux Biolinum, a humanist sans. Also sans-serif before
+            // SS-1519, so this line was the same regression twice.
+            'linuxbiolinumkeyboard'            => "sans-serif",
             'lora'                             => "serif",
             'manrope'                          => "sans-serif",
             'marcellus'                        => "serif",

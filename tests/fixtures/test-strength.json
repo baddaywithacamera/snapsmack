@@ -431,7 +431,7 @@
         ]
     },
     "declared-fonts-keep-their-own-category-regression.php": {
-        "assertions": 23,
+        "assertions": 26,
         "predicates": 13,
         "thresholds": [
             100

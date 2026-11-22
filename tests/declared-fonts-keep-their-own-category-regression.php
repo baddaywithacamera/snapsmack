@@ -77,6 +77,26 @@ $check('the table answers when nothing is declared',
        snapsmack_font_family_generic_fallback('Playfair Display') === 'serif');
 $check('an unknown house face gets NO generic rather than a guess',
        snapsmack_font_family_generic_fallback('BlackCasper') === '');
+
+// TWO ENTRIES I GOT WRONG, PINNED BY WHAT THE FONT FILES SAY. I classified
+// both of these keyboard faces as monospace from their names, which is the
+// exact reasoning this ticket exists to stop. Muse read KeyBinds and caught
+// it; checking that sent me to the other one. Read out of the bytes in
+// assets/fonts/: KeyBinds has post.isFixedPitch 0 and two advance widths
+// across 215 glyphs (1916, 2048); the Linux Biolinum keyboard cut has 134
+// widths across 687. Both are proportional. Both fell back to sans-serif
+// before SS-1519, so my entries were a regression, on HIP TO BE SQUARE's
+// default body font.
+$check('KeyBinds is proportional, not monospace (the font file says so)',
+       snapsmack_font_family_generic_fallback('KeyBinds') === 'sans-serif');
+$check('  and so is the Linux Biolinum keyboard cut',
+       snapsmack_font_family_generic_fallback('LinuxBiolinumKeyboard') === 'sans-serif');
+// DotMatrix stays monospace and that is not an oversight: one file carries
+// one spacing width (DotMatrix-Regular, 1223 for every non-zero glyph). The
+// family shows several widths only because condensed and expanded are
+// separate faces, which is what they are meant to be.
+$check('DotMatrix is still monospace, which its own file supports',
+       snapsmack_font_family_generic_fallback('DotMatrix') === "'Courier New', monospace");
 $check('  and takes a declared stack when the skin gives it one',
        snapsmack_font_family_generic_fallback('BlackCasper', 'Impact, sans-serif') === 'Impact, sans-serif');
 $check('an empty family asks for nothing',
