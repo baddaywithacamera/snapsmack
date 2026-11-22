@@ -18,8 +18,12 @@ REFUSALS = [
     "It is inert without a key. A stolen copy of this tool is a dead thing.",
     "It will not invent a board. `board-new` needs role 3, and says so when "
     "the key has less.",
-    "Breadcrumbs when a thread moves do not exist yet. `move` moves the "
-    "thread and leaves nothing behind in the old board.",
+    "`move` leaves a LOCKED breadcrumb in the old board by default, so a "
+    "thread does not just vanish from where people last saw it. "
+    "--no-breadcrumb skips it, which is what you want for spam, where a "
+    "signpost advertises the thing you just hid. If the move succeeds and the "
+    "breadcrumb fails, it says MOVED, BUT NO BREADCRUMB and names the board "
+    "to fix by hand — it does not pretend the move failed.",
     "`board-set --hide` will not hide a board that still has threads in it "
     "unless you add --even-with-threads. Hiding takes the threads with it.",
     "`role` cannot promote anyone to or above the key's own rank, and cannot "

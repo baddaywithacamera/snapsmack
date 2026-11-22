@@ -52,9 +52,22 @@ class FakeForum:
         return {"threads": [{"id": 42, "title": "Upload fails", "reply_count": 1,
                              "display_name": "Example", "is_pinned": 1}]}
 
+    # category_id is in here because the real API returns it and `move` needs
+    # it to know which board to leave a breadcrumb in. Without it the fake made
+    # cmd_move skip the breadcrumb silently, so the move test passed while
+    # testing none of it.
+    breadcrumb_fails = False
+
+    def leave_breadcrumb(self, old_board, title, tid):
+        self._record("leave_breadcrumb", old_board, title, tid)
+        if FakeForum.breadcrumb_fails:
+            raise fc.ForumError("board is hidden")
+        return 99
+
     def thread(self, tid):
         self._record("thread", tid)
         return {"thread": {"id": tid, "title": "Upload fails", "body": "It fails.",
+                           "category_id": 3,
                            "display_name": "Example", "created_at": "2026-10-18"},
                 "replies": [{"id": 7, "body": "Fixed.", "display_name": "PGSB",
                              "created_at": "2026-10-18"}]}
@@ -178,7 +191,63 @@ def test_lock_and_unlock_go_through_the_client_not_a_raw_field():
 
 def test_move_names_the_target_board():
     run(["move", "42", "--board", "5"])
-    assert FakeForum.last.calls[-1] == ("move_thread", (42, 5), {})
+    names = [c[0] for c in FakeForum.last.calls]
+    assert ("move_thread", (42, 5), {}) in FakeForum.last.calls
+    # The move is a PATCH of the existing thread, never a re-post: re-posting
+    # would leave every follower behind.
+    assert "post_ticket" not in names
+
+
+def test_moving_leaves_a_locked_breadcrumb_in_the_board_it_left(capsys):
+    """The thread keeps its id, so links and followers survive a move. What is
+    lost is its presence in the board people last saw it in, where it now looks
+    deleted. This is the signpost that says otherwise."""
+    run(["move", "42", "--board", "5"])
+    out = capsys.readouterr().out
+    calls = FakeForum.last.calls
+    names = [c[0] for c in calls]
+
+    assert names.index("thread") < names.index("move_thread"), \
+        "the old board must be read BEFORE the move, or it is gone"
+    crumb = [c for c in calls if c[0] == "leave_breadcrumb"]
+    assert crumb, "a move leaves a breadcrumb by default"
+    assert crumb[0][1][0] == 3, "the breadcrumb goes in the board it LEFT, not the target"
+    assert "99" in out and "breadcrumb" in out.lower()
+
+
+def test_no_breadcrumb_skips_it_and_says_so(capsys):
+    """For spam: a signpost pointing at what you just hid advertises it."""
+    run(["move", "42", "--board", "5", "--no-breadcrumb"])
+    out = capsys.readouterr().out
+    names = [c[0] for c in FakeForum.last.calls]
+    assert "leave_breadcrumb" not in names
+    # And it must not even read the thread -- nothing to read it for.
+    assert "thread" not in names
+    # "as asked" specifically. An earlier version of this check accepted any
+    # "no breadcrumb" and so passed even when the flag was ignored entirely --
+    # the fallback message "could not read which board it came from" also
+    # contains that phrase, and it means something completely different:
+    # deliberate skip versus failure to read. A mutation that ignored the flag
+    # survived until this line named the intentional wording.
+    assert "No breadcrumb left, as asked." in out
+    assert "could not read" not in out
+
+
+def test_a_failed_breadcrumb_does_not_pretend_the_move_failed(capsys):
+    """The move has already happened by then. Reporting failure would send
+    somebody looking for a thread that did move; saying nothing would leave a
+    board silently empty. It says both, and names the board to fix by hand."""
+    FakeForum.breadcrumb_fails = True
+    try:
+        run(["move", "42", "--board", "5"])
+    finally:
+        FakeForum.breadcrumb_fails = False
+    out = capsys.readouterr().out
+
+    assert "moved" in out.lower()
+    assert "NO BREADCRUMB" in out
+    assert "board is hidden" in out, "the real reason, not a generic failure"
+    assert "3" in out, "names the board that now shows nothing"
 
 
 def test_post_applies_the_flag_only_when_one_was_asked_for():

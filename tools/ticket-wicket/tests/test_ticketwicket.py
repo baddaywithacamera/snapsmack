@@ -271,13 +271,60 @@ def test_the_client_refuses_to_run_without_a_key():
         f.categories()
 
 
-def test_the_endpoint_that_is_still_missing_says_so_rather_than_faking_it():
-    """move_thread was built -- PATCH threads/{id} {category_id}. Breadcrumbs
-    were not, and a method that quietly did nothing would be worse than one
-    that refuses out loud."""
+def test_a_breadcrumb_is_a_locked_stub_in_the_board_the_thread_left():
+    """This used to assert NotImplementedError. It is built now: the design the
+    old stub described was "leave a LOCKED stub in the old board pointing at
+    the new thread -- never move silently", and it needed no server change, only
+    the two routes the forum already had.
+
+    Locked matters: an unlocked signpost can grow its own conversation, which
+    then needs moving too."""
     f = forummod.Forum("https://x", "k")
-    with pytest.raises(NotImplementedError, match="Breadcrumbs do not exist"):
-        f.leave_breadcrumb(1, "t", 2)
+    calls = []
+
+    def fake_call(method, path, payload=None):
+        calls.append((method, path, payload))
+        if path == "threads":
+            return {"thread": {"id": 99}}
+        return {"status": "ok"}
+
+    f._call = fake_call
+    stub_id = f.leave_breadcrumb(3, "Thumbnails are the wrong size", 42)
+
+    assert stub_id == 99
+    created = [c for c in calls if c[1] == "threads"]
+    assert len(created) == 1, "exactly one stub thread"
+    payload = created[0][2]
+    assert payload["category_id"] == 3, "the stub goes in the board it LEFT"
+    assert payload["title"].startswith("MOVED: ")
+    assert "Thumbnails are the wrong size" in payload["title"]
+    # The id must survive in the body -- it is the only pointer there is.
+    assert "42" in payload["body"]
+    assert "was not deleted" in payload["body"].lower()
+
+    locked = [c for c in calls
+              if c[0] == "PATCH" and c[1] == "threads/99"
+              and (c[2] or {}).get("is_locked") is True]
+    assert locked, "the signpost must be locked"
+
+
+def test_a_long_title_is_truncated_but_the_thread_id_is_never_lost():
+    """Truncation goes on the title, never the body, because the body carries
+    the only pointer to where the thread went."""
+    f = forummod.Forum("https://x", "k")
+    sent = {}
+
+    def fake_call(method, path, payload=None):
+        if path == "threads":
+            sent.update(payload or {})
+            return {"thread": {"id": 7}}
+        return {"status": "ok"}
+
+    f._call = fake_call
+    f.leave_breadcrumb(1, "x" * 400, 1234)
+
+    assert len(sent["title"]) <= forummod.Forum.BREADCRUMB_TITLE_LIMIT
+    assert "1234" in sent["body"], "the id survives truncation"
 
 
 def test_moving_a_thread_patches_rather_than_reposting():

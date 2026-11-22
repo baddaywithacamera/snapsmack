@@ -492,11 +492,51 @@ class Forum:
         with it. Was the first of the two gaps this file named; now built."""
         return self._call("PATCH", f"threads/{thread_id}", {"category_id": int(category_id)})
 
-    def leave_breadcrumb(self, old_category: int, title: str, thread_id: int) -> None:
-        raise NotImplementedError(
-            "Breadcrumbs do not exist yet. When built: leave a LOCKED stub in the "
-            "old board pointing at the new thread — never move silently. The "
-            "forum already soft-deletes and un-hides, so a stub is the same shape "
-            "as everything else there (GL-6).")
+    # The stub that used to live here described what to build: "leave a LOCKED
+    # stub in the old board pointing at the new thread — never move silently."
+    # This is that, built from routes the forum already had. No server change
+    # was needed; the capability was simply never wired up.
+    BREADCRUMB_TITLE_LIMIT = 120
+
+    def leave_breadcrumb(self, old_category: int, title: str, thread_id: int) -> int:
+        """Leave a locked signpost in the board a thread has just left.
+
+        Returns the stub thread's id.
+
+        WHAT IS AND IS NOT LOST ON A MOVE, because the breadcrumb should not be
+        oversold. The thread keeps its id, so its URL still works and everyone
+        following it still follows it. What disappears is the thread's presence
+        in the board where people last saw it — someone browsing that board
+        finds nothing and cannot tell whether it was moved or deleted. This
+        says which.
+
+        The stub is LOCKED, so the signpost cannot itself grow a conversation
+        that then needs moving.
+
+        No URL is fabricated. This client only knows the API base, not the
+        public web address, and a guessed link that 404s is worse than an id.
+        """
+        shown = (title or "").strip() or "a thread"
+        stub_title = "MOVED: " + shown
+        if len(stub_title) > self.BREADCRUMB_TITLE_LIMIT:
+            # Truncated on the title, never on the body, so the pointer to the
+            # thread id always survives.
+            keep = self.BREADCRUMB_TITLE_LIMIT - len("MOVED: ") - 1
+            stub_title = "MOVED: " + shown[:keep].rstrip() + "…"
+
+        body = (
+            "This thread was moved to another board. It was not deleted.\n"
+            "\n"
+            "It is thread " + str(int(thread_id)) + ", and it kept that id, so "
+            "any link you already had still works and anyone following it is "
+            "still following it.\n"
+            "\n"
+            "This note is locked and is here only so the thread does not vanish "
+            "from the board you last saw it in."
+        )
+
+        stub_id = self.post_ticket(int(old_category), stub_title, body)
+        self.lock(stub_id, True)
+        return stub_id
 
 # ===== SNAPSMACK EOF =====

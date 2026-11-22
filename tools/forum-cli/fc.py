@@ -407,9 +407,43 @@ def cmd_restore(args):
 
 
 def cmd_move(args):
-    res = _forum(args).move_thread(args.id, args.board)
-    _out(args, res, "Thread " + str(args.id) + " moved to board "
-         + str(args.board) + ".")
+    forum = _forum(args)
+
+    # The title and the old board have to be read BEFORE the move, because
+    # afterwards the thread no longer says where it came from.
+    old_board = 0
+    title = ""
+    if not args.no_breadcrumb:
+        try:
+            before = forum.thread(args.id) or {}
+            inner = before.get("thread") if isinstance(before.get("thread"), dict) else before
+            old_board = int(inner.get("category_id") or 0)
+            title = str(inner.get("title") or "")
+        except ForumError:
+            # Not fatal, but it does mean no breadcrumb: say so rather than
+            # move and quietly leave nothing behind.
+            old_board = 0
+
+    res = forum.move_thread(args.id, args.board)
+    note = "Thread " + str(args.id) + " moved to board " + str(args.board) + "."
+
+    if args.no_breadcrumb:
+        note += " No breadcrumb left, as asked."
+    elif old_board and old_board != int(args.board):
+        # The move has ALREADY happened by this point. If the signpost fails,
+        # the honest outcome is "moved, no breadcrumb" — not a pretence that
+        # the whole thing failed, and not silence.
+        try:
+            stub = forum.leave_breadcrumb(old_board, title, args.id)
+            note += " Locked breadcrumb " + str(stub) + " left in board " + str(old_board) + "."
+        except ForumError as err:
+            note += (" MOVED, BUT NO BREADCRUMB: " + str(err)
+                     + " Board " + str(old_board) + " now shows nothing. "
+                     + "Leave a note there by hand.")
+    else:
+        note += " No breadcrumb: could not read which board it came from."
+
+    _out(args, res, note)
     return 0
 
 
@@ -564,6 +598,9 @@ def build_parser():
     mv = sub.add_parser("move")
     mv.add_argument("id", type=int)
     mv.add_argument("--board", type=int, required=True)
+    mv.add_argument("--no-breadcrumb", action="store_true",
+                    help="move without leaving a signpost in the old board "
+                         "(for spam, where a signpost advertises it)")
     mv.set_defaults(func=cmd_move)
 
     se = sub.add_parser("search")

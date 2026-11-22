@@ -138,9 +138,14 @@ REFUSALS = [
     "author signs as itself.",
     "The forum client is inert without a key. That is deliberate: a stolen copy "
     "of this tool is a dead thing.",
-    "move_thread and leave_breadcrumb raise NotImplementedError. The forum API "
-    "has no move endpoint yet. Do not fake it by re-posting - that orphans "
-    "everyone following the thread.",
+    "move_thread and leave_breadcrumb both work now. This sheet said they "
+    "raised NotImplementedError and that the API had no move endpoint, and "
+    "that was wrong on both counts for some time - move_thread PATCHes "
+    "threads/{id} with a category_id and has a test, and leave_breadcrumb "
+    "posts a locked signpost into the old board. A capability sheet that "
+    "under-reports is as misleading as one that over-reports, so: moving is "
+    "a PATCH, never a re-post, because re-posting orphans everyone following "
+    "the thread.",
 ]
 
 BANDS = [
