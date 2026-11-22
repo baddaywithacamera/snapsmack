@@ -31,9 +31,17 @@ are pushed and waiting on review.
   longer drops back past DotMatrix.** If you picked one of the condensed,
   expanded or italic DotMatrix faces and it could not load, the page fell
   straight to Courier instead of to plain DotMatrix, which is much closer to
-  what you chose. It now tries DotMatrix first. Sites using the standard
-  DotMatrix are unaffected. **Repackage IMPACT PRINTER 2.1.28 + reinstall to
-  ship.** (SS-1519)
+  what you chose. It now tries DotMatrix first. This covers all three font
+  settings — the masthead, the body text and the page headings. Sites using
+  the standard DotMatrix are unaffected. **Repackage IMPACT PRINTER 2.1.28 +
+  reinstall to ship.** (SS-1519)
+
+- **WRITING WITH IMPACT (skin package, 1.1.12): the same repair for your
+  headings.** If the DotMatrix face you chose could not load, headings fell
+  straight to the system typewriter font instead of trying Tiny5 Matrix and
+  then plain DotMatrix first, which is far closer to the look you picked.
+  Nothing changes for a site using the standard heading face. **Repackage
+  WRITING WITH IMPACT 1.1.12 + reinstall to ship.** (SS-1519)
 
 - **A restore brings your photographs back, and tells you honestly when it
   cannot.** The admin restore path never reconciled media: database rows came

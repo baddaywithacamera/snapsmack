@@ -385,7 +385,8 @@
                 "DotMatrix-Duo-UltraCondensed": "DotMatrix Duo (Ultra Condensed)"
             },
             "selector": ".static-page-title, .photo-title-footer",
-            "property": "font-family"
+            "property": "font-family",
+            "fallback": "'DotMatrix', 'Courier New', monospace"
         },
         "footer_font_family": {
             "section": "TYPOGRAPHY",

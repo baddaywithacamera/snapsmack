@@ -135,9 +135,28 @@ $check('choosing the base family itself does not repeat it',
 $check('  so a site on the default compiles exactly what it did before',
        str_contains($ip('body_font_family', 'DotMatrix'),
                     '.description, .static-content{font-family:"DotMatrix", \'Courier New\', monospace;}'));
-$check('an option on the same skin that declares nothing still uses the table',
+// The third IMPACT PRINTER control, which I missed on the first pass and the
+// PM approved from the decision list. Its selector list includes
+// .photo-title-footer, whose stylesheet rule is 'DotMatrix-Bold',
+// 'DotMatrix', 'Courier New', monospace — so a chosen variant has to fall
+// back to the base family before Courier, like the other two.
+$check('the static heading control keeps its stack too',
        str_contains($ip('static_heading_font', 'DotMatrix-Bold'),
-                    '"DotMatrix-Bold", \'Courier New\', monospace'));
+                    '"DotMatrix-Bold", \'DotMatrix\', \'Courier New\', monospace'));
+$check('  and the base family still does not repeat itself',
+       str_contains($ip('static_heading_font', 'DotMatrix'),
+                    '"DotMatrix", \'Courier New\', monospace')
+       && !str_contains($ip('static_heading_font', 'DotMatrix'), '\'DotMatrix\', \'DotMatrix\''));
+
+// WRITING WITH IMPACT, the other control the PM approved. All 29 choices are
+// the same house monospace family, and its masthead stack carries a second
+// house face before the base one.
+$wwi = static fn(string $v): string => $style('writing-with-impact', ['header_font_family' => $v]);
+$check('WRITING WITH IMPACT keeps the two house faces in its masthead stack',
+       str_contains($wwi('DotMatrix-Expanded-Bold'),
+                    '"DotMatrix-Expanded-Bold", \'Tiny5-Matrix\', \'DotMatrix\', monospace'));
+$check('  and a face chosen from inside its own tail is not repeated',
+       str_contains($wwi('Tiny5-Matrix'), '"Tiny5-Matrix", \'DotMatrix\', monospace'));
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 5 — EVERY FACE EVERY SKIN OFFERS, SWEPT\n";
