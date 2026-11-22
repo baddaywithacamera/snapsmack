@@ -801,6 +801,13 @@ class TakeMode(QWidget):
         eff_pmb = float((cached_skin.get("para_margin_bottom_px") if css_loaded else 0.0) or 0.0)
         eff_imt = float((cached_skin.get("image_margin_top_px") if css_loaded else 0.0) or 0.0)
         eff_imb = float((cached_skin.get("image_margin_bottom_px") if css_loaded else 0.0) or 0.0)
+        eff_cap_font = sybu_skin.get("caption_font") or (cached_skin.get("caption_font") if css_loaded else "")
+        eff_cap_pt = float(sybu_skin.get("caption_pt") or (cached_skin.get("caption_pt") if css_loaded else 0.0) or 0.0)
+        eff_cap_color = sybu_skin.get("caption_color") or (cached_skin.get("caption_color") if css_loaded else "")
+        eff_cap_italic = (
+            sybu_skin["caption_italic"] if sybu_skin.get("caption_italic") is not None
+            else (bool(cached_skin.get("caption_italic", True)) if css_loaded else True)
+        )
         decl_width = int(sybu_skin.get("post_content_width") or 0)
         if decl_width > 0 and getattr(self, "_preview_width", 760) != 360:
             self._preview_width = decl_width
@@ -820,6 +827,10 @@ class TakeMode(QWidget):
                 self.body.canvas.set_skin_typography(
                     body_font=eff_font,
                     body_pt=eff_pt,
+                    caption_font=eff_cap_font,
+                    caption_pt=eff_cap_pt,
+                    caption_color=eff_cap_color,
+                    caption_italic=eff_cap_italic,
                     line_height_pct=eff_lh,
                     para_margin_bottom=eff_pmb,
                     image_margin_top=eff_imt,

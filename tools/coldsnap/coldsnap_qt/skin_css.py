@@ -28,7 +28,7 @@ def _extract_rule_bodies(css_text: str, selector_pattern: str) -> list:
     bodies = []
     # Strip CSS comments first so commented-out examples don't pollute matches
     clean = re.sub(r"/\*.*?\*/", "", css_text or "", flags=re.S)
-    for m in re.finditer(selector_pattern + r"\s*\{([^}]*)\}", clean, re.I | re.S):
+    for m in re.finditer(r"(?:^|(?<=\})|(?<=;))\s*" + selector_pattern + r"\s*\{([^}]*)\}", clean, re.I | re.S):
         bodies.append(m.group(1))
     return bodies
 
@@ -44,8 +44,8 @@ def _first_prop(bodies: list, prop: str) -> str:
 
 def parse_skin_css(css_text: str) -> dict:
     """Extract typography, colours, and post-spacing rules from a skin stylesheet."""
-    body_rules = _extract_rule_bodies(css_text, r"(?:^|\})\s*body")
-    entry_rules = _extract_rule_bodies(css_text, r"(?:^|\})\s*\.entry-content")
+    body_rules = _extract_rule_bodies(css_text, r"body")
+    entry_rules = _extract_rule_bodies(css_text, r"\.entry-content")
     p_rules = _extract_rule_bodies(css_text, r"\.entry-content\s*>\s*p(?:\s*,[^{]*)?")
     frame_rules = _extract_rule_bodies(css_text, r"\.entry-content\s*>\s*\.snap-inline-frame")
     owned_rules = _extract_rule_bodies(css_text, r"\.smacktalk-owned-photo")
@@ -113,6 +113,21 @@ def parse_skin_css(css_text: str) -> dict:
             image_margin_bottom_px = _parse_len_px(parts[2], base_px)
 
     loaded = bool(body_font or body_pt > 0 or bg or fg or image_margin_top_px > 0)
+
+    # Figcaption styling (e.g. TILEZ / ALFRED / TELEGRAM: color #666; font-size: 14px; font-style: italic; padding-top: 12px)
+    fig_rules = _extract_rule_bodies(css_text, r"(?:^|\}|\s)figcaption")
+    cap_color = _first_prop(fig_rules, "color")
+    if not re.match(r"^#[0-9a-fA-F]{3,8}$", cap_color):
+        cap_color = ""
+    cap_fs = _first_prop(fig_rules, "font-size")
+    cap_px = _parse_len_px(cap_fs, base_px) if cap_fs else 0.0
+    cap_pt = round(cap_px * 0.75, 2) if cap_px > 0 else 0.0
+    cap_font_raw = _first_prop(fig_rules, "font-family")
+    cap_font = cap_font_raw.split(",")[0].strip(" '\"") if cap_font_raw else ""
+    cap_style = _first_prop(fig_rules, "font-style").lower()
+    cap_italic = (cap_style != "normal") if cap_style else True
+    cap_pad_top = _parse_len_px(_first_prop(fig_rules, "padding-top"), base_px)
+
     return {
         "loaded": loaded,
         "bg": bg,
@@ -124,6 +139,12 @@ def parse_skin_css(css_text: str) -> dict:
         "para_margin_bottom_px": para_margin_bottom_px,
         "image_margin_top_px": image_margin_top_px,
         "image_margin_bottom_px": image_margin_bottom_px,
+        "caption_color": cap_color,
+        "caption_font": cap_font,
+        "caption_px": cap_px,
+        "caption_pt": cap_pt,
+        "caption_italic": cap_italic,
+        "caption_padding_top_px": cap_pad_top,
     }
 
 
@@ -154,6 +175,29 @@ def parse_sybu_skin(skin: dict) -> dict:
         if v:
             body_font = v.split(",")[0].strip(" '\"")
             break
+    cap_color = ""
+    for k in ("caption_color", "figcaption_color"):
+        v = str(opts.get(k) or "").strip()
+        if re.match(r"^#[0-9a-fA-F]{3,8}$", v):
+            cap_color = v
+            break
+    cap_font = ""
+    for k in ("caption_font_family", "figcaption_font_family"):
+        v = str(opts.get(k) or "").strip()
+        if v:
+            cap_font = v.split(",")[0].strip(" '\"")
+            break
+    cap_pt = 0.0
+    for k in ("caption_font_size", "figcaption_font_size"):
+        v = str(opts.get(k) or "").strip()
+        if v:
+            px = _parse_len_px(v, 16.0)
+            if px > 0:
+                cap_pt = round(px * 0.75, 2)
+            break
+    cap_italic = None
+    if "caption_italic" in opts:
+        cap_italic = str(opts.get("caption_italic")).strip().lower() not in ("0", "false", "no", "normal")
     content_width = 0
     raw_w = opts.get("post_content_width")
     if raw_w not in (None, ""):
@@ -170,6 +214,10 @@ def parse_sybu_skin(skin: dict) -> dict:
         "bg": bg,
         "fg": fg,
         "body_font": body_font,
+        "caption_color": cap_color,
+        "caption_font": cap_font,
+        "caption_pt": cap_pt,
+        "caption_italic": cap_italic,
         "post_content_width": content_width,
         "has_sybu": bool(skin.get("slug") or opts),
     }

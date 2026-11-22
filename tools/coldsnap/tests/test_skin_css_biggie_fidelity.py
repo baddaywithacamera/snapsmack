@@ -36,6 +36,12 @@ def test_parse_tilez_skin_css_extracts_font_line_height_and_margins():
         margin-top: 2.6em;
         margin-bottom: 2.6em;
     }
+    figcaption {
+        color: #666;
+        font-size: 14px;
+        font-style: italic;
+        padding-top: 12px;
+    }
     """
     parsed = parse_skin_css(sample_css)
     assert parsed["loaded"] is True
@@ -48,6 +54,10 @@ def test_parse_tilez_skin_css_extracts_font_line_height_and_margins():
     assert abs(parsed["para_margin_bottom_px"] - 34.0) < 1e-6
     assert abs(parsed["image_margin_top_px"] - 52.0) < 1e-6
     assert abs(parsed["image_margin_bottom_px"] - 52.0) < 1e-6
+    assert parsed["caption_color"] == "#666"
+    assert parsed["caption_pt"] == 10.5
+    assert parsed["caption_italic"] is True
+    assert abs(parsed["caption_padding_top_px"] - 12.0) < 1e-6
 
 
 def test_biggie_applies_skin_typography_and_shows_approximate_when_unloaded(monkeypatch, tmp_path):
