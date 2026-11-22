@@ -58,9 +58,9 @@
             "manifest_css_sha256": "6354f1225e5dfd93ed693b112ede9dcc702980a019f1254df3fabb7c551641a6"
         },
         "impact-printer": {
-            "version": "2.1.27",
+            "version": "2.1.28",
             "files_sha256": "a756c993378a60c1204c96178856bc36535d4f46e32c5fc679f9a4d353b769cf",
-            "manifest_css_sha256": "3b8bf63241dcfebbc852fca4c126eee3e15ebd2fda9b248bf35936b21ea99715"
+            "manifest_css_sha256": "7f2bb144bde0a69f77a648db3bef91fa0164d57724da629e99752365674f8ed6"
         },
         "instant-camera": {
             "version": "1.0.62",

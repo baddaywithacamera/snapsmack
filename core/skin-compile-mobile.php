@@ -72,8 +72,11 @@ function snapsmack_compile_mobile_css(PDO $pdo, ?string $mobile_slug = null): bo
         if (($meta['type'] ?? '') === 'select' && isset($meta['options'][$val]['css'])) {
             $css .= "{$meta['selector']} {$meta['options'][$val]['css']}\n";
         } elseif ($prop === 'font-family') {
-            $fallback = snapsmack_font_family_generic_fallback($val);
-            $css .= "{$meta['selector']} { font-family: \"{$val}\", {$fallback}; }\n";
+            // SS-1519: declared fallback first, then the known-families
+            // table, then the family on its own rather than a guessed generic.
+            $fallback = snapsmack_font_family_generic_fallback($val, (string)($meta['fallback'] ?? ''));
+            $stack = '"' . $val . '"' . ($fallback === '' ? '' : ', ' . $fallback);
+            $css .= "{$meta['selector']} { font-family: {$stack}; }\n";
             if (!empty($meta['selector'])) {
                 $sz_key = $key . '_size';
                 $sz_val = ($scoped[$sz_key] ?? '') !== '' ? $scoped[$sz_key] : ($meta['size']['default'] ?? '1.0');

@@ -16,6 +16,25 @@ section until the tag was being assembled, which would have told owners their
 photographs come back in a build that does not carry the change. The branches
 are pushed and waiting on review.
 
+- **A serif font you choose now falls back to another serif, not to a sans.**
+  Every font you pick in a skin's settings is written out with a backup
+  typeface, used while yours loads and whenever it cannot load at all. That
+  backup was a sans-serif for every font that was not a typewriter face — so
+  if you chose Georgia, Merriweather, Playfair Display or any other serif,
+  readers whose browsers had not got your font saw the page in the wrong kind
+  of typeface. It affected 48 of the 61 font settings across the skins, and
+  six skins shipped that way by default. The backup now matches the kind of
+  typeface you chose. Nothing changes for a font that was already correct,
+  and no setting of yours is altered. (SS-1519)
+
+- **IMPACT PRINTER (skin package, 2.1.28): choosing a DotMatrix variant no
+  longer drops back past DotMatrix.** If you picked one of the condensed,
+  expanded or italic DotMatrix faces and it could not load, the page fell
+  straight to Courier instead of to plain DotMatrix, which is much closer to
+  what you chose. It now tries DotMatrix first. Sites using the standard
+  DotMatrix are unaffected. **Repackage IMPACT PRINTER 2.1.28 + reinstall to
+  ship.** (SS-1519)
+
 - **A restore brings your photographs back, and tells you honestly when it
   cannot.** The admin restore path never reconciled media: database rows came
   back pointing at photographs, thumbnails, assets and branding that were not

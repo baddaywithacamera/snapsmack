@@ -34,8 +34,13 @@ if (!isset($inventory['local_fonts']['Merriweather'])
 // and the same-origin route no longer carries them. The contract that matters
 // is that the chosen face is DELIVERED, by whichever route owns it -- this
 // still fails if neither does.
+// SS-1519: this asserted `"Merriweather", sans-serif`. Merriweather is a
+// serif, and that expectation was the fault being repaired — the compiler
+// answered sans-serif for every face that was not monospace, so the masthead
+// fell back to a sans whenever the webfont had not arrived. The face and its
+// delivery are what this check is for; the generic now has to match the face.
 $__fontStyle = $style;
-if (!str_contains($style, 'font-family:"Merriweather", sans-serif')
+if (!str_contains($style, 'font-family:"Merriweather", serif')
     || !(str_contains($__fontStyle, '/font.php?family=Merriweather') || (str_contains($__fontStyle, 'fonts.googleapis.com') && str_contains($__fontStyle, 'family=Merriweather')))) {
     throw new RuntimeException('The selected 50 SHADES masthead face is not delivered at all.');
 }
@@ -51,7 +56,7 @@ $view = snapsmack_build_skin_view(
 ob_start();
 $rendered = snapsmack_render_strict_skin_template($root . '/skins/50-shades-of-noah-grey', 'layout.php', $view);
 $html = (string)ob_get_clean();
-if (!$rendered || !str_contains($html, 'font-family:"Merriweather", sans-serif')
+if (!$rendered || !str_contains($html, 'font-family:"Merriweather", serif')
     || !(str_contains($html, '/font.php?family=Merriweather')
          || (str_contains($html, 'fonts.googleapis.com') && str_contains($html, 'family=Merriweather')))
     || !str_contains($html, 'variant-light.css')
