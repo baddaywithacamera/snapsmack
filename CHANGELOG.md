@@ -16,6 +16,16 @@ section until the tag was being assembled, which would have told owners their
 photographs come back in a build that does not carry the change. The branches
 are pushed and waiting on review.
 
+- **A thread moved to another board leaves a signpost behind.** Moving a thread
+  kept its id, so links and followers always survived — but it disappeared from
+  the board people last saw it in, where it looked deleted rather than moved.
+  The old board now gets a locked note saying the thread was moved, not
+  deleted, and naming it, so nobody is left wondering whether their post was
+  thrown away. A moderator can skip the note when leaving one would only draw
+  attention to something being tidied away, and if the note cannot be left the
+  move still reports plainly that it happened and which board needs a note by
+  hand.
+
 - **A deleted forum thread can be brought back.** Deleting a thread or a reply
   only ever marked it deleted and left it in the database, but there was no way
   to reach it again: the only undo in the whole forum API was for images. So a
