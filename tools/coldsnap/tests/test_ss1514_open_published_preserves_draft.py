@@ -334,3 +334,45 @@ def test_ss1514_no_empty_duplicate_archive_and_block_empty_queue(monkeypatch, tm
         from PySide6.QtCore import QSettings
         QSettings("SnapSmack", "ColdSnap").remove("take/archived_draft_ids")
         mode.close()
+
+
+def test_featured_photo_control_and_linked_status_line(monkeypatch, tmp_path):
+    poster = _FakePoster(
+        posts=[{"id": 4, "title": "Start your engines...", "slug": "start-your-engines", "status": "published", "created_at": "2026-01-04 12:00:00"}],
+        full_posts={4: {"id": 4, "title": "Start your engines...", "slug": "start-your-engines", "content": "", "status": "published", "bucket": []}},
+    )
+    app, mode = _setup_mode(monkeypatch, tmp_path, poster)
+    try:
+        from coldsnap_qt.photo_tray import PhotoThumbTile
+        p1 = _make_photo(tmp_path / "f1.jpg")
+        p2 = _make_photo(tmp_path / "f2.jpg")
+        mode._add_photo_paths([p1, p2], insert=False)
+
+        assert "Featured photo" in mode.featured_btn.text()
+        tiles = [mode.bucket_col.itemAt(i).widget() for i in range(mode.bucket_col.count())]
+        assert len(tiles) == 2
+        assert tiles[0]._is_cover is True
+        assert tiles[1]._is_cover is False
+
+        # Right-click / signal setFeaturedRequested on 2nd photo
+        tiles[1].setFeaturedRequested.emit(1)
+        app.processEvents()
+        assert mode._cover_idx == 1
+        tiles = [mode.bucket_col.itemAt(i).widget() for i in range(mode.bucket_col.count())]
+        assert tiles[1]._is_cover is True
+
+        # Attach to published post -> linked_post_lbl shows "Editing: <title>  /<slug>"
+        mode.title_edit.setText("Start your engines...")
+        mode.body.canvas.from_blocks([{"type": "para", "text": "Draft paragraph."}])
+        mode._open_published(choose_fn=lambda _t: "attach")
+        app.processEvents()
+        assert not mode.linked_post_lbl.isHidden()
+        assert "Editing: Start your engines..." in mode.linked_post_lbl.text()
+        assert "/start-your-engines" in mode.linked_post_lbl.text()
+
+        # Clear hides linked_post_lbl
+        mode._clear()
+        app.processEvents()
+        assert mode.linked_post_lbl.isHidden()
+    finally:
+        mode.close()

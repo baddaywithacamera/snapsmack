@@ -325,6 +325,10 @@ class TakeMode(QWidget):
         self.page_meta = QLabel("")
         self.page_meta.setObjectName("PageMeta")
         card_col.addWidget(self.page_meta)
+        self.linked_post_lbl = QLabel("")
+        self.linked_post_lbl.setObjectName("LinkedPostStatus")
+        self.linked_post_lbl.setVisible(False)
+        card_col.addWidget(self.linked_post_lbl)
         self.site_colors_note = QLabel("approximate: skin styles not loaded")
         self.site_colors_note.setObjectName("SiteColorsNote")
         self.site_colors_note.setVisible(False)
@@ -465,7 +469,7 @@ class TakeMode(QWidget):
         self.photos_sec.add(self.in_mosaics_bar)
 
         self.photos_sec.add(
-            hint("The ★ photo leads the post. This order is the order in the post."))
+            hint("★ FEATURED = landing tile on the site (e.g. TILEZ). Right-click any photo or click Featured photo."))
         self.bucket_count = hint("")   # its own line — AI-ALT progress / status only
         self.photos_sec.add(self.bucket_count)
 
@@ -889,6 +893,20 @@ class TakeMode(QWidget):
             self.page_meta.setStyleSheet(
                 f"QLabel#PageMeta {{ background: transparent; color: {pal['muted']}; font-size: 12px; }}"
             )
+        if hasattr(self, "linked_post_lbl"):
+            rid = int(getattr(self, "_remote_post_id", 0) or 0)
+            if rid:
+                t = self.title_edit.text().strip() or f"Post #{rid}"
+                slug = str(getattr(self, "_remote_slug", "") or "").strip().lstrip("/")
+                loc = f"/{slug}" if slug else f"#{rid}"
+                self.linked_post_lbl.setText(f"Editing: {t}  {loc}")
+                self.linked_post_lbl.setStyleSheet(
+                    f"QLabel#LinkedPostStatus {{ background: transparent; color: {pal['eyebrow']};"
+                    " font-size: 11px; font-weight: 700; }}"
+                )
+                self.linked_post_lbl.setVisible(True)
+            else:
+                self.linked_post_lbl.setVisible(False)
         if hasattr(self, "site_colors_note"):
             self.site_colors_note.setStyleSheet(
                 f"QLabel#SiteColorsNote {{ background: transparent; color: {pal['muted']}; font-size: 11px; font-style: italic; }}"
@@ -2358,14 +2376,18 @@ class TakeMode(QWidget):
                 return
 
         if action == "attach":
+            self._remote_post_id = post_id
+            self._remote_slug = str(selected_row.get("slug") or "")
             session = self.rail.ensure_session()
             draft = self._build_draft(session)
             draft.remote_post_id = post_id
+            draft.slug = self._remote_slug
             if not getattr(draft, "post_date", ""):
                 draft.post_date = str(selected_row.get("created_at") or "")
             session.add_draft(draft, copy_images=False)
             self._mirror_sqlite(draft)
             self.rail.refresh_batches()
+            self._update_linked_banner()
             self.save_state.setText(
                 f"Attached open draft to published post #{post_id} — your draft is intact"
             )
@@ -2398,6 +2420,7 @@ class TakeMode(QWidget):
         draft = O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK,
                         mode=self.SUITE_MODE)
         draft.remote_post_id = int(post.get("id") or 0)
+        draft.slug = str(post.get("slug") or "")
         draft.title = str(post.get("title") or "")
         draft.caption = str(post.get("content") or "")
         draft.img_status = str(post.get("status") or "draft")
@@ -2553,14 +2576,15 @@ class TakeMode(QWidget):
         manage.setSpacing(4)
         up = QPushButton("▲")
         down = QPushButton("▼")
-        lead = QPushButton("★ Lead")
+        self.featured_btn = QPushButton("★ Featured photo (landing tile)")
+        self.featured_btn.setToolTip("Make the selected photo the post's featured landing tile (featured_image_id)")
         remove = QPushButton("×")
         remove.setObjectName("Danger")
         up.clicked.connect(lambda: self._manage_selected("up"))
         down.clicked.connect(lambda: self._manage_selected("down"))
-        lead.clicked.connect(lambda: self._manage_selected("lead"))
+        self.featured_btn.clicked.connect(lambda: self._manage_selected("lead"))
         remove.clicked.connect(lambda: self._manage_selected("remove"))
-        for button in (up, down, lead, remove):
+        for button in (up, down, self.featured_btn, remove):
             manage.addWidget(button)
         manage.addStretch(1)
         col.addLayout(manage)
@@ -3136,6 +3160,7 @@ class TakeMode(QWidget):
                 "Selected photograph" if is_selected else "Select photograph")
             tile.selectionClicked.connect(
                 lambda idx, toggle: self._select_photo(idx, toggle=toggle))
+            tile.setFeaturedRequested.connect(self._set_featured_photo)
             self.bucket_col.addWidget(tile, visible_pos // cols, visible_pos % cols)
             visible_pos += 1
         if visible_pos == 0:
@@ -3178,12 +3203,31 @@ class TakeMode(QWidget):
         self.bucket_count.setText(f"AI FILL… photo 1 of {len(imgs)} (Gemini)")
         self._ai_worker.start([im.local_path for im in imgs])
 
+    def _set_featured_photo(self, idx: int):
+        if 0 <= idx < len(self._bucket):
+            self._cover_idx = idx
+            self._selected_photo_idx = idx
+            self._refresh_bucket()
+            self._changed()
+
+    def _update_linked_banner(self):
+        if not hasattr(self, "linked_post_lbl"):
+            return
+        rid = int(getattr(self, "_remote_post_id", 0) or 0)
+        if rid:
+            t = self.title_edit.text().strip() or f"Post #{rid}"
+            slug = str(getattr(self, "_remote_slug", "") or "").strip().lstrip("/")
+            loc = f"/{slug}" if slug else f"#{rid}"
+            self.linked_post_lbl.setText(f"Editing: {t}  {loc}")
+            self.linked_post_lbl.setVisible(True)
+        else:
+            self.linked_post_lbl.setVisible(False)
+
     def _edit(self, draft: O.Draft):
         self._loading = True
         self._editing_id = draft.draft_id
-        if getattr(self, "_remote_post_id", 0):
-            draft.remote_post_id = int(self._remote_post_id)
         self._remote_post_id = int(getattr(draft, "remote_post_id", 0) or 0)
+        self._remote_slug = str(getattr(draft, "slug", "") or "")
         self.title_edit.setText(draft.title)
         self.tags_edit.setText(draft.tags)
         self.status_combo.setCurrentText(draft.img_status)
@@ -3208,13 +3252,16 @@ class TakeMode(QWidget):
         self.body.set_state(draft.caption, getattr(draft, "body_blocks", ""))
         self.body.editor.moveCursor(QTextCursor.End)   # so an insert lands where writing resumes
         self._refresh_bucket()
+        self._update_linked_banner()
         self._loading = False
+        self._update_linked_banner()
         self.save_state.setText("Safe on this computer")
 
     def _clear(self):
         self._loading = True
         self._editing_id = None
         self._remote_post_id = 0
+        self._remote_slug = ""
         self.title_edit.clear()
         self.tags_edit.clear()
         self.status_combo.setCurrentText("published")
@@ -3224,6 +3271,7 @@ class TakeMode(QWidget):
         self._selected_photo_idx = None
         self._ai_post_meta = {}
         self._refresh_bucket()
+        self._update_linked_banner()
         self._loading = False
         self.save_state.setText("Begin the story… changes will be safe on this computer.")
 
@@ -3273,6 +3321,8 @@ class TakeMode(QWidget):
         self._editing_id = draft.draft_id
         if getattr(self, "_remote_post_id", 0):
             draft.remote_post_id = int(self._remote_post_id)
+        if getattr(self, "_remote_slug", ""):
+            draft.slug = str(self._remote_slug)
         draft.title = self.title_edit.text().strip()
         draft.tags = self.tags_edit.text().strip()
         if authored is None:

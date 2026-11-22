@@ -127,6 +127,7 @@ class PhotoThumbTile(QPushButton):
     """Square thumbnail tile with letterboxed true-aspect preview and status badges."""
 
     selectionClicked = Signal(int, bool)  # (bucket_index, toggle_multi)
+    setFeaturedRequested = Signal(int)    # (bucket_index)
 
     def __init__(self, index: int, pixmap: QPixmap, selected: bool = False,
                  is_cover: bool = False, edited: bool = False,
@@ -180,6 +181,15 @@ class PhotoThumbTile(QPushButton):
             return
         super().mouseMoveEvent(event)
 
+    def contextMenuEvent(self, event):
+        from PySide6.QtWidgets import QMenu
+        menu = QMenu(self)
+        act_feat = menu.addAction("★ Set as featured (landing tile)")
+        act_feat.setEnabled(not self._is_cover)
+        chosen = menu.exec(event.globalPos())
+        if chosen is act_feat:
+            self.setFeaturedRequested.emit(self._index)
+
     def paintEvent(self, _event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -219,14 +229,18 @@ class PhotoThumbTile(QPushButton):
         p.setPen(QColor("#ffffff"))
         p.drawText(num_rect, Qt.AlignCenter, num_txt)
 
-        # Top-right lead star
+        # Top-right labelled featured badge
         if self._is_cover:
-            star_rect = QRect(w - 22, 5, 17, 17)
+            bw = min(64, max(44, w - 10))
+            star_rect = QRect(w - bw - 4, 5, bw, 15)
             p.setPen(Qt.NoPen)
-            p.setBrush(QColor(10, 12, 10, 210))
+            p.setBrush(QColor(22, 18, 8, 225))
             p.drawRoundedRect(star_rect, 3, 3)
             p.setPen(QColor("#f5b82e"))
-            p.drawText(star_rect, Qt.AlignCenter, "★")
+            f_feat = QFont(f_badge)
+            f_feat.setPointSize(7)
+            p.setFont(f_feat)
+            p.drawText(star_rect, Qt.AlignCenter, "★ FEATURED")
 
         # Top-left EDITED badge + bottom-right version count badge
         if self._edited:
