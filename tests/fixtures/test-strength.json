@@ -1767,6 +1767,11 @@
         "predicates": 13,
         "thresholds": []
     },
+    "rational-geo-topo-map-stays-behind-the-page-regression.php": {
+        "assertions": 13,
+        "predicates": 13,
+        "thresholds": []
+    },
     "reader-header-never-names-a-real-instance.php": {
         "assertions": 22,
         "predicates": 18,

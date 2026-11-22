@@ -16,6 +16,15 @@ section until the tag was being assembled, which would have told owners their
 photographs come back in a build that does not carry the change. The branches
 are pushed and waiting on review.
 
+- **RATIONAL GEO (skin package, 2.1.45): the map background no longer sits on
+  top of your photographs.** The topographic map behind the site was being
+  drawn over the photographs rather than behind them, so faint contour lines
+  crossed every picture — most visible on water, sky and other pale, flat
+  images — and crossed the footer as well. It now sits behind everything, and
+  the map itself is unchanged: same artwork, same opacity slider, same
+  on/off switch, still showing in the margins around your pictures.
+  **Repackage RATIONAL GEO 2.1.45 + reinstall to ship.** (SS-1518)
+
 - **RATIONAL GEO (skin package, 2.1.44): the archive no longer has two
   different left margins.** On screens between roughly 1025 and 1400 pixels
   wide — most laptops, and a tablet held landscape — the wall of photographs
