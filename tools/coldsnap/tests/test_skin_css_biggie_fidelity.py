@@ -185,6 +185,9 @@ def test_tilez_stylesheet_picks_post_bg_fff_over_early_1d1d1d():
     with open(css_path, encoding="utf-8") as fh:
         parsed = parse_skin_css(fh.read())
     assert parsed["bg"].lower() in ("#fff", "#ffffff")
+    assert parsed["body_font"] == "Montserrat"
+    assert parsed["body_px"] == 20.0
+    assert abs(parsed["line_height_pct"] - 172.0) < 1e-6
     assert parsed["caption_color"] == "#666"
     assert parsed["caption_pt"] == 10.5
     assert parsed["caption_italic"] is True

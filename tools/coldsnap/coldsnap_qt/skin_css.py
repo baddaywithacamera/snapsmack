@@ -48,7 +48,10 @@ def parse_skin_css(css_text: str) -> dict:
         css_text,
         r"(?:[^{};]*,\s*)?body(?:\.(?:blog|single|archive|post|tilez-v2))?(?:\s*,[^{};]*)?",
     )
-    entry_rules = _extract_rule_bodies(css_text, r"(?:\.entry-content|\.post-content)")
+    entry_rules = _extract_rule_bodies(
+        css_text,
+        r"(?:[^{};]*,\s*)?(?:\.entry-content|\.post-content)(?:\s*,[^{};]*)?",
+    )
     p_rules = _extract_rule_bodies(css_text, r"\.entry-content\s*>\s*p(?:\s*,[^{]*)?")
     frame_rules = _extract_rule_bodies(css_text, r"\.entry-content\s*>\s*\.snap-inline-frame")
     owned_rules = _extract_rule_bodies(css_text, r"\.smacktalk-owned-photo")
