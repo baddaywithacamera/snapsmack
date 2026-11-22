@@ -808,12 +808,14 @@ class TakeMode(QWidget):
             sybu_skin["caption_italic"] if sybu_skin.get("caption_italic") is not None
             else (bool(cached_skin.get("caption_italic", True)) if css_loaded else True)
         )
-        eff_cap_align = sybu_skin.get("caption_align") or ""
-        decl_width = int(sybu_skin.get("post_content_width") or 0)
+        eff_cap_align = sybu_skin.get("caption_align") or (cached_skin.get("caption_align") if css_loaded else "") or ""
+        decl_width = int(sybu_skin.get("post_content_width") or (cached_skin.get("container_width") if css_loaded else 0) or 0)
         if decl_width > 0 and getattr(self, "_preview_width", 760) != 360:
             self._preview_width = decl_width
             if hasattr(self, "preview_desktop_btn"):
                 self.preview_desktop_btn.setText(f"Desktop {decl_width}")
+            if hasattr(self, "_fit_page_card_width"):
+                self._fit_page_card_width()
 
         note_msg = ""
         if explicit_bg and QColor(explicit_bg.strip()).isValid():

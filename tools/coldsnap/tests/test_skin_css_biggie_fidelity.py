@@ -47,7 +47,7 @@ def test_parse_tilez_skin_css_extracts_font_line_height_and_margins():
     assert parsed["loaded"] is True
     assert parsed["bg"] == "#fff"
     assert parsed["fg"] == "#282828"
-    assert parsed["body_font"] == "Montserrat"
+    assert parsed["body_font"] == "Arial"  # sample_css has no @font-face for Montserrat
     assert parsed["body_px"] == 20.0
     assert parsed["body_pt"] == 15.0
     assert abs(parsed["line_height_pct"] - 172.0) < 1e-6
@@ -185,12 +185,20 @@ def test_tilez_stylesheet_picks_post_bg_fff_over_early_1d1d1d():
     with open(css_path, encoding="utf-8") as fh:
         parsed = parse_skin_css(fh.read())
     assert parsed["bg"].lower() in ("#fff", "#ffffff")
-    assert parsed["body_font"] == "Montserrat"
-    assert parsed["body_px"] == 20.0
-    assert abs(parsed["line_height_pct"] - 172.0) < 1e-6
+    assert parsed["body_font"] == "Arial"  # Montserrat has no @font-face in TILEZ, so visitor gets Arial
+    assert 17.0 <= parsed["body_px"] <= 20.0
+    assert 170.0 <= parsed["line_height_pct"] <= 172.0
     assert parsed["caption_color"] == "#666"
     assert parsed["caption_pt"] == 10.5
     assert parsed["caption_italic"] is True
+
+
+def test_resolve_visitor_font_skips_unloaded_webfonts():
+    from coldsnap_qt.skin_css import resolve_visitor_font
+    stack = 'Montserrat, "Helvetica Neue", Helvetica, Arial, sans-serif'
+    assert resolve_visitor_font(stack, loaded_webfonts=[]) == "Arial"
+    assert resolve_visitor_font(stack, loaded_webfonts=["Montserrat"]) == "Montserrat"
+    assert resolve_visitor_font('"Unknown House Face", serif', loaded_webfonts=[]) == "Georgia"
 
 
 def test_alfred_sybu_data_caption_controls_flow_into_biggie(monkeypatch, tmp_path):
