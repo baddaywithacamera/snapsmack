@@ -43,6 +43,16 @@ new decision.
   change nothing. Sites with no logo set are unaffected apart from the wider
   measure. (SS-1446)
 
+- **ALFRED: you can set how your photo captions look.** Five new settings in
+  a CAPTIONS section — colour, size, italic or upright, the gap above the
+  caption, and alignment. **Nothing changes unless you move one**: every
+  setting starts at exactly what ALFRED already renders, so an existing site
+  looks identical after this update. Alignment starts at "Follow the post
+  text", which is what captions have always done. These are also the values
+  COLD SNAP's preview reads, so what you see before publishing now matches
+  the page instead of being approximated. The caption FONT is not here yet;
+  it is waiting on the fallback repair in this same release. (SS-1495)
+
 - **ALFRED's social links now use the same dock as every other skin.** ALFRED
   carried its own row of social icons in the footer, with its own styling
   copied from Hitchcock, built from the same settings the shared dock uses.
