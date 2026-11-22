@@ -27,6 +27,31 @@ are pushed and waiting on review.
   come from your own backup" is the normal result on a rebuilt site, not a
   fault. (SS-1426, SS-1431, SS-1427)
 
+## 0.7.1001D — opened
+
+Opened because 0.7.1000D is IN SERVICE on the fleet. The agreed-rules gate
+refused the next commit while the source still said 1000D -- "a deployed tag
+must never move" -- which is the fold rule working as intended rather than a
+new decision.
+
+- **ALFRED shows your own logo, centred, in a wider masthead.** If you run
+  ALFRED and you have set a logo in the skin's settings, it now appears in the
+  header instead of your site name as text, centred, at whatever size it is up
+  to the full width of the measure. That measure has widened from 325 to 600
+  pixels, which is the width Hitchcock uses and the one ALFRED was always meant
+  to match, so YOUR HEADER WILL LOOK DIFFERENT after this update even if you
+  change nothing. Sites with no logo set are unaffected apart from the wider
+  measure. (SS-1446)
+
+- **ALFRED's social links now use the same dock as every other skin.** ALFRED
+  carried its own row of social icons in the footer, with its own styling
+  copied from Hitchcock. It used the same settings as the shared dock, so a
+  site with the dock switched on showed its links twice, in two different
+  shapes. The skin's own copy is gone and the shared dock is what you get,
+  which means your social links look and behave the same way whichever skin you
+  move to. Nothing is lost: the links themselves come from the same settings
+  they always did. (SS-1446)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,
