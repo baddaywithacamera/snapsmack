@@ -45,12 +45,26 @@ new decision.
 
 - **ALFRED's social links now use the same dock as every other skin.** ALFRED
   carried its own row of social icons in the footer, with its own styling
-  copied from Hitchcock. It used the same settings as the shared dock, so a
-  site with the dock switched on showed its links twice, in two different
-  shapes. The skin's own copy is gone and the shared dock is what you get,
-  which means your social links look and behave the same way whichever skin you
-  move to. Nothing is lost: the links themselves come from the same settings
-  they always did. (SS-1446)
+  copied from Hitchcock, built from the same settings the shared dock uses.
+  That copy is gone. The footer now renders the shared dock itself, centred
+  where the old row was, from exactly the settings it always used, so your
+  social links look and behave the same way whichever skin you move to.
+  Nothing is lost and nothing needs reconfiguring. (SS-1446)
+
+  An earlier draft of this entry said a dock-enabled ALFRED site had been
+  showing its links twice. That was wrong, and it was my error in review: the
+  shared dock is drawn by parts of the CMS that an ALFRED page does not use,
+  so it never appeared on an ALFRED site at all. No released ALFRED ever
+  showed a double row, and none ever lost its links either — both the removal
+  and this replacement are in the same unreleased 1.0.21.
+
+- **Any skin can now place the shared social dock where it wants it.** This is
+  the change underneath the ALFRED one. Previously a skin either accepted the
+  floating dock the CMS draws in a corner, or wrote its own icons — which is
+  how ALFRED ended up with a private copy. A skin can now ask for the dock in
+  its own layout, in the page flow, and it renders from the same settings and
+  the same markup as the floating one. Nothing changes for a skin that does
+  not ask. (SS-1446)
 
 ## 0.7.1000D — opened
 

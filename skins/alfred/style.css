@@ -1552,6 +1552,17 @@ p.comment-form-author { margin-right: 5%; }
 
 #system-footer .sep { margin: 0 10px; color: #555; }
 
+/* The shared social dock, placed inline in the footer (SS-1446). The engine
+   stylesheet returns it to the page flow; ALFRED only says where it sits in
+   its own footer, which is centred like the metadata line below it.
+   MEASURED, not assumed: without this the row renders flush against the left
+   viewport edge, because #footer .inside is full-bleed rather than using
+   ALFRED's 1040px .section-inner lane. Checked at 1920, 1440 and 1024. */
+#system-footer .social-dock-inline {
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
 
 /* -------------------------------------------------------------------------- */
 /*  16. No-JS Fixes                                                            */

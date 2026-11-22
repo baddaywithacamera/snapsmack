@@ -48,10 +48,31 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
     <div class="footer-metadata-bar"><p>EMAIL: <a class="footer-link" href="mailto:sean@mccormickphotography.ca"><span id="email" class="reverse-email">ac.yhpargotohpkcimroccm@naes</span></a></p></div>
   </div></footer>
 </div>
-<div class="social-dock dock-bottom-right" data-dock-position="bottom-right">
-  <a href="https://bsky.app/profile/example.test" target="_blank" rel="me noopener" title="Bluesky" class="dock-link u-url"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg></a>
-  <a href="https://linktr.ee/example" target="_blank" rel="me noopener" title="Linktree" class="dock-link u-url"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14"/></svg></a>
-</div></body></html>`;
+</body></html>`;
+/*
+ * THE SOCIAL DOCK IS NOT IN THIS FIXTURE ANY MORE, AND THAT IS THE POINT.
+ *
+ * This file used to hand-write a <div class="social-dock dock-bottom-right">
+ * here and then assert that two .dock-link elements existed. They did: the
+ * test had just written them. ALFRED's own output contained no dock at all,
+ * because SS-1446 removed its footer markup and nothing on the strict render
+ * path replaced it. The fabricated markup is what let that ship through
+ * review, so it is gone rather than corrected.
+ *
+ * ALFRED's real footer dock is now proved in
+ * tests/alfred-footer-carries-the-shared-social-dock-regression.php, which
+ * renders skins/alfred/layout.php through snapsmack_render_strict_skin_template()
+ * and reads the dock out of the result. Its geometry was measured in a browser
+ * at 1920/1440/1024 (centred in the footer, in flow, 48px targets, no
+ * overflow); those numbers are in the commit message.
+ *
+ * STILL MISSING, and Codex's call: this fixture is hand-written HTML
+ * throughout, so every remaining assertion here -- logo, masthead, square
+ * landing, email -- measures markup the test wrote, not markup ALFRED
+ * produces. Generating the fixture from the real render would make all of
+ * them real. I did not do that: it is a rewrite of this harness, which is
+ * Codex's.
+ */
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
@@ -130,11 +151,10 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
       assert.ok(result.logoArea.width <= 600.5 && result.logoArea.width >= Math.min(600, width * 0.9) - 1, `${width}: logo area uses the Hitchcock-style 600px measure`);
       assert.ok(result.logo.width > 0 && result.logo.width <= result.logoArea.width + 0.5, `${width}: configured logo loads inside the skin header`);
       assert.ok(Math.abs((result.logo.left + result.logo.right) / 2 - width / 2) <= 1, `${width}: configured logo is centred`);
-      assert.equal(result.controls.length, 2, `${width}: Bluesky and Linktree use the SNAPSMACK social dock`);
+      // No dock assertion here: this fixture no longer writes one for itself.
+      // See the note above the fixture.
+      assert.equal(result.controls.length, 0, `${width}: this fixture fabricates no social dock`);
       assert.equal(result.legacySocialCount, 0, `${width}: ALFRED does not render the old Hitchcock social menu`);
-      for (const control of result.controls) {
-        assert.ok(control.visible && control.width >= 44 && control.height >= 44, `${width}: footer social target is at least 44px`);
-      }
       assert.equal(result.email.direction, 'rtl', `${width}: reversed email is turned back for readers`);
       assert.match(result.email.unicodeBidi, /bidi-override/, `${width}: email reversal is visual, not a broken address`);
       for (const columns of [3, 4, 5]) {

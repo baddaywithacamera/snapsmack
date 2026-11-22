@@ -231,6 +231,29 @@
 /* JS hides the standalone .snap-download-btn when dock absorbs it */
 
 
+/* ─── INLINE PLACEMENT (in the page flow) ──────────────────────── */
+/*
+ * A strict skin can place this dock in the page flow with
+ * snap_render_component('social-dock', ...), which is how ALFRED's footer
+ * links are served. Without this rule the placed dock keeps the base
+ * position:fixed and floats over the page at the footer's offset instead of
+ * sitting in it.
+ *
+ * Only the floating behaviour is undone: position, z-index and the idle fade.
+ * All three exist because a fixed dock covers the page; an in-flow row covers
+ * nothing, so it is opaque and static. ss-engine-grid-nav.css already made
+ * exactly this reset for the dock welded into the sticky nav; that scoped rule
+ * is more specific and still wins where it applies. Size, colour and spacing
+ * are left to the engine and the skin.
+ */
+.social-dock-inline {
+    position: static;
+    z-index: auto;
+    flex-direction: row;
+    opacity: 1;
+}
+
+
 /* ─── RESPONSIVE ───────────────────────────────────────────────── */
 
 @media (max-width: 480px) {

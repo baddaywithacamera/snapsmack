@@ -50,6 +50,14 @@
         "predicates": 16,
         "thresholds": []
     },
+    "alfred-footer-carries-the-shared-social-dock-regression.php": {
+        "assertions": 21,
+        "predicates": 19,
+        "thresholds": [
+            3,
+            3
+        ]
+    },
     "api-input-safety-regression.php": {
         "assertions": 19,
         "predicates": 8,
