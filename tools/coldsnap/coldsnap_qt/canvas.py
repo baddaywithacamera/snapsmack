@@ -796,6 +796,10 @@ class BiggieCanvas(QTextEdit):
         self._ruler_color = theme.DIM
         self._body_font_family = "Georgia"
         self._body_font_pt = 12.5
+        self._line_height_pct = 150.0
+        self._para_margin_bottom = 8.0
+        self._image_margin_top = 8.0
+        self._image_margin_bottom = 8.0
         self._heading_font_family = theme.FONT
         self._caption_style = {
             "font_family": "Georgia",
@@ -841,11 +845,21 @@ class BiggieCanvas(QTextEdit):
 
     def set_skin_typography(self, *, body_font: str = "", body_pt: float = 0.0,
                             caption_font: str = "", caption_pt: float = 0.0,
-                            caption_color: str = "", caption_italic: bool = True):
+                            caption_color: str = "", caption_italic: bool = True,
+                            line_height_pct: float = 0.0, para_margin_bottom: float = 0.0,
+                            image_margin_top: float = 0.0, image_margin_bottom: float = 0.0):
         if body_font and str(body_font).strip():
             self._body_font_family = str(body_font).strip().split(",")[0].strip(" '\"") or "Georgia"
         if body_pt and float(body_pt) > 0:
             self._body_font_pt = float(body_pt)
+        if line_height_pct and float(line_height_pct) > 0:
+            self._line_height_pct = float(line_height_pct)
+        if para_margin_bottom and float(para_margin_bottom) > 0:
+            self._para_margin_bottom = float(para_margin_bottom)
+        if image_margin_top and float(image_margin_top) > 0:
+            self._image_margin_top = float(image_margin_top)
+        if image_margin_bottom and float(image_margin_bottom) > 0:
+            self._image_margin_bottom = float(image_margin_bottom)
         if caption_font and str(caption_font).strip():
             self._caption_style["font_family"] = str(caption_font).strip().split(",")[0].strip(" '\"")
         else:
@@ -855,9 +869,30 @@ class BiggieCanvas(QTextEdit):
         self._caption_style["color"] = str(caption_color or "").strip()
         self._caption_style["italic"] = bool(caption_italic)
         self.apply_surface_palette(self._surface_palette)
+        self._refresh_block_spacing()
         self.document().markContentsDirty(0, self.document().characterCount())
         self._sync_canvas_height()
         self.viewport().update()
+
+    def _refresh_block_spacing(self):
+        doc = self.document()
+        if doc is None:
+            return
+        prev_guard = self._guard
+        self._guard = True
+        try:
+            blk = doc.begin()
+            while blk.isValid():
+                c = QTextCursor(blk)
+                if _has_object(blk):
+                    c.setBlockFormat(self._object_block_format())
+                else:
+                    kind = _block_kind(blk)
+                    dropcap = bool(blk.blockFormat().property(PROP_DROPCAP))
+                    c.setBlockFormat(self._block_format_for(kind, dropcap=dropcap))
+                blk = blk.next()
+        finally:
+            self._guard = prev_guard
 
     def caption_font_and_color(self) -> tuple:
         fam = self._caption_style.get("font_family") or self._body_font_family or "Georgia"
@@ -1061,8 +1096,8 @@ class BiggieCanvas(QTextEdit):
         b = QTextBlockFormat()
         b.setProperty(PROP_KIND, "para")
         b.setProperty(PROP_DROPCAP, False)
-        b.setTopMargin(8)
-        b.setBottomMargin(8)
+        b.setTopMargin(float(getattr(self, "_image_margin_top", 8.0)))
+        b.setBottomMargin(float(getattr(self, "_image_margin_bottom", 8.0)))
         b.setLineHeight(0.0, QTextBlockFormat.SingleHeight.value)
         return b
 
@@ -1071,8 +1106,8 @@ class BiggieCanvas(QTextEdit):
         b.setProperty(PROP_KIND, kind)
         b.setProperty(PROP_DROPCAP, bool(dropcap))
         b.setTopMargin(8)
-        b.setBottomMargin(8)
-        b.setLineHeight(150.0, QTextBlockFormat.ProportionalHeight.value)
+        b.setBottomMargin(float(getattr(self, "_para_margin_bottom", 8.0)))
+        b.setLineHeight(float(getattr(self, "_line_height_pct", 150.0)), QTextBlockFormat.ProportionalHeight.value)
         if kind in ("quote", "pullquote"):
             b.setLeftMargin(28)
             b.setRightMargin(28 if kind == "pullquote" else 0)

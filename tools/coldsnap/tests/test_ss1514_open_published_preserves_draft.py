@@ -234,3 +234,103 @@ def test_ss1514_open_draft_button_lists_and_loads_saved_draft(monkeypatch, tmp_p
         assert os.stat(draft_path).st_mtime_ns == mtime_before
     finally:
         mode.close()
+
+
+def test_ss1514_no_empty_duplicate_archive_and_block_empty_queue(monkeypatch, tmp_path):
+    poster = _FakePoster(
+        posts=[{"id": 4, "title": "Start your engines...", "status": "published", "created_at": "2026-01-04 12:00:00"}],
+        full_posts={4: {"id": 4, "title": "Start your engines...", "content": "", "status": "published", "bucket": []}},
+    )
+    app, mode = _setup_mode(monkeypatch, tmp_path, poster)
+    try:
+        from PySide6.QtCore import QSettings
+        QSettings("SnapSmack", "ColdSnap").remove("take/archived_draft_ids")
+
+        # 1. Opening an empty published post does NOT create a 0-block draft on disk
+        before_count = len(mode.rail.ensure_session().list_drafts())
+        mode._open_published()
+        app.processEvents()
+        mode._autosave_now()
+        assert len(mode.rail.ensure_session().list_drafts()) == before_count
+
+        # 2. Queuing a 0-block draft linked to #4 is blocked unless confirmed
+        p1 = _make_photo(tmp_path / "p.jpg")
+        mode._add_photo_paths([p1], insert=False)
+        mode._remote_post_id = 4
+        mode.body.canvas.from_blocks([{"type": "para", "text": ""}])
+        mode._save(ready=True, confirm_empty_fn=lambda _rid: False)
+        assert len(mode.rail.ensure_session().list_drafts()) == before_count
+
+        # 3. Duplicate remote link warning + Archive draft (soft hide, file preserved)
+        import sumna_offline as O
+        sess = mode.rail.ensure_session()
+        d1 = O.Draft(draft_id="d1", kind=O.KIND_SMACKTALK, mode=mode.SUITE_MODE, title="Real Draft", caption="Para 1", remote_post_id=4)
+        d2 = O.Draft(draft_id="d2", kind=O.KIND_SMACKTALK, mode=mode.SUITE_MODE, title="Old Stub", caption="", remote_post_id=4)
+        sess.add_draft(d1, copy_images=False)
+        sess.add_draft(d2, copy_images=False)
+
+        entries = mode._collect_local_drafts()
+        dlg = mode._build_open_draft_dialog(entries)
+        assert not dlg._dup_banner.isHidden()
+        assert "#4" in dlg._dup_banner.text()
+
+        # Archive current item without deleting its file
+        before_dlg_count = dlg._choices.count()
+        dlg._choices.setCurrentRow(0)
+        archived_idx = int(dlg._choices.currentItem().data(0x0100))  # Qt.UserRole
+        archived_draft = dlg._entries[archived_idx][1]
+        dlg._archive_btn.click()
+        app.processEvents()
+        assert os.path.isfile(sess._draft_path(archived_draft.draft_id))
+        assert dlg._choices.count() == before_dlg_count - 1
+
+        dlg._show_arch_cb.setChecked(True)
+        app.processEvents()
+        assert dlg._choices.count() == before_dlg_count
+
+        # 4. Delete draft moves to 30-day trash, blocks open draft, requires 2nd confirm on linked draft, and Restore brings it back
+        QSettings("SnapSmack", "ColdSnap").remove("take/archived_draft_ids")
+        dlg._entries = mode._collect_local_drafts(include_archived=False)
+        dlg._show_arch_cb.setChecked(False)
+        dlg._show_arch_cb.toggled.emit(False)
+        mode._editing_id = d1.draft_id
+        app.processEvents()
+        # Try deleting open draft d1 -> blocked
+        for row in range(dlg._choices.count()):
+            idx = int(dlg._choices.item(row).data(0x0100))
+            if dlg._entries[idx][1].draft_id == d1.draft_id:
+                dlg._choices.setCurrentRow(row)
+                break
+        prompts = []
+        dlg._on_delete(confirm_fn=lambda stage, dr: (prompts.append((stage, dr.draft_id)), True)[1])
+        assert prompts == []  # open draft cannot be deleted
+
+        # Delete linked draft d2 -> prompts both 'delete' and 'linked'
+        mode._editing_id = None
+        for row in range(dlg._choices.count()):
+            idx = int(dlg._choices.item(row).data(0x0100))
+            if dlg._entries[idx][1].draft_id == d2.draft_id:
+                dlg._choices.setCurrentRow(row)
+                break
+        dlg._on_delete(confirm_fn=lambda stage, dr: (prompts.append((stage, dr.draft_id)), True)[1])
+        assert prompts == [("delete", "d2"), ("linked", "d2")]
+        assert not os.path.isfile(sess._draft_path("d2"))
+
+        # Show trash & Restore d2
+        trash_before = len(mode._list_trash_drafts())
+        dlg._show_trash_cb.setChecked(True)
+        app.processEvents()
+        assert dlg._choices.count() == trash_before
+        for row in range(dlg._choices.count()):
+            idx = int(dlg._choices.item(row).data(0x0100))
+            if dlg._trash_entries[idx][3].draft_id == "d2":
+                dlg._choices.setCurrentRow(row)
+                break
+        dlg._restore_btn.click()
+        app.processEvents()
+        assert os.path.isfile(sess._draft_path("d2"))
+        dlg.reject()
+    finally:
+        from PySide6.QtCore import QSettings
+        QSettings("SnapSmack", "ColdSnap").remove("take/archived_draft_ids")
+        mode.close()

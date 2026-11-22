@@ -19,7 +19,7 @@ import uuid
 import requests
 
 from concurrent.futures import ThreadPoolExecutor
-from PySide6.QtCore import Qt, QDate, QEventLoop, QMetaObject, QRect, QSize, Signal, QTimer, QSettings
+from PySide6.QtCore import Qt, QDate, QEventLoop, QMetaObject, QRect, QSize, Signal, Slot, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit,
@@ -325,7 +325,7 @@ class TakeMode(QWidget):
         self.page_meta = QLabel("")
         self.page_meta.setObjectName("PageMeta")
         card_col.addWidget(self.page_meta)
-        self.site_colors_note = QLabel("site colours unavailable")
+        self.site_colors_note = QLabel("approximate: skin styles not loaded")
         self.site_colors_note.setObjectName("SiteColorsNote")
         self.site_colors_note.setVisible(False)
         card_col.addWidget(self.site_colors_note)
@@ -411,7 +411,7 @@ class TakeMode(QWidget):
         t_row.addWidget(t_reset)
         self.photos_sec.add_layout(t_row)
 
-        brow = QHBoxLayout()
+        brow = QGridLayout()
         brow.setSpacing(4)
         add_btn = QPushButton("Add photos…")
         add_btn.clicked.connect(self._add_photos)
@@ -427,8 +427,10 @@ class TakeMode(QWidget):
         ai_btn.clicked.connect(self._ai_fill)
         for b in (add_btn, open_btn, open_draft_btn, ai_btn):
             b.setStyleSheet("padding: 5px 7px; font-size: 11px;")
-            brow.addWidget(b)
-        brow.addStretch(1)
+        brow.addWidget(add_btn, 0, 0)
+        brow.addWidget(ai_btn, 0, 1)
+        brow.addWidget(open_btn, 1, 0)
+        brow.addWidget(open_draft_btn, 1, 1)
         self.photos_sec.add_layout(brow)
 
         insert_row = QHBoxLayout()
@@ -770,12 +772,48 @@ class TakeMode(QWidget):
     def apply_canvas_background(self, site_url: str = "", explicit_bg: str = "", explicit_fg: str = "") -> str:
         from PySide6.QtGui import QColor, QPalette
         from . import canvas as canvas_mod
+        from . import skin_css
+
+        url = str(site_url or "").strip()
+        cached_skin = skin_css._SITE_CACHE.get(url) if url else None
+
         if explicit_bg and QColor(explicit_bg.strip()).isValid():
             bg = QColor(explicit_bg.strip()).name()
             fg = QColor(explicit_fg.strip()).name() if explicit_fg and QColor(explicit_fg.strip()).isValid() else ""
             available = True
+        elif cached_skin and cached_skin.get("loaded"):
+            bg = cached_skin.get("bg") or "#ffffff"
+            fg = cached_skin.get("fg") or "#1a1a1a"
+            available = True
+            if hasattr(self, "body") and hasattr(self.body, "canvas"):
+                self.body.canvas.set_skin_typography(
+                    body_font=cached_skin.get("body_font", ""),
+                    body_pt=float(cached_skin.get("body_pt") or 0.0),
+                    line_height_pct=float(cached_skin.get("line_height_pct") or 0.0),
+                    para_margin_bottom=float(cached_skin.get("para_margin_bottom_px") or 0.0),
+                    image_margin_top=float(cached_skin.get("image_margin_top_px") or 0.0),
+                    image_margin_bottom=float(cached_skin.get("image_margin_bottom_px") or 0.0),
+                )
         else:
-            bg, fg, available = self.resolve_site_colors(site_url)
+            bg, fg, available = self.resolve_site_colors(url)
+            if url.startswith(("http://", "https://")) and not getattr(self, "_skin_fetch_inflight", None) == url:
+                self._skin_fetch_inflight = url
+
+                def _bg_fetch(u=url):
+                    res = skin_css.fetch_site_skin_styles(u)
+                    if res.get("loaded"):
+                        try:
+                            import shiboken6
+                            if shiboken6.isValid(self):
+                                QMetaObject.invokeMethod(
+                                    self, "_on_skin_styles_loaded", Qt.QueuedConnection
+                                )
+                        except Exception:  # noqa: BLE001
+                            pass
+
+                if not hasattr(self, "_skin_executor") or self._skin_executor is None:
+                    self._skin_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="coldtake-skin")
+                self._skin_executor.submit(_bg_fetch)
 
         pal = canvas_mod.site_surface_palette(bg, fg)
         bg = pal["bg"]
@@ -824,6 +862,14 @@ class TakeMode(QWidget):
         if hasattr(self, "body") and hasattr(self.body, "apply_surface_palette"):
             self.body.apply_surface_palette(pal)
         return bg
+
+    @Slot()
+    def _on_skin_styles_loaded(self):
+        cfg = self.app_config() or {}
+        url = (cfg.get("url") or "").strip()
+        self._skin_fetch_inflight = None
+        if url:
+            self.apply_canvas_background(url)
 
     def _fit_page_card_width(self):
         pct = getattr(self, "_page_zoom", 100)
@@ -1948,9 +1994,84 @@ class TakeMode(QWidget):
             return 0
         return len([p for p in re.split(r"\n\s*\n", cap) if p.strip()])
 
-    def _collect_local_drafts(self):
+    @staticmethod
+    def _trash_dir() -> str:
+        path = os.path.join(O.default_sessions_root(), "trash")
+        os.makedirs(path, exist_ok=True)
+        return path
+
+    @classmethod
+    def _move_draft_to_trash(cls, session, draft) -> str:
+        import json
+        from datetime import datetime, timezone
+        tdir = cls._trash_dir()
+        payload = {
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
+            "session_id": session.session_id,
+            "draft": draft.to_dict(),
+        }
+        tpath = os.path.join(tdir, f"{draft.draft_id}.json")
+        with open(tpath, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, indent=2)
+        session.delete_draft(draft.draft_id)
+        return tpath
+
+    @classmethod
+    def _list_trash_drafts(cls) -> list:
+        import json
+        from datetime import datetime, timezone, timedelta
+        tdir = cls._trash_dir()
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        items = []
+        for fn in os.listdir(tdir):
+            if not fn.endswith(".json"):
+                continue
+            fp = os.path.join(tdir, fn)
+            try:
+                with open(fp, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                dt = datetime.fromisoformat(str(data.get("deleted_at") or ""))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                if dt < cutoff:
+                    os.remove(fp)
+                    continue
+                draft = O.Draft.from_dict(data["draft"])
+                items.append((fp, str(data.get("session_id") or ""), str(data.get("deleted_at") or ""), draft))
+            except Exception:  # noqa: BLE001
+                continue
+        items.sort(key=lambda x: x[2], reverse=True)
+        return items
+
+    @classmethod
+    def _restore_from_trash(cls, trash_path: str, target_session):
+        import json
+        with open(trash_path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        draft = O.Draft.from_dict(data["draft"])
+        target_session.add_draft(draft, copy_images=False)
+        if os.path.isfile(trash_path):
+            os.remove(trash_path)
+        return draft
+
+    @staticmethod
+    def _archived_draft_ids() -> set:
+        raw = QSettings("SnapSmack", "ColdSnap").value("take/archived_draft_ids", []) or []
+        if isinstance(raw, str):
+            raw = [x for x in raw.split(",") if x]
+        return set(str(x) for x in raw)
+
+    @staticmethod
+    def _archive_draft_id(draft_id: str):
+        settings = QSettings("SnapSmack", "ColdSnap")
+        ids = TakeMode._archived_draft_ids()
+        ids.add(str(draft_id))
+        settings.setValue("take/archived_draft_ids", sorted(ids))
+
+    def _collect_local_drafts(self, *, include_archived: bool = False):
         """Return (session, draft) pairs for all local drafts in this mode, newest first."""
         seen = set()
+        archived = set() if include_archived else self._archived_draft_ids()
         entries = []
         active_session = self.rail.ensure_session()
         sessions = [active_session]
@@ -1963,7 +2084,7 @@ class TakeMode(QWidget):
         for s in sessions:
             try:
                 for d in s.list_drafts():
-                    if d.draft_id not in seen:
+                    if d.draft_id not in seen and d.draft_id not in archived:
                         seen.add(d.draft_id)
                         entries.append((s, d))
             except Exception:  # noqa: BLE001
@@ -1975,36 +2096,185 @@ class TakeMode(QWidget):
         )
         return entries
 
+    @staticmethod
+    def _duplicate_remote_links(entries) -> dict:
+        counts = {}
+        for _sess, d in entries:
+            rid = getattr(d, "remote_post_id", None)
+            if rid:
+                counts[int(rid)] = counts.get(int(rid), 0) + 1
+        return {rid: cnt for rid, cnt in counts.items() if cnt > 1}
+
     def _build_open_draft_dialog(self, entries):
+        from PySide6.QtWidgets import QCheckBox
         dialog = QDialog(self)
         dialog.setWindowTitle("Open local draft")
-        dialog.resize(620, 440)
+        dialog.resize(680, 480)
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel("Choose a saved local draft to load into COLD TAKE:"))
 
+        dup_banner = QLabel()
+        dup_banner.setWordWrap(True)
+        dup_banner.setStyleSheet("color: #f5b942; font-weight: 700; padding: 4px 0;")
+        layout.addWidget(dup_banner)
+
         choices = QListWidget()
-        for idx, (_sess, draft) in enumerate(entries):
-            title = str(getattr(draft, "title", "") or "Untitled")
-            date_s = str(getattr(draft, "updated_at", "") or getattr(draft, "post_date", "") or getattr(draft, "created_at", "") or "")[:19].replace("T", " ")
-            n_blocks = self._draft_block_count(draft)
-            n_photos = len(getattr(draft, "images", None) or [])
-            linked = f" · linked #{draft.remote_post_id}" if getattr(draft, "remote_post_id", None) else ""
-            label = f"{title}   [{n_blocks} blocks, {n_photos} photos{linked}]"
-            if date_s:
-                label += f"   — {date_s}"
-            item = QListWidgetItem(label)
-            item.setData(Qt.UserRole, idx)
-            choices.addItem(item)
-        if choices.count() > 0:
-            choices.setCurrentRow(0)
         layout.addWidget(choices, 1)
+
+        ctrl_row = QHBoxLayout()
+        archive_btn = QPushButton("Archive draft")
+        archive_btn.setToolTip("Hide this draft from the list without deleting its file on disk")
+        delete_btn = QPushButton("Delete draft")
+        delete_btn.setToolTip("Move this draft to COLD SNAP Trash (recoverable for 30 days)")
+        restore_btn = QPushButton("Restore")
+        restore_btn.setToolTip("Restore the selected draft from COLD SNAP Trash")
+        restore_btn.setVisible(False)
+        show_arch_cb = QCheckBox("Show archived")
+        show_trash_cb = QCheckBox("Show trash (30d)")
+        ctrl_row.addWidget(archive_btn)
+        ctrl_row.addWidget(delete_btn)
+        ctrl_row.addWidget(restore_btn)
+        ctrl_row.addWidget(show_arch_cb)
+        ctrl_row.addWidget(show_trash_cb)
+        ctrl_row.addStretch(1)
+        layout.addLayout(ctrl_row)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Open)
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
         choices.itemDoubleClicked.connect(lambda _item: dialog.accept())
         layout.addWidget(buttons)
+
+        dialog._entries = list(entries)
+        dialog._trash_entries = []
         dialog._choices = choices
+        dialog._dup_banner = dup_banner
+        dialog._archive_btn = archive_btn
+        dialog._delete_btn = delete_btn
+        dialog._restore_btn = restore_btn
+        dialog._show_arch_cb = show_arch_cb
+        dialog._show_trash_cb = show_trash_cb
+
+        def _populate():
+            choices.clear()
+            showing_trash = show_trash_cb.isChecked()
+            archive_btn.setVisible(not showing_trash)
+            delete_btn.setVisible(not showing_trash)
+            restore_btn.setVisible(showing_trash)
+            buttons.button(QDialogButtonBox.Open).setEnabled(not showing_trash)
+            if showing_trash:
+                dup_banner.setVisible(False)
+                dialog._trash_entries = self._list_trash_drafts()
+                for idx, (_fp, _sid, del_at, draft) in enumerate(dialog._trash_entries):
+                    title = str(getattr(draft, "title", "") or "Untitled")
+                    n_blocks = self._draft_block_count(draft)
+                    label = f"[TRASH] {title}   [{n_blocks} blocks]   — deleted {del_at[:19].replace('T', ' ')}"
+                    item = QListWidgetItem(label)
+                    item.setData(Qt.UserRole, idx)
+                    choices.addItem(item)
+                if choices.count() > 0:
+                    choices.setCurrentRow(0)
+                return
+
+            cur_entries = dialog._entries
+            dups = self._duplicate_remote_links(cur_entries)
+            if dups:
+                parts = [f"#{rid} ({cnt} drafts)" for rid, cnt in sorted(dups.items())]
+                dup_banner.setText("⚠ Multiple drafts are linked to the same published post: " + ", ".join(parts) + ". Which is current?")
+                dup_banner.setVisible(True)
+            else:
+                dup_banner.setVisible(False)
+            archived_ids = self._archived_draft_ids()
+            for idx, (_sess, draft) in enumerate(cur_entries):
+                title = str(getattr(draft, "title", "") or "Untitled")
+                date_s = str(getattr(draft, "updated_at", "") or getattr(draft, "post_date", "") or getattr(draft, "created_at", "") or "")[:19].replace("T", " ")
+                n_blocks = self._draft_block_count(draft)
+                n_photos = len(getattr(draft, "images", None) or [])
+                rid = getattr(draft, "remote_post_id", None)
+                linked = f" · linked #{rid}" if rid else ""
+                arch_tag = " [archived]" if draft.draft_id in archived_ids else ""
+                label = f"{title}{arch_tag}   [{n_blocks} blocks, {n_photos} photos{linked}]"
+                if date_s:
+                    label += f"   — {date_s}"
+                item = QListWidgetItem(label)
+                item.setData(Qt.UserRole, idx)
+                choices.addItem(item)
+            if choices.count() > 0:
+                choices.setCurrentRow(0)
+
+        def _on_archive():
+            item = choices.currentItem()
+            if not item:
+                return
+            idx = int(item.data(Qt.UserRole))
+            _s, draft = dialog._entries[idx]
+            self._archive_draft_id(draft.draft_id)
+            dialog._entries = self._collect_local_drafts(include_archived=show_arch_cb.isChecked())
+            _populate()
+
+        def _on_delete(*, confirm_fn=None):
+            item = choices.currentItem()
+            if not item:
+                return
+            idx = int(item.data(Qt.UserRole))
+            sess, draft = dialog._entries[idx]
+            title = str(getattr(draft, "title", "") or "Untitled")
+            if draft.draft_id == getattr(self, "_editing_id", None):
+                if confirm_fn is None:
+                    QMessageBox.information(
+                        dialog, "Draft is open",
+                        f"\"{title}\" is currently open in COLD TAKE. Clear or open another draft before deleting it.",
+                    )
+                return
+            if confirm_fn is not None:
+                if not confirm_fn("delete", draft):
+                    return
+            else:
+                ans = QMessageBox.question(
+                    dialog, "Delete draft",
+                    f"Move \"{title}\" to COLD SNAP Trash (recoverable for 30 days)?",
+                    QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel,
+                )
+                if ans != QMessageBox.Yes:
+                    return
+            rid = getattr(draft, "remote_post_id", None)
+            if rid:
+                if confirm_fn is not None:
+                    if not confirm_fn("linked", draft):
+                        return
+                else:
+                    ans2 = QMessageBox.warning(
+                        dialog, "Linked to published post",
+                        f"\"{title}\" is linked to published post #{rid}. Move it to Trash anyway?",
+                        QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel,
+                    )
+                    if ans2 != QMessageBox.Yes:
+                        return
+            self._move_draft_to_trash(sess, draft)
+            dialog._entries = self._collect_local_drafts(include_archived=show_arch_cb.isChecked())
+            _populate()
+
+        def _on_restore():
+            item = choices.currentItem()
+            if not item:
+                return
+            idx = int(item.data(Qt.UserRole))
+            fp, _sid, _del, _draft = dialog._trash_entries[idx]
+            self._restore_from_trash(fp, self.rail.ensure_session())
+            dialog._entries = self._collect_local_drafts(include_archived=show_arch_cb.isChecked())
+            _populate()
+
+        def _on_toggle_archived():
+            dialog._entries = self._collect_local_drafts(include_archived=show_arch_cb.isChecked())
+            _populate()
+
+        dialog._on_delete = _on_delete
+        archive_btn.clicked.connect(_on_archive)
+        delete_btn.clicked.connect(lambda: _on_delete())
+        restore_btn.clicked.connect(_on_restore)
+        show_arch_cb.toggled.connect(lambda _checked: _on_toggle_archived())
+        show_trash_cb.toggled.connect(lambda _checked: _populate())
+        _populate()
         return dialog
 
     def _open_draft(self):
@@ -2016,7 +2286,7 @@ class TakeMode(QWidget):
         if dialog.exec() != QDialog.Accepted or not dialog._choices.currentItem():
             return
         idx = int(dialog._choices.currentItem().data(Qt.UserRole))
-        _sess, draft = entries[idx]
+        _sess, draft = dialog._entries[idx]
         n_blocks = self._draft_block_count(draft)
         self._edit(draft)
         self.save_state.setText(f"Opened draft \"{draft.title or 'Untitled'}\" ({n_blocks} blocks)")
@@ -2077,9 +2347,10 @@ class TakeMode(QWidget):
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Could not open post", str(exc))
             return
-        session = self.rail.ensure_session()
-        session.add_draft(draft)
-        self.rail.refresh_batches()
+        if (getattr(draft, "caption", "") or "").strip() or (getattr(draft, "blocks_json", "") or "").strip():
+            session = self.rail.ensure_session()
+            session.add_draft(draft)
+            self.rail.refresh_batches()
         self._edit(draft)
         self.save_state.setText("Published post loaded — changes will update this post")
 
@@ -2870,6 +3141,9 @@ class TakeMode(QWidget):
     def _edit(self, draft: O.Draft):
         self._loading = True
         self._editing_id = draft.draft_id
+        if getattr(self, "_remote_post_id", 0):
+            draft.remote_post_id = int(self._remote_post_id)
+        self._remote_post_id = int(getattr(draft, "remote_post_id", 0) or 0)
         self.title_edit.setText(draft.title)
         self.tags_edit.setText(draft.tags)
         self.status_combo.setCurrentText(draft.img_status)
@@ -2900,6 +3174,7 @@ class TakeMode(QWidget):
     def _clear(self):
         self._loading = True
         self._editing_id = None
+        self._remote_post_id = 0
         self.title_edit.clear()
         self.tags_edit.clear()
         self.status_combo.setCurrentText("published")
@@ -2956,6 +3231,8 @@ class TakeMode(QWidget):
         draft = (session.load_draft(self._editing_id) if self._editing_id else None) \
             or O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK, mode=self.SUITE_MODE)
         self._editing_id = draft.draft_id
+        if getattr(self, "_remote_post_id", 0):
+            draft.remote_post_id = int(self._remote_post_id)
         draft.title = self.title_edit.text().strip()
         draft.tags = self.tags_edit.text().strip()
         if authored is None:
@@ -2980,6 +3257,14 @@ class TakeMode(QWidget):
         if not (self.title_edit.text().strip() or self.body.toPlainText().strip() or self._bucket):
             self.save_state.setText("Begin the story… changes will be safe on this computer.")
             return
+        # Never auto-save an unmodified empty remote post as a duplicate 0-block draft
+        if getattr(self, "_remote_post_id", 0):
+            has_body = bool(self.body.toPlainText().strip()) or any(
+                b.get("type") in ("image", "mosaic") for b in self.body.canvas.to_blocks()
+            )
+            on_disk = bool(self._editing_id and self.rail.ensure_session().load_draft(self._editing_id))
+            if not has_body and not on_disk:
+                return
         try:
             # Typing must never decode originals: only photos whose thumbs are
             # missing or stale (new photo, crop/focus/zoom change, new edit)
@@ -3075,11 +3360,30 @@ class TakeMode(QWidget):
                                 status=draft.status,
                                 blocks=authored if authored is not None else self.body.authoring_blocks())
 
-    def _save(self, ready: bool):
+    def _save(self, ready: bool, *, confirm_empty_fn=None):
         session = self.rail.ensure_session()
         if not self._bucket:
             QMessageBox.warning(self, "No photos", "Add at least one photo first.")
             return
+        if ready and getattr(self, "_remote_post_id", None):
+            has_body = bool(self.body.toPlainText().strip()) or any(
+                b.get("type") in ("image", "mosaic") for b in self.body.canvas.to_blocks()
+            )
+            if not has_body:
+                if confirm_empty_fn is not None:
+                    confirmed = bool(confirm_empty_fn(self._remote_post_id))
+                else:
+                    ans = QMessageBox.warning(
+                        self,
+                        "Empty draft over published post",
+                        f"This draft has 0 blocks and is linked to published post #{self._remote_post_id}.\n\n"
+                        "Queueing and sending it could overwrite the live post with empty content. Queue anyway?",
+                        QMessageBox.Yes | QMessageBox.Cancel,
+                        QMessageBox.Cancel,
+                    )
+                    confirmed = (ans == QMessageBox.Yes)
+                if not confirmed:
+                    return
         self._wait_for_thumbs()  # reuse any background bake already in flight
         draft = self._build_draft(session)
         O.generate_draft_thumbs(draft)
