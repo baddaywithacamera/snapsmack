@@ -1744,6 +1744,14 @@
             2
         ]
     },
+    "rational-geo-archive-shares-the-header-lane-regression.php": {
+        "assertions": 15,
+        "predicates": 19,
+        "thresholds": [
+            8,
+            8
+        ]
+    },
     "rational-geo-info-drawer-regression.php": {
         "assertions": 3,
         "predicates": 2,

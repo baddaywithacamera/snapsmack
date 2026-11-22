@@ -16,6 +16,15 @@ section until the tag was being assembled, which would have told owners their
 photographs come back in a build that does not carry the change. The branches
 are pushed and waiting on review.
 
+- **RATIONAL GEO (skin package, 2.1.44): the archive no longer has two
+  different left margins.** On screens between roughly 1025 and 1400 pixels
+  wide — most laptops, and a tablet held landscape — the wall of photographs
+  ran right to both edges of the screen while the site name above it stayed
+  indented, so the page looked misaligned. The wall now sits in the same
+  measure as the header at every supported width. Nothing about your photo
+  sizes, columns or Content Width setting changes. **Repackage RATIONAL GEO
+  2.1.44 + reinstall to ship.** (SS-1517)
+
 - **A restore brings your photographs back, and tells you honestly when it
   cannot.** The admin restore path never reconciled media: database rows came
   back pointing at photographs, thumbnails, assets and branding that were not
