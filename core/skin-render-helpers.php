@@ -300,6 +300,62 @@ function snap_page_hero_html(array $item, string $title = ''): string {
  * rational-geo-page is deliberately NOT in that list: despite the name it is a
  * fragment, with no doctype and no </html>, so it has no such seam to offer.
  */
+/**
+ * The social dock's markup, in one place, for every skin that shows one.
+ *
+ * Crop Circles welds the dock into its sticky nav; a strict SMACKTALK skin
+ * places it on its own, where its links belong. Those are two positions for
+ * one component, so the markup lives here and both callers ask for it. A
+ * second copy is how ALFRED ended up with hand-rolled icons and its own CSS
+ * in the first place.
+ *
+ * READS THE VIEW MODEL AND NOTHING ELSE. $model is $view['site']['crop_circles']
+ * as core built it: social already filtered to configured platforms, with the
+ * sprite URL and the owner's appearance settings. No settings lookup, no
+ * platform list, no database.
+ *
+ * AN EMPTY LIST RENDERS NOTHING AT ALL -- not an empty container. The dock is
+ * off, or no platform is configured, and a skin should not be left with a
+ * stray element to style around. core/skin-view-model.php only fills social
+ * when social_dock_enabled is '1', so "off" and "none configured" arrive here
+ * the same way and are answered the same way.
+ */
+function snapsmack_social_dock_markup(array $model, string $position = 'inline',
+                                      string $label = 'Social links'): string {
+    $social = is_array($model['social'] ?? null) ? $model['social'] : [];
+    if (!$social) { return ''; }
+
+    $sprite = (string)($model['icon_sprite_url'] ?? '');
+    $appearance = is_array($model['appearance'] ?? null) ? $model['appearance'] : [];
+    $style = '--dock-bg:' . snap_escape_attr($appearance['background'] ?? 'transparent')
+        . ';--dock-bg-hover:' . snap_escape_attr($appearance['background_hover'] ?? 'rgba(255,255,255,.95)')
+        . ';--dock-border:' . snap_escape_attr($appearance['border'] ?? 'rgba(26,26,26,.3)')
+        . ';--dock-border-hover:' . snap_escape_attr($appearance['border_hover'] ?? 'rgba(26,26,26,.7)')
+        . ';--dock-icon:' . snap_escape_attr($appearance['icon'] ?? '#1a1a1a')
+        . ';--dock-idle-opacity:' . snap_escape_attr($appearance['opacity'] ?? 1);
+
+    // 'inline' sits in the page flow; any other value is treated as one of the
+    // dock's own corner positions and passed through as a class, which is how
+    // the floating dock is already addressed in ss-engine-social-dock.css.
+    $position = preg_replace('/[^a-z-]/', '', strtolower($position)) ?: 'inline';
+    $classes = 'social-dock' . ($position === 'inline'
+        ? ' social-dock-inline' : ' dock-' . $position);
+
+    $html = '<div class="' . $classes . '"'
+        . ($position === 'inline' ? ' data-inline="true"' : ' data-dock-position="' . snap_escape_attr($position) . '"')
+        . ' style="' . $style . '" aria-label="' . snap_escape_attr($label) . '">';
+    foreach ($social as $item) {
+        if (!is_array($item)) { continue; }
+        $glyph = preg_replace('/[^a-z0-9]/', '', strtolower((string)($item['icon'] ?? 'link')));
+        $html .= '<a href="' . snap_escape_url($item['url'] ?? '')
+            . '" target="_blank" rel="me noopener" title="' . snap_escape_attr($item['label'] ?? '')
+            . '" class="dock-link u-url"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="'
+            . snap_escape_url($sprite) . '#' . snap_escape_attr($glyph) . '"></use></svg>'
+            . '<span class="screen-reader-text">' . snap_escape_html($item['label'] ?? '') . '</span></a>';
+    }
+    return $html . '</div>';
+}
+
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
     if (in_array($name, ['50-shades-page', 'chaplin-page', 'galleria-page', 'impact-printer-page', 'onyx-page', 'rational-geo-page'], true)) {
@@ -820,6 +876,35 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . snap_escape_html($item['label'] ?? '') . '</a></li>';
         }
         $html .= '</ul></nav>';
+    } elseif ($name === 'social-dock') {
+        // THE SHARED DOCK, PLACEABLE BY A STRICT SKIN.
+        //
+        // Codex's item 4, which I had passed and should not have. ALFRED's own
+        // footer social markup was removed in favour of "the shared dock", but
+        // nothing on the strict SMACKTALK path emits one: index.php renders the
+        // strict template and exits, and neither registered-assets nor the
+        // public engine assets render core/social-dock.php. So the links went
+        // and nothing replaced them. The browser proof inserted the dock by
+        // hand and then asserted its own markup existed.
+        //
+        // This is the seam that was missing. It renders from the view model
+        // core has already built -- $view['site']['crop_circles'] -- so the
+        // skin performs no query, holds no social logic and knows no platform
+        // names. Identical markup to the dock inside 'crop-circles', from one
+        // shared helper rather than a second copy: the two differ only in
+        // where they sit.
+        //
+        // The implementation assets are already handled: a skin with a
+        // social_dock block in its manifest gets ss-engine-social-dock.css
+        // registered by snapsmack_skin_declared_assets() (core/asset-registry
+        // .php:42-45). A skin that places this component without declaring
+        // that block gets unstyled links, which is visible rather than silent.
+        $model = is_array($data['model'] ?? null) ? $data['model'] : [];
+        $html = snapsmack_social_dock_markup(
+            $model,
+            (string)($data['position'] ?? 'inline'),
+            (string)($data['label'] ?? 'Social links')
+        );
     } elseif ($name === 'crop-circles') {
         $model = is_array($data['model'] ?? null) ? $data['model'] : [];
         $sprite = (string)($model['icon_sprite_url'] ?? '');
@@ -850,20 +935,16 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             }
             $html .= '</div></div>';
         }
-        $appearance = is_array($model['appearance'] ?? null) ? $model['appearance'] : [];
-        $dockStyle = '--dock-bg:' . snap_escape_attr($appearance['background'] ?? 'transparent')
-            . ';--dock-bg-hover:' . snap_escape_attr($appearance['background_hover'] ?? 'rgba(255,255,255,.95)')
-            . ';--dock-border:' . snap_escape_attr($appearance['border'] ?? 'rgba(26,26,26,.3)')
-            . ';--dock-border-hover:' . snap_escape_attr($appearance['border_hover'] ?? 'rgba(26,26,26,.7)')
-            . ';--dock-icon:' . snap_escape_attr($appearance['icon'] ?? '#1a1a1a')
-            . ';--dock-idle-opacity:' . snap_escape_attr($appearance['opacity'] ?? 1);
-        $html .= '</div><div class="ss-grid-nav-actions"><div class="social-dock social-dock-inline" data-inline="true" style="' . $dockStyle . '">';
-        foreach (($model['social'] ?? []) as $item) {
-            if (!is_array($item)) continue;
-            $glyph = preg_replace('/[^a-z0-9]/', '', strtolower((string)($item['icon'] ?? 'link')));
-            $html .= '<a href="' . snap_escape_url($item['url'] ?? '') . '" target="_blank" rel="me noopener" title="' . snap_escape_attr($item['label'] ?? '') . '" class="dock-link u-url">' . $icon($glyph) . '</a>';
-        }
-        $html .= '</div></div></nav>';
+        // ONE DOCK IMPLEMENTATION, TWO PLACEMENTS. This used to build the dock
+        // inline here, and the strict component now needs the same markup, so
+        // it comes from snapsmack_social_dock_markup() rather than existing
+        // twice. The visible difference is nil: same classes, same style
+        // variables, same sprite glyphs. The helper also drops the wrapper
+        // entirely when no platform is configured, where this printed an empty
+        // .social-dock.
+        $html .= '</div><div class="ss-grid-nav-actions">'
+            . snapsmack_social_dock_markup($model, 'inline', 'Social links')
+            . '</div></nav>';
     } elseif ($name === 'grid-nav-links') {
         // SCROLL and the other wall skins style a row of round icon buttons
         // (.ss-grid-nav-link + svg). The pre-migration component that emitted

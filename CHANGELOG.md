@@ -27,6 +27,45 @@ are pushed and waiting on review.
   come from your own backup" is the normal result on a rebuilt site, not a
   fault. (SS-1426, SS-1431, SS-1427)
 
+## 0.7.1001D — opened
+
+Opened because 0.7.1000D is IN SERVICE on the fleet. The agreed-rules gate
+refused the next commit while the source still said 1000D -- "a deployed tag
+must never move" -- which is the fold rule working as intended rather than a
+new decision.
+
+- **ALFRED shows your own logo, centred, in a wider masthead.** If you run
+  ALFRED and you have set a logo in the skin's settings, it now appears in the
+  header instead of your site name as text, centred, at whatever size it is up
+  to the full width of the measure. That measure has widened from 325 to 600
+  pixels, which is the width Hitchcock uses and the one ALFRED was always meant
+  to match, so YOUR HEADER WILL LOOK DIFFERENT after this update even if you
+  change nothing. Sites with no logo set are unaffected apart from the wider
+  measure. (SS-1446)
+
+- **ALFRED's social links now use the same dock as every other skin.** ALFRED
+  carried its own row of social icons in the footer, with its own styling
+  copied from Hitchcock, built from the same settings the shared dock uses.
+  That copy is gone. The footer now renders the shared dock itself, centred
+  where the old row was, from exactly the settings it always used, so your
+  social links look and behave the same way whichever skin you move to.
+  Nothing is lost and nothing needs reconfiguring. (SS-1446)
+
+  An earlier draft of this entry said a dock-enabled ALFRED site had been
+  showing its links twice. That was wrong, and it was my error in review: the
+  shared dock is drawn by parts of the CMS that an ALFRED page does not use,
+  so it never appeared on an ALFRED site at all. No released ALFRED ever
+  showed a double row, and none ever lost its links either — both the removal
+  and this replacement are in the same unreleased 1.0.21.
+
+- **Any skin can now place the shared social dock where it wants it.** This is
+  the change underneath the ALFRED one. Previously a skin either accepted the
+  floating dock the CMS draws in a corner, or wrote its own icons — which is
+  how ALFRED ended up with a private copy. A skin can now ask for the dock in
+  its own layout, in the page flow, and it renders from the same settings and
+  the same markup as the floating one. Nothing changes for a skin that does
+  not ask. (SS-1446)
+
 ## 0.7.1000D — opened
 
 FOUR DIGITS. 0.7.999D is tagged and in service, so this is the next number,
