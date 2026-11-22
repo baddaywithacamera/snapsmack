@@ -194,6 +194,34 @@ function snap_timeline_retention_days(): int { return 90; }
 function snap_timeline_retention_rows(): int { return 2000; }
 
 /**
+ * Does the boost record exist on this site?
+ *
+ * Asked only after a delete has already failed, to tell "this site never
+ * federated and has no such table" from "the delete genuinely failed". The
+ * answer decides whether the prune carries on or leaves that batch alone, so
+ * it must not itself throw: when even this cannot be determined, the safe
+ * reading is that the table IS there and the batch should be spared.
+ *
+ * Written against both engines on purpose. MySQL answers SHOW TABLES LIKE;
+ * sqlite, which the regressions use, answers sqlite_master. Trying the first
+ * and falling back is one query on a path that only runs after a failure.
+ */
+function snap_timeline_boosts_table_exists(PDO $pdo): bool {
+    foreach (["SHOW TABLES LIKE 'snap_ap_timeline_boosts'",
+              "SELECT name FROM sqlite_master WHERE type='table' "
+              . "AND name='snap_ap_timeline_boosts'"] as $sql) {
+        try {
+            $q = $pdo->query($sql);
+            if ($q === false) { continue; }
+            return $q->fetch() !== false;
+        } catch (Throwable $e) {
+            continue;
+        }
+    }
+    return true;   // cannot tell → assume present, spare the batch
+}
+
+/**
  * Prune the inbound timeline, keeping everything any feed still wants.
  *
  * A row survives if ANY of these is true:
@@ -292,15 +320,32 @@ function snap_timeline_retention(PDO $pdo, ?int $days = null, ?int $perFeed = nu
             // Adding a table and not teaching retention about it is the same
             // omission as adding one and not declaring it in the schema.
             //
-            // Guarded separately, because a site that has never federated may
-            // not have this table at all and that must not stop the prune.
+            // ABSENT IS FINE; FAILED IS NOT. Codex's second review: catching
+            // everything here and carrying on meant a permissions error, a
+            // lock or a deadlock left behind exactly the orphan records this
+            // repair exists to prevent, while the log line scrolled past. A
+            // site that has never federated genuinely has no such table and
+            // must not be stopped by it. Those are different situations and
+            // the code now tells them apart.
+            //
+            // On a real delete failure this CHUNK IS SKIPPED: the posts stay,
+            // their boost records stay with them, and the next run tries
+            // again. Keeping a post too long is recoverable; an orphan record
+            // that outlives its post is the fault being fixed.
             try {
                 $pdo->prepare("DELETE FROM snap_ap_timeline_boosts
                                 WHERE object_id IN (SELECT object_id FROM snap_ap_timeline
                                                      WHERE id IN ({$marks}))")->execute($chunk);
             } catch (Throwable $e) {
-                error_log('SnapSmack timeline retention: boost records not pruned — '
-                    . $e->getMessage());
+                if (snap_timeline_boosts_table_exists($pdo)) {
+                    error_log('SnapSmack timeline retention: boost records could NOT be '
+                        . 'pruned and the table is present, so this batch of '
+                        . count($chunk) . ' post(s) is left alone rather than orphaning '
+                        . 'them — ' . $e->getMessage());
+                    continue;
+                }
+                error_log('SnapSmack timeline retention: no snap_ap_timeline_boosts table '
+                    . 'on this site, so there are no boost records to prune.');
             }
             // Memberships next, and by hand. The canonical schema cascades,
             // but a site whose table was made before the constraint existed

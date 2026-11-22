@@ -3797,13 +3797,20 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 // refresh re-ingests it. is_boost records how the row arrived,
                 // not every reason it should stay.
                 //
-                // And this reasons from the NOTIFICATIONS. A boost whose
-                // notification was never written, or has since been pruned,
-                // counts as not boosting -- so the row could be removed while
-                // that boost is live. That is the same exposure the previous
-                // code had on its own, not a new one, and the honest fix is a
-                // boost record for remote objects: snap_ap_boosts holds only
-                // local targets (sv_url_is_ours gates the write above).
+                // And a boost this site never ingested is a boost this record
+                // has not got. snap_ap_timeline_boosts is written by
+                // sv_ingest_timeline() on every boost that reaches the reader,
+                // so the gap is narrow: an Undo for a boost that arrived
+                // before this build, or one whose ingest failed. Both answer
+                // SV_BOOST_UNKNOWN and keep the post, which is the safe
+                // direction.
+                //
+                // THIS PARAGRAPH USED TO SAY the logic reasons from the
+                // notifications and still needed a remote-object boost record.
+                // That was true of the first repair and false of this one, and
+                // it sat here contradicting the code eight lines above it until
+                // Codex read it. A comment that outlives its code is worse than
+                // none, because the next reader believes it.
             }
         }
         return 202;
@@ -5368,14 +5375,25 @@ function sv_has_liked(PDO $pdo, string $object_id): bool {
 /**
  * Is this post nothing but video?
  *
- * Sean's standing ruling, 2026-11-20: an owner may VIEW remote video, but
- * SNAPSMACK never caches, proxies, re-publishes, BOOSTS or SHARES it, and
- * never accepts video uploads.
+ * Sean's ruling as REVISED on 2026-11-21, which is the rule in force:
+ * SNAPSMACK never caches, proxies, re-encodes, stores or uploads video, and no
+ * post originating here carries video. BOOSTING a remote post that contains
+ * video IS allowed, video-only or mixed, because a boost is an Announce
+ * referencing the remote object and this server never touches the bytes.
  *
- * VIDEO-ONLY, not video-at-all. A post carrying a photograph and a clip is a
- * photograph post; refusing it would quietly make the rule wider than Sean
- * wrote it. A post with no attachments at all is text, not video, and is
- * boostable as it always was.
+ * SO THIS PREDICATE IS NOT A GATE, and nothing in the boost path calls it. It
+ * answers one question for the tests that build those cases, and a future rule
+ * about video ORIGINATING here will want it.
+ *
+ * The docblock here stated the superseded rule — "never ... BOOSTS or SHARES"
+ * — after the behaviour had changed. I corrected that sentence in
+ * core/media-retention.php and smack-media-proxy.php and missed the file that
+ * actually implements the behaviour, which is where it mattered most. Codex
+ * found it.
+ *
+ * VIDEO-ONLY, not video-at-all, is the distinction it draws: a post carrying a
+ * photograph and a clip is a photograph post. A post with no attachments at
+ * all is text, not video.
  *
  * Both shapes count as video: an attachment whose mediaType begins "video/",
  * and one whose ActivityStreams `type` is Video. A Pixelfed clip uses the

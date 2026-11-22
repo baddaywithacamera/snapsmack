@@ -207,7 +207,8 @@ mc_check('and names what is actually forbidden: caching, proxying, storing',
          stripos($proxy, 'never caches, proxies, re-encodes,') !== false, $failures);
 mc_check('and NO LONGER claims boosting video is forbidden, which it is not',
          stripos($proxy, 'boosts or shares video') === false, $failures);
-foreach (['core/media-retention.php', 'smack-media-proxy.php'] as $file) {
+foreach (['core/media-retention.php', 'smack-media-proxy.php',
+          'core/fediverse.php'] as $file) {
     mc_check("{$file} carries no copy of the superseded rule",
              stripos((string)file_get_contents($root . '/' . $file),
                      're-publishes, boosts or shares') === false, $failures);
@@ -365,6 +366,112 @@ for ($i = 0; $i < 4; $i++) { mc_row($noBoosts, 'https://a.invalid/nb/' . $i, 300
 $noBoosts->exec('DROP TABLE snap_ap_timeline_boosts');
 $r = snap_timeline_retention($noBoosts, 90, 0);
 mc_check('a missing boost table does not stop the prune', $r['deleted'] === 4, $failures);
+
+// A DELETE THAT FAILS IS NOT A TABLE THAT IS ABSENT. Codex's second review.
+// The first version of this repair caught everything here, logged it, and
+// carried on deleting the posts — so a permissions error, a lock or a deadlock
+// left behind exactly the orphan boost records the repair exists to prevent,
+// while the log line scrolled past. My regression only drove a successful
+// delete and a missing table, which is why it passed.
+//
+// Driven with the table PRESENT and the DELETE refused, which is the case that
+// was wrong. The posts must survive, so the next run can try again.
+class McBoostDeleteFails extends PDO {
+    public function prepare(string $query, array $options = []): PDOStatement|false {
+        if (stripos($query, 'DELETE FROM snap_ap_timeline_boosts') !== false) {
+            throw new PDOException('SQLSTATE[42000]: delete refused by the fixture');
+        }
+        return parent::prepare($query, $options);
+    }
+}
+
+function mc_pdo_boost_delete_fails(): PDO {
+    $pdo = new McBoostDeleteFails('sqlite::memory:', null, null,
+                                  [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $pdo->exec('CREATE TABLE snap_ap_timeline (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 object_id TEXT UNIQUE, actor_url TEXT DEFAULT "", source TEXT DEFAULT "home",
+                 published TEXT, fetched_at TEXT DEFAULT CURRENT_TIMESTAMP)');
+    $pdo->exec('CREATE TABLE snap_ap_timeline_membership (timeline_id INTEGER, feed TEXT,
+                 first_seen_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                 PRIMARY KEY (timeline_id, feed))');
+    $pdo->exec('CREATE TABLE snap_ap_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 ntype TEXT, actor_url TEXT, object_id TEXT)');
+    $pdo->exec('CREATE TABLE snap_ap_timeline_boosts (object_id TEXT, actor_url TEXT,
+                 seen_at TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(object_id, actor_url))');
+    return $pdo;
+}
+
+$pdo = mc_pdo_boost_delete_fails();
+for ($i = 0; $i < 5; $i++) {
+    mc_row($pdo, 'https://a.invalid/fd/' . $i, 300 + $i);
+    $pdo->exec("INSERT INTO snap_ap_timeline_boosts (object_id, actor_url) VALUES "
+        . "('https://a.invalid/fd/{$i}', 'https://booster.invalid/u/1')");
+}
+mc_check('the fixture can tell the table is present',
+         snap_timeline_boosts_table_exists($pdo) === true, $failures);
+
+$r = snap_timeline_retention($pdo, 90, 0);
+mc_check('a FAILED boost delete prunes nothing, rather than orphaning records',
+         $r['deleted'] === 0, $failures);
+mc_check('  the posts are still there for the next run',
+         mc_count($pdo) === 5, $failures);
+mc_check('  and so are their boost records, still attached to posts',
+         (int)$pdo->query('SELECT COUNT(*) FROM snap_ap_timeline_boosts')->fetchColumn() === 5,
+         $failures);
+mc_check('  with nothing orphaned',
+         (int)$pdo->query('SELECT COUNT(*) FROM snap_ap_timeline_boosts b
+                            WHERE NOT EXISTS (SELECT 1 FROM snap_ap_timeline t
+                                               WHERE t.object_id = b.object_id)')
+                  ->fetchColumn() === 0, $failures);
+mc_check('  and it still reports how many are over the line',
+         $r['candidates'] === 5, $failures);
+
+// ONE BATCH SKIPPED IS NOT THE WHOLE RUN ABANDONED. The prune works in chunks
+// of 500, so with a single chunk "skip this batch" and "abort everything" look
+// identical — a mutation swapping continue for throw survived on exactly that.
+// This drives 600 doomed posts with the delete refused ONLY for the first
+// chunk, so the second must still prune.
+class McBoostDeleteFailsOnce extends PDO {
+    public int $refusals = 0;
+    public function prepare(string $query, array $options = []): PDOStatement|false {
+        if (stripos($query, 'DELETE FROM snap_ap_timeline_boosts') !== false
+            && $this->refusals === 0) {
+            $this->refusals++;
+            throw new PDOException('SQLSTATE[42000]: first batch refused by the fixture');
+        }
+        return parent::prepare($query, $options);
+    }
+}
+
+$pdo = new McBoostDeleteFailsOnce('sqlite::memory:', null, null,
+                                  [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+$pdo->exec('CREATE TABLE snap_ap_timeline (id INTEGER PRIMARY KEY AUTOINCREMENT,
+             object_id TEXT UNIQUE, actor_url TEXT DEFAULT "", source TEXT DEFAULT "home",
+             published TEXT, fetched_at TEXT DEFAULT CURRENT_TIMESTAMP)');
+$pdo->exec('CREATE TABLE snap_ap_timeline_membership (timeline_id INTEGER, feed TEXT,
+             first_seen_at TEXT DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (timeline_id, feed))');
+$pdo->exec('CREATE TABLE snap_ap_notifications (id INTEGER PRIMARY KEY AUTOINCREMENT,
+             ntype TEXT, actor_url TEXT, object_id TEXT)');
+$pdo->exec('CREATE TABLE snap_ap_timeline_boosts (object_id TEXT, actor_url TEXT,
+             seen_at TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(object_id, actor_url))');
+$pdo->beginTransaction();
+for ($i = 0; $i < 600; $i++) { mc_row($pdo, 'https://a.invalid/chunk/' . $i, 300); }
+$pdo->commit();
+
+$r = snap_timeline_retention($pdo, 90, 0, 600);
+mc_check('the first batch was refused, so its 500 posts stay',
+         mc_count($pdo) === 500, $failures);
+mc_check('  and the SECOND batch still pruned its 100',
+         $r['deleted'] === 100, $failures);
+
+// AND THE ABSENT CASE IS STILL THE OTHER ANSWER, which is the distinction.
+$absent = mc_pdo();
+for ($i = 0; $i < 4; $i++) { mc_row($absent, 'https://a.invalid/ab/' . $i, 300 + $i); }
+$absent->exec('DROP TABLE snap_ap_timeline_boosts');
+mc_check('a site with no boost table is seen as having none',
+         snap_timeline_boosts_table_exists($absent) === false, $failures);
+$r = snap_timeline_retention($absent, 90, 0);
+mc_check('  and its prune carries on as normal', $r['deleted'] === 4, $failures);
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 8 — IT IS BOUNDED, AND IT NEVER TAKES THE SITE DOWN\n";
 // ─────────────────────────────────────────────────────────────────────────────
@@ -398,7 +505,7 @@ mc_check('an empty timeline is not a special case',
 
 echo "\n";
 // ─────────────────────────────────────────────────────────────────────────────
-echo "\nSTAGE 9 — A VIDEO-ONLY POST IS NOT BOOSTED\n";
+echo "\nSTAGE 9 — WHICH POSTS CARRY VIDEO AND NOTHING ELSE\n";
 // ─────────────────────────────────────────────────────────────────────────────
 // sv_post_is_video_only() answers one question and is no longer a gate: Sean's
 // revised ruling of 2026-11-21 allows boosting a post that contains video,
@@ -444,8 +551,8 @@ mc_check('a text post with no attachments is NOT video-only',
          $failures);
 mc_check('an empty attachment list is NOT video-only',
          sv_post_is_video_only(mc_att([])) === false, $failures);
-mc_check('and an unfetchable post is NOT video-only, so a failed fetch never '
-         . 'silently blocks an ordinary boost',
+mc_check('and an unfetchable post is NOT video-only, so a failed fetch is '
+         . 'never read as "this is a video post"',
          sv_post_is_video_only(null) === false, $failures);
 
 // The gate sits in the boost path, ahead of the test-mode branch, so a test
