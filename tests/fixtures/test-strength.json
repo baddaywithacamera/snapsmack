@@ -1752,6 +1752,14 @@
             2
         ]
     },
+    "rational-geo-archive-shares-the-header-lane-regression.php": {
+        "assertions": 17,
+        "predicates": 24,
+        "thresholds": [
+            8,
+            8
+        ]
+    },
     "rational-geo-info-drawer-regression.php": {
         "assertions": 3,
         "predicates": 2,
@@ -1764,6 +1772,11 @@
     },
     "rational-geo-solo-viewport-regression.php": {
         "assertions": 10,
+        "predicates": 13,
+        "thresholds": []
+    },
+    "rational-geo-topo-map-stays-behind-the-page-regression.php": {
+        "assertions": 13,
         "predicates": 13,
         "thresholds": []
     },
@@ -2510,6 +2523,14 @@
         "predicates": 26,
         "thresholds": [
             20
+        ]
+    },
+    "solo-photo-swipe-goes-where-the-arrows-go-regression.php": {
+        "assertions": 14,
+        "predicates": 11,
+        "thresholds": [
+            2,
+            2
         ]
     },
     "special-skin-v2-regression.php": {

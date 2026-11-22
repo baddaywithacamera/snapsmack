@@ -16,6 +16,47 @@ section until the tag was being assembled, which would have told owners their
 photographs come back in a build that does not carry the change. The branches
 are pushed and waiting on review.
 
+- **RATIONAL GEO (skin package, 2.1.45): the map background no longer sits on
+  top of your photographs.** The topographic map behind the site was being
+  drawn over the photographs rather than behind them, so faint contour lines
+  crossed every picture — most visible on water, sky and other pale, flat
+  images — and crossed the footer as well. It now sits behind everything, and
+  the map itself is unchanged: same artwork, same opacity slider, same
+  on/off switch, still showing in the margins around your pictures.
+  Also in this version: on a tablet held upright, the archive wall picks up
+  the same narrower margin the header uses there, so the two line up at that
+  size as well — the 1024 and wider case shipped in 2.1.44 above.
+  **Repackage RATIONAL GEO 2.1.45 + reinstall to ship.** (SS-1518, SS-1517)
+
+- **Swipe between photographs on a tablet.** On a touch screen the only way
+  to the next photograph was the small PREV and NEXT text links: the arrow
+  keys a desktop reader uses have no equivalent on glass, and the swipe the
+  lightbox has always had only works when a gallery holds more than one
+  image, which a single photograph page never does. Swiping left or right on
+  a photograph now moves to the next or previous one — the same two
+  destinations the arrow keys use, so the two can never disagree. Scrolling
+  is untouched: a swipe has to travel more than 50 pixels and be more
+  sideways than vertical, a second finger makes it a zoom instead, and a
+  sideways-scrolling table keeps its own gesture.
+
+  WHERE IT WORKS, counted rather than assumed: ten skins — CHAPLIN, GALLERIA,
+  HIP TO BE SQUARE, IMPACT PRINTER, NEW HORIZON, ONYX, RATIONAL GEO, SCROLL,
+  SLICKR and TRUE GRIT. Those are the skins whose photograph pages render the
+  previous/next links the gesture steers by. Fourteen more load the engine
+  but print no such links, so on those the swipe finds nowhere to go and does
+  nothing — the same reason their arrow keys do nothing, which is already
+  logged as its own job (SS-1095, SS-1118). PHOTOGRAM and TELEGRAM, the two
+  phone skins, are not in either group and get no swipe from this.
+
+- **RATIONAL GEO (skin package, 2.1.44): the archive no longer has two
+  different left margins.** On screens between roughly 1025 and 1400 pixels
+  wide — most laptops, and a tablet held landscape — the wall of photographs
+  ran right to both edges of the screen while the site name above it stayed
+  indented, so the page looked misaligned. The wall now sits in the same
+  measure as the header, checked at 1024, 1280, 1366 and 1920. Nothing about
+  your photo sizes, columns or Content Width setting changes. **Repackage
+  RATIONAL GEO 2.1.44 + reinstall to ship.** (SS-1517)
+
 - **A restore brings your photographs back, and tells you honestly when it
   cannot.** The admin restore path never reconciled media: database rows came
   back pointing at photographs, thumbnails, assets and branding that were not

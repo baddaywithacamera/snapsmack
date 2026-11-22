@@ -144,6 +144,11 @@ function ssShortcuts() {
         if (prev)             rows.push(['LEFT',  'Previous photo']);
         if (ssNavUrl('next')) rows.push(['RIGHT', 'Next photo']);
         if (prev)             rows.push(['SPACE', 'Previous photo']);
+        // The swipe below goes to the same two places as the arrows, so it is
+        // listed here for the same reason the arrows are: this file's rule is
+        // that nothing can work without being listed, and nothing can be
+        // listed without working.
+        if (prev || ssNavUrl('next')) rows.push(['SWIPE', 'Previous / next photo']);
     }
 
     // Skipped on gram by the handler, so skipped here.
@@ -160,6 +165,75 @@ function ssShortcuts() {
 }
 
 window.snapKeyboard = { shortcuts: ssShortcuts };
+
+
+// --- SWIPE ON A SOLO PHOTOGRAPH (tablet) ---
+//
+// A tablet has no arrow keys, so on a touch screen the solo page had no way
+// to reach the next photograph except the small PREV/NEXT text links. The
+// lightbox has had swipe since it was written, but it only engages with two
+// or more images in one gallery, and a solo page wires exactly one -- so on
+// RATIONAL GEO, and every skin like it, swiping did nothing at all. Reported
+// by Sean on his tablet, diagnosed by Muse (SS-1518 thread).
+//
+// IT GOES WHERE THE ARROWS GO, by construction: the same ssNavUrl() the
+// arrow keys read, under the same slider guard, with the same 50px threshold
+// and the same "horizontal must beat vertical" test the lightbox already
+// uses. Swipe and arrows therefore cannot disagree about a destination, and
+// the help modal lists both from one place.
+//
+// This lives in the hotkey engine rather than a skin or a new engine because
+// the destinations already live here. A second copy reading the same links
+// is how two answers to one question get into a codebase.
+(function () {
+    var sx = 0, sy = 0, tracking = false;
+
+    // A swipe that starts inside something the reader can scroll sideways --
+    // RATIONAL GEO's EXIF table is overflow-x: auto -- belongs to that
+    // element. Navigating the page out from under a half-read table would be
+    // worse than not having swipe at all.
+    function inHorizontalScroller(node) {
+        for (var el = node; el && el !== document.body; el = el.parentElement) {
+            if (el.nodeType !== 1) continue;
+            var ox = window.getComputedStyle(el).overflowX;
+            if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth + 1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    document.addEventListener('touchstart', function (e) {
+        tracking = false;
+        if (!e.touches || e.touches.length !== 1) return;   // a pinch is not a swipe
+        if (ssSlider() || ssWall()) return;                 // both handle their own touch
+        var lb = document.getElementById('ss-lightbox-overlay');
+        if (lb && lb.style.display !== 'none') return;      // the lightbox owns the gesture
+        if (inHorizontalScroller(e.target)) return;
+        sx = e.touches[0].clientX;
+        sy = e.touches[0].clientY;
+        tracking = true;
+    }, { passive: true });
+
+    // A second finger landing mid-gesture makes it a pinch-zoom, which on a
+    // photograph is the thing a reader is most likely to be doing.
+    document.addEventListener('touchmove', function (e) {
+        if (e.touches && e.touches.length > 1) tracking = false;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function (e) {
+        if (!tracking) return;
+        tracking = false;
+        if (!e.changedTouches || !e.changedTouches.length) return;
+        var dx = e.changedTouches[0].clientX - sx;
+        var dy = e.changedTouches[0].clientY - sy;
+        // Vertical always wins: a reader scrolling down a long caption must
+        // never be navigated away by the horizontal drift in their thumb.
+        if (Math.abs(dx) <= 50 || Math.abs(dx) <= Math.abs(dy)) return;
+        var url = dx < 0 ? ssNavUrl('next') : ssNavUrl('prev');
+        if (url) window.location.href = url;
+    }, { passive: true });
+})();
 
 // --- KEYBOARD SHORTCUTS ---
 

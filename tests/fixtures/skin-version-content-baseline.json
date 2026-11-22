@@ -93,8 +93,8 @@
             "manifest_css_sha256": "f8fea9262d24dccf3a5b735dedc37af868114c1187e754f34abd9a5dc0cb701c"
         },
         "rational-geo": {
-            "version": "2.1.43",
-            "files_sha256": "3a6434a12729c67ef9f2a994a355df4a47319394d9698ceaa5af79a829522955",
+            "version": "2.1.45",
+            "files_sha256": "82c06e31e74ea5d4569cc9ebecd9df6bae121c30374e6d2cd7368e6e7d1a5d68",
             "manifest_css_sha256": "a1f5658d8ba757965e60af97702c2fbc6fa516b5fb153e1509967ae0c09a0d0f"
         },
         "scroll": {

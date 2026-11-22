@@ -119,7 +119,15 @@ html {
 }
 
 /* Flex column viewport lock — mirrors New Horizon snapping engine.
-   z-index: 1 ensures content sits above body::after (the map pseudo at z:0). */
+   NOTHING IN THIS LAYOUT RENDERS #page-wrapper, so this rule is dead. It is
+   kept because other RATIONAL GEO rules still address the element and
+   removing one of them piecemeal would be worse than leaving the set intact;
+   see the note on the body.archive-page section.
+   Its comment used to say "z-index: 1 ensures content sits above body::after
+   (the map pseudo at z:0)". That was stale twice over — the map is now at
+   z-index -1 and keeps itself behind the page, and this wrapper was never
+   rendered to lift anything above it in the first place. Muse caught it on
+   review of SS-1518. (SS-1518) */
 #page-wrapper {
   display: flex;
   flex-direction: column;
@@ -172,9 +180,26 @@ body {
 
 /* Cartographic background — SVG topographic map of western Canada.
    Uses body::after pseudo so the slider (--rg-map-pct) can control opacity
-   without affecting body itself. The SVG tiles seamlessly and sits behind
-   all content since #page-wrapper establishes its own stacking layer.
-   The SVG (assets/topo-map.svg) is original artwork, no copyright. */
+   without affecting body itself.
+   The SVG (assets/topo-map.svg) is original artwork, no copyright.
+
+   IT PAINTS BEHIND THE PAGE BECAUSE OF THE NEGATIVE z-index HERE, and for no
+   other reason. This comment used to say the map "sits behind all content
+   since #page-wrapper establishes its own stacking layer". There is no
+   #page-wrapper in this layout, so nothing established that layer, and a
+   positioned pseudo at z-index 0 paints ABOVE non-positioned content: the
+   contour lines were drawn across every photograph, and across the footer.
+
+   MEASURED on a flat fixture photograph, distinct colours inside it:
+   191 before, 21 after, against 19 with the map switched off entirely — and
+   in the footer 241 before, 109 after, against 111 switched off. The map
+   itself is unchanged where it should show: the page margin reads the same
+   three values before and after.
+
+   Raising #scroll-stage into its own layer was the other candidate and was
+   rejected on measurement, not taste: it cleans the photographs (191 -> 23)
+   and leaves the footer exactly as it was (241 -> 226), because the footer is
+   not inside #scroll-stage. (SS-1518) */
 body::after {
   content: "";
   position: fixed;
@@ -183,7 +208,7 @@ body::after {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
   background-image: url('assets/topo-map.png');
   background-repeat: no-repeat;
   background-size: cover;
@@ -853,18 +878,6 @@ body[data-frame="none"]   { --rg-hero-colour: transparent; }
 /* --- Masonry archive: preserve every photograph's original aspect ratio.
        Hero frame (20px yellow outline + 4px white border) scaled to ~25%. --- */
 
-.rg-archive-grid {
-  flex: 1;
-  padding: 30px 60px 40px;
-  display: block;
-  column-count: var(--grid-cols, 4);
-  column-gap: 30px;
-  margin: 0 auto;
-  max-width: var(--rg-canvas-width, 1400px);
-  width: 100%;
-  justify-content: center;
-}
-
 .rg-archive-item {
   position: relative;
   cursor: pointer;
@@ -938,8 +951,19 @@ body[data-frame="none"]   { --rg-hero-colour: transparent; }
      padding cannot separate the first row from the header. Move the wall by
      the same clearance as the static-page frame instead. */
   margin: calc(var(--rg-page-hero-top-margin) + var(--rg-page-hero-frame-inset)) auto 0;
-  /* Sean, 17 Oct 2026: retain the requested 55px footer clearance. */
-  padding: 0 0 55px;
+  /* Sean, 17 Oct 2026: retain the requested 55px footer clearance.
+     SIDE PADDING MATCHES THE HEADER'S LANE (.rg-header-inside, same
+     --space-xl). Without it the wall and the header had two different left
+     margins: max-width only binds above the Content Width setting, so from
+     about 1025 to 1400 the wall filled the viewport edge to edge while the
+     masthead stayed inset 2rem. Measured at 1280: tiles at x=0, masthead at
+     x=32. The owner's own archive capture (opaudits/evidence/027, now
+     projects/snapsmack-ca/img/rationalgeo-secondary.png) shows the wall inset
+     and centred, not edge to edge, so inset is the target. The columns engine
+     subtracts padding-left/right from its working width
+     (assets/js/ss-engine-columns.js:98-103), so the tiles narrow instead of
+     overflowing. (SS-1517) */
+  padding: 0 var(--space-xl) 55px;
   box-sizing: border-box;
   flex: 1 0 auto;
   --ss-cols: var(--grid-cols, 4);
@@ -1016,7 +1040,27 @@ body[data-frame="none"]   { --rg-hero-colour: transparent; }
 /* --- Archive page base ---
      archive.php provides: skin-header (#rg-header, in normal flow), #infobox
      (filter bar, 50px), #scroll-stage. #page-wrapper is a flex column so the
-     footer always snaps to bottom. */
+     footer always snaps to bottom.
+
+     EVERY RULE IN THIS SECTION IS DEAD, AND DELIBERATELY LEFT THAT WAY FOR
+     NOW. core/skin-view-contract.php computes an archive-page body class for
+     archive and hashtag pages, but layout.php builds its body class by hand
+     and never prints it, so nothing here has ever applied. Measured: the
+     rendered archive's body class is "rational-geo-v2" and nothing else.
+
+     DO NOT SIMPLY SWITCH THE CLASS ON. The .rg-header-inside rule below
+     zeroes the header's side padding "so the site name aligns flush with the
+     edge-to-edge justified grid", and the owner's own archive capture shows
+     the opposite: a wall inset 153px on a 1905px page, centred, with the
+     header content in the same lane. Emitting the class would push the
+     masthead hard against the viewport edge and undo SS-1517.
+
+     These rules also reference #page-wrapper, which this layout does not
+     render, so part of the section could never work whatever the body class
+     said. Waking or deleting the rest is a design decision with a visible
+     result on the filter bar and the stage, and it needs Muse's re-check and
+     a render rather than a quiet edit. Noted here so the next reader does
+     not have to re-derive it. (SS-1517) */
 
 body.archive-page #page-wrapper {
   display: flex;
@@ -1581,6 +1625,13 @@ input[type="reset"]:active {
     padding: 0 var(--space-lg);
   }
 
+  /* The wall follows the header's lane down to the narrower inset, or the
+     two part company again by 8px at exactly 1024. Measured. (SS-1517) */
+  #justified-grid {
+    padding-left: var(--space-lg);
+    padding-right: var(--space-lg);
+  }
+
   .rg-masthead {
     font-size: 1.4rem;
   }
@@ -1609,12 +1660,6 @@ input[type="reset"]:active {
     padding: var(--space-lg) var(--space-lg);
   }
 
-  .rg-archive-grid {
-    column-count: 3;
-    column-gap: 24px;
-    padding: 20px 30px 30px;
-  }
-
   .rg-photo-title {
     font-size: var(--font-scale-2xl);
   }
@@ -1640,6 +1685,14 @@ input[type="reset"]:active {
 
   .rg-header-inside {
     padding: 0 var(--space-md);
+  }
+
+  /* The wall follows the header down to this step too. Muse caught the gap on
+     review: the 1024 step was matched and this one was not, so the two parted
+     company by 8px here — the same fault one breakpoint lower. (SS-1517) */
+  #justified-grid {
+    padding-left: var(--space-md);
+    padding-right: var(--space-md);
   }
 
   .rg-masthead {
@@ -1711,12 +1764,6 @@ input[type="reset"]:active {
   .rg-exif-table tbody tr {
     grid-template-columns: 100px 1fr;
     gap: var(--space-sm);
-  }
-
-  .rg-archive-grid {
-    column-count: 2;
-    column-gap: 20px;
-    padding: 15px 20px 20px;
   }
 
   body.archive-page #scroll-stage {
@@ -1837,12 +1884,6 @@ input[type="reset"]:active {
 
   .rg-exif-table td {
     font-size: var(--font-scale-xs);
-  }
-
-  .rg-archive-grid {
-    column-count: 1;
-    column-gap: 16px;
-    padding: 10px 15px 15px;
   }
 
   body.archive-page #scroll-stage {
