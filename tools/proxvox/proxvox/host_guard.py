@@ -17,6 +17,9 @@ already running as Sean on Sean's desktop: nothing at this layer can, and the
 honest answer to that threat is the per-action TOTP in P3, not a better host
 check. Saying so here because a guard that is believed to do more than it does
 is worse than no guard.
+
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line must be the Python SNAPSMACK EOF marker.
 """
 
 import os

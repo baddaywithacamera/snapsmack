@@ -10,6 +10,9 @@ fails in use: a guard can be present in the source, correctly spelled, and
 never reached.
 
 Run: python tools/proxvox/tests/test_proxvox_p1.py
+
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line must be the Python SNAPSMACK EOF marker.
 """
 
 import json

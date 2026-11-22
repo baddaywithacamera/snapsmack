@@ -19,6 +19,9 @@ WHAT A TOKEN CAN DO IS STILL THE SERVER'S ANSWER, NOT THIS FILE'S. The ACL on
 the Proxmox side is what actually stops a write; these checks stop us ASKING.
 Both matter. A client-side refusal keeps an accident from becoming a request,
 and the server-side grant is what holds when the client is wrong or replaced.
+
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line must be the Python SNAPSMACK EOF marker.
 """
 
 import json

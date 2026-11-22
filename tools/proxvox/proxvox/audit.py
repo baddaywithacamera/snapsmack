@@ -16,6 +16,9 @@ pressure is worse than no log, because it reads as complete. So:
     a crash mid-call leaves evidence that it was attempted;
   - a failed flush leaves the buffer untouched;
   - the buffer is only ever truncated for records the store has confirmed.
+
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line must be the Python SNAPSMACK EOF marker.
 """
 
 import json

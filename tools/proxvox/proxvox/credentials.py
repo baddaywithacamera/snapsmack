@@ -18,6 +18,9 @@ protected by the route you meant them to use.
 The Credential Manager plumbing itself is NOT reimplemented. tools/_shared/
 snap_native_creds.py already does CredReadW through ctypes and is used by the
 other desktop tools; a second copy would be a second thing to get wrong.
+
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line must be the Python SNAPSMACK EOF marker.
 """
 
 import os
