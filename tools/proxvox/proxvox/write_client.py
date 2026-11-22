@@ -1,0 +1,269 @@
+"""PROX VOX — the live-authorised write client and manual revoke. (SS-1507 P3 / P5)
+
+Sean's rulings (2026-11-22 15:50, 15:51, 16:44):
+  - Separate client object from ReadOnlyBroker (P1 stays read-only).
+  - Authority is Option A: live Proxmox /access/ticket login with password +
+    TOTP (in a TOTP-required realm). No stored write token, no stored
+    password, no stored TOTP, and no unattended writes.
+  - One authorisation = full write (POST, PUT, DELETE) across Proxmox API
+    paths until the Proxmox ticket expires, with no per-action TOTP prompts.
+  - Every call and every refusal is logged to AuditBuffer BEFORE execution.
+  - Manual revoke (P5) immediately clears the in-memory ticket and CSRF token.
+  - Logs remain local in AuditBuffer until Codex closes OWNER RIGHTS for P2.
+
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line must be the Python SNAPSMACK EOF marker.
+"""
+
+import json
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+from . import host_guard
+from .broker import Refused, _path_refusal
+
+ALLOWED_METHODS = ("POST", "PUT", "DELETE", "GET")
+PROXMOX_TICKET_TTL_SECONDS = 7200
+
+
+class WriteClient:
+    """Short-lived, live-authorised Proxmox write client (Option A + P5 revoke)."""
+
+    def __init__(self, base_url: str, audit, pinned_guid: str,
+                 actual_guid: str = None, opener=None, verify_host: bool = True,
+                 clock=None, ticket_ttl: int = PROXMOX_TICKET_TTL_SECONDS):
+        if verify_host:
+            host_guard.require_host(pinned_guid, actual_guid)
+        self.base_url = base_url.rstrip("/")
+        self.audit = audit
+        self._opener = opener or urllib.request.urlopen
+        self._clock = clock or time.time
+        self._ticket_ttl = max(1, int(ticket_ttl))
+
+        self._username: str = ""
+        self._ticket: str = ""
+        self._csrf_token: str = ""
+        self._expires_at: float = 0.0
+
+    # ── session state ────────────────────────────────────────────────────
+    def _clear_session(self):
+        self._username = ""
+        self._ticket = ""
+        self._csrf_token = ""
+        self._expires_at = 0.0
+
+    def is_authorized(self) -> bool:
+        if not self._ticket or not self._csrf_token:
+            return False
+        if float(self._clock()) >= self._expires_at:
+            self._clear_session()
+            return False
+        return True
+
+    # ── P3 Option A: /access/ticket + TFA ────────────────────────────────
+    def authorize(self, username: str, password: str, otp: str,
+                  timeout: int = 15) -> dict:
+        """Authenticate live against Proxmox /access/ticket with password + OTP."""
+        user = (username or "").strip()
+        pw = password or ""
+        code = (otp or "").strip()
+        if not user or not pw or not code:
+            self.audit.record("write_auth_refused", {
+                "username": user,
+                "why": "username, password, and OTP are all required",
+            })
+            raise Refused(
+                "PROX VOX write authorisation requires live username, password, "
+                "and TOTP code. Nothing is read from files or environment."
+            )
+
+        url = self.base_url + "/api2/json/access/ticket"
+        form = urllib.parse.urlencode({
+            "username": user,
+            "password": pw,
+            "otp": code,
+        }).encode("utf-8")
+        request = urllib.request.Request(url, data=form, method="POST")
+        request.add_header("Content-Type", "application/x-www-form-urlencoded")
+
+        # Recorded BEFORE the request; secrets are never included.
+        self.audit.record("write_auth_attempt", {"username": user})
+
+        try:
+            with self._opener(request, timeout=timeout) as response:
+                body = response.read().decode("utf-8", "replace")
+                status = getattr(response, "status", 200)
+        except urllib.error.HTTPError as err:
+            self._clear_session()
+            self.audit.record("write_auth_result", {
+                "username": user, "ok": False, "status": err.code,
+            })
+            raise
+        except Exception as err:
+            self._clear_session()
+            self.audit.record("write_auth_result", {
+                "username": user, "ok": False, "error": type(err).__name__,
+            })
+            raise
+
+        try:
+            payload = json.loads(body)
+        except ValueError:
+            self._clear_session()
+            self.audit.record("write_auth_result", {
+                "username": user, "ok": False, "status": status,
+                "why": "invalid JSON from /access/ticket",
+            })
+            raise Refused("Proxmox /access/ticket returned non-JSON response.")
+
+        data = payload.get("data") if isinstance(payload, dict) else None
+        ticket = (data or {}).get("ticket") if isinstance(data, dict) else None
+        csrf = (data or {}).get("CSRFPreventionToken") if isinstance(data, dict) else None
+
+        if (not isinstance(ticket, str) or not ticket.strip()
+                or ticket.startswith("PVE:!tfa!")
+                or not isinstance(csrf, str) or not csrf.strip()):
+            self._clear_session()
+            self.audit.record("write_auth_result", {
+                "username": user, "ok": False, "status": status,
+                "why": "missing ticket or CSRFPreventionToken (TFA incomplete)",
+            })
+            raise Refused(
+                "Proxmox /access/ticket did not return a full write ticket "
+                "and CSRFPreventionToken."
+            )
+
+        now = float(self._clock())
+        self._username = user
+        self._ticket = ticket.strip()
+        self._csrf_token = csrf.strip()
+        self._expires_at = now + self._ticket_ttl
+
+        self.audit.record("write_auth_result", {
+            "username": user,
+            "ok": True,
+            "status": status,
+            "expires_at": self._expires_at,
+        })
+        return {"username": user, "expires_at": self._expires_at}
+
+    # ── P5: manual revoke ────────────────────────────────────────────────
+    def revoke(self, reason: str = "manual") -> None:
+        """Immediately invalidate the in-memory write session."""
+        was_active = bool(self._ticket or self._csrf_token)
+        user = self._username
+        self._clear_session()
+        self.audit.record("write_revoked", {
+            "username": user,
+            "was_active": was_active,
+            "reason": str(reason or "manual"),
+        })
+
+    # ── P3 write execution ───────────────────────────────────────────────
+    def call(self, method: str, path: str, data: dict = None, timeout: int = 15):
+        """Execute an authorised Proxmox API call. Refuses unauthenticated or unsafe calls."""
+        method = (method or "").upper()
+        bad_path = _path_refusal(path)
+
+        if not self.is_authorized():
+            self.audit.record("write_refused", {
+                "method": method,
+                "path": path,
+                "why": "no active authorised ticket (unauthenticated, expired, or revoked)",
+            })
+            raise Refused(
+                "PROX VOX write refused: no active authorised Proxmox ticket. "
+                "Call authorize() with live password + TOTP first."
+            )
+
+        if method not in ALLOWED_METHODS:
+            self.audit.record("write_refused", {
+                "method": method,
+                "path": path,
+                "username": self._username,
+                "why": "unsupported method",
+            })
+            raise Refused("PROX VOX write refused unsupported method %r." % method)
+
+        if bad_path:
+            self.audit.record("write_refused", {
+                "method": method,
+                "path": path,
+                "username": self._username,
+                "why": "unsafe path",
+            })
+            raise Refused(
+                "PROX VOX write refused path %r before building a request: %s."
+                % (path, bad_path)
+            )
+
+        url = self.base_url + "/api2/json/" + path.strip().lstrip("/")
+        encoded_body = None
+        if data is not None:
+            encoded_body = urllib.parse.urlencode(data, doseq=True).encode("utf-8")
+
+        request = urllib.request.Request(url, data=encoded_body, method=method)
+        request.add_header("Cookie", "PVEAuthCookie=%s" % self._ticket)
+        request.add_header("CSRFPreventionToken", self._csrf_token)
+        if encoded_body is not None:
+            request.add_header("Content-Type", "application/x-www-form-urlencoded")
+
+        # Audit BEFORE execution so a crash mid-call leaves evidence on disk.
+        self.audit.record("write_call", {
+            "method": method,
+            "path": path,
+            "username": self._username,
+        })
+
+        try:
+            with self._opener(request, timeout=timeout) as response:
+                body = response.read().decode("utf-8", "replace")
+                status = getattr(response, "status", 200)
+        except urllib.error.HTTPError as err:
+            self.audit.record("write_result", {
+                "method": method,
+                "path": path,
+                "username": self._username,
+                "status": err.code,
+            })
+            if err.code == 401:
+                self._clear_session()
+            raise
+        except Exception as err:
+            self.audit.record("write_result", {
+                "method": method,
+                "path": path,
+                "username": self._username,
+                "error": type(err).__name__,
+            })
+            raise
+
+        self.audit.record("write_result", {
+            "method": method,
+            "path": path,
+            "username": self._username,
+            "status": status,
+            "bytes": len(body),
+        })
+        try:
+            return json.loads(body)
+        except ValueError:
+            return {"raw": body}
+
+    def post(self, path: str, data: dict = None, timeout: int = 15):
+        return self.call("POST", path, data=data, timeout=timeout)
+
+    def put(self, path: str, data: dict = None, timeout: int = 15):
+        return self.call("PUT", path, data=data, timeout=timeout)
+
+    def delete(self, path: str, data: dict = None, timeout: int = 15):
+        return self.call("DELETE", path, data=data, timeout=timeout)
+
+    def __repr__(self) -> str:
+        return "<WriteClient %s authorized=%s>" % (self.base_url, self.is_authorized())
+
+    __str__ = __repr__
+
+# ===== SNAPSMACK EOF =====
