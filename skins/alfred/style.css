@@ -784,6 +784,7 @@ input[type="button"],
 }
 
 .blog-title {
+    display: block;
     font-size: 1.75em;
     font-weight: 500;
     letter-spacing: 0.025em;
@@ -791,6 +792,7 @@ input[type="button"],
     text-transform: uppercase;
     text-align: center;
     text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+    width: 100%;
 }
 
 .blog-title a {
@@ -816,6 +818,35 @@ input[type="button"],
     margin-top: 25px;
     text-align: center;
     text-shadow: 0 1px 0 rgba(0,0,0,0.2);
+}
+
+/* The same CMS-owned dock appears beneath the masthead and in the footer.
+   ALFRED owns only its placement and Hitchcock-sized presentation; accounts,
+   links and visibility remain the shared component's data and decisions. */
+.site-header .social-dock-inline {
+    justify-content: center;
+    margin: 24px auto 0;
+}
+
+.site-header .dock-link,
+.site-header .dock-link:hover,
+#system-footer .dock-link,
+#system-footer .dock-link:hover {
+    color: var(--dock-icon);
+    background: transparent;
+    border-color: var(--dock-icon);
+    text-decoration: none;
+}
+
+.site-header .dock-link {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+}
+
+.site-header .dock-link svg {
+    width: 16px;
+    height: 16px;
 }
 
 /* Header Background Image
@@ -1582,8 +1613,13 @@ p.comment-form-author { margin-right: 5%; }
    viewport edge, because #footer .inside is full-bleed rather than using
    ALFRED's 1040px .section-inner lane. Checked at 1920, 1440 and 1024. */
 #system-footer .social-dock-inline {
+    flex-wrap: wrap;
     justify-content: center;
     margin-bottom: 24px;
+}
+
+#system-footer .dock-link {
+    flex: 0 0 48px;
 }
 
 

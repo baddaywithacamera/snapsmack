@@ -66,11 +66,21 @@
         ]
     },
     "alfred-footer-carries-the-shared-social-dock-regression.php": {
-        "assertions": 21,
-        "predicates": 19,
+        "assertions": 26,
+        "predicates": 26,
         "thresholds": [
-            3,
-            3
+            2,
+            6,
+            6
+        ]
+    },
+    "alfred-header-parity-regression.php": {
+        "assertions": 20,
+        "predicates": 17,
+        "thresholds": [
+            2,
+            2,
+            4
         ]
     },
     "alfred-landing-is-not-drawn-in-the-reading-column-regression.php": {
@@ -389,6 +399,13 @@
         "assertions": 8,
         "predicates": 14,
         "thresholds": []
+    },
+    "core-markup-brings-its-own-hiding-rule-regression.php": {
+        "assertions": 16,
+        "predicates": 18,
+        "thresholds": [
+            2
+        ]
     },
     "core-ownership-gate-regression.php": {
         "assertions": 3,
@@ -1905,20 +1922,20 @@
             2
         ]
     },
-    "rational-geo-archive-shares-the-header-lane-regression.php": {
-        "assertions": 17,
-        "predicates": 24,
-        "thresholds": [
-            8,
-            8
-        ]
-    },
     "public-timeline-fallback-is-cached-regression.php": {
         "assertions": 19,
         "predicates": 2,
         "thresholds": [
             2,
             2
+        ]
+    },
+    "rational-geo-archive-shares-the-header-lane-regression.php": {
+        "assertions": 17,
+        "predicates": 24,
+        "thresholds": [
+            8,
+            8
         ]
     },
     "rational-geo-info-drawer-regression.php": {
@@ -2049,6 +2066,15 @@
         "predicates": 2,
         "thresholds": [
             2
+        ]
+    },
+    "release-fleet-safety-net-regression.php": {
+        "assertions": 14,
+        "predicates": 18,
+        "thresholds": [
+            2,
+            17,
+            17
         ]
     },
     "release-flow-regression.php": {
@@ -2703,6 +2729,18 @@
         "predicates": 4,
         "thresholds": []
     },
+    "social-dock-email-pixelfed-admin-regression.php": {
+        "assertions": 13,
+        "predicates": 8,
+        "thresholds": []
+    },
+    "social-dock-one-precedence-for-both-paths-regression.php": {
+        "assertions": 23,
+        "predicates": 3,
+        "thresholds": [
+            100
+        ]
+    },
     "soft-404-regression.php": {
         "assertions": 0,
         "predicates": 3,
@@ -2750,6 +2788,11 @@
     "ss1284-updater-temp-dir-regression.php": {
         "assertions": 3,
         "predicates": 43,
+        "thresholds": []
+    },
+    "ss1555-social-dock-outline-regression.php": {
+        "assertions": 10,
+        "predicates": 9,
         "thresholds": []
     },
     "stanley-cms-media-slot-regression.php": {
@@ -2842,8 +2885,8 @@
         ]
     },
     "strict-skins-can-place-the-shared-social-dock-regression.php": {
-        "assertions": 30,
-        "predicates": 29,
+        "assertions": 35,
+        "predicates": 35,
         "thresholds": [
             2,
             2,
@@ -2861,6 +2904,13 @@
             200
         ]
     },
+    "sv-home-feed-is-gone-regression.php": {
+        "assertions": 12,
+        "predicates": 8,
+        "thresholds": [
+            100
+        ]
+    },
     "sybu-data-carries-the-skins-declared-values-regression.php": {
         "assertions": 30,
         "predicates": 23,
@@ -2868,13 +2918,6 @@
             2,
             5,
             5
-        ]
-    },
-    "sv-home-feed-is-gone-regression.php": {
-        "assertions": 12,
-        "predicates": 8,
-        "thresholds": [
-            100
         ]
     },
     "sybu-images-regression.php": {

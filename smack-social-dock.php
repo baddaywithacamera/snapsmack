@@ -62,7 +62,7 @@ if (isset($_POST['save_social_dock'])) {
         'social_dock_vero', 'social_dock_threads', 'social_dock_mastodon', 'social_dock_bluesky',
         'social_dock_linkedin', 'social_dock_pinterest', 'social_dock_tumblr',
         'social_dock_deviantart', 'social_dock_behance', 'social_dock_linktree',
-        'social_dock_website',
+        'social_dock_pixelfed', 'social_dock_email', 'social_dock_website',
     ];
 
     foreach ($platforms as $key) {
@@ -104,7 +104,15 @@ include 'core/sidebar.php';
             if (is_array($_dock_mfd['social_dock'] ?? null)) $_dock_ovr = $_dock_mfd['social_dock'];
         }
     }
-    $_dock_locked = static function (string $k) use ($_dock_ovr) { return array_key_exists($k, $_dock_ovr); };
+    // ONLY POSITION IS SKIN-OWNED. The appearance keys became DEFAULTS when
+    // both render paths started resolving owner-setting-first, so telling the
+    // owner the skin controls them is untrue AND it hides the control they
+    // need in order to change it. The decision lives in core so it can be
+    // tested; see core/social-dock-appearance.php.
+    require_once __DIR__ . '/core/social-dock-appearance.php';
+    $_dock_locked = static function (string $k) use ($_dock_ovr) {
+        return snapsmack_social_dock_skin_owns($k, $_dock_ovr);
+    };
     $_dock_lock_note = static function () use ($_dock_skin) {
         echo '<div class="dim" style="padding:8px 0;font-style:italic;opacity:.75;">(controlled by the '
            . htmlspecialchars(strtoupper($_dock_skin)) . ' skin)</div>';
@@ -199,13 +207,14 @@ include 'core/sidebar.php';
                     </select>
                     <?php endif; ?>
 
-                    <label class="mt-15">ICON STYLE <span class="field-tip" data-tip="Solid glyphs are the bold brand marks. Outline glyphs are lighter line-art that suits minimal, hairline skins.">ⓘ</span></label>
+                    <label class="mt-15">ICON STYLE <span class="field-tip" data-tip="Floating docks can use solid or outline artwork. Strict-skin docks use the single outline glyph family, so this setting does not switch their artwork.">ⓘ</span></label>
                     <?php if ($_dock_locked('icon_style')): $_dock_lock_note(); else: ?>
                     <?php $current_icon_style = $settings['social_dock_icon_style'] ?? 'solid'; ?>
                     <select name="social_dock_icon_style">
                         <option value="solid" <?php echo $current_icon_style === 'solid' ? 'selected' : ''; ?>>Solid (bold brand marks)</option>
                         <option value="outline" <?php echo $current_icon_style === 'outline' ? 'selected' : ''; ?>>Outline (line art)</option>
                     </select>
+                    <p class="dim">Strict-skin docks always use SnapSmack's single outline glyph family. This choice switches artwork only on the floating dock.</p>
                     <?php endif; ?>
                 </div>
 
@@ -290,6 +299,12 @@ include 'core/sidebar.php';
 
                     <label>LINKTREE</label>
                     <input type="url" name="social_dock_linktree" value="<?php echo htmlspecialchars($settings['social_dock_linktree'] ?? ''); ?>" placeholder="https://linktr.ee/you">
+
+                    <label>PIXELFED PROFILE</label>
+                    <input type="url" name="social_dock_pixelfed" value="<?php echo htmlspecialchars($settings['social_dock_pixelfed'] ?? ''); ?>" placeholder="https://pixelfed.social/you">
+
+                    <label>EMAIL</label>
+                    <input type="email" name="social_dock_email" value="<?php echo htmlspecialchars($settings['social_dock_email'] ?? ''); ?>" placeholder="you@example.com">
 
                     <label>PERSONAL WEBSITE</label>
                     <input type="url" name="social_dock_website" value="<?php echo htmlspecialchars($settings['social_dock_website'] ?? ''); ?>" placeholder="https://yoursite.com">

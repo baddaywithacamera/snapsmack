@@ -18,6 +18,37 @@ section until the tag was being assembled, which would have told owners their
 photographs come back in a build that does not carry the change. The branches
 are pushed and waiting on review.
 
+- **Social Dock settings reach every render path, and the icons are one clean
+  outline family.** The owner now wins over a skin's appearance defaults on
+  both the floating and strict-skin docks; skins lock only dock position, not
+  colour, shadow or icon controls the owner is allowed to change. SCROLL,
+  GLIDE and FULL MONTY declare those values as defaults accordingly. Email and
+  an independent external Pixelfed profile are normal saved profile links,
+  separate from the site's own fediverse identity. Bluesky and YouTube have
+  been redrawn to match the other seventeen outline glyphs. ALFRED defaults to
+  a transparent white ring with a white outline glyph in both its compact
+  header dock and footer, while every appearance value remains owner-editable.
+  Strict-skin docks intentionally use this single outline sprite family;
+  Solid/Outline switches artwork only for the floating dock. (SS-1553,
+  SS-1554, SS-1555, SS-1560)
+
+- **Your social links show as icons again, instead of the words "Vero Bluesky
+  Linktree Website" piled on top of the navigation circles.** Every social dock
+  link carries a hidden label so a screen reader can say where it goes, and
+  nothing was hiding it: three skins out of thirty-one defined that rule in
+  their own stylesheet and the other twenty-eight did not. Measured on the live
+  used car parts homepage at 1920 before the fix: the label computed to 40.6 by
+  25 pixels in the normal flow, and because each dock link is a 40-pixel circle
+  that centres its contents, the icon plus the visible word overflowed it and
+  shoved the glyph eleven to twenty-seven pixels OUT of its own circle, onto
+  the navigation beside it. The icons were never missing; they had been pushed
+  sideways with the words lying over the top. The rule now lives in the
+  stylesheet that loads on every public page, because the markup that needs it
+  comes from the CMS rather than from the skin, which is the same split that
+  broke CHAPLIN. After the fix the same page puts every glyph exactly centred
+  in its circle, and a keyboard user can still tab to the label because it
+  un-hides on focus. Skins that already define their own version are
+  unaffected.
 - **RATIONAL GEO (skin package, 2.1.45): the map background no longer sits on
   top of your photographs.** The topographic map behind the site was being
   drawn over the photographs rather than behind them, so faint contour lines

@@ -13,8 +13,8 @@
             "manifest_css_sha256": "53759ac9939ee3eaf2b45aca9c121d761fd38a74b98c2315e0f7505cfbeac57d"
         },
         "alfred": {
-            "version": "1.0.23",
-            "files_sha256": "4b7e9f1def8184de61b9f3a04b3be49567241156cb9d9d2beabefd37eebf1e65",
+            "version": "1.0.27",
+            "files_sha256": "b653ef8a99ea94ef42108245a837f9f74effc17494fae13b4d239161519833c9",
             "manifest_css_sha256": "f468a5ecd88eb36426dd3ff8065984b9bb503697e8d7d9baa2613229525439b7"
         },
         "aurora": {
@@ -28,7 +28,7 @@
             "manifest_css_sha256": "2190dc5b444023c881326610eea180b36ba855b894adf87a232d0d1038841df0"
         },
         "full-monty": {
-            "version": "0.1.11",
+            "version": "0.1.12",
             "files_sha256": "f99bd02fe101ef44f8b89bf834a126ea24e6bc0981c0178e2131e6d1b88a822b",
             "manifest_css_sha256": "85c6797b236bae8cb65b0ebc1272b1f2480c2a7ddab219bfc921c68a8fb7a8be"
         },
@@ -43,7 +43,7 @@
             "manifest_css_sha256": "e3c6f2c2fb571c6ca6442303d6bd25e1d9d93fb1a6753007f2318120d8af4393"
         },
         "glide": {
-            "version": "0.1.33",
+            "version": "0.1.34",
             "files_sha256": "90d92d231eeab75543be0900bf767c213667ea4d9e866e015445fcdf78f53abd",
             "manifest_css_sha256": "93d33dcf7c3c8e09ce56384c3fdcf7bb150dd56cdad852cfb0d8b219458fb221"
         },
@@ -98,7 +98,7 @@
             "manifest_css_sha256": "a1f5658d8ba757965e60af97702c2fbc6fa516b5fb153e1509967ae0c09a0d0f"
         },
         "scroll": {
-            "version": "0.1.81",
+            "version": "0.1.82",
             "files_sha256": "f13e837ccc1440d96f36b19a9e5c3ab6f1abfd75829868703186aea3470a3237",
             "manifest_css_sha256": "c39951476d28171ca60f02879d5aa610061c4f44266f5d20a76119da6c49cf35"
         },
