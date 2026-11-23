@@ -1396,8 +1396,10 @@ class BiggieCanvas(QTextEdit):
             elif kind == "spacer":
                 menu.addAction("Change the gap…", lambda: self._edit_spacer(hit))
             if kind in ("image", "mosaic"):
-                menu.addAction("Move earlier", lambda: self._move_object(pos, -1))
-                menu.addAction("Move later", lambda: self._move_object(pos, 1))
+                earlier = menu.addAction("Move earlier", lambda: self._move_object(pos, -1))
+                later = menu.addAction("Move later", lambda: self._move_object(pos, 1))
+                earlier.setEnabled(self._can_move_object(pos, -1))
+                later.setEnabled(self._can_move_object(pos, 1))
             if kind == "image":
                 menu.addAction("Make narrower", lambda: self._nudge_image(pos, -.17))
                 menu.addAction("Make wider", lambda: self._nudge_image(pos, .17))
@@ -1418,24 +1420,74 @@ class BiggieCanvas(QTextEdit):
             c.deletePreviousChar()      # drop the now-empty paragraph
         c.endEditBlock()
 
-    def _move_object(self, pos, delta):
+    def _object_move(self, pos, delta):
+        """Return the top-level model and destination for one object move."""
         hit = self._object_at(pos)
         if not hit:
-            return
+            return None
         block = self.document().findBlock(pos)
-        target = block.previous() if delta < 0 else block.next()
-        if not target.isValid():
-            return
+        if not block.isValid() or QTextCursor(block).currentTable() is not None:
+            return None
         model = {"type": hit[0], **hit[1]}
-        c = QTextCursor(block)
-        c.beginEditBlock()
-        c.select(QTextCursor.BlockUnderCursor)
-        c.removeSelectedText()
-        c.deleteChar()
-        c.setPosition(target.position() if delta < 0 else target.position() + target.length() - 1)
-        self.setTextCursor(c)
-        self._insert_object(model.pop("type"), model)
-        c.endEditBlock()
+        occurrence = 0
+        scan = self.document().begin()
+        while scan.isValid() and scan.position() < block.position():
+            if QTextCursor(scan).currentTable() is None:
+                previous = self._object_at(scan.position())
+                if previous and {"type": previous[0], **previous[1]} == model:
+                    occurrence += 1
+            scan = scan.next()
+        blocks = self.to_blocks()
+        matches = [index for index, item in enumerate(blocks) if item == model]
+        if occurrence >= len(matches):
+            return None
+        source = matches[occurrence]
+        destination = source + (-1 if int(delta) < 0 else 1)
+        if destination < 0 or destination >= len(blocks):
+            return None
+        return blocks, source, destination
+
+    def _can_move_object(self, pos, delta) -> bool:
+        return self._object_move(pos, delta) is not None
+
+    def _move_object(self, pos, delta):
+        move = self._object_move(pos, delta)
+        if move is None:
+            return
+        blocks, source, destination = move
+        blocks[source], blocks[destination] = blocks[destination], blocks[source]
+        self._replace_blocks_undoable(blocks)
+
+    def _replace_blocks_undoable(self, blocks):
+        """Replace the top-level model as one undoable document operation."""
+        self._guard = True
+        try:
+            doc = self.document()
+            cur = QTextCursor(doc)
+            cur.beginEditBlock()
+            cur.select(QTextCursor.Document)
+            cur.removeSelectedText()
+            cur.setPosition(0)
+            first = True
+            for model in blocks:
+                if not first:
+                    cur.movePosition(QTextCursor.End)
+                    cur.insertBlock(
+                        self._block_format_for("para"), self._char_format_for("para"),
+                    )
+                first = False
+                self._insert_block_model(cur, biggie._migrate_block(model), nested=False)
+            block = doc.begin()
+            while block.isValid():
+                if bool(block.blockFormat().property(PROP_DROPCAP)):
+                    self._apply_dropcap(block)
+                block = block.next()
+            cur.endEditBlock()
+            cur.movePosition(QTextCursor.End)
+            self.setTextCursor(cur)
+            self._sync_canvas_height()
+        finally:
+            self._guard = False
 
     def _nudge_image(self, pos, delta):
         hit = self._object_at(pos)
