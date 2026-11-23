@@ -325,6 +325,47 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
         // that existed only in this fixture. Make it relative so the
         // photograph beside the page is the photograph that loads.
         $html = str_replace('src="/photo-', 'src="photo-', $html);
+
+        // A SKIN'S OWN ASSETS ARE ABSOLUTE AND RESOLVE TO NOTHING HERE, the
+        // same fault as the hero above and for the same reason: BASE_URL is
+        // '/'. CHAPLIN's corner ornaments come through as
+        // src="/skins/chaplin/assets/svg/A-corner.svg", which under a fixture
+        // server is the server root and under file:// is the drive root. The
+        // ornaments then measure 0 and CHAPLIN's landing looks like a skin
+        // that forgot to draw its own frame.
+        // Made RELATIVE and the files COPIED beside the fixture, rather than
+        // pointed up at the repository with ../. My first attempt used ../../
+        // and that only resolves when the output happens to sit two levels
+        // below the repo -- a fixture that works in one output directory and
+        // silently shows a skin with no ornaments in another is exactly the
+        // kind of half-fix this file is full of warnings about.
+        if (preg_match_all('#src="(/(?:skins|assets)/[^"]+)"#', $html, $m)) {
+            foreach (array_unique($m[1]) as $abs) {
+                $rel = ltrim($abs, '/');
+                $src = $root . '/' . $rel;
+                if (!is_file($src)) { continue; }
+                $dst = $out . '/' . $rel;
+                if (!is_dir(dirname($dst))) { @mkdir(dirname($dst), 0777, true); }
+                if (!is_file($dst)) { @copy($src, $dst); }
+            }
+            $html = preg_replace('#src="/((?:skins|assets)/)#', 'src="$1', $html);
+        }
+
+        // LAZY IMAGES CANNOT BE MEASURED, which is the whole purpose of this
+        // file. loading="lazy" is right on a live page and wrong in a fixture:
+        // a browser never fetches an image it believes is out of view, the
+        // image stays 0x0 intrinsically, and any element whose size CSS does
+        // not dictate collapses to nothing.
+        //
+        // It cost me a wrong reading before I caught it. GALLERIA's landing
+        // measured a first photograph of 0px and I nearly wrote that up as a
+        // collapsed grid; it was an image the browser had declined to fetch.
+        // ALFRED's measured 72px only because its aspect-ratio rule sized the
+        // box without the image.
+        //
+        // So a measurement fixture asks for them eagerly. The live page keeps
+        // its lazy loading; this changes the fixture, not the product.
+        $html = str_replace('loading="lazy"', 'loading="eager"', $html);
         $html = snapsmack_fixture_inline_styles($html, $css);
 
         $target = $out . '/' . $skin . '--' . $name . '.html';
