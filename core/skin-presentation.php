@@ -1191,4 +1191,98 @@ function snapsmack_gram_search_dock_presentation(array $settings): array
         'glass_color' => snapsmack_skin_hex($settings, 'gsd_glass_color', '#262626'),
     ];
 }
+/**
+ * Refuse a skin image option whose PICKED file is under the minimum the
+ * manifest declares. (SS-1528 item 1)
+ *
+ * WHY THIS IS A FUNCTION AND NOT TEN LINES IN smack-skin.php. A manifest can
+ * declare min_width / min_height on an image control -- THE GRID's treatment
+ * image needs 1920x1080, and AURORA, INSTANT CAMERA, JIVE TURKEY and SUDDEN
+ * IMPACT declare minimums too. That minimum used to be enforced in exactly one
+ * place, the upload handler, and a value arriving as a PICKED PATH from the
+ * media library never went near it. Letting an image control be filled from the
+ * library therefore opened a way round a constraint the skin says it needs.
+ *
+ * It lives here because smack-skin.php cannot be loaded by a test -- it is an
+ * admin page that wants a session and a database -- so a check left inside it
+ * can only ever be READ by a test, never run. Same reason the forum's
+ * moderation logger and its restore sums live in their own files.
+ *
+ * DELIBERATELY CONSERVATIVE: it refuses only when it can PROVE the image is too
+ * small. Unknown control, no declared minimum, empty value, a file that does not
+ * resolve, or an image it cannot measure all pass through untouched, because
+ * "I could not check" is not "it is too small", and blocking an unverifiable
+ * path would break saves for images this cannot see. The one exception is a
+ * path climbing out of the install, which is refused without being measured.
+ *
+ * @param array  $posted      The posted skin_opt map (key => value).
+ * @param array  $option_meta The manifest's options map for this skin.
+ * @param string $root        Install root that paths resolve against.
+ * @return array{keep: array, rejects: array}
+ */
+function snapsmack_reject_undersized_skin_images(array $posted, array $option_meta, string $root,
+                                                 array $current = []): array
+{
+    $keep    = $posted;
+    $rejects = [];
+
+    foreach ($posted as $key => $value) {
+        $meta = $option_meta[$key] ?? null;
+        if (!is_array($meta) || ($meta['type'] ?? '') !== 'image') { continue; }
+
+        // ONLY A VALUE THE OWNER JUST CHANGED IS JUDGED. Muse raised this on
+        // review and she was right: the hidden input re-posts the CURRENT image
+        // path on EVERY settings save, so without this, an image already
+        // stored that no longer meets a minimum would be measured, refused and
+        // DROPPED the next time its owner saved any unrelated setting -- their
+        // logo quietly wiped, and an "Image not saved" telling-off they did
+        // nothing to earn.
+        //
+        // That is worse than the hole this function was written to close. A
+        // minimum is a rule about what you may CHOOSE, not a licence to delete
+        // what is already there, and an owner whose stored image predates the
+        // minimum keeps it until they pick a different one.
+        if (array_key_exists($key, $current)
+            && (string) $current[$key] === (is_string($value) ? $value : '')) {
+            continue;
+        }
+
+        $value = is_string($value) ? trim($value) : '';
+        if ($value === '') { continue; }
+
+        $label = $meta['label'] ?? $key;
+        $rel   = ltrim(str_replace('\\', '/', $value), '/');
+
+        // THE TRAVERSAL CHECK COMES FIRST, AND APPLIES TO EVERY IMAGE CONTROL.
+        // It used to sit after the minimum gate below, which meant a control
+        // that declared no minimum skipped it entirely and would have accepted
+        // '../../something' without a word. A mutation surfaced that: deleting
+        // the minimum gate changed behaviour only for traversal paths, which is
+        // the shape of a check standing in the wrong place. A path climbing out
+        // of the install is never a valid image setting, minimum or no minimum.
+        if (strpos($rel, '../') !== false) {
+            $rejects[] = $label . ' was not a path inside this site';
+            unset($keep[$key]);
+            continue;
+        }
+
+        $min_w = (int) ($meta['min_width'] ?? 0);
+        $min_h = (int) ($meta['min_height'] ?? 0);
+        if ($min_w <= 0 && $min_h <= 0) { continue; }
+
+        $abs = rtrim($root, "/\\") . '/' . $rel;
+        if (!is_file($abs)) { continue; }
+        $dim = @getimagesize($abs);
+        if (!$dim || !isset($dim[0], $dim[1])) { continue; }
+
+        if ((int) $dim[0] < $min_w || (int) $dim[1] < $min_h) {
+            $rejects[] = $label . ' needs at least ' . $min_w . '×' . $min_h . 'px'
+                . ' (that one is ' . (int) $dim[0] . '×' . (int) $dim[1] . 'px)';
+            unset($keep[$key]);
+        }
+    }
+
+    return ['keep' => $keep, 'rejects' => $rejects];
+}
+
 // ===== SNAPSMACK EOF =====

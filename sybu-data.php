@@ -122,6 +122,62 @@ $publishing_policy = [
     'download_default_mode'  => (string)($publishing_rows['download_default_mode'] ?? 'per_post'),
 ];
 
+// ── The active skin, and the values it actually declares ────────────────────
+//
+// WHY, and WHY THIS SHAPE. COLD SNAP's BIGGIE preview had no way to learn what
+// a site looks like, so it fell back to white and a serif that no site uses:
+// "site colours unavailable". The ask (PM, 2026-11-21) was for site_bg,
+// site_fg, active_skin and a body font.
+//
+// THREE OF THOSE FOUR DO NOT EXIST. There is no site_bg or site_fg key
+// anywhere in core/, and no global body-font key. Colours and fonts are
+// PER-SKIN DECLARED OPTIONS, named by each skin and stored scoped
+// ("galleria__htbs_wall_color"). Counted from the manifests: ALFRED and TILEZ
+// declare accent_color and nothing else; STANLEY declares six link and banner
+// colours; WRITING WITH IMPACT declares ink_color plus header and body font
+// families. ALFRED -- the skin this was asked for -- declares no background,
+// no foreground and no body font at all; its caption colour and body face are
+// hard-coded in its stylesheet, which is what SS-1495 is for.
+//
+// So inventing site_bg and site_fg would hand a client values no site holds:
+// wrong on purpose rather than obviously missing, which is worse than the
+// white fallback it replaces. The PM approved this shape instead.
+//
+// ABSENCE IS INFORMATION. A skin that declares no background simply has no
+// such key here. A client can then fall back deliberately and SAY it is
+// falling back, instead of drawing a guess. DO NOT add a default here to be
+// helpful: a default invented in this file becomes a lie about the site on
+// every preview that reads it. If a skin should expose a colour or a font,
+// declare it in that skin's manifest and it appears here on its own.
+//
+// Nothing is computed locally: snapsmack_apply_skin_settings() resolves the
+// scoped keys and snapsmack_declared_skin_options() is the same resolver the
+// public CSS uses, so a value here is the value the site renders with, already
+// type-checked (colours to #rrggbb, ranges clamped to the manifest's own min
+// and max, selects validated against the declared list).
+require_once 'core/skin-settings.php';
+require_once 'core/skin-presentation.php';
+
+$skin_settings = $pdo->query(
+    "SELECT setting_key, setting_val FROM snap_settings"
+)->fetchAll(PDO::FETCH_KEY_PAIR);
+$active_skin = preg_replace('/[^a-z0-9-]/', '',
+    strtolower((string)($skin_settings['active_skin'] ?? '')));
+
+$skin = ['slug' => $active_skin, 'name' => '', 'version' => '', 'options' => []];
+if ($active_skin !== '') {
+    snapsmack_apply_skin_settings($skin_settings, $active_skin);
+    $skin['options'] = snapsmack_declared_skin_options($skin_settings, $active_skin);
+    $manifest_path = __DIR__ . '/skins/' . $active_skin . '/manifest.json';
+    if (is_file($manifest_path)) {
+        $manifest = json_decode((string)file_get_contents($manifest_path), true);
+        if (is_array($manifest)) {
+            $skin['name'] = substr((string)($manifest['name'] ?? ''), 0, 100);
+            $skin['version'] = substr((string)($manifest['version'] ?? ''), 0, 32);
+        }
+    }
+}
+
 // ── Response ──────────────────────────────────────────────────────────────────
 
 echo json_encode([
@@ -131,5 +187,10 @@ echo json_encode([
     'titles'     => $titles,
     'site_mode'  => $site_mode,
     'publishing_policy' => $publishing_policy,
+    // post_content_width is NOT a separate field: it is one of the skin's
+    // declared options where the skin declares it (ALFRED does, default 800),
+    // and it arrives inside skin.options with everything else. One source, so
+    // it cannot drift from the value the page uses.
+    'skin'       => $skin,
 ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 // ===== SNAPSMACK EOF =====

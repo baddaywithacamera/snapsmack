@@ -2191,6 +2191,15 @@ input[type="range"]:active::-webkit-slider-thumb {
 .field-input     { padding: 8px 10px; background: var(--input-bg, #111); border: 1px solid var(--border, #333); border-radius: 4px; color: var(--text, #e0e0e0); }
 .field-input-120 { padding: 8px 10px; width: 120px; background: var(--input-bg, #111); border: 1px solid var(--border, #333); border-radius: 4px; color: var(--text, #e0e0e0); }
 .avatar-72 { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.15); display: block; }
+
+/* A skin image setting's preview (SS-1528 item 1). Targets the CHILD img
+   rather than being a class on the tag, because the asset picker replaces this
+   container's innerHTML with a bare <img> when an owner chooses from the media
+   library -- a class on the tag would be lost and the chosen image would render
+   unstyled at full size. Same geometry as .avatar-72 deliberately: the preview
+   has always looked like this, and picking from the library instead of
+   uploading should not change how it looks. */
+.skin-image-preview img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.15); display: block; }
 .img-cover   { width: 100%; height: 100%; object-fit: cover; display: block; }
 .img-contain { width: 100%; height: 100%; object-fit: contain; }
 .cell-c6 { text-align: center; padding: 6px 10px; color: var(--text-muted, #888); }
