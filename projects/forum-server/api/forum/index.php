@@ -51,6 +51,10 @@
 
 
 require_once __DIR__ . '/config.php';
+// SS-1510: every act of moderator power is recorded. Its own file so the
+// behaviour can be executed by a test; this router cannot be (it dispatches
+// on include), which is why the other forum regressions read it instead.
+require_once __DIR__ . '/mod-log.php';
 
 // ── Attachment / upload config (guarded defaults — override in config.php) ─────
 if (!defined('FORUM_UPLOAD_DIR'))       define('FORUM_UPLOAD_DIR', __DIR__ . '/uploads');
@@ -724,6 +728,7 @@ if ($method === 'POST' && $path === 'categories') {
         api_error(500, 'SERVER_ERROR', 'Failed to create board.');
     }
 
+    forum_log_mod_action($pdo, $install, 'board.create', 'category', $cat_id, $slug);
     respond(['category_id' => $cat_id, 'slug' => $slug, 'name' => $name], 201);
 }
 
@@ -756,6 +761,8 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'categories' && 
         "UPDATE ss_forum_categories SET name = ?, description = ?, sort_order = ?, is_active = ? WHERE id = ?"
     )->execute([$name, $desc, $sort, $is_active, $cat_id]);
 
+    forum_log_mod_action($pdo, $install, 'board.update', 'category', $cat_id,
+        'name=' . $name . ' active=' . ((int)$is_active));
     respond(['status' => 'updated', 'id' => $cat_id, 'name' => $name, 'is_active' => (bool)$is_active]);
 }
 
@@ -1085,6 +1092,12 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && cty
              WHERE id = ?"
         )->execute([$new_body, $new_excerpt, $thread_id]);
 
+        // Only an edit of SOMEONE ELSE'S thread is moderator power. An owner
+        // editing their own post is ordinary use.
+        if (!$is_own) {
+            forum_log_mod_action($pdo, $install, 'thread.edit', 'thread', $thread_id,
+                "edited another install's thread");
+        }
         respond(['status' => 'updated', 'excerpt' => $new_excerpt]);
     }
 
@@ -1098,6 +1111,22 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && cty
             api_error(400, 'INVALID_FLAG', 'flag must be one of: none, chat, support, question, brag.');
         }
         $pdo->prepare("UPDATE ss_forum_threads SET flag = ? WHERE id = ?")->execute([$flag, $thread_id]);
+
+        // A moderator changing what KIND of post somebody else's thread is --
+        // support, question, chat, brag -- changes how it is read and where it
+        // surfaces. Own thread is ordinary use.
+        //
+        // NOTE THE NAME: 'thread.flag' (singular) is THIS, the post kind.
+        // 'thread.pinlock' is pin/lock, a few lines below. Those two were
+        // originally 'thread.flag' and 'thread.flags' -- one letter apart in
+        // the action vocabulary, which is a misread waiting to happen in the
+        // one place you least want one. The PM approved the rename before
+        // either reached a deployed build, so no stored row carries the old
+        // name.
+        if (!$is_own) {
+            forum_log_mod_action($pdo, $install, 'thread.flag', 'thread', $thread_id,
+                'set flag=' . $flag . " on another install's thread");
+        }
         respond(['status' => 'updated', 'flag' => $flag]);
     }
 
@@ -1115,6 +1144,8 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && cty
         $pdo->prepare("UPDATE ss_forum_threads SET is_pinned = ?, is_locked = ? WHERE id = ?")
             ->execute([$pinned, $locked, $thread_id]);
 
+        forum_log_mod_action($pdo, $install, 'thread.pinlock', 'thread', $thread_id,
+            'pinned=' . ((int)$pinned) . ' locked=' . ((int)$locked));
         respond(['status' => 'updated', 'is_pinned' => (bool)$pinned, 'is_locked' => (bool)$locked]);
     }
 
@@ -1148,6 +1179,8 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && cty
             $pdo->rollBack();
             api_error(500, 'SERVER_ERROR', 'Failed to move thread.');
         }
+        forum_log_mod_action($pdo, $install, 'thread.move', 'thread', $thread_id,
+            'from=' . $from . ' to=' . $to);
         respond(['status' => 'moved', 'category_id' => $to, 'moved_from' => $from]);
     }
 
@@ -1197,6 +1230,14 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'threads' && ct
         throw $e;
     }
 
+    // A moderator deleting someone else's thread is moderator power. An
+    // install deleting its own post is ordinary use and is not logged.
+    // $install is NULL when the God key acted, and the God key is never the
+    // author, so that case is always moderator power.
+    if ($has_power && ($install === null || (int)$thread['install_id'] !== (int)$install['id'])) {
+        forum_log_mod_action($pdo, $install, 'thread.delete', 'thread', $thread_id,
+            "deleted another install's thread");
+    }
     respond(['status' => 'deleted']);
 }
 
@@ -1299,6 +1340,12 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'replies' && cty
         "UPDATE ss_forum_replies SET body = ?, is_edited = 1, edited_at = NOW() WHERE id = ?"
     )->execute([$new_body, $reply_id]);
 
+    // Editing someone else's words is moderator power and is recorded. The
+    // body itself is already kept in ss_forum_edit_history; this says WHO.
+    if ((int)$reply['install_id'] !== (int)$install['id']) {
+        forum_log_mod_action($pdo, $install, 'reply.edit', 'reply', $reply_id,
+            "edited another install's reply");
+    }
     respond(['status' => 'updated']);
 }
 
@@ -1348,6 +1395,10 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'replies' && ct
          WHERE id = ? AND solved_reply_id = ?"
     )->execute([$reply['thread_id'], $reply_id]);
 
+    if ($has_power && ($install === null || (int)$reply['install_id'] !== (int)$install['id'])) {
+        forum_log_mod_action($pdo, $install, 'reply.delete', 'reply', $reply_id,
+            "deleted another install's reply");
+    }
     respond(['status' => 'deleted']);
 }
 
@@ -1381,6 +1432,16 @@ if (count($parts) === 3 && $parts[0] === 'replies' && ctype_digit($parts[1]) && 
         $pdo->prepare(
             "UPDATE ss_forum_threads SET is_solved = 1, solved_reply_id = ? WHERE id = ?"
         )->execute([$reply_id, $thread_id]);
+
+        // Accepting an answer on SOMEBODY ELSE'S thread is moderator power: it
+        // changes what the thread says the answer is. The thread author doing
+        // it on their own thread is ordinary use, same distinction as edit and
+        // delete. Missed first time round -- the migration comment promised
+        // answer.accept and nothing wrote it, which Muse caught.
+        if (!$is_thread_author) {
+            forum_log_mod_action($pdo, $install, 'answer.accept', 'reply', $reply_id,
+                'accepted an answer on thread ' . $thread_id);
+        }
         respond(['status' => 'solved', 'solved_reply_id' => $reply_id]);
     }
 
@@ -1388,6 +1449,14 @@ if (count($parts) === 3 && $parts[0] === 'replies' && ctype_digit($parts[1]) && 
         $pdo->prepare(
             "UPDATE ss_forum_threads SET is_solved = 0, solved_reply_id = NULL WHERE id = ?"
         )->execute([$thread_id]);
+
+        // Taking an accepted answer away from someone else's thread is the
+        // same power in reverse, and arguably the one more worth having on the
+        // record.
+        if (!$is_thread_author) {
+            forum_log_mod_action($pdo, $install, 'answer.unaccept', 'thread', $thread_id,
+                'removed the accepted answer');
+        }
         respond(['status' => 'unsolved']);
     }
 }
@@ -1688,6 +1757,7 @@ if ($method === 'POST' && count($parts) === 3 && $parts[0] === 'threads' && ctyp
         api_error(500, 'SERVER_ERROR', 'Failed to apply tag.');
     }
 
+    forum_log_mod_action($pdo, $install, 'tag.add', 'thread', $thread_id, 'tag_id=' . $tag_id);
     respond(['status' => 'tagged', 'tag_id' => $tag_id]);
 }
 
@@ -1720,6 +1790,7 @@ if ($method === 'DELETE'
     $cache = rebuild_tag_cache($thread_id);
     $pdo->prepare("UPDATE ss_forum_threads SET tag_cache = ? WHERE id = ?")->execute([$cache, $thread_id]);
 
+    forum_log_mod_action($pdo, $install, 'tag.remove', 'thread', $thread_id, 'tag_id=' . $tag_id);
     respond(['status' => 'untagged']);
 }
 
@@ -1862,6 +1933,11 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'attachments' &
     }
 
     $pdo->prepare("UPDATE ss_forum_attachments SET is_deleted = 1 WHERE id = ?")->execute([$aid]);
+    // Hiding someone else's image is moderator power; hiding your own is not.
+    if ((int)$att['install_id'] !== (int)$install['id']) {
+        forum_log_mod_action($pdo, $install, 'attachment.hide', 'attachment', $aid,
+            "hid another install's image");
+    }
     respond(['status' => 'hidden']);
 }
 
@@ -1876,6 +1952,7 @@ if ($method === 'POST' && count($parts) === 3 && $parts[0] === 'attachments' && 
     if (!$stmt->fetch()) api_error(404, 'ATTACHMENT_NOT_FOUND', 'Attachment not found.');
 
     $pdo->prepare("UPDATE ss_forum_attachments SET is_deleted = 0 WHERE id = ?")->execute([$aid]);
+    forum_log_mod_action($pdo, $install, 'attachment.restore', 'attachment', $aid);
     respond(['status' => 'restored']);
 }
 
@@ -2008,6 +2085,8 @@ if ($method === 'PATCH' && count($parts) === 3 && $parts[0] === 'installs' && ct
     $pdo->prepare("UPDATE ss_forum_installs SET role = ?, is_moderator = ? WHERE id = ?")
         ->execute([$new_role, $is_moderator, $target_id]);
 
+    forum_log_mod_action($pdo, $caller, 'install.role', 'install', $target_id,
+        'role ' . install_role($target) . ' -> ' . $new_role);
     respond(['status' => 'updated', 'install_id' => $target_id, 'role' => $new_role]);
 }
 

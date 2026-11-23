@@ -372,6 +372,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
         // execute as a script.
         $forum_src = $wrapper . 'projects/forum-server/api/forum/';
         if (is_dir($forum_src)) {
+            // 3c-i. FORUM SCHEMA FIRST, BEFORE THE CODE THAT NEEDS IT ─────────
+            // This used to run as step 4a, AFTER the file copy below. The
+            // forum-schema file says in its own header "RUN THIS BEFORE
+            // deploying the API change", and the updater did the opposite.
+            //
+            // WHY IT MATTERED EVEN THOUGH NOTHING CRASHED, which is what made
+            // it easy to miss: the moderation logger fails open by design, so
+            // new API files running against a database with no
+            // ss_forum_mod_log table do not error -- they just record nothing.
+            // Every act of moderation between the copy and the schema sync was
+            // silently unlogged, and if the sync then warned or failed, the
+            // trail stayed empty indefinitely while the forum looked healthy.
+            // An audit log that is missing is worse than one that is late,
+            // because nothing tells you it is missing.
+            //
+            // Kept inside this is_dir() guard so the behaviour is unchanged
+            // otherwise: the schema is still only applied when the forum is
+            // actually present in the archive. Every statement in it is
+            // IF NOT EXISTS-guarded, so this is safe on every update.
+            if (function_exists('sc_forum_db')) {
+                $forum_schema_path = $wrapper . 'projects/forum-server/forum-schema.sql';
+                if (file_exists($forum_schema_path)) {
+                    try {
+                        $forum_db   = sc_forum_db();
+                        $forum_errs = sc_apply_schema($forum_db, file_get_contents($forum_schema_path));
+                        $result_log[] = $forum_errs
+                            ? ['warn', 'Forum schema: ' . implode('; ', $forum_errs)]
+                            : ['ok', 'Forum schema sync complete (forum-schema.sql), before the API copy'];
+                    } catch (Throwable $e) {
+                        $result_log[] = ['warn', 'Forum schema skipped: ' . $e->getMessage()];
+                    }
+                } else {
+                    $result_log[] = ['warn', 'forum-schema.sql not found in archive — forum schema not synced'];
+                }
+            }
+
             $forum_dest      = dirname(__DIR__) . '/api/forum/';
             if (!is_dir($forum_dest)) mkdir($forum_dest, 0755, true);
             $forum_protected = ['config.php'];
@@ -436,26 +472,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
         }
 
         // 4a. Schema sync — forum DB (isolated) ───────────────────────────────
-        // Apply the forum schema idempotently against the forum DB. sc_forum_db()
-        // uses SC_FORUM_DB_* from sc-config.php (protected). Every statement is
-        // IF NOT EXISTS-guarded, so this is safe on every update. Runs only when
-        // the forum was actually present in the archive (3c above).
-        if ($forum_src && function_exists('sc_forum_db')) {
-            $forum_schema_path = $wrapper . 'projects/forum-server/forum-schema.sql';
-            if (file_exists($forum_schema_path)) {
-                try {
-                    $forum_db   = sc_forum_db();
-                    $forum_errs = sc_apply_schema($forum_db, file_get_contents($forum_schema_path));
-                    $result_log[] = $forum_errs
-                        ? ['warn', 'Forum schema: ' . implode('; ', $forum_errs)]
-                        : ['ok', 'Forum schema sync complete (forum-schema.sql)'];
-                } catch (Throwable $e) {
-                    $result_log[] = ['warn', 'Forum schema skipped: ' . $e->getMessage()];
-                }
-            } else {
-                $result_log[] = ['warn', 'forum-schema.sql not found in archive — forum schema not synced'];
-            }
-        }
+        // MOVED. This now runs as step 3c-i, BEFORE the api/forum/ file copy,
+        // because the schema has to exist before the code that writes to it.
+        // Deliberately left as a marker rather than deleted, so anyone who
+        // knows this file by its step numbers, or who is reading an older
+        // release log, can see where it went and why.
 
         // 5. Record installed tag ─────────────────────────────────────────────
         $sc_db->prepare("

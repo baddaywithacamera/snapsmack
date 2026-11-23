@@ -853,6 +853,16 @@
             2
         ]
     },
+    "forum-moderation-is-logged-regression.php": {
+        "assertions": 41,
+        "predicates": 32,
+        "thresholds": [
+            2,
+            7,
+            42,
+            255
+        ]
+    },
     "frame-token-contract.php": {
         "assertions": 28,
         "predicates": 24,

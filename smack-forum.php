@@ -28,7 +28,20 @@ if (!isset($settings)) {
 // Forks can change this constant; end users cannot.
 $forum_api_url = 'https://snapsmack.ca/api/forum';
 $forum_api_key = $settings['forum_api_key'] ?? '';
-$forum_mod_key = $settings['forum_mod_key']  ?? '';
+// SS-1510: THIS PANEL NO LONGER HOLDS THE FORUM'S GOD KEY. It used to ask the
+// owner to paste FORUM_MOD_KEY in, and stored it in plaintext in snap_settings
+// -- the one secret that outranks every admin on the whole forum, sitting in
+// the settings table of every site that wanted to manage a board.
+//
+// It does not need it. POST /categories already accepts an admin INSTALL
+// (is_install_admin, role >= 3), and GET /me already reports whether this
+// install is one. So the panel acts as itself, with the key it registered
+// with, and every board it creates is attributable to this domain.
+//
+// $forum_can_admin replaces $forum_mod_key as the gate on the board controls.
+// Any value left in snap_settings from before is ignored here and removed by
+// tools/forum-cli/drop-forum-mod-key.php.
+$forum_can_admin = false;
 $forum_enabled = ($settings['forum_enabled'] ?? '1') === '1';
 
 // ── API Helper ────────────────────────────────────────────────────────────────
@@ -273,6 +286,24 @@ if ($forum_enabled && $forum_api_key === '') {
     }
 }
 
+// ── What am I on the forum? (SS-1510) ────────────────────────────────────────
+// The forum already answers this: GET /me reports the caller's role and, in
+// can.administer, whether this install may create and manage boards. Asking is
+// the whole replacement for storing the God key — the panel shows board
+// controls because the server says this install is an admin, not because
+// somebody pasted a secret into the settings table.
+//
+// A failed or offline call leaves $forum_can_admin false. Hiding a button we
+// are not sure about is the safe way to be wrong: the API refuses the action
+// regardless, so the worst case is a control that is missing rather than one
+// that appears to work and does not.
+if ($forum_enabled && $forum_api_key !== '') {
+    $me = forum_api('GET', 'me', [], $forum_api_key);
+    if (empty($me['_error'])) {
+        $forum_can_admin = !empty($me['can']['administer']);
+    }
+}
+
 // ── Identity Sync ─────────────────────────────────────────────────────────────
 // If the site name or the blog avatar has changed since registration, push the
 // update to the forum server via PATCH /installs/me. Both are compared against
@@ -424,21 +455,7 @@ if ($action === 'delete-reply' && $forum_enabled && $forum_api_key) {
     exit;
 }
 
-if ($action === 'save-mod-key') {
-    $key = trim($_POST['mod_key'] ?? '');
-    if ($key !== '') {
-        $pdo->prepare(
-            "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('forum_mod_key', ?)
-             ON DUPLICATE KEY UPDATE setting_val = ?"
-        )->execute([$key, $key]);
-        $forum_mod_key = $key;
-        $settings['forum_mod_key'] = $key;
-    }
-    header('Location: smack-forum.php');
-    exit;
-}
-
-if ($action === 'add-category' && $forum_mod_key !== '') {
+if ($action === 'add-category' && $forum_api_key !== '') {
     $cat_name = trim($_POST['cat_name']        ?? '');
     $cat_slug = trim($_POST['cat_slug']        ?? '');
     $cat_desc = trim($_POST['cat_description'] ?? '');
@@ -450,7 +467,7 @@ if ($action === 'add-category' && $forum_mod_key !== '') {
             'slug'        => $cat_slug,
             'description' => $cat_desc,
             'sort_order'  => $cat_sort,
-        ], $forum_mod_key);
+        ], $forum_api_key);
         if (!$res['_error']) {
             header('Location: smack-forum.php?board_added=1');
             exit;
@@ -587,7 +604,7 @@ require 'core/sidebar.php';
     <div class="box grid-span-full">
       <div class="box-header">
         <span class="box-title">BOARDS</span>
-        <?php if ($forum_mod_key !== ''): ?>
+        <?php if ($forum_can_admin): ?>
         <a href="smack-forum.php?view=new-board" class="action-edit ml-auto">+ NEW BOARD</a>
         <?php else: ?>
         <span class="box-title" style="margin-left: auto;"><?php echo count($cats); ?> BOARDS</span>
@@ -645,20 +662,17 @@ require 'core/sidebar.php';
       </div>
     </div>
 
-    <?php if ($forum_mod_key === ''): ?>
-    <!-- ── MOD KEY SETUP ────────────────────────────────────────────────── -->
+    <?php if (!$forum_can_admin): ?>
+    <!-- ── FORUM ADMIN (SS-1510) ─────────────────────────────────────────── -->
     <div class="box grid-span-full">
       <div class="box-header"><span class="box-title">FORUM ADMIN</span></div>
       <div class="box-body">
-        <p class="dim mb-12">Enter your forum moderator key to enable board management from this panel.</p>
-        <form method="post" action="smack-forum.php" style="display:flex; gap:12px; align-items:flex-end;">
-          <input type="hidden" name="action" value="save-mod-key">
-          <div class="lens-input-wrapper" style="flex:1; margin:0;">
-            <label>MOD KEY</label>
-            <input type="password" name="mod_key" placeholder="mod_…" required>
-          </div>
-          <button type="submit" class="forum-new-btn mb-0">Save</button>
-        </form>
+        <p class="dim mb-12">
+          This site is not a forum administrator, so board management is not
+          shown. There is no key to enter here: the forum knows this site by
+          the address it registered with, and an administrator asks the forum
+          to grant it. Boards you create then carry your own domain.
+        </p>
       </div>
     </div>
     <?php endif; ?>
@@ -1030,8 +1044,8 @@ require 'core/sidebar.php';
         </span>
       </div>
       <div class="box-body">
-        <?php if ($forum_mod_key === ''): ?>
-          <div class="alert">Moderator key not set. <a href="smack-forum.php">Return to the forum</a> and enter it first.</div>
+        <?php if (!$forum_can_admin): ?>
+          <div class="alert">This site is not a forum administrator, so it cannot create boards. <a href="smack-forum.php">Return to the forum</a>.</div>
         <?php else: ?>
         <?php if ($msg): ?>
           <div class="alert mb-16"><?php echo htmlspecialchars($msg); ?></div>

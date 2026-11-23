@@ -35,7 +35,19 @@ mysql -u your_user -p your_database < forum-schema.sql
 
 Or paste `forum-schema.sql` into phpMyAdmin's SQL tab. Safe to re-run — all `CREATE TABLE` statements use `IF NOT EXISTS` and category seeding uses `INSERT IGNORE`.
 
-**Upgrading an existing install?** Run the migrations you haven't applied yet, in order: `forum-schema-v2-migration.sql`, then `forum-schema-v3-migration.sql` (v3 adds `ss_forum_attachments` for image posts). Each adds columns/tables without touching existing data. Requires MySQL 8.0+. Installs updated through Smack Central's self-updater get this automatically — it applies `forum-schema.sql` idempotently.
+**Upgrading an existing install?** Run the migrations you haven't applied yet, **in order**:
+
+1. `forum-schema-v2-migration.sql`
+2. `forum-schema-v3-migration.sql` — adds `ss_forum_attachments` for image posts
+3. `forum-schema-v4-migration.sql` — adds the `role` and `flag` columns
+4. `forum-schema-v5-migration.sql` — adds `avatar_url`
+5. `forum-schema-v6-migration.sql` — adds `ss_forum_mod_log`, the moderation trail. **Apply this before deploying the matching API files.** The logger fails open on purpose, so an API that cannot find this table does not error — it simply records nothing, and a missing audit trail does not announce itself.
+
+Each adds columns or tables without touching existing data. Requires MySQL 8.0+.
+
+This list stopped at v3 for three releases while v4, v5 and v6 shipped, so anyone upgrading by hand never applied them and had no reason to suspect it. If you are not sure which you have, the migrations are all `IF NOT EXISTS`-guarded: running them in order is safe.
+
+Installs updated through Smack Central's self-updater get this automatically — it applies `forum-schema.sql` idempotently, and as of 0.7.1001D it does so **before** copying the new API files rather than after.
 
 **Image uploads:** posted images live on disk under `api/forum/uploads/` (created and hardened automatically by the updater — nothing in it can execute). Keep that directory writable by PHP and include it in your backups. Optional overrides in `config.php`: `FORUM_UPLOAD_DIR`, `FORUM_MAX_UPLOAD_BYTES`, `FORUM_MAX_IMAGE_DIM`, `FORUM_MAX_MEGAPIXELS`, `FORUM_MAX_ATTACH_PER`, `FORUM_BASE_URL`.
 

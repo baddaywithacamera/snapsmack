@@ -322,6 +322,37 @@ UPDATE ss_forum_installs SET role = 2 WHERE is_moderator = 1 AND role < 2;
 UPDATE ss_forum_installs SET is_moderator = 1 WHERE role >= 2 AND is_moderator = 0;
 
 -- ------------------------------------------------------------
+-- Moderation log (v6, SS-1510): one row per act of moderator power.
+--
+-- Before this, nothing recorded a deletion, a lock, a board change or a role
+-- promotion. The God key makes that worse: the API refuses it for posting, so
+-- an action taken with it carried no identity at all, and afterwards the
+-- owner's moderation and anyone else's who held the string looked identical.
+--
+-- actor_install_id is NULL when the God key acted; actor_is_god says so
+-- rather than leaving a reader to infer it from the NULL.
+--
+-- Append-only by use, not by grant: MySQL cannot express append-only on a
+-- table, so the guarantee is that the API contains no UPDATE or DELETE
+-- against it, and the regression test asserts exactly that.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ss_forum_mod_log (
+    id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    occurred_at       TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actor_install_id  INT             NULL,
+    actor_domain      VARCHAR(255)    NOT NULL DEFAULT '',
+    actor_is_god      TINYINT(1)      NOT NULL DEFAULT 0,
+    action            VARCHAR(40)     NOT NULL,
+    target_type       VARCHAR(20)     NOT NULL DEFAULT '',
+    target_id         INT             NULL,
+    detail            VARCHAR(255)    NOT NULL DEFAULT '',
+    PRIMARY KEY (id),
+    KEY idx_mod_log_occurred (occurred_at),
+    KEY idx_mod_log_actor    (actor_install_id),
+    KEY idx_mod_log_target   (target_type, target_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
 -- Seed: initial five boards
 -- INSERT IGNORE so re-running is safe.
 -- ------------------------------------------------------------
