@@ -31,10 +31,12 @@ are pushed and waiting on review.
   longer drops back past DotMatrix.** If you picked one of the condensed,
   expanded or italic DotMatrix faces and it could not load, the page fell
   straight to Courier instead of to plain DotMatrix, which is much closer to
-  what you chose. It now tries DotMatrix first. This covers all three font
-  settings — the masthead, the body text and the page headings. Sites using
-  the standard DotMatrix are unaffected. **Repackage IMPACT PRINTER 2.1.28 +
-  reinstall to ship.** (SS-1519)
+  what you chose. It now tries DotMatrix first. This covers three of the
+  skin's four font settings — the masthead, the body text and the page
+  headings. **The footer font is not covered yet** and still falls back past
+  DotMatrix; that is a separate repair. Sites using the standard DotMatrix are
+  unaffected. **Repackage IMPACT PRINTER 2.1.28 + reinstall to ship.**
+  (SS-1519)
 
 - **WRITING WITH IMPACT (skin package, 1.1.12): the same repair for your
   headings.** If the DotMatrix face you chose could not load, headings fell
