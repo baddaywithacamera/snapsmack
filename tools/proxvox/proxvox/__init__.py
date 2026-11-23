@@ -9,11 +9,12 @@ P3 / P5 live-authorised writes and manual revoke live in WriteClient.
 
 from .broker import ReadOnlyBroker, Refused
 from .container_read import ContainerReadBroker, ContainerTarget, DatabaseTarget
+from .root_read import RootReadBroker
 from .write_client import WriteClient
 
 __all__ = [
     "ContainerReadBroker", "ContainerTarget", "DatabaseTarget",
-    "ReadOnlyBroker", "Refused", "WriteClient",
+    "ReadOnlyBroker", "Refused", "RootReadBroker", "WriteClient",
 ]
 
 # ===== SNAPSMACK EOF =====

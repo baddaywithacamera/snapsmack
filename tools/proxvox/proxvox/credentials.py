@@ -35,7 +35,9 @@ if os.path.isdir(_SHARED) and _SHARED not in sys.path:
 # instead of inventing a storage convention of its own.
 CRED_SITE = "proxvox"
 CRED_KIND = "api_token"
-CONTAINER_SECRET_KINDS = frozenset({"ct102_ssh", "ct106_ssh", "mysql_ro"})
+CONTAINER_SECRET_KINDS = frozenset({
+    "ct102_ssh", "ct106_ssh", "mysql_ro", "pve_host_ssh",
+})
 
 
 class NoToken(Exception):

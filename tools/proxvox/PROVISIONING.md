@@ -57,4 +57,39 @@ Save the two SSH passwords and the database password through the PROX VOX setup
 screen. It calls `snap_native_creds.set_site` for `ct102_ssh`, `ct106_ssh`, and
 `mysql_ro`; do not put any of them in this file or the local JSON config.
 
+## Root-level host and all-container reads
+
+On the Proxmox host, install `server/proxvox_readonly.py` as the root-owned
+wrapper, then create a login that can run only that wrapper. This is the path
+for host files, logs, storage/backup listings, and every CT including CT110.
+
+```sh
+sudo install -o root -g root -m 0755 server/proxvox_readonly.py /usr/local/sbin/proxvox-readonly
+sudo useradd --system --no-create-home --shell /bin/sh proxvox-root-ro
+sudo passwd proxvox-root-ro
+sudo sh -c 'printf "%s\n" "Defaults:proxvox-root-ro env_keep += \"SSH_ORIGINAL_COMMAND\"" "proxvox-root-ro ALL=(root) NOPASSWD: /usr/local/sbin/proxvox-readonly" > /etc/sudoers.d/proxvox-root-ro'
+sudo chmod 0440 /etc/sudoers.d/proxvox-root-ro
+sudo visudo -cf /etc/sudoers.d/proxvox-root-ro
+```
+
+Append this block at the end of the host's `sshd_config`, validate it, and
+reload SSH. The valid shell is required for OpenSSH to launch an external
+forced command; the `Match` block prevents that shell from being selected by
+the client and removes every TTY, forwarding, agent, and X11 path.
+
+```text
+Match User proxvox-root-ro
+    ForceCommand sudo -n /usr/local/sbin/proxvox-readonly
+    PermitTTY no
+    X11Forwarding no
+    AllowAgentForwarding no
+    AllowTcpForwarding no
+```
+
+Save its fresh password as `proxvox:pve_host_ssh` through the PROX VOX setup
+screen. The wrapper accepts only `inventory`, `host-list/stat/read`, and
+`ct-list/stat/read`; it builds fixed argv with `shell=False`, caps reads at
+16 MiB per call, and has no write operation. Do not grant this account any
+other sudo command.
+
 <!-- ===== SNAPSMACK EOF ===== -->
