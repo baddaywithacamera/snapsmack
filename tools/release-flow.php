@@ -353,11 +353,22 @@ function rf_release_gate_problem(string $head): string {
         'skin_render_parity' => 'pass',
         'authority_review' => 'approved',
         'browser_regressions' => 'pass',
+        'fleet_before' => 'pass',
     ];
     foreach ($required as $field => $expected) {
         if (($gate[$field] ?? null) !== $expected) {
             return "release-gate note field {$field} must be " . json_encode($expected);
         }
+    }
+    if (($gate['fleet_before_site_count'] ?? null) !== 17) {
+        return 'release-gate note must record the 17-site BEFORE sweep';
+    }
+    if (($gate['fleet_before_surface_count'] ?? null) !== 102) {
+        return 'release-gate note must record all 102 BEFORE surfaces';
+    }
+    if (!is_string($gate['fleet_before_manifest_sha256'] ?? null)
+        || !preg_match('/^[0-9a-f]{64}$/', $gate['fleet_before_manifest_sha256'])) {
+        return 'release-gate note must bind the BEFORE fleet manifest by SHA-256';
     }
     $demoParityProblem = rf_demo_parity_note_problem($gate);
     if ($demoParityProblem !== '') return $demoParityProblem;
@@ -447,6 +458,52 @@ function rf_browser_tests(): void {
     rf_run(['node', __DIR__ . '/browser-tests/run-regressions.cjs']);
 }
 
+/**
+ * Public fleet evidence lives outside the release package but beside the
+ * checkout by default. A release can override the location for durable
+ * evidence storage without changing what is captured or weakening the gate.
+ */
+function rf_fleet_evidence_root(): string {
+    $override = trim((string)getenv('SNAPSMACK_RELEASE_FLEET_EVIDENCE'));
+    return $override !== '' ? $override : dirname(__DIR__) . '/outputs/release-fleet-safety-net';
+}
+
+function rf_fleet_capture(string $phase, string $commit): array {
+    if (!in_array($phase, ['before', 'after'], true)) rf_fail('fleet capture phase must be before or after');
+    if (!preg_match('/^[0-9a-f]{40}$/', $commit)) rf_fail('fleet capture must be bound to a full commit SHA');
+    $base = rf_fleet_evidence_root() . '/' . $commit;
+    $output = $base . '/' . $phase;
+    $args = [
+        'node', __DIR__ . '/browser-tests/release-fleet-safety-net-runner.cjs',
+        '--phase=' . $phase,
+        '--release=' . $commit,
+        '--output=' . $output,
+    ];
+    if ($phase === 'after') $args[] = '--before=' . $base . '/before';
+    rf_run($args);
+
+    $manifestPath = $output . '/manifest.json';
+    $raw = @file_get_contents($manifestPath);
+    $manifest = is_string($raw) ? json_decode($raw, true) : null;
+    if (!is_string($raw) || !is_array($manifest)) {
+        rf_fail("fleet {$phase} sweep did not produce a valid manifest at {$manifestPath}");
+    }
+    $expected = 17 * 3 * 2;
+    if (($manifest['site_count'] ?? null) !== 17
+        || ($manifest['surface_count'] ?? null) !== $expected
+        || ($manifest['widths'] ?? null) !== [1920, 1024]
+        || ($manifest['page_types'] ?? null) !== ['home', 'archive', 'solo']) {
+        rf_fail("fleet {$phase} sweep must cover 17 sites x 3 page types x 2 widths ({$expected} surfaces)");
+    }
+    return [
+        'phase' => 'pass',
+        'site_count' => 17,
+        'surface_count' => $expected,
+        'manifest_sha256' => hash('sha256', $raw),
+        'manifest_path' => $manifestPath,
+    ];
+}
+
 function rf_tests(): void {
     // EVERY TEST FILE, NOT THE ONES WHOSE NAMES HAPPEN TO SAY "regression".
     //
@@ -516,6 +573,19 @@ if ($command === 'gate-check') {
     $problem = rf_release_gate_problem($commit);
     if ($problem !== '') rf_fail($problem);
     echo "release gate passes for {$commit}\n";
+    exit(0);
+}
+
+if ($command === 'fleet-before' || $command === 'fleet-after') {
+    rf_require_dev();
+    rf_require_clean();
+    $target = $argv[2] ?? 'HEAD';
+    $commit = rf_git(['rev-parse', $target . '^{commit}']);
+    if ($commit === '') rf_fail("cannot resolve {$target} to a commit");
+    $phase = $command === 'fleet-before' ? 'before' : 'after';
+    $result = rf_fleet_capture($phase, $commit);
+    echo strtoupper($phase) . " FLEET SAFETY NET PASS for {$commit}: "
+        . $result['surface_count'] . " surfaces.\n";
     exit(0);
 }
 
@@ -737,6 +807,7 @@ if ($command === 'gate-note') {
     // Run the actual browsers before recording their result, never accept a
     // hand-typed --browser-pass assertion. Clean inputs bind the run to HEAD.
     rf_require_clean();
+    $fleetBefore = rf_fleet_capture('before', $head);
     rf_browser_tests();
     $skinDirs = glob(dirname(__DIR__) . '/skins/*/manifest.json') ?: [];
     $skinNames = array_map(static fn (string $manifest): string => basename(dirname($manifest)), $skinDirs);
@@ -804,6 +875,10 @@ if ($command === 'gate-note') {
 ", $skinNames)),
         'skin_render_changes' => $renderChanges,
         'browser_regressions' => 'pass',
+        'fleet_before' => $fleetBefore['phase'],
+        'fleet_before_site_count' => $fleetBefore['site_count'],
+        'fleet_before_surface_count' => $fleetBefore['surface_count'],
+        'fleet_before_manifest_sha256' => $fleetBefore['manifest_sha256'],
     ];
     $note = array_merge($note, rf_demo_parity_note_fields($parityRecord, $parityRaw));
     if (isset($flags['tests'])) $note['tests'] = $flags['tests'];
@@ -822,8 +897,8 @@ if ($command === 'gate-note') {
     exit(0);
 }
 
-rf_fail("unknown command; use status, gate-check, gate-note, push-dev, "
-      . "tag-dev [--no-push], or promote-stable\n"
+rf_fail("unknown command; use status, gate-check, gate-note, fleet-before, "
+      . "fleet-after, push-dev, tag-dev [--no-push], or promote-stable\n"
       . "  tag-dev --no-push  runs every gate and creates the tag LOCALLY, "
       . "leaving both pushes to Sean");
 // ===== SNAPSMACK EOF =====
