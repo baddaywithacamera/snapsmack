@@ -1,0 +1,117 @@
+{
+  "generated_at": "2026-11-23T20:12:27.505Z",
+  "soloUrl": "https://acolourlesslife.ca/vulcan-bar-exterior-1794375704",
+  "archiveUrl": "https://acolourlesslife.ca/archive",
+  "widths": [
+    1920,
+    1440,
+    1024
+  ],
+  "rows": [
+    {
+      "page": "solo",
+      "width": 1920,
+      "before": {
+        "documentOverflow": 0,
+        "imageWidth": 1184.6875,
+        "imageRight": 1552.34375,
+        "frameWidth": 1184.6875,
+        "frameRight": 1552.34375,
+        "maxWidth": "none",
+        "naturalRatio": 1.499605367008682,
+        "renderedRatio": 1.4996044303797469
+      },
+      "after": {
+        "documentOverflow": 0,
+        "imageWidth": 1184.65625,
+        "imageRight": 1552.3125,
+        "frameWidth": 1184.6875,
+        "frameRight": 1552.34375,
+        "maxWidth": "100%",
+        "naturalRatio": 1.499605367008682,
+        "renderedRatio": 1.4995945331197216
+      },
+      "result": "PASS"
+    },
+    {
+      "page": "archive",
+      "width": 1920,
+      "after": {
+        "documentOverflow": 0,
+        "itemCount": 48,
+        "brokenImages": 0
+      },
+      "result": "PASS"
+    },
+    {
+      "page": "solo",
+      "width": 1440,
+      "before": {
+        "documentOverflow": 0,
+        "imageWidth": 1184.6875,
+        "imageRight": 1312.34375,
+        "frameWidth": 1184.6875,
+        "frameRight": 1312.34375,
+        "maxWidth": "none",
+        "naturalRatio": 1.499605367008682,
+        "renderedRatio": 1.4996044303797469
+      },
+      "after": {
+        "documentOverflow": 0,
+        "imageWidth": 1184.65625,
+        "imageRight": 1312.3125,
+        "frameWidth": 1184.6875,
+        "frameRight": 1312.34375,
+        "maxWidth": "100%",
+        "naturalRatio": 1.499605367008682,
+        "renderedRatio": 1.4995945331197216
+      },
+      "result": "PASS"
+    },
+    {
+      "page": "archive",
+      "width": 1440,
+      "after": {
+        "documentOverflow": 0,
+        "itemCount": 48,
+        "brokenImages": 0
+      },
+      "result": "PASS"
+    },
+    {
+      "page": "solo",
+      "width": 1024,
+      "before": {
+        "documentOverflow": 216,
+        "imageWidth": 1184.6875,
+        "imageRight": 1239.6875,
+        "frameWidth": 914,
+        "frameRight": 969,
+        "maxWidth": "none",
+        "naturalRatio": 1.499605367008682,
+        "renderedRatio": 1.4996044303797469
+      },
+      "after": {
+        "documentOverflow": 0,
+        "imageWidth": 913.984375,
+        "imageRight": 968.984375,
+        "frameWidth": 914,
+        "frameRight": 969,
+        "maxWidth": "100%",
+        "naturalRatio": 1.499605367008682,
+        "renderedRatio": 1.499602635424411
+      },
+      "result": "PASS"
+    },
+    {
+      "page": "archive",
+      "width": 1024,
+      "after": {
+        "documentOverflow": 0,
+        "itemCount": 48,
+        "brokenImages": 0
+      },
+      "result": "PASS"
+    }
+  ]
+}
