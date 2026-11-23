@@ -48,6 +48,8 @@ from .mosaic_layout import tile_rects as _tile_rects
 class _PublishedPostBridge(QObject):
     """Marshal the published-post network read back to the GUI thread."""
 
+    list_loaded = Signal(object)
+    list_failed = Signal(str)
     loaded = Signal(object)
     failed = Signal(str)
 
@@ -232,8 +234,11 @@ class TakeMode(QWidget):
         self._slapper_watch_session = None
         self._slapper_asset_uuid = ""
         self._slapper_launch_error = ""
+        self._published_list_active = False
         self._published_load_active = False
         self._published_bridge = _PublishedPostBridge(self)
+        self._published_bridge.list_loaded.connect(self._published_list_loaded)
+        self._published_bridge.list_failed.connect(self._published_list_failed)
         self._published_bridge.loaded.connect(self._published_post_loaded)
         self._published_bridge.failed.connect(self._published_post_failed)
 
@@ -1576,12 +1581,34 @@ class TakeMode(QWidget):
         poster, _url = self._poster_and_url()
         if poster is None:
             return
-        try:
-            posts = poster.list_posts()
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Could not load posts", str(exc))
+        self._start_published_list(poster)
+
+    def _start_published_list(self, poster) -> None:
+        """Fetch the published-post chooser data without blocking the GUI."""
+        if self._published_list_active:
             return
+        self._published_list_active = True
+        self.save_state.setText("Loading published posts… your draft is safe")
+
+        def load_list():
+            try:
+                self._published_bridge.list_loaded.emit({
+                    "poster": poster,
+                    "posts": poster.list_posts(),
+                })
+            except Exception as exc:  # noqa: BLE001
+                self._published_bridge.list_failed.emit(str(exc))
+
+        threading.Thread(
+            target=load_list, name="coldsnap-list-published", daemon=True,
+        ).start()
+
+    def _published_list_loaded(self, result: dict) -> None:
+        self._published_list_active = False
+        poster = result["poster"]
+        posts = result["posts"]
         if not posts:
+            self.save_state.setText("No published posts found — your draft is safe")
             QMessageBox.information(self, "No posts yet", "This site has no long-form posts to edit.")
             return
 
@@ -1595,6 +1622,11 @@ class TakeMode(QWidget):
         if action == "cancel":
             return
         self._start_published_load(poster, post_id, action, session, active_id)
+
+    def _published_list_failed(self, message: str) -> None:
+        self._published_list_active = False
+        self.save_state.setText("Could not load published posts — your draft is safe")
+        QMessageBox.critical(self, "Could not load posts", message)
 
     def _published_open_action(self, active_id: str) -> str:
         """Ask what to do with the durable draft already in the editor."""
