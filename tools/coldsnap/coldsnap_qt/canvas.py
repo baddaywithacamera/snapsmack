@@ -1884,6 +1884,11 @@ class BiggieCanvas(QTextEdit):
                     )
                 first = False
                 self._insert_block_model(cur, biggie._migrate_block(model), nested=False)
+            block = doc.begin()
+            while block.isValid():
+                if bool(block.blockFormat().property(PROP_DROPCAP)):
+                    self._apply_dropcap(block)
+                block = block.next()
             cur.endEditBlock()
             cur.movePosition(QTextCursor.End)
             self.setTextCursor(cur)

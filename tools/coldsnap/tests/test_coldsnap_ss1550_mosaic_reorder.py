@@ -8,6 +8,7 @@
 import os
 import sys
 
+from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import QApplication
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -108,6 +109,29 @@ def test_move_is_one_undoable_edit_and_boundaries_are_disabled():
 
     canvas.undo()
     assert canvas.to_blocks() == original
+    canvas.close()
+
+
+def test_move_repaints_dropcap_after_document_rebuild():
+    _app()
+    canvas = BiggieCanvas()
+    canvas.from_blocks([
+        {"type": "para", "text": "Dropcap stays painted", "dropcap": True},
+        {"type": "mosaic", "order": [1, 2], "layout": "two-equal"},
+    ])
+    canvas._move_object(_mosaic_position(canvas), -1)
+
+    block = canvas.document().begin()
+    while block.isValid() and block.text() != "Dropcap stays painted":
+        block = block.next()
+    assert block.isValid()
+    first = QTextCursor(block)
+    first.setPosition(block.position())
+    first.setPosition(block.position() + 1, QTextCursor.KeepAnchor)
+    second = QTextCursor(block)
+    second.setPosition(block.position() + 1)
+    second.setPosition(block.position() + 2, QTextCursor.KeepAnchor)
+    assert first.charFormat().font().pointSizeF() > second.charFormat().font().pointSizeF()
     canvas.close()
 
 
