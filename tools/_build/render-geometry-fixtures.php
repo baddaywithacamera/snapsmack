@@ -77,6 +77,22 @@ function gf_stylesheets(string $root, string $skin, array $manifest, string $kin
     // skins got no archive CSS at all. The harness delivers it the same way,
     // or its pictures show an unstyled row the live site does not have.
     if ($kind === 'archive') $paths[] = 'assets/css/page-archive.css';
+    // core/meta.php emits these two on EVERY page of EVERY skin, so a landing
+    // cannot be laid out without them: ss-engine-mosaic.css owns the square
+    // wall's grid-template-columns, which is the whole geometry of a square
+    // landing.
+    //
+    // ONLY ADDED FOR THE LANDING, deliberately. The archive and page fixtures
+    // have never carried them either, which means every measurement this
+    // harness has ever taken was of a page missing two stylesheets the live
+    // one receives -- ss-frame-tokens.css among them, which is frame geometry.
+    // That is worth repairing, but repairing it shifts existing baselines, and
+    // doing that quietly in the same change as a new page kind would make both
+    // impossible to review. Filed separately.
+    if ($kind === 'feed') {
+        $paths[] = 'assets/css/ss-frame-tokens.css';
+        $paths[] = 'assets/css/ss-engine-mosaic.css';
+    }
     if (function_exists('snapsmack_skin_declared_assets')) {
         $declared = snapsmack_skin_declared_assets($manifest);
         foreach (($declared['styles'] ?? []) as $url) {
@@ -123,6 +139,29 @@ foreach ($items as $item) {
     ];
 }
 
+// THE LANDING PAGE, which this harness has never been able to measure.
+//
+// It rendered two kinds per skin -- archive and page -- so the MOST VISITED
+// page on every site in the fleet was the one page no geometry gate could see.
+// That is not an abstract gap: Sean's landing grid came up at about 72px in a
+// sparse grid and every check in this suite passed, because none of them could
+// lay the landing out. Pieces 1 to 3 of the ALFRED parity work are all landing
+// geometry.
+//
+// Built from the SAME photographs as $items and $tiles, so a measurement of a
+// landing is comparable with the archive beside it.
+$posts = [];
+foreach ($items as $item) {
+    $posts[] = [
+        'url'       => $item['url'],
+        'image_url' => $item['img_thumb_square'],
+        'title'     => $item['img_title'],
+        'excerpt'   => $item['excerpt'],
+        'width'     => $item['img_width'],
+        'height'    => $item['img_height'],
+    ];
+}
+
 $kinds = [
     'page' => [
         'kind' => 'page', 'page_title' => 'About Sean',
@@ -136,6 +175,13 @@ $kinds = [
         ],
         'rendered_content' => snapsmack_trusted_html('<p>First paragraph of the page body.</p>'),
         'items' => [],
+    ],
+    'feed' => [
+        // 'feed' is the word the public controller uses for a landing page, and
+        // the strict skins branch on it. The landing iterates
+        // $view['response']['posts'].
+        'kind' => 'feed', 'page_title' => '',
+        'posts' => $posts, 'items' => $items, 'item' => [], 'tiles' => $tiles,
     ],
     'archive' => [
         'kind' => 'archive', 'page_title' => 'Archive',
