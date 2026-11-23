@@ -13,11 +13,12 @@ mosaic marker keeps its one-line plain-words explainer right beside the button.
 import os
 import re
 import tempfile
+import threading
 import uuid
 
 import requests
 
-from PySide6.QtCore import Qt, QDate, QRect, QSize, Signal, QTimer, QSettings
+from PySide6.QtCore import QObject, Qt, QDate, QRect, QSize, Signal, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit,
@@ -42,6 +43,13 @@ from .block_tray import BlockAction, BlockTray
 from .photo_tray import RightPhotosTray, PhotoThumbTile
 from .drafts_panel import BatchRail, default_draft_row
 from .mosaic_layout import tile_rects as _tile_rects
+
+
+class _PublishedPostBridge(QObject):
+    """Marshal the published-post network read back to the GUI thread."""
+
+    loaded = Signal(object)
+    failed = Signal(str)
 
 
 class MosaicPreview(QWidget):
@@ -224,6 +232,10 @@ class TakeMode(QWidget):
         self._slapper_watch_session = None
         self._slapper_asset_uuid = ""
         self._slapper_launch_error = ""
+        self._published_load_active = False
+        self._published_bridge = _PublishedPostBridge(self)
+        self._published_bridge.loaded.connect(self._published_post_loaded)
+        self._published_bridge.failed.connect(self._published_post_failed)
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -1549,6 +1561,18 @@ class TakeMode(QWidget):
         return dialog
 
     def _open_published(self):
+        # A pending 900 ms autosave used to be discarded by the document
+        # switch below. Flush it before the first network request or dialog so
+        # cancel, an error, and a slow server all leave a durable draft.
+        self._autosave.stop()
+        if self._autosave_now() is False:
+            QMessageBox.critical(
+                self,
+                "Draft was not saved",
+                "COLD SNAP could not save the open draft, so it will not open "
+                "another post. The editor has been left exactly as it was.",
+            )
+            return
         poster, _url = self._poster_and_url()
         if poster is None:
             return
@@ -1565,16 +1589,94 @@ class TakeMode(QWidget):
         if dialog.exec() != QDialog.Accepted or not dialog._choices.currentItem():
             return
         post_id = int(dialog._choices.currentItem().data(Qt.UserRole) or 0)
-        try:
-            post = poster.get_post(post_id)
-            draft = self._draft_from_remote(post)
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Could not open post", str(exc))
-            return
         session = self.rail.ensure_session()
-        session.add_draft(draft)
-        self._edit(draft)
-        self.save_state.setText("Published post loaded — changes will update this post")
+        active_id = str(self._editing_id or "")
+        action = self._published_open_action(active_id)
+        if action == "cancel":
+            return
+        self._start_published_load(poster, post_id, action, session, active_id)
+
+    def _published_open_action(self, active_id: str) -> str:
+        """Ask what to do with the durable draft already in the editor."""
+        if not active_id:
+            return "separate"
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle("Keep the open draft")
+        box.setText("A draft is already open and has been saved safely.")
+        box.setInformativeText(
+            "Choose whether this draft should update the published post, or "
+            "keep it as its own draft and open the published post separately."
+        )
+        attach = box.addButton("Attach this draft to the published post", QMessageBox.AcceptRole)
+        separate = box.addButton("Keep draft and open published separately", QMessageBox.ActionRole)
+        cancel = box.addButton(QMessageBox.Cancel)
+        box.setDefaultButton(separate)
+        box.exec()
+        clicked = box.clickedButton()
+        if clicked is attach:
+            return "attach"
+        if clicked is separate:
+            return "separate"
+        if clicked is cancel:
+            return "cancel"
+        return "cancel"
+
+    def _start_published_load(self, poster, post_id: int, action: str,
+                              session, active_id: str) -> None:
+        """Fetch the post and its photographs without blocking the GUI."""
+        if self._published_load_active:
+            return
+        self._published_load_active = True
+        self.save_state.setText("Loading published post… your draft is safe")
+
+        def load():
+            try:
+                post = poster.get_post(post_id)
+                draft = None if action == "attach" else self._draft_from_remote(post)
+                if draft is not None:
+                    # Absorbing a large published bucket copies its photographs
+                    # into the durable session. Keep that disk work off the GUI
+                    # thread along with the downloads that precede it.
+                    session.add_draft(draft)
+                self._published_bridge.loaded.emit({
+                    "post": post,
+                    "draft": draft,
+                    "action": action,
+                    "session": session,
+                    "active_id": active_id,
+                })
+            except Exception as exc:  # noqa: BLE001
+                self._published_bridge.failed.emit(str(exc))
+
+        threading.Thread(target=load, name="coldsnap-open-published", daemon=True).start()
+
+    def _published_post_loaded(self, result: dict) -> None:
+        self._published_load_active = False
+        session = result["session"]
+        action = result["action"]
+        if action == "attach":
+            draft = session.load_draft(result["active_id"])
+            if draft is None:
+                self._published_post_failed("The saved draft could not be reopened.")
+                return
+            post = result["post"]
+            draft.remote_post_id = int(post.get("id") or 0)
+            draft.post_date = str(post.get("created_at") or draft.post_date or "")
+            draft.slug = str(post.get("slug") or draft.slug or "")
+            session.save_draft(draft)
+            self._edit(draft)
+            self.save_state.setText("Draft attached — changes will update the published post")
+        else:
+            draft = result["draft"]
+            self._edit(draft)
+            self.save_state.setText("Published post opened separately — your draft is still safe")
+        self.rail.refresh_drafts()
+
+    def _published_post_failed(self, message: str) -> None:
+        self._published_load_active = False
+        self.save_state.setText("Could not open published post — your draft is still safe")
+        QMessageBox.critical(self, "Could not open post", message)
 
     def _draft_from_remote(self, post):
         draft = O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK,
@@ -2387,7 +2489,7 @@ class TakeMode(QWidget):
     def _autosave_now(self):
         if not (self.title_edit.text().strip() or self.body.toPlainText().strip() or self._bucket):
             self.save_state.setText("Begin the story… changes will be safe on this computer.")
-            return
+            return True
         try:
             session = self.rail.ensure_session()
             draft = self._build_draft(session)
@@ -2395,8 +2497,10 @@ class TakeMode(QWidget):
             session.add_draft(draft)
             self._mirror_sqlite(draft)
             self.save_state.setText("Safe on this computer")
+            return True
         except Exception as exc:  # noqa: BLE001
             self.save_state.setText(f"Needs attention — could not save: {exc}")
+            return False
 
     def _mirror_sqlite(self, draft):
         site = ((self.app_config() or {}).get("url") or "").strip()
