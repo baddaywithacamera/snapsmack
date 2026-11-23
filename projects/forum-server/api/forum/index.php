@@ -1117,9 +1117,12 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && cty
         // surfaces. Own thread is ordinary use.
         //
         // NOTE THE NAME: 'thread.flag' (singular) is THIS, the post kind.
-        // 'thread.flags' (plural) is pin/lock, a few lines below. Those two
-        // being one letter apart is asking for trouble and I have said so in
-        // the room rather than rename a value on my own.
+        // 'thread.pinlock' is pin/lock, a few lines below. Those two were
+        // originally 'thread.flag' and 'thread.flags' -- one letter apart in
+        // the action vocabulary, which is a misread waiting to happen in the
+        // one place you least want one. The PM approved the rename before
+        // either reached a deployed build, so no stored row carries the old
+        // name.
         if (!$is_own) {
             forum_log_mod_action($pdo, $install, 'thread.flag', 'thread', $thread_id,
                 'set flag=' . $flag . " on another install's thread");
@@ -1141,7 +1144,7 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && cty
         $pdo->prepare("UPDATE ss_forum_threads SET is_pinned = ?, is_locked = ? WHERE id = ?")
             ->execute([$pinned, $locked, $thread_id]);
 
-        forum_log_mod_action($pdo, $install, 'thread.flags', 'thread', $thread_id,
+        forum_log_mod_action($pdo, $install, 'thread.pinlock', 'thread', $thread_id,
             'pinned=' . ((int)$pinned) . ' locked=' . ((int)$locked));
         respond(['status' => 'updated', 'is_pinned' => (bool)$pinned, 'is_locked' => (bool)$locked]);
     }

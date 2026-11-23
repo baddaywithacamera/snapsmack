@@ -43,8 +43,13 @@ CREATE TABLE IF NOT EXISTS ss_forum_mod_log (
     actor_install_id  INT             NULL,
     actor_domain      VARCHAR(255)    NOT NULL DEFAULT '',
     actor_is_god      TINYINT(1)      NOT NULL DEFAULT 0,
-    -- board.create, board.update, thread.lock, thread.pin, thread.edit,
-    -- thread.delete, reply.edit, reply.delete, tag.add, tag.remove,
+    -- The sixteen actions the API actually writes, taken from the router
+    -- rather than from intention. This list previously named thread.lock and
+    -- thread.pin as separate actions -- the code has always written ONE
+    -- action for both -- and omitted thread.flag and thread.move entirely.
+    -- board.create, board.update, thread.edit, thread.delete, thread.move,
+    -- thread.pinlock (pin/lock), thread.flag (the post kind),
+    -- reply.edit, reply.delete, tag.add, tag.remove,
     -- attachment.hide, attachment.restore, answer.accept, answer.unaccept,
     -- install.role
     action            VARCHAR(40)     NOT NULL,

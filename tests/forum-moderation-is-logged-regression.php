@@ -121,7 +121,7 @@ $check('the router loads the logger', str_contains($src, "require_once __DIR__ .
 foreach ([
     'board.create'       => 'creating a board',
     'board.update'       => 'renaming, reordering or hiding a board',
-    'thread.flags'       => 'pinning or locking a thread',
+    'thread.pinlock'     => 'pinning or locking a thread',
     'thread.move'        => 'moving a thread between boards',
     'thread.edit'        => "editing another install's thread",
     'thread.delete'      => "deleting another install's thread",
@@ -133,9 +133,10 @@ foreach ([
     'attachment.restore' => 'restoring a hidden image',
     'install.role'       => 'promoting or demoting an install',
     // The three Muse's review found missing. 'thread.flag' (singular) is the
-    // post KIND -- support/question/chat/brag. 'thread.flags' (plural), above,
-    // is pin/lock. One letter apart, which I have flagged in the room as worth
-    // renaming rather than renaming a value on my own.
+    // post KIND -- support/question/chat/brag. 'thread.pinlock', above, is
+    // pin/lock. They were 'thread.flag' and 'thread.flags' until the PM
+    // approved the rename: one letter apart in an audit vocabulary is a
+    // misread waiting to happen, and nothing had shipped either name yet.
     'answer.accept'      => "accepting an answer on another install's thread",
     'answer.unaccept'    => 'removing an accepted answer',
     'thread.flag'        => "setting the post kind on another install's thread",
@@ -158,32 +159,57 @@ foreach ([
 // WHAT THIS DOES NOT CATCH, said plainly so nobody trusts it further than it
 // goes: it works per ROUTE BLOCK, so a route that logs ONE branch and forgets
 // another passes. That is exactly the shape of the second fault Muse found --
-// PATCH /threads/{id} already logged thread.edit and thread.flags, so the
+// PATCH /threads/{id} already logged thread.edit and thread.pinlock, so the
 // missing flag branch sat inside a block that looked covered. This check would
 // have caught the solve route, which logged nothing at all, and would have
 // missed the flag branch. Branch-level completeness still needs a reader.
+// NAMED BY THE TEXT THAT IDENTIFIES EACH BLOCK, not by a description of it.
+// Muse's re-review said this list called one entry "POST a reply" where it
+// should have named the POST attachments route. I checked before changing
+// anything and could not reproduce it: the fourth block really is
+// POST /threads/{id}/replies, and the attachments routes are NOT flagged at all
+// because DELETE /attachments/{id} and its restore both log. Rather than argue
+// that in a comment, each entry now carries a string from its own block, and
+// the check below proves the entry matches something that is actually there --
+// so the list cannot drift from the file in either direction.
 $exempt = [
-    'the shared prelude: defines and helper functions, not a route',
-    'GET a thread: bumps the view counter; reading is not moderator power',
-    'POST threads: creating your own thread, with the board counter',
-    'POST a reply: creating your own reply, with the counters',
-    'react on a thread: your own reaction',
-    'react on a reply: your own reaction',
+    "if (!defined('FORUM_UPLOAD_DIR'))",                 // the prelude: defines and helpers, not a route
+    "\$method === 'GET' && count(\$parts) === 2",   // GET a thread: bumps the view counter
+    "\$method === 'POST' && \$path === 'threads'",  // creating your own thread
+    "\$parts[2] === 'replies'",                        // creating your own reply
+    "\$parts[0] === 'threads' && ctype_digit(\$parts[1]) && \$parts[2] === 'react'", // own reaction
+    "\$parts[0] === 'replies' && ctype_digit(\$parts[1]) && \$parts[2] === 'react'", // own reaction
 ];
 $chunks = preg_split('/\n\/\/ ─{10,}\n/u', $src);
 $mutates = '/\b(?:UPDATE ss_forum_|INSERT INTO ss_forum_|DELETE FROM ss_forum_)/';
 $modgate = '/is_install_mod\(|\bis_mod\(\)|\$has_power|\$is_own|\$is_thread_author|\$is_mod_caller/';
-$unlogged = 0;
+$unlogged = [];
 foreach ($chunks as $chunk) {
     if (preg_match($mutates, $chunk) !== 1) { continue; }
     if (preg_match($modgate, $chunk) !== 1) { continue; }
-    if (!str_contains($chunk, 'forum_log_mod_action(')) { $unlogged++; }
+    if (!str_contains($chunk, 'forum_log_mod_action(')) { $unlogged[] = $chunk; }
 }
 $check('every mutating, moderator-gated route logs, bar the ' . count($exempt)
        . ' written down as not powers',
-       $unlogged === count($exempt));
-if ($unlogged !== count($exempt)) {
-    echo "        expected " . count($exempt) . " unlogged blocks, found {$unlogged}.\n";
+       count($unlogged) === count($exempt));
+
+// Counting them was not enough: six unlogged blocks and six excuses could be
+// six DIFFERENT things. Each exemption must match a block that is actually
+// there, so a new unlogged power cannot hide behind an excuse written for
+// something else.
+$unmatched = [];
+foreach ($exempt as $needle) {
+    $found = false;
+    foreach ($unlogged as $chunk) {
+        if (str_contains($chunk, $needle)) { $found = true; break; }
+    }
+    if (!$found) { $unmatched[] = $needle; }
+}
+$check('  and each exemption matches a block that is really there', $unmatched === []);
+foreach ($unmatched as $u) { echo "        no unlogged block matches: {$u}
+"; }
+if (count($unlogged) !== count($exempt)) {
+    echo "        expected " . count($exempt) . " unlogged blocks, found " . count($unlogged) . ".\n";
     echo "        A NEW ONE MEANS: log it, or add it to \$exempt with a reason.\n";
 }
 
@@ -203,7 +229,7 @@ foreach ([
 ] as $action => $guard) {
     // ANCHORED ON THE CALL, NOT THE BARE STRING. Looking for "'thread.flag'"
     // found a CODE COMMENT first -- one I wrote myself, explaining that
-    // thread.flag and thread.flags are different things -- and measured back
+    // thread.flag and thread.pinlock are different things -- and measured back
     // from there, so the check failed on correct code. Same family of mistake
     // as the one already recorded in Stage 2: a string can appear in a comment
     // as easily as in a call, and a check has to say which it wants.
