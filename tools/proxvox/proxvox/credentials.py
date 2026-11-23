@@ -35,6 +35,9 @@ if os.path.isdir(_SHARED) and _SHARED not in sys.path:
 # instead of inventing a storage convention of its own.
 CRED_SITE = "proxvox"
 CRED_KIND = "api_token"
+CONTAINER_SECRET_KINDS = frozenset({
+    "ct102_ssh", "ct106_ssh", "mysql_ro", "pve_host_ssh",
+})
 
 
 class NoToken(Exception):
@@ -74,5 +77,41 @@ def load_token(reader=None) -> str:
             "files, arguments or the environment." % (CRED_SITE, CRED_KIND)
         )
     return secret
+
+
+def load_container_secret(kind: str, reader=None) -> str:
+    """Load one P1b secret from Credential Manager and nowhere else."""
+    key = str(kind or "").strip()
+    if key not in CONTAINER_SECRET_KINDS:
+        raise NoToken("Unknown PROX VOX container credential kind %r." % key)
+    if reader is None:
+        try:
+            import snap_native_creds
+        except ImportError as err:                        # pragma: no cover
+            raise NoToken("Cannot reach snap_native_creds (%s)." % err)
+        reader = snap_native_creds.get_site
+    secret = str(reader(CRED_SITE, key) or "").strip()
+    if not secret or "\x00" in secret:
+        raise NoToken(
+            "No usable PROX VOX %s credential exists in Windows Credential "
+            "Manager. There is no file, argument, or environment fallback." % key
+        )
+    return secret
+
+
+def save_container_secret(kind: str, secret: str, writer=None) -> None:
+    """Store an owner-entered P1b secret through snap_native_creds.set_site."""
+    key = str(kind or "").strip()
+    value = str(secret or "")
+    if key not in CONTAINER_SECRET_KINDS or not value or "\x00" in value:
+        raise NoToken("A known credential kind and non-empty secret are required.")
+    if writer is None:
+        try:
+            import snap_native_creds
+        except ImportError as err:                        # pragma: no cover
+            raise NoToken("Cannot reach snap_native_creds (%s)." % err)
+        writer = snap_native_creds.set_site
+    if writer(CRED_SITE, key, value) is not True:
+        raise NoToken("Windows Credential Manager refused the PROX VOX credential.")
 
 # ===== SNAPSMACK EOF =====

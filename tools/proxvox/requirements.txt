@@ -1,0 +1,6 @@
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line must be the Python SNAPSMACK EOF marker.
+paramiko>=3.0.0
+PyMySQL>=1.1.0
+websocket-client>=1.8.0
+# ===== SNAPSMACK EOF =====
