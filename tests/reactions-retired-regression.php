@@ -21,6 +21,7 @@ $schema = (string)file_get_contents($root . '/database/schema/snapsmack_canonica
 $migration = (string)file_get_contents($root . '/migrations/migrate-reactions-to-likes.sql');
 $inventory = (string)file_get_contents($root . '/core/tyswy-api.php');
 $likeEndpoint = (string)file_get_contents($root . '/process-like.php');
+$communityUsers = (string)file_get_contents($root . '/smack-community-users.php');
 
 $failures = [];
 $check = static function (bool $condition, string $message) use (&$failures): void {
@@ -81,13 +82,20 @@ foreach (['core', 'assets', 'skins'] as $directory) {
 }
 $reactionWriters = [];
 foreach ($runtimeFiles as $path) {
+    $relative = substr($path, strlen(str_replace('\\', '/', $root)) + 1);
+    if ($relative === 'smack-community-users.php') {
+        continue;
+    }
     $source = (string)file_get_contents($path);
     if (preg_match('/\b(?:INSERT\s+(?:IGNORE\s+)?INTO|UPDATE|DELETE\s+FROM)\s+snap_reactions\b/i', $source)) {
-        $reactionWriters[] = substr($path, strlen(str_replace('\\', '/', $root)) + 1);
+        $reactionWriters[] = $relative;
     }
 }
 $check($reactionWriters === [],
-    'no PHP or JavaScript runtime can create, update, or delete snap_reactions rows');
+    'no direct reaction-feature SQL writer remains outside account deletion');
+$check(str_contains($communityUsers, "'snap_likes', 'snap_reactions'")
+    && str_contains($communityUsers, 'DELETE FROM {$table} WHERE user_id = ?'),
+    'community account deletion intentionally removes that user\'s preserved reaction rows');
 
 $manifestCount = count(glob($root . '/skins/*/manifest.json') ?: []);
 $check($manifestCount >= 1 && !str_contains($component, 'community_reactions_enabled'),
