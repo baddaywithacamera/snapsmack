@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "name": "GLIDE",
-  "version": "0.1.33",
+  "version": "0.1.34",
   "scrolltime_pages": [
     "landing",
     "archive"
@@ -42,9 +42,9 @@
   "community_reactions": false,
   "social_dock": {
     "position": "inline",
-    "color_mode": "light",
-    "icon_style": "outline",
-    "shadow": false
+    "default_color_mode": "light",
+    "default_icon_style": "outline",
+    "default_shadow": false
   },
   "options": {
     "header_logo": {
