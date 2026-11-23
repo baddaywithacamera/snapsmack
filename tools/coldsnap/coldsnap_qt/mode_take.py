@@ -2568,7 +2568,7 @@ class TakeMode(QWidget):
             self._changed()
 
     def _remove(self, idx: int):
-        self._remove_from_tray([idx])
+        self._remove_from_tray([idx], in_post_fn=lambda _used: "remove_both")
 
     def _strip_photos_from_blocks(self, remove_indices: list[int]):
         """Remove blocks/entries referencing removed tray indices and remap 1-based refs."""
@@ -2630,8 +2630,9 @@ class TakeMode(QWidget):
                     out.append(copied)
                 elif kind == "columns":
                     copied = dict(node)
-                    cols = node.get("columns") or []
-                    copied["columns"] = [_clean_list(col) for col in cols]
+                    key = "cols" if "cols" in node else "columns"
+                    cols = node.get(key) or []
+                    copied[key] = [_clean_list(col) for col in cols]
                     out.append(copied)
                 else:
                     out.append(dict(node))
@@ -2750,13 +2751,17 @@ class TakeMode(QWidget):
         down = QPushButton("▼")
         self.featured_btn = QPushButton("★ Featured photo (landing tile)")
         self.featured_btn.setToolTip("Make the selected photo the post's featured landing tile (featured_image_id)")
-        remove = QPushButton("×")
-        remove.setObjectName("Danger")
+        self.remove_photo_btn = QPushButton("Remove photo")
+        self.remove_photo_btn.setObjectName("Danger")
+        self.remove_photo_btn.setToolTip(
+            "Remove the selected photograph from this draft. The source file is not deleted."
+        )
+        self.remove_photo_btn.setAccessibleName("Remove selected photo from draft")
         up.clicked.connect(lambda: self._manage_selected("up"))
         down.clicked.connect(lambda: self._manage_selected("down"))
         self.featured_btn.clicked.connect(lambda: self._manage_selected("lead"))
-        remove.clicked.connect(lambda: self._manage_selected("remove"))
-        for button in (up, down, self.featured_btn, remove):
+        self.remove_photo_btn.clicked.connect(lambda: self._manage_selected("remove"))
+        for button in (up, down, self.featured_btn, self.remove_photo_btn):
             manage.addWidget(button)
         manage.addStretch(1)
         col.addLayout(manage)
@@ -3093,7 +3098,7 @@ class TakeMode(QWidget):
         elif action == "lead":
             self._set_cover(index)
         elif action == "remove":
-            self._remove(index)
+            self._remove_from_tray([index])
 
     def _set_selected_field(self, attr: str, value: str):
         if self._updating_photo_fields:
