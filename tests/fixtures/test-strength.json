@@ -370,6 +370,11 @@
         "predicates": 11,
         "thresholds": []
     },
+    "community-nav-section-regression.php": {
+        "assertions": 7,
+        "predicates": 0,
+        "thresholds": []
+    },
     "community-token-hash-regression.php": {
         "assertions": 14,
         "predicates": 8,
