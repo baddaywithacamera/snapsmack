@@ -50,7 +50,7 @@ class RootReadBroker:
             })
             raise
         try:
-            _stdin, stdout, stderr = client.exec_command(command, timeout=30)
+            _stdin, stdout, stderr = client.exec_command(command)
             raw = stdout.read().decode("utf-8", "replace")
             status = stdout.channel.recv_exit_status()
             error = stderr.read().decode("utf-8", "replace")
@@ -85,15 +85,9 @@ class RootReadBroker:
     def stat(self, path, vmid=None):
         return self._call("host-stat", path) if vmid is None else self._call("ct-stat", int(vmid), path)
 
-    def read_file(self, path, maximum_bytes=8_388_608, vmid=None):
-        limit = int(maximum_bytes)
-        if limit < 1 or limit > 16_777_216:
-            self.audit.record("root_read_refused", {
-                "operation": "read", "why": "read limit is outside 1..16777216",
-            })
-            raise Refused("Root reads require a limit between 1 and 16777216 bytes.")
-        data = (self._call("host-read", path, limit) if vmid is None
-                else self._call("ct-read", int(vmid), path, limit))
+    def read_file(self, path, vmid=None):
+        data = (self._call("host-read", path) if vmid is None
+                else self._call("ct-read", int(vmid), path))
         try:
             return base64.b64decode(data["content_base64"], validate=True)
         except (KeyError, TypeError, ValueError) as err:

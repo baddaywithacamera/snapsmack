@@ -183,7 +183,7 @@ class ContainerReadBroker:
             finally:
                 sftp.close()
 
-    def read_file(self, container: str, path: str, maximum_bytes: int = 8_388_608) -> bytes:
+    def read_file(self, container: str, path: str) -> bytes:
         try:
             target = self._target(container)
             clean = _safe_path(target, path)
@@ -193,7 +193,6 @@ class ContainerReadBroker:
                 "path": str(path), "why": str(err),
             })
             raise
-        maximum = max(1, int(maximum_bytes))
         with self._ssh(target) as client:
             sftp = client.open_sftp()
             try:
@@ -207,18 +206,11 @@ class ContainerReadBroker:
                     raise
                 self.audit.record("container_read", {
                     "container": target.name, "operation": "read", "path": resolved,
-                    "maximum_bytes": maximum,
                 })
                 with sftp.open(resolved, "rb") as stream:
-                    data = stream.read(maximum + 1)
+                    data = stream.read()
             finally:
                 sftp.close()
-        if len(data) > maximum:
-            self.audit.record("container_read_refused", {
-                "container": target.name, "operation": "read", "path": resolved,
-                "why": "file exceeds explicit read limit",
-            })
-            raise Refused("The file exceeds this call's explicit read limit.")
         return data
 
     def select(self, gateway: str, database: str, sql: str, params=(),

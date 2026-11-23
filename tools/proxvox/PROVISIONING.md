@@ -84,8 +84,8 @@ Match User proxvox-root-ro
 
 Save its fresh password as `proxvox:pve_host_ssh` through the PROX VOX setup
 screen. The wrapper accepts only `inventory`, `host-list/stat/read`, and
-`ct-list/stat/read`; it builds fixed argv with `shell=False`, caps reads at
-16 MiB per call, and has no write operation. Do not grant this account any
-other sudo command.
+`ct-list/stat/read`; it builds fixed argv with `shell=False`, returns complete
+files without a size or operation-time ceiling, and has no write operation. Do
+not grant this account any other sudo command.
 
 <!-- ===== SNAPSMACK EOF ===== -->

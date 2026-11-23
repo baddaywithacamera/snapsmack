@@ -154,6 +154,12 @@ class P1bTests(unittest.TestCase):
             self.broker.read_file("ct102", link)
         self.assertEqual(self.audit.records()[-1]["action"], "container_read_refused")
 
+    def test_complete_file_larger_than_old_ceiling_is_returned(self):
+        path = "/var/www/sites/large.bin"
+        content = b"x" * (8_388_608 + 1)
+        self.files[path] = content
+        self.assertEqual(self.broker.read_file("ct102", path), content)
+
     def test_integrity_select_is_read_only_audited_and_rolled_back(self):
         result = self.broker.select(
             "ct102", "portalproject",

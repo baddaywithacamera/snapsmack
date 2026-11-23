@@ -39,7 +39,7 @@ class _SSH:
         self.commands = []
         self.closed = False
 
-    def exec_command(self, command, timeout=30):
+    def exec_command(self, command):
         self.commands.append(command)
         status, payload = self.replies[command]
         return None, _Stream(json.dumps(payload).encode(), status), _Stream(b"")
@@ -55,8 +55,8 @@ class RootReadTests(unittest.TestCase):
         self.replies = {
             "inventory": (0, {"ok": True, "data": {"containers": [{"vmid": 102}, {"vmid": 106}, {"vmid": 110}]}}),
             "host-list /etc/pve": (0, {"ok": True, "data": {"entries": ["nodes", "storage.cfg"]}}),
-            "ct-read 110 /etc/mysql/my.cnf 8388608": (0, {"ok": True, "data": {"content_base64": encoded}}),
-            "host-read /root/.ssh/id_rsa 8388608": (2, {"ok": False, "error": "server policy refused"}),
+            "ct-read 110 /etc/mysql/my.cnf": (0, {"ok": True, "data": {"content_base64": encoded}}),
+            "host-read /root/.ssh/id_rsa": (2, {"ok": False, "error": "server policy refused"}),
         }
         self.clients = []
 
@@ -103,15 +103,23 @@ class RootReadTests(unittest.TestCase):
             listed = proxvox_readonly.dispatch("host-list /fixture")
         self.assertEqual(listed["entries"], ["config.bin"])
         with mock.patch.object(proxvox_readonly, "_absolute", return_value=path):
-            read = proxvox_readonly.dispatch("host-read /fixture/config.bin 3")
+            read = proxvox_readonly.dispatch("host-read /fixture/config.bin")
         self.assertEqual(base64.b64decode(read["content_base64"]), b"abc")
         with self.assertRaises(ValueError):
             proxvox_readonly.dispatch("host-write /tmp/x")
 
-    def test_oversize_request_is_refused_before_ssh(self):
-        with self.assertRaises(Refused):
-            self.broker.read_file("/var/log/syslog", maximum_bytes=16_777_217)
-        self.assertEqual(self.clients, [])
+    def test_complete_file_larger_than_old_ceiling_is_returned(self):
+        content = b"x" * (16_777_216 + 1)
+        path = os.path.join(self.tmp, "large.bin")
+        with open(path, "wb") as stream:
+            stream.write(content)
+        with mock.patch.object(proxvox_readonly, "_absolute", return_value=path):
+            read = proxvox_readonly.dispatch("host-read /fixture/large.bin")
+        self.assertEqual(base64.b64decode(read["content_base64"]), content)
+        self.replies["host-read /var/log/large.bin"] = (
+            0, {"ok": True, "data": {"content_base64": base64.b64encode(content).decode()}},
+        )
+        self.assertEqual(self.broker.read_file("/var/log/large.bin"), content)
 
 
 if __name__ == "__main__":

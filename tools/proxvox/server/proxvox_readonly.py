@@ -13,9 +13,6 @@ import shlex
 import subprocess
 import sys
 
-MAXIMUM_BYTES = 16 * 1024 * 1024
-
-
 def _absolute(path):
     raw = str(path or "")
     if not raw.startswith("/") or "\x00" in raw:
@@ -37,28 +34,15 @@ def _vmid(value):
     return str(guest)
 
 
-def _limit(value):
-    amount = int(value)
-    if amount < 1 or amount > MAXIMUM_BYTES:
-        raise ValueError("read limit must be between 1 and 16777216 bytes")
-    return amount
-
-
-def _run(argv, maximum=MAXIMUM_BYTES):
-    process = subprocess.Popen(
+def _run(argv):
+    result = subprocess.run(
         argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE, shell=False,
+        stderr=subprocess.PIPE, shell=False, check=False,
     )
-    output = process.stdout.read(maximum + 1)
-    if len(output) > maximum:
-        process.kill()
-        process.wait(timeout=5)
-        raise ValueError("result exceeds the explicit read limit")
-    error = process.stderr.read(4096).decode("utf-8", "replace")
-    code = process.wait(timeout=30)
-    if code != 0:
+    if result.returncode != 0:
+        error = result.stderr.decode("utf-8", "replace")
         raise ValueError("read operation failed: " + error.strip()[:500])
-    return output
+    return result.stdout
 
 
 def _stat_payload(path):
@@ -85,12 +69,9 @@ def dispatch(command):
             return {"path": path, "entries": sorted(os.listdir(path))}
         if args[0] == "host-stat" and len(args) == 2:
             return _stat_payload(path)
-        if args[0] == "host-read" and len(args) == 3:
-            limit = _limit(args[2])
+        if args[0] == "host-read" and len(args) == 2:
             with open(path, "rb") as stream:
-                data = stream.read(limit + 1)
-            if len(data) > limit:
-                raise ValueError("file exceeds the explicit read limit")
+                data = stream.read()
             return {"path": path, "content_base64": base64.b64encode(data).decode("ascii")}
 
     if len(args) >= 3 and args[0] in {"ct-list", "ct-stat", "ct-read"}:
@@ -110,9 +91,8 @@ def dispatch(command):
             size, mode, mtime, kind = raw.decode("utf-8", "replace").strip().split("\t", 3)
             return {"vmid": int(guest), "path": path, "size": int(size),
                     "mode": int(mode, 16), "mtime": int(mtime), "kind": kind}
-        if args[0] == "ct-read" and len(args) == 4:
-            limit = _limit(args[3])
-            data = _run(prefix + ["/bin/cat", "--", path], maximum=limit)
+        if args[0] == "ct-read" and len(args) == 3:
+            data = _run(prefix + ["/bin/cat", "--", path])
             return {"vmid": int(guest), "path": path,
                     "content_base64": base64.b64encode(data).decode("ascii")}
 
