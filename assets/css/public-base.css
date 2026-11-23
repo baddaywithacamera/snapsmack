@@ -6,6 +6,7 @@
  *   - Inline image frame styling (parser shortcodes)
  *   - Content link defaults (description / static page links)
  *   - Reverse-email anti-scraper helper
+ *   - Visually hidden labels (.screen-reader-text) for core's icon-only links
  *   - Engine-required structural rules (image fade-load opacity:0)
  *   - Landing-only mode header hide
  *   - Tablet touch target enlargement
@@ -201,6 +202,59 @@ body.ss-subtle-scrollbars > :not(.ss-scroll-surface), .ss-scroll-surface > * {
     }
     :is(html:has(body.ss-subtle-scrollbars), body.ss-subtle-scrollbars, .ss-scroll-surface)::-webkit-scrollbar-thumb:hover { background-color: var(--ss-scroll-thumb-hover, #999999); }
     :is(html:has(body.ss-subtle-scrollbars), body.ss-subtle-scrollbars, .ss-scroll-surface)::-webkit-scrollbar-thumb:active { background-color: var(--ss-scroll-thumb-active, #aaaaaa); }
+}
+
+/* ── VISUALLY HIDDEN LABELS ───────────────────────────────────────────────
+ *
+ * core/skin-render-helpers.php emits <span class="screen-reader-text"> inside
+ * every social dock link, so the link has an accessible name when its only
+ * visible content is an icon. NOTHING HID IT. Three skins out of 31 define
+ * .screen-reader-text in their own stylesheet -- ALFRED, TELEGRAM and TILEZ --
+ * and on the other 28 the label rendered as ordinary text.
+ *
+ * MEASURED on the live used car parts homepage (SCROLL) at 1920 before this
+ * rule existed: the span computed to position:static, 40.6px x 25px,
+ * overflow:visible. Each dock link is a 40px flex item centring its contents,
+ * so icon plus visible text overflowed and the glyph was pushed OUT of its own
+ * link -- 11 to 27 pixels to the left -- landing on top of the navigation
+ * circles beside it. The owner saw "Vero Bluesky Linktree Website" jammed
+ * together over the circles with no icons. The icons were there; they had been
+ * shoved sideways and the labels were sitting on top of everything.
+ *
+ * With this rule the same page measures every glyph at exactly +10px inside
+ * its 40px link -- centred -- and the labels are gone from view while screen
+ * readers still read them.
+ *
+ * IT LIVES HERE, not in a skin, because the markup is CORE's. A shared
+ * component that emits a class and leaves the rule to 31 separate stylesheets
+ * is the CHAPLIN fault again: markup on the CMS rail, stylesheet on the skin
+ * rail. public-base.css loads on every public page, which is the same reach as
+ * the markup.
+ *
+ * The skins that already define it override this freely, as the header says.
+ */
+.screen-reader-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* A keyboard user must still be able to reach a skip link or any other
+   focusable element that uses this class, so it un-hides on focus. */
+.screen-reader-text:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
 }
 
 /* ===== SNAPSMACK EOF ===== */

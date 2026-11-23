@@ -390,6 +390,13 @@
         "predicates": 14,
         "thresholds": []
     },
+    "core-markup-brings-its-own-hiding-rule-regression.php": {
+        "assertions": 16,
+        "predicates": 18,
+        "thresholds": [
+            2
+        ]
+    },
     "core-ownership-gate-regression.php": {
         "assertions": 3,
         "predicates": 10,
@@ -1905,20 +1912,20 @@
             2
         ]
     },
-    "rational-geo-archive-shares-the-header-lane-regression.php": {
-        "assertions": 17,
-        "predicates": 24,
-        "thresholds": [
-            8,
-            8
-        ]
-    },
     "public-timeline-fallback-is-cached-regression.php": {
         "assertions": 19,
         "predicates": 2,
         "thresholds": [
             2,
             2
+        ]
+    },
+    "rational-geo-archive-shares-the-header-lane-regression.php": {
+        "assertions": 17,
+        "predicates": 24,
+        "thresholds": [
+            8,
+            8
         ]
     },
     "rational-geo-info-drawer-regression.php": {
@@ -2861,6 +2868,13 @@
             200
         ]
     },
+    "sv-home-feed-is-gone-regression.php": {
+        "assertions": 12,
+        "predicates": 8,
+        "thresholds": [
+            100
+        ]
+    },
     "sybu-data-carries-the-skins-declared-values-regression.php": {
         "assertions": 30,
         "predicates": 23,
@@ -2868,13 +2882,6 @@
             2,
             5,
             5
-        ]
-    },
-    "sv-home-feed-is-gone-regression.php": {
-        "assertions": 12,
-        "predicates": 8,
-        "thresholds": [
-            100
         ]
     },
     "sybu-images-regression.php": {
