@@ -555,8 +555,20 @@ mc_check('and an unfetchable post is NOT video-only, so a failed fetch is '
          . 'never read as "this is a video post"',
          sv_post_is_video_only(null) === false, $failures);
 
-// The gate sits in the boost path, ahead of the test-mode branch, so a test
-// boost cannot do what a real one may not.
+// CORRECTED AFTER CODEX'S FINAL REVIEW OF a526f067. This used to say "the gate
+// sits in the boost path, ahead of the test-mode branch, so a test boost cannot
+// do what a real one may not". THERE IS NO SUCH GATE ANY MORE. Sean's revised
+// ruling of 2026-11-21 allows boosting a post containing video, video-only or
+// mixed, because a boost REFERENCES the remote object and receiving servers
+// fetch the media from its origin -- this server never touches the bytes. Stage
+// 10 of this file proves exactly that, so the sentence contradicted the stage
+// it sat above.
+//
+// WHAT THE SINGLE-ENTRY-POINT CHECK BELOW IS STILL FOR: sv_boost_remote() is
+// where the TEST-MODE WHITELIST lives -- a test boost goes only to whitelisted
+// accounts that follow this blog, never Public and never the real follower
+// crowd. One caller means one place that restriction can be bypassed, and the
+// check is that there is still only one.
 $boost = substr($fedi, strpos($fedi, 'function sv_boost_remote('));
 $boost = substr($boost, 0, strpos($boost, "\nfunction ", 1));
 mc_check('every boost caller goes through that one function',
@@ -564,12 +576,21 @@ mc_check('every boost caller goes through that one function',
          && substr_count((string)file_get_contents($root . '/smack-pixelfed.php'), 'sv_boost_remote(') === 1,
          $failures);
 
-// AND DRIVEN, not just read. The two checks above are source positions, and a
-// source position is not an execution order -- a mutation that disabled the
-// gate while leaving its text in place survived them, which is exactly the
-// kind of green check this project has been bitten by. So sv_boost_remote()
-// itself is evaluated here with test mode ON and a video-only post, and the
-// refusal has to come back before anything is queued.
+// WHAT FOLLOWS IS THE HARNESS FOR STAGE 10, not a refusal test. It also used to
+// claim a refusal "has to come back before anything is queued", which is the
+// same removed gate described twice.
+//
+// sv_boost_remote() IS still driven for real, with test mode ON and a
+// video-only post -- but what Stage 10 then asserts is the opposite of a
+// refusal: the boost IS queued, the activity references the remote object by
+// id, and NO VIDEO URL APPEARS IN THE FETCH LOG. The fetch log is the point:
+// the ruling turns on this server never touching video bytes, and the only way
+// to show that is to record every URL the path asks for and assert what is
+// ABSENT from the list.
+//
+// The two checks above remain source positions, and a source position is not
+// an execution order. That caveat was true when it was written and is still
+// true; it was the thing being checked that changed, not the caveat.
 $GLOBALS['mc_fetched']   = null;
 $GLOBALS['mc_queued']    = [];
 $GLOBALS['mc_json']      = [];
