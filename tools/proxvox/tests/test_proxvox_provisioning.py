@@ -66,6 +66,27 @@ class ProvisioningScriptTests(unittest.TestCase):
         self.assertIn("ForceCommand sudo -n /usr/local/sbin/proxvox-readonly", source)
         self.assertIn("AllowTcpForwarding no", source)
 
+    def test_setup_sheet_is_four_verified_pastes_and_codex_runs_proofs(self):
+        with open(os.path.join(ROOT, "PROVISIONING.md"), encoding="utf-8") as stream:
+            sheet = stream.read()
+        commit = "8fd93087f260b0c44ced5a213a76ba7050bf392f"
+        commands = re.findall(r"```sh\n([^\n]+)\n```", sheet)
+        self.assertEqual(len(commands), 4)
+        targets = ("ct102", "ct106", "ct110", "host")
+        for target, command in zip(targets, commands):
+            with self.subTest(target=target):
+                script_name = "provision-%s.sh" % target
+                script_path = os.path.join(SERVER, script_name)
+                with open(script_path, "rb") as stream:
+                    digest = hashlib.sha256(stream.read()).hexdigest()
+                self.assertIn("/%s/tools/proxvox/server/%s" % (commit, script_name), command)
+                self.assertIn(digest, command)
+                self.assertIn("sha256sum -c -", command)
+        self.assertIn("Sean's setup work ends there.", sheet)
+        self.assertIn("Codex runs and records all proofs", sheet)
+        self.assertNotIn("TYPE-A-FRESH-PASSWORD", sheet)
+        self.assertTrue(sheet.rstrip().endswith("<!-- ===== SNAPSMACK EOF ===== -->"))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
