@@ -42,6 +42,7 @@ Or paste `forum-schema.sql` into phpMyAdmin's SQL tab. Safe to re-run — all `C
 3. `forum-schema-v4-migration.sql` — adds the `role` and `flag` columns
 4. `forum-schema-v5-migration.sql` — adds `avatar_url`
 5. `forum-schema-v6-migration.sql` — adds `ss_forum_mod_log`, the moderation trail. **Apply this before deploying the matching API files.** The logger fails open on purpose, so an API that cannot find this table does not error — it simply records nothing, and a missing audit trail does not announce itself.
+6. `forum-schema-v7-migration.sql` — adds hashed, revocable, per-person moderation keys. Apply it before the API so issued keys can authenticate immediately.
 
 Each adds columns or tables without touching existing data. Requires MySQL 8.0+.
 
@@ -144,7 +145,7 @@ Content-Type: application/json
 
 ### Moderator actions
 
-Installs with `is_moderator = 1` in `ss_forum_installs` can delete any thread or reply, edit any post, pin/lock threads, and manage tags. Promote installs to moderator from the Smack Central forum admin panel. The `FORUM_MOD_KEY` Bearer token also works for direct API access without being tied to an install record.
+Installs with `is_moderator = 1` in `ss_forum_installs` can delete any thread or reply, edit any post, pin/lock threads, and manage tags. Promote installs to moderator from the Smack Central forum admin panel. Per-person moderator keys are issued and revoked in Smack Central's Forum Admin; they can read the forum and perform moderation actions, but cannot post, react, manage boards or installs, or issue keys. The server's `FORUM_MOD_KEY` remains the owner-only break-glass key and must not be shared.
 
 ### Rate limits
 

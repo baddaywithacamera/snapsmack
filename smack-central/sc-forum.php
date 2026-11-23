@@ -9,6 +9,9 @@
  * PGSB admin nav rather than as peer tabs.
  */
 
+// SNAPSMACK_EOF_HEADER
+// Last non-empty line must be: <?php // ===== SNAPSMACK EOF =====
+
 require_once __DIR__ . '/sc-auth.php';
 require_once __DIR__ . '/../core/forum-post-body.php';
 $sc_active_nav = 'sc-forum.php';
@@ -16,6 +19,12 @@ $sc_page_title = 'Community Forum';
 
 $db    = sc_forum_db();
 $flash = '';
+
+if (empty($_SESSION['sc_forum_key_csrf'])) {
+    $_SESSION['sc_forum_key_csrf'] = bin2hex(random_bytes(32));
+}
+$forum_key_csrf = (string)$_SESSION['sc_forum_key_csrf'];
+$issued_mod_key = null;
 
 // ── PGSB Identity ─────────────────────────────────────────────────────────────
 // The hub install (snapsmack.ca) is the Pan Galactic Straw Boss — the admin
@@ -128,8 +137,18 @@ function sc_forum_slug(string $value): string {
     return trim((string)$value, '-');
 }
 
+/** Record owner key lifecycle events without ever recording the bearer secret. */
+function sc_forum_log_key_event(PDO $db, string $action, int $key_row_id, string $detail): void {
+    $stmt = $db->prepare(
+        "INSERT INTO ss_forum_mod_log
+            (actor_install_id, actor_domain, actor_is_god, action, target_type, target_id, detail)
+         VALUES (NULL, 'god', 1, ?, 'moderator_key', ?, ?)"
+    );
+    $stmt->execute([$action, $key_row_id, substr($detail, 0, 255)]);
+}
+
 // ── View Routing ──────────────────────────────────────────────────────────────
-$section   = $_GET['section'] ?? 'forum';      // forum | installs | boards
+$section   = $_GET['section'] ?? 'forum';      // forum | installs | boards | keys
 $view      = $_GET['view']    ?? 'categories'; // categories | threads | thread | new-thread
 $cat_id    = (int)($_GET['cat']  ?? 0);
 $thread_id = (int)($_GET['id']   ?? 0);
@@ -144,8 +163,84 @@ $emoji_set   = ['😊','😂','🤔','👍','👎','🔥','❤️','🎉','💡'
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
+    // ── Per-person moderator keys ────────────────────────────────────────────
+    if ($action === 'issue_moderator_key') {
+        $section = 'keys';
+        if (!hash_equals($forum_key_csrf, (string)($_POST['csrf'] ?? ''))) {
+            $flash = 'The key was not issued because the form expired. Reload and try again.';
+        } else {
+            $label = preg_replace('/\s+/u', ' ', trim((string)($_POST['label'] ?? ''))) ?? '';
+            if ($label === '' || mb_strlen($label) > 100) {
+                $flash = 'Person or purpose must be 1–100 characters.';
+            } else {
+                $key_id = bin2hex(random_bytes(8));
+                $secret = bin2hex(random_bytes(32));
+                $pepper = hash('sha256', 'forum-person-key:' . FORUM_MOD_KEY, true);
+                $digest = hash_hmac('sha256', $secret, $pepper);
+                $ip     = substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+                $db->beginTransaction();
+                try {
+                    $db->prepare(
+                        "INSERT INTO ss_forum_moderator_keys
+                            (key_id, label, secret_hash, created_ip)
+                         VALUES (?, ?, ?, ?)"
+                    )->execute([$key_id, $label, $digest, $ip]);
+                    $row_id = (int)$db->lastInsertId();
+                    sc_forum_log_key_event($db, 'moderator_key.issue', $row_id,
+                        'key_id=' . $key_id . ' label=' . $label);
+                    $db->commit();
+                    $issued_mod_key = [
+                        'label' => $label,
+                        'token' => 'modp_' . $key_id . '_' . $secret,
+                    ];
+                    // A successful issue consumes the form token. The bearer
+                    // itself exists only in this response's memory; it is not
+                    // put in the session merely to survive a redirect.
+                    $_SESSION['sc_forum_key_csrf'] = bin2hex(random_bytes(32));
+                    $forum_key_csrf = (string)$_SESSION['sc_forum_key_csrf'];
+                    $flash = 'Moderator key issued. Copy it now; it will not be shown again.';
+                } catch (Throwable $e) {
+                    if ($db->inTransaction()) $db->rollBack();
+                    $flash = 'Could not issue the moderator key. Apply forum schema v7 (or run the Smack Central updater) and try again.';
+                }
+            }
+        }
+    } elseif ($action === 'revoke_moderator_key' && !empty($_POST['id'])) {
+        $section = 'keys';
+        if (!hash_equals($forum_key_csrf, (string)($_POST['csrf'] ?? ''))) {
+            $flash = 'The key was not revoked because the form expired. Reload and try again.';
+        } else {
+            $id = (int)$_POST['id'];
+            $stmt = $db->prepare(
+                "SELECT id, key_id, label FROM ss_forum_moderator_keys
+                 WHERE id = ? AND revoked_at IS NULL LIMIT 1"
+            );
+            $stmt->execute([$id]);
+            $key_row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$key_row) {
+                $flash = 'That moderator key is already revoked or does not exist.';
+            } else {
+                $ip = substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+                $db->beginTransaction();
+                try {
+                    $db->prepare(
+                        "UPDATE ss_forum_moderator_keys
+                         SET revoked_at = CURRENT_TIMESTAMP, revoked_ip = ?
+                         WHERE id = ? AND revoked_at IS NULL"
+                    )->execute([$ip, $id]);
+                    sc_forum_log_key_event($db, 'moderator_key.revoke', $id,
+                        'key_id=' . $key_row['key_id'] . ' label=' . $key_row['label']);
+                    $db->commit();
+                    $flash = 'Moderator key revoked immediately.';
+                } catch (Throwable $e) {
+                    if ($db->inTransaction()) $db->rollBack();
+                    $flash = 'Could not revoke the moderator key.';
+                }
+            }
+        }
+
     // ── Install management ───────────────────────────────────────────────────
-    if ($action === 'ban_install' && !empty($_POST['id'])) {
+    } elseif ($action === 'ban_install' && !empty($_POST['id'])) {
         $db->prepare("UPDATE ss_forum_installs SET is_banned = 1 WHERE id = ?")->execute([(int)$_POST['id']]);
         $flash = 'Install banned.';
     } elseif ($action === 'unban_install' && !empty($_POST['id'])) {
@@ -343,13 +438,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Redirect for simple POST actions that leave us at categories with no thread
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $flash && $view === 'categories' && !$thread_id) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $flash && $view === 'categories'
+        && !$thread_id && $action !== 'issue_moderator_key') {
         header('Location: sc-forum.php?section=' . urlencode($section) . '&flash=' . urlencode($flash));
         exit;
     }
 }
 
 if (!empty($_GET['flash'])) $flash = htmlspecialchars($_GET['flash']);
+
+if ($section === 'keys') {
+    header('Cache-Control: no-store, max-age=0');
+}
 
 // ── Data Loading ──────────────────────────────────────────────────────────────
 
@@ -362,6 +462,18 @@ $categories = $db->query("
 $install_count = (int)$db->query("SELECT COUNT(*) FROM ss_forum_installs WHERE is_banned = 0")->fetchColumn();
 $total_threads = (int)$db->query("SELECT COUNT(*) FROM ss_forum_threads WHERE is_deleted = 0")->fetchColumn();
 $total_replies = (int)$db->query("SELECT COUNT(*) FROM ss_forum_replies WHERE is_deleted = 0")->fetchColumn();
+$moderator_keys = [];
+if ($section === 'keys') {
+    try {
+        $moderator_keys = $db->query(
+            "SELECT id, key_id, label, created_at, revoked_at, last_used_at
+             FROM ss_forum_moderator_keys
+             ORDER BY revoked_at IS NULL DESC, created_at DESC"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        $flash = 'Moderator key storage is not installed yet. Apply forum schema v7 or run the Smack Central updater.';
+    }
+}
 
 require __DIR__ . '/sc-layout-top.php';
 ?>
@@ -658,6 +770,8 @@ require __DIR__ . '/sc-layout-top.php';
       Installs (<?php echo $install_count; ?>)</a>
     <a href="sc-forum.php?section=boards"
        class="scf-pgsb-link <?php echo $section === 'boards' ? 'active' : ''; ?>">Boards</a>
+    <a href="sc-forum.php?section=keys"
+       class="scf-pgsb-link <?php echo $section === 'keys' ? 'active' : ''; ?>">Moderator Keys</a>
   </nav>
 </div>
 
@@ -1254,6 +1368,68 @@ $installs = $db->query("
   <input type="hidden" name="display_name" id="scf-rename-val">
 </form>
 
+<?php elseif ($section === 'keys'): ?>
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- PER-PERSON MODERATOR KEYS                                                  -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<?php if (is_array($issued_mod_key)): ?>
+<div class="sc-box">
+  <div class="sc-box-header"><span class="sc-box-title">Copy This Key Now</span></div>
+  <div class="sc-box-body">
+    <p>This key for <?php echo htmlspecialchars((string)$issued_mod_key['label']); ?> is shown once. Store it before leaving this page.</p>
+    <pre class="sc-mono"><?php echo htmlspecialchars((string)$issued_mod_key['token']); ?></pre>
+  </div>
+</div>
+<?php endif; ?>
+
+<div class="sc-box">
+  <div class="sc-box-header"><span class="sc-box-title">Moderator Keys</span></div>
+  <div class="sc-box-body">
+    <p class="sc-dim">Each key is tied to one person or purpose. It can read the forum and moderate posts, replies, tags and images. It cannot post, react, manage boards or installs, or issue keys.</p>
+    <?php if ($moderator_keys): ?>
+    <table class="sc-table">
+      <thead><tr><th>Person or Purpose</th><th>Key ID</th><th>Issued</th><th>Last Used</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      <?php foreach ($moderator_keys as $key_row): ?>
+        <tr class="<?php echo $key_row['revoked_at'] ? 'sc-row--muted' : ''; ?>">
+          <td><?php echo htmlspecialchars($key_row['label']); ?></td>
+          <td class="sc-mono"><?php echo htmlspecialchars($key_row['key_id']); ?></td>
+          <td class="sc-dim"><?php echo htmlspecialchars((string)$key_row['created_at']); ?></td>
+          <td class="sc-dim"><?php echo htmlspecialchars((string)($key_row['last_used_at'] ?: 'Never')); ?></td>
+          <td><?php echo $key_row['revoked_at'] ? '<span class="sc-badge">Revoked</span>' : '<span class="sc-badge sc-badge--ok">Active</span>'; ?></td>
+          <td>
+            <?php if (!$key_row['revoked_at']): ?>
+            <form method="post">
+              <input type="hidden" name="action" value="revoke_moderator_key">
+              <input type="hidden" name="id" value="<?php echo (int)$key_row['id']; ?>">
+              <input type="hidden" name="csrf" value="<?php echo htmlspecialchars($forum_key_csrf); ?>">
+              <button class="sc-btn sc-btn--sm sc-btn--danger" onclick="return confirm('Revoke this moderator key now?');">Revoke</button>
+            </form>
+            <?php endif; ?>
+          </td>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+    <?php else: ?>
+      <p class="sc-dim">No moderator keys have been issued.</p>
+    <?php endif; ?>
+  </div>
+</div>
+
+<div class="sc-box">
+  <div class="sc-box-header"><span class="sc-box-title">Issue a Moderator Key</span></div>
+  <div class="sc-box-body">
+    <form method="post">
+      <input type="hidden" name="action" value="issue_moderator_key">
+      <input type="hidden" name="csrf" value="<?php echo htmlspecialchars($forum_key_csrf); ?>">
+      <p><label class="sc-dim">PERSON OR PURPOSE</label><br>
+      <input class="sc-input" type="text" name="label" maxlength="100" required placeholder="e.g. Jane — weekend moderator"></p>
+      <button class="sc-btn">Issue One-Time Key</button>
+    </form>
+  </div>
+</div>
+
 <?php elseif ($section === 'boards'): ?>
 <!-- ══════════════════════════════════════════════════════════════════════════ -->
 <!-- BOARDS                                                                    -->
@@ -1350,4 +1526,4 @@ $installs = $db->query("
 
 <script src="../assets/js/smack-sc-forum.js"></script>
 <?php require __DIR__ . '/sc-layout-bottom.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====

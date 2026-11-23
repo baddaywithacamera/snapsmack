@@ -1,3 +1,5 @@
+-- SNAPSMACK_EOF_HEADER
+-- Last non-empty line must be: -- ===== SNAPSMACK EOF =====
 -- SMACK CENTRAL FORUM — Canonical Schema
 -- Database: squir871_smackforum (isolated from smackcent and enemy)
 --
@@ -11,6 +13,7 @@
 --   ss_forum_installs   — registered SnapSmack installs (forum API auth)
 --   ss_forum_threads    — threads posted by installs or hub admin (PGSB)
 --   ss_forum_replies    — replies within threads
+--   ss_forum_moderator_keys — hashed, revocable per-person moderator keys
 
 CREATE TABLE IF NOT EXISTS `ss_forum_categories` (
     `id`           INT           NOT NULL AUTO_INCREMENT,
@@ -75,3 +78,22 @@ CREATE TABLE IF NOT EXISTS `ss_forum_replies` (
     CONSTRAINT `fk_reply_thread`  FOREIGN KEY (`thread_id`)  REFERENCES `ss_forum_threads`  (`id`),
     CONSTRAINT `fk_reply_install` FOREIGN KEY (`install_id`) REFERENCES `ss_forum_installs` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ss_forum_moderator_keys` (
+    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `key_id`       CHAR(16)     NOT NULL,
+    `label`        VARCHAR(100) NOT NULL,
+    `secret_hash`  CHAR(64)     NOT NULL,
+    `created_at`   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `created_ip`   VARCHAR(45)  NOT NULL DEFAULT '',
+    `revoked_at`   TIMESTAMP    NULL DEFAULT NULL,
+    `revoked_ip`   VARCHAR(45)  NOT NULL DEFAULT '',
+    `last_used_at` TIMESTAMP    NULL DEFAULT NULL,
+    `last_used_ip` VARCHAR(45)  NOT NULL DEFAULT '',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_moderator_key_id` (`key_id`),
+    KEY `idx_moderator_key_active` (`revoked_at`),
+    KEY `idx_moderator_key_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===== SNAPSMACK EOF =====

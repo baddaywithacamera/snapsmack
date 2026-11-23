@@ -901,6 +901,16 @@
             255
         ]
     },
+    "forum-moderator-key-maker-regression.php": {
+        "assertions": 24,
+        "predicates": 30,
+        "thresholds": [
+            2,
+            2,
+            2,
+            13
+        ]
+    },
     "forum-panel-does-not-explain-itself-to-non-admins-regression.php": {
         "assertions": 14,
         "predicates": 11,

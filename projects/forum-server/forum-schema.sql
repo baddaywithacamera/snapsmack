@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS ss_forum_edit_history (
     id              INT            NOT NULL AUTO_INCREMENT,
     target_type     ENUM('thread','reply') NOT NULL,
     target_id       INT            NOT NULL,
-    install_id      INT            NOT NULL,
+    install_id      INT            NULL,
     body_before     TEXT           NOT NULL,
     edited_at       TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -320,6 +320,31 @@ ALTER TABLE ss_forum_threads ADD KEY IF NOT EXISTS idx_flag (flag);
 -- Keep the role/is_moderator mirror consistent both ways.
 UPDATE ss_forum_installs SET role = 2 WHERE is_moderator = 1 AND role < 2;
 UPDATE ss_forum_installs SET is_moderator = 1 WHERE role >= 2 AND is_moderator = 0;
+ALTER TABLE ss_forum_edit_history MODIFY COLUMN install_id INT NULL;
+
+-- ------------------------------------------------------------
+-- Per-person moderation keys (v7, SS-1510).
+--
+-- The bearer secret is never stored. key_id selects the row and secret_hash
+-- is an HMAC-SHA256 digest keyed from the server's existing owner secret.
+-- Revocation is a timestamp so the record and its audit trail survive.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ss_forum_moderator_keys (
+    id            INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    key_id        CHAR(16)      NOT NULL,
+    label         VARCHAR(100)  NOT NULL,
+    secret_hash   CHAR(64)      NOT NULL,
+    created_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_ip    VARCHAR(45)   NOT NULL DEFAULT '',
+    revoked_at    TIMESTAMP     NULL DEFAULT NULL,
+    revoked_ip    VARCHAR(45)   NOT NULL DEFAULT '',
+    last_used_at  TIMESTAMP     NULL DEFAULT NULL,
+    last_used_ip  VARCHAR(45)   NOT NULL DEFAULT '',
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_moderator_key_id (key_id),
+    KEY idx_moderator_key_active (revoked_at),
+    KEY idx_moderator_key_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
 -- Moderation log (v6, SS-1510): one row per act of moderator power.

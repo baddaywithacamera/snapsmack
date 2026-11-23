@@ -278,7 +278,7 @@ if (is_file($upd_path)) {
 $readme_path = $root . '/projects/forum-server/README.md';
 if (is_file($readme_path)) {
     $readme = (string) file_get_contents($readme_path);
-    foreach (['v2', 'v3', 'v4', 'v5', 'v6'] as $v) {
+    foreach (['v2', 'v3', 'v4', 'v5', 'v6', 'v7'] as $v) {
         $check("the README tells a manual upgrader to apply {$v}",
                str_contains($readme, "forum-schema-{$v}-migration.sql"));
     }

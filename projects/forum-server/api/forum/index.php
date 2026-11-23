@@ -8,8 +8,8 @@
  * Routes:
  *   POST   register                           Register an install; returns api_key
  *   GET    categories                         List all active boards with counts
- *   POST   categories                         Admin/mod key: create a new board
- *   PATCH  categories/{id}                    Admin/mod key: rename / reorder / show-hide a board
+ *   POST   categories                         Admin/owner key: create a new board
+ *   PATCH  categories/{id}                    Admin/owner key: rename / reorder / show-hide a board
  *   GET    threads?cat=&tag=&flag=&sort=&filter=  List threads (sort: active|new|views|unread; filter: unread|following)
  *   GET    threads/{id}                       Thread + replies + reactions + solved + is_following
  *   POST   threads                            Create a thread (rate-limited; accepts flag)
@@ -51,6 +51,7 @@
 
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/moderator-keys.php';
 // SS-1510: every act of moderator power is recorded. Its own file so the
 // behaviour can be executed by a test; this router cannot be (it dispatches
 // on include), which is why the other forum regressions read it instead.
@@ -120,7 +121,7 @@ function body(): array {
  * Updates last_seen_at on every authenticated request.
  * Returns the install row on success; terminates with 401/403 on failure.
  */
-function require_auth(): array {
+function require_auth(bool $allow_moderator_key = false): array {
     $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     if (!preg_match('/^Bearer\s+(.+)$/i', $header, $m)) {
         api_error(401, 'MISSING_KEY', 'Authorization: Bearer {api_key} header is required.');
@@ -128,7 +129,7 @@ function require_auth(): array {
     $key = trim($m[1]);
 
     if ($key === FORUM_MOD_KEY) {
-        api_error(403, 'MOD_KEY', 'Use an install API key, not the moderator key.');
+        api_error(403, 'MOD_KEY', 'The owner key cannot post. Use an install API key.');
     }
 
     $pdo  = get_pdo();
@@ -138,17 +139,26 @@ function require_auth(): array {
     $stmt->execute([$key]);
     $install = $stmt->fetch();
 
-    if (!$install) {
-        api_error(403, 'INVALID_KEY', 'API key not recognised or install is banned.');
+    if (!$install && $allow_moderator_key) {
+        $install = forum_authenticate_moderator_key($pdo, $key);
     }
 
-    $pdo->prepare("UPDATE ss_forum_installs SET last_seen_at = NOW() WHERE id = ?")
-        ->execute([$install['id']]);
+    if (!$install) {
+        if (str_starts_with($key, 'modp_') && !$allow_moderator_key) {
+            api_error(403, 'MODERATOR_SCOPE', 'This moderator key cannot perform that action.');
+        }
+        api_error(403, 'INVALID_KEY', 'API key not recognised, revoked, or install is banned.');
+    }
+
+    if (($install['auth_kind'] ?? '') !== 'moderator_key') {
+        $pdo->prepare("UPDATE ss_forum_installs SET last_seen_at = NOW() WHERE id = ?")
+            ->execute([$install['id']]);
+    }
 
     return $install;
 }
 
-/** Returns true if the request carries the moderator key. */
+/** Returns true if the request carries the global owner key. */
 function is_mod(): bool {
     $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     if (preg_match('/^Bearer\s+(.+)$/i', $header, $m)) {
@@ -202,13 +212,13 @@ function clean_avatar_url(string $url, string $domain): string {
     return $url;
 }
 
-/** Returns true if the caller has moderator power (role >= 2) or the global mod key. */
+/** Returns true if the caller has moderator power or the global owner key. */
 function is_install_mod(?array $install = null): bool {
     if (is_mod()) return true;
     return install_role($install) >= 2;
 }
 
-/** Returns true if the caller can administer boards & promote up to moderator (role >= 3) or the mod key. */
+/** Returns true if the caller can administer boards or carries the owner key. */
 function is_install_admin(?array $install = null): bool {
     if (is_mod()) return true;
     return install_role($install) >= 3;
@@ -679,7 +689,7 @@ if ($method === 'POST' && $path === 'register') {
 // GET /categories
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'GET' && $path === 'categories') {
-    require_auth();
+    require_auth(true);
     $pdo = get_pdo();
     $cats = $pdo->query(
         "SELECT id, slug, name, description, thread_count, reply_count
@@ -691,11 +701,11 @@ if ($method === 'GET' && $path === 'categories') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /categories — create a new board (admin blog, or the mod/God key)
+// POST /categories — create a new board (admin blog, or the owner key)
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'POST' && $path === 'categories') {
     $install = is_mod() ? null : require_auth();
-    if (!is_install_admin($install)) api_error(403, 'FORBIDDEN', 'Admin (or moderator key) required to create boards.');
+    if (!is_install_admin($install)) api_error(403, 'FORBIDDEN', 'Admin (or owner key) required to create boards.');
 
     $b    = body();
     $name = trim($b['name']        ?? '');
@@ -733,12 +743,12 @@ if ($method === 'POST' && $path === 'categories') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PATCH /categories/{id} — rename / reorder / show-hide a board (admin or mod key)
+// PATCH /categories/{id} — rename / reorder / show-hide a board (admin or owner key)
 // Slug is immutable (keeps URLs stable). is_active=0 hides the board everywhere.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'categories' && ctype_digit($parts[1])) {
     $install = is_mod() ? null : require_auth();
-    if (!is_install_admin($install)) api_error(403, 'FORBIDDEN', 'Admin (or moderator key) required to manage boards.');
+    if (!is_install_admin($install)) api_error(403, 'FORBIDDEN', 'Admin (or owner key) required to manage boards.');
 
     $cat_id = (int)$parts[1];
     $b      = body();
@@ -771,7 +781,7 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'categories' && 
 // Returns thread list with excerpts, last-reply info, solved state, unread flag.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'GET' && $path === 'threads') {
-    $install  = require_auth();
+    $install  = require_auth(true);
     $pdo      = get_pdo();
     $cat_id   = (int)($_GET['cat']   ?? 0);
     $tag_slug = trim($_GET['tag']    ?? '');
@@ -883,7 +893,7 @@ if ($method === 'GET' && $path === 'threads') {
 // Full thread with replies, reactions, solved state. Increments view count.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'GET' && count($parts) === 2 && $parts[0] === 'threads' && ctype_digit($parts[1])) {
-    $install   = require_auth();
+    $install   = require_auth(true);
     $thread_id = (int)$parts[1];
     $pdo       = get_pdo();
 
@@ -1056,7 +1066,7 @@ if ($method === 'POST' && $path === 'threads') {
 // These are distinguished by which fields are in the request body.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && ctype_digit($parts[1])) {
-    $install   = require_auth();
+    $install   = require_auth(true);
     $thread_id = (int)$parts[1];
     $b         = body();
     $pdo       = get_pdo();
@@ -1193,7 +1203,7 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && cty
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'threads' && ctype_digit($parts[1])) {
     $mod       = is_mod();
-    $install   = $mod ? null : require_auth();
+    $install   = $mod ? null : require_auth(true);
     $has_power = is_install_mod($install);
     $thread_id = (int)$parts[1];
     $pdo       = get_pdo();
@@ -1312,7 +1322,7 @@ if ($method === 'POST'
 // PATCH /replies/{id}  — edit reply body (own or mod)
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'replies' && ctype_digit($parts[1])) {
-    $install  = require_auth();
+    $install  = require_auth(true);
     $reply_id = (int)$parts[1];
     $b        = body();
     $new_body = trim($b['body'] ?? '');
@@ -1354,7 +1364,7 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'replies' && cty
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'replies' && ctype_digit($parts[1])) {
     $mod       = is_mod();
-    $install   = $mod ? null : require_auth();
+    $install   = $mod ? null : require_auth(true);
     $has_power = is_install_mod($install);
     $reply_id  = (int)$parts[1];
     $pdo       = get_pdo();
@@ -1408,7 +1418,7 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'replies' && ct
 // Thread author or mod only.
 // ─────────────────────────────────────────────────────────────────────────────
 if (count($parts) === 3 && $parts[0] === 'replies' && ctype_digit($parts[1]) && $parts[2] === 'solve') {
-    $install  = require_auth();
+    $install  = require_auth(true);
     $reply_id = (int)$parts[1];
     $pdo      = get_pdo();
 
@@ -1621,7 +1631,7 @@ if ($method === 'POST' && count($parts) === 3 && $parts[0] === 'threads' && ctyp
 // Full-text search across thread titles/bodies and reply bodies.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'GET' && $path === 'search') {
-    $install  = require_auth();
+    $install  = require_auth(true);
     $q        = trim($_GET['q']    ?? '');
     $cat_id   = (int)($_GET['cat'] ?? 0);
     $page     = max(1, (int)($_GET['page'] ?? 1));
@@ -1693,7 +1703,7 @@ if ($method === 'GET' && $path === 'search') {
 // GET /tags  — list all tags with thread counts
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'GET' && $path === 'tags') {
-    require_auth();
+    require_auth(true);
     $pdo  = get_pdo();
     $tags = $pdo->query(
         "SELECT id, slug, name, thread_count FROM ss_forum_tags ORDER BY thread_count DESC, name ASC"
@@ -1705,7 +1715,7 @@ if ($method === 'GET' && $path === 'tags') {
 // POST /threads/{id}/tags  — add tag to thread (mod only)
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'POST' && count($parts) === 3 && $parts[0] === 'threads' && ctype_digit($parts[1]) && $parts[2] === 'tags') {
-    $install   = require_auth();
+    $install   = require_auth(true);
     $thread_id = (int)$parts[1];
     $b         = body();
     $pdo       = get_pdo();
@@ -1771,7 +1781,7 @@ if ($method === 'DELETE'
     && $parts[2] === 'tags'
     && ctype_digit($parts[3])
 ) {
-    $install   = require_auth();
+    $install   = require_auth(true);
     $thread_id = (int)$parts[1];
     $tag_id    = (int)$parts[3];
     $pdo       = get_pdo();
@@ -1919,7 +1929,7 @@ if ($method === 'POST' && count($parts) === 3 && $parts[0] === 'replies' && ctyp
 // POST   /attachments/{id}/restore  — un-hide (mod only).
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'attachments' && ctype_digit($parts[1])) {
-    $install = require_auth();
+    $install = require_auth(true);
     $aid     = (int)$parts[1];
     $pdo     = get_pdo();
 
@@ -1942,7 +1952,7 @@ if ($method === 'DELETE' && count($parts) === 2 && $parts[0] === 'attachments' &
 }
 
 if ($method === 'POST' && count($parts) === 3 && $parts[0] === 'attachments' && ctype_digit($parts[1]) && $parts[2] === 'restore') {
-    $install = require_auth();
+    $install = require_auth(true);
     if (!is_install_mod($install)) api_error(403, 'FORBIDDEN', 'Only moderators can restore removed images.');
     $aid = (int)$parts[1];
     $pdo = get_pdo();
@@ -2004,12 +2014,24 @@ if ($method === 'GET' && $path === 'me') {
             'install'   => null,
             'role'      => 4,
             'role_name' => $names[4],
-            'can'       => ['post' => true, 'moderate' => true, 'administer' => true],
+            'can'       => ['post' => false, 'moderate' => true, 'administer' => true],
         ]);
     }
 
-    $install = require_auth();
+    $install = require_auth(true);
     $role    = install_role($install);
+    if (($install['auth_kind'] ?? '') === 'moderator_key') {
+        respond([
+            'install'   => null,
+            'key'       => [
+                'id'    => (string)$install['moderator_key_id'],
+                'label' => (string)$install['display_name'],
+            ],
+            'role'      => 2,
+            'role_name' => $names[2],
+            'can'       => ['post' => false, 'moderate' => true, 'administer' => false],
+        ]);
+    }
     respond([
         'install' => [
             'id'           => (int)$install['id'],

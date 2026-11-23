@@ -56,7 +56,7 @@ function forum_log_mod_action(
              VALUES (?, ?, ?, ?, ?, ?, ?)"
         );
         return $stmt->execute([
-            $actor === null ? null : (int)($actor['id'] ?? 0),
+            $actor === null || !isset($actor['id']) ? null : (int)$actor['id'],
             // The God key has no domain. Recording the string "god" rather
             // than an empty cell means a reader never has to guess whether
             // the blank is "nobody" or "we did not capture it".
