@@ -130,21 +130,30 @@ include 'core/sidebar.php';
                 <span class="toggle-label">COMMUNITY SYSTEM</span>
                 <span class="toggle-desc">Master switch. Turns off all community features site-wide.</span>
                 <input type="hidden"   name="community_enabled" value="0">
-                <input type="checkbox" name="community_enabled" value="1"
+                <input type="checkbox" id="community-master-toggle" name="community_enabled" value="1"
                     <?php echo ($settings['community_enabled'] ?? '1') === '1' ? 'checked' : ''; ?>>
             </label>
+
+            <div id="community-master-warning" class="alert alert-warning"
+                 role="status" aria-live="polite"
+                 <?php echo ($settings['community_enabled'] ?? '1') === '1' ? 'hidden' : ''; ?>>
+                COMMUNITY SYSTEM IS OFF. Comments, likes, and their saved options below are preserved,
+                but remain inactive until the master switch is turned on.
+            </div>
 
             <label class="toggle-row">
                 <span class="toggle-label">COMMENTS</span>
                 <span class="toggle-desc">Enable the comment thread on photo pages.</span>
                 <input type="hidden"   name="community_comments_enabled" value="0">
                 <input type="checkbox" name="community_comments_enabled" value="1"
+                    aria-describedby="community-master-warning"
                     <?php echo ($settings['community_comments_enabled'] ?? '1') === '1' ? 'checked' : ''; ?>>
             </label>
 
             <div class="field-row identity-row">
                 <label for="comment_identity">COMMENT IDENTITY</label>
-                <select id="comment_identity" name="comment_identity">
+                <select id="comment_identity" name="comment_identity"
+                        aria-describedby="community-master-warning">
                     <?php
                     $ci = $settings['comment_identity'] ?? 'open';
                     $ci_opts = [
@@ -166,6 +175,7 @@ include 'core/sidebar.php';
                 <span class="toggle-desc">Show the heart button on the floating dock.</span>
                 <input type="hidden"   name="community_likes_enabled" value="0">
                 <input type="checkbox" name="community_likes_enabled" value="1"
+                    aria-describedby="community-master-warning"
                     <?php echo ($settings['community_likes_enabled'] ?? '1') === '1' ? 'checked' : ''; ?>>
             </label>
 
@@ -174,6 +184,7 @@ include 'core/sidebar.php';
                 <span class="toggle-desc">Visitors must verify their email before commenting or liking.</span>
                 <input type="hidden"   name="community_require_verification" value="0">
                 <input type="checkbox" name="community_require_verification" value="1"
+                    aria-describedby="community-master-warning"
                     <?php echo ($settings['community_require_verification'] ?? '1') === '1' ? 'checked' : ''; ?>>
             </label>
         </div>

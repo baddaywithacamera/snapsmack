@@ -10,6 +10,16 @@
 (function () {
     'use strict';
 
+    var master = document.getElementById('community-master-toggle');
+    var warning = document.getElementById('community-master-warning');
+    if (master && warning) {
+        var syncMasterWarning = function () {
+            warning.hidden = master.checked;
+        };
+        master.addEventListener('change', syncMasterWarning);
+        syncMasterWarning();
+    }
+
     document.querySelectorAll('.radio-option').forEach(function (label) {
         var input = label.querySelector('input');
         if (!input) return;

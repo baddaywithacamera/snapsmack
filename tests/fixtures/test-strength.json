@@ -370,6 +370,13 @@
         "predicates": 11,
         "thresholds": []
     },
+    "community-master-override-label-regression.php": {
+        "assertions": 10,
+        "predicates": 14,
+        "thresholds": [
+            4
+        ]
+    },
     "community-token-hash-regression.php": {
         "assertions": 14,
         "predicates": 8,
