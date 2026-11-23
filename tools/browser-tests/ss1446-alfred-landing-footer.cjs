@@ -12,6 +12,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { execFileSync } = require('node:child_process');
 const { chromium } = require('playwright');
 
 const root = path.resolve(__dirname, '..', '..');
@@ -31,6 +32,23 @@ const tileImage = 'data:image/svg+xml,' + encodeURIComponent(
 const logoImage = 'data:image/svg+xml,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="683" height="162"><rect width="683" height="162" fill="#eee"/></svg>'
 );
+const phpRoot = root.replaceAll('\\', '/').replaceAll("'", "\\'");
+const dockMarkup = execFileSync('php', ['-r', `
+define('BASE_URL', 'https://example.invalid/');
+require '${phpRoot}/core/trusted-html.php';
+require '${phpRoot}/core/skin-render-helpers.php';
+$model = [
+  'social' => [
+    ['url' => 'https://bsky.app/profile/example.test', 'label' => 'Bluesky', 'icon' => 'bluesky'],
+    ['url' => 'https://pixelfed.social/example', 'label' => 'Pixelfed', 'icon' => 'pixelfed'],
+    ['url' => 'mailto:owner@example.test', 'label' => 'Email', 'icon' => 'email'],
+  ],
+  'appearance' => ['background' => '#111111', 'icon' => '#ffffff', 'opacity' => 0.5],
+  'icon_sprite_url' => 'https://example.invalid/assets/icons/crop-circles.svg',
+  'position' => 'inline',
+];
+echo (string)snap_render_component('social-dock', ['model' => $model]);
+`], { encoding: 'utf8' });
 
 const html = `<!doctype html><html><head><base href="${baseHref}"></head>
 <body class="alfred-v2"><div id="page" class="alfred">
@@ -45,33 +63,16 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
     </div>
   </main></div>
   <footer id="system-footer" class="site-footer"><div id="footer" class="inside">
+    ${dockMarkup}
     <div class="footer-metadata-bar"><p>EMAIL: <a class="footer-link" href="mailto:sean@mccormickphotography.ca"><span id="email" class="reverse-email">ac.yhpargotohpkcimroccm@naes</span></a></p></div>
   </div></footer>
 </div>
 </body></html>`;
 /*
- * THE SOCIAL DOCK IS NOT IN THIS FIXTURE ANY MORE, AND THAT IS THE POINT.
- *
- * This file used to hand-write a <div class="social-dock dock-bottom-right">
- * here and then assert that two .dock-link elements existed. They did: the
- * test had just written them. ALFRED's own output contained no dock at all,
- * because SS-1446 removed its footer markup and nothing on the strict render
- * path replaced it. The fabricated markup is what let that ship through
- * review, so it is gone rather than corrected.
- *
- * ALFRED's real footer dock is now proved in
- * tests/alfred-footer-carries-the-shared-social-dock-regression.php, which
- * renders skins/alfred/layout.php through snapsmack_render_strict_skin_template()
- * and reads the dock out of the result. Its geometry was measured in a browser
- * at 1920/1440/1024 (centred in the footer, in flow, 48px targets, no
- * overflow); those numbers are in the commit message.
- *
- * STILL MISSING, and Codex's call: this fixture is hand-written HTML
- * throughout, so every remaining assertion here -- logo, masthead, square
- * landing, email -- measures markup the test wrote, not markup ALFRED
- * produces. Generating the fixture from the real render would make all of
- * them real. I did not do that: it is a rewrite of this harness, which is
- * Codex's.
+ * The dock markup above comes from the real shared PHP component. The PHP
+ * regression renders ALFRED's real layout and proves placement; this browser
+ * pass proves the resulting shared controls remain in flow and that their
+ * accessibility labels do not become visible text over a skin's navigation.
  */
 
 (async () => {
@@ -100,8 +101,24 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
         }
         const controls = Array.from(document.querySelectorAll('.social-dock .dock-link')).map((node) => {
           const rect = node.getBoundingClientRect();
-          return { width: rect.width, height: rect.height, visible: rect.width > 0 && rect.height > 0 };
+          const label = node.querySelector('.screen-reader-text');
+          const labelRect = label.getBoundingClientRect();
+          const labelStyle = getComputedStyle(label);
+          return {
+            width: rect.width,
+            height: rect.height,
+            visible: rect.width > 0 && rect.height > 0,
+            label: {
+              width: labelRect.width,
+              height: labelRect.height,
+              overflow: labelStyle.overflow,
+              clip: labelStyle.clip,
+              whiteSpace: labelStyle.whiteSpace,
+            },
+          };
         });
+        const dock = document.querySelector('.social-dock').getBoundingClientRect();
+        const footer = document.getElementById('footer').getBoundingClientRect();
         const logo = document.querySelector('.site-logo').getBoundingClientRect();
         const logoArea = document.querySelector('.header.section-inner').getBoundingClientRect();
         const rect = header.getBoundingClientRect();
@@ -137,6 +154,8 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
           logo: { left: logo.left, right: logo.right, width: logo.width },
           logoArea: { left: logoArea.left, right: logoArea.right, width: logoArea.width },
           controls,
+          dock: { left: dock.left, right: dock.right, top: dock.top, bottom: dock.bottom },
+          footer: { left: footer.left, right: footer.right, top: footer.top, bottom: footer.bottom },
           legacySocialCount: document.querySelectorAll('.alfred-footer-social, .social-menu').length,
           squareLayouts,
           email: { direction: email.direction, unicodeBidi: email.unicodeBidi },
@@ -151,9 +170,18 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
       assert.ok(result.logoArea.width <= 600.5 && result.logoArea.width >= Math.min(600, width * 0.9) - 1, `${width}: logo area uses the Hitchcock-style 600px measure`);
       assert.ok(result.logo.width > 0 && result.logo.width <= result.logoArea.width + 0.5, `${width}: configured logo loads inside the skin header`);
       assert.ok(Math.abs((result.logo.left + result.logo.right) / 2 - width / 2) <= 1, `${width}: configured logo is centred`);
-      // No dock assertion here: this fixture no longer writes one for itself.
-      // See the note above the fixture.
-      assert.equal(result.controls.length, 0, `${width}: this fixture fabricates no social dock`);
+      assert.equal(result.controls.length, 3, `${width}: the real shared component renders all configured links`);
+      for (const control of result.controls) {
+        assert.ok(control.visible && control.width >= 48 && control.height >= 48,
+          `${width}: every dock link remains a full-size visible target`);
+        assert.ok(control.label.width <= 1 && control.label.height <= 1,
+          `${width}: screen-reader labels occupy no visible navigation space`);
+        assert.equal(control.label.overflow, 'hidden', `${width}: screen-reader labels are clipped`);
+        assert.equal(control.label.whiteSpace, 'nowrap', `${width}: screen-reader labels cannot wrap over controls`);
+      }
+      assert.ok(result.dock.left >= result.footer.left - 0.5 && result.dock.right <= result.footer.right + 0.5
+        && result.dock.top >= result.footer.top - 0.5 && result.dock.bottom <= result.footer.bottom + 0.5,
+      `${width}: ALFRED's inline dock remains inside the footer flow`);
       assert.equal(result.legacySocialCount, 0, `${width}: ALFRED does not render the old Hitchcock social menu`);
       assert.equal(result.email.direction, 'rtl', `${width}: reversed email is turned back for readers`);
       assert.match(result.email.unicodeBidi, /bidi-override/, `${width}: email reversal is visual, not a broken address`);

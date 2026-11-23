@@ -132,6 +132,16 @@ $_dock_platforms = [
         'key' => 'social_dock_linktree',
         'svg' => '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7.953 15.066l-.038-4.086-3.291 3.19-1.624-1.624 3.291-3.19H2.135V7.178h4.156L2.935 3.832l1.624-1.624 3.355 3.355L7.953 1.5h2.09v4.063l3.356-3.355 1.624 1.624-3.356 3.346h4.156v2.178h-4.156l3.291 3.19-1.624 1.624-3.291-3.19.038 4.086h-2.09zm0 1.998h2.09V22.5h-2.09v-5.436z"/></svg>'
     ],
+    'pixelfed' => [
+        'label' => 'Pixelfed',
+        'key' => 'social_dock_pixelfed',
+        'svg' => '<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M6.5 3h11A3.5 3.5 0 0 1 21 6.5v11a3.5 3.5 0 0 1-3.5 3.5h-11A3.5 3.5 0 0 1 3 17.5v-11A3.5 3.5 0 0 1 6.5 3Zm4 5.2v8.3h1.9v-2.6h1.4a2.85 2.85 0 0 0 0-5.7Zm1.9 1.8h1.3a1.05 1.05 0 0 1 0 2.1h-1.3Z"/></svg>'
+    ],
+    'email' => [
+        'label' => 'Email',
+        'key' => 'social_dock_email',
+        'svg' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>'
+    ],
     'website' => [
         'label' => 'Website',
         'key' => 'social_dock_website',
@@ -162,6 +172,8 @@ $_dock_outline = [
     'deviantart' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 4.5h-3l-1.4 2.8H8.5v3.4h2.4L8.5 15.4v4.1h3l1.4-2.8h4.1v-3.4h-2.4L17 8.6z"/></svg>',
     'behance'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5h3.4a1.8 1.8 0 0 1 0 3.6H4z"/><path d="M4 11.1h3.9a1.9 1.9 0 0 1 0 3.8H4V7.5z"/><path d="M14 12.6h4.2a2.3 2.3 0 0 0-4.2 0 2.3 2.3 0 0 0 3.8 1.7"/><path d="M15 8.4h3"/></svg>',
     'linktree'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M12 8.5l5.5-3.2M12 8.5L6.5 5.3"/><path d="M12 13.5l5.5 3.2M12 13.5l-5.5 3.2"/></svg>',
+    'pixelfed'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M10 16.5v-9h3a3 3 0 0 1 0 6h-3"/></svg>',
+    'email'      => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>',
     'website'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.5 3.7 5.6 3.7 8.5S14.4 18 12 20.5C9.6 18 8.3 14.9 8.3 12S9.6 6 12 3.5z"/></svg>',
 ];
 $_dock_icon_style = (($_dock_ovr['icon_style'] ?? ($settings['social_dock_icon_style'] ?? 'solid')) === 'outline') ? 'outline' : 'solid';
@@ -175,7 +187,10 @@ $_dock_pixelfed_outline = '<svg viewBox="0 0 24 24" fill="none" stroke="currentC
 // Build active links array
 $_dock_links = [];
 foreach ($_dock_platforms as $_platform_key => $_platform) {
-    $_url = snapsmack_indieweb_url((string)($settings[ $_platform['key'] ] ?? ''));
+    $_value = (string)($settings[ $_platform['key'] ] ?? '');
+    $_url = $_platform_key === 'email'
+        ? snapsmack_social_email_url($_value)
+        : snapsmack_indieweb_url($_value);
     if ($_url !== '') {
         $_svg = ($_dock_icon_style === 'outline' && isset($_dock_outline[$_platform_key]))
             ? $_dock_outline[$_platform_key]

@@ -2438,7 +2438,7 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
         'social_dock_youtube', 'social_dock_500px', 'social_dock_vero', 'social_dock_threads',
         'social_dock_mastodon', 'social_dock_bluesky', 'social_dock_linkedin', 'social_dock_pinterest',
         'social_dock_tumblr', 'social_dock_deviantart', 'social_dock_behance', 'social_dock_linktree',
-        'social_dock_website',
+        'social_dock_pixelfed', 'social_dock_email', 'social_dock_website',
         'social_dock_own_fedi',
         'hub_controls_socialdock',
     ];

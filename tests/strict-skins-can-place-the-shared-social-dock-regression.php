@@ -47,6 +47,7 @@ if (!defined('BASE_URL')) { define('BASE_URL', 'https://example.invalid/'); }
 require_once $root . '/core/trusted-html.php';
 require_once $root . '/core/skin-render-helpers.php';
 require_once $root . '/core/skin-view-contract.php';
+require_once $root . '/core/indieweb.php';
 
 /** The crop_circles view model core builds, with two configured platforms. */
 function sd_model(array $social = []): array {
@@ -95,6 +96,17 @@ sd_check('  the appearance settings the owner chose, all of them',
          && str_contains($dock, '--dock-idle-opacity:0.5'), $failures);
 sd_check('  and a name for screen readers on every link',
          substr_count($dock, 'screen-reader-text') === 2, $failures);
+$emailDock = (string)snap_render_component('social-dock', ['model' => sd_model([
+    ['url' => snapsmack_social_email_url('owner@example.test'), 'label' => 'Email', 'icon' => 'email'],
+    ['url' => 'https://pixelfed.social/owner', 'label' => 'Pixelfed', 'icon' => 'pixelfed'],
+])]);
+sd_check('Email and external Pixelfed are independent dock links',
+         str_contains($emailDock, 'href="mailto:owner@example.test"')
+         && str_contains($emailDock, 'crop-circles.svg#email')
+         && str_contains($emailDock, 'https://pixelfed.social/owner')
+         && str_contains($emailDock, 'crop-circles.svg#pixelfed'), $failures);
+sd_check('an invalid email cannot become a dock URL',
+         snapsmack_social_email_url('not an address') === '', $failures);
 
 // A corner position, for a skin that wants the floating dock rather than a row.
 $corner = (string)snap_render_component('social-dock',
@@ -160,7 +172,7 @@ file_put_contents($tmp . '/layout.php',
     '<?php defined(\'SNAPSMACK_SKIN_RENDER\') || exit; ?>' . "\n"
     . '<!doctype html><html><head><title>t</title></head><body><footer>'
     . '<?php echo snap_render_html(snap_render_component(\'social-dock\','
-    . ' [\'model\' => $view[\'site\'][\'crop_circles\'] ?? []])); ?>'
+    . ' [\'model\' => $view[\'site\'][\'social_dock\'] ?? []])); ?>'
     . '</footer></body></html>');
 
 $view = [
@@ -168,7 +180,7 @@ $view = [
     'version' => SNAPSMACK_SKIN_VIEW_MODEL_VERSION,
     'response' => ['kind' => 'feed', 'posts' => []],
     'site' => ['site_name' => 'A Photographer', 'language' => 'en', 'direction' => 'ltr',
-               'crop_circles' => sd_model($two)],
+               'social_dock' => sd_model($two)],
 ];
 
 ob_start();
@@ -185,7 +197,7 @@ sd_check('  inside the footer where the template put it',
 
 // And the same template with the dock off renders a footer with nothing in it.
 $viewOff = $view;
-$viewOff['site']['crop_circles'] = sd_model([]);
+$viewOff['site']['social_dock'] = sd_model([]);
 ob_start();
 snapsmack_render_strict_skin_template($tmp, 'layout.php', $viewOff);
 $outOff = (string)ob_get_clean();
@@ -209,6 +221,11 @@ sd_check('and a manifest that does not declare it gets no dock stylesheet',
          !array_filter(snapsmack_skin_declared_assets([])['styles'],
              static fn(string $u): bool => str_contains($u, 'ss-engine-social-dock.css')),
          $failures);
+
+$dockCss = (string)file_get_contents($root . '/assets/css/ss-engine-social-dock.css');
+sd_check('the shared dock hides its own screen-reader labels without skin CSS',
+         str_contains($dockCss, '.dock-link .screen-reader-text')
+         && str_contains($dockCss, 'clip: rect(0, 0, 0, 0)'), $failures);
 
 echo "\n";
 if ($failures) {

@@ -185,7 +185,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'base_style_url', 'skin_variant_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',
-        'favicon_url', 'og_image_url', 'footer', 'slickr_profile', 'crop_circles', 'archive_layout', 'archive_thumb_style', 'archive_grid', 'body_class'];
+        'favicon_url', 'og_image_url', 'footer', 'slickr_profile', 'crop_circles', 'social_dock', 'archive_layout', 'archive_thumb_style', 'archive_grid', 'body_class'];
     // THE ARCHIVE'S OWN CONTROL ROW -- SHOW ALL, the filter panel, the search
     // field and the layout toggles.
     //

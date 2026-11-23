@@ -51,7 +51,7 @@ $layout = (string)file_get_contents($root . '/skins/alfred/layout.php');
 $check('the layout places the social-dock component',
        str_contains($layout, "snap_render_component('social-dock'"));
 $check('  passing the view model and nothing else',
-       str_contains($layout, "'model' => \$view['site']['crop_circles']"));
+       str_contains($layout, "'model' => \$view['site']['social_dock']"));
 $check('  and holds no social markup of its own',
        !str_contains($layout, 'alfred-footer-social') && !str_contains($layout, 'social-menu'));
 $check('ALFRED\'s stylesheet holds no private dock styles',
@@ -107,7 +107,7 @@ $render = static function (array $social) use ($root, $cropCircles): array {
         'site_name' => 'A Photographer', 'language' => 'en', 'direction' => 'ltr',
         'skin_style_url' => '/skins/alfred/style.css',
         'skin_custom_style' => snapsmack_trusted_html(''),
-        'skin_presentation' => [], 'crop_circles' => $cropCircles($social),
+        'skin_presentation' => [], 'social_dock' => $cropCircles($social),
         'footer' => ['text' => 'Copyright', 'lowercase' => false],
         'registered_assets' => [], 'owner_custom_code' => snapsmack_trusted_html(''),
     ]);

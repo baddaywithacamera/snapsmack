@@ -62,7 +62,7 @@ if (isset($_POST['save_social_dock'])) {
         'social_dock_vero', 'social_dock_threads', 'social_dock_mastodon', 'social_dock_bluesky',
         'social_dock_linkedin', 'social_dock_pinterest', 'social_dock_tumblr',
         'social_dock_deviantart', 'social_dock_behance', 'social_dock_linktree',
-        'social_dock_website',
+        'social_dock_pixelfed', 'social_dock_email', 'social_dock_website',
     ];
 
     foreach ($platforms as $key) {
@@ -290,6 +290,12 @@ include 'core/sidebar.php';
 
                     <label>LINKTREE</label>
                     <input type="url" name="social_dock_linktree" value="<?php echo htmlspecialchars($settings['social_dock_linktree'] ?? ''); ?>" placeholder="https://linktr.ee/you">
+
+                    <label>PIXELFED PROFILE</label>
+                    <input type="url" name="social_dock_pixelfed" value="<?php echo htmlspecialchars($settings['social_dock_pixelfed'] ?? ''); ?>" placeholder="https://pixelfed.social/you">
+
+                    <label>EMAIL</label>
+                    <input type="email" name="social_dock_email" value="<?php echo htmlspecialchars($settings['social_dock_email'] ?? ''); ?>" placeholder="you@example.com">
 
                     <label>PERSONAL WEBSITE</label>
                     <input type="url" name="social_dock_website" value="<?php echo htmlspecialchars($settings['social_dock_website'] ?? ''); ?>" placeholder="https://yoursite.com">

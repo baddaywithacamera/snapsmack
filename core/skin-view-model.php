@@ -141,10 +141,14 @@ function snapsmack_prepare_crop_circles(PDO $pdo, array $settings, array $manife
             'flickr'=>'Flickr','smugmug'=>'SmugMug','instagram'=>'Instagram','facebook'=>'Facebook',
             'youtube'=>'YouTube','500px'=>'500px','vero'=>'Vero','threads'=>'Threads',
             'mastodon'=>'Mastodon','bluesky'=>'Bluesky','linkedin'=>'LinkedIn','pinterest'=>'Pinterest',
-            'tumblr'=>'Tumblr','deviantart'=>'DeviantArt','behance'=>'Behance','linktree'=>'Linktree','website'=>'Website',
+            'tumblr'=>'Tumblr','deviantart'=>'DeviantArt','behance'=>'Behance','linktree'=>'Linktree',
+            'pixelfed'=>'Pixelfed','email'=>'Email','website'=>'Website',
         ];
         foreach ($platforms as $key => $label) {
-            $url = snapsmack_indieweb_url((string)($settings['social_dock_' . $key] ?? ''));
+            $value = (string)($settings['social_dock_' . $key] ?? '');
+            $url = $key === 'email'
+                ? snapsmack_social_email_url($value)
+                : snapsmack_indieweb_url($value);
             if ($url !== '') $model['social'][] = ['url' => $url, 'label' => $label, 'icon' => $key];
         }
     }
@@ -164,6 +168,19 @@ function snapsmack_prepare_crop_circles(PDO $pdo, array $settings, array $manife
         'opacity' => max(0, min(100, (int)($dock['opacity'] ?? $settings['social_dock_opacity'] ?? 50))) / 100,
     ];
     return $model;
+}
+
+/** The Social Dock's own bounded model, separate from Crop Circles controls. */
+function snapsmack_social_dock_model(array $cropCircles, array $manifest): array
+{
+    $dock = is_array($manifest['social_dock'] ?? null) ? $manifest['social_dock'] : [];
+    $position = preg_replace('/[^a-z-]/', '', strtolower((string)($dock['position'] ?? 'inline')));
+    return [
+        'social' => is_array($cropCircles['social'] ?? null) ? $cropCircles['social'] : [],
+        'appearance' => is_array($cropCircles['appearance'] ?? null) ? $cropCircles['appearance'] : [],
+        'icon_sprite_url' => (string)($cropCircles['icon_sprite_url'] ?? ''),
+        'position' => $position !== '' ? $position : 'inline',
+    ];
 }
 
 /** Build the read-only Flickr-style masthead model for SLICKR. */
@@ -579,6 +596,7 @@ function snapsmack_public_presentation(PDO $pdo, array $settings, string $active
             . '/variant-' . rawurlencode($variant) . '.css?v=' . rawurlencode($version);
     }
 
+    $cropCircles = snapsmack_prepare_crop_circles($pdo, $settings, $manifest, $navigation);
     return [
         'site_name' => (string)($settings['site_name'] ?? ''),
         'tagline' => (string)($settings['site_tagline'] ?? ''),
@@ -620,7 +638,8 @@ function snapsmack_public_presentation(PDO $pdo, array $settings, string $active
         // for every build of it, old or new.
         'slickr_profile' => snapsmack_skin_wants_profile($active_skin, $manifest)
             ? snapsmack_prepare_slickr_profile($pdo, $settings, $navigation) : [],
-        'crop_circles' => snapsmack_prepare_crop_circles($pdo, $settings, $manifest, $navigation),
+        'crop_circles' => $cropCircles,
+        'social_dock' => snapsmack_social_dock_model($cropCircles, $manifest),
     ];
 }
 

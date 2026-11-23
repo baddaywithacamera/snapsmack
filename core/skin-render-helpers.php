@@ -86,6 +86,18 @@ function snap_escape_url(mixed $value): string {
     return htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+/** Escape a prevalidated Social Dock link, including its email-only route. */
+function snap_escape_social_url(mixed $value): string {
+    $url = trim((string)$value);
+    if (str_starts_with(strtolower($url), 'mailto:')) {
+        $email = substr($url, 7);
+        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false
+            ? htmlspecialchars('mailto:' . $email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            : '';
+    }
+    return snap_escape_url($url);
+}
+
 function snap_render_html(mixed $value): string {
     return $value instanceof SnapTrustedHtml || $value instanceof SnapOwnerCode ? (string)$value : snap_escape_html($value);
 }
@@ -347,7 +359,7 @@ function snapsmack_social_dock_markup(array $model, string $position = 'inline',
     foreach ($social as $item) {
         if (!is_array($item)) { continue; }
         $glyph = preg_replace('/[^a-z0-9]/', '', strtolower((string)($item['icon'] ?? 'link')));
-        $html .= '<a href="' . snap_escape_url($item['url'] ?? '')
+        $html .= '<a href="' . snap_escape_social_url($item['url'] ?? '')
             . '" target="_blank" rel="me noopener" title="' . snap_escape_attr($item['label'] ?? '')
             . '" class="dock-link u-url"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="'
             . snap_escape_url($sprite) . '#' . snap_escape_attr($glyph) . '"></use></svg>'
@@ -902,7 +914,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $model = is_array($data['model'] ?? null) ? $data['model'] : [];
         $html = snapsmack_social_dock_markup(
             $model,
-            (string)($data['position'] ?? 'inline'),
+            (string)($data['position'] ?? $model['position'] ?? 'inline'),
             (string)($data['label'] ?? 'Social links')
         );
     } elseif ($name === 'crop-circles') {
