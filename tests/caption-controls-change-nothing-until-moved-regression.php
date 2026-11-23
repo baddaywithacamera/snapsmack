@@ -7,9 +7,18 @@ declare(strict_types=1);
 // CAPTION CONTROLS CHANGE NOTHING UNTIL THEY ARE MOVED — ON EVERY SKIN THAT
 // DECLARES THEM. (SS-1495)
 //
-// BIGGIE draws a post as the site will render it, and reads the site through
-// sybu-data.php, which publishes a skin's DECLARED options and nothing else.
-// A caption was declared nowhere, so BIGGIE had to guess.
+// BIGGIE draws a post as the site will render it. A caption was declared
+// nowhere, so it had to guess.
+//
+// CORRECTION, FROM MUSE'S REVIEW. This header used to say BIGGIE "reads the
+// site through sybu-data.php, which publishes a skin's DECLARED options and
+// nothing else". THAT IS FALSE. sybu-data.php returns categories, albums,
+// tags, titles, site_mode and publishing_policy -- no declared skin options,
+// and NO endpoint in this repo publishes them as JSON.
+//
+// What the checks below actually prove, narrower but real: the values survive
+// the apply-and-resolve pipeline the render and admin-preview path uses.
+// Which of those BIGGIE reads is OPEN.
 //
 // THIS FILE IS SKIN-AGNOSTIC ON PURPOSE. The same five controls are going on
 // to several skins one at a time — ALFRED and TILEZ share one caption rule
@@ -121,12 +130,12 @@ foreach ($skins as $slug => $options) {
         $check("  moved, it emits {$rule}", str_contains($moved, 'figcaption{' . $rule . ';}'));
     }
 
-    // ── the values reach the endpoint BIGGIE reads ────────────────────────
+    // the values survive the apply-and-resolve pipeline (NOT an endpoint)
     $settings = ['active_skin' => $slug, $slug . '__caption_color' => '#cc0000',
                  $slug . '__caption_align' => 'center'];
     snapsmack_apply_skin_settings($settings, $slug);
     $resolved = snapsmack_declared_skin_options($settings, $slug);
-    $check("  a saved colour and alignment reach sybu-data",
+    $check("  a saved colour and alignment survive the resolve pipeline",
            ($resolved['caption_color'] ?? null) === '#cc0000'
            && ($resolved['caption_align'] ?? null) === 'center');
     $check("  and an untouched control arrives at its default",
@@ -145,8 +154,8 @@ if ($failures) {
 }
 echo "Caption controls: PASS — on every skin that declares them, each default\n";
 echo "is that skin's own stylesheet value, the compiler changes nothing at the\n";
-echo "defaults, every control does something when moved, and all five reach the\n";
-echo "endpoint BIGGIE reads.\n";
+echo "defaults, every control does something when moved, and all five survive\n";
+echo "the resolve pipeline the render path uses.\n";
 echo "NOT PROVED HERE: the rendered page. The before/after computed styles were\n";
 echo "measured in a browser and are in the commit message.\n";
 // ===== SNAPSMACK EOF =====
