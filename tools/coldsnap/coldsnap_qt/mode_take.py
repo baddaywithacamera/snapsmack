@@ -1830,15 +1830,71 @@ class TakeMode(QWidget):
             self._changed()
 
     def _remove(self, idx: int):
+        if not (0 <= idx < len(self._bucket)):
+            return
+        removed = self._bucket[idx]
+        blocks = self._without_photo_references(
+            self.body.authoring_blocks(), str(removed.asset_uuid), idx + 1,
+        )
+        if self.body.is_biggie():
+            self.body.biggie.from_blocks(blocks)
+        else:
+            self.body.editor.setPlainText(biggie.serialize_blocks(blocks))
         del self._bucket[idx]
         if self._selected_photo_idx == idx:
             self._selected_photo_idx = min(idx, len(self._bucket) - 1) if self._bucket else None
         elif self._selected_photo_idx is not None and self._selected_photo_idx > idx:
             self._selected_photo_idx -= 1
-        if self._cover_idx >= len(self._bucket):
-            self._cover_idx = max(0, len(self._bucket) - 1)
+        if self._cover_idx == idx:
+            self._cover_idx = min(idx, len(self._bucket) - 1) if self._bucket else 0
+        elif self._cover_idx > idx:
+            self._cover_idx -= 1
+        if str(removed.asset_uuid) == self._slapper_asset_uuid:
+            self._stop_slapper_handoff()
+            self._slapper_asset_uuid = ""
         self._refresh_bucket()
         self._changed()
+
+    @classmethod
+    def _without_photo_references(cls, blocks, asset_uuid: str, position: int):
+        """Remove one bucket photograph and renumber legacy numeric references."""
+        cleaned = []
+        for block in list(blocks or []):
+            out = dict(block)
+            kind = out.get("type")
+            if kind == "image":
+                image_asset = str(out.get("asset_uuid") or "")
+                image_id = str(out.get("img_id") or "")
+                if image_asset == asset_uuid or image_id == "asset:" + asset_uuid:
+                    continue
+                if image_id.startswith("bucket:") and image_id[7:].isdigit():
+                    old_position = int(image_id[7:])
+                    if old_position == position:
+                        continue
+                    if old_position > position:
+                        out["img_id"] = "bucket:%d" % (old_position - 1)
+            elif kind == "mosaic" and out.get("order"):
+                order = []
+                for identity in out["order"]:
+                    key = str(identity)
+                    if key == asset_uuid:
+                        continue
+                    if key.isdigit():
+                        old_position = int(key)
+                        if old_position == position:
+                            continue
+                        identity = old_position - 1 if old_position > position else old_position
+                    order.append(identity)
+                if not order:
+                    continue
+                out["order"] = order
+            elif kind == "columns":
+                out["cols"] = [
+                    cls._without_photo_references(column, asset_uuid, position)
+                    for column in out.get("cols", [])
+                ]
+            cleaned.append(out)
+        return cleaned
 
     def _set_cover(self, idx: int):
         self._cover_idx = idx
@@ -1863,13 +1919,17 @@ class TakeMode(QWidget):
         up = QPushButton("▲")
         down = QPushButton("▼")
         lead = QPushButton("★ Lead")
-        remove = QPushButton("×")
-        remove.setObjectName("Danger")
+        self.remove_photo_btn = QPushButton("Remove photo")
+        self.remove_photo_btn.setObjectName("Danger")
+        self.remove_photo_btn.setToolTip(
+            "Remove the selected photograph from this draft. The source file is not deleted."
+        )
+        self.remove_photo_btn.setAccessibleName("Remove selected photo from draft")
         up.clicked.connect(lambda: self._manage_selected("up"))
         down.clicked.connect(lambda: self._manage_selected("down"))
         lead.clicked.connect(lambda: self._manage_selected("lead"))
-        remove.clicked.connect(lambda: self._manage_selected("remove"))
-        for button in (up, down, lead, remove):
+        self.remove_photo_btn.clicked.connect(lambda: self._manage_selected("remove"))
+        for button in (up, down, lead, self.remove_photo_btn):
             manage.addWidget(button)
         manage.addStretch(1)
         col.addLayout(manage)
