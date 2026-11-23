@@ -11,16 +11,12 @@ sudo useradd --system --no-create-home --shell /usr/sbin/nologin proxvox-ro
 sudo passwd proxvox-ro
 sudo setfacl -R -m u:proxvox-ro:rX /var/www/sites /var/log/apache2
 sudo setfacl -R -d -m u:proxvox-ro:rX /var/www/sites /var/log/apache2
-sudo setfacl -m u:proxvox-ro:x /etc/apache2 /etc/apache2/sites-enabled /etc/php /etc/php/8.3 /etc/php/8.3/apache2
-sudo setfacl -m u:proxvox-ro:r /etc/apache2/apache2.conf /etc/apache2/ports.conf /etc/php/8.3/apache2/php.ini
-sudo find /etc/apache2/sites-enabled -maxdepth 1 -type f ! -name '*.key' -exec setfacl -m u:proxvox-ro:r {} +
-sudo find /etc/apache2/sites-enabled -maxdepth 1 -type l ! -name '*.key' -exec sh -c 'for link do target=$(readlink -f "$link"); case "$target" in *.key) exit 1;; esac; setfacl -m u:proxvox-ro:r "$target"; done' sh {} +
-sudo -u proxvox-ro find /etc/apache2 /etc/php -type f -name '*.key' -readable -print
 ```
 
-The final command must print nothing. Replace `8.3` only with the installed PHP
-version. Do not grant recursive ACLs on `/etc/apache2` or `/etc/php`; add another
-named configuration file explicitly if a later read proves it is needed.
+The direct container account remains useful for ordinary site/log reads and
+the database tunnel. Root-level reads of every other container path, including
+configuration, private keys and hashes, use the host wrapper below; no separate
+per-container `/etc` ACL is needed.
 
 Append this exact `Match` block at the end of `sshd_config`, validate with `sshd -t`, then
 reload SSH. `internal-sftp -R` is the server-side write refusal. The account may
@@ -40,15 +36,15 @@ Match User proxvox-ro
 
 On CT110, open the MariaDB client as an administrator. Type a fresh password in
 place of the placeholder; use the same password for both source-bound accounts.
-Repeat the two `GRANT` lines for every site schema that PROX VOX must inspect.
-Never grant on `*.*`, `mysql.*`, `sys.*`, `performance_schema.*`, or
-`information_schema.*`.
+Sean's full-read ruling includes every schema, including system tables and
+credential hashes. These accounts remain source-bound and read-only: they have
+`SELECT` and `SHOW VIEW`, with no database write privilege.
 
 ```sql
 CREATE USER 'proxvox_ro'@'192.168.1.12' IDENTIFIED BY 'TYPE-A-FRESH-PASSWORD-HERE';
 CREATE USER 'proxvox_ro'@'192.168.1.16' IDENTIFIED BY 'TYPE-THE-SAME-PASSWORD-HERE';
-GRANT SELECT, SHOW VIEW ON `REPLACE_WITH_ONE_SITE_SCHEMA`.* TO 'proxvox_ro'@'192.168.1.12';
-GRANT SELECT, SHOW VIEW ON `REPLACE_WITH_ONE_SITE_SCHEMA`.* TO 'proxvox_ro'@'192.168.1.16';
+GRANT SELECT, SHOW VIEW ON *.* TO 'proxvox_ro'@'192.168.1.12';
+GRANT SELECT, SHOW VIEW ON *.* TO 'proxvox_ro'@'192.168.1.16';
 SHOW GRANTS FOR 'proxvox_ro'@'192.168.1.12';
 SHOW GRANTS FOR 'proxvox_ro'@'192.168.1.16';
 ```

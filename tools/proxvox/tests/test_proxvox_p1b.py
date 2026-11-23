@@ -203,16 +203,17 @@ class P1bTests(unittest.TestCase):
         with self.assertRaises(NoToken):
             save_container_secret("not-a-kind", "value", writer=lambda *_: True)
 
-    def test_provisioning_never_grants_system_schemas_or_recursive_etc(self):
+    def test_provisioning_grants_full_read_without_container_etc_acl(self):
         with open(
                 os.path.join(os.path.dirname(__file__), "..", "PROVISIONING.md"),
                 encoding="utf-8") as stream:
             plan = stream.read()
-        self.assertNotIn("ON *.*", plan)
-        self.assertNotIn("setfacl -R -m u:proxvox-ro:rX /etc", plan)
-        self.assertIn("! -name '*.key'", plan)
-        self.assertIn("sudo -u proxvox-ro find", plan)
-        self.assertIn("mysql.*", plan)
+        self.assertEqual(plan.count("GRANT SELECT, SHOW VIEW ON *.*"), 2)
+        self.assertNotIn("setfacl -m u:proxvox-ro:x /etc", plan)
+        self.assertNotIn("! -name '*.key'", plan)
+        self.assertNotIn("must print nothing", plan.lower())
+        self.assertIn("private keys and hashes", plan)
+        self.assertIn("including system tables and", plan)
 
 
 if __name__ == "__main__":
