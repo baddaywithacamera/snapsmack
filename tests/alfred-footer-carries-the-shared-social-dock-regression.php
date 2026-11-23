@@ -121,17 +121,20 @@ $flat = str_replace("\n", '', $html);
 
 $check('the strict renderer accepted ALFRED\'s real layout', $ok === true);
 $check('  and its output carries the dock', str_contains($html, 'class="social-dock social-dock-inline'));
-$check('  with all three configured links', substr_count($html, 'class="dock-link u-url"') === 3);
+$check('  with all three configured links in both approved placements',
+       substr_count($html, 'class="dock-link u-url"') === 6);
 $check('  each one rel="me", so the links stay IndieWeb-verifiable',
-       substr_count($html, 'rel="me noopener"') === 3);
+       substr_count($html, 'rel="me noopener"') === 6);
 $check('  and each one named for a screen reader',
        str_contains($html, '>Flickr</span>') && str_contains($html, '>Mastodon</span>'));
 
 // WHERE it rendered, not just that it rendered. The links were in the footer
 // before SS-1446 removed them and that is where they have to come back.
 $footerAt = strpos($flat, 'id="footer" class="inside"');
-$dockAt   = strpos($flat, 'class="social-dock');
+$dockAt   = strrpos($flat, 'class="social-dock');
 $footerEnd = strpos($flat, '</footer>');
+$check('  with a distinct dock reserved for the footer',
+       substr_count($flat, 'class="social-dock social-dock-inline') === 2);
 $check('  inside ALFRED\'s footer, where its links used to be',
        $footerAt !== false && $dockAt !== false && $footerEnd !== false
        && $dockAt > $footerAt && $dockAt < $footerEnd);
