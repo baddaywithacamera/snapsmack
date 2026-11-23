@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
     QComboBox, QPushButton, QFileDialog, QMessageBox, QProgressDialog, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
     QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton, QSlider, QDateEdit,
+    QMenu,
 )
 
 import sumna_offline as O
@@ -61,6 +62,9 @@ class MosaicPreview(QWidget):
     """Large live WYSIWYG preview matching BIGGIE and ss-engine-mosaic.js geometry."""
 
     swapRequested = Signal(int, int)
+    moveRequested = Signal(int, int)
+    sideSwapRequested = Signal(int)
+    reverseRequested = Signal()
 
     def __init__(self, parent=None, *, content_width: int = 760, gap: int = 4):
         super().__init__(parent)
@@ -208,6 +212,37 @@ class MosaicPreview(QWidget):
         self.update()
         if source is not None and target is not None and source != target:
             self.swapRequested.emit(source, target)
+
+    def _arrangement_menu(self, row):
+        ordered_rows = [tile_row for tile_row, _rect in self._rects]
+        if row not in ordered_rows:
+            return None
+        position = ordered_rows.index(row)
+        menu = QMenu(self)
+        earlier = menu.addAction(
+            "Move this image earlier",
+            lambda: self.moveRequested.emit(row, -1),
+        )
+        later = menu.addAction(
+            "Move this image later",
+            lambda: self.moveRequested.emit(row, 1),
+        )
+        earlier.setEnabled(position > 0)
+        later.setEnabled(position < len(ordered_rows) - 1)
+        menu.addAction(
+            "Swap this image to the other side",
+            lambda: self.sideSwapRequested.emit(row),
+        )
+        menu.addSeparator()
+        menu.addAction("Reverse arrangement", self.reverseRequested.emit)
+        return menu
+
+    def contextMenuEvent(self, event):
+        row = self._row_at(event.pos())
+        menu = self._arrangement_menu(row)
+        if menu is None:
+            return
+        menu.exec(event.globalPos())
 
 
 class _PageRuler(QWidget):
@@ -1741,6 +1776,64 @@ class TakeMode(QWidget):
             rebuild_grid()
             refresh_preview()
 
+        def move_preview_row(row, delta):
+            included_rows = [
+                position for position, bucket_index in enumerate(display_order)
+                if bucket_index in checked_set
+            ]
+            if row not in included_rows:
+                return
+            current = included_rows.index(row)
+            target_index = current + int(delta)
+            if not 0 <= target_index < len(included_rows):
+                return
+            target = included_rows[target_index]
+            display_order[row], display_order[target] = display_order[target], display_order[row]
+            rebuild_grid()
+            refresh_preview()
+
+        def swap_preview_side(row):
+            included_rows = [
+                position for position, bucket_index in enumerate(display_order)
+                if bucket_index in checked_set
+            ]
+            if row not in included_rows or len(included_rows) < 2:
+                return
+            if len(included_rows) == 3 and preset.currentData() in ("one-left", "one-right"):
+                opposite = "one-right" if preset.currentData() == "one-left" else "one-left"
+                target_layout = preset.findData(opposite)
+                if target_layout >= 0:
+                    preset.setCurrentIndex(target_layout)
+                return
+            rects = {tile_row: rect for tile_row, rect in preview._rects}
+            source_rect = rects.get(row)
+            if source_rect is None:
+                return
+            source_x = source_rect.center().x()
+            target = max(
+                (candidate for candidate in included_rows if candidate != row),
+                key=lambda candidate: abs(rects[candidate].center().x() - source_x),
+            )
+            display_order[row], display_order[target] = display_order[target], display_order[row]
+            rebuild_grid()
+            refresh_preview()
+
+        def reverse_arrangement():
+            included_rows = [
+                position for position, bucket_index in enumerate(display_order)
+                if bucket_index in checked_set
+            ]
+            reversed_photos = [display_order[position] for position in reversed(included_rows)]
+            for position, bucket_index in zip(included_rows, reversed_photos):
+                display_order[position] = bucket_index
+            if len(included_rows) == 3 and preset.currentData() in ("one-left", "one-right"):
+                opposite = "one-right" if preset.currentData() == "one-left" else "one-left"
+                target_layout = preset.findData(opposite)
+                if target_layout >= 0:
+                    preset.setCurrentIndex(target_layout)
+            rebuild_grid()
+            refresh_preview()
+
         def rotate_current(degrees):
             bi = active_bucket_idx[0]
             if bi is None or bi not in display_order:
@@ -1820,6 +1913,9 @@ class TakeMode(QWidget):
         suggest.clicked.connect(suggest_arrangement)
         preset.currentIndexChanged.connect(lambda _index: refresh_preview())
         preview.swapRequested.connect(swap_rows)
+        preview.moveRequested.connect(move_preview_row)
+        preview.sideSwapRequested.connect(swap_preview_side)
+        preview.reverseRequested.connect(reverse_arrangement)
 
         def move(delta):
             bi = active_bucket_idx[0]
@@ -1846,6 +1942,9 @@ class TakeMode(QWidget):
         dialog._mosaic_checked_indices = checked_indices
         dialog._mosaic_selected_count_lbl = selected_count
         dialog._mosaic_suggest_btn = suggest
+        dialog._mosaic_move_preview = move_preview_row
+        dialog._mosaic_swap_side = swap_preview_side
+        dialog._mosaic_reverse = reverse_arrangement
 
         rebuild_grid()
         refresh_layouts()
@@ -2888,24 +2987,15 @@ class TakeMode(QWidget):
 
         tools = QHBoxLayout()
         tools.setSpacing(4)
-        self.flip_h_btn = QPushButton("⇆ Flip H")
-        self.flip_v_btn = QPushButton("⇅ Flip V")
         self.crop_btn = QPushButton("Crop")
         self.caption_btn = QPushButton("Caption")
         self.metadata_btn = QPushButton("Metadata")
-        for button in (self.flip_h_btn, self.flip_v_btn, self.crop_btn,
-                       self.caption_btn, self.metadata_btn):
+        for button in (self.crop_btn, self.caption_btn, self.metadata_btn):
             button.setObjectName("PhotoTool")
             button.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
             tools.addWidget(button)
-        self.flip_h_btn.setCheckable(True)
-        self.flip_v_btn.setCheckable(True)
         self.caption_btn.setCheckable(True)
         self.metadata_btn.setCheckable(True)
-        self.flip_h_btn.clicked.connect(
-            lambda: self._flip_selected("edit_flip_h"))
-        self.flip_v_btn.clicked.connect(
-            lambda: self._flip_selected("edit_flip_v"))
         self.crop_btn.clicked.connect(self._crop_selected)
         self.caption_btn.clicked.connect(
             lambda checked: self._show_photo_detail("caption", checked))
@@ -3243,13 +3333,6 @@ class TakeMode(QWidget):
             self.caption_panel.setVisible(False)
             self.metadata_panel.setVisible(bool(checked))
 
-    def _flip_selected(self, attr: str):
-        image = self._selected_image()
-        if image is None:
-            return
-        setattr(image, attr, not bool(getattr(image, attr, False)))
-        self._render_selected_edit()
-
     def _crop_selected(self):
         image = self._selected_image()
         if image is None:
@@ -3322,8 +3405,6 @@ class TakeMode(QWidget):
             f"SELECTED — {name}{' · EDITED' if edited else ''}")
         self._updating_photo_fields = True
         try:
-            self.flip_h_btn.setChecked(bool(getattr(image, "edit_flip_h", False)))
-            self.flip_v_btn.setChecked(bool(getattr(image, "edit_flip_v", False)))
             self.photo_alt.setText(getattr(image, "alt", "") or "")
             self.photo_caption.setPlainText(getattr(image, "caption", "") or "")
             for attr, edit in self.photo_meta_fields.items():
