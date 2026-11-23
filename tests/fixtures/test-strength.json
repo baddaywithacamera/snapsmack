@@ -66,11 +66,21 @@
         ]
     },
     "alfred-footer-carries-the-shared-social-dock-regression.php": {
-        "assertions": 21,
+        "assertions": 22,
         "predicates": 19,
         "thresholds": [
-            3,
-            3
+            2,
+            6,
+            6
+        ]
+    },
+    "alfred-header-parity-regression.php": {
+        "assertions": 19,
+        "predicates": 16,
+        "thresholds": [
+            2,
+            2,
+            4
         ]
     },
     "alfred-landing-is-not-drawn-in-the-reading-column-regression.php": {

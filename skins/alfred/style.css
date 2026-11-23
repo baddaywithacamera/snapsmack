@@ -784,6 +784,7 @@ input[type="button"],
 }
 
 .blog-title {
+    display: block;
     font-size: 1.75em;
     font-weight: 500;
     letter-spacing: 0.025em;
@@ -791,6 +792,7 @@ input[type="button"],
     text-transform: uppercase;
     text-align: center;
     text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+    width: 100%;
 }
 
 .blog-title a {
@@ -816,6 +818,24 @@ input[type="button"],
     margin-top: 25px;
     text-align: center;
     text-shadow: 0 1px 0 rgba(0,0,0,0.2);
+}
+
+/* The same CMS-owned dock appears beneath the masthead and in the footer.
+   ALFRED owns only its placement and Hitchcock-sized presentation; accounts,
+   links and visibility remain the shared component's data and decisions. */
+.site-header .social-dock-inline {
+    justify-content: center;
+    margin: 24px auto 0;
+}
+
+.site-header .dock-link {
+    width: 36px;
+    height: 36px;
+}
+
+.site-header .dock-link svg {
+    width: 16px;
+    height: 16px;
 }
 
 /* Header Background Image
