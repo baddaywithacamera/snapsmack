@@ -122,20 +122,57 @@ def test_open_published_flushes_pending_autosave_before_network(tmp_path, monkey
     ]))
     observed = {}
 
+    class FakeThread:
+        def __init__(self, *, target, name, daemon):
+            observed.update(target=target, name=name, daemon=daemon)
+
+        def start(self):
+            observed["started"] = True
+
     class Poster:
         def list_posts(self):
             observed["drafts_at_network"] = session.list_drafts()
             return []
 
     monkeypatch.setattr(mode, "_poster_and_url", lambda: (Poster(), "https://example.test"))
+    monkeypatch.setattr("coldsnap_qt.mode_take.threading.Thread", FakeThread)
     monkeypatch.setattr("coldsnap_qt.mode_take.QMessageBox.information",
                         lambda *_args, **_kwargs: None)
     mode._open_published()
 
+    assert observed["started"] is True
+    assert observed["name"] == "coldsnap-list-published"
+    assert "drafts_at_network" not in observed
+    observed["target"]()
     assert len(observed["drafts_at_network"]) == 1
     saved = observed["drafts_at_network"][0]
     assert saved.title == "Unsaved title"
     assert "Words still in the editor" in saved.caption
+    mode.close()
+
+
+def test_published_post_list_fetch_stays_off_gui_thread(tmp_path, monkeypatch):
+    mode, _session = _mode_with_session(tmp_path, monkeypatch)
+    started = {}
+
+    class FakeThread:
+        def __init__(self, *, target, name, daemon):
+            started.update(target=target, name=name, daemon=daemon)
+
+        def start(self):
+            started["started"] = True
+
+    class Poster:
+        def list_posts(self):
+            raise AssertionError("list_posts must not run on the GUI thread")
+
+    monkeypatch.setattr("coldsnap_qt.mode_take.threading.Thread", FakeThread)
+    mode._start_published_list(Poster())
+
+    assert started["started"] is True
+    assert started["daemon"] is True
+    assert started["name"] == "coldsnap-list-published"
+    assert callable(started["target"])
     mode.close()
 
 
