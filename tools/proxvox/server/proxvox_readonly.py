@@ -17,16 +17,12 @@ import sys
 
 
 REMOTE_COMMAND_TIMEOUT_SECONDS = 60
+READ_CHUNK_BYTES = 1024 * 1024
 
 # These are the files whose contents can authorize a write or impersonate the
 # host. Reads return metadata plus SHA-256, never content. The same list is
 # applied to the Proxmox host and to paths resolved inside every container.
 WRITE_KEY_PATHS = (
-    "/etc/pve/priv/tfa.cfg",
-    "/etc/pve/priv/authkey.key",
-    "/etc/pve/priv/pve-root-ca.key",
-    "/etc/pve/priv/acme/*/account.key",
-    "/etc/pve/priv/ceph*.keyring",
     "/etc/pve/nodes/*/pve-ssl.key",
     "/etc/pve/nodes/*/pveproxy-ssl.key",
     "/etc/corosync/authkey",
@@ -39,6 +35,14 @@ WRITE_KEY_PATHS = (
     "/etc/letsencrypt/archive/*/privkey*.pem",
     "*.p12",
     "*.pfx",
+)
+
+WRITE_KEY_TREES = (
+    "/etc/pve/priv",
+)
+
+WRITE_KEY_DATABASES = (
+    "/var/lib/pve-cluster/config.db",
 )
 
 PRIVATE_KEY_MARKERS = (
@@ -91,9 +95,18 @@ def _run(argv):
 
 
 def _is_write_key_path(path):
-    normalized = posixpath.normpath(str(path or ""))
+    normalized = posixpath.normpath(str(path or "").replace("\\", "/"))
     if normalized.endswith(".pub"):
         return False
+    for tree in WRITE_KEY_TREES:
+        tree = posixpath.normpath(str(tree).replace("\\", "/"))
+        if (normalized == tree or normalized.startswith(tree + "/")
+                or (tree + "/") in normalized):
+            return True
+    for database in WRITE_KEY_DATABASES:
+        database = posixpath.normpath(str(database).replace("\\", "/"))
+        if normalized.startswith(database) or (database in normalized):
+            return True
     return any(fnmatch.fnmatchcase(normalized, pattern) for pattern in WRITE_KEY_PATHS)
 
 
@@ -111,8 +124,8 @@ def _sha256_stream(stream, prefix=b""):
     return digest.hexdigest()
 
 
-def _metadata_payload(path, *, sha256):
-    payload = _stat_payload(path)
+def _metadata_payload(path, *, sha256, row=None):
+    payload = _stat_payload(path, row=row)
     payload.update({
         "sha256": sha256,
         "content_policy": "metadata-sha256-only",
@@ -120,11 +133,49 @@ def _metadata_payload(path, *, sha256):
     return payload
 
 
-def _stat_payload(path):
-    row = os.stat(path)
+def _stat_payload(path, row=None):
+    row = row or os.stat(path)
     return {
         "path": path, "size": row.st_size, "mode": row.st_mode,
         "mtime": row.st_mtime, "directory": os.path.isdir(path),
+    }
+
+
+def _open_host(path):
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    return os.fdopen(os.open(path, flags), "rb")
+
+
+def _host_read_info(path):
+    with _open_host(path) as stream:
+        row = os.fstat(stream.fileno())
+        prefix = stream.read(4096)
+        if _is_write_key_path(path) or _looks_like_private_key(prefix):
+            return _metadata_payload(
+                path, sha256=_sha256_stream(stream, prefix), row=row,
+            )
+        return {
+            **_stat_payload(path, row=row),
+            "content_policy": "chunked",
+            "chunk_bytes": READ_CHUNK_BYTES,
+        }
+
+
+def _host_read_chunk(path, offset, length):
+    offset = max(0, int(offset))
+    length = max(1, min(READ_CHUNK_BYTES, int(length)))
+    with _open_host(path) as stream:
+        prefix = stream.read(4096)
+        if _is_write_key_path(path) or _looks_like_private_key(prefix):
+            raise ValueError("file content is withheld; request host-read metadata")
+        stream.seek(offset)
+        data = stream.read(length)
+        size = os.fstat(stream.fileno()).st_size
+    return {
+        "path": path, "offset": offset, "bytes": len(data),
+        "content_base64": base64.b64encode(data).decode("ascii"),
+        "eof": offset + len(data) >= size,
     }
 
 
@@ -138,21 +189,19 @@ def dispatch(command):
         rows = json.loads(raw.decode("utf-8"))
         return {"containers": [row for row in rows if row.get("type") == "lxc"]}
 
-    if len(args) >= 2 and args[0] in {"host-list", "host-stat", "host-read"}:
+    if len(args) >= 2 and args[0] in {
+            "host-list", "host-stat", "host-read", "host-read-chunk"}:
         path = _absolute(args[1])
         if args[0] == "host-list" and len(args) == 2:
             return {"path": path, "entries": sorted(os.listdir(path))}
         if args[0] == "host-stat" and len(args) == 2:
             return _stat_payload(path)
         if args[0] == "host-read" and len(args) == 2:
-            with open(path, "rb") as stream:
-                prefix = stream.read(4096)
-                if _is_write_key_path(path) or _looks_like_private_key(prefix):
-                    return _metadata_payload(path, sha256=_sha256_stream(stream, prefix))
-                data = prefix + stream.read()
-            return {"path": path, "content_base64": base64.b64encode(data).decode("ascii")}
+            return _host_read_info(path)
+        if args[0] == "host-read-chunk" and len(args) == 4:
+            return _host_read_chunk(path, args[2], args[3])
 
-    if len(args) >= 3 and args[0] in {"ct-list", "ct-stat", "ct-read"}:
+    if len(args) >= 3 and args[0] in {"ct-list", "ct-stat", "ct-read", "ct-read-chunk"}:
         guest = _vmid(args[1])
         path = _container_path(args[2])
         prefix = ["/usr/sbin/pct", "exec", guest, "--"]
@@ -183,9 +232,30 @@ def dispatch(command):
                         "size": int(size), "mode": int(mode, 16), "mtime": int(mtime),
                         "kind": kind, "sha256": digest,
                         "content_policy": "metadata-sha256-only"}
-            data = _run(prefix + ["/bin/cat", "--", resolved])
+            raw = _run(prefix + ["/usr/bin/stat", "-Lc", "%s\t%f\t%Y\t%F", "--", resolved])
+            size, mode, mtime, kind = raw.decode("utf-8", "replace").strip().split("\t", 3)
             return {"vmid": int(guest), "path": path, "resolved_path": resolved,
-                    "content_base64": base64.b64encode(data).decode("ascii")}
+                    "size": int(size), "mode": int(mode, 16), "mtime": int(mtime),
+                    "kind": kind, "content_policy": "chunked",
+                    "chunk_bytes": READ_CHUNK_BYTES}
+        if args[0] == "ct-read-chunk" and len(args) == 5:
+            offset = max(0, int(args[3]))
+            length = max(1, min(READ_CHUNK_BYTES, int(args[4])))
+            resolved_raw = _run(prefix + ["/usr/bin/readlink", "-f", "--", path])
+            resolved = resolved_raw.decode("utf-8", "surrogateescape").strip()
+            if not resolved.startswith("/"):
+                raise ValueError("container path could not be resolved")
+            sample = _run(prefix + ["/usr/bin/head", "-c", "4096", "--", resolved])
+            if _is_write_key_path(resolved) or _looks_like_private_key(sample):
+                raise ValueError("file content is withheld; request ct-read metadata")
+            data = _run(prefix + [
+                "/usr/bin/dd", "if=" + resolved, "iflag=skip_bytes,count_bytes",
+                "skip=" + str(offset), "count=" + str(length), "status=none",
+            ])
+            return {"vmid": int(guest), "path": path, "resolved_path": resolved,
+                    "offset": offset, "bytes": len(data),
+                    "content_base64": base64.b64encode(data).decode("ascii"),
+                    "eof": len(data) < length}
 
     raise ValueError("operation is not in the read-only protocol")
 

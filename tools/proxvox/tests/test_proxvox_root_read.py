@@ -60,7 +60,12 @@ class RootReadTests(unittest.TestCase):
         self.replies = {
             "inventory": (0, {"ok": True, "data": {"containers": [{"vmid": 102}, {"vmid": 106}, {"vmid": 110}]}}),
             "host-list /etc/pve": (0, {"ok": True, "data": {"entries": ["nodes", "storage.cfg"]}}),
-            "ct-read 110 /etc/mysql/my.cnf": (0, {"ok": True, "data": {"content_base64": encoded}}),
+            "ct-read 110 /etc/mysql/my.cnf": (0, {"ok": True, "data": {
+                "size": 16, "content_policy": "chunked", "chunk_bytes": 1_048_576,
+            }}),
+            "ct-read-chunk 110 /etc/mysql/my.cnf 0 1048576": (0, {"ok": True, "data": {
+                "content_base64": encoded, "bytes": 16, "eof": True,
+            }}),
             "host-read /root/.ssh/id_rsa": (0, {"ok": True, "data": {
                 "path": "/root/.ssh/id_rsa", "size": 411,
                 "sha256": "a" * 64, "content_policy": "metadata-sha256-only",
@@ -116,7 +121,12 @@ class RootReadTests(unittest.TestCase):
         self.assertEqual(listed["entries"], ["config.bin"])
         with mock.patch.object(proxvox_readonly, "_absolute", return_value=path):
             read = proxvox_readonly.dispatch("host-read /fixture/config.bin")
-        self.assertEqual(base64.b64decode(read["content_base64"]), b"abc")
+        self.assertEqual(read["content_policy"], "chunked")
+        self.assertNotIn("content_base64", read)
+        with mock.patch.object(proxvox_readonly, "_absolute", return_value=path):
+            chunk = proxvox_readonly.dispatch("host-read-chunk /fixture/config.bin 0 1048576")
+        self.assertEqual(base64.b64decode(chunk["content_base64"]), b"abc")
+        self.assertTrue(chunk["eof"])
         with self.assertRaises(ValueError):
             proxvox_readonly.dispatch("host-write /tmp/x")
 
@@ -127,6 +137,11 @@ class RootReadTests(unittest.TestCase):
             "/etc/pve/priv/pve-root-ca.key",
             "/etc/pve/priv/acme/default/account.key",
             "/etc/pve/priv/ceph.client.admin.keyring",
+            "/etc/pve/priv/a-future-file-with-an-unknown-name",
+            "/tmp/root-view/etc/pve/priv/future/deeply-nested.secret",
+            "/var/lib/pve-cluster/config.db",
+            "/var/lib/pve-cluster/config.db-wal",
+            "/var/lib/pve-cluster/config.db-shm",
             "/etc/pve/nodes/proxmox/pve-ssl.key",
             "/etc/pve/nodes/proxmox/pveproxy-ssl.key",
             "/etc/corosync/authkey",
@@ -195,22 +210,30 @@ class RootReadTests(unittest.TestCase):
         self.assertEqual(result["content_policy"], "metadata-sha256-only")
         self.assertFalse(any("/bin/cat" in command for command in calls))
 
-    def test_actual_wrapper_process_returns_content_for_ordinary_and_only_hash_for_private_key(self):
+    def test_actual_wrapper_process_chunks_ordinary_and_withholds_every_secret_tree_file(self):
         wrapper = os.path.join(os.path.dirname(__file__), "..", "server", "proxvox_readonly.py")
         ordinary = os.path.join(self.tmp, "ordinary config.txt")
         private = os.path.join(self.tmp, "custom-name.pem")
+        secret_tree = os.path.join(self.tmp, "etc", "pve", "priv", "future", "unknown.bin")
+        database = os.path.join(self.tmp, "var", "lib", "pve-cluster", "config.db-wal")
+        os.makedirs(os.path.dirname(secret_tree))
+        os.makedirs(os.path.dirname(database))
         with open(ordinary, "wb") as stream:
             stream.write(b"ordinary-content")
         key_bytes = b"-----BEGIN OPENSSH PRIVATE KEY-----\nnot-a-real-key\n"
         with open(private, "wb") as stream:
             stream.write(key_bytes)
+        with open(secret_tree, "wb") as stream:
+            stream.write(b"future-secret-with-no-recognized-header")
+        with open(database, "wb") as stream:
+            stream.write(b"pmxcfs-database-companion")
 
-        def drive(path):
+        def drive(command, path):
             absolute = os.path.abspath(path).replace("\\", "/")
             if len(absolute) >= 3 and absolute[1:3] == ":/":
                 absolute = absolute[2:]
             env = dict(os.environ)
-            env["SSH_ORIGINAL_COMMAND"] = "host-read " + shlex.quote(absolute)
+            env["SSH_ORIGINAL_COMMAND"] = command.format(path=shlex.quote(absolute))
             run = subprocess.run(
                 [sys.executable, wrapper], env=env, stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
@@ -218,25 +241,74 @@ class RootReadTests(unittest.TestCase):
             self.assertEqual(run.returncode, 0, run.stderr.decode("utf-8", "replace"))
             return json.loads(run.stdout.decode("utf-8"))["data"]
 
-        plain_result = drive(ordinary)
-        self.assertEqual(base64.b64decode(plain_result["content_base64"]), b"ordinary-content")
-        key_result = drive(private)
-        self.assertEqual(key_result["content_policy"], "metadata-sha256-only")
-        self.assertEqual(key_result["sha256"], hashlib.sha256(key_bytes).hexdigest())
-        self.assertNotIn("content_base64", key_result)
+        plain_info = drive("host-read {path}", ordinary)
+        self.assertEqual(plain_info["content_policy"], "chunked")
+        self.assertNotIn("content_base64", plain_info)
+        plain_chunk = drive("host-read-chunk {path} 0 1048576", ordinary)
+        self.assertEqual(base64.b64decode(plain_chunk["content_base64"]), b"ordinary-content")
+        for path, expected_hash in ((private, hashlib.sha256(key_bytes).hexdigest()),):
+            with self.subTest(path=path):
+                result = drive("host-read {path}", path)
+                self.assertEqual(result["content_policy"], "metadata-sha256-only")
+                self.assertEqual(result["sha256"], expected_hash)
+                self.assertNotIn("content_base64", result)
 
-    def test_complete_file_larger_than_old_ceiling_is_returned(self):
-        content = b"x" * (16_777_216 + 1)
+        # Drive the real dispatcher against unknown names in temporary stand-ins
+        # for both protected namespaces. This runs the same policy and file I/O
+        # as the forced-command wrapper without writing into the machine's /etc.
+        protected_cases = (
+            (secret_tree, "WRITE_KEY_TREES", (os.path.dirname(os.path.dirname(secret_tree)),)),
+            (database, "WRITE_KEY_DATABASES", (database[:-4],)),
+        )
+        for path, setting, value in protected_cases:
+            with (self.subTest(path=path),
+                  mock.patch.object(proxvox_readonly, setting, value),
+                  mock.patch.object(proxvox_readonly, "_absolute", return_value=path)):
+                result = proxvox_readonly.dispatch("host-read " + shlex.quote(path))
+                self.assertEqual(result["content_policy"], "metadata-sha256-only")
+                self.assertNotIn("content_base64", result)
+
+    def test_large_file_is_chunked_without_loading_it_into_host_memory(self):
         path = os.path.join(self.tmp, "large.bin")
         with open(path, "wb") as stream:
-            stream.write(content)
+            stream.seek((512 * 1024 * 1024) - 1)
+            stream.write(b"z")
         with mock.patch.object(proxvox_readonly, "_absolute", return_value=path):
-            read = proxvox_readonly.dispatch("host-read /fixture/large.bin")
-        self.assertEqual(base64.b64decode(read["content_base64"]), content)
+            info = proxvox_readonly.dispatch("host-read /fixture/large.bin")
+        self.assertEqual(info["size"], 512 * 1024 * 1024)
+        self.assertEqual(info["content_policy"], "chunked")
+        self.assertNotIn("content_base64", info)
+        with mock.patch.object(proxvox_readonly, "_absolute", return_value=path):
+            first = proxvox_readonly.dispatch("host-read-chunk /fixture/large.bin 0 1048576")
+        self.assertEqual(first["bytes"], 1_048_576)
+        self.assertFalse(first["eof"])
+
+        content = b"x" * (1_048_576 + 17)
         self.replies["host-read /var/log/large.bin"] = (
-            0, {"ok": True, "data": {"content_base64": base64.b64encode(content).decode()}},
+            0, {"ok": True, "data": {
+                "size": len(content), "content_policy": "chunked", "chunk_bytes": 1_048_576,
+            }},
         )
-        self.assertEqual(self.broker.read_file("/var/log/large.bin"), content)
+        self.replies["host-read-chunk /var/log/large.bin 0 1048576"] = (
+            0, {"ok": True, "data": {
+                "content_base64": base64.b64encode(content[:1_048_576]).decode(),
+                "bytes": 1_048_576, "eof": False,
+            }},
+        )
+        self.replies["host-read-chunk /var/log/large.bin 1048576 1048576"] = (
+            0, {"ok": True, "data": {
+                "content_base64": base64.b64encode(content[1_048_576:]).decode(),
+                "bytes": 17, "eof": True,
+            }},
+        )
+        sink = io.BytesIO()
+        self.assertEqual(self.broker.read_to("/var/log/large.bin", sink), len(content))
+        self.assertEqual(sink.getvalue(), content)
+        records = self.audit.records()
+        chunk_records = [row for row in records if row["action"] == "root_read_result"
+                         and row["detail"].get("operation") == "host-read-chunk"]
+        self.assertEqual([row["detail"]["path"] for row in chunk_records],
+                         ["/var/log/large.bin", "/var/log/large.bin"])
 
 
 if __name__ == "__main__":

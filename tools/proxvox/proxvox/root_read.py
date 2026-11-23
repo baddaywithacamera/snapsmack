@@ -5,6 +5,7 @@
 """
 
 import base64
+import io
 import json
 import shlex
 import socket
@@ -14,6 +15,7 @@ from .credentials import load_container_secret
 
 
 REMOTE_COMMAND_TIMEOUT_SECONDS = 60
+READ_CHUNK_BYTES = 1024 * 1024
 
 
 class RootReadBroker:
@@ -42,7 +44,10 @@ class RootReadBroker:
 
     def _call(self, operation, *arguments):
         command = shlex.join([operation] + [str(item) for item in arguments])
-        target_path = str(arguments[-1]) if arguments else ""
+        if operation.startswith("ct-"):
+            target_path = str(arguments[1]) if len(arguments) > 1 else ""
+        else:
+            target_path = str(arguments[0]) if arguments else ""
         self.audit.record("root_read_attempt", {
             "operation": operation, "target": "ct" if operation.startswith("ct-") else "host",
             "path": target_path,
@@ -107,12 +112,34 @@ class RootReadBroker:
 
     def read_file(self, path, vmid=None):
         """Return bytes for ordinary files, or metadata+SHA-256 for write keys."""
+        target = io.BytesIO()
+        result = self.read_to(path, target, vmid=vmid)
+        return result if isinstance(result, dict) else target.getvalue()
+
+    def read_to(self, path, target, vmid=None):
+        """Stream an ordinary file into a binary writer with bounded memory."""
         data = (self._call("host-read", path) if vmid is None
                 else self._call("ct-read", int(vmid), path))
         if data.get("content_policy") == "metadata-sha256-only":
             return data
+        if data.get("content_policy") == "chunked":
+            offset = 0
+            while True:
+                chunk = (self._call("host-read-chunk", path, offset, READ_CHUNK_BYTES)
+                         if vmid is None else self._call(
+                             "ct-read-chunk", int(vmid), path, offset, READ_CHUNK_BYTES))
+                try:
+                    raw = base64.b64decode(chunk["content_base64"], validate=True)
+                except (KeyError, TypeError, ValueError) as err:
+                    raise Refused("The root read wrapper returned invalid chunk data.") from err
+                target.write(raw)
+                offset += len(raw)
+                if chunk.get("eof") or not raw:
+                    break
+            return offset
         try:
-            return base64.b64decode(data["content_base64"], validate=True)
+            target.write(base64.b64decode(data["content_base64"], validate=True))
+            return target.tell() if hasattr(target, "tell") else None
         except (KeyError, TypeError, ValueError) as err:
             self.audit.record("root_read_refused", {
                 "operation": "read", "why": "invalid base64 response",
