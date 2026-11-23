@@ -189,14 +189,14 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
           `${width}: screen-reader labels occupy no visible navigation space`);
         assert.equal(control.label.overflow, 'hidden', `${width}: screen-reader labels are clipped`);
         assert.equal(control.label.whiteSpace, 'nowrap', `${width}: screen-reader labels cannot wrap over controls`);
-        assert.equal(control.dockBackgroundVariable, 'rgba(255,255,255,.7)',
-          `${width}: the prepared ALFRED model carries its white-circle default`);
-        assert.equal(control.dockIconVariable, '#1a1a1a',
-          `${width}: the prepared ALFRED model carries its dark-glyph default`);
-        assert.equal(control.backgroundColor, 'rgba(255, 255, 255, 0.7)',
-          `${width}: ALFRED defaults to a white dock circle`);
-        assert.equal(control.color, 'rgb(26, 26, 26)',
-          `${width}: ALFRED defaults to a dark grey glyph`);
+        assert.equal(control.dockBackgroundVariable, 'rgba(0,0,0,.7)',
+          `${width}: the prepared ALFRED model carries its dark-canvas fallback`);
+        assert.equal(control.dockIconVariable, '#ffffff',
+          `${width}: the prepared ALFRED model carries its owner-editable white default`);
+        assert.equal(control.backgroundColor, 'rgba(0, 0, 0, 0)',
+          `${width}: ALFRED keeps the dock circle transparent`);
+        assert.equal(control.color, 'rgb(255, 255, 255)',
+          `${width}: ALFRED defaults the ring and outline glyph to white`);
       }
       assert.ok(result.dock.left >= result.footer.left - 0.5 && result.dock.right <= result.footer.right + 0.5
         && result.dock.top >= result.footer.top - 0.5 && result.dock.bottom <= result.footer.bottom + 0.5,

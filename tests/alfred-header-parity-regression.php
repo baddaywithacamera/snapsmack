@@ -39,7 +39,9 @@ $check('the same dedicated CMS model feeds both placements',
 $check('the header dock is centred by ALFRED presentation CSS',
        preg_match('/\.site-header \.social-dock-inline\s*\{[^}]*justify-content:\s*center;[^}]*margin:\s*24px auto 0;/s', $css) === 1);
 $check('the header circles use the owner-approved compact size',
-       preg_match('/\.site-header \.dock-link\s*\{[^}]*width:\s*36px;[^}]*height:\s*36px;/s', $css) === 1);
+       preg_match('/\.site-header \.dock-link\s*\{[^}]*flex:\s*0 0 36px;[^}]*width:\s*36px;[^}]*height:\s*36px;/s', $css) === 1);
+$check('header and footer use a transparent ring coloured by the shared appearance setting',
+       preg_match('/\.site-header \.dock-link,[\s\S]*?#system-footer \.dock-link:hover\s*\{[^}]*background:\s*transparent;[^}]*border-color:\s*var\(--dock-icon\);/s', $css) === 1);
 
 $forbidden = ['mccormickphotography', 'old.mccormickphotography',
               'Saving the beauty', 'Sean McCormick Signature'];

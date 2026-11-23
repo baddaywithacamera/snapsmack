@@ -833,10 +833,13 @@ input[type="button"],
 #system-footer .dock-link,
 #system-footer .dock-link:hover {
     color: var(--dock-icon);
+    background: transparent;
+    border-color: var(--dock-icon);
     text-decoration: none;
 }
 
 .site-header .dock-link {
+    flex: 0 0 36px;
     width: 36px;
     height: 36px;
 }
@@ -1610,8 +1613,13 @@ p.comment-form-author { margin-right: 5%; }
    viewport edge, because #footer .inside is full-bleed rather than using
    ALFRED's 1040px .section-inner lane. Checked at 1920, 1440 and 1024. */
 #system-footer .social-dock-inline {
+    flex-wrap: wrap;
     justify-content: center;
     margin-bottom: 24px;
+}
+
+#system-footer .dock-link {
+    flex: 0 0 48px;
 }
 
 

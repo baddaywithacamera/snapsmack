@@ -66,9 +66,10 @@ echo "\nSTAGE 2 — THE DOCK'S STYLESHEET REACHES ALFRED, FROM ALFRED'S MANIFEST
 $check('ALFRED declares a social_dock block', is_array($manifest['social_dock'] ?? null));
 $check('  placed inline, in the footer flow',
        ($manifest['social_dock']['position'] ?? '') === 'inline');
-$check('  defaults to white circles with dark glyphs',
-       ($manifest['social_dock']['default_color_mode'] ?? '') === 'dark'
-       && ($manifest['social_dock']['default_icon_style'] ?? '') === 'solid');
+$check('  defaults to a white outline ring with white outline glyphs',
+       ($manifest['social_dock']['default_color_mode'] ?? '') === 'light'
+       && ($manifest['social_dock']['default_color_light'] ?? '') === '#ffffff'
+       && ($manifest['social_dock']['default_icon_style'] ?? '') === 'outline');
 $check('  while appearance remains owner-editable rather than skin-locked',
        !array_key_exists('color_mode', $manifest['social_dock'])
        && !array_key_exists('icon_style', $manifest['social_dock'])
@@ -77,6 +78,13 @@ $styles = snapsmack_skin_declared_assets($manifest)['styles'];
 $check('  so the engine stylesheet is registered for ALFRED',
        (bool)array_filter($styles,
            static fn(string $u): bool => str_contains($u, 'ss-engine-social-dock.css')));
+$alfredCss = (string)file_get_contents($root . '/skins/alfred/style.css');
+$check('ALFRED keeps the ring transparent and derives ring/glyph colour from the appearance setting',
+       str_contains($alfredCss, 'background: transparent;')
+       && str_contains($alfredCss, 'border-color: var(--dock-icon);'));
+$check('the complete dock wraps without shrinking its 48px footer controls',
+       str_contains($alfredCss, 'flex-wrap: wrap;')
+       && str_contains($alfredCss, 'flex: 0 0 48px;'));
 
 // The stylesheet itself: an inline dock with no reset keeps position:fixed
 // from the base rule and floats over the page. This is a file assertion, not
