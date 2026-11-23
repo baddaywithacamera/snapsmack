@@ -213,7 +213,7 @@ class ProxVoxP3Tests(unittest.TestCase):
             wc.post("/nodes/pve/lxc/101/status/start")
         self.assertEqual(len(self.server.requests), 0)
         actions = [r["action"] for r in self.audit.records()]
-        self.assertEqual(actions, ["write_refused"])
+        self.assertEqual(actions, ["transport", "write_refused"])
 
     def test_authorize_requires_credentials_and_rejects_incomplete_tfa(self):
         wc = self._client()

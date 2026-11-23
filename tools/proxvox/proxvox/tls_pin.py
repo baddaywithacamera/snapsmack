@@ -29,6 +29,10 @@ NO_PIN_MESSAGE = (
     "No Proxmox certificate pin is configured. Run PROX VOX setup and record "
     "the server certificate SHA-256 fingerprint before connecting."
 )
+REDIRECT_REFUSED_MESSAGE = (
+    "PROX VOX refuses redirects from the pinned Proxmox endpoint. "
+    "The configured HTTPS endpoint must answer directly."
+)
 
 
 class CertificatePinError(Exception):
@@ -98,13 +102,27 @@ class _PinnedHTTPSHandler(urllib.request.HTTPSHandler):
         return self.do_open(connection, request)
 
 
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Refuse redirects before urllib can forward credentials elsewhere."""
+
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        raise CertificatePinError(REDIRECT_REFUSED_MESSAGE)
+
+
 def pinned_https_opener(base_url: str, fingerprint: str):
     """Return urllib's open callable, locked to one HTTPS certificate."""
     parsed = urllib.parse.urlsplit(str(base_url or ""))
     if parsed.scheme.lower() != "https":
         raise CertificatePinError("PROX VOX requires an HTTPS Proxmox URL.")
     pin = normalize_fingerprint(fingerprint)
-    return urllib.request.build_opener(_PinnedHTTPSHandler(pin)).open
+    # Supplying our redirect-handler subclass prevents build_opener() from
+    # installing urllib's permissive default.  The default preserves the
+    # Authorization header and follows HTTPS -> HTTP, which can disclose the
+    # API token and accept another server's body as Proxmox data.  Proxmox's
+    # API does not require redirects, so every redirect is a trust failure.
+    return urllib.request.build_opener(
+        _PinnedHTTPSHandler(pin), _NoRedirectHandler()
+    ).open
 
 
 def inspect_server_fingerprint(base_url: str, timeout: int = 15) -> str:

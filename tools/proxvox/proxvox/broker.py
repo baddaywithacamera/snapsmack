@@ -118,6 +118,9 @@ class ReadOnlyBroker:
                 self.audit.record("tls_refused", {"why": str(err)})
                 raise Refused(str(err)) from err
         elif opener is not None:
+            self.audit.record("transport", {
+                "transport": "injected opener, not the shipped TLS path",
+            })
             self._opener = opener
         else:
             self.audit.record("tls_refused", {"why": "Proxmox URL is not HTTPS"})

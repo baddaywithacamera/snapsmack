@@ -30,6 +30,7 @@ from proxvox.broker import ReadOnlyBroker, Refused  # noqa: E402
 from proxvox.credentials import NoToken, load_token  # noqa: E402
 from proxvox.tls_pin import (  # noqa: E402
     CHANGED_CERTIFICATE_MESSAGE,
+    REDIRECT_REFUSED_MESSAGE,
     load_pin_config,
     save_pin_config,
 )
@@ -77,6 +78,17 @@ def _certificate_files(directory: str):
 
 class _TLSProxmox(BaseHTTPRequestHandler):
     seen = []
+    redirect_paths = set()
+    redirect_url = ""
+
+    def _redirect_if_requested(self):
+        if self.path not in type(self).redirect_paths:
+            return False
+        type(self).seen.append((self.command, self.path))
+        self.send_response(302)
+        self.send_header("Location", type(self).redirect_url)
+        self.end_headers()
+        return True
 
     def _send(self, payload):
         body = json.dumps(payload).encode("utf-8")
@@ -87,10 +99,14 @@ class _TLSProxmox(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if self._redirect_if_requested():
+            return
         type(self).seen.append(("GET", self.path))
         self._send({"data": [{"node": "proxmox", "status": "online"}]})
 
     def do_POST(self):
+        if self._redirect_if_requested():
+            return
         length = int(self.headers.get("Content-Length", "0"))
         fields = urllib.parse.parse_qs(self.rfile.read(length).decode("utf-8"))
         type(self).seen.append(("POST", self.path))
@@ -101,6 +117,30 @@ class _TLSProxmox(BaseHTTPRequestHandler):
             }})
         else:
             self._send({"data": {"ticket": "PVE:!tfa!challenge"}})
+
+    def log_message(self, *args):
+        pass
+
+
+class _PlainCapture(BaseHTTPRequestHandler):
+    seen = []
+
+    def _capture(self):
+        type(self).seen.append({
+            "method": self.command,
+            "path": self.path,
+            "authorization": self.headers.get("Authorization", ""),
+            "cookie": self.headers.get("Cookie", ""),
+        })
+        body = b'{"data":[{"node":"not-proxmox"}]}'
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    do_GET = _capture
+    do_POST = _capture
 
     def log_message(self, *args):
         pass
@@ -120,13 +160,27 @@ class ProxVoxTLS(unittest.TestCase):
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
 
+        cls.plain_server = HTTPServer(("127.0.0.1", 0), _PlainCapture)
+        cls.plain_port = cls.plain_server.server_address[1]
+        _TLSProxmox.redirect_url = (
+            "http://127.0.0.1:%d/api2/json/stolen" % cls.plain_port
+        )
+        cls.plain_thread = threading.Thread(
+            target=cls.plain_server.serve_forever, daemon=True
+        )
+        cls.plain_thread.start()
+
     @classmethod
     def tearDownClass(cls):
         cls.server.shutdown()
         cls.server.server_close()
+        cls.plain_server.shutdown()
+        cls.plain_server.server_close()
 
     def setUp(self):
         _TLSProxmox.seen = []
+        _TLSProxmox.redirect_paths = set()
+        _PlainCapture.seen = []
         self.directory = tempfile.mkdtemp(prefix="proxvox-tls-test-")
         self.audit = AuditBuffer(os.path.join(self.directory, "audit.jsonl"))
 
@@ -212,6 +266,56 @@ class ProxVoxTLS(unittest.TestCase):
             )
         self.assertEqual(_TLSProxmox.seen, [])
         self.assertEqual(self.audit.records()[-1]["action"], "tls_refused")
+
+    def test_read_broker_refuses_redirect_without_forwarding_token(self):
+        _TLSProxmox.redirect_paths = {"/api2/json/redirect-read"}
+        with self.assertRaisesRegex(Refused, "refuses redirects"):
+            self.broker(self.fingerprint).get("/redirect-read")
+        self.assertEqual(_PlainCapture.seen, [])
+        record = self.audit.records()[-1]
+        self.assertEqual(record["action"], "tls_refused")
+        self.assertEqual(record["detail"]["why"], REDIRECT_REFUSED_MESSAGE)
+
+    def test_write_client_refuses_redirect_without_forwarding_credentials(self):
+        _TLSProxmox.redirect_paths = {"/api2/json/access/ticket"}
+        with self.assertRaisesRegex(Refused, "refuses redirects"):
+            self.write_client(self.fingerprint).authorize(
+                "proxvox@pve", "password", "123456"
+            )
+        self.assertEqual(_PlainCapture.seen, [])
+        record = self.audit.records()[-1]
+        self.assertEqual(record["action"], "tls_refused")
+        self.assertEqual(record["detail"]["why"], REDIRECT_REFUSED_MESSAGE)
+
+    def test_injected_plain_http_transport_is_distinct_in_audit(self):
+        def unused(*args, **kwargs):
+            raise AssertionError("constructor must not make a request")
+
+        ReadOnlyBroker(
+            "http://127.0.0.1:1",
+            "test-id",
+            "test-secret",
+            self.audit,
+            GUID,
+            actual_guid=GUID,
+            opener=unused,
+        )
+        WriteClient(
+            "http://127.0.0.1:1",
+            self.audit,
+            GUID,
+            actual_guid=GUID,
+            opener=unused,
+        )
+        transport = [
+            row for row in self.audit.records() if row["action"] == "transport"
+        ]
+        self.assertEqual(len(transport), 2)
+        self.assertTrue(all(
+            row["detail"]["transport"]
+            == "injected opener, not the shipped TLS path"
+            for row in transport
+        ))
 
     def test_local_config_round_trip_contains_endpoint_and_pin_only(self):
         path = os.path.join(self.directory, "config.json")
