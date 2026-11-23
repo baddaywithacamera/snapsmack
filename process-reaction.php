@@ -81,6 +81,17 @@ if ($post_id < 1 ||
     exit;
 }
 
+// SS-1541: this endpoint is being retired with emoji reactions, but the old
+// Photogram heart caller still identifies itself as toggle_like here. Hearts
+// are never metered. Keep the existing abuse cap on emoji writes until
+// SS-1537 removes them, without putting likes back in that bucket.
+$action = trim((string)($_POST['action'] ?? 'toggle_reaction'));
+if ($action !== 'toggle_like' && !community_rate_limit('likes')) {
+    http_response_code(429);
+    echo json_encode(['error' => 'rate_limited']);
+    exit;
+}
+
 // --- IDENTITY RESOLUTION ---
 $user = community_current_user();
 $user_id    = $user ? (int)$user['id'] : null;
