@@ -246,26 +246,14 @@ class RootReadTests(unittest.TestCase):
         self.assertNotIn("content_base64", plain_info)
         plain_chunk = drive("host-read-chunk {path} 0 1048576", ordinary)
         self.assertEqual(base64.b64decode(plain_chunk["content_base64"]), b"ordinary-content")
-        for path, expected_hash in ((private, hashlib.sha256(key_bytes).hexdigest()),):
+        for path, expected_hash in (
+                (private, hashlib.sha256(key_bytes).hexdigest()),
+                (secret_tree, hashlib.sha256(b"future-secret-with-no-recognized-header").hexdigest()),
+                (database, hashlib.sha256(b"pmxcfs-database-companion").hexdigest())):
             with self.subTest(path=path):
                 result = drive("host-read {path}", path)
                 self.assertEqual(result["content_policy"], "metadata-sha256-only")
                 self.assertEqual(result["sha256"], expected_hash)
-                self.assertNotIn("content_base64", result)
-
-        # Drive the real dispatcher against unknown names in temporary stand-ins
-        # for both protected namespaces. This runs the same policy and file I/O
-        # as the forced-command wrapper without writing into the machine's /etc.
-        protected_cases = (
-            (secret_tree, "WRITE_KEY_TREES", (os.path.dirname(os.path.dirname(secret_tree)),)),
-            (database, "WRITE_KEY_DATABASES", (database[:-4],)),
-        )
-        for path, setting, value in protected_cases:
-            with (self.subTest(path=path),
-                  mock.patch.object(proxvox_readonly, setting, value),
-                  mock.patch.object(proxvox_readonly, "_absolute", return_value=path)):
-                result = proxvox_readonly.dispatch("host-read " + shlex.quote(path))
-                self.assertEqual(result["content_policy"], "metadata-sha256-only")
                 self.assertNotIn("content_base64", result)
 
     def test_large_file_is_chunked_without_loading_it_into_host_memory(self):
