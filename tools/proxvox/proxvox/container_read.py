@@ -51,6 +51,18 @@ def _safe_path(target: ContainerTarget, path: str) -> str:
     raise Refused("That path is outside the configured read-only roots.")
 
 
+def _resolved_safe_path(target: ContainerTarget, sftp, path: str) -> str:
+    """Resolve remote symlinks, then repeat the root check on the real path."""
+    resolved = posixpath.normpath(str(sftp.normalize(path)))
+    resolved_roots = tuple(
+        posixpath.normpath(str(sftp.normalize(root))) for root in target.roots
+    )
+    if any(resolved == root or resolved.startswith(root.rstrip("/") + "/")
+           for root in resolved_roots):
+        return resolved
+    raise Refused("That path resolves outside the configured read-only roots.")
+
+
 def _select_only(sql: str) -> str:
     query = str(sql or "").strip()
     one = query[:-1].rstrip() if query.endswith(";") else query
@@ -144,41 +156,83 @@ class ContainerReadBroker:
         return _TunnelledConnection()
 
     def listdir(self, container: str, path: str) -> list:
-        target = self._target(container)
-        clean = _safe_path(target, path)
-        self.audit.record("container_read", {
-            "container": target.name, "operation": "list", "path": clean,
-        })
+        try:
+            target = self._target(container)
+            clean = _safe_path(target, path)
+        except Refused as err:
+            self.audit.record("container_read_refused", {
+                "container": str(container), "operation": "list",
+                "path": str(path), "why": str(err),
+            })
+            raise
         with self._ssh(target) as client:
             sftp = client.open_sftp()
             try:
-                return sorted(sftp.listdir(clean))
+                try:
+                    resolved = _resolved_safe_path(target, sftp, clean)
+                except Refused as err:
+                    self.audit.record("container_read_refused", {
+                        "container": target.name, "operation": "list",
+                        "path": clean, "why": str(err),
+                    })
+                    raise
+                self.audit.record("container_read", {
+                    "container": target.name, "operation": "list", "path": resolved,
+                })
+                return sorted(sftp.listdir(resolved))
             finally:
                 sftp.close()
 
     def read_file(self, container: str, path: str, maximum_bytes: int = 8_388_608) -> bytes:
-        target = self._target(container)
-        clean = _safe_path(target, path)
+        try:
+            target = self._target(container)
+            clean = _safe_path(target, path)
+        except Refused as err:
+            self.audit.record("container_read_refused", {
+                "container": str(container), "operation": "read",
+                "path": str(path), "why": str(err),
+            })
+            raise
         maximum = max(1, int(maximum_bytes))
-        self.audit.record("container_read", {
-            "container": target.name, "operation": "read", "path": clean,
-            "maximum_bytes": maximum,
-        })
         with self._ssh(target) as client:
             sftp = client.open_sftp()
             try:
-                with sftp.open(clean, "rb") as stream:
+                try:
+                    resolved = _resolved_safe_path(target, sftp, clean)
+                except Refused as err:
+                    self.audit.record("container_read_refused", {
+                        "container": target.name, "operation": "read",
+                        "path": clean, "why": str(err),
+                    })
+                    raise
+                self.audit.record("container_read", {
+                    "container": target.name, "operation": "read", "path": resolved,
+                    "maximum_bytes": maximum,
+                })
+                with sftp.open(resolved, "rb") as stream:
                     data = stream.read(maximum + 1)
             finally:
                 sftp.close()
         if len(data) > maximum:
+            self.audit.record("container_read_refused", {
+                "container": target.name, "operation": "read", "path": resolved,
+                "why": "file exceeds explicit read limit",
+            })
             raise Refused("The file exceeds this call's explicit read limit.")
         return data
 
     def select(self, gateway: str, database: str, sql: str, params=(),
                maximum_rows: int = 10_000) -> dict:
-        target = self._target(gateway)
-        query = _select_only(sql)
+        try:
+            target = self._target(gateway)
+            query = _select_only(sql)
+        except Refused as err:
+            self.audit.record("container_db_refused", {
+                "gateway": str(gateway), "database": str(database),
+                "query_sha256": hashlib.sha256(str(sql).encode("utf-8")).hexdigest(),
+                "why": str(err),
+            })
+            raise
         digest = hashlib.sha256(query.encode("utf-8")).hexdigest()
         self.audit.record("container_db_read", {
             "gateway": target.name, "database": str(database),

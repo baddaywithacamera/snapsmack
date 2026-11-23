@@ -70,7 +70,9 @@ def connect_console(*, base_url: str, node: str, vmid: int, port: int,
         )
     except Exception:
         tls.close()
-        raise
+        # websocket-client includes the full URL in some exception strings;
+        # that URL carries the one-use vncticket. Fail without re-emitting it.
+        raise RuntimeError("Proxmox console websocket connection failed.") from None
     return PVEConsole(ws)
 
 # ===== SNAPSMACK EOF =====

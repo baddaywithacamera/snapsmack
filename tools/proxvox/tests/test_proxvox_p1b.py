@@ -1,4 +1,4 @@
-"""Executed P1b coverage for in-container read-only access. (SS-1544)
+"""Executed P1b coverage for in-container read-only access. (SS-1542)
 
 # SNAPSMACK_EOF_HEADER
 # Last non-empty line must be the Python SNAPSMACK EOF marker.
@@ -23,10 +23,14 @@ from proxvox.credentials import (  # noqa: E402
 
 
 class _SFTP:
-    def __init__(self, audit, files):
+    def __init__(self, audit, files, resolutions=None):
         self.audit = audit
         self.files = files
         self.closed = False
+        self.resolutions = resolutions or {}
+
+    def normalize(self, path):
+        return self.resolutions.get(path, path)
 
     def listdir(self, path):
         assert self.audit.records()[-1]["action"] == "container_read"
@@ -42,8 +46,8 @@ class _SFTP:
 
 
 class _SSH:
-    def __init__(self, audit, files):
-        self.sftp = _SFTP(audit, files)
+    def __init__(self, audit, files, resolutions=None):
+        self.sftp = _SFTP(audit, files, resolutions)
         self.closed = False
 
     def open_sftp(self):
@@ -97,6 +101,7 @@ class P1bTests(unittest.TestCase):
             ("proxvox", "mysql_ro"): "db-secret",
         }
         self.ssh_clients = []
+        self.resolutions = {}
         self.db = None
         target = ContainerTarget(
             "ct102", "192.168.1.12", "proxvox-ro", "ct102_ssh",
@@ -106,7 +111,7 @@ class P1bTests(unittest.TestCase):
 
         def ssh_factory(_target, password):
             self.assertEqual(password, "ssh-secret")
-            client = _SSH(self.audit, self.files)
+            client = _SSH(self.audit, self.files, self.resolutions)
             self.ssh_clients.append(client)
             return client
 
@@ -138,6 +143,16 @@ class P1bTests(unittest.TestCase):
             self.broker.read_file("ct102", "/home/sean/.ssh/id_rsa")
         with self.assertRaises(Refused):
             self.broker.read_file("ct102", "/var/www/sites/../../etc/shadow")
+        refused = [row for row in self.audit.records()
+                   if row["action"] == "container_read_refused"]
+        self.assertEqual(len(refused), 2)
+
+    def test_symlink_escape_is_resolved_and_refused_before_open(self):
+        link = "/var/www/sites/site/config-link"
+        self.resolutions[link] = "/etc/shadow"
+        with self.assertRaises(Refused):
+            self.broker.read_file("ct102", link)
+        self.assertEqual(self.audit.records()[-1]["action"], "container_read_refused")
 
     def test_integrity_select_is_read_only_audited_and_rolled_back(self):
         result = self.broker.select(
@@ -168,6 +183,10 @@ class P1bTests(unittest.TestCase):
                 self.broker.select("ct102", "portalproject", sql)
         self.assertEqual(len(self.ssh_clients), before)
         self.assertIsNone(self.db)
+        self.assertEqual(
+            len([row for row in self.audit.records()
+                 if row["action"] == "container_db_refused"]), 6
+        )
 
     def test_credentials_have_one_native_store_and_no_fallback(self):
         written = []
@@ -183,6 +202,17 @@ class P1bTests(unittest.TestCase):
             load_container_secret("ct102_ssh", reader=lambda *_: "")
         with self.assertRaises(NoToken):
             save_container_secret("not-a-kind", "value", writer=lambda *_: True)
+
+    def test_provisioning_never_grants_system_schemas_or_recursive_etc(self):
+        with open(
+                os.path.join(os.path.dirname(__file__), "..", "PROVISIONING.md"),
+                encoding="utf-8") as stream:
+            plan = stream.read()
+        self.assertNotIn("ON *.*", plan)
+        self.assertNotIn("setfacl -R -m u:proxvox-ro:rX /etc", plan)
+        self.assertIn("! -name '*.key'", plan)
+        self.assertIn("sudo -u proxvox-ro find", plan)
+        self.assertIn("mysql.*", plan)
 
 
 if __name__ == "__main__":

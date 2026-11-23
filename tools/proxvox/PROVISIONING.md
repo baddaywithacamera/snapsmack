@@ -9,13 +9,24 @@ inside CT102 and CT106. Type the password only at the `passwd` prompt.
 ```sh
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin proxvox-ro
 sudo passwd proxvox-ro
-sudo setfacl -R -m u:proxvox-ro:rX /var/www/sites /var/log/apache2 /etc/apache2 /etc/php
+sudo setfacl -R -m u:proxvox-ro:rX /var/www/sites /var/log/apache2
 sudo setfacl -R -d -m u:proxvox-ro:rX /var/www/sites /var/log/apache2
+sudo setfacl -m u:proxvox-ro:x /etc/apache2 /etc/apache2/sites-enabled /etc/php /etc/php/8.3 /etc/php/8.3/apache2
+sudo setfacl -m u:proxvox-ro:r /etc/apache2/apache2.conf /etc/apache2/ports.conf /etc/php/8.3/apache2/php.ini
+sudo find /etc/apache2/sites-enabled -maxdepth 1 -type f ! -name '*.key' -exec setfacl -m u:proxvox-ro:r {} +
+sudo find /etc/apache2/sites-enabled -maxdepth 1 -type l ! -name '*.key' -exec sh -c 'for link do target=$(readlink -f "$link"); case "$target" in *.key) exit 1;; esac; setfacl -m u:proxvox-ro:r "$target"; done' sh {} +
+sudo -u proxvox-ro find /etc/apache2 /etc/php -type f -name '*.key' -readable -print
 ```
 
-Append this exact `Match` block to `sshd_config`, validate with `sshd -t`, then
+The final command must print nothing. Replace `8.3` only with the installed PHP
+version. Do not grant recursive ACLs on `/etc/apache2` or `/etc/php`; add another
+named configuration file explicitly if a later read proves it is needed.
+
+Append this exact `Match` block at the end of `sshd_config`, validate with `sshd -t`, then
 reload SSH. `internal-sftp -R` is the server-side write refusal. The account may
 open only a local tunnel to the database host; it cannot execute commands.
+After reload, prove with this account that a download succeeds and an upload,
+rename, and delete all fail; `sshd -t` alone does not exercise `-R`.
 
 ```text
 Match User proxvox-ro
@@ -29,12 +40,15 @@ Match User proxvox-ro
 
 On CT110, open the MariaDB client as an administrator. Type a fresh password in
 place of the placeholder; use the same password for both source-bound accounts.
+Repeat the two `GRANT` lines for every site schema that PROX VOX must inspect.
+Never grant on `*.*`, `mysql.*`, `sys.*`, `performance_schema.*`, or
+`information_schema.*`.
 
 ```sql
 CREATE USER 'proxvox_ro'@'192.168.1.12' IDENTIFIED BY 'TYPE-A-FRESH-PASSWORD-HERE';
 CREATE USER 'proxvox_ro'@'192.168.1.16' IDENTIFIED BY 'TYPE-THE-SAME-PASSWORD-HERE';
-GRANT SELECT, SHOW VIEW ON *.* TO 'proxvox_ro'@'192.168.1.12';
-GRANT SELECT, SHOW VIEW ON *.* TO 'proxvox_ro'@'192.168.1.16';
+GRANT SELECT, SHOW VIEW ON `REPLACE_WITH_ONE_SITE_SCHEMA`.* TO 'proxvox_ro'@'192.168.1.12';
+GRANT SELECT, SHOW VIEW ON `REPLACE_WITH_ONE_SITE_SCHEMA`.* TO 'proxvox_ro'@'192.168.1.16';
 SHOW GRANTS FOR 'proxvox_ro'@'192.168.1.12';
 SHOW GRANTS FOR 'proxvox_ro'@'192.168.1.16';
 ```
