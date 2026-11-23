@@ -14,12 +14,13 @@ import math
 import os
 import re
 import tempfile
+import threading
 import uuid
 
 import requests
 
 from concurrent.futures import ThreadPoolExecutor
-from PySide6.QtCore import Qt, QDate, QEventLoop, QMetaObject, QRect, QSize, Signal, Slot, QTimer, QSettings
+from PySide6.QtCore import QObject, Qt, QDate, QEventLoop, QMetaObject, QRect, QSize, Signal, Slot, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit,
@@ -45,6 +46,15 @@ from .block_tray import BlockAction, BlockTray
 from .photo_tray import RightPhotosTray, PhotoThumbTile, photo_orientation_badge
 from .drafts_panel import BatchRail, default_draft_row
 from .mosaic_layout import tile_rects as _tile_rects
+
+
+class _PublishedPostBridge(QObject):
+    """Move published-post network results back onto the GUI thread."""
+
+    list_loaded = Signal(object)
+    list_failed = Signal(object)
+    loaded = Signal(object)
+    failed = Signal(object)
 
 
 class MosaicPreview(QWidget):
@@ -255,6 +265,14 @@ class TakeMode(QWidget):
         self._slapper_watch_session = None
         self._slapper_asset_uuid = ""
         self._slapper_launch_error = ""
+        self._published_list_active = False
+        self._published_load_active = False
+        self._published_choose_fn = None
+        self._published_bridge = _PublishedPostBridge(self)
+        self._published_bridge.list_loaded.connect(self._published_list_loaded)
+        self._published_bridge.list_failed.connect(self._published_list_failed)
+        self._published_bridge.loaded.connect(self._published_post_loaded)
+        self._published_bridge.failed.connect(self._published_post_failed)
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -2366,19 +2384,48 @@ class TakeMode(QWidget):
         self.save_state.setText(f"Opened draft \"{draft.title or 'Untitled'}\" ({n_blocks} blocks)")
 
     def _open_published(self, *, choose_fn=None):
+        # A pending autosave must be durable before the first network request.
+        self._autosave.stop()
+        if self._autosave_now() is False:
+            QMessageBox.critical(
+                self,
+                "Draft was not saved",
+                "COLD SNAP could not save the open draft, so it will not open "
+                "another post. The editor has been left exactly as it was.",
+            )
+            return
         poster, _url = self._poster_and_url()
         if poster is None:
             return
-        try:
-            posts = self._run_off_thread(poster.list_posts, "Loading published posts…")
-        except AuthorizationExpiredError as exc:
-            from .connect_panel import prompt_reauthentication
-            prompt_reauthentication(self, str(exc), long_form=True)
+        self._published_choose_fn = choose_fn
+        self._start_published_list(poster)
+
+    def _start_published_list(self, poster) -> None:
+        """Fetch chooser data without blocking the GUI thread."""
+        if self._published_list_active:
             return
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Could not load posts", str(exc))
-            return
+        self._published_list_active = True
+        self.save_state.setText("Loading published posts… your draft is safe")
+
+        def load_list():
+            try:
+                self._published_bridge.list_loaded.emit({
+                    "poster": poster,
+                    "posts": poster.list_posts(),
+                })
+            except Exception as exc:  # noqa: BLE001
+                self._published_bridge.list_failed.emit(exc)
+
+        threading.Thread(
+            target=load_list, name="coldsnap-list-published", daemon=True,
+        ).start()
+
+    def _published_list_loaded(self, result: dict) -> None:
+        self._published_list_active = False
+        poster = result["poster"]
+        posts = result["posts"]
         if not posts:
+            self.save_state.setText("No published posts found — your draft is safe")
             QMessageBox.information(self, "No posts yet", "This site has no long-form posts to edit.")
             return
 
@@ -2391,54 +2438,82 @@ class TakeMode(QWidget):
 
         action = "separate"
         if self._has_open_draft_content():
-            action = self._ask_open_published_action(selected_title, choose_fn=choose_fn)
+            action = self._ask_open_published_action(
+                selected_title, choose_fn=self._published_choose_fn,
+            )
             if action not in ("attach", "separate"):
                 return
+        session = self.rail.ensure_session()
+        self._start_published_load(
+            poster, post_id, action, session, str(self._editing_id or ""),
+        )
 
-        if action == "attach":
-            self._remote_post_id = post_id
-            self._remote_slug = str(selected_row.get("slug") or "")
-            session = self.rail.ensure_session()
-            draft = self._build_draft(session)
-            draft.remote_post_id = post_id
-            draft.slug = self._remote_slug
-            if not getattr(draft, "post_date", ""):
-                draft.post_date = str(selected_row.get("created_at") or "")
-            session.add_draft(draft, copy_images=False)
-            self._mirror_sqlite(draft)
-            self.rail.refresh_batches()
-            self._update_linked_banner()
-            self.save_state.setText(
-                f"Attached open draft to published post #{post_id} — your draft is intact"
-            )
-            return
-
-        # Save the open draft before opening a separate published post so nothing is ever lost.
-        if self._has_open_draft_content():
-            session = self.rail.ensure_session()
-            open_draft = self._build_draft(session)
-            session.add_draft(open_draft, copy_images=False)
-            self._mirror_sqlite(open_draft)
-
-        try:
-            def _fetch():
-                post = poster.get_post(post_id)
-                return self._draft_from_remote(post)
-
-            draft = self._run_off_thread(_fetch, f"Opening \"{selected_title}\"…")
-        except AuthorizationExpiredError as exc:
+    def _published_list_failed(self, error) -> None:
+        self._published_list_active = False
+        self.save_state.setText("Could not load published posts — your draft is safe")
+        if isinstance(error, AuthorizationExpiredError):
             from .connect_panel import prompt_reauthentication
-            prompt_reauthentication(self, str(exc), long_form=True)
+            prompt_reauthentication(self, str(error), long_form=True)
             return
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Could not open post", str(exc))
+        QMessageBox.critical(self, "Could not load posts", str(error))
+
+    def _start_published_load(self, poster, post_id: int, action: str,
+                              session, active_id: str) -> None:
+        """Fetch one published post and its photos without blocking the GUI."""
+        if self._published_load_active:
             return
-        if (getattr(draft, "caption", "") or "").strip() or (getattr(draft, "blocks_json", "") or "").strip():
-            session = self.rail.ensure_session()
-            session.add_draft(draft)
-            self.rail.refresh_batches()
-        self._edit(draft)
-        self.save_state.setText("Published post loaded — changes will update this post")
+        self._published_load_active = True
+        self.save_state.setText("Loading published post… your draft is safe")
+
+        def load():
+            try:
+                post = poster.get_post(post_id)
+                draft = None if action == "attach" else self._draft_from_remote(post)
+                if draft is not None:
+                    session.add_draft(draft)
+                self._published_bridge.loaded.emit({
+                    "post": post,
+                    "draft": draft,
+                    "action": action,
+                    "session": session,
+                    "active_id": active_id,
+                })
+            except Exception as exc:  # noqa: BLE001
+                self._published_bridge.failed.emit(exc)
+
+        threading.Thread(
+            target=load, name="coldsnap-open-published", daemon=True,
+        ).start()
+
+    def _published_post_loaded(self, result: dict) -> None:
+        self._published_load_active = False
+        session = result["session"]
+        if result["action"] == "attach":
+            draft = session.load_draft(result["active_id"])
+            if draft is None:
+                self._published_post_failed("The saved draft could not be reopened.")
+                return
+            post = result["post"]
+            draft.remote_post_id = int(post.get("id") or 0)
+            draft.post_date = str(post.get("created_at") or draft.post_date or "")
+            draft.slug = str(post.get("slug") or draft.slug or "")
+            session.save_draft(draft)
+            self._edit(draft)
+            self.save_state.setText("Draft attached — changes will update the published post")
+        else:
+            draft = result["draft"]
+            self._edit(draft)
+            self.save_state.setText("Published post opened separately — your draft is still safe")
+        self.rail.refresh_batches()
+
+    def _published_post_failed(self, error) -> None:
+        self._published_load_active = False
+        self.save_state.setText("Could not open published post — your draft is still safe")
+        if isinstance(error, AuthorizationExpiredError):
+            from .connect_panel import prompt_reauthentication
+            prompt_reauthentication(self, str(error), long_form=True)
+            return
+        QMessageBox.critical(self, "Could not open post", str(error))
 
     def _draft_from_remote(self, post):
         draft = O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK,
@@ -3529,7 +3604,7 @@ class TakeMode(QWidget):
     def _autosave_now(self):
         if not (self.title_edit.text().strip() or self.body.toPlainText().strip() or self._bucket):
             self.save_state.setText("Begin the story… changes will be safe on this computer.")
-            return
+            return True
         # Never auto-save an unmodified empty remote post as a duplicate 0-block draft
         if getattr(self, "_remote_post_id", 0):
             has_body = bool(self.body.toPlainText().strip()) or any(
@@ -3537,7 +3612,7 @@ class TakeMode(QWidget):
             )
             on_disk = bool(self._editing_id and self.rail.ensure_session().load_draft(self._editing_id))
             if not has_body and not on_disk:
-                return
+                return True
         try:
             # Typing must never decode originals: only photos whose thumbs are
             # missing or stale (new photo, crop/focus/zoom change, new edit)
@@ -3551,8 +3626,10 @@ class TakeMode(QWidget):
             session.add_draft(draft, copy_images=False)
             self._mirror_sqlite(draft, authored=authored)
             self.save_state.setText("Safe on this computer")
+            return True
         except Exception as exc:  # noqa: BLE001
             self.save_state.setText(f"Needs attention — could not save: {exc}")
+            return False
 
     def _queue_stale_thumbs(self):
         """Start a background thumb job for bucket photos whose thumbs are stale."""
