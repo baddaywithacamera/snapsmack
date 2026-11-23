@@ -50,6 +50,13 @@
         "predicates": 16,
         "thresholds": []
     },
+    "alfred-caption-controls-change-nothing-until-moved-regression.php": {
+        "assertions": 23,
+        "predicates": 15,
+        "thresholds": [
+            5
+        ]
+    },
     "alfred-footer-carries-the-shared-social-dock-regression.php": {
         "assertions": 21,
         "predicates": 19,
