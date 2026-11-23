@@ -77,6 +77,22 @@ function gf_stylesheets(string $root, string $skin, array $manifest, string $kin
     // skins got no archive CSS at all. The harness delivers it the same way,
     // or its pictures show an unstyled row the live site does not have.
     if ($kind === 'archive') $paths[] = 'assets/css/page-archive.css';
+    // core/meta.php emits these two on EVERY page of EVERY skin, so a landing
+    // cannot be laid out without them: ss-engine-mosaic.css owns the square
+    // wall's grid-template-columns, which is the whole geometry of a square
+    // landing.
+    //
+    // ONLY ADDED FOR THE LANDING, deliberately. The archive and page fixtures
+    // have never carried them either, which means every measurement this
+    // harness has ever taken was of a page missing two stylesheets the live
+    // one receives -- ss-frame-tokens.css among them, which is frame geometry.
+    // That is worth repairing, but repairing it shifts existing baselines, and
+    // doing that quietly in the same change as a new page kind would make both
+    // impossible to review. Filed separately.
+    if ($kind === 'feed' || $kind === 'landing') {
+        $paths[] = 'assets/css/ss-frame-tokens.css';
+        $paths[] = 'assets/css/ss-engine-mosaic.css';
+    }
     if (function_exists('snapsmack_skin_declared_assets')) {
         $declared = snapsmack_skin_declared_assets($manifest);
         foreach (($declared['styles'] ?? []) as $url) {
@@ -123,6 +139,29 @@ foreach ($items as $item) {
     ];
 }
 
+// THE LANDING PAGE, which this harness has never been able to measure.
+//
+// It rendered two kinds per skin -- archive and page -- so the MOST VISITED
+// page on every site in the fleet was the one page no geometry gate could see.
+// That is not an abstract gap: Sean's landing grid came up at about 72px in a
+// sparse grid and every check in this suite passed, because none of them could
+// lay the landing out. Pieces 1 to 3 of the ALFRED parity work are all landing
+// geometry.
+//
+// Built from the SAME photographs as $items and $tiles, so a measurement of a
+// landing is comparable with the archive beside it.
+$posts = [];
+foreach ($items as $item) {
+    $posts[] = [
+        'url'       => $item['url'],
+        'image_url' => $item['img_thumb_square'],
+        'title'     => $item['img_title'],
+        'excerpt'   => $item['excerpt'],
+        'width'     => $item['img_width'],
+        'height'    => $item['img_height'],
+    ];
+}
+
 $kinds = [
     'page' => [
         'kind' => 'page', 'page_title' => 'About Sean',
@@ -136,6 +175,32 @@ $kinds = [
         ],
         'rendered_content' => snapsmack_trusted_html('<p>First paragraph of the page body.</p>'),
         'items' => [],
+    ],
+    // THERE ARE TWO LANDING KINDS IN THIS PRODUCT AND I NEARLY SHIPPED ONLY ONE.
+    //
+    // core/smacktalk-public-controller.php returns kind 'feed'; the five
+    // smacktalk skins (ALFRED, STANLEY, TELEGRAM, TILEZ, WRITING WITH IMPACT)
+    // are the only ones that branch on it. core/public-controller.php returns
+    // kind 'landing' for every other skin, and SCROLL and the rest branch on
+    // THAT.
+    //
+    // My first version rendered 'feed' for all 30 and I reported "a landing for
+    // all 30 skins". It was not: 25 of them fell through to a fallback and
+    // SCROLL printed its empty state, which I then had to correct in the room.
+    // A fixture that renders the wrong page for 25 skins is worse than one that
+    // renders none, because the numbers look like coverage.
+    'feed' => [
+        'kind' => 'feed', 'page_title' => '',
+        'posts' => $posts, 'items' => $items, 'item' => [], 'tiles' => $tiles,
+    ],
+    'landing' => [
+        // Shape from core/public-controller.php's landing return, not guessed.
+        'kind' => 'landing', 'page_title' => '', 'mode' => 'photoblog',
+        'items' => $items, 'item' => [], 'tiles' => $tiles,
+        'first' => $items[0] ?? [], 'previous' => '', 'next' => '', 'last' => '',
+        'comments' => [], 'comments_enabled' => false, 'puzzle_items' => [],
+        'rows' => [], 'total_pages' => 1, 'next_page' => 0,
+        'slider_items' => $items, 'page' => 1, 'photo_count' => count($items),
     ],
     'archive' => [
         'kind' => 'archive', 'page_title' => 'Archive',
@@ -260,6 +325,47 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
         // that existed only in this fixture. Make it relative so the
         // photograph beside the page is the photograph that loads.
         $html = str_replace('src="/photo-', 'src="photo-', $html);
+
+        // A SKIN'S OWN ASSETS ARE ABSOLUTE AND RESOLVE TO NOTHING HERE, the
+        // same fault as the hero above and for the same reason: BASE_URL is
+        // '/'. CHAPLIN's corner ornaments come through as
+        // src="/skins/chaplin/assets/svg/A-corner.svg", which under a fixture
+        // server is the server root and under file:// is the drive root. The
+        // ornaments then measure 0 and CHAPLIN's landing looks like a skin
+        // that forgot to draw its own frame.
+        // Made RELATIVE and the files COPIED beside the fixture, rather than
+        // pointed up at the repository with ../. My first attempt used ../../
+        // and that only resolves when the output happens to sit two levels
+        // below the repo -- a fixture that works in one output directory and
+        // silently shows a skin with no ornaments in another is exactly the
+        // kind of half-fix this file is full of warnings about.
+        if (preg_match_all('#src="(/(?:skins|assets)/[^"]+)"#', $html, $m)) {
+            foreach (array_unique($m[1]) as $abs) {
+                $rel = ltrim($abs, '/');
+                $src = $root . '/' . $rel;
+                if (!is_file($src)) { continue; }
+                $dst = $out . '/' . $rel;
+                if (!is_dir(dirname($dst))) { @mkdir(dirname($dst), 0777, true); }
+                if (!is_file($dst)) { @copy($src, $dst); }
+            }
+            $html = preg_replace('#src="/((?:skins|assets)/)#', 'src="$1', $html);
+        }
+
+        // LAZY IMAGES CANNOT BE MEASURED, which is the whole purpose of this
+        // file. loading="lazy" is right on a live page and wrong in a fixture:
+        // a browser never fetches an image it believes is out of view, the
+        // image stays 0x0 intrinsically, and any element whose size CSS does
+        // not dictate collapses to nothing.
+        //
+        // It cost me a wrong reading before I caught it. GALLERIA's landing
+        // measured a first photograph of 0px and I nearly wrote that up as a
+        // collapsed grid; it was an image the browser had declined to fetch.
+        // ALFRED's measured 72px only because its aspect-ratio rule sized the
+        // box without the image.
+        //
+        // So a measurement fixture asks for them eagerly. The live page keeps
+        // its lazy loading; this changes the fixture, not the product.
+        $html = str_replace('loading="lazy"', 'loading="eager"', $html);
         $html = snapsmack_fixture_inline_styles($html, $css);
 
         $target = $out . '/' . $skin . '--' . $name . '.html';

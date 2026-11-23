@@ -1,0 +1,243 @@
+<?php
+declare(strict_types=1);
+
+// SNAPSMACK_EOF_HEADER
+// Last non-empty line must be: // ===== SNAPSMACK EOF =====
+
+// A LANDING IS A GRID OF PHOTOGRAPHS. A READING COLUMN IS FOR PROSE. (SS-1528)
+//
+// ALFRED's <main> wore "content post-inner reading-column longform" on EVERY
+// page kind, landing included. .post-inner is width:800px/max-width:85%, and
+// the landing's own .section-inner -- which ALFRED's stylesheet calls "ALFRED's
+// 1040px lane" -- sat inside it at max-width:90%. So the landing grid measured
+// 720px at a 1920 viewport instead of 1040, with 236px columns instead of 342.
+// That is the cramped grid Sean photographed.
+//
+// MEASURED IN A BROWSER, both before and after, at 1920/1440/1024. Those
+// numbers are in the commit message; this file holds the structural property
+// they depend on, because a width does not exist until a browser lays the page
+// out and a PHP test cannot lay anything out.
+//
+// WHAT THIS FILE EXECUTES, which is the part that matters: it RENDERS ALFRED's
+// real layout.php through snapsmack_render_strict_skin_template for two
+// response kinds and reads the class list off the rendered HTML. It does not
+// grep the template. A template that produced the right source and the wrong
+// output would pass a grep and fail this.
+//
+// HOW IT IS DONE, AND WHY NOT THE OBVIOUS WAY. The PM ruled (a): branch the
+// class list in ALFRED's layout. I built that, and THE SKIN SECURITY RATCHET
+// REFUSED IT, correctly -- a conditional in a template is executable logic, and
+// a strict skin may not hold any. It caught me breaking the rule I had quoted
+// earlier the same day.
+//
+// So the CMS says what KIND of page this is, through a body class, exactly as
+// it already does for archive-page; and ALFRED's STYLESHEET says what a landing
+// should look like, which is the skin's own business. No logic in the template:
+// only an escaped echo of a CMS value, which NEW HORIZON, TRUE GRIT and HIP TO
+// BE SQUARE already do.
+//
+// AND THAT TURNED UP SOMETHING BIGGER: only 3 of the 30 skins printed that body
+// class at all. The other 27, ALFRED among them, never received archive-page,
+// is-photo-page, static-transmission or page-slug-*. Core computes them so
+// stylesheets can key off them -- there is a comment in core recording that
+// IMPACT PRINTER's archive footer collapsed because nothing set archive-page --
+// and for 27 skins nothing still does. Reported separately; this commit fixes
+// ALFRED only.
+
+$root = dirname(__DIR__);
+require_once $root . '/core/trusted-html.php';
+require_once $root . '/core/skin-render-helpers.php';
+require_once $root . '/core/skin-view-contract.php';
+require_once $root . '/core/skin-presentation.php';
+
+$failures = [];
+$check = static function (string $what, bool $ok) use (&$failures): void {
+    printf("  [%s] %s\n", $ok ? 'ok' : 'FAIL', $what);
+    if (!$ok) { $failures[] = $what; }
+};
+
+echo "SS-1528: ALFRED's landing is not drawn in the post reading column\n\n";
+
+/** Render ALFRED's layout for one response kind and return the <body> classes. */
+$body_classes = static function (array $response) use ($root): string {
+    $view = snapsmack_build_skin_view($response, [
+        'site_name' => 'found textures', 'language' => 'en', 'direction' => 'ltr',
+        'skin_style_url' => '', 'base_style_url' => '', 'skin_variant_url' => '',
+        'registered_assets' => [], 'owner_custom_code' => '', 'search_dock' => [],
+        'crop_circles' => [], 'skin_slug' => 'alfred',
+        'skin_canvas_width_option' => '',
+        'skin_presentation' => snapsmack_skin_presentation([], 'alfred'),
+        'footer' => ['site_name' => 'found textures', 'site_url' => 'https://example.test/', 'slots' => []],
+    ]);
+    ob_start();
+    @snapsmack_render_strict_skin_template($root . '/skins/alfred', 'layout.php', $view);
+    $html = (string) ob_get_clean();
+    if (preg_match('/<body class="([^"]*)"/', $html, $m) === 1) {
+        return trim($m[1]);
+    }
+    return '';
+};
+
+/** The same render, but the whole document, for the markup the CSS selector needs. */
+$render_html = static function (array $response) use ($root): string {
+    $view = snapsmack_build_skin_view($response, [
+        'site_name' => 'found textures', 'language' => 'en', 'direction' => 'ltr',
+        'skin_style_url' => '', 'base_style_url' => '', 'skin_variant_url' => '',
+        'registered_assets' => [], 'owner_custom_code' => '', 'search_dock' => [],
+        'crop_circles' => [], 'skin_slug' => 'alfred',
+        'skin_canvas_width_option' => '',
+        'skin_presentation' => snapsmack_skin_presentation([], 'alfred'),
+        'footer' => ['site_name' => 'found textures', 'site_url' => 'https://example.test/', 'slots' => []],
+    ]);
+    ob_start();
+    @snapsmack_render_strict_skin_template($root . '/skins/alfred', 'layout.php', $view);
+    return (string) ob_get_clean();
+};
+
+// The CMS's own word for a landing. The stylesheet keys off it.
+$marker = 'landing-page';
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "THE LANDING\n";
+// ─────────────────────────────────────────────────────────────────────────────
+
+foreach (['feed', 'landing'] as $kind) {
+    $cls = $body_classes(['kind' => $kind, 'page_title' => '', 'posts' => [], 'items' => [], 'item' => []]);
+    $check("the {$kind} kind renders at all (an empty class list is not a false pass)", $cls !== '');
+    // BOTH controllers' words for a landing. smacktalk says 'feed', the public
+    // controller says 'landing'; a stylesheet must not have to know which one
+    // served the page.
+    $check("  and carries {$marker}", str_contains($cls, $marker));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\nTHE PAGES THAT ARE ACTUALLY PROSE KEEP THEIR COLUMN\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// The risk in this change is not the landing, it is everything else: the
+// wrapper is shared, and Sean reads his posts in that column.
+
+foreach ([
+    'page'    => ['kind' => 'page', 'page_title' => 'About', 'item' => ['id' => 1, 'title' => 'About', 'content' => snapsmack_trusted_html('<p>Words.</p>')], 'items' => []],
+    'post'    => ['kind' => 'post', 'page_title' => 'A post', 'item' => ['id' => 1, 'title' => 'A post', 'content' => snapsmack_trusted_html('<p>Words.</p>')], 'items' => []],
+    'archive' => ['kind' => 'archive', 'page_title' => 'Archive', 'tiles' => [], 'items' => [], 'item' => []],
+] as $name => $response) {
+    $cls = $body_classes($response);
+    $check("the {$name} kind still renders", $cls !== '');
+    $check("  and is NOT marked as a landing", !str_contains($cls, $marker));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\nONE KIND AND ONE KIND ONLY\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// A condition that matched more kinds than intended would silently widen other
+// pages, and nothing above would notice: the three kinds checked are not all of
+// them. Counting is what catches that.
+
+$kinds = ['feed', 'landing', 'page', 'post', 'archive', 'photo', 'search', 'hashtag', 'blogroll'];
+$marked = [];
+foreach ($kinds as $k) {
+    $cls = $body_classes(['kind' => $k, 'page_title' => '', 'posts' => [], 'tiles' => [], 'items' => [], 'item' => []]);
+    if ($cls !== '' && str_contains($cls, $marker)) { $marked[] = $k; }
+}
+$check('exactly the TWO landing kinds are marked, and nothing else',
+       $marked === ['feed', 'landing']);
+if ($marked !== ['feed', 'landing']) {
+    echo '        marked kinds: ' . (implode(', ', $marked) ?: '(none)') . "
+";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "
+THE TILE, NOT THE LANE (the half of piece 1 I shipped without)
+";
+// ─────────────────────────────────────────────────────────────────────────────
+// Widening the lane to 1040px made the grid CELLS 342px and left the TILES at
+// 105px, because this stylesheet's own blog rule still said
+// ".posts .post { width: 30.7% }" and 30.7% of a 342px cell is 105px. I posted
+// the lane measurement as the repair. Codex measured the tile and failed it.
+//
+// The repair is a CSS rule, so the sizes are NOT provable here -- they were
+// measured in a browser and are in the commit message. WHAT IS PROVABLE HERE,
+// and is the thing that would silently break the rule, is the MARKUP CONTRACT
+// the selector depends on: ".alfred-archive-grid.posts > .post". If the
+// container loses either class, or the tiles stop being .post children, the
+// rule stops matching and the tiles shrink back to 105px with nothing saying
+// so. That is exactly how this defect survived piece 1.
+
+$feed_html = $render_html([
+    'kind' => 'feed', 'page_title' => '',
+    'posts' => [
+        ['id' => 1, 'title' => 'One', 'url' => '/one', 'image_url' => '/a.jpg'],
+        ['id' => 2, 'title' => 'Two', 'url' => '/two', 'image_url' => '/b.jpg'],
+    ],
+    'items' => [], 'item' => [],
+]);
+
+$check('the feed renders its grid at all', str_contains($feed_html, 'id="browse-grid"'));
+
+if (preg_match('/id="browse-grid" class="([^"]*)"/', $feed_html, $m) === 1) {
+    $grid = preg_split('/\s+/', trim($m[1])) ?: [];
+    // Both halves of the selector, checked separately, so a failure says which.
+    $check('  the grid container carries alfred-archive-grid', in_array('alfred-archive-grid', $grid, true));
+    $check('  the grid container carries posts', in_array('posts', $grid, true));
+} else {
+    $check('  the grid container has a class list the selector can match', false);
+}
+
+// The tiles must be .post CHILDREN of that container -- the selector uses >.
+$tile_count = preg_match_all('/<article class="([^"]*)"/', $feed_html, $tm);
+$check('  the feed rendered a tile per post', $tile_count === 2);
+$tile_classes = $tile_count > 0 ? (preg_split('/\s+/', trim($tm[1][0])) ?: []) : [];
+$check('  and each tile carries post, which is what the rule neutralises',
+       in_array('post', $tile_classes, true));
+// Square mode is ALFRED's manifest default, and the engine sizes the item hook.
+$check('  and ss-masonry-item, which is the engine own hook (square is the default)',
+       in_array('ss-masonry-item', $tile_classes, true));
+
+// The class is only half of it: without the stylesheet rule the marker is
+// decoration. And the template must still carry no logic of its own.
+$css = (string) file_get_contents($root . '/skins/alfred/style.css');
+$check('the stylesheet widens the landing out of the reading column',
+       str_contains($css, 'body.landing-page #scroll-stage.post-inner'));
+// A containment check on CSS TEXT is a weak check and I am not going to
+// pretend otherwise: it proves a rule is written, never that it wins the
+// cascade or that a tile ends up square. The tile SIZES are measured by
+// tools/_build/measure-geometry-matrix.cjs, which already reports tileSizes
+// per skin per viewport -- that is how Codex caught the 105px tiles -- and
+// the numbers are in the commit message. What this check is worth: the whole
+// rule, declarations included, cannot be deleted or half-deleted silently.
+// Comments are stripped first so a check can never match prose about the rule
+// instead of the rule, which has bitten this repo three times in one day.
+$css_code = (string) preg_replace('~/\*.*?\*/~s', '', $css);
+$tile_rule = (bool) preg_match(
+    '~\.alfred-archive-grid\.posts\s*>\s*\.post\s*,\s*'
+    . '\.alfred-archive-grid\.posts\s*>\s*\.post\s*\+\s*\.post\s*\{'
+    . '[^}]*width:\s*auto[^}]*padding-bottom:\s*0[^}]*margin:\s*0[^}]*\}~s',
+    $css_code
+);
+$check('and hands the tile geometry back to the grid: width auto, no padding box, no margin',
+       $tile_rule);
+$layout = (string) file_get_contents($root . '/skins/alfred/layout.php');
+$check('and the template prints the CMS class without deciding anything',
+       str_contains($layout, "snap_escape_attr(\$view['site']['body_class']")
+       && !str_contains($layout, "=== 'feed') ?"));
+
+// ─────────────────────────────────────────────────────────────────────────────
+echo "\n";
+if ($failures) {
+    echo 'FAIL (' . count($failures) . "):\n";
+    foreach ($failures as $f) { echo "  - $f\n"; }
+    exit(1);
+}
+echo "PASS — the landing is rendered outside the reading column and every prose\n";
+echo "kind keeps it, proved by rendering the real template rather than reading it.\n";
+echo "NOT PROVED HERE: the widths. Those were measured in a browser at 1920,\n";
+echo "1440 and 1024 and are recorded in the commit message. A PHP test cannot\n";
+echo "lay out a page, which is the whole reason the geometry fixtures exist.\n";
+echo "ALSO NOT FIXED: ALFRED's ARCHIVE grid still measures 720px with 236px\n";
+echo "columns (237px tiles, measured today), the identical fault on a different
+page. It is outside the PM's\n";
+echo "ruling and is reported rather than changed here.\n";
+exit(0);
+
+// ===== SNAPSMACK EOF =====
