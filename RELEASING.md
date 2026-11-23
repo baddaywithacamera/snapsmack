@@ -71,6 +71,11 @@ FEDISTRUCTURE uses the same channels:
    "Merge remote-tracking branch '...'", and `dev` carries both those and
    real ones; the contrast is what reads as careless to a stranger. Say what
    the merge brings in.
+12. **Changed features require real-site parity evidence.** Before a release
+   gate can be signed, every changed feature must be clicked through on a real
+   site against its ticket acceptance text. The parity record names the exact
+   commit, checker, site, result, Brain Trust message, and capture references.
+   Repository tests do not substitute for this check.
 
 **On `dev`, EVERYTHING carries the `D`** — the source constant
 (`SNAPSMACK_VERSION` / `SNAPSMACK_VERSION_SHORT` = `X.Y.ZD`), the changelog
@@ -92,6 +97,9 @@ php tools/release-flow.php status
 php tools/release-flow.php push-dev
 php tools/release-flow.php tag-dev 0.7.456
 php tools/release-flow.php promote-stable 0.7.456 --yes
+php tools/release-flow.php gate-note --security=pass --parity=pass \
+  --skin-render-parity=pass --authority=approved \
+  --demo-parity-record=C:/evidence/release-demo-parity.json
 ```
 
 `tag-dev` runs the repository regression checks before pushing. Promotion
@@ -104,6 +112,30 @@ intentional rendering change must name the skin, state the reason, and identify
 the approved pre-strip reference used for comparison. Missing evidence, an
 undeclared difference, or a claim that the replacement rendering is newly
 "authoritative" fails the release.
+
+The JSON supplied with `--demo-parity-record` must have this shape and must
+name the exact `HEAD` commit:
+
+```json
+{
+  "commit": "40-character commit SHA",
+  "status": "pass",
+  "checked_by": "person who performed the real-site check",
+  "checked_at": "2026-11-23T12:00:00-05:00",
+  "features": [{
+    "ticket": "SS-1508",
+    "acceptance": "the ticket acceptance text that was checked",
+    "site": "https://real-site.example/checked-page",
+    "result": "pass",
+    "room_message_id": "Brain Trust result message ID",
+    "captures": ["capture-1920.png", "capture-1024.png"]
+  }]
+}
+```
+
+At least one changed feature and one capture per feature are required. The
+release note retains the feature summary and a SHA-256 digest of the complete
+record, so the tag and pre-push checks fail closed if the proof is absent.
 
 ## Smack Central
 

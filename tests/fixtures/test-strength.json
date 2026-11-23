@@ -2044,6 +2044,13 @@
             2
         ]
     },
+    "release-demo-parity-gate-regression.php": {
+        "assertions": 11,
+        "predicates": 2,
+        "thresholds": [
+            2
+        ]
+    },
     "release-flow-regression.php": {
         "assertions": 58,
         "predicates": 61,
