@@ -34,4 +34,12 @@ def test_snap_home_allows_temp_directory(tmp_path, monkeypatch):
     monkeypatch.setenv("SNAPSMACK_HOME", str(sandbox))
     assert snap_home.home() == os.path.abspath(str(sandbox))
 
+
+def test_snap_home_allows_frozen_exe_even_when_unittest_imported(monkeypatch):
+    monkeypatch.delenv("SNAPSMACK_HOME", raising=False)
+    monkeypatch.delenv("SNAPSMACK_ALLOW_REAL_HOME_IN_TESTS", raising=False)
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    assert snap_home.home() == os.path.abspath(r"C:\snapsmack")
+
 # ===== SNAPSMACK EOF =====

@@ -60,6 +60,8 @@ _DEFAULT_ROOT = r"C:\snapsmack"
 def _is_test_process() -> bool:
     if os.environ.get("SNAPSMACK_ALLOW_REAL_HOME_IN_TESTS") == "1":
         return False
+    if getattr(sys, "frozen", False):
+        return bool(os.environ.get("PYTEST_CURRENT_TEST"))
     return bool(
         os.environ.get("PYTEST_CURRENT_TEST")
         or "pytest" in sys.modules
