@@ -96,8 +96,6 @@ def _run(argv):
 
 def _is_write_key_path(path):
     normalized = posixpath.normpath(str(path or "").replace("\\", "/"))
-    if normalized.endswith(".pub"):
-        return False
     for tree in WRITE_KEY_TREES:
         tree = posixpath.normpath(str(tree).replace("\\", "/"))
         if (normalized == tree or normalized.startswith(tree + "/")
@@ -107,6 +105,8 @@ def _is_write_key_path(path):
         database = posixpath.normpath(str(database).replace("\\", "/"))
         if normalized.startswith(database) or (database in normalized):
             return True
+    if normalized.endswith(".pub"):
+        return False
     return any(fnmatch.fnmatchcase(normalized, pattern) for pattern in WRITE_KEY_PATHS)
 
 

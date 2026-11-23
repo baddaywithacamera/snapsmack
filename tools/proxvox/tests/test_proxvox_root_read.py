@@ -158,6 +158,7 @@ class RootReadTests(unittest.TestCase):
         for path in protected:
             with self.subTest(path=path):
                 self.assertTrue(proxvox_readonly._is_write_key_path(path))
+        self.assertTrue(proxvox_readonly._is_write_key_path("/etc/pve/priv/tfa.cfg.pub"))
         self.assertFalse(proxvox_readonly._is_write_key_path("/root/.ssh/id_ed25519.pub"))
         self.assertFalse(proxvox_readonly._is_write_key_path("/etc/pve/user.cfg"))
 
