@@ -85,7 +85,33 @@ Match User proxvox-root-ro
 Save its fresh password as `proxvox:pve_host_ssh` through the PROX VOX setup
 screen. The wrapper accepts only `inventory`, `host-list/stat/read`, and
 `ct-list/stat/read`; it builds fixed argv with `shell=False`, returns complete
-files without a size or operation-time ceiling, and has no write operation. Do
-not grant this account any other sudo command.
+ordinary files without a size or operation-time ceiling, and has no write
+operation. Do not grant this account any other sudo command.
+
+Files that can authorize writes or impersonate the host return metadata plus a
+SHA-256 digest, never their contents. The fixed server-side path list is:
+
+- `/etc/pve/priv/tfa.cfg`
+- `/etc/pve/priv/authkey.key`
+- `/etc/pve/priv/pve-root-ca.key`
+- `/etc/pve/priv/acme/*/account.key`
+- `/etc/pve/priv/ceph*.keyring`
+- `/etc/pve/nodes/*/pve-ssl.key`
+- `/etc/pve/nodes/*/pveproxy-ssl.key`
+- `/etc/corosync/authkey`
+- `/etc/ssh/ssh_host_*_key` (not `.pub`)
+- `/root/.ssh/id_*` and `/home/*/.ssh/id_*` (not `.pub`)
+- `/etc/ssl/private/*`
+- `/etc/pki/tls/private/*`
+- `/etc/letsencrypt/live/*/privkey.pem`
+- `/etc/letsencrypt/archive/*/privkey*.pem`
+- `*.p12` and `*.pfx` anywhere (PKCS#12 private-key bundles)
+
+The wrapper also detects standard OpenSSH, PEM and PuTTY private-key headers so
+a symlink or custom filename cannot turn a private key into a content read. The
+same policy runs after path resolution inside every container. Everything else
+remains content-readable. Each remote command has Sean's approved 60-second
+timeout and no size cap; a timeout kills the command, is audited, and returns a
+clear error.
 
 <!-- ===== SNAPSMACK EOF ===== -->

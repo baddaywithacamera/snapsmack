@@ -6,12 +6,50 @@
 """
 
 import base64
+import fnmatch
+import hashlib
 import json
 import os
 import posixpath
 import shlex
 import subprocess
 import sys
+
+
+REMOTE_COMMAND_TIMEOUT_SECONDS = 60
+
+# These are the files whose contents can authorize a write or impersonate the
+# host. Reads return metadata plus SHA-256, never content. The same list is
+# applied to the Proxmox host and to paths resolved inside every container.
+WRITE_KEY_PATHS = (
+    "/etc/pve/priv/tfa.cfg",
+    "/etc/pve/priv/authkey.key",
+    "/etc/pve/priv/pve-root-ca.key",
+    "/etc/pve/priv/acme/*/account.key",
+    "/etc/pve/priv/ceph*.keyring",
+    "/etc/pve/nodes/*/pve-ssl.key",
+    "/etc/pve/nodes/*/pveproxy-ssl.key",
+    "/etc/corosync/authkey",
+    "/etc/ssh/ssh_host_*_key",
+    "/root/.ssh/id_*",
+    "/home/*/.ssh/id_*",
+    "/etc/ssl/private/*",
+    "/etc/pki/tls/private/*",
+    "/etc/letsencrypt/live/*/privkey.pem",
+    "/etc/letsencrypt/archive/*/privkey*.pem",
+    "*.p12",
+    "*.pfx",
+)
+
+PRIVATE_KEY_MARKERS = (
+    b"-----BEGIN OPENSSH PRIVATE KEY-----",
+    b"-----BEGIN PRIVATE KEY-----",
+    b"-----BEGIN ENCRYPTED PRIVATE KEY-----",
+    b"-----BEGIN RSA PRIVATE KEY-----",
+    b"-----BEGIN EC PRIVATE KEY-----",
+    b"-----BEGIN DSA PRIVATE KEY-----",
+    b"PuTTY-User-Key-File-",
+)
 
 def _absolute(path):
     raw = str(path or "")
@@ -35,14 +73,51 @@ def _vmid(value):
 
 
 def _run(argv):
-    result = subprocess.run(
-        argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE, shell=False, check=False,
-    )
+    try:
+        result = subprocess.run(
+            argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, shell=False, check=False,
+            timeout=REMOTE_COMMAND_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as err:
+        raise ValueError(
+            "read operation timed out after %d seconds"
+            % REMOTE_COMMAND_TIMEOUT_SECONDS
+        ) from err
     if result.returncode != 0:
         error = result.stderr.decode("utf-8", "replace")
         raise ValueError("read operation failed: " + error.strip()[:500])
     return result.stdout
+
+
+def _is_write_key_path(path):
+    normalized = posixpath.normpath(str(path or ""))
+    if normalized.endswith(".pub"):
+        return False
+    return any(fnmatch.fnmatchcase(normalized, pattern) for pattern in WRITE_KEY_PATHS)
+
+
+def _looks_like_private_key(prefix):
+    return any(marker in prefix for marker in PRIVATE_KEY_MARKERS)
+
+
+def _sha256_stream(stream, prefix=b""):
+    digest = hashlib.sha256(prefix)
+    while True:
+        chunk = stream.read(1024 * 1024)
+        if not chunk:
+            break
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _metadata_payload(path, *, sha256):
+    payload = _stat_payload(path)
+    payload.update({
+        "sha256": sha256,
+        "content_policy": "metadata-sha256-only",
+    })
+    return payload
 
 
 def _stat_payload(path):
@@ -71,7 +146,10 @@ def dispatch(command):
             return _stat_payload(path)
         if args[0] == "host-read" and len(args) == 2:
             with open(path, "rb") as stream:
-                data = stream.read()
+                prefix = stream.read(4096)
+                if _is_write_key_path(path) or _looks_like_private_key(prefix):
+                    return _metadata_payload(path, sha256=_sha256_stream(stream, prefix))
+                data = prefix + stream.read()
             return {"path": path, "content_base64": base64.b64encode(data).decode("ascii")}
 
     if len(args) >= 3 and args[0] in {"ct-list", "ct-stat", "ct-read"}:
@@ -92,8 +170,21 @@ def dispatch(command):
             return {"vmid": int(guest), "path": path, "size": int(size),
                     "mode": int(mode, 16), "mtime": int(mtime), "kind": kind}
         if args[0] == "ct-read" and len(args) == 3:
-            data = _run(prefix + ["/bin/cat", "--", path])
-            return {"vmid": int(guest), "path": path,
+            resolved_raw = _run(prefix + ["/usr/bin/readlink", "-f", "--", path])
+            resolved = resolved_raw.decode("utf-8", "surrogateescape").strip()
+            if not resolved.startswith("/"):
+                raise ValueError("container path could not be resolved")
+            sample = _run(prefix + ["/usr/bin/head", "-c", "4096", "--", resolved])
+            if _is_write_key_path(resolved) or _looks_like_private_key(sample):
+                raw = _run(prefix + ["/usr/bin/stat", "-Lc", "%s\t%f\t%Y\t%F", "--", resolved])
+                size, mode, mtime, kind = raw.decode("utf-8", "replace").strip().split("\t", 3)
+                digest = _run(prefix + ["/usr/bin/sha256sum", "--", resolved]).decode("ascii").split()[0]
+                return {"vmid": int(guest), "path": path, "resolved_path": resolved,
+                        "size": int(size), "mode": int(mode, 16), "mtime": int(mtime),
+                        "kind": kind, "sha256": digest,
+                        "content_policy": "metadata-sha256-only"}
+            data = _run(prefix + ["/bin/cat", "--", resolved])
+            return {"vmid": int(guest), "path": path, "resolved_path": resolved,
                     "content_base64": base64.b64encode(data).decode("ascii")}
 
     raise ValueError("operation is not in the read-only protocol")
