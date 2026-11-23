@@ -1376,6 +1376,19 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
         $payload['post_count']  = $cc['posts'];
         $payload['image_count'] = $cc['images'];
 
+        // On-site heart rows are a separate signal from ActivityPub likes.
+        // Count the rows that exist now; snap_likes has created_at, but this
+        // headline fleet tile is inventory, not a traffic-period measure.
+        try {
+            $payload['site_likes'] = (int)$pdo->query(
+                "SELECT COUNT(*) FROM snap_likes"
+            )->fetchColumn();
+        } catch (\Throwable $e) {
+            // Older installs may not have the community table yet. Keep the
+            // enriched stats endpoint available while they update.
+            $payload['site_likes'] = 0;
+        }
+
         // Optional exact content window for the hub's completed-month email.
         // Keep the general stats endpoint backward compatible: these fields
         // appear only when both strict ISO dates are supplied.
