@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 
 import sumna_offline as O
 import snap_library
-from sumna_post import SmacktalkPoster
+from sumna_post import AuthorizationExpiredError, SmacktalkPoster
 
 from . import theme, biggie
 from .widgets import (Accordion, Card, build_rail, hint, field_label,
@@ -49,9 +49,9 @@ class _PublishedPostBridge(QObject):
     """Marshal the published-post network read back to the GUI thread."""
 
     list_loaded = Signal(object)
-    list_failed = Signal(str)
+    list_failed = Signal(object)
     loaded = Signal(object)
-    failed = Signal(str)
+    failed = Signal(object)
 
 
 class MosaicPreview(QWidget):
@@ -1597,7 +1597,7 @@ class TakeMode(QWidget):
                     "posts": poster.list_posts(),
                 })
             except Exception as exc:  # noqa: BLE001
-                self._published_bridge.list_failed.emit(str(exc))
+                self._published_bridge.list_failed.emit(exc)
 
         threading.Thread(
             target=load_list, name="coldsnap-list-published", daemon=True,
@@ -1623,10 +1623,14 @@ class TakeMode(QWidget):
             return
         self._start_published_load(poster, post_id, action, session, active_id)
 
-    def _published_list_failed(self, message: str) -> None:
+    def _published_list_failed(self, error) -> None:
         self._published_list_active = False
+        if isinstance(error, AuthorizationExpiredError):
+            from .connect_panel import prompt_reauthentication
+            prompt_reauthentication(self, str(error), long_form=True)
+            return
         self.save_state.setText("Could not load published posts — your draft is safe")
-        QMessageBox.critical(self, "Could not load posts", message)
+        QMessageBox.critical(self, "Could not load posts", str(error))
 
     def _published_open_action(self, active_id: str) -> str:
         """Ask what to do with the durable draft already in the editor."""
@@ -1679,7 +1683,7 @@ class TakeMode(QWidget):
                     "active_id": active_id,
                 })
             except Exception as exc:  # noqa: BLE001
-                self._published_bridge.failed.emit(str(exc))
+                self._published_bridge.failed.emit(exc)
 
         threading.Thread(target=load, name="coldsnap-open-published", daemon=True).start()
 
@@ -1705,10 +1709,14 @@ class TakeMode(QWidget):
             self.save_state.setText("Published post opened separately — your draft is still safe")
         self.rail.refresh_drafts()
 
-    def _published_post_failed(self, message: str) -> None:
+    def _published_post_failed(self, error) -> None:
         self._published_load_active = False
+        if isinstance(error, AuthorizationExpiredError):
+            from .connect_panel import prompt_reauthentication
+            prompt_reauthentication(self, str(error), long_form=True)
+            return
         self.save_state.setText("Could not open published post — your draft is still safe")
-        QMessageBox.critical(self, "Could not open post", message)
+        QMessageBox.critical(self, "Could not open post", str(error))
 
     def _draft_from_remote(self, post):
         draft = O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK,

@@ -266,6 +266,14 @@ class BatchRail(QWidget):
         try:
             policy = poster.publishing_policy()
         except Exception as exc:  # noqa: BLE001
+            from sumna_post import AuthorizationExpiredError
+            if isinstance(exc, AuthorizationExpiredError):
+                from .connect_panel import prompt_reauthentication
+                prompt_reauthentication(
+                    self, str(exc),
+                    long_form=getattr(exc, "credential_kind", "api") == "long-form",
+                )
+                return
             QMessageBox.warning(
                 self, "Could not verify publishing rules",
                 f"COLD SNAP could not confirm this site's live publishing rules:\n\n{exc}\n\n"
