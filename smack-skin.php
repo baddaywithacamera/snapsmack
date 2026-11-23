@@ -299,8 +299,21 @@ if ($target_skin) snapsmack_apply_skin_settings($settings, $target_skin);
 $manifest = $target_skin !== null ? load_skin_manifest($target_skin) : [];
 $skin_asset_picker_needed = false;
 $skin_picker_assets = [];
+// 'image' is in here as well as 'asset' because of SS-1528 item 1: an image
+// control now offers CHOOSE FROM MEDIA LIBRARY, and the picker is useless
+// without the library behind it.
+//
+// THIS WAS THE REAL DEFECT IN THAT CHANGE, and it would have shipped as a
+// button that opened an empty box. The asset list is only fetched when this
+// flag is set, and it was set by the 'asset' type alone -- so I counted the
+// skins instead of assuming, and 14 OF THE 15 skins with image controls
+// declare no 'asset' control at all: ALFRED, AURORA, GAME ON, GLIDE, INSTANT
+// CAMERA, JIVE TURKEY, ONYX, PARADE, SCROLL, SUDDEN IMPACT, TELEGRAM, THE
+// GRID, TILEZ and WRITING WITH IMPACT. Only STANLEY has one. ALFRED is the
+// skin the ticket is about.
 foreach (($manifest['options'] ?? []) as $_skin_option_meta) {
-    if (($_skin_option_meta['type'] ?? '') === 'asset') {
+    $_t = $_skin_option_meta['type'] ?? '';
+    if ($_t === 'asset' || $_t === 'image') {
         $skin_asset_picker_needed = true;
         break;
     }
@@ -505,6 +518,42 @@ if (isset($_POST['save_skin_settings'])) {
     //     so each skin retains its own customizations independently.
     //     Engine control keys (non-htbs_) are saved bare — they're global.
     $save_skin = $_requested_skin; // SECAUDIT 047 — sanitized, validated slug only
+    // SS-1528 item 1, the second consequence of letting an image control be
+    // filled from the media library instead of an upload.
+    //
+    // A manifest can declare min_width / min_height on an image control -- THE
+    // GRID's treatment image needs 1920x1080, and AURORA, INSTANT CAMERA, JIVE
+    // TURKEY and SUDDEN IMPACT declare minimums too. That minimum was enforced
+    // in ONE place: the upload handler further down. A value arriving as a
+    // PICKED PATH never went through it, so the picker I just added would have
+    // been a way round a constraint the skin says it needs.
+    //
+    // DELIBERATELY CONSERVATIVE. It refuses only when it can actually PROVE the
+    // image is too small: the control is type image, the manifest declares a
+    // minimum, the value is a non-empty path, and the file resolves on disk and
+    // measures under it. If the path cannot be resolved or measured the value is
+    // left alone, because "I could not check" is not "it is too small", and
+    // blocking an unverifiable path would break saves for images stored
+    // somewhere this cannot see.
+    // SS-1528 item 1, the second consequence of letting an image control be
+    // filled from the media library instead of an upload: min_width/min_height
+    // was enforced ONLY in the upload handler below, so a picked path was a way
+    // round a minimum the skin says it needs. The check itself is in
+    // core/skin-presentation.php so a test can RUN it -- this page cannot be
+    // loaded by one.
+    $_img_rejects = [];
+    if (isset($_POST['skin_opt']) && is_array($_POST['skin_opt'])) {
+        $_pick_mf_path = __DIR__ . '/skins/' . $save_skin . '/manifest.json';
+        $_pick_opts    = [];
+        if (is_file($_pick_mf_path)) {
+            $_pick_mf   = snapsmack_load_manifest($_pick_mf_path);
+            $_pick_opts = (is_array($_pick_mf) && isset($_pick_mf['options'])) ? $_pick_mf['options'] : [];
+        }
+        $_picked = snapsmack_reject_undersized_skin_images($_POST['skin_opt'], $_pick_opts, __DIR__);
+        $_POST['skin_opt'] = $_picked['keep'];
+        $_img_rejects      = $_picked['rejects'];
+    }
+
     if (isset($_POST['skin_opt'])) {
         foreach ($_POST['skin_opt'] as $s_key => $s_val) {
             // Clamp numeric controls to their manifest bounds on the way in, so a
@@ -543,7 +592,9 @@ if (isset($_POST['save_skin_settings'])) {
             $_mf = snapsmack_load_manifest($_mf_path);
             $_img_opts = (is_array($_mf) && isset($_mf['options'])) ? $_mf['options'] : [];
         }
-        $_img_rejects = [];
+        // NOT reset here: the picked-path check above shares this list, and
+        // re-initialising it would silently discard its refusals whenever a file
+        // happened to be uploaded in the same save.
 
         foreach ($_FILES['skin_img_opt']['name'] as $img_key => $orig_name) {
             if (empty($orig_name) || $_FILES['skin_img_opt']['error'][$img_key] !== UPLOAD_ERR_OK) continue;
@@ -575,9 +626,14 @@ if (isset($_POST['save_skin_settings'])) {
             }
         }
 
-        if (!empty($_img_rejects)) {
-            $_SESSION['gallery_flash'] = 'Image not saved — ' . implode('; ', $_img_rejects) . '.';
-        }
+    }
+
+    // Outside the upload block on purpose: a refusal from the picked-path check
+    // has no upload behind it, and reporting it only when a file happened to be
+    // attached would leave an owner staring at an unchanged setting with nothing
+    // said. Covers both passes.
+    if (!empty($_img_rejects)) {
+        $_SESSION['gallery_flash'] = 'Image not saved — ' . implode('; ', $_img_rejects) . '.';
     }
 
     // 4a-ii. Variant persistence (skin palette, if manifest declares variants).
@@ -1481,13 +1537,46 @@ if (!empty($google_families)) {
                                 $img_preview_url = $val ? BASE_URL . ltrim($val, '/') : '';
                                 $img_accept      = $o['accept'] ?? 'image/jpeg,image/png,image/webp,image/gif';
                                 ?>
-                                <input type="hidden" name="skin_opt[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val); ?>">
-                                <?php if ($img_preview_url): ?>
-                                <div class="mb-8">
-                                    <img src="<?php echo htmlspecialchars($img_preview_url); ?>"
-                                         class="avatar-72">
+                                <?php
+                                /* SS-1528 item 1. An owner who had already
+                                   uploaded their logo to the media library had
+                                   no way to use it here: this control could
+                                   only UPLOAD, so the same file had to be
+                                   uploaded a second time. The picker it needs
+                                   already exists and smack-asset-picker.js is
+                                   already loaded on this page -- the type:
+                                   'asset' control below has used it all along.
+                                   So this is a wiring job, not a new control:
+                                   the hidden input gains an id and a preview
+                                   target, which is all ssOpenAssetPicker's
+                                   'field' mode needs.
+
+                                   UPLOAD is untouched and still wins, because
+                                   the POST handler overwrites this value when a
+                                   file actually arrives. */
+                                $img_input_id   = 'skinimgval-' . preg_replace('/[^a-z0-9_-]/i', '', $k);
+                                $img_preview_id = $img_input_id . '-preview';
+                                ?>
+                                <input type="hidden"
+                                       id="<?php echo htmlspecialchars($img_input_id); ?>"
+                                       name="skin_opt[<?php echo $k; ?>]"
+                                       value="<?php echo htmlspecialchars($val); ?>"
+                                       data-preview-target="<?php echo htmlspecialchars($img_preview_id); ?>">
+                                <?php /* The preview is sized by .skin-image-preview img rather than a
+                                         class on the tag, because the picker replaces this div's
+                                         innerHTML with a BARE <img> -- so a class here would be lost
+                                         and the chosen image would render unstyled at full size. One
+                                         rule covers the image that was already there and the one just
+                                         picked, which is the point: they must look the same. */ ?>
+                                <div id="<?php echo htmlspecialchars($img_preview_id); ?>" class="skin-image-preview mb-8">
+                                    <?php if ($img_preview_url): ?>
+                                    <img src="<?php echo htmlspecialchars($img_preview_url); ?>" alt="">
+                                    <?php endif; ?>
                                 </div>
-                                <?php endif; ?>
+                                <button type="button" class="sc-btn mb-8"
+                                        onclick="window.ssOpenAssetPicker('field',document.getElementById('<?php echo htmlspecialchars($img_input_id); ?>'))">
+                                    CHOOSE FROM MEDIA LIBRARY
+                                </button>
                                 <div class="file-upload-wrapper" onclick="document.getElementById('skinimg-<?php echo $k; ?>').click()">
                                     <div class="file-custom-btn">UPLOAD</div>
                                     <div class="file-name-display" id="skinimg-name-<?php echo $k; ?>"><?php echo $val ? 'CURRENT' : 'SELECT FILE'; ?></div>
