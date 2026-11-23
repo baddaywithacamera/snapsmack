@@ -64,6 +64,34 @@ are pushed and waiting on review.
   "Follow the post text", which is what captions have always done. The caption font
   is not here yet; it is waiting on the fallback repair in this same release.
   **Repackage TILEZ 0.2.79 + reinstall to ship.** (SS-1495)
+- **A serif font you choose now falls back to another serif, not to a sans.**
+  Every font you pick in a skin's settings is written out with a backup
+  typeface, used while yours loads and whenever it cannot load at all. That
+  backup was a sans-serif for every font that was not a typewriter face — so
+  if you chose Georgia, Merriweather, Playfair Display or any other serif,
+  readers whose browsers had not got your font saw the page in the wrong kind
+  of typeface. It affected 48 of the 61 font settings across the skins, and
+  six skins shipped that way by default. The backup now matches the kind of
+  typeface you chose. Nothing changes for a font that was already correct,
+  and no setting of yours is altered. (SS-1519)
+
+- **IMPACT PRINTER (skin package, 2.1.28): choosing a DotMatrix variant no
+  longer drops back past DotMatrix.** If you picked one of the condensed,
+  expanded or italic DotMatrix faces and it could not load, the page fell
+  straight to Courier instead of to plain DotMatrix, which is much closer to
+  what you chose. It now tries DotMatrix first. This covers three of the
+  skin's four font settings — the masthead, the body text and the page
+  headings. **The footer font is not covered yet** and still falls back past
+  DotMatrix; that is a separate repair. Sites using the standard DotMatrix are
+  unaffected. **Repackage IMPACT PRINTER 2.1.28 + reinstall to ship.**
+  (SS-1519)
+
+- **WRITING WITH IMPACT (skin package, 1.1.12): the same repair for your
+  headings.** If the DotMatrix face you chose could not load, headings fell
+  straight to the system typewriter font instead of trying Tiny5 Matrix and
+  then plain DotMatrix first, which is far closer to the look you picked.
+  Nothing changes for a site using the standard heading face. **Repackage
+  WRITING WITH IMPACT 1.1.12 + reinstall to ship.** (SS-1519)
 
 - **A restore brings your photographs back, and tells you honestly when it
   cannot.** The admin restore path never reconciled media: database rows came

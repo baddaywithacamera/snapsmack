@@ -452,6 +452,13 @@
             25
         ]
     },
+    "declared-fonts-keep-their-own-category-regression.php": {
+        "assertions": 29,
+        "predicates": 17,
+        "thresholds": [
+            100
+        ]
+    },
     "decorative-image-is-not-a-photograph.php": {
         "assertions": 21,
         "predicates": 22,

@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "IMPACT PRINTER",
-    "version": "2.1.27",
+    "version": "2.1.28",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Designed for photographers who enjoy using instant printer cameras that output on thermal paper. Continuous-feed tractor-feed paper textures, ASCII character borders, dithered halftone image rendering, faded ribbon ink. Two paper stocks: green-bar ledger and plain white.",
@@ -281,7 +281,8 @@
                 "DotMatrix-Duo-UltraCondensed": "DotMatrix Duo (Ultra Condensed)"
             },
             "selector": ".site-title-text, .logo-area a",
-            "property": "font-family"
+            "property": "font-family",
+            "fallback": "'DotMatrix', 'Courier New', monospace"
         },
         "header_font_size": {
             "section": "TYPOGRAPHY",
@@ -344,7 +345,8 @@
                 "DotMatrix-Duo-UltraCondensed": "DotMatrix Duo (Ultra Condensed)"
             },
             "selector": ".description, .static-content",
-            "property": "font-family"
+            "property": "font-family",
+            "fallback": "'DotMatrix', 'Courier New', monospace"
         },
         "static_heading_font": {
             "section": "TYPOGRAPHY",
@@ -383,7 +385,8 @@
                 "DotMatrix-Duo-UltraCondensed": "DotMatrix Duo (Ultra Condensed)"
             },
             "selector": ".static-page-title, .photo-title-footer",
-            "property": "font-family"
+            "property": "font-family",
+            "fallback": "'DotMatrix', 'Courier New', monospace"
         },
         "footer_font_family": {
             "section": "TYPOGRAPHY",

@@ -601,7 +601,12 @@ function snapsmack_declared_skin_style(string $skinSlug, array $options): string
                 $cssValue = $font;
             } else {
                 $safe = str_replace(['\\', '"'], ['\\\\', '\\"'], $font);
-                $cssValue = '"' . $safe . '", ' . snapsmack_font_family_generic_fallback($font);
+                // SS-1519: the tail is the option's declared fallback where it
+                // has one -- the skin's own stack -- then the known-families
+                // table, then nothing at all rather than a guess.
+                $tail = snapsmack_font_family_generic_fallback(
+                    $font, (string)($definition['fallback'] ?? ''));
+                $cssValue = '"' . $safe . '"' . ($tail === '' ? '' : ', ' . $tail);
             }
         } elseif (in_array($type, ['range', 'range_numeric', 'number'], true)) {
             $cssValue = (string)$value . (string)($definition['unit'] ?? (str_starts_with($property, '--') ? '' : 'px'));

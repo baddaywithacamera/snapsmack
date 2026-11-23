@@ -11,7 +11,7 @@
         "default": "layout.php"
     },
     "name": "WRITING WITH IMPACT",
-  "version": "1.1.11",
+    "version": "1.1.12",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "STANLEY's classic longform geometry fed through the dot-matrix print head from IMPACT PRINTER and SUDDEN IMPACT. Continuous tractor-feed paper, perforated edges, selectable Tiny5 / DotMatrix type, ASCII image frames, a reading column with sidebar, and post-linked archive thumbnails. Two paper stocks: plain white and green-bar ledger.",
@@ -72,7 +72,7 @@
         ]
     },
     "require_scripts": [
-    "smack-tag-infinite",
+        "smack-tag-infinite",
         "smack-footer",
         "smack-community"
     ],
@@ -180,6 +180,7 @@
             },
             "selector": ".wwi-title, .post-title, .summary-title, #wwi-sidebar h2",
             "property": "font-family",
+            "fallback": "'Tiny5-Matrix', 'DotMatrix', monospace",
             "help": "Uses the complete DotMatrix/Tiny5 library shared with IMPACT PRINTER."
         },
         "body_font_family": {

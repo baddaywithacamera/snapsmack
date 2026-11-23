@@ -98,8 +98,11 @@ function snapsmack_recompile_public_skin_css(PDO $pdo, string $active_skin): voi
         if ($meta['type'] === 'select' && isset($meta['options'][$val]['css'])) {
             $generated_public .= "{$meta['selector']} {$meta['options'][$val]['css']}\n";
         } elseif ($prop === 'font-family') {
-            $fallback = snapsmack_font_family_generic_fallback($val);
-            $generated_public .= "{$meta['selector']} { font-family: \"{$val}\", {$fallback}; }\n";
+            // SS-1519: declared fallback first, then the known-families
+            // table, then the family on its own rather than a guessed generic.
+            $fallback = snapsmack_font_family_generic_fallback($val, (string)($meta['fallback'] ?? ''));
+            $stack = '"' . $val . '"' . ($fallback === '' ? '' : ', ' . $fallback);
+            $generated_public .= "{$meta['selector']} { font-family: {$stack}; }\n";
             if (!empty($meta['selector']) && empty($meta['no_size_slider'])) {
                 $sz_key = $key . '_size';
                 $sz_val = ($all_settings[$sz_key] ?? '') !== '' ? $all_settings[$sz_key] : ($meta['size']['default'] ?? '1.0');

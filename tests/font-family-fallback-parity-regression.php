@@ -42,11 +42,27 @@ foreach ($mono as $f) {
     ff(snapsmack_font_family_generic_fallback($f) === "'Courier New', monospace",
        "{$f} -> a monospace fallback");
 }
-$prop = ['Raleway', 'Georgia', 'Inter', 'Helvetica', 'DM Sans', 'Libre Baskerville'];
-foreach ($prop as $f) {
+// SS-1519 CORRECTED THIS BLOCK. It used to assert that Georgia and Libre
+// Baskerville fall back to sans-serif, and called that "unchanged behaviour".
+// It was unchanged, and it was wrong: a serif face falling back to a sans is
+// the same class of fault this file was written to catch for monospace, and
+// it was live on a real site. The category now has to be right for every
+// face, not only the monospace ones.
+$sans = ['Raleway', 'Inter', 'DM Sans', 'Montserrat'];
+foreach ($sans as $f) {
     ff(snapsmack_font_family_generic_fallback($f) === 'sans-serif',
-       "{$f} -> sans-serif (unchanged behaviour)");
+       "{$f} -> sans-serif");
 }
+$serif = ['Georgia', 'Libre Baskerville', 'Source Serif 4', 'Playfair Display',
+          'Cormorant Garamond', 'Droid Serif'];
+foreach ($serif as $f) {
+    ff(snapsmack_font_family_generic_fallback($f) === 'serif',
+       "{$f} -> serif, NOT sans-serif (SS-1519)");
+}
+// 'Helvetica' is not a family any skin offers, so it is not in the table and
+// gets no generic at all. That is the deliberate answer: no guess.
+ff(snapsmack_font_family_generic_fallback('Helvetica') === '',
+   'an unlisted family gets no generic rather than a guessed one');
 
 echo "\nTHE PRESENTATION BUILDER NOW EMITS THE MONOSPACE FALLBACK (the fixed bug)\n";
 require_once $root . '/core/trusted-html.php';
