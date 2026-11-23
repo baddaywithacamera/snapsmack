@@ -209,6 +209,32 @@ class RootReadTests(unittest.TestCase):
         self.assertEqual(record["action"], "root_read_refused")
         self.assertEqual(record["detail"]["path"], "/missing")
 
+    def test_malformed_inventory_and_list_replies_are_audited_with_path(self):
+        self.replies["inventory"] = (0, {"ok": True, "data": {}})
+        with self.assertRaisesRegex(Refused, "containers"):
+            self.broker.inventory()
+        record = self.audit.records()[-1]
+        self.assertEqual(record["action"], "root_read_refused")
+        self.assertEqual(record["detail"]["operation"], "inventory")
+        self.assertEqual(record["detail"]["path"], "/")
+
+        self.replies["host-list /var/log"] = (0, {"ok": True, "data": {}})
+        with self.assertRaisesRegex(Refused, "entries"):
+            self.broker.listdir("/var/log")
+        record = self.audit.records()[-1]
+        self.assertEqual(record["action"], "root_read_refused")
+        self.assertEqual(record["detail"]["operation"], "host-list")
+        self.assertEqual(record["detail"]["path"], "/var/log")
+
+    def test_malformed_read_metadata_is_audited_with_path(self):
+        self.replies["host-read /etc/hosts"] = (0, {"ok": True, "data": None})
+        with self.assertRaisesRegex(Refused, "content_policy"):
+            self.broker.read_file("/etc/hosts")
+        record = self.audit.records()[-1]
+        self.assertEqual(record["action"], "root_read_refused")
+        self.assertEqual(record["detail"]["operation"], "host-read")
+        self.assertEqual(record["detail"]["path"], "/etc/hosts")
+
     def test_container_symlink_is_resolved_before_write_key_policy_and_never_catted(self):
         calls = []
 
