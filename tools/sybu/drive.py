@@ -35,6 +35,61 @@ SCOPES = ['https://www.googleapis.com/auth/drive']
 _PERM_RETRIES = 2
 
 
+class DriveAuthorizationExpired(RuntimeError):
+    """The saved Google authorization no longer works and consent is needed.
+
+    Distinct from "never connected" and from a network failure, because the
+    owner has to DO something different in each case and the window used to say
+    the same three words -- Drive Disconnected -- for all of them.
+    """
+
+
+def authorization_state(credentials_path: str = '') -> tuple:
+    """Return (state, sentence) describing the Drive authorization.
+
+    WHY A STATE AND NOT A BOOLEAN. is_authenticated() answers yes or no, and the
+    window turned that into "Drive Connected" or "Drive Disconnected". Three
+    different situations collapsed into Disconnected -- never set up, the client
+    file missing, and an authorization that had been withdrawn -- and they need
+    three different actions from the owner. One of them is "sign in again" and
+    the owner had no way to know that was what was being asked of them.
+
+    No network call: this reads what is on disk. Whether a refresh will actually
+    be accepted is only knowable by trying, and a status indicator must not
+    block on the network to paint itself.
+
+    States: 'connected', 'no_client', 'never', 'expired', 'unreadable'.
+    """
+    if credentials_path and not os.path.isfile(credentials_path):
+        return ('no_client', 'Google credentials file not found. Choose it in '
+                             'Connection and services.')
+
+    token_path = _token_path()
+    if not os.path.exists(token_path):
+        return ('never', 'Drive is not connected yet. Open Connection and '
+                         'services, then Connect Drive.')
+    try:
+        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+    except Exception:
+        return ('unreadable', 'The saved Drive authorization could not be read. '
+                              'Open Connection and services, then Connect Drive.')
+
+    if creds and creds.valid:
+        return ('connected', 'Drive connected.')
+
+    # A refresh token is not proof of a WORKING grant: a withdrawn one still has
+    # the token sitting on disk. This is the case that was being reported as
+    # plain "Disconnected", and the reason the owner saw a browser open by
+    # itself with no explanation.
+    if creds and creds.refresh_token:
+        return ('expired', 'The Drive authorization has expired or was '
+                           'withdrawn. Open Connection and services, then '
+                           'Connect Drive to sign in again.')
+
+    return ('expired', 'The Drive authorization is no longer valid. Open '
+                       'Connection and services, then Connect Drive.')
+
+
 def _token_path() -> str:
     """token.json lives next to the exe (or script in dev)."""
     if getattr(sys, 'frozen', False):
@@ -44,7 +99,7 @@ def _token_path() -> str:
     return os.path.join(base, 'token.json')
 
 
-def authenticate(credentials_path: str):
+def authenticate(credentials_path: str, allow_consent: bool = True):
     """
     Authenticate with Google Drive using OAuth2.
     - First call: opens browser for consent, saves token.json.
@@ -55,7 +110,15 @@ def authenticate(credentials_path: str):
     token_path = _token_path()
 
     if os.path.exists(token_path):
-        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+        try:
+            creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+        except Exception:
+            # A token file that cannot be parsed is a RECONNECT, not a crash.
+            # google-auth raises for a file missing refresh_token, and for
+            # anything that is not JSON, and both reached the owner as a raw
+            # library traceback -- "Authorized user info was not in the
+            # expected format" -- which is true and impossible to act on.
+            creds = None
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
@@ -70,6 +133,26 @@ def authenticate(credentials_path: str):
                     raise
                 creds = None
         if not creds or not creds.valid:
+            # SS-1534. THIS IS WHERE A REVOKED GRANT USED TO OPEN A BROWSER
+            # WITHOUT SAYING ANYTHING. An automatic connection attempt -- the one
+            # the app makes on startup -- would fall through to the consent flow
+            # and the system browser would appear on its own, while the only thing
+            # the window said was "Drive Disconnected".
+            #
+            # Consent is correct when the OWNER asked to connect. It is not
+            # correct as the silent answer to a token that has stopped working.
+            # So an automatic caller passes allow_consent=False and gets a
+            # sentence it can show instead.
+            if not allow_consent:
+                # The sentence comes from authorization_state so the window and
+                # this error can never disagree about what is wrong. Saying
+                # "expired" to someone who never connected would send them
+                # hunting for a thing that was never there.
+                _state, _words = authorization_state(credentials_path)
+                raise DriveAuthorizationExpired(
+                    _words
+                    + "\n\nNothing has been uploaded and no post has been made."
+                )
             try:
                 flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
             except Exception as e:
