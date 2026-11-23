@@ -327,6 +327,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'rollc
     exit;
 }
 
+// SS-1481 #14: the owner's ceiling on the remote-image cache, in megabytes.
+// Sean's default is 512. snap_media_cache_limit_bytes() clamps it to 16..32768
+// whatever arrives here, so a bad value costs a surprising number on the page
+// and never an unbounded cache.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_media_cache') {
+    require_once __DIR__ . '/media-retention.php';
+    $mc_asked = (int)($_POST['media_cache_mb'] ?? 512);
+    $mc_bytes = snap_media_cache_limit_bytes(['fedi_media_cache_mb' => $mc_asked]);
+    $mc_mb    = intdiv($mc_bytes, 1048576);
+    sv_set_setting($pdo, $sv_settings, 'fedi_media_cache_mb', (string)$mc_mb);
+    // Apply it at once rather than at the next cached image, so the number on
+    // the page is the truth about the disk the moment it is saved.
+    $mc_swept = snap_media_cache_sweep(snap_media_cache_dir(), $mc_bytes);
+    $mc_msg = 'Remote-image cache limit set to ' . $mc_mb . ' MB'
+        . ($mc_mb !== $mc_asked ? ' (adjusted from ' . $mc_asked . ' — the range is 16 to 32768)' : '')
+        . '. Now using ' . round($mc_swept['bytes'] / 1048576, 1) . ' MB'
+        . ($mc_swept['expired'] || $mc_swept['evicted']
+            ? '; removed ' . $mc_swept['expired'] . ' stale and '
+              . $mc_swept['evicted'] . ' oldest file(s).'
+            : '; nothing needed removing.')
+        . ' Video is never cached, by your ruling — remote video plays from its own server.';
+    header('Location: ' . $sv_self . '?msg=' . urlencode($mc_msg));
+    exit;
+}
+
 // PIGGYBACK SEARCH ACCOUNT (0.7.373): store a read-only OAuth token on a trusted
 // instance so the client can proxy that instance's authenticated /api/v2/search
 // (account + full-text discovery). Storing a credential is step-up gated

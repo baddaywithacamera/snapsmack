@@ -234,6 +234,20 @@ $sv_lap('actor');
 // (716D: the second roster pull that used to sit here is gone — the one at the
 // top of this file already ran, and the pull is hourly-gated now anyway.)
 
+// SS-1481 #14. Retention, once per tick, bounded. The inbound timeline had
+// none at all: every relayed post and every post from a followed account kept
+// for ever on a photographer's shared host. Sean's numbers: 90 days or 2,000
+// rows per feed, whichever is MORE GENEROUS, and never a row the owner was
+// notified about. 2,000 rows per run so a long-neglected install works its way
+// down over several ticks instead of holding a ten-minute DELETE.
+//
+// The MEDIA cache is not swept here: snap_media_cache_store() does it on every
+// store, deterministically, which is the half of #14 that replaced a 1-in-100
+// dice roll.
+require_once "{$root}/core/media-retention.php";
+$sv_retention = snap_timeline_retention($pdo, null, null, 2000);
+$sv_lap('retention');
+
 // Health stamp for the FEDIVERSE admin page's delivery panel. Record how many
 // this run actually delivered/failed so the page can SHOW success — otherwise a
 // successful send just vanishes (rows are deleted on delivery) and the operator
@@ -246,11 +260,12 @@ sv_set_setting($pdo, $settings, 'fediverse_cron_last_failed', (string)(int)$fail
 $cron_finished_cleanly = true;
 
 echo sprintf(
-    "FEDIVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; relay ingest: %d recovered, %d retrying/shelved; outbox recovery: %d members, %d recovered; PHOTOFRI: %d finalized, %d gardened, %d withdrawn; profile-update: %d follower(s); mesh-follow: %d%s.\n",
+    "FEDIVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; relay ingest: %d recovered, %d retrying/shelved; outbox recovery: %d members, %d recovered; PHOTOFRI: %d finalized, %d gardened, %d withdrawn; profile-update: %d follower(s); mesh-follow: %d%s; retention: %d pruned of %d over the line.\n",
     $units, $queued, $bf_jobs, $bf_queued, $sent, $failed, $relay_ingest[0], $relay_ingest[1], $relay_recovery[0], $relay_recovery[1], $pc_maintenance[0], $pc_maintenance[1], $pc_maintenance[2], $actor_upd,
     $mesh_follow['followed'],
     is_array($curator) ? sprintf('; CURATOR: %s, %d discovered%s (%s)',
-        $curator[0], $curator[1], $curator[2] ? ' (scan complete)' : '', $curator[3]) : ''
+        $curator[0], $curator[1], $curator[2] ? ' (scan complete)' : '', $curator[3]) : '',
+    $sv_retention['deleted'], $sv_retention['candidates']
 );
 $sv_timing['total'] = round(microtime(true) - $sv_t0, 2);
 echo 'TIMING ' . implode(' ', array_map(static fn($k, $v) => "$k={$v}s", array_keys($sv_timing), $sv_timing)) . PHP_EOL;
