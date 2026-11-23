@@ -1582,6 +1582,13 @@ body.glide-v2:has(.archive-grid, .blogroll-page) {
 }
 .wall-viewer figure > button:first-of-type { right: calc(100% + 10px); }
 .wall-viewer figure > button:last-of-type { left: calc(100% + 10px); }
+.wall-viewer figure > button.wall-viewer-like {
+    inset: auto auto 10px 10px;
+    width: 44px;
+    height: 44px;
+    transform: none;
+    opacity: 1;
+}
 .wall-viewer button:is(:hover, :focus-visible) { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .wall-viewer figcaption { transition: none; } }
 .wall-viewer figure { outline: none; transition: transform 200ms ease; }

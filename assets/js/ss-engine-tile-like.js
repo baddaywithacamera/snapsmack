@@ -28,13 +28,21 @@
         return tag ? tag.getAttribute('content') : '';
     }
 
-    function paint(button, liked) {
+    function paintOne(button, liked) {
         button.classList.toggle('is-liked', !!liked);
         button.dataset.liked = liked ? '1' : '0';
         button.setAttribute('aria-pressed', liked ? 'true' : 'false');
         var label = liked ? 'Unlike this photograph' : 'Like this photograph';
         button.setAttribute('aria-label', label);
         button.setAttribute('title', label);
+    }
+
+    function paint(button, liked) {
+        var id = parseInt(button.dataset.tileLike || '0', 10);
+        if (!id) return paintOne(button, liked);
+        document.querySelectorAll('.ss-tile-like[data-tile-like="' + id + '"]').forEach(function (copy) {
+            paintOne(copy, liked);
+        });
     }
 
     function send(button) {

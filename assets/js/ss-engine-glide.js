@@ -239,6 +239,15 @@
             }
             displayedPhoto = photo;
             updateViewerPane();
+            viewer.querySelector('.wall-viewer-like')?.remove();
+            if (photo.likeButton) {
+                var viewerLike = photo.likeButton.cloneNode(true);
+                viewerLike.classList.add('wall-viewer-like');
+                viewerLike.dataset.busy = '0';
+                viewerLike.removeAttribute('tabindex');
+                viewerLike.removeAttribute('aria-hidden');
+                viewer.querySelector('figure').append(viewerLike);
+            }
             viewerImage.src = photo.src;
             viewerImage.alt = photo.alt;
             viewerCaption.textContent = photo.title;
@@ -262,6 +271,7 @@
                     url: entry.href,
                     commentCount: entry.hasAttribute('data-comment-count') ? Number(entry.dataset.commentCount) : null,
                     commentsOpen: entry.dataset.commentsEnabled === "true",
+                    likeButton: entry.closest('.ss-tile-like-host')?.querySelector('.ss-tile-like') || null,
                     title: entry.getAttribute('aria-label') || entry.querySelector('h2')?.textContent || img.alt
                 });
             });
@@ -355,6 +365,7 @@
                 restored.removeAttribute('data-glide-restored-focus');
             }, { once: true });
             viewerImage.removeAttribute('src');
+            viewer.querySelector('.wall-viewer-like')?.remove();
         });
 
         panel.addEventListener('submit', closePanel);
