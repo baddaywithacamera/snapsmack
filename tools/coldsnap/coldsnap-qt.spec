@@ -82,6 +82,10 @@ a = Analysis(
         'llvmlite', 'pandas', 'numpy.distutils', 'altair', 'streamlit',
         'gradio', 'IPython', 'ipykernel', 'notebook', 'uvicorn', 'fastapi',
         'starlette', 'fsspec', 'pyarrow',
+        # A bundled unittest module makes snap_home correctly mistake the
+        # frozen production process for a test runner and refuse C:\\snapsmack.
+        # The application imports no unittest code; keep it out of the bundle.
+        'unittest',
         # Qt modules the shell never touches — keeps the onefile exe lean.
         'PySide6.QtWebEngineCore', 'PySide6.QtWebEngineWidgets',
         'PySide6.QtQml', 'PySide6.QtQuick', 'PySide6.Qt3DCore',
