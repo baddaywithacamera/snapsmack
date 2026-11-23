@@ -355,13 +355,13 @@
             countEl.textContent   = n + (n === 1 ? ' like' : ' likes');
         }
 
-        post('process-reaction.php', { action: 'toggle_like', img_id: imageId }, function (data) {
+        post('process-like.php', { post_id: imageId }, function (data) {
             delete likesInFlight[imageId];
             if (data && typeof data.liked !== 'undefined') {
                 btn.dataset.liked = data.liked ? '1' : '0';
                 btn.classList.toggle('liked', !!data.liked);
-                if (countEl && typeof data.like_count !== 'undefined') {
-                    var c = Math.max(0, parseInt(data.like_count) || 0);
+                if (countEl && typeof data.count !== 'undefined') {
+                    var c = Math.max(0, parseInt(data.count) || 0);
                     countEl.style.display = c ? '' : 'none';
                     countEl.textContent   = c + (c === 1 ? ' like' : ' likes');
                 }

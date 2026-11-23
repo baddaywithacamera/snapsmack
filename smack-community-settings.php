@@ -3,9 +3,8 @@
  * SNAPSMACK - Community Settings
  *
  * Admin panel for configuring the community system:
- *   - Global feature toggles (community on/off, comments, likes, reactions)
+ *   - Global feature toggles (community on/off, comments, likes)
  *   - Community dock position (8-position picker, same as social dock)
- *   - Active reaction set (up to 6 from the full registry; thumbs-down optional)
  *   - Email settings for verification and password reset
  *   - Rate limiting thresholds
  *   - Session lifetime
@@ -21,26 +20,6 @@
 
 require_once 'core/auth-smack.php';
 
-// --- FULL REACTION REGISTRY ---
-// Mirrors core/community-dock.php and process-reaction.php.
-$reaction_registry = [
-    'fire'         => ['emoji' => '🔥', 'label' => 'Fire'],
-    'chef-kiss'    => ['emoji' => '🤌', 'label' => 'Chef\'s kiss'],
-    'wow'          => ['emoji' => '😮', 'label' => 'Wow'],
-    'moody'        => ['emoji' => '🌧️', 'label' => 'Moody'],
-    'sharp'        => ['emoji' => '💎', 'label' => 'Sharp'],
-    'golden-hour'  => ['emoji' => '🌅', 'label' => 'Golden hour'],
-    'cinematic'    => ['emoji' => '🎬', 'label' => 'Cinematic'],
-    'peaceful'     => ['emoji' => '🕊️', 'label' => 'Peaceful'],
-    'haunting'     => ['emoji' => '👁️', 'label' => 'Haunting'],
-    'story'        => ['emoji' => '📖', 'label' => 'Tells a story'],
-    'colours'      => ['emoji' => '🎨', 'label' => 'The colours'],
-    'light'        => ['emoji' => '✨', 'label' => 'The light'],
-    'texture'      => ['emoji' => '🪨', 'label' => 'Texture'],
-    'timing'       => ['emoji' => '⚡', 'label' => 'Perfect timing'],
-    'composition'  => ['emoji' => '🔲', 'label' => 'Composition'],
-];
-
 // --- SAVE ---
 $msg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_community'])) {
@@ -50,8 +29,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_community'])) {
         'community_enabled'           => ($_POST['community_enabled']           ?? '0') === '1' ? '1' : '0',
         'community_comments_enabled'  => ($_POST['community_comments_enabled']  ?? '0') === '1' ? '1' : '0',
         'community_likes_enabled'     => ($_POST['community_likes_enabled']     ?? '0') === '1' ? '1' : '0',
-        'community_reactions_enabled' => ($_POST['community_reactions_enabled'] ?? '0') === '1' ? '1' : '0',
-        'community_allow_dislike'     => ($_POST['community_allow_dislike']     ?? '0') === '1' ? '1' : '0',
 
         // Comment identity
         'comment_identity'            => in_array($_POST['comment_identity'] ?? 'open', ['open', 'hybrid', 'registered'])
@@ -85,16 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_community'])) {
         $saves['community_dock_position'] = 'bottom-right';
     }
 
-    // Active reactions: collect checked boxes (max 10, from registry only, no thumbs-down here)
-    $checked = $_POST['active_reactions'] ?? [];
-    $active  = [];
-    foreach ($checked as $code) {
-        if (isset($reaction_registry[$code]) && count($active) < 10) {
-            $active[] = $code;
-        }
-    }
-    $saves['community_active_reactions'] = json_encode($active, JSON_UNESCAPED_UNICODE);
-
     // Persist all settings
     $stmt = $pdo->prepare("
         INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
@@ -110,10 +77,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_community'])) {
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                     ->fetchAll(PDO::FETCH_KEY_PAIR);
 }
-
-// --- LOAD CURRENT SETTINGS ---
-$active_reactions_raw = $settings['community_active_reactions'] ?? '["fire","chef-kiss","wow","moody","sharp","golden-hour"]';
-$active_reactions     = json_decode($active_reactions_raw, true) ?: [];
 
 // Shield — hub-specific data for status display
 $is_hub          = ($settings['multisite_role'] ?? '') === 'hub';
@@ -207,14 +170,6 @@ include 'core/sidebar.php';
             </label>
 
             <label class="toggle-row">
-                <span class="toggle-label">REACTIONS</span>
-                <span class="toggle-desc">Show the reaction picker on the floating dock.</span>
-                <input type="hidden"   name="community_reactions_enabled" value="0">
-                <input type="checkbox" name="community_reactions_enabled" value="1"
-                    <?php echo ($settings['community_reactions_enabled'] ?? '0') === '1' ? 'checked' : ''; ?>>
-            </label>
-
-            <label class="toggle-row">
                 <span class="toggle-label">EMAIL VERIFICATION REQUIRED</span>
                 <span class="toggle-desc">Visitors must verify their email before commenting or liking.</span>
                 <input type="hidden"   name="community_require_verification" value="0">
@@ -231,7 +186,7 @@ include 'core/sidebar.php';
     <div class="box">
         <h3>DOCK POSITION</h3>
         <p class="box-desc">
-            Where the likes &amp; reactions dock floats on the photo page.
+            Where the likes dock floats on the photo page.
             If the social dock is in the same corner, the community dock shifts inward automatically.
         </p>
 
@@ -256,51 +211,6 @@ include 'core/sidebar.php';
                 <?php echo $label; ?>
             </label>
             <?php endforeach; ?>
-        </div>
-    </div>
-
-
-    <!-- ====================================================================
-         SECTION 3: ACTIVE REACTIONS
-         ==================================================================== -->
-    <div class="box">
-        <h3>REACTIONS</h3>
-        <p class="box-desc">
-            Choose up to <strong>6</strong> reactions to show in the dock picker.
-            Reactions are photography-specific — no generic social media emojis.
-        </p>
-
-        <div class="reaction-picker-grid">
-            <?php $checked_count = 0; ?>
-            <?php foreach ($reaction_registry as $code => $rx):
-                $is_checked = in_array($code, $active_reactions, true);
-                if ($is_checked) $checked_count++;
-            ?>
-            <label class="reaction-option <?php echo $is_checked ? 'is-active' : ''; ?>"
-                   data-code="<?php echo htmlspecialchars($code); ?>">
-                <input type="checkbox" name="active_reactions[]" value="<?php echo htmlspecialchars($code); ?>"
-                       <?php echo $is_checked ? 'checked' : ''; ?>>
-                <span class="rx-emoji"><?php echo $rx['emoji']; ?></span>
-                <span class="rx-label"><?php echo htmlspecialchars($rx['label']); ?></span>
-            </label>
-            <?php endforeach; ?>
-        </div>
-
-        <p class="reaction-count-note">
-            <span id="rx-count-display"><?php echo $checked_count; ?></span> of 6 selected
-        </p>
-
-        <div class="option-group" style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
-            <label class="toggle-row">
-                <span class="toggle-label">👎 HONEST FEEDBACK</span>
-                <span class="toggle-desc">
-                    Add a thumbs-down reaction. Brave, but useful — visitors can give constructive feedback
-                    without leaving a comment. Does not count toward the 6-reaction limit.
-                </span>
-                <input type="hidden"   name="community_allow_dislike" value="0">
-                <input type="checkbox" name="community_allow_dislike" value="1"
-                    <?php echo ($settings['community_allow_dislike'] ?? '0') === '1' ? 'checked' : ''; ?>>
-            </label>
         </div>
     </div>
 
@@ -440,45 +350,7 @@ include 'core/sidebar.php';
 
 </div><!-- /.main -->
 
-<script>
-(function () {
-    // Live reaction counter — disable checkboxes beyond 10 selections
-    var MAX = 10;
-    var grid = document.querySelector('.reaction-picker-grid');
-    var countDisplay = document.getElementById('rx-count-display');
-    if (!grid || !countDisplay) return;
-
-    function update() {
-        var boxes = grid.querySelectorAll('input[type="checkbox"]');
-        var checked = 0;
-        boxes.forEach(function (cb) { if (cb.checked) checked++; });
-        countDisplay.textContent = checked;
-        boxes.forEach(function (cb) {
-            var label = cb.closest('.reaction-option');
-            if (!cb.checked && checked >= MAX) {
-                cb.disabled = true;
-                label.style.opacity = '0.4';
-            } else {
-                cb.disabled = false;
-                label.style.opacity  = '';
-            }
-            label.classList.toggle('is-active', cb.checked);
-        });
-    }
-
-    grid.addEventListener('change', update);
-    update(); // run once on load
-
-    // Radio option highlight sync for dock position
-    document.querySelectorAll('.radio-option').forEach(function (label) {
-        label.querySelector('input').addEventListener('change', function () {
-            document.querySelectorAll('.radio-option').forEach(function (l) {
-                l.classList.toggle('is-selected', l.querySelector('input').checked);
-            });
-        });
-    });
-})();
-</script>
+<script src="assets/js/admin-community-settings.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

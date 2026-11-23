@@ -1470,13 +1470,12 @@ try {
                 'skin_registry_url'         => 'https://snapsmack.ca/releases/skins/registry.json',
                 'site_description'          => '',
                 'albums_link_enabled'       => '0',
-                // Community accounts (visitor sign-ups for likes/reactions/comments)
+                // Community accounts (visitor sign-ups for likes/comments)
                 // ship OFF: the fediverse already provides logged-in interaction and
                 // guest comments cover everyone else, so a new site isn't running the
                 // extra account/login surface unless the owner turns it on.
                 'community_enabled'         => '0',
                 'community_likes_enabled'   => '1',
-                'community_reactions_enabled' => '0',
                 'community_comments_enabled' => '1',
                 'community_require_verification' => '1',
                 'community_session_days'    => '30',

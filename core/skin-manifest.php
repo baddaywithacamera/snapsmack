@@ -179,7 +179,7 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
         'palettes',
     ];
     $boolean_keys = [
-        'community_comments', 'community_likes', 'community_reactions',
+        'community_comments', 'community_likes',
     ];
     $known = array_flip(array_merge(
         ['schema_version', 'security_policy', 'min_images'],

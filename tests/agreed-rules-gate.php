@@ -366,8 +366,6 @@ $JS_IN_PHP_ALLOWLIST = [
     'smack-albums.php#2faf048283039362' => 'SS-1041 (42 lines, was line 253)',
     // smack-photochallenge.php -- 1 block(s), 39 lines
     'smack-photochallenge.php#70245d0b7d7e1ebe' => 'SS-1041 (39 lines, was line 572)',
-    // smack-community-settings.php -- 1 block(s), 37 lines
-    'smack-community-settings.php#32e925174c8b47a7' => 'SS-1041 (37 lines, was line 445)',
     // smack-cats.php -- 1 block(s), 32 lines
     'smack-cats.php#670d60642e6b8c46' => 'SS-1041 (32 lines, was line 246)',
     // smack-2fa.php -- 2 block(s), 20 lines
