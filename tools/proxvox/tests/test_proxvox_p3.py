@@ -41,6 +41,7 @@ class _ProxmoxMockServer:
         self.ticket_value = "PVE:proxvox@pve:1234ABCD::sig"
         self.csrf_value = "6789EF01:csrf-secret-value"
         self.challenge_value = "PVE:!tfa!challenge-value"
+        self.stage_one_full_ticket_mode = False
         self.stage_two_challenge_mode = False
         self.stage_two_401_mode = False
         self.empty_csrf_mode = False
@@ -72,7 +73,13 @@ class _ProxmoxMockServer:
                             and parsed_form.get("password") == ["good-pass"]
                             and "tfa-challenge" not in parsed_form
                             and "otp" not in parsed_form):
-                        payload = {"data": {"ticket": server_ref.challenge_value}}
+                        if server_ref.stage_one_full_ticket_mode:
+                            payload = {"data": {
+                                "ticket": server_ref.ticket_value,
+                                "CSRFPreventionToken": server_ref.csrf_value,
+                            }}
+                        else:
+                            payload = {"data": {"ticket": server_ref.challenge_value}}
                         body = json.dumps(payload).encode("utf-8")
                         self.send_response(200)
                         self.send_header("Content-Type", "application/json")
@@ -89,7 +96,10 @@ class _ProxmoxMockServer:
                             self.end_headers()
                             return
                         if server_ref.stage_two_challenge_mode:
-                            payload = {"data": {"ticket": server_ref.challenge_value}}
+                            payload = {"data": {
+                                "ticket": server_ref.challenge_value,
+                                "CSRFPreventionToken": server_ref.csrf_value,
+                            }}
                         elif server_ref.empty_csrf_mode:
                             payload = {"data": {"ticket": server_ref.ticket_value, "CSRFPreventionToken": ""}}
                         else:
@@ -209,14 +219,24 @@ class ProxVoxP3Tests(unittest.TestCase):
                 wc.authorize(*bad)
         self.assertEqual(len(self.server.requests), 0)
 
+        # Isolate the stage-1 prefix guard: a full ticket plus valid CSRF is
+        # still wrong here because this client requires a TFA challenge.
+        self.server.stage_one_full_ticket_mode = True
+        with self.assertRaises(Refused):
+            wc.authorize("proxvox@pve", "good-pass", "123456")
+        self.assertFalse(wc.is_authorized())
+        self.server.stage_one_full_ticket_mode = False
+
+        # Isolate the stage-2 prefix guard: include valid CSRF so only the
+        # repeated PVE:!tfa! challenge makes this response incomplete.
         self.server.stage_two_challenge_mode = True
         with self.assertRaises(Refused):
             wc.authorize("proxvox@pve", "good-pass", "123456")
         self.assertFalse(wc.is_authorized())
         # Each stage is logged before its /access/ticket request reaches the server.
-        self.assertIn('"action":"write_auth_attempt"', self.server.audit_snapshots[0])
-        self.assertIn('"stage":1', self.server.audit_snapshots[0])
-        self.assertIn('"stage":2', self.server.audit_snapshots[1])
+        self.assertIn('"action":"write_auth_attempt"', self.server.audit_snapshots[1])
+        self.assertIn('"stage":1', self.server.audit_snapshots[1])
+        self.assertIn('"stage":2', self.server.audit_snapshots[2])
 
         self.server.stage_two_challenge_mode = False
         self.server.empty_csrf_mode = True
@@ -229,7 +249,7 @@ class ProxVoxP3Tests(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError):
             wc.authorize("proxvox@pve", "wrong-pass", "123456")
         actions = [r["action"] for r in self.audit.records()]
-        self.assertEqual(actions.count("write_auth_attempt"), 5)
+        self.assertEqual(actions.count("write_auth_attempt"), 6)
 
     def test_stage_two_401_is_refused_logged_and_clears_session(self):
         wc = self._client()
