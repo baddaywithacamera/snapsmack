@@ -147,6 +147,13 @@ $check('  and the base family still does not repeat itself',
        str_contains($ip('static_heading_font', 'DotMatrix'),
                     '"DotMatrix", \'Courier New\', monospace')
        && !str_contains($ip('static_heading_font', 'DotMatrix'), '\'DotMatrix\', \'DotMatrix\''));
+$check('the IMPACT PRINTER footer keeps its base family before Courier',
+       str_contains($ip('footer_font_family', 'DotMatrix-Condensed-Bold'),
+                    '"DotMatrix-Condensed-Bold", \'DotMatrix\', \'Courier New\', monospace'));
+$check('  and its default does not repeat the base family',
+       str_contains($ip('footer_font_family', 'DotMatrix'),
+                    '"DotMatrix", \'Courier New\', monospace')
+       && !str_contains($ip('footer_font_family', 'DotMatrix'), '\'DotMatrix\', \'DotMatrix\''));
 
 // WRITING WITH IMPACT, the other control the PM approved. All 29 choices are
 // the same house monospace family, and its masthead stack carries a second
@@ -157,6 +164,13 @@ $check('WRITING WITH IMPACT keeps the two house faces in its masthead stack',
                     '"DotMatrix-Expanded-Bold", \'Tiny5-Matrix\', \'DotMatrix\', monospace'));
 $check('  and a face chosen from inside its own tail is not repeated',
        str_contains($wwi('Tiny5-Matrix'), '"Tiny5-Matrix", \'DotMatrix\', monospace'));
+$wwiBody = static fn(string $v): string => $style('writing-with-impact', ['body_font_family' => $v]);
+$check('the WRITING WITH IMPACT body keeps its base family before monospace',
+       str_contains($wwiBody('DotMatrix-Condensed-Bold'),
+                    '"DotMatrix-Condensed-Bold", \'DotMatrix\', monospace'));
+$check('  and its default does not repeat the base family',
+       str_contains($wwiBody('DotMatrix'), '"DotMatrix", monospace')
+       && !str_contains($wwiBody('DotMatrix'), '\'DotMatrix\', \'DotMatrix\''));
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nSTAGE 5 — EVERY FACE EVERY SKIN OFFERS, SWEPT\n";
