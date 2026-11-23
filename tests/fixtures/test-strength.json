@@ -309,6 +309,13 @@
             100
         ]
     },
+    "caption-controls-change-nothing-until-moved-regression.php": {
+        "assertions": 19,
+        "predicates": 13,
+        "thresholds": [
+            3
+        ]
+    },
     "chaplin-archive-controls-regression.php": {
         "assertions": 3,
         "predicates": 15,

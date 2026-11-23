@@ -2,7 +2,7 @@
     "schema_version": 2,
     "security_policy": 2,
     "name": "TILEZ",
-    "version": "0.2.78",
+    "version": "0.2.79",
     "author": "Sean McCormick & Claude",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A quiet white SMACKTALK portfolio inspired by editorial design studios. Longform posts flow through a native-aspect three-column wall powered by SnapSmack's shared columns engine.",
@@ -28,11 +28,26 @@
         "comments"
     ],
     "cms_navigation": [
-        {"type": "home", "label": "HOME"},
-        {"type": "blogroll", "label": "BLOGROLL"},
-        {"type": "categories", "label": "CATEGORIES"},
-        {"type": "albums", "label": "ALBUMS"},
-        {"type": "image_archive", "label": "IMAGES"}
+        {
+            "type": "home",
+            "label": "HOME"
+        },
+        {
+            "type": "blogroll",
+            "label": "BLOGROLL"
+        },
+        {
+            "type": "categories",
+            "label": "CATEGORIES"
+        },
+        {
+            "type": "albums",
+            "label": "ALBUMS"
+        },
+        {
+            "type": "image_archive",
+            "label": "IMAGES"
+        }
     ],
     "variants": {
         "default": "TILEZ (White Editorial Portfolio)"
@@ -208,6 +223,68 @@
             "selector": ".alfred-archive-grid",
             "property": "--ss-gap",
             "help": "Space between photographs in the Images archive."
+        },
+        "caption_color": {
+            "section": "CAPTIONS",
+            "type": "color",
+            "label": "Caption Colour",
+            "default": "#666666",
+            "selector": "figcaption",
+            "property": "color",
+            "omit_if_default": true,
+            "help": "The colour of the caption under a photograph. Left as it is, the skin's own shade is used."
+        },
+        "caption_size": {
+            "section": "CAPTIONS",
+            "type": "range",
+            "label": "Caption Size (px)",
+            "default": "14",
+            "min": "10",
+            "max": "24",
+            "unit": "px",
+            "selector": "figcaption",
+            "property": "font-size",
+            "help": "How large the caption text is."
+        },
+        "caption_style": {
+            "section": "CAPTIONS",
+            "type": "select",
+            "label": "Caption Style",
+            "default": "italic",
+            "options": {
+                "italic": "Italic",
+                "normal": "Upright"
+            },
+            "selector": "figcaption",
+            "property": "font-style",
+            "help": "Whether captions are italic, as TILEZ has always set them, or upright."
+        },
+        "caption_gap": {
+            "section": "CAPTIONS",
+            "type": "range",
+            "label": "Space Above Caption (px)",
+            "default": "12",
+            "min": "0",
+            "max": "48",
+            "unit": "px",
+            "selector": "figcaption",
+            "property": "padding-top",
+            "help": "The gap between a photograph and its caption."
+        },
+        "caption_align": {
+            "section": "CAPTIONS",
+            "type": "select",
+            "label": "Caption Alignment",
+            "default": "inherit",
+            "options": {
+                "inherit": "Follow the post text",
+                "left": "Left",
+                "center": "Centred",
+                "right": "Right"
+            },
+            "selector": "figcaption",
+            "property": "text-align",
+            "help": "Captions follow the post's own alignment unless you choose otherwise."
         }
     }
 }

@@ -56,6 +56,14 @@ are pushed and waiting on review.
   measure as the header, checked at 1024, 1280, 1366 and 1920. Nothing about
   your photo sizes, columns or Content Width setting changes. **Repackage
   RATIONAL GEO 2.1.44 + reinstall to ship.** (SS-1517)
+- **TILEZ (skin package, 0.2.79): you can set how your photo captions look.**
+  Five new settings in a CAPTIONS section — colour, size, italic or upright,
+  the gap above the caption, and alignment. **Nothing changes unless you move
+  one**: every setting starts at exactly what TILEZ already renders, so an
+  existing site looks identical after this update. Alignment starts at
+  "Follow the post text", which is what captions have always done. The caption font
+  is not here yet; it is waiting on the fallback repair in this same release.
+  **Repackage TILEZ 0.2.79 + reinstall to ship.** (SS-1495)
 
 - **A restore brings your photographs back, and tells you honestly when it
   cannot.** The admin restore path never reconciled media: database rows came
@@ -89,9 +97,7 @@ new decision.
   caption, and alignment. **Nothing changes unless you move one**: every
   setting starts at exactly what ALFRED already renders, so an existing site
   looks identical after this update. Alignment starts at "Follow the post
-  text", which is what captions have always done. These are also the values
-  COLD SNAP's preview reads, so what you see before publishing now matches
-  the page instead of being approximated. The caption FONT is not here yet;
+  text", which is what captions have always done. The caption FONT is not here yet;
   it is waiting on the fallback repair in this same release. (SS-1495)
 
 - **ALFRED's social links now use the same dock as every other skin.** ALFRED
