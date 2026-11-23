@@ -675,7 +675,12 @@
     var raf = 0;
     var baseAngles = { horizontal: 0, vertical: 90, diagonal_down: 45, diagonal_up: -45 };
     var axis = wall.dataset.flowAxis || 'horizontal';
-    var fine = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glide-angle')) || 0;
+    var configuredFine = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glide-angle')) || 0;
+    var declaredOrientation = wall.dataset.wallOrientation
+        || getComputedStyle(wall).getPropertyValue('--glide-wall-orientation-active').trim();
+    var orientation = ['current', 'mirrored', 'upright'].indexOf(declaredOrientation) >= 0
+        ? declaredOrientation : 'current';
+    var fine = orientation === 'mirrored' ? -configuredFine : configuredFine;
     // TWO VECTORS, AND CONFLATING THEM WAS THE BUG.
     //
     // The pointer moves in SCREEN space. The track translates in its OWN
@@ -725,6 +730,13 @@
     // With the flag absent, every expression below reduces to exactly what it
     // computed before. That is asserted, not assumed.
     var alongAxis = wall.dataset.flowMotion === 'axis';
+    function applyOrientation() {
+        fine = orientation === 'mirrored' ? -configuredFine : configuredFine;
+        var fieldAngle = (alongAxis && axis === 'vertical' ? 0 : (baseAngles[axis] || 0)) + fine;
+        wall.style.setProperty('--glide-effective-angle', fine + 'deg');
+        wall.style.setProperty('--glide-tile-counter-angle', orientation === 'upright' ? -fieldAngle + 'deg' : '0deg');
+    }
+    applyOrientation();
     // DERIVED FROM THE LOCAL AXIS, not the leaned one. Which edge of a tile is
     // the direction of travel is a fact about the track's own box, and the
     // lean is not in that box's frame. It also removes a wart: with the lean
@@ -1086,7 +1098,8 @@
     });
 
     window.addEventListener('resize', function () {
-        fine = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glide-angle')) || 0;
+        configuredFine = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glide-angle')) || 0;
+        applyOrientation();
         worldRadians = ((baseAngles[axis] || 0) + fine) * Math.PI / 180;
         worldX = Math.cos(worldRadians);
         worldY = Math.sin(worldRadians);

@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "name": "GLIDE",
-  "version": "0.1.32",
+  "version": "0.1.33",
   "scrolltime_pages": [
     "landing",
     "archive"
@@ -136,6 +136,20 @@
       "selector": ":root",
       "property": "--glide-angle",
       "unit": "deg"
+    },
+    "glide_wall_orientation": {
+      "section": "GLIDE WALL",
+      "type": "select",
+      "label": "Wall Orientation",
+      "hint": "Choose the current lean, mirror it, or keep each photograph upright while the wall keeps its angle.",
+      "default": "current",
+      "options": {
+        "current": "Tilt One Way (Current)",
+        "mirrored": "Tilt the Other Way",
+        "upright": "Keep Photographs Upright"
+      },
+      "selector": ".glide-page",
+      "property": "--glide-wall-orientation"
     },
     "glide_row_height": {
       "section": "GLIDE WALL",

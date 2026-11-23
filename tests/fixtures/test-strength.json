@@ -988,6 +988,11 @@
         "predicates": 20,
         "thresholds": []
     },
+    "glide-wall-orientation-save-regression.php": {
+        "assertions": 9,
+        "predicates": 2,
+        "thresholds": []
+    },
     "gram-continuation-regression.php": {
         "assertions": 1,
         "predicates": 1,
