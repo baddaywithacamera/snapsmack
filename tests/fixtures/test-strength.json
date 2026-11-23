@@ -66,9 +66,11 @@
         ]
     },
     "alfred-landing-is-not-drawn-in-the-reading-column-regression.php": {
-        "assertions": 10,
-        "predicates": 7,
-        "thresholds": []
+        "assertions": 18,
+        "predicates": 15,
+        "thresholds": [
+            2
+        ]
     },
     "api-input-safety-regression.php": {
         "assertions": 19,

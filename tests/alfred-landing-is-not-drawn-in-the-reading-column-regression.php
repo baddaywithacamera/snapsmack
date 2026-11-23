@@ -78,6 +78,22 @@ $body_classes = static function (array $response) use ($root): string {
     return '';
 };
 
+/** The same render, but the whole document, for the markup the CSS selector needs. */
+$render_html = static function (array $response) use ($root): string {
+    $view = snapsmack_build_skin_view($response, [
+        'site_name' => 'found textures', 'language' => 'en', 'direction' => 'ltr',
+        'skin_style_url' => '', 'base_style_url' => '', 'skin_variant_url' => '',
+        'registered_assets' => [], 'owner_custom_code' => '', 'search_dock' => [],
+        'crop_circles' => [], 'skin_slug' => 'alfred',
+        'skin_canvas_width_option' => '',
+        'skin_presentation' => snapsmack_skin_presentation([], 'alfred'),
+        'footer' => ['site_name' => 'found textures', 'site_url' => 'https://example.test/', 'slots' => []],
+    ]);
+    ob_start();
+    @snapsmack_render_strict_skin_template($root . '/skins/alfred', 'layout.php', $view);
+    return (string) ob_get_clean();
+};
+
 // The CMS's own word for a landing. The stylesheet keys off it.
 $marker = 'landing-page';
 
@@ -130,11 +146,77 @@ if ($marked !== ['feed', 'landing']) {
 ";
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+echo "
+THE TILE, NOT THE LANE (the half of piece 1 I shipped without)
+";
+// ─────────────────────────────────────────────────────────────────────────────
+// Widening the lane to 1040px made the grid CELLS 342px and left the TILES at
+// 105px, because this stylesheet's own blog rule still said
+// ".posts .post { width: 30.7% }" and 30.7% of a 342px cell is 105px. I posted
+// the lane measurement as the repair. Codex measured the tile and failed it.
+//
+// The repair is a CSS rule, so the sizes are NOT provable here -- they were
+// measured in a browser and are in the commit message. WHAT IS PROVABLE HERE,
+// and is the thing that would silently break the rule, is the MARKUP CONTRACT
+// the selector depends on: ".alfred-archive-grid.posts > .post". If the
+// container loses either class, or the tiles stop being .post children, the
+// rule stops matching and the tiles shrink back to 105px with nothing saying
+// so. That is exactly how this defect survived piece 1.
+
+$feed_html = $render_html([
+    'kind' => 'feed', 'page_title' => '',
+    'posts' => [
+        ['id' => 1, 'title' => 'One', 'url' => '/one', 'image_url' => '/a.jpg'],
+        ['id' => 2, 'title' => 'Two', 'url' => '/two', 'image_url' => '/b.jpg'],
+    ],
+    'items' => [], 'item' => [],
+]);
+
+$check('the feed renders its grid at all', str_contains($feed_html, 'id="browse-grid"'));
+
+if (preg_match('/id="browse-grid" class="([^"]*)"/', $feed_html, $m) === 1) {
+    $grid = preg_split('/\s+/', trim($m[1])) ?: [];
+    // Both halves of the selector, checked separately, so a failure says which.
+    $check('  the grid container carries alfred-archive-grid', in_array('alfred-archive-grid', $grid, true));
+    $check('  the grid container carries posts', in_array('posts', $grid, true));
+} else {
+    $check('  the grid container has a class list the selector can match', false);
+}
+
+// The tiles must be .post CHILDREN of that container -- the selector uses >.
+$tile_count = preg_match_all('/<article class="([^"]*)"/', $feed_html, $tm);
+$check('  the feed rendered a tile per post', $tile_count === 2);
+$tile_classes = $tile_count > 0 ? (preg_split('/\s+/', trim($tm[1][0])) ?: []) : [];
+$check('  and each tile carries post, which is what the rule neutralises',
+       in_array('post', $tile_classes, true));
+// Square mode is ALFRED's manifest default, and the engine sizes the item hook.
+$check('  and ss-masonry-item, which is the engine own hook (square is the default)',
+       in_array('ss-masonry-item', $tile_classes, true));
+
 // The class is only half of it: without the stylesheet rule the marker is
 // decoration. And the template must still carry no logic of its own.
 $css = (string) file_get_contents($root . '/skins/alfred/style.css');
 $check('the stylesheet widens the landing out of the reading column',
        str_contains($css, 'body.landing-page #scroll-stage.post-inner'));
+// A containment check on CSS TEXT is a weak check and I am not going to
+// pretend otherwise: it proves a rule is written, never that it wins the
+// cascade or that a tile ends up square. The tile SIZES are measured by
+// tools/_build/measure-geometry-matrix.cjs, which already reports tileSizes
+// per skin per viewport -- that is how Codex caught the 105px tiles -- and
+// the numbers are in the commit message. What this check is worth: the whole
+// rule, declarations included, cannot be deleted or half-deleted silently.
+// Comments are stripped first so a check can never match prose about the rule
+// instead of the rule, which has bitten this repo three times in one day.
+$css_code = (string) preg_replace('~/\*.*?\*/~s', '', $css);
+$tile_rule = (bool) preg_match(
+    '~\.alfred-archive-grid\.posts\s*>\s*\.post\s*,\s*'
+    . '\.alfred-archive-grid\.posts\s*>\s*\.post\s*\+\s*\.post\s*\{'
+    . '[^}]*width:\s*auto[^}]*padding-bottom:\s*0[^}]*margin:\s*0[^}]*\}~s',
+    $css_code
+);
+$check('and hands the tile geometry back to the grid: width auto, no padding box, no margin',
+       $tile_rule);
 $layout = (string) file_get_contents($root . '/skins/alfred/layout.php');
 $check('and the template prints the CMS class without deciding anything',
        str_contains($layout, "snap_escape_attr(\$view['site']['body_class']")
@@ -153,7 +235,8 @@ echo "NOT PROVED HERE: the widths. Those were measured in a browser at 1920,\n";
 echo "1440 and 1024 and are recorded in the commit message. A PHP test cannot\n";
 echo "lay out a page, which is the whole reason the geometry fixtures exist.\n";
 echo "ALSO NOT FIXED: ALFRED's ARCHIVE grid still measures 720px with 236px\n";
-echo "columns, the identical fault on a different page. It is outside the PM's\n";
+echo "columns (237px tiles, measured today), the identical fault on a different
+page. It is outside the PM's\n";
 echo "ruling and is reported rather than changed here.\n";
 exit(0);
 

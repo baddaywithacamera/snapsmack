@@ -1968,6 +1968,36 @@ p.comment-form-author { margin-right: 5%; }
     --ss-square-cols: var(--alfred-square-cols, 3);
 }
 
+/* THE SECOND HALF OF THE LANDING REPAIR, and the half I missed first time.
+   Widening the lane to 1040px (see .landing-page above) made the GRID CELLS
+   342px. It did not make the TILES 342px, because the landing grid's children
+   are .post elements and this stylesheet's own blog rule still sized them:
+
+       .posts .post { width: 30.7%; padding-bottom: 30.7%; margin-top: 3.95%; }
+
+   30.7% of a 342px cell is 105px. The sparse tiny tiles in Sean's screenshot
+   got bigger and stayed sparse. I reported the lane measurement as the repair;
+   Codex measured the tile and failed it, correctly.
+
+   That rule is from the original theme, where .posts was a FLEX row and the
+   percentages were shares of the row. The landing container is now a GRID in
+   both of its modes -- .ss-square-wall from the shared engine, or ALFRED's own
+   auto-fill grid when the owner picks "Skin default" -- and in a grid cell a
+   percentage width is a fraction of the cell, which is never what is wanted.
+   So the geometry is handed back to whichever grid is in charge: the cell
+   decides the width, the engine's aspect-ratio decides the height in square
+   mode, the image decides it in default mode, and gap decides the spacing.
+
+   Scoped to the grid container, not to a layout word, so it is right in both
+   modes and stays right if a third is wired. The archive page is untouched by
+   this: its tiles are .alfred-archive-tile anchors and hold no .post class. */
+.alfred-archive-grid.posts > .post,
+.alfred-archive-grid.posts > .post + .post {
+    width: auto;
+    padding-bottom: 0;
+    margin: 0;
+}
+
 /* The archive heading sits over the full-height masthead image. Keep it
    legible against both bright skies and the dark lower gradient rather than
    inheriting the dark body-copy colour. */
