@@ -13,7 +13,7 @@ four credential boxes. Reuses config.py + profile_manager.py untouched.
 import concurrent.futures
 import threading
 
-from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
     QLineEdit, QMessageBox,
@@ -43,6 +43,9 @@ def verify_site_mode(parent, conn, expected_mode: str, mode_label: str) -> bool:
         mode, reachable, note = "", False, str(exc)
     mode = str(mode or "").strip().lower()
     if mode not in ("photoblog", "carousel", "smacktalk"):
+        if "api key rejected" in str(note or "").lower():
+            prompt_reauthentication(parent, str(note or ""), long_form=False)
+            return False
         detail = f" ({note})" if note else ""
         QMessageBox.warning(
             parent,
@@ -59,6 +62,34 @@ def verify_site_mode(parent, conn, expected_mode: str, mode_label: str) -> bool:
             f"('{expected_mode}').\n\nNothing was uploaded.",
         )
         return False
+    return True
+
+
+def prompt_reauthentication(parent, detail="", *, long_form=False) -> bool:
+    """Explain rejected authorization and offer the correct replacement field."""
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Warning)
+    box.setWindowTitle("Authorization expired")
+    key_name = "long-form key" if long_form else "API key"
+    box.setText(f"This site's saved {key_name} expired or was rejected.")
+    box.setInformativeText(
+        "Nothing was uploaded and every local draft is still safe. "
+        "Generate a fresh key in SNAPSMACK Admin → API Access, then replace it "
+        "in Connection details."
+        + (f"\n\nServer response: {detail}" if detail else "")
+    )
+    reauth = box.addButton("Re-authenticate", QMessageBox.AcceptRole)
+    box.addButton(QMessageBox.Cancel)
+    box.setDefaultButton(reauth)
+    box.exec()
+    if box.clickedButton() is not reauth:
+        return False
+    window = parent.window() if parent is not None else None
+    panel = getattr(window, "connect_panel", None)
+    if panel is None and isinstance(parent, ConnectPanel):
+        panel = parent
+    if panel is not None:
+        panel.open_reauthentication(long_form=long_form)
     return True
 
 
@@ -271,6 +302,16 @@ class ConnectPanel(QWidget):
     def _toggle_details(self, on: bool):
         self.details.setVisible(on)
         self.details_btn.setText("Connection details ▴" if on else "Connection details ▾")
+
+    def open_reauthentication(self, *, long_form=False):
+        """Expose and focus the rejected credential without discarding its value."""
+        self.details_btn.setChecked(True)
+        field = self.press_edit if long_form else self.key_edit
+        field.setFocus(Qt.OtherFocusReason)
+        field.selectAll()
+        label = "long-form key" if long_form else "API key"
+        self.status_lbl.setText(f"Authorization expired — replace the saved {label}")
+        self.status_lbl.setStyleSheet(f"color: {theme.DANGER};")
 
     @staticmethod
     def _profile_mode(profile: dict) -> str:

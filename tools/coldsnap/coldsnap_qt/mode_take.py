@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
 
 import sumna_offline as O
 import snap_library
-from sumna_post import SmacktalkPoster
+from sumna_post import AuthorizationExpiredError, SmacktalkPoster
 
 from . import theme, biggie
 from .widgets import (Accordion, Card, build_rail, hint, field_label,
@@ -1554,6 +1554,10 @@ class TakeMode(QWidget):
             return
         try:
             posts = poster.list_posts()
+        except AuthorizationExpiredError as exc:
+            from .connect_panel import prompt_reauthentication
+            prompt_reauthentication(self, str(exc), long_form=True)
+            return
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Could not load posts", str(exc))
             return
@@ -1568,6 +1572,10 @@ class TakeMode(QWidget):
         try:
             post = poster.get_post(post_id)
             draft = self._draft_from_remote(post)
+        except AuthorizationExpiredError as exc:
+            from .connect_panel import prompt_reauthentication
+            prompt_reauthentication(self, str(exc), long_form=True)
+            return
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Could not open post", str(exc))
             return
