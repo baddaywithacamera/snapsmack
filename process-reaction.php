@@ -101,13 +101,6 @@ if (!$exists->fetchColumn()) {
     exit;
 }
 
-// --- RATE LIMIT ---
-if (function_exists('community_rate_limit') && !community_rate_limit('likes')) {
-    http_response_code(429);
-    echo json_encode(['error' => 'rate_limited']);
-    exit;
-}
-
 // --- TOGGLE ---
 if ($user_id) {
     $current = $pdo->prepare("SELECT reaction_code FROM snap_reactions WHERE post_id = ? AND user_id = ? LIMIT 1");

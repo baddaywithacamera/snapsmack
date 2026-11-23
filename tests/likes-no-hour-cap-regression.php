@@ -12,6 +12,7 @@
 
 $root = dirname(__DIR__);
 $endpoint = (string)file_get_contents($root . '/process-like.php');
+$legacyEndpoint = (string)file_get_contents($root . '/process-reaction.php');
 $settings = (string)file_get_contents($root . '/smack-community-settings.php');
 $identity = (string)file_get_contents($root . '/core/like-identity.php');
 $session = (string)file_get_contents($root . '/core/community-session.php');
@@ -28,6 +29,9 @@ $check(!str_contains($endpoint, "community_rate_limit('likes')"),
     'the like endpoint has no hourly likes gate');
 $check(!str_contains($endpoint, "['error' => 'rate_limited']"),
     'the like endpoint cannot return the removed cap response');
+$check(!str_contains($legacyEndpoint, "community_rate_limit('likes')")
+        && !str_contains($legacyEndpoint, "['error' => 'rate_limited']"),
+    'the Photogram and legacy heart endpoint has no hourly likes gate');
 $check(!str_contains($settings, "'rate_limit_likes'"),
     'the settings save path no longer persists a likes cap');
 $check(!str_contains($settings, 'LIKES / HOUR'),
