@@ -30,6 +30,7 @@ import urllib.parse
 import urllib.request
 
 from . import host_guard
+from .tls_pin import CertificatePinError, pinned_https_opener
 
 # SEAN'S RULING, 2026-11-22 15:50: the AI gets 100% READ access to the whole
 # server at all times. So the three-path allowlist this started with is gone,
@@ -95,7 +96,8 @@ def _path_refusal(path: str) -> str:
 class ReadOnlyBroker:
     def __init__(self, base_url: str, token_id: str, token_secret: str,
                  audit, pinned_guid: str, actual_guid: str = None,
-                 opener=None, verify_host: bool = True):
+                 opener=None, verify_host: bool = True,
+                 certificate_sha256: str = ""):
         if verify_host:
             host_guard.require_host(pinned_guid, actual_guid)
         self.base_url = base_url.rstrip("/")
@@ -104,7 +106,22 @@ class ReadOnlyBroker:
         self.audit = audit
         # Injected so the tests drive a real request through a real HTTP
         # server rather than a stubbed-out client. The default is urllib.
-        self._opener = opener or urllib.request.urlopen
+        if self.base_url.lower().startswith("https://"):
+            if opener is not None:
+                self.audit.record("tls_refused", {
+                    "why": "a custom HTTPS opener would bypass certificate pinning",
+                })
+                raise Refused("PROX VOX will not bypass HTTPS certificate pinning.")
+            try:
+                self._opener = pinned_https_opener(self.base_url, certificate_sha256)
+            except CertificatePinError as err:
+                self.audit.record("tls_refused", {"why": str(err)})
+                raise Refused(str(err)) from err
+        elif opener is not None:
+            self._opener = opener
+        else:
+            self.audit.record("tls_refused", {"why": "Proxmox URL is not HTTPS"})
+            raise Refused("PROX VOX requires an HTTPS Proxmox URL.")
 
     # ── the only thing P1 does ───────────────────────────────────────────
     def get(self, path: str, timeout: int = 15):
@@ -154,6 +171,9 @@ class ReadOnlyBroker:
         except urllib.error.HTTPError as err:
             self.audit.record("result", {"path": path, "status": err.code})
             raise
+        except CertificatePinError as err:
+            self.audit.record("tls_refused", {"path": path, "why": str(err)})
+            raise Refused(str(err)) from err
         except Exception as err:
             # The class name, never the message: a urllib message can carry
             # the full URL, and a future caller may put a secret in one.

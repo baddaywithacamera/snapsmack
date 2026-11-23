@@ -21,6 +21,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -81,7 +82,8 @@ class ProxVoxP1(unittest.TestCase):
 
     def broker(self, guid=PINNED):
         return ReadOnlyBroker(self.base, "proxvox@pve!readonly", SECRET,
-                              self.audit, PINNED, actual_guid=guid)
+                              self.audit, PINNED, actual_guid=guid,
+                              opener=urllib.request.urlopen)
 
     # ── the host pin ────────────────────────────────────────────────────
     def test_refuses_to_start_on_another_machine(self):
