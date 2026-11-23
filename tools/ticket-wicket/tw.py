@@ -35,6 +35,8 @@ import argparse
 import json
 import os
 import sys
+import io
+import contextlib
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 if BASE not in sys.path:
@@ -207,6 +209,30 @@ def cmd_post(args):
                  "\n\nPass --unwrap to join the wrapped lines for this post, "
                  "or rewrite the body properly:\n"
                  "    tw.py --as <you> triage " + str(t.id) + " --body-file draft.txt"),
+              file=sys.stderr)
+        return 1
+
+    # WILL THE FORUM ACCEPT IT AT ALL?
+    #
+    # It rejects a body over 20,000 characters with 400 BODY_TOO_LONG, and
+    # nothing here knew that until a bulk sync hit it live: SS-1013 is 31,062
+    # characters, SS-1114 is 31,960, SS-1073 is 20,293. The server is the only
+    # thing that was enforcing it, so the failure arrived as an unhandled
+    # HTTPError in the middle of a run that had already created 20 threads.
+    #
+    # Checked on the COMPOSED body, like the shape check above, because the
+    # template counts toward the limit too -- SS-1095's body is 15,857 and the
+    # composed post is longer than that.
+    if len(body) > FORUM_BODY_LIMIT:
+        print("REFUSING TO POST — the forum rejects a body over "
+              f"{FORUM_BODY_LIMIT:,} characters and this one composes to "
+              f"{len(body):,}.\n"
+              f"\nNothing has been posted. The stored ticket is unchanged, and "
+              f"its full text is still in the store for whoever needs it.\n"
+              f"\nShorten the PUBLIC body to the problem and what it means for "
+              f"the owner; the investigation belongs in the ticket's entry log, "
+              f"not in the post:\n"
+              f"    tw.py --as <you> triage {t.id} --body-file shorter.txt",
               file=sys.stderr)
         return 1
 
@@ -436,9 +462,21 @@ def cmd_deliver_forum(args):
         return 2
     f = forummod.Forum(args.forum_url, args.forum_key)
     delivered, skipped = [], []
+    held_out = {str(x).strip() for x in (getattr(args, "hold", None) or []) if str(x).strip()}
     for r in s.outbox("queued"):
         ticket_id = r.get("ticket")
         channel = r.get("channel")
+        # HELD OUT BY NAME. Sean, 24 November 2026, on a bulk sync: "Please
+        # don't publish open holes." The armed sender was all-or-nothing, so
+        # one update you are still deciding about meant holding back eleven
+        # that were ready. A named ticket is skipped and reported, and the row
+        # stays queued -- nothing is marked sent, so it goes out whenever it is
+        # released. SS-1284's updates were the first use: fixed issue, but they
+        # name a live spoke and its tampered-file count, which its thread does
+        # not already say.
+        if ticket_id in held_out:
+            skipped.append({"ticket": ticket_id, "why": "held out by --hold"})
+            continue
         reporter = (getattr(s.get(ticket_id), "reporter", "") or "")
         # Decide candidacy BEFORE touching the board. A genuine email row (a real
         # address) is never searched, so its ticket's forum_thread can never be
@@ -590,6 +628,229 @@ def cmd_agent(args):
     return 0
 
 
+# ── THE WHOLE BOARD, RECONCILED ──────────────────────────────────────────────
+#
+# Sean, 24 November 2026: "can you synchronize the tickets with the support
+# forum? add open ones, put in updates in replies, close those that are
+# closed." By hand that is three commands per ticket across 540 tickets, and
+# the hand version is exactly what produced the duplicate threads cmd_post now
+# guards against.
+#
+# So it is one command, and it REUSES post, reply and deliver-forum instead of
+# talking to the forum itself. Every guard those carry applies here unchanged:
+# the anonymiser, the body-shape check, the duplicate-thread guard, the pulse
+# refusal, and reply's already-on-thread check. Nothing about publishing is
+# re-implemented, because a second implementation is a second set of bugs.
+#
+# WHAT IT WILL NOT PUBLISH, and why that is measured rather than invented:
+# the store holds 51 DOOR OPEN tickets and 7 of them are on the board. Every
+# other band sits between 62% and 89% published. 14% is a practice, not an
+# accident -- an open security hole is not announced while it is still open.
+# The DOOR OPEN tickets that ARE published are the fixed ones, which is the
+# disclosure owners should get. So: an OPEN security ticket is held back and
+# counted, a CLOSED one is posted like anything else, and --include-security
+# is the one explicit way to overrule that.
+
+# The forum refuses a body over this with 400 BODY_TOO_LONG. Its number,
+# not ours: taken from the API's own refusal message.
+FORUM_BODY_LIMIT = 20000
+
+
+CLOSURE_OPENING = ("THIS TICKET IS CLOSED. The report stays on the board and "
+                   "stays readable; nothing here is removed.")
+
+
+def _closure_note(t) -> str:
+    """The closing update for one ticket. Deterministic, and that is the point.
+
+    The same ticket must compose the same bytes on every run, because that is
+    what makes running the sync twice safe. cmd_reply's _already_on_thread()
+    probes the first content line of 24 characters or more, and CLOSURE_OPENING
+    is that line, so a thread that already carries a closure never gets a
+    second one. No timestamps, no counts, nothing that moves between runs.
+
+    One paragraph per line with a blank line between, and no markdown: the
+    forum honours every newline and renders no markdown, so anything else
+    arrives as a stack of short lines or a row of asterisks.
+    """
+    out = [CLOSURE_OPENING]
+    if t.state == model.RESOLVED:
+        out.append("STATE: RESOLVED. The problem described above was fixed.")
+    elif t.state == model.WITHDRAWN:
+        out.append("STATE: WITHDRAWN. This was a duplicate of another report, "
+                   "or was raised in error. It was still a real thing to "
+                   "report, and the record is kept either way.")
+    else:
+        out.append("STATE: CLOSED.")
+    links = {k: v for k, v in dict(getattr(t, "links", None) or {}).items()
+             if str(v).strip()}
+    if links:
+        out.append("What carries it: "
+                   + "; ".join(str(k).upper() + " " + str(v)
+                               for k, v in sorted(links.items())) + ".")
+    else:
+        # The capability sheet says a ticket should not close as fixed with
+        # nothing to point at. Some did anyway, and inventing a build number
+        # to fill the gap would be worse than saying the gap is there.
+        out.append("No build or commit is recorded against this ticket, so "
+                   "this note does not claim one.")
+    if str(getattr(t, "merged_into", "") or "").strip():
+        out.append("Carried on under " + str(t.merged_into) + ".")
+    return "\n\n".join(out)
+
+
+def _sub(args, **over):
+    """A copy of args for one reused sub-command. Credentials ride along."""
+    d = dict(vars(args))
+    d.update(over)
+    return argparse.Namespace(**d)
+
+
+def _quietly(fn, sub_args):
+    """Run a sub-command without letting its own report reach the terminal.
+
+    sync prints counts and the refusals. Letting post and reply each print
+    their full success text as well would bury that in a 65-ticket run, and
+    the refusals are the part worth reading.
+
+    AND IT CATCHES. The first real run of this command died on ticket 21 of 85
+    with an unhandled HTTP 400 -- BODY_TOO_LONG, from a ticket whose body is
+    31,062 characters -- and took the other 64 tickets, the queued updates and
+    all 38 closures down with it. 20 threads had already been created, so the
+    board was left half synchronised with a traceback for a report. One bad
+    ticket is a refusal against that ticket, not the end of the run.
+    """
+    buf, err = io.StringIO(), io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+            rc = fn(sub_args)
+    except Exception as exc:                       # noqa: BLE001 - see above
+        return 1, buf.getvalue().strip(), (type(exc).__name__ + ": " + str(exc))
+    return rc, buf.getvalue().strip(), err.getvalue().strip()
+
+
+def _first_line(*texts) -> str:
+    for t in texts:
+        for line in (t or "").splitlines():
+            if line.strip():
+                return line.strip()
+    return "refused"
+
+
+def cmd_sync_forum(args):
+    s = _store(args)
+    tickets = s.queue(open_only=False)
+    board = args.board
+
+    added, updated, closed = [], [], []
+    held_security, held_pulse, refused, already = [], [], [], []
+    # A ticket named with --hold is left out of every phase, not just the
+    # updates: if it is not ready to be published it is not ready to be
+    # posted or closed in public either.
+    held_out = {str(x).strip() for x in (args.hold or []) if str(x).strip()}
+
+    want_add = args.phase in ("all", "add")
+    want_upd = args.phase in ("all", "update")
+    want_cls = args.phase in ("all", "close")
+
+    # ── 1. ADD: open tickets that are not on the board ───────────────────────
+    # Before the updates, deliberately: a reply queued against a ticket that
+    # this same run publishes can then go out in the same run.
+    if want_add:
+        for t in tickets:
+            if t.state not in model.OPEN_STATES or (t.forum_thread or 0) > 0:
+                continue
+            if t.pulse:
+                held_pulse.append(t.id)
+                continue
+            if t.band == "DOOR OPEN" and not args.include_security:
+                held_security.append(t.id)
+                continue
+            if t.id in held_out:
+                already.append(t.id)
+                continue
+            if args.limit and len(added) >= args.limit:
+                already.append(t.id)
+                continue
+            rc, out, err = _quietly(cmd_post, _sub(
+                args, id=t.id, board=board, again=False, json=False))
+            if rc == 0:
+                added.append(t.id)
+            else:
+                refused.append((t.id, "post", _first_line(err, out)))
+
+    # ── 2. UPDATE: drain every queued forum reply to its thread ──────────────
+    if want_upd and not args.dry_run:
+        rc, out, err = _quietly(cmd_deliver_forum, _sub(args, json=True))
+        try:
+            payload = json.loads(out) if out else {}
+        except ValueError:
+            payload = {}
+        updated = payload.get("delivered") or []
+        already += [r if isinstance(r, str) else str(r)
+                    for r in (payload.get("skipped") or [])]
+    elif want_upd:
+        updated = [r.get("ticket") for r in s.outbox("queued")
+                   if r.get("channel") == "forum"]
+
+    # ── 3. CLOSE: a closed ticket whose thread does not say so ───────────────
+    if want_cls:
+        for t in tickets:
+            if t.state in model.OPEN_STATES or (t.forum_thread or 0) <= 0:
+                continue
+            if t.pulse:
+                held_pulse.append(t.id)
+                continue
+            if t.id in held_out:
+                already.append(t.id)
+                continue
+            if args.dry_run:
+                closed.append(t.id)
+                continue
+            rc, out, err = _quietly(cmd_reply, _sub(
+                args, id=t.id, text=_closure_note(t), text_file="",
+                channel="forum", json=True))
+            if rc != 0:
+                refused.append((t.id, "close", _first_line(err, out)))
+                continue
+            try:
+                payload = json.loads(out) if out else {}
+            except ValueError:
+                payload = {}
+            if payload.get("duplicate"):
+                already.append(t.id)
+            else:
+                closed.append(t.id)
+
+    held_pulse = sorted(set(held_pulse))
+    data = {"board": board, "dry_run": bool(args.dry_run), "phase": args.phase,
+            "added": added, "updated": updated, "closed": closed,
+            "held_security": held_security, "held_pulse": held_pulse,
+            "already": already,
+            "refused": [{"ticket": a, "phase": b, "why": c}
+                        for a, b, c in refused]}
+
+    lines = []
+    if args.dry_run:
+        lines.append("DRY RUN - nothing was published.")
+    lines += ["Board: " + str(board),
+              "",
+              "ADDED to the board      : %d" % len(added),
+              "UPDATES delivered       : %d" % len(updated),
+              "CLOSED on the board     : %d" % len(closed),
+              "",
+              "HELD, open security     : %d  (DOOR OPEN while still open; "
+              "--include-security overrules)" % len(held_security),
+              "HELD, pulse             : %d  (a human answers these; escalate)"
+              % len(held_pulse),
+              "ALREADY in place        : %d" % len(already),
+              "REFUSED                 : %d" % len(refused)]
+    for a, b, c in refused[:12]:
+        lines.append("    %-9s %-6s %s" % (a, b, c[:96]))
+    _out(args, data, "\n".join(lines))
+    return 0
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="tw", description="TICKET WICKET")
     p.add_argument("--json", action="store_true")
@@ -680,12 +941,30 @@ def build_parser():
     sub.add_parser("stale").set_defaults(func=cmd_stale)
 
     df = sub.add_parser("deliver-forum")
+    df.add_argument("--hold", action="append", default=[], metavar="TICKET",
+                    help="do not deliver this ticket's queued replies; repeatable")
     df.set_defaults(func=cmd_deliver_forum)
 
     ob = sub.add_parser("outbox")
     ob.add_argument("--state", default="queued", choices=["queued", "sent"])
     ob.set_defaults(func=cmd_outbox)
 
+    sy = sub.add_parser("sync-forum",
+                        help="reconcile the whole board: add, update, close")
+    sy.add_argument("--board", default="Roach Motel")
+    sy.add_argument("--dry-run", action="store_true",
+                    help="print the plan and publish nothing")
+    sy.add_argument("--include-security", action="store_true",
+                    help="also publish OPEN DOOR OPEN tickets. Off by "
+                         "default: an open hole is not announced.")
+    sy.add_argument("--phase", default="all",
+                    choices=["all", "add", "update", "close"])
+    sy.add_argument("--limit", type=int, default=0,
+                    help="stop after N new threads; 0 means no cap")
+    sy.add_argument("--unwrap", action="store_true")
+    sy.add_argument("--hold", action="append", default=[], metavar="TICKET",
+                    help="keep this ticket out of the whole sync; repeatable")
+    sy.set_defaults(func=cmd_sync_forum)
     sub.add_parser("mod-check").set_defaults(func=cmd_mod_check)
     sub.add_parser("agent", help="what Claude and Codex can do here"
                    ).set_defaults(func=cmd_agent)

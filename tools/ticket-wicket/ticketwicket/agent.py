@@ -107,6 +107,26 @@ COMMANDS = [
               "update parked as email on a published ticket that has no address on "
               "file. Genuine mail -- a real address, or no thread -- is never sent "
               "here: that is the owner's."},
+    {"name": "sync-forum", "does": "Reconcile the whole board in one pass: add "
+     "the open tickets that are not on it, deliver the queued updates as "
+     "replies, and post a closing note on the ones that are closed.",
+     "returns": "added / updated / closed / held / refused lists",
+     "args": ["--board NAME", "--dry-run", "--include-security",
+              "--phase all|add|update|close", "--limit N", "--unwrap"],
+     "example": ENTRY + " sync-forum --dry-run",
+     "notes": "ALWAYS --dry-run first; it prints the counts and every refusal "
+              "and publishes nothing. It REUSES post, reply and deliver-forum, "
+              "so their guards all still apply -- the anonymiser, the body "
+              "shape check, the duplicate-thread guard, the pulse refusal, and "
+              "the already-on-thread check that makes a second run safe. An "
+              "OPEN DOOR OPEN ticket is HELD BACK and counted: a security hole "
+              "is not announced while it is open, and the DOOR OPEN tickets on "
+              "the board are the fixed ones. --include-security is the one way "
+              "to overrule that, and it is a flag rather than a silent filter "
+              "so you can see the decision. Pulse tickets are held for a human. "
+              "A ticket whose body still identifies someone, or that would "
+              "render wrongly, is REFUSED and named -- fix the ticket, do not "
+              "work around it."},
     {"name": "mod-check", "does": "Does my forum key have the role it needs?",
      "returns": "admin (bool), boards", "args": [],
      "example": ENTRY + " mod-check --json",

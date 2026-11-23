@@ -18,6 +18,32 @@ section until the tag was being assembled, which would have told owners their
 photographs come back in a build that does not carry the change. The branches
 are pushed and waiting on review.
 
+- **TICKET WICKET can reconcile the support board in one pass, and it holds
+  open security tickets back on purpose.** Keeping the tickets and the ROACH
+  MOTEL board in step was three commands per ticket across 540 tickets, done by
+  hand — which is how three duplicate threads got created in one evening a
+  month ago. `tw.py sync-forum` now does the whole reconciliation: it posts the
+  open tickets that are not on the board, delivers the queued updates as
+  replies, and puts a closing note on the ones that are closed, citing the
+  build or commit that carries the fix and saying plainly when there is nothing
+  recorded to point at rather than inventing one. `--dry-run` prints the counts
+  and every refusal and publishes nothing. It is built out of the existing
+  `post`, `reply` and `deliver-forum` commands rather than talking to the forum
+  itself, so every guard they already carry still applies, and running it twice
+  adds nothing the second time.
+  **An open DOOR OPEN ticket — a security hole that is not fixed yet — is held
+  back and counted, never posted.** That was already the practice: of 51
+  security tickets 7 were on the board, while every other category sat between
+  62 and 89 per cent, and the ones that were public were the fixed ones. It is
+  now the behaviour, with `--include-security` as the one explicit way to
+  overrule it, so the decision is visible instead of depending on whoever is
+  running it. Tickets flagged as needing a person are held for one.
+  Two faults found by running it for real rather than by reading it: one ticket
+  with a 31,062-character body made the forum refuse the post, and the whole
+  run died on it after creating 20 threads, so a bad ticket is now a refusal
+  against that ticket and the run carries on; and the over-long body is refused
+  here, before anything is sent, instead of by the server mid-run. `--hold`
+  keeps a named ticket out of a bulk run without holding back the rest.
 - **RATIONAL GEO (skin package, 2.1.45): the map background no longer sits on
   top of your photographs.** The topographic map behind the site was being
   drawn over the photographs rather than behind them, so faint contour lines
