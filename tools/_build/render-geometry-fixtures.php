@@ -89,7 +89,7 @@ function gf_stylesheets(string $root, string $skin, array $manifest, string $kin
     // That is worth repairing, but repairing it shifts existing baselines, and
     // doing that quietly in the same change as a new page kind would make both
     // impossible to review. Filed separately.
-    if ($kind === 'feed') {
+    if ($kind === 'feed' || $kind === 'landing') {
         $paths[] = 'assets/css/ss-frame-tokens.css';
         $paths[] = 'assets/css/ss-engine-mosaic.css';
     }
@@ -176,12 +176,31 @@ $kinds = [
         'rendered_content' => snapsmack_trusted_html('<p>First paragraph of the page body.</p>'),
         'items' => [],
     ],
+    // THERE ARE TWO LANDING KINDS IN THIS PRODUCT AND I NEARLY SHIPPED ONLY ONE.
+    //
+    // core/smacktalk-public-controller.php returns kind 'feed'; the five
+    // smacktalk skins (ALFRED, STANLEY, TELEGRAM, TILEZ, WRITING WITH IMPACT)
+    // are the only ones that branch on it. core/public-controller.php returns
+    // kind 'landing' for every other skin, and SCROLL and the rest branch on
+    // THAT.
+    //
+    // My first version rendered 'feed' for all 30 and I reported "a landing for
+    // all 30 skins". It was not: 25 of them fell through to a fallback and
+    // SCROLL printed its empty state, which I then had to correct in the room.
+    // A fixture that renders the wrong page for 25 skins is worse than one that
+    // renders none, because the numbers look like coverage.
     'feed' => [
-        // 'feed' is the word the public controller uses for a landing page, and
-        // the strict skins branch on it. The landing iterates
-        // $view['response']['posts'].
         'kind' => 'feed', 'page_title' => '',
         'posts' => $posts, 'items' => $items, 'item' => [], 'tiles' => $tiles,
+    ],
+    'landing' => [
+        // Shape from core/public-controller.php's landing return, not guessed.
+        'kind' => 'landing', 'page_title' => '', 'mode' => 'photoblog',
+        'items' => $items, 'item' => [], 'tiles' => $tiles,
+        'first' => $items[0] ?? [], 'previous' => '', 'next' => '', 'last' => '',
+        'comments' => [], 'comments_enabled' => false, 'puzzle_items' => [],
+        'rows' => [], 'total_pages' => 1, 'next_page' => 0,
+        'slider_items' => $items, 'page' => 1, 'photo_count' => count($items),
     ],
     'archive' => [
         'kind' => 'archive', 'page_title' => 'Archive',
