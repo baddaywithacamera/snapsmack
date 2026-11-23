@@ -577,16 +577,31 @@ echo "leaves the post, and moves the row's boost ownership to an actor who is
 ";
 echo "still boosting, so the LAST withdrawal still matches and still removes it.
 ";
-echo "NOT COVERED: relay memberships, which belong to the relay retract path; a
+// CORRECTED AFTER CODEX'S FINAL REVIEW OF 6c82648e. The three lines that used
+// to end this footer described the FIRST repair, not the shipped one: they said
+// a boost whose NOTIFICATION was never written or had been pruned reads here as
+// not boosting, and that snap_ap_boosts would answer it.
+//
+// That is obsolete and it contradicted Stage 6 of this very file. The code no
+// longer reads notifications to decide whether anyone is still boosting --
+// Stage 6 exists precisely BECAUSE notifications are only written for this
+// site's own posts, so the ordinary reader case created none. snap_ap_timeline_
+// boosts is the record now, and it is per-actor.
+//
+// Worse, my commit message for a526f067 claimed these obsolete explanations had
+// been corrected. They had not. A false note in a test record is worse than no
+// note: the next reader trusts it and goes looking for a dependency that is not
+// there.
+echo "NOT COVERED: relay memberships, which belong to the relay retract path;
 ";
-echo "post that arrived as a boost first whose author the owner also follows --
+echo "and a post that arrived as a boost first whose author the owner also
 ";
-echo "its row goes and returns on the next arrival; and a boost whose
+echo "follows -- its row goes and returns on the next arrival.
 ";
-echo "notification was never written or has since been pruned, which reads here
+echo "AN OBJECT THE BOOST RECORD HAS NEVER SEEN, on a site that upgraded into
 ";
-echo "as not boosting. snap_ap_boosts would answer that, but it holds local
+echo "this build, reads as UNKNOWN rather than as nobody-boosting, and the post
 ";
-echo "targets only.
+echo "is KEPT. That is the safe direction and Stage 2a proves it.
 ";
 // ===== SNAPSMACK EOF =====
