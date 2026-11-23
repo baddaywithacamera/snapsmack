@@ -97,6 +97,12 @@ WRAP_SUSPECT_LENGTH = 55
 # up into the sentence. Same for a bare "-" bullet or a bare "1.".
 _STANDS_ALONE = re.compile(r"^(\s+|\s*([-*\u2022>]|\d{1,3}[.)]|\[img:\d{1,2}\])(\s|$))")
 
+# A deliberate paragraph break, not a wrap: the line before finishes a sentence
+# and the line after starts one. Both halves are required -- see the note in
+# hard_wrapped_lines() for why either alone is wrong.
+_SENTENCE_END = re.compile(r"[.!?:;]['\"’”)]?\s*$")
+_SENTENCE_START = re.compile(r"^\s*[A-Z0-9(\[\"'“]")
+
 # Markdown the renderer shows as characters. The label is what a person needs
 # to hear, so it is carried next to the pattern rather than derived from it.
 _DEAD_MARKDOWN = (
@@ -112,8 +118,28 @@ def hard_wrapped_lines(body: str) -> list:
     """The 1-based line numbers that were hard-wrapped into the next line.
 
     A line counts when it is long enough to look like a wrap, the line after
-    it carries text, and neither of them is a list item, a quote, an image
-    placeholder or indented.
+    it carries text, neither of them is a list item, a quote, an image
+    placeholder or indented, and the pair does not look like a DELIBERATE
+    paragraph break.
+
+    THAT LAST CLAUSE WAS MISSING AND IT DID REAL DAMAGE. A hard wrap cuts a
+    sentence in half: the line before it stops mid-sentence. This counted any
+    long line followed by any text, so a body that was ALREADY correct -- one
+    paragraph per line -- was reported as wrapped wherever a long paragraph was
+    followed by a short label. Measured on three tickets (SS-1371, SS-1382,
+    SS-1386), every "wrapped" line ended in a full stop and the next line was
+    "Required:", "Required before launch:" or "Spec:".
+
+    unwrap_body then GLUED those together, so --unwrap made a good body worse.
+    On 24 November 2026 a bulk sync published 44 tickets with --unwrap and 7 of
+    them went onto the public board with paragraphs run together: SS-1511,
+    SS-1512, SS-1515, SS-1517, SS-1520, SS-1525 and SS-1526.
+
+    The signal is deliberately two-sided, because one side alone is not enough.
+    A genuine wrap can land exactly on a sentence end, so "ends in a full stop"
+    on its own would start passing real wrapped text. It is only treated as a
+    break when the line before ENDS a sentence AND the line after STARTS one --
+    a capital, a digit, or an opening bracket.
     """
     lines = (body or "").split("\n")
     out = []
@@ -124,6 +150,8 @@ def hard_wrapped_lines(body: str) -> list:
         if not nxt.strip():
             continue
         if _STANDS_ALONE.match(here) or _STANDS_ALONE.match(nxt):
+            continue
+        if _SENTENCE_END.search(here) and _SENTENCE_START.match(nxt):
             continue
         out.append(i + 1)
     return out

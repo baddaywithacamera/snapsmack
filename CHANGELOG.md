@@ -18,6 +18,20 @@ section until the tag was being assembled, which would have told owners their
 photographs come back in a build that does not carry the change. The branches
 are pushed and waiting on review.
 
+- **A finished paragraph followed by a label is no longer mistaken for a
+  wrapped line, and `--unwrap` no longer glues good paragraphs together.** The
+  check that stops a ticket going onto the board as a stack of short ragged
+  lines counted ANY long line followed by ANY text. A hard wrap cuts a sentence
+  in half, so a body that was already right — one paragraph per line — was
+  called wrapped wherever a long paragraph was followed by a short label like
+  "Required:" or "Spec:". `--unwrap` then joined them, which made a correct
+  body worse. Seven threads went onto the public board that way during a bulk
+  sync and have been repaired in place; the full text was never lost, because
+  the ticket store always held the original. The signal is now two-sided: it
+  is only a paragraph break when the line before finishes a sentence AND the
+  line after starts one, so a real wrap that happens to land on a full stop is
+  still caught. This also affects FORUM CLI and LOG FLOGGER, which share the
+  same checker.
 - **TICKET WICKET can reconcile the support board in one pass, and it holds
   open security tickets back on purpose.** Keeping the tickets and the ROACH
   MOTEL board in step was three commands per ticket across 540 tickets, done by
