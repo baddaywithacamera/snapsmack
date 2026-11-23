@@ -662,20 +662,26 @@ require 'core/sidebar.php';
       </div>
     </div>
 
-    <?php if (!$forum_can_admin): ?>
-    <!-- ── FORUM ADMIN (SS-1510) ─────────────────────────────────────────── -->
-    <div class="box grid-span-full">
-      <div class="box-header"><span class="box-title">FORUM ADMIN</span></div>
-      <div class="box-body">
-        <p class="dim mb-12">
-          This site is not a forum administrator, so board management is not
-          shown. There is no key to enter here: the forum knows this site by
-          the address it registered with, and an administrator asks the forum
-          to grant it. Boards you create then carry your own domain.
-        </p>
-      </div>
-    </div>
-    <?php endif; ?>
+    <?php /* THE "FORUM ADMIN" PANEL USED TO LIVE HERE AND EXPLAIN ITS OWN
+             ABSENCE, which is why it is gone. (Sean, 2026-11-22)
+
+             Every site that is not a forum administrator -- which is nearly all
+             of them -- was shown a box headed FORUM ADMIN saying board
+             management is not shown, there is no key to enter, and an
+             administrator asks the forum to grant it. It was accurate and it
+             was unprompted, and an owner who reads an explanation of a thing
+             they cannot have will reasonably ask how to get it. We would then
+             be answering a question the page invented.
+
+             A capability you do not have should be absent, not described. The
+             board controls above are already gated on $forum_can_admin, so a
+             non-administrator now simply sees a forum without them.
+
+             NOT REMOVED, deliberately: the refusal on the NEW BOARD view
+             further down. That page is only reached by asking for it, and a
+             blank page in answer to a deliberate request is worse than a plain
+             "this site cannot create boards". A refusal you asked for is not
+             the same thing as an explanation you did not. */ ?>
 
     <?php elseif ($view === 'threads'): ?>
     <!-- ══════════════════════════════════════════════════════════════════ -->
