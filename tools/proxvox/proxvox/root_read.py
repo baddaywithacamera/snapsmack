@@ -46,6 +46,8 @@ class RootReadBroker:
         command = shlex.join([operation] + [str(item) for item in arguments])
         if operation.startswith("ct-"):
             target_path = str(arguments[1]) if len(arguments) > 1 else ""
+        elif operation == "inventory":
+            target_path = "/"
         else:
             target_path = str(arguments[0]) if arguments else ""
         self.audit.record("root_read_attempt", {
@@ -105,12 +107,26 @@ class RootReadBroker:
         })
         return payload.get("data")
 
+    def _required_field(self, data, field, operation, path):
+        """Refuse and audit a successful-looking wrapper reply with bad shape."""
+        if not isinstance(data, dict) or field not in data:
+            self.audit.record("root_read_refused", {
+                "operation": operation, "path": str(path),
+                "why": "invalid wrapper data",
+            })
+            raise Refused(
+                "The root read wrapper response did not contain %s." % field
+            )
+        return data[field]
+
     def inventory(self):
-        return self._call("inventory")["containers"]
+        data = self._call("inventory")
+        return self._required_field(data, "containers", "inventory", "/")
 
     def listdir(self, path, vmid=None):
         data = self._call("host-list", path) if vmid is None else self._call("ct-list", int(vmid), path)
-        return data["entries"]
+        operation = "host-list" if vmid is None else "ct-list"
+        return self._required_field(data, "entries", operation, path)
 
     def stat(self, path, vmid=None):
         return self._call("host-stat", path) if vmid is None else self._call("ct-stat", int(vmid), path)
@@ -125,6 +141,9 @@ class RootReadBroker:
         """Stream an ordinary file into a binary writer with bounded memory."""
         data = (self._call("host-read", path) if vmid is None
                 else self._call("ct-read", int(vmid), path))
+        if not isinstance(data, dict):
+            operation = "host-read" if vmid is None else "ct-read"
+            self._required_field(data, "content_policy", operation, path)
         if data.get("content_policy") == "metadata-sha256-only":
             return data
         if data.get("content_policy") == "chunked":
