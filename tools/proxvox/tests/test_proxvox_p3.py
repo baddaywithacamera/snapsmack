@@ -12,6 +12,7 @@ import threading
 import unittest
 import urllib.error
 import urllib.parse
+import urllib.request
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -185,6 +186,7 @@ class ProxVoxP3Tests(unittest.TestCase):
             audit=self.audit,
             pinned_guid=self.PIN,
             actual_guid=self.PIN,
+            opener=urllib.request.urlopen,
             clock=self.clock,
             ticket_ttl=ticket_ttl,
         )
@@ -198,6 +200,7 @@ class ProxVoxP3Tests(unittest.TestCase):
         p1 = ReadOnlyBroker(
             self.server.base_url, "proxvox@pve!ro", "ro-secret",
             self.audit, self.PIN, actual_guid=self.PIN,
+            opener=urllib.request.urlopen,
         )
         with self.assertRaises(Refused):
             p1.call("POST", "/nodes/pve/lxc/101/status/start")
@@ -210,7 +213,7 @@ class ProxVoxP3Tests(unittest.TestCase):
             wc.post("/nodes/pve/lxc/101/status/start")
         self.assertEqual(len(self.server.requests), 0)
         actions = [r["action"] for r in self.audit.records()]
-        self.assertEqual(actions, ["write_refused"])
+        self.assertEqual(actions, ["transport", "write_refused"])
 
     def test_authorize_requires_credentials_and_rejects_incomplete_tfa(self):
         wc = self._client()

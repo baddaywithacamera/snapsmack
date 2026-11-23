@@ -21,6 +21,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -81,7 +82,8 @@ class ProxVoxP1(unittest.TestCase):
 
     def broker(self, guid=PINNED):
         return ReadOnlyBroker(self.base, "proxvox@pve!readonly", SECRET,
-                              self.audit, PINNED, actual_guid=guid)
+                              self.audit, PINNED, actual_guid=guid,
+                              opener=urllib.request.urlopen)
 
     # ── the host pin ────────────────────────────────────────────────────
     def test_refuses_to_start_on_another_machine(self):
@@ -258,7 +260,7 @@ class ProxVoxP1(unittest.TestCase):
     def test_every_call_is_written_down(self):
         self.broker().get("/nodes")
         actions = [r["action"] for r in self.audit.records()]
-        self.assertEqual(actions, ["call", "result"])
+        self.assertEqual(actions, ["transport", "call", "result"])
 
     def test_a_refusal_is_written_down_too(self):
         # A log that records only what succeeded makes a blocked attack look
@@ -268,8 +270,8 @@ class ProxVoxP1(unittest.TestCase):
         except Refused:
             pass
         records = self.audit.records()
-        self.assertEqual([r["action"] for r in records], ["refused"])
-        self.assertEqual(records[0]["detail"]["why"], "P1 is read-only")
+        self.assertEqual([r["action"] for r in records], ["transport", "refused"])
+        self.assertEqual(records[1]["detail"]["why"], "P1 is read-only")
 
     def test_the_call_is_recorded_before_it_is_made(self):
         # So a crash mid-request still leaves evidence it was attempted.
@@ -284,8 +286,8 @@ class ProxVoxP1(unittest.TestCase):
         with self.assertRaises(Boom):
             b.get("/nodes")
         actions = [r["action"] for r in self.audit.records()]
-        self.assertEqual(actions, ["call", "result"])
-        self.assertEqual(self.audit.records()[1]["detail"]["error"], "Boom")
+        self.assertEqual(actions, ["transport", "call", "result"])
+        self.assertEqual(self.audit.records()[2]["detail"]["error"], "Boom")
 
     # ── never dropping ──────────────────────────────────────────────────
     def test_a_failed_flush_keeps_every_record(self):
@@ -309,8 +311,8 @@ class ProxVoxP1(unittest.TestCase):
         self.broker().get("/storage")
         handed = []
         moved = self.audit.flush_to(lambda rows: (handed.extend(rows), True)[1])
-        self.assertEqual(moved, 4)
-        self.assertEqual(len(handed), 4)
+        self.assertEqual(moved, 6)
+        self.assertEqual(len(handed), 6)
         self.assertEqual(self.audit.unflushed(), 0)
 
     def test_a_half_written_line_from_a_crash_is_kept_not_discarded(self):
@@ -323,14 +325,14 @@ class ProxVoxP1(unittest.TestCase):
         records = self.audit.records()
         self.assertEqual(records[-1]["action"], "unparsable")
         self.assertIn("det", records[-1]["detail"]["raw"])
-        self.assertEqual(self.audit.unflushed(), 3,
+        self.assertEqual(self.audit.unflushed(), 4,
                          "a damaged record vanished from the count")
 
     def test_p1_logs_are_local_only_and_the_count_says_so(self):
         # P1 ships before the off-host store exists. The honest statement of
         # that is a number the sign-off can quote, not a silence.
         self.broker().get("/nodes")
-        self.assertEqual(self.audit.unflushed(), 2)
+        self.assertEqual(self.audit.unflushed(), 3)
 
 
 class ProxVoxToken(unittest.TestCase):

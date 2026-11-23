@@ -61,6 +61,12 @@ def load_token(reader=None) -> str:
 
     secret = reader(CRED_SITE, CRED_KIND) or ""
     secret = secret.strip()
+    if "\x00" in secret:
+        raise NoToken(
+            "The PROX VOX token was saved with the Windows Credential Manager "
+            "GUI and contains embedded NUL characters. Re-save it with "
+            "snap_native_creds; PROX VOX will not use the damaged value."
+        )
     if not secret:
         raise NoToken(
             "No PROX VOX token in Windows Credential Manager under "

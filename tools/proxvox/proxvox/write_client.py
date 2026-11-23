@@ -23,6 +23,7 @@ import urllib.request
 
 from . import host_guard
 from .broker import Refused, _path_refusal
+from .tls_pin import CertificatePinError, pinned_https_opener
 
 ALLOWED_METHODS = ("POST", "PUT", "DELETE", "GET")
 PROXMOX_TICKET_TTL_SECONDS = 7200
@@ -33,12 +34,31 @@ class WriteClient:
 
     def __init__(self, base_url: str, audit, pinned_guid: str,
                  actual_guid: str = None, opener=None, verify_host: bool = True,
-                 clock=None, ticket_ttl: int = PROXMOX_TICKET_TTL_SECONDS):
+                 clock=None, ticket_ttl: int = PROXMOX_TICKET_TTL_SECONDS,
+                 certificate_sha256: str = ""):
         if verify_host:
             host_guard.require_host(pinned_guid, actual_guid)
         self.base_url = base_url.rstrip("/")
         self.audit = audit
-        self._opener = opener or urllib.request.urlopen
+        if self.base_url.lower().startswith("https://"):
+            if opener is not None:
+                self.audit.record("tls_refused", {
+                    "why": "a custom HTTPS opener would bypass certificate pinning",
+                })
+                raise Refused("PROX VOX will not bypass HTTPS certificate pinning.")
+            try:
+                self._opener = pinned_https_opener(self.base_url, certificate_sha256)
+            except CertificatePinError as err:
+                self.audit.record("tls_refused", {"why": str(err)})
+                raise Refused(str(err)) from err
+        elif opener is not None:
+            self.audit.record("transport", {
+                "transport": "injected opener, not the shipped TLS path",
+            })
+            self._opener = opener
+        else:
+            self.audit.record("tls_refused", {"why": "Proxmox URL is not HTTPS"})
+            raise Refused("PROX VOX requires an HTTPS Proxmox URL.")
         self._clock = clock or time.time
         self._ticket_ttl = max(1, int(ticket_ttl))
 
@@ -102,6 +122,12 @@ class WriteClient:
                     "status": err.code,
                 })
                 raise
+            except CertificatePinError as err:
+                self._clear_session()
+                self.audit.record("tls_refused", {
+                    "username": user, "stage": stage, "why": str(err),
+                })
+                raise Refused(str(err)) from err
             except Exception as err:
                 self._clear_session()
                 self.audit.record("write_auth_result", {
@@ -262,6 +288,12 @@ class WriteClient:
             if err.code == 401:
                 self._clear_session()
             raise
+        except CertificatePinError as err:
+            self._clear_session()
+            self.audit.record("tls_refused", {
+                "method": method, "path": path, "why": str(err),
+            })
+            raise Refused(str(err)) from err
         except Exception as err:
             self.audit.record("write_result", {
                 "method": method,
