@@ -657,6 +657,39 @@ main.public-content,
     aspect-ratio: 1 / 1;
 }
 
+/* Current core compatibility for TRUE GRIT's original photo wall.  The
+   shared archive stylesheet clamps cropped grids to 3:2 and clips their
+   containers.  TRUE GRIT instead uses the aspect-preserving derivative and
+   keeps the skin's existing soft shadow outside each photograph. */
+body.archive-page #browse-grid.cropped-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    max-width: 95%;
+    gap: var(--grid-gap, 100px);
+    margin: 24px auto 80px;
+    padding: 0 60px;
+}
+body.archive-page #browse-grid.cropped-grid .thumb-container {
+    overflow: visible;
+    align-items: flex-start;
+}
+body.archive-page #browse-grid.cropped-grid .thumb-link,
+body.archive-page #browse-grid.cropped-grid .tg-thumb,
+body.archive-page #browse-grid.cropped-grid .tg-thumb img {
+    aspect-ratio: auto !important;
+    height: auto !important;
+}
+body.archive-page #browse-grid.cropped-grid .thumb-link {
+    overflow: visible !important;
+}
+
+@media (max-width: 1100px) {
+    body.archive-page #browse-grid.cropped-grid {
+        gap: 36px;
+        padding-left: 32px;
+        padding-right: 32px;
+    }
+}
+
 /* --- Justified item hover --- */
 #justified-grid .justified-item img {
     transition: opacity 0.3s ease;
@@ -1472,10 +1505,10 @@ a.logo-area,
     background: #fff;
 }
 
-/* Keep T/M/C outside the centred filter content, in the right-hand gutter. */
+/* TRUE GRIT's restored select row has no T/M/C gutter. */
 .true-grit-v2 #infobox .archive-filter-inner {
     position: static;
-    max-width: min(var(--archive-content-width, 1280px), calc(100% - 420px));
+    max-width: var(--archive-content-width, 1280px);
     flex-wrap: wrap;
     gap: 16px;
 }

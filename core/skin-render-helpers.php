@@ -613,6 +613,8 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $count = count($selected);
         $showAll = (string)($data['show_all_url'] ?? '');
         $query = (string)($data['query'] ?? '');
+        $variant = (string)($data['variant'] ?? 'panel');
+        if ($variant !== 'legacy-selects') $variant = 'panel';
         // The content cap is the site's own, so it arrives as bounded data and
         // becomes a custom property on the row. Without it the docked controls
         // measure from the window and escape the content column.
@@ -625,7 +627,42 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             . '><div class="archive-filter-inner"><div class="nav-links"><div class="center">';
         $html .= '<a href="' . snap_escape_url($showAll) . '" class="'
             . ($count === 0 && $query === '' ? 'active' : 'inactive') . '">[ SHOW ALL ]</a>';
-        if ($groups) {
+        if ($groups && $variant === 'legacy-selects') {
+            // The known-good legacy archive row. Core owns the bounded
+            // taxonomy data and the navigation; a strict skin only prints
+            // this finished component. Limit the old row to the two groups it
+            // actually carried rather than silently expanding its design.
+            $legacyGroups = [];
+            foreach ($groups as $group) {
+                if (!is_array($group) || empty($group['items']) || !is_array($group['items'])) continue;
+                $type = (string)($group['type'] ?? '');
+                if (!in_array($type, ['cat', 'alb'], true)) continue;
+                $legacyGroups[] = $group;
+            }
+            if ($legacyGroups) $html .= '<span class="sep">/</span>';
+            foreach ($legacyGroups as $legacyIndex => $group) {
+                $type = (string)$group['type'];
+                if ($legacyIndex > 0) $html .= '<span class="sep">|</span>';
+                $field = $type === 'cat' ? 'cat' : 'album';
+                $label = $type === 'cat' ? 'REGISTRY:' : 'ALBUMS:';
+                $empty = $type === 'cat' ? '-- ALL CATEGORIES --' : '-- ALL ALBUMS --';
+                $id = 'smack-archive-' . $field;
+                $html .= '<div class="filter-group archive-legacy-filter">'
+                    . '<label class="dim" for="' . $id . '">' . $label . '</label>'
+                    . '<form method="GET" action="' . snap_escape_url($showAll) . '" class="archive-select-form">'
+                    . '<select id="' . $id . '" name="' . $field . '" data-archive-select="1">'
+                    . '<option value="">' . $empty . '</option>';
+                foreach ($group['items'] as $item) {
+                    if (!is_array($item)) continue;
+                    $value = (string)($item['id'] ?? '');
+                    if ($value === '') continue;
+                    $html .= '<option value="' . snap_escape_attr($value) . '"'
+                        . (in_array($type . ':' . $value, $selected, true) ? ' selected' : '') . '>'
+                        . snap_escape_html((string)($item['label'] ?? '')) . '</option>';
+                }
+                $html .= '</select><noscript><button type="submit">APPLY</button></noscript></form></div>';
+            }
+        } elseif ($groups) {
             $html .= '<span class="sep">/</span>'
                 . '<div class="filter-group saf-wrap">'
                 . '<button id="smack-archive-filter-btn" class="saf-btn'

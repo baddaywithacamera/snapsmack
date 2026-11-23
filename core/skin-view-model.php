@@ -600,6 +600,10 @@ function snapsmack_public_presentation(PDO $pdo, array $settings, string $active
             ? snapsmack_skin_presentation($settings, $active_skin) : [],
         'archive_layout' => (string)($settings['archive_layout'] ?? 'square'),
         'archive_thumb_style' => (string)($settings['archive_thumb_style'] ?? 'cropped'),
+        // Presentation choice only. Taxonomy discovery and URL construction
+        // remain in core; a strict skin receives finished markup.
+        'archive_filter_variant' => (($manifest['features']['archive_filter_variant'] ?? '') === 'legacy-selects')
+            ? 'legacy-selects' : 'panel',
         'archive_grid' => snapsmack_archive_grid_metrics(
             $settings, (string)($settings['archive_thumb_style'] ?? 'cropped')),
         'search_dock' => function_exists('snapsmack_gram_search_dock_presentation')

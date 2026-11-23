@@ -185,7 +185,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'base_style_url', 'skin_variant_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',
-        'favicon_url', 'og_image_url', 'footer', 'slickr_profile', 'crop_circles', 'archive_layout', 'archive_thumb_style', 'archive_grid', 'body_class'];
+        'favicon_url', 'og_image_url', 'footer', 'slickr_profile', 'crop_circles', 'archive_layout', 'archive_thumb_style', 'archive_filter_variant', 'archive_grid', 'body_class'];
     // THE ARCHIVE'S OWN CONTROL ROW -- SHOW ALL, the filter panel, the search
     // field and the layout toggles.
     //
@@ -295,13 +295,20 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
             $_candidate = trim((string)($_archiveOptions[$_opt] ?? ''));
             if (preg_match('/^\d{3,5}(px)?$/', $_candidate)) { $_archiveWidth = $_candidate; break; }
         }
+        $_archiveSelected = array_map('strval', (array)($response['active_filters'] ?? []));
+        if (!$_archiveSelected) {
+            $_taxonomy = is_array($response['taxonomy'] ?? null) ? $response['taxonomy'] : [];
+            if ((int)($_taxonomy['category_id'] ?? 0) > 0) $_archiveSelected[] = 'cat:' . (int)$_taxonomy['category_id'];
+            if ((int)($_taxonomy['album_id'] ?? 0) > 0) $_archiveSelected[] = 'alb:' . (int)$_taxonomy['album_id'];
+        }
         $response['archive_controls'] = snap_render_component('archive-filters', [
+            'variant'       => (string)($presentation['archive_filter_variant'] ?? 'panel'),
             'content_width' => $_archiveWidth,
             // Not snap_route_url('archive'): that returns the literal /archive,
             // the unregistered path that sent six sites into a redirect loop.
             'show_all_url'  => snapsmack_legacy_archive_target($_archiveBase, $_archiveAliases, $_archiveMode),
             'query'         => (string)($response['query'] ?? ''),
-            'selected'      => (array)($response['active_filters'] ?? []),
+            'selected'      => $_archiveSelected,
             'filters'       => (array)($presentation['crop_circles']['filters'] ?? []),
             'search'        => (array)($presentation['crop_circles']['search'] ?? []),
             // Both resolved upstream by snapsmack_archive_controls(), the one
@@ -310,7 +317,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
             'layouts'       => (array)($response['archive_layouts'] ?? []),
             'calendar'      => (array)($response['archive_calendar'] ?? []),
         ]);
-        unset($_archiveBase, $_archiveAliases, $_archiveMode, $_archiveOptions, $_archiveWidth, $_opt, $_candidate);
+        unset($_archiveBase, $_archiveAliases, $_archiveMode, $_archiveOptions, $_archiveWidth, $_opt, $_candidate, $_archiveSelected, $_taxonomy);
     }
 
     // Hand the CMS-rendered community block to the comments component. It

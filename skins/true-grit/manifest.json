@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "name": "TRUE GRIT",
-  "version": "1.3.29",
+  "version": "1.3.30",
     "scrolltime_pages": ["archive"],
   "author": "Sean McCormick",
   "support": "sean@baddaywithacamera.ca",
@@ -15,7 +15,10 @@
       "cropped",
       "masonry"
     ],
-    "archive_layout_default": "masonry",
+    "archive_layout_default": "cropped",
+    "masonry_supported": false,
+    "archive_calendar_supported": false,
+    "archive_filter_variant": "legacy-selects",
     "has_landing": false,
     "post_modes": [
       "image"
