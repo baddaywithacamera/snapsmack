@@ -94,7 +94,15 @@ def test_open_published_routes_expired_long_form_key_to_prompt(monkeypatch):
         def list_posts(self):
             raise AuthorizationExpiredError("long-form")
 
+    class ImmediateThread:
+        def __init__(self, *, target, name, daemon):
+            self.target = target
+
+        def start(self):
+            self.target()
+
     monkeypatch.setattr(mode, "_poster_and_url", lambda: (Poster(), "https://example.test"))
+    monkeypatch.setattr("coldsnap_qt.mode_take.threading.Thread", ImmediateThread)
     monkeypatch.setattr(
         "coldsnap_qt.connect_panel.prompt_reauthentication",
         lambda parent, detail, long_form=False: called.append((detail, long_form)),

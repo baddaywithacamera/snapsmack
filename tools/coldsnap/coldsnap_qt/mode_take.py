@@ -2469,7 +2469,10 @@ class TakeMode(QWidget):
             try:
                 post = poster.get_post(post_id)
                 draft = None if action == "attach" else self._draft_from_remote(post)
-                if draft is not None:
+                if draft is not None and (
+                    (getattr(draft, "caption", "") or "").strip()
+                    or (getattr(draft, "body_blocks", "") or "").strip()
+                ):
                     session.add_draft(draft)
                 self._published_bridge.loaded.emit({
                     "post": post,
@@ -2678,7 +2681,8 @@ class TakeMode(QWidget):
             if key.isdigit():
                 pos = int(key)
                 shift = sum(1 for r in remove_set if r < pos - 1)
-                return str(pos - shift)
+                remapped = pos - shift
+                return remapped if isinstance(identity, int) else str(remapped)
             return identity
 
         def _clean_list(items):

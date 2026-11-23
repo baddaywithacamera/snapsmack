@@ -38,6 +38,17 @@ def _make_photo(path, size=(600, 400), color=(40, 110, 180)):
     return str(path)
 
 
+def _wait_until(app, predicate, timeout_s=3.0):
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        app.processEvents()
+        if predicate():
+            return True
+        time.sleep(0.01)
+    app.processEvents()
+    return bool(predicate())
+
+
 class _FakePoster:
     def __init__(self, posts, full_posts, delay_s=0.0):
         self._posts = posts
@@ -99,7 +110,10 @@ def test_ss1514_attach_preserves_saved_three_block_draft(monkeypatch, tmp_path):
         assert len(mode.body.canvas.to_blocks()) == 3
 
         mode._open_published(choose_fn=lambda _title: "attach")
-        app.processEvents()
+        assert _wait_until(
+            app,
+            lambda: bool(mode.rail.ensure_session().load_draft(saved_id).remote_post_id),
+        )
 
         assert mode._editing_id == saved_id
         assert len(mode.body.canvas.to_blocks()) == 3
@@ -132,14 +146,14 @@ def test_ss1514_unsaved_draft_survives_separate_and_cancel(monkeypatch, tmp_path
 
         # 1. Cancel leaves the unsaved draft untouched in the editor
         mode._open_published(choose_fn=lambda _title: "cancel")
-        app.processEvents()
+        assert _wait_until(app, lambda: not mode._published_list_active)
         assert mode.title_edit.text() == "Unsaved Draft Title"
         assert "Unsaved paragraph that must not vanish." in mode.body.toPlainText()
         assert len(mode._bucket) == 1
 
         # 2. Separate saves the unsaved draft into the session before loading remote post
         mode._open_published(choose_fn=lambda _title: "separate")
-        app.processEvents()
+        assert _wait_until(app, lambda: mode.title_edit.text() == "Published Post Nine")
 
         assert mode.title_edit.text() == "Published Post Nine"
         assert "Remote body text." in mode.body.toPlainText()
@@ -169,8 +183,8 @@ def test_ss1514_open_published_runs_off_gui_thread(monkeypatch, tmp_path):
         timer.start()
 
         mode._open_published()
+        assert _wait_until(app, lambda: mode.title_edit.text() == "Slow Remote Post")
         timer.stop()
-        app.processEvents()
 
         assert len(ticks) >= 3, f"GUI event loop froze during _open_published (ticks={len(ticks)})"
         assert mode.title_edit.text() == "Slow Remote Post"
@@ -249,7 +263,7 @@ def test_ss1514_no_empty_duplicate_archive_and_block_empty_queue(monkeypatch, tm
         # 1. Opening an empty published post does NOT create a 0-block draft on disk
         before_count = len(mode.rail.ensure_session().list_drafts())
         mode._open_published()
-        app.processEvents()
+        assert _wait_until(app, lambda: not mode._published_load_active)
         mode._autosave_now()
         assert len(mode.rail.ensure_session().list_drafts()) == before_count
 
@@ -365,7 +379,7 @@ def test_featured_photo_control_and_linked_status_line(monkeypatch, tmp_path):
         mode.title_edit.setText("Start your engines...")
         mode.body.canvas.from_blocks([{"type": "para", "text": "Draft paragraph."}])
         mode._open_published(choose_fn=lambda _t: "attach")
-        app.processEvents()
+        assert _wait_until(app, lambda: not mode.linked_post_lbl.isHidden())
         assert not mode.linked_post_lbl.isHidden()
         assert "Editing: Start your engines..." in mode.linked_post_lbl.text()
         assert "/start-your-engines" in mode.linked_post_lbl.text()
