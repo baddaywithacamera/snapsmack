@@ -130,6 +130,24 @@ class InsecureTransportError(RuntimeError):
     """Refused to attach the posting key to an insecure (non-https) connection."""
 
 
+class AuthorizationExpiredError(RuntimeError):
+    """A saved API authorization was rejected and must be replaced."""
+
+    def __init__(self, credential_kind="api"):
+        self.credential_kind = str(credential_kind or "api")
+        label = "long-form" if self.credential_kind == "long-form" else "site"
+        super().__init__(
+            "This site's saved %s authorization expired or was rejected. "
+            "Nothing was uploaded. Re-authenticate with a fresh key."
+            % label
+        )
+
+
+def _raise_authorization(response, credential_kind="api"):
+    if int(getattr(response, "status_code", 0) or 0) in (401, 403):
+        raise AuthorizationExpiredError(credential_kind)
+
+
 # Export sizing policy. The fleet standard Sean set is a 3840 long-edge cap plus a
 # mild sharpen on downsize (SPEC-image-sizing-4k-coldsnap-gyss.md §9/§10). COLD SNAP
 # sizes to this BEFORE upload so what you post is what gets stored and the sharpen
@@ -293,6 +311,7 @@ class SumnaConnection:
     def publishing_policy(self, timeout: int = 15) -> dict:
         """Read live publish invariants from the destination CMS."""
         r = self.session.get(f"{self.base_url}/sybu-data.php", timeout=timeout)
+        _raise_authorization(r, "api")
         r.raise_for_status()
         data = r.json()
         policy = data.get("publishing_policy") or {}
@@ -305,6 +324,7 @@ class SumnaConnection:
     def site_catalog(self, timeout: int = 15) -> dict:
         """Fetch the CMS-owned category/album vocabulary and canonical IDs."""
         r = self.session.get(f"{self.base_url}/sybu-data.php", timeout=timeout)
+        _raise_authorization(r, "api")
         r.raise_for_status()
         data = r.json()
         return data if isinstance(data, dict) else {}
@@ -804,6 +824,7 @@ class SmacktalkPoster:
 
     def publishing_policy(self, timeout: int = 15) -> dict:
         r = self.session.get(f"{self.base_url}/sybu-data.php", timeout=timeout)
+        _raise_authorization(r, "long-form")
         r.raise_for_status()
         policy = (r.json().get("publishing_policy") or {})
         return {
@@ -894,6 +915,7 @@ class SmacktalkPoster:
             params["offset"] = int(offset)
         r = self.session.get(self._route("smackpress/posts"),
                              params=params, timeout=30)
+        _raise_authorization(r, "long-form")
         r.raise_for_status()
         posts = list(r.json().get("posts") or [])
         posts.sort(
@@ -908,16 +930,19 @@ class SmacktalkPoster:
     def list_pages(self, limit: int = 500) -> list:
         r = self.session.get(self._route("smackpress/pages"),
                              params={"limit": max(1, min(500, int(limit)))}, timeout=30)
+        _raise_authorization(r, "long-form")
         r.raise_for_status()
         return list(r.json().get("pages") or [])
 
     def get_page(self, page_id: int) -> dict:
         r = self.session.get(self._route(f"smackpress/pages/{int(page_id)}"), timeout=30)
+        _raise_authorization(r, "long-form")
         r.raise_for_status()
         return dict(r.json().get("page") or {})
 
     def get_post(self, post_id: int) -> dict:
         r = self.session.get(self._route(f"smackpress/posts/{int(post_id)}"), timeout=30)
+        _raise_authorization(r, "long-form")
         r.raise_for_status()
         return dict(r.json().get("post") or {})
 
