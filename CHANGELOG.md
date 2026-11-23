@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.1002D — opened
+
 Written and tested, NOT on dev, and NOT in 0.7.1000D. These sat in the 1000D
 section until the tag was being assembled, which would have told owners their
 photographs come back in a build that does not carry the change. The branches
