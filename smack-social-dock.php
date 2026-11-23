@@ -104,7 +104,15 @@ include 'core/sidebar.php';
             if (is_array($_dock_mfd['social_dock'] ?? null)) $_dock_ovr = $_dock_mfd['social_dock'];
         }
     }
-    $_dock_locked = static function (string $k) use ($_dock_ovr) { return array_key_exists($k, $_dock_ovr); };
+    // ONLY POSITION IS SKIN-OWNED. The appearance keys became DEFAULTS when
+    // both render paths started resolving owner-setting-first, so telling the
+    // owner the skin controls them is untrue AND it hides the control they
+    // need in order to change it. The decision lives in core so it can be
+    // tested; see core/social-dock-appearance.php.
+    require_once __DIR__ . '/core/social-dock-appearance.php';
+    $_dock_locked = static function (string $k) use ($_dock_ovr) {
+        return snapsmack_social_dock_skin_owns($k, $_dock_ovr);
+    };
     $_dock_lock_note = static function () use ($_dock_skin) {
         echo '<div class="dim" style="padding:8px 0;font-style:italic;opacity:.75;">(controlled by the '
            . htmlspecialchars(strtoupper($_dock_skin)) . ' skin)</div>';

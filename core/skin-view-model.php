@@ -153,19 +153,23 @@ function snapsmack_prepare_crop_circles(PDO $pdo, array $settings, array $manife
         }
     }
     $dock = is_array($manifest['social_dock'] ?? null) ? $manifest['social_dock'] : [];
-    $dark = (($settings['social_dock_color_mode'] ?? $dock['default_color_mode'] ?? 'light') === 'dark');
-    $color = (string)($dark
-        ? ($dock['color_dark'] ?? $settings['social_dock_color_dark'] ?? '#1a1a1a')
-        : ($dock['color_light'] ?? $settings['social_dock_color_light'] ?? '#ffffff'));
-    if (!preg_match('/^#[0-9a-f]{6}$/i', $color)) $color = $dark ? '#1a1a1a' : '#ffffff';
-    $rgb = implode(',', [hexdec(substr($color, 1, 2)), hexdec(substr($color, 3, 2)), hexdec(substr($color, 5, 2))]);
+    // ONE resolver for both render paths. This used to read the skin's legacy
+    // key BEFORE the owner's setting and never looked at default_* at all,
+    // which is the opposite of what the floating dock did.
+    require_once __DIR__ . '/social-dock-appearance.php';
+    $look = snapsmack_social_dock_appearance($settings, $dock);
+    $dark = $look['mode'] === 'dark';
+    $color = $look['color'];
+    $rgb = $look['rgb'];
+    $model['icon_style'] = $look['icon_style'];
+    $model['shadow'] = $look['shadow'];
     $model['appearance'] = [
         'icon' => $color,
         'background' => $dark ? 'rgba(255,255,255,.7)' : 'rgba(0,0,0,.7)',
         'background_hover' => $dark ? 'rgba(255,255,255,.95)' : 'rgba(0,0,0,.9)',
         'border' => 'rgba(' . $rgb . ',.3)',
         'border_hover' => 'rgba(' . $rgb . ',.7)',
-        'opacity' => max(0, min(100, (int)($dock['opacity'] ?? $settings['social_dock_opacity'] ?? 50))) / 100,
+        'opacity' => $look['opacity'] / 100,
     ];
     return $model;
 }

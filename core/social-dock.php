@@ -49,6 +49,11 @@ if (!function_exists('snapsmack_dock_skin_overrides')) {
 }
 $_dock_ovr = snapsmack_dock_skin_overrides($settings);
 
+// Resolved by the SAME function the strict path uses, so the two cannot drift
+// apart again. Order: owner setting, skin default_*, skin legacy key, builtin.
+require_once __DIR__ . '/social-dock-appearance.php';
+$_dock_look        = snapsmack_social_dock_appearance($settings, $_dock_ovr);
+
 // Platform definitions: key => [label, settings_key, svg]
 // SVGs use fill="currentColor" for CSS theming, 24x24 viewBox
 $_dock_platforms = [
@@ -176,7 +181,7 @@ $_dock_outline = [
     'email'      => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>',
     'website'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.5 3.7 5.6 3.7 8.5S14.4 18 12 20.5C9.6 18 8.3 14.9 8.3 12S9.6 6 12 3.5z"/></svg>',
 ];
-$_dock_icon_style = (($settings['social_dock_icon_style'] ?? $_dock_ovr['default_icon_style'] ?? 'solid') === 'outline') ? 'outline' : 'solid';
+$_dock_icon_style = $_dock_look['icon_style'];
 
 // Pixelfed glyphs (used for THIS site's own fediverse page on image installs;
 // Mastodon glyphs above cover the text install). Solid = filled "P" mark;
@@ -252,13 +257,11 @@ if (!in_array($_dock_position, $_valid_positions)) {
 
 // Owner appearance settings win; a skin may declare defaults without locking
 // the matching controls. Position remains a skin-owned placement decision.
-$_dock_color_light = $settings['social_dock_color_light'] ?? ($_dock_ovr['default_color_light'] ?? '#ffffff');
-$_dock_color_dark  = $settings['social_dock_color_dark']  ?? ($_dock_ovr['default_color_dark'] ?? '#1a1a1a');
-$_dock_color_mode  = (($settings['social_dock_color_mode'] ?? $_dock_ovr['default_color_mode'] ?? 'light') === 'dark') ? 'dark' : 'light';
-$_dock_shadow      = array_key_exists('social_dock_shadow', $settings)
-    ? ((string)$settings['social_dock_shadow'] !== '0')
-    : filter_var($_dock_ovr['default_shadow'] ?? true, FILTER_VALIDATE_BOOLEAN);
-$_dock_opacity     = max(0, min(100, (int)($_dock_ovr['opacity'] ?? ($settings['social_dock_opacity'] ?? 50))));
+$_dock_color_light = $_dock_look['color_light'];
+$_dock_color_dark  = $_dock_look['color_dark'];
+$_dock_color_mode  = $_dock_look['mode'];
+$_dock_shadow      = $_dock_look['shadow'];
+$_dock_opacity     = $_dock_look['opacity'];
 
 // Active colour based on mode
 $_dock_color = ($_dock_color_mode === 'dark') ? $_dock_color_dark : $_dock_color_light;

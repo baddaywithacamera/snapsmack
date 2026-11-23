@@ -66,8 +66,8 @@
         ]
     },
     "alfred-footer-carries-the-shared-social-dock-regression.php": {
-        "assertions": 22,
-        "predicates": 19,
+        "assertions": 24,
+        "predicates": 22,
         "thresholds": [
             2,
             6,
@@ -2720,6 +2720,13 @@
         "predicates": 4,
         "thresholds": []
     },
+    "social-dock-one-precedence-for-both-paths-regression.php": {
+        "assertions": 23,
+        "predicates": 3,
+        "thresholds": [
+            100
+        ]
+    },
     "soft-404-regression.php": {
         "assertions": 0,
         "predicates": 3,
@@ -2859,8 +2866,8 @@
         ]
     },
     "strict-skins-can-place-the-shared-social-dock-regression.php": {
-        "assertions": 30,
-        "predicates": 29,
+        "assertions": 35,
+        "predicates": 35,
         "thresholds": [
             2,
             2,
