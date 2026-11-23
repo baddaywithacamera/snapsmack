@@ -995,6 +995,29 @@ input[type="button"],
 
 /* Post Inner */
 
+/* THE LANDING IS NOT PROSE. (SS-1528)
+
+   ALFRED's <main> carries .post-inner on every page kind, and .post-inner is
+   the column for reading a post: 800px wide. The landing's own .section-inner
+   -- the 1040px lane this stylesheet declares below -- then sat inside it at
+   max-width:90%, so the landing grid measured 720px at a 1920 viewport with
+   236px columns instead of 1040 with 342px. That is the cramped grid in Sean's
+   screenshot.
+
+   .landing-page comes from the CMS, which knows what kind of page this is
+   (core/skin-view-contract.php, keyed by function, no skin named). The decision
+   about what a landing should LOOK like stays here, in the skin, which is the
+   right side of the line: the first repair I tried put a conditional in
+   layout.php and the skin security ratchet refused it, correctly, because that
+   is logic a strict skin may not hold.
+
+   Measured after: 1040px grid with 342px columns at 1920 and 1440, 908 with
+   298px at 1024. Post and page keep their 800px column untouched. */
+body.landing-page #scroll-stage.post-inner {
+    width: auto;
+    max-width: none;
+}
+
 .post-inner {
     width: 520px;
     max-width: 85%;

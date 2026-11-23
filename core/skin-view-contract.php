@@ -86,6 +86,26 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     if ($kind === 'archive' || $kind === 'hashtag') $bodyClasses[] = 'archive-page';
     if ($kind === 'blogroll') $bodyClasses[] = 'is-blogroll';
     if ($kind === 'photo') $bodyClasses[] = 'is-photo-page';
+    // A LANDING NEEDS TO BE ADDRESSABLE FROM A STYLESHEET. (SS-1528)
+    //
+    // ALFRED wore its post reading column on every page kind, so its landing
+    // grid measured 720px at 1920 instead of the 1040px lane its own stylesheet
+    // declares. The obvious repair was a conditional class list in the skin's
+    // layout -- and the SKIN SECURITY RATCHET REFUSED IT, correctly: that is
+    // executable logic in a strict skin, which is the one thing a skin may not
+    // hold. The ratchet caught me breaking the rule I had quoted earlier the
+    // same day.
+    //
+    // So it comes from here, the way archive-page already does, and for the
+    // same reason: the CMS decides what KIND of page this is, and the skin's
+    // stylesheet decides what that should look like. Keyed by FUNCTION, never
+    // by skin name -- every skin gets the hook and none of them is named here.
+    //
+    // 'feed' is the smacktalk controller's word for a landing and 'landing' is
+    // the public controller's; both mean the page a visitor arrives on, so both
+    // get the class. A stylesheet should not have to know which controller
+    // served it.
+    if ($kind === 'feed' || $kind === 'landing') $bodyClasses[] = 'landing-page';
     $presentation['body_class'] = implode(' ', $bodyClasses);
     // Skins display this bounded value; they do not search or interpret the
     // CMS navigation tree themselves.
