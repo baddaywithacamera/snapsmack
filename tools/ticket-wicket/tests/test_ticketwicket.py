@@ -314,4 +314,57 @@ def test_the_role_question_is_asked_not_inferred_from_a_403():
     assert f.am_i_admin() is False
     assert asked and asked[0] == ("GET", "me")
 
+
+# -- the guard's other false positives (what blocked 24 tickets) -------------
+#
+# Added 2026-11-20, after the backlog went to the board and 24 tickets were
+# refused for naming "someone" they did not name. Each assertion below is one
+# of those refusals, and the pair under it is the thing that must STILL be
+# refused -- which is the only reason the exemption is safe.
+
+def test_the_vendors_own_site_is_not_a_reporters_site():
+    body = "snapsmack.ca sends NEITHER header. That is the vendor site."
+    assert anonymise.check(body) == []
+    assert "snapsmack.ca" in anonymise.scrub(body)
+
+
+def test_a_subdomain_of_the_vendor_site_is_still_caught():
+    # The fleet's own sites live at names like this. A suffix match here would
+    # publish exactly what the guard exists to protect, so the list is exact.
+    for host in ("curbappeal.snapsmack.ca", "notsnapsmack.ca", "snapsmack.ca.evil.com"):
+        assert anonymise.check("the site " + host + " is affected"), host
+        assert host not in anonymise.scrub("the site " + host + " is affected")
+
+
+def test_spec_and_documentation_hosts_are_not_identifying():
+    body = "One is data (schema.org JSON-LD) and the docs use example.com throughout."
+    assert anonymise.check(body) == []
+    kept = anonymise.scrub(body)
+    assert "schema.org" in kept and "example.com" in kept
+
+
+def test_a_url_on_the_vendor_site_survives_but_one_anywhere_else_does_not():
+    shipped = "SHIPPED TRUTH is https://snapsmack.ca/releases/latest-dev.json, not git tag."
+    assert anonymise.check(shipped) == []
+    assert "https://snapsmack.ca/releases/latest-dev.json" in anonymise.scrub(shipped)
+    private = "see https://craptasti.ca/album/my-kids for the gallery"
+    assert any("URL" in p for p in anonymise.check(private))
+    assert "craptasti.ca/album/my-kids" not in anonymise.scrub(private)
+
+
+def test_a_reporter_recorded_as_a_role_word_does_not_block_plain_english():
+    # Twelve tickets had reporter="owner", so every sentence using the phrase
+    # the product itself uses -- "the owner" -- read as naming the reporter.
+    body = "The owner cannot tell what version is installed."
+    assert anonymise.check(body, extra=["owner"]) == []
+    assert "The owner" in anonymise.scrub(body, extra=["owner"])
+
+
+@pytest.mark.parametrize("name", ["Sean", "sean", "Bartholomew", "mccormick"])
+def test_a_reporter_recorded_as_a_real_name_is_still_caught(name):
+    body = "reported by " + name + " on Tuesday"
+    problems = anonymise.check(body, extra=[name])
+    assert any("reporter's own identifier" in p for p in problems)
+    assert name not in anonymise.scrub(body, extra=[name])
+
 # ===== SNAPSMACK EOF =====

@@ -150,6 +150,73 @@ new decision.
   its own layout, in the page flow, and it renders from the same settings and
   the same markup as the floating one. Nothing changes for a skin that does
   not ask. (SS-1446)
+- **A site you have blocked is no longer relayed to the network.** The relay
+  checked its blocklist when a site joined, and when a post arrived, but never
+  when passing a post on. So a site blocked AFTER it joined kept being
+  broadcast to every member of the relay until its membership happened to
+  change. Blocks now take effect on the next post, for new posts and edits
+  alike, and if the relay cannot read its own blocklist it refuses to pass
+  anything on rather than guessing. (SS-1481)
+
+- **A post someone shared only with their followers no longer lands in your
+  reader.** The check that keeps a restricted *reply* out was never applied to
+  a restricted *post*, so a followers-only post from an account you follow went
+  into your home timeline. It was never shown to the public — the reader is
+  yours alone — but it was somewhere it could be passed on from. Public and
+  unlisted posts are unaffected. (SS-1481)
+
+- **Editing a post no longer moves it into the wrong tab.** When a post that
+  reached you through the wider network was edited, the relay passed the edit on
+  without saying which feed it belonged to, and the receiving site filed it as
+  local. A GLOBAL post could appear in LOCAL after a single edit. The feed is
+  now carried on edits exactly as it is on new posts. (SS-1481)
+
+- **When someone takes back a share, the post goes with it.** Un-sharing removed
+  the notification and the share count but left the post itself in your reader,
+  so you kept seeing something nobody was sharing any more. It is now removed —
+  but only the copy that share put there. A post you see because you follow its
+  author, or because someone else also shared it, stays. (SS-1481)
+
+- **A deleted account's posts are all withdrawn, not the first five hundred.**
+  When a site on the network deleted its account, the hub withdrew up to 500 of
+  the posts it had passed on and left the rest in everyone's reader — posts
+  belonging to an account that no longer existed, with nothing coming to clear
+  them. There is no longer a limit. (SS-1481)
+
+- **A deleted account's posts now actually disappear.** When a remote account is
+  purged, its site sends a notice that can never be verified — the account and
+  its key are already gone — so the notice was ignored and the posts stayed in
+  your reader for good. The notice is now acted on when, and only when, the
+  account really is unreachable. If it still exists, the notice is refused as
+  before. (SS-1481)
+
+- **SNAPSMACK now does as it is asked when another server says slow down.**
+  When a site on the network answered "try again in ten minutes", that was
+  thrown away and we retried on our own schedule — which is how a well-behaved
+  server starts refusing you outright. Its answer is now honoured, in both
+  forms the standard allows, and it can only ever make us wait longer, never
+  shorter. (SS-1481)
+
+- **The relay no longer re-sends posts it has already passed on.** A recovery
+  pass that exists to catch posts missed during an outage was re-reading each
+  member's recent posts every ten minutes and sending every one of them again,
+  because the record of what had already been sent was never consulted. It is
+  now. Genuinely missed posts are still picked up. (SS-1481)
+
+- **An empty Fediverse tab stops hammering the other site.** When your local or
+  global tab had nothing in it, SnapSmack asked the remote instance for its
+  public timeline twice on every single view. That answer is now kept for ten
+  minutes — including an empty one, which was the worst case — so refreshing a
+  quiet tab no longer costs somebody else two requests each time. (SS-1481)
+
+- **SnapSmack now notices if it ever sends the same post twice.** The fault
+  above went unseen for a long time because nothing counted a repeat delivery —
+  once a send succeeds its queue entry is deleted, so there was no record to
+  check against. There is now, kept for seven days, and a repeat writes a line
+  to your error log and raises a count shown on the Fediverse page. It does not
+  block anything: a deliberate re-send is still allowed, and this is a smoke
+  alarm rather than a lock. If that number is ever above zero, something is
+  re-sending and it is worth telling us.
 
 ## 0.7.1000D — opened
 

@@ -190,18 +190,140 @@ function sc_relay_is_discoverable(array $activity, array $object): bool {
     return false;
 }
 
-function sc_relay_actor_blocked(PDO $pdo, string $actor_url): bool {
+/**
+ * Is this actor blocked?
+ *
+ * $conclusive, when passed, says whether every source could actually be READ.
+ * This function answers false for an unreadable snap_ap_blocks, which is right
+ * for RECEIVING -- a syncing schema must not stop a post arriving -- and wrong
+ * for relaying outward, where "I could not tell" has to mean "do not
+ * broadcast". Codex's review finding 1: sc_relay_source_may_relay() called
+ * this and so inherited the swallow, and only a snap_relay_blocklist failure
+ * closed the gate. With snap_ap_blocks absent and snap_relay_blocklist
+ * readable, the hub relayed.
+ *
+ * One implementation, two readings of a failure. The caller decides which it
+ * needs rather than a second copy of the policy existing somewhere.
+ */
+function sc_relay_actor_blocked(PDO $pdo, string $actor_url, ?bool &$conclusive = null): bool {
+    $conclusive = true;
     $domain = strtolower(rtrim((string)(parse_url($actor_url, PHP_URL_HOST) ?: ''), '.'));
     try {
         $q = $pdo->prepare("SELECT 1 FROM snap_ap_blocks
             WHERE (kind='actor' AND value=?) OR (kind='domain' AND value=?) LIMIT 1");
         $q->execute([$actor_url, $domain]);
         if ($q->fetchColumn()) return true;
-    } catch (Throwable $e) { /* schema may be syncing */ }
+    } catch (Throwable $e) {
+        // schema may be syncing — receiving carries on, relaying must not
+        $conclusive = false;
+    }
     if (function_exists('pc_is_blocked')) {
-        try { if (pc_is_blocked($pdo, $actor_url)) return true; } catch (Throwable $e) {}
+        try { if (pc_is_blocked($pdo, $actor_url)) return true; }
+        catch (Throwable $e) { $conclusive = false; }
     }
     return false;
+}
+
+/**
+ * May the hub still relay for this source, right now?
+ *
+ * SS-1481 finding 5. sc_relay_join() consults snap_relay_blocklist once, at
+ * the moment a member joins (:229), and sc_relay_actor_blocked() is consulted
+ * on RECEIVE (:444). Neither is consulted on the way OUT: sc_relay_fanout()
+ * and sc_relay_refresh() asked only whether the actor was a relay source. So a
+ * domain blocklisted AFTER it joined, or an actor added to snap_ap_blocks, kept
+ * being broadcast to every member until its subscriber row happened to change
+ * state. A block that a site has recorded should take effect on the next post,
+ * not at the next join.
+ *
+ * This adds no new policy. It reuses sc_relay_actor_blocked() -- which already
+ * covers snap_ap_blocks by actor and by domain, plus pc_is_blocked() -- and
+ * adds the one source it does not cover, the relay's own domain blocklist, read
+ * exactly as sc_relay_join() reads it.
+ *
+ * ON FAILURE THIS SAYS "BLOCKED", for EVERY source it consults. If the hub
+ * cannot tell whether an actor or a domain is blocked, broadcasting to every
+ * member is the move it cannot take back. Refusing is recoverable; the posts
+ * relay on the next tick once the tables answer.
+ *
+ * That used to hold for only one of the two. Codex's review finding 1:
+ * sc_relay_actor_blocked() swallows an unreadable snap_ap_blocks and answers
+ * false -- correct for receiving, where a syncing schema must not stop a post
+ * arriving -- so with that table absent and snap_relay_blocklist readable, this
+ * said MAY RELAY. It now asks that helper whether its answer was conclusive.
+ */
+function sc_relay_source_may_relay(PDO $pdo, string $actor_url): bool {
+    if ($actor_url === '') return false;
+    $conclusive = true;
+    if (sc_relay_actor_blocked($pdo, $actor_url, $conclusive)) return false;
+    if (!$conclusive) {
+        error_log('SnapSmack relay: block list unreadable, refusing to relay '
+            . $actor_url);
+        return false;
+    }
+
+    $domain = strtolower(rtrim((string)(parse_url($actor_url, PHP_URL_HOST) ?: ''), '.'));
+    if ($domain === '') return false;
+    try {
+        $q = $pdo->prepare("SELECT 1 FROM snap_relay_blocklist WHERE domain = ? LIMIT 1");
+        $q->execute([$domain]);
+        if ($q->fetchColumn()) return false;
+    } catch (Throwable $e) {
+        error_log('SnapSmack relay: blocklist unreadable, refusing to relay '
+            . $domain . ' — ' . $e->getMessage());
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Retract everything this hub has already relayed for one actor.
+ *
+ * The companion to the check above: stopping future fan-out does nothing about
+ * the posts already sitting in every member's reader. Reuses sc_relay_retract()
+ * per object rather than building a second Undo, and PAGES the intake rows
+ * instead of taking a fixed slice, so a prolific actor is fully retracted.
+ *
+ * Called when a block is recorded. NOTE, because it is worth saying plainly:
+ * at the time of writing nothing in the repo INSERTs into snap_relay_blocklist
+ * or snap_ap_blocks -- both tables are read-only in code and populated by hand.
+ * So this function has no automatic trigger yet; it is the piece an admin
+ * control will call, and it is callable now from a one-off script. That gap is
+ * reported rather than papered over with an invented admin page.
+ *
+ * @return int objects retracted
+ */
+function sc_relay_retract_actor(PDO $pdo, array $settings, string $actor_url,
+                                string $activity_id = '', int $page = 200): int {
+    if ($actor_url === '') return 0;
+    $retracted = 0;
+    $lastId = 0;
+    $page = max(1, min(1000, $page));
+    while (true) {
+        try {
+            $q = $pdo->prepare("SELECT id, object_id FROM snap_relay_intake
+                                 WHERE origin_actor_url = ? AND id > ?
+                                 ORDER BY id ASC LIMIT {$page}");
+            $q->execute([$actor_url, $lastId]);
+            $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            error_log('SnapSmack relay: retract paging failed for ' . $actor_url
+                . ' — ' . $e->getMessage());
+            break;
+        }
+        if (!$rows) break;
+        foreach ($rows as $row) {
+            $lastId = (int)$row['id'];
+            $object_id = (string)$row['object_id'];
+            if ($object_id === '') continue;
+            if (sc_relay_retract($pdo, $settings, $actor_url, $object_id,
+                                 $activity_id !== '' ? $activity_id : $object_id) > 0) {
+                $retracted++;
+            }
+        }
+        if (count($rows) < $page) break;
+    }
+    return $retracted;
 }
 
 function sc_relay_actor_owns_object(string $actor_url, string $object_id): bool {
@@ -291,6 +413,9 @@ function sc_relay_announce_feed(array $activity): string {
 /** Queue exactly one Announce per destination/object; snap_relay_intake dedups intake. */
 function sc_relay_fanout(PDO $pdo, array $settings, array $activity, string $actor_url): int {
     if (!sc_relay_actor_is_source($pdo, $actor_url)) return 0;
+    // SS-1481 finding 5: a block recorded after this source joined must stop
+    // the next post, not wait for a state change on its subscriber row.
+    if (!sc_relay_source_may_relay($pdo, $actor_url)) return 0;
     $object = $activity['object'] ?? [];
     if (!is_array($object) || !in_array(($object['type'] ?? ''), ['Note','Image'], true)) return 0;
     if (($object['inReplyTo'] ?? null) || !sc_relay_is_discoverable($activity, $object)) return 0;
@@ -300,12 +425,6 @@ function sc_relay_fanout(PDO $pdo, array $settings, array $activity, string $act
         ? (string)($object['attributedTo']['id'] ?? '') : (string)($object['attributedTo'] ?? '');
     if ($object_id === '' || $attributed !== $actor_url
         || !sc_relay_actor_owns_object($actor_url, $object_id)) return 0;
-    try {
-        $pdo->prepare("INSERT INTO snap_relay_intake (activity_id, object_id, origin_actor_url) VALUES (?,?,?)")
-            ->execute([$activity_id, $object_id, $actor_url]);
-    } catch (PDOException $e) {
-        if ((string)$e->getCode() !== '23000') throw $e;
-    }
     $announce = json_encode([
         '@context' => ['https://www.w3.org/ns/activitystreams',
             ['photoblogs' => 'https://photoblogs.fyi/ns#', 'feed' => 'photoblogs:feed']],
@@ -314,13 +433,35 @@ function sc_relay_fanout(PDO $pdo, array $settings, array $activity, string $act
         'object' => $object_id, 'to' => ['https://www.w3.org/ns/activitystreams#Public'],
         'feed' => sc_relay_origin_feed($pdo, $actor_url),
     ], JSON_UNESCAPED_SLASHES);
-    return sc_relay_queue_to_members($pdo, $actor_url, $announce,
+
+    // QUEUE FIRST, THEN RECORD THE INTAKE. Codex's review finding 4: the intake
+    // row went in before this call, and the recovery loop skips any object with
+    // an intake row (SS-1481 finding 10). So if the request died or queueing
+    // threw after the insert, recovery would PERMANENTLY skip the very post it
+    // exists to recover -- the fix for one fault building a worse one.
+    //
+    // This order cannot lose a post. A throw here leaves no intake row, so the
+    // next recovery tick takes the post in and relays it. The cost is that the
+    // same object could be queued twice in a race, and sv_queue_delivery()'s
+    // dedupe_key -- 'relay-create:' + hash(object) per inbox -- collapses that
+    // to one row, which is what made the intake UNIQUE key redundant as a
+    // dedupe in the first place.
+    $queued = sc_relay_queue_to_members($pdo, $actor_url, $announce,
         'relay-create:' . hash('sha256', $object_id));
+    try {
+        $pdo->prepare("INSERT INTO snap_relay_intake (activity_id, object_id, origin_actor_url) VALUES (?,?,?)")
+            ->execute([$activity_id, $object_id, $actor_url]);
+    } catch (PDOException $e) {
+        if ((string)$e->getCode() !== '23000') throw $e;
+    }
+    return $queued;
 }
 
 /** Refresh a relayed object after a verified origin Update. */
 function sc_relay_refresh(PDO $pdo, array $settings, array $activity, string $actor_url): int {
     if (!sc_relay_actor_is_source($pdo, $actor_url)) return 0;
+    // Same gate as fan-out: an Update is another broadcast to every member.
+    if (!sc_relay_source_may_relay($pdo, $actor_url)) return 0;
     $object = $activity['object'] ?? [];
     if (!is_array($object) || !in_array(($object['type'] ?? ''), ['Note','Image'], true)) return 0;
     $object_id = (string)($object['id'] ?? '');
@@ -329,11 +470,24 @@ function sc_relay_refresh(PDO $pdo, array $settings, array $activity, string $ac
     if ($object_id === '' || $attributed !== $actor_url
         || !sc_relay_actor_owns_object($actor_url, $object_id)
         || !sc_relay_is_discoverable($activity, $object)) return 0;
+    // SS-1481 finding 3. This Announce used to carry no feed key, while
+    // sc_relay_fanout's does. An untagged Announce is read as LOCAL by
+    // sc_relay_announce_feed() -- deliberately, for pre-681D hubs -- so one
+    // edit to a GLOBAL curator-sourced post added a local membership to it and
+    // the post appeared in a tab it was never meant to be in. The tag has to
+    // be the same on both paths, derived the same way, or an Update silently
+    // reclassifies the post it is refreshing.
+    //
+    // The @context gains the photoblogs feed mapping for the same reason
+    // fan-out has it: an extension term nobody declares is an extension term
+    // a strict consumer may drop.
     $announce = json_encode([
-        '@context'=>'https://www.w3.org/ns/activitystreams',
+        '@context'=>['https://www.w3.org/ns/activitystreams',
+            ['photoblogs' => 'https://photoblogs.fyi/ns#', 'feed' => 'photoblogs:feed']],
         'id'=>sv_actor_url($settings).'#announce-update-'.hash('sha256',(string)($activity['id'] ?? $object_id)),
         'type'=>'Announce','actor'=>sv_actor_url($settings),'object'=>$object_id,
         'to'=>['https://www.w3.org/ns/activitystreams#Public'],
+        'feed'=>sc_relay_origin_feed($pdo, $actor_url),
     ], JSON_UNESCAPED_SLASHES);
     return sc_relay_queue_to_members($pdo, $actor_url, $announce,
         'relay-update:' . hash('sha256', (string)($activity['id'] ?? $object_id)));
@@ -399,7 +553,40 @@ function sc_relay_add_membership(PDO $pdo, string $object_id, string $feed, stri
             $has_membership_table = false;
         }
     }
-    if (!$has_membership_table) return;
+    if (!$has_membership_table) {
+        // SS-1481 finding 4. This used to be a bare `return`, and the silence
+        // was the problem rather than the inertness.
+        //
+        // Membership is what makes the LOCAL and GLOBAL tabs deterministic:
+        // snap_ap_timeline_membership's primary key is (timeline_id, feed), so
+        // a direct follow and a relay arrival of the same post each add their
+        // own row. Without the table the reader falls back to the single
+        // `source` column, and sv_ingest_timeline() never updates source on a
+        // duplicate -- so FIRST ARRIVAL WINS and a post can simply miss a tab.
+        //
+        // The table is created by schema-sync, not by runtime self-heal, so a
+        // hub whose sync has not run looks like it is working while quietly
+        // filing posts in the wrong tab. Nothing said so.
+        //
+        // IT ONLY COMPLAINS WHEN MEMBERSHIP WAS EXPECTED. This function runs on
+        // every timeline ingest on every site, and an ordinary blog has no
+        // relay tables by design -- logging there would be noise on every post
+        // forever, which is its own way of saying nothing. A 'home' feed needs
+        // no membership row. A 'local' or 'global' feed is a relay arrival, and
+        // that is when the absence matters.
+        //
+        // Once per request, because the point is to be noticed, not to bury the
+        // log under one line per post.
+        static $warned = false;
+        if (!$warned && ($feed === 'local' || $feed === 'global')) {
+            $warned = true;
+            error_log('SMACKCAST: snap_ap_timeline_membership is MISSING while '
+                . 'ingesting a ' . $feed . ' relay post. LOCAL/GLOBAL tabs will '
+                . 'fall back to the single source column, so first arrival wins '
+                . 'and posts can miss a tab. Run schema-sync on this install.');
+        }
+        return;
+    }
     $s = $pdo->prepare("SELECT id FROM snap_ap_timeline WHERE object_id=? LIMIT 1");
     $s->execute([$object_id]);
     $timeline_id = (int)$s->fetchColumn();
@@ -443,8 +630,22 @@ function sc_relay_receive_announce(PDO $pdo, array $settings, string $relay, str
     if ($actor === '' || !sc_relay_actor_owns_object($actor, $object_id)
         || sc_relay_actor_blocked($pdo, $actor)
         || !sc_relay_is_discoverable([], $object)) return true;
-    $actor_doc = sv_fetch_ap($actor, $settings);
-    if (!is_array($actor_doc) || (string)($actor_doc['id'] ?? '') !== $actor) return true;
+    // SS-1481 finding 9. This fetch establishes one thing: the attributed actor
+    // resolves and its id is what it claims. The document is then discarded --
+    // it is not passed to the ingest below. So on a relay with traffic it was
+    // one network round trip per Announce to re-answer a question we had
+    // already answered minutes ago and written into snap_ap_actors.
+    //
+    // A recent cache row answers it. The cache does NOT hold publicKey, so it
+    // could never stand in for a fetch used in verification; the liveness
+    // question is all it is asked. The cost of the shortcut is that for up to
+    // the TTL a just-deleted actor's post can still arrive, which is why the
+    // window is 15 minutes rather than the row's lifetime.
+    if (!sv_actor_seen_recently($pdo, $actor, 900)) {
+        $actor_doc = sv_fetch_ap($actor, $settings);
+        if (!is_array($actor_doc) || (string)($actor_doc['id'] ?? '') !== $actor) return true;
+        if (function_exists('sv_cache_actor')) sv_cache_actor($pdo, $actor_doc);
+    }
     sv_ingest_timeline($pdo, $object, $actor, '', false, null, $feed, $relay);
     $pdo->prepare("DELETE FROM snap_relay_ingest_jobs WHERE relay_actor_url=? AND object_id=?")
         ->execute([$relay, $object_id]);
@@ -470,6 +671,25 @@ function sc_relay_process_ingest_jobs(PDO $pdo, array $settings, int $limit = 20
         $attempts = (int)$job['attempts'] + 1;
         $shelve = $attempts >= 8 || strtotime((string)$job['created_at']) < time() - 604800;
         $delay = min(86400, 300 * (2 ** min(8, $attempts - 1)));
+
+        // SS-1481 finding 11. If the origin answered the fetch that just failed
+        // with a Retry-After, wait that long instead of our own backoff. The
+        // outbound delivery queue has honoured this for a long time; inbound
+        // ingest did not, and retrying on our own schedule against a server
+        // asking us to slow down is how a polite instance starts rate-limiting
+        // us harder.
+        //
+        // The accessor holds the header from the fetch inside the call above,
+        // which is synchronous, so it belongs to THIS job and no other.
+        //
+        // WE TAKE THE LONGER OF THE TWO, deliberately. Honouring a Retry-After
+        // SHORTER than our own backoff would let a remote pull us back into a
+        // tight retry loop after we had already decided to back off -- so the
+        // header can only ever slow us down, never speed us up.
+        if (function_exists('sv_last_retry_after') && function_exists('sv_retry_after_seconds')) {
+            $asked = sv_retry_after_seconds(sv_last_retry_after());
+            if ($asked !== null) $delay = max($delay, $asked);
+        }
         $pdo->prepare("UPDATE snap_relay_ingest_jobs SET attempts=?,status=?,next_try_at=DATE_ADD(NOW(),INTERVAL ? SECOND) WHERE id=?")
             ->execute([$attempts, $shelve ? 'shelved' : 'queued', $delay, $job['id']]);
         $retry++;
@@ -489,6 +709,29 @@ function sc_relay_recover_member_outboxes(PDO $pdo, array $settings, int $member
     $q = $pdo->query("SELECT actor_url FROM snap_relay_subscribers WHERE state='active'
         ORDER BY COALESCE(last_outbox_check_at,'1970-01-01') ASC LIMIT {$members}");
     $checked = 0; $recovered = 0; $cutoff = time() - 604800;
+
+    // SS-1481 finding 10. This loop re-reads the first $items of each member's
+    // outbox every tick, and called sc_relay_fanout() on every Create it found
+    // -- including ones relayed days ago.
+    //
+    // snap_relay_intake's UNIQUE key swallows the duplicate intake, so it LOOKS
+    // harmless. It is not. The Announce still reaches sv_queue_delivery(),
+    // whose ON DUPLICATE KEY UPDATE sets attempts = 0, status = 'queued' and
+    // pulls next_try_at back to NOW. And because a SUCCESSFUL delivery row is
+    // deleted, there is no row left to collide with -- so a fresh one is
+    // inserted and the Announce is DELIVERED AGAIN. Every tick. For every
+    // already-relayed post still inside the window.
+    //
+    // At the defaults that is up to 5 members x 20 items of repeat deliveries
+    // every ten minutes, and it also resets the backoff of anything genuinely
+    // still retrying.
+    //
+    // The cheapest correct fix is the one Muse proposed: skip what we have
+    // already taken in. snap_relay_intake is exactly that record -- fanout
+    // writes it -- so no new column and no cursor to keep in step.
+    $seen = $pdo->prepare("SELECT 1 FROM snap_relay_intake
+                            WHERE object_id = ? AND origin_actor_url = ? LIMIT 1");
+
     foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $actor_url) {
         $actor = sv_fetch_ap((string)$actor_url, $settings);
         $outbox_url = is_array($actor) ? (string)($actor['outbox'] ?? '') : '';
@@ -506,6 +749,24 @@ function sc_relay_recover_member_outboxes(PDO $pdo, array $settings, int $member
             if (!is_array($object)) continue;
             $published = strtotime((string)($object['published'] ?? $activity['published'] ?? ''));
             if ($published !== false && $published < $cutoff) continue;
+
+            // Already taken in from this actor? Then it has already been
+            // relayed, and re-announcing it would re-deliver it.
+            $object_id = (string)($object['id'] ?? '');
+            if ($object_id !== '') {
+                try {
+                    $seen->execute([$object_id, (string)$actor_url]);
+                    if ($seen->fetchColumn()) continue;
+                } catch (Throwable $e) {
+                    // Cannot tell: fall through and let fanout's own intake
+                    // insert decide. Recovery exists to catch MISSED posts, so
+                    // the failure that matters is skipping one, not sending a
+                    // duplicate the member's server will drop by id.
+                    error_log('SnapSmack relay: intake lookup failed during recovery — '
+                        . $e->getMessage());
+                }
+            }
+
             $recovered += sc_relay_fanout($pdo, $settings, $activity, (string)$actor_url) > 0 ? 1 : 0;
         }
         $pdo->prepare("UPDATE snap_relay_subscribers SET last_outbox_check_at=NOW() WHERE actor_url=?")

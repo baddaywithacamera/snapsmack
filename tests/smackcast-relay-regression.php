@@ -26,8 +26,18 @@ sc_test(str_contains($relay, "\$settings['smackcast_relay_enabled'] ?? '0') === 
 sc_test(str_contains($schema, 'snap_ap_timeline_membership'), 'normalized feed membership schema exists');
 sc_test(str_contains($schema, 'PRIMARY KEY (`timeline_id`, `feed`)'), 'one object can have HOME and LOCAL exactly once');
 sc_test(str_contains($sv, "sc_relay_add_membership(\$pdo, \$object_id, \$feed"), 'timeline ingestion records membership independent of source enum');
+// SS-1481 #4 loosened this from a FORMAT check to a behaviour-relevant one.
+// It used to require the literal 'if (!$has_membership_table) return;'. When
+// that one-liner became a block -- so a relay arrival could say the table is
+// missing instead of failing silently -- this assertion failed against code
+// that still had exactly the property it names. It was pinned to whitespace.
+// What matters is that the absence is detected and nothing is written before
+// the guard. tests/missing-membership-table-is-loud-regression.php proves the
+// behaviour by running it.
+$mem_guard = strpos($relay, 'if (!$has_membership_table)');
+$mem_write = strpos($relay, 'INSERT IGNORE INTO snap_ap_timeline_membership');
 sc_test(str_contains($relay, "TABLE_NAME='snap_ap_timeline_membership'")
-    && str_contains($relay, 'if (!$has_membership_table) return;'),
+    && $mem_guard !== false && $mem_write !== false && $mem_guard < $mem_write,
     'ordinary sites never write the hub-only timeline membership table');
 sc_test(str_contains($sv, 'SMACKCAST optional membership skipped:'),
     'optional relay membership failure cannot reject an accepted inbox post');

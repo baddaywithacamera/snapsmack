@@ -307,6 +307,34 @@ include 'core/sidebar.php';
         <?php endif; ?>
     </div>
 
+<?php
+// The duplicate-delivery tripwire's counter (Sean's order, 2026-11-20). Shown
+// ONLY when it is above zero: at zero there is nothing to say, and a permanent
+// "0 problems" line is how a reader learns to skip the whole box. Above zero
+// something is re-sending the same post to the same place, which is a bug to
+// find rather than a number to live with.
+$sv_dupe_deliveries = function_exists('sv_duplicate_delivery_count')
+    ? sv_duplicate_delivery_count($pdo) : 0;
+if ($sv_dupe_deliveries > 0): ?>
+    <div class="box mt-30">
+        <!-- No inline style here on purpose. The INBOX LOG header below carries
+             one from before that rule; copying it would have added a second
+             breach of a hard rule rather than matching a convention. -->
+        <h3>DUPLICATE DELIVERIES — DIAGNOSTIC</h3>
+        <p class="skin-desc-text">
+            <strong><?php echo number_format($sv_dupe_deliveries); ?></strong>
+            time<?php echo $sv_dupe_deliveries === 1 ? '' : 's'; ?>
+            this site has sent the same post to the same destination twice.
+            Nothing was blocked and nothing is broken for your readers — the
+            receiving server discards the repeat. It means something here is
+            re-sending, which wastes your bandwidth and theirs. The details are
+            in your error log, each line beginning
+            <strong>DUPLICATE DELIVERY</strong>, naming the post and the
+            destination.
+        </p>
+    </div>
+<?php endif; ?>
+
     <div class="box mt-30">
         <h3>INBOX LOG <span style="opacity:0.6; font-size:0.8rem; letter-spacing:1px;">— DIAGNOSTIC</span></h3>
         <p class="skin-desc-text">Every inbound fediverse activity and what happened to it — so a like or reply that never landed is visible instead of silently gone. <strong>REJECTED</strong> = signature failed (never got in); <strong>UNRESOLVED</strong> = we couldn't match the liked post to a local one; <strong>recorded</strong> = it worked. Newest first.</p>

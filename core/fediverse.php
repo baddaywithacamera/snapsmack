@@ -923,8 +923,144 @@ function sv_last_fetch_error(?string $set = null): string {
     return $reason;
 }
 
+/**
+ * The HTTP status of the last sv_fetch_ap() that got one, or 0.
+ *
+ * SS-1481 finding 7. sv_fetch_ap() returns null for every failure, so a caller
+ * could not tell an actor that is GONE from a fetch that merely failed. The
+ * difference matters exactly once: deciding whether an unverifiable Delete is
+ * routine account-purge garbage or a forgery.
+ *
+ * Set on a non-2xx and reset by the caller before a fetch it intends to judge,
+ * because a stale value is worse than none. Same shape as sv_last_sig_reject().
+ */
+function sv_last_fetch_status(?int $set = null): int {
+    static $status = 0;
+    if ($set !== null) $status = $set;
+    return $status;
+}
+
+/**
+ * The raw Retry-After the last fetch was given, or '' if none.
+ *
+ * SS-1481 finding 11. The OUTBOUND delivery queue has honoured Retry-After for
+ * a long time; inbound fetching threw it away and retried on a fixed
+ * 5min * 2^n schedule regardless of what the origin asked for. Ignoring a
+ * server that is telling you to slow down is how a polite instance starts
+ * rate-limiting you harder.
+ *
+ * Kept raw because the header has two legal forms, and the caller decides.
+ */
+function sv_last_retry_after(?string $set = null): string {
+    static $value = '';
+    if ($set !== null) $value = $set;
+    return $value;
+}
+
+/**
+ * Seconds to wait from a Retry-After header, or null when it says nothing usable.
+ *
+ * BOTH LEGAL FORMS, because servers send both: delta-seconds ("120") and an
+ * HTTP-date ("Wed, 21 Oct 2026 07:28:00 GMT"). A date in the past, a negative
+ * number, or anything unparseable returns null -- the caller then uses its own
+ * backoff, which is the safe direction.
+ *
+ * Clamped to $max. A remote cannot park our queue for a week by asking.
+ */
+function sv_retry_after_seconds(string $header, int $max = 86400): ?int {
+    $header = trim($header);
+    if ($header === '') return null;
+    if (preg_match('/^\d+$/', $header)) {
+        $secs = (int)$header;
+        return $secs > 0 ? min($secs, $max) : null;
+    }
+    // Only a value that LOOKS like an HTTP-date goes near strtotime(). Measured
+    // before writing the test: strtotime('-5') returns a time 18000 seconds
+    // ahead, because it reads it as the timezone offset -05:00 -- so a
+    // nonsense "-5" became a five-hour wait. An HTTP-date always carries a
+    // month name or GMT, so requiring a letter rejects every numeric-ish form
+    // that is not a plain delta-seconds.
+    if (!preg_match('/[A-Za-z]/', $header)) return null;
+    $when = strtotime($header);
+    if ($when === false) return null;
+    $secs = $when - time();
+    return $secs > 0 ? min($secs, $max) : null;
+}
+
+/**
+ * An unverifiable Delete: act on it only if the actor really is gone.
+ *
+ * SS-1481 finding 7. The inbox answers 202 to a Delete whose signature cannot
+ * be verified and takes no action, which is right in general and was wrong in
+ * one specific way: a remote instance purging an account broadcasts a Delete
+ * AFTER the actor and its signing key have gone, so verification can never
+ * succeed. The retract path therefore never ran for exactly the accounts whose
+ * posts should disappear, and no second Delete is ever coming.
+ *
+ * So ask the one question that separates routine garbage collection from a
+ * forgery: does the actor still exist? 404 or 410 means gone, and the Delete is
+ * almost certainly genuine. Anything else -- it resolves, it times out, it 500s
+ * -- and nothing happens, exactly as before.
+ *
+ * THE TRADE-OFF, stated because this is the only place in the inbox that acts
+ * on an unverified activity. What a forger gains is the power to retract the
+ * posts of an account that no longer exists, by forging a Delete for an actor
+ * they can also see is 404 -- the same outcome the real Delete would have had.
+ * They cannot touch a live account: that fetch succeeds and nothing happens.
+ * The alternative is what we had, which is dead accounts' posts sitting in the
+ * fleet permanently.
+ *
+ * SELF-DELETE ONLY. object must equal actor. A Delete naming some other object
+ * is ignored however gone the actor is, because an actor being unreachable says
+ * nothing about who may delete a particular note.
+ *
+ * @return bool true when cleanup ran
+ */
+function sv_unverifiable_delete_cleanup(PDO $pdo, array $settings, array $activity): bool {
+    $actor = is_array($activity['actor'] ?? null)
+        ? (string)($activity['actor']['id'] ?? '') : (string)($activity['actor'] ?? '');
+    $object = is_array($activity['object'] ?? null)
+        ? (string)($activity['object']['id'] ?? '') : (string)($activity['object'] ?? '');
+    if ($actor === '' || $object !== $actor) return false;
+
+    sv_last_fetch_status(0);                    // never judge on a stale status
+    $still_there = sv_fetch_ap($actor, $settings);
+    $code = sv_last_fetch_status();
+    if ($still_there !== null || ($code !== 404 && $code !== 410)) return false;
+
+    try {
+        if (function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)
+            && function_exists('sc_relay_retract_actor')) {
+            sc_relay_retract_actor($pdo, $settings, $actor, (string)($activity['id'] ?? $actor));
+            if (function_exists('sc_relay_leave')) sc_relay_leave($pdo, $actor);
+        }
+        $pdo->prepare("UPDATE snap_ap_followers SET is_active = 0 WHERE actor_url = ?")
+            ->execute([$actor]);
+        if (function_exists('sv_inbox_log')) {
+            sv_inbox_log($pdo, 'Delete', $actor, null,
+                'unverifiable self-delete, actor gone (HTTP ' . $code
+                . ') — retracted and deactivated');
+        }
+    } catch (Throwable $e) {
+        error_log('SnapSmack: unverifiable-delete cleanup failed for '
+            . $actor . ' — ' . $e->getMessage());
+        return false;
+    }
+    return true;
+}
+
 function sv_fetch_ap(string $url, ?array $settings = null): ?array {
     sv_last_fetch_error('');   // reset for this attempt
+    // SS-1481 review finding 3 (Codex). These two were reset INSIDE the curl
+    // attempt, so every return before it -- no curl extension, an unresolvable
+    // or SSRF-refused host -- left the PREVIOUS job's values standing in the
+    // process. Reproduced: set Retry-After 7200, fetch 'not-a-url', and the
+    // accessor still answered 7200, so the next ingest job could inherit a
+    // two-hour delay it was never given. Reset at the door, before any return
+    // can be taken, and again per attempt so the authorized-fetch retry does
+    // not inherit the unsigned attempt's answer.
+    sv_last_retry_after('');
+    sv_last_fetch_status(0);
     // Every failure path logs a DISTINCT reason (HTTP code, curl errno,
     // resolver block, oversize, non-JSON) so the caller's blanket "could not
     // fetch signer actor" reject can be diagnosed: 401 = the remote wants an
@@ -965,7 +1101,19 @@ function sv_fetch_ap(string $url, ?array $settings = null): ?array {
             CURLOPT_TIMEOUT        => 8,
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_HTTPHEADER     => $req_hdrs,
+            // SS-1481 finding 11. The one response header worth reading. An
+            // origin answering 429 or 503 tells us how long to wait, and we
+            // were throwing that away and retrying on our own schedule --
+            // which is how a polite instance ends up rate-limiting us harder.
+            // Only Retry-After is kept; nothing else is collected.
+            CURLOPT_HEADERFUNCTION => static function ($ch, string $line): int {
+                if (stripos($line, 'retry-after:') === 0) {
+                    sv_last_retry_after(trim(substr($line, 12)));
+                }
+                return strlen($line);
+            },
         ]);
+        sv_last_retry_after('');     // this attempt's answer only
         $body  = curl_exec($ch);
         $code  = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $cerr  = curl_errno($ch);
@@ -976,6 +1124,12 @@ function sv_fetch_ap(string $url, ?array $settings = null): ?array {
             return [null, 'transport error curl_errno=' . $cerr . ' (' . ($cmsg !== '' ? $cmsg : 'none') . ') http=' . $code];
         }
         if ($code < 200 || $code >= 300) {
+            // SS-1481 finding 7. The status is stashed so a CALLER can tell
+            // "this actor is gone" (404/410) from "this fetch failed" --
+            // everything here returned null for both, which is why the
+            // unverifiable-Delete path had nothing to reason about. Same
+            // pattern as sv_last_sig_reject() rather than a new mechanism.
+            sv_last_fetch_status($code);
             return [null, 'HTTP ' . $code . ' ctype=' . ($ctype !== '' ? $ctype : '?') . ' bytes=' . strlen((string)$body)];
         }
         if (strlen($body) > 524288) {
@@ -1915,6 +2069,174 @@ function sv_refresh_follower_inbox(PDO $pdo, string $bad_url): ?string {
 // ─── Delivery queue ──────────────────────────────────────────────────────────
 
 /** Queue one activity JSON for a remote inbox and return its queue id. */
+/**
+ * The duplicate-delivery tripwire (Sean's order, 2026-11-20).
+ *
+ * A DETECTOR, NOT A FILTER. It never blocks a send. SS-1481 #10 found the relay
+ * re-delivering already-sent posts every ten minutes, and the reason it went
+ * unnoticed for so long is that nothing anywhere counted a second delivery of
+ * the same object to the same inbox. A successful queue row is DELETED, so the
+ * queue itself cannot answer "have we sent this before".
+ *
+ * So a small record of (object, inbox) pairs is kept, with a 7-day TTL matching
+ * the recovery window, and the delivery worker asks it before each send. A hit
+ * logs a warning naming the object, the inbox, the activity type and the caller,
+ * and increments a counter the admin can show. Above zero means something is
+ * re-sending, which is a bug worth finding rather than a condition to suppress.
+ *
+ * WHY NOT BLOCK IN v1: a filter that is wrong refuses a legitimate re-send --
+ * and legitimate re-sends exist, which is why sv_queue_delivery's comment says
+ * "a later deliberate re-send remains possible after the prior send lands". A
+ * detector that is wrong costs a log line. Blocking can come after the counter
+ * has sat at zero for a while and we know what trips it.
+ */
+function sv_delivery_tripwire_table(PDO $pdo): bool {
+    // Cached PER PROCESS, not per connection. A web request has one handle, so
+    // this is one CREATE TABLE IF NOT EXISTS per request instead of one per
+    // send. Only a test driving two handles in one process sees the
+    // difference, and it is noted here so that surprise costs a minute rather
+    // than an hour.
+    static $ready = null;
+    if ($ready !== null) return $ready;
+    // Declared in database/schema/snapsmack_canonical.sql as well, which is
+    // where a new table belongs (Codex's review finding 6). This runtime CREATE
+    // is not a substitute for that: where it cannot run, the detector switches
+    // itself off, and a canonical declaration is what makes a fresh install
+    // carry the table without depending on a send path to make it.
+    $create = "CREATE TABLE IF NOT EXISTS `snap_ap_delivered` (
+            `activity_key` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+            `inbox_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+            `object_id`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+            `delivered_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY `uq_ap_delivered` (`activity_key`(170), `inbox_url`(170)),
+            KEY `idx_ap_delivered_at` (`delivered_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+    try {
+        $pdo->exec($create);
+        // A table from this tripwire's FIRST shape (keyed on object+inbox, no
+        // activity_key) is dropped and rebuilt rather than migrated. It holds
+        // at most seven days of detector bookkeeping, nothing a site needs, and
+        // a half-migrated unique key would make the detector answer wrongly.
+        $cols = $pdo->query("SHOW COLUMNS FROM `snap_ap_delivered` LIKE 'activity_key'");
+        if ($cols !== false && $cols->fetch() === false) {
+            $pdo->exec("DROP TABLE `snap_ap_delivered`");
+            $pdo->exec($create);
+        }
+        $ready = true;
+    } catch (Throwable $e) {
+        // A detector must never be the reason a post fails to go out.
+        $ready = false;
+    }
+    return $ready;
+}
+
+/**
+ * What makes this activity THIS activity, for tripwire purposes.
+ *
+ * Codex's review finding 5. The tripwire keyed on (object, inbox), so a Create
+ * and the Update that followed it, and the relay Announce and the deliberate
+ * refresh Announce, all read as the same delivery twice -- and a detector whose
+ * non-zero number means nothing gets switched off.
+ *
+ * Those cases carry DISTINCT activity ids. sc_relay_fanout() builds
+ * `#announce-<hash of object>` and sc_relay_refresh() builds
+ * `#announce-update-<hash>`. Meanwhile the SS-1481 #10 repeat re-sent the
+ * IDENTICAL deterministic id every ten minutes, which is the case this has to
+ * keep catching. So the activity id is the right key, and the test that said
+ * two Announces of the same post necessarily differ had it backwards.
+ *
+ * An activity with no id of its own is keyed by a hash of its JSON, so a
+ * repeat of the same bytes is still a repeat.
+ */
+function sv_activity_identity(string $activity_json): string {
+    $a = json_decode($activity_json, true);
+    if (!is_array($a)) return '';
+    $id = trim((string)($a['id'] ?? ''));
+    return $id !== '' ? $id : 'sha256:' . hash('sha256', $activity_json);
+}
+
+/** The object id an activity is about, for tripwire purposes, or ''. */
+function sv_activity_subject_id(string $activity_json): string {
+    $a = json_decode($activity_json, true);
+    if (!is_array($a)) return '';
+    $o = $a['object'] ?? null;
+    if (is_array($o)) return trim((string)($o['id'] ?? ''));
+    if (is_string($o) && $o !== '') return trim($o);
+    return trim((string)($a['id'] ?? ''));
+}
+
+/**
+ * Has this exact object already gone to this exact inbox? Warn and count if so.
+ *
+ * Called BEFORE the send and never blocks it. Returns true when it tripped,
+ * which is what the test asserts on.
+ */
+function sv_delivery_tripwire_check(PDO $pdo, string $inbox_url, string $activity_json,
+                                    string $caller = 'delivery-worker'): bool {
+    $activity_key = sv_activity_identity($activity_json);
+    $object_id    = sv_activity_subject_id($activity_json);
+    if ($activity_key === '' || $inbox_url === '') return false;
+    if (!sv_delivery_tripwire_table($pdo)) return false;
+
+    try {
+        $q = $pdo->prepare("SELECT 1 FROM snap_ap_delivered
+                             WHERE activity_key = ? AND inbox_url = ? LIMIT 1");
+        $q->execute([$activity_key, $inbox_url]);
+        if (!$q->fetchColumn()) return false;
+    } catch (Throwable $e) {
+        return false;
+    }
+
+    $a = json_decode($activity_json, true);
+    $type = is_array($a) ? (string)($a['type'] ?? '?') : '?';
+    error_log('SnapSmack DUPLICATE DELIVERY: ' . $type . ' ' . $activity_key
+        . ' for object ' . $object_id
+        . ' is being sent to ' . $inbox_url . ' again (caller: ' . $caller
+        . '). The SAME activity already delivered successfully within the last '
+        . '7 days. Not blocked.');
+
+    try {
+        $pdo->exec("INSERT INTO snap_settings (setting_key, setting_val)
+                    VALUES ('fedi_duplicate_delivery_count', '1')
+                    ON DUPLICATE KEY UPDATE setting_val = CAST(setting_val AS UNSIGNED) + 1");
+    } catch (Throwable $e) { /* the warning is the signal; the counter is a convenience */ }
+
+    return true;
+}
+
+/** Record a SUCCESSFUL delivery, and prune anything past the recovery window. */
+function sv_delivery_tripwire_record(PDO $pdo, string $inbox_url, string $activity_json): void {
+    $activity_key = sv_activity_identity($activity_json);
+    $object_id    = sv_activity_subject_id($activity_json);
+    if ($activity_key === '' || $inbox_url === '') return;
+    if (!sv_delivery_tripwire_table($pdo)) return;
+    try {
+        $pdo->prepare("INSERT INTO snap_ap_delivered (activity_key, inbox_url, object_id, delivered_at)
+                       VALUES (?, ?, ?, NOW())
+                       ON DUPLICATE KEY UPDATE delivered_at = NOW()")
+            ->execute([substr($activity_key, 0, 500), substr($inbox_url, 0, 500),
+                       substr($object_id, 0, 500)]);
+        // Pruned here rather than on a schedule: this table only grows when
+        // deliveries happen, so the write path is the right place to bound it.
+        // 1-in-50 so a busy fleet is not running a DELETE on every send.
+        if (random_int(1, 50) === 1) {
+            $pdo->exec("DELETE FROM snap_ap_delivered
+                         WHERE delivered_at < DATE_SUB(NOW(), INTERVAL 7 DAY)");
+        }
+    } catch (Throwable $e) { /* never block a send over bookkeeping */ }
+}
+
+/** How many duplicate deliveries the tripwire has seen. For the admin. */
+function sv_duplicate_delivery_count(PDO $pdo): int {
+    try {
+        $q = $pdo->query("SELECT setting_val FROM snap_settings
+                           WHERE setting_key = 'fedi_duplicate_delivery_count' LIMIT 1");
+        return (int)$q->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
 function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json, ?string $dedupe_key = null,
                            ?int $priority = null): int {
     // A delivery may be requested by publish, SEED, RE-IMPRINT and a manual
@@ -1998,6 +2320,10 @@ function sv_finish_delivery_row(PDO $pdo, array $primary_settings, array $row): 
         if (($row['actor_role'] ?? 'primary') === 'curator' && function_exists('sc_curator_settings')) {
             $delivery_settings = sc_curator_settings($pdo, $primary_settings, true);
         }
+        // The tripwire asks its question BEFORE the send and never changes the
+        // outcome. Sean's order: detect, do not filter.
+        sv_delivery_tripwire_check($pdo, (string)$row['inbox_url'],
+                                   (string)$row['activity_json'], 'delivery-worker');
         $r    = sv_deliver($delivery_settings, $row['inbox_url'], $row['activity_json']);
         $ok   = (bool)($r[0] ?? false);
         $info = (string)($r[1] ?? '');
@@ -2007,6 +2333,9 @@ function sv_finish_delivery_row(PDO $pdo, array $primary_settings, array $row): 
         $info = 'delivery worker error: ' . substr($e->getMessage(), 0, 176);
     }
     if ($ok) {
+        // Record the SUCCESS before the queue row goes, because the queue row
+        // going is precisely why nothing could answer "have we sent this".
+        sv_delivery_tripwire_record($pdo, (string)$row['inbox_url'], (string)$row['activity_json']);
         $pdo->prepare("DELETE FROM snap_ap_deliveries WHERE id = ?")->execute([$row['id']]);
         return ['sent' => true, 'cooldown' => 0];
     }
@@ -2357,6 +2686,42 @@ function sv_target_image_id(PDO $pdo, array $target): int {
 // ─── Reader / engagement ingest (0.7.365) ───────────────────────────────────
 
 /** Upsert a remote actor doc into the render cache (avatar/name/handle/inbox). */
+/**
+ * Has this actor been seen, and confirmed to exist, within $ttl seconds?
+ *
+ * SS-1481 finding 9, the half of it that is real. snap_ap_actors is written on
+ * every ingest and never read back, so paths that only need to know "does this
+ * actor exist and is its id what it claims" re-fetched the actor document over
+ * the network every time.
+ *
+ * DELIBERATELY NARROW. The cache stores a SUBSET of the actor document --
+ * handle, name, avatar, inboxes, summary, profile url, migration metadata --
+ * and NOT publicKey. It can therefore never stand in for a fetch whose result
+ * is used for signature verification or for anything reading a field it does
+ * not hold. The only question it can answer is the liveness one, and that is
+ * the only thing it is used for.
+ *
+ * THE COST, stated: a cache hit skips a liveness check, so for up to $ttl a
+ * just-deleted actor's post can still be ingested. That is why the TTL is
+ * minutes rather than the row's lifetime, and why the caller passes it.
+ *
+ * Compared in PHP rather than with an INTERVAL in SQL so this is portable --
+ * and so a test can exercise it without a MySQL server.
+ */
+function sv_actor_seen_recently(PDO $pdo, string $actor_url, int $ttl = 900): bool {
+    if ($actor_url === '' || $ttl <= 0) return false;
+    try {
+        $q = $pdo->prepare("SELECT fetched_at FROM snap_ap_actors WHERE actor_url = ? LIMIT 1");
+        $q->execute([$actor_url]);
+        $seen = (string)$q->fetchColumn();
+    } catch (Throwable $e) {
+        return false;   // no cache, no shortcut: fetch as before
+    }
+    if ($seen === '') return false;
+    $ts = strtotime($seen);
+    return $ts !== false && (time() - $ts) <= $ttl;
+}
+
 function sv_cache_actor(PDO $pdo, array $actor_doc): void {
     $url = (string)($actor_doc['id'] ?? '');
     if ($url === '') return;
@@ -2698,6 +3063,119 @@ function sv_timeline_audience(array $obj): array {
 }
 
 /** Ingest a remote Note into the home timeline (image + video posts, de-duped). */
+/**
+ * "I cannot tell whether anyone is still boosting this."
+ *
+ * A named constant because it is now returned from two places and read in
+ * one, and Codex's FAIL 1 was an early return that answered '' instead of
+ * this. A magic string repeated is a magic string one caller will get wrong.
+ *
+ * A PRINTABLE value, not a NUL byte. My first attempt at this constant wrote a
+ * literal NUL into the source, which the pre-commit hook rejects and rightly:
+ * a null byte in a PHP file is how truncation hides. No object id or actor URL
+ * can collide with this, because neither may contain a space.
+ */
+const SV_BOOST_UNKNOWN = '[boost record unavailable]';
+
+/**
+ * Who is boosting a timeline object. Four functions, one table.
+ *
+ * WHY A TABLE AND NOT A QUERY. snap_ap_timeline is UNIQUE on object_id -- one
+ * row serves every reason a post is present -- and keeps the FIRST booster in
+ * `boosted_by`, which duplicate ingest never updates. So the row cannot answer
+ * "is anyone still boosting this", and that is the whole of Codex's finding 2.
+ * The first repair tried to infer it from the boost NOTIFICATIONS and was
+ * wrong: those are written only for boosts of this site's own posts.
+ *
+ * Declared in database/schema/snapsmack_canonical.sql as well. Created at
+ * runtime too, because a site upgrading into this build has no other chance to
+ * get it, and the readiness answer is cached per process.
+ */
+function sv_timeline_boost_table(PDO $pdo): bool {
+    static $ready = null;
+    if ($ready !== null) return $ready;
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_timeline_boosts` (
+            `object_id`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+            `actor_url`  varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+            `seen_at`    datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY `uq_ap_tl_boost` (`object_id`(170), `actor_url`(170)),
+            KEY `idx_ap_tl_boost_obj` (`object_id`(170))
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $ready = true;
+    } catch (Throwable $e) {
+        $ready = false;
+    }
+    return $ready;
+}
+
+/** Record that this actor is boosting this object. */
+function sv_timeline_boost_record(PDO $pdo, string $object_id, string $actor_url): void {
+    if ($object_id === '' || $actor_url === '') return;
+    if (!sv_timeline_boost_table($pdo)) return;
+    $pdo->prepare("INSERT IGNORE INTO snap_ap_timeline_boosts (object_id, actor_url)
+                   VALUES (?, ?)")
+        ->execute([substr($object_id, 0, 500), substr($actor_url, 0, 500)]);
+}
+
+/**
+ * Forget this actor's boost, and name another actor still boosting, or ''.
+ *
+ * Both halves in one call because the caller needs them together and in this
+ * order: remove mine, then ask what is left. Two calls would invite a future
+ * edit that asks first.
+ */
+function sv_timeline_boost_withdraw(PDO $pdo, string $object_id, string $actor_url): string {
+    if ($object_id === '') return '';
+    // TABLE UNAVAILABLE IS "I CANNOT TELL", NOT "NOBODY IS BOOSTING".
+    //
+    // Codex's second review, FAIL 1. This line returned '' when the table
+    // could not be created or read, and the caller reads '' as "no booster
+    // remains" and deletes the timeline row. So the exact fail-open I had
+    // claimed to close was still here, one branch above the catch that closes
+    // it. My own test missed it because it only drops the table AFTER the
+    // per-process readiness flag is already true, which never exercises a
+    // CREATE or readiness failure.
+    if (!sv_timeline_boost_table($pdo)) return SV_BOOST_UNKNOWN;
+    try {
+        // DOES THE RECORD KNOW ABOUT THIS ACTOR'S BOOST AT ALL? That is what
+        // separates "the last boost has been withdrawn" from "this record has
+        // never seen this object" -- the upgraded-install case in Codex's
+        // FAIL 1. Both end with zero rows for the object; only the first one
+        // means nobody is boosting.
+        $knew = $pdo->prepare("SELECT 1 FROM snap_ap_timeline_boosts
+                                WHERE object_id = ? AND actor_url = ? LIMIT 1");
+        $knew->execute([$object_id, $actor_url]);
+        $recorded = (bool)$knew->fetchColumn();
+
+        if ($actor_url !== '' && $recorded) {
+            $pdo->prepare("DELETE FROM snap_ap_timeline_boosts
+                            WHERE object_id = ? AND actor_url = ?")
+                ->execute([$object_id, $actor_url]);
+        }
+        // The `<> ?` is REDUNDANT as this function stands, because this
+        // actor's row has just been deleted, and no mutation of it can be
+        // distinguished by any test — I tried. It stays as a guard against a
+        // future edit that stops deleting, or deletes later, and it is noted
+        // as redundant so nobody spends an afternoon writing the test that
+        // cannot exist.
+        $q = $pdo->prepare("SELECT actor_url FROM snap_ap_timeline_boosts
+                             WHERE object_id = ? AND actor_url <> ? LIMIT 1");
+        $q->execute([$object_id, $actor_url]);
+        $other = (string)($q->fetchColumn() ?: '');
+        if ($other !== '') return $other;
+        // No other booster recorded. Say "nobody" only when this actor's boost
+        // WAS in the record, so the record is demonstrably tracking this
+        // object. Otherwise it is silent, not empty.
+        return $recorded ? '' : SV_BOOST_UNKNOWN;
+    } catch (Throwable $e) {
+        // Unreadable means "I cannot tell". The caller treats that as "somebody
+        // may still be boosting" and keeps the post, because leaving a post in
+        // the reader is recoverable and removing one is not.
+        return SV_BOOST_UNKNOWN;
+    }
+}
+
 function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $handle = '',
                             bool $is_boost = false, ?string $boosted_by = null,
                             string $feed = 'home', ?string $discovered_via = null): ?string {
@@ -2851,6 +3329,32 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
         // structure, not bound values, so no post content leaks.
         return 'DB error: ' . get_class($e) . ' — ' . mb_substr($e->getMessage(), 0, 400);
     }
+    // WHO IS BOOSTING THIS, recorded rather than inferred.
+    //
+    // Codex's second review of finding 2. The first repair asked
+    // snap_ap_notifications which other actors were boosting an object, and
+    // those rows are written ONLY when somebody boosts one of THIS site's own
+    // posts (sv_notify is inside the sv_url_is_ours branch of the Announce
+    // handler). The ordinary reader case -- a remote post boosted by accounts
+    // the owner follows -- lands here with no notification at all, so the
+    // first Undo saw no other booster and deleted the row while another boost
+    // was still live. My regression inserted those notification rows by hand,
+    // so it passed around the fault instead of finding it. That is the second
+    // time on this ticket that a fixture built the state production does not.
+    //
+    // The timeline is UNIQUE on object_id and keeps the first boosted_by, so
+    // the row itself cannot hold a set of boosters. This table can. One row
+    // per (object, booster), written on every boost ingest, removed on Undo.
+    if ($is_boost && $boosted_by) {
+        try {
+            sv_timeline_boost_record($pdo, $object_id, (string)$boosted_by);
+        } catch (Throwable $e) {
+            // Bookkeeping must never turn a good post into an inbox 500.
+            error_log('SnapSmack boost record skipped for ' . $object_id
+                . ' — ' . $e->getMessage());
+        }
+    }
+
     // Relay membership is optional metadata, not part of accepting the Note.
     // The relay policy file ships on every site while its tables exist only on
     // a SMACKCAST hub.  A missing/lagging relay table must never turn a
@@ -3183,10 +3687,16 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             // Undo wraps the original Announce, whose `object` is the boosted Note.
             $boosted = sv_activity_object_uri($obj['object'] ?? null);
             if (is_string($boosted) && $boosted !== '') {
-                $pdo->prepare(
-                    "DELETE FROM snap_ap_notifications
-                     WHERE ntype = 'boost' AND actor_url = ? AND object_id = ?"
-                )->execute([$actor_id, $boosted]);
+                // Guarded like its neighbours. Found while testing finding 2:
+                // this was the one statement in the branch that was not, so an
+                // Undo arriving at an install whose snap_ap_notifications had
+                // not been created yet threw out of the whole handler.
+                try {
+                    $pdo->prepare(
+                        "DELETE FROM snap_ap_notifications
+                         WHERE ntype = 'boost' AND actor_url = ? AND object_id = ?"
+                    )->execute([$actor_id, $boosted]);
+                } catch (Exception $e) { /* table may lag on a fresh install */ }
                 // Drop the per-post boost tally too, mirroring Undo Like, so the
                 // count decrements in step with the notification. Guarded.
                 try {
@@ -3199,6 +3709,108 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 if (function_exists('pc_remove_engagement')) {
                     try { pc_remove_engagement($pdo, $settings, $boosted, $actor_id, 'boost'); } catch (Throwable $e) {}
                 }
+
+                // SS-1481 finding 6. Un-boosting dropped the notification and
+                // the tally and left the POST itself sitting in the reader. The
+                // only reason it was there was the boost, so withdrawing the
+                // boost should withdraw the post.
+                //
+                // BOUNDED TO THE ROW THE BOOST CREATED, deliberately. The
+                // timeline is UNIQUE on object_id, so one row serves every
+                // reason a post might be present. Deleting on object_id alone
+                // would take out a post the owner follows the author of. The
+                // conditions are therefore is_boost = 1 AND boosted_by = this
+                // actor: a row ingested as this actor's boost and nothing else.
+                // A post that arrived on its own merits has is_boost = 0,
+                // because ingest keeps the first arrival's values, and is left
+                // alone.
+                //
+                // Relay memberships are not touched here. A relayed post's
+                // presence is recorded in snap_ap_timeline_membership and
+                // removing that is sc_relay_remove_membership()'s job on a
+                // relay retract, not this branch's.
+                //
+                // AND NOT WHILE ANOTHER BOOST IS STILL LIVE. Codex's review
+                // finding 2: the timeline is UNIQUE on object_id and keeps the
+                // FIRST boosted_by, and duplicate ingest does not update it. So
+                // `is_boost = 1 AND boosted_by = <this actor>` cannot tell "the
+                // last boost was withdrawn" from "one of several was".
+                //
+                // MY FIRST REPAIR ASKED THE WRONG TABLE. It read boost rows out
+                // of snap_ap_notifications, and those exist only for boosts of
+                // THIS site's own posts -- sv_notify() sits inside the
+                // sv_url_is_ours branch of the Announce handler. The ordinary
+                // reader case, a remote post boosted by accounts the owner
+                // follows, has no notification at all, so the first Undo still
+                // deleted the row. Codex caught it on the second review; my
+                // fixture had inserted those rows by hand and passed around the
+                // fault.
+                //
+                // snap_ap_timeline_boosts is the record, written by
+                // sv_ingest_timeline() on every boost ingest, remote or local.
+                //
+                // When a boost remains and the row names THIS actor as its
+                // booster, ownership is re-pointed at an actor who is still
+                // boosting. Without that, the first booster's undo leaves the
+                // row naming someone who has withdrawn, and the LAST undo then
+                // matches nothing and the post stays in the reader for good --
+                // which is the same fault one withdrawal later.
+                try {
+                    $still_boosting = sv_timeline_boost_withdraw($pdo, $boosted, $actor_id);
+                    // SV_BOOST_UNKNOWN means the record could not be read or
+                    // made, so TOUCH NOTHING: keep the post and leave boost
+                    // ownership as it was. Leaving a post in the reader is
+                    // recoverable; removing one, or writing a booster who may
+                    // not exist, is not. An earlier draft of this wrote a
+                    // placeholder into boosted_by, which would have corrupted
+                    // the row to record a failure.
+                    //
+                    // AN UPGRADED INSTALL ANSWERS THE SAME WAY. Codex's FAIL 1,
+                    // second half: a site upgrading into this build already has
+                    // boosted timeline rows and an empty boost table, so an
+                    // Undo would read that empty record as authoritative and
+                    // delete a post somebody else is still boosting. The row's
+                    // own is_boost/boosted_by is the only evidence those
+                    // installs have, and it cannot answer "how many", so the
+                    // honest answer is "I cannot tell" until the record has
+                    // seen this object at least once.
+                    if ($still_boosting === SV_BOOST_UNKNOWN) {
+                        // nothing
+                    } elseif ($still_boosting === '') {
+                        $pdo->prepare(
+                            "DELETE FROM snap_ap_timeline
+                              WHERE object_id = ? AND is_boost = 1 AND boosted_by = ?"
+                        )->execute([$boosted, $actor_id]);
+                    } else {
+                        $pdo->prepare(
+                            "UPDATE snap_ap_timeline SET boosted_by = ?
+                              WHERE object_id = ? AND is_boost = 1 AND boosted_by = ?"
+                        )->execute([$still_boosting, $boosted, $actor_id]);
+                    }
+                } catch (Exception $e) { /* table may lag on a fresh install */ }
+
+                // RESIDUAL, now narrower but still real. Two of them.
+                //
+                // A post that arrived as a boost FIRST, whose author the owner
+                // also follows, still goes when the last boost is withdrawn,
+                // and does not come back until that author posts again or a
+                // refresh re-ingests it. is_boost records how the row arrived,
+                // not every reason it should stay.
+                //
+                // And a boost this site never ingested is a boost this record
+                // has not got. snap_ap_timeline_boosts is written by
+                // sv_ingest_timeline() on every boost that reaches the reader,
+                // so the gap is narrow: an Undo for a boost that arrived
+                // before this build, or one whose ingest failed. Both answer
+                // SV_BOOST_UNKNOWN and keep the post, which is the safe
+                // direction.
+                //
+                // THIS PARAGRAPH USED TO SAY the logic reasons from the
+                // notifications and still needed a remote-object boost record.
+                // That was true of the first repair and false of this one, and
+                // it sat here contradicting the code eight lines above it until
+                // Codex read it. A comment that outlives its code is worse than
+                // none, because the next reader believes it.
             }
         }
         return 202;
@@ -3371,6 +3983,26 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         // RECEIPT (0.7.611D): both forks leave an inbox-log row. A verified
         // Create that missed the following match used to 202 with no trace —
         // indistinguishable from "never delivered" when hunting a lost post.
+        // SS-1481 finding 12. The gate above catches a followers-only REPLY,
+        // because it is conditioned on $in_reply !== ''. A followers-only
+        // TOP-LEVEL post from an account we follow had no gate at all and went
+        // straight into the reader.
+        //
+        // Mitigated but still wrong: the reader is owner-only, so this never
+        // published to the public web. It does put a post its author restricted
+        // to their own followers into a timeline it can be boosted onward from.
+        //
+        // sv_reply_is_public() is the right test despite its name -- it asks
+        // whether an explicit public audience is addressed in to or cc, with
+        // object addressing winning over the wrapper. Public and unlisted both
+        // pass (unlisted puts Public in cc); followers-only has neither, so it
+        // does not. For a reply this is a second, harmless check: the gate
+        // above already proved it.
+        if (sv_is_following($pdo, $actor_id) && !sv_reply_is_public($activity, $obj)) {
+            sv_inbox_log($pdo, 'Create', $actor_id, null,
+                'received — non-public post not ingested to reader');
+            return 202;
+        }
         if (sv_is_following($pdo, $actor_id)) {
             sv_cache_actor($pdo, $actor_doc);
             $ing = sv_ingest_timeline($pdo, $obj, $actor_id, $handle);
@@ -3428,6 +4060,22 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                     $pdo->prepare("UPDATE snap_comments SET comment_text = ? WHERE ap_object_id = ? AND ap_source = 'fediverse' AND ap_actor_url = ?")
                         ->execute([$text, $oid, $actor_id]);
                 } catch (Exception $e) { /* column lag */ }
+                // SS-1481 finding 12, the Update half. An Update carries its own
+                // addressing, so a post can be edited from public to
+                // followers-only. Ingesting that would put the restricted
+                // version into the reader by the same route the Create gate now
+                // refuses.
+                //
+                // RESIDUAL, stated because it is a real gap and not this
+                // finding: a post already in the reader that is later
+                // restricted is left as it was rather than withdrawn. Removing
+                // it is a retraction decision, not a visibility check, and it
+                // belongs with the Undo/Delete work rather than here.
+                if (sv_is_following($pdo, $actor_id) && !sv_reply_is_public($activity, $obj)) {
+                    sv_inbox_log($pdo, 'Update', $actor_id, $oid,
+                        'received — non-public update not ingested to reader');
+                    return 202;
+                }
                 if (sv_is_following($pdo, $actor_id)) {
                     $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
                     $ing = sv_ingest_timeline($pdo, $obj, $actor_id, $handle);
@@ -3453,12 +4101,19 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         $obj = sv_activity_object_uri($activity['object'] ?? null);
         if (function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)) {
             if ($obj === $actor_id) {
-                $q = $pdo->prepare("SELECT object_id FROM snap_relay_intake WHERE origin_actor_url=? LIMIT 500");
-                $q->execute([$actor_id]);
-                foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $known_object) {
-                    sc_relay_retract($pdo, $settings, $actor_id, (string)$known_object,
-                        (string)($activity['id'] ?? $actor_id));
-                }
+                // SS-1481 finding 13. This was a flat LIMIT 500. An actor that
+                // had relayed more than 500 objects kept the remainder in every
+                // member's reader after deleting itself -- the posts of an
+                // account that no longer exists, with no further Delete coming
+                // to clean them up.
+                //
+                // sc_relay_retract_actor() pages through snap_relay_intake and
+                // calls the same sc_relay_retract() this loop did, so the
+                // behaviour per object is unchanged; only the ceiling is gone.
+                // Written for finding 5's block retraction and reused here
+                // rather than paging this loop separately.
+                sc_relay_retract_actor($pdo, $settings, $actor_id,
+                    (string)($activity['id'] ?? $actor_id));
                 sc_relay_leave($pdo, $actor_id);
             } elseif (is_string($obj) && $obj !== '') {
                 sc_relay_retract($pdo, $settings, $actor_id, $obj,
@@ -4717,6 +5372,51 @@ function sv_has_liked(PDO $pdo, string $object_id): bool {
  * hears about it. Origin delivery happens even with zero followers, so boosting
  * works before you've built an audience.
  */
+/**
+ * Is this post nothing but video?
+ *
+ * Sean's ruling as REVISED on 2026-11-21, which is the rule in force:
+ * SNAPSMACK never caches, proxies, re-encodes, stores or uploads video, and no
+ * post originating here carries video. BOOSTING a remote post that contains
+ * video IS allowed, video-only or mixed, because a boost is an Announce
+ * referencing the remote object and this server never touches the bytes.
+ *
+ * SO THIS PREDICATE IS NOT A GATE, and nothing in the boost path calls it. It
+ * answers one question for the tests that build those cases, and a future rule
+ * about video ORIGINATING here will want it.
+ *
+ * The docblock here stated the superseded rule — "never ... BOOSTS or SHARES"
+ * — after the behaviour had changed. I corrected that sentence in
+ * core/media-retention.php and smack-media-proxy.php and missed the file that
+ * actually implements the behaviour, which is where it mattered most. Codex
+ * found it.
+ *
+ * VIDEO-ONLY, not video-at-all, is the distinction it draws: a post carrying a
+ * photograph and a clip is a photograph post. A post with no attachments at
+ * all is text, not video.
+ *
+ * Both shapes count as video: an attachment whose mediaType begins "video/",
+ * and one whose ActivityStreams `type` is Video. A Pixelfed clip uses the
+ * first; a Peertube object uses the second.
+ */
+function sv_post_is_video_only(?array $obj): bool {
+    if (!is_array($obj)) return false;
+    // An Announce or Create wrapping the real object.
+    if (isset($obj['object']) && is_array($obj['object'])) { $obj = $obj['object']; }
+    $att = $obj['attachment'] ?? null;
+    if (is_array($att) && isset($att['url'])) { $att = [$att]; }   // a lone object
+    if (!is_array($att) || !$att) return false;
+    $video = 0; $other = 0;
+    foreach ($att as $a) {
+        if (!is_array($a)) { $other++; continue; }
+        $mt   = strtolower(trim((string)($a['mediaType'] ?? '')));
+        $type = strtolower(trim((string)($a['type'] ?? '')));
+        if (str_starts_with($mt, 'video/') || $type === 'video') { $video++; }
+        else { $other++; }
+    }
+    return $video > 0 && $other === 0;
+}
+
 function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
     $object_id = trim($object_id);
     if ($object_id === '' || stripos($object_id, 'https://') !== 0) return [false, 'That post has no usable id.'];
@@ -4738,6 +5438,25 @@ function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
             }
         }
     }
+
+    // VIDEO IS NOT REFUSED HERE, and that is deliberate.
+    //
+    // Sean's first ruling (2026-11-20) said no boosting of video, and this
+    // function refused a video-only post. He revised it on 2026-11-21: a boost
+    // is an Announce that REFERENCES the remote object by id. Receiving servers
+    // fetch the media from its origin; this server never touches the bytes, so
+    // boosting a post that contains video re-publishes nothing.
+    //
+    // What stays forbidden is unchanged and enforced elsewhere: caching,
+    // proxying, re-encoding, storing or uploading video, and video in posts
+    // that originate here. smack-media-proxy.php's allowlist is five image
+    // types and refuses everything else.
+    //
+    // tests/media-cache-and-timeline-have-a-ceiling-regression.php stage 9
+    // proves the boost path makes no HTTP request for any video URL and writes
+    // nothing to the cache, which is the property the ruling actually turns on.
+    // sv_post_is_video_only() is kept because that test needs it to build the
+    // case, and because a future rule about ORIGINATING video will want it.
 
     // TESTING WHITELIST: send the boost ONLY to whitelisted test accounts that
     // follow this blog — never Public, never the real follower crowd, not the author.
@@ -5077,9 +5796,51 @@ function sv_client_plain_text(string $html): string {
 }
 
 /** Local/Global discovery: a chosen instance's public timeline via REST. */
-function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
+/**
+ * A remote instance's public timeline, cached briefly.
+ *
+ * SS-1481 finding 15. This runs when the owner's local or global tab is empty,
+ * and it made TWO live JSON requests per view -- the Pixelfed endpoint, then
+ * the Mastodon one as a fallback -- from two different callers, with no cache
+ * at all. Refreshing an empty tab was two network round trips every time.
+ *
+ * Low risk, which is why it is in the efficiency group and not the first one:
+ * the data is already public and the request identifies us honestly. It is
+ * simply wasteful, and wasteful against someone else's server.
+ *
+ * The cache is OPTIONAL: pass a $pdo and it is used, leave it out and the
+ * behaviour is exactly as before. Stored in snap_settings with a timestamp,
+ * copying the shape core/network-alert.php:187 already uses for its 30-minute
+ * poll throttle rather than introducing a second caching idea.
+ *
+ * ANY PROBLEM READING OR WRITING IT FALLS BACK TO A LIVE FETCH. A truncated or
+ * unparseable payload is a cache miss, not corruption, and the row is capped
+ * well under the column's limit so a large timeline cannot half-write itself.
+ */
+function sv_public_timeline(string $host, bool $local, int $limit = 30,
+                            ?PDO $pdo = null, int $ttl = 600): array {
     $host = trim($host);
     if ($host === '') return [];
+
+    $cache_key = 'fedi_public_tl_' . substr(hash('sha256',
+        strtolower($host) . "\n" . ($local ? 'local' : 'global') . "\n" . $limit), 0, 40);
+
+    if ($pdo !== null && $ttl > 0) {
+        try {
+            $q = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = ? LIMIT 1");
+            $q->execute([$cache_key]);
+            $raw = (string)$q->fetchColumn();
+            if ($raw !== '') {
+                $hit = json_decode($raw, true);
+                if (is_array($hit) && isset($hit['at'], $hit['items'])
+                    && is_array($hit['items'])
+                    && (time() - (int)$hit['at']) < $ttl) {
+                    return $hit['items'];
+                }
+            }
+        } catch (Throwable $e) { /* no cache: fetch live, as before */ }
+    }
+
     $base = 'https://' . $host;
     $q = 'limit=' . max(1, min($limit, 40)) . '&only_media=true' . ($local ? '&local=true' : '');
     $rows = sv_fetch_json($base . '/api/pixelfed/v1/timelines/public?' . $q);
@@ -5115,6 +5876,21 @@ function sv_public_timeline(string $host, bool $local, int $limit = 30): array {
         ];
         if (count($out) >= $limit) break;
     }
+
+    // Store even an EMPTY result. An instance that is down or has nothing to
+    // show is the case that would otherwise be re-fetched twice on every
+    // refresh, which is the worst version of this fault rather than the best.
+    if ($pdo !== null && $ttl > 0) {
+        $payload = json_encode(['at' => time(), 'items' => $out], JSON_UNESCAPED_SLASHES);
+        if (is_string($payload) && strlen($payload) <= 60000) {
+            try {
+                $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+                               ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+                    ->execute([$cache_key, $payload]);
+            } catch (Throwable $e) { /* cache is a convenience, never a dependency */ }
+        }
+    }
+
     return $out;
 }
 
@@ -5522,39 +6298,13 @@ function sv_fetch_gallery(array $actor, int $max = 36): array {
     return sv_crawl_outbox((string)($actor['outbox'] ?? ''), $max);
 }
 
-/**
- * Home feed by live crawl: merge the recent photos of the accounts the blog
- * FOLLOWS (accepted only), newest first. No ingest tables — this pulls on
- * demand, bounded by an account cap and an ~18s wall-clock budget so a busy
- * follow list can't stall the request. A push/ingest timeline is the Phase-3
- * upgrade for scale; this lights up Home now.
- */
-function sv_home_feed(PDO $pdo, int $per_account = 6, int $max = 40): array {
-    $rows = $pdo->query(
-        "SELECT actor_url FROM snap_ap_following WHERE state='accepted' ORDER BY followed_at DESC LIMIT 15"
-    )->fetchAll(PDO::FETCH_COLUMN);
-
-    $feed = [];
-    $deadline = microtime(true) + 18.0;
-    foreach ($rows as $actor_url) {
-        if (microtime(true) > $deadline) break;
-        $actor = sv_crawl_actor((string)$actor_url);
-        if ($actor === null) continue;
-        foreach (sv_fetch_gallery($actor, $per_account) as $p) {
-            $p['author'] = [
-                'handle' => $actor['handle'],
-                'name'   => $actor['name'],
-                'avatar' => $actor['avatar'],
-                'id'     => $actor['id'],
-                'host'   => $actor['host'],
-                'url'    => $actor['url'],
-            ];
-            $feed[] = $p;
-        }
-    }
-    usort($feed, static function ($a, $b) { return strcmp((string)$b['published'], (string)$a['published']); });
-    return array_slice($feed, 0, $max);
-}
+// SS-1481 finding 16: sv_home_feed() was removed here. It was a live
+// merge-crawl of up to 15 followed accounts on an 18-second budget, run while
+// the owner waited for the Home tab. The inbound ingest timeline
+// (sv_home_timeline) replaced it, and the ONLY thing still referring to it was
+// tests/pixel-home-latency-regression.php asserting the Home handler never
+// calls it -- 26 lines that could not run, beside a guard whose job was to stop
+// them running. tests/sv-home-feed-is-gone-regression.php keeps it gone.
 
 // ─── Notes (one published snap_image = one Note, mirroring rss.php) ─────────
 
