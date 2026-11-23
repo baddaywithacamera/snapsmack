@@ -6,11 +6,26 @@ declare(strict_types=1);
 
 // ALFRED'S CAPTION CONTROLS CHANGE NOTHING UNTIL THEY ARE MOVED. (SS-1495)
 //
-// BIGGIE draws a post as the site will render it, and reads the site through
-// sybu-data.php, which publishes a skin's DECLARED options and nothing else.
-// A caption was declared nowhere, so BIGGIE had to guess. These five controls
-// are what make the preview honest, and they give the owner settings that did
-// not exist before.
+// BIGGIE draws a post as the site will render it. A caption was declared
+// nowhere, so it had to guess. These five controls are what make the preview
+// honest, and they give the owner settings that did not exist before.
+//
+// CORRECTION, FROM MUSE'S REVIEW OF 8ec0928e. This header used to say BIGGIE
+// "reads the site through sybu-data.php, which publishes a skin's DECLARED
+// options and nothing else". THAT IS FALSE. sybu-data.php returns categories,
+// albums, tags, titles, site_mode and publishing_policy. It makes no reference
+// to declared skin options, and NO endpoint in this repo publishes them as
+// JSON at all.
+//
+// I had no excuse for it: I read that file myself, in this same session, and
+// listed those six fields while looking at something else entirely. The claim
+// was carried forward from an assumption instead of from the file.
+//
+// WHAT STAGE 4 ACTUALLY PROVES, which is narrower but real: the values survive
+// the apply-and-resolve pipeline that the render and admin-preview path uses.
+// Whether BIGGIE can see them depends on which of those it reads, and that
+// question is OPEN -- if it reads sybu-data.php, the motivation above is unmet
+// and needs its own ticket.
 //
 // THE RISK IS THE MIGRATION, NOT THE FEATURE. Every one of these compiles a
 // real CSS rule on every render, over a stylesheet that already styles
@@ -131,9 +146,10 @@ foreach ([
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-echo "\nSTAGE 4 — THE VALUES REACH sybu-data, AND THE FONT DOES NOT YET\n";
+echo "\nSTAGE 4 — THE VALUES SURVIVE THE RESOLVE PIPELINE, FONT NOT YET\n";
 // ─────────────────────────────────────────────────────────────────────────────
-// The resolution sybu-data.php performs: scoped settings, applied, resolved.
+// The apply-and-resolve pipeline the render and admin-preview path uses:
+// scoped settings, applied, resolved. NOT an endpoint call -- see the header.
 $settings = ['active_skin' => 'alfred', 'alfred__caption_color' => '#cc0000',
              'alfred__caption_size' => '20', 'alfred__caption_align' => 'center'];
 snapsmack_apply_skin_settings($settings, 'alfred');
@@ -162,7 +178,7 @@ if ($failures) {
 }
 echo "SS-1495 PASS — each default is the stylesheet's own value, the compiler\n";
 echo "changes nothing at the defaults, every control does something when moved,\n";
-echo "and all five reach the endpoint BIGGIE reads.\n";
+echo "and all five survive the resolve pipeline the render path uses.\n";
 echo "NOT PROVED HERE: the rendered page. The before/after computed styles were\n";
 echo "measured in a browser and are in the commit message.\n";
 // ===== SNAPSMACK EOF =====
