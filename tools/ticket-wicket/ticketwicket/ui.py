@@ -155,11 +155,12 @@ class Wicket(QMainWindow):
         self.detail.setPlainText("\n".join(lines))
 
         post = anonymise.forum_post(tk)
-        self.preview.setPlainText(post)
-        problems = anonymise.check(post, [x for x in (tk.reporter, tk.reporter_channel) if x])
+        title = anonymise.forum_title(tk)
+        self.preview.setPlainText(title + "\n\n" + post)
+        problems = anonymise.public_problems(tk, post)
         if problems:
             self.leak_label.setText(
-                "Will not post — this still identifies someone:\n  "
+                "Will not post — the public title or body still identifies someone:\n  "
                 + "\n  ".join(problems))
             self.post_btn.setEnabled(False)
         else:
@@ -180,6 +181,15 @@ class Wicket(QMainWindow):
             return
         f = forummod.Forum(url, key)
         try:
+            body = anonymise.forum_post(tk)
+            title = anonymise.forum_title(tk)
+            problems = anonymise.public_problems(tk, body)
+            if problems:
+                QMessageBox.warning(
+                    self, "Identifying public text",
+                    "Will not post — the public title or body still identifies someone:\n  "
+                    + "\n  ".join(problems))
+                return
             # LOOKS THE BOARD UP AND REFUSES TO MAKE ONE.
             #
             # This called ensure_board("Tickets", ...) with no sort order. In
@@ -201,8 +211,7 @@ class Wicket(QMainWindow):
                     "up at the top of the list before. Create the board "
                     "deliberately in the forum first, then post this ticket.")
                 return
-            thread = f.post_ticket(cat, f"{tk.id} · {tk.title}",
-                                   anonymise.forum_post(tk))
+            thread = f.post_ticket(cat, title, body)
         except forummod.ForumError as exc:
             QMessageBox.warning(self, "Forum", str(exc)); return
         self.store.update(tk.id, forum_thread=thread)

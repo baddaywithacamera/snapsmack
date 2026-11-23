@@ -138,6 +138,62 @@ def test_posting_to_a_board_that_exists_still_works(store, monkeypatch):
     assert forum.posted[0][0] == 3                 # the board it looked up
 
 
+# ── both public fields pass the same anonymisation refusal ──────────────────
+
+def test_an_identifying_title_is_refused_before_the_forum_write(
+        store, monkeypatch, capsys):
+    forum = FakeForum({"Roach Motel": 3})
+    monkeypatch.setattr(tw.forummod, "Forum", lambda *a, **k: forum)
+    monkeypatch.setattr(tw, "_store", lambda args: store)
+    ticket = _ticket(store, title="craptasti.ca archive is broken",
+                     body="The archive is broken.")
+
+    code = tw.cmd_post(_args(id=ticket.id))
+
+    assert code == 1
+    assert forum.posted == []
+    err = capsys.readouterr().err
+    assert "title — a domain" in err
+    assert "public title and body" in err
+
+
+def test_a_reporter_identifier_in_the_title_is_refused(
+        store, monkeypatch, capsys):
+    forum = FakeForum({"Roach Motel": 3})
+    monkeypatch.setattr(tw.forummod, "Forum", lambda *a, **k: forum)
+    monkeypatch.setattr(tw, "_store", lambda args: store)
+    ticket = _ticket(store, title="Bartholomew cannot open the archive",
+                     body="The archive does not open.", reporter="Bartholomew")
+
+    assert tw.cmd_post(_args(id=ticket.id)) == 1
+    assert forum.posted == []
+    assert "title — the reporter's own identifier" in capsys.readouterr().err
+
+
+def test_a_refused_title_cannot_create_or_replace_an_existing_thread(
+        store, monkeypatch):
+    forum = FakeForum({"Roach Motel": 3})
+    monkeypatch.setattr(tw.forummod, "Forum", lambda *a, **k: forum)
+    monkeypatch.setattr(tw, "_store", lambda args: store)
+    ticket = _ticket(store, title="craptasti.ca archive is broken",
+                     body="The archive is broken.")
+    store.update(ticket.id, forum_thread=91)
+
+    assert tw.cmd_post(_args(id=ticket.id, again=True)) == 1
+    assert forum.posted == []
+    assert store.get(ticket.id).forum_thread == 91
+
+
+def test_a_safe_title_is_the_exact_title_sent_to_the_forum(store, monkeypatch):
+    forum = FakeForum({"Roach Motel": 3})
+    monkeypatch.setattr(tw.forummod, "Forum", lambda *a, **k: forum)
+    monkeypatch.setattr(tw, "_store", lambda args: store)
+    ticket = _ticket(store, title="Archive controls are missing")
+
+    assert tw.cmd_post(_args(id=ticket.id)) == 0
+    assert forum.posted == [(3, f"{ticket.id} · Archive controls are missing")]
+
+
 # ── the duplicate guard, which is the one that actually bit ──────────────────
 
 def test_a_ticket_that_is_already_published_is_not_published_again(
@@ -247,5 +303,17 @@ def test_the_desktop_interface_cannot_invent_a_board():
         "QMessageBox" in code), (
         "the interface refuses silently; a refusal the operator cannot see is "
         "indistinguishable from the tool being broken")
+
+
+def test_the_desktop_interface_guards_title_and_body_at_the_write_boundary():
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    src = open(os.path.join(here, "ticketwicket", "ui.py"), encoding="utf-8").read()
+    write_at = src.index("f.post_ticket")
+    last_guard = src.rfind("anonymise.public_problems", 0, write_at)
+
+    assert last_guard > src.index("def do_post"), (
+        "the desktop interface relies only on preview state instead of checking "
+        "the final title and body immediately before its forum write")
+    assert "anonymise.forum_title" in src[:write_at]
 
 # ===== SNAPSMACK EOF =====

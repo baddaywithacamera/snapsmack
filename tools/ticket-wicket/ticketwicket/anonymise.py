@@ -194,6 +194,26 @@ def check(text: str, extra=None) -> list:
     return problems
 
 
+def forum_title(ticket) -> str:
+    """The exact title sent to the public forum."""
+    return f"{ticket.id} · {ticket.title}"
+
+
+def public_problems(ticket, body: str | None = None) -> list:
+    """Identifying content in either public artefact for one ticket.
+
+    The forum receives the thread title and body as separate fields. Both must
+    pass the same refusal immediately before a write; checking only the body
+    leaves the title as an unguarded disclosure path.
+    """
+    extras = [x for x in (ticket.reporter, ticket.reporter_channel) if x]
+    public_body = forum_post(ticket) if body is None else body
+    problems = []
+    for field, text in (("title", forum_title(ticket)), ("body", public_body)):
+        problems.extend(f"{field} — {problem}" for problem in check(text, extras))
+    return problems
+
+
 def forum_post(ticket) -> str:
     """The public ticket, as it appears in the tracking forum.
 

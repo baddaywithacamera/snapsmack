@@ -51,7 +51,7 @@ COMMANDS = [
      "returns": "thread id, or the refusal and what still identifies someone",
      "args": ["ID", "--board NAME", "--dry-run", "--unwrap"],
      "example": ENTRY + " post SS-1042 --dry-run",
-     "notes": "REFUSES and exits 1 if the body still identifies anyone. Always "
+     "notes": "REFUSES and exits 1 if the public title or body still identifies anyone. Always "
               "--dry-run first; it prints exactly what would be published."},
     {"name": "reply", "does": "Reply to a reporter. DEFAULTS TO THE FORUM: an "
      "update to a ticket is public, so it goes to the ticket's thread. A forum "
@@ -124,7 +124,7 @@ COMMANDS = [
               "the board are the fixed ones. --include-security is the one way "
               "to overrule that, and it is a flag rather than a silent filter "
               "so you can see the decision. Pulse tickets are held for a human. "
-              "A ticket whose body still identifies someone, or that would "
+              "A ticket whose public title or body still identifies someone, or that would "
               "render wrongly, is REFUSED and named -- fix the ticket, do not "
               "work around it."},
     {"name": "mod-check", "does": "Does my forum key have the role it needs?",
@@ -149,8 +149,8 @@ REFUSALS = [
     "asterisks. One paragraph per line, blank line between paragraphs, "
     "CAPITALS for emphasis. --unwrap joins the lines for this post only and "
     "leaves the stored ticket alone; nothing strips markdown for you.",
-    "post REFUSES a ticket whose body still identifies anyone, and tells you "
-    "what it found. Rewrite the body about the problem; do not work around it.",
+    "post REFUSES a ticket whose public title or body still identifies anyone, and tells you "
+    "what it found. Rewrite the public title or body about the problem; do not work around it.",
     "reply REFUSES on a ticket flagged --pulse. Anything with a pulse reaches "
     "the human: frustration, anger, security, payment, a first-time poster. "
     "Escalate instead.",

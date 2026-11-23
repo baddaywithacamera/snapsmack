@@ -169,13 +169,13 @@ def cmd_post(args):
         print(f"No such ticket: {args.id}", file=sys.stderr); return 2
 
     body = anonymise.forum_post(t)
-    secrets = [x for x in (t.reporter, t.reporter_channel) if x]
-    problems = anonymise.check(body, secrets)
+    title = anonymise.forum_title(t)
+    problems = anonymise.public_problems(t, body)
     if problems:
         print("REFUSING TO POST — this ticket still identifies someone:\n  "
               + "\n  ".join(problems)
               + "\n\nTickets never contain info that identifies who submitted them. "
-                "Rewrite the body about the problem, not the person.", file=sys.stderr)
+                "Rewrite the public title and body about the problem, not the person.", file=sys.stderr)
         return 1
 
     # ALREADY ON THE BOARD? THEN THIS WOULD BE A SECOND COPY.
@@ -249,8 +249,8 @@ def cmd_post(args):
         return 1
 
     if args.dry_run or not args.forum_url:
-        _out(args, {"would_post": body, "posted": False},
-             "DRY RUN — would post:\n\n" + body
+        _out(args, {"would_title": title, "would_post": body, "posted": False},
+             "DRY RUN — would post:\n\n" + title + "\n\n" + body
              + "\n\n(no --forum-url given, or --dry-run)")
         return 0
 
@@ -275,7 +275,7 @@ def cmd_post(args):
         ]
         print("\n".join(message), file=sys.stderr)
         return 1
-    thread_id = f.post_ticket(cat, f"{t.id} · {t.title}", body)
+    thread_id = f.post_ticket(cat, title, body)
     s.update(t.id, forum_thread=thread_id)
     s.add_entry(t.id, "post", f"posted to forum thread {thread_id}", "forum")
     _out(args, {"thread": thread_id, "posted": True},
