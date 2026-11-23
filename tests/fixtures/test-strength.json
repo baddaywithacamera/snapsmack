@@ -863,6 +863,11 @@
             255
         ]
     },
+    "forum-panel-does-not-explain-itself-to-non-admins-regression.php": {
+        "assertions": 14,
+        "predicates": 11,
+        "thresholds": []
+    },
     "frame-token-contract.php": {
         "assertions": 28,
         "predicates": 24,
