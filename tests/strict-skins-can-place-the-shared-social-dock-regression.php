@@ -222,10 +222,10 @@ sd_check('and a manifest that does not declare it gets no dock stylesheet',
              static fn(string $u): bool => str_contains($u, 'ss-engine-social-dock.css')),
          $failures);
 
-$dockCss = (string)file_get_contents($root . '/assets/css/ss-engine-social-dock.css');
-sd_check('the shared dock hides its own screen-reader labels without skin CSS',
-         str_contains($dockCss, '.dock-link .screen-reader-text')
-         && str_contains($dockCss, 'clip: rect(0, 0, 0, 0)'), $failures);
+$baseCss = (string)file_get_contents($root . '/assets/css/public-base.css');
+sd_check('core hides screen-reader labels without depending on skin CSS',
+         str_contains($baseCss, '.screen-reader-text')
+         && str_contains($baseCss, 'clip: rect(0, 0, 0, 0)'), $failures);
 
 echo "\n";
 if ($failures) {

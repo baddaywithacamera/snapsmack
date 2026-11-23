@@ -114,6 +114,8 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
               overflow: labelStyle.overflow,
               clip: labelStyle.clip,
               whiteSpace: labelStyle.whiteSpace,
+              position: labelStyle.position,
+              left: labelRect.left,
             },
           };
         });
@@ -174,7 +176,8 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
       for (const control of result.controls) {
         assert.ok(control.visible && control.width >= 48 && control.height >= 48,
           `${width}: every dock link remains a full-size visible target`);
-        assert.ok(control.label.width <= 1 && control.label.height <= 1,
+        assert.ok(control.label.width <= 2 && control.label.height <= 2
+          && control.label.position === 'absolute' && control.label.left < 0,
           `${width}: screen-reader labels occupy no visible navigation space`);
         assert.equal(control.label.overflow, 'hidden', `${width}: screen-reader labels are clipped`);
         assert.equal(control.label.whiteSpace, 'nowrap', `${width}: screen-reader labels cannot wrap over controls`);
