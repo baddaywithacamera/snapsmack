@@ -57,7 +57,8 @@ class RootReadBroker:
             client = self._connect(password)
         except Exception as err:
             self.audit.record("root_read_error", {
-                "operation": operation, "error": type(err).__name__,
+                "operation": operation, "path": target_path,
+                "error": type(err).__name__,
             })
             raise
         try:
@@ -78,7 +79,8 @@ class RootReadBroker:
             ) from err
         except Exception as err:
             self.audit.record("root_read_error", {
-                "operation": operation, "error": type(err).__name__,
+                "operation": operation, "path": target_path,
+                "error": type(err).__name__,
             })
             raise
         finally:
@@ -87,12 +89,15 @@ class RootReadBroker:
             payload = json.loads(raw)
         except ValueError as err:
             self.audit.record("root_read_refused", {
-                "operation": operation, "why": "invalid wrapper response",
+                "operation": operation, "path": target_path,
+                "why": "invalid wrapper response",
             })
             raise Refused("The root read wrapper returned invalid JSON.") from err
         if status != 0 or not isinstance(payload, dict) or payload.get("ok") is not True:
             why = str(payload.get("error") if isinstance(payload, dict) else error or "read refused")[:500]
-            self.audit.record("root_read_refused", {"operation": operation, "why": why})
+            self.audit.record("root_read_refused", {
+                "operation": operation, "path": target_path, "why": why,
+            })
             raise Refused("Root read refused: " + why)
         self.audit.record("root_read_result", {
             "operation": operation, "path": target_path, "ok": True,
@@ -131,8 +136,19 @@ class RootReadBroker:
                 try:
                     raw = base64.b64decode(chunk["content_base64"], validate=True)
                 except (KeyError, TypeError, ValueError) as err:
+                    self.audit.record("root_read_refused", {
+                        "operation": "read", "path": str(path),
+                        "why": "invalid chunk response",
+                    })
                     raise Refused("The root read wrapper returned invalid chunk data.") from err
-                target.write(raw)
+                try:
+                    target.write(raw)
+                except Exception as err:
+                    self.audit.record("root_read_error", {
+                        "operation": "read", "path": str(path),
+                        "error": type(err).__name__,
+                    })
+                    raise
                 offset += len(raw)
                 if chunk.get("eof") or not raw:
                     break
@@ -142,8 +158,15 @@ class RootReadBroker:
             return target.tell() if hasattr(target, "tell") else None
         except (KeyError, TypeError, ValueError) as err:
             self.audit.record("root_read_refused", {
-                "operation": "read", "why": "invalid base64 response",
+                "operation": "read", "path": str(path),
+                "why": "invalid base64 response",
             })
             raise Refused("The root read wrapper returned invalid file data.") from err
+        except Exception as err:
+            self.audit.record("root_read_error", {
+                "operation": "read", "path": str(path),
+                "error": type(err).__name__,
+            })
+            raise
 
 # ===== SNAPSMACK EOF =====

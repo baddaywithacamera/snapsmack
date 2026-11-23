@@ -188,6 +188,27 @@ class RootReadTests(unittest.TestCase):
         self.assertEqual(record["action"], "root_read_timeout")
         self.assertEqual(record["detail"]["path"], "/etc/hosts")
 
+    def test_connection_and_wrapper_failures_are_audited_with_the_path(self):
+        unavailable = RootReadBroker(
+            "192.0.2.1", "proxvox-root-ro", self.audit,
+            credential_reader=lambda site, target: "secret",
+            ssh_factory=lambda host, username, password: (_ for _ in ()).throw(
+                ConnectionError("offline")
+            ),
+        )
+        with self.assertRaises(ConnectionError):
+            unavailable.stat("/var/log/pve/tasks/index")
+        record = self.audit.records()[-1]
+        self.assertEqual(record["action"], "root_read_error")
+        self.assertEqual(record["detail"]["path"], "/var/log/pve/tasks/index")
+
+        self.replies["host-stat /missing"] = (1, {"ok": False, "error": "missing"})
+        with self.assertRaisesRegex(Refused, "missing"):
+            self.broker.stat("/missing")
+        record = self.audit.records()[-1]
+        self.assertEqual(record["action"], "root_read_refused")
+        self.assertEqual(record["detail"]["path"], "/missing")
+
     def test_container_symlink_is_resolved_before_write_key_policy_and_never_catted(self):
         calls = []
 
