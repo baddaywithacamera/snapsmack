@@ -65,7 +65,7 @@ class WriteClient:
     # ── P3 Option A: /access/ticket + TFA ────────────────────────────────
     def authorize(self, username: str, password: str, otp: str,
                   timeout: int = 15) -> dict:
-        """Authenticate live against Proxmox /access/ticket with password + OTP."""
+        """Authenticate live using Proxmox's password then TOTP challenge flow."""
         user = (username or "").strip()
         pw = password or ""
         code = (otp or "").strip()
@@ -80,54 +80,85 @@ class WriteClient:
             )
 
         url = self.base_url + "/api2/json/access/ticket"
-        form = urllib.parse.urlencode({
+
+        def request_stage(stage: int, fields: dict):
+            form = urllib.parse.urlencode(fields).encode("utf-8")
+            request = urllib.request.Request(url, data=form, method="POST")
+            request.add_header("Content-Type", "application/x-www-form-urlencoded")
+
+            # Recorded BEFORE each request; secrets and challenge are omitted.
+            self.audit.record("write_auth_attempt", {
+                "username": user,
+                "stage": stage,
+            })
+            try:
+                with self._opener(request, timeout=timeout) as response:
+                    body = response.read().decode("utf-8", "replace")
+                    status = getattr(response, "status", 200)
+            except urllib.error.HTTPError as err:
+                self._clear_session()
+                self.audit.record("write_auth_result", {
+                    "username": user, "stage": stage, "ok": False,
+                    "status": err.code,
+                })
+                raise
+            except Exception as err:
+                self._clear_session()
+                self.audit.record("write_auth_result", {
+                    "username": user, "stage": stage, "ok": False,
+                    "error": type(err).__name__,
+                })
+                raise
+
+            try:
+                payload = json.loads(body)
+            except ValueError:
+                self._clear_session()
+                self.audit.record("write_auth_result", {
+                    "username": user, "stage": stage, "ok": False,
+                    "status": status,
+                    "why": "invalid JSON from /access/ticket",
+                })
+                raise Refused("Proxmox /access/ticket returned non-JSON response.")
+            return payload, status
+
+        stage_one, stage_one_status = request_stage(1, {
             "username": user,
             "password": pw,
-            "otp": code,
-        }).encode("utf-8")
-        request = urllib.request.Request(url, data=form, method="POST")
-        request.add_header("Content-Type", "application/x-www-form-urlencoded")
-
-        # Recorded BEFORE the request; secrets are never included.
-        self.audit.record("write_auth_attempt", {"username": user})
-
-        try:
-            with self._opener(request, timeout=timeout) as response:
-                body = response.read().decode("utf-8", "replace")
-                status = getattr(response, "status", 200)
-        except urllib.error.HTTPError as err:
+        })
+        stage_one_data = (stage_one.get("data")
+                          if isinstance(stage_one, dict) else None)
+        challenge = ((stage_one_data or {}).get("ticket")
+                     if isinstance(stage_one_data, dict) else None)
+        if (not isinstance(challenge, str)
+                or not challenge.startswith("PVE:!tfa!")):
             self._clear_session()
             self.audit.record("write_auth_result", {
-                "username": user, "ok": False, "status": err.code,
+                "username": user, "stage": 1, "ok": False,
+                "status": stage_one_status,
+                "why": "missing TFA challenge",
             })
-            raise
-        except Exception as err:
-            self._clear_session()
-            self.audit.record("write_auth_result", {
-                "username": user, "ok": False, "error": type(err).__name__,
-            })
-            raise
+            raise Refused(
+                "Proxmox /access/ticket did not return the required TFA challenge."
+            )
 
-        try:
-            payload = json.loads(body)
-        except ValueError:
-            self._clear_session()
-            self.audit.record("write_auth_result", {
-                "username": user, "ok": False, "status": status,
-                "why": "invalid JSON from /access/ticket",
-            })
-            raise Refused("Proxmox /access/ticket returned non-JSON response.")
-
-        data = payload.get("data") if isinstance(payload, dict) else None
+        stage_two, status = request_stage(2, {
+            "username": user,
+            "tfa-challenge": challenge,
+            "password": "totp:" + code,
+        })
+        data = stage_two.get("data") if isinstance(stage_two, dict) else None
         ticket = (data or {}).get("ticket") if isinstance(data, dict) else None
-        csrf = (data or {}).get("CSRFPreventionToken") if isinstance(data, dict) else None
+        csrf = ((data or {}).get("CSRFPreventionToken")
+                if isinstance(data, dict) else None)
 
         if (not isinstance(ticket, str) or not ticket.strip()
                 or ticket.startswith("PVE:!tfa!")
                 or not isinstance(csrf, str) or not csrf.strip()):
             self._clear_session()
             self.audit.record("write_auth_result", {
-                "username": user, "ok": False, "status": status,
+                "username": user, "stage": 2, "ok": False,
+                "status": status,
                 "why": "missing ticket or CSRFPreventionToken (TFA incomplete)",
             })
             raise Refused(

@@ -40,7 +40,9 @@ class _ProxmoxMockServer:
         self.audit_snapshots = []
         self.ticket_value = "PVE:proxvox@pve:1234ABCD::sig"
         self.csrf_value = "6789EF01:csrf-secret-value"
-        self.tfa_challenge_mode = False
+        self.challenge_value = "PVE:!tfa!challenge-value"
+        self.stage_two_challenge_mode = False
+        self.stage_two_401_mode = False
         self.empty_csrf_mode = False
         self.force_401 = False
         server_ref = self
@@ -66,10 +68,28 @@ class _ProxmoxMockServer:
                         server_ref.audit_snapshots.append(fh.read())
 
                 if self.command == "POST" and self.path == "/api2/json/access/ticket":
-                    if (parsed_form.get("password") == ["good-pass"]
-                            and parsed_form.get("otp") == ["123456"]):
-                        if server_ref.tfa_challenge_mode:
-                            payload = {"data": {"ticket": "PVE:!tfa!challenge", "CSRFPreventionToken": server_ref.csrf_value}}
+                    if (parsed_form.get("username") == ["proxvox@pve"]
+                            and parsed_form.get("password") == ["good-pass"]
+                            and "tfa-challenge" not in parsed_form
+                            and "otp" not in parsed_form):
+                        payload = {"data": {"ticket": server_ref.challenge_value}}
+                        body = json.dumps(payload).encode("utf-8")
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.send_header("Content-Length", str(len(body)))
+                        self.end_headers()
+                        self.wfile.write(body)
+                        return
+
+                    if (parsed_form.get("username") == ["proxvox@pve"]
+                            and parsed_form.get("tfa-challenge") == [server_ref.challenge_value]
+                            and parsed_form.get("password") == ["totp:123456"]):
+                        if server_ref.stage_two_401_mode:
+                            self.send_response(401)
+                            self.end_headers()
+                            return
+                        if server_ref.stage_two_challenge_mode:
+                            payload = {"data": {"ticket": server_ref.challenge_value}}
                         elif server_ref.empty_csrf_mode:
                             payload = {"data": {"ticket": server_ref.ticket_value, "CSRFPreventionToken": ""}}
                         else:
@@ -182,21 +202,23 @@ class ProxVoxP3Tests(unittest.TestCase):
         actions = [r["action"] for r in self.audit.records()]
         self.assertEqual(actions, ["write_refused"])
 
-    def test_authorize_requires_all_live_credentials_and_rejects_tfa_challenge(self):
+    def test_authorize_requires_credentials_and_rejects_incomplete_tfa(self):
         wc = self._client()
         for bad in [("", "good-pass", "123456"), ("proxvox@pve", "", "123456"), ("proxvox@pve", "good-pass", "")]:
             with self.assertRaises(Refused):
                 wc.authorize(*bad)
         self.assertEqual(len(self.server.requests), 0)
 
-        self.server.tfa_challenge_mode = True
+        self.server.stage_two_challenge_mode = True
         with self.assertRaises(Refused):
             wc.authorize("proxvox@pve", "good-pass", "123456")
         self.assertFalse(wc.is_authorized())
-        # Pre-request write_auth_attempt must be logged before /access/ticket responds
+        # Each stage is logged before its /access/ticket request reaches the server.
         self.assertIn('"action":"write_auth_attempt"', self.server.audit_snapshots[0])
+        self.assertIn('"stage":1', self.server.audit_snapshots[0])
+        self.assertIn('"stage":2', self.server.audit_snapshots[1])
 
-        self.server.tfa_challenge_mode = False
+        self.server.stage_two_challenge_mode = False
         self.server.empty_csrf_mode = True
         with self.assertRaises(Refused):
             wc.authorize("proxvox@pve", "good-pass", "123456")
@@ -207,7 +229,21 @@ class ProxVoxP3Tests(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError):
             wc.authorize("proxvox@pve", "wrong-pass", "123456")
         actions = [r["action"] for r in self.audit.records()]
-        self.assertEqual(actions.count("write_auth_attempt"), 3)
+        self.assertEqual(actions.count("write_auth_attempt"), 5)
+
+    def test_stage_two_401_is_refused_logged_and_clears_session(self):
+        wc = self._client()
+        self.server.stage_two_401_mode = True
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            wc.authorize("proxvox@pve", "good-pass", "123456")
+        self.assertEqual(caught.exception.code, 401)
+        self.assertFalse(wc.is_authorized())
+        self.assertEqual(len(self.server.requests), 2)
+        self.assertIn('"stage":2', self.server.audit_snapshots[1])
+        records = self.audit.records()
+        self.assertEqual(records[-1]["action"], "write_auth_result")
+        self.assertEqual(records[-1]["detail"]["stage"], 2)
+        self.assertEqual(records[-1]["detail"]["status"], 401)
 
     def test_authorized_session_allows_full_writes_until_expiry_and_hides_secrets(self):
         wc = self._client(ticket_ttl=7200)
@@ -221,20 +257,21 @@ class ProxVoxP3Tests(unittest.TestCase):
         self.assertTrue(res2["data"]["ok"])
         self.assertTrue(res3["data"]["ok"])
 
-        # POST /access/ticket + 3 write calls = 4 HTTP calls, no per-action prompts
-        self.assertEqual(len(self.server.requests), 4)
-        self.assertEqual(self.server.requests[1]["method"], "POST")
-        self.assertEqual(self.server.requests[2]["method"], "PUT")
-        self.assertEqual(self.server.requests[3]["method"], "DELETE")
+        # Two-stage /access/ticket + 3 writes = 5 calls, no per-action prompts.
+        self.assertEqual(len(self.server.requests), 5)
+        self.assertEqual(self.server.requests[2]["method"], "POST")
+        self.assertEqual(self.server.requests[3]["method"], "PUT")
+        self.assertEqual(self.server.requests[4]["method"], "DELETE")
 
         # Audit record was written BEFORE each write request reached the server
-        self.assertIn('"action":"write_call"', self.server.audit_snapshots[1])
+        self.assertIn('"action":"write_call"', self.server.audit_snapshots[2])
 
         # Secrets must never appear in repr/str or audit log
         text_repr = repr(wc) + str(wc)
         with open(self.audit_path, "r", encoding="utf-8") as fh:
             audit_raw = fh.read()
-        for secret in ("good-pass", "123456", self.server.ticket_value, self.server.csrf_value):
+        for secret in ("good-pass", "123456", self.server.challenge_value,
+                       self.server.ticket_value, self.server.csrf_value):
             self.assertNotIn(secret, text_repr)
             self.assertNotIn(secret, audit_raw)
 
