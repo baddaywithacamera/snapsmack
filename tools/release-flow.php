@@ -14,6 +14,7 @@ if (PHP_SAPI !== 'cli') {
 
 $root = dirname(__DIR__);
 chdir($root);
+require_once __DIR__ . '/_build/release-demo-parity.php';
 
 function rf_fail(string $message): never {
     fwrite(STDERR, "REFUSED: {$message}\n");
@@ -358,6 +359,8 @@ function rf_release_gate_problem(string $head): string {
             return "release-gate note field {$field} must be " . json_encode($expected);
         }
     }
+    $demoParityProblem = rf_demo_parity_note_problem($gate);
+    if ($demoParityProblem !== '') return $demoParityProblem;
     $skinDirs = glob(dirname(__DIR__) . '/skins/*/manifest.json') ?: [];
     $skinNames = array_map(static fn (string $manifest): string => basename(dirname($manifest)), $skinDirs);
     sort($skinNames, SORT_STRING);
@@ -717,11 +720,24 @@ if ($command === 'gate-note') {
   Nothing here is inferred, because a gate that signs itself is not a gate.");
     }
 
+    $parityPath = $flags['demo-parity-record'] ?? '';
+    if ($parityPath === '') {
+        rf_fail('this release has no real-site parity record. Provide '
+            . '--demo-parity-record=<json file>.');
+    }
+    $parityRaw = @file_get_contents($parityPath);
+    $parityRecord = is_string($parityRaw) ? json_decode($parityRaw, true) : null;
+    if (!is_string($parityRaw) || !is_array($parityRecord)) {
+        rf_fail("could not read a JSON demo-parity record from {$parityPath}");
+    }
+    $head = rf_git(['rev-parse', 'HEAD']);
+    $parityProblem = rf_demo_parity_record_problem($parityRecord, $head);
+    if ($parityProblem !== '') rf_fail($parityProblem);
+
     // Run the actual browsers before recording their result, never accept a
     // hand-typed --browser-pass assertion. Clean inputs bind the run to HEAD.
     rf_require_clean();
     rf_browser_tests();
-    $head = rf_git(['rev-parse', 'HEAD']);
     $skinDirs = glob(dirname(__DIR__) . '/skins/*/manifest.json') ?: [];
     $skinNames = array_map(static fn (string $manifest): string => basename(dirname($manifest)), $skinDirs);
     sort($skinNames, SORT_STRING);
@@ -789,6 +805,7 @@ if ($command === 'gate-note') {
         'skin_render_changes' => $renderChanges,
         'browser_regressions' => 'pass',
     ];
+    $note = array_merge($note, rf_demo_parity_note_fields($parityRecord, $parityRaw));
     if (isset($flags['tests'])) $note['tests'] = $flags['tests'];
     if (isset($flags['authority-by'])) $note['authority'] = $flags['authority-by'];
 
