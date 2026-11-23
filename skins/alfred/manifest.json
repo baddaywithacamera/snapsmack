@@ -11,7 +11,7 @@
         "default": "layout.php"
     },
     "name": "ALFRED",
-    "version": "1.0.25",
+    "version": "1.0.26",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A SMACKTALK skin for photographers who write. Faithful recreation of Anders Norén's Hitchcock WordPress theme — dark navigation, Montserrat headings, Droid Serif body text, full-width header image. Named for Alfred Hitchcock.",
@@ -45,9 +45,9 @@
     ],
     "social_dock": {
         "position": "inline",
-        "color_mode": "light",
-        "icon_style": "outline",
-        "shadow": false
+        "default_color_mode": "dark",
+        "default_icon_style": "solid",
+        "default_shadow": false
     },
     "community_comments": "1",
     "community_likes": "0",

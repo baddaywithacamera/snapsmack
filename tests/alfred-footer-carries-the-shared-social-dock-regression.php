@@ -66,6 +66,13 @@ echo "\nSTAGE 2 — THE DOCK'S STYLESHEET REACHES ALFRED, FROM ALFRED'S MANIFEST
 $check('ALFRED declares a social_dock block', is_array($manifest['social_dock'] ?? null));
 $check('  placed inline, in the footer flow',
        ($manifest['social_dock']['position'] ?? '') === 'inline');
+$check('  defaults to white circles with dark glyphs',
+       ($manifest['social_dock']['default_color_mode'] ?? '') === 'dark'
+       && ($manifest['social_dock']['default_icon_style'] ?? '') === 'solid');
+$check('  while appearance remains owner-editable rather than skin-locked',
+       !array_key_exists('color_mode', $manifest['social_dock'])
+       && !array_key_exists('icon_style', $manifest['social_dock'])
+       && !array_key_exists('shadow', $manifest['social_dock']));
 $styles = snapsmack_skin_declared_assets($manifest)['styles'];
 $check('  so the engine stylesheet is registered for ALFRED',
        (bool)array_filter($styles,

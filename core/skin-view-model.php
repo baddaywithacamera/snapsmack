@@ -153,7 +153,7 @@ function snapsmack_prepare_crop_circles(PDO $pdo, array $settings, array $manife
         }
     }
     $dock = is_array($manifest['social_dock'] ?? null) ? $manifest['social_dock'] : [];
-    $dark = (($dock['color_mode'] ?? $settings['social_dock_color_mode'] ?? 'light') === 'dark');
+    $dark = (($settings['social_dock_color_mode'] ?? $dock['default_color_mode'] ?? 'light') === 'dark');
     $color = (string)($dark
         ? ($dock['color_dark'] ?? $settings['social_dock_color_dark'] ?? '#1a1a1a')
         : ($dock['color_light'] ?? $settings['social_dock_color_light'] ?? '#ffffff'));

@@ -31,11 +31,11 @@ if (empty($settings['social_dock_enabled']) || $settings['social_dock_enabled'] 
 }
 
 // ── SKIN OVERRIDES ────────────────────────────────────────────────────────
-// A skin may take ownership of the dock's appearance / location / shadow via a
-// "social_dock" block in its manifest.json. Any key present there wins over the
-// admin setting, and smack-social-dock.php shows "(controlled by skin)" for it.
-// Recognised keys: position, color_mode, icon_style, shadow, color_light,
-// color_dark, opacity, inline.
+// A skin may own placement through its "social_dock" manifest block. It may
+// also declare default_* appearance values, but saved owner settings win and
+// remain editable in smack-social-dock.php.
+// Recognised placement key: position. Appearance defaults: default_color_mode,
+// default_icon_style, default_shadow, default_color_light, default_color_dark.
 if (!function_exists('snapsmack_dock_skin_overrides')) {
     function snapsmack_dock_skin_overrides(array $settings): array {
         $skin = basename((string)($settings['active_skin'] ?? ''));
@@ -176,7 +176,7 @@ $_dock_outline = [
     'email'      => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>',
     'website'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.5 3.7 5.6 3.7 8.5S14.4 18 12 20.5C9.6 18 8.3 14.9 8.3 12S9.6 6 12 3.5z"/></svg>',
 ];
-$_dock_icon_style = (($_dock_ovr['icon_style'] ?? ($settings['social_dock_icon_style'] ?? 'solid')) === 'outline') ? 'outline' : 'solid';
+$_dock_icon_style = (($settings['social_dock_icon_style'] ?? $_dock_ovr['default_icon_style'] ?? 'solid') === 'outline') ? 'outline' : 'solid';
 
 // Pixelfed glyphs (used for THIS site's own fediverse page on image installs;
 // Mastodon glyphs above cover the text install). Solid = filled "P" mark;
@@ -243,20 +243,21 @@ if (empty($_dock_links) && !$_dock_has_download) {
     return;
 }
 
-// Get and validate position (skin override wins)
+// Get and validate position (skin placement wins)
 $_dock_position = $_dock_ovr['position'] ?? ($settings['social_dock_position'] ?? 'bottom-right');
 $_valid_positions = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'left-top', 'left-bottom', 'right-top', 'right-bottom'];
 if (!in_array($_dock_position, $_valid_positions)) {
     $_dock_position = 'bottom-right';
 }
 
-// Appearance settings (skin overrides win over admin settings)
-$_dock_color_light = $_dock_ovr['color_light'] ?? ($settings['social_dock_color_light'] ?? '#ffffff');
-$_dock_color_dark  = $_dock_ovr['color_dark']  ?? ($settings['social_dock_color_dark'] ?? '#1a1a1a');
-$_dock_color_mode  = (($_dock_ovr['color_mode'] ?? ($settings['social_dock_color_mode'] ?? 'light')) === 'dark') ? 'dark' : 'light';
-$_dock_shadow      = isset($_dock_ovr['shadow'])
-    ? filter_var($_dock_ovr['shadow'], FILTER_VALIDATE_BOOLEAN)
-    : ((string)($settings['social_dock_shadow'] ?? '1') !== '0');
+// Owner appearance settings win; a skin may declare defaults without locking
+// the matching controls. Position remains a skin-owned placement decision.
+$_dock_color_light = $settings['social_dock_color_light'] ?? ($_dock_ovr['default_color_light'] ?? '#ffffff');
+$_dock_color_dark  = $settings['social_dock_color_dark']  ?? ($_dock_ovr['default_color_dark'] ?? '#1a1a1a');
+$_dock_color_mode  = (($settings['social_dock_color_mode'] ?? $_dock_ovr['default_color_mode'] ?? 'light') === 'dark') ? 'dark' : 'light';
+$_dock_shadow      = array_key_exists('social_dock_shadow', $settings)
+    ? ((string)$settings['social_dock_shadow'] !== '0')
+    : filter_var($_dock_ovr['default_shadow'] ?? true, FILTER_VALIDATE_BOOLEAN);
 $_dock_opacity     = max(0, min(100, (int)($_dock_ovr['opacity'] ?? ($settings['social_dock_opacity'] ?? 50))));
 
 // Active colour based on mode

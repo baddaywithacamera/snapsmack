@@ -828,6 +828,14 @@ input[type="button"],
     margin: 24px auto 0;
 }
 
+.site-header .dock-link,
+.site-header .dock-link:hover,
+#system-footer .dock-link,
+#system-footer .dock-link:hover {
+    color: var(--dock-icon);
+    text-decoration: none;
+}
+
 .site-header .dock-link {
     width: 36px;
     height: 36px;

@@ -48,6 +48,7 @@ require_once $root . '/core/trusted-html.php';
 require_once $root . '/core/skin-render-helpers.php';
 require_once $root . '/core/skin-view-contract.php';
 require_once $root . '/core/indieweb.php';
+require_once $root . '/core/skin-view-model.php';
 
 /** The crop_circles view model core builds, with two configured platforms. */
 function sd_model(array $social = []): array {
@@ -107,6 +108,26 @@ sd_check('Email and external Pixelfed are independent dock links',
          && str_contains($emailDock, 'crop-circles.svg#pixelfed'), $failures);
 sd_check('an invalid email cannot become a dock URL',
          snapsmack_social_email_url('not an address') === '', $failures);
+
+$pdo = new PDO('sqlite::memory:');
+$pdo->exec('CREATE TABLE snap_settings (setting_key TEXT PRIMARY KEY, setting_val TEXT)');
+$alfredDefaults = ['social_dock' => [
+    'position' => 'inline', 'default_color_mode' => 'dark',
+    'default_icon_style' => 'solid', 'default_shadow' => false,
+]];
+$defaultModel = snapsmack_prepare_crop_circles($pdo, [
+    'social_dock_enabled' => '1', 'social_dock_bluesky' => 'https://bsky.app/profile/example.test',
+], $alfredDefaults, []);
+sd_check('a skin can default to white circles with dark glyphs',
+         ($defaultModel['appearance']['icon'] ?? '') === '#1a1a1a'
+         && ($defaultModel['appearance']['background'] ?? '') === 'rgba(255,255,255,.7)', $failures);
+$ownerModel = snapsmack_prepare_crop_circles($pdo, [
+    'social_dock_enabled' => '1', 'social_dock_bluesky' => 'https://bsky.app/profile/example.test',
+    'social_dock_color_mode' => 'light', 'social_dock_color_light' => '#fefefe',
+], $alfredDefaults, []);
+sd_check('an owner setting overrides the skin appearance default',
+         ($ownerModel['appearance']['icon'] ?? '') === '#fefefe'
+         && ($ownerModel['appearance']['background'] ?? '') === 'rgba(0,0,0,.7)', $failures);
 
 // A corner position, for a skin that wants the floating dock rather than a row.
 $corner = (string)snap_render_component('social-dock',

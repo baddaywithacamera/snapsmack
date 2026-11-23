@@ -37,16 +37,18 @@ const dockMarkup = execFileSync('php', ['-r', `
 define('BASE_URL', 'https://example.invalid/');
 require '${phpRoot}/core/trusted-html.php';
 require '${phpRoot}/core/skin-render-helpers.php';
-$model = [
-  'social' => [
-    ['url' => 'https://bsky.app/profile/example.test', 'label' => 'Bluesky', 'icon' => 'bluesky'],
-    ['url' => 'https://pixelfed.social/example', 'label' => 'Pixelfed', 'icon' => 'pixelfed'],
-    ['url' => 'mailto:owner@example.test', 'label' => 'Email', 'icon' => 'email'],
-  ],
-  'appearance' => ['background' => '#111111', 'icon' => '#ffffff', 'opacity' => 0.5],
-  'icon_sprite_url' => 'https://example.invalid/assets/icons/crop-circles.svg',
-  'position' => 'inline',
-];
+require '${phpRoot}/core/indieweb.php';
+require '${phpRoot}/core/skin-view-model.php';
+$pdo = new PDO('sqlite::memory:');
+$pdo->exec('CREATE TABLE snap_settings (setting_key TEXT PRIMARY KEY, setting_val TEXT)');
+$manifest = json_decode(file_get_contents('${phpRoot}/skins/alfred/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
+$crop = snapsmack_prepare_crop_circles($pdo, [
+  'social_dock_enabled' => '1',
+  'social_dock_bluesky' => 'https://bsky.app/profile/example.test',
+  'social_dock_pixelfed' => 'https://pixelfed.social/example',
+  'social_dock_email' => 'owner@example.test',
+], $manifest, []);
+$model = snapsmack_social_dock_model($crop, $manifest);
 echo (string)snap_render_component('social-dock', ['model' => $model]);
 `], { encoding: 'utf8' });
 
@@ -85,6 +87,7 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
       await page.addStyleTag({ path: path.join(root, 'assets', 'css', 'ss-engine-mosaic.css') });
       await page.addStyleTag({ path: path.join(root, 'assets', 'css', 'ss-engine-social-dock.css') });
       await page.addStyleTag({ path: path.join(skinDir, 'style.css') });
+      await page.waitForTimeout(400);
 
       const result = await page.evaluate(async (stormSource) => {
         const header = document.querySelector('.header-image');
@@ -101,6 +104,7 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
         }
         const controls = Array.from(document.querySelectorAll('.social-dock .dock-link')).map((node) => {
           const rect = node.getBoundingClientRect();
+          const nodeStyle = getComputedStyle(node);
           const label = node.querySelector('.screen-reader-text');
           const labelRect = label.getBoundingClientRect();
           const labelStyle = getComputedStyle(label);
@@ -108,6 +112,10 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
             width: rect.width,
             height: rect.height,
             visible: rect.width > 0 && rect.height > 0,
+            backgroundColor: nodeStyle.backgroundColor,
+            color: nodeStyle.color,
+            dockBackgroundVariable: node.closest('.social-dock').style.getPropertyValue('--dock-bg'),
+            dockIconVariable: node.closest('.social-dock').style.getPropertyValue('--dock-icon'),
             label: {
               width: labelRect.width,
               height: labelRect.height,
@@ -181,6 +189,14 @@ const html = `<!doctype html><html><head><base href="${baseHref}"></head>
           `${width}: screen-reader labels occupy no visible navigation space`);
         assert.equal(control.label.overflow, 'hidden', `${width}: screen-reader labels are clipped`);
         assert.equal(control.label.whiteSpace, 'nowrap', `${width}: screen-reader labels cannot wrap over controls`);
+        assert.equal(control.dockBackgroundVariable, 'rgba(255,255,255,.7)',
+          `${width}: the prepared ALFRED model carries its white-circle default`);
+        assert.equal(control.dockIconVariable, '#1a1a1a',
+          `${width}: the prepared ALFRED model carries its dark-glyph default`);
+        assert.equal(control.backgroundColor, 'rgba(255, 255, 255, 0.7)',
+          `${width}: ALFRED defaults to a white dock circle`);
+        assert.equal(control.color, 'rgb(26, 26, 26)',
+          `${width}: ALFRED defaults to a dark grey glyph`);
       }
       assert.ok(result.dock.left >= result.footer.left - 0.5 && result.dock.right <= result.footer.right + 0.5
         && result.dock.top >= result.footer.top - 0.5 && result.dock.bottom <= result.footer.bottom + 0.5,
