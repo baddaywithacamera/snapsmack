@@ -1220,7 +1220,8 @@ function snapsmack_gram_search_dock_presentation(array $settings): array
  * @param string $root        Install root that paths resolve against.
  * @return array{keep: array, rejects: array}
  */
-function snapsmack_reject_undersized_skin_images(array $posted, array $option_meta, string $root): array
+function snapsmack_reject_undersized_skin_images(array $posted, array $option_meta, string $root,
+                                                 array $current = []): array
 {
     $keep    = $posted;
     $rejects = [];
@@ -1228,6 +1229,23 @@ function snapsmack_reject_undersized_skin_images(array $posted, array $option_me
     foreach ($posted as $key => $value) {
         $meta = $option_meta[$key] ?? null;
         if (!is_array($meta) || ($meta['type'] ?? '') !== 'image') { continue; }
+
+        // ONLY A VALUE THE OWNER JUST CHANGED IS JUDGED. Muse raised this on
+        // review and she was right: the hidden input re-posts the CURRENT image
+        // path on EVERY settings save, so without this, an image already
+        // stored that no longer meets a minimum would be measured, refused and
+        // DROPPED the next time its owner saved any unrelated setting -- their
+        // logo quietly wiped, and an "Image not saved" telling-off they did
+        // nothing to earn.
+        //
+        // That is worse than the hole this function was written to close. A
+        // minimum is a rule about what you may CHOOSE, not a licence to delete
+        // what is already there, and an owner whose stored image predates the
+        // minimum keeps it until they pick a different one.
+        if (array_key_exists($key, $current)
+            && (string) $current[$key] === (is_string($value) ? $value : '')) {
+            continue;
+        }
 
         $value = is_string($value) ? trim($value) : '';
         if ($value === '') { continue; }

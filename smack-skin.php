@@ -549,7 +549,16 @@ if (isset($_POST['save_skin_settings'])) {
             $_pick_mf   = snapsmack_load_manifest($_pick_mf_path);
             $_pick_opts = (is_array($_pick_mf) && isset($_pick_mf['options'])) ? $_pick_mf['options'] : [];
         }
-        $_picked = snapsmack_reject_undersized_skin_images($_POST['skin_opt'], $_pick_opts, __DIR__);
+        // The values already stored, so a minimum only judges what the owner
+        // just changed. Without this, re-saving any unrelated setting would
+        // re-measure the stored image path and could drop it.
+        $_pick_current = [];
+        foreach (array_keys($_POST['skin_opt']) as $_ck) {
+            $_scoped = $save_skin . '__' . $_ck;
+            if (isset($settings[$_scoped])) { $_pick_current[$_ck] = (string) $settings[$_scoped]; }
+        }
+        $_picked = snapsmack_reject_undersized_skin_images(
+            $_POST['skin_opt'], $_pick_opts, __DIR__, $_pick_current);
         $_POST['skin_opt'] = $_picked['keep'];
         $_img_rejects      = $_picked['rejects'];
     }

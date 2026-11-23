@@ -2179,8 +2179,8 @@
         ]
     },
     "skin-image-settings-can-use-the-media-library-regression.php": {
-        "assertions": 32,
-        "predicates": 25,
+        "assertions": 36,
+        "predicates": 29,
         "thresholds": [
             200,
             320,

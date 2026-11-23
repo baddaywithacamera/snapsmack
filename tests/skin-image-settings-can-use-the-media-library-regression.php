@@ -180,6 +180,34 @@ if (!$have_gd) {
            ($out['keep']['brand_colour'] ?? null) === 'uploads/small.png'
            && $out['rejects'] === []);
 
+    // MUSE'S REVIEW NOTE, WHICH WAS A REAL FAULT AND NOT A NICETY. The hidden
+    // input re-posts the CURRENT image path on every settings save. So an
+    // image already stored that no longer meets a minimum would have been
+    // measured, refused and DROPPED the next time its owner saved any
+    // unrelated setting -- their logo wiped and an "Image not saved" they did
+    // nothing to earn. A minimum governs what you may CHOOSE; it is not a
+    // licence to delete what is already there.
+    $out = snapsmack_reject_undersized_skin_images(
+        ['treatment_image' => 'uploads/small.png'], $meta, $tmp,
+        ['treatment_image' => 'uploads/small.png']);   // unchanged: already stored
+    $check('an ALREADY-STORED undersized image is left alone on an unrelated save',
+           ($out['keep']['treatment_image'] ?? null) === 'uploads/small.png'
+           && $out['rejects'] === []);
+
+    // But changing it to another undersized one is still refused.
+    $out = snapsmack_reject_undersized_skin_images(
+        ['treatment_image' => 'uploads/wide-short.png'], $meta, $tmp,
+        ['treatment_image' => 'uploads/small.png']);   // changed
+    $check('  while CHANGING it to another undersized image is still refused',
+           !array_key_exists('treatment_image', $out['keep'])
+           && count($out['rejects']) === 1);
+
+    // And with no stored value at all (first time), it is judged.
+    $out = snapsmack_reject_undersized_skin_images(
+        ['treatment_image' => 'uploads/small.png'], $meta, $tmp, []);
+    $check('  and a FIRST choice with nothing stored is judged',
+           !array_key_exists('treatment_image', $out['keep']));
+
     // TRAVERSAL ON A CONTROL WITH NO MINIMUM. This is the one that was a real
     // defect rather than a missing test: the traversal refusal used to sit
     // AFTER the minimum gate, so a control declaring no minimum never reached
@@ -219,7 +247,15 @@ $check('THE LIBRARY IS FETCHED FOR image CONTROLS, not only asset ones',
 
 // FAULT TWO, at the call site.
 $check('the save path runs the minimum check on picked values',
-       str_contains($skin_src, 'snapsmack_reject_undersized_skin_images($_POST[\'skin_opt\']'));
+       str_contains($skin_src, 'snapsmack_reject_undersized_skin_images('));
+// And it hands over the stored values, or the check would judge an image the
+// owner did not just choose and could drop it on an unrelated save.
+// Anchored on the CALL, not on the variable existing anywhere in the file.
+// A mutation that dropped the argument while leaving the block that builds it
+// survived the looser version of this check.
+$check('  and passes the already-stored values so unchanged ones are not judged',
+       str_contains($skin_src, '__DIR__, $_pick_current)')
+       && str_contains($skin_src, "\$save_skin . '__' . \$_ck"));
 $check('  and drops the refused ones from what gets saved',
        str_contains($skin_src, "\$_POST['skin_opt'] = \$_picked['keep'];"));
 
