@@ -38,6 +38,12 @@ declare(strict_types=1);
  * which is also why the admin stopped locking the appearance controls and
  * locks only position, the one thing a skin genuinely owns.
  *
+ * MANIFEST KEY DESCRIPTION — default_icon_style (legacy: icon_style): selects
+ * the solid or outline artwork used by the floating Social Dock. Strict-skin
+ * docks deliberately use the shared single outline sprite family, so this key
+ * does not switch their artwork. Their colour, opacity and other resolved
+ * appearance values still follow the owner-first order above.
+ *
  * Both paths call this. Two implementations that agree by inspection is how
  * they came to disagree in the first place.
  */
@@ -104,6 +110,8 @@ if (!function_exists('snapsmack_social_dock_appearance')) {
      * Returns mode, color, color_light, color_dark, icon_style, shadow,
      * opacity (0-100) and rgb. Each render path turns these into its own
      * presentation; what is shared here is WHO WINS, not how it is drawn.
+     * icon_style switches floating-dock artwork only; strict skins always use
+     * the single outline sprite family documented above.
      */
     function snapsmack_social_dock_appearance(array $settings, array $dock): array {
         $mode = (string) snapsmack_social_dock_resolve(

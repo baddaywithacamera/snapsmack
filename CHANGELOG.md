@@ -18,6 +18,20 @@ section until the tag was being assembled, which would have told owners their
 photographs come back in a build that does not carry the change. The branches
 are pushed and waiting on review.
 
+- **Social Dock settings reach every render path, and the icons are one clean
+  outline family.** The owner now wins over a skin's appearance defaults on
+  both the floating and strict-skin docks; skins lock only dock position, not
+  colour, shadow or icon controls the owner is allowed to change. SCROLL,
+  GLIDE and FULL MONTY declare those values as defaults accordingly. Email and
+  an independent external Pixelfed profile are normal saved profile links,
+  separate from the site's own fediverse identity. Bluesky and YouTube have
+  been redrawn to match the other seventeen outline glyphs. ALFRED defaults to
+  a transparent white ring with a white outline glyph in both its compact
+  header dock and footer, while every appearance value remains owner-editable.
+  Strict-skin docks intentionally use this single outline sprite family;
+  Solid/Outline switches artwork only for the floating dock. (SS-1553,
+  SS-1554, SS-1555, SS-1560)
+
 - **Your social links show as icons again, instead of the words "Vero Bluesky
   Linktree Website" piled on top of the navigation circles.** Every social dock
   link carries a hidden label so a screen reader can say where it goes, and

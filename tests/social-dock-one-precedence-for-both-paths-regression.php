@@ -159,10 +159,9 @@ if ($failures) {
     exit(1);
 }
 echo "PASS — one resolver, owner first, skin defaults second, legacy third.\n";
-echo "NOT PROVED HERE: that the strict path can DRAW an outline icon. It uses\n";
-echo "a sprite with one symbol per platform and no outline variants, so\n";
-echo "icon_style reaches the model and has nothing to switch to. Reported\n";
-echo "separately; it needs outline symbols in the sprite, not a code change.\n";
+echo "STRICT ARTWORK CONTRACT: strict skins draw the shared single outline\n";
+echo "sprite family. icon_style switches floating-dock artwork only and does\n";
+echo "not restyle strict skins. The sprite geometry is proved separately.\n";
 exit(0);
 
 // ===== SNAPSMACK EOF =====

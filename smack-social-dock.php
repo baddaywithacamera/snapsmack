@@ -207,13 +207,14 @@ include 'core/sidebar.php';
                     </select>
                     <?php endif; ?>
 
-                    <label class="mt-15">ICON STYLE <span class="field-tip" data-tip="Solid glyphs are the bold brand marks. Outline glyphs are lighter line-art that suits minimal, hairline skins.">ⓘ</span></label>
+                    <label class="mt-15">ICON STYLE <span class="field-tip" data-tip="Floating docks can use solid or outline artwork. Strict-skin docks use the single outline glyph family, so this setting does not switch their artwork.">ⓘ</span></label>
                     <?php if ($_dock_locked('icon_style')): $_dock_lock_note(); else: ?>
                     <?php $current_icon_style = $settings['social_dock_icon_style'] ?? 'solid'; ?>
                     <select name="social_dock_icon_style">
                         <option value="solid" <?php echo $current_icon_style === 'solid' ? 'selected' : ''; ?>>Solid (bold brand marks)</option>
                         <option value="outline" <?php echo $current_icon_style === 'outline' ? 'selected' : ''; ?>>Outline (line art)</option>
                     </select>
+                    <p class="dim">Strict-skin docks always use SnapSmack's single outline glyph family. This choice switches artwork only on the floating dock.</p>
                     <?php endif; ?>
                 </div>
 

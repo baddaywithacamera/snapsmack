@@ -66,8 +66,8 @@
         ]
     },
     "alfred-footer-carries-the-shared-social-dock-regression.php": {
-        "assertions": 24,
-        "predicates": 22,
+        "assertions": 26,
+        "predicates": 26,
         "thresholds": [
             2,
             6,
@@ -75,8 +75,8 @@
         ]
     },
     "alfred-header-parity-regression.php": {
-        "assertions": 19,
-        "predicates": 16,
+        "assertions": 20,
+        "predicates": 17,
         "thresholds": [
             2,
             2,
@@ -2720,6 +2720,11 @@
         "predicates": 4,
         "thresholds": []
     },
+    "social-dock-email-pixelfed-admin-regression.php": {
+        "assertions": 13,
+        "predicates": 8,
+        "thresholds": []
+    },
     "social-dock-one-precedence-for-both-paths-regression.php": {
         "assertions": 23,
         "predicates": 3,
@@ -2774,6 +2779,11 @@
     "ss1284-updater-temp-dir-regression.php": {
         "assertions": 3,
         "predicates": 43,
+        "thresholds": []
+    },
+    "ss1555-social-dock-outline-regression.php": {
+        "assertions": 10,
+        "predicates": 9,
         "thresholds": []
     },
     "stanley-cms-media-slot-regression.php": {
