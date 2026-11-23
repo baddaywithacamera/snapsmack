@@ -817,6 +817,11 @@
             19
         ]
     },
+    "fleet-site-likes-regression.php": {
+        "assertions": 11,
+        "predicates": 11,
+        "thresholds": []
+    },
     "fleet-skin-push-includes-the-hub-regression.php": {
         "assertions": 0,
         "predicates": 37,
