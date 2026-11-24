@@ -2068,7 +2068,7 @@ p.comment-form-author { margin-right: 5%; }
    Square mode is owned completely by the shared mosaic engine. */
 .alfred-archive-grid:not(.ss-square-wall) {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 30px;
 }
 
