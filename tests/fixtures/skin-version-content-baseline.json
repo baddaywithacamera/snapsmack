@@ -73,8 +73,8 @@
             "manifest_css_sha256": "f5ade19134d0fe0731b124814ea8cf74151079a73356af70e3fe19cd87006aa7"
         },
         "new-horizon": {
-            "version": "1.3.43",
-            "files_sha256": "25a2605750e44b9b77894578f85241f44790549ade5acc0006fdcee25737ff01",
+            "version": "1.3.44",
+            "files_sha256": "64195ba76cfd7f9ea9ef2828eaaf76547ead92721b4cba63b849bca050c9c68d",
             "manifest_css_sha256": "636c3055d28a87d25c9279c82d8828206732c034b63459d62a81214e1bacea0d"
         },
         "onyx": {
