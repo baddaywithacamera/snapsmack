@@ -2,8 +2,8 @@
 ft-batch-poster — drive.py
 Google Drive authentication and file upload.
 
-First run: opens a browser for OAuth consent. After that, token.json
-handles it silently — no browser, no fuss.
+First run: opens a browser for OAuth consent. After that, the protected shared
+credential store handles it silently across app restarts and upgrades.
 """
 
 # SNAPSMACK_EOF_HEADER
@@ -15,6 +15,7 @@ handles it silently — no browser, no fuss.
 
 
 import hashlib
+import json
 import os
 import sys
 from contextlib import contextmanager
@@ -33,6 +34,7 @@ SCOPES = ['https://www.googleapis.com/auth/drive']
 # must not lose a grant and leave an orphan) and not the client default (that
 # loop can hang a desktop GUI for minutes). See upload().
 _PERM_RETRIES = 2
+_TOKEN_VAULT_KEY = 'sybu_google_drive_authorized_user'
 
 
 class DriveAuthorizationExpired(RuntimeError):
@@ -42,6 +44,82 @@ class DriveAuthorizationExpired(RuntimeError):
     owner has to DO something different in each case and the window used to say
     the same three words -- Drive Disconnected -- for all of them.
     """
+
+
+def _shared_credential_store():
+    """Return SnapSmack's protected shared vault, if it is available.
+
+    SYBU used to keep ``token.json`` beside the executable.  That makes the
+    authorization belong to one build directory instead of to the installed
+    application.  The shared vault is stable across upgrades and protects its
+    key with the operating system's credential service.
+    """
+    base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) \
+        else os.path.dirname(os.path.abspath(__file__))
+    shared = os.path.abspath(os.path.join(base, '..', '_shared'))
+    if os.path.isdir(shared) and shared not in sys.path:
+        sys.path.insert(0, shared)
+    try:
+        import snap_creds
+        return snap_creds
+    except Exception:
+        return None
+
+
+def _saved_authorization() -> str:
+    """Read the saved authorized-user JSON and migrate an old token file.
+
+    Protected storage is canonical. An old file is used only when the vault has
+    no grant, so an installed copy can be upgraded without asking for consent
+    again. Migration is copy-first: a failed vault write leaves the old file
+    intact and usable for this run.
+    """
+    store = _shared_credential_store()
+    if store is not None:
+        try:
+            protected = store.get(_TOKEN_VAULT_KEY, '')
+            if protected:
+                return protected
+        except Exception:
+            pass
+
+    legacy = _token_path()
+    if os.path.isfile(legacy):
+        try:
+            with open(legacy, 'r', encoding='utf-8') as fh:
+                text = fh.read()
+            json.loads(text)
+        except Exception:
+            # Return the unreadable value so authorization_state can distinguish
+            # a damaged saved grant from a machine that was never connected.
+            return text if 'text' in locals() else '{'
+        if text:
+            if store is not None:
+                try:
+                    store.set(_TOKEN_VAULT_KEY, text)
+                except Exception:
+                    pass
+            return text
+    return ''
+
+
+def _store_authorization(text: str) -> None:
+    """Persist authorized-user JSON in protected storage and verify the write."""
+    store = _shared_credential_store()
+    if store is None:
+        raise RuntimeError(
+            'Google Drive connected, but SYBU could not reach the protected '
+            'credential store. The authorization was not saved; reconnect '
+            'after the credential store is available.')
+    store.set(_TOKEN_VAULT_KEY, text)
+    if store.get(_TOKEN_VAULT_KEY, '') != text:
+        raise RuntimeError(
+            'Google Drive connected, but SYBU could not verify the saved '
+            'authorization. It will not claim that reconnect is complete.')
+
+
+def _credentials_from_text(text: str):
+    return Credentials.from_authorized_user_info(json.loads(text), SCOPES)
 
 
 def authorization_state(credentials_path: str = '') -> tuple:
@@ -60,16 +138,15 @@ def authorization_state(credentials_path: str = '') -> tuple:
 
     States: 'connected', 'no_client', 'never', 'expired', 'unreadable'.
     """
-    if credentials_path and not os.path.isfile(credentials_path):
-        return ('no_client', 'Google credentials file not found. Choose it in '
-                             'Connection and services.')
-
-    token_path = _token_path()
-    if not os.path.exists(token_path):
+    saved = _saved_authorization()
+    if not saved:
+        if credentials_path and not os.path.isfile(credentials_path):
+            return ('no_client', 'Google credentials file not found. Choose it in '
+                                 'Connection and services.')
         return ('never', 'Drive is not connected yet. Open Connection and '
                          'services, then Connect Drive.')
     try:
-        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+        creds = _credentials_from_text(saved)
     except Exception:
         return ('unreadable', 'The saved Drive authorization could not be read. '
                               'Open Connection and services, then Connect Drive.')
@@ -91,7 +168,7 @@ def authorization_state(credentials_path: str = '') -> tuple:
 
 
 def _token_path() -> str:
-    """token.json lives next to the exe (or script in dev)."""
+    """Legacy token location, retained only for safe one-time migration."""
     if getattr(sys, 'frozen', False):
         base = os.path.dirname(sys.executable)
     else:
@@ -107,11 +184,11 @@ def authenticate(credentials_path: str, allow_consent: bool = True):
     Returns a Drive API service object.
     """
     creds = None
-    token_path = _token_path()
+    saved = _saved_authorization()
 
-    if os.path.exists(token_path):
+    if saved:
         try:
-            creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+            creds = _credentials_from_text(saved)
         except Exception:
             # A token file that cannot be parsed is a RECONNECT, not a crash.
             # google-auth raises for a file missing refresh_token, and for
@@ -167,19 +244,18 @@ def authenticate(credentials_path: str, allow_consent: bool = True):
                     + (f"\n\nDetails: {msg}" if msg else "")
                 ) from e
             creds = flow.run_local_server(port=0)
-        with open(token_path, 'w') as f:
-            f.write(creds.to_json())
+        _store_authorization(creds.to_json())
 
     return build('drive', 'v3', credentials=creds)
 
 
 def is_authenticated() -> bool:
-    """Return True if a valid token.json already exists."""
-    token_path = _token_path()
-    if not os.path.exists(token_path):
+    """Return True if a reusable authorization is saved."""
+    saved = _saved_authorization()
+    if not saved:
         return False
     try:
-        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+        creds = _credentials_from_text(saved)
         return creds and (creds.valid or creds.refresh_token)
     except Exception:
         return False
@@ -422,7 +498,13 @@ def probe_folder(service, folder_id: str) -> dict:
 
 
 def revoke_token() -> None:
-    """Delete the saved token, forcing re-authentication next time."""
+    """Delete protected and legacy tokens, forcing re-authentication."""
+    store = _shared_credential_store()
+    if store is not None:
+        try:
+            store.delete(_TOKEN_VAULT_KEY)
+        except Exception:
+            pass
     token_path = _token_path()
     if os.path.exists(token_path):
         os.unlink(token_path)
