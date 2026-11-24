@@ -577,7 +577,8 @@ class Hub(tk.Tk):
             launch.bind("<space>", activate)
             foot = tk.Frame(cell, bg=CARD)
             foot.pack(fill="x", pady=(2, 0))
-            tk.Label(foot, text=(sub if exe else "not installed"),
+            disabled_label = "coming soon" if name == "DRIVE BY" else "not installed"
+            tk.Label(foot, text=(sub if exe else disabled_label),
                      bg=CARD, fg=DIM, font=("Segoe UI", 8)).pack(side="left", anchor="w")
             if exe:
                 for label, where in (("DESKTOP", "desktop"), ("TASKBAR", "taskbar")):

@@ -11,33 +11,29 @@ from PySide6.QtWidgets import (
 )
 
 from _version import BUILD_VERSION
-from driveby_core.audit_log import append_deletion_record
 from driveby_core.auth_state import (
-    CRED_B2_APP_KEY, CRED_B2_KEY_ID, DEFAULT_GRANT_LIFETIME_DAYS,
-    DRIVE_SCOPE, GrantStatus, get_grant_status, record_drive_grant,
-    revoke_drive_grant, validate_b2_credentials,
+    CRED_B2_APP_KEY,
+    CRED_B2_KEY_ID,
+    CredentialStoreUnavailableError,
+    DRIVE_SCOPE,
+    DriveAuthState,
+    TotpStepUpGuard,
+    get_drive_auth_state,
+    revoke_drive_grant,
+    validate_b2_credentials,
 )
+from driveby_core.executor import PruneExecutionResult, execute_prune_plan
 from driveby_core.models import BackupRecord, format_bytes, summarize_inventory
 from driveby_core.providers import (
-    FakeB2Provider, FakeDriveProvider, PROVIDER_LABELS, RECOVERY_WINDOWS_DAYS,
+    GoogleDriveProvider,
+    PROVIDER_LABELS,
+    RECOVERY_WINDOWS_DAYS,
 )
 from driveby_core.retention import KeepRule, PrunePlan, build_prune_plan
 
 
-class _MemoryCredStore:
-    """Fallback in-memory store when snap_creds is unavailable in isolated tests."""
-
-    def __init__(self):
-        self._data: dict[str, str] = {}
-
-    def get(self, key: str, default: str = "") -> str:
-        return self._data.get(key, default)
-
-    def set(self, key: str, value: str):
-        self._data[key] = str(value)
-
-
 def _default_cred_store():
+    """Open SnapSmack's protected shared vault (snap_creds). Fails closed if unavailable."""
     shared_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "_shared"))
     if os.path.isdir(shared_dir) and shared_dir not in sys.path:
         sys.path.insert(0, shared_dir)
@@ -45,53 +41,57 @@ def _default_cred_store():
         import snap_creds  # type: ignore
         snap_creds.init()
         return snap_creds
-    except Exception:  # noqa: BLE001
-        return _MemoryCredStore()
+    except Exception as exc:  # noqa: BLE001
+        raise CredentialStoreUnavailableError(
+            f"Protected credential vault (snap_creds) is unavailable: {exc}"
+        ) from exc
 
 
 class CredentialsDialog(QDialog):
-    """Manage DRIVE BY's own credentials (drive.file + bucket-restricted B2 app key)."""
+    """Inspect/connect shared SYBU/SUYB Drive OAuth grant and B2 bucket-restricted app key."""
 
-    def __init__(self, store, post_fn=None, parent=None):
+    def __init__(self, store, vault_error: str = "", post_fn=None, oauth_connect_fn=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("DRIVE BY — Link & Keys (isolated from SUYB)")
-        self.resize(520, 320)
+        self.setWindowTitle("DRIVE BY — Shared Drive Auth & Keys")
+        self.resize(540, 320)
         self._store = store
+        self._vault_error = vault_error
         self._post_fn = post_fn
+        self._oauth_connect_fn = oauth_connect_fn
 
         layout = QVBoxLayout(self)
         form = QFormLayout()
 
-        scope_lbl = QLabel(f"Google Drive scope: {DRIVE_SCOPE}")
+        scope_lbl = QLabel(
+            f"Google Drive reuses SYBU/SUYB's shared vault grant ({DRIVE_SCOPE}; no token pasting)."
+        )
         scope_lbl.setObjectName("Muted")
+        scope_lbl.setWordWrap(True)
         layout.addWidget(scope_lbl)
 
-        self.drive_token_edit = QLineEdit()
-        self.drive_token_edit.setEchoMode(QLineEdit.Password)
-        self.drive_token_edit.setPlaceholderText("OAuth refresh token (drive.file only)")
-        form.addRow("Drive refresh token:", self.drive_token_edit)
-
-        self.lifetime_spin = QSpinBox()
-        self.lifetime_spin.setRange(1, 90)
-        self.lifetime_spin.setValue(DEFAULT_GRANT_LIFETIME_DAYS)
-        form.addRow("Grant lifetime (days):", self.lifetime_spin)
+        self.drive_state_lbl = QLabel("")
+        self.drive_state_lbl.setWordWrap(True)
+        form.addRow("Google Drive:", self.drive_state_lbl)
 
         drive_btns = QHBoxLayout()
-        self.save_drive_btn = QPushButton("Save Drive Grant")
-        self.save_drive_btn.setObjectName("Primary")
-        self.save_drive_btn.clicked.connect(self.save_drive_grant)
-        drive_btns.addWidget(self.save_drive_btn)
+        self.connect_drive_btn = QPushButton("Connect / Reconnect Google Drive")
+        self.connect_drive_btn.setObjectName("Primary")
+        self.connect_drive_btn.clicked.connect(self.connect_drive)
+        drive_btns.addWidget(self.connect_drive_btn)
 
         self.revoke_drive_btn = QPushButton("Revoke Drive Grant")
         self.revoke_drive_btn.clicked.connect(self.revoke_drive)
         drive_btns.addWidget(self.revoke_drive_btn)
         form.addRow("", drive_btns)
 
-        self.b2_key_id_edit = QLineEdit(str(self._store.get(CRED_B2_KEY_ID, "") or ""))
+        b2_kid = str(self._store.get(CRED_B2_KEY_ID, "") or "") if self._store is not None else ""
+        b2_app = str(self._store.get(CRED_B2_APP_KEY, "") or "") if self._store is not None else ""
+
+        self.b2_key_id_edit = QLineEdit(b2_kid)
         self.b2_key_id_edit.setPlaceholderText("Bucket-restricted key ID (starts with K)")
         form.addRow("B2 App Key ID:", self.b2_key_id_edit)
 
-        self.b2_app_key_edit = QLineEdit(str(self._store.get(CRED_B2_APP_KEY, "") or ""))
+        self.b2_app_key_edit = QLineEdit(b2_app)
         self.b2_app_key_edit.setEchoMode(QLineEdit.Password)
         self.b2_app_key_edit.setPlaceholderText("Bucket-restricted B2 application key")
         form.addRow("B2 App Key:", self.b2_app_key_edit)
@@ -110,30 +110,57 @@ class CredentialsDialog(QDialog):
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignRight)
 
-    def save_drive_grant(self) -> bool:
-        tok = self.drive_token_edit.text().strip()
-        if not tok:
-            self.status_lbl.setText("Drive refresh token cannot be empty.")
-            return False
-        record_drive_grant(self._store, tok, lifetime_days=self.lifetime_spin.value())
-        self.drive_token_edit.clear()
-        self.status_lbl.setText(f"Drive grant saved ({self.lifetime_spin.value()}d lifetime).")
-        return True
+        self._sync_state()
+
+    def _sync_state(self):
+        state = get_drive_auth_state(self._store, self._vault_error)
+        self.drive_state_lbl.setText(state.message)
+        vault_ok = (self._store is not None and not self._vault_error)
+        self.connect_drive_btn.setEnabled(vault_ok)
+        self.revoke_drive_btn.setEnabled(vault_ok and state.linked)
+        self.b2_key_id_edit.setEnabled(vault_ok)
+        self.b2_app_key_edit.setEnabled(vault_ok)
+        self.save_b2_btn.setEnabled(vault_ok)
+        if not vault_ok:
+            self.status_lbl.setText(state.message)
+
+    def connect_drive(self) -> tuple[bool, str]:
+        if self._store is None or self._vault_error:
+            msg = self._vault_error or "Protected credential vault is unavailable."
+            self.status_lbl.setText(msg)
+            return False, msg
+        if self._oauth_connect_fn is not None:
+            ok, msg = self._oauth_connect_fn()
+        else:
+            ok, msg = GoogleDriveProvider(cred_store=self._store).connect_oauth()
+        self.status_lbl.setText(msg)
+        self._sync_state()
+        return ok, msg
 
     def revoke_drive(self) -> tuple[bool, str]:
         ok, msg = revoke_drive_grant(self._store, post_fn=self._post_fn)
         self.status_lbl.setText(msg)
+        self._sync_state()
         return ok, msg
 
     def save_b2_keys(self) -> tuple[bool, str]:
+        if self._store is None or self._vault_error:
+            msg = self._vault_error or "Protected credential vault is unavailable; cannot save keys."
+            self.status_lbl.setText(msg)
+            return False, msg
         kid = self.b2_key_id_edit.text().strip()
         secret = self.b2_app_key_edit.text().strip()
         ok, msg = validate_b2_credentials(kid, secret)
         if not ok:
             self.status_lbl.setText(msg)
             return False, msg
-        self._store.set(CRED_B2_KEY_ID, kid)
-        self._store.set(CRED_B2_APP_KEY, secret)
+        try:
+            self._store.set(CRED_B2_KEY_ID, kid)
+            self._store.set(CRED_B2_APP_KEY, secret)
+        except Exception as exc:  # noqa: BLE001
+            err = f"Vault write failed; keys were NOT saved: {exc}"
+            self.status_lbl.setText(err)
+            return False, err
         self.status_lbl.setText(msg)
         return True, msg
 
@@ -141,21 +168,49 @@ class CredentialsDialog(QDialog):
 class MainWindow(QMainWindow):
     """Backup inventory and safe pruning shell. Starts strictly read-only."""
 
-    def __init__(self, providers=None, log_path: str = None, cred_store=None, post_fn=None):
+    def __init__(
+        self,
+        providers=None,
+        log_path: str = None,
+        cred_store=None,
+        post_fn=None,
+        stepup_verifier=None,
+        vault_error: str = "",
+    ):
         super().__init__()
         self.setWindowTitle(f"DRIVE BY — build {BUILD_VERSION}")
         self.resize(1240, 820)
         self.setMinimumSize(960, 660)
 
         self._read_only = True
-        self._providers = providers or [FakeDriveProvider(), FakeB2Provider()]
-        self._provider_map = {p.provider_id: p for p in self._providers}
         self._log_path = log_path
-        self._cred_store = cred_store if cred_store is not None else _default_cred_store()
         self._post_fn = post_fn
+        self._stepup_verifier = stepup_verifier
+        self._totp_guard = TotpStepUpGuard()
+        self._vault_error = str(vault_error or "")
+
+        if cred_store is not None:
+            self._cred_store = cred_store
+        elif self._vault_error:
+            self._cred_store = None
+        else:
+            try:
+                self._cred_store = _default_cred_store()
+            except CredentialStoreUnavailableError as exc:
+                self._cred_store = None
+                self._vault_error = str(exc)
+
+        if providers is not None:
+            self._providers = list(providers)
+        else:
+            self._providers = [
+                GoogleDriveProvider(cred_store=self._cred_store, vault_error=self._vault_error)
+            ]
+        self._provider_map = {p.provider_id: p for p in self._providers}
         self._all_records: list[BackupRecord] = []
         self._plan: PrunePlan = PrunePlan([], [], set(), 0, {})
         self._last_grant_msg: str = ""
+        self._last_execution: PruneExecutionResult | None = None
 
         central = QWidget()
         root = QVBoxLayout(central)
@@ -177,7 +232,7 @@ class MainWindow(QMainWindow):
         self.mode_badge.setObjectName("ReadOnlyBadge")
         h_row.addWidget(self.mode_badge)
 
-        self.grant_lbl = QLabel("Fixtures (offline) · Drive grant: 7d default")
+        self.grant_lbl = QLabel("Checking Google Drive vault status…")
         self.grant_lbl.setObjectName("Muted")
         h_row.addWidget(self.grant_lbl)
         h_row.addStretch(1)
@@ -268,7 +323,12 @@ class MainWindow(QMainWindow):
         self.preview_btn.setObjectName("Primary")
         self.preview_btn.clicked.connect(self.preview_prune)
         ctrl.addWidget(self.preview_btn)
-        self.preview_lbl = QLabel("Newest backup and newest verified backup per blog are always protected.")
+        self.dry_run_btn = QPushButton("Dry-run (0 mutations)")
+        self.dry_run_btn.clicked.connect(self.dry_run_prune)
+        ctrl.addWidget(self.dry_run_btn)
+        self.preview_lbl = QLabel(
+            "Newest and newest verified backup per blog, provider, and type are always protected."
+        )
         self.preview_lbl.setObjectName("Muted")
         ctrl.addWidget(self.preview_lbl, 1)
         p_col.addLayout(ctrl)
@@ -284,6 +344,15 @@ class MainWindow(QMainWindow):
         self.confirm_input.setPlaceholderText("Typed confirmation required")
         self.confirm_input.textChanged.connect(self._sync_execute_btn)
         confirm_row.addWidget(self.confirm_input, 1)
+
+        confirm_row.addWidget(QLabel("Fresh 2FA TOTP:"))
+        self.totp_input = QLineEdit()
+        self.totp_input.setPlaceholderText("6-digit TOTP")
+        self.totp_input.setMaxLength(6)
+        self.totp_input.setMaximumWidth(120)
+        self.totp_input.textChanged.connect(self._sync_execute_btn)
+        confirm_row.addWidget(self.totp_input)
+
         self.execute_btn = QPushButton("Move to Trash / Hide")
         self.execute_btn.setEnabled(False)
         self.execute_btn.clicked.connect(self.execute_prune)
@@ -317,8 +386,12 @@ class MainWindow(QMainWindow):
 
     def refresh_inventory(self):
         records = []
+        errors = []
         for provider in self._providers:
-            records.extend(provider.list_backups())
+            try:
+                records.extend(provider.list_backups())
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"{PROVIDER_LABELS.get(provider.provider_id, provider.provider_id)}: {exc}")
         records.sort(key=lambda r: (r.date_iso, r.blog, r.provider), reverse=True)
         self._all_records = records
 
@@ -334,6 +407,8 @@ class MainWindow(QMainWindow):
 
         self._update_summary(records)
         self._apply_filters()
+        if errors:
+            self.grant_lbl.setText("Inventory error: " + " | ".join(errors))
         if not self._read_only:
             self.preview_prune()
 
@@ -385,7 +460,6 @@ class MainWindow(QMainWindow):
         self._plan = build_prune_plan(self._all_records, rule)
         self.preview_list.clear()
         for rec in self._plan.prune:
-            prov_lbl = PROVIDER_LABELS.get(rec.provider, rec.provider)
             days = RECOVERY_WINDOWS_DAYS.get(rec.provider, 30)
             action = "Drive Trash" if rec.provider == "google_drive" else "B2 Hide"
             self.preview_list.addItem(
@@ -399,31 +473,49 @@ class MainWindow(QMainWindow):
         self._sync_execute_btn()
         return self._plan
 
+    def dry_run_prune(self) -> PruneExecutionResult:
+        self.preview_prune()
+        res = execute_prune_plan(
+            self._plan,
+            self._provider_map,
+            cred_store=self._cred_store,
+            vault_error=self._vault_error,
+            dry_run=True,
+        )
+        self._last_execution = res
+        self.preview_lbl.setText(res.message)
+        return res
+
     def _grant_blocks_deletes(self) -> bool:
-        status = get_grant_status(self._cred_store)
-        if status.revoke_pending:
+        if self._vault_error or self._cred_store is None:
             return True
-        if status.linked and status.expired:
-            return True
+        drive_state = get_drive_auth_state(self._cred_store, self._vault_error)
+        affected = {r.provider for r in self._plan.prune} or {"google_drive"}
+        for pid in affected:
+            if pid == "google_drive" and not drive_state.deletes_allowed:
+                return True
+            prov = self._provider_map.get(pid)
+            if prov is None:
+                return True
+            is_auth_fn = getattr(prov, "is_authenticated", None)
+            if callable(is_auth_fn) and not is_auth_fn():
+                return True
         return False
 
-    def _refresh_grant_status(self) -> GrantStatus:
-        status = get_grant_status(self._cred_store)
-        if status.revoke_pending:
-            self.grant_lbl.setText("Drive grant: REVOKE PENDING (deletes locked)")
-        elif status.linked and status.expired:
-            self.grant_lbl.setText("Drive grant: EXPIRED (re-link required)")
-        elif status.linked:
-            days_left = status.remaining_seconds / 86400.0
-            self.grant_lbl.setText(f"Drive grant: {days_left:.1f}d left (of {status.lifetime_days}d)")
-        else:
-            self.grant_lbl.setText("Fixtures (offline) · Drive grant: unlinked (7d default)")
-        self.revoke_btn.setEnabled(status.linked)
+    def _refresh_grant_status(self) -> DriveAuthState:
+        state = get_drive_auth_state(self._cred_store, self._vault_error)
+        self.grant_lbl.setText(state.message)
+        self.revoke_btn.setEnabled(state.linked and not self._vault_error)
         self._sync_execute_btn()
-        return status
+        return state
 
     def open_credentials_dialog(self):
-        dlg = CredentialsDialog(self._cred_store, post_fn=self._post_fn, parent=self)
+        dlg = CredentialsDialog(
+            self._cred_store,
+            vault_error=self._vault_error,
+            post_fn=self._post_fn,
+            parent=self,
+        )
         dlg.exec()
         self._refresh_grant_status()
 
@@ -438,11 +530,14 @@ class MainWindow(QMainWindow):
 
     def _sync_execute_btn(self):
         n = len(self._plan.prune)
+        totp = self.totp_input.text().strip()
+        totp_ok = totp.isdigit() and len(totp) == 6
         ok = (
             not self._read_only
             and not self._grant_blocks_deletes()
             and n > 0
             and self.confirm_input.text().strip() == self._expected_confirm_text()
+            and totp_ok
         )
         self.execute_btn.setEnabled(ok)
 
@@ -451,18 +546,26 @@ class MainWindow(QMainWindow):
             return 0
         if self.confirm_input.text().strip() != self._expected_confirm_text():
             return 0
-        count = 0
-        for rec in list(self._plan.prune):
-            prov = self._provider_map.get(rec.provider)
-            if prov is None:
-                continue
-            res = prov.trash_backup(rec)
-            append_deletion_record(
-                rec, res.get("action", "trash"),
-                res.get("recovery_days", 30), log_path=self._log_path)
-            count += 1
+
+        totp = self.totp_input.text().strip()
+        self.totp_input.clear()
+
+        res = execute_prune_plan(
+            self._plan,
+            self._provider_map,
+            cred_store=self._cred_store,
+            vault_error=self._vault_error,
+            totp_code=totp,
+            totp_guard=self._totp_guard,
+            stepup_verifier=self._stepup_verifier,
+            log_path=self._log_path,
+            dry_run=False,
+        )
+        self._last_execution = res
+        self.confirm_input.clear()
         self.refresh_inventory()
-        return count
+        self.preview_lbl.setText(res.message)
+        return res.succeeded
 
 
 # ===== SNAPSMACK EOF =====

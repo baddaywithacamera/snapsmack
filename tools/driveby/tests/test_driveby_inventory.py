@@ -44,7 +44,7 @@ def test_b2_master_key_detection():
 
 def test_mainwindow_starts_read_only_and_populates_inventory():
     app = _app()
-    win = MainWindow()
+    win = MainWindow(providers=[FakeDriveProvider(), FakeB2Provider()])
     win.setAttribute(Qt.WA_DontShowOnScreen, True)
     win.show()
     app.processEvents()
@@ -58,6 +58,16 @@ def test_mainwindow_starts_read_only_and_populates_inventory():
     win.provider_filter.setCurrentIndex(idx)
     app.processEvents()
     assert win.table.rowCount() == 6
+    win.close()
+
+
+def test_mainwindow_production_default_uses_real_google_drive_provider():
+    app = _app()
+    win = MainWindow(cred_store={}, vault_error="vault locked in test")
+    win.setAttribute(Qt.WA_DontShowOnScreen, True)
+    assert len(win._providers) == 1
+    assert win._providers[0].provider_id == "google_drive"
+    assert win._providers[0].__class__.__name__ == "GoogleDriveProvider"
     win.close()
 
 

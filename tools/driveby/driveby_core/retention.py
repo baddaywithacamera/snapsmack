@@ -24,34 +24,35 @@ class PrunePlan:
 def build_prune_plan(records: List[BackupRecord], rule: KeepRule = None) -> PrunePlan:
     """Partition active backups into keep vs prune sets.
 
-    Non-negotiable safety invariants:
-    1. Never mark the newest backup per blog for deletion.
-    2. Never mark the newest verified (or INSTANT REPLAY tested) backup per blog.
-    3. Apply optional keep_last_n + keep_one_per_month per blog.
+    Non-negotiable safety invariants (enforced per blog, per provider, per backup_type):
+    1. Never mark the newest backup per (blog, provider, backup_type) for deletion.
+    2. Never mark the newest verified (or INSTANT REPLAY tested) backup per (blog, provider, backup_type).
+    3. Apply optional keep_last_n + keep_one_per_month per (blog, provider, backup_type).
     """
     rule = rule or KeepRule()
     keep_n = max(1, int(rule.keep_last_n or 1))
     active = [r for r in records if not r.trashed]
 
-    by_blog: Dict[str, List[BackupRecord]] = {}
+    groups: Dict[tuple, List[BackupRecord]] = {}
     for rec in active:
-        by_blog.setdefault(rec.blog, []).append(rec)
+        key = (rec.blog, rec.provider, rec.backup_type or "unknown")
+        groups.setdefault(key, []).append(rec)
 
     keep_ids: Set[str] = set()
     protected_ids: Set[str] = set()
 
-    for _blog, items in by_blog.items():
+    for _group_key, items in groups.items():
         # Sort newest first
         ordered = sorted(items, key=lambda r: (r.date_iso, r.filename, r.remote_id), reverse=True)
         if not ordered:
             continue
 
-        # Invariant 1: newest backup per blog is always protected
+        # Invariant 1: newest backup per (blog, provider, backup_type) is always protected
         newest = ordered[0]
         keep_ids.add(newest.remote_id)
         protected_ids.add(newest.remote_id)
 
-        # Invariant 2: newest verified or replayed backup per blog is always protected
+        # Invariant 2: newest verified or replayed backup per (blog, provider, backup_type) is always protected
         for rec in ordered:
             if rec.verified or rec.replayed:
                 keep_ids.add(rec.remote_id)
