@@ -27,11 +27,28 @@ LAUNCHERS = [
 ]
 
 
-def _env_with_cli(tmp_path: Path, *, enabled: bool) -> dict:
+def _env_with_cli(tmp_path: Path, *, enabled: bool, trusted: bool = True, policy: str = "30_days") -> dict:
+    import time
+    sys.path.insert(0, str(TOOLS_DIR / "_shared"))
+    import snap_session_gate
+
     home = tmp_path / "snapsmack_home"
     cfg = home / "config_files" / "snap-hq" / "desktop_cli.json"
     cfg.parent.mkdir(parents=True, exist_ok=True)
-    cfg.write_text(json.dumps({"cli_enabled": enabled, "stepup_policy": "30_days"}), encoding="utf-8")
+    cfg.write_text(json.dumps({"cli_enabled": enabled, "stepup_policy": policy}), encoding="utf-8")
+    if trusted:
+        sess = home / "config_files" / "snap-hq" / "desktop_session.json"
+        now = int(time.time())
+        sess.write_text(json.dumps({
+            "schema": 1,
+            "username": "sean",
+            "login_at": now,
+            "totp_at": now,
+            "totp_window_days": 30,
+            "last_online_ok": now,
+            "totp_required_on_reconnect": False,
+            "device_id": snap_session_gate.current_device_id(),
+        }), encoding="utf-8")
     env = os.environ.copy()
     env["SNAPSMACK_HOME"] = str(home)
     env.pop("PYTEST_CURRENT_TEST", None)
@@ -129,5 +146,31 @@ def test_real_engine_commands_execute(tmp_path):
     # 9. KEYS PLEASE keys
     rc, res = _run_cli(TOOLS_DIR / "keysplease" / "keysplease_qt_launcher.py", ["keys"], env)
     assert rc == 0 and "keys" in res["data"]
+
+def test_session_gate_stepup_enforcement(tmp_path, monkeypatch):
+    sys.path.insert(0, str(TOOLS_DIR / "_shared"))
+    import snap_session_gate
+
+    # 1. Missing 30-day device trust -> refused (exit code 3)
+    env_untrusted = _env_with_cli(tmp_path / "untrusted", enabled=True, trusted=False)
+    rc, res = _run_cli(TOOLS_DIR / "cronometer" / "cronometer.py", ["sites"], env_untrusted)
+    assert rc == 3 and res["error"]["code"] == "permission"
+
+    # 2. Policy = every_use -> refused even with 30-day device trust (exit code 3)
+    env_every = _env_with_cli(tmp_path / "every", enabled=True, trusted=True, policy="every_use")
+    rc2, res2 = _run_cli(TOOLS_DIR / "cronometer" / "cronometer.py", ["sites"], env_every)
+    assert rc2 == 3 and res2["error"]["code"] == "permission"
+
+    # 3. Pluggable second factor (e.g. FIDO2/WebAuthn hardware key in SS-1564) satisfies delete without TOTP
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path / "pluggable"))
+    cfg = tmp_path / "pluggable" / "config_files" / "snap-hq" / "desktop_cli.json"
+    cfg.parent.mkdir(parents=True, exist_ok=True)
+    cfg.write_text(json.dumps({"cli_enabled": True, "stepup_policy": "30_days"}), encoding="utf-8")
+    state = snap_session_gate.require_stepup_for_write(
+        "", "hub/authorize", "", action="delete",
+        second_factor_verifier=lambda: (True, "Hardware key verified"),
+    )
+    assert state.totp_at > 0
+
 
 # ===== SNAPSMACK EOF =====

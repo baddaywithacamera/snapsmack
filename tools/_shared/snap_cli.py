@@ -239,6 +239,7 @@ def run(app, configure, execute, argv=None):
                     raise ValueError("--result must differ from all input/output paths")
         with contextlib.redirect_stdout(io.StringIO()):
             import snap_hq_gate
+            import snap_session_gate
             try:
                 snap_hq_gate.require_cli()
             except SystemExit as exc:
@@ -247,6 +248,16 @@ def run(app, configure, execute, argv=None):
                 data = {"commands": sorted(sub.choices), "paid_ai_fallback": False,
                         "result_file": True, "scope": "Saved files and app services; no live GUI-session attachment"}
             else:
+                action_kind = "delete" if "delete" in str(args.command).lower() else "inspect"
+                snap_session_gate.require_stepup_for_write(
+                    os.environ.get("SNAPSMACK_STEPUP_URL", ""),
+                    os.environ.get("SNAPSMACK_STEPUP_ROUTE", "hub/authorize"),
+                    os.environ.get("SNAPSMACK_STEPUP_KEY", ""),
+                    action=action_kind,
+                    username=os.environ.get("SNAPSMACK_STEPUP_USER", ""),
+                    password=os.environ.get("SNAPSMACK_STEPUP_PASSWORD", ""),
+                    totp_code=os.environ.get("SNAPSMACK_STEPUP_TOTP", ""),
+                )
                 data = execute(args)
         envelope = {"ok": True, "protocol": PROTOCOL, "app": app, "data": data}
     except SystemExit as exc:
