@@ -12,15 +12,14 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 const root = path.resolve(__dirname, '..', '..');
-const roster = fs.readFileSync(
-  path.join(root, 'projects', 'snapsmack-ca', 'includes', 'skin-stats.php'),
-  'utf8'
-);
-const fleetBlock = roster.match(/\$_skin_fleet_sources\s*=\s*\[(.*?)\];/s)?.[1] || '';
-const sites = Array.from(
-  fleetBlock.matchAll(/'([^']+)'\s*=>\s*'https:\/\/[^']+'/g),
-  (match) => match[1]
-);
+const rosterPath = path.join(root, 'tools', '_build', 'release-visual-sites.txt');
+const sites = fs.readFileSync(rosterPath, 'utf8')
+  .split(/\r?\n/)
+  .map((line) => line.trim())
+  .filter((line) => line && !line.startsWith('#'));
+if (sites.length !== 17 || new Set(sites).size !== sites.length) {
+  throw new Error(`fleet sweep requires 17 unique production-skin sites; found ${sites.length}`);
+}
 const widths = [1920, 1024];
 const evidenceDir = path.join(__dirname, 'evidence', 'ss-1557-fleet-archive-solo-sweep');
 fs.mkdirSync(evidenceDir, { recursive: true });
@@ -139,10 +138,47 @@ async function measure(page, pageType) {
     const labels = Array.from(document.querySelectorAll('.social-dock .screen-reader-text'))
       .filter(visible).map((label) => (label.textContent || '').trim()).filter(Boolean);
     const main = document.querySelector('main, [role="main"], #content, .content');
+    const skinHref = Array.from(document.styleSheets, (sheet) => sheet.href || '')
+      .find((href) => /\/skins\/[^/]+\/style\.css/i.test(href)) || '';
+    const skinSlug = skinHref.match(/\/skins\/([^/]+)\/style\.css/i)?.[1] || 'unknown';
     const pagination = Array.from(document.querySelectorAll(
       '.pagination a, .pagination button, .pager a, .pager button, nav[aria-label*="pagination" i] a, nav[aria-label*="pagination" i] button, .next.page-numbers, a[class*="page"][rel="next"]'
     )).some((element) => !element.closest('noscript') && visible(element));
     const hasMoreSentinel = Boolean(document.querySelector('[data-has-more="1"][data-next-url]'));
+    let trueGritArchive = null;
+    if (kind === 'archive' && skinSlug === 'true-grit') {
+      const legacySelects = Array.from(document.querySelectorAll(
+        '#infobox select[data-archive-select="1"]'
+      )).filter(visible);
+      const legacyLabels = Array.from(document.querySelectorAll(
+        '#infobox .archive-legacy-filter label'
+      )).filter(visible).map((label) => (label.textContent || '').trim());
+      const photographs = Array.from(document.querySelectorAll(
+        '#browse-grid .tg-tile .tg-thumb img, #browse-grid .tg-tile .thumb-link > img'
+      )).filter(visible);
+      const photographRatios = photographs.map((image) => {
+        const rect = image.getBoundingClientRect();
+        return rect.height > 0 ? Number((rect.width / rect.height).toFixed(3)) : 0;
+      }).filter((ratio) => ratio > 0);
+      const links = Array.from(document.querySelectorAll(
+        '#browse-grid .tg-tile .thumb-link'
+      )).filter(visible);
+      trueGritArchive = {
+        legacySelectNames: legacySelects.map((select) => select.getAttribute('name') || ''),
+        legacyLabels,
+        panelFilterVisible: Array.from(document.querySelectorAll('#smack-archive-filter-btn')).some(visible),
+        layoutControlsVisible: Array.from(document.querySelectorAll(
+          '#infobox [data-layout], #infobox [data-calendar-toggle]'
+        )).filter(visible).length,
+        photographRatios,
+        twoToOneCount: photographRatios.filter((ratio) => Math.abs(ratio - 2) <= 0.08).length,
+        shadowedTileCount: links.filter((link) => {
+          const shadow = getComputedStyle(link).boxShadow;
+          return shadow && shadow !== 'none' && !/^rgba?\(0, 0, 0, 0\)$/.test(shadow);
+        }).length,
+        tileCount: links.length,
+      };
+    }
     return {
       pageType: kind,
       url: location.href,
@@ -159,6 +195,7 @@ async function measure(page, pageType) {
       mainTextLength: (main?.innerText || '').trim().length,
       pagination,
       hasMoreSentinel,
+      trueGritArchive,
     };
   }, pageType);
 }
@@ -177,6 +214,27 @@ function defectsFor(before, after, pageType, status) {
     if (before.hasMoreSentinel
       && after.itemCount <= before.itemCount
       && after.imageCount <= before.imageCount) defects.push('endless scroll did not append the next archive batch');
+    if (before.trueGritArchive) {
+      const trueGrit = before.trueGritArchive;
+      if (!trueGrit.legacySelectNames.includes('cat')
+        || !trueGrit.legacySelectNames.includes('album')
+        || !trueGrit.legacyLabels.includes('REGISTRY:')
+        || !trueGrit.legacyLabels.includes('ALBUMS:')) {
+        defects.push('TRUE GRIT legacy REGISTRY and ALBUMS selects are missing');
+      }
+      if (trueGrit.panelFilterVisible) defects.push('TRUE GRIT shows the panel FILTER control');
+      if (trueGrit.layoutControlsVisible) {
+        defects.push(`TRUE GRIT shows ${trueGrit.layoutControlsVisible} T/M/C layout or calendar control(s)`);
+      }
+      if (trueGrit.photographRatios.length < 4) {
+        defects.push('TRUE GRIT archive has fewer than four measurable photographs');
+      } else if (trueGrit.twoToOneCount >= Math.ceil(trueGrit.photographRatios.length / 2)) {
+        defects.push(`TRUE GRIT forces ${trueGrit.twoToOneCount}/${trueGrit.photographRatios.length} photographs to 2:1`);
+      }
+      if (trueGrit.tileCount > 0 && trueGrit.shadowedTileCount !== trueGrit.tileCount) {
+        defects.push(`TRUE GRIT shadows reach ${trueGrit.shadowedTileCount}/${trueGrit.tileCount} archive tiles`);
+      }
+    }
   }
   if (pageType === 'solo' && !before.imageCount) defects.push('solo page has no image');
   return defects;
