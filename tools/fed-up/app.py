@@ -11,6 +11,10 @@ for _p in (SHARED, os.path.join(BASE, "..", "unzucker"), os.path.join(BASE, ".."
     _p = os.path.normpath(_p)
     if os.path.isdir(_p) and _p not in sys.path:
         sys.path.insert(0, _p)
+if "--cli" in sys.argv:
+    sys.path.insert(0, BASE)
+    import app_cli as _desktop_cli
+    raise SystemExit(_desktop_cli.main(sys.argv[sys.argv.index("--cli") + 1:]))
 from fed_up.ui import run
 import snap_single_instance
 if __name__ == "__main__":

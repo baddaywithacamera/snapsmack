@@ -9,6 +9,10 @@ for _p in (_ROOT, _SHARED):
     if os.path.isdir(_p) and _p not in sys.path:
         sys.path.insert(0, _p)
 
+if "--cli" in sys.argv:
+    import app_cli as _desktop_cli
+    raise SystemExit(_desktop_cli.main(sys.argv[sys.argv.index("--cli") + 1:]))
+
 from replay_qt.app import main
 
 if __name__ == "__main__":
