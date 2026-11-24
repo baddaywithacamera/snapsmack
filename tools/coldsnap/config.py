@@ -357,10 +357,11 @@ def load() -> dict:
             'Permitted for use in AI training datasets.'
         )),
         # UI prefs / dismissable flags (see [ui] section in save()).
-        'post_as_grams':           cfg.getboolean('ui', 'post_as_grams', fallback=False),
-        'drive_warning_dismissed': cfg.getboolean('ui', 'drive_warning_dismissed', fallback=False),
-        'win_maximized':           cfg.getboolean('ui', 'win_maximized', fallback=False),
-        'win_geometry':            cfg.get('ui', 'win_geometry', fallback=''),
+        'post_as_grams':             cfg.getboolean('ui', 'post_as_grams', fallback=False),
+        'drive_warning_dismissed':   cfg.getboolean('ui', 'drive_warning_dismissed', fallback=False),
+        'win_maximized':             cfg.getboolean('ui', 'win_maximized', fallback=False),
+        'win_geometry':              cfg.get('ui', 'win_geometry', fallback=''),
+        'dismissed_backup_folders':  _parse_backup_list(cfg.get('ui', 'dismissed_backup_folders', fallback='')),
     }
     _add_shared_to_path()
     try:
@@ -398,6 +399,9 @@ def save(data: dict) -> None:
         ui['win_maximized'] = str(bool(data.get('win_maximized')))
     if 'win_geometry' in data and data.get('win_geometry'):
         ui['win_geometry'] = str(data.get('win_geometry'))
+    if 'dismissed_backup_folders' in data:
+        folders = sorted({str(x).strip() for x in (data.get('dismissed_backup_folders') or []) if str(x).strip()})
+        ui['dismissed_backup_folders'] = json.dumps(folders)
     if ui:
         cfg['ui'] = ui
 
@@ -500,4 +504,45 @@ def save(data: dict) -> None:
     _sc = _shared_creds()
     if _sc:
         _sc.push_shared(data)
+
+
+def _parse_backup_list(raw: str) -> list:
+    raw = (raw or '').strip()
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            return [str(x).strip() for x in parsed if str(x).strip()]
+    except Exception:
+        pass
+    return [part.strip() for part in raw.split(',') if part.strip()]
+
+
+def get_dismissed_backup_folders() -> set:
+    """Return the set of backup folder IDs dismissed or handled in config.ini."""
+    cfg = configparser.ConfigParser()
+    cfg.read(_config_path())
+    raw = cfg.get('ui', 'dismissed_backup_folders', fallback='')
+    return set(_parse_backup_list(raw))
+
+
+def add_dismissed_backup_folders(folder_ids) -> set:
+    """Persist dismissed/handled backup folder IDs in COLD SNAP config.ini."""
+    current = get_dismissed_backup_folders()
+    for item in (folder_ids or []):
+        text = str(item or '').strip()
+        if text:
+            current.add(text)
+    data = load()
+    data['dismissed_backup_folders'] = sorted(current)
+    save(data)
+    return current
+
+
+def clear_dismissed_backup_folders() -> None:
+    """Clear dismissed backup folder IDs so a manual menu import can re-offer them."""
+    data = load()
+    data['dismissed_backup_folders'] = []
+    save(data)
 # ===== SNAPSMACK EOF =====

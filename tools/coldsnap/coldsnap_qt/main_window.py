@@ -10,13 +10,14 @@ import os
 import sys
 
 from PySide6.QtCore import QSettings, QTimer
-from PySide6.QtGui import QIcon, QKeySequence, QShortcut
+from PySide6.QtGui import QAction, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QTabWidget, QLabel, QHBoxLayout,
-    QPushButton, QMessageBox,
+    QPushButton, QMessageBox, QMenu,
 )
 
 from _version import BUILD_VERSION
+import config as cfg_module
 import sumna_offline as O
 import snap_desktop_handoff
 
@@ -146,6 +147,16 @@ class MainWindow(QMainWindow):
         self.focus_btn.clicked.connect(self.set_focus_mode)
         self.connect_panel.header_row.addWidget(self.focus_btn)
         self.take_mode.exitFocusRequested.connect(lambda: self.set_focus_mode(False))
+
+        self.tools_menu = QMenu(self)
+        self.import_backup_action = QAction("Import drafts from backup…", self)
+        self.import_backup_action.triggered.connect(lambda: self.rerun_backup_import())
+        self.tools_menu.addAction(self.import_backup_action)
+        self.tools_menu_btn = QPushButton("⋯")
+        self.tools_menu_btn.setObjectName("Quiet")
+        self.tools_menu_btn.setToolTip("More actions (Import drafts from backup…)")
+        self.tools_menu_btn.setMenu(self.tools_menu)
+        self.connect_panel.header_row.addWidget(self.tools_menu_btn)
 
         self._tab_modes = (
             (O.MODE_SOLO, "COLD ONE-compatible"),
@@ -379,12 +390,33 @@ class MainWindow(QMainWindow):
                 except Exception:
                     pass
 
+    def rerun_backup_import(
+        self,
+        legacy_root: str = None,
+        dest_root: str = None,
+        backup_parent: str = None,
+        ask_fn=None,
+    ):
+        """Re-run the backup draft import check on demand from the menu."""
+        try:
+            cfg_module.clear_dismissed_backup_folders()
+        except Exception:
+            pass
+        return self._run_startup_session_migration(
+            legacy_root=legacy_root,
+            dest_root=dest_root,
+            backup_parent=backup_parent,
+            ask_fn=ask_fn,
+            manual=True,
+        )
+
     def _run_startup_session_migration(
         self,
         legacy_root: str = None,
         dest_root: str = None,
         backup_parent: str = None,
         ask_fn=None,
+        manual: bool = False,
     ):
         """Migrate install-relative drafts to per-user storage and offer backup imports."""
         dest = dest_root or O.default_sessions_root()
@@ -404,6 +436,25 @@ class MainWindow(QMainWindow):
 
         parent = backup_parent if backup_parent is not None else os.path.dirname(O._app_dir())
         backups = O.discover_backup_sessions(parent, dest)
+        dismissed = set()
+        if not manual:
+            try:
+                dismissed.update(cfg_module.get_dismissed_backup_folders())
+            except Exception:
+                pass
+            backups = [
+                b for b in backups
+                if b["backup_name"] not in dismissed
+                and f"{b['backup_name']}::{b['session_id']}" not in dismissed
+            ]
+        elif not backups and ask_fn is None:
+            QMessageBox.information(
+                self,
+                "Import drafts from COLD SNAP backup",
+                "No unimported drafts were found in COLD SNAP backup folders.",
+            )
+            return False
+
         if backups:
             lines = []
             for b in backups[:10]:
@@ -440,15 +491,27 @@ class MainWindow(QMainWindow):
                     if sr in seen_roots:
                         continue
                     seen_roots.add(sr)
-                    imp = O.migrate_sessions_dir(sr, dest, log_path=log_file)
+                    imp = O.migrate_sessions_dir(sr, dest, log_path=log_file, mark_imported=True)
                     if imp.get("migrated"):
                         changed = True
                 if changed:
                     self.statusBar().showMessage(
                         "Imported drafts from COLD SNAP backup folder(s)", 8000)
+            else:
+                # Answering NO remembers the backup folder in config.ini so the
+                # startup prompt never asks again for that folder unless re-run from the menu.
+                new_keys = []
+                for b in backups:
+                    new_keys.append(b["backup_name"])
+                    new_keys.append(f"{b['backup_name']}::{b['session_id']}")
+                try:
+                    cfg_module.add_dismissed_backup_folders(new_keys)
+                except Exception:
+                    pass
 
         if changed:
             self._refresh_session_rails()
+        return changed
 
     def closeEvent(self, event):
         if not self.isMinimized():

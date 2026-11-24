@@ -81,13 +81,6 @@ if (!$exists->fetchColumn()) {
 require_once __DIR__ . '/core/like-identity.php';
 [$user_id, $guest_hash] = snap_like_identity($pdo ?? null);
 
-// --- RATE LIMIT ---
-if (function_exists('community_rate_limit') && !community_rate_limit('likes')) {
-    http_response_code(429);
-    echo json_encode(['error' => 'rate_limited']);
-    exit;
-}
-
 // --- CHECK FOR EXISTING LIKE ---
 if ($user_id) {
     $check = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND user_id = ? LIMIT 1");

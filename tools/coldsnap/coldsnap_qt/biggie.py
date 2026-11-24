@@ -82,7 +82,8 @@ def serialize_block(b: dict) -> str:
         body = "".join(f"  <li>{i}</li>\n" for i in items) or "  <li></li>\n"
         return f"<{tag}>\n{body}</{tag}>"
     if t == "image":
-        if b.get("raw"):
+        cap = str(b.get("caption") or "").strip() if bool(b.get("show_caption")) else ""
+        if b.get("raw") and not cap:
             return str(b["raw"])
         prefix = "g" if b.get("gallery") else ""
         parts = [f"{prefix}{str(b.get('img_id', '')).strip()}"]
@@ -93,6 +94,10 @@ def serialize_block(b: dict) -> str:
                     parts.append("decorative")
             elif val not in (None, ""):
                 parts.append(str(val))
+        if cap:
+            safe_cap = cap.replace("]", "").replace("|", " - ").replace("\n", " ").strip()
+            if safe_cap:
+                parts.append(f"caption={safe_cap}")
         return "[img:" + "|".join(parts) + "]"
     if t == "columns":
         cols = b.get("cols") or [[]]
@@ -142,8 +147,13 @@ _RX = {
         r"(?:\s*\|\s*(small|wall|full))?"
         r"(?:\s*\|\s*(left|center|right))?"
         r"(?:\s*\|\s*(\d{1,3})(?:%)?)?"
-        r"(?:\s*\|\s*(decorative))?\s*\]$",
+        r"(?:\s*\|\s*(decorative))?"
+        r"(?:\s*\|\s*caption=([^|\]]+))?\s*\]$",
         re.IGNORECASE,
+    ),
+    "figure_image": re.compile(
+        r"^<figure[^>]*>\s*(\[img:[^\]]+\])\s*<figcaption[^>]*>(.*?)</figcaption>\s*</figure>$",
+        re.DOTALL | re.IGNORECASE,
     ),
     "mosaic":  re.compile(r"^\[mosaic(?:=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+))?\]$", re.IGNORECASE),
     "columns": re.compile(r"^\[columns=(\d+)(?:\s+ratio=([0-9-]+))?\](.*)\[/columns\]$", re.DOTALL | re.IGNORECASE),
@@ -192,6 +202,14 @@ def _classify(seg: str) -> dict:
                     "order": [int(v) for v in re.split(r"\s*,\s*", m.group(1).strip())],
                     "layout": m.group(2).lower()}
         return {"type": "mosaic"}
+    fm = _RX["figure_image"].match(seg)
+    if fm:
+        inner_blk = _classify(fm.group(1).strip())
+        if inner_blk.get("type") == "image":
+            inner_blk["caption"] = re.sub(r"<[^>]+>", "", fm.group(2)).strip()
+            inner_blk["show_caption"] = bool(inner_blk["caption"])
+            inner_blk.pop("raw", None)
+            return inner_blk
     m = _RX["image"].match(seg)
     if m:
         blk = {"type": "image", "img_id": (m.group(2) or m.group(3) or "").strip(), "raw": seg}
@@ -205,6 +223,10 @@ def _classify(seg: str) -> dict:
             blk["width"] = m.group(6)
         if m.group(7):
             blk["decorative"] = True
+        if m.group(8):
+            blk["caption"] = m.group(8).strip()
+            blk["show_caption"] = True
+            blk.pop("raw", None)
         return blk
     m = _RX["columns"].match(seg)
     if m:

@@ -583,6 +583,8 @@ body a {
 .main-menu ul .menu-item-has-children > a:after,
 .main-menu .page_item_has_children > a:before,
 .main-menu ul .page_item_has_children > a:after,
+.main-menu .nav-has-children > a:before,
+.main-menu ul .nav-has-children > a:after,
 .archive-post-title,
 .post-navigation a,
 .nav-toggle .bar,
@@ -609,6 +611,66 @@ input[type="button"],
 .nav-toggle { display: none; }
 
 .navigation { background: #1d1d1d; }
+.navigation .section-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    position: relative;
+}
+
+.alfred-nav-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-left: 40px;
+}
+
+.alfred-nav-search::before {
+    content: "/";
+    font-size: 14px;
+    color: #3d3d3d;
+    position: absolute;
+    left: -25px;
+    top: 50%;
+    margin-top: 1px;
+    transform: translateY(-50%);
+}
+
+.alfred-nav-search-btn {
+    background: transparent;
+    border: 0;
+    color: #999;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+}
+
+.alfred-nav-search-btn:hover,
+.alfred-nav-search:focus-within .alfred-nav-search-btn {
+    color: #fff;
+}
+
+.alfred-nav-search-input {
+    width: 0;
+    opacity: 0;
+    padding: 0;
+    border: 0;
+    background: #2d2d2d;
+    color: #fff;
+    font-size: 13px;
+    transition: width 0.2s ease, opacity 0.2s ease, padding 0.2s ease;
+}
+
+.alfred-nav-search:hover .alfred-nav-search-input,
+.alfred-nav-search:focus-within .alfred-nav-search-input {
+    width: 180px;
+    opacity: 1;
+    padding: 6px 10px;
+    margin-left: 4px;
+}
 
 .main-menu {
     display: flex;
@@ -656,10 +718,12 @@ input[type="button"],
 }
 
 .main-menu > li.menu-item-has-children > a,
-.main-menu > li.page_item_has_children > a { padding-right: 15px; }
+.main-menu > li.page_item_has_children > a,
+.main-menu > li.nav-has-children > a { padding-right: 15px; }
 
 .main-menu .menu-item-has-children > a:after,
-.main-menu .page_item_has_children > a:after {
+.main-menu .page_item_has_children > a:after,
+.main-menu .nav-has-children > a:after {
     content: "";
     display: block;
     border: 4px solid transparent;
@@ -671,7 +735,8 @@ input[type="button"],
 }
 
 .main-menu > .menu-item-has-children > a:before,
-.main-menu > .page_item_has_children > a:before {
+.main-menu > .page_item_has_children > a:before,
+.main-menu > .nav-has-children > a:before {
     content: "";
     display: block;
     border: 6px solid transparent;
@@ -684,10 +749,12 @@ input[type="button"],
 }
 
 .main-menu > .menu-item-has-children:hover > a:before,
-.main-menu > .page_item_has_children:hover > a:before { bottom: -12px; }
+.main-menu > .page_item_has_children:hover > a:before,
+.main-menu > .nav-has-children:hover > a:before { bottom: -12px; }
 
 .main-menu > .menu-item-has-children:hover > a:after,
-.main-menu > .page_item_has_children:hover > a:after { border-top-color: #fff; }
+.main-menu > .page_item_has_children:hover > a:after,
+.main-menu > .nav-has-children:hover > a:after { border-top-color: #fff; }
 
 /* Sub Menus */
 
@@ -720,7 +787,8 @@ input[type="button"],
 }
 
 .main-menu ul .menu-item-has-children > a:after,
-.main-menu ul .page_item_has_children > a:after {
+.main-menu ul .page_item_has_children > a:after,
+.main-menu ul .nav-has-children > a:after {
     margin-top: -3px;
     border-top-color: transparent;
     border-left-color: #757575;
@@ -728,7 +796,8 @@ input[type="button"],
 }
 
 .main-menu ul .menu-item-has-children:hover > a:after,
-.main-menu ul .page_item_has_children:hover > a:after {
+.main-menu ul .page_item_has_children:hover > a:after,
+.main-menu ul .nav-has-children:hover > a:after {
     border-width: 5px;
     border-top-color: transparent;
     border-left-color: #2d2d2d;
@@ -758,16 +827,20 @@ input[type="button"],
 
 .main-menu ul ul li { background: #3d3d3d; }
 .main-menu ul ul .menu-item-has-children:hover > a:after,
-.main-menu ul ul .page_item_has_children:hover > a:after { border-left-color: #3d3d3d; }
+.main-menu ul ul .page_item_has_children:hover > a:after,
+.main-menu ul ul .nav-has-children:hover > a:after { border-left-color: #3d3d3d; }
 .main-menu ul ul ul li { background: #4d4d4d; }
 .main-menu ul ul ul .menu-item-has-children:hover > a:after,
-.main-menu ul ul ul .page_item_has_children:hover > a:after { border-left-color: #4d4d4d; }
+.main-menu ul ul ul .page_item_has_children:hover > a:after,
+.main-menu ul ul ul .nav-has-children:hover > a:after { border-left-color: #4d4d4d; }
 .main-menu ul ul ul ul li { background: #5d5d5d; }
 .main-menu ul ul ul ul .menu-item-has-children:hover > a:after,
-.main-menu ul ul ul ul .page_item_has_children:hover > a:after { border-left-color: #5d5d5d; }
+.main-menu ul ul ul ul .page_item_has_children:hover > a:after,
+.main-menu ul ul ul ul .nav-has-children:hover > a:after { border-left-color: #5d5d5d; }
 .main-menu ul ul ul ul ul li { background: #6d6d6d; }
 .main-menu ul ul ul ul ul .menu-item-has-children:hover > a:after,
-.main-menu ul ul ul ul ul .page_item_has_children:hover > a:after { border-left-color: #6d6d6d; }
+.main-menu ul ul ul ul ul .page_item_has_children:hover > a:after,
+.main-menu ul ul ul ul ul .nav-has-children:hover > a:after { border-left-color: #6d6d6d; }
 
 
 /* -------------------------------------------------------------------------- */
@@ -775,7 +848,7 @@ input[type="button"],
 /* -------------------------------------------------------------------------- */
 
 
-.header { padding: 70px 0; }
+.header { padding: 48px 0 36px; }
 
 .header.section-inner {
     width: min(600px, 90%);
@@ -784,6 +857,7 @@ input[type="button"],
 }
 
 .blog-title {
+    display: block;
     font-size: 1.75em;
     font-weight: 500;
     letter-spacing: 0.025em;
@@ -791,6 +865,7 @@ input[type="button"],
     text-transform: uppercase;
     text-align: center;
     text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+    width: 100%;
 }
 
 .blog-title a {
@@ -813,9 +888,38 @@ input[type="button"],
     color: #fff;
     font-family: 'Droid Serif', Georgia, serif;
     line-height: 145%;
-    margin-top: 25px;
+    margin-top: 18px;
     text-align: center;
     text-shadow: 0 1px 0 rgba(0,0,0,0.2);
+}
+
+/* The same CMS-owned dock appears beneath the masthead and in the footer.
+   ALFRED owns only its placement and Hitchcock-sized presentation; accounts,
+   links and visibility remain the shared component's data and decisions. */
+.site-header .social-dock-inline {
+    justify-content: center;
+    margin: 24px auto 0;
+}
+
+.site-header .dock-link,
+.site-header .dock-link:hover,
+#system-footer .dock-link,
+#system-footer .dock-link:hover {
+    color: var(--dock-icon);
+    background: transparent;
+    border-color: var(--dock-icon);
+    text-decoration: none;
+}
+
+.site-header .dock-link {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+}
+
+.site-header .dock-link svg {
+    width: 16px;
+    height: 16px;
 }
 
 /* Header Background Image
@@ -1561,11 +1665,27 @@ p.comment-form-author { margin-right: 5%; }
 #system-footer .footer-metadata-bar p {
     text-align: center;
     text-transform: uppercase;
-    color: #9a9a9a;             /* was #666 — too dim on #1d1d1d; bumped for contrast */
+    color: #666;
     font-size: 0.825em;
     font-weight: 500;
     margin: 0;
     line-height: 1.9;
+}
+
+#system-footer .footer-metadata-bar p:first-child {
+    color: #fff;
+    font-size: 1.175em;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+}
+
+#system-footer .footer-metadata-bar p:first-child a,
+#system-footer .footer-metadata-bar p:first-child .footer-link { color: #fff; }
+#system-footer .footer-metadata-bar p:first-child a:hover,
+#system-footer .footer-metadata-bar p:first-child .footer-link:hover { color: var(--alfred-accent); }
+
+#system-footer .footer-metadata-bar p + p {
+    margin-top: 12px;
 }
 
 #system-footer a,
@@ -1582,8 +1702,13 @@ p.comment-form-author { margin-right: 5%; }
    viewport edge, because #footer .inside is full-bleed rather than using
    ALFRED's 1040px .section-inner lane. Checked at 1920, 1440 and 1024. */
 #system-footer .social-dock-inline {
+    flex-wrap: wrap;
     justify-content: center;
     margin-bottom: 24px;
+}
+
+#system-footer .dock-link {
+    flex: 0 0 48px;
 }
 
 
@@ -1661,7 +1786,8 @@ p.comment-form-author { margin-right: 5%; }
 
     /* Navigation */
 
-    .main-menu { display: none; }
+    .main-menu,
+    .alfred-nav-search { display: none; }
 
     .mobile-menu,
     .mobile-menu ul,
@@ -1950,15 +2076,15 @@ p.comment-form-author { margin-right: 5%; }
    ============================================================ */
 
 .alfred-archive-grid {
-    margin: 40px 0;
+    margin: 12px 0 40px;
 }
 
 /* The skin's original auto-fill geometry applies only to its default mode.
    Square mode is owned completely by the shared mosaic engine. */
 .alfred-archive-grid:not(.ss-square-wall) {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    grid-gap: 4px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 30px;
 }
 
 /* The shared mosaic stylesheet owns square-wall geometry.  ALFRED owns only
@@ -1966,6 +2092,7 @@ p.comment-form-author { margin-right: 5%; }
    the engine's four-column fallback regardless of stylesheet order. */
 .alfred-archive-grid.ss-square-wall {
     --ss-square-cols: var(--alfred-square-cols, 3);
+    --ss-gap: 30px;
 }
 
 /* THE SECOND HALF OF THE LANDING REPAIR, and the half I missed first time.

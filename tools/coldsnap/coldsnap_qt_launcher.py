@@ -25,6 +25,12 @@ if "--cli" in _cli_sys.argv:
     _cli_sys.path.insert(0, _cli_os.path.abspath(_cli_os.path.join(_cli_os.path.dirname(__file__), "..", "_shared")))
     import app_cli as _desktop_cli
     raise SystemExit(_desktop_cli.main(_cli_sys.argv[_cli_sys.argv.index("--cli") + 1:]))
+if "--parity-capture" in _cli_sys.argv:
+    import parity_capture as _parity_capture
+    _capture_index = _cli_sys.argv.index("--parity-capture")
+    if _capture_index + 1 >= len(_cli_sys.argv):
+        raise SystemExit("--parity-capture requires an output directory")
+    raise SystemExit(_parity_capture.run(_cli_sys.argv[_capture_index + 1]))
 
 from _version import BUILD_VERSION  # noqa: E402
 

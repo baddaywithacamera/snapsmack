@@ -2,7 +2,7 @@
     "schema_version": 2,
     "name": "NEW HORIZON",
     "oh_snap_ready": true,
-    "version": "1.3.42",
+    "version": "1.3.44",
     "scrolltime_pages": [
         "archive"
     ],
@@ -19,11 +19,11 @@
     },
     "default_variant": "dark",
     "features": {
-        "supports_wall": true,
+        "supports_wall": false,
+        "masonry_supported": false,
         "archive_layouts": [
             "square",
-            "cropped",
-            "masonry"
+            "cropped"
         ],
         "has_landing": false,
         "post_modes": [
@@ -41,8 +41,7 @@
         "smack-image-fade-load",
         "smack-lightbox",
         "smack-keyboard",
-        "smack-justified-lib",
-        "smack-justified",
+        "smack-calendar",
         "smack-community",
         "smack-tag-infinite"
     ],
@@ -54,7 +53,7 @@
             "default": "1280",
             "min": "800",
             "max": "1920",
-            "selector": "#header .inside, #system-footer .inside, #browse-grid, #justified-grid",
+            "selector": "#header .inside, #system-footer .inside, #browse-grid",
             "property": "max-width"
         },
         "gutter_padding": {
@@ -86,8 +85,7 @@
             "default": "square",
             "options": {
                 "square": "Square Grid",
-                "cropped": "Cropped Grid (Natural Aspect)",
-                "masonry": "Justified / Masonry (Flickr Style)"
+                "cropped": "Cropped Grid (Natural Aspect)"
             }
         },
         "archive_columns": {
@@ -1356,25 +1354,6 @@
                     "step": "0.1"
                 }
             }
-        },
-        "masonry_border_width": {
-            "section": "ARCHIVE",
-            "type": "range",
-            "label": "Masonry Border Width (px)",
-            "default": "0",
-            "min": "0",
-            "max": "6",
-            "unit": "px",
-            "selector": ":root",
-            "property": "--masonry-border-width"
-        },
-        "masonry_border_color": {
-            "section": "ARCHIVE",
-            "type": "color",
-            "label": "Masonry Border Colour",
-            "default": "#ffffff",
-            "selector": ":root",
-            "property": "--masonry-border-color"
         }
     },
     "security_policy": 2,

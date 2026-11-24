@@ -374,6 +374,7 @@ body:not(.archive-page):not(.static-transmission) #scroll-stage {
    No z-index — DOM order handles stacking within .chap-img-frame:
    lines (frame-lines.php) < ornaments (frame-deco.php) < image. */
 .rg-image.post-image,
+.chap-img-frame > .post-image,
 .chap-photo {
   max-width: 100%;
   max-height: 100%;

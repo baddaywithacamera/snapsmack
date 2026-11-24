@@ -120,18 +120,17 @@ if (function_exists('snap_maintenance_lock_held')) {
     @mkdir($tmp, 0700, true);
     $lock = $tmp . '/maintenance.lock';
 
-    $case = function (string $label, $contents, bool $expect_held) use ($lock) {
+    $now = time();
+    $case = function (string $label, $contents, bool $expect_held) use ($lock, $now) {
         if ($contents === null) {
             @unlink($lock);
         } else {
             file_put_contents($lock, $contents);
         }
         $age = null;
-        $got = snap_maintenance_lock_held($lock, 300, $age);
+        $got = snap_maintenance_lock_held($lock, 300, $age, $now);
         cvml($label . ' -> ' . ($expect_held ? 'HELD' : 'not held'), $got === $expect_held);
     };
-
-    $now = time();
 
     // No lock at all: the ordinary case, verification proceeds.
     $case('no lock file', null, false);
@@ -162,12 +161,12 @@ if (function_exists('snap_maintenance_lock_held')) {
     // The reported age is for humans only and must never drive the decision.
     $age = null;
     file_put_contents($lock, json_encode(['since' => $now - 42]));
-    snap_maintenance_lock_held($lock, 300, $age);
+    snap_maintenance_lock_held($lock, 300, $age, $now);
     cvml('age is reported for a valid timestamp', $age === 42 || $age === 43);
 
     $age = -1;
     file_put_contents($lock, '');
-    snap_maintenance_lock_held($lock, 300, $age);
+    snap_maintenance_lock_held($lock, 300, $age, $now);
     cvml('age is null when there is no readable timestamp', $age === null);
 
     @unlink($lock);

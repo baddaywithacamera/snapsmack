@@ -11,13 +11,6 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.1002D — opened
-
-Written and tested, NOT on dev, and NOT in 0.7.1000D. These sat in the 1000D
-section until the tag was being assembled, which would have told owners their
-photographs come back in a build that does not carry the change. The branches
-are pushed and waiting on review.
-
 - **A finished paragraph followed by a label is no longer mistaken for a
   wrapped line, and `--unwrap` no longer glues good paragraphs together.** The
   check that stops a ticket going onto the board as a stack of short ragged
@@ -58,6 +51,74 @@ are pushed and waiting on review.
   against that ticket and the run carries on; and the over-long body is refused
   here, before anything is sent, instead of by the server mid-run. `--hold`
   keeps a named ticket out of a bulk run without holding back the rest.
+
+## 0.7.1003D — opened
+
+- **Your archive shows photographs at their real shapes again, not flattened
+  into letterboxes.** After updating to 0.7.1002D the found textures archive
+  drew every tile at 300 by 150 pixels — a 2:1 letterbox — while the actual
+  photographs were 4:3 and 3:2. They had all downloaded correctly; the page
+  simply refused to use their shape.
+  The cause was one word. To save bandwidth the CMS had started telling the
+  browser to work out each photograph's display width for itself, using a
+  setting called `sizes="auto"`. What nobody knew is that Chrome responds to
+  that by treating the image as if it had NO CONTENTS until it decides
+  otherwise, and sizing it from a built-in 300 by 150 placeholder. Any archive
+  whose rows take their height from the photograph then locks at that shape
+  and never recovers. Measured on the live site: every tile 300 by 150, the
+  images 300 by 225 and 300 by 200, all loaded, and nothing in any skin's
+  stylesheet able to override it — explicit widths and heights, forced
+  heights, and a forced aspect ratio were each tried against it and changed
+  nothing. That is why the TRUE GRIT skin fix alone could not hold it.
+  The word is gone. The same page now measures 371 by 278 and 371 by 248 —
+  the real 4:3 and 3:2.
+  **What it costs, stated plainly:** that setting was saving roughly 12% of
+  the bytes on grid pages by letting the browser pick a smaller copy of each
+  photograph. Those pages go back to the transfer they had before the saving
+  was introduced. A photograph in the wrong shape is a defect; a page that
+  loads a little heavier is not, and the saving can be won back by a method
+  that does not break the layout.
+- **This build opens because 0.7.1002D is live.** A published build number is
+  never reused.
+
+## 0.7.1002D — opened
+
+Written and tested, NOT on dev, and NOT in 0.7.1000D. These sat in the 1000D
+section until the tag was being assembled, which would have told owners their
+photographs come back in a build that does not carry the change. The branches
+are pushed and waiting on review.
+
+- **Social Dock settings reach every render path, and the icons are one clean
+  outline family.** The owner now wins over a skin's appearance defaults on
+  both the floating and strict-skin docks; skins lock only dock position, not
+  colour, shadow or icon controls the owner is allowed to change. SCROLL,
+  GLIDE and FULL MONTY declare those values as defaults accordingly. Email and
+  an independent external Pixelfed profile are normal saved profile links,
+  separate from the site's own fediverse identity. Bluesky and YouTube have
+  been redrawn to match the other seventeen outline glyphs. ALFRED defaults to
+  a transparent white ring with a white outline glyph in both its compact
+  header dock and footer, while every appearance value remains owner-editable.
+  Strict-skin docks intentionally use this single outline sprite family;
+  Solid/Outline switches artwork only for the floating dock. (SS-1553,
+  SS-1554, SS-1555, SS-1560)
+
+- **Your social links show as icons again, instead of the words "Vero Bluesky
+  Linktree Website" piled on top of the navigation circles.** Every social dock
+  link carries a hidden label so a screen reader can say where it goes, and
+  nothing was hiding it: three skins out of thirty-one defined that rule in
+  their own stylesheet and the other twenty-eight did not. Measured on the live
+  used car parts homepage at 1920 before the fix: the label computed to 40.6 by
+  25 pixels in the normal flow, and because each dock link is a 40-pixel circle
+  that centres its contents, the icon plus the visible word overflowed it and
+  shoved the glyph eleven to twenty-seven pixels OUT of its own circle, onto
+  the navigation beside it. The icons were never missing; they had been pushed
+  sideways with the words lying over the top. The rule now lives in the
+  stylesheet that loads on every public page, because the markup that needs it
+  comes from the CMS rather than from the skin, which is the same split that
+  broke CHAPLIN. After the fix the same page puts every glyph exactly centred
+  in its circle, and a keyboard user can still tab to the label because it
+  un-hides on focus. Skins that already define their own version are
+  unaffected.
 - **RATIONAL GEO (skin package, 2.1.45): the map background no longer sits on
   top of your photographs.** The topographic map behind the site was being
   drawn over the photographs rather than behind them, so faint contour lines

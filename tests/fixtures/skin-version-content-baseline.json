@@ -13,8 +13,8 @@
             "manifest_css_sha256": "53759ac9939ee3eaf2b45aca9c121d761fd38a74b98c2315e0f7505cfbeac57d"
         },
         "alfred": {
-            "version": "1.0.23",
-            "files_sha256": "4b7e9f1def8184de61b9f3a04b3be49567241156cb9d9d2beabefd37eebf1e65",
+            "version": "1.0.28",
+            "files_sha256": "a8d5cd1cb52c2486a07b3431a9a2eddac776d0a2736dfb6ef98824b89ff9234f",
             "manifest_css_sha256": "f468a5ecd88eb36426dd3ff8065984b9bb503697e8d7d9baa2613229525439b7"
         },
         "aurora": {
@@ -23,12 +23,12 @@
             "manifest_css_sha256": "f67477db80f99dfe768ffabd28206817df5b3c62d90a452a6ffc4979795552d3"
         },
         "chaplin": {
-            "version": "0.2.32",
-            "files_sha256": "8517cc115125e32e7b8fe478cd0330797a3525fa7d2506ac9cbdc4db69f41d09",
+            "version": "0.2.33",
+            "files_sha256": "31d4afa790c6df15670c7502b349788d2d49c3bf33af983d960b55013a2ea6a5",
             "manifest_css_sha256": "2190dc5b444023c881326610eea180b36ba855b894adf87a232d0d1038841df0"
         },
         "full-monty": {
-            "version": "0.1.11",
+            "version": "0.1.12",
             "files_sha256": "f99bd02fe101ef44f8b89bf834a126ea24e6bc0981c0178e2131e6d1b88a822b",
             "manifest_css_sha256": "85c6797b236bae8cb65b0ebc1272b1f2480c2a7ddab219bfc921c68a8fb7a8be"
         },
@@ -43,9 +43,9 @@
             "manifest_css_sha256": "e3c6f2c2fb571c6ca6442303d6bd25e1d9d93fb1a6753007f2318120d8af4393"
         },
         "glide": {
-            "version": "0.1.32",
-            "files_sha256": "456eb1774e8953b8c5d0d3f9767a474d772f0679fab1d72a62304749250de749",
-            "manifest_css_sha256": "9ad69417b2483da3f07caa8edc3381a11c066b03c0a95a5c7154c381b23ca395"
+            "version": "0.1.35",
+            "files_sha256": "7cccde6b2c4b00d21bbaf2c360ed58479010ca8828b03254043f89f147ba6235",
+            "manifest_css_sha256": "93d33dcf7c3c8e09ce56384c3fdcf7bb150dd56cdad852cfb0d8b219458fb221"
         },
         "heuristic": {
             "version": "0.1.21",
@@ -58,8 +58,8 @@
             "manifest_css_sha256": "6354f1225e5dfd93ed693b112ede9dcc702980a019f1254df3fabb7c551641a6"
         },
         "impact-printer": {
-            "version": "2.1.28",
-            "files_sha256": "a756c993378a60c1204c96178856bc36535d4f46e32c5fc679f9a4d353b769cf",
+            "version": "2.1.29",
+            "files_sha256": "a57290057aef0e58bcddeac606a668f295afc8ac479228bb69d2b684e2b27060",
             "manifest_css_sha256": "5f75fbffd1ab3f6c505e5556c31a4dc3a5f4f2d510461c6d3eb130e62a017b3f"
         },
         "instant-camera": {
@@ -73,9 +73,9 @@
             "manifest_css_sha256": "f5ade19134d0fe0731b124814ea8cf74151079a73356af70e3fe19cd87006aa7"
         },
         "new-horizon": {
-            "version": "1.3.42",
-            "files_sha256": "25a2605750e44b9b77894578f85241f44790549ade5acc0006fdcee25737ff01",
-            "manifest_css_sha256": "b47a89ff8d91cad0e020bb44767ace4241924620f70be9c34f2558a53de1c6ff"
+            "version": "1.3.44",
+            "files_sha256": "64195ba76cfd7f9ea9ef2828eaaf76547ead92721b4cba63b849bca050c9c68d",
+            "manifest_css_sha256": "636c3055d28a87d25c9279c82d8828206732c034b63459d62a81214e1bacea0d"
         },
         "onyx": {
             "version": "0.1.26",
@@ -98,7 +98,7 @@
             "manifest_css_sha256": "a1f5658d8ba757965e60af97702c2fbc6fa516b5fb153e1509967ae0c09a0d0f"
         },
         "scroll": {
-            "version": "0.1.81",
+            "version": "0.1.82",
             "files_sha256": "f13e837ccc1440d96f36b19a9e5c3ab6f1abfd75829868703186aea3470a3237",
             "manifest_css_sha256": "c39951476d28171ca60f02879d5aa610061c4f44266f5d20a76119da6c49cf35"
         },
@@ -143,8 +143,8 @@
             "manifest_css_sha256": "938bc3dfc24b1e28cdc1c6f8c053edd08aeb64dd220d130dd6d402b2a47ed1a6"
         },
         "true-grit": {
-            "version": "1.3.29",
-            "files_sha256": "bf3eb3449908447d0beb884d22fbf526e80260c70284235acc00237a48297340",
+            "version": "1.3.31",
+            "files_sha256": "1171012ad8f2a39b2012066b3abf4521137b1ea4eab6e0df38de49d570b09d27",
             "manifest_css_sha256": "1a23cbc672ce9923b6011615dd9dd10c68e23a32ac9591ccf915e59fec2067d6"
         },
         "writing-with-impact": {

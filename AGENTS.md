@@ -24,7 +24,7 @@ there because something broke.
 |---|---|
 | **Claude** | `core/`, `index.php`, `tests/`, `tools/`, the packagers, the JS engines, manifests, fixtures, releases and tags |
 | **Codex** | `skins/*/style.css`, `skins/*/layout.php`, appearance, visual design, and `tools/browser-tests/` with its runner |
-| **Sean** | every decision, and the only one who builds, packages and deploys |
+| **Sean** | every product decision, core release promotion and publishing, and live-site deployment |
 
 ## Temporary Codex lane amendment — COLD SNAP
 
@@ -49,16 +49,21 @@ Temporary; Sean can revoke at any time.
 - The mosaic golden-digest drift test must never be re-pinned to whatever the
   port produces. `tools/_build/capture-mosaic-golden.html` regenerates the
   digest from the real engine.
-- Codex must not build, package, sign, publish, deploy, install, or update a
-  live site or shared service under this amendment.
+- For an assigned desktop-tool build, Codex builds and installs the verified
+  executable at the path SNAP HQ launches after the built-executable parity
+  gate passes, preserving the prior executable as a backup. Codex must not
+  sign, publish, deploy, install, or update a live site or shared service under
+  this amendment.
 - Every Codex COLD SNAP diff requires Muse review. Codex posts the branch,
   commit, exact scope, checks run, and known limitations; Muse posts an
   independent PASS or findings.
 - A Muse PASS does not authorize a merge. Codex posts `ready to merge` with
   Muse's review and waits for explicit approval from Sean or the Claude Web PM
   before merging to `dev`.
-- Sean remains the only person who decides product behaviour, builds,
-  packages, signing, deployment, and whether this temporary lane continues.
+- Sean remains the only person who decides product behaviour, promotes or
+  publishes a core release, authorizes signing or live-site deployment, and
+  decides whether this temporary lane continues. Sean does not build desktop
+  tools; the assigned agent does.
 
 If you are new: **you do not have a lane yet. Ask Sean for one before you
 write.** Two agents editing the same files is the specific failure that cost
@@ -145,10 +150,14 @@ rather than asking him again.
 
 ## What needs Sean, not you
 
-Building a release, packaging a skin, deploying to any site, anything that
-spends money or sends mail, and any decision about what the product should do.
-He is a photographer now and was certified infrastructure staff for years;
-explain findings plainly and never explain operations basics to him.
+Promoting or publishing a core release, packaging a skin, deploying to any
+site, anything that spends money or sends mail, and any decision about what
+the product should do. Desktop tools are the exception: the assigned agent
+builds and installs them at the path SNAP HQ launches, after the parity gate
+passes, with the prior executable preserved as a backup. Sean never builds a
+desktop tool. He is a photographer now and was certified infrastructure staff
+for years; explain findings plainly and never explain operations basics to
+him.
 
 He is autistic, has Parkinson's, and is working under real pressure. Plain
 English, lead with the answer, no metaphors, and say "I did not check" rather

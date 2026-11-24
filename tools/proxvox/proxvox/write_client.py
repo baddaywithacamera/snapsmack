@@ -15,7 +15,10 @@ Sean's rulings (2026-11-22 15:50, 15:51, 16:44):
 # Last non-empty line must be the Python SNAPSMACK EOF marker.
 """
 
+import hashlib
 import json
+import re
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -35,7 +38,7 @@ class WriteClient:
     def __init__(self, base_url: str, audit, pinned_guid: str,
                  actual_guid: str = None, opener=None, verify_host: bool = True,
                  clock=None, ticket_ttl: int = PROXMOX_TICKET_TTL_SECONDS,
-                 certificate_sha256: str = ""):
+                 certificate_sha256: str = "", expiry_timer_factory=None):
         if verify_host:
             host_guard.require_host(pinned_guid, actual_guid)
         self.base_url = base_url.rstrip("/")
@@ -61,26 +64,64 @@ class WriteClient:
             raise Refused("PROX VOX requires an HTTPS Proxmox URL.")
         self._clock = clock or time.time
         self._ticket_ttl = max(1, int(ticket_ttl))
+        self._expiry_timer_factory = expiry_timer_factory or threading.Timer
+        self._certificate_sha256 = certificate_sha256
+        self._session_lock = threading.RLock()
 
         self._username: str = ""
         self._ticket: str = ""
         self._csrf_token: str = ""
         self._expires_at: float = 0.0
+        self._container_consoles = []
+        self._expiry_timer = None
+        self._expiry_generation = 0
 
     # ── session state ────────────────────────────────────────────────────
     def _clear_session(self):
-        self._username = ""
-        self._ticket = ""
-        self._csrf_token = ""
-        self._expires_at = 0.0
+        with self._session_lock:
+            self._expiry_generation += 1
+            timer = self._expiry_timer
+            self._expiry_timer = None
+            if timer is not None:
+                timer.cancel()
+            for console in self._container_consoles:
+                try:
+                    console.close()
+                except Exception:
+                    pass
+            self._container_consoles = []
+            self._username = ""
+            self._ticket = ""
+            self._csrf_token = ""
+            self._expires_at = 0.0
+
+    def _schedule_expiry(self):
+        with self._session_lock:
+            self._expiry_generation += 1
+            generation = self._expiry_generation
+
+            def expire():
+                with self._session_lock:
+                    if generation != self._expiry_generation or not self._ticket:
+                        return
+                    user = self._username
+                    self.audit.record("write_expired", {"username": user})
+                    self._clear_session()
+
+            timer = self._expiry_timer_factory(self._ticket_ttl, expire)
+            if hasattr(timer, "daemon"):
+                timer.daemon = True
+            self._expiry_timer = timer
+            timer.start()
 
     def is_authorized(self) -> bool:
-        if not self._ticket or not self._csrf_token:
-            return False
-        if float(self._clock()) >= self._expires_at:
-            self._clear_session()
-            return False
-        return True
+        with self._session_lock:
+            if not self._ticket or not self._csrf_token:
+                return False
+            if float(self._clock()) >= self._expires_at:
+                self._clear_session()
+                return False
+            return True
 
     # ── P3 Option A: /access/ticket + TFA ────────────────────────────────
     def authorize(self, username: str, password: str, otp: str,
@@ -193,10 +234,13 @@ class WriteClient:
             )
 
         now = float(self._clock())
-        self._username = user
-        self._ticket = ticket.strip()
-        self._csrf_token = csrf.strip()
-        self._expires_at = now + self._ticket_ttl
+        self._clear_session()
+        with self._session_lock:
+            self._username = user
+            self._ticket = ticket.strip()
+            self._csrf_token = csrf.strip()
+            self._expires_at = now + self._ticket_ttl
+            self._schedule_expiry()
 
         self.audit.record("write_auth_result", {
             "username": user,
@@ -323,6 +367,60 @@ class WriteClient:
 
     def delete(self, path: str, data: dict = None, timeout: int = 15):
         return self.call("DELETE", path, data=data, timeout=timeout)
+
+    # ── P3b: the ticket-bound in-container write path ───────────────────
+    def open_container_console(self, node: str, vmid: int, connector=None,
+                               timeout: int = 15):
+        """Open an LXC console using this live PVE ticket, never another credential."""
+        node_name = str(node or "").strip()
+        try:
+            guest = int(vmid)
+        except (TypeError, ValueError) as err:
+            raise Refused("A safe node name and positive container id are required.") from err
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+", node_name) or guest < 1:
+            raise Refused("A safe node name and positive container id are required.")
+        if not self.is_authorized():
+            self.audit.record("container_write_refused", {
+                "node": node_name, "vmid": guest, "why": "no active TOTP ticket",
+            })
+            raise Refused("Container console refused: authorize with TOTP first.")
+
+        response = self.post(
+            "/nodes/%s/lxc/%d/termproxy" % (node_name, guest), timeout=timeout
+        )
+        data = response.get("data") if isinstance(response, dict) else None
+        if not isinstance(data, dict) or not data.get("port") or not data.get("ticket"):
+            raise Refused("Proxmox did not return a usable LXC terminal proxy.")
+        if connector is None:                                   # pragma: no cover
+            from .container_console import connect_console
+            connector = connect_console
+        console = connector(
+            base_url=self.base_url, node=node_name, vmid=guest,
+            port=int(data["port"]), vncticket=str(data["ticket"]),
+            pve_ticket=self._ticket,
+            certificate_sha256=self._certificate_sha256, timeout=timeout,
+        )
+        self._container_consoles.append(console)
+        self.audit.record("container_console_open", {
+            "node": node_name, "vmid": guest, "username": self._username,
+        })
+        return console
+
+    def run_container_command(self, console, command: str):
+        """Run one audited command while both the console and TOTP ticket live."""
+        if not self.is_authorized() or console not in self._container_consoles:
+            self.audit.record("container_write_refused", {
+                "why": "console is not tied to the active TOTP ticket",
+            })
+            raise Refused("Container write refused: the TOTP ticket is absent or revoked.")
+        text = str(command or "")
+        if not text.strip() or "\x00" in text:
+            raise Refused("A non-empty command without NUL bytes is required.")
+        self.audit.record("container_write_call", {
+            "username": self._username,
+            "command_sha256": hashlib.sha256(text.encode()).hexdigest(),
+        })
+        return console.run(text)
 
     def __repr__(self) -> str:
         return "<WriteClient %s authorized=%s>" % (self.base_url, self.is_authorized())

@@ -130,6 +130,24 @@ class InsecureTransportError(RuntimeError):
     """Refused to attach the posting key to an insecure (non-https) connection."""
 
 
+class AuthorizationExpiredError(RuntimeError):
+    """A saved API authorization was rejected and must be replaced."""
+
+    def __init__(self, credential_kind="api"):
+        self.credential_kind = str(credential_kind or "api")
+        label = "long-form" if self.credential_kind == "long-form" else "site"
+        super().__init__(
+            "This site's saved %s authorization expired or was rejected. "
+            "Nothing was uploaded. Re-authenticate with a fresh key."
+            % label
+        )
+
+
+def _raise_authorization(response, credential_kind="api"):
+    if int(getattr(response, "status_code", 0) or 0) in (401, 403):
+        raise AuthorizationExpiredError(credential_kind)
+
+
 # Export sizing policy. The fleet standard Sean set is a 3840 long-edge cap plus a
 # mild sharpen on downsize (SPEC-image-sizing-4k-coldsnap-gyss.md §9/§10). COLD SNAP
 # sizes to this BEFORE upload so what you post is what gets stored and the sharpen
@@ -293,6 +311,7 @@ class SumnaConnection:
     def publishing_policy(self, timeout: int = 15) -> dict:
         """Read live publish invariants from the destination CMS."""
         r = self.session.get(f"{self.base_url}/sybu-data.php", timeout=timeout)
+        _raise_authorization(r, "api")
         r.raise_for_status()
         data = r.json()
         policy = data.get("publishing_policy") or {}
@@ -305,6 +324,7 @@ class SumnaConnection:
     def site_catalog(self, timeout: int = 15) -> dict:
         """Fetch the CMS-owned category/album vocabulary and canonical IDs."""
         r = self.session.get(f"{self.base_url}/sybu-data.php", timeout=timeout)
+        _raise_authorization(r, "api")
         r.raise_for_status()
         data = r.json()
         return data if isinstance(data, dict) else {}
@@ -407,12 +427,14 @@ class SumnaConnection:
             if r.status_code != 200:
                 return "", ""
             html = r.text or ""
-            for style in re.findall(r"<style[^>]*>(.*?)</style>", html, re.IGNORECASE | re.DOTALL):
-                b, f = _extract_from_css(style)
-                best_bg = best_bg or b
-                best_fg = best_fg or f
-                if best_bg and best_fg:
-                    return best_bg, best_fg
+            is_maintenance_holding = "<!-- Wrench SVG" in html
+            if not is_maintenance_holding:
+                for style in re.findall(r"<style[^>]*>(.*?)</style>", html, re.IGNORECASE | re.DOTALL):
+                    b, f = _extract_from_css(style)
+                    best_bg = best_bg or b
+                    best_fg = best_fg or f
+                    if best_bg and best_fg:
+                        return best_bg, best_fg
             hrefs = re.findall(
                 r"""<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']""",
                 html, re.IGNORECASE,
@@ -429,6 +451,28 @@ class SumnaConnection:
                             return best_bg, best_fg
                 except requests.RequestException:
                     continue
+            if (not best_bg or not best_fg) and is_maintenance_holding:
+                try:
+                    sr = self.session.get(f"{self.base_url}/sybu-data.php", timeout=timeout)
+                    if sr.status_code == 200:
+                        sdata = sr.json() if hasattr(sr, "json") else {}
+                        for k in ("site_bg", "page_bg", "background_color", "bg_color"):
+                            c = _norm_color(sdata.get(k, ""))
+                            if c:
+                                best_bg = best_bg or c
+                                break
+                        fg_c = _norm_color(sdata.get("site_fg", ""))
+                        if fg_c:
+                            best_fg = best_fg or fg_c
+                        skin_slug = str(sdata.get("active_skin") or "").strip()
+                        if (not best_bg or not best_fg) and skin_slug:
+                            cr = self.session.get(f"{self.base_url}/skins/{skin_slug}/style.css", timeout=timeout)
+                            if cr.status_code == 200:
+                                b, f = _extract_from_css(cr.text or "")
+                                best_bg = best_bg or b
+                                best_fg = best_fg or f
+                except Exception:
+                    pass
         except requests.RequestException:
             return best_bg, best_fg
         return best_bg, best_fg
@@ -780,6 +824,7 @@ class SmacktalkPoster:
 
     def publishing_policy(self, timeout: int = 15) -> dict:
         r = self.session.get(f"{self.base_url}/sybu-data.php", timeout=timeout)
+        _raise_authorization(r, "long-form")
         r.raise_for_status()
         policy = (r.json().get("publishing_policy") or {})
         return {
@@ -870,6 +915,7 @@ class SmacktalkPoster:
             params["offset"] = int(offset)
         r = self.session.get(self._route("smackpress/posts"),
                              params=params, timeout=30)
+        _raise_authorization(r, "long-form")
         r.raise_for_status()
         posts = list(r.json().get("posts") or [])
         posts.sort(
@@ -884,16 +930,19 @@ class SmacktalkPoster:
     def list_pages(self, limit: int = 500) -> list:
         r = self.session.get(self._route("smackpress/pages"),
                              params={"limit": max(1, min(500, int(limit)))}, timeout=30)
+        _raise_authorization(r, "long-form")
         r.raise_for_status()
         return list(r.json().get("pages") or [])
 
     def get_page(self, page_id: int) -> dict:
         r = self.session.get(self._route(f"smackpress/pages/{int(page_id)}"), timeout=30)
+        _raise_authorization(r, "long-form")
         r.raise_for_status()
         return dict(r.json().get("page") or {})
 
     def get_post(self, post_id: int) -> dict:
         r = self.session.get(self._route(f"smackpress/posts/{int(post_id)}"), timeout=30)
+        _raise_authorization(r, "long-form")
         r.raise_for_status()
         return dict(r.json().get("post") or {})
 
@@ -956,21 +1005,52 @@ class SmacktalkPoster:
     # longer exists — photo removed after writing — drops the tag rather than
     # sending the site a broken one.
     _BUCKET_IMG_TOKEN = re.compile(r'\[img:(g)?bucket:(\d+)((?:\|[^\]]*)?)\]', re.I)
+    _CAPTION_IMG_TOKEN = re.compile(
+        r'\[img:([^\]]*?)\s*\|\s*caption=([^|\]]+)((?:\s*\|[^\]]*)?)\]', re.I
+    )
 
     def _resolve_bucket_images(self, content, image_ids) -> str:
+        import html as _html
         content = content or ""
-        if not self._BUCKET_IMG_TOKEN.search(content):
-            return content
-        ids = list(image_ids or [])
+        if self._BUCKET_IMG_TOKEN.search(content):
+            ids = list(image_ids or [])
 
-        def swap(match):
-            gallery = "g" if match.group(1) else ""
-            pos = int(match.group(2))
-            if 1 <= pos <= len(ids):
-                return "[img:%s%d%s]" % (gallery, int(ids[pos - 1]), match.group(3) or "")
-            return ""
+            def swap(match):
+                gallery = "g" if match.group(1) else ""
+                pos = int(match.group(2))
+                if 1 <= pos <= len(ids):
+                    return "[img:%s%d%s]" % (gallery, int(ids[pos - 1]), match.group(3) or "")
+                return ""
 
-        return self._BUCKET_IMG_TOKEN.sub(swap, content)
+            content = self._BUCKET_IMG_TOKEN.sub(swap, content)
+
+        if self._CAPTION_IMG_TOKEN.search(content):
+            def wrap_caption(match):
+                prefix = (match.group(1) or "").strip()
+                cap_raw = (match.group(2) or "").strip()
+                tail = (match.group(3) or "").strip()
+                inner = f"[img:{prefix}{tail}]"
+                if not cap_raw:
+                    return inner
+                esc = _html.escape(cap_raw, quote=False)
+                return f'<figure class="snap-image-figure">{inner}<figcaption>{esc}</figcaption></figure>'
+
+            content = self._CAPTION_IMG_TOKEN.sub(wrap_caption, content)
+            # Ensure plain-text paragraph chunks are wrapped in <p> when <figure> is present
+            # so smack_autop_long in core/smackpress-api.php treats the post as block HTML.
+            chunks = re.split(r"\n\n+", content.replace("\r\n", "\n"))
+            out_chunks = []
+            for ch in chunks:
+                t = ch.strip()
+                if not t:
+                    continue
+                if (t.startswith("<")
+                        or re.match(r"^\[(?:img|mosaic|spacer|columns|pullquote)\b", t, re.I)):
+                    out_chunks.append(t)
+                else:
+                    out_chunks.append("<p>" + _html.escape(t, quote=False).replace("\n", "<br>\n") + "</p>")
+            content = "\n\n".join(out_chunks)
+        return content
 
     def _resolve_mosaics(self, content, image_ids, draft) -> Tuple[str, list]:
         """Turn a [mosaic] placeholder in the body into a real [mosaic:ID] gallery of
@@ -1047,12 +1127,22 @@ class SmacktalkPoster:
 
             def _wire(blk):
                 out = dict(blk)
-                if out.get("type") == "image" and out.get("asset_uuid"):
-                    pos = positions.get(str(out["asset_uuid"]))
-                    if pos:
-                        out["img_id"] = f"bucket:{pos}"
-                    for k in ("asset_uuid", "placement", "width_ratio", "crop", "alt", "caption", "link"):
-                        out.pop(k, None)
+                if out.get("type") == "image":
+                    show_cap = bool(out.get("show_caption"))
+                    cap_text = str(out.get("caption") or "").strip()
+                    if out.get("asset_uuid"):
+                        pos = positions.get(str(out["asset_uuid"]))
+                        if pos:
+                            out["img_id"] = f"bucket:{pos}"
+                        for k in ("asset_uuid", "placement", "width_ratio", "crop", "alt", "link"):
+                            out.pop(k, None)
+                    if show_cap and cap_text:
+                        out["show_caption"] = True
+                        out["caption"] = cap_text
+                        out.pop("raw", None)
+                    else:
+                        out.pop("caption", None)
+                        out.pop("show_caption", None)
                 if out.get("type") == "mosaic" and out.get("order"):
                     out["order"] = [positions.get(str(v), v) for v in out["order"]]
                 if out.get("type") == "columns":

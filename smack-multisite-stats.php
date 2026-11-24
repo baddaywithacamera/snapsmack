@@ -122,6 +122,7 @@ foreach ($spokes as $spoke) {
             'bot_total'    => 0,
             'top_image'    => null,
             'post_count'   => $spoke['post_count'],
+            'site_likes'   => 0,
         ];
         continue;
     }
@@ -160,6 +161,7 @@ foreach ($spokes as $spoke) {
         'top_image'    => $spoke_top_images[0] ?? null,
         'post_count'   => isset($resp['post_count'])  ? (int)$resp['post_count']  : (int)$spoke['post_count'],
         'image_count'  => isset($resp['image_count']) ? (int)$resp['image_count'] : (int)($spoke['image_count'] ?? 0),
+        'site_likes'   => (int)($resp['site_likes'] ?? 0),
         'counts_live'  => isset($resp['post_count']),
         'browsers'     => $resp['browsers']     ?? [],
         'os'           => $resp['os']           ?? [],
@@ -206,6 +208,10 @@ require_once __DIR__ . '/core/stats-logger.php';
 $cc_hub = snapsmack_content_counts($pdo);
 $hub_post_count  = $cc_hub['posts'];
 $hub_image_count = $cc_hub['images'];
+$hub_site_likes  = 0;
+try {
+    $hub_site_likes = (int)$pdo->query("SELECT COUNT(*) FROM snap_likes")->fetchColumn();
+} catch (\Throwable $e) { /* community table absent on an older hub */ }
 
 // Hub engaged Scroll Time (avg ms) on GRAM landing + SMACKONEOUT archive.
 // dwell_ms is populated by the Scroll Time tracker; column/data may be absent
@@ -349,6 +355,7 @@ $spoke_stats['__hub__'] = [
     'top_image'    => $hub_top_images[0] ?? null,
     'post_count'   => $hub_post_count,
     'image_count'  => $hub_image_count,
+    'site_likes'   => $hub_site_likes,
     'counts_live'  => true,
     'is_hub'       => true,
     'browsers'     => $hub_browsers,
@@ -386,12 +393,14 @@ $fleet_bot_pct      = $fleet_total_views > 0 ? round(($fleet_bot_total / ($fleet
 // Fleet content inventory: posts + images across all registered spokes + hub.
 $fleet_post_count  = $hub_post_count;
 $fleet_image_count = $hub_image_count;
+$fleet_site_likes  = $hub_site_likes;
 foreach ($spokes as $sp) {
     $ss = $spoke_stats[$sp['id']] ?? [];
     // Prefer the live count fetched this load; fall back to the last stored
     // heartbeat value for a spoke that's offline or not yet on the new endpoint.
     $fleet_post_count  += (int)($ss['post_count']  ?? $sp['post_count']  ?? 0);
     $fleet_image_count += (int)($ss['image_count'] ?? $sp['image_count'] ?? 0);
+    $fleet_site_likes  += (int)($ss['site_likes'] ?? 0);
 }
 
 // Fleet engaged Scroll Time — sample-count-weighted average across hub + spokes.
@@ -653,7 +662,11 @@ include 'core/sidebar.php';
             </div>
             <div class="stat-tile">
                 <div class="stat-tile-num"><?php echo number_format($fedi_likes); ?></div>
-                <div class="stat-tile-label">LIKES RECEIVED</div>
+                <div class="stat-tile-label">FEDIVERSE LIKES</div>
+            </div>
+            <div class="stat-tile">
+                <div class="stat-tile-num"><?php echo number_format($fleet_site_likes); ?></div>
+                <div class="stat-tile-label">SITE LIKES</div>
             </div>
             <div class="stat-tile">
                 <div class="stat-tile-num"><?php echo number_format($fedi_boosts); ?></div>

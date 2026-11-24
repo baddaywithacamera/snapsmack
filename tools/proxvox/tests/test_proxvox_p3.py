@@ -134,7 +134,11 @@ class _ProxmoxMockServer:
                     self.end_headers()
                     return
 
-                body = json.dumps({"data": {"ok": True, "path": self.path}}).encode("utf-8")
+                if self.path.endswith("/termproxy"):
+                    payload = {"data": {"port": 5901, "ticket": "PVEVNC:console-ticket"}}
+                else:
+                    payload = {"data": {"ok": True, "path": self.path}}
+                body = json.dumps(payload).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(body)))
@@ -180,7 +184,7 @@ class ProxVoxP3Tests(unittest.TestCase):
         if os.path.isdir(self.tmp_dir):
             os.rmdir(self.tmp_dir)
 
-    def _client(self, ticket_ttl=7200) -> WriteClient:
+    def _client(self, ticket_ttl=7200, expiry_timer_factory=None) -> WriteClient:
         return WriteClient(
             base_url=self.server.base_url,
             audit=self.audit,
@@ -189,6 +193,7 @@ class ProxVoxP3Tests(unittest.TestCase):
             opener=urllib.request.urlopen,
             clock=self.clock,
             ticket_ttl=ticket_ttl,
+            expiry_timer_factory=expiry_timer_factory,
         )
 
     def test_host_guard_and_separation_from_p1(self):
@@ -346,6 +351,93 @@ class ProxVoxP3Tests(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError):
             wc.post("/nodes/pve/lxc/101/status/stop")
         self.assertFalse(wc.is_authorized())
+
+    def test_container_console_exists_only_while_totp_ticket_is_live(self):
+        wc = self._client(ticket_ttl=60)
+        connected = []
+
+        class Console:
+            def __init__(self):
+                self.closed = False
+
+            def run(self, command):
+                self.command = command
+                self.audit_before_run = self_outer.audit.records()[-1]["action"]
+                return "done"
+
+            def close(self):
+                self.closed = True
+
+        self_outer = self
+
+        def connector(**kwargs):
+            self.assertNotIn("good-pass", str(kwargs))
+            self.assertEqual(kwargs["pve_ticket"], self.server.ticket_value)
+            console = Console()
+            connected.append(console)
+            return console
+
+        with self.assertRaises(Refused):
+            wc.open_container_console("proxmox", 102, connector=connector)
+        self.assertEqual(connected, [])
+
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        console = wc.open_container_console("proxmox", 102, connector=connector)
+        self.assertEqual(wc.run_container_command(console, "touch /tmp/proof"), "done")
+        self.assertEqual(console.audit_before_run, "container_write_call")
+        self.assertEqual(console.command, "touch /tmp/proof")
+
+        wc.revoke("proof-complete")
+        self.assertTrue(console.closed)
+        with self.assertRaises(Refused):
+            wc.run_container_command(console, "touch /tmp/after-revoke")
+
+    def test_ticket_expiry_closes_every_container_console(self):
+        timers = []
+
+        class Timer:
+            def __init__(self, seconds, callback):
+                self.seconds = seconds
+                self.callback = callback
+                self.cancelled = False
+                timers.append(self)
+            def start(self):
+                pass
+            def cancel(self):
+                self.cancelled = True
+            def fire(self):
+                self.callback()
+
+        wc = self._client(ticket_ttl=1, expiry_timer_factory=Timer)
+
+        class Console:
+            closed = False
+            def close(self):
+                self.closed = True
+
+        console = Console()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        opened = wc.open_container_console(
+            "proxmox", 106, connector=lambda **_: console
+        )
+        self.assertEqual(len(timers), 1)
+        timers[0].fire()
+        self.assertTrue(opened.closed)
+        self.assertFalse(wc.is_authorized())
+        self.assertIn("write_expired", [row["action"] for row in self.audit.records()])
+
+    def test_failed_console_connect_is_not_logged_as_open_and_hides_ticket(self):
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+
+        def connector(**_):
+            raise RuntimeError("transport failed")
+
+        with self.assertRaises(RuntimeError):
+            wc.open_container_console("proxmox", 102, connector=connector)
+        self.assertNotIn(
+            "container_console_open", [row["action"] for row in self.audit.records()]
+        )
 
 
 if __name__ == "__main__":

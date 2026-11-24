@@ -51,7 +51,7 @@ $layout = (string)file_get_contents($root . '/skins/alfred/layout.php');
 $check('the layout places the social-dock component',
        str_contains($layout, "snap_render_component('social-dock'"));
 $check('  passing the view model and nothing else',
-       str_contains($layout, "'model' => \$view['site']['crop_circles']"));
+       str_contains($layout, "'model' => \$view['site']['social_dock']"));
 $check('  and holds no social markup of its own',
        !str_contains($layout, 'alfred-footer-social') && !str_contains($layout, 'social-menu'));
 $check('ALFRED\'s stylesheet holds no private dock styles',
@@ -66,10 +66,25 @@ echo "\nSTAGE 2 — THE DOCK'S STYLESHEET REACHES ALFRED, FROM ALFRED'S MANIFEST
 $check('ALFRED declares a social_dock block', is_array($manifest['social_dock'] ?? null));
 $check('  placed inline, in the footer flow',
        ($manifest['social_dock']['position'] ?? '') === 'inline');
+$check('  defaults to a white outline ring with white outline glyphs',
+       ($manifest['social_dock']['default_color_mode'] ?? '') === 'light'
+       && ($manifest['social_dock']['default_color_light'] ?? '') === '#ffffff'
+       && ($manifest['social_dock']['default_icon_style'] ?? '') === 'outline');
+$check('  while appearance remains owner-editable rather than skin-locked',
+       !array_key_exists('color_mode', $manifest['social_dock'])
+       && !array_key_exists('icon_style', $manifest['social_dock'])
+       && !array_key_exists('shadow', $manifest['social_dock']));
 $styles = snapsmack_skin_declared_assets($manifest)['styles'];
 $check('  so the engine stylesheet is registered for ALFRED',
        (bool)array_filter($styles,
            static fn(string $u): bool => str_contains($u, 'ss-engine-social-dock.css')));
+$alfredCss = (string)file_get_contents($root . '/skins/alfred/style.css');
+$check('ALFRED keeps the ring transparent and derives ring/glyph colour from the appearance setting',
+       str_contains($alfredCss, 'background: transparent;')
+       && str_contains($alfredCss, 'border-color: var(--dock-icon);'));
+$check('the complete dock wraps without shrinking its 48px footer controls',
+       str_contains($alfredCss, 'flex-wrap: wrap;')
+       && str_contains($alfredCss, 'flex: 0 0 48px;'));
 
 // The stylesheet itself: an inline dock with no reset keeps position:fixed
 // from the base rule and floats over the page. This is a file assertion, not
@@ -107,7 +122,7 @@ $render = static function (array $social) use ($root, $cropCircles): array {
         'site_name' => 'A Photographer', 'language' => 'en', 'direction' => 'ltr',
         'skin_style_url' => '/skins/alfred/style.css',
         'skin_custom_style' => snapsmack_trusted_html(''),
-        'skin_presentation' => [], 'crop_circles' => $cropCircles($social),
+        'skin_presentation' => [], 'social_dock' => $cropCircles($social),
         'footer' => ['text' => 'Copyright', 'lowercase' => false],
         'registered_assets' => [], 'owner_custom_code' => snapsmack_trusted_html(''),
     ]);
@@ -121,17 +136,20 @@ $flat = str_replace("\n", '', $html);
 
 $check('the strict renderer accepted ALFRED\'s real layout', $ok === true);
 $check('  and its output carries the dock', str_contains($html, 'class="social-dock social-dock-inline'));
-$check('  with all three configured links', substr_count($html, 'class="dock-link u-url"') === 3);
+$check('  with all three configured links in both approved placements',
+       substr_count($html, 'class="dock-link u-url"') === 6);
 $check('  each one rel="me", so the links stay IndieWeb-verifiable',
-       substr_count($html, 'rel="me noopener"') === 3);
+       substr_count($html, 'rel="me noopener"') === 6);
 $check('  and each one named for a screen reader',
        str_contains($html, '>Flickr</span>') && str_contains($html, '>Mastodon</span>'));
 
 // WHERE it rendered, not just that it rendered. The links were in the footer
 // before SS-1446 removed them and that is where they have to come back.
 $footerAt = strpos($flat, 'id="footer" class="inside"');
-$dockAt   = strpos($flat, 'class="social-dock');
+$dockAt   = strrpos($flat, 'class="social-dock');
 $footerEnd = strpos($flat, '</footer>');
+$check('  with a distinct dock reserved for the footer',
+       substr_count($flat, 'class="social-dock social-dock-inline') === 2);
 $check('  inside ALFRED\'s footer, where its links used to be',
        $footerAt !== false && $dockAt !== false && $footerEnd !== false
        && $dockAt > $footerAt && $dockAt < $footerEnd);

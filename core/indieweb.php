@@ -20,6 +20,12 @@ function snapsmack_indieweb_url(string $url): string {
     return in_array($scheme, ['http', 'https'], true) ? $url : '';
 }
 
+/** Return a mailto link only for one syntactically valid owner address. */
+function snapsmack_social_email_url(string $email): string {
+    $email = trim($email);
+    return filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? 'mailto:' . $email : '';
+}
+
 /**
  * Identity URLs already configured for the public Social Dock.
  *
@@ -36,7 +42,7 @@ function snapsmack_indieweb_identity_urls(array $settings): array {
         'social_dock_vero', 'social_dock_threads', 'social_dock_mastodon',
         'social_dock_bluesky', 'social_dock_linkedin', 'social_dock_pinterest',
         'social_dock_tumblr', 'social_dock_deviantart', 'social_dock_behance',
-        'social_dock_linktree', 'social_dock_website',
+        'social_dock_linktree', 'social_dock_pixelfed', 'social_dock_website',
     ];
 
     $urls = [];
