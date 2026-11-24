@@ -611,15 +611,30 @@ input[type="button"],
 .nav-toggle { display: none; }
 
 .navigation { background: #1d1d1d; }
-.navigation .section-inner { position: relative; }
-
-.alfred-nav-search {
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
+.navigation .section-inner {
     display: flex;
     align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    position: relative;
+}
+
+.alfred-nav-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-left: 40px;
+}
+
+.alfred-nav-search::before {
+    content: "/";
+    font-size: 14px;
+    color: #3d3d3d;
+    position: absolute;
+    left: -25px;
+    top: 50%;
+    margin-top: 1px;
+    transform: translateY(-50%);
 }
 
 .alfred-nav-search-btn {
