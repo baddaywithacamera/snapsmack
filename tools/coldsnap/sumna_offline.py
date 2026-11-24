@@ -187,6 +187,10 @@ class DraftImage:
     focus_y:      int = 50         # 0-100
     zoom:         int = 100        # 100-300 square-crop zoom — bakes into the t_ thumb
     split:        bool = False     # post this image as its own separate post
+    # What the current t_/a_ pair was generated FROM (source file identity +
+    # focal point + zoom + sizes). Thumbs are only regenerated when this no
+    # longer matches, so autosave never re-decodes untouched originals.
+    thumb_params: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -520,7 +524,8 @@ def draft_db_rows(draft: Draft) -> dict:
 # Thumbnails — generate the CMS-identical t_/a_ pair for every image in a draft.
 # ---------------------------------------------------------------------------
 
-def generate_draft_thumbs(draft: Draft, *, sq_size: int = 400, asp_max: int = 400) -> Draft:
+def generate_draft_thumbs(draft: Draft, *, sq_size: int = 400, asp_max: int = 400,
+                          force: bool = False) -> Draft:
     """
     Populate width/height/thumb_square/thumb_aspect for each image using the
     shared snap_thumbs port, baking each image's focal point + zoom into the
@@ -532,18 +537,53 @@ def generate_draft_thumbs(draft: Draft, *, sq_size: int = 400, asp_max: int = 40
     for im in draft.images:
         if not im.local_path or not os.path.isfile(im.local_path):
             continue
-        res = snap_thumbs.generate_thumbs(
-            im.local_path, sq_size=sq_size, asp_max=asp_max,
-            focus_x=im.focus_x, focus_y=im.focus_y, zoom=im.zoom)
-        if res:
-            im.width = res["width"]
-            im.height = res["height"]
-            im.thumb_square = res["sq_path"]
-            im.thumb_aspect = res["asp_path"]
-            if not im.filename:
-                im.filename = os.path.basename(im.local_path)
+        if not force and image_thumbs_current(im, sq_size=sq_size, asp_max=asp_max):
+            continue
+        generate_image_thumbs(im, sq_size=sq_size, asp_max=asp_max)
     draft.touch()
     return draft
+
+
+def thumb_signature(im: "DraftImage", *, sq_size: int = 400, asp_max: int = 400) -> str:
+    """Identity of everything the t_/a_ pair is baked from. '' if no source."""
+    path = im.local_path or ""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return ""
+    return "|".join(str(v) for v in (
+        os.path.abspath(path), st.st_mtime_ns, st.st_size,
+        im.focus_x, im.focus_y, im.zoom, sq_size, asp_max))
+
+
+def image_thumbs_current(im: "DraftImage", *, sq_size: int = 400, asp_max: int = 400) -> bool:
+    """True when the image's thumbs exist AND were made from today's source,
+    focal point and zoom — i.e. regenerating would produce the same files."""
+    if not (im.width > 0 and im.height > 0
+            and im.thumb_square and os.path.isfile(im.thumb_square)
+            and im.thumb_aspect and os.path.isfile(im.thumb_aspect)):
+        return False
+    sig = thumb_signature(im, sq_size=sq_size, asp_max=asp_max)
+    return bool(sig) and im.thumb_params == sig
+
+
+def generate_image_thumbs(im: "DraftImage", *, sq_size: int = 400, asp_max: int = 400) -> bool:
+    """(Re)generate one image's thumbs. Safe to call off the UI thread on a
+    private copy of the DraftImage (it touches only that object and disk)."""
+    sig = thumb_signature(im, sq_size=sq_size, asp_max=asp_max)
+    res = snap_thumbs.generate_thumbs(
+        im.local_path, sq_size=sq_size, asp_max=asp_max,
+        focus_x=im.focus_x, focus_y=im.focus_y, zoom=im.zoom)
+    if not res:
+        return False
+    im.width = res["width"]
+    im.height = res["height"]
+    im.thumb_square = res["sq_path"]
+    im.thumb_aspect = res["asp_path"]
+    im.thumb_params = sig
+    if not im.filename:
+        im.filename = os.path.basename(im.local_path)
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -1041,6 +1081,7 @@ def migrate_sessions_dir(
     src_root: str,
     dest_root: str,
     log_path: Optional[str] = None,
+    mark_imported: bool = False,
 ) -> dict:
     """Copy sessions from src_root into dest_root with per-file SHA-256 verification.
 
@@ -1075,6 +1116,7 @@ def migrate_sessions_dir(
         dest_session = os.path.join(dest_root, sid)
         receipt = _load_migration_receipt(dest_session)
         copied_rels: List[Tuple[str, str]] = []
+        marked_rels: List[Tuple[str, str]] = []
         for root_dir, _, files in os.walk(src_session):
             for fn in sorted(files):
                 if fn == _MIGRATION_RECEIPT_FILE:
@@ -1088,7 +1130,7 @@ def migrate_sessions_dir(
                     rec = receipt.get(rel) or {}
                     already_rebased = (
                         rec.get("src_sha256") == src_hash
-                        and rec.get("dst_sha256") == dst_hash
+                        and (rec.get("dst_sha256") == dst_hash or bool(rec.get("imported")) or mark_imported)
                     )
                     if dst_hash == src_hash or already_rebased:
                         result["skipped_identical"].append({"session_id": sid, "rel_path": rel, "sha256": dst_hash})
@@ -1096,6 +1138,8 @@ def migrate_sessions_dir(
                         result["conflicts"].append({"session_id": sid, "rel_path": rel,
                                                     "src_sha256": src_hash, "dst_sha256": dst_hash})
                         log_lines.append(f"[{_now_iso()}] CONFLICT {sid}/{rel} src={src_hash} dst={dst_hash}")
+                    if mark_imported:
+                        marked_rels.append((rel, src_hash))
                     continue
 
                 os.makedirs(os.path.dirname(dst_file), exist_ok=True)
@@ -1107,18 +1151,21 @@ def migrate_sessions_dir(
                 log_lines.append(f"[{_now_iso()}] COPIED {sid}/{rel} sha256={dst_hash}")
                 copied_rels.append((rel, src_hash))
 
-        if copied_rels:
-            result["sessions_touched"].append(sid)
-            store = SessionStore(dest_root)
-            s = store.load(sid)
-            if s is not None:
-                _rebase_session_images(s)
-            for rel, src_hash in copied_rels:
+        if copied_rels or marked_rels:
+            if copied_rels:
+                result["sessions_touched"].append(sid)
+                store = SessionStore(dest_root)
+                s = store.load(sid)
+                if s is not None:
+                    _rebase_session_images(s)
+            for rel, src_hash in copied_rels + marked_rels:
                 dst_file = os.path.join(dest_session, rel.replace("/", os.sep))
                 if os.path.isfile(dst_file):
+                    prev_imported = bool((receipt.get(rel) or {}).get("imported"))
                     receipt[rel] = {
                         "src_sha256": src_hash,
                         "dst_sha256": _sha256_file(dst_file),
+                        "imported": bool(mark_imported or prev_imported),
                     }
             _save_migration_receipt(dest_session, receipt)
 
@@ -1168,9 +1215,7 @@ def discover_backup_sessions(
                 src_hash = _sha256_file(src_file)
                 dst_hash = _sha256_file(dst_file)
                 rec = receipt.get(rel) or {}
-                if dst_hash != src_hash and not (
-                    rec.get("src_sha256") == src_hash and rec.get("dst_sha256") == dst_hash
-                ):
+                if dst_hash != src_hash and rec.get("src_sha256") != src_hash:
                     unimported.append(d)
             if not unimported:
                 continue

@@ -108,7 +108,6 @@ def test_open_published_routes_expired_long_form_key_to_prompt(monkeypatch):
         lambda parent, detail, long_form=False: called.append((detail, long_form)),
     )
     mode._open_published()
-    _app().processEvents()
 
     assert called and called[0][1] is True
     assert "expired or was rejected" in called[0][0]
