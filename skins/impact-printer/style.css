@@ -399,6 +399,13 @@ body.landing-only .ip-header-inside,
     opacity: var(--ip-ink-opacity, 0.65);
 }
 
+/* A real impact printer made bold by striking the same glyph twice with a
+   tiny horizontal offset.  Body ink and <strong> became equally dark after
+   the body-colour correction, so weight alone no longer showed. */
+.static-transmission .description strong {
+    text-shadow: 1px 0 0 currentColor;
+}
+
 .description a,
 .static-content a {
     color: inherit;

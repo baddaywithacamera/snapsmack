@@ -41,6 +41,8 @@ async function measure(page) {
             const rect = image.getBoundingClientRect();
             return { width: rect.width, height: rect.height };
         });
+        const descriptionStyle = getComputedStyle(full.parentElement);
+        const strong = [...document.querySelectorAll('.static-transmission .description strong')];
 
         return {
             fullMarginBottom: parseFloat(getComputedStyle(full).marginBottom),
@@ -49,6 +51,13 @@ async function measure(page) {
             columnsMarginBottom: parseFloat(getComputedStyle(columns).marginBottom),
             columnsGap: columnsNextRect ? columnsNextRect.top - columnsRect.bottom : null,
             imageRects,
+            descriptionColor: descriptionStyle.color,
+            descriptionShadow: descriptionStyle.textShadow,
+            strong: strong.map(element => ({
+                text: element.textContent.trim(),
+                color: getComputedStyle(element).color,
+                shadow: getComputedStyle(element).textShadow,
+            })),
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         };
     });
@@ -82,8 +91,14 @@ async function captureBlock(page, selector, target) {
             assert.ok(before, `${width}: the reported full-width and two-column image blocks exist`);
             assert.ok(before.fullMarginBottom >= 55, `${width}: negative control retains the reported oversized full-width gap`);
             assert.ok(before.columnMarginsBottom.every(value => value >= 55), `${width}: negative control retains the reported 60px inside each column`);
+            assert.ok(before.strong.length >= 7, `${width}: camera headings and Why these cameras? are present`);
+            assert.ok(before.strong.every(item => item.shadow === before.descriptionShadow), `${width}: negative control proves strong inherits the body ink effect`);
             await captureBlock(page, '.static-transmission .description > .snap-inline-frame', path.join(output, `before-full-${width}.png`));
             await captureBlock(page, '.static-transmission .snapsmack-columns', path.join(output, `before-columns-${width}.png`));
+            if (width === 1920 || width === 1024) {
+                await page.locator('.static-transmission .description p:has(> strong)').first().screenshot({ path: path.join(output, `before-bold-heading-${width}.png`) });
+                await page.locator('.static-transmission .description p:has(> strong)').last().screenshot({ path: path.join(output, `before-bold-why-${width}.png`) });
+            }
 
             await page.addStyleTag({ content: candidateCss });
             const after = await measure(page);
@@ -96,11 +111,17 @@ async function captureBlock(page, selector, target) {
                 assert.ok(nearlyEqual(after.imageRects[index].width, rect.width), `${width}: image ${index + 1} width is unchanged`);
                 assert.ok(nearlyEqual(after.imageRects[index].height, rect.height), `${width}: image ${index + 1} height is unchanged`);
             });
+            assert.ok(after.strong.every(item => item.color === after.descriptionColor), `${width}: double-strike uses the body ink colour`);
+            assert.ok(after.strong.every(item => item.shadow !== after.descriptionShadow && item.shadow.includes('1px')), `${width}: every strong heading has a distinct one-pixel double-strike`);
             assert.ok(after.overflow <= 0.25, `${width}: no horizontal overflow`);
 
             await captureBlock(page, '.static-transmission .description > .snap-inline-frame', path.join(output, `after-full-${width}.png`));
             await captureBlock(page, '.static-transmission .snapsmack-columns', path.join(output, `after-columns-${width}.png`));
-            console.log(`PASS ${width}: full frame 60->24px; column frames 60->0px; outer columns remain 24px; image geometry unchanged`);
+            if (width === 1920 || width === 1024) {
+                await page.locator('.static-transmission .description p:has(> strong)').first().screenshot({ path: path.join(output, `after-bold-heading-${width}.png`) });
+                await page.locator('.static-transmission .description p:has(> strong)').last().screenshot({ path: path.join(output, `after-bold-why-${width}.png`) });
+            }
+            console.log(`PASS ${width}: spacing repaired; image geometry unchanged; same-ink one-pixel double-strike distinguishes strong text`);
             await page.close();
         }
     } finally {
