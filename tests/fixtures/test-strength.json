@@ -1969,8 +1969,8 @@
         "thresholds": []
     },
     "reactions-retired-regression.php": {
-        "assertions": 17,
-        "predicates": 24,
+        "assertions": 18,
+        "predicates": 26,
         "thresholds": []
     },
     "reader-header-never-names-a-real-instance.php": {
@@ -2760,6 +2760,11 @@
         "thresholds": [
             100
         ]
+    },
+    "social-dock-placement-inventory-regression.php": {
+        "assertions": 8,
+        "predicates": 3,
+        "thresholds": []
     },
     "soft-404-regression.php": {
         "assertions": 0,

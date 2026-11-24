@@ -1,0 +1,19 @@
+{
+    "schema_version": 1,
+    "purpose": "Which skins actually DRAW a social dock, and by which component. The Social Dock settings are site-wide and offered on every skin, but only the skins listed here render anything, so on the others an owner can save links and see nothing. SS-1555 places the dock one skin at a time; this records where that has got to, so a skin LOSING its dock is a failure and the outstanding count is a number rather than a feeling.",
+    "components": {
+        "social-dock": "the settings-driven shared dock",
+        "crop-circles": "the older shared navigation component that also draws social links"
+    },
+    "drawn_by": {
+        "alfred": {
+            "social_dock": 2,
+            "crop_circles": 0
+        },
+        "scroll": {
+            "social_dock": 0,
+            "crop_circles": 3
+        }
+    },
+    "total_skins": 30
+}
