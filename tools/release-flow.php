@@ -53,6 +53,49 @@ function rf_branch(): string {
 }
 
 /**
+ * Remote feature branches whose tip is already contained in the release line.
+ *
+ * HEAD is included because push-dev checks the local dev commit before it is
+ * pushed. The two remote release refs cover a fresh checkout and stable-only
+ * branches. A branch reported here is safe to delete with `git push Github
+ * --delete <name>`; anything absent from this list still needs an explicit
+ * keep/merge/abandon decision.
+ */
+function rf_merged_remote_branches(): array {
+    $merged = [];
+    foreach (['HEAD', 'refs/remotes/Github/dev', 'refs/remotes/Github/master'] as $base) {
+        // Use branch --merged rather than for-each-ref's percent-format here:
+        // PHP's Windows command shell consumes percent expressions before Git
+        // sees them, which can turn the format into a literal false branch.
+        $out = rf_git(['branch', '--remotes', '--merged=' . $base]);
+        foreach (preg_split('/\R/', $out) ?: [] as $branch) {
+            $branch = trim($branch);
+            if (str_contains($branch, ' -> ')) continue;
+            if ($branch === '' || $branch === 'Github' || $branch === 'Github/HEAD'
+                || $branch === 'Github/dev' || $branch === 'Github/master') {
+                continue;
+            }
+            $merged[$branch] = true;
+        }
+    }
+    $branches = array_keys($merged);
+    sort($branches, SORT_STRING);
+    return $branches;
+}
+
+function rf_require_no_merged_remote_branches(): void {
+    // This is a release gate, not housekeeping advice. If the remote cannot be
+    // refreshed, we cannot prove the branch list is clean and must stop.
+    rf_git(['fetch', 'Github', '--prune']);
+    $merged = rf_merged_remote_branches();
+    if ($merged === []) return;
+    rf_fail("remote branches already merged into this release line remain:\n      "
+        . implode("\n      ", $merged)
+        . "\n  Delete each verified merged branch before completing the release. "
+        . 'The agent that merges a branch deletes it in the same step.');
+}
+
+/**
  * Paths that cannot reach a CMS release, and so cannot make one unsafe.
  *
  * The clean check used to read the whole repository. In a shared checkout that
@@ -560,6 +603,9 @@ if ($command === 'status') {
         echo 'Outside the release, left alone: ' . count($split['ignored']) . " file(s)
 ";
     }
+    $mergedBranches = rf_merged_remote_branches();
+    echo 'Merged remote feature branches: ' . count($mergedBranches) . "\n";
+    foreach ($mergedBranches as $branch) echo "  {$branch}\n";
     exit(0);
 }
 
@@ -592,6 +638,7 @@ if ($command === 'fleet-before' || $command === 'fleet-after') {
 if ($command === 'push-dev') {
     rf_require_dev();
     rf_require_clean();
+    rf_require_no_merged_remote_branches();
     rf_git(['push', 'Github', 'dev'], false);
     echo "DEV PUSH COMPLETE. No release tag or manifest was changed.\n";
     exit(0);
@@ -622,6 +669,7 @@ if ($command === 'tag-dev') {
     }
     rf_require_dev();
     rf_require_clean();
+    rf_require_no_merged_remote_branches();
     $version = rf_version($version_arg);
     $dev_version = $version . 'D';
     if (rf_source_version() !== $dev_version) {
@@ -678,6 +726,7 @@ if ($command === 'promote-stable') {
     require_once __DIR__ . '/_build/stable-candidate-check.php';
 
     rf_require_clean();
+    rf_require_no_merged_remote_branches();
     $version = rf_version($argv[2] ?? '');
     if (($argv[3] ?? '') !== '--yes') rf_fail('promotion requires the explicit --yes argument');
 
