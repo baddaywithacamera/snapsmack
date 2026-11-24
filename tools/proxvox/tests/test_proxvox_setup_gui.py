@@ -4,6 +4,7 @@
 # Last non-empty line must be the Python SNAPSMACK EOF marker.
 """
 
+import os
 import unittest
 
 from proxvox.credentials import NoToken
@@ -11,6 +12,14 @@ from proxvox.setup_gui import ROWS, credential_presence, save_setup_secret
 
 
 class SetupGuiTests(unittest.TestCase):
+    def test_button_label_has_one_ampersand(self):
+        with open(
+                os.path.join(os.path.dirname(__file__), "..", "proxvox", "setup_gui.py"),
+                encoding="utf-8") as stream:
+            source = stream.read()
+        self.assertIn('text="PASTE & SAVE"', source)
+        self.assertNotIn('text="PASTE && SAVE"', source)
+
     def test_status_reports_presence_without_returning_values(self):
         values = {
             ("proxvox", "ct102_ssh"): "one",

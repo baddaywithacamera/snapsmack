@@ -63,7 +63,7 @@ class SetupWindow:
             tk.Label(frame, textvariable=self.status[kind], width=10, anchor="center",
                      bg="#272b31", fg="#d7dbe2", font=("Consolas", 10, "bold"),
                      padx=8, pady=6).grid(row=offset, column=1, padx=(10, 12), pady=7)
-            tk.Button(frame, text="PASTE && SAVE", width=16,
+            tk.Button(frame, text="PASTE & SAVE", width=16,
                       command=lambda key=kind: self.paste_and_save(key),
                       bg="#f4b942", fg="#111111", activebackground="#ffd36a",
                       font=("Segoe UI", 9, "bold"), relief="flat", padx=8, pady=5

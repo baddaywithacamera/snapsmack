@@ -33,6 +33,7 @@ done
 
 config=/etc/ssh/sshd_config
 marker='# BEGIN PROX VOX proxvox-ro'
+config_changed=0
 if ! grep -Fqx "$marker" "$config"; then
     if grep -Eq '^[[:space:]]*Match[[:space:]]+User[[:space:]]+proxvox-ro([[:space:]]|$)' "$config"; then
         fail "an unmarked proxvox-ro Match block already exists; no change was made"
@@ -57,13 +58,17 @@ EOF
         cp -p "$backup" "$config"
         fail "sshd validation failed; configuration restored"
     fi
+    config_changed=1
     rm -f "$backup"
 fi
 
 sshd_path=$(command -v sshd || true)
 [ -n "$sshd_path" ] || fail "sshd is missing"
 "$sshd_path" -t || fail "sshd validation failed"
-systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || fail "could not reload SSH"
+if [ "$config_changed" -eq 1 ]; then
+    systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null \
+        || fail "could not reload SSH"
+fi
 
 printf 'PROX VOX CT102 PASS\n'
 

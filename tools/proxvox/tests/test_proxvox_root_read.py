@@ -258,6 +258,19 @@ class RootReadTests(unittest.TestCase):
         self.assertEqual(result["content_policy"], "metadata-sha256-only")
         self.assertFalse(any("/bin/cat" in command for command in calls))
 
+    def test_container_list_passes_find_a_textual_nul_escape(self):
+        calls = []
+
+        def fake_run(argv):
+            calls.append(argv)
+            self.assertFalse(any("\0" in argument for argument in argv))
+            return b"z.conf\0a.conf\0"
+
+        with mock.patch.object(proxvox_readonly, "_run", side_effect=fake_run):
+            result = proxvox_readonly.dispatch("ct-list 106 /etc/apache2")
+        self.assertEqual(result["entries"], ["a.conf", "z.conf"])
+        self.assertIn("%f\\0", calls[0])
+
     def test_actual_wrapper_process_chunks_ordinary_and_withholds_every_secret_tree_file(self):
         wrapper = os.path.join(os.path.dirname(__file__), "..", "server", "proxvox_readonly.py")
         ordinary = os.path.join(self.tmp, "ordinary config.txt")

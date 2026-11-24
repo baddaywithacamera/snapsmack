@@ -208,7 +208,7 @@ def dispatch(command):
         if args[0] == "ct-list" and len(args) == 3:
             raw = _run(prefix + [
                 "/usr/bin/find", path, "-mindepth", "1", "-maxdepth", "1",
-                "-printf", "%f\0",
+                "-printf", "%f\\0",
             ])
             return {"vmid": int(guest), "path": path,
                     "entries": sorted(item.decode("utf-8", "surrogateescape")

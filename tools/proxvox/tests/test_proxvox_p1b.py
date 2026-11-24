@@ -9,6 +9,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -52,6 +53,16 @@ class _SSH:
 
     def open_sftp(self):
         return self.sftp
+
+    def get_transport(self):
+        owner = self
+
+        class _Transport:
+            def open_channel(self, kind, destination, source):
+                owner.channel_request = (kind, destination, source)
+                return "ssh-channel"
+
+        return _Transport()
 
     def close(self):
         self.closed = True
@@ -174,6 +185,25 @@ class P1bTests(unittest.TestCase):
             "SET SESSION TRANSACTION READ ONLY", "START TRANSACTION READ ONLY",
         ])
         self.assertNotIn("SELECT file_path", str(self.audit.records()))
+
+    def test_real_pymysql_connection_receives_the_open_ssh_channel(self):
+        target = self.broker._target("ct102")
+        self.broker._mysql_factory = None
+        mysql = mock.Mock()
+        with mock.patch("pymysql.connect", return_value=mysql) as connect:
+            wrapped = self.broker._open_mysql(
+                target, "ssh-secret", "db-secret", "portalproject"
+            )
+        kwargs = connect.call_args.kwargs
+        self.assertTrue(kwargs["defer_connect"])
+        self.assertNotIn("sock", kwargs)
+        mysql.connect.assert_called_once_with("ssh-channel")
+        self.assertEqual(
+            self.ssh_clients[-1].channel_request,
+            ("direct-tcpip", ("192.168.1.20", 3306), ("127.0.0.1", 0)),
+        )
+        wrapped.close()
+        self.assertTrue(self.ssh_clients[-1].closed)
 
     def test_every_write_shape_is_refused_before_a_connection(self):
         before = len(self.ssh_clients)
