@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- SNAPSMACK_EOF_HEADER: preserve the final SNAPSMACK EOF comment. -->
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OPAUDIT 031 — Audit register failure: SECAUDITs misfiled, left open without owners, and reported as handled without verification</title><link rel="stylesheet" href="_report.css?v=ace953fd"></head><body><p class="doc-kicker">SnapSmack Operability Audit</p>
-<h1>OPAUDIT 031 — Audit register failure: SECAUDITs misfiled, left open without owners, and reported as handled without verification</h1>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OPAUDIT 031: Audit register failure: SECAUDITs misfiled, left open without owners, and reported as handled without verification</title><link rel="stylesheet" href="_report.css?v=ace953fd"></head><body><p class="doc-kicker">SnapSmack Operability Audit</p>
+<h1>OPAUDIT 031: Audit register failure: SECAUDITs misfiled, left open without owners, and reported as handled without verification</h1>
 <blockquote>
 <p><strong>Publication note.</strong>
 Drafted by Claude Code (the PM reassigned 031/032 drafting to Code on 2026-11-10
@@ -27,7 +27,7 @@ No copy is written in Sean's voice (OPAUDIT 028).</p>
 </tr>
 <tr>
 <td>Scope</td>
-<td>The SECAUDIT filing and closure process — not any one finding. It worked on paper and failed in operation, which is why this is an operability audit as well as a security-program one.</td>
+<td>The SECAUDIT filing and closure process, not any one finding. It worked on paper and failed in operation, which is why this is an operability audit as well as a security-program one.</td>
 </tr>
 <tr>
 <td>Subject source</td>
@@ -35,7 +35,7 @@ No copy is written in Sean's voice (OPAUDIT 028).</p>
 </tr>
 <tr>
 <td>Author</td>
-<td>Claude Code (draft); Muse (read-only fact verification, 14XZxgxT — the 22:53/23:02 MT dates in §2/§7 corrected 2026-11-08 → 2026-11-09 per that check).</td>
+<td>Claude Code (draft); Muse (read-only fact verification, 14XZxgxT, the 22:53/23:02 MT dates in §2/§7 corrected 2026-11-08 → 2026-11-09 per that check).</td>
 </tr>
 </tbody>
 </table>
@@ -45,13 +45,13 @@ and no date, and then reported as "handled" when nobody has a register to check,
 is not a tracked audit. It is an untracked one with a number.</p>
 <p>SnapSmack runs a numbered SECAUDIT program. The program's own bookkeeping failed:
 there was no single register, so "is this one dealt with?" could not be answered
-from a document — only from an agent's memory, and more than one agent answered
+from a document, only from an agent's memory, and more than one agent answered
 "yes" for findings that were still open. The instrument that was supposed to make
 "silently still open" impossible had the same silent-failure shape as the faults
 it exists to catch.</p>
 <h2>2. What the owner experienced</h2>
 <p>Sean asked, more than once, whether the open SECAUDITs had been dealt with, and
-was told they had been — by more than one agent. There was no register to check
+was told they had been, by more than one agent. There was no register to check
 the answers against, so the answers could not be wrong in a way anyone could see.
 On 2026-11-09 he found for himself that a number of audits he had been told were
 resolved were not. His words on 2026-11-09, 22:53 MT: <em>"SECAUDITS ARE FUCKING
@@ -86,7 +86,7 @@ one that is true.</p>
 </tr>
 <tr>
 <td>050 / 051</td>
-<td>PDFs were filed only under <code>projects/snapsmack-ca/secaudits/</code>, not under <code>./secaudits/</code> — a two-directory split so a check of one tree missed them.</td>
+<td>PDFs were filed only under <code>projects/snapsmack-ca/secaudits/</code>, not under <code>./secaudits/</code>, a two-directory split so a check of one tree missed them.</td>
 </tr>
 <tr>
 <td>044</td>
@@ -107,7 +107,7 @@ one that is true.</p>
 <li><strong>Nothing forced live verification, so nothing caught the drift.</strong> The same class as the operability faults this project keeps hitting: a step that silently never ran, with no alarm that it had not.</li>
 </ol>
 <h3>The verification-debt pattern</h3>
-<p>About a third of the open SECAUDITs are not "unstarted" — they are "fixed in
+<p>About a third of the open SECAUDITs are not "unstarted", they are "fixed in
 source, live check never run": 048, 049, 050, 052 and similar. 049 is the live
 example from this same week: the login-CSP code fix landed and was
 cross-verified in an isolated local request, but the authoritative close needs a
@@ -118,11 +118,11 @@ live measurement between them.</p>
 <p>Measured endpoints: the register snapshot is dated 2026-11-08; Sean's own
 discovery of still-open items is 2026-11-09. The earlier dates on which he asked
 and was told "handled" are in the room record and should be pinned to exact
-messages before this is published — stated here as "from the room record," not
-asserted to a day this draft has not measured. Muse's read of the full archive-recovery history (3,420 messages) could not pin a first ask; the earliest pinned instances are 2026-10-31 19:31 MT (F6/F7 on 049) and 2026-11-03, each pointing back at an earlier unpinned ask — so the first ask is not in this store and may be in Sean's own agent chats.</p>
+messages before this is published, stated here as "from the room record," not
+asserted to a day this draft has not measured. Muse's read of the full archive-recovery history (3,420 messages) could not pin a first ask; the earliest pinned instances are 2026-10-31 19:31 MT (F6/F7 on 049) and 2026-11-03, each pointing back at an earlier unpinned ask, so the first ask is not in this store and may be in Sean's own agent chats.</p>
 <h2>6. Impact</h2>
 <p>For the duration, no one could state from a document which security findings were
-open. That includes 061, fleet enrollment — a finding about whether sites join a
+open. That includes 061, fleet enrollment, a finding about whether sites join a
 hub safely was itself unfindable in the repo. No confidentiality breach is
 claimed from the bookkeeping failure itself; the cost is that the program could
 not answer its own central question, and the owner was given answers that were
@@ -130,8 +130,8 @@ wrong and uncheckable.</p>
 <h2>7. Fix</h2>
 <p>Two standing rules were posted on 2026-11-09 (22:53 MT) and are in force:</p>
 <ul>
-<li><strong>Standing Rule 1 (MnsYNqru) — number and file, same day.</strong> Every SECAUDIT gets its number the moment it is opened and is filed in <code>projects/snapsmack-ca/secaudits/</code> the same day, PDF and source, tracked in git. No gaps, no working copies outside the repo, no unnumbered audits. Codex owns reconciling the five misfilings above (no deletions) and posting a listing that every number 001–063 has a file or a stated reason. Muse's CLOSED/OPEN table becomes the register.</li>
-<li><strong>Standing Rule 2 (g6acd4K1) — owner, date, and a real close.</strong> Every open finding has a named owner and a due date on its row. When Sean asks, the answer within 30 minutes is a status plus the next action and who does it, never "tracked". The lifecycle is fix → deploy → verify live → close, each step dated; a step blocked on Sean says in one line what he must do. Items older than 7 days with no movement are reported to Sean by the PM, not left for him to ask.</li>
+<li><strong>Standing Rule 1 (MnsYNqru): number and file, same day.</strong> Every SECAUDIT gets its number the moment it is opened and is filed in <code>projects/snapsmack-ca/secaudits/</code> the same day, PDF and source, tracked in git. No gaps, no working copies outside the repo, no unnumbered audits. Codex owns reconciling the five misfilings above (no deletions) and posting a listing that every number 001–063 has a file or a stated reason. Muse's CLOSED/OPEN table becomes the register.</li>
+<li><strong>Standing Rule 2 (g6acd4K1): owner, date, and a real close.</strong> Every open finding has a named owner and a due date on its row. When Sean asks, the answer within 30 minutes is a status plus the next action and who does it, never "tracked". The lifecycle is fix → deploy → verify live → close, each step dated; a step blocked on Sean says in one line what he must do. Items older than 7 days with no movement are reported to Sean by the PM, not left for him to ask.</li>
 </ul>
 <p>Reconciliation already done under these rules: 061 filed (codex/secaudit-061-filing),
 27 canonical PDFs including 049/050/051 filed (codex/audit-pdf-filing-current),

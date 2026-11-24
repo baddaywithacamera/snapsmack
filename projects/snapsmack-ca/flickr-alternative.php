@@ -7,15 +7,15 @@
  *     <?php // ===== SNAPSMACK EOF =====
  */
 
-$page_title = 'Free Flickr alternative you host yourself — SnapSmack';
+$page_title = 'Free Flickr alternative you host yourself: SnapSmack';
 $page_description = 'A Flickr alternative on your own domain: bring twenty years of photographs, titles, tags, dates, views, comments and faves to a site you own. Free, self-hosted, no subscription, no sunset.';
 $page_og_url = 'https://snapsmack.ca/flickr-alternative.php';
 $landing_eyebrow = 'Flickr alternative';
 $landing_h1 = 'A Flickr alternative<br>on your own domain.';
 $landing_opener = <<<'HTML'
             <p>Flickr was <em>the</em> place. Some of us have a decade or two there, and every couple of years somebody new buys it and we all hold our breath. You are tired of holding your breath. We know; we were too.</p>
-            <p>SnapSmack moves the whole archive &mdash; titles, descriptions, tags, upload dates, the views you earned, the comments people left, the faves &mdash; onto a site you own, on a domain you own, and it doesn&rsquo;t reset the clock. Twenty years still reads as twenty years. There&rsquo;s even a skin called SLICKR for when familiarity is part of the plan. Subtle, we are not.</p>
-            <p>The part of Flickr that was actually people comes too &mdash; your site is on the fediverse, so anyone on Pixelfed, Mastodon, or the rest can follow, fave, and comment from where they already are. Groups are the honest gap: nothing on the fediverse does them the way Flickr did, and we won&rsquo;t pretend a directory and a weekly challenge are the same thing. Nobody can buy this out from under you, though.</p>
+            <p>SnapSmack moves the whole archive, titles, descriptions, tags, upload dates, the views you earned, the comments people left, the faves, onto a site you own, on a domain you own, and it doesn&rsquo;t reset the clock. Twenty years still reads as twenty years. There&rsquo;s even a skin called SLICKR for when familiarity is part of the plan. Subtle, we are not.</p>
+            <p>The part of Flickr that was actually people comes too, your site is on the fediverse, so anyone on Pixelfed, Mastodon, or the rest can follow, fave, and comment from where they already are. Groups are the honest gap: nothing on the fediverse does them the way Flickr did, and we won&rsquo;t pretend a directory and a weekly challenge are the same thing. Nobody can buy this out from under you, though.</p>
 HTML;
 $landing_closer = <<<'HTML'
             <p class="seo-closer-lines"><span>Nobody&rsquo;s buying it.</span><span>Nobody&rsquo;s sunsetting it.</span><span>It&rsquo;s <em>yours.</em></span></p>

@@ -6,7 +6,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'BRASS TACKS! — Desktop Tools | Free photoblog software';
+$page_title       = 'BRASS TACKS!: Desktop Tools | Free photoblog software';
 $page_description = 'SnapSmack FAQ, desktop tools: The free Windows and Linux suite: which tool does what, where your files go, and what it never does.';
 $page_og_url      = 'https://snapsmack.ca/faq-tools.php';
 $faq_slug    = 'faq-tools';
@@ -15,12 +15,12 @@ $faq_lede    = 'The free Windows and Linux suite: which tool does what, where yo
 $faq_qas = <<<'HTML'
             <div class="qa" id="q-tools-which">
                 <h3>There are nine desktop tools. Which one do I actually need?</h3>
-                <p>Depends what you're doing. <strong>Editing a photograph:</strong> SNAP SLAPPER. <strong>Writing a post with no internet:</strong> COLD SNAP. <strong>Publishing a whole shoot:</strong> SMACK YOUR BATCH UP. <strong>Fixing a messy archive:</strong> GET YOUR SHIT SORTED. <strong>Leaving Instagram / Flickr / WordPress:</strong> THE UNZUCKER / FLKR FCKR / SMACKPRESS. <strong>Backing up:</strong> SMACK UP YOUR BACKUP. <strong>Running more than one site:</strong> SNAP HQ. Start with SNAP HQ &mdash; it launches the rest and holds your site details so you only type them once.</p>
+                <p>Depends what you're doing. <strong>Editing a photograph:</strong> SNAP SLAPPER. <strong>Writing a post with no internet:</strong> COLD SNAP. <strong>Publishing a whole shoot:</strong> SMACK YOUR BATCH UP. <strong>Fixing a messy archive:</strong> GET YOUR SHIT SORTED. <strong>Leaving Instagram / Flickr / WordPress:</strong> THE UNZUCKER / FLKR FCKR / SMACKPRESS. <strong>Backing up:</strong> SMACK UP YOUR BACKUP. <strong>Running more than one site:</strong> SNAP HQ. Start with SNAP HQ, it launches the rest and holds your site details so you only type them once.</p>
             </div>
 
             <div class="qa" id="q-tools-required">
                 <h3>Do I have to use them?</h3>
-                <p>One of them, yes: backup. The website used to back itself up, and on a large archive that slaughtered the server &mdash; a shared host will kill a job that big before it finishes &mdash; so it was taken out of the site and lives in SMACK UP YOUR BACKUP on your own computer. Everything else the website does on its own. The other tools exist because some jobs &mdash; editing eighty RAW files, importing fifteen years of Flickr &mdash; are miserable through a browser and cruel to a shared host, so they move that work onto your machine. If you post one photograph a week from your phone, backup is the only one you&rsquo;ll ever open. If you won&rsquo;t run the backup tool, or you&rsquo;re on a Mac, you will have to dump the database and copy the files yourself from your host&rsquo;s control panel. We are not putting the feature back into the website for you: it simply does not work on shared hosting.</p>
+                <p>One of them, yes: backup. The website used to back itself up, and on a large archive that slaughtered the server, a shared host will kill a job that big before it finishes, so it was taken out of the site and lives in SMACK UP YOUR BACKUP on your own computer. Everything else the website does on its own. The other tools exist because some jobs, editing eighty RAW files, importing fifteen years of Flickr, are miserable through a browser and cruel to a shared host, so they move that work onto your machine. If you post one photograph a week from your phone, backup is the only one you&rsquo;ll ever open. If you won&rsquo;t run the backup tool, or you&rsquo;re on a Mac, you will have to dump the database and copy the files yourself from your host&rsquo;s control panel. We are not putting the feature back into the website for you: it simply does not work on shared hosting.</p>
             </div>
 
             <div class="qa" id="q-slapper-site-required">
@@ -31,26 +31,26 @@ $faq_qas = <<<'HTML'
 
             <div class="qa" id="q-tools-platforms">
                 <h3>Windows only?</h3>
-                <p>Windows and Linux. macOS is not supported and isn't planned &mdash; the reasons are in the <a href="faq-running.php#q-macos">Running it</a> section, and they're not going to change. SNAP HQ is currently Windows only.</p>
+                <p>Windows and Linux. macOS is not supported and isn't planned, the reasons are in the <a href="faq-running.php#q-macos">Running it</a> section, and they're not going to change. SNAP HQ is currently Windows only.</p>
             </div>
 
             <div class="qa" id="q-tools-originals">
                 <h3>Do the tools upload my originals anywhere? Copy them somewhere I didn't ask for?</h3>
-                <p>No, and this is a rule, not a setting. Every tool treats its local store as a <em>cache of your site</em> &mdash; never a second copy of your originals. Nothing shadow-copies your RAW files into some tool folder. You archive your own work; the tools work beside it. SNAP SLAPPER reads photographs where they live and never modifies the original file. Exports are new files. If a tool ever quietly duplicated your archive, that would be a bug, and a serious one.</p>
+                <p>No, and this is a rule, not a setting. Every tool treats its local store as a <em>cache of your site</em>, never a second copy of your originals. Nothing shadow-copies your RAW files into some tool folder. You archive your own work; the tools work beside it. SNAP SLAPPER reads photographs where they live and never modifies the original file. Exports are new files. If a tool ever quietly duplicated your archive, that would be a bug, and a serious one.</p>
             </div>
 
             <div class="qa" id="q-tools-ai-record">
                 <h3>Can I turn off the AI edit record in SNAP SLAPPER?</h3>
-                <p>No. Generative Fill, Generative Expand, AI Heal, and whole-image restoration are all written into the exported file&rsquo;s metadata &mdash; tool, purpose, region, how much of the frame, provider and model, the instruction sent, and when. There is no setting that disables it and none is coming. If you want to hide that a generative model touched a photograph, you will need a third-party tool to strip the metadata, and that is your decision to make in your software, not something ours will do for you. We&rsquo;re not driving your getaway car if you rob the pixel bank. Ordinary corrections &mdash; crop, levels, colour, sharpening, a non-generative clone &mdash; are recorded as ordinary edits and carry no AI flag.</p>
+                <p>No. Generative Fill, Generative Expand, AI Heal, and whole-image restoration are all written into the exported file&rsquo;s metadata, tool, purpose, region, how much of the frame, provider and model, the instruction sent, and when. There is no setting that disables it and none is coming. If you want to hide that a generative model touched a photograph, you will need a third-party tool to strip the metadata, and that is your decision to make in your software, not something ours will do for you. We&rsquo;re not driving your getaway car if you rob the pixel bank. Ordinary corrections, crop, levels, colour, sharpening, a non-generative clone, are recorded as ordinary edits and carry no AI flag.</p>
             </div>
             <div class="qa" id="q-tools-ai">
-                <h3>The AI enrichment &mdash; whose key, whose data?</h3>
+                <h3>The AI enrichment: whose key, whose data?</h3>
                 <p>Your key, your bill, your data relationship. You pick the provider (Claude, ChatGPT, Gemini, Kimi, Deepseek), you paste your own API key into SNAP HQ once, and the tools use it. The photograph and your site's prompt go to the provider you chose; nothing goes through us. Every tool that writes for a site reads the same per-site prompt, so a caption from GYSS sounds like a caption from SMACK YOUR BATCH UP sounds like you. And it's optional: leave the key blank and the tools simply don't offer it.</p>
             </div>
 
             <div class="qa" id="q-tools-safe">
                 <h3>Are they safe to run against my live site?</h3>
-                <p>They're built to be, and the failures we found are documented. Site credentials live in an encrypted vault, not a text file. Anything destructive &mdash; delete, recover-over-the-top, push-to-site &mdash; is a step-up action: password and 2FA, every time. The suite guards hardest against the one failure that would really hurt: pushing to the <em>wrong</em> site. That bug existed once, in GYSS. It was found, fixed, and tested, and it's written up on <a href="ding-dong-bell.php">DING DONG BELL</a> because you're entitled to know.</p>
+                <p>They're built to be, and the failures we found are documented. Site credentials live in an encrypted vault, not a text file. Anything destructive, delete, recover-over-the-top, push-to-site, is a step-up action: password and 2FA, every time. The suite guards hardest against the one failure that would really hurt: pushing to the <em>wrong</em> site. That bug existed once, in GYSS. It was found, fixed, and tested, and it's written up on <a href="ding-dong-bell.php">DING DONG BELL</a> because you're entitled to know.</p>
             </div>
 
             <div class="qa" id="q-tools-download">

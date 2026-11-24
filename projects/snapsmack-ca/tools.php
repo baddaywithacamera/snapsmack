@@ -3,13 +3,13 @@
  * SNAPSMACK.CA - BOX O' TRICKS (desktop suite hub)
  * One card per tool, grouped by the job it does for your site. Each card
  * links to its own page (tool-*.php, shared layout includes/tool-page.php).
- * (Rebuilt 2026-09-12 — was one long page with SNAP SLAPPER's whole story
+ * (Rebuilt 2026-09-12: was one long page with SNAP SLAPPER's whole story
  * on it and COLD SNAP missing entirely.)
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'Free Windows and Linux photo tools — SnapSmack';
+$page_title       = 'Free Windows and Linux photo tools: SnapSmack';
 $page_description = 'Free Windows and Linux desktop tools for SnapSmack: a non-destructive photo editor, offline composer, batch publisher, archive sorter, importers for Instagram, Flickr and WordPress, backup, and fleet management.';
 $page_og_url      = 'https://snapsmack.ca/tools.php';
 $nav_active       = 'goods-tools';
@@ -87,7 +87,7 @@ function ss_tool_card(string $href, string $name, string $platform, string $stat
             <h2>We said nothing here is new. This is the exception.</h2>
             <div class="why-desktop-cols">
                 <p>For twenty years developers have pretended a browser tab was all you needed to publish a website. It was tolerable in the early days of Web 2.0. It is not workable now. Hosting has consolidated, and you pay more every year for less: your host kills your processes before they finish, you never get the memory you need or the storage you want, and your large backup job never completes. Running a real archive on budget hosting under most current publishing systems is becoming impossible.</p>
-                <p>So SnapSmack does it the other way round. The server side is built to use as little as possible, and the heavy work moves to your desktop or laptop &mdash; a ten-year-old machine still beats a shared host. The desktop tools are powerful, work offline in many cases, and are always free. No hidden tiers, no upsells.</p>
+                <p>So SnapSmack does it the other way round. The server side is built to use as little as possible, and the heavy work moves to your desktop or laptop, a ten-year-old machine still beats a shared host. The desktop tools are powerful, work offline in many cases, and are always free. No hidden tiers, no upsells.</p>
                 <p>Content management systems are old. Desktop applications are old. Using the second to drive the first is the one thing SnapSmack does that nobody else does. It just made sense.</p>
             </div>
         </div>
@@ -101,7 +101,7 @@ function ss_tool_card(string $href, string $name, string $platform, string $stat
                 <p>The photograph and the words, finished on your machine before they go anywhere.</p>
             </div>
             <div class="tool-cards">
-                <?php echo ss_tool_card('tool-snap-slapper.php', 'SNAP SLAPPER', 'Windows / Linux', 'Closed beta', 'A private photo library and a real non-destructive editor. Normal mode for most photographs, Advanced mode when one needs the whole bench. LEWKS you can see, change, and keep. Generative Fill and Expand &mdash; and every AI edit goes on the record in the export, no off switch.', 'snapslapper-editor-norm.png', 'SNAP SLAPPER editor in Normal mode'); ?>
+                <?php echo ss_tool_card('tool-snap-slapper.php', 'SNAP SLAPPER', 'Windows / Linux', 'Closed beta', 'A private photo library and a real non-destructive editor. Normal mode for most photographs, Advanced mode when one needs the whole bench. LEWKS you can see, change, and keep. Generative Fill and Expand, and every AI edit goes on the record in the export, no off switch.', 'snapslapper-editor-norm.png', 'SNAP SLAPPER editor in Normal mode'); ?>
                 <?php echo ss_tool_card('tool-cold-snap.php', 'COLD SNAP', 'Windows / Linux', 'Shipping', 'Write posts and build BIGGIE photo essays with no connection, from a local cold-storage copy of your site. Sync when the internet comes back.', null); ?>
             </div>
         </div>
@@ -132,7 +132,7 @@ function ss_tool_card(string $href, string $name, string $platform, string $stat
                 <?php echo ss_tool_card('tool-unzucker.php', 'THE UNZUCKER', 'Windows / Linux', 'Shipping', 'Instagram export in, classic three-across grid out. Images, captions, hashtags, carousels, and original dates intact. Arrange the grid, lock the panoramas, walk away.', 'unzucker-gridsorter.png', 'The Unzucker arranging an imported Instagram grid'); ?>
                 <?php echo ss_tool_card('tool-flkr-fckr.php', 'FLKR FCKR', 'Windows / Linux', 'Shipping', 'A Flickr archive without resetting its history. Photographs, titles, descriptions, tags, upload dates, views, comments, and likes all make the trip.', 'flkr-fckr.png', 'FLKR FCKR importing a Flickr archive'); ?>
                 <?php echo ss_tool_card('tool-smackpress.php', 'SMACKPRESS', 'Windows / Linux', 'Closed beta', 'A WordPress photo blog into SMACKTALK, one post at a time, with a review step for each. For the blogs where every post deserves a look.', null); ?>
-                <?php echo ss_tool_card('coming-soon.php', 'BLOGGER FLOGGER', 'Windows / Linux', 'Drawing board', 'An old Blogger site into SMACKTALK from a Google Takeout &mdash; posts, pages, comments, labels, photographs copied off Blogger instead of hotlinked. Spec&rsquo;d, not built.', null); ?>
+                <?php echo ss_tool_card('coming-soon.php', 'BLOGGER FLOGGER', 'Windows / Linux', 'Drawing board', 'An old Blogger site into SMACKTALK from a Google Takeout, posts, pages, comments, labels, photographs copied off Blogger instead of hotlinked. Spec&rsquo;d, not built.', null); ?>
             </div>
         </div>
     </section>

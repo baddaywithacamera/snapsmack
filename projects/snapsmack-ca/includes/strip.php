@@ -3,7 +3,7 @@
  * SNAPSMACK.CA - The scannable strip: what SnapSmack is, in one screen.
  * ONE source, used by the home page and every SEO landing page, so the pitch
  * never drifts between them. One line + a link per item. Introduce, don't
- * explain — the inner pages explain.
+ * explain: the inner pages explain.
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====

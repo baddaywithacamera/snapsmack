@@ -4,13 +4,13 @@
  * What is actually in the pipeline, sorted by how real it is. Replaces the
  * "Coming Up the Rear" block that used to sit on the homepage and still
  * listed things that had shipped months ago.
- * (New page, rework 2026-09-12. Statuses as of that date — keep them honest.)
+ * (New page, rework 2026-09-12. Statuses as of that date: keep them honest.)
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
 
-$page_title       = 'COMING UP THE REAR! — Roadmap | Free photoblog software';
+$page_title       = 'COMING UP THE REAR!: Roadmap | Free photoblog software';
 $page_description = 'The SnapSmack pipeline, honestly sorted: what is in beta on live sites, what is built but not yet released, and what is only on the drawing board. No roadmap theatre.';
 $page_og_url      = 'https://snapsmack.ca/coming-soon.php';
 $nav_active       = 'coming';
@@ -104,7 +104,7 @@ require_once __DIR__ . '/includes/header.php';
                 <article class="coming-item">
                     <span class="tag">Desktop &middot; Ops</span>
                     <h3>CRONOMETER</h3>
-                    <p>One board showing whether every scheduled job on every site &mdash; feeds, updates, federation delivery, backups, integrity checks &mdash; is actually running. Catches a silently dead cron before it bites.</p>
+                    <p>One board showing whether every scheduled job on every site, feeds, updates, federation delivery, backups, integrity checks, is actually running. Catches a silently dead cron before it bites.</p>
                 </article>
                 <article class="coming-item">
                     <span class="tag">Skin</span>
@@ -124,7 +124,7 @@ require_once __DIR__ . '/includes/header.php';
                 <article class="coming-item">
                     <span class="tag">Importer</span>
                     <h3>BLOGGER FLOGGER</h3>
-                    <p>Bring an old Blogger site &mdash; posts, pages, comments, labels, photographs &mdash; into a SMACKTALK site from a Google Takeout, without a live Blogger account. Copies the photos off Blogger instead of leaving fragile hotlinks. Sean has two old Blogger blogs to rescue; they&rsquo;re the test.</p>
+                    <p>Bring an old Blogger site, posts, pages, comments, labels, photographs, into a SMACKTALK site from a Google Takeout, without a live Blogger account. Copies the photos off Blogger instead of leaving fragile hotlinks. Sean has two old Blogger blogs to rescue; they&rsquo;re the test.</p>
                 </article>
                 <article class="coming-item">
                     <span class="tag">Rescue Tool</span>

@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'Free Flickr importer — FLKR FCKR for SnapSmack';
+$page_title       = 'Free Flickr importer: FLKR FCKR for SnapSmack';
 $page_description = 'FLKR FCKR imports a Flickr archive into SnapSmack with photographs, titles, descriptions, tags, upload dates, views, comments, and likes preserved. Pair it with the SLICKR skin to keep the familiar look.';
 $page_og_url      = 'https://snapsmack.ca/tool-flkr-fckr.php';
 $nav_active       = 'tool-flkr-fckr';
@@ -23,7 +23,7 @@ $tool_facts    = [
 ];
 $tool_body = <<<'HTML'
             <h2>What it does for your site</h2>
-            <p>Flickr was the photographers&rsquo; place, and a lot of us have a decade or two there. Its data download is thorough but scattered across hundreds of JSON files. FLKR FCKR reads the lot, matches every photograph to its metadata, and rebuilds the archive on your site with its history intact &mdash; including the view counts, comments, and faves you earned.</p>
+            <p>Flickr was the photographers&rsquo; place, and a lot of us have a decade or two there. Its data download is thorough but scattered across hundreds of JSON files. FLKR FCKR reads the lot, matches every photograph to its metadata, and rebuilds the archive on your site with its history intact, including the view counts, comments, and faves you earned.</p>
             <h2>How it works</h2>
             <ul>
                 <li>Request your data from Flickr. It arrives as several zips. Point FLKR FCKR at the folder.</li>

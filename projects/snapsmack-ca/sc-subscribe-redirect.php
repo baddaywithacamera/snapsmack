@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK.CA — Network Alert Public API (web-root stub)
+ * SNAPSMACK.CA: Network Alert Public API (web-root stub)
  *
  * Deploys to web root as sc-network-api.php
  * Spokes reach this at https://snapsmack.ca/sc-network-api.php

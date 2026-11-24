@@ -7,7 +7,7 @@
  *     <?php // ===== SNAPSMACK EOF =====
  */
 
-$page_title = 'Free Instagram alternative for photographers — SnapSmack';
+$page_title = 'Free Instagram alternative for photographers: SnapSmack';
 $page_description = 'An Instagram alternative you actually own: free, self-hosted photo blogging with the classic grid, your original dates and captions, no algorithm, no ads, and a way out whenever you want it.';
 $page_og_url = 'https://snapsmack.ca/instagram-alternative.php';
 $landing_eyebrow = 'Instagram alternative';

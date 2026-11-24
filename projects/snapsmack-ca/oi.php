@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK.CA — OI MATE! - Contact Sean
+ * SNAPSMACK.CA: OI MATE! - Contact Sean
  */
 
 /**
@@ -10,7 +10,7 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-$page_title       = 'OI MATE! — Contact | Free photoblog software';
+$page_title       = 'OI MATE!: Contact | Free photoblog software';
 $page_description = 'Get in touch with Sean McCormick about SnapSmack.';
 $page_og_url      = 'https://snapsmack.ca/oi.php';
 $nav_active       = 'oi';

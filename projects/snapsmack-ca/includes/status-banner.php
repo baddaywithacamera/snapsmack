@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK.CA — Shared public-site status banner.
+ * SNAPSMACK.CA: Shared public-site status banner.
  *
  * Set the switch below to false when the closed beta opens. Every public page
  * that uses the shared header will lose the banner in that one change.

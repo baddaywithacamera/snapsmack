@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'Free WordPress importer — SMACKPRESS for SnapSmack';
+$page_title       = 'Free WordPress importer: SMACKPRESS for SnapSmack';
 $page_description = 'SMACKPRESS moves a WordPress photo blog into a SnapSmack SMACKTALK site one post at a time, with a review step for each post, its images, and its formatting.';
 $page_og_url      = 'https://snapsmack.ca/tool-smackpress.php';
 $nav_active       = 'tool-smackpress';
@@ -28,7 +28,7 @@ $tool_body = <<<'HTML'
             <ul>
                 <li>Connect to the WordPress site (or its export). SMACKPRESS lists the posts.</li>
                 <li>Open one. See the original and the SMACKTALK conversion side by side. Images are pulled off WordPress and into your site&rsquo;s image bucket, so nothing hotlinks back to a server you&rsquo;re leaving.</li>
-                <li>Fix what needs fixing &mdash; a heading, a caption, a mosaic that should be a single image &mdash; and post it.</li>
+                <li>Fix what needs fixing: a heading, a caption, a mosaic that should be a single image, and post it.</li>
                 <li>Next.</li>
             </ul>
             <h2>The rules it follows</h2>

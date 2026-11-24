@@ -17,6 +17,14 @@ function check(ok, message) {
   process.stdout.write(`PASS ${message}\n`);
 }
 
+function publicCopyFiles(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const target = path.join(dir, entry.name);
+    if (entry.isDirectory()) return publicCopyFiles(target);
+    return /\.(?:php|html|js)$/i.test(entry.name) ? [target] : [];
+  });
+}
+
 async function freePort() {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -41,6 +49,10 @@ async function waitForServer(url) {
 
 (async () => {
   fs.mkdirSync(evidence, { recursive: true });
+  const copyWithEmDashes = publicCopyFiles(site).filter((file) =>
+    /—|&mdash;|&#8212;|&#x2014;/i.test(fs.readFileSync(file, 'utf8')),
+  );
+  check(copyWithEmDashes.length === 0, 'all snapsmack.ca page sources are free of em dashes');
   const port = await freePort();
   const server = spawn(php, ['-S', `127.0.0.1:${port}`, '-t', site], {
     cwd: site,

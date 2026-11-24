@@ -1,11 +1,11 @@
 <?php
 /**
- * SNAPSMACK.CA — Brass Tacks (single-page FAQ)
+ * SNAPSMACK.CA: Brass Tacks (single-page FAQ)
  *
  * The question copy stays in the seven faq-*.php source files so the old URLs
  * can issue precise section redirects without duplicating the answers here.
  * Source of record for the wording: _continuity/brass-tacks-v0_6.docx.
- * Deliberately brash, profane, honest. Keep the voice — substance edits only.
+ * Deliberately brash, profane, honest. Keep the voice: substance edits only.
  */
 
 /**
@@ -47,8 +47,8 @@ foreach ($faq_sections as &$section) {
 }
 unset($section);
 
-$page_title       = 'BRASS TACKS! — SnapSmack FAQ | Free photoblog software';
-$page_description = 'The SnapSmack FAQ. The facts, no fluff — where it came from, what it costs (nothing), the desktop tools, the fediverse, security, and why it is built the way it is.';
+$page_title       = 'BRASS TACKS!: SnapSmack FAQ | Free photoblog software';
+$page_description = 'The SnapSmack FAQ. The facts, no fluff, where it came from, what it costs (nothing), the desktop tools, the fediverse, security, and why it is built the way it is.';
 $page_og_url      = 'https://snapsmack.ca/brass-tacks.php';
 $nav_active       = 'brass-tacks';
 
@@ -95,9 +95,9 @@ require_once __DIR__ . '/includes/header.php';
     <section>
         <div class="wrap">
             <div class="intro-body">
-                <p>This is the honest version of every question worth asking about SnapSmack — where it came from, what it costs, who built it, and why it's put together the way it is.</p>
+                <p>This is the honest version of every question worth asking about SnapSmack, where it came from, what it costs, who built it, and why it's put together the way it is.</p>
                 <div class="slang">
-                    <p><strong>"Brass tacks"?</strong> As in <em>get down to brass tacks</em> — get down to the facts, the real stuff, the part that actually matters. In Cockney rhyming slang, brass tacks = facts. (Purists will tell you the phrase is older than the rhyme. They're not wrong. The facts are still what this page is.)</p>
+                    <p><strong>"Brass tacks"?</strong> As in <em>get down to brass tacks</em>, get down to the facts, the real stuff, the part that actually matters. In Cockney rhyming slang, brass tacks = facts. (Purists will tell you the phrase is older than the rhyme. They're not wrong. The facts are still what this page is.)</p>
                 </div>
             </div>
             <nav class="faq-jumps" aria-label="Jump to an FAQ section">
@@ -123,7 +123,7 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="faq-signoff">
         <div class="wrap">
-            <p class="updated">Written by Sean McCormick with Claude. The code is AI — said up front, here and in the repo.</p>
+            <p class="updated">Written by Sean McCormick with Claude. The code is AI, said up front, here and in the repo.</p>
         </div>
     </section>
 </main>

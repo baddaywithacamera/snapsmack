@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'Free backup and recovery — SMACK UP YOUR BACKUP';
+$page_title       = 'Free backup and recovery: SMACK UP YOUR BACKUP';
 $page_description = 'SMACK UP YOUR BACKUP backs up one SnapSmack site or a whole fleet to local storage and cloud providers, audits what exists where, and recovers a site even when the original installation is gone.';
 $page_og_url      = 'https://snapsmack.ca/tool-suyb.php';
 $nav_active       = 'tool-suyb';
@@ -23,7 +23,7 @@ $tool_facts    = [
 ];
 $tool_body = <<<'HTML'
             <h2>What it does for your site</h2>
-            <p>A backup you haven&rsquo;t tested is a hope. SMACK UP YOUR BACKUP takes complete recovery archives &mdash; files and database &mdash; of every site you run, puts them where you tell it (local, cloud, both), audits what actually exists in each place, and can rebuild a site from that archive on a fresh install when the original is gone.</p>
+            <p>A backup you haven&rsquo;t tested is a hope. SMACK UP YOUR BACKUP takes complete recovery archives, files and database, of every site you run, puts them where you tell it (local, cloud, both), audits what actually exists in each place, and can rebuild a site from that archive on a fresh install when the original is gone.</p>
             <h2>How it works</h2>
             <ul>
                 <li>Discover your fleet through SNAP HQ, or add sites by hand.</li>

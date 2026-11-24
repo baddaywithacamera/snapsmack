@@ -1,14 +1,14 @@
 <?php
 /**
- * SNAPSMACK.CA — Network Alert Public API
+ * SNAPSMACK.CA: Network Alert Public API
  *
- * Public endpoint — no admin session required.
+ * Public endpoint: no admin session required.
  * This file lives at the snapsmack.ca web root so spokes can reach it at
  * https://snapsmack.ca/sc-network-api.php (the default network_alert_sc_url).
  *
  * Routes:
- *   GET  ?route=status  — Returns current alert level for polling installs.
- *   POST ?route=report  — Receives breach report from a SnapSmack install.
+ *   GET  ?route=status: Returns current alert level for polling installs.
+ *   POST ?route=report: Receives breach report from a SnapSmack install.
  *
  * Rate limit on reports: max 3 POSTs per IP per hour.
  * Auto-escalation: 5+ distinct IPs within 2 hours → yellow_fast.
@@ -21,7 +21,7 @@
 
 // NOTE: this file sits at the snapsmack.ca WEB ROOT, so smack-central/ is a direct
 // subdirectory (__DIR__ . '/smack-central/'). Do NOT copy ping.php's '../smack-central'
-// path — ping.php lives in releases/, one level deeper, where '../' is correct. Here it
+// path: ping.php lives in releases/, one level deeper, where '../' is correct. Here it
 // would resolve ABOVE the web root and fatal (500 → 0 subscribers, no yellow polling).
 require_once __DIR__ . '/smack-central/sc-config.php';
 require_once __DIR__ . '/smack-central/sc-db.php';

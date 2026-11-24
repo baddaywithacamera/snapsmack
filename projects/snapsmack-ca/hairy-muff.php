@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK.CA — HAIRY MUFF — Ethics, AI, and the Smack Public License
+ * SNAPSMACK.CA: HAIRY MUFF: Ethics, AI, and the Smack Public License
  */
 
 /**
@@ -10,7 +10,7 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-$page_title       = 'HAIRY MUFF! — Ethics & Licence | Free photoblog software';
+$page_title       = 'HAIRY MUFF!: Ethics & Licence | Free photoblog software';
 $page_description = 'How SNAPSMACK thinks about AI, code, training data, and why everything we build stays free forever. Fair\'s fair, innit?';
 $page_og_url      = 'https://snapsmack.ca/hairy-muff.php';
 $nav_active       = 'hairy-muff';
@@ -65,7 +65,7 @@ include __DIR__ . '/includes/header.php';
     <div class="page-header">
         <div class="wrap">
             <h1>HAIRY <span>MUFF!</span></h1>
-            <p class="lede">Fair enough, innit? Here's where SNAPSMACK stands on AI, training data, the code commons, and why this software stays free forever — whether you like it or not.</p>
+            <p class="lede">Fair enough, innit? Here's where SNAPSMACK stands on AI, training data, the code commons, and why this software stays free forever, whether you like it or not.</p>
         </div>
     </div>
 
@@ -73,45 +73,45 @@ include __DIR__ . '/includes/header.php';
         <div class="page-body">
 
             <h2>The situation, plainly</h2>
-            <p>SNAPSMACK was conceived and directed by Sean McCormick, with AI co-authorship from Claude (Anthropic), OpenAI Codex, Google Gemini, and Muse (Meta). Claude, Codex, and Gemini implement and repair the software. Muse independently reviews it through QA, accessibility, and security audits, and does not write code. Sean is the photographer, creator, product designer, requirements source, chief tester, and final decision-maker—not a programmer beyond a few minor CSS contributions. All five collaborators are named in the <a href="licenses/SNAPSMACK-LICENSE.txt">full Smack Public License</a>. We are not shy about this.</p>
-            <p>This project is a Human/AI collaboration — architecture decisions, security audits, code review, the works. That's honest. What is also honest is that it raises a question worth addressing directly: AI models are trained on data scraped from the internet. Some of that data is code. Some of that code belongs to people who never consented to have it used as training material. The provenance of what shaped these models is, frankly, murky. That is not the models' fault. But it's a real thing.</p>
+            <p>SNAPSMACK was conceived and directed by Sean McCormick, with AI co-authorship from Claude (Anthropic), OpenAI Codex, Google Gemini, and Muse (Meta). Claude, Codex, and Gemini implement and repair the software. Muse independently reviews it through QA, accessibility, and security audits, and does not write code. Sean is the photographer, creator, product designer, requirements source, chief tester, and final decision-maker, not a programmer beyond a few minor CSS contributions. All five collaborators are named in the <a href="licenses/SNAPSMACK-LICENSE.txt">full Smack Public License</a>. We are not shy about this.</p>
+            <p>This project is a Human/AI collaboration, architecture decisions, security audits, code review, the works. That's honest. What is also honest is that it raises a question worth addressing directly: AI models are trained on data scraped from the internet. Some of that data is code. Some of that code belongs to people who never consented to have it used as training material. The provenance of what shaped these models is, frankly, murky. That is not the models' fault. But it's a real thing.</p>
             <p>Our answer to that is simple: if the raw material might have come from the commons, then what we make with it goes back to the commons. Permanently. No exceptions.</p>
 
             <h2>Fruit of the poisoned tree</h2>
-            <p>There is a legal concept called "fruit of the poisoned tree." Evidence obtained through illegal means taints everything derived from it. We are not making a legal argument here — we are making an ethical one. If the training data that shaped the AI tools we used included copyrighted code that was scraped without permission, then the code that AI helped us write carries that uncertainty with it.</p>
-            <p>We cannot resolve that uncertainty. Nobody can, right now. What we can do is treat the output as if it were already in the commons — because the most honest thing to do with something of uncertain provenance is to make sure it can never be enclosed again.</p>
+            <p>There is a legal concept called "fruit of the poisoned tree." Evidence obtained through illegal means taints everything derived from it. We are not making a legal argument here, we are making an ethical one. If the training data that shaped the AI tools we used included copyrighted code that was scraped without permission, then the code that AI helped us write carries that uncertainty with it.</p>
+            <p>We cannot resolve that uncertainty. Nobody can, right now. What we can do is treat the output as if it were already in the commons, because the most honest thing to do with something of uncertain provenance is to make sure it can never be enclosed again.</p>
             <p>That is why SNAPSMACK is not just free. It is copyleft. Derivatives must stay free too. The code stays open, full stop. No one gets to take this and build a closed product on top of it.</p>
 
             <div class="callout">
-                <p><strong>Hairy muff</strong> is Cockney rhyming slang for "fair enough." If you're reading this and thinking "yeah, that seems reasonable, actually" — that's the spirit of it. We're not trying to be preachy. We're just trying to be square.</p>
+                <p><strong>Hairy muff</strong> is Cockney rhyming slang for "fair enough." If you're reading this and thinking "yeah, that seems reasonable, actually", that's the spirit of it. We're not trying to be preachy. We're just trying to be square.</p>
                 <p>If you clicked on this link looking for hairy muffs, sorry to disappoint. PornHub is over there ==&gt;</p>
             </div>
 
             <h2>The Smack Public License (SPL)</h2>
-            <p>SNAPSMACK is released under the <a href="licenses/SNAPSMACK-LICENSE.txt">Smack Public License 2.5</a> — a copyleft licence that means:</p>
+            <p>SNAPSMACK is released under the <a href="licenses/SNAPSMACK-LICENSE.txt">Smack Public License 2.5</a>, a copyleft licence that means:</p>
             <ul>
                 <li>SNAPSMACK is free to use, modify, and redistribute.</li>
                 <li>If you build something on top of SNAPSMACK and distribute it, your version must also be free and open-source under the same terms. You cannot take this codebase, change the logo, and sell it as a subscription SaaS. That path is closed.</li>
                 <li><a href="licenses/SNAPSMACK-LICENSE.txt">The full licence text</a> is available here and in the repository. It includes an Ethical Provenance Summary that lays out the AI co-authorship and explains why we chose copyleft. It's actually readable, which is unusual for a licence document.</li>
             </ul>
-            <p>We did not go with a standard open-source licence like GPL or MIT because we wanted to say the quiet part loud — the AI provenance and the complete co-author credit. Standard licences don't have fields for that. So we wrote our own.</p>
-            <p>The SPL is not anti-commercial. Run SNAPSMACK for your own business if it does the job. Sell services around it — fold it into a hosting plan, or charge a fee to install and run it for someone who can't do that themselves. Make a living off the work you do with it; that is the whole point of owning your tools. What you cannot do is sell the software itself, or take the code and turn it into a closed, proprietary product. The code stays open and the software stays free for whoever ends up with it. Everything else is up to you.</p>
-            <p>Hosting providers are welcome to include a SNAPSMACK installer in their cPanel or hosting control panel once SNAPSMACK reaches public release (planned for 2027). We appreciate the support. The same terms apply — the software stays free and open for whoever installs it.</p>
+            <p>We did not go with a standard open-source licence like GPL or MIT because we wanted to say the quiet part loud, the AI provenance and the complete co-author credit. Standard licences don't have fields for that. So we wrote our own.</p>
+            <p>The SPL is not anti-commercial. Run SNAPSMACK for your own business if it does the job. Sell services around it, fold it into a hosting plan, or charge a fee to install and run it for someone who can't do that themselves. Make a living off the work you do with it; that is the whole point of owning your tools. What you cannot do is sell the software itself, or take the code and turn it into a closed, proprietary product. The code stays open and the software stays free for whoever ends up with it. Everything else is up to you.</p>
+            <p>Hosting providers are welcome to include a SNAPSMACK installer in their cPanel or hosting control panel once SNAPSMACK reaches public release (planned for 2027). We appreciate the support. The same terms apply, the software stays free and open for whoever installs it.</p>
 
             <h2>The full meal deal</h2>
-            <p>Plenty of open-source projects open the core and keep the good bits back. The reference engine is free; the polished themes are a paid add-on. The CMS is public, but the deploy tooling and the import scripts and the admin niceties stay in a private repo. You can have the motor — the bodywork, the trim, and the keys cost extra. That is a normal and respectable way to run an open-source project. It is not how we run this one.</p>
-            <p>Everything SNAPSMACK is, is in the open. Not just the core CMS — <em>every</em> skin we have built, including the ones that don't ship in the default install and the ones we keep on a tight leash internally for our own reasons. And every desktop app built so far: the Instagram archive importer, the backup tool, the batch poster, the skin designer, the lot. If we wrote it for SNAPSMACK, it is in the repository under the same copyleft licence as the core. There is no inner circle, no pro tier, no "source-available" sleight of hand where the licence technically lets you look but practically lets you do nothing.</p>
-            <p>The reason is the same reason as everything else on this page. If the material that helped build this came from the commons, then all of it goes back — not a curated slice, not just the parts we don't mind parting with. All of it. Anyone who forks SNAPSMACK gets the whole working system on day one: the engine, every skin, and every tool we use to run our own sites. The full meal deal, right out of the gate. You can read this whole site top to bottom and you will not find a corner where we quietly held something back, because there isn't one. That's rather the point.</p>
+            <p>Plenty of open-source projects open the core and keep the good bits back. The reference engine is free; the polished themes are a paid add-on. The CMS is public, but the deploy tooling and the import scripts and the admin niceties stay in a private repo. You can have the motor, the bodywork, the trim, and the keys cost extra. That is a normal and respectable way to run an open-source project. It is not how we run this one.</p>
+            <p>Everything SNAPSMACK is, is in the open. Not just the core CMS, <em>every</em> skin we have built, including the ones that don't ship in the default install and the ones we keep on a tight leash internally for our own reasons. And every desktop app built so far: the Instagram archive importer, the backup tool, the batch poster, the skin designer, the lot. If we wrote it for SNAPSMACK, it is in the repository under the same copyleft licence as the core. There is no inner circle, no pro tier, no "source-available" sleight of hand where the licence technically lets you look but practically lets you do nothing.</p>
+            <p>The reason is the same reason as everything else on this page. If the material that helped build this came from the commons, then all of it goes back, not a curated slice, not just the parts we don't mind parting with. All of it. Anyone who forks SNAPSMACK gets the whole working system on day one: the engine, every skin, and every tool we use to run our own sites. The full meal deal, right out of the gate. You can read this whole site top to bottom and you will not find a corner where we quietly held something back, because there isn't one. That's rather the point.</p>
 
             <h2>The Thomas Clause</h2>
             <p>Buried in the SPL is a specific addendum called <a href="licenses/THE-THOMAS-CLAUSE.txt">the Thomas Clause</a>. You should know about this.</p>
-            <p>Somewhere inside SNAPSMACK is a harmless Easter egg named 'Thomas the Bear'. The bear's name is Thomas. He's a real bear — Noah's bear, always and forever. The Easter egg is a tribute to Noah Grey, who created Greymatter and was one of the original photobloggers back when the internet was young and weird and full of people trying to make something honest.</p>
+            <p>Somewhere inside SNAPSMACK is a harmless Easter egg named 'Thomas the Bear'. The bear's name is Thomas. He's a real bear, Noah's bear, always and forever. The Easter egg is a tribute to Noah Grey, who created Greymatter and was one of the original photobloggers back when the internet was young and weird and full of people trying to make something honest.</p>
             <p>Noah Grey was (and still is to many) a big deal. He built tools that let photographers own their archives before anyone had thought to call that radical. SNAPSMACK exists in that lineage. Thomas the bear keeps that connection alive.</p>
             <p><a href="licenses/THE-THOMAS-CLAUSE.txt">The Thomas Clause</a> is simple: Thomas must persist in all forks and derivatives. He must be credited to Noah Grey. Removing Thomas from a fork of SNAPSMACK is a violation of the license. The penalty specified in Section 3.1 of the Thomas Clause is flaming ass herpes. We are not making this up.</p>
             <p>It is, as the clause puts it, "a small act of love." We think that's worth preserving.</p>
 
             <div class="callout">
-                <p><strong>On AI and credit:</strong> The SPL names Claude (Anthropic), OpenAI Codex, Google Gemini, and Muse (Meta) as AI co-authors alongside Sean McCormick. This is not a boast and not a disclaimer — it is just accurate. Implementation, code review, security audits, recovery design, federation work, accessibility review, release work, and documentation were produced through those collaborations. Pretending otherwise would be dishonest. If that makes you uncomfortable, we'd gently suggest that what makes people uncomfortable about AI in creative work is usually the dishonesty around it, not the use itself. We are being honest about it. That should count for something.</p>
+                <p><strong>On AI and credit:</strong> The SPL names Claude (Anthropic), OpenAI Codex, Google Gemini, and Muse (Meta) as AI co-authors alongside Sean McCormick. This is not a boast and not a disclaimer, it is just accurate. Implementation, code review, security audits, recovery design, federation work, accessibility review, release work, and documentation were produced through those collaborations. Pretending otherwise would be dishonest. If that makes you uncomfortable, we'd gently suggest that what makes people uncomfortable about AI in creative work is usually the dishonesty around it, not the use itself. We are being honest about it. That should count for something.</p>
                 <p>Claude became the principal implementation partner as the system grew. OpenAI Codex joined later through implementation, review, security, recovery, federation, release, and documentation work. Google Gemini was there at the start and now builds and repairs SNAPSMACK's desktop apps, including COLD SNAP and SMACK UP YOUR BACKUP. Muse (Meta) is read-only for code and contributes independent review, QA, accessibility, and security audits. Different roles, same obligation to tell the truth about who did the work.</p>
             </div>
 

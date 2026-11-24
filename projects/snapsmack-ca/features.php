@@ -10,7 +10,7 @@
  *     // ===== SNAPSMACK EOF =====
  */
 
-$page_title       = 'Free photoblog features — SnapSmack';
+$page_title       = 'Free photoblog features: SnapSmack';
 $page_description = 'Everything SnapSmack does: four publishing modes, a real archive, import and export, the photographers\' network, skins, desktop tools, security, AI assistance, and what it takes to run it.';
 $page_og_url      = 'https://snapsmack.ca/features.php';
 $nav_active       = 'goods';
@@ -88,7 +88,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="feat-head">
                 <p class="site-discovery-kicker">Four ways to play &middot; what&rsquo;s new is old again</p>
                 <h2>Take it. It&rsquo;s yours. It always was.</h2>
-                <p class="lede">None of these are new. They&rsquo;re the four ways photographers shared work over the last quarter century before each one was taken away, enshittified, or shut down. We put them back on one shelf. You pick the one you lost. You choose at install and you can&rsquo;t toggle between them &mdash; they are very different animals &mdash; so choose wisely. The box opens for whoever wants it badly enough.</p>
+                <p class="lede">None of these are new. They&rsquo;re the four ways photographers shared work over the last quarter century before each one was taken away, enshittified, or shut down. We put them back on one shelf. You pick the one you lost. You choose at install and you can&rsquo;t toggle between them, they are very different animals, so choose wisely. The box opens for whoever wants it badly enough.</p>
             </div>
             <div class="mode-grid">
                 <article class="mode-card">
@@ -148,7 +148,7 @@ require_once __DIR__ . '/includes/header.php';
                 <article class="feat-card"><h3>Instagram in</h3><p><a href="tool-unzucker.php">THE UNZUCKER</a> brings an Instagram export home with original dates, captions, hashtags, carousels, and grid order intact.</p></article>
                 <article class="feat-card"><h3>Flickr in</h3><p><a href="tool-flkr-fckr.php">FLKR FCKR</a> imports a Flickr archive with photographs, titles, descriptions, tags, upload dates, views, comments, and likes preserved.</p></article>
                 <article class="feat-card"><h3>WordPress in</h3><p><a href="tool-smackpress.php">SMACKPRESS</a> moves a WordPress photo blog into SMACKTALK one post at a time, with a review step for each.</p></article>
-                <article class="feat-card"><h3>Blogger in</h3><p>BLOGGER FLOGGER brings an old Blogger site &mdash; posts, pages, comments, photos &mdash; into SMACKTALK from a Google Takeout. <a href="coming-soon.php">On the drawing board</a>.</p></article>
+                <article class="feat-card"><h3>Blogger in</h3><p>BLOGGER FLOGGER brings an old Blogger site: posts, pages, comments, photos: into SMACKTALK from a Google Takeout. <a href="coming-soon.php">On the drawing board</a>.</p></article>
                 <article class="feat-card"><h3>Everything out</h3><p>Export the whole site as a complete, understandable local copy of your photographs and portable data. No hostage situation.</p></article>
                 <article class="feat-card"><h3>Dates survive</h3><p>Imports keep the date the photograph was actually taken and posted, so a fifteen-year archive still reads as fifteen years, not &ldquo;imported last Tuesday.&rdquo;</p></article>
             </div>
@@ -161,7 +161,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="feat-head">
                 <p class="site-discovery-kicker">Not alone</p>
                 <h2>The ship has sailed on the lonely blog.</h2>
-                <p class="lede">Discoverability isn&rsquo;t optional anymore. You need social &mdash; the <em>right</em> social, where you own your art and set the terms. So SnapSmack comes with a small, quiet network of photographers built in, and the wider fediverse one switch away: the part of Flickr that mattered, without the landlord.</p>
+                <p class="lede">Discoverability isn&rsquo;t optional anymore. You need social, the <em>right</em> social, where you own your art and set the terms. So SnapSmack comes with a small, quiet network of photographers built in, and the wider fediverse one switch away: the part of Flickr that mattered, without the landlord.</p>
             </div>
             <div class="feat-grid">
                 <article class="feat-card"><h3>photoblogs.fyi</h3><p>A shared front door for finding independent photography sites, and a reader for following them, without making any of those sites depend on it.</p></article>
@@ -204,13 +204,13 @@ require_once __DIR__ . '/includes/header.php';
             <div class="feat-head">
                 <p class="site-discovery-kicker">Desktop suite</p>
                 <h2>The website is home. The desktop does the heavy lifting.</h2>
-                <p class="lede">Free Windows and Linux tools handle editing, batch publishing, library sorting, migration, backup, auditing, and recovery on your own computer &mdash; without turning your archive into cloud bait.</p>
+                <p class="lede">Free Windows and Linux tools handle editing, batch publishing, library sorting, migration, backup, auditing, and recovery on your own computer, without turning your archive into cloud bait.</p>
             </div>
             <div class="feat-grid">
                 <article class="feat-card"><h3>Edit</h3><p><a href="tool-snap-slapper.php">SNAP SLAPPER</a>: a real non-destructive photo editor and library, with LEWKS and LEWK AGAIN.</p></article>
                 <article class="feat-card"><h3>Compose offline</h3><p><a href="tool-cold-snap.php">COLD SNAP</a>: write posts and build BIGGIE photo essays with no connection, sync when it returns.</p></article>
                 <article class="feat-card"><h3>Publish in bulk</h3><p><a href="tool-sybu.php">SMACK YOUR BATCH UP</a>: load a shoot, order it, tag it, publish the lot.</p></article>
-                <article class="feat-card"><h3>Sort the archive</h3><p><a href="tool-gyss.php">GET YOUR SHIT SORTED</a>: an offline sorter for a whole blog &mdash; titles, captions, alt text, order, carousels.</p></article>
+                <article class="feat-card"><h3>Sort the archive</h3><p><a href="tool-gyss.php">GET YOUR SHIT SORTED</a>: an offline sorter for a whole blog: titles, captions, alt text, order, carousels.</p></article>
                 <article class="feat-card"><h3>Back up, recover</h3><p><a href="tool-suyb.php">SMACK UP YOUR BACKUP</a>: complete recovery archives, offsite, audited, resumable.</p></article>
                 <article class="feat-card"><h3>Run the fleet</h3><p><a href="tool-snap-hq.php">SNAP HQ</a>: launch the suite, discover your sites, share protected profiles and prompts between tools.</p></article>
             </div>
@@ -223,7 +223,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="feat-head">
                 <p class="site-discovery-kicker">Locked down</p>
                 <h2>Security that admits the internet exists.</h2>
-                <p class="lede">Eight independent layers, from the comment box to the software supply chain. Public audits. Same-day disclosure. And no remote control &mdash; nobody but you can touch your site.</p>
+                <p class="lede">Eight independent layers, from the comment box to the software supply chain. Public audits. Same-day disclosure. And no remote control, nobody but you can touch your site.</p>
             </div>
             <div class="feat-grid feat-grid--4">
                 <article class="feat-card"><span class="layer-num">1 &middot; Local</span><h3>Smack Dab</h3><p>Fingerprint bans, hashed identities, keyword rules and Akismet on every comment box. No tracking, no stored personal data.</p></article>
@@ -244,13 +244,13 @@ require_once __DIR__ . '/includes/header.php';
             <div class="feat-head">
                 <p class="site-discovery-kicker">AI inside</p>
                 <h2>The intern, not the boss.</h2>
-                <p class="lede">Optional AI assistance, disclosed, under your control, and never required. Five providers &mdash; Claude, ChatGPT, Gemini, Kimi, Deepseek &mdash; with your own key, so the bill and the data relationship are yours.</p>
+                <p class="lede">Optional AI assistance, disclosed, under your control, and never required. Five providers, Claude, ChatGPT, Gemini, Kimi, Deepseek, with your own key, so the bill and the data relationship are yours.</p>
             </div>
             <div class="feat-grid">
                 <article class="feat-card"><h3>Captions, alt text, tags</h3><p>Look at the photograph, draft the words. You edit, you approve, you publish. Filename and your per-site prompt go along so it sounds like you, not like a press release.</p></article>
                 <article class="feat-card"><h3>LEWK AGAIN</h3><p>Describe the look you want; the editor builds the LEWK as adjustable steps you can see and change. No more buying action packs from YouTube.</p></article>
                 <article class="feat-card"><h3>Skin designer</h3><p>Oh Snap! lets you describe and preview a skin visually, then push it to a live site.</p></article>
-                <article class="feat-card feat-card--wide"><h3>One prompt per site</h3><p>Tell your site once how you want to sound and every tool that writes for it &mdash; batch publisher, sorter, composer, CMS &mdash; uses the same voice.</p></article>
+                <article class="feat-card feat-card--wide"><h3>One prompt per site</h3><p>Tell your site once how you want to sound and every tool that writes for it: batch publisher, sorter, composer, CMS: uses the same voice.</p></article>
             </div>
         </div>
     </section>

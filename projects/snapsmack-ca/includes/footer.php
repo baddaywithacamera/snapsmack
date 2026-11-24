@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK.CA — Shared Page Footer
+ * SNAPSMACK.CA: Shared Page Footer
  *
  * Include at the bottom of every page.
  * Outputs the footer, mini-header scroll script, and closes body/html.

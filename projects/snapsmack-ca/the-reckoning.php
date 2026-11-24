@@ -7,7 +7,7 @@
  *     // ===== SNAPSMACK EOF =====
  */
 
-$page_title       = 'THE RECKONING! — By the Numbers | Free photoblog software';
+$page_title       = 'THE RECKONING!: By the Numbers | Free photoblog software';
 $page_description = 'The measured scale of SNAPSMACK, its security process, and what software of this scope would cost under conventional pre-AI development.';
 $page_og_url      = 'https://snapsmack.ca/the-reckoning.php';
 $nav_active       = 'reckoning';
@@ -57,7 +57,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap reckoning-premise-grid">
             <p class="reckoning-premise-label">The fair question</p>
             <div>
-                <p class="reckoning-question">You&rsquo;re interested in running SNAPSMACK. But how do you know it&rsquo;s <span>serious software</span>&mdash;not disposable AI slop wearing a clever website?</p>
+                <p class="reckoning-question">You&rsquo;re interested in running SNAPSMACK. But how do you know it&rsquo;s <span>serious software</span>, not disposable AI slop wearing a clever website?</p>
                 <p class="reckoning-answer">How do you know there&rsquo;s something substantial underneath it? <strong>Fair questions. We brought numbers.</strong></p>
             </div>
         </div>
@@ -74,7 +74,7 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="number-card"><strong>238,630</strong><span>PHP, JavaScript, and CSS source lines</span></div>
                 <div class="number-card"><strong>371,998</strong><span>Expanded implementation source including Python, SQL, Rust, and scripts</span></div>
                 <div class="number-card"><strong>619</strong><span>Python files for desktop applications and tooling</span></div>
-                <div class="number-card"><strong>31</strong><span>Skin directories in development &mdash; not 31 finished releases</span></div>
+                <div class="number-card"><strong>31</strong><span>Skin directories in development, not 31 finished releases</span></div>
                 <div class="number-card"><strong>66</strong><span>Published numbered security audits, with 3 more held until their fixes ship</span></div>
             </div>
         </div>

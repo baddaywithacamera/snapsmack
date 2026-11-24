@@ -3,7 +3,7 @@
  * SNAPSMACK.CA - Homepage
  * A FRONT DOOR, not a flag: clarity at the door, personality the second they
  * step in. Says what it is and why in ten seconds; the inside pages explain.
- * (Rework 2026-09-12 — spec: _spec/SPEC-snapsmack-ca-rework-v0_2.docx)
+ * (Rework 2026-09-12: spec: _spec/SPEC-snapsmack-ca-rework-v0_2.docx)
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -82,10 +82,10 @@ shuffle($_featured_skin_pool);
 $_featured_skins = array_slice($_featured_skin_pool, 0, 4);
 $_skin_gallery_count = count($_skin_demo_sites);
 
-$page_title       = 'SnapSmack — Free, self-hosted photoblog software';
+$page_title       = 'SnapSmack: Free, self-hosted photoblog software';
 $page_description = 'What is new is old again. Free, self-hosted photo blogging that gives back the single-photo blog, long-form posting, classic Insta and Picasa-style albums, on hardware you control. Your photos. Your voice. Your style. Your dignity.';
 $page_og_url      = 'https://snapsmack.ca/';
-$page_social_title = 'SnapSmack — Free, self-hosted photoblog software';
+$page_social_title = 'SnapSmack, Free, self-hosted photoblog software';
 $page_social_description = 'Self-hosted photo blogging that brings back the gallery, the grid, and the photoblog. Your photos. Your voice. Your style. Your dignity.';
 $nav_active       = 'index';
 
@@ -401,7 +401,7 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="door-shot-thumb" data-lightbox="img/snapslapper-genfill-01-large.png" data-lightbox-group="snapslapper" data-lightbox-caption="AI Heal: paint the defect, choose whether to send it"><img src="img/snapslapper-genfill-01-thumb.png" alt="AI Heal: paint the defect, choose whether to send it" width="480" height="270" loading="lazy"></button>
                     <button type="button" class="door-shot-thumb" data-lightbox="img/snapslapper-library-large.png" data-lightbox-group="snapslapper" data-lightbox-caption="The photo library"><img src="img/snapslapper-library-thumb.png" alt="The photo library" width="480" height="258" loading="lazy"></button>
                 </div>
-                <span class="door-shot-cap">SNAP SLAPPER &mdash; the free photo editor. Click screenshots to enlarge.</span>
+                <span class="door-shot-cap">SNAP SLAPPER, the free photo editor. Click screenshots to enlarge.</span>
             </div>
         </div>
     </section>
@@ -413,7 +413,7 @@ require_once __DIR__ . '/includes/header.php';
             <ul class="was-list">
                 <li><strong>The photoblog</strong><span>2003 to 2010. One photograph a day on one page, big, with the comments underneath and nothing else competing for the eye. Pixelpost, Photoblogs.org, a ring of people who looked at each other&rsquo;s work every morning and said so. It ran on your own domain, so when the ring dissolved, the work stayed put.</span><em>Again as <a href="features.php#modes">SMACKONEOUT</a></em></li>
                 <li><strong>Classic Instagram</strong><span>2010 to 2016. A square grid, three across, in the order you posted it, seen by the people who chose to follow you. Likes were a count, not a currency. No algorithm, no ads, no Reels, no shop tab, no video autoplaying between your photographs because a spreadsheet said it should.</span><em>Again as <a href="features.php#modes">GRAMOFSMACK</a></em></li>
-                <li><strong>Early blogging</strong><span>1999 onward. Blogger, then Greymatter in 2000 &mdash; Noah Grey was publishing his photographs with it from day one &mdash; then WordPress before it became a page builder. Writing with photographs in it, as long as you wanted, nobody&rsquo;s feed deciding whether it got read.</span><em>Again as <a href="features.php#modes">SMACKTALK</a></em></li>
+                <li><strong>Early blogging</strong><span>1999 onward. Blogger, then Greymatter in 2000: Noah Grey was publishing his photographs with it from day one: then WordPress before it became a page builder. Writing with photographs in it, as long as you wanted, nobody&rsquo;s feed deciding whether it got read.</span><em>Again as <a href="features.php#modes">SMACKTALK</a></em></li>
                 <li><strong>Picasa Web Albums</strong><span>2006 to 2016. A free, friendly photo organizer that pushed your folders to the web as albums for friends and family. Send the link, no account needed to look, no &ldquo;suggested for you&rdquo; underneath. Friends and family, not followers: SMACKTHEMUP has no fediverse on purpose. Sharing simplified.</span><em>Again as <a href="features.php#modes">SMACKTHEMUP</a> + <a href="tool-snap-slapper.php">SNAP SLAPPER</a></em></li>
             </ul>
             <p class="was-closer">Everything was killed off, died off, or was walled off to prioritize profits over people.</p>
@@ -465,7 +465,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="running-late-layout">
                 <div class="running-late-copy">
                     <p>First and foremost, the software isn't ready yet. It not only has rough edges and some remaining security holes we're fixing, but it is not elegant. That is important. This software is built in the memory of a deceased friend who did everything elegantly and expected the same out of every tool he used. SnapSmack doesn't ship until it reaches the point where he would have enjoyed using it.</p>
-                    <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot; &mdash; and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. <a href="https://baddaywithacamera.ca/rest-in-peace" target="_blank" rel="noopener">This is for Ray</a>. It will ship when it's what he would approve of.</p>
+                    <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot;, and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. <a href="https://baddaywithacamera.ca/rest-in-peace" target="_blank" rel="noopener">This is for Ray</a>. It will ship when it's what he would approve of.</p>
                 </div>
                 <a class="running-late-media" href="ding-dong-bell.php"><img src="img/opaudit-sample.png" alt="Sample operability audit: OPAUDIT 027" width="1423" height="1800" loading="lazy"></a>
             </div>
@@ -484,7 +484,7 @@ require_once __DIR__ . '/includes/header.php';
                 <figure><button type="button" data-lightbox="img/fediverse-home-view.png"><img src="img/fediverse-home-view.png?v=20260814" alt="The same account in the FEDIVERSE network reader" width="1920" height="1080" loading="lazy"></button><figcaption>The same account in the network reader.</figcaption></figure>
                 <figure><button type="button" data-lightbox="img/fediverse-pixelfed-ca-view.png"><img src="img/fediverse-pixelfed-ca-view.png?v=20260814" alt="The same photographs seen from Pixelfed, with a follower" width="1920" height="1080" loading="lazy"></button><figcaption>The same photographs on Pixelfed. Someone else&rsquo;s software, following you.</figcaption></figure>
             </div>
-            <p class="alone-how">How it works, for those who care: your site speaks ActivityPub &mdash; the fediverse &mdash; so people on Pixelfed, Mastodon, and the rest can follow it directly. photoblogs.fyi is the shared directory and reader. <a href="features.php#network">Details &rarr;</a></p>
+            <p class="alone-how">How it works, for those who care: your site speaks ActivityPub, the fediverse, so people on Pixelfed, Mastodon, and the rest can follow it directly. photoblogs.fyi is the shared directory and reader. <a href="features.php#network">Details &rarr;</a></p>
         </div>
     </section>
 
@@ -494,10 +494,10 @@ require_once __DIR__ . '/includes/header.php';
             <h2 id="three-pillars-title">The three pillars</h2>
             <div class="three-pillars-copy">
                 <p>SnapSmack is built on three pillars, in this order: <strong>Ethical. Secure. Functional.</strong> Nothing below gets to compromise anything above.</p>
-                <p><strong>Ethical first.</strong> We could make SnapSmack more secure by taking control of your installs for you. We won't &mdash; that would be completely unethical. It is YOUR site and YOUR content. We do not have the right to step there.</p>
-                <p>Bluesky's AT protocol is more functional than ActivityPub. We use ActivityPub anyway. Bluesky was built with VC money, and it controls infrastructure chokepoints that WILL become chokepoints in the near future, when the VCs demand returns on their investments. And it would be unethical for us to build off-ramps for services like Flickr and Meta &mdash; services that monetize and control you &mdash; only to funnel you into another service that will try to do the same. We made a less functional but more ethical choice.</p>
-                <p><strong>Secure second.</strong> Having to punch in a TOTP code and create API key after API key feels like a massive burden that wrecks functionality. It isn't as bad as it feels &mdash; but it does slow a person down. Having your blog raped by hackers is a lot worse. SnapSmack was built partly in response to past bad experiences with insecure software. We put security ahead of convenience because we know from bitter personal experience what happens when you don't.</p>
-                <p><strong>Functional third.</strong> It still has to work, and work for everyone. We routinely say no to expensive features &mdash; video, third-party add-ons &mdash; that would slow the engine down and degrade the experience for all users.</p>
+                <p><strong>Ethical first.</strong> We could make SnapSmack more secure by taking control of your installs for you. We won't, that would be completely unethical. It is YOUR site and YOUR content. We do not have the right to step there.</p>
+                <p>Bluesky's AT protocol is more functional than ActivityPub. We use ActivityPub anyway. Bluesky was built with VC money, and it controls infrastructure chokepoints that WILL become chokepoints in the near future, when the VCs demand returns on their investments. And it would be unethical for us to build off-ramps for services like Flickr and Meta, services that monetize and control you, only to funnel you into another service that will try to do the same. We made a less functional but more ethical choice.</p>
+                <p><strong>Secure second.</strong> Having to punch in a TOTP code and create API key after API key feels like a massive burden that wrecks functionality. It isn't as bad as it feels, but it does slow a person down. Having your blog raped by hackers is a lot worse. SnapSmack was built partly in response to past bad experiences with insecure software. We put security ahead of convenience because we know from bitter personal experience what happens when you don't.</p>
+                <p><strong>Functional third.</strong> It still has to work, and work for everyone. We routinely say no to expensive features, video, third-party add-ons, that would slow the engine down and degrade the experience for all users.</p>
             </div>
         </div>
     </section>
@@ -528,9 +528,9 @@ require_once __DIR__ . '/includes/header.php';
             <p class="desktop-tools-subline">Putting the muscle where it matters.</p>
             <div class="desktop-tools-lead">
                 <div class="desktop-tools-copy">
-                    <p>Most software lives in a browser now. Ask yourself who that suits. It isn't you. A browser app is cheaper to build, cheaper to run, and it bills monthly &mdash; and when the company behind it changes its mind, gets bought, or shuts the doors, your work is locked inside a building you don't own, on a computer you can't touch.</p>
-                    <blockquote class="desktop-tools-quote">&ldquo;This is some bullshit!&rdquo; &mdash; Harry Vanderspeigle</blockquote>
-                    <p>SNAPSMACK does it the other way round. The website stays light &mdash; it's a publishing engine, not a gymnasium. The heavy lifting happens on your own computer, with tools that work offline, on files that never pass through anyone's cloud to reach your own site. When SMACK YOUR BATCH UP publishes a shoot, the resizing happens on your machine, before anything uploads. Your server never breaks a sweat, and neither does your wallet: there is no per-seat fee, no subscription, and no landlord.</p>
+                    <p>Most software lives in a browser now. Ask yourself who that suits. It isn't you. A browser app is cheaper to build, cheaper to run, and it bills monthly. And when the company behind it changes its mind, gets bought, or shuts the doors, your work is locked inside a building you don't own, on a computer you can't touch.</p>
+                    <blockquote class="desktop-tools-quote">Harry Vanderspeigle: &ldquo;This is some bullshit!&rdquo;</blockquote>
+                    <p>SNAPSMACK does it the other way round. The website stays light, it's a publishing engine, not a gymnasium. The heavy lifting happens on your own computer, with tools that work offline, on files that never pass through anyone's cloud to reach your own site. When SMACK YOUR BATCH UP publishes a shoot, the resizing happens on your machine, before anything uploads. Your server never breaks a sweat, and neither does your wallet: there is no per-seat fee, no subscription, and no landlord.</p>
                     <span class="desktop-tools-platform">Platform: Windows</span>
                 </div>
                 <figure class="desktop-tools-shot">
@@ -539,8 +539,8 @@ require_once __DIR__ . '/includes/header.php';
                 </figure>
             </div>
             <div class="desktop-tools-list" aria-label="SNAPSMACK desktop tools">
-                <article class="desktop-tool"><strong>SNAP SLAPPER + LEWK AGAIN</strong><p>A private photo library and a real non-destructive editor. LEWKS are looks you can see, change, and keep &mdash; your style, saved as yours.</p></article>
-                <article class="desktop-tool"><strong>SMACK YOUR BATCH UP</strong><p>Load a shoot, order it, categorise it, and publish the whole batch &mdash; resized on your computer, not your server.</p></article>
+                <article class="desktop-tool"><strong>SNAP SLAPPER + LEWK AGAIN</strong><p>A private photo library and a real non-destructive editor. LEWKS are looks you can see, change, and keep, your style, saved as yours.</p></article>
+                <article class="desktop-tool"><strong>SMACK YOUR BATCH UP</strong><p>Load a shoot, order it, categorise it, and publish the whole batch, resized on your computer, not your server.</p></article>
                 <article class="desktop-tool"><strong>GET YOUR SHIT SORTED</strong><p>An offline sorter for a whole blog. Repair the titles, captions, alt text and tags; reorder the feed; push it back when it's straight.</p></article>
                 <article class="desktop-tool"><strong>COLD SNAP</strong><p>Closed beta. Write posts and build photo essays with no connection at all, then sync when the internet comes back.</p></article>
                 <article class="desktop-tool"><strong>SMACK UP YOUR BACKUP</strong><p>Back up one site or a fleet, audit what exists where, and recover even when the original installation is gone.</p></article>
@@ -569,7 +569,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="section-heading">
                 <p class="site-discovery-kicker">Real sites, running today</p>
                 <h2>One engine. No house style.</h2>
-                <p class="lede">Four of <?php echo $_skin_gallery_count; ?> free skins, running on real SNAPSMACK sites today &mdash; four completely different answers to what a photography website should look like. Hover for the numbers. <strong>All skins are free, always.</strong></p>
+                <p class="lede">Four of <?php echo $_skin_gallery_count; ?> free skins, running on real SNAPSMACK sites today, four completely different answers to what a photography website should look like. Hover for the numbers. <strong>All skins are free, always.</strong></p>
             </div>
             <div class="featured-skin-grid">
                 <?php foreach ($_featured_skins as $_featured_skin): ?>
@@ -600,7 +600,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="custodian-inner">
                 <p class="site-discovery-kicker">Why it&rsquo;s built this way</p>
                 <h2>Custodian, not landlord.</h2>
-                <blockquote class="custodian-quote">It&rsquo;s a blessing to be trusted with someone&rsquo;s most beautiful possessions. You honour them back. You don&rsquo;t monetize them.<cite>&mdash; Sean McCormick, who built this</cite></blockquote>
+                <blockquote class="custodian-quote">It&rsquo;s a blessing to be trusted with someone&rsquo;s most beautiful possessions. You honour them back. You don&rsquo;t monetize them.<cite>Sean McCormick, who built this</cite></blockquote>
                 <p>That one sentence is the whole design. Every rule below follows from it, and none of them are negotiable.</p>
             </div>
             <div class="custodian-points">
@@ -645,15 +645,15 @@ require_once __DIR__ . '/includes/header.php';
     <section id="respect">
         <div class="wrap">
             <h2>Respect Where It&rsquo;s Due</h2>
-            <p>SnapSmack&rsquo;s design owes a debt to <a href="https://github.com/pixelpost/pixelpost/wiki" target="_blank" rel="noopener">Pixelpost</a> &mdash; a photo blogging platform that quietly disappeared but never stopped being right about a few things. Its UI shaped a lot of what SnapSmack became.</p>
-            <p>And particular thanks to photographer, writer, and developer <a href="https://bsky.app/profile/thatnoahgrey.bsky.social" target="_blank" rel="noopener">Noah Grey</a> &mdash; creator of <a href="https://en.wikipedia.org/wiki/Greymatter_(software)" target="_blank" rel="noopener">Greymatter</a>, one of the earliest open-source blogging platforms &mdash; for proving that when the software you need doesn&rsquo;t exist, you build it. And for knowing, twenty-five years ago, that you honour the people who trust you with their work.</p>
+            <p>SnapSmack&rsquo;s design owes a debt to <a href="https://github.com/pixelpost/pixelpost/wiki" target="_blank" rel="noopener">Pixelpost</a>, a photo blogging platform that quietly disappeared but never stopped being right about a few things. Its UI shaped a lot of what SnapSmack became.</p>
+            <p>And particular thanks to photographer, writer, and developer <a href="https://bsky.app/profile/thatnoahgrey.bsky.social" target="_blank" rel="noopener">Noah Grey</a>, creator of <a href="https://en.wikipedia.org/wiki/Greymatter_(software)" target="_blank" rel="noopener">Greymatter</a>, one of the earliest open-source blogging platforms, for proving that when the software you need doesn&rsquo;t exist, you build it. And for knowing, twenty-five years ago, that you honour the people who trust you with their work.</p>
         </div>
     </section>
 
     <section id="whodat">
         <div class="wrap">
             <h2>Who&rsquo;s Responsible for All This?!?</h2>
-            <p class="whodat-honest"><strong>Said up front:</strong> the code is AI-written, under the direction of a photographer who is not a programmer. That is not hidden anywhere on this site &mdash; <a href="the-reckoning.php">THE RECKONING</a> counts every line. It is also exactly why the software is subjected to documented internal reviews and adversarial regression tests, and held to a public disclosure policy instead of being trusted on faith. These checks are not independent certification or an independent penetration test.</p>
+            <p class="whodat-honest"><strong>Said up front:</strong> the code is AI-written, under the direction of a photographer who is not a programmer. That is not hidden anywhere on this site, <a href="the-reckoning.php">THE RECKONING</a> counts every line. It is also exactly why the software is subjected to documented internal reviews and adversarial regression tests, and held to a public disclosure policy instead of being trusted on faith. These checks are not independent certification or an independent penetration test.</p>
             <p class="whodat-why"><strong>But WHY make them co-authors?</strong>Gap coding (what I call what I do, making software that fills gaps in what is available) is a conversational process. You say what you need, you refine it, you even spitball ideas. The fact is that AI knows a lot more about making software than I do and has better ideas for making features work right. So I used their ideas instead of mine because producing a working product trumps my male ego. That and my mother taught me you never take credit for someone else's stuff.&nbsp; They earned it. That's why.</p>
             <p class="whodat-order">Listed in the order they joined.</p>
             <div class="whodat-grid">

@@ -95,7 +95,7 @@ require_once __DIR__ . '/header.php';
                 <a href="<?php echo $slug; ?>.php"<?php echo $slug === $faq_slug ? ' class="active"' : ''; ?>><strong><?php echo $title; ?></strong><span><?php echo $lede; ?></span></a>
 <?php endforeach; ?>
             </div>
-            <p class="updated">Written by Sean McCormick with Claude. The code is AI — said up front, here and in the repo.</p>
+            <p class="updated">Written by Sean McCormick with Claude. The code is AI, said up front, here and in the repo.</p>
         </div>
     </section>
 </main>

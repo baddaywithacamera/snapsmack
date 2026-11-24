@@ -7,10 +7,10 @@
  *     // ===== SNAPSMACK EOF =====
  */
 
-$page_title       = 'HOW\'S YER FATHER? — Architecture | Free photoblog software';
+$page_title       = 'HOW\'S YER FATHER?: Architecture | Free photoblog software';
 $page_description = 'Where SNAPSMACK came from, who taught it the good bits, and why its architecture refuses the usual answers.';
 $page_og_url      = 'https://snapsmack.ca/hows-yer-father.php';
-$page_social_title = 'HOW\'S YER FATHER? — Architecture | Free photoblog software';
+$page_social_title = 'HOW\'S YER FATHER?, Architecture | Free photoblog software';
 $page_social_description = 'Greymatter, Pixelpost, skin manifests, internal support, layered security, and the lessons behind SNAPSMACK.';
 $nav_active       = 'hows-yer-father';
 
@@ -67,7 +67,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap family-copy">
             <p class="family-kicker">A Fine Pedigree</p>
             <h2>The family jewels were never venture capital.</h2>
-            <p>SNAPSMACK did not appear from nowhere. It follows a trail broken by personal publishing systems, photoblogging projects, and the people who sustained them&mdash;often with too little help or recognition. Preserving that history means naming the work, learning from what its maintainers endured, and carrying the best of it forward.</p>
+            <p>SNAPSMACK did not appear from nowhere. It follows a trail broken by personal publishing systems, photoblogging projects, and the people who sustained them, often with too little help or recognition. Preserving that history means naming the work, learning from what its maintainers endured, and carrying the best of it forward.</p>
             <p><strong><a href="https://bsky.app/profile/thatnoahgrey.bsky.social" target="_blank" rel="noopener">Noah Grey</a> comes first.</strong> He inspired me as a photographer, a creator, and a person. He is senpai. I am kohai. SNAPSMACK is the kohai&rsquo;s offering. His photographs and his work on <a href="https://en.wikipedia.org/wiki/Greymatter_(software)" target="_blank" rel="noopener">Greymatter</a> showed me that publishing software could be personal, independent, generous, strange, and unmistakably human.</p>
             <p>Pixelpost carried that independent photoblogging spirit into a system built specifically around photographs. Its interface shaped much of what SNAPSMACK became, and its history supplied lessons worth taking seriously rather than quietly strip-mining for nostalgia.</p>
             <div class="family-callout"><strong>Well-bred, badly behaved.</strong> SNAPSMACK respects its lineage without embalming it. The point is to preserve what was right, learn from what hurt, and build the thing photographers need now.</div>
@@ -77,7 +77,7 @@ require_once __DIR__ . '/includes/header.php';
     <section class="family-section family-neighbours">
         <div class="wrap family-copy">
             <p class="family-kicker">Good Neighbours</p>
-            <p><strong>Daniel Supernault (<a href="https://pixelfed.social/@dansup" target="_blank" rel="noopener">@dansup@pixelfed.social</a>) &mdash; Pixelfed.</strong> Somebody had to build the alternative to Instagram that doesn't treat your photos as bait, and dansup did it, and keeps doing it, mostly on grit and donations. Pixelfed is the only real alternative to Insta, and it's a big reason SNAPSMACK's photos have somewhere to go on the Fediverse. Thank you, Dan.</p>
+            <p><strong>Daniel Supernault (<a href="https://pixelfed.social/@dansup" target="_blank" rel="noopener">@dansup@pixelfed.social</a>), Pixelfed.</strong> Somebody had to build the alternative to Instagram that doesn't treat your photos as bait, and dansup did it, and keeps doing it, mostly on grit and donations. Pixelfed is the only real alternative to Insta, and it's a big reason SNAPSMACK's photos have somewhere to go on the Fediverse. Thank you, Dan.</p>
             <p>SNAPSMACK lives next door to Pixelfed on the Fediverse, and we'd be ashamed to do that network dirty with sloppy code or half-assed protocol work. So we audit how we federate, and we publish what we find, failures included. Anything less disrespects dansup, and that's uncool.</p>
         </div>
     </section>

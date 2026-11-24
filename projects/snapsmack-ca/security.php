@@ -10,7 +10,7 @@
  *     // ===== SNAPSMACK EOF =====
  */
 
-$page_title       = 'LOCKED DOWN! — Security | Free photoblog software';
+$page_title       = 'LOCKED DOWN!: Security | Free photoblog software';
 $page_description = 'How SnapSmack protects your site and what happens when something goes wrong: local lockout only, fleet-wide same-day alerts, public audits, and a no-remote-control rule. Custodian, not landlord.';
 $page_og_url      = 'https://snapsmack.ca/security.php';
 $nav_active       = 'security';
@@ -82,7 +82,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <p class="site-discovery-kicker">The rules, in the builder&rsquo;s words</p>
             <h2>Custodian, not landlord.</h2>
-            <p class="lede">You are trusting this software with your life&rsquo;s work. That earns you three promises, and they are not marketing &mdash; they are how the code is built.</p>
+            <p class="lede">You are trusting this software with your life&rsquo;s work. That earns you three promises, and they are not marketing, they are how the code is built.</p>
             <div class="doctrine-grid">
                 <article class="doctrine-card">
                     <h3>No remote control. Ever.</h3>
@@ -110,18 +110,18 @@ require_once __DIR__ . '/includes/header.php';
             <p class="lede">Every SnapSmack site watches its own files. Here is the chain, end to end, as it ran in a real test on 11 September 2026.</p>
             <div class="wrong-steps">
                 <article class="wrong-step">
-                    <span class="step-num">Step 1 &mdash; your site</span>
+                    <span class="step-num">Step 1, your site</span>
                     <h3>SMACKBACK catches it</h3>
-                    <p>A file on the server changed and nobody signed it. Within minutes the site goes to <strong>LOCKOUT</strong>: public pages are protected, the admin shows exactly which file, and nothing is trusted again until the owner enters their password and 2FA and decides &mdash; restore the clean copy, or bless the change because it was theirs.</p>
+                    <p>A file on the server changed and nobody signed it. Within minutes the site goes to <strong>LOCKOUT</strong>: public pages are protected, the admin shows exactly which file, and nothing is trusted again until the owner enters their password and 2FA and decides, restore the clean copy, or bless the change because it was theirs.</p>
                     <p>It caught our own developer dropping an unsigned file. That is the point.</p>
                 </article>
                 <article class="wrong-step">
-                    <span class="step-num">Step 2 &mdash; the network</span>
+                    <span class="step-num">Step 2, the network</span>
                     <h3>Sites tell each other</h3>
                     <p>The site reports the incident to SMACK CENTRAL. One site with one tampered file is a local matter. <strong>Several</strong> sites reporting tampering inside a short window is a different animal: a probable zero-day, someone working through the fleet.</p>
                 </article>
                 <article class="wrong-step">
-                    <span class="step-num">Step 3 &mdash; every owner</span>
+                    <span class="step-num">Step 3, every owner</span>
                     <h3>Yellow alert, same hour</h3>
                     <p>Every SnapSmack owner is told, immediately: apply updates, take a backup, rotate keys and passwords, consider pausing federation until it&rsquo;s understood. Then we publish what we know. Nobody&rsquo;s site is touched. Everybody&rsquo;s owner is informed.</p>
                 </article>
@@ -147,42 +147,42 @@ require_once __DIR__ . '/includes/header.php';
             <p class="lede">The more work a troll or attacker has to do, the more likely they are to go bother someone else. Each layer is independent; each blog keeps control of its own thresholds and decisions.</p>
             <div class="security-layers">
                 <article class="security-layer">
-                    <div class="layer-num">Layer 1 &mdash; Local</div>
+                    <div class="layer-num">Layer 1, Local</div>
                     <h3>Smack Dab</h3>
                     <p>Device fingerprinting, hashed identities, silent bans, keyword rules, and Akismet filtering protect each comment box without cross-site tracking or stored personal data.</p>
                 </article>
                 <article class="security-layer">
-                    <div class="layer-num">Layer 2 &mdash; Your Network</div>
+                    <div class="layer-num">Layer 2, Your Network</div>
                     <h3>Smack Down</h3>
                     <p>Ban a troll on one site and the hashed ban propagates across your whole multisite fleet. The original identifying value never leaves the site that created it.</p>
                 </article>
                 <article class="security-layer">
-                    <div class="layer-num">Layer 3 &mdash; The Community</div>
+                    <div class="layer-num">Layer 3, The Community</div>
                     <h3>Smack Up</h3>
                     <p>Opt-in reputation scoring combines reports from participating blogs, weights established sites appropriately, decays old incidents, and supports community correction.</p>
                 </article>
                 <article class="security-layer">
-                    <div class="layer-num">Layer 4 &mdash; The Network</div>
+                    <div class="layer-num">Layer 4, The Network</div>
                     <h3>Smackattack</h3>
                     <p>The central reputation service coordinates threat scores and style vectors, but each blog retains control of its own thresholds and ban decisions.</p>
                 </article>
                 <article class="security-layer">
-                    <div class="layer-num">Layer 5 &mdash; Evasion</div>
+                    <div class="layer-num">Layer 5, Evasion</div>
                     <h3>Gobsmacked</h3>
                     <p>Stylometric detection recognizes the writing habits of banned harassers who return with a new device, address, and email. Raw comments never leave your server.</p>
                 </article>
                 <article class="security-layer">
-                    <div class="layer-num">Layer 6 &mdash; Your Install</div>
+                    <div class="layer-num">Layer 6, Your Install</div>
                     <h3>Smackback</h3>
                     <p>Automated file-integrity monitoring catches tampering, locks down compromised public pages, <a href="https://www.youtube.com/watch?v=7YPy1MbqM8s" target="_blank" rel="noopener">alerts the owner</a>, and reports confirmed incidents to the network so other owners can be warned.</p>
                 </article>
                 <article class="security-layer">
-                    <div class="layer-num">Layer 7 &mdash; The Admin</div>
+                    <div class="layer-num">Layer 7, The Admin</div>
                     <h3>IP Smacker</h3>
                     <p>Scanner rejection, a configurable private login route, aggressive failed-login bans, mandatory 2FA, and an independent <a href="bugger.php">break-glass recovery card</a> harden the front door.</p>
                 </article>
                 <article class="security-layer">
-                    <div class="layer-num">Layer 8 &mdash; The Software</div>
+                    <div class="layer-num">Layer 8, The Software</div>
                     <h3>Snap Decision</h3>
                     <p>Cryptographically signed releases, published checksums, signed git tags, reviewed bundled dependencies, and public security audits protect the software supply chain.</p>
                 </article>
@@ -208,8 +208,8 @@ require_once __DIR__ . '/includes/header.php';
                     <h3>Are you honest about what it is?</h3>
                     <p>Yes. The provenance is published on <a href="the-reckoning.php">THE RECKONING</a> down to the line count. The failures are published on <a href="ding-dong-bell.php">DING DONG BELL</a>. Nothing about how this was made is hidden, because hiding it would be the actual risk.</p>
                 </div>
-                <p class="defence-line">Don&rsquo;t trust my typing &mdash; judge the artifact. The code is AI-produced, which is exactly why I don&rsquo;t just trust it. That&rsquo;s what the documented internal reviews, adversarial regression tests, and disclosure policy are for. They are not independent certification or an independent penetration test.</p>
-                <p>And the part that answers the fear underneath the question &mdash; <em>could it turn on the network?</em> &mdash; is the first rule on this page. SnapSmack cannot remotely control anybody&rsquo;s site. Not Sean, not the network, not a compromised central server. A warning network, not a botnet. The lack of a kill switch isn&rsquo;t a missing feature. It&rsquo;s the feature.</p>
+                <p class="defence-line">Don&rsquo;t trust my typing, judge the artifact. The code is AI-produced, which is exactly why I don&rsquo;t just trust it. That&rsquo;s what the documented internal reviews, adversarial regression tests, and disclosure policy are for. They are not independent certification or an independent penetration test.</p>
+                <p>And the part that answers the fear underneath the question, <em>could it turn on the network?</em>, is the first rule on this page. SnapSmack cannot remotely control anybody&rsquo;s site. Not Sean, not the network, not a compromised central server. A warning network, not a botnet. The lack of a kill switch isn&rsquo;t a missing feature. It&rsquo;s the feature.</p>
             </div>
         </div>
     </section>

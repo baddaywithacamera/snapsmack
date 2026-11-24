@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- SNAPSMACK_EOF_HEADER: preserve the final SNAPSMACK EOF comment. -->
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OPAUDIT 034 — The gate that said no</title><link rel="stylesheet" href="_report.css?v=ace953fd"></head><body><p class="doc-kicker">SnapSmack Operability Audit</p>
-<h1>OPAUDIT 034 — The gate that said no</h1>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OPAUDIT 034: The gate that said no</title><link rel="stylesheet" href="_report.css?v=ace953fd"></head><body><p class="doc-kicker">SnapSmack Operability Audit</p>
+<h1>OPAUDIT 034: The gate that said no</h1>
 <blockquote>
 <p><strong>Evidence note.</strong> Written by the repo seat from the Brain Trust room record of 13–14 November 2026 (UTC). Every sha and count below is quoted from the posts of the agent who measured it. Nothing here was re-executed by the author, who has no PHP.</p>
 </blockquote>
@@ -48,9 +48,9 @@
 </ul>
 <h2>The repairs, each reviewed before merge</h2>
 <ol>
-<li><strong>Strength record</strong> — <code>fdd79343</code>: five lines, one new entry, no existing number moved. Muse reproduced the counter's own counts (36 / 21) independently. Merged as <code>a66be4ef</code>.</li>
-<li><strong>Snapshot re-pin</strong> — <code>2c3c66d5</code>: regenerated with the test's own <code>--update</code>, never by hand. Compared key by key: 175 entries both sides, 0 added, 0 removed, 34 changed, and <code>text_sha256</code> the only field that moved, on exactly the 11 skins Codex listed. Muse repeated the comparison her own way and confirmed it. Merged as <code>bd6f4376</code>.</li>
-<li><strong>Full gate</strong> — on <code>bd6f4376</code>, including the browser rail that nobody had run on the candidate: exit 0. <code>v0.7.994D</code> was tagged on that sha. The tagged sha differs from the candidate the owner approved by these two fixture commits only, with no product code.</li>
+<li><strong>Strength record</strong>: <code>fdd79343</code>: five lines, one new entry, no existing number moved. Muse reproduced the counter's own counts (36 / 21) independently. Merged as <code>a66be4ef</code>.</li>
+<li><strong>Snapshot re-pin</strong>: <code>2c3c66d5</code>: regenerated with the test's own <code>--update</code>, never by hand. Compared key by key: 175 entries both sides, 0 added, 0 removed, 34 changed, and <code>text_sha256</code> the only field that moved, on exactly the 11 skins Codex listed. Muse repeated the comparison her own way and confirmed it. Merged as <code>bd6f4376</code>.</li>
+<li><strong>Full gate</strong>: on <code>bd6f4376</code>, including the browser rail that nobody had run on the candidate: exit 0. <code>v0.7.994D</code> was tagged on that sha. The tagged sha differs from the candidate the owner approved by these two fixture commits only, with no product code.</li>
 </ol>
 <h2>What the gate could not see</h2>
 <p>The gate passed, and 994D still broke something. On the oldest install in the fleet, the multisite dashboard stopped at the first spoke, because a new helper lived in a <code>core/constants.php</code> that the install's own stale <code>protected_paths.json</code> had frozen. That fault is outside what a source-tree gate can measure. Its release note carried the line "rendered dashboard on a long-standing install: NOT CHECKED", and that line rode into the tag. It was repaired in 0.7.995D (SS-1337), whose full gate also passed, and the root cause is a separate ticket. The PM's rule since: a NOT CHECKED that names a rendered admin page on a long-standing install blocks the tag until someone opens it or the owner accepts it in writing.</p>

@@ -1,13 +1,13 @@
 <?php
 /**
- * SNAPSMACK.CA — Shared Page Header
+ * SNAPSMACK.CA: Shared Page Header
  *
  * Include at the top of every page after setting:
- *   $page_title       — <title> content
- *   $page_description — meta description
- *   $page_og_url      — canonical og:url for this page
- *   $nav_active       — key matching a nav link: index|goods|goods-skins|goods-tools|tool-*|security|wotcha|brass-tacks|faq-*|coming|oi|tnb|hairy-muff|buzzers|ding-dong|reckoning|hows-yer-father|bugger
- *   $page_css         — (optional) additional CSS string for page-specific styles
+ *   $page_title: <title> content
+ *   $page_description: meta description
+ *   $page_og_url: canonical og:url for this page
+ *   $nav_active: key matching a nav link: index|goods|goods-skins|goods-tools|tool-*|security|wotcha|brass-tacks|faq-*|coming|oi|tnb|hairy-muff|buzzers|ding-dong|reckoning|hows-yer-father|bugger
+ *   $page_css: (optional) additional CSS string for page-specific styles
  */
 
 /**
@@ -155,7 +155,7 @@ if ($_canonical_url === 'https://snapsmack.ca/') {
 echo json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 ?></script>
 
-<!-- Site styles — extracted from this header to /assets/css/snapsmack-ca.css.
+<!-- Site styles: extracted from this header to /assets/css/snapsmack-ca.css.
      filemtime cache-bust auto-busts on every change; no manual ?v bump. -->
 <link rel="stylesheet" href="assets/css/snapsmack-ca.css?v=<?php echo @filemtime(__DIR__ . '/../assets/css/snapsmack-ca.css'); ?>">
 <?php if ($_page_css_block !== ''): ?>

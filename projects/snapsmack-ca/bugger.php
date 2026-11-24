@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK.CA — BUGGER! - Emergency Help & Updates
+ * SNAPSMACK.CA: BUGGER! - Emergency Help & Updates
  */
 
 /**
@@ -10,7 +10,7 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-$page_title       = 'BUGGER! — Emergency Help | Free photoblog software';
+$page_title       = 'BUGGER!: Emergency Help | Free photoblog software';
 $page_description = 'Emergency updates and critical fixes for SnapSmack. Check here if your site is down.';
 $page_og_url      = 'https://snapsmack.ca/bugger.php';
 $nav_active       = 'bugger';
@@ -35,7 +35,7 @@ main { margin-top: 0; }
     margin: 0 0 48px;
 }
 .key-block h2 { margin: 0 0 12px; color: var(--red); }
-/* Dark card (#111) — force light body text so it's readable in daylight. */
+/* Dark card (#111): force light body text so it's readable in daylight. */
 .key-block p, .key-block ol, .key-block li { color: #dadada; }
 .key-block strong { color: #fff; }
 .key-block p { margin: 0 0 14px; font-size: 0.9rem; }
@@ -84,12 +84,12 @@ include __DIR__ . '/includes/header.php';
         <div class="wrap">
             <div class="content">
                 <div class="alert">
-                    <strong>Alpha status.</strong> SnapSmack is in active development. The core platform runs live sites without drama. The items below are known rough edges — tracked, being worked on, not forgotten.
+                    <strong>Alpha status.</strong> SnapSmack is in active development. The core platform runs live sites without drama. The items below are known rough edges, tracked, being worked on, not forgotten.
                 </div>
 
                 <div class="key-block">
                     <h2>Signature Verification Failed?</h2>
-                    <p>If System Updates is showing <strong>"ED25519 SIGNATURE VERIFICATION FAILED. THIS PACKAGE CANNOT BE TRUSTED."</strong> — the public key stored in your install is out of date. This happens when the release keypair is rotated. Fix it in about ten seconds:</p>
+                    <p>If System Updates is showing <strong>"ED25519 SIGNATURE VERIFICATION FAILED. THIS PACKAGE CANNOT BE TRUSTED."</strong>, the public key stored in your install is out of date. This happens when the release keypair is rotated. Fix it in about ten seconds:</p>
                     <ol>
                         <li>Copy the current public key below.</li>
                         <li>Go to <strong>Admin &rarr; System Updates</strong> and scroll to the <strong>REPAIR SIGNING KEY</strong> section.</li>
@@ -103,14 +103,14 @@ include __DIR__ . '/includes/header.php';
                     </div>
                 </div>
 
-                <h2 style="margin-top: 48px;">Oh Snap! Skin Designer — AI Integration</h2>
-                <p>Oh Snap! is the desktop skin design tool. Its controls and preview remain development work, but direct skin push is disabled while the schema-v2 presentation boundary is tested end to end. A skin may provide declarative options and CSS; it may not upload PHP, JavaScript, routes, or data access. The AI-provider handoff is also inconsistent — responses can arrive in the wrong shape, generated CSS can contain bad values, and local streaming can stop mid-response. This is not ready to document as a working feature.</p>
+                <h2 style="margin-top: 48px;">Oh Snap! Skin Designer: AI Integration</h2>
+                <p>Oh Snap! is the desktop skin design tool. Its controls and preview remain development work, but direct skin push is disabled while the schema-v2 presentation boundary is tested end to end. A skin may provide declarative options and CSS; it may not upload PHP, JavaScript, routes, or data access. The AI-provider handoff is also inconsistent, responses can arrive in the wrong shape, generated CSS can contain bad values, and local streaming can stop mid-response. This is not ready to document as a working feature.</p>
 
                 <h2 style="margin-top: 48px;">Community Forum</h2>
-                <p>The forum exists and works at a basic level — you can register, post threads, reply, and moderate. What it doesn't have yet is anything that makes it worth using over email: no solved/accepted answers, no post editing, no reactions, no search, no view counts, no thread excerpts in the listing. It's functional the way a bus shelter is functional. Keeps the rain off. Improvements are coming in the next cycle.</p>
+                <p>The forum exists and works at a basic level, you can register, post threads, reply, and moderate. What it doesn't have yet is anything that makes it worth using over email: no solved/accepted answers, no post editing, no reactions, no search, no view counts, no thread excerpts in the listing. It's functional the way a bus shelter is functional. Keeps the rain off. Improvements are coming in the next cycle.</p>
 
-                <h2 style="margin-top: 48px;">Smack Your Batch Up — Repair Operations</h2>
-                <p>The SYBU desktop tool handles bulk post management, Drive sync, and audit operations. The Repair tab — which handles renaming Drive files, re-enriching duplicate post titles via AI, and backfilling missing Drive links — is new and hasn't had a full run against a large dataset yet. The operations are rate-limited and resumable, but they haven't been stress-tested at scale. If you're running a repair job on a large archive, watch the first few hundred entries before walking away from it.</p>
+                <h2 style="margin-top: 48px;">Smack Your Batch Up: Repair Operations</h2>
+                <p>The SYBU desktop tool handles bulk post management, Drive sync, and audit operations. The Repair tab, which handles renaming Drive files, re-enriching duplicate post titles via AI, and backfilling missing Drive links, is new and hasn't had a full run against a large dataset yet. The operations are rate-limited and resumable, but they haven't been stress-tested at scale. If you're running a repair job on a large archive, watch the first few hundred entries before walking away from it.</p>
 
                 <h2 style="margin-top: 48px;">Development Skins (Not Yet in Gallery)</h2>
                 <p>Several skins are in the repo but not available in the skin gallery yet. A Grey Reckoning, In Stereo Where Available, 52 Card Pickup, and Show-n-Tell are all in various states of done. They're tracked in git, they won't disappear, but they're not ready for installs. When they're ready, they'll show up in the gallery without any action required on your end.</p>

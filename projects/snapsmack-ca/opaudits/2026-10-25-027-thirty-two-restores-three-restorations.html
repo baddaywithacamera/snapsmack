@@ -168,7 +168,7 @@
 
 <p>Two holes put an install in that state and then kept it there:</p>
 <ol>
-<li><strong>Creation inherited an answer instead of stating one.</strong> <code>smack-pages.php:118</code> read <code>INSERT INTO snap_pages (title, slug, content, image_asset, image_size, image_align, image_shadow)</code> &mdash; no <code>is_active</code>, no <code>menu_order</code>. The canonical schema at <code>database/schema/snapsmack_canonical.sql:372</code> declares <code>is_active tinyint(1) DEFAULT '1'</code>, so on a canonical table this is harmless. On an install whose <code>snap_pages</code> predates that default, or was built by another hand, the new page takes whatever that table says.</li>
+<li><strong>Creation inherited an answer instead of stating one.</strong> <code>smack-pages.php:118</code> read <code>INSERT INTO snap_pages (title, slug, content, image_asset, image_size, image_align, image_shadow)</code>: no <code>is_active</code>, no <code>menu_order</code>. The canonical schema at <code>database/schema/snapsmack_canonical.sql:372</code> declares <code>is_active tinyint(1) DEFAULT '1'</code>, so on a canonical table this is harmless. On an install whose <code>snap_pages</code> predates that default, or was built by another hand, the new page takes whatever that table says.</li>
 <li><strong>Nothing in the admin could see the column, let alone change it.</strong> The Page Manager lists every row with <code>SELECT * FROM snap_pages ORDER BY menu_order</code> and renders title, slug, VIEW, EDIT, DELETE. It never read <code>is_active</code> and offered no control over it. A page at 0 appeared in the list looking exactly like a working page while its URL returned 404. The only routes back were the SMACKPRESS API, which writes the column explicitly, or a hand-written <code>UPDATE</code> against the database.</li>
 </ol>
 
@@ -178,11 +178,11 @@
 <p>In <code>smack-pages.php</code>:</p>
 <ul>
 <li>Creation writes <code>is_active</code> explicitly as 1. A page the owner just made is a page they want visible; that is stated rather than inherited.</li>
-<li>The stored-pages list marks a page that is not on the site as <strong>HIDDEN &mdash; NOT ON THE SITE</strong>, beside its slug.</li>
-<li>A SHOW / HIDE action sits with EDIT and DELETE, CSRF-verified like the delete beside it. The update is <code>is_active = 1 - COALESCE(is_active, 0)</code>, so a row whose column was never written toggles to visible rather than to NULL &mdash; <code>1 - NULL</code> is NULL in SQL, which would have made the control a one-way trip to invisible.</li>
+<li>The stored-pages list marks a page that is not on the site as <strong>HIDDEN: NOT ON THE SITE</strong>, beside its slug.</li>
+<li>A SHOW / HIDE action sits with EDIT and DELETE, CSRF-verified like the delete beside it. The update is <code>is_active = 1 - COALESCE(is_active, 0)</code>, so a row whose column was never written toggles to visible rather than to NULL: <code>1 - NULL</code> is NULL in SQL, which would have made the control a one-way trip to invisible.</li>
 </ul>
 
-<p><code>tests/static-pages-visible-and-fixable-regression.php</code> holds all three, and also asserts that the strict controller, the sitemap and the skin navigation still gate on <code>is_active = 1</code> &mdash; if one of those ever stops checking, the test is guarding the wrong contract and should be revisited rather than trusted. Verified to fail five ways against <code>smack-pages.php</code> as shipping before this change.</p>
+<p><code>tests/static-pages-visible-and-fixable-regression.php</code> holds all three, and also asserts that the strict controller, the sitemap and the skin navigation still gate on <code>is_active = 1</code>, if one of those ever stops checking, the test is guarding the wrong contract and should be revisited rather than trusted. Verified to fail five ways against <code>smack-pages.php</code> as shipping before this change.</p>
 
 <h3>12.4 What this does not claim</h3>
 <p>This repair gives the owner a control and a status they did not have. It does <strong>not</strong> establish why this particular install's page is at 0, or whether a page row exists there at all; the database was not read, and nothing here should be taken as having read it. Three external readers agreeing that no active page exists is consistent with a row at 0, with a row that was deleted, and with a page that was never created on this install. Those are distinguished by one read of <code>snap_pages</code> on the install, which is a paste-verify step, not an inference. After this build reaches the install, the Page Manager answers the question directly: a hidden row is now labelled, and an absent row is absent.</p>
@@ -192,9 +192,9 @@
 <p>The owner, on curbappeal.photoblogs.fyi running NEW HORIZON: "why is box around photo weird with line at bottom?" His About page hero sat in a dark box far taller than the photograph, with a band underneath it.</p>
 
 <h3>13.1 Measured</h3>
-<p>Read from the live page, 27 October. <code>&lt;body class="new-horizon-v2"&gt;</code> &mdash; nothing else. The CMS-generated presentation block on the same page contains <code>#photobox{padding-bottom:50px;}</code>.</p>
+<p>Read from the live page, 27 October. <code>&lt;body class="new-horizon-v2"&gt;</code>, nothing else. The CMS-generated presentation block on the same page contains <code>#photobox{padding-bottom:50px;}</code>.</p>
 <p><code>core/skin-view-contract.php</code> computes a body class for every page: <code>static-transmission</code> for a static page or the blogroll, <code>archive-page</code>, <code>is-photo-page</code>, <code>is-blogroll</code>, <code>homepage-static</code> and <code>page-slug-&lt;slug&gt;</code>. It publishes it at <code>$view['site']['body_class']</code>. NEW HORIZON's layout hardcodes its own body class and discards it.</p>
-<p>So NEW HORIZON's seven <code>.static-transmission #photobox.page-hero</code> rules &mdash; which set <code>padding: 0 !important</code>, <code>background: transparent !important</code> and <code>min-height: auto !important</code>, written precisely to undo the photo-page treatment on a static page &mdash; never matched a single page on any site. The hero fell through to the photo-page rules at <code>skins/new-horizon/style.css:168</code>: <code>background: var(--bg-page)</code> and <code>height: calc(100dvh - 140px)</code>. That is the dark box and its height.</p>
+<p>So NEW HORIZON's seven <code>.static-transmission #photobox.page-hero</code> rules, which set <code>padding: 0 !important</code>, <code>background: transparent !important</code> and <code>min-height: auto !important</code>, written precisely to undo the photo-page treatment on a static page, never matched a single page on any site. The hero fell through to the photo-page rules at <code>skins/new-horizon/style.css:168</code>: <code>background: var(--bg-page)</code> and <code>height: calc(100dvh - 140px)</code>. That is the dark box and its height.</p>
 <p>The band at the bottom is a control. <code>skins/new-horizon/manifest.json:1037</code> declares OPTICAL VERTICAL LIFT (px), section VERTICAL LOCKS, default 50, selector <code>#photobox</code>, property <code>padding-bottom</code>. A control for the photograph page was padding the bottom of his About page, because both pages use the same element id.</p>
 
 <h3>13.2 Why the id is shared, and why it stays shared</h3>
@@ -212,13 +212,13 @@
 <p>Searching his own archive, the owner reported two things at once: &quot;there are portrait images in there as landscape in results&quot;, and separately that &quot;sizing of last row is inconsistent and sloppy&quot;. They read as two complaints, one about cropping and one about grid tidiness. They are one fault.</p>
 
 <h3>14.2 Measured</h3>
-<p>Eight results, measured in a browser at 1920 on the live site, each image's real file dimensions against the box it was rendered in: 400x600 (aspect 0.667) rendered 266x177; 526x600 (0.877) rendered 330x220; 600x305 (1.967) rendered 266x177; 600x457 (1.313) rendered 266x177. Every tile computed to aspect 1.500 with <code>object-fit: cover</code>. The thumbnail files themselves still carried their true proportions, which is how the comparison was possible &mdash; the crop was entirely in the display box.</p>
-<p>The boxes are not set by any stylesheet. Each tile is positioned by JavaScript with inline geometry, and every tile in the rendered page carried <code>data-w=&quot;3&quot; data-h=&quot;2&quot;</code> &mdash; the literal strings, identical on all eight photographs.</p>
+<p>Eight results, measured in a browser at 1920 on the live site, each image's real file dimensions against the box it was rendered in: 400x600 (aspect 0.667) rendered 266x177; 526x600 (0.877) rendered 330x220; 600x305 (1.967) rendered 266x177; 600x457 (1.313) rendered 266x177. Every tile computed to aspect 1.500 with <code>object-fit: cover</code>. The thumbnail files themselves still carried their true proportions, which is how the comparison was possible, the crop was entirely in the display box.</p>
+<p>The boxes are not set by any stylesheet. Each tile is positioned by JavaScript with inline geometry, and every tile in the rendered page carried <code>data-w=&quot;3&quot; data-h=&quot;2&quot;</code>, the literal strings, identical on all eight photographs.</p>
 <p>Grid geometry at the same moment, container width 1400: row one five tiles of 266x177 totalling 1330; row two three tiles of 330x220 totalling 990. Two different tile sizes on one page, the last row 410px short of the container. Because every tile claimed the same shape, the masonry engine had no widths to vary, which is what a justified grid exists to do.</p>
 
 <h3>14.3 Cause</h3>
 <p><code>core/skin-render-helpers.php</code>, the <code>wall-tile</code> component, emitted <code>data-w</code> and <code>data-h</code> with a fallback of <code>3</code> and <code>2</code>. That is not a safe default. It is an assertion that every photograph is landscape, made on behalf of data that was absent.</p>
-<p>The data was absent because <code>PublicRepository::search()</code> selected nine columns and <code>img_width</code> and <code>img_height</code> were not among them. Every other tile query in that same file selects them. Only search did not, which is why the archive looked correct and only search results were wrong &mdash; and why this survived every check that rendered an archive.</p>
+<p>The data was absent because <code>PublicRepository::search()</code> selected nine columns and <code>img_width</code> and <code>img_height</code> were not among them. Every other tile query in that same file selects them. Only search did not, which is why the archive looked correct and only search results were wrong, and why this survived every check that rendered an archive.</p>
 <p><code>assets/js/ss-engine-masonry.js</code> was never at fault. It already reads the image's own <code>naturalWidth</code> and <code>naturalHeight</code> when the attributes are missing, and it handles portrait, square and panoramic tiles deliberately. The 3:2 default defeated that fallback by supplying a value that was never true. A real missing value would have been handled correctly; an invented one could not be.</p>
 
 <h3>14.4 Repair</h3>
@@ -257,7 +257,7 @@ nothing reads.</p>
 <p><code>tests/archive-settings-reach-the-page-regression.php</code> exists for exactly this fault. Its
 own comment states the rule: <em>&quot;A setting the owner picks must change the page. Flip it and
 look.&quot;</em> It checks <code>archive_thumb_style</code> four times. It checks it on
-<strong><code>chaplin</code></strong> and <strong><code>impact-printer</code></strong> &mdash; the two
+<strong><code>chaplin</code></strong> and <strong><code>impact-printer</code></strong>, the two
 components that had just been repaired when it was written, and the only two that honour the setting.</p>
 
 <p><strong>A gate scoped to the repair proves the repair. It says nothing about the product.</strong> It
@@ -272,7 +272,7 @@ on the wrong two-thirtieths of the fleet.</p>
 
 <h3>15.2 A second, smaller finding in the same panel</h3>
 
-<p>MASONRY IMAGE SIZE offers <em>MEDIUM (~600px THUMBNAILS) &mdash; RECOMMENDED</em>. That text is a
+<p>MASONRY IMAGE SIZE offers <em>MEDIUM (~600px THUMBNAILS), RECOMMENDED</em>. That text is a
 hardcoded string at <code>smack-appearance-archive.php:294</code>; it is not read from the image
 pipeline. The thumbnail the live site actually serves measures <strong>400 &times; 400</strong>. The
 owner's recollection was 900. Three numbers, no agreement, and the label is the only one a site owner
@@ -304,8 +304,8 @@ a check that proves a repair landed, and nothing anywhere that asks whether the 
 <h3>16.1 Measured</h3>
 <p>Across all thirty skins on 28 and 29 October:</p>
 <ul>
-<li>The archive control row &mdash; SHOW ALL, the FILTER panel, the search field, the thumbs/masonry
-toggle, the calendar button &mdash; existed in exactly <strong>one</strong> place in the product: the
+<li>The archive control row: SHOW ALL, the FILTER panel, the search field, the thumbs/masonry
+toggle, the calendar button, existed in exactly <strong>one</strong> place in the product: the
 <code>archive-filters</code> component in <code>core/skin-render-helpers.php</code>.</li>
 <li>Three skins printed that component. Twenty-seven printed nothing.</li>
 <li>The thumbs/masonry toggle inside it had <strong>never rendered on any skin at all</strong>, including
@@ -329,16 +329,16 @@ update, and the mode it reads back on <code>popstate</code> was never the link's
 <li>The calendar's two owner switches, <code>archive_calendar_enabled</code> and
 <code>archive_calendar_default_open</code>, were read only inside <code>archive.php</code>.</li>
 <li><strong>The fifth, and the reason the stylesheet was missing:</strong> the engines that make the row
-work were hardcoded in <code>&lt;script&gt;</code> tags at the bottom of <code>archive.php</code> &mdash;
+work were hardcoded in <code>&lt;script&gt;</code> tags at the bottom of <code>archive.php</code>,
 the filter engine, the toggle engine, and the calendar engine when the owner had enabled it. Twenty-eight
 of the thirty skins are strict and never run that file: <code>index.php</code> dispatches them to
 <code>snapsmack_public_runtime()</code> hundreds of lines earlier and exits. The stylesheet rides on those
 engines, so it arrived only for the five skins whose manifests happen to name one by hand.</li>
 </ol>
 
-<p>All of the resolution &mdash; the skin locks, the four-way-to-two-way normalisation, the
+<p>All of the resolution, the skin locks, the four-way-to-two-way normalisation, the
 <code>?layout=</code> override with its legacy values, the cookie, the thumb style and the skin's override
-of it, both calendar flags &mdash; lived inside <code>archive.php</code>, between its redirects and its
+of it, both calendar flags, lived inside <code>archive.php</code>, between its redirects and its
 thumbnail arithmetic. This is the same shape as every other fault found in the week of 25&ndash;29
 October: the 28 September strict-runtime conversion moved rendering into core and left whole features
 behind in the legacy path, and nothing compares what one path renders against what the other does.</p>
@@ -351,14 +351,14 @@ showing and what may the visitor switch to&quot; and both paths read it.</li>
 <li><code>snapsmack_public_runtime()</code> assigns the resolved layouts and calendar flags to the
 response, and the allowlist carries them.</li>
 <li>The component emits <code>data-layout</code> on each toggle link and
-<code>data-calendar-toggle</code> on the calendar button &mdash; the two selectors the engines actually
+<code>data-calendar-toggle</code> on the calendar button, the two selectors the engines actually
 bind, rather than the markup a test would like to see.</li>
 <li>The runtime <strong>declares the archive engine as a required asset</strong> on every archive page, so
 the stylesheet and the behaviour travel with the row that needs them. No manifest bump, no repackage, no
 per-site skin install: a CMS deploy is the whole delivery, the same route the community block and the
 shortcode stylesheets already take.</li>
-<li>Three skins that already received the stylesheet but printed no row &mdash; CHAPLIN and ONYX through
-their CMS page components, plus 50 SHADES which was already wired &mdash; now print it. Five skins render
+<li>Three skins that already received the stylesheet but printed no row: CHAPLIN and ONYX through
+their CMS page components, plus 50 SHADES which was already wired, now print it. Five skins render
 the row in total.</li>
 </ul>
 
@@ -374,7 +374,7 @@ the row in total.</li>
 </table>
 
 <p>CHAPLIN's docked control group first measured at <strong>1751..1880 while its photographs end at
-1760</strong> &mdash; 120px of control hanging past the archive. The row caps itself with
+1760</strong>, 120px of control hanging past the archive. The row caps itself with
 <code>--archive-content-width</code>, the component took that from <code>main_canvas_width</code>, and
 CHAPLIN has no such option: its control is <code>chap_photo_max_width</code>, labelled &quot;Content Max
 Width (px)&quot;, default 1600, which is the 1600 its grid measures. With no cap the group fell back to
@@ -384,19 +384,19 @@ Width (px)&quot;, default 1600, which is the 1600 its grid measures. With no cap
 is nothing to infer from: a pattern over the option names picks up <code>masonry_border_width</code> and
 <code>chap_line_1_width</code> just as readily, and a 2px cap on the row would be worse than no cap. So
 the skin nominates it in its manifest, <code>features.canvas_width_option</code>. The first repair put a
-per-skin table in the CMS and <code>tests/agreed-rules-gate.php</code> refused it &mdash; &quot;Core must
-not learn about another individual skin&quot; &mdash; which is what that gate is for. Re-measured after
+per-skin table in the CMS and <code>tests/agreed-rules-gate.php</code> refused it, &quot;Core must
+not learn about another individual skin&quot;, which is what that gate is for. Re-measured after
 the nomination: <strong>1591..1720, inside a 160..1760 grid.</strong></p>
 
 <p>The geometry harness itself was part of the finding. Before this it rendered the archive row with
 SHOW ALL and a search field and no controls at all, because it built the view without the runtime that
-assigns them &mdash; which is exactly what the live archives looked like, so any screenshot of it proved
+assigns them, which is exactly what the live archives looked like, so any screenshot of it proved
 nothing. It now resolves the controls the way a real request does.</p>
 
 <h3>16.5 Why no check saw any of this</h3>
 <p>Section 15 recorded a gate written to prove a repair being counted as coverage of the control it
 touched. This is the same failure one level deeper. <code>tests/archive-filter-row-regression.php</code>
-rendered the <code>archive-filters</code> component and asserted its parts were present &mdash; and
+rendered the <code>archive-filters</code> component and asserted its parts were present, and
 passed, every time, while the component was printed by three skins out of thirty and its toggle was
 rendered by none. The test asked &quot;does the component emit the row&quot;. Nobody asked &quot;does any
 page a visitor can open contain it&quot;.</p>
@@ -425,7 +425,7 @@ actual settings are read.</li>
 whether a page a visitor can open contains it.</li>
 </ol>
 
-<h2>Supplement — 1 November 2026: the owner’s account of the cost</h2>
+<h2>Supplement: 1 November 2026: the owner’s account of the cost</h2>
 <p><strong>Owner’s account, not a measured duration.</strong> Sean says the regressions, and repairs that kept returning as rewrites, have cost him about a month and are why the planned 4 November closed beta cannot be met. This supplement records his account; it does not establish an independently measured number of lost days or set a replacement beta date.</p>
 
 <p class="doc-foot">SnapSmack Operability Audit 027 - 25 October 2026; evidence supplements 26, 27, 28 and 29 October 2026</p>

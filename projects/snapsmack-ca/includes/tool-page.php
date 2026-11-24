@@ -3,15 +3,15 @@
  * SNAPSMACK.CA - Shared desktop-tool page layout.
  *
  * The requiring page supplies the usual metadata plus:
- *   $tool_name      — display name (e.g. 'SMACK YOUR BATCH UP')
- *   $tool_short     — one sentence: what it does for your SITE
- *   $tool_platform  — 'Windows / Linux'
- *   $tool_status    — 'Shipping' | 'Closed beta' | 'In the workshop'
- *   $tool_group     — 'make' | 'publish' | 'get-in' | 'keep'  (hub grouping)
- *   $tool_body      — HTML: the long-form description (already escaped)
- *   $tool_shots     — array of [src, alt, caption] (optional)
- *   $tool_facts     — array of [label, value] (optional)
- *   $tool_news      — wotcha.php anchor (optional)
+ *   $tool_name: display name (e.g. 'SMACK YOUR BATCH UP')
+ *   $tool_short: one sentence: what it does for your SITE
+ *   $tool_platform: 'Windows / Linux'
+ *   $tool_status: 'Shipping' | 'Closed beta' | 'In the workshop'
+ *   $tool_group: 'make' | 'publish' | 'get-in' | 'keep'  (hub grouping)
+ *   $tool_body: HTML: the long-form description (already escaped)
+ *   $tool_shots: array of [src, alt, caption] (optional)
+ *   $tool_facts: array of [label, value] (optional)
+ *   $tool_news: wotcha.php anchor (optional)
  */
 
 /**

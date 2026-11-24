@@ -4,7 +4,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'Free batch publisher — SMACK YOUR BATCH UP';
+$page_title       = 'Free batch publisher: SMACK YOUR BATCH UP';
 $page_description = 'SMACK YOUR BATCH UP loads a whole shoot, lets you reorder and tag it, preserves EXIF copyright, and publishes every photograph to your SnapSmack site from the desktop. Optional AI writes captions and tags as the queue runs.';
 $page_og_url      = 'https://snapsmack.ca/tool-sybu.php';
 $nav_active       = 'tool-sybu';
@@ -29,7 +29,7 @@ $tool_body = <<<'HTML'
                 <li>Drop in a folder or a selection. Thumbnails, capture dates, and EXIF come along.</li>
                 <li>Reorder by drag, by date, or by filename. The order you see is the order the site gets.</li>
                 <li>Assign categories, albums, and tags to the whole batch or to individual frames.</li>
-                <li>Optional AI enrichment looks at each photograph and drafts the caption, alt text, tags, categories, and colour metadata &mdash; using your site&rsquo;s own prompt so it sounds like you. You review before anything publishes.</li>
+                <li>Optional AI enrichment looks at each photograph and drafts the caption, alt text, tags, categories, and colour metadata: using your site&rsquo;s own prompt so it sounds like you. You review before anything publishes.</li>
                 <li>Publish. The queue runs, throttled so your host doesn&rsquo;t notice, and resumes if it&rsquo;s interrupted.</li>
             </ul>
             <h2>The rules it follows</h2>

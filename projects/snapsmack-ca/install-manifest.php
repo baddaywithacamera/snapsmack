@@ -1,19 +1,19 @@
 <?php
 /**
- * SNAPSMACK.CA — Skin Install Manifest
+ * SNAPSMACK.CA: Skin Install Manifest
  *
  * Called by the SnapSmack installer during Step 5 to get the list of skins
- * appropriate for the chosen install mode. Reads modes from registry.json —
+ * appropriate for the chosen install mode. Reads modes from registry.json:
  * no hardcoded mapping. Repackaging a skin via the Skin Packager is all that's
  * needed to update what the installer fetches.
  *
  * Request (GET):
- *   mode    — photoblog | carousel | smacktalk | smackthemup
- *   profile — optional FEDISTRUCTURE service profile (photo-challenge | ...)
+ *   mode: photoblog | carousel | smacktalk | smackthemup
+ *   profile: optional FEDISTRUCTURE service profile (photo-challenge |...)
  *
  * WHY PROFILE EXISTS. Every FEDISTRUCTURE service runs on site_mode 'photoblog',
  * so the mode alone cannot distinguish a PHOTOFRI.DAY install from an ordinary
- * photo blog — and without that distinction a challenge site installs the
+ * photo blog: and without that distinction a challenge site installs the
  * generic photoblog skin and comes up looking like somebody else's site. The
  * profile is optional and additive: an installer that doesn't send one gets
  * exactly the behaviour it got before.
@@ -38,7 +38,7 @@ if (!in_array($profile, ['photo-challenge', 'daily-photo', 'smackcast'], true)) 
     $profile = '';
 }
 
-// Default skin per mode — the skin set as active_skin after install.
+// Default skin per mode: the skin set as active_skin after install.
 // Updated here when a mode gets a new flagship skin.
 $mode_defaults = [
     'photoblog' => 'new-horizon',
@@ -50,7 +50,7 @@ $mode_defaults = [
 // A FEDISTRUCTURE service profile overrides the mode default: these installs are
 // a branded front door with a blog behind it, not a photo blog that happens to
 // federate, and the skin is part of the product rather than a preference.
-// A profile with no entry here falls through to the mode default on purpose —
+// A profile with no entry here falls through to the mode default on purpose:
 // better a working generic skin than a 503 because somebody added a profile
 // before its skin was packaged.
 $profile_defaults = [
@@ -61,7 +61,7 @@ $default_skin = ($profile !== '' && isset($profile_defaults[$profile]))
     ? $profile_defaults[$profile]
     : ($mode_defaults[$mode] ?? 'new-horizon');
 
-// Read registry.json — source of truth for download URLs, signatures, versions.
+// Read registry.json: source of truth for download URLs, signatures, versions.
 $registry_path = __DIR__ . '/releases/skins/registry.json';
 if (!is_file($registry_path)) {
     http_response_code(503);
@@ -77,7 +77,7 @@ $reg_skins = $registry['skins'] ?? [];
 // longform reading; SMACKONEOUT photo blogs and GRAMOFSMACK carousel blogs use
 // PHOTOGRAM. SMACKTHEMUP does not receive a blog mobile skin. EVERY other
 // registered skin is OPTIONAL and installed later from the
-// in-CMS skin gallery — never shipped to a fresh install. Installing unused skins
+// in-CMS skin gallery: never shipped to a fresh install. Installing unused skins
 // wastes shared-host space without the owner's consent and is needless attack
 // surface. "Only ever install the skin you will use." (Sean, 2026-06-18.)
 // This is what stops a non-default skin (e.g. AURORA) auto-landing on every
