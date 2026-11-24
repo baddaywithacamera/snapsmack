@@ -74,9 +74,25 @@ $baseline = json_decode((string)file_get_contents($root . '/tests/fixtures/skin-
 cx(($baseline['schema_version'] ?? null) === 2, 'the baseline is schema 2');
 $aRow = $baseline['skins']['new-horizon'] ?? [];
 cx(array_key_exists('manifest_css_sha256', $aRow), 'each skin row records manifest_css_sha256');
-$gate = (string)file_get_contents($root . '/tests/skin-version-content-regression.php');
-cx(str_contains($gate, 'manifest_css_sha256') && str_contains($gate, 'generates the public CSS'),
-   'the version gate compares the manifest-css fingerprint and explains why');
+// SS-1566: this used to read the gate's SOURCE and look for the words in it.
+// That passes whether or not the comparison runs, and it broke the day the
+// comparison moved into the generator without changing behaviour at all. Drive
+// it instead: a manifest-option change, with the version and every file byte
+// standing still, must be reported.
+$only_option_changed = snapsmack_skin_version_failures(
+    ['chaplin' => ['version' => '1.0.0', 'files_sha256' => 'same',
+                   'manifest_css_sha256' => $f0]],
+    ['chaplin' => ['version' => '1.0.0', 'files_sha256' => 'same',
+                   'manifest_css_sha256' => $fp($selector)]]);
+cx(count($only_option_changed) === 1
+   && str_contains($only_option_changed[0], 'generates the public CSS'),
+   'the version gate REPORTS a manifest-option change under an unchanged version');
+cx(snapsmack_skin_version_failures(
+       ['chaplin' => ['version' => '1.0.0', 'files_sha256' => 'same',
+                      'manifest_css_sha256' => $f0]],
+       ['chaplin' => ['version' => '1.0.0', 'files_sha256' => 'same',
+                      'manifest_css_sha256' => $fp($label)]]) === [],
+   '  and says nothing when only the admin label moved (no false bump)');
 
 echo "\n{$pass} checks, {$fail} failed\n";
 exit($fail > 0 ? 1 : 0);

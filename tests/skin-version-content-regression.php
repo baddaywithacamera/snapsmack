@@ -37,45 +37,12 @@ if (($baseline['schema_version'] ?? null) !== 2) {
 
 $current = snapsmack_skin_version_rows($root);
 $recorded = is_array($baseline['skins'] ?? null) ? $baseline['skins'] : [];
-$failures = [];
 
-foreach ($current as $skin => $now) {
-    if (($now['version'] ?? '') === '') {
-        $failures[] = "{$skin}: manifest has no version.";
-        continue;
-    }
-    $was = $recorded[$skin] ?? null;
-    if ($was === null) {
-        $failures[] = "{$skin}: new skin is missing from the baseline — regenerate it in this commit.";
-        continue;
-    }
-    $sameVersion = (string)$was['version'] === (string)$now['version'];
-    $sameFiles = (string)$was['files_sha256'] === (string)$now['files_sha256'];
-    // 986D: a manifest option's selector/property/default/choices generates the
-    // public CSS, so a change to it alters what an installed site renders even
-    // though manifest.json is outside the file digest. It counts as content.
-    $sameManifestCss = (string)($was['manifest_css_sha256'] ?? '') === (string)($now['manifest_css_sha256'] ?? '');
-
-    if ($sameVersion && !$sameFiles) {
-        $failures[] = "{$skin}: files changed but the version is still {$now['version']}. "
-            . 'Sites install by version, so they would never receive this change. '
-            . 'Bump the version and regenerate the baseline in the same commit.';
-    } elseif ($sameVersion && !$sameManifestCss) {
-        $failures[] = "{$skin}: a manifest option's selector/property/default changed but the "
-            . "version is still {$now['version']}. The option generates the public CSS, so sites "
-            . 'installed by version would never receive the change (this is exactly how SS-1214 hid '
-            . 'the dead masthead selector). Bump the version and regenerate the baseline in the same commit.';
-    } elseif (!$sameVersion && $sameFiles && $sameManifestCss) {
-        $failures[] = "{$skin}: version moved {$was['version']} -> {$now['version']} with no "
-            . 'file or manifest-option change. Regenerate the baseline, or drop the bump.';
-    }
-}
-
-foreach (array_keys($recorded) as $skin) {
-    if (!isset($current[$skin])) {
-        $failures[] = "{$skin}: in the baseline but no longer in skins/ — regenerate the baseline.";
-    }
-}
+// SS-1566: the comparison itself lives in the generator, beside the digest and
+// for the same reason. It is reachable from tests/skin-version-gate-shapes-
+// regression.php, which drives every shape with crafted rows -- the real
+// skins/ folder can only ever produce one of them at a time.
+$failures = snapsmack_skin_version_failures($recorded, $current);
 
 if ($failures !== []) {
     fwrite(STDERR, implode("\n", $failures) . "\n");

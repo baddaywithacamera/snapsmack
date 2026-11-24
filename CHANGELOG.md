@@ -13,6 +13,36 @@
 
 ## 0.7.1003D — opened
 
+- **A release gate that was supposed to stop a skin shipping two different
+  versions of itself had quietly switched itself off, one skin at a time.**
+  Nothing is wrong on any site because of it, and nothing had slipped past it
+  yet — it was found by testing the gate rather than trusting it — but the
+  protection was not there to be relied on, so it is being repaired and said
+  out loud.
+  The background: a site installs a skin BY VERSION. If two different sets of
+  skin files ever go out under one version number, every site that took the
+  first set is stuck on it for good, and no CMS update can reach them, because
+  the files live in the skin and not in the CMS. That is what left one site
+  serving an old, broken layout through a fortnight of releases. The gate
+  exists so it cannot happen twice: change a skin file, change its version in
+  the same commit.
+  The gate works by comparing every skin against a recorded list. What was
+  missing was any requirement that the recorded list be brought up to date. A
+  normal, correct skin change moves both the version and the files, and that
+  combination was the one shape the gate had nothing to say about — so the
+  record was allowed to fall behind. And because every check the gate makes is
+  made against that record, a record left behind does not just go stale: it
+  turns the gate off for that skin completely. Measured before the repair, on
+  the real thirty skins: a record claiming version 1.0.0 against a skin saying
+  1.3.44 passed, and then a skin file edited with no version change at all —
+  the exact thing the gate is for — passed as well.
+  Both now fail, by name, with the one command that fixes them. The comparison
+  has been moved next to the code that builds the record so it can be put
+  through every situation on purpose, and twenty-two checks now do that; the
+  old test could only ever see whichever single state the repository happened
+  to be in that day. Nine deliberate breakages of the repaired gate were each
+  caught by the new checks.
+
 - **Your archive shows photographs at their real shapes again, not flattened
   into letterboxes.** After updating to 0.7.1002D the found textures archive
   drew every tile at 300 by 150 pixels — a 2:1 letterbox — while the actual
