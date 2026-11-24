@@ -9,6 +9,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -52,6 +53,16 @@ class _SSH:
 
     def open_sftp(self):
         return self.sftp
+
+    def get_transport(self):
+        owner = self
+
+        class _Transport:
+            def open_channel(self, kind, destination, source):
+                owner.channel_request = (kind, destination, source)
+                return "ssh-channel"
+
+        return _Transport()
 
     def close(self):
         self.closed = True
@@ -175,6 +186,25 @@ class P1bTests(unittest.TestCase):
         ])
         self.assertNotIn("SELECT file_path", str(self.audit.records()))
 
+    def test_real_pymysql_connection_receives_the_open_ssh_channel(self):
+        target = self.broker._target("ct102")
+        self.broker._mysql_factory = None
+        mysql = mock.Mock()
+        with mock.patch("pymysql.connect", return_value=mysql) as connect:
+            wrapped = self.broker._open_mysql(
+                target, "ssh-secret", "db-secret", "portalproject"
+            )
+        kwargs = connect.call_args.kwargs
+        self.assertTrue(kwargs["defer_connect"])
+        self.assertNotIn("sock", kwargs)
+        mysql.connect.assert_called_once_with("ssh-channel")
+        self.assertEqual(
+            self.ssh_clients[-1].channel_request,
+            ("direct-tcpip", ("192.168.1.20", 3306), ("127.0.0.1", 0)),
+        )
+        wrapped.close()
+        self.assertTrue(self.ssh_clients[-1].closed)
+
     def test_every_write_shape_is_refused_before_a_connection(self):
         before = len(self.ssh_clients)
         for sql in (
@@ -214,12 +244,23 @@ class P1bTests(unittest.TestCase):
                 os.path.join(os.path.dirname(__file__), "..", "PROVISIONING.md"),
                 encoding="utf-8") as stream:
             plan = stream.read()
-        self.assertEqual(plan.count("GRANT SELECT, SHOW VIEW ON *.*"), 2)
-        self.assertNotIn("setfacl -m u:proxvox-ro:x /etc", plan)
-        self.assertNotIn("! -name '*.key'", plan)
+        with open(
+                os.path.join(os.path.dirname(__file__), "..", "server", "provision-ct110.sh"),
+                encoding="utf-8") as stream:
+            database_installer = stream.read()
+        container_installers = ""
+        for target in ("ct102", "ct106"):
+            with open(
+                    os.path.join(os.path.dirname(__file__), "..", "server",
+                                 "provision-%s.sh" % target),
+                    encoding="utf-8") as stream:
+                container_installers += stream.read()
+        self.assertEqual(database_installer.count("GRANT SELECT, SHOW VIEW ON *.*"), 2)
+        self.assertNotIn("setfacl -m u:proxvox-ro:x /etc", container_installers)
+        self.assertNotIn("! -name '*.key'", container_installers)
         self.assertNotIn("must print nothing", plan.lower())
-        self.assertIn("private keys and hashes", plan)
-        self.assertIn("including system tables and", plan)
+        self.assertIn("metadata plus SHA-256", plan)
+        self.assertIn("source-bound read-only MariaDB accounts", plan)
 
 
 if __name__ == "__main__":

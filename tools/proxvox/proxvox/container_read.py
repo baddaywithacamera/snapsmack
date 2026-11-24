@@ -133,9 +133,10 @@ class ContainerReadBroker:
             )
             mysql = pymysql.connect(
                 user=self.database.username, password=db_password,
-                database=database, autocommit=False, sock=channel,
-                read_timeout=30, write_timeout=15,
+                database=database, autocommit=False,
+                read_timeout=30, write_timeout=15, defer_connect=True,
             )
+            mysql.connect(channel)
         except Exception:
             ssh.close()
             raise
