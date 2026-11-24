@@ -214,12 +214,23 @@ class P1bTests(unittest.TestCase):
                 os.path.join(os.path.dirname(__file__), "..", "PROVISIONING.md"),
                 encoding="utf-8") as stream:
             plan = stream.read()
-        self.assertEqual(plan.count("GRANT SELECT, SHOW VIEW ON *.*"), 2)
-        self.assertNotIn("setfacl -m u:proxvox-ro:x /etc", plan)
-        self.assertNotIn("! -name '*.key'", plan)
+        with open(
+                os.path.join(os.path.dirname(__file__), "..", "server", "provision-ct110.sh"),
+                encoding="utf-8") as stream:
+            database_installer = stream.read()
+        container_installers = ""
+        for target in ("ct102", "ct106"):
+            with open(
+                    os.path.join(os.path.dirname(__file__), "..", "server",
+                                 "provision-%s.sh" % target),
+                    encoding="utf-8") as stream:
+                container_installers += stream.read()
+        self.assertEqual(database_installer.count("GRANT SELECT, SHOW VIEW ON *.*"), 2)
+        self.assertNotIn("setfacl -m u:proxvox-ro:x /etc", container_installers)
+        self.assertNotIn("! -name '*.key'", container_installers)
         self.assertNotIn("must print nothing", plan.lower())
-        self.assertIn("private keys and hashes", plan)
-        self.assertIn("including system tables and", plan)
+        self.assertIn("metadata plus SHA-256", plan)
+        self.assertIn("source-bound read-only MariaDB accounts", plan)
 
 
 if __name__ == "__main__":
