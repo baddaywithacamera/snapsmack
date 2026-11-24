@@ -72,6 +72,12 @@ function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slu
     }
     $view['route_aliases'] = snapsmack_public_route_aliases($settings, $manifest);
     $view['navigation'] = snapsmack_prepare_skin_navigation($pdo, $settings, $manifest);
+    // SS-1563: say which item is the page being served. The CMS decides it
+    // here because a strict skin may hold no route logic, and five skins
+    // already style a current item with nothing to apply it to.
+    require_once __DIR__ . '/navigation-current.php';
+    $view['navigation'] = snapsmack_navigation_mark_current(
+        $view['navigation'], snapsmack_navigation_request_target());
     // About is an identity destination, not a menu-placement decision. Mobile
     // profiles link their avatar to it even when the owner intentionally keeps
     // About out of the visible navigation.
@@ -490,7 +496,16 @@ function snapsmack_render_navigation_items(array $items, int $depth = 0): void
     foreach ($items as $item) {
         $children = is_array($item['children'] ?? null) ? $item['children'] : [];
         $has_children = $children && $depth < 2;
-        echo '<li' . ($has_children ? ' class="menu-item-has-children"' : '') . '>';
+        // SS-1563. BOTH conventions, because both are already in use and
+        // neither group of skins is wrong: ALFRED, TELEGRAM and TILEZ style
+        // .main-menu li.current-menu-item > a, while ONYX and HEURISTIC style
+        // a[aria-current="page"]. Emitting one would have left the other five
+        // exactly as they were.
+        $classes = [];
+        if ($has_children) $classes[] = 'menu-item-has-children';
+        if (!empty($item['current'])) $classes[] = 'current-menu-item';
+        if (!empty($item['current_ancestor'])) $classes[] = 'current-menu-ancestor';
+        echo '<li' . ($classes ? ' class="' . implode(' ', $classes) . '"' : '') . '>';
         $label = htmlspecialchars((string)($item['label'] ?? ''), ENT_QUOTES);
         $url = (string)($item['url'] ?? '');
         if ($url === '') {
@@ -498,7 +513,12 @@ function snapsmack_render_navigation_items(array $items, int $depth = 0): void
         } else {
             $target = (($item['target'] ?? '') === '_blank')
                 ? ' target="_blank" rel="noopener noreferrer"' : '';
-            echo '<a href="' . htmlspecialchars($url, ENT_QUOTES) . '"' . $target . '>' . $label . '</a>';
+            // "page" rather than "true": the item IS the page being shown.
+            // Only the current item carries it -- an ancestor is a branch you
+            // are inside, not the location, and two aria-current values in
+            // one menu announce two current pages.
+            $current = !empty($item['current']) ? ' aria-current="page"' : '';
+            echo '<a href="' . htmlspecialchars($url, ENT_QUOTES) . '"' . $target . $current . '>' . $label . '</a>';
         }
         if ($has_children) {
             echo '<ul class="menu-item-has-children">';
