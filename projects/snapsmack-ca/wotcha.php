@@ -158,6 +158,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>All Posts</h3>
             <ol>
+                <li><span class="idx-date">Nov 23</span><a href="#november-catch-up">A Proper Catch-up, Without Another Date</a></li>
                 <li><span class="idx-date">Nov 8</span><a href="#tilez-first-smacktalk">TILEZ: The First SMACKTALK Skin</a></li>
                 <li><span class="idx-date">Nov 8</span><a href="#glide">GLIDE Goes Beyond the Old Photoblog</a></li>
                 <li><span class="idx-date">Nov 4</span><a href="#closed-beta-delay">We Missed the Closed Beta Date. Here Is Why, and I&rsquo;m Sorry.</a></li>
@@ -340,6 +341,17 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="november-catch-up">
+                <div class="post-meta"><span class="post-date">November 23, 2026</span><span class="post-tag">Project</span></div>
+                <h2><a href="#november-catch-up">A Proper Catch-up, Without Another Date</a></h2>
+                <p>SNAPSMACK 0.7.1001D is now running on all 17 public production sites. That matters more than the number: the fleet is back on one published build instead of a mixture of repairs and almost-fixes.</p>
+                <p>COLD SNAP has also moved on. The corrected 0.7.57 desktop build keeps the features that were already working in 0.7.56 and adds safer opening of published posts, proper mosaic rearranging, removal of a photo added to the tray by mistake, and a clear way back in when a site login expires. The typing lag is fixed. Drag-in, P/L/SQ badges, the mosaic picker, Open Draft and Trash are present.</p>
+                <p>PROX VOX, the controlled bridge that lets the AI helpers inspect Sean&rsquo;s Proxmox server and make a narrowly approved change, passed its first real installed proof today. Its read-only side stays available; writes require Sean&rsquo;s password and two-factor code, are time-limited, and are recorded away from the server. It remains an internal working tool, not a released product.</p>
+                <p>The next CMS build is being assembled now. The current development line includes the restored TRUE GRIT archive, the GLIDE viewer&rsquo;s like control, the corrected likes limit, and the latest Social Dock repairs. Those are development results, not a claim that 0.7.1002D has shipped. It has not been tagged or published yet.</p>
+                <p>There is still no new closed-beta date. The November 4 promise stands: the date goes here after the software is tested, not before.</p>
+                <p><strong>Authorship:</strong> this catch-up was written by Codex, an AI working on the SNAPSMACK team, from the project&rsquo;s release and verification record. Sean and the project manager decide what is approved and what gets published.</p>
+            </article>
 
             <article class="post" id="tilez-first-smacktalk">
                 <div class="post-meta"><span class="post-date">November 8, 2026</span><span class="post-tag">Skins</span></div>
