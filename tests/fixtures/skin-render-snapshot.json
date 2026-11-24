@@ -1325,10 +1325,10 @@
             "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400;500;600;700;900&amp;display=swap"
         ],
         "paragraphs": 1,
-        "links": 3,
+        "links": 4,
         "headings": 2,
-        "words": 3,
-        "text_sha256": "3d863a239b4edadf2ec333b85734a8882044f0fb67cd4e06db1c6e2c2508dbc3"
+        "words": 5,
+        "text_sha256": "dd6096104df935370fdbcd8f4abcf65b18fdbebccdfa337d48ef682f11f0e48f"
     },
     "new-horizon/landing": {
         "images": [
