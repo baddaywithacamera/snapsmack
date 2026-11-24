@@ -1,0 +1,21 @@
+{
+    "skin_name": "TELEGRAM",
+    "topics": [
+        {
+            "title": "About This Skin",
+            "body": "TELEGRAM is a phone-first SMACKTALK skin for reading long posts in a narrow column. Photographs and mosaics appear in the order the author placed them."
+        },
+        {
+            "title": "Navigation and Photographs",
+            "body": "Open the text menu at the top right to browse the site. Tap an eligible photograph to enlarge it."
+        },
+        {
+            "title": "Captions",
+            "body": "Use the Captions section in Skin Admin to set the colour, size, style, spacing, and alignment of captions beneath photographs."
+        },
+        {
+            "title": "Variants",
+            "body": "The Dark and Light variants currently use the same palette as the default."
+        }
+    ]
+}
