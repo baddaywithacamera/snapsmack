@@ -399,6 +399,13 @@ body.landing-only .ip-header-inside,
     opacity: var(--ip-ink-opacity, 0.65);
 }
 
+/* A real impact printer made bold by striking the same glyph twice with a
+   tiny horizontal offset.  Body ink and <strong> became equally dark after
+   the body-colour correction, so weight alone no longer showed. */
+.static-transmission .description strong {
+    text-shadow: 1px 0 0 currentColor;
+}
+
 .description a,
 .static-content a {
     color: inherit;
@@ -982,6 +989,18 @@ body.archive-page #scroll-stage {
     box-shadow: none !important;
     margin-top: 20px;
     margin-bottom: 60px !important;
+}
+
+/* Static-page image blocks sit in the prose rhythm, not the older 60px
+   photo-page rhythm.  The shared columns stylesheet already tries to collapse
+   a frame at the edge of a cell, but the skin's !important declaration above
+   won that cascade and left another 60px inside every image column. */
+.static-transmission .description > .snap-inline-frame {
+    margin-bottom: 24px !important;
+}
+
+.static-transmission .snapsmack-col .snap-inline-frame {
+    margin-bottom: 0 !important;
 }
 
 .asset-full   { width: 100% !important; margin-left: auto; margin-right: auto; }
