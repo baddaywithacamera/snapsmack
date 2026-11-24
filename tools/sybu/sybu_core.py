@@ -988,6 +988,21 @@ class Engine:
             op.result = {'connected': True}
         return self.start_op('drive_auth', _target)
 
+    def restore_drive(self, creds_path: str) -> dict:
+        """Restore a saved Drive grant without ever opening a consent browser."""
+        creds_path = (creds_path or '').strip()
+        if not self.config.get('drive_enabled'):
+            return {'started': False, 'state': 'disabled'}
+        d = _drive()
+        state, detail = d.authorization_state(creds_path)
+        if state in ('never', 'no_client', 'unreadable'):
+            return {'started': False, 'state': state, 'detail': detail}
+
+        def _target(op: Op):
+            self.drive_service = d.authenticate(creds_path, allow_consent=False)
+            op.result = {'connected': True, 'restored': True}
+        return self.start_op('drive_auth', _target)
+
     def drive_status(self) -> dict:
         return {'connected': self.drive_service is not None}
 

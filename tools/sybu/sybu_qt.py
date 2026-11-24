@@ -186,7 +186,7 @@ class Window(QMainWindow):
         self.setWindowTitle(f"SMACK YOUR BATCH UP — {BUILD_VERSION}")
         icon = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(__file__)), "assets", "sybu-taskbar.ico")
         if os.path.isfile(icon): self.setWindowIcon(QIcon(icon))
-        self.resize(1420, 880); self.setMinimumSize(1040, 700); self._build(); self._apply_site_mode(''); self._load()
+        self.resize(1420, 880); self.setMinimumSize(1040, 700); self._build(); self._apply_site_mode(''); self._load(); self._restore_drive()
         self.timer = QTimer(self); self.timer.timeout.connect(self._poll); self.timer.start(250)
 
     def _build(self):
@@ -268,7 +268,7 @@ class Window(QMainWindow):
         self.gemini=QLineEdit(); self.gemini.setEchoMode(QLineEdit.Password); self.gemini.setPlaceholderText("Gemini API key"); self.gemini.textEdited.connect(lambda _text:setattr(self,'_gemini_manually_edited',True)); self.gcreds=QLineEdit(); self.gcreds.setPlaceholderText("Google credentials JSON"); self.drive_folder=QLineEdit(); self.drive_folder.setPlaceholderText("Google Drive folder ID"); self.drive_folder.textChanged.connect(self._drive_status_changed); vl.addWidget(self.gemini); vl.addWidget(self.gcreds); vl.addWidget(self.drive_folder)
         self.gemini_source=label("Gemini key source: SNAP HQ shared store", "Muted"); vl.addWidget(self.gemini_source)
         row=QHBoxLayout(); choose=QPushButton("Choose credentials"); choose.clicked.connect(self._choose_creds); row.addWidget(choose)
-        drive_auth=QPushButton("Connect Drive"); drive_auth.clicked.connect(self._auth_drive); row.addWidget(drive_auth)
+        self.drive_auth_btn=QPushButton("Reconnect Drive"); self.drive_auth_btn.clicked.connect(self._auth_drive); row.addWidget(self.drive_auth_btn)
         gem_test=QPushButton("Test Gemini"); gem_test.clicked.connect(self._test_gemini); row.addWidget(gem_test)
         row.addStretch(1); save=QPushButton("SAVE SETTINGS"); save.setObjectName("Primary"); save.clicked.connect(self._save); row.addWidget(save); vl.addLayout(row); l.addWidget(svc); l.addStretch(1); return page
 
@@ -597,9 +597,29 @@ class Window(QMainWindow):
                 'account': "The Drive account and storage could not be verified.",
                 'quota': "The Drive account has no free storage.",
             }.get(out.get('reason', ''), "Drive check failed.")
-            self.drive_status_line.setText("Drive: %s · %s" % (head, out.get('detail', '')))
-            QMessageBox.warning(self, "Google Drive",
-                                "%s\n\n%s" % (head, out.get('detail', '')))
+            detail = out.get('detail', '')
+            visible_detail = detail
+            if (out.get('reason') == 'no_service' or
+                    detail.strip().rstrip('.') == head.strip().rstrip('.')):
+                visible_detail = ''
+            self.drive_status_line.setText("Drive: %s%s" % (
+                head, (" · " + visible_detail) if visible_detail else ""))
+            if out.get('reason') in ('no_service', 'auth'):
+                box = QMessageBox(self)
+                box.setIcon(QMessageBox.Warning)
+                box.setWindowTitle("Google Drive")
+                box.setText(head)
+                if visible_detail:
+                    box.setInformativeText(visible_detail)
+                reconnect = box.addButton("Reconnect Drive", QMessageBox.AcceptRole)
+                box.addButton(QMessageBox.Close)
+                box.exec()
+                if box.clickedButton() is reconnect:
+                    self._show(2)
+                    self._auth_drive()
+            else:
+                QMessageBox.warning(self, "Google Drive",
+                                    head + (("\n\n" + detail) if detail else ""))
         except Exception as e:
             self._error(str(e))
 
@@ -634,6 +654,18 @@ class Window(QMainWindow):
         try:
             self.engine.drive_toggle(True); self.engine.auth_drive(self.gcreds.text()); self.poll_seen['drive_auth']=0; self._say("Connecting Google Drive…")
         except Exception as e:self._error(str(e))
+
+    def _restore_drive(self):
+        """Silently reuse the protected Drive grant; never launch a browser."""
+        try:
+            out = self.engine.restore_drive(self.gcreds.text())
+            if out.get('started'):
+                self.poll_seen['drive_auth'] = 0
+                self._say("Restoring Google Drive connection…")
+            elif out.get('state') not in ('disabled', 'never') and out.get('detail'):
+                self.drive_status_line.setText("Drive: " + out['detail'])
+        except Exception as e:
+            self.drive_status_line.setText("Drive: " + str(e))
 
     def _test_gemini(self):
         try:

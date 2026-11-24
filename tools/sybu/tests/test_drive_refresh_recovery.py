@@ -13,9 +13,11 @@ def saved(tmp_path):
     path.write_text('old-test-token')
     old = mock.Mock(valid=False, expired=True, refresh_token='test-refresh')
     with mock.patch.object(drive, '_token_path', return_value=str(path)), \
-         mock.patch.object(drive.Credentials, 'from_authorized_user_file', return_value=old), \
+         mock.patch.object(drive, '_saved_authorization', return_value='old-test-token'), \
+         mock.patch.object(drive, '_credentials_from_text', return_value=old), \
          mock.patch.object(drive, 'Request'), \
          mock.patch.object(drive.InstalledAppFlow, 'from_client_secrets_file') as flow, \
+         mock.patch.object(drive, '_store_authorization', side_effect=lambda text: path.write_text(text)), \
          mock.patch.object(drive, 'build') as build:
         yield path, old, flow, build
 
