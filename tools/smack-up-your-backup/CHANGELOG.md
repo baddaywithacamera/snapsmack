@@ -19,6 +19,19 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.55 — 2026-11-20
+
+- **Resumable backup jobs, incomplete-job cockpit banner, close-during-backup
+  confirmation, and onedir build script (SS-1486, SS-1419).** Resumed runs now
+  verify every file recorded in the checkpoint still exists on disk with its
+  expected size and client SHA-256 before skipping, reset transient failure
+  counters so interrupted files retry cleanly, and surface an "Incomplete
+  backup ready to resume" card directly on the Overview page (as well as on
+  next launch). Closing SUYB while a backup is running asks *"A backup is in
+  progress, quit anyway?"* before exiting. Updated `build.bat` for the current
+  onedir `dist\suyb\suyb.exe` specification with changelog verification,
+  rollback backup, and SNAP HQ executable pin registration.
+
 ## 0.7.54 — 2026-11-18
 
 - **A profile save cannot silently destroy credentials that SUYB could not

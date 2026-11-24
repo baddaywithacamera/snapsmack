@@ -23,6 +23,7 @@ Microsoft OneDrive is NOT supported. Use Box or B2.
 
 import json
 import os
+import sys
 from typing import Callable, List, Optional
 
 ProgressCallback = Callable[[int, int], None]   # (bytes_done, bytes_total)
@@ -87,17 +88,105 @@ def _read_token_dict(path: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Google Drive — OAuth (InstalledAppFlow)
+# Google Drive — OAuth (InstalledAppFlow) + SS-1562 shared vault persistence
 # ---------------------------------------------------------------------------
 
-def _get_drive_service(credentials_file: str, readonly: bool = False):
-    """Build an authenticated Drive service from an OAuth client secret JSON.
+_TOKEN_VAULT_KEY = "suyb_google_drive_authorized_user"
+_READONLY_TOKEN_VAULT_KEY = "suyb_google_drive_readonly_authorized_user"
+_SYBU_TOKEN_VAULT_KEY = "sybu_google_drive_authorized_user"
+
+
+class DriveAuthorizationExpired(RuntimeError):
+    """The saved Google authorization is missing, expired, or withdrawn; reconnect is needed."""
+
+
+def _shared_credential_store():
+    """Return SnapSmack's protected shared vault (snap_creds), initialized if available."""
+    base = (
+        os.path.dirname(sys.executable)
+        if getattr(sys, "frozen", False)
+        else os.path.dirname(os.path.abspath(__file__))
+    )
+    shared = os.path.abspath(os.path.join(base, "..", "_shared"))
+    if os.path.isdir(shared) and shared not in sys.path:
+        sys.path.insert(0, shared)
+    try:
+        import snap_creds
+        snap_creds.init()
+        return snap_creds
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _token_file_path(credentials_file: str, readonly: bool = False) -> str:
+    if not credentials_file:
+        return ""
+    suffix = "_readonly_token.json" if readonly else "_token.json"
+    return credentials_file.replace(".json", suffix)
+
+
+def _vault_key(readonly: bool = False) -> str:
+    return _READONLY_TOKEN_VAULT_KEY if readonly else _TOKEN_VAULT_KEY
+
+
+def _saved_authorization(credentials_file: str = "", readonly: bool = False) -> str:
+    """Read authorized-user JSON from snap_creds first, migrating legacy _token.json copy-first."""
+    store = _shared_credential_store()
+    primary_key = _vault_key(readonly)
+    if store is not None:
+        try:
+            protected = store.get(primary_key, "")
+            if protected:
+                return protected
+            if not readonly:
+                sybu_token = store.get(_SYBU_TOKEN_VAULT_KEY, "")
+                if sybu_token:
+                    return sybu_token
+        except Exception:  # noqa: BLE001
+            pass
+
+    token_file = _token_file_path(credentials_file, readonly=readonly)
+    if token_file and os.path.exists(token_file):
+        info = _read_token_dict(token_file)
+        if info:
+            text = json.dumps(info)
+            if store is not None:
+                try:
+                    store.set(primary_key, text)
+                except Exception:  # noqa: BLE001
+                    pass
+            return text
+    return ""
+
+
+def _store_authorization(text: str, credentials_file: str = "", readonly: bool = False) -> None:
+    """Persist authorized-user JSON in snap_creds (and legacy file if vault unavailable)."""
+    store = _shared_credential_store()
+    key = _vault_key(readonly)
+    if store is not None:
+        store.set(key, text)
+        if store.get(key, "") != text:
+            raise RuntimeError(
+                "Google Drive connected, but SUYB could not verify the saved authorization in the vault."
+            )
+        return
+    token_file = _token_file_path(credentials_file, readonly=readonly)
+    if not token_file:
+        raise RuntimeError(
+            "Google Drive connected, but the protected credential vault is unavailable."
+        )
+    _write_token(token_file, text)
+
+
+def _get_drive_service(credentials_file: str, readonly: bool = False, allow_consent: bool = False):
+    """Build an authenticated Drive service from the shared vault (silent restore + refresh).
 
     readonly=True uses drive.readonly scope (for reading user's own files as
-    a sync source). A separate token cache file is used so the upload token
+    a sync source). A separate vault key/cache is used so the upload token
     (drive.file) is unaffected.
     """
     try:
+        from google.auth.exceptions import RefreshError
         from google.oauth2.credentials import Credentials
         from google_auth_oauthlib.flow import InstalledAppFlow
         from google.auth.transport.requests import Request
@@ -108,44 +197,47 @@ def _get_drive_service(credentials_file: str, readonly: bool = False):
             "for Google Drive support."
         )
 
-    if readonly:
-        SCOPES     = ["https://www.googleapis.com/auth/drive.readonly"]
-        token_file = credentials_file.replace(".json", "_readonly_token.json")
-    else:
-        SCOPES     = ["https://www.googleapis.com/auth/drive.file"]
-        token_file = credentials_file.replace(".json", "_token.json")
+    SCOPES = (
+        ["https://www.googleapis.com/auth/drive.readonly"]
+        if readonly
+        else ["https://www.googleapis.com/auth/drive.file"]
+    )
 
     creds = None
-
-    if os.path.exists(token_file):
-        _info = _read_token_dict(token_file)
-        if not _info:
-            raise RuntimeError(
-                f"Token at {token_file} could not be read.\n"
-                f"If credential encryption is on, unlock SUYB first; otherwise "
-                f"click 'Authenticate with Google' in the Edit dialog, then Save."
-            )
-        creds = Credentials.from_authorized_user_info(_info, SCOPES)
-    else:
-        raise RuntimeError(
-            f"No token file found at: {token_file}\n"
-            f"Click 'Authenticate with Google' in the Edit dialog, then Save."
-        )
+    saved = _saved_authorization(credentials_file, readonly=readonly)
+    if saved:
+        try:
+            info = json.loads(saved)
+            creds = Credentials.from_authorized_user_info(info)
+        except Exception:  # noqa: BLE001
+            creds = None
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
-            except Exception as e:
-                raise RuntimeError(
-                    f"Token refresh failed (invalid_grant): {e}\n"
-                    f"Token file: {token_file}\n"
-                    f"Re-authenticate: open Edit dialog, click 'Authenticate with Google', then Save."
-                ) from e
-        else:
+            except RefreshError as exc:
+                rejected = any(
+                    isinstance(arg, dict) and arg.get("error") == "invalid_grant"
+                    for arg in exc.args
+                )
+                if not rejected:
+                    raise
+                creds = None
+            except Exception as exc:  # noqa: BLE001
+                raise DriveAuthorizationExpired(
+                    f"Google Drive token refresh failed ({exc}). Reconnect Google Drive."
+                ) from exc
+
+        if not creds or not creds.valid:
+            if not allow_consent:
+                raise DriveAuthorizationExpired(
+                    "Google Drive authorization is missing or expired. Reconnect Google Drive to sign in again."
+                )
             flow = InstalledAppFlow.from_client_secrets_file(credentials_file, SCOPES)
             creds = flow.run_local_server(port=0)
-        _write_token(token_file, creds.to_json())
+
+        _store_authorization(creds.to_json(), credentials_file=credentials_file, readonly=readonly)
 
     return build("drive", "v3", credentials=creds)
 
@@ -175,36 +267,27 @@ def _is_oauth_client_secret(path: str) -> bool:
 
 
 def get_oauth_token_status(credentials_file: str, readonly: bool = False) -> str:
-    """Return a human-readable status string for the OAuth token.
-
-    readonly=True checks the _readonly_token.json used by Cloud Sync sources.
-    readonly=False (default) checks _token.json used by backup destinations.
-    """
+    """Return a human-readable status string for the OAuth token from shared vault or legacy file."""
     if not credentials_file or not os.path.isfile(credentials_file):
         return ""
     if not _is_oauth_client_secret(credentials_file):
         return ""
-    if readonly:
-        token_file = credentials_file.replace(".json", "_readonly_token.json")
-        scopes     = ["https://www.googleapis.com/auth/drive.readonly"]
-    else:
-        token_file = credentials_file.replace(".json", "_token.json")
-        scopes     = ["https://www.googleapis.com/auth/drive.file"]
-    if not os.path.exists(token_file):
+    saved = _saved_authorization(credentials_file, readonly=readonly)
+    if not saved:
         return "Not authenticated — click Authenticate"
     try:
         from google.oauth2.credentials import Credentials
         from google.auth.transport.requests import Request
-        _info = _read_token_dict(token_file)
-        if not _info:
+        _info = json.loads(saved)
+        if not isinstance(_info, dict) or not _info:
             return "Not authenticated — click Authenticate"
-        creds = Credentials.from_authorized_user_info(_info, scopes)
+        creds = Credentials.from_authorized_user_info(_info)
         if creds.valid:
             return "✓ Authenticated"
         if creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
-                _write_token(token_file, creds.to_json())
+                _store_authorization(creds.to_json(), credentials_file=credentials_file, readonly=readonly)
                 return "✓ Token refreshed"
             except Exception as e:
                 return f"Token expired — re-authenticate ({e})"
@@ -215,7 +298,7 @@ def get_oauth_token_status(credentials_file: str, readonly: bool = False) -> str
 
 def authenticate_oauth(credentials_file: str, readonly: bool = False) -> tuple:
     """
-    Run the OAuth consent flow explicitly. Opens a browser window.
+    Run the OAuth consent flow explicitly. Opens a browser window and saves to shared vault.
     Returns (success: bool, message: str).
     readonly=True uses drive.readonly scope (for Cloud Sync source).
     """
@@ -225,16 +308,15 @@ def authenticate_oauth(credentials_file: str, readonly: bool = False) -> tuple:
         return False, "Not an OAuth client secret file. Service account keys don't need authentication."
     try:
         from google_auth_oauthlib.flow import InstalledAppFlow
-        if readonly:
-            SCOPES     = ["https://www.googleapis.com/auth/drive.readonly"]
-            token_file = credentials_file.replace(".json", "_readonly_token.json")
-        else:
-            SCOPES     = ["https://www.googleapis.com/auth/drive.file"]
-            token_file = credentials_file.replace(".json", "_token.json")
+        SCOPES = (
+            ["https://www.googleapis.com/auth/drive.readonly"]
+            if readonly
+            else ["https://www.googleapis.com/auth/drive.file"]
+        )
         flow = InstalledAppFlow.from_client_secrets_file(credentials_file, SCOPES)
         creds = flow.run_local_server(port=0)
-        _write_token(token_file, creds.to_json())
-        return True, "✓ Authenticated successfully. Token saved."
+        _store_authorization(creds.to_json(), credentials_file=credentials_file, readonly=readonly)
+        return True, "✓ Authenticated successfully. Token saved to shared vault."
     except Exception as e:
         return False, f"Authentication failed: {e}"
 

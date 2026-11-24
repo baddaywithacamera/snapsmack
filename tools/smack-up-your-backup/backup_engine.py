@@ -712,6 +712,7 @@ class BackupEngine:
 
         if resuming:
             # ── Restore state from checkpoint ────────────────────────
+            cp.reset_for_resume()
             timestamp       = cp.data["timestamp"]
             kit_path        = cp.data["kit_path"]
             sql_full_path   = cp.data.get("sql_full_path", "")
@@ -722,7 +723,7 @@ class BackupEngine:
             already_done    = cp.already_processed()
             result["files_downloaded"] = cp.data.get("files_downloaded", 0)
             result["files_skipped"]    = cp.data.get("files_skipped", 0)
-            result["files_failed"]     = cp.data.get("files_failed", 0)
+            result["files_failed"]     = 0
             result["sql_full_path"]    = sql_full_path
             result["sql_schema_path"]  = sql_schema_path
             self._log(f"Resuming interrupted backup from {cp.data.get('created_at', 'unknown time')}.")
@@ -849,7 +850,34 @@ class BackupEngine:
 
         os.makedirs(local_media_dir, exist_ok=True)
 
-        # Check if all files are already done (crash during packaging)
+        # Check if all files are already done (crash during packaging).
+        # SS-1486: verify every 'already_downloaded' file is actually present on
+        # disk (and matches its expected size if recorded). If any staged file is
+        # missing or truncated, drop it from already_done so Stage 3 re-downloads it.
+        verified_done = set()
+        for key, record in media_files.items():
+            if key not in already_done:
+                continue
+            if key in cp.already_downloaded() if cp else False:
+                try:
+                    lp = _safe_local_download_path(local_media_dir, record.restores_to)
+                except ValueError:
+                    continue
+                if not os.path.isfile(lp):
+                    continue
+                if record.size and os.path.getsize(lp) != record.size:
+                    continue
+                if not record.checksum:
+                    record.checksum = ftp_module.FTPClient.sha256_file(lp)
+            verified_done.add(key)
+        if resuming and len(verified_done) != len(already_done):
+            result["files_downloaded"] = sum(
+                1 for k in verified_done if cp and k in cp.already_downloaded()
+            )
+            result["files_skipped"] = sum(
+                1 for k in verified_done if cp and k not in cp.already_downloaded()
+            )
+        already_done = verified_done
         remaining = {k: v for k, v in media_files.items() if k not in already_done}
         need_ftp  = bool(remaining)
 
@@ -1014,9 +1042,14 @@ class BackupEngine:
                 cp.record(key, downloaded=True)
                 consec_failures = 0   # reset streak on success
             elif self._cancelled:
-                # In-flight file interrupted by cancel — not a real failure
+                # In-flight file interrupted by cancel — not a real failure.
+                # Do NOT record as failed in checkpoint, and remove any partial file.
                 result["files_cancelled"] += 1
-                cp.record(key, failed=True)
+                try:
+                    if os.path.exists(local_path):
+                        os.unlink(local_path)
+                except OSError:
+                    pass
                 self._log(f"↩ Cancelled: {record.restores_to}")
             else:
                 result["files_failed"] += 1
@@ -1238,23 +1271,52 @@ class BackupEngine:
                 self._log("Cloud upload skipped — no cloud provider configured.")
 
         if cloud:
-            try:
+            def _do_cloud_push():
                 self._log("Connecting to cloud storage…")
-                cloud_id = cloud.upload_file(
+                cid = cloud.upload_file(
                     zip_path, zip_name,
                     on_progress=lambda r, t: self._progress(
                         "stage5", f"Cloud upload… {r // 1048576}MB / {t // 1048576}MB",
                         0.72 + 0.18 * (r / max(t, 1))
                     ),
                 )
-                result["cloud_id"] = cloud_id
-                cloud_upload_ok = bool(cloud_id)
-                self._log(f"Cloud upload complete: {cloud_id}")
+                result["cloud_id"] = cid
+                self._log(f"Cloud upload complete: {cid}")
 
                 # List current ZIPs for the cloud state index
                 available_zips = cloud_manifest.list_available_backups(cloud)
                 cloud_manifest.push_cloud_state(cloud, self.profile, new_state, available_zips)
                 self._log("Cloud state JSON updated.")
+                return bool(cid)
+
+            try:
+                cloud_upload_ok = _do_cloud_push()
+            except cloud_module.DriveAuthorizationExpired as auth_exc:
+                reconnected = False
+                creds_file = getattr(cloud, "credentials_file", "")
+                if self.on_ask and creds_file:
+                    want_reauth = bool(self.on_ask(
+                        f"{auth_exc}\n\nReconnect Google Drive now to complete this backup?"
+                    ))
+                    if want_reauth:
+                        ok_auth, msg_auth = cloud_module.authenticate_oauth(
+                            creds_file, readonly=bool(getattr(cloud, "_readonly", False))
+                        )
+                        self._log(msg_auth)
+                        if ok_auth:
+                            cloud._service = None
+                            reconnected = True
+                if reconnected:
+                    try:
+                        cloud_upload_ok = _do_cloud_push()
+                    except Exception as e:
+                        err = f"Cloud push failed: {e}"
+                        result["errors"].append(err)
+                        self._log(f"✗ {err}")
+                else:
+                    err = f"Cloud push failed: {auth_exc}"
+                    result["errors"].append(err)
+                    self._log(f"✗ {err}")
             except Exception as e:
                 err = f"Cloud push failed: {e}"
                 result["errors"].append(err)
@@ -1279,6 +1341,7 @@ class BackupEngine:
         # if cloud is configured/required, both upload and destination verification
         # must succeed; never report clean or clear checkpoint without it.
         cloud_verified = False
+        cloud_id = str(result.get("cloud_id") or "")
         if cloud and cloud_upload_ok and cloud_id:
             verifier = getattr(cloud, "verify_upload", None)
             if not callable(verifier):
