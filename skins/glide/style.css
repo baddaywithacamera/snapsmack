@@ -1173,7 +1173,7 @@ body:has(.glide-page) > #system-footer a {
 }
 body:has(.glide-page) .glide-scroll-cue { display: none; }
 
-.glide-page { position: fixed; inset: 0; background: var(--glide-bg); color: var(--glide-ink); font-family: "DM Sans", sans-serif; overflow: hidden; }
+.glide-page { --glide-wall-orientation-active: var(--glide-wall-orientation, current); position: fixed; inset: 0; background: var(--glide-bg); color: var(--glide-ink); font-family: "DM Sans", sans-serif; overflow: hidden; }
 .glide-viewport { position: absolute; inset: 0; overflow: hidden; background: var(--glide-bg); }
 .glide-field {
     position: absolute;
@@ -1181,7 +1181,7 @@ body:has(.glide-page) .glide-scroll-cue { display: none; }
     width: 180vmax;
     display: grid;
     gap: var(--glide-gap);
-    transform: translate(-50%, -50%) rotate(calc(var(--glide-axis-angle) + var(--glide-angle)));
+    transform: translate(-50%, -50%) rotate(calc(var(--glide-axis-angle) + var(--glide-effective-angle, var(--glide-angle))));
     transform-origin: 50% 50%;
     will-change: transform;
 }
@@ -1190,7 +1190,7 @@ body:has(.glide-page) .glide-scroll-cue { display: none; }
 /* Keep the outer-band seam beyond the top-right corner in browser F11
    fullscreen as well as element fullscreen; F11 does not match :fullscreen. */
 /* Vertical travel uses upright portrait columns; the field keeps only its lean. */
-.glide-page[data-flow-axis="vertical"] .glide-field { display: flex; width: max-content; height: 180vmax; left: calc(44% + 72px); transform: translate(-50%, -50%) rotate(var(--glide-angle)); }
+.glide-page[data-flow-axis="vertical"] .glide-field { display: flex; width: max-content; height: 180vmax; left: calc(44% + 72px); transform: translate(-50%, -50%) rotate(var(--glide-effective-angle, var(--glide-angle))); }
 .glide-page[data-flow-axis="vertical"] .glide-row { flex: 0 0 calc(var(--glide-row-height) * 2 / 3); width: calc(var(--glide-row-height) * 2 / 3); height: 100%; }
 .glide-page[data-flow-axis="vertical"] .glide-track { flex-direction: column; width: 100%; height: max-content; }
 .glide-page[data-flow-axis="vertical"] .glide-tile-frame { width: 100%; height: auto; }
@@ -1207,6 +1207,7 @@ body:has(.glide-page) .glide-scroll-cue { display: none; }
     overflow: hidden;
     border-radius: var(--glide-radius);
     background: #181818;
+    transform: rotate(var(--glide-tile-counter-angle, 0deg));
 }
 .glide-tile {
     position: relative;
@@ -1582,6 +1583,13 @@ body.glide-v2:has(.archive-grid, .blogroll-page) {
 }
 .wall-viewer figure > button:first-of-type { right: calc(100% + 10px); }
 .wall-viewer figure > button:last-of-type { left: calc(100% + 10px); }
+.wall-viewer figure > button.wall-viewer-like {
+    inset: auto auto 10px 10px;
+    width: 44px;
+    height: 44px;
+    transform: none;
+    opacity: 1;
+}
 .wall-viewer button:is(:hover, :focus-visible) { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .wall-viewer figcaption { transition: none; } }
 .wall-viewer figure { outline: none; transition: transform 200ms ease; }

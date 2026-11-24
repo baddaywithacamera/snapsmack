@@ -86,6 +86,18 @@ function snap_escape_url(mixed $value): string {
     return htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+/** Escape a prevalidated Social Dock link, including its email-only route. */
+function snap_escape_social_url(mixed $value): string {
+    $url = trim((string)$value);
+    if (str_starts_with(strtolower($url), 'mailto:')) {
+        $email = substr($url, 7);
+        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false
+            ? htmlspecialchars('mailto:' . $email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            : '';
+    }
+    return snap_escape_url($url);
+}
+
 function snap_render_html(mixed $value): string {
     return $value instanceof SnapTrustedHtml || $value instanceof SnapOwnerCode ? (string)$value : snap_escape_html($value);
 }
@@ -347,7 +359,7 @@ function snapsmack_social_dock_markup(array $model, string $position = 'inline',
     foreach ($social as $item) {
         if (!is_array($item)) { continue; }
         $glyph = preg_replace('/[^a-z0-9]/', '', strtolower((string)($item['icon'] ?? 'link')));
-        $html .= '<a href="' . snap_escape_url($item['url'] ?? '')
+        $html .= '<a href="' . snap_escape_social_url($item['url'] ?? '')
             . '" target="_blank" rel="me noopener" title="' . snap_escape_attr($item['label'] ?? '')
             . '" class="dock-link u-url"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="'
             . snap_escape_url($sprite) . '#' . snap_escape_attr($glyph) . '"></use></svg>'
@@ -613,6 +625,8 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $count = count($selected);
         $showAll = (string)($data['show_all_url'] ?? '');
         $query = (string)($data['query'] ?? '');
+        $variant = (string)($data['variant'] ?? 'panel');
+        if ($variant !== 'legacy-selects') $variant = 'panel';
         // The content cap is the site's own, so it arrives as bounded data and
         // becomes a custom property on the row. Without it the docked controls
         // measure from the window and escape the content column.
@@ -625,7 +639,42 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             . '><div class="archive-filter-inner"><div class="nav-links"><div class="center">';
         $html .= '<a href="' . snap_escape_url($showAll) . '" class="'
             . ($count === 0 && $query === '' ? 'active' : 'inactive') . '">[ SHOW ALL ]</a>';
-        if ($groups) {
+        if ($groups && $variant === 'legacy-selects') {
+            // The known-good legacy archive row. Core owns the bounded
+            // taxonomy data and the navigation; a strict skin only prints
+            // this finished component. Limit the old row to the two groups it
+            // actually carried rather than silently expanding its design.
+            $legacyGroups = [];
+            foreach ($groups as $group) {
+                if (!is_array($group) || empty($group['items']) || !is_array($group['items'])) continue;
+                $type = (string)($group['type'] ?? '');
+                if (!in_array($type, ['cat', 'alb'], true)) continue;
+                $legacyGroups[] = $group;
+            }
+            if ($legacyGroups) $html .= '<span class="sep">/</span>';
+            foreach ($legacyGroups as $legacyIndex => $group) {
+                $type = (string)$group['type'];
+                if ($legacyIndex > 0) $html .= '<span class="sep">|</span>';
+                $field = $type === 'cat' ? 'cat' : 'album';
+                $label = $type === 'cat' ? 'REGISTRY:' : 'ALBUMS:';
+                $empty = $type === 'cat' ? '-- ALL CATEGORIES --' : '-- ALL ALBUMS --';
+                $id = 'smack-archive-' . $field;
+                $html .= '<div class="filter-group archive-legacy-filter">'
+                    . '<label class="dim" for="' . $id . '">' . $label . '</label>'
+                    . '<form method="GET" action="' . snap_escape_url($showAll) . '" class="archive-select-form">'
+                    . '<select id="' . $id . '" name="' . $field . '" data-archive-select="1">'
+                    . '<option value="">' . $empty . '</option>';
+                foreach ($group['items'] as $item) {
+                    if (!is_array($item)) continue;
+                    $value = (string)($item['id'] ?? '');
+                    if ($value === '') continue;
+                    $html .= '<option value="' . snap_escape_attr($value) . '"'
+                        . (in_array($type . ':' . $value, $selected, true) ? ' selected' : '') . '>'
+                        . snap_escape_html((string)($item['label'] ?? '')) . '</option>';
+                }
+                $html .= '</select><noscript><button type="submit">APPLY</button></noscript></form></div>';
+            }
+        } elseif ($groups) {
             $html .= '<span class="sep">/</span>'
                 . '<div class="filter-group saf-wrap">'
                 . '<button id="smack-archive-filter-btn" class="saf-btn'
@@ -902,7 +951,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $model = is_array($data['model'] ?? null) ? $data['model'] : [];
         $html = snapsmack_social_dock_markup(
             $model,
-            (string)($data['position'] ?? 'inline'),
+            (string)($data['position'] ?? $model['position'] ?? 'inline'),
             (string)($data['label'] ?? 'Social links')
         );
     } elseif ($name === 'crop-circles') {
@@ -1394,7 +1443,12 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                             . '</span></a>';
                     }
                     break;
-                case 'theme': $parts[] = 'THEME: ' . snap_escape_html($slot['name'] ?? ''); break;
+                case 'theme':
+                    $themeName = trim((string)($slot['name'] ?? ''));
+                    if ($themeName !== '') {
+                        $parts[] = 'THEME: ' . snap_escape_html($themeName);
+                    }
+                    break;
                 case 'powered':
                     $parts[] = 'POWERED BY <a class="footer-link" href="https://snapsmack.ca" target="_blank" rel="nofollow noopener">SNAPSMACK</a> ' . snap_escape_html($slot['version'] ?? '');
                     break;

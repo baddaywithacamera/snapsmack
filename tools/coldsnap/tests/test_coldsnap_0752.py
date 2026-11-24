@@ -131,17 +131,32 @@ def test_discover_backup_sessions_and_explicit_import(monkeypatch, tmp_path):
     _app()
     win = MainWindow()
     try:
+        # Declining import (No) must NOT copy silently and must remember the folder in config.ini
+        import config as cfg_module
+        no_prompts = []
         win._run_startup_session_migration(
             legacy_root=str(tmp_path / "no_legacy"),
             dest_root=dest_root,
             backup_parent=str(tmp_path),
-            ask_fn=lambda _prompt: False,
+            ask_fn=lambda p: (no_prompts.append(p), False)[1],
         )
+        assert len(no_prompts) == 1
         assert O.SessionStore(dest_root).load(s.session_id) is None
+        assert "coldsnap-backup-0.7.45-test" in cfg_module.get_dismissed_backup_folders()
 
-        # Accepting import copies with SHA-256 and leaves backup untouched
-        prompts = []
+        # Relaunch after No must NOT prompt again
+        relaunch_after_no = []
         win._run_startup_session_migration(
+            legacy_root=str(tmp_path / "no_legacy"),
+            dest_root=dest_root,
+            backup_parent=str(tmp_path),
+            ask_fn=lambda p: (relaunch_after_no.append(p), True)[1],
+        )
+        assert relaunch_after_no == []
+
+        # Re-running from the menu re-offers the backup and accepting (Yes) imports & marks imported
+        prompts = []
+        win.rerun_backup_import(
             legacy_root=str(tmp_path / "no_legacy"),
             dest_root=dest_root,
             backup_parent=str(tmp_path),
@@ -152,9 +167,20 @@ def test_discover_backup_sessions_and_explicit_import(monkeypatch, tmp_path):
         assert imported is not None
         assert imported.load_draft("essay1").title == "Start your engines"
         assert os.path.isfile(os.path.join(s.drafts_dir, "essay1.json"))
-        # Already-imported backup session is not re-offered
+        # Already-imported backup session is not re-offered even if user edits the destination draft
+        ed_draft = imported.load_draft("essay1")
+        ed_draft.title = "Edited in persistent library"
+        imported.save_draft(ed_draft)
         assert O.discover_backup_sessions(str(tmp_path), dest_root) == []
-        # Same-ID draft with different content in backup IS offered
+        relaunch_after_yes = []
+        win._run_startup_session_migration(
+            legacy_root=str(tmp_path / "no_legacy"),
+            dest_root=dest_root,
+            backup_parent=str(tmp_path),
+            ask_fn=lambda p: (relaunch_after_yes.append(p), True)[1],
+        )
+        assert relaunch_after_yes == []
+        # Same-ID draft with different content in backup IS offered when backup file itself changes
         s.save_draft(O.Draft(draft_id="essay1", mode=O.MODE_SMACKTALK, kind=O.KIND_SMACKTALK, title="Different Version"))
         diff_found = O.discover_backup_sessions(str(tmp_path), dest_root)
         assert len(diff_found) == 1 and diff_found[0]["draft_titles"] == ["Different Version"]

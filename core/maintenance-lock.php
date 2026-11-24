@@ -36,8 +36,15 @@ if (PHP_SAPI !== 'cli' && !empty($_SERVER['SCRIPT_FILENAME'])
  * @param  int|null $age        Out: the lock's age in seconds, or null when no
  *                              readable timestamp was found. For reporting
  *                              only — never for the decision.
+ * @param  int|null $now        Evaluation time. Tests may supply a fixed value
+ *                              so the exact TTL boundary is deterministic.
  */
-function snap_maintenance_lock_held(string $lock_path, int $ttl = 300, ?int &$age = null): bool
+function snap_maintenance_lock_held(
+    string $lock_path,
+    int $ttl = 300,
+    ?int &$age = null,
+    ?int $now = null
+): bool
 {
     $age = null;
 
@@ -61,7 +68,7 @@ function snap_maintenance_lock_held(string $lock_path, int $ttl = 300, ?int &$ag
         return true;
     }
 
-    $measured = time() - $since;
+    $measured = ($now ?? time()) - $since;
     if ($measured < 0) {
         // Future-dated: a clock skew or a corrupt value. Not provably stale.
         return true;

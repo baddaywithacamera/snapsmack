@@ -70,10 +70,13 @@ class DriveAuthorizationState(unittest.TestCase):
         with open(self.client, "w") as fh:
             fh.write('{"installed":{"client_id":"stand-in"}}')
         self._orig = drive_module._token_path
+        self._orig_store = drive_module._shared_credential_store
         drive_module._token_path = lambda: self.token
+        drive_module._shared_credential_store = lambda: None
 
     def tearDown(self):
         drive_module._token_path = self._orig
+        drive_module._shared_credential_store = self._orig_store
         for f in (self.token, self.client):
             if os.path.isfile(f):
                 os.unlink(f)

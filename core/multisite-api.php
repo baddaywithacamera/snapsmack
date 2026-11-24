@@ -1376,6 +1376,19 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
         $payload['post_count']  = $cc['posts'];
         $payload['image_count'] = $cc['images'];
 
+        // On-site heart rows are a separate signal from ActivityPub likes.
+        // Count the rows that exist now; snap_likes has created_at, but this
+        // headline fleet tile is inventory, not a traffic-period measure.
+        try {
+            $payload['site_likes'] = (int)$pdo->query(
+                "SELECT COUNT(*) FROM snap_likes"
+            )->fetchColumn();
+        } catch (\Throwable $e) {
+            // Older installs may not have the community table yet. Keep the
+            // enriched stats endpoint available while they update.
+            $payload['site_likes'] = 0;
+        }
+
         // Optional exact content window for the hub's completed-month email.
         // Keep the general stats endpoint backward compatible: these fields
         // appear only when both strict ISO dates are supplied.
@@ -2425,7 +2438,7 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
         'social_dock_youtube', 'social_dock_500px', 'social_dock_vero', 'social_dock_threads',
         'social_dock_mastodon', 'social_dock_bluesky', 'social_dock_linkedin', 'social_dock_pinterest',
         'social_dock_tumblr', 'social_dock_deviantart', 'social_dock_behance', 'social_dock_linktree',
-        'social_dock_website',
+        'social_dock_pixelfed', 'social_dock_email', 'social_dock_website',
         'social_dock_own_fedi',
         'hub_controls_socialdock',
     ];

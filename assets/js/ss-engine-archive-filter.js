@@ -34,9 +34,22 @@
         // click, which reads as a dead button.
         if (window.__smackArchiveFilterBound) return;
 
+        var legacySelects = document.querySelectorAll('[data-archive-select]');
+        legacySelects.forEach(function (select) {
+            select.addEventListener('change', function () {
+                var form = select.form;
+                if (!form) return;
+                if (typeof form.requestSubmit === 'function') form.requestSubmit();
+                else form.submit();
+            });
+        });
+
         _panel = document.getElementById('smack-archive-filter-panel');
         _btn   = document.getElementById('smack-archive-filter-btn');
-        if (!_panel || !_btn) return;
+        if (!_panel || !_btn) {
+            if (legacySelects.length) window.__smackArchiveFilterBound = true;
+            return;
+        }
 
         _label = _btn.querySelector('.saf-btn-label');
 

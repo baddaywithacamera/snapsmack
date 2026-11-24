@@ -351,6 +351,12 @@ try {
                 // prints from $settings on this same request.
                 require_once __DIR__ . '/core/skin-css-recompile.php';
                 snapsmack_public_css_refresh_if_stale($pdo, (string)$active_skin, $settings);
+                $_smacktalk_crop_circles = snapsmack_prepare_crop_circles(
+                    $pdo,
+                    $settings,
+                    $_active_manifest,
+                    $_smacktalk['navigation'] ?? []
+                );
                 $_strict_view = snapsmack_build_skin_view($_smacktalk, [
                     'site_name' => (string)($settings['site_name'] ?? ''),
                     'tagline' => (string)($settings['site_tagline'] ?? ''),
@@ -394,6 +400,8 @@ try {
                     'owner_custom_code' => snapsmack_owner_custom_code($settings),
                     'registered_assets' => $_registered_skin_assets,
                     'footer' => snapsmack_prepare_public_footer($settings, $_active_manifest),
+                    'crop_circles' => $_smacktalk_crop_circles,
+                    'social_dock' => snapsmack_social_dock_model($_smacktalk_crop_circles, $_active_manifest),
                 ]);
                 // The SMACKTALK controller exits here too, so it had the same
                 // silent hole: a converted SMACKTALK site recorded nothing.
@@ -550,6 +558,7 @@ try {
         // prints from $settings on this same request.
         require_once __DIR__ . '/core/skin-css-recompile.php';
         snapsmack_public_css_refresh_if_stale($pdo, (string)$active_skin, $settings);
+        $_crop_circles = snapsmack_prepare_crop_circles($pdo, $settings, $_active_manifest, $_public['navigation'] ?? []);
         $_strict_view = snapsmack_build_skin_view($_public, [
             'site_name' => (string)($settings['site_name'] ?? ''),
             'tagline' => (string)($settings['site_tagline'] ?? ''),
@@ -605,7 +614,8 @@ try {
             'registered_assets' => $_registered_skin_assets,
             'footer' => snapsmack_prepare_public_footer($settings, $_active_manifest),
             'slickr_profile' => $active_skin === 'slickr' ? snapsmack_prepare_slickr_profile($pdo, $settings, $_public['navigation'] ?? []) : [],
-            'crop_circles' => snapsmack_prepare_crop_circles($pdo, $settings, $_active_manifest, $_public['navigation'] ?? []),
+            'crop_circles' => $_crop_circles,
+            'social_dock' => snapsmack_social_dock_model($_crop_circles, $_active_manifest),
         ]);
 
         // PHOTOGRAM's phone feed uses its historical ?format=json&p=N wire

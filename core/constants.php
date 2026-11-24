@@ -67,8 +67,8 @@ if (PHP_SAPI !== 'cli' && !defined('SNAPSMACK_IS_UPDATER')) {
 // UPGRADED installs even where this constants.php is frozen. SECAUDIT 048
 // follow-up (2026-08-15) — do not re-inline header() calls here.
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.1002D');
-define('SNAPSMACK_VERSION_SHORT', '0.7.1002D');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.1003D');
+define('SNAPSMACK_VERSION_SHORT', '0.7.1003D');
 define("SNAPSMACK_VERSION_CODENAME", "HEISENBERG DECOMPENSATOR");
 
 // --- THUMBNAIL DIMENSIONS (single source of truth) ---
@@ -85,7 +85,10 @@ define('SNAPSMACK_THUMB_MEDIUM_LONG', 600);  // m_ aspect long-side max (px)
 // Grid srcset `sizes`. MEASURED: Codex's SS-1386 browser gate, 30 skins at
 // 1920/1440/1024, 0 failures on this value and 396 on the fixed-breakpoint
 // string it replaced. Needs loading="lazy", which the image component emits.
-define('SNAPSMACK_GRID_IMAGE_SIZES', 'auto, 100vw');
+// 'auto' removed 2026-11-24: it makes Chromium apply size containment to
+// lazy images, locking any grid that sizes rows from the image at 2:1.
+// Measured on the live foundtextures archive; see core/image-srcset.php.
+define('SNAPSMACK_GRID_IMAGE_SIZES', '100vw');
 
 // --- VERSION COMPARISON ---
 // Versions are standard three-part semver: 0.7.17, 0.7.18, etc.

@@ -13,7 +13,7 @@ four credential boxes. Reuses config.py + profile_manager.py untouched.
 import concurrent.futures
 import threading
 
-from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
     QLineEdit, QMessageBox,
@@ -43,6 +43,9 @@ def verify_site_mode(parent, conn, expected_mode: str, mode_label: str) -> bool:
         mode, reachable, note = "", False, str(exc)
     mode = str(mode or "").strip().lower()
     if mode not in ("photoblog", "carousel", "smacktalk"):
+        if "api key rejected" in str(note or "").lower():
+            prompt_reauthentication(parent, str(note or ""), long_form=False)
+            return False
         detail = f" ({note})" if note else ""
         QMessageBox.warning(
             parent,
@@ -59,6 +62,34 @@ def verify_site_mode(parent, conn, expected_mode: str, mode_label: str) -> bool:
             f"('{expected_mode}').\n\nNothing was uploaded.",
         )
         return False
+    return True
+
+
+def prompt_reauthentication(parent, detail="", *, long_form=False) -> bool:
+    """Explain rejected authorization and offer the correct replacement field."""
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Warning)
+    box.setWindowTitle("Authorization expired")
+    key_name = "long-form key" if long_form else "API key"
+    box.setText(f"This site's saved {key_name} expired or was rejected.")
+    box.setInformativeText(
+        "Nothing was uploaded and every local draft is still safe. "
+        "Generate a fresh key in SNAPSMACK Admin → API Access, then replace it "
+        "in Connection details."
+        + (f"\n\nServer response: {detail}" if detail else "")
+    )
+    reauth = box.addButton("Re-authenticate", QMessageBox.AcceptRole)
+    box.addButton(QMessageBox.Cancel)
+    box.setDefaultButton(reauth)
+    box.exec()
+    if box.clickedButton() is not reauth:
+        return False
+    window = parent.window() if parent is not None else None
+    panel = getattr(window, "connect_panel", None)
+    if panel is None and isinstance(parent, ConnectPanel):
+        panel = parent
+    if panel is not None:
+        panel.open_reauthentication(long_form=long_form)
     return True
 
 
@@ -272,6 +303,16 @@ class ConnectPanel(QWidget):
         self.details.setVisible(on)
         self.details_btn.setText("Connection details ▴" if on else "Connection details ▾")
 
+    def open_reauthentication(self, *, long_form=False):
+        """Expose and focus the rejected credential without discarding its value."""
+        self.details_btn.setChecked(True)
+        field = self.press_edit if long_form else self.key_edit
+        field.setFocus(Qt.OtherFocusReason)
+        field.selectAll()
+        label = "long-form key" if long_form else "API key"
+        self.status_lbl.setText(f"Authorization expired — replace the saved {label}")
+        self.status_lbl.setStyleSheet(f"color: {theme.DANGER};")
+
     @staticmethod
     def _profile_mode(profile: dict) -> str:
         """Return the install capability recorded by the shared profile."""
@@ -309,44 +350,61 @@ class ConnectPanel(QWidget):
         """Probe only destinations whose mode is not already cached, off the UI thread."""
         from sumna_post import SumnaConnection
         profiles = []
+        color_only_profiles = []
         self._pending_probe_names.clear()
         for name, meta in self._profile_cache.items():
             known = self._resolved_mode(name)
-            if known in ("photoblog", "carousel", "smacktalk"):
-                self._discovered_modes[name] = known
-                continue
             url = str(meta.get("url", "") or "").strip()
             key = str(meta.get("api_key", "") or "").strip()
             if (not url or not key):
                 prof = profile_manager.load_profile(name) or {}
                 url = url or str(prof.get("url", "") or "").strip()
-                key = key or str(prof.get("api_key", "") or "").strip()
+                key = key or str(prof.get("api_key", "") or prof.get("smackpress_key", "") or "").strip()
+            if known in ("photoblog", "carousel", "smacktalk"):
+                self._discovered_modes[name] = known
+                if url:
+                    try:
+                        has_bg = any(
+                            snap_library.meta(url, k, "")
+                            for k in ("site_bg", "page_bg", "background_color", "bg_color")
+                        )
+                        has_fg = bool(snap_library.meta(url, "site_fg", ""))
+                    except Exception:
+                        has_bg, has_fg = False, False
+                    if not has_bg or not has_fg:
+                        color_only_profiles.append((name, url, key, known))
+                continue
             if url and key:
                 profiles.append((name, url, key))
                 self._pending_probe_names.add(name)
             else:
                 self._failed_probe_names.add(name)
 
-        if not profiles:
+        if not profiles and not color_only_profiles:
             self._probing_modes = False
             self._rebuild_profile_combo()
             return
 
-        self._probing_modes = True
+        self._probing_modes = bool(profiles)
         self._rebuild_profile_combo()
 
         def run():
             def probe(row):
-                name, url, key = row
+                name, url, key = row[:3]
+                preset_mode = row[3] if len(row) > 3 else ""
                 conn = SumnaConnection(url, key)
+                mode = preset_mode
+                if not mode:
+                    try:
+                        mode, _reachable, _note = conn.probe_site_mode(timeout=6)
+                    except Exception:  # one offline site must not break the picker
+                        mode = ""
                 try:
-                    mode, _reachable, _note = conn.probe_site_mode(timeout=6)
-                except Exception:  # one offline site must not break the picker
-                    mode = ""
-                try:
-                    meta = snap_library.meta(url)
-                    has_bg = any(meta.get(k) for k in ("site_bg", "page_bg", "background_color", "bg_color"))
-                    has_fg = bool(meta.get("site_fg"))
+                    has_bg = any(
+                        snap_library.meta(url, k, "")
+                        for k in ("site_bg", "page_bg", "background_color", "bg_color")
+                    )
+                    has_fg = bool(snap_library.meta(url, "site_fg", ""))
                     if not has_bg or not has_fg:
                         bg, fg = conn.fetch_site_colors(timeout=6)
                         if bg or fg:
@@ -357,8 +415,9 @@ class ConnectPanel(QWidget):
 
             found = {}
             failed = []
+            all_rows = list(profiles) + list(color_only_profiles)
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
-                for name, mode in pool.map(probe, profiles):
+                for name, mode in pool.map(probe, all_rows):
                     if mode in ("photoblog", "carousel", "smacktalk"):
                         found[name] = mode
                     else:

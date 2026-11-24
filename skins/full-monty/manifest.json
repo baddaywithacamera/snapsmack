@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "FULL MONTY",
-    "version": "0.1.11",
+    "version": "0.1.12",
     "author": "Sean McCormick & OpenAI Codex",
     "support": "sean@baddaywithacamera.ca",
     "status": "beta",
@@ -32,9 +32,9 @@
     ],
     "social_dock": {
         "position": "bottom-left",
-        "color_mode": "light",
-        "icon_style": "outline",
-        "shadow": "1",
+        "default_color_mode": "light",
+        "default_icon_style": "outline",
+        "default_shadow": true,
         "inline": "0"
     },
     "options": {

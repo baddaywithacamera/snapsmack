@@ -28,9 +28,10 @@ import math
 import os
 import re
 
-from PySide6.QtCore import Qt, QRect, QRectF, QSize, QSizeF, QTimer, Signal
+from PySide6.QtCore import Qt, QPointF, QRect, QRectF, QSize, QSizeF, QTimer, Signal
 from PySide6.QtGui import (
-    QColor, QFont, QPainter, QPalette, QPen, QPixmap, QPixmapCache, QTextBlockFormat,
+    QAbstractTextDocumentLayout, QColor, QFont, QMouseEvent, QPainter, QPalette,
+    QPen, QPixmap, QPixmapCache, QTextBlockFormat,
     QTextCharFormat, QTextCursor, QTextFormat, QTextFrameFormat, QTextLength,
     QTextListFormat, QTextTableFormat, QPyTextObject, QAction, QKeySequence,
     QImageReader, QImageIOHandler, QShortcut,
@@ -38,7 +39,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QMenu,
     QInputDialog, QDialog, QDialogButtonBox, QLabel, QLineEdit, QComboBox,
-    QSpinBox, QMessageBox,
+    QSpinBox, QMessageBox, QCheckBox,
 )
 
 from . import theme
@@ -134,12 +135,10 @@ def mosaic_cells(canvas, data, width):
     key = (tuple(paths), layout, gap, w_int)
     if cache is not None and key in cache:
         return cache[key]
-    # Compose at the site's 1200px desktop reference width whenever the editor
-    # card is wider than mobile (520px), then scale uniformly to the card width.
-    # Below 1200px, ss-engine-mosaic.js disables enforce_useful_size and stacks
-    # single full-width rows; composing at 1200px keeps Biggie WYSIWYG with the
-    # published desktop site at every page-zoom width.
-    ref_width = 1200.0 if width > 520 else float(width)
+    # For 1-4 photos, compose at the actual column width (760px/360px) so
+    # buildSection() matches ss-engine-mosaic.js (never falling back to 2x2).
+    # For 5+ photos on desktop, compose at 1200px so multi-image rows pack cleanly.
+    ref_width = 1200.0 if (width > 520 and len(images) >= 5) else float(width)
     scale = (float(width) / ref_width) if ref_width > 0 else 1.0
     raw_out = site_compute_layout(
         images, ref_width, gap, "natural",
@@ -243,6 +242,38 @@ class _Objects(QPyTextObject):
             w = max(300, self.canvas.viewport().width())
         return max(120, w - 24)
 
+    def _image_box_metrics(self, data: dict, col_w: int):
+        """Return (iw, ih, align, cap_text, cap_h) matching the photograph's true aspect ratio."""
+        size = data.get("size", "full")
+        placement = data.get("placement", "")
+        align = {"wrap-left": "left", "wrap-right": "right"}.get(
+            placement, data.get("align", "center"))
+        ratio = max(0.25, min(1.0, float(data.get("width_ratio", 0) or 0)))
+        if data.get("asset_uuid"):
+            iw = int(col_w * ratio)
+        else:
+            iw = col_w if size == "full" else (int(col_w * 0.6) if size == "wall" else int(col_w * 0.36))
+            if align in ("left", "right") and size != "full":
+                iw = int(col_w * 0.36)
+        iw = max(48, iw)
+        path = ""
+        if data.get("asset_uuid"):
+            path = self.canvas.assets.get(str(data["asset_uuid"]), "")
+        else:
+            sid = str(data.get("img_id", "")).strip().lower()
+            if sid.startswith("bucket:") and sid[7:].isdigit():
+                n = int(sid[7:])
+                if 1 <= n <= len(self.canvas.bucket):
+                    path = self.canvas.bucket[n - 1]
+        ih = int(iw * 0.66)
+        if path:
+            src_w, src_h = _image_size(path)
+            if src_w > 0 and src_h > 0:
+                ih = max(32, int(round(iw * (src_h / float(src_w)))))
+        cap_text = str(data.get("caption") or "").strip() if bool(data.get("show_caption")) else ""
+        cap_h = 26 if cap_text else 0
+        return iw, ih, align, cap_text, cap_h
+
     def intrinsicSize(self, doc, pos, fmt):
         kind = fmt.property(PROP_KIND)
         data = _data(fmt)
@@ -257,12 +288,8 @@ class _Objects(QPyTextObject):
                 return QSizeF(w, 160)
             return QSizeF(w, out["height"] + 22)
         if kind == "image":
-            size = data.get("size", "full")
-            align = data.get("align", "center")
-            iw = w if size == "full" else (int(w * 0.6) if size == "wall" else int(w * 0.36))
-            if align in ("left", "right") and size != "full":
-                iw = int(w * 0.36)
-            return QSizeF(w, int(iw * 0.66) + 4)
+            _iw, ih, _align, _cap_text, cap_h = self._image_box_metrics(data, w)
+            return QSizeF(w, ih + 4 + cap_h)
         if kind == "spacer":
             return QSizeF(w, max(6, min(100, int(data.get("px", 20)))) + 2)
         if kind == "hr":
@@ -471,18 +498,10 @@ class _Objects(QPyTextObject):
                          mosaic_note(count, layout))
 
     def _draw_image(self, painter, r, data):
-        size = data.get("size", "full")
-        placement = data.get("placement", "")
-        align = {"wrap-left": "left", "wrap-right": "right"}.get(
-            placement, data.get("align", "center"))
-        ratio = max(0.25, min(1.0, float(data.get("width_ratio", 0) or 0)))
-        iw = int(r.width() * ratio) if data.get("asset_uuid") else (
-            r.width() if size == "full" else (int(r.width() * 0.6) if size == "wall" else int(r.width() * 0.36)))
-        if align in ("left", "right") and size != "full":
-            iw = int(r.width() * 0.36)
+        iw, _ih, align, cap_text, cap_h = self._image_box_metrics(data, r.width())
         x = r.left() if align == "left" else (r.right() - iw if align == "right"
                                               else r.left() + (r.width() - iw) // 2)
-        box = QRect(x, r.top() + 2, iw, r.height() - 4)
+        box = QRect(x, r.top() + 2, iw, max(16, r.height() - 4 - cap_h))
         identity = "asset:" + str(data["asset_uuid"]) if data.get("asset_uuid") else str(data.get("img_id", ""))
         pix = self.canvas.image_pixmap(identity, iw)
         if pix is not None and not pix.isNull():
@@ -508,6 +527,16 @@ class _Objects(QPyTextObject):
                 what = (f"IMAGE — photo {sid[7:]} missing from bucket" if sid.lower().startswith("bucket:")
                         else f"IMAGE — #{sid} not in COLD STORAGE yet")
             painter.drawText(box.adjusted(8, 4, -8, -4), Qt.AlignCenter | Qt.TextWordWrap, what)
+        if cap_text and cap_h > 0:
+            cap_font, cap_color = self.canvas.caption_font_and_color()
+            cap_align = str(self.canvas._caption_style.get("align") or "left").lower()
+            painter.save()
+            painter.setFont(cap_font)
+            painter.setPen(QColor(cap_color))
+            cap_rect = QRect(x, box.bottom() + 2, iw, cap_h - 2)
+            align_flag = Qt.AlignHCenter if cap_align == "center" else (Qt.AlignRight if cap_align == "right" else Qt.AlignLeft)
+            painter.drawText(cap_rect, align_flag | Qt.AlignVCenter, cap_text)
+            painter.restore()
 
 
 def _data(fmt) -> dict:
@@ -733,6 +762,7 @@ class BiggieCanvas(QTextEdit):
     mosaicEditRequested = Signal(list, str)
     photographsDropped = Signal(list)
     photographPasted = Signal(object)
+    trayPhotoDropped = Signal(str)
 
     def __init__(self, parent=None, *, allow_mosaic: bool = True):
         super().__init__(parent)
@@ -765,14 +795,28 @@ class BiggieCanvas(QTextEdit):
         self._gutter_grip_rects = {}
         self._obj_close_rects = {}
         self._ruler_color = theme.DIM
+        self._body_font_family = "Georgia"
+        self._body_font_pt = 12.5
+        self._line_height_pct = 150.0
+        self._para_margin_bottom = 8.0
+        self._image_margin_top = 8.0
+        self._image_margin_bottom = 8.0
+        self._heading_font_family = theme.FONT
+        self._caption_style = {
+            "font_family": "Georgia",
+            "font_pt": 10.5,
+            "color": "",
+            "italic": True,
+            "align": "left",
+        }
+        self.default_captions = {}       # asset_uuid or img_id -> default caption/title
+        self._preview_width = 760
+        self._zoom_scale = 1.0
         self._surface_palette = site_surface_palette("#ffffff", "#1a1a1a")
-        self.apply_surface_palette(self._surface_palette)
-        base = QFont("Georgia")
-        base.setPointSizeF(12.5)
-        self.setFont(base)
-        self.document().setDefaultFont(base)
         self.document().setDocumentMargin(4)
         self._ensure_gutter_margin()
+        self.apply_surface_palette(self._surface_palette)
+        self._init_empty_doc_format()
         self._objects = _Objects(self)
         self.document().documentLayout().registerHandler(OBJ_TYPE, self._objects)
         self.document().documentLayout().documentSizeChanged.connect(self._sync_canvas_height)
@@ -784,8 +828,91 @@ class BiggieCanvas(QTextEdit):
         QShortcut(QKeySequence("Ctrl+U"), self).activated.connect(self.toggle_underline)
         QShortcut(QKeySequence("Ctrl+K"), self).activated.connect(self.insert_link)
 
+    def _base_font(self) -> QFont:
+        f = QFont(self._body_font_family or "Georgia")
+        f.setPointSizeF(float(self._body_font_pt or 12.5))
+        return f
+
+    def _init_empty_doc_format(self):
+        base = self._base_font()
+        self.setFont(base)
+        self.document().setDefaultFont(base)
+        blk = self.document().begin()
+        if blk.isValid() and not _has_object(blk) and not blk.text():
+            c = QTextCursor(blk)
+            c.setBlockFormat(self._block_format_for("para"))
+            c.setBlockCharFormat(self._char_format_for("para"))
+            c.setCharFormat(self._char_format_for("para"))
+            self.setCurrentCharFormat(self._char_format_for("para"))
+
+    def set_skin_typography(self, *, body_font: str = "", body_pt: float = 0.0,
+                            caption_font: str = "", caption_pt: float = 0.0,
+                            caption_color: str = "", caption_italic: bool = True,
+                            caption_align: str = "",
+                            line_height_pct: float = 0.0, para_margin_bottom: float = 0.0,
+                            image_margin_top: float = 0.0, image_margin_bottom: float = 0.0):
+        if body_font and str(body_font).strip():
+            self._body_font_family = str(body_font).strip().split(",")[0].strip(" '\"") or "Georgia"
+        if body_pt and float(body_pt) > 0:
+            self._body_font_pt = float(body_pt)
+        if line_height_pct and float(line_height_pct) > 0:
+            self._line_height_pct = float(line_height_pct)
+        if para_margin_bottom and float(para_margin_bottom) > 0:
+            self._para_margin_bottom = float(para_margin_bottom)
+        if image_margin_top and float(image_margin_top) > 0:
+            self._image_margin_top = float(image_margin_top)
+        if image_margin_bottom and float(image_margin_bottom) > 0:
+            self._image_margin_bottom = float(image_margin_bottom)
+        if caption_font and str(caption_font).strip():
+            self._caption_style["font_family"] = str(caption_font).strip().split(",")[0].strip(" '\"")
+        else:
+            self._caption_style["font_family"] = self._body_font_family
+        if caption_pt and float(caption_pt) > 0:
+            self._caption_style["font_pt"] = float(caption_pt)
+        self._caption_style["color"] = str(caption_color or "").strip()
+        self._caption_style["italic"] = bool(caption_italic)
+        if caption_align and str(caption_align).strip().lower() in ("left", "center", "right"):
+            self._caption_style["align"] = str(caption_align).strip().lower()
+        self.apply_surface_palette(self._surface_palette)
+        self._refresh_block_spacing()
+        self.document().markContentsDirty(0, self.document().characterCount())
+        self._sync_canvas_height()
+        self.viewport().update()
+
+    def _refresh_block_spacing(self):
+        doc = self.document()
+        if doc is None:
+            return
+        prev_guard = self._guard
+        self._guard = True
+        try:
+            blk = doc.begin()
+            while blk.isValid():
+                c = QTextCursor(blk)
+                if _has_object(blk):
+                    c.setBlockFormat(self._object_block_format())
+                else:
+                    kind = _block_kind(blk)
+                    dropcap = bool(blk.blockFormat().property(PROP_DROPCAP))
+                    c.setBlockFormat(self._block_format_for(kind, dropcap=dropcap))
+                blk = blk.next()
+        finally:
+            self._guard = prev_guard
+
+    def caption_font_and_color(self) -> tuple:
+        fam = self._caption_style.get("font_family") or self._body_font_family or "Georgia"
+        pt = float(self._caption_style.get("font_pt") or 10.5)
+        f = QFont(fam)
+        f.setPointSizeF(pt)
+        f.setItalic(bool(self._caption_style.get("italic", True)))
+        col = str(self._caption_style.get("color") or "").strip()
+        if not col or not QColor(col).isValid():
+            col = self._surface_palette.get("muted", "#555555")
+        return f, col
+
     def _sync_canvas_height(self, _size=None):
-        doc_h = self.document().documentLayout().documentSize().height()
+        scale = float(getattr(self, "_zoom_scale", 1.0) or 1.0)
+        doc_h = self.document().documentLayout().documentSize().height() * scale
         self.setFixedHeight(max(260, int(math.ceil(doc_h)) + 18))
 
     # -- host hooks ---------------------------------------------------------
@@ -851,13 +978,21 @@ class BiggieCanvas(QTextEdit):
         """Apply site background and contrasting text/selection/placeholder colours."""
         self._surface_palette = dict(pal)
         self._ruler_color = pal["ruler"]
+        fam = self._body_font_family or "Georgia"
+        pt = float(self._body_font_pt or 12.5)
         self.setStyleSheet(
             f"QTextEdit#BiggieCanvas {{ background: {pal['bg']}; color: {pal['fg']};"
+            f" font-family: \"{fam}\"; font-size: {pt}pt;"
             f" border: none; padding: 6px 0px; selection-background-color: {pal['selection_bg']};"
             f" selection-color: {pal['selection_fg']}; }}")
         vp = self.viewport()
         vp.setAutoFillBackground(True)
-        vp.setStyleSheet(f"background: {pal['bg']}; color: {pal['fg']};")
+        vp.setStyleSheet(
+            f"background: {pal['bg']}; color: {pal['fg']};"
+            f" font-family: \"{fam}\"; font-size: {pt}pt;")
+        base = self._base_font()
+        self.setFont(base)
+        self.document().setDefaultFont(base)
         p = self.palette()
         p.setColor(QPalette.Base, QColor(pal["bg"]))
         p.setColor(QPalette.Window, QColor(pal["bg"]))
@@ -870,45 +1005,76 @@ class BiggieCanvas(QTextEdit):
         self.viewport().update()
 
     def _recolor_existing_blocks(self):
-        """Refresh block foreground colours when switching between light and dark sites."""
+        """Refresh block fonts and foreground colours across all text blocks."""
         doc = self.document()
         if doc is None:
             return
-        cur = QTextCursor(doc)
-        cur.beginEditBlock()
-        blk = doc.begin()
-        while blk.isValid():
-            ud = blk.userData()
-            kind = getattr(ud, "kind", "p") if ud is not None else "p"
-            col_key = {
-                "h2": "heading",
-                "h3": "heading",
-                "quote": "muted",
-                "pullquote": "pullquote",
-            }.get(kind, "fg")
-            c = QTextCursor(blk)
-            c.select(QTextCursor.BlockUnderCursor)
-            fmt = QTextCharFormat()
-            fmt.setForeground(QColor(self._surface_palette[col_key]))
-            c.mergeCharFormat(fmt)
-            c.setBlockCharFormat(fmt)
-            blk = blk.next()
-        cur.endEditBlock()
+        prev_guard = self._guard
+        self._guard = True
+        try:
+            cur = QTextCursor(doc)
+            cur.beginEditBlock()
+            blk = doc.begin()
+            while blk.isValid():
+                if not _has_object(blk):
+                    kind = _block_kind(blk)
+                    target = self._char_format_for(kind)
+                    c = QTextCursor(blk)
+                    c.setBlockCharFormat(target)
+                    it = blk.begin()
+                    has_frags = False
+                    while not it.atEnd():
+                        frag = it.fragment()
+                        if frag.isValid() and frag.charFormat().objectType() != OBJ_TYPE:
+                            has_frags = True
+                            fc = QTextCursor(doc)
+                            fc.setPosition(frag.position())
+                            fc.setPosition(frag.position() + frag.length(), QTextCursor.KeepAnchor)
+                            old_f = frag.charFormat()
+                            merged = QTextCharFormat(target)
+                            if old_f.fontWeight() >= QFont.Bold and kind not in ("h2", "h3"):
+                                mf = QFont(merged.font())
+                                mf.setBold(True)
+                                merged.setFont(mf)
+                            if old_f.fontItalic() and kind not in ("quote", "pullquote"):
+                                mf = QFont(merged.font())
+                                mf.setItalic(True)
+                                merged.setFont(mf)
+                            if old_f.fontUnderline():
+                                merged.setFontUnderline(True)
+                            if old_f.isAnchor():
+                                merged.setAnchor(True)
+                                merged.setAnchorHref(old_f.anchorHref())
+                                merged.setForeground(QColor(self._surface_palette["link"]))
+                                merged.setFontUnderline(True)
+                            fc.setCharFormat(merged)
+                        it += 1
+                    if not has_frags:
+                        c.select(QTextCursor.BlockUnderCursor)
+                        c.setCharFormat(target)
+                    if bool(blk.blockFormat().property(PROP_DROPCAP)):
+                        self._apply_dropcap(blk)
+                blk = blk.next()
+            cur.endEditBlock()
+            cur_kind = _block_kind(self.textCursor().block())
+            self.setCurrentCharFormat(self._char_format_for(cur_kind))
+        finally:
+            self._guard = prev_guard
 
     # -- block kinds ----------------------------------------------------------
     def _char_format_for(self, kind: str) -> QTextCharFormat:
         pal = self._surface_palette
         f = QTextCharFormat()
-        base = self.document().defaultFont()
+        base = self._base_font()
         font = QFont(base)
         f.setForeground(QColor(pal["fg"]))
         if kind == "h2":
-            font = QFont(theme.FONT)
+            font = QFont(self._heading_font_family or theme.FONT)
             font.setPointSizeF(20.0)
             font.setBold(True)
             f.setForeground(QColor(pal["heading"]))
         elif kind == "h3":
-            font = QFont(theme.FONT)
+            font = QFont(self._heading_font_family or theme.FONT)
             font.setPointSizeF(15.5)
             font.setBold(True)
             f.setForeground(QColor(pal["heading"]))
@@ -926,13 +1092,27 @@ class BiggieCanvas(QTextEdit):
         f.setFont(font)
         return f
 
+    def _object_block_format(self) -> QTextBlockFormat:
+        """Single-height block format for inline objects (images, mosaics, dividers, spacers).
+
+        Never apply 150% ProportionalHeight to an object block: Qt scales the
+        entire line box by 1.5x, adding half an image height of blank space below it.
+        """
+        b = QTextBlockFormat()
+        b.setProperty(PROP_KIND, "para")
+        b.setProperty(PROP_DROPCAP, False)
+        b.setTopMargin(float(getattr(self, "_image_margin_top", 8.0)))
+        b.setBottomMargin(float(getattr(self, "_image_margin_bottom", 8.0)))
+        b.setLineHeight(0.0, QTextBlockFormat.SingleHeight.value)
+        return b
+
     def _block_format_for(self, kind: str, dropcap: bool = False) -> QTextBlockFormat:
         b = QTextBlockFormat()
         b.setProperty(PROP_KIND, kind)
         b.setProperty(PROP_DROPCAP, bool(dropcap))
         b.setTopMargin(8)
-        b.setBottomMargin(8)
-        b.setLineHeight(150.0, QTextBlockFormat.ProportionalHeight.value)
+        b.setBottomMargin(float(getattr(self, "_para_margin_bottom", 8.0)))
+        b.setLineHeight(float(getattr(self, "_line_height_pct", 150.0)), QTextBlockFormat.ProportionalHeight.value)
         if kind in ("quote", "pullquote"):
             b.setLeftMargin(28)
             b.setRightMargin(28 if kind == "pullquote" else 0)
@@ -1079,34 +1259,113 @@ class BiggieCanvas(QTextEdit):
         cur.endEditBlock()
         self.setFocus()
 
+    def insert_block_at_cursor(self, kind: str = "para", *, position: str = "after",
+                               ordered_list=None, dropcap: bool = False, block_pos=None):
+        """Insert a new block directly after (or before) the currently focused/selected block."""
+        if kind not in BLOCK_KINDS:
+            kind = "para"
+        doc = self.document()
+        sel_pos = (
+            block_pos if block_pos is not None
+            else (self._selected_block_pos if self._selected_block_pos is not None else self._selected_obj_pos)
+        )
+        if sel_pos is not None:
+            block = doc.findBlock(int(sel_pos))
+        else:
+            block = self.textCursor().block()
+        if not block.isValid():
+            block = doc.lastBlock()
+        self._selected_obj_pos = None
+        self._selected_block_pos = None
+        self._block_close_rect = None
+
+        cur = QTextCursor(doc)
+        cur.beginEditBlock()
+        bf = self._block_format_for(kind, dropcap and kind == "para")
+        cf = self._char_format_for(kind)
+        if position == "before":
+            cur.setPosition(block.position())
+            cur.insertBlock(bf, cf)
+            cur.movePosition(QTextCursor.PreviousBlock)
+            cur.setBlockFormat(bf)
+            cur.setBlockCharFormat(cf)
+            cur.setCharFormat(cf)
+        else:
+            if not _has_object(block) and not block.text().strip() and block.textList() is None:
+                cur.setPosition(block.position())
+                cur.setBlockFormat(bf)
+                cur.setBlockCharFormat(cf)
+                cur.setCharFormat(cf)
+            else:
+                cur.setPosition(block.position() + max(0, block.length() - 1))
+                cur.insertBlock(bf, cf)
+                cur.setBlockFormat(bf)
+                cur.setBlockCharFormat(cf)
+                cur.setCharFormat(cf)
+        if ordered_list is not None:
+            fmt = QTextListFormat()
+            fmt.setStyle(QTextListFormat.ListDecimal if ordered_list else QTextListFormat.ListDisc)
+            fmt.setIndent(1)
+            cur.createList(fmt)
+        cur.endEditBlock()
+        self.setTextCursor(cur)
+        self.setCurrentCharFormat(cf)
+        self.setFocus()
+        self.viewport().update()
+
     # -- inline objects ---------------------------------------------------------
-    def _insert_object(self, kind: str, data: dict, replace_at=None):
+    def _insert_object(self, kind: str, data: dict, replace_at=None, *, position: str = "after"):
         """Objects live in their own paragraph so they export as their own block."""
         fmt = QTextCharFormat()
         fmt.setObjectType(OBJ_TYPE)
         fmt.setProperty(PROP_KIND, kind)
         fmt.setProperty(PROP_DATA, json.dumps(data or {}, ensure_ascii=False))
+        doc = self.document()
         cur = self.textCursor()
         cur.beginEditBlock()
         if replace_at is not None:
             cur.setPosition(replace_at)
             cur.setPosition(replace_at + 1, QTextCursor.KeepAnchor)
             cur.insertText(OBJECT_CHAR, fmt)
+            cur.setBlockFormat(self._object_block_format())
         else:
+            sel_pos = self._selected_block_pos if self._selected_block_pos is not None else self._selected_obj_pos
+            if sel_pos is not None:
+                target_blk = doc.findBlock(sel_pos)
+                if target_blk.isValid():
+                    cur.setPosition(target_blk.position())
+            self._selected_obj_pos = None
+            self._selected_block_pos = None
+            self._block_close_rect = None
             block = cur.block()
-            if block.text().strip():
-                cur.movePosition(QTextCursor.EndOfBlock)
-                cur.insertBlock(self._block_format_for("para"), self._char_format_for("para"))
+            if position == "before":
+                cur.setPosition(block.position())
+                cur.insertBlock(self._object_block_format(), self._char_format_for("para"))
+                cur.movePosition(QTextCursor.PreviousBlock)
+                cur.setBlockFormat(self._object_block_format())
+                cur.insertText(OBJECT_CHAR, fmt)
             else:
-                cur.setBlockFormat(self._block_format_for("para"))
-            cur.insertText(OBJECT_CHAR, fmt)
-            cur.insertBlock(self._block_format_for("para"), self._char_format_for("para"))
+                if block.text().strip() or _has_object(block):
+                    cur.movePosition(QTextCursor.EndOfBlock)
+                    cur.insertBlock(self._object_block_format(), self._char_format_for("para"))
+                else:
+                    if block.textList():
+                        block.textList().remove(block)
+                    cur.setBlockFormat(self._object_block_format())
+                cur.insertText(OBJECT_CHAR, fmt)
+                if not cur.block().next().isValid():
+                    cur.insertBlock(self._block_format_for("para"), self._char_format_for("para"))
+                    cur.setCharFormat(self._char_format_for("para"))
+                else:
+                    cur.movePosition(QTextCursor.NextBlock)
+                    cur.movePosition(QTextCursor.StartOfBlock)
         cur.endEditBlock()
         self.setTextCursor(cur)
+        self.setCurrentCharFormat(self._char_format_for(_block_kind(cur.block())))
         self.setFocus()
 
-    def insert_mosaic(self, order, layout: str):
-        self._insert_object("mosaic", {"order": list(order), "layout": str(layout)})
+    def insert_mosaic(self, order, layout: str, *, position: str = "after"):
+        self._insert_object("mosaic", {"order": list(order), "layout": str(layout)}, position=position)
 
     def replace_mosaic(self, order, layout: str):
         pos = self._pending_obj_pos
@@ -1117,21 +1376,69 @@ class BiggieCanvas(QTextEdit):
                             replace_at=pos)
 
     def insert_image(self, img_id: str, size: str = "full", align: str = "center",
-                     *, width_ratio=None, alt="", caption=""):
+                     *, width_ratio=None, alt="", caption="", show_caption: bool = False,
+                     position: str = "after"):
         data = {"img_id": str(img_id).strip(), "size": size, "align": align}
+        if caption or show_caption:
+            data["caption"] = str(caption or "")
+            data["show_caption"] = bool(show_caption)
         if str(img_id).startswith("asset:"):
-            data.update({"asset_uuid": str(img_id)[6:],
+            uid = str(img_id)[6:]
+            default_cap = str(caption or self.default_captions.get(uid, "") or "")
+            data.update({"asset_uuid": uid,
                          "width_ratio": float(width_ratio or 1.0),
                          "placement": "block" if align == "center" else f"wrap-{align}",
-                         "alt": str(alt or ""), "caption": str(caption or "")})
-        self._insert_object("image", data)
+                         "alt": str(alt or ""),
+                         "caption": default_cap,
+                         "show_caption": bool(show_caption)})
+        self._insert_object("image", data, position=position)
+
+    def set_image_caption(self, pos: int, *, show_caption: bool = None, caption: str = None) -> bool:
+        """Toggle or update caption visibility and text on the placed image at pos."""
+        hit = self._object_at(pos)
+        if not hit or hit[0] != "image":
+            return False
+        data = dict(hit[1])
+        uid = str(data.get("asset_uuid") or "")
+        img_id = str(data.get("img_id") or "")
+        if caption is not None:
+            data["caption"] = str(caption).strip()
+        elif not str(data.get("caption") or "").strip():
+            fallback = (
+                self.default_captions.get(uid)
+                or self.default_captions.get(img_id)
+                or ""
+            )
+            if fallback:
+                data["caption"] = str(fallback).strip()
+        if show_caption is not None:
+            data["show_caption"] = bool(show_caption)
+        data.pop("raw", None)
+        self._insert_object("image", data, replace_at=hit[2])
+        self.document().markContentsDirty(0, self.document().characterCount())
+        self._sync_canvas_height()
+        self.viewport().update()
+        return True
 
     # -- local photograph input -----------------------------------------------
     def canInsertFromMimeData(self, source):
-        return bool(source.hasImage() or any(url.isLocalFile() for url in source.urls())) \
+        from .photo_tray import TRAY_PHOTO_MIME
+        return bool(source.hasFormat(TRAY_PHOTO_MIME) or source.hasImage()
+                    or any(url.isLocalFile() for url in source.urls())) \
             or super().canInsertFromMimeData(source)
 
     def insertFromMimeData(self, source):
+        from .photo_tray import TRAY_PHOTO_MIME
+        if source.hasFormat(TRAY_PHOTO_MIME):
+            import json as _json
+            try:
+                data = _json.loads(bytes(source.data(TRAY_PHOTO_MIME)).decode("utf-8"))
+            except Exception:
+                data = {}
+            asset_uuid = str(data.get("asset_uuid") or "")
+            if asset_uuid:
+                self.trayPhotoDropped.emit(asset_uuid)
+            return
         paths = [url.toLocalFile() for url in source.urls() if url.isLocalFile()]
         if paths:
             self.photographsDropped.emit(paths)
@@ -1205,8 +1512,30 @@ class BiggieCanvas(QTextEdit):
                 it += 1
         return None
 
+    def _unscale_point(self, point) -> QPointF:
+        scale = float(getattr(self, "_zoom_scale", 1.0) or 1.0)
+        x = point.x() if hasattr(point, "x") else 0.0
+        y = point.y() if hasattr(point, "y") else 0.0
+        return QPointF(float(x) / scale, float(y) / scale)
+
+    def _unscale_mouse_event(self, event: QMouseEvent) -> QMouseEvent:
+        scale = float(getattr(self, "_zoom_scale", 1.0) or 1.0)
+        if abs(scale - 1.0) < 1e-4:
+            return event
+        local_pos = self._unscale_point(event.position())
+        return QMouseEvent(
+            event.type(),
+            local_pos,
+            event.scenePosition(),
+            event.globalPosition(),
+            event.button(),
+            event.buttons(),
+            event.modifiers(),
+        )
+
     def _object_under_mouse(self, point):
-        pos = self.document().documentLayout().hitTest(point, Qt.FuzzyHit)
+        pt = self._unscale_point(point)
+        pos = self.document().documentLayout().hitTest(pt, Qt.FuzzyHit)
         return self._object_at(pos) if pos >= 0 else None
 
     def _ensure_gutter_margin(self):
@@ -1238,6 +1567,7 @@ class BiggieCanvas(QTextEdit):
         """Return viewport QRect for the selected block/table/object, or None."""
         doc = self.document()
         layout = doc.documentLayout()
+        scale = float(getattr(self, "_zoom_scale", 1.0) or 1.0)
         off_x = -self.horizontalScrollBar().value()
         off_y = -self.verticalScrollBar().value()
         blk = doc.findBlock(pos)
@@ -1245,21 +1575,68 @@ class BiggieCanvas(QTextEdit):
             return None
         tbl = QTextCursor(blk).currentTable()
         if tbl is not None:
-            r = layout.frameBoundingRect(tbl).toRect()
+            rf = layout.frameBoundingRect(tbl)
+            r = QRect(
+                int(round(rf.left() * scale)),
+                int(round(rf.top() * scale)),
+                int(round(rf.width() * scale)),
+                int(round(rf.height() * scale)),
+            )
             r.translate(off_x, off_y)
             return r
-        r = layout.blockBoundingRect(blk).toRect()
+        rf = layout.blockBoundingRect(blk)
+        r = QRect(
+            int(round(rf.left() * scale)),
+            int(round(rf.top() * scale)),
+            int(round(rf.width() * scale)),
+            int(round(rf.height() * scale)),
+        )
         r.translate(off_x, off_y)
         if r.height() < 22:
             r.setHeight(22)
         return r
 
     def paintEvent(self, event):
-        super().paintEvent(event)
-        painter = QPainter(self.viewport())
-        painter.setRenderHint(QPainter.Antialiasing, True)
+        scale = float(getattr(self, "_zoom_scale", 1.0) or 1.0)
         doc = self.document()
         layout = doc.documentLayout()
+        if abs(scale - 1.0) < 1e-4:
+            super().paintEvent(event)
+            painter = QPainter(self.viewport())
+            painter.setRenderHint(QPainter.Antialiasing, True)
+        else:
+            painter = QPainter(self.viewport())
+            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.setRenderHint(QPainter.TextAntialiasing, True)
+            painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+            bg_col = QColor(self._surface_palette.get("bg", "#ffffff"))
+            painter.fillRect(self.viewport().rect(), bg_col)
+            painter.save()
+            painter.scale(scale, scale)
+            plain = self.toPlainText()
+            is_empty = (doc.blockCount() <= 1 and not plain.strip() and OBJECT_CHAR not in plain)
+            if is_empty and self.placeholderText():
+                painter.setFont(self._base_font())
+                painter.setPen(QColor(self._surface_palette.get("placeholder", "#666666")))
+                ph_w = max(120, int(self._preview_width) - 28)
+                painter.drawText(
+                    QRectF(24, 12, ph_w, 200),
+                    Qt.AlignLeft | Qt.AlignTop | Qt.TextWordWrap,
+                    self.placeholderText(),
+                )
+            ctx = QAbstractTextDocumentLayout.PaintContext()
+            ctx.palette = self.palette()
+            cur = self.textCursor()
+            if cur.hasSelection():
+                sel = QAbstractTextDocumentLayout.Selection()
+                sel.cursor = cur
+                sel.format.setBackground(QColor(self._surface_palette.get("selection_bg", "#c8f5be")))
+                sel.format.setForeground(QColor(self._surface_palette.get("selection_fg", "#111111")))
+                ctx.selections = [sel]
+            ctx.cursorPosition = cur.position() if self.hasFocus() else -1
+            layout.draw(painter, ctx)
+            painter.restore()
+
         off_y = -self.verticalScrollBar().value()
         grips = {}
         seen_tables = set()
@@ -1270,14 +1647,16 @@ class BiggieCanvas(QTextEdit):
                 tpos = tbl.firstCursorPosition().position()
                 if tpos not in seen_tables:
                     seen_tables.add(tpos)
-                    br = layout.frameBoundingRect(tbl).toRect()
-                    br.translate(0, off_y)
-                    grip = QRect(2, br.top() + 2, 14, max(18, min(24, br.height())))
+                    rf = layout.frameBoundingRect(tbl)
+                    top_px = int(round(rf.top() * scale)) + off_y
+                    h_px = int(round(rf.height() * scale))
+                    grip = QRect(2, top_px + 2, 14, max(18, min(24, h_px)))
                     grips[tpos] = grip
             else:
-                br = layout.blockBoundingRect(blk).toRect()
-                br.translate(0, off_y)
-                grip = QRect(2, br.top() + 2, 14, max(18, min(24, br.height())))
+                rf = layout.blockBoundingRect(blk)
+                top_px = int(round(rf.top() * scale)) + off_y
+                h_px = int(round(rf.height() * scale))
+                grip = QRect(2, top_px + 2, 14, max(18, min(24, h_px)))
                 grips[blk.position()] = grip
             blk = blk.next()
         self._gutter_grip_rects = grips
@@ -1326,7 +1705,13 @@ class BiggieCanvas(QTextEdit):
                 self._selected_block_pos = None
                 self._block_close_rect = None
                 self.viewport().update()
-        super().mousePressEvent(event)
+        super().mousePressEvent(self._unscale_mouse_event(event))
+
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(self._unscale_mouse_event(event))
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(self._unscale_mouse_event(event))
 
     def _remove_block_at(self, pos: int):
         """Delete any selected BIGGIE block (inline object, columns table, list, para, heading, quote)."""
@@ -1381,28 +1766,50 @@ class BiggieCanvas(QTextEdit):
         if hit and hit[0] == "spacer":
             self._edit_spacer(hit)
             return
-        super().mouseDoubleClickEvent(event)
+        super().mouseDoubleClickEvent(self._unscale_mouse_event(event))
 
     def contextMenuEvent(self, event):
         hit = self._object_under_mouse(event.pos())
         menu = self.createStandardContextMenu()
         if hit:
-            kind, _data_, pos = hit
+            kind, data, pos = hit
             menu.addSeparator()
             if kind == "mosaic":
                 menu.addAction("Change this mosaic…", lambda: self._edit_mosaic(hit))
             elif kind == "image":
                 menu.addAction("Change this image…", lambda: self._edit_image(hit))
+                show_cap_act = menu.addAction("Show caption")
+                show_cap_act.setCheckable(True)
+                show_cap_act.setChecked(bool(data.get("show_caption")))
+                show_cap_act.triggered.connect(
+                    lambda checked, p=pos: self.set_image_caption(p, show_caption=checked))
+                menu.addAction("Edit caption…", lambda p=pos: self._prompt_image_caption(p))
             elif kind == "spacer":
                 menu.addAction("Change the gap…", lambda: self._edit_spacer(hit))
             if kind in ("image", "mosaic"):
-                menu.addAction("Move earlier", lambda: self._move_object(pos, -1))
-                menu.addAction("Move later", lambda: self._move_object(pos, 1))
+                earlier = menu.addAction("Move earlier", lambda: self._move_object(pos, -1))
+                later = menu.addAction("Move later", lambda: self._move_object(pos, 1))
+                earlier.setEnabled(self._can_move_object(pos, -1))
+                later.setEnabled(self._can_move_object(pos, 1))
             if kind == "image":
                 menu.addAction("Make narrower", lambda: self._nudge_image(pos, -.17))
                 menu.addAction("Make wider", lambda: self._nudge_image(pos, .17))
             menu.addAction(f"Remove this {KIND_OBJ.get(kind, kind)}", lambda: self._remove_object(pos))
         menu.exec(event.globalPos())
+
+    def _prompt_image_caption(self, pos: int):
+        hit = self._object_at(pos)
+        if not hit or hit[0] != "image":
+            return
+        data = hit[1]
+        uid = str(data.get("asset_uuid") or "")
+        img_id = str(data.get("img_id") or "")
+        cur_cap = str(data.get("caption") or "").strip()
+        if not cur_cap:
+            cur_cap = str(self.default_captions.get(uid) or self.default_captions.get(img_id) or "").strip()
+        text, ok = QInputDialog.getText(self, "Image caption", "Caption:", text=cur_cap)
+        if ok:
+            self.set_image_caption(pos, show_caption=bool(text.strip()), caption=text.strip())
 
     def _remove_object(self, pos: int):
         self._selected_obj_pos = None
@@ -1417,25 +1824,77 @@ class BiggieCanvas(QTextEdit):
         if not c.block().text().strip() and c.block().previous().isValid():
             c.deletePreviousChar()      # drop the now-empty paragraph
         c.endEditBlock()
+        self.setTextCursor(c)
+        self.viewport().update()
 
-    def _move_object(self, pos, delta):
+    def _object_move(self, pos, delta):
+        """Return the top-level model and destination for one object move."""
         hit = self._object_at(pos)
         if not hit:
-            return
+            return None
         block = self.document().findBlock(pos)
-        target = block.previous() if delta < 0 else block.next()
-        if not target.isValid():
-            return
+        if not block.isValid() or QTextCursor(block).currentTable() is not None:
+            return None
         model = {"type": hit[0], **hit[1]}
-        c = QTextCursor(block)
-        c.beginEditBlock()
-        c.select(QTextCursor.BlockUnderCursor)
-        c.removeSelectedText()
-        c.deleteChar()
-        c.setPosition(target.position() if delta < 0 else target.position() + target.length() - 1)
-        self.setTextCursor(c)
-        self._insert_object(model.pop("type"), model)
-        c.endEditBlock()
+        occurrence = 0
+        scan = self.document().begin()
+        while scan.isValid() and scan.position() < block.position():
+            if QTextCursor(scan).currentTable() is None:
+                previous = self._object_at(scan.position())
+                if previous and {"type": previous[0], **previous[1]} == model:
+                    occurrence += 1
+            scan = scan.next()
+        blocks = self.to_blocks()
+        matches = [index for index, item in enumerate(blocks) if item == model]
+        if occurrence >= len(matches):
+            return None
+        source = matches[occurrence]
+        destination = source + (-1 if int(delta) < 0 else 1)
+        if destination < 0 or destination >= len(blocks):
+            return None
+        return blocks, source, destination
+
+    def _can_move_object(self, pos, delta) -> bool:
+        return self._object_move(pos, delta) is not None
+
+    def _move_object(self, pos, delta):
+        move = self._object_move(pos, delta)
+        if move is None:
+            return
+        blocks, source, destination = move
+        blocks[source], blocks[destination] = blocks[destination], blocks[source]
+        self._replace_blocks_undoable(blocks)
+
+    def _replace_blocks_undoable(self, blocks):
+        """Replace the top-level model as one undoable document operation."""
+        self._guard = True
+        try:
+            doc = self.document()
+            cur = QTextCursor(doc)
+            cur.beginEditBlock()
+            cur.select(QTextCursor.Document)
+            cur.removeSelectedText()
+            cur.setPosition(0)
+            first = True
+            for model in blocks:
+                if not first:
+                    cur.movePosition(QTextCursor.End)
+                    cur.insertBlock(
+                        self._block_format_for("para"), self._char_format_for("para"),
+                    )
+                first = False
+                self._insert_block_model(cur, biggie._migrate_block(model), nested=False)
+            block = doc.begin()
+            while block.isValid():
+                if bool(block.blockFormat().property(PROP_DROPCAP)):
+                    self._apply_dropcap(block)
+                block = block.next()
+            cur.endEditBlock()
+            cur.movePosition(QTextCursor.End)
+            self.setTextCursor(cur)
+            self._sync_canvas_height()
+        finally:
+            self._guard = False
 
     def _nudge_image(self, pos, delta):
         hit = self._object_at(pos)
@@ -1450,8 +1909,15 @@ class BiggieCanvas(QTextEdit):
         self._insert_object("image", data, replace_at=hit[2])
 
     def set_preview_width(self, width):
-        """Change only the composition viewport; stored responsive ratios remain unchanged."""
+        """Lock the document column to the target preview width (e.g. Desktop 760 / Phone 360)."""
+        self._preview_width = int(width or 760)
         self.document().setTextWidth(float(width) if width else -1)
+        self._sync_canvas_height()
+        self.viewport().update()
+
+    def set_zoom_scale(self, scale: float):
+        """Scale the rendered page as one unit without changing document textWidth or line breaks."""
+        self._zoom_scale = max(0.5, min(2.0, float(scale or 1.0)))
         self._sync_canvas_height()
         self.viewport().update()
 
@@ -1506,9 +1972,15 @@ class BiggieCanvas(QTextEdit):
     def keyPressEvent(self, event):
         key = event.key()
         sel_pos = self._selected_block_pos if self._selected_block_pos is not None else self._selected_obj_pos
-        if sel_pos is not None and key in (Qt.Key_Delete, Qt.Key_Backspace):
-            self._remove_block_at(sel_pos)
-            return
+        if sel_pos is not None:
+            if key in (Qt.Key_Delete, Qt.Key_Backspace):
+                self._remove_block_at(sel_pos)
+                return
+            if key not in (Qt.Key_Shift, Qt.Key_Control, Qt.Key_Alt, Qt.Key_Meta):
+                self._selected_obj_pos = None
+                self._selected_block_pos = None
+                self._block_close_rect = None
+                self.viewport().update()
         cur = self.textCursor()
         block = cur.block()
         if key in (Qt.Key_Return, Qt.Key_Enter) and not (event.modifiers() & Qt.ShiftModifier):
@@ -1517,7 +1989,9 @@ class BiggieCanvas(QTextEdit):
             if _has_object(block):
                 cur.movePosition(QTextCursor.EndOfBlock)
                 cur.insertBlock(self._block_format_for("para"), self._char_format_for("para"))
+                cur.setCharFormat(self._char_format_for("para"))
                 self.setTextCursor(cur)
+                self.setCurrentCharFormat(self._char_format_for("para"))
                 return
             if block.textList() and not block.text().strip():
                 block.textList().remove(block)      # Enter on an empty bullet ends the list
@@ -1535,14 +2009,32 @@ class BiggieCanvas(QTextEdit):
                 c.setBlockCharFormat(self._char_format_for("para"))
                 c.setCharFormat(self._char_format_for("para"))
                 self.setTextCursor(c)
+                self.setCurrentCharFormat(self._char_format_for("para"))
                 return
-        if key == Qt.Key_Backspace and cur.atBlockStart() and not cur.hasSelection():
-            if _block_kind(block) != "para" and not block.textList():
-                self.set_kind("para")           # first Backspace demotes, second joins
+        if key == Qt.Key_Backspace and not cur.hasSelection():
+            if _has_object(block):
+                # SS-1492: First Backspace on an image/object selects it; second removes it.
+                self.select_block_at(block.position())
                 return
-            prev = block.previous()
-            if prev.isValid() and _has_object(prev) and not block.text().strip():
-                pass                            # fall through: joining onto an object is fine
+            if cur.atBlockStart():
+                if _block_kind(block) != "para" and not block.textList():
+                    self.set_kind("para")           # first Backspace demotes, second joins
+                    return
+                prev = block.previous()
+                if prev.isValid() and _has_object(prev):
+                    # SS-1492: First Backspace at the start of a block after an image/object
+                    # selects (highlights) the image instead of merging onto or deleting it.
+                    self.select_block_at(prev.position())
+                    return
+        if key == Qt.Key_Delete and not cur.hasSelection():
+            if _has_object(block):
+                self.select_block_at(block.position())
+                return
+            if cur.atBlockEnd():
+                nxt = block.next()
+                if nxt.isValid() and _has_object(nxt):
+                    self.select_block_at(nxt.position())
+                    return
         super().keyPressEvent(event)
 
     def _after_change(self, position, removed, added):
@@ -1632,6 +2124,8 @@ class BiggieCanvas(QTextEdit):
                     cur.insertBlock(self._block_format_for("para"), self._char_format_for("para"))
                 first = False
                 self._insert_block_model(cur, b, nested=False)
+            if first:
+                self._init_empty_doc_format()
             cur.endEditBlock()
             # drop caps need their big letter painted
             block = doc.begin()
@@ -1682,7 +2176,7 @@ class BiggieCanvas(QTextEdit):
                 cur.insertText(biggie.serialize_block(b), self._char_format_for("raw"))
                 return
             fmt.setProperty(PROP_DATA, json.dumps(data, ensure_ascii=False))
-            cur.setBlockFormat(self._block_format_for("para"))
+            cur.setBlockFormat(self._object_block_format())
             cur.insertText(OBJECT_CHAR, fmt)
         elif t == "columns" and not nested:
             cols = [biggie._normalise_cell(c) for c in (b.get("cols") or [[]])]
@@ -1784,7 +2278,7 @@ def _export_block(block, nested: bool = False) -> list:
                     image = {"type": "image", "img_id": str(data.get("img_id", ""))}
                     for key in ("gallery", "size", "align", "width", "decorative", "raw",
                                 "asset_uuid", "placement", "width_ratio", "crop",
-                                "alt", "caption", "link"):
+                                "alt", "caption", "show_caption", "link"):
                         if key in data:
                             image[key] = data[key]
                     out.append(image)
@@ -1861,8 +2355,14 @@ class _LocalImageDialog(QDialog):
         col.addWidget(QLabel("ALT text"))
         self.alt = QLineEdit(str(data.get("alt", "")))
         col.addWidget(self.alt)
+        self.show_caption = QCheckBox("Show caption")
+        self.show_caption.setChecked(bool(data.get("show_caption", False)))
+        col.addWidget(self.show_caption)
         col.addWidget(QLabel("Caption"))
-        self.caption = QLineEdit(str(data.get("caption", "")))
+        default_cap = str(data.get("caption", "") or "")
+        if not default_cap and hasattr(parent, "default_captions"):
+            default_cap = str(parent.default_captions.get(self._asset_uuid, "") or "")
+        self.caption = QLineEdit(default_cap)
         col.addWidget(self.caption)
         col.addWidget(QLabel("Link (optional)"))
         self.link = QLineEdit(str(data.get("link", "")))
@@ -1880,7 +2380,9 @@ class _LocalImageDialog(QDialog):
                 "placement": placement, "width_ratio": ratio,
                 "size": "full" if ratio >= 1 else ("wall" if ratio >= .5 else "small"),
                 "align": align, "crop": {"mode": "none", "focal_x": .5, "focal_y": .5},
-                "alt": self.alt.text().strip(), "caption": self.caption.text().strip(),
+                "alt": self.alt.text().strip(),
+                "caption": self.caption.text().strip(),
+                "show_caption": bool(self.show_caption.isChecked()),
                 "link": self.link.text().strip()}
 
 

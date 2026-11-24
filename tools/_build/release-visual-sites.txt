@@ -1,0 +1,29 @@
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line of this file MUST be: # ===== SNAPSMACK EOF =====
+# Missing or different = truncated/corrupted. Restore before saving.
+#
+# One live representative for each of the 17 production skins on the
+# snapsmack.ca skins page. Owner-confirmed scope, 23 Nov 2026. This is the
+# release visual-safety roster, not the broader operational fleet roster.
+# Keep it aligned with projects/snapsmack-ca/includes/skin-stats.php
+# $_skin_demo_sites. One hostname per line; blank lines and comments ignored.
+
+portalproject.photoblogs.fyi
+baddaywithacamera.ca
+unzucked.ca
+photowalk.ing
+hekeepsdroningon.ca
+pixhellated.ca
+wateronthebrain.ca
+foundtextures.ca
+acolourlesslife.ca
+foreverphotograph.ing
+theschoolofhardnocks.ca
+fauxlaroid.fyi
+lightafterdark.ca
+craptasti.ca
+usedcarparts.photoblogs.fyi
+allinthewrist.photoblogs.fyi
+curbappeal.photoblogs.fyi
+
+# ===== SNAPSMACK EOF =====

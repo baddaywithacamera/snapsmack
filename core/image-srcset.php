@@ -54,8 +54,49 @@
 // only for lazily-loaded images. A browser that does not support it falls to
 // 100vw, picks the largest candidate, and behaves exactly as it does today --
 // no saving, no regression.
+// ── 24 NOVEMBER 2026: THE 'auto' KEYWORD CAME BACK OUT. ──────────────────
+//
+// Everything above remains true about bytes and it is why the srcset itself
+// stays. What it did not know is what 'auto' costs in LAYOUT.
+//
+// Chromium applies SIZE CONTAINMENT -- contain:size, with a default
+// contain-intrinsic-size of 300px by 150px -- to any <img loading="lazy">
+// carrying sizes="auto". contain:size means the element is sized AS IF IT HAD
+// NO CONTENTS, so the decoded photograph is ignored and that 300x150
+// placeholder becomes the box. Any grid that takes its row height from the
+// image then locks at 2:1 and never recovers.
+//
+// MEASURED ON THE LIVE foundtextures.ca ARCHIVE, 1920, TRUE GRIT: every tile
+// 300x150 while the images were 300x225 and 300x200, all 48 loaded. On each
+// img, contain:size and contain-intrinsic-size:300px 150px, set by NO CSS
+// RULE -- the browser, not us.
+//
+// AND IT CANNOT BE FIXED ANYWHERE ELSE. Each of these was driven on that live
+// page and changed nothing: width and height attributes on the img;
+// img{height:auto}; height:auto !important on the image, every wrapper and
+// the grid item; contain:none !important; and a CSS aspect-ratio per image
+// built from the dimensions this file already knows. A stylesheet cannot
+// override the browser's containment, so no skin could ever have fixed this.
+// Removing sizes="auto" fixed it immediately: 300x150 became 371x278 and
+// 371x248, the real 4:3 and 3:2.
+//
+// WHY PLAIN 100vw AND NOT A CLEVERER STRING. A srcset here has exactly two
+// candidates, m_ and a_. A sizes value that resolves BELOW the real tile
+// makes the browser take m_ for a slot it cannot fill and upscale it, and the
+// note above says what this product thinks of a blurry photograph. With two
+// candidates there is no string that is small enough to save bytes on a
+// narrow-tile skin without being too small on a wide-tile one -- which is
+// exactly why 'auto' was chosen, and 'auto' is what breaks the page. So the
+// safe value is the one that always takes the larger candidate.
+//
+// THE COST IS REAL AND IS NOT HIDDEN: this gives back the transfer saving on
+// grids that were getting it, returning those pages to their pre-SS-1386
+// bytes. Correct geometry beats a 12% transfer saving on a live photoblog.
+// Winning it back needs a mechanism that does not depend on 'auto' -- a
+// per-skin tile hint, or tile ratios fixed in the grid so the image never
+// sizes the row. Neither is a live-break change.
 if (!defined('SNAPSMACK_GRID_IMAGE_SIZES')) {
-    define('SNAPSMACK_GRID_IMAGE_SIZES', 'auto, 100vw');
+    define('SNAPSMACK_GRID_IMAGE_SIZES', '100vw');
 }
 
 if (!function_exists('snap_image_srcset_prepare')) {

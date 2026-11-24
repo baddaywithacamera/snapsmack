@@ -278,15 +278,15 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
                 // and the row rendered as a lonely [ SHOW ALL ] -- which in a
                 // screenshot looks exactly like the fault I had just repaired.
                 'filters' => [
-                    ['label' => 'Registry', 'type' => 'category', 'items' => [
+                    ['label' => 'Registry', 'type' => 'cat', 'items' => [
                         ['id' => 'walls', 'label' => 'Walls'],
                         ['id' => 'rust', 'label' => 'Rust'],
                     ]],
-                    ['label' => 'Albums', 'type' => 'album', 'items' => [
+                    ['label' => 'Albums', 'type' => 'alb', 'items' => [
                         ['id' => 'strathmore', 'label' => 'Strathmore'],
                     ]],
                 ],
-                'search' => ['placeholder' => 'SEARCH OR #TAG', 'name' => 'q'],
+                'search' => ['action' => 'https://example.test/', 'placeholder' => 'SEARCH OR #TAG', 'name' => 'q'],
             ],
             'site_name' => 'found textures', 'language' => 'en', 'direction' => 'ltr',
             'skin_style_url' => '', 'base_style_url' => '', 'skin_variant_url' => '',
@@ -295,6 +295,8 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $file) {
             // archive row's width cap is nominated per skin, and without
             // the slug every fixture fell back to main_canvas_width.
             'skin_slug' => $skin,
+            'archive_filter_variant' => (($manifest['features']['archive_filter_variant'] ?? '') === 'legacy-selects')
+                ? 'legacy-selects' : 'panel',
             // The skin nominates which of its own options is the content
             // width; the archive row caps itself with it.
             'skin_canvas_width_option' => (string)($manifest['features']['canvas_width_option'] ?? ''),
