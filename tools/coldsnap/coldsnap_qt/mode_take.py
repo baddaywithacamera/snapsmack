@@ -64,6 +64,7 @@ class MosaicPreview(QWidget):
     swapRequested = Signal(int, int)
     moveRequested = Signal(int, int)
     sideSwapRequested = Signal(int)
+    sizeRequested = Signal(int, int)
     reverseRequested = Signal()
 
     def __init__(self, parent=None, *, content_width: int = 760, gap: int = 4):
@@ -72,7 +73,9 @@ class MosaicPreview(QWidget):
         self._gap = max(0, min(20, int(gap)))
         self.setMinimumSize(self._content_width + 16, 220)
         self.setFixedWidth(self._content_width + 16)
-        self.setToolTip("Drag one preview tile onto another to swap them.")
+        self.setToolTip(
+            "Drag one preview tile onto another to swap them. Right-click a "
+            "photo to move, resize, swap sides, or reverse the arrangement.")
         self._tiles, self._rects = [], []
         self._layout_name, self._drag_from = "asymmetric", None
         self.bucket = []
@@ -234,6 +237,18 @@ class MosaicPreview(QWidget):
             lambda: self.sideSwapRequested.emit(row),
         )
         menu.addSeparator()
+        larger = menu.addAction(
+            "Make larger",
+            lambda: self.sizeRequested.emit(row, 1),
+        )
+        smaller = menu.addAction(
+            "Make smaller",
+            lambda: self.sizeRequested.emit(row, -1),
+        )
+        can_resize = len(ordered_rows) >= 3
+        larger.setEnabled(can_resize)
+        smaller.setEnabled(can_resize)
+        menu.addSeparator()
         menu.addAction("Reverse arrangement", self.reverseRequested.emit)
         return menu
 
@@ -243,6 +258,66 @@ class MosaicPreview(QWidget):
         if menu is None:
             return
         menu.exec(event.globalPos())
+
+
+class _MosaicSizeProbe:
+    """The minimum canvas contract needed by the shared mosaic geometry."""
+
+    def __init__(self, paths):
+        self.bucket = list(paths)
+        self.assets = {}
+        self._mosaic_size_cache = {}
+        self._mosaic_layout_cache = {}
+
+
+def _mosaic_area_profile(order, path_for, layout, width=760, gap=4):
+    """Return cell areas in authored order using the exact site-layout port."""
+    paths = [path_for(value) for value in order]
+    probe = _MosaicSizeProbe(paths)
+    _paths, geometry = _mosaic_cells(
+        probe,
+        {
+            "order": list(range(1, len(paths) + 1)),
+            "layout": str(layout or "asymmetric"),
+            "gap": gap,
+        },
+        width,
+    )
+    return [
+        float(cell.get("width") or 0.0) * float(cell.get("height") or 0.0)
+        for cell in (geometry.get("items") or [])
+    ]
+
+
+def _resize_mosaic_order(order, target, path_for, *, larger, width=760, gap=4):
+    """Move one photo into a larger/smaller span without changing its pixels.
+
+    The public mosaic engine already makes unequal editorial spans. Which photo
+    gets each span is determined by the authored order. Try the selected photo
+    in every saved position, measure each result with the same geometry used by
+    BIGGIE, and choose the largest or smallest real cell. Other photos keep
+    their relative order, so the action is predictable and reversible.
+    """
+    authored = list(order)
+    if target not in authored or len(authored) < 3:
+        return authored, "asymmetric", False
+    target_layout = "one-left" if len(authored) == 3 else "asymmetric"
+    others = [value for value in authored if value != target]
+    current_position = authored.index(target)
+    candidates = []
+    for position in range(len(authored)):
+        candidate = list(others)
+        candidate.insert(position, target)
+        areas = _mosaic_area_profile(candidate, path_for, target_layout, width, gap)
+        area = areas[position] if position < len(areas) else 0.0
+        candidates.append((area, -abs(position - current_position), candidate))
+    if larger:
+        _area, _distance, chosen = max(
+            candidates, key=lambda item: (item[0], item[1]))
+    else:
+        _area, _distance, chosen = min(
+            candidates, key=lambda item: (item[0], -item[1]))
+    return chosen, target_layout, chosen != authored
 
 
 class _PageRuler(QWidget):
@@ -1562,7 +1637,8 @@ class TakeMode(QWidget):
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel(
             "Choose which photos belong in this mosaic. Click tiles to include/exclude, "
-            "or drag in the preview to swap positions. Hover a tile for its filename."))
+            "drag in the preview to swap positions, or right-click a preview photo to "
+            "make it larger or smaller. Hover a tile for its filename."))
 
         preview = MosaicPreview(content_width=self._preview_width)
         preview_scroll = QScrollArea()
@@ -1574,7 +1650,7 @@ class TakeMode(QWidget):
         preview_scroll.setMinimumHeight(260)
 
         preview_hint = QLabel(
-            f"LIVE WYSIWYG PREVIEW ({self._preview_width}px column) — drag one image onto another to swap them"
+            f"LIVE WYSIWYG PREVIEW ({self._preview_width}px column) — drag to swap; right-click to resize or rearrange"
         )
         preview_hint.setAlignment(Qt.AlignCenter)
 
@@ -1834,6 +1910,30 @@ class TakeMode(QWidget):
             rebuild_grid()
             refresh_preview()
 
+        def resize_preview_row(row, direction):
+            included_rows = [
+                position for position, bucket_index in enumerate(display_order)
+                if bucket_index in checked_set
+            ]
+            if row not in included_rows or len(included_rows) < 3:
+                return
+            included = [display_order[position] for position in included_rows]
+            target = display_order[row]
+            resized, target_layout, _changed_order = _resize_mosaic_order(
+                included,
+                target,
+                lambda bucket_index: self._bucket[bucket_index].local_path,
+                larger=int(direction) > 0,
+                width=self._preview_width,
+            )
+            for position, bucket_index in zip(included_rows, resized):
+                display_order[position] = bucket_index
+            layout_index = preset.findData(target_layout)
+            if layout_index >= 0:
+                preset.setCurrentIndex(layout_index)
+            rebuild_grid()
+            refresh_preview()
+
         def rotate_current(degrees):
             bi = active_bucket_idx[0]
             if bi is None or bi not in display_order:
@@ -1915,6 +2015,7 @@ class TakeMode(QWidget):
         preview.swapRequested.connect(swap_rows)
         preview.moveRequested.connect(move_preview_row)
         preview.sideSwapRequested.connect(swap_preview_side)
+        preview.sizeRequested.connect(resize_preview_row)
         preview.reverseRequested.connect(reverse_arrangement)
 
         def move(delta):
@@ -1944,6 +2045,7 @@ class TakeMode(QWidget):
         dialog._mosaic_suggest_btn = suggest
         dialog._mosaic_move_preview = move_preview_row
         dialog._mosaic_swap_side = swap_preview_side
+        dialog._mosaic_resize = resize_preview_row
         dialog._mosaic_reverse = reverse_arrangement
 
         rebuild_grid()
