@@ -144,6 +144,10 @@ $check('and the endpoint genuinely has no check today, which is reported not fix
     !preg_match('/csrf/i', $endpoint));
 $check('a failed request puts the heart back rather than lying',
     str_contains($js, 'paint(button, was)'));
+$check('every visible copy of one photograph shares a single in-flight request guard',
+    str_contains($js, 'var pending = Object.create(null)')
+    && str_contains($js, 'if (!id || pending[id]) return')
+    && str_contains($js, 'delete pending[id]'));
 $check('no second keydown handler, which would fire the like twice',
     !str_contains($js, "addEventListener('keydown'"));
 
