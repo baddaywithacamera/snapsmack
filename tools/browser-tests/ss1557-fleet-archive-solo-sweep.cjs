@@ -284,7 +284,8 @@ async function inspect(browser, site, pageType, url, width) {
     row.defects = row.notChecked ? [] : defectsFor(before, after, pageType, row.status);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(100);
-    if (row.defects.length || (row.notChecked && width === 1024)) {
+    const preserveTrueGritReference = site === 'foundtextures.ca' && pageType === 'archive';
+    if (row.defects.length || (row.notChecked && width === 1024) || preserveTrueGritReference) {
       row.screenshot = `${safeName(site)}-${safeName(identity.skin)}-${pageType}-${width}.png`;
       await page.screenshot({ path: path.join(evidenceDir, row.screenshot), fullPage: false });
     }
