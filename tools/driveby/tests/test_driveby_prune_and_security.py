@@ -174,7 +174,9 @@ def test_snap_creds_failure_fails_closed(monkeypatch):
     ok, msg = dlg.save_b2_keys()
     assert ok is False
     assert "vault locked" in msg.lower()
+    dlg.close()
     win.close()
+    app.processEvents()
 
 
 # ---------------------------------------------------------------------------
@@ -192,6 +194,8 @@ def test_sybu_drive_grant_reuse_and_provider_first_revoke():
     dlg = CredentialsDialog(store)
     assert not hasattr(dlg, "drive_token_edit")
     assert hasattr(dlg, "connect_drive_btn")
+    dlg.close()
+    app.processEvents()
 
     # Failed provider revoke keeps token and locks deletes
     class _FailResp:

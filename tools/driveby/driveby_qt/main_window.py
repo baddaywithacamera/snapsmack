@@ -2,6 +2,7 @@
 
 import os
 import sys
+import weakref
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -203,10 +204,11 @@ class MainWindow(QMainWindow):
         if stepup_verifier is not None:
             self._stepup_verifier = stepup_verifier
         else:
+            win_ref = weakref.ref(self)
             self._stepup_verifier = make_snap_hq_stepup_verifier(
                 self._cred_store,
-                username_getter=lambda: self.stepup_user_input.text(),
-                password_getter=lambda: self.stepup_pass_input.text(),
+                username_getter=lambda r=win_ref: r().stepup_user_input.text() if r() is not None else "",
+                password_getter=lambda r=win_ref: r().stepup_pass_input.text() if r() is not None else "",
             )
 
         if providers is not None:
@@ -591,6 +593,10 @@ class MainWindow(QMainWindow):
         self.refresh_inventory()
         self.preview_lbl.setText(res.message)
         return res.succeeded
+
+    def closeEvent(self, event):
+        self._stepup_verifier = None
+        super().closeEvent(event)
 
 
 # ===== SNAPSMACK EOF =====
