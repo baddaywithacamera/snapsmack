@@ -141,6 +141,11 @@ class App(tk.Tk):
                  fg=ui.FG_DIM, font=ui.FONT_SMALL).pack(side="left", pady=10)
 
         ui.button(bar, "REFRESH", self.refresh, kind="primary").pack(side="right", padx=12)
+        import snap_help
+        _open_help = snap_help.bind_f1_tk(
+            self, snap_help.TOOL_HELP_TOPICS["shots-fired"], title="SHOTS FIRED — Help"
+        )
+        ui.button(bar, "HELP (F1)", _open_help).pack(side="right", padx=(0, 6))
 
         tk.Label(bar, text="LOOK AHEAD", bg=ui.BG_MID, fg=ui.FG_DIM,
                  font=ui.FONT_SMALL).pack(side="right", padx=(0, 4))

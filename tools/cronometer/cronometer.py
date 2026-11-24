@@ -208,6 +208,11 @@ class App(tk.Tk):
         self._make_button(actions, "COPY STATUS", self._copy_status,
                           kind="primary").pack(side="left", padx=(0, 8))
         self._make_button(actions, "RELOAD SITE LIST", self._reload_fleet).pack(side="left")
+        import snap_help
+        _open_help = snap_help.bind_f1_tk(
+            self, snap_help.TOOL_HELP_TOPICS["cronometer"], title="CRONOMETER — Help"
+        )
+        self._make_button(actions, "HELP (F1)", _open_help).pack(side="right")
 
         # ── Legend ────────────────────────────────────────────────────
         legend = tk.Frame(self, bg=BG_DEEP)

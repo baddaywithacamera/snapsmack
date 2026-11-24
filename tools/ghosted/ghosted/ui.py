@@ -111,7 +111,14 @@ class Window(QMainWindow):
         self.source_btn = QPushButton("GHOST EXPORT")
         self.source_btn.clicked.connect(self._choose)
         row.addWidget(self.source_btn)
+        self.help_btn = QPushButton("Help (F1)")
+        row.addWidget(self.help_btn)
         outer.addWidget(header)
+        import snap_help
+        self._help_shortcut, _open_help = snap_help.bind_f1_qt(
+            self, snap_help.TOOL_HELP_TOPICS["ghosted"], title="GHOSTED — Help", stylesheet=STYLE
+        )
+        self.help_btn.clicked.connect(_open_help)
 
         body = QSplitter()
         left = QFrame()

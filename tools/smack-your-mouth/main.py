@@ -192,6 +192,11 @@ class App(tk.Tk):
         ui.button(srow, "NEW SESSION", self._on_new_session).pack(side="left", padx=(6, 0))
         ui.button(srow, "IMPORT…", self._on_import, ).pack(side="right")
         ui.button(srow, "EXPORT…", self._on_export).pack(side="right", padx=(0, 6))
+        import snap_help
+        _open_help = snap_help.bind_f1_tk(
+            self, snap_help.TOOL_HELP_TOPICS["smack-your-mouth"], title="SMACK YOUR MOUTH — Help"
+        )
+        ui.button(srow, "HELP (F1)", _open_help).pack(side="right", padx=(0, 6))
 
         # Reply author + single-site connection row.
         arow = tk.Frame(body, bg=ui.BG_CARD)
