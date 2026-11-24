@@ -1,0 +1,91 @@
+{
+  "ticket": "SS-1519",
+  "scope": "RATIONAL GEO body_font through the real compiler and browser paint",
+  "note": "The named face is deliberately unavailable, so the first and second rows must paint identically while the opposite generic must differ.",
+  "results": [
+    {
+      "width": 1920,
+      "family": "Source Serif 4",
+      "missingFamily": "SS1519 Missing Source Serif 4",
+      "expectedGeneric": "serif",
+      "compiledTail": "\"Source Serif 4\", serif",
+      "computed": "\"SS1519 Missing Source Serif 4\", serif",
+      "hashes": {
+        "subject": "77c8fda304899c93bc7074dbf874d368a4a60e0716bb26ce47761834895df233",
+        "expected": "77c8fda304899c93bc7074dbf874d368a4a60e0716bb26ce47761834895df233",
+        "other": "3f6f5acda1d7705cbdfe8f18f1bef4b04505dd14a043482c28442227b49f94aa"
+      },
+      "pass": true
+    },
+    {
+      "width": 1920,
+      "family": "DM Sans",
+      "missingFamily": "SS1519 Missing DM Sans",
+      "expectedGeneric": "sans-serif",
+      "compiledTail": "\"DM Sans\", sans-serif",
+      "computed": "\"SS1519 Missing DM Sans\", sans-serif",
+      "hashes": {
+        "subject": "3f6f5acda1d7705cbdfe8f18f1bef4b04505dd14a043482c28442227b49f94aa",
+        "expected": "3f6f5acda1d7705cbdfe8f18f1bef4b04505dd14a043482c28442227b49f94aa",
+        "other": "77c8fda304899c93bc7074dbf874d368a4a60e0716bb26ce47761834895df233"
+      },
+      "pass": true
+    },
+    {
+      "width": 1440,
+      "family": "Source Serif 4",
+      "missingFamily": "SS1519 Missing Source Serif 4",
+      "expectedGeneric": "serif",
+      "compiledTail": "\"Source Serif 4\", serif",
+      "computed": "\"SS1519 Missing Source Serif 4\", serif",
+      "hashes": {
+        "subject": "77c8fda304899c93bc7074dbf874d368a4a60e0716bb26ce47761834895df233",
+        "expected": "77c8fda304899c93bc7074dbf874d368a4a60e0716bb26ce47761834895df233",
+        "other": "3f6f5acda1d7705cbdfe8f18f1bef4b04505dd14a043482c28442227b49f94aa"
+      },
+      "pass": true
+    },
+    {
+      "width": 1440,
+      "family": "DM Sans",
+      "missingFamily": "SS1519 Missing DM Sans",
+      "expectedGeneric": "sans-serif",
+      "compiledTail": "\"DM Sans\", sans-serif",
+      "computed": "\"SS1519 Missing DM Sans\", sans-serif",
+      "hashes": {
+        "subject": "3f6f5acda1d7705cbdfe8f18f1bef4b04505dd14a043482c28442227b49f94aa",
+        "expected": "3f6f5acda1d7705cbdfe8f18f1bef4b04505dd14a043482c28442227b49f94aa",
+        "other": "77c8fda304899c93bc7074dbf874d368a4a60e0716bb26ce47761834895df233"
+      },
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "family": "Source Serif 4",
+      "missingFamily": "SS1519 Missing Source Serif 4",
+      "expectedGeneric": "serif",
+      "compiledTail": "\"Source Serif 4\", serif",
+      "computed": "\"SS1519 Missing Source Serif 4\", serif",
+      "hashes": {
+        "subject": "77c8fda304899c93bc7074dbf874d368a4a60e0716bb26ce47761834895df233",
+        "expected": "77c8fda304899c93bc7074dbf874d368a4a60e0716bb26ce47761834895df233",
+        "other": "3f6f5acda1d7705cbdfe8f18f1bef4b04505dd14a043482c28442227b49f94aa"
+      },
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "family": "DM Sans",
+      "missingFamily": "SS1519 Missing DM Sans",
+      "expectedGeneric": "sans-serif",
+      "compiledTail": "\"DM Sans\", sans-serif",
+      "computed": "\"SS1519 Missing DM Sans\", sans-serif",
+      "hashes": {
+        "subject": "3f6f5acda1d7705cbdfe8f18f1bef4b04505dd14a043482c28442227b49f94aa",
+        "expected": "3f6f5acda1d7705cbdfe8f18f1bef4b04505dd14a043482c28442227b49f94aa",
+        "other": "77c8fda304899c93bc7074dbf874d368a4a60e0716bb26ce47761834895df233"
+      },
+      "pass": true
+    }
+  ]
+}
