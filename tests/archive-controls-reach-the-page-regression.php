@@ -217,6 +217,15 @@ $both = snapsmack_archive_controls(['archive_layout' => 'thumbs'], []);
 ac_test(count($both['layouts']) === 2, 'a two-grid skin gets both buttons');
 ac_test(($both['layouts'][0]['active'] ?? null) === true && ($both['layouts'][1]['active'] ?? null) === false,
     'and exactly the showing one is marked active');
+$trueGritControls = snapsmack_archive_controls(
+    ['archive_layout' => 'masonry', 'archive_calendar_enabled' => '1'],
+    ['features' => ['masonry_supported' => false, 'archive_calendar_supported' => false],
+     'require_scripts' => ['smack-calendar']]
+);
+ac_test($trueGritControls['active'] === 'thumbs' && $trueGritControls['layouts'] === [],
+    'an authored thumbs-only archive cannot be forced back to masonry by an old stored value');
+ac_test($trueGritControls['calendar']['enabled'] === false,
+    'a skin calendar gate suppresses C without changing the owner setting');
 
 echo "\nThe visitor's choice outranks the cookie, which outranks the default\n";
 ac_test(snapsmack_archive_controls(['archive_layout' => 'thumbs'], [], ['layout' => 'masonry'],

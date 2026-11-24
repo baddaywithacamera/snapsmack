@@ -70,6 +70,38 @@ foreach ([
     $check(str_contains($bar, $needle), 'the row must contain ' . $what);
 }
 
+// --- TRUE GRIT's pre-panel select variant -------------------------------
+$legacy = (string)snap_render_component('archive-filters', [
+    'variant'       => 'legacy-selects',
+    'show_all_url'  => 'https://example.test/images',
+    'selected'      => ['cat:3', 'alb:9'],
+    'filters'       => [
+        ['label' => 'categories', 'type' => 'cat',
+         'items' => [['id' => 3, 'label' => 'Rust & Ruin'], ['id' => 4, 'label' => 'Birds']]],
+        ['label' => 'albums', 'type' => 'alb', 'items' => [['id' => 9, 'label' => 'Strathmore']]],
+        ['label' => 'collections', 'type' => 'col', 'items' => [['id' => 7, 'label' => 'Hidden here']]],
+    ],
+    'search' => ['action' => 'https://example.test/', 'placeholder' => 'Search or #tag…'],
+]);
+foreach ([
+    'REGISTRY:'                 => 'the original registry label',
+    '-- ALL CATEGORIES --'      => 'the original category prompt',
+    'name="cat"'               => 'the legacy category query key',
+    'ALBUMS:'                   => 'the original albums label',
+    '-- ALL ALBUMS --'          => 'the original album prompt',
+    'name="album"'             => 'the legacy album query key',
+    'data-archive-select="1"'  => 'the CSP-safe change hook',
+    'class="archive-search-input"' => 'the original search box',
+] as $needle => $what) {
+    $check(str_contains($legacy, $needle), 'the legacy row must contain ' . $what);
+}
+$check(!str_contains($legacy, 'smack-archive-filter-panel'), 'the legacy row must not render the checkbox panel');
+$check(!str_contains($legacy, 'Hidden here'), 'the legacy row must not add later collection filters');
+$check(str_contains($legacy, '<option value="3" selected>Rust &amp; Ruin</option>'),
+    'the legacy row must reload the selected category');
+$check(str_contains($legacy, '<option value="9" selected>Strathmore</option>'),
+    'the legacy row must reload the selected album');
+
 // --- it must bring no navigation with it ---------------------------------
 foreach (['<nav', 'ss-grid-nav', 'scroll-sticky-nav', 'nav-menu'] as $needle) {
     $check(!str_contains($bar, $needle),
@@ -167,6 +199,10 @@ $check(str_contains($engine, 'window.location.pathname'),
     'applying a filter must stay on the archive the reader is looking at');
 $check(str_contains($engine, '__smackArchiveFilterBound'),
     'the engine must bind once; Crop Circles points at this same file and a double bind reads as a dead button');
+$check(str_contains($engine, "'[data-archive-select]'"),
+    'the engine must bind the legacy selects without inline script');
+$check(str_contains($engine, 'requestSubmit'),
+    'a legacy selection must submit its bounded GET form');
 
 // --- and the skin renderer must actually call it -------------------------
 $renderer = (string)@file_get_contents($root . '/core/50-shades-page-component.php');
