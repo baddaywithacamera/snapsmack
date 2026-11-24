@@ -1380,7 +1380,7 @@
     },
     "manifest-option-change-requires-version-bump-regression.php": {
         "assertions": 0,
-        "predicates": 3,
+        "predicates": 2,
         "thresholds": [
             2
         ]
@@ -2554,11 +2554,16 @@
         ]
     },
     "skin-version-content-regression.php": {
-        "assertions": 8,
-        "predicates": 1,
+        "assertions": 2,
+        "predicates": 0,
         "thresholds": [
             2
         ]
+    },
+    "skin-version-gate-shapes-regression.php": {
+        "assertions": 22,
+        "predicates": 12,
+        "thresholds": []
     },
     "skin-view-contract-regression.php": {
         "assertions": 8,
