@@ -70,7 +70,18 @@ class MainWindow(QMainWindow):
         self.target_combo = QComboBox()
         self.target_combo.currentIndexChanged.connect(self._sync_summary)
         h_row.addWidget(self.target_combo)
+        self.help_btn = QPushButton("Help (F1)")
+        h_row.addWidget(self.help_btn)
         root.addWidget(header)
+
+        shared_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "_shared"))
+        if os.path.isdir(shared_dir) and shared_dir not in sys.path:
+            sys.path.insert(0, shared_dir)
+        import snap_help
+        self._help_shortcut, _open_help = snap_help.bind_f1_qt(
+            self, snap_help.TOOL_HELP_TOPICS["instantreplay"], title="INSTANT REPLAY — Help"
+        )
+        self.help_btn.clicked.connect(_open_help)
 
         # Backup picker table
         self.backup_table = QTableWidget(0, 6)

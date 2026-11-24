@@ -197,7 +197,15 @@ class Window(QMainWindow):
         self.pages = QStackedWidget(); self.nav=[]
         for i,(name,tip,page) in enumerate((("Post","Build and publish",self._post_page()),("Queue","Review every image",self._queue_page()),("Connection","Site and services",self._settings_page()))):
             b=QPushButton(f"{name}\n{tip}"); b.setObjectName("Nav"); b.setCheckable(True); b.clicked.connect(lambda _=False,n=i:self._show(n)); sl.addWidget(b); self.nav.append(b); self.pages.addWidget(page)
-        self.nav[0].setChecked(True); sl.addStretch(1); sl.addWidget(label(f"BUILD {BUILD_VERSION}\nBatch posting without bullshit", "Muted")); shell.addWidget(side)
+        self.nav[0].setChecked(True); sl.addStretch(1)
+        help_btn = QPushButton("Help (F1)")
+        help_btn.clicked.connect(self._open_help)
+        sl.addWidget(help_btn)
+        sl.addWidget(label(f"BUILD {BUILD_VERSION}\nBatch posting without bullshit", "Muted")); shell.addWidget(side)
+        import snap_help
+        self._help_shortcut, self._help_opener = snap_help.bind_f1_qt(
+            self, snap_help.TOOL_HELP_TOPICS["sybu"], title="SYBU — Help", stylesheet=STYLE
+        )
         main=QWidget(); ml=QVBoxLayout(main); ml.setContentsMargins(0,0,0,0); ml.setSpacing(0)
         head=QFrame(); head.setObjectName("Header"); hl=QHBoxLayout(head); hl.setContentsMargins(24,13,24,13)
         hl.addWidget(label("SITE","Eyebrow")); self.profile=QComboBox(); self.profile.setMinimumWidth(260); self.profile.currentTextChanged.connect(self._profile); hl.addWidget(self.profile)
@@ -213,6 +221,9 @@ class Window(QMainWindow):
         self.progress_text=label("Ready when you are.","Muted"); self.progress_text.setWordWrap(False); stl.addWidget(self.progress_text,1)
         self.stop_btn=QPushButton("STOP"); self.stop_btn.setToolTip("Stop the running post or enrichment after the current image."); self.stop_btn.clicked.connect(self._stop); self.stop_btn.setEnabled(False); stl.addWidget(self.stop_btn)
         ml.addWidget(head); ml.addWidget(self.pages,1); ml.addWidget(strip); shell.addWidget(main,1); self.setCentralWidget(root)
+
+    def _open_help(self):
+        self._help_opener()
 
     def _page(self,title,sub):
         s=FitScrollArea(); host=QWidget(); host.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Ignored); l=QVBoxLayout(host); l.setContentsMargins(28,25,28,28); l.setSpacing(16)

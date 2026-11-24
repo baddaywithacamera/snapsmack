@@ -86,7 +86,13 @@ class Window(QMainWindow):
         row.addWidget(QLabel("Blogger Takeout → SMACKTALK")); row.addStretch(1)
         self.folder_btn = QPushButton("EXTRACTED FOLDER"); self.folder_btn.clicked.connect(self._choose_folder); row.addWidget(self.folder_btn)
         self.source_btn = QPushButton("TAKEOUT FILE"); self.source_btn.clicked.connect(self._choose); row.addWidget(self.source_btn)
+        self.help_btn = QPushButton("Help (F1)"); row.addWidget(self.help_btn)
         outer.addWidget(header)
+        import snap_help
+        self._help_shortcut, _open_help = snap_help.bind_f1_qt(
+            self, snap_help.TOOL_HELP_TOPICS["blogger-flogger"], title="BLOGGER FLOGGER — Help", stylesheet=STYLE
+        )
+        self.help_btn.clicked.connect(_open_help)
         body = QSplitter(); left = QFrame(); ll = QVBoxLayout(left); ll.setContentsMargins(18, 18, 9, 18)
         ll.addWidget(QLabel("SOURCE BLOG")); self.feed_combo = QComboBox(); self.feed_combo.currentIndexChanged.connect(self._feed_changed); ll.addWidget(self.feed_combo)
         self.source_info = QLabel("Choose a Google Takeout ZIP, folder, feed.atom, or Blogger XML."); self.source_info.setObjectName("muted"); self.source_info.setWordWrap(True); ll.addWidget(self.source_info)
