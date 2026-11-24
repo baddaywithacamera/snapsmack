@@ -36,6 +36,7 @@ Run:  python -m pytest tools/ticket-wicket/tests/test_sync_forum.py -q
 # Last non-empty line must be the Python SNAPSMACK EOF marker.
 """
 
+import json
 import os
 import sys
 
@@ -476,5 +477,315 @@ def test_without_hold_the_same_update_does_reach_the_board(tmp_path, monkeypatch
 
     tw.cmd_deliver_forum(args)
     assert ("reply", 82) in _RecordingForum.calls, _RecordingForum.calls
+
+
+# ── 5. A FAILED DELIVERY MUST NOT READ AS A QUIET SUCCESS ───────────────────
+#
+# Codex's review of this branch, 24 November 2026: the update phase threw away
+# cmd_deliver_forum's return code and its error text, so a delivery that failed
+# outright reported as a successful sync with nothing to deliver. Both outcomes
+# printed the same line -- "UPDATES delivered: 0" -- and both exited 0. Nobody
+# downstream, person or script, can tell them apart, and the wrong one of the
+# two means updates the owner believes are on the board are not on it.
+#
+# Reading the sender turned up a THIRD shape of the same fault, which the
+# review did not reach: cmd_deliver_forum catches a per-row delivery exception,
+# files it under "skipped", and returns 0 regardless. sync then counted every
+# skipped row as ALREADY IN PLACE -- so a thread that REFUSED a reply was
+# reported as a thread that already had it. That is the worst of the three,
+# because it is not merely silent, it asserts the opposite of what happened.
+
+
+def test_a_failed_delivery_is_reported_as_a_refusal_not_an_empty_sync(
+        tmp_path, monkeypatch):
+    """The whole-command failure: rc was captured and never looked at."""
+    s = _store(tmp_path)
+    s.close()
+
+    def _explodes(a):
+        print("the armed sender needs a forum key", file=sys.stderr)
+        return 2
+
+    monkeypatch.setattr(tw, "cmd_deliver_forum", _explodes)
+
+    rc = tw.cmd_sync_forum(_args(_db(tmp_path), phase="update"))
+    assert rc != 0, "a failed delivery exited 0, so nothing downstream can see it"
+
+
+def test_the_failure_text_reaches_the_report(tmp_path, monkeypatch, capsys):
+    """A non-zero exit says something broke; it does not say what.
+
+    Without the error text the operator is told a number and left to guess
+    between a missing key, a refused board and a network that is down.
+    """
+    s = _store(tmp_path)
+    s.close()
+
+    def _explodes(a):
+        print("the armed sender needs a forum key", file=sys.stderr)
+        return 2
+
+    monkeypatch.setattr(tw, "cmd_deliver_forum", _explodes)
+
+    tw.cmd_sync_forum(_args(_db(tmp_path), phase="update", json=True))
+    out = json.loads(capsys.readouterr().out)
+    why = " ".join(r["why"] for r in out["refused"])
+    assert "forum key" in why, out["refused"]
+
+
+def test_a_row_the_board_refused_is_not_counted_as_already_in_place(
+        tmp_path, monkeypatch, capsys):
+    """The per-row failure, which is the one that misreports the board.
+
+    "Skipped" covered two unlike things: rows that need nothing doing (already
+    on the thread, not published yet, held by name) and rows the board
+    REFUSED. Only the first kind is "already in place".
+
+    Driven through the REAL sender with a board that refuses, rather than a
+    hand-written payload. A fake payload would only prove that sync can read a
+    shape I invented; what has to hold is that the two halves agree, and that
+    is exactly the coupling that was broken.
+    """
+
+    class _RefusingForum(_RecordingForum):
+        def reply(self, tid, body):
+            raise RuntimeError("HTTP 500 from the board")
+
+    s = _store(tmp_path)
+    t = s.create(title="a thing", body="The thing does not work the way it should.")
+    s.update(t.id, usability="stopped", affected=2, forum_thread=44)
+    s.enqueue(t.id, "forum", "An update about the thing." + "\n\n" + "claude")
+    s.close()
+
+    monkeypatch.setattr(tw.forummod, "Forum", _RefusingForum)
+
+    rc = tw.cmd_sync_forum(_args(_db(tmp_path), phase="update", json=True))
+    out = json.loads(capsys.readouterr().out)
+
+    refused = {r["ticket"]: r["why"] for r in out["refused"]}
+    assert t.id in refused, "a refused delivery was not reported as refused"
+    assert "HTTP 500" in refused[t.id], refused
+    assert t.id not in out["already"], "a refused delivery was filed as already in place"
+    assert out["updated"] == []
+    assert rc != 0
+
+    # And it is still queued, so releasing it later still sends it.
+    s2 = _store(tmp_path)
+    assert len([r for r in s2.outbox("queued") if r.get("ticket") == t.id]) == 1
+    s2.close()
+
+
+def test_a_genuine_skip_is_still_just_a_skip(tmp_path, monkeypatch, capsys):
+    """The other half. Without it, "report failures" is satisfied by calling
+    everything a failure, which would make the exit code useless."""
+    s = _store(tmp_path)
+    t = s.create(title="a thing", body="The thing does not work the way it should.")
+    s.update(t.id, usability="stopped", affected=2)      # never published
+    s.enqueue(t.id, "forum", "An update about the thing." + "\n\n" + "claude")
+    s.close()
+
+    monkeypatch.setattr(tw.forummod, "Forum", _RecordingForum)
+
+    rc = tw.cmd_sync_forum(_args(_db(tmp_path), phase="update", json=True))
+    out = json.loads(capsys.readouterr().out)
+
+    assert out["refused"] == [], out["refused"]
+    assert t.id in out["already"], out["already"]
+    assert rc == 0
+
+
+def test_a_clean_empty_update_run_still_succeeds(tmp_path, monkeypatch):
+    """The half that makes the three above mean something.
+
+    Without it they are all satisfied by a command that fails every time,
+    which would be useless in a different way and would stop the sync being
+    runnable at all.
+    """
+    s = _store(tmp_path)
+    s.close()
+
+    monkeypatch.setattr(tw, "cmd_deliver_forum",
+                        lambda a: print(json.dumps({"delivered": [], "skipped": []})) or 0)
+
+    assert tw.cmd_sync_forum(_args(_db(tmp_path), phase="update")) == 0
+
+
+# ── 6. THE OPEN-SECURITY HOLD APPLIES TO UPDATES, NOT JUST TO NEW TICKETS ───
+#
+# Also Codex's. The ADD phase held an OPEN DOOR OPEN ticket back, and the
+# UPDATE phase then delivered a queued reply about that same ticket with no
+# band check at all. Sean's instruction was "please don't publish open holes".
+# A reply describing an unfixed hole publishes it as surely as the first post
+# does, and on a thread that is ALREADY on the board there is no first post to
+# hold back -- so the ADD guard never even gets a chance to apply.
+#
+# The guard goes in the armed sender rather than in sync, because the sender
+# is the publishing boundary: every caller is covered, not just this one.
+
+
+def _published_door_open(s):
+    t = s.create(title="a hole", body="There is a way in that should not be there.")
+    s.update(t.id, security=True, usability="stopped", affected=5,
+             forum_thread=91)
+    return s.get(t.id)
+
+
+def _deliver_args(tmp_path, **over):
+    a = tw.build_parser().parse_args(["deliver-forum"])
+    a.db = _db(tmp_path)
+    a.as_who = model.CLAUDE
+    a.forum_url = "https://forum.test"
+    a.forum_key = "test-key"
+    a.json = True
+    for k, v in over.items():
+        setattr(a, k, v)
+    return a
+
+
+def test_an_update_on_an_open_security_ticket_is_not_delivered(
+        tmp_path, monkeypatch):
+    """The ABSENCE of the call, not a side effect that failure would share.
+
+    Asserting only "the row is still queued" would pass just as well if the
+    sender had tried and the board had refused it. The forum must never be
+    asked at all.
+    """
+    s = _store(tmp_path)
+    t = _published_door_open(s)
+    assert t.band == "DOOR OPEN", t.band
+    assert t.state in model.OPEN_STATES
+    s.enqueue(t.id, "forum", "Still looking into this." + "\n\n" + "claude")
+    s.close()
+
+    monkeypatch.setattr(tw.forummod, "Forum", _RecordingForum)
+
+    rc = tw.cmd_deliver_forum(_deliver_args(tmp_path))
+    assert rc == 0
+    assert _RecordingForum.calls == [], _RecordingForum.calls
+
+    s2 = _store(tmp_path)
+    still = [r for r in s2.outbox("queued") if r.get("ticket") == t.id]
+    assert len(still) == 1, "the held update was consumed instead of kept"
+    s2.close()
+
+
+def test_include_security_delivers_that_same_update(tmp_path, monkeypatch):
+    """The other direction, so the hold above is a decision and not a breakage."""
+    s = _store(tmp_path)
+    t = _published_door_open(s)
+    s.enqueue(t.id, "forum", "Still looking into this." + "\n\n" + "claude")
+    s.close()
+
+    monkeypatch.setattr(tw.forummod, "Forum", _RecordingForum)
+
+    tw.cmd_deliver_forum(_deliver_args(tmp_path, include_security=True))
+    assert ("reply", 91) in _RecordingForum.calls, _RecordingForum.calls
+
+
+def test_a_fixed_security_ticket_still_gets_its_update(tmp_path, monkeypatch):
+    """Hold while OPEN, publish when FIXED -- the rule the ADD phase uses.
+
+    Without this the hold could be "never deliver to a DOOR OPEN thread",
+    which would strand the closure note on every security ticket ever fixed.
+    """
+    s = _store(tmp_path)
+    t = _published_door_open(s)
+    s.update(t.id, state=model.RESOLVED)
+    s.enqueue(t.id, "forum", "Fixed in the next build." + "\n\n" + "claude")
+    s.close()
+
+    monkeypatch.setattr(tw.forummod, "Forum", _RecordingForum)
+
+    tw.cmd_deliver_forum(_deliver_args(tmp_path))
+    assert ("reply", 91) in _RecordingForum.calls, _RecordingForum.calls
+
+
+def test_an_ordinary_open_ticket_is_untouched_by_the_security_hold(
+        tmp_path, monkeypatch):
+    """The hold must key on the BAND, not on 'open'. A hold that caught every
+    open ticket would deliver nothing at all and still pass every test above."""
+    s = _store(tmp_path)
+    t = s.create(title="a thing", body="The thing does not work the way it should.")
+    s.update(t.id, usability="stopped", affected=2, forum_thread=91)
+    assert s.get(t.id).band != "DOOR OPEN"
+    s.enqueue(t.id, "forum", "Looking at this now." + "\n\n" + "claude")
+    s.close()
+
+    monkeypatch.setattr(tw.forummod, "Forum", _RecordingForum)
+
+    tw.cmd_deliver_forum(_deliver_args(tmp_path))
+    assert ("reply", 91) in _RecordingForum.calls, _RecordingForum.calls
+
+
+# ── TWO THINGS NOTHING WAS HOLDING, FOUND BY MUTATING THE FIXES ─────────────
+#
+# Both mutants below SURVIVED the tests above. Neither gap was hypothetical:
+# the first lets the armed sender tell any caller that a refused delivery
+# succeeded, and sync only happened to catch it by reading a different field.
+# The second lets the security hold work perfectly and never be reported, so
+# an operator would see a lower delivered count with no reason given for it --
+# the quiet failure this whole review is about, wearing a different hat.
+
+
+def test_the_sender_itself_exits_non_zero_when_the_board_refuses(
+        tmp_path, monkeypatch):
+    """The sender's exit code is a contract for every caller, not just sync.
+
+    MUTANT THAT SURVIVED WITHOUT THIS: `return 1 if failed else 0` -> `return
+    0`. sync still reported the failure, because it reads the failed list, so
+    every other test passed -- and anything else calling deliver-forum, a
+    hook or a person at a prompt, was told it had worked.
+    """
+
+    class _RefusingForum(_RecordingForum):
+        def reply(self, tid, body):
+            raise RuntimeError("HTTP 500 from the board")
+
+    s = _store(tmp_path)
+    t = s.create(title="a thing", body="The thing does not work the way it should.")
+    s.update(t.id, usability="stopped", affected=2, forum_thread=44)
+    s.enqueue(t.id, "forum", "An update about the thing." + "\n\n" + "claude")
+    s.close()
+
+    monkeypatch.setattr(tw.forummod, "Forum", _RefusingForum)
+    assert tw.cmd_deliver_forum(_deliver_args(tmp_path)) != 0
+
+
+def test_the_sender_still_exits_zero_when_it_merely_held_something(
+        tmp_path, monkeypatch):
+    """A hold is a decision, not a failure. Without this half, the test above
+    is satisfied by a sender that fails whenever it does not deliver."""
+    s = _store(tmp_path)
+    t = _published_door_open(s)
+    s.enqueue(t.id, "forum", "Still looking into this." + "\n\n" + "claude")
+    s.close()
+
+    monkeypatch.setattr(tw.forummod, "Forum", _RecordingForum)
+    assert tw.cmd_deliver_forum(_deliver_args(tmp_path)) == 0
+
+
+def test_sync_reports_an_update_held_for_open_security(tmp_path, monkeypatch, capsys):
+    """Holding it is half the job; saying so is the other half.
+
+    MUTANT THAT SURVIVED WITHOUT THIS: sync dropping the sender's
+    held_security list. The update was correctly withheld and the operator was
+    told nothing -- a count that is lower than expected with no reason beside
+    it, which is how somebody ends up re-running with --include-security to
+    see what happens.
+    """
+    s = _store(tmp_path)
+    t = _published_door_open(s)
+    s.enqueue(t.id, "forum", "Still looking into this." + "\n\n" + "claude")
+    s.close()
+
+    monkeypatch.setattr(tw.forummod, "Forum", _RecordingForum)
+
+    rc = tw.cmd_sync_forum(_args(_db(tmp_path), phase="update", json=True))
+    out = json.loads(capsys.readouterr().out)
+
+    assert t.id in out["held_security"], out
+    assert out["updated"] == []
+    assert t.id not in out["already"], "a held update was reported as already done"
+    assert rc == 0, "a hold is a decision, not a failure"
 
 # ===== SNAPSMACK EOF =====

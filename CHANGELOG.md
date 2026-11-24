@@ -54,6 +54,34 @@
 
 ## 0.7.1003D — opened
 
+- **A failed delivery to the support forum used to look exactly like having
+  nothing to deliver.** When the ticket tool published updates to the board in
+  bulk, it printed the same line either way -- updates delivered, zero -- and
+  reported success either way. Nobody reading the result, person or script,
+  could tell "there was nothing waiting" from "everything waiting failed to
+  go out". The second one means replies you believe are on your board are not
+  on it.
+  There was a worse version of the same fault underneath. When the board
+  itself refused a single reply, that reply was filed under "skipped" together
+  with the replies that genuinely needed nothing doing -- so the summary
+  counted a refused update as one that was ALREADY THERE. Not merely silent:
+  the opposite of what happened.
+  Both are fixed. A refusal is now reported as a refusal, with the reason the
+  board gave, and the command tells you so in its exit status. A refusal that
+  is the tool's own guard working -- a post it will not publish because the
+  wording still identifies somebody -- is still a success, because the run did
+  what it should. Something breaking is now distinguishable from something
+  being prevented.
+- **An update about an unfixed security problem can no longer be posted to the
+  public board.** The rule that holds an open security report back was being
+  applied only when the report was first published. A later reply on that same
+  report went out with no check at all -- and once the thread is on the board
+  there is no first post left to hold back, so the reply is the publication.
+  The hold now sits at the point where anything is published, so every part of
+  the tool is covered rather than one path through it. It still works the way
+  it did before in the case that matters most: once the problem is FIXED, its
+  updates and its closing note go out normally.
+
 - **Your archive shows photographs at their real shapes again, not flattened
   into letterboxes.** After updating to 0.7.1002D the found textures archive
   drew every tile at 300 by 150 pixels — a 2:1 letterbox — while the actual

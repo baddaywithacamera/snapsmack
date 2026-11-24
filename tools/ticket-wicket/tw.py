@@ -461,7 +461,9 @@ def cmd_deliver_forum(args):
               "(or SNAPSMACK_FORUM_URL / SNAPSMACK_FORUM_KEY).", file=sys.stderr)
         return 2
     f = forummod.Forum(args.forum_url, args.forum_key)
-    delivered, skipped = [], []
+    delivered, skipped, failed = [], [], []
+    held_security = []
+    include_security = bool(getattr(args, "include_security", False))
     held_out = {str(x).strip() for x in (getattr(args, "hold", None) or []) if str(x).strip()}
     for r in s.outbox("queued"):
         ticket_id = r.get("ticket")
@@ -477,7 +479,28 @@ def cmd_deliver_forum(args):
         if ticket_id in held_out:
             skipped.append({"ticket": ticket_id, "why": "held out by --hold"})
             continue
-        reporter = (getattr(s.get(ticket_id), "reporter", "") or "")
+        ticket = s.get(ticket_id)
+        # AN OPEN HOLE IS NOT ANNOUNCED BY ITS UPDATES EITHER.
+        #
+        # Codex's review, 24 November 2026. sync held an OPEN DOOR OPEN ticket
+        # back from the ADD phase and then delivered a queued reply about that
+        # same ticket with no band check at all. On a thread that is already on
+        # the board there is no first post left to withhold, so the ADD guard
+        # never gets a chance to apply -- the reply IS the publication.
+        #
+        # The hold lives here rather than in sync because this is the
+        # publishing boundary: every caller gets it, not just the bulk one.
+        # It keys on the BAND and on the ticket still being OPEN, which is the
+        # same rule the ADD phase uses -- hold while open, publish when fixed,
+        # so a closure note on a security ticket that HAS been fixed still goes
+        # out. The row stays queued; nothing is marked sent.
+        if (not include_security
+                and getattr(ticket, "band", "") == "DOOR OPEN"
+                and getattr(ticket, "state", "") in model.OPEN_STATES):
+            held_security.append({"ticket": ticket_id,
+                                  "why": "open DOOR OPEN; --include-security overrules"})
+            continue
+        reporter = (getattr(ticket, "reporter", "") or "")
         # Decide candidacy BEFORE touching the board. A genuine email row (a real
         # address) is never searched, so its ticket's forum_thread can never be
         # backfilled as a side effect (Muse, 989D pass). A forum row, or an email
@@ -510,13 +533,24 @@ def cmd_deliver_forum(args):
             delivered.append({"ticket": ticket_id, "thread": thread, "reply": reply_id,
                               "rescued": rescued})
         except Exception as exc:
-            skipped.append({"ticket": ticket_id, "why": f"delivery failed: {exc}"})
-    _out(args, {"delivered": delivered, "skipped": skipped},
+            # A REFUSAL IS NOT A SKIP. These two were in one list and the
+            # command returned 0 over both, so a thread that refused a reply
+            # was reported by sync as a thread that ALREADY HAD it -- not
+            # merely silent, the opposite of what happened. "Skipped" is for
+            # rows that need nothing doing; this is a row that needed doing
+            # and did not get done.
+            failed.append({"ticket": ticket_id, "why": f"delivery failed: {exc}"})
+    _out(args, {"delivered": delivered, "skipped": skipped,
+                "failed": failed, "held_security": held_security},
          f"Delivered {len(delivered)} forum repl"
-         f"{'y' if len(delivered) == 1 else 'ies'}; {len(skipped)} skipped. "
+         f"{'y' if len(delivered) == 1 else 'ies'}; {len(skipped)} skipped; "
+         f"{len(held_security)} held (open security); {len(failed)} FAILED. "
          f"Genuine email replies -- no forum thread, or a real address -- are left "
          f"for the owner to send.")
-    return 0
+    # Non-zero when anything was refused, so a caller cannot read a failed run
+    # as an empty one. A held row is a decision, not a failure, and does not
+    # change the exit code.
+    return 1 if failed else 0
 
 
 def cmd_ack(args):
@@ -743,6 +777,8 @@ def cmd_sync_forum(args):
     board = args.board
 
     added, updated, closed = [], [], []
+    # Delivery problems only -- see the note on the return at the end.
+    delivery_failed = []
     held_security, held_pulse, refused, already = [], [], [], []
     # A ticket named with --hold is left out of every phase, not just the
     # updates: if it is not ready to be published it is not ready to be
@@ -787,7 +823,30 @@ def cmd_sync_forum(args):
         except ValueError:
             payload = {}
         updated = payload.get("delivered") or []
-        already += [r if isinstance(r, str) else str(r)
+
+        # THE RETURN CODE AND THE ERROR TEXT WERE BOTH THROWN AWAY.
+        #
+        # Codex's review, 24 November 2026. rc was captured and never read, so
+        # a delivery that failed outright printed the same line as a run with
+        # nothing to deliver -- "UPDATES delivered: 0" -- and exited 0 either
+        # way. Nobody downstream could tell the two apart, and the wrong one
+        # means updates the owner believes are on the board are not on it.
+        if rc != 0 and not payload:
+            refused.append(("(delivery)", "update", _first_line(err, out)))
+            delivery_failed.append("(delivery)")
+
+        # A row the board REFUSED is not a row that was already in place. The
+        # sender used to file both under "skipped"; it now separates them, and
+        # the failures are reported as failures.
+        for row in (payload.get("failed") or []):
+            tid = row.get("ticket") if isinstance(row, dict) else str(row)
+            why = row.get("why") if isinstance(row, dict) else "delivery failed"
+            refused.append((tid, "update", why))
+            delivery_failed.append(tid)
+        for row in (payload.get("held_security") or []):
+            tid = row.get("ticket") if isinstance(row, dict) else str(row)
+            held_security.append(tid)
+        already += [r if isinstance(r, str) else str(r.get("ticket", r))
                     for r in (payload.get("skipped") or [])]
     elif want_upd:
         updated = [r.get("ticket") for r in s.outbox("queued")
@@ -848,7 +907,21 @@ def cmd_sync_forum(args):
     for a, b, c in refused[:12]:
         lines.append("    %-9s %-6s %s" % (a, b, c[:96]))
     _out(args, data, "\n".join(lines))
-    return 0
+    # WHICH REFUSALS CHANGE THE EXIT CODE, AND WHY ONLY THOSE.
+    #
+    # A post or a closure the TOOL refused -- a body that still identifies
+    # someone, one that is too long, a pulse ticket -- is a guard doing its
+    # job. The run completed, every other ticket went through, and the
+    # refusals are named in the report. That stays exit 0, which is the
+    # decision test_a_raising_ticket_is_recorded_and_the_run_continues holds
+    # in place and I am not overturning it.
+    #
+    # A DELIVERY failure is the other thing: the tool approved the reply and
+    # the board would not take it, or the sender never ran. Nothing guarded
+    # anything; something broke. Those exit non-zero, because the alternative
+    # is the fault Codex found -- a failed delivery reading exactly like a run
+    # with nothing to deliver.
+    return 1 if delivery_failed else 0
 
 
 def build_parser():
@@ -943,6 +1016,10 @@ def build_parser():
     df = sub.add_parser("deliver-forum")
     df.add_argument("--hold", action="append", default=[], metavar="TICKET",
                     help="do not deliver this ticket's queued replies; repeatable")
+    df.add_argument("--include-security", action="store_true",
+                    help="also deliver updates on OPEN DOOR OPEN tickets. They "
+                         "are held back by default: an update describing a hole "
+                         "that is still open publishes it.")
     df.set_defaults(func=cmd_deliver_forum)
 
     ob = sub.add_parser("outbox")
