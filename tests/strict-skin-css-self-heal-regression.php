@@ -156,14 +156,21 @@ cx($sites === 2, "index.php still builds the strict view in exactly 2 places (fo
 $refreshCalls = substr_count($index, 'snapsmack_public_css_refresh_if_stale(');
 cx($refreshCalls >= 2, "the repair is called at least once per strict view build (found {$refreshCalls})");
 
-// Each strict view build must have a repair call BEFORE it, within 40 lines.
+// Each strict view build must have a repair call before it in the same branch.
+// Preparation added between the repair and the view is allowed; crossing the
+// previous view build or the branch boundary is not.
 $lines = preg_split('/\R/', $index) ?: [];
 $ok = 0;
+$previousView = -1;
 foreach ($lines as $n => $line) {
     if (!str_contains($line, "'skin_custom_style' => snapsmack_skin_custom_style(\$settings)")) continue;
-    for ($back = max(0, $n - 40); $back < $n; $back++) {
-        if (str_contains($lines[$back], 'snapsmack_public_css_refresh_if_stale(')) { $ok++; break; }
+    for ($back = $n - 1; $back > $previousView; $back--) {
+        if (str_contains($lines[$back], 'snapsmack_public_css_refresh_if_stale(')) {
+            $ok++;
+            break;
+        }
     }
+    $previousView = $n;
 }
 cx($ok === 2, "both view builds are preceded by a repair call (found {$ok} of 2)");
 

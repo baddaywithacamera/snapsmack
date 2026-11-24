@@ -90,7 +90,8 @@ d_ok(!preg_match('/href="<\?php echo \$_dl_href; \?>"/', $dock),
 
 // The dock's identity links were the other half of this surface and are already
 // scheme-checked by the IndieWeb helper — assert it stays that way.
-d_ok(str_contains($dock, 'snapsmack_indieweb_url((string)($settings[ $_platform[\'key\'] ] ?? \'\'))'),
+d_ok(str_contains($dock, "\$_value = (string)(\$settings[ \$_platform['key'] ] ?? '');")
+     && str_contains($dock, ': snapsmack_indieweb_url($_value);'),
      'the social dock no longer scheme-checks its identity links');
 
 // ── rel=me identity URLs ────────────────────────────────────────────────────

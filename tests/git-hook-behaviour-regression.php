@@ -199,10 +199,16 @@ function hook_prepush(string $python, string $hook, string $cwd, string $refs): 
 if ($python === null) {
     $failures[] = 'no python3 on PATH, so the pre-push gate cannot run at all on this machine';
 } else {
-    // The gate asks tools/release-flow.php, which reads the skin inventory
-    // next to it. Both are copied in so the throwaway repository can answer.
+    // The gate asks tools/release-flow.php, which reads the skin inventory and
+    // loads its demo-parity validator. Copy those release inputs so the
+    // throwaway repository can answer for the same reason the real one can.
     mkdir($tmp . '/tools', 0775, true);
     copy($root . '/tools/release-flow.php', $tmp . '/tools/release-flow.php');
+    mkdir($tmp . '/tools/_build', 0775, true);
+    copy(
+        $root . '/tools/_build/release-demo-parity.php',
+        $tmp . '/tools/_build/release-demo-parity.php'
+    );
     mkdir($tmp . '/skins/testskin', 0775, true);
     file_put_contents($tmp . '/skins/testskin/manifest.json', json_encode(['name' => 'testskin']));
 
@@ -240,6 +246,18 @@ if ($python === null) {
         'skin_render_parity' => 'pass',
         'authority_review' => 'approved',
         'browser_regressions' => 'pass',
+        'fleet_before' => 'pass',
+        'fleet_before_site_count' => 17,
+        'fleet_before_surface_count' => 102,
+        'fleet_before_manifest_sha256' => str_repeat('a', 64),
+        'demo_parity' => 'pass',
+        'demo_parity_record_sha256' => str_repeat('b', 64),
+        'demo_parity_features' => [[
+            'ticket' => 'SS-1508',
+            'site' => 'https://example.invalid',
+            'room_message_id' => 'fixture-message',
+            'capture_count' => 1,
+        ]],
         'skin_count' => 1,
         'skin_inventory_sha256' => hash('sha256', 'testskin'),
         'skin_render_changes' => [],
