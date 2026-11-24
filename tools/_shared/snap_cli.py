@@ -214,15 +214,21 @@ def _trusted_stepup_endpoint():
 
 
 def _interactive_stepup_prompt():
-    """Prompt owner interactively for username, password, and 2FA code (never via env vars)."""
+    """Prompt owner interactively on real stderr/tty (never swallowed by redirect_stdout)."""
     if sys.stdin is None or not sys.stdin.isatty():
         raise PermissionError(
             "Fresh owner step-up verification requires an interactive terminal or GUI prompt."
         )
     import getpass
-    user = input("SnapSmack username: ").strip()
-    pwd = getpass.getpass("SnapSmack password: ")
-    totp = input("2FA TOTP code (6 digits): ").strip()
+    out = sys.__stderr__ or sys.stderr
+    def _ask(label: str) -> str:
+        out.write(label)
+        out.flush()
+        return sys.stdin.readline().strip()
+
+    user = _ask("SnapSmack username: ")
+    pwd = getpass.getpass("SnapSmack password: ", stream=out)
+    totp = _ask("2FA TOTP code (6 digits): ")
     if not user or not pwd or not totp:
         raise PermissionError("Username, password, and 2FA TOTP code are all required.")
     return user, pwd, totp

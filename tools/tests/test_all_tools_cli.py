@@ -195,5 +195,24 @@ def test_session_gate_stepup_enforcement(tmp_path, monkeypatch):
     )
     assert rc4 == 3
 
+    # 6. Interactive prompt writes to real terminal/stderr even inside redirect_stdout(StringIO)
+    import contextlib, io, getpass
+    stderr_buf = io.StringIO()
+    stdin_buf = io.StringIO("sean\n123456\n")
+    stdin_buf.isatty = lambda: True  # type: ignore[attr-defined]
+    stdout_trap = io.StringIO()
+    monkeypatch.setattr(sys, "stdin", stdin_buf)
+    monkeypatch.setattr(sys, "stderr", stderr_buf)
+    monkeypatch.setattr(sys, "__stderr__", stderr_buf)
+    monkeypatch.setattr(getpass, "getpass", lambda prompt, stream=None: (stream.write(prompt), "pw")[1])
+    with contextlib.redirect_stdout(stdout_trap):
+        u, p, t = snap_cli._interactive_stepup_prompt()
+    assert (u, p, t) == ("sean", "pw", "123456")
+    assert stdout_trap.getvalue() == ""
+    err_text = stderr_buf.getvalue()
+    assert "SnapSmack username:" in err_text
+    assert "SnapSmack password:" in err_text
+    assert "2FA TOTP code" in err_text
+
 
 # ===== SNAPSMACK EOF =====
