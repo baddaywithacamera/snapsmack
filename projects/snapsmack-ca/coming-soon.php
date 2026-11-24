@@ -39,7 +39,7 @@ $page_css = <<<'CSS'
 .shipped-list a strong { display: block; font: 900 .88rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .shipped-list a strong::after { content: " \2192"; color: var(--red); }
 .shipped-list a span { display: block; margin-top: 5px; color: var(--mid-grey); font-size: .85rem; line-height: 1.45; }
-.shipped-list a:hover { background: var(--white); text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
+.shipped-list a:hover { background: var(--light-grey); text-decoration: none; }
 @media (max-width: 850px) { .coming-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .coming-grid, .shipped-list { grid-template-columns: 1fr; } .shipped-list a:last-child:nth-child(odd) { grid-column: auto; } }
 CSS;

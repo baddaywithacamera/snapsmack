@@ -57,8 +57,8 @@ $page_css = <<<'CSS'
 .faq-more-grid a { display: block; padding: 18px 20px; background: var(--white); color: var(--black); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .faq-more-grid a strong { display: block; font: 900 .85rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .faq-more-grid a span { display: block; margin-top: 5px; color: var(--mid-grey); font-size: .84rem; line-height: 1.45; }
-.faq-more-grid a:hover { background: var(--white); text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
-.faq-more-grid a.active { background: var(--light-grey); box-shadow: inset 0 -4px 0 var(--black); }
+.faq-more-grid a:hover { background: var(--light-grey); text-decoration: none; }
+.faq-more-grid a.active { background: var(--light-grey); border-bottom: 4px solid var(--black); }
 @media (max-width: 700px) { .faq-more-grid { grid-template-columns: 1fr; } }
 CSS;
 

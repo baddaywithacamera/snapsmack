@@ -74,7 +74,6 @@
 .site-discovery .footer-discovery a:focus-visible {
     color: var(--white);
     background: #242424;
-    box-shadow: inset 0 -3px 0 var(--red);
 }
 .site-discovery .footer-discovery a:hover span,
 .site-discovery .footer-discovery a:focus-visible span { color: #ddd; }
@@ -95,7 +94,7 @@
 <aside class="site-discovery" aria-labelledby="site-discovery-title">
     <div class="wrap">
         <p class="site-discovery-kicker">Keep exploring</p>
-        <h2 id="site-discovery-title">Find your way into SnapSmack.</h2>
+        <h2 id="site-discovery-title">Find your way into SNAPSMACK.</h2>
         <nav class="footer-discovery" aria-label="Explore SnapSmack">
             <a href="instagram-alternative.php"><strong>Leave Instagram</strong><span>Keep the feed. Lose the landlord.</span></a>
             <a href="flickr-alternative.php"><strong>Move beyond Flickr</strong><span>Your archive, under your domain.</span></a>

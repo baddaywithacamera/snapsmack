@@ -169,7 +169,10 @@ echo json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 <!-- MINI HEADER -->
 <div id="mini-header">
     <div class="mini-inner">
-        <a href="index.php" class="mini-logo"><img src="img/logo.png" alt="SnapSmack" width="1024" height="1024"></a>
+        <a href="index.php" class="mini-logo">
+            <img src="img/logo.png" alt="SNAPSMACK" width="1024" height="1024">
+            <span class="mini-wordmark"><em>SNAP</em><strong>SMACK</strong></span>
+        </a>
         <input type="checkbox" id="ss-nav-mini" class="nav-toggle" aria-hidden="true">
         <label for="ss-nav-mini" class="nav-burger" role="button" aria-label="Toggle menu"></label>
         <nav>
@@ -182,7 +185,7 @@ echo json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 <header id="site-header">
     <div class="header-inner">
         <a href="index.php" class="logo-lockup">
-            <img src="img/logo.png" alt="SnapSmack" width="1024" height="1024">
+            <img src="img/logo.png" alt="SNAPSMACK" width="1024" height="1024">
             <div class="logo-text">
                 <div class="snap"><em>Snap</em><strong>Smack</strong></div>
                 <div class="tagline">PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ</div>

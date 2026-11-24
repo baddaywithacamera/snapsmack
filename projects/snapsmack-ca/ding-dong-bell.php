@@ -82,7 +82,7 @@ h3 { font-size: 1rem; }
     line-height: 1.3;
 }
 .state.open      { background: var(--red);      color: var(--white); }
-.state.notwatch  { background: var(--light-grey); color: var(--dark-grey); border: 1px solid var(--mid-grey); }
+.state.notwatch  { background: #ffd84d;         color: #332800; border: 1px solid #b58c00; }
 .state.watched   { background: #1a7a3c;         color: var(--white); }
 .state.eyeball   { background: var(--black);    color: var(--white); }
 .state.nottested { background: var(--light-grey);color: var(--dark-grey); border: 1px solid #ccc; }
@@ -205,6 +205,12 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <div class="entry">
+                <div class="entry-top"><h3>OPAUDIT 036 - The test that locked out the tester</h3><span class="date">2026-11-19</span><span class="state watched">Closed</span></div>
+                <p>An authorized defensive test against a disposable directory triggered the hosted AI service&rsquo;s cybersecurity safeguard and left the review task restricted. A heartbeat then kept retrying that restricted task. The process now keeps attack proofs in committed regression tests and stops automated retries on a refusal.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-11-19-036-the-test-that-locked-out-the-tester.html" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
+            </div>
 
             <div class="entry">
                 <div class="entry-top"><h3>OPAUDIT 035 - Green on the fixture, broken on the page</h3><span class="date">2026-11-14</span><span class="state open">Open</span></div>

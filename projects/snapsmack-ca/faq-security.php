@@ -5,7 +5,7 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$page_title       = 'BRASS TACKS!: Security | Free photoblog software';
+$page_title       = 'BRASS TACKS! - Security - SnapSmack FAQ';
 $page_description = 'SnapSmack FAQ, security: Is it secure, what SMACKBACK is, why you keep re-authenticating, and what happens if you get hacked.';
 $page_og_url      = 'https://snapsmack.ca/faq-security.php';
 $faq_slug    = 'faq-security';
@@ -13,9 +13,9 @@ $faq_section = 'Security';
 $faq_lede    = 'Is it secure, what SMACKBACK is, why you keep re-authenticating, and what happens if you get hacked.';
 $faq_qas = <<<'HTML'
             <div class="qa" id="q-secure">
-                <h3>Is SnapSmack secure?</h3>
-                <p>As secure as Claude, Codex, Muse and I could make it. But perfectly secure? No. Assume there are holes. Every software package has holes they've found and aren't telling you about, and worse ones nobody has found yet. Practice good file and backup hygiene, rotate passwords and API keys regularly, and keep them safe. Anyone who tells you their platform is bulletproof is lying.</p>
-                <p>Hobbyist software or not, I have a duty of care to everyone who uses it: to make it as secure as possible, to protect it from breach and tampering, and to protect your data from loss. Upholding that matters to me. The receipts are public: <a href="buzzers.php">BUZZERS!</a> lists every audit we've run, open and closed.</p>
+                <h3>Is SNAPSMACK secure?</h3>
+                <p>As secure as the team and I could make it (Claude, Codex, Gemini and Muse, with each of us checking the others' work), but perfectly secure? No. Assume there are holes. Practice good file and backup hygiene, rotate passwords and API keys regularly, keep them safe. Anyone who tells you their platform is bulletproof is lying.</p>
+                <p>Hobbyist software or not, I have a duty of care to all users of the software to make it as secure as possible, protecting it from breach and tampering, and protecting your data from loss. It's important to me to uphold that duty of care. The receipts are public: see <a href="buzzers.php">BUZZERS!</a> for every audit we've run and closed.</p>
             </div>
 
             <div class="qa" id="q-smackback">
@@ -38,20 +38,17 @@ $faq_qas = <<<'HTML'
 
             <div class="qa" id="q-hacked">
                 <h3>What happens if my site gets hacked?</h3>
-                <p>See <a href="buzzers.php">BUZZERS!</a> and the security documentation for the full picture. The short version: SMACKBACK has a hair trigger and will notice changes and lock down your site. With paranoid settings enabled you can't do anything except use the provided tools in the interface to replace tampered files with clean, digitally signed versions. Besides, this isn't a big deal because you've been using our excellent backup tools daily, right? RIGHT?</p>
+                <p>See <a href="buzzers.php">BUZZERS!</a> and the security documentation for the full picture. The short version: SMACKBACK has a hair trigger and will notice changes and lock down your site. With paranoid settings enabled you can't do anything except use the provided tools in the interface to replace tampered files with clean, digitally signed versions.</p>
+                <p>A hacked site is serious, but it should not become a disaster when you have a current backup you have already tested. SMACK UP YOUR BACKUP creates the recovery archive. INSTANT REPLAY restores it to a test blog so you can prove the backup works before you need it. SMACKBACK detects and contains the tampering; your verified backup gives you the recovery path. You've been backing up daily and testing those restores, right? RIGHT?</p>
             </div>
 
             <div class="qa" id="q-contribute">
                 <h3>Can I contribute?</h3>
                 <p>To the codebase, no. We don't need our own version of the XZ Utils backdoor, one of the most sophisticated supply chain attacks in open source history was a social engineering job that took years of patient groundwork. We're not leaving that door open.</p>
                 <p>What you can contribute: bug reports, skin submissions through the gallery process, and feedback. All of it is welcome.</p>
-                <p>The codebase is publicly available in our repository for inspection at any time. Claude performs ongoing security audits of the codebase, high and medium risk items are fixed immediately, low risk items are addressed on a schedule. If you find something we missed, tell us.</p>
+                <p>The codebase is publicly available in our repository for inspection at any time. Claude, Codex, Gemini and Muse perform ongoing security audits of the codebase, with each checking the others' work. High and medium risk items are fixed immediately, low risk items are addressed on a schedule. If you find something we missed, tell us.</p>
             </div>
 
 HTML;
-if (defined('SNAPSMACK_FAQ_ASSEMBLY')) {
-    return;
-}
-header('Location: brass-tacks.php#faq-security', true, 301);
-exit;
+require_once __DIR__ . '/includes/faq-page.php';
 // ===== SNAPSMACK EOF =====

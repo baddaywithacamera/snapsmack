@@ -28,7 +28,7 @@ $page_css = <<<'CSS'
 .tool-group-head p { color: var(--mid-grey); }
 .tool-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
 .tool-card { display: grid; grid-template-rows: auto 1fr; border: 1px solid var(--border); background: var(--white); color: var(--dark-grey); }
-.tool-card:hover, .tool-card:focus-visible { text-decoration: none; color: var(--dark-grey); box-shadow: inset 0 -5px 0 var(--red); }
+.tool-card:hover, .tool-card:focus-visible { text-decoration: none; color: var(--dark-grey); border-bottom-color: var(--red); }
 .tool-card-shot { aspect-ratio: 16 / 9; overflow: hidden; background: var(--black); border-bottom: 1px solid var(--border); }
 .tool-card-shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
 .tool-card-shot--none { display: grid; place-content: center; text-align: center; background: #1a1a1a; color: #666; font: 900 1.6rem/1.1 Arial Black, Arial, sans-serif; letter-spacing: -.02em; text-transform: uppercase; padding: 20px; }
@@ -46,7 +46,7 @@ $page_css = <<<'CSS'
 .workshop-list a { display: block; padding: 18px 20px; background: var(--white); color: var(--black); }
 .workshop-list a strong { display: block; font: 900 .85rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .workshop-list a span { display: block; margin-top: 5px; color: var(--mid-grey); font-size: .82rem; line-height: 1.45; }
-.workshop-list a:hover { background: var(--white); text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
+.workshop-list a:hover { background: var(--light-grey); text-decoration: none; }
 .suite-band { padding: 22px 26px; margin-top: 34px; border-left: 5px solid var(--red); background: var(--black); color: var(--white); font: 900 clamp(1rem, 1.9vw, 1.25rem)/1.4 Arial Black, Arial, sans-serif; }
 @media (max-width: 850px) { .workshop-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .tool-cards, .workshop-list { grid-template-columns: 1fr; } }
