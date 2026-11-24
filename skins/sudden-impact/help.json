@@ -42,8 +42,8 @@
             "body": "Sudden Impact lets you composite your photographs into custom frames — the kind of careful presentation photographers used to do in Photoshop actions or Instasize before the platforms stripped it out. In Skin Admin, set the Customisation Level, then control image size within the tile, border thickness and colour, frame background colour, and drop shadow. When a frame is applied, the tile switches from full-bleed cover crop to a centred, contained image over a coloured background."
         },
         {
-            "title": "Likes, Reactions & Comments",
-            "body": "SnapSmack's community system gives visitors a way to interact with your photographs. A floating dock appears on every page with a like button and a reaction picker — visitors can react without creating an account. Comments require a free community account, created directly on your site (no third-party login). Manage everything in Admin > Community Settings: toggle likes, reactions, and comments independently, set the active reaction set (up to 6 emoji), configure rate limits, and set up comment notification emails."
+            "title": "Likes & Comments",
+            "body": "SnapSmack's community system gives visitors a way to interact with your photographs. A heart button appears on every page so visitors can like a photograph without creating an account. Comments require a free community account created directly on your site (no third-party login). Manage likes, comments, abuse limits, and comment notification emails in Admin > Community Settings."
         },
         {
             "title": "Got Zuck Fucked?",

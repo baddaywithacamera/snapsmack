@@ -29,12 +29,10 @@ $check(!str_contains($endpoint, "community_rate_limit('likes')"),
     'the like endpoint has no hourly likes gate');
 $check(!str_contains($endpoint, "['error' => 'rate_limited']"),
     'the like endpoint cannot return the removed cap response');
-$check((bool)preg_match(
-    "/\\\$action !== 'toggle_like' && !community_rate_limit\\('likes'\\)/",
-    $legacyEndpoint
-), 'the legacy endpoint exempts toggle_like from its temporary emoji cap');
-$check(str_contains($legacyEndpoint, "['error' => 'rate_limited']"),
-    'emoji reaction writes keep their existing abuse response until SS-1537');
+$check(str_contains($legacyEndpoint, "http_response_code(410)"),
+    'the retired reaction endpoint cannot meter or accept a heart');
+$check(!str_contains($legacyEndpoint, "community_rate_limit('likes')"),
+    'the retired reaction endpoint has no leftover likes bucket gate');
 $check(!str_contains($settings, "'rate_limit_likes'"),
     'the settings save path no longer persists a likes cap');
 $check(!str_contains($settings, 'LIKES / HOUR'),

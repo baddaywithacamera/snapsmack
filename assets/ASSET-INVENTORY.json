@@ -386,6 +386,23 @@
             "purpose": "52 PICKUP Interaction Layer The interaction skin layer built on top of ORGANIZED MAYHEM (ss-engine-organized-mayhem.js)."
         },
         {
+            "file": "assets/js/admin-community-settings.js",
+            "owner": "cms",
+            "scope": "admin",
+            "registry_handle": "asset:admin:admin-community-settings",
+            "legacy_handle": null,
+            "callers": [
+                "smack-community-settings.php"
+            ],
+            "security_signals": [],
+            "security_review": null,
+            "enable": "loaded by the CMS where needed",
+            "family": "Admin & tool scripts — the CMS back office",
+            "vendor": false,
+            "requires": [],
+            "purpose": "Community settings dock-position selection highlight."
+        },
+        {
             "file": "assets/js/ss-engine-admin-csrf.js",
             "owner": "cms",
             "scope": "public",

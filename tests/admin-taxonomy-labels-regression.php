@@ -107,8 +107,6 @@ $keep = [
     'smack-skin.php'                     => ['REGISTRY', 'registry'],
     'smack-maintenance.php'              => ['REGISTRY', 'registry'],
     'smack-multisite.php'                => ['REGISTRY', 'registry'],
-    'process-reaction.php'               => ['REGISTRY', 'registry'],
-    'smack-community-settings.php'       => ['REGISTRY', 'registry'],
     // Only the uppercase comment banner; no lowercase use in this one.
     'smack-tools.php'                    => ['REGISTRY'],
     'tools/_build/generate-registry.php' => ['REGISTRY', 'registry'],
@@ -170,6 +168,6 @@ if ($failures !== []) {
     exit(1);
 }
 echo "\nPASS the admin calls a category a CATEGORY and an album an ALBUM,\n";
-echo "     and the skin / reaction / tool registries are untouched.\n";
+echo "     and the skin / tool registries are untouched.\n";
 
 // ===== SNAPSMACK EOF =====

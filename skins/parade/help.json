@@ -54,8 +54,8 @@
             "body": "Archive pages (reached by clicking a category or album link) show the same 3-column grid scoped to that collection. Multi-image posts are deduplicated — each post appears as a single tile even if several of its images share the same category."
         },
         {
-            "title": "Likes, Reactions & Comments",
-            "body": "SnapSmack's community system gives visitors a way to interact with your photographs. A floating dock appears on every page with a like button and a reaction picker — visitors can react without creating an account. Comments require a free community account, created directly on your site (no third-party login). Manage everything in Admin > Community Settings."
+            "title": "Likes & Comments",
+            "body": "SnapSmack's community system gives visitors a heart button for account-free likes and self-hosted comments. Manage likes and comments in Admin > Community Settings."
         },
         {
             "title": "Got Zuck Fucked?",

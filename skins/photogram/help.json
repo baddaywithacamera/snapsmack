@@ -13,7 +13,7 @@
         },
         {
             "title": "Community Accounts",
-            "body": "<h3>Community Features</h3>\n<p>Likes and reactions work without an account. To leave a comment, visitors create a free\ncommunity account directly on your site — no third-party login required. Manage accounts\nin Admin &gt; Community Users.</p>\n<p>Configure community features globally in <strong>Admin &gt; Community Settings</strong>:\ntoggle likes, reactions, and comments on or off; choose the active reaction set; set rate\nlimits; and configure email notifications for new comments.</p>",
+            "body": "<h3>Community Features</h3>\n<p>Likes work without an account. To leave a comment, visitors create a free\ncommunity account directly on your site — no third-party login required. Manage accounts\nin Admin &gt; Community Users.</p>\n<p>Configure community features globally in <strong>Admin &gt; Community Settings</strong>:\ntoggle likes and comments; set abuse limits; and configure email notifications for new comments.</p>",
             "icon": "&#x2665;"
         }
     ]

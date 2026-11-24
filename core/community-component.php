@@ -2,7 +2,7 @@
 /**
  * SNAPSMACK - Community Component
  *
- * Shared include for likes, reactions, and account-required comments.
+ * Shared include for likes and account-required comments.
  * Drop into any skin's layout.php after core/layout-logic.php has run.
  *
  * Requires these variables to be in scope (all provided by layout-logic.php):
@@ -16,7 +16,6 @@
  * Skin manifest flags that control what appears:
  *   'community_comments'  => '1'   — show comment thread and form
  *   'community_likes'     => '1'   — show like button and count
- *   'community_reactions' => '0'   — show reaction picker (off until set finalised)
  *
  * If the manifest doesn't declare these keys, the global snap_settings values
  * are used as fallback. This lets the blog owner toggle community features
@@ -59,23 +58,20 @@ $manifest_data = $skin_manifest ?? [];
 
 $show_comments  = (string)($manifest_data['community_comments']  ?? $settings['community_comments_enabled']  ?? '1') === '1';
 $show_likes     = (string)($manifest_data['community_likes']     ?? $settings['community_likes_enabled']     ?? '1') !== '0';
-$show_reactions = (string)($manifest_data['community_reactions'] ?? $settings['community_reactions_enabled'] ?? '0') === '1';
 
-// If the community dock is active (migration has run), it handles likes and reactions.
+// If the community dock is active (migration has run), it handles likes.
 // The component becomes comments-only to avoid showing likes in two places.
 if (array_key_exists('community_dock_position', $settings)) {
     $show_likes     = false;
-    $show_reactions = false;
 }
 
 // If the calling skin handles likes inline (e.g. Photogram), suppress them here.
 if (!empty($pg_suppress_likes)) {
     $show_likes     = false;
-    $show_reactions = false;
 }
 
 // Nothing to show — bail silently
-if (!$show_comments && !$show_likes && !$show_reactions) {
+if (!$show_comments && !$show_likes) {
     return;
 }
 
@@ -96,7 +92,7 @@ $comment_identity = $settings['comment_identity'] ?? 'open';
 // --- CURRENT USER ---
 $community_user = community_current_user();
 
-// Community engagement (comments/likes/reactions) is keyed by the post_id column. Historically that
+// Community engagement (comments/likes) is keyed by the post_id column. Historically that
 // column has held the IMAGE id (pre-post-model behaviour), and this component read/wrote by image id.
 // The per-site `comments_post_keyed` setting flips it to the real POST id once that site's engagement
 // data has been migrated. ONE switch drives both what we READ (queries below) and what new
@@ -111,10 +107,7 @@ $auth_url       = '/community-auth.php?action=login&redirect=' . urlencode($_SER
 // --- LIKE COUNT AND STATE ---
 $like_count   = 0;
 $user_liked   = false;
-$reaction_map = [];  // reaction_code => count
-$user_reaction = null;
-
-if ($show_likes || $show_reactions) {
+if ($show_likes) {
     $lc_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_likes WHERE post_id = ?");
     $lc_stmt->execute([$post_id]);
     $like_count = (int)$lc_stmt->fetchColumn();
@@ -141,29 +134,6 @@ if ($show_likes || $show_reactions) {
             $ul_stmt = $pdo->prepare("SELECT id FROM snap_likes WHERE post_id = ? AND guest_hash = ? LIMIT 1");
             $ul_stmt->execute([$post_id, $_guest_hash]);
             $user_liked = (bool)$ul_stmt->fetchColumn();
-        } catch (PDOException $e) {
-            // guest_hash column doesn't exist yet — pre-migration
-        }
-    }
-}
-
-if ($show_reactions) {
-    $rx_stmt = $pdo->prepare("SELECT reaction_code, COUNT(*) as cnt FROM snap_reactions WHERE post_id = ? GROUP BY reaction_code");
-    $rx_stmt->execute([$post_id]);
-    foreach ($rx_stmt->fetchAll() as $row) {
-        $reaction_map[$row['reaction_code']] = (int)$row['cnt'];
-    }
-    if ($community_user) {
-        $ur_stmt = $pdo->prepare("SELECT reaction_code FROM snap_reactions WHERE post_id = ? AND user_id = ? LIMIT 1");
-        $ur_stmt->execute([$post_id, $community_user['id']]);
-        $user_reaction = $ur_stmt->fetchColumn() ?: null;
-    } else {
-        try {
-            $_rx_salt  = snap_ensure_download_salt($pdo ?? null); // SECAUDIT 047
-            $_rx_hash  = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0') . $_rx_salt);
-            $ur_stmt = $pdo->prepare("SELECT reaction_code FROM snap_reactions WHERE post_id = ? AND guest_hash = ? LIMIT 1");
-            $ur_stmt->execute([$post_id, $_rx_hash]);
-            $user_reaction = $ur_stmt->fetchColumn() ?: null;
         } catch (PDOException $e) {
             // guest_hash column doesn't exist yet — pre-migration
         }
@@ -245,27 +215,6 @@ if ($show_comments) {
     } catch (Throwable $e) { /* snap_comments absent or pre-AP schema: community thread still renders */ }
 }
 
-// --- REACTION SET ---
-// Curated photography-appropriate set. Final set to be locked before UI ships.
-// Codes are short slugs; emoji are the visual representation.
-$reaction_set = [
-    'fire'         => ['emoji' => '🔥', 'label' => 'Fire'],
-    'chef-kiss'    => ['emoji' => '🤌', 'label' => 'Chef\'s kiss'],
-    'wow'          => ['emoji' => '😮', 'label' => 'Wow'],
-    'moody'        => ['emoji' => '🌧️', 'label' => 'Moody'],
-    'sharp'        => ['emoji' => '💎', 'label' => 'Sharp'],
-    'golden-hour'  => ['emoji' => '🌅', 'label' => 'Golden hour'],
-    'cinematic'    => ['emoji' => '🎬', 'label' => 'Cinematic'],
-    'peaceful'     => ['emoji' => '🕊️', 'label' => 'Peaceful'],
-    'haunting'     => ['emoji' => '👁️', 'label' => 'Haunting'],
-    'story'        => ['emoji' => '📖', 'label' => 'Tells a story'],
-    'colours'      => ['emoji' => '🎨', 'label' => 'The colours'],
-    'light'        => ['emoji' => '✨', 'label' => 'The light'],
-    'texture'      => ['emoji' => '🪨', 'label' => 'Texture'],
-    'timing'       => ['emoji' => '⚡', 'label' => 'Perfect timing'],
-    'composition'  => ['emoji' => '🔲', 'label' => 'Composition'],
-];
-
 // Same self-heal as community-dock.php: a pre-manifest skin build has no
 // manifest for the head to read, so make sure ss-community.css is on the page.
 if (empty($GLOBALS['snapsmack_engine_css_emitted']['assets/css/ss-community.css'])) {
@@ -281,9 +230,9 @@ if (empty($GLOBALS['snapsmack_engine_css_emitted']['assets/css/ss-community.css'
      data-comment-mode="<?php echo htmlspecialchars($comment_identity); ?>">
 
     <?php // ================================================================
-          // LIKES + REACTIONS BAR
+          // LIKES BAR
           // ============================================================ ?>
-    <?php if ($show_likes || $show_reactions): ?>
+    <?php if ($show_likes): ?>
     <div class="ss-community-bar">
 
         <?php if ($show_likes): ?>
@@ -296,55 +245,8 @@ if (empty($GLOBALS['snapsmack_engine_css_emitted']['assets/css/ss-community.css'
         </button>
         <?php endif; ?>
 
-        <?php if ($show_reactions): ?>
-        <div class="ss-reactions-wrap">
-            <button class="ss-reaction-trigger <?php echo $user_reaction ? 'has-reaction' : ''; ?>"
-                    aria-label="Add reaction"
-                    aria-expanded="false">
-                <?php if ($user_reaction && isset($reaction_set[$user_reaction])): ?>
-                    <?php echo $reaction_set[$user_reaction]['emoji']; ?>
-                <?php else: ?>
-                    <span class="ss-reaction-add">＋</span>
-                <?php endif; ?>
-            </button>
-
-            <div class="ss-reaction-picker" hidden>
-                <?php foreach ($reaction_set as $code => $rx): ?>
-                <button class="ss-reaction-opt <?php echo $user_reaction === $code ? 'is-active' : ''; ?>"
-                        data-code="<?php echo htmlspecialchars($code); ?>"
-                        title="<?php echo htmlspecialchars($rx['label']); ?>"
-                        aria-label="<?php echo htmlspecialchars($rx['label']); ?>">
-                    <?php echo $rx['emoji']; ?>
-                    <?php if (!empty($reaction_map[$code])): ?>
-                        <span class="ss-rx-count"><?php echo $reaction_map[$code]; ?></span>
-                    <?php endif; ?>
-                </button>
-                <?php endforeach; ?>
-            </div>
-        </div>
-
-        <?php if (!empty($reaction_map)): ?>
-        <div class="ss-reaction-summary">
-            <?php foreach ($reaction_map as $code => $count):
-                if (isset($reaction_set[$code])): ?>
-                <span class="ss-rx-pill" title="<?php echo htmlspecialchars($reaction_set[$code]['label']); ?>">
-                    <?php echo $reaction_set[$code]['emoji']; ?>
-                    <span><?php echo $count; ?></span>
-                </span>
-            <?php endif; endforeach; ?>
-        </div>
-        <?php endif; ?>
-
-        <?php endif; // show_reactions ?>
-
-        <?php if (!$community_user && $show_reactions): ?>
-        <div class="ss-auth-nudge">
-            <a href="<?php echo htmlspecialchars($auth_url); ?>">Sign in</a> to react
-        </div>
-        <?php endif; ?>
-
     </div>
-    <?php endif; // show_likes || show_reactions ?>
+    <?php endif; // show_likes ?>
 
 
     <?php // ================================================================

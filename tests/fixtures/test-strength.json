@@ -1968,6 +1968,11 @@
         "predicates": 13,
         "thresholds": []
     },
+    "reactions-retired-regression.php": {
+        "assertions": 17,
+        "predicates": 24,
+        "thresholds": []
+    },
     "reader-header-never-names-a-real-instance.php": {
         "assertions": 22,
         "predicates": 18,
