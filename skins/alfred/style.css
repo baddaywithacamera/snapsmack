@@ -898,7 +898,7 @@ input[type="button"],
    links and visibility remain the shared component's data and decisions. */
 .site-header .social-dock-inline {
     justify-content: center;
-    margin: 18px auto 0;
+    margin: 24px auto 0;
 }
 
 .site-header .dock-link,
