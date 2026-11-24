@@ -44,6 +44,20 @@ $recorded = is_array($baseline['skins'] ?? null) ? $baseline['skins'] : [];
 // skins/ folder can only ever produce one of them at a time.
 $failures = snapsmack_skin_version_failures($recorded, $current);
 
+// SS-1568, Sean's standing rule of 24 November 2026: a published skin version
+// never skips a number. The version on dev is the last PUBLISHED one plus one,
+// however many commits touch the skin first. The PM asked for this gate to
+// enforce it, and it belongs beside the one-version-one-file-state rule
+// because both answer the same question -- can an owner trust what the version
+// number tells them.
+require_once $root . '/core/skin-published-versions.php';
+$published = snapsmack_skin_published_versions($root);
+$versions_now = [];
+foreach ($current as $skin => $row) { $versions_now[$skin] = (string)($row['version'] ?? ''); }
+$failures = array_merge(
+    $failures,
+    snapsmack_skin_version_skip_failures($published['skins'], $versions_now));
+
 if ($failures !== []) {
     fwrite(STDERR, implode("\n", $failures) . "\n");
     exit(1);
