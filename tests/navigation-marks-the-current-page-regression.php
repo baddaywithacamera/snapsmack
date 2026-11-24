@@ -175,38 +175,120 @@ $check('and standing on the parent itself marks the parent', $cur === ['Gallery'
 $check('  with nothing marked as an ancestor', $anc === []);
 
 // ─────────────────────────────────────────────────────────────────────────────
-echo "\nAND IT REACHES THE RENDERED MARKUP, IN BOTH CONVENTIONS\n";
+echo "\nAND IT REACHES THE MARKUP OF THE RENDERERS SKINS ACTUALLY CALL\n";
 // ─────────────────────────────────────────────────────────────────────────────
-// The marking above is worth nothing if the renderer drops it. Driven through
-// the real renderer and read back out of the HTML it printed.
+// THIS SECTION USED TO TEST A DEAD FUNCTION AND PASS.
+//
+// The first version of SS-1563 put the markers in
+// snapsmack_render_navigation_items() and this test called that function
+// directly. NOTHING CALLED IT -- not one skin, not one component, only its own
+// recursion. So the marks were computed correctly, reached the component, and
+// were dropped, while this file reported PASS. The PM found it, not me, and
+// the function is now deleted rather than left as a second renderer to drift.
+//
+// These are the three that actually carry navigation to a page, counted in the
+// tree today:
+//
+//   snap_render_navigation_tree()   via the 'navigation-tree' component
+//                                   -- 12 skins, including ALFRED, TELEGRAM,
+//                                   TILEZ and HEURISTIC
+//   the 'navigation' component      -- ONYX, through its page component
+//   the 'crop-circles' component    -- SCROLL's sticky nav
+//
+// Every one of the five skins that style a current item is in that list, which
+// is the point: the marker has to be emitted by whichever renderer the skin
+// happens to use, not by the one that was easiest to write a test against.
 
-ob_start();
-snapsmack_render_navigation_items(snapsmack_navigation_mark_current($MENU, '/about'));
-$html = (string)ob_get_clean();
+require_once $root . '/core/skin-render-helpers.php';
 
-$check('the rendered menu carries class="current-menu-item"',
-       str_contains($html, 'current-menu-item'));
-$check('  exactly once', substr_count($html, 'current-menu-item') === 1);
-$check('the rendered menu carries aria-current="page"',
-       str_contains($html, 'aria-current="page"'));
-$check('  exactly once, because two would announce two current pages',
-       substr_count($html, 'aria-current="page"') === 1);
-$check('  and it is on the ABOUT link, not another one',
-       (bool)preg_match('#<a href="/about"[^>]*aria-current="page"#', $html));
-$check('the parent branch is marked as an ancestor',
-       str_contains($html, 'current-menu-ancestor'));
-$check('  and the ancestor does NOT carry aria-current',
-       !preg_match('#<span[^>]*aria-current#', $html));
-$check('the submenu class the skins already rely on is still there',
-       str_contains($html, 'menu-item-has-children'));
+$marked = snapsmack_navigation_mark_current($MENU, '/about');
 
-ob_start();
-snapsmack_render_navigation_items(snapsmack_navigation_mark_current($MENU, '/nowhere'));
-$none = (string)ob_get_clean();
-$check('on a page with no menu link the markup carries NO current marker',
-       !str_contains($none, 'current-menu-item')
-       && !str_contains($none, 'aria-current'));
-$check('  but the menu itself still renders', substr_count($none, '<a href=') === 5);
+// ── navigation-tree: the twelve-skin path, with children ────────────────────
+$tree = snap_render_navigation_tree($marked);
+
+$check('navigation-tree marks the current item with the class',
+       substr_count($tree, 'current-menu-item') === 1);
+$check('  and with aria-current="page", exactly once',
+       substr_count($tree, 'aria-current="page"') === 1);
+$check('  on the ABOUT link and not another one',
+       (bool) preg_match('#<a href="/about"[^>]*aria-current="page"#', $tree));
+$check('  the parent branch is marked as an ancestor',
+       str_contains($tree, 'current-menu-ancestor'));
+$check('  and the submenu class the skins rely on is still there',
+       str_contains($tree, 'nav-has-children'));
+
+$treeNone = snap_render_navigation_tree(snapsmack_navigation_mark_current($MENU, '/nowhere'));
+$check('navigation-tree marks NOTHING on a page with no menu link',
+       !str_contains($treeNone, 'current-menu-item')
+       && !str_contains($treeNone, 'aria-current'));
+$check('  but still renders the menu', substr_count($treeNone, '<a href=') === 5);
+
+// ── the 'navigation' component: ONYX's path ─────────────────────────────────
+// A TOP-LEVEL item, deliberately, and the next block says why.
+$onyx = (string) snap_render_component(
+    'navigation', ['items' => snapsmack_navigation_mark_current($MENU, '/archive')]);
+
+$check("the 'navigation' component marks the current item",
+       substr_count($onyx, 'aria-current="page"') === 1);
+$check('  and carries the class as well, for the skins that style that',
+       substr_count($onyx, 'current-menu-item') === 1);
+$check('  on the ARCHIVE link',
+       (bool) preg_match('#<a href="/archive"[^>]*aria-current="page"#', $onyx));
+
+// THE LIMITATION, CHECKED RATHER THAN DESCRIBED IN A COMMENT.
+//
+// This component renders TOP-LEVEL ITEMS ONLY -- no nested <ul>, no submenu,
+// nothing. So on ONYX a Menu Manager tree with child items loses the children
+// before any current-page question arises: standing on /about, which is a
+// child in this menu, marks nothing because the link is not on the page at
+// all. That is not a marking fault and I have not changed it, because giving
+// the component children would change ONYX's markup and its appearance, which
+// is a skin decision nobody has asked for. It is pinned here so the next
+// person reads a fact instead of my opinion, and so that fixing it on purpose
+// shows up as a deliberate change to this line.
+$onyxChild = (string) snap_render_component('navigation', ['items' => $marked]);
+$check('  it renders NO children at all, so a child page marks nothing on ONYX',
+       !str_contains($onyxChild, '/about') && !str_contains($onyxChild, 'aria-current'));
+$check('  and the top-level items are all still there',
+       substr_count($onyxChild, '<a href=') === 4);
+$onyxHome = (string) snap_render_component(
+    'navigation', ['items' => snapsmack_navigation_mark_current($MENU, '/')]);
+$check('  it moves with the page, rather than marking a fixed item',
+       (bool) preg_match('#<a href="/"[^>]*aria-current="page"#', $onyxHome));
+$onyxNone = (string) snap_render_component(
+    'navigation', ['items' => snapsmack_navigation_mark_current($MENU, '/nowhere')]);
+$check('  and marks nothing when nothing matches',
+       !str_contains($onyxNone, 'aria-current'));
+
+// ── crop-circles: SCROLL's sticky nav ──────────────────────────────────────
+// This component takes its items on a 'model' key rather than 'items', and it
+// skips any entry with no url, so the container heading never appears.
+$scroll = (string) snap_render_component('crop-circles', ['model' => [
+    'identity' => 'Example',
+    'icon_sprite_url' => '/assets/icons/crop-circles.svg',
+    'navigation' => snapsmack_navigation_mark_current($MENU, '/archive'),
+]]);
+$check("the 'crop-circles' sticky nav marks the current item",
+       substr_count($scroll, 'aria-current="page"') === 1);
+$check('  on the ARCHIVE link',
+       (bool) preg_match('#href="/archive"[^>]*aria-current="page"#', $scroll));
+// FOUND BY MUTATION: dropping current-menu-item here SURVIVED, because this
+// block only looked at aria-current. SCROLL carries the class too, and a skin
+// that styles the class rather than the attribute would have shown nothing.
+$check('  and carries current-menu-item on that link as well',
+       substr_count($scroll, 'current-menu-item') === 1
+       && (bool) preg_match('#class="[^"]*current-menu-item[^"]*"[^>]*href="/archive"#', $scroll));
+$scrollNone = (string) snap_render_component('crop-circles', ['model' => [
+    'identity' => 'Example',
+    'icon_sprite_url' => '/assets/icons/crop-circles.svg',
+    'navigation' => snapsmack_navigation_mark_current($MENU, '/nowhere'),
+]]);
+$check('  and marks nothing when nothing matches',
+       !str_contains($scrollNone, 'aria-current'));
+
+// ── and the renderer that was being tested before is GONE ──────────────────
+$check('the dead renderer no longer exists, so it cannot be tested again',
+       !function_exists('snapsmack_render_navigation_items'));
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nTHE SKINS THIS WAS FOR STILL ASK FOR IT\n";

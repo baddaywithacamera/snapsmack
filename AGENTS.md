@@ -104,6 +104,21 @@ him the month.
 - **A strict skin holds presentation and no executable code.** The security
   ratchet refuses a function call, `BASE_URL` or a cast inside a layout. It is
   right. Put the logic in `core/` and let the skin print the result.
+- **MOVE skin code into the CMS. Never REPLACE it.** Skin code moves into the
+  CMS as reusable functions; skins call them and change appearance only.
+  Moving existing skin behaviour into the CMS must preserve it. Never replace a
+  skin's working behaviour with new shared markup. A regression is fixed by
+  restoring the last known-good code — moved to the CMS if needed — not by
+  new code.
+
+  This has been the architecture since February and was only ever written down
+  as the rule above it, which says where logic belongs and not that you must
+  keep what was there. The gap is what most of the last eight weeks went on:
+  a migration swapped a skin's working behaviour for freshly written shared
+  markup, the markup looked reasonable, and the site lost something nobody had
+  asked to change. When you find such a case, name the last pre-migration
+  release, take THAT code, and move it. Do not re-derive it from the
+  screenshot.
 
 ## Measure, do not assert
 

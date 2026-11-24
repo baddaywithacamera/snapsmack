@@ -490,44 +490,23 @@ function snapsmack_prepare_public_footer(array $settings, array $manifest): arra
     ];
 }
 
-/** Render CMS-resolved navigation. No routing or data access occurs here. */
-function snapsmack_render_navigation_items(array $items, int $depth = 0): void
-{
-    foreach ($items as $item) {
-        $children = is_array($item['children'] ?? null) ? $item['children'] : [];
-        $has_children = $children && $depth < 2;
-        // SS-1563. BOTH conventions, because both are already in use and
-        // neither group of skins is wrong: ALFRED, TELEGRAM and TILEZ style
-        // .main-menu li.current-menu-item > a, while ONYX and HEURISTIC style
-        // a[aria-current="page"]. Emitting one would have left the other five
-        // exactly as they were.
-        $classes = [];
-        if ($has_children) $classes[] = 'menu-item-has-children';
-        if (!empty($item['current'])) $classes[] = 'current-menu-item';
-        if (!empty($item['current_ancestor'])) $classes[] = 'current-menu-ancestor';
-        echo '<li' . ($classes ? ' class="' . implode(' ', $classes) . '"' : '') . '>';
-        $label = htmlspecialchars((string)($item['label'] ?? ''), ENT_QUOTES);
-        $url = (string)($item['url'] ?? '');
-        if ($url === '') {
-            echo '<span>' . $label . '</span>';
-        } else {
-            $target = (($item['target'] ?? '') === '_blank')
-                ? ' target="_blank" rel="noopener noreferrer"' : '';
-            // "page" rather than "true": the item IS the page being shown.
-            // Only the current item carries it -- an ancestor is a branch you
-            // are inside, not the location, and two aria-current values in
-            // one menu announce two current pages.
-            $current = !empty($item['current']) ? ' aria-current="page"' : '';
-            echo '<a href="' . htmlspecialchars($url, ENT_QUOTES) . '"' . $target . $current . '>' . $label . '</a>';
-        }
-        if ($has_children) {
-            echo '<ul class="menu-item-has-children">';
-            snapsmack_render_navigation_items(array_values($children), $depth + 1);
-            echo '</ul>';
-        }
-        echo '</li>';
-    }
-}
+// REMOVED: snapsmack_render_navigation_items().
+//
+// SS-1563. It rendered CMS-resolved navigation and NOTHING CALLED IT except
+// its own recursion. The twelve skins that show a menu reach
+// snap_render_navigation_tree() through the navigation-tree component, and
+// ONYX reaches the 'navigation' component; both live in
+// core/skin-render-helpers.php.
+//
+// It is gone rather than kept, because two renderers for one job is how they
+// drift apart, and these two already had: this one emitted
+// menu-item-has-children while the live one emits nav-has-children, so a skin
+// styling the class this function produced would have styled nothing.
+//
+// It also cost a day. I added the current-page markers HERE and proved them
+// with a test that called this function directly. The test passed, the marks
+// never reached a page, and the PM found it. A test that drives a renderer no
+// skin reaches is asserting a shape, not executing a contract.
 
 /** Emit only CMS-registered browser engines declared by the active manifest. */
 function snapsmack_render_skin_scripts(string $skin_slug): void
