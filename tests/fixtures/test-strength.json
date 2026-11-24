@@ -1313,6 +1313,11 @@
         "predicates": 14,
         "thresholds": []
     },
+    "likes-no-hour-cap-regression.php": {
+        "assertions": 14,
+        "predicates": 13,
+        "thresholds": []
+    },
     "llmstxt-agent-safety-regression.php": {
         "assertions": 18,
         "predicates": 14,
