@@ -670,7 +670,6 @@ body.archive-page #browse-grid.cropped-grid {
 }
 body.archive-page #browse-grid.cropped-grid .thumb-container {
     overflow: visible;
-    align-items: flex-start;
 }
 body.archive-page #browse-grid.cropped-grid .thumb-link,
 body.archive-page #browse-grid.cropped-grid .tg-thumb,
