@@ -8,6 +8,7 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import tempfile
 
 
@@ -23,6 +24,7 @@ def run(output_dir: str) -> int:
     out = Path(output_dir).resolve()
     out.mkdir(parents=True, exist_ok=True)
     home = out / "sandbox-home"
+    shutil.rmtree(home, ignore_errors=True)
     home.mkdir(exist_ok=True)
     os.environ["SNAPSMACK_HOME"] = str(home)
 
@@ -71,7 +73,7 @@ def run(output_dir: str) -> int:
             for tile in tiles
         ),
         "featured_photo_control": "★ Featured photo (landing tile)" in buttons and mode._cover_idx == 1,
-        "flip_controls": "⇆ Flip H" in buttons and "⇅ Flip V" in buttons,
+        "pixel_mirror_controls_absent": "⇆ Flip H" not in buttons and "⇅ Flip V" not in buttons,
         "block_count": len(mode.body.authoring_blocks()) == 4,
     }
 
@@ -84,12 +86,26 @@ def run(output_dir: str) -> int:
         dialog.grab().save(str(out / "02-mosaic-parity.png"), "PNG")
         dialog_buttons = [button.text() for button in dialog.findChildren(QPushButton)]
         dialog_tiles = dialog.findChildren(PhotoThumbTile)
+        initial_order = dialog._mosaic_checked_indices()
+        dialog._mosaic_move_preview(2, -1)
+        moved_order = dialog._mosaic_checked_indices()
+        dialog._mosaic_reverse()
+        reversed_order = dialog._mosaic_checked_indices()
+        before_side_swap = list(reversed_order)
+        dialog._mosaic_preview.grab()
+        dialog._mosaic_swap_side(0)
+        side_swapped_order = dialog._mosaic_checked_indices()
         captured.update({
             "mosaic_maximizable": bool(dialog.windowFlags() & Qt.WindowMaximizeButtonHint),
             "mosaic_wysiwyg": bool(dialog.findChildren(MosaicPreview)),
             "mosaic_photo_thumbnails": len({tile._index for tile in dialog_tiles}) >= 4,
             "mosaic_thumbnail_count": len({tile._index for tile in dialog_tiles}),
             "mosaic_move_controls": "Move earlier" in dialog_buttons and "Move later" in dialog_buttons,
+            "mosaic_move_inside_arrangement": initial_order == [0, 1, 2, 3]
+                and moved_order == [0, 2, 1, 3],
+            "mosaic_reverse_arrangement": reversed_order == [3, 1, 2, 0],
+            "mosaic_swap_to_other_side": side_swapped_order != before_side_swap
+                and sorted(side_swapped_order) == sorted(before_side_swap),
         })
         dialog.reject()
 
