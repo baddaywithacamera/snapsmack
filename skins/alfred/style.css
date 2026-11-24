@@ -848,7 +848,7 @@ input[type="button"],
 /* -------------------------------------------------------------------------- */
 
 
-.header { padding: 70px 0; }
+.header { padding: 48px 0 36px; }
 
 .header.section-inner {
     width: min(600px, 90%);
@@ -888,7 +888,7 @@ input[type="button"],
     color: #fff;
     font-family: 'Droid Serif', Georgia, serif;
     line-height: 145%;
-    margin-top: 25px;
+    margin-top: 18px;
     text-align: center;
     text-shadow: 0 1px 0 rgba(0,0,0,0.2);
 }
@@ -898,7 +898,7 @@ input[type="button"],
    links and visibility remain the shared component's data and decisions. */
 .site-header .social-dock-inline {
     justify-content: center;
-    margin: 24px auto 0;
+    margin: 18px auto 0;
 }
 
 .site-header .dock-link,
@@ -2076,7 +2076,7 @@ p.comment-form-author { margin-right: 5%; }
    ============================================================ */
 
 .alfred-archive-grid {
-    margin: 40px 0;
+    margin: 12px 0 40px;
 }
 
 /* The skin's original auto-fill geometry applies only to its default mode.

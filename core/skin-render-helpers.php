@@ -1443,7 +1443,12 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                             . '</span></a>';
                     }
                     break;
-                case 'theme': $parts[] = 'THEME: ' . snap_escape_html($slot['name'] ?? ''); break;
+                case 'theme':
+                    $themeName = trim((string)($slot['name'] ?? ''));
+                    if ($themeName !== '') {
+                        $parts[] = 'THEME: ' . snap_escape_html($themeName);
+                    }
+                    break;
                 case 'powered':
                     $parts[] = 'POWERED BY <a class="footer-link" href="https://snapsmack.ca" target="_blank" rel="nofollow noopener">SNAPSMACK</a> ' . snap_escape_html($slot['version'] ?? '');
                     break;
