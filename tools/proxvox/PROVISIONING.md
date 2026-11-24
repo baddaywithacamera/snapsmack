@@ -61,8 +61,17 @@ and send Codex the visible error. Do not improvise a repair.
 
 ## Sean: save four credentials
 
-Open the PROX VOX setup screen. It writes only to Windows Credential Manager;
-no password belongs in this sheet, JSON, Git or Brain Trust.
+Open the PROX VOX setup screen from the repository checkout with:
+
+```text
+pythonw -m proxvox.setup_gui
+```
+
+Run that command with `tools/proxvox` as the working directory. The screen
+writes only to Windows Credential Manager; no password belongs in this sheet,
+JSON, Git or Brain Trust. Copy one password from Bitwarden, then click the
+matching `PASTE & SAVE` button. The screen never displays the password and
+clears the clipboard after a successful save.
 
 1. Save the CT102 password as `proxvox:ct102_ssh`.
 2. Save the CT106 password as `proxvox:ct106_ssh`.
