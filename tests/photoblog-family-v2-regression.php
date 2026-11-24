@@ -49,7 +49,22 @@ ob_start();$chaplinArchiveOk=snapsmack_render_strict_skin_template($chaplinDir,'
 // entirely -- it asked for img_thumb_square first and unconditionally, so
 // "cropped (natural aspect)" changed nothing on a live site. The settings
 // classes are asserted here so that cannot silently come undone again.
-foreach(['class="fsog-archive-grid archive-grid h-feed ','archive-layout-','archive-cols-','archive-thumbs-','class="fsog-thumb fsog-thumb-','aspect-ratio:','class="chap-img-frame"','id="justified-grid"','src="/media/thumb-a.jpg"'] as $hook){
+// SS-1569: the first two hooks were .fsog-archive-grid and .fsog-thumb, and
+// .chap-img-frame was asserted on the ARCHIVE. All three pinned the
+// REPLACEMENT markup. Sean's ruling is that the strict migration should have
+// MOVED CHAPLIN's v0.7.188D archive code into the CMS, not replaced it, so the
+// 188D names are back: .chap-archive-grid and .chap-thumb, which is what 188D's
+// stylesheet styles. 188D's archive has no .chap-img-frame at all -- it draws
+// the double-rule frame as a border plus two box-shadow rings on .chap-thumb --
+// so that hook is dropped HERE and only here. The landing/solo assertion above
+// still requires it and still passes, because the solo page does use it.
+//
+// EVERY SETTINGS HOOK IS UNCHANGED AND DELIBERATELY SO. archive-layout-,
+// archive-cols-, archive-thumbs- and thumb-a.jpg are the fix for CHAPLIN
+// ignoring THUMB STYLE, COLUMNS and THUMBNAIL SIZE, which is NOT part of what
+// 188D did and must not be undone by restoring it. I checked each one against
+// the moved component before touching this line.
+foreach(['class="chap-archive-grid archive-grid h-feed ','archive-layout-','archive-cols-','archive-thumbs-','class="chap-thumb','aspect-ratio:','id="justified-grid"','src="/media/thumb-a.jpg"'] as $hook){
  // thumb-a is the natural-aspect file. This asserted the SQUARE one, which was
  // the bug written down as a contract: CHAPLIN asked for img_thumb_square
  // unconditionally. THUMB STYLE defaults to cropped, so a default site now

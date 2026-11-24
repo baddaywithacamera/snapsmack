@@ -350,6 +350,19 @@
             12
         ]
     },
+    "chaplin-archive-is-the-188d-code-regression.php": {
+        "assertions": 38,
+        "predicates": 40,
+        "thresholds": [
+            2,
+            2,
+            2,
+            6,
+            6,
+            6,
+            6
+        ]
+    },
     "chaplin-frame-ornament-regression.php": {
         "assertions": 22,
         "predicates": 23,
@@ -1969,8 +1982,8 @@
         "thresholds": []
     },
     "reactions-retired-regression.php": {
-        "assertions": 17,
-        "predicates": 24,
+        "assertions": 18,
+        "predicates": 26,
         "thresholds": []
     },
     "reader-header-never-names-a-real-instance.php": {

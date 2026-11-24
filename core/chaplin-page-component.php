@@ -117,7 +117,108 @@ $chapOrnModel = ['pieces' => $chapPieces];
       // the five skins whose manifest already requires the toggle engine, so
       // it has had page-archive.css all along and simply never printed the
       // markup the stylesheet was written for. Empty on albums and
-      // collections, which the CMS does not build a row for. ?><?php echo snap_render_html($view['response']['archive_controls'] ?? ''); ?><section id="browse-grid" class="fsog-archive-grid archive-grid h-feed <?php echo snap_escape_attr($archiveThumbStyle); ?>-grid archive-layout-<?php echo snap_escape_attr($archiveThumbStyle); ?> archive-cols-<?php echo (int)($view['site']['archive_grid']['cols'] ?? 4); ?> archive-thumbs-<?php echo snap_escape_attr((string)($view['site']['archive_grid']['step'] ?? 'm')); ?>"><?php foreach (($view['response']['items'] ?? []) as $item): ?><?php $chapThumb = $archiveThumbStyle === 'square' ? ($item['img_thumb_square'] ?? $item['img_thumb_aspect'] ?? $item['img_file'] ?? '') : ($item['img_thumb_aspect'] ?? $item['img_thumb_square'] ?? $item['img_file'] ?? ''); $chapW = max(1, (int)($item['img_width'] ?? 1)); $chapH = max(1, (int)($item['img_height'] ?? 1)); $chapRatio = $archiveThumbStyle === 'square' ? 1.0 : max(2 / 3, min(3 / 2, $chapW / $chapH)); $chapOrient = $chapRatio < 1 ? ' fsog-thumb-portrait' : ($chapRatio > 1 ? ' fsog-thumb-landscape' : ' fsog-thumb-square'); ?><article class="thumb-container fsog-archive-item"><a class="thumb-link" href="<?php echo snap_escape_url($item['url'] ?? snap_route_url('photo',['slug'=>$item['img_slug'] ?? ''])); ?>" title="<?php echo snap_escape_attr($item['img_title'] ?? ''); ?>"><?php if ($chapThumb !== ''): ?><div class="fsog-thumb<?php echo $chapOrient; ?>" style="aspect-ratio:<?php echo snap_escape_attr((string)round($chapRatio, 4)); ?>"><div class="chap-img-frame"><?php echo snap_render_html(snap_render_component('image',['url'=>$chapThumb,'alt'=>$item['img_alt'] ?? $item['img_title'] ?? ''])); ?><div class="chap-frame-lines" aria-hidden="true"><div class="chap-line chap-line-top"></div><div class="chap-line chap-line-bot"></div><div class="chap-line chap-line-lft"></div><div class="chap-line chap-line-rgt"></div></div></div></div><?php endif; ?><h2 class="fsog-archive-title"><?php echo snap_escape_html($item['img_title'] ?? $item['title'] ?? $item['name'] ?? ''); ?></h2></a></article><?php endforeach; ?></section><section id="justified-grid" class="ss-scroll-wall"><?php foreach (($view['response']['items'] ?? []) as $item): ?><a class="justified-item ss-masonry-item" href="<?php echo snap_escape_url($item['url'] ?? snap_route_url('photo',['slug'=>$item['img_slug'] ?? ''])); ?>" title="<?php echo snap_escape_attr($item['img_title'] ?? ''); ?>"><?php if (!empty($item['img_thumb_aspect']) || !empty($item['img_file'])): ?><?php echo snap_render_html(snap_render_component('image',['url'=>$item['img_thumb_aspect'] ?? $item['img_file'],'alt'=>$item['img_alt'] ?? $item['img_title'] ?? ''])); ?><?php endif; ?></a><?php endforeach; ?></section><?php if (!empty($view['response']['next_page'])): ?><div class="scroll-wall-sentinel" data-next="<?php echo snap_escape_attr($view['response']['next_page']); ?>" data-has-more="1" aria-hidden="true"></div><?php endif; ?>
+      // collections, which the CMS does not build a row for. ?><?php echo snap_render_html($view['response']['archive_controls'] ?? ''); ?><?php
+      // ── SS-1569: THE v0.7.188D ARCHIVE, MOVED HERE RATHER THAN REWRITTEN ──
+      //
+      // What was lost, and it is not a detail. 188D's masonry built JUSTIFIED
+      // ROWS: it packed images into rows by aspect ratio against a reference
+      // width, marked the last row short, and published --last-row-ar-sum so
+      // the stylesheet could size it. The replacement emitted a FLAT list of
+      // anchors into .ss-scroll-wall with no rows at all, which is why this
+      // file's own older comment records "an unstyled 27,824px wall of
+      // full-width images". The row packer below is 188D's, line for line.
+      //
+      // The thumbnail half lost its selectors: .chap-archive-grid,
+      // .chap-archive-item, .chap-thumb and .chap-archive-title became
+      // .fsog-*, so 188D's stylesheet -- which draws the double-rule frame as
+      // a 3px border plus two box-shadow rings on .chap-thumb -- matched
+      // nothing. Those four names are back, because Codex is restoring that
+      // CSS verbatim and asked for them by name.
+      //
+      // DELIBERATELY NOT BROUGHT BACK: .chap-img-frame and .chap-frame-lines.
+      // 188D's archive markup has neither; they arrived with the replacement.
+      // 188D draws the frame in CSS on .chap-thumb, and emitting divs its
+      // stylesheet never mentions would leave unstyled boxes inside every
+      // thumbnail.
+      //
+      // (a) THE VIEW MODEL. 188D read $images, $settings and BASE_URL from
+      //     archive.php's scope. Every read below comes from $view instead.
+      //     No query, no BASE_URL, no cast -- the strict rules still hold.
+      // (b) BOUNDED. 188D looped the whole unbounded $images. This loops the
+      //     page the CMS prepared, and the existing sentinel below keeps
+      //     endless scroll working. The row packer therefore packs one page at
+      //     a time, which is what it did per request anyway.
+      // (c) THE INLINE SCRIPT IS NOT MOVED, AND THIS IS THE ONE PLACE I HAVE
+      //     NOT FOLLOWED THE INSTRUCTION LITERALLY. 188D ended with a script
+      //     that showed one grid and hid the other by setting element.style
+      //     .display. That job is now done by CSS keyed on
+      //     html[data-archive-layout], which ss-engine-archive-toggle.js sets
+      //     (it dispatches smackarchive:layoutchange and never touches either
+      //     grid's display itself). Moving the script in would set inline
+      //     display on both grids and override the stylesheet, so the toggle
+      //     would stop responding to CSS and start fighting it. Reported
+      //     rather than done.
+      //
+      // Aspect bounds, row height, gap and reference width: 188D's values and
+      // 188D's settings keys, read through the view model.
+      $chapRatioMin = 2 / 3;
+      $chapRatioMax = 3 / 2;
+      $chapItems    = is_array($view['response']['items'] ?? null) ? $view['response']['items'] : [];
+      $chapPresent  = is_array($view['site']['skin_presentation']['chaplin'] ?? null)
+          ? $view['site']['skin_presentation']['chaplin'] : [];
+      $chapRowH     = (int)($chapPresent['justified_row_height'] ?? 280);
+      if ($chapRowH <= 0) { $chapRowH = 280; }
+      $chapGap      = 4;
+      $chapRefW     = (int)($chapPresent['archive_max_width'] ?? 1400);
+      if ($chapRefW <= 0) { $chapRefW = 1400; }
+
+      // 188D's row packer, unchanged in arithmetic.
+      $chapRows = [];
+      $chapRow = [];
+      $chapRowW = 0;
+      foreach ($chapItems as $chapImg) {
+          $iw = (int)($chapImg['img_width'] ?? 400);
+          $ih = (int)($chapImg['img_height'] ?? 400);
+          if ($ih <= 0) { $ih = 400; }
+          if ($iw <= 0) { $iw = 400; }
+          $chapImg['_aspect'] = $iw / $ih;
+          $scaledW = round($chapImg['_aspect'] * $chapRowH);
+          $chapRow[] = $chapImg;
+          $chapRowW += $scaledW + $chapGap;
+          if ($chapRowW - $chapGap >= $chapRefW) {
+              $chapRows[] = ['images' => $chapRow, 'full' => true];
+              $chapRow = [];
+              $chapRowW = 0;
+          }
+      }
+      if ($chapRow !== []) { $chapRows[] = ['images' => $chapRow, 'full' => false]; }
+
+      // The last FULL row's aspect sum, which the stylesheet uses to size the
+      // short final row. 188D's fallback when there is no full row is kept.
+      $chapLastFullArSum = 0;
+      for ($i = count($chapRows) - 1; $i >= 0; $i--) {
+          if ($chapRows[$i]['full']) {
+              foreach ($chapRows[$i]['images'] as $chapRowImg) {
+                  $chapLastFullArSum += $chapRowImg['_aspect'];
+              }
+              break;
+          }
+      }
+      if ($chapLastFullArSum <= 0) { $chapLastFullArSum = $chapRefW / $chapRowH; }
+      ?><section id="browse-grid" class="chap-archive-grid archive-grid h-feed <?php echo snap_escape_attr($archiveThumbStyle); ?>-grid archive-layout-<?php echo snap_escape_attr($archiveThumbStyle); ?> archive-cols-<?php echo (int)($view['site']['archive_grid']['cols'] ?? 4); ?> archive-thumbs-<?php echo snap_escape_attr((string)($view['site']['archive_grid']['step'] ?? 'm')); ?>"><?php if ($chapItems !== []): ?><?php foreach ($chapItems as $item): ?><?php
+          // 188D preferred the aspect thumbnail and fell back to the full file.
+          // The square crop is honoured when the owner asked for a square
+          // archive, which is the current control and not an invention.
+          $chapThumb = $archiveThumbStyle === 'square'
+              ? ($item['img_thumb_square'] ?? $item['img_thumb_aspect'] ?? $item['img_file'] ?? '')
+              : ($item['img_thumb_aspect'] ?? $item['img_thumb_square'] ?? $item['img_file'] ?? '');
+          $chapW = (int)($item['img_width'] ?? 0);
+          $chapH = (int)($item['img_height'] ?? 0);
+          // 188D clamped to 2:3..3:2 and fell back to 1 with no dimensions.
+          $chapRatio = ($chapW > 0 && $chapH > 0)
+              ? max($chapRatioMin, min($chapRatioMax, $chapW / $chapH)) : 1;
+          if ($archiveThumbStyle === 'square') { $chapRatio = 1.0; }
+          ?><a href="<?php echo snap_escape_url($item['url'] ?? snap_route_url('photo', ['slug' => $item['img_slug'] ?? ''])); ?>" class="chap-archive-item" title="<?php echo snap_escape_attr($item['img_title'] ?? ''); ?>"><div class="chap-thumb<?php echo $chapRatio < 1 ? ' chap-thumb-portrait' : ''; ?>" style="aspect-ratio: <?php echo snap_escape_attr((string)round($chapRatio, 4)); ?>;"><?php if ($chapThumb !== ''): ?><?php echo snap_render_html(snap_render_component('image', ['url' => $chapThumb, 'alt' => $item['img_alt'] ?? $item['img_title'] ?? ''])); ?><?php endif; ?></div><div class="chap-archive-title"><?php echo snap_escape_html($item['img_title'] ?? $item['title'] ?? $item['name'] ?? ''); ?></div></a><?php endforeach; ?><?php else: ?><div class="chap-archive-empty"><p>The projector is dark. No frames to show.</p></div><?php endif; ?></section><section id="justified-grid" style="--justified-gap: <?php echo (int)$chapGap; ?>px; --justified-row-height: <?php echo (int)$chapRowH; ?>px; --last-row-ar-sum: <?php echo snap_escape_attr((string)round($chapLastFullArSum, 4)); ?>;"><?php if ($chapRows !== []): ?><?php foreach ($chapRows as $chapRowData): ?><div class="justified-row<?php echo $chapRowData['full'] ? '' : ' justified-row-last'; ?>"><?php foreach ($chapRowData['images'] as $item): ?><?php $chapFull = (string)($item['img_thumb_aspect'] ?? $item['img_file'] ?? ''); ?><a href="<?php echo snap_escape_url($item['url'] ?? snap_route_url('photo', ['slug' => $item['img_slug'] ?? ''])); ?>" class="justified-item" title="<?php echo snap_escape_attr($item['img_title'] ?? ''); ?>" style="flex-grow: <?php echo (int)round($item['_aspect'] * 100); ?>; flex-basis: 0; aspect-ratio: <?php echo snap_escape_attr((string)round($item['_aspect'], 4)); ?>;"><?php if ($chapFull !== ''): ?><?php echo snap_render_html(snap_render_component('image', ['url' => $chapFull, 'alt' => $item['img_alt'] ?? $item['img_title'] ?? ''])); ?><?php endif; ?></a><?php endforeach; ?></div><?php endforeach; ?><?php else: ?><div class="chap-archive-empty"><p>The projector is dark. No frames to show.</p></div><?php endif; ?></section><?php if (!empty($view['response']['next_page'])): ?><div class="scroll-wall-sentinel" data-next="<?php echo snap_escape_attr($view['response']['next_page']); ?>" data-has-more="1" aria-hidden="true"></div><?php endif; ?>
 <?php else: ?><section class="not-found"><h1>Not found</h1></section><?php endif; ?>
 <?php if ((!empty($view['response']['comments']) || !empty($view['response']['community']))): ?><?php echo snap_render_html(snap_render_component('comments', ['items' => $view['response']['comments']])); ?><?php endif; ?></main>
 <footer id="system-footer" class="site-footer<?php if (!empty($view['site']['footer']['lowercase'])): ?> footer-lowercase<?php endif; ?>"><div id="footer" class="inside"><?php echo snap_render_html(snap_render_component('footer', ['footer' => $view['site']['footer'] ?? []])); ?></div></footer><?php echo snap_render_html($view['before_assets'] ?? ''); ?><?php echo snap_render_html(snap_render_component('registered-assets', ['assets' => $view['site']['registered_assets'] ?? []])); ?><?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?>
