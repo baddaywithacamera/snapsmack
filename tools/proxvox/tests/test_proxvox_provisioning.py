@@ -77,10 +77,10 @@ class ProvisioningScriptTests(unittest.TestCase):
         with open(os.path.join(ROOT, "PROVISIONING.md"), encoding="utf-8") as stream:
             sheet = stream.read()
         commits = {
-            "ct102": "8fd93087f260b0c44ced5a213a76ba7050bf392f",
-            "ct106": "9d929c5f1a63b43c586423634f8a5a2b026f1be3",
+            "ct102": "055966363c8bf298cda749a09b4f83126e34166d",
+            "ct106": "055966363c8bf298cda749a09b4f83126e34166d",
             "ct110": "8fd93087f260b0c44ced5a213a76ba7050bf392f",
-            "host": "8fd93087f260b0c44ced5a213a76ba7050bf392f",
+            "host": "cd71c3c8a3648ede0a019c6c9da2cfc7e474a291",
         }
         commands = re.findall(r"```sh\n([^\n]+)\n```", sheet)
         self.assertEqual(len(commands), 4)
