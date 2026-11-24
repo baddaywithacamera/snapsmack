@@ -192,18 +192,44 @@ if (strpos($other, ' srcset="') !== false) {
 }
 snap_image_srcset_prepare([]);
 
-// --- 5b. sizes is the MEASURED value, and lazy, which it depends on ------
-// Codex's browser gate measured 'auto, 100vw' at 0 failures across 30 skins
-// and 90 viewport cases; the fixed-breakpoint string it replaced produced 396
-// mis-hinted tiles and 12 undersized m_ selections in RATIONAL GEO and SCROLL.
-// Pinned so it cannot drift back to a guess.
+// --- 5b. sizes is a real length, NEVER auto, and lazy ---------------------
+//
+// THIS PIN WAS REVERSED ON 24 NOVEMBER 2026, and the reason is written here
+// rather than quietly edited, because a test made green by editing the test
+// is the thing this repo fears most.
+//
+// It used to require 'auto, 100vw', and that was honest work: Codex's browser
+// gate measured it at 0 failures across 30 skins and 90 viewport cases, and
+// the fixed-breakpoint string it replaced produced 396 mis-hinted tiles and
+// 12 undersized m_ selections in RATIONAL GEO and SCROLL. The gate measured
+// candidate choice and transfer size. It did not measure LAYOUT, and that is
+// where 'auto' does its damage.
+//
+// Chromium applies size containment -- contain:size, default
+// contain-intrinsic-size 300px by 150px -- to any lazily-loaded img carrying
+// sizes="auto". contain:size sizes an element as if it had NO CONTENTS, so
+// the photograph is ignored and every grid that takes its row height from the
+// image locks at 2:1. Measured on the live foundtextures.ca archive: 24 tiles
+// at 300x150 while the images were 300x225 and 300x200, all loaded, with
+// containment set by no CSS rule. Width/height attributes, height:auto,
+// contain:none and a per-image CSS aspect-ratio were each driven against it
+// and changed nothing; removing 'auto' fixed it on the spot.
+//
+// So the old rationale is not wrong about bytes, it is incomplete. Winning
+// the saving back needs a mechanism that does not rely on 'auto'. Until then
+// this pins the opposite: a real length, and never the keyword.
 snap_image_srcset_prepare([$aspect => $medium . ' 400w, ' . $aspect . ' 600w']);
 $measured = (string)snap_render_component('image', ['url' => $aspect, 'alt' => '']);
-if (strpos($measured, ' sizes="auto, 100vw"') === false) {
-    $failures[] = 'the sizes value is not the measured "auto, 100vw". A fixed '
-        . 'breakpoint string cannot be right: tile widths vary WITHIN a single '
-        . 'skin, so auto is the only value correct everywhere.';
+if (preg_match('/ sizes="([^"]*)"/', $measured, $_m) !== 1) {
+    $failures[] = 'no sizes attribute on an image that has a srcset';
+} elseif (preg_match('/(^|[\s,])auto([\s,]|$)/i', $_m[1])) {
+    $failures[] = 'the sizes value contains the auto keyword (' . $_m[1]
+        . '). On a lazily-loaded image that makes the browser apply size '
+        . 'containment with a 300x150 placeholder, and every grid that sizes '
+        . 'its rows from the image locks at 2:1. No CSS can override it; it '
+        . 'broke the live foundtextures archive. See the note above.';
 }
+unset($_m);
 // sizes=auto is defined only for lazily-loaded images. Without lazy it is
 // ignored, the browser falls back to 100vw and picks the largest candidate --
 // no saving at all, and nothing on screen to show it.

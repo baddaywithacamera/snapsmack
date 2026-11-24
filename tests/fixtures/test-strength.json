@@ -134,7 +134,7 @@
         "thresholds": []
     },
     "archive-controls-reach-the-page-regression.php": {
-        "assertions": 54,
+        "assertions": 56,
         "predicates": 55,
         "thresholds": [
             2,
@@ -145,8 +145,8 @@
         ]
     },
     "archive-filter-row-regression.php": {
-        "assertions": 28,
-        "predicates": 26,
+        "assertions": 35,
+        "predicates": 33,
         "thresholds": []
     },
     "archive-frame-rule-survives-recompile-regression.php": {
@@ -538,7 +538,7 @@
     },
     "download-url-scheme-regression.php": {
         "assertions": 2,
-        "predicates": 8,
+        "predicates": 9,
         "thresholds": []
     },
     "duplicate-delivery-tripwire-regression.php": {
@@ -1072,8 +1072,8 @@
         ]
     },
     "grid-srcset-falls-back-to-aspect-regression.php": {
-        "assertions": 31,
-        "predicates": 24,
+        "assertions": 32,
+        "predicates": 25,
         "thresholds": [
             2,
             6,
@@ -1308,14 +1308,19 @@
             4
         ]
     },
+    "lazy-images-get-no-sizes-auto-regression.php": {
+        "assertions": 17,
+        "predicates": 12,
+        "thresholds": []
+    },
     "legacy-archive-redirect-loop-regression.php": {
         "assertions": 34,
         "predicates": 14,
         "thresholds": []
     },
     "likes-no-hour-cap-regression.php": {
-        "assertions": 14,
-        "predicates": 13,
+        "assertions": 16,
+        "predicates": 15,
         "thresholds": []
     },
     "llmstxt-agent-safety-regression.php": {
@@ -2986,8 +2991,8 @@
         ]
     },
     "tile-like-control-regression.php": {
-        "assertions": 42,
-        "predicates": 38,
+        "assertions": 43,
+        "predicates": 41,
         "thresholds": []
     },
     "tile-like-prepared-not-computed-regression.php": {

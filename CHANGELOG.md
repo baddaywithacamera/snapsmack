@@ -11,6 +11,35 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.1003D — opened
+
+- **Your archive shows photographs at their real shapes again, not flattened
+  into letterboxes.** After updating to 0.7.1002D the found textures archive
+  drew every tile at 300 by 150 pixels — a 2:1 letterbox — while the actual
+  photographs were 4:3 and 3:2. They had all downloaded correctly; the page
+  simply refused to use their shape.
+  The cause was one word. To save bandwidth the CMS had started telling the
+  browser to work out each photograph's display width for itself, using a
+  setting called `sizes="auto"`. What nobody knew is that Chrome responds to
+  that by treating the image as if it had NO CONTENTS until it decides
+  otherwise, and sizing it from a built-in 300 by 150 placeholder. Any archive
+  whose rows take their height from the photograph then locks at that shape
+  and never recovers. Measured on the live site: every tile 300 by 150, the
+  images 300 by 225 and 300 by 200, all loaded, and nothing in any skin's
+  stylesheet able to override it — explicit widths and heights, forced
+  heights, and a forced aspect ratio were each tried against it and changed
+  nothing. That is why the TRUE GRIT skin fix alone could not hold it.
+  The word is gone. The same page now measures 371 by 278 and 371 by 248 —
+  the real 4:3 and 3:2.
+  **What it costs, stated plainly:** that setting was saving roughly 12% of
+  the bytes on grid pages by letting the browser pick a smaller copy of each
+  photograph. Those pages go back to the transfer they had before the saving
+  was introduced. A photograph in the wrong shape is a defect; a page that
+  loads a little heavier is not, and the saving can be won back by a method
+  that does not break the layout.
+- **This build opens because 0.7.1002D is live.** A published build number is
+  never reused.
+
 ## 0.7.1002D — opened
 
 Written and tested, NOT on dev, and NOT in 0.7.1000D. These sat in the 1000D
