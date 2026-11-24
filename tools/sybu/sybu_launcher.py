@@ -4,6 +4,21 @@ import os
 import sys
 
 
+def _prepare_frozen_profile_home():
+    """Do not let test-runner imports misclassify the packaged desktop app.
+
+    PyInstaller bundles modules that can import ``unittest`` during ordinary
+    application startup.  The shared profile guard quite correctly refuses
+    C:\\snapsmack when it believes it is inside a test process, but a frozen
+    SYBU executable is the installed application, not a test runner.
+    """
+    if getattr(sys, "frozen", False):
+        os.environ.setdefault("SNAPSMACK_ALLOW_REAL_HOME_IN_TESTS", "1")
+
+
+_prepare_frozen_profile_home()
+
+
 # Headless automation must run before the desktop event loop or log capture.
 import os as _cli_os, sys as _cli_sys
 if "--cli" in _cli_sys.argv:
