@@ -19,6 +19,7 @@ from driveby_core.auth_state import (
     DriveAuthState,
     TotpStepUpGuard,
     get_drive_auth_state,
+    make_snap_hq_stepup_verifier,
     revoke_drive_grant,
     validate_b2_credentials,
 )
@@ -185,7 +186,6 @@ class MainWindow(QMainWindow):
         self._read_only = True
         self._log_path = log_path
         self._post_fn = post_fn
-        self._stepup_verifier = stepup_verifier
         self._totp_guard = TotpStepUpGuard()
         self._vault_error = str(vault_error or "")
 
@@ -199,6 +199,15 @@ class MainWindow(QMainWindow):
             except CredentialStoreUnavailableError as exc:
                 self._cred_store = None
                 self._vault_error = str(exc)
+
+        if stepup_verifier is not None:
+            self._stepup_verifier = stepup_verifier
+        else:
+            self._stepup_verifier = make_snap_hq_stepup_verifier(
+                self._cred_store,
+                username_getter=lambda: self.stepup_user_input.text(),
+                password_getter=lambda: self.stepup_pass_input.text(),
+            )
 
         if providers is not None:
             self._providers = list(providers)
@@ -241,7 +250,8 @@ class MainWindow(QMainWindow):
         self.provider_filter = QComboBox()
         self.provider_filter.addItem("All providers", "all")
         self.provider_filter.addItem("Google Drive", "google_drive")
-        self.provider_filter.addItem("Backblaze B2", "b2")
+        b2_filter_lbl = "Backblaze B2" if "b2" in self._provider_map else "Backblaze B2 (unavailable)"
+        self.provider_filter.addItem(b2_filter_lbl, "b2")
         self.provider_filter.currentIndexChanged.connect(self._apply_filters)
         h_row.addWidget(self.provider_filter)
 
@@ -345,6 +355,17 @@ class MainWindow(QMainWindow):
         self.confirm_input.textChanged.connect(self._sync_execute_btn)
         confirm_row.addWidget(self.confirm_input, 1)
 
+        self.stepup_user_input = QLineEdit()
+        self.stepup_user_input.setPlaceholderText("Username (SNAP HQ)")
+        self.stepup_user_input.setMaximumWidth(130)
+        confirm_row.addWidget(self.stepup_user_input)
+
+        self.stepup_pass_input = QLineEdit()
+        self.stepup_pass_input.setEchoMode(QLineEdit.Password)
+        self.stepup_pass_input.setPlaceholderText("Password")
+        self.stepup_pass_input.setMaximumWidth(120)
+        confirm_row.addWidget(self.stepup_pass_input)
+
         confirm_row.addWidget(QLabel("Fresh 2FA TOTP:"))
         self.totp_input = QLineEdit()
         self.totp_input.setPlaceholderText("6-digit TOTP")
@@ -418,9 +439,12 @@ class MainWindow(QMainWindow):
         self.drive_lbl.setText(
             f"Google Drive: {format_bytes(s.by_provider.get('google_drive', 0))} "
             f"({s.counts_by_provider.get('google_drive', 0)})")
-        self.b2_lbl.setText(
-            f"Backblaze B2: {format_bytes(s.by_provider.get('b2', 0))} "
-            f"({s.counts_by_provider.get('b2', 0)})")
+        if "b2" in self._provider_map:
+            self.b2_lbl.setText(
+                f"Backblaze B2: {format_bytes(s.by_provider.get('b2', 0))} "
+                f"({s.counts_by_provider.get('b2', 0)})")
+        else:
+            self.b2_lbl.setText("Backblaze B2: unavailable (real B2 adapter pending)")
         blog_parts = [f"{b}: {format_bytes(sz)}" for b, sz in sorted(s.by_blog.items())]
         self.blogs_lbl.setText("Per blog: " + "  |  ".join(blog_parts) if blog_parts else "Blogs: —")
 
@@ -549,6 +573,7 @@ class MainWindow(QMainWindow):
 
         totp = self.totp_input.text().strip()
         self.totp_input.clear()
+        self.stepup_pass_input.clear()
 
         res = execute_prune_plan(
             self._plan,

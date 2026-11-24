@@ -335,7 +335,9 @@ def test_dry_run_and_audit_preflight_intent_and_partial_failure(tmp_path):
     # 2. Unwritable audit log aborts BEFORE any provider mutation
     bad_log_path = str(tmp_path)  # directory path cannot be opened as a file
     fail_res = execute_prune_plan(
-        plan, {"google_drive": prov}, cred_store=store, totp_code="246810", log_path=bad_log_path, dry_run=False
+        plan, {"google_drive": prov}, cred_store=store, totp_code="246810",
+        stepup_verifier=lambda code: (code == "246810", "ok"),
+        log_path=bad_log_path, dry_run=False
     )
     assert fail_res.ok is False
     assert "not writable" in fail_res.message.lower()
@@ -343,7 +345,9 @@ def test_dry_run_and_audit_preflight_intent_and_partial_failure(tmp_path):
 
     # 3. Live execution writes intent BEFORE each action and reports partial failure honestly
     live_res = execute_prune_plan(
-        plan, {"google_drive": prov}, cred_store=store, totp_code="246810", log_path=log_file, dry_run=False
+        plan, {"google_drive": prov}, cred_store=store, totp_code="246810",
+        stepup_verifier=lambda code: (code == "246810", "ok"),
+        log_path=log_file, dry_run=False
     )
     assert live_res.ok is False
     assert live_res.succeeded == 1
@@ -367,6 +371,46 @@ def test_hq_roster_marks_driveby_coming_soon_until_exe_exists():
     src = open(hub_main, encoding="utf-8").read()
     assert '"DRIVE BY"' in src
     assert 'coming soon' in src
+
+
+def test_missing_stepup_verifier_fails_closed(tmp_path):
+    from driveby_core.auth_state import TotpStepUpGuard
+
+    guard = TotpStepUpGuard()
+    ok, msg = guard.verify("123456", stepup_verifier=None)
+    assert ok is False
+    assert "not configured" in msg.lower()
+
+    store = _linked_store()
+    drive = FakeDriveProvider(authenticated=True)
+    plan = build_prune_plan(drive.list_backups(), KeepRule(keep_last_n=1, keep_one_per_month=False))
+    res = execute_prune_plan(
+        plan, {"google_drive": drive}, cred_store=store, totp_code="123456",
+        stepup_verifier=None, log_path=str(tmp_path / "audit.jsonl"), dry_run=False,
+    )
+    assert res.ok is False
+    assert drive.trashed_ids == []
+
+
+def test_production_entrypoint_wires_snap_hq_verifier_and_surfaces_b2_unavailable(monkeypatch):
+    import driveby_qt.app as app_mod
+
+    store = _TestMemoryCredStore()
+    fake_mod = type("FakeSnapCreds", (), {
+        "init": staticmethod(lambda: None),
+        "get": staticmethod(store.get),
+        "set": staticmethod(store.set),
+    })
+    monkeypatch.setitem(sys.modules, "snap_creds", fake_mod)
+
+    _app()
+    win = app_mod.create_window()
+    assert win._stepup_verifier is not None
+    assert "unavailable" in win.b2_lbl.text().lower()
+    ok, msg = win._stepup_verifier("123456")
+    assert ok is False
+    assert "not configured" in msg.lower()
+    win.close()
 
 
 # ===== SNAPSMACK EOF =====

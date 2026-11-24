@@ -21,6 +21,11 @@ def _set_windows_app_id():
         pass
 
 
+def create_window():
+    from .main_window import MainWindow
+    return MainWindow()
+
+
 def main() -> int:
     import snap_single_instance
     if not snap_single_instance.acquire(instance_key(), "DRIVE BY"):
@@ -32,7 +37,6 @@ def main() -> int:
     from PySide6.QtWidgets import QApplication
 
     from . import theme
-    from .main_window import MainWindow
 
     app = QApplication(sys.argv)
     app.setApplicationName("DRIVE BY")
@@ -42,7 +46,7 @@ def main() -> int:
     if os.path.isfile(icon_path):
         app.setWindowIcon(QIcon(icon_path))
     app.setStyleSheet(theme.stylesheet())
-    win = MainWindow()
+    win = create_window()
     win.show()
     return app.exec()
 

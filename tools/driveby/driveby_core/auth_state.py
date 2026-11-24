@@ -203,7 +203,7 @@ def revoke_drive_grant(store, post_fn: Optional[Callable] = None) -> tuple[bool,
 
 
 class TotpStepUpGuard:
-    """Enforces a fresh 6-digit TOTP code on EVERY delete (never cached across deletes)."""
+    """Enforces a fresh 6-digit TOTP code verified against a real step-up verifier on EVERY delete."""
 
     def __init__(self):
         self._used_codes: set[str] = set()
@@ -219,21 +219,56 @@ class TotpStepUpGuard:
             return False, "A fresh 6-digit TOTP code is required for every delete."
         if code in self._used_codes:
             return False, "That TOTP code was already used. Enter a fresh 6-digit TOTP code."
+        if stepup_verifier is None:
+            return False, "Step-up verifier is not configured; live deletes are locked."
 
-        if stepup_verifier is not None:
-            try:
-                res = stepup_verifier(code)
-            except Exception as exc:  # noqa: BLE001
-                return False, f"TOTP verification failed: {exc}"
-            if isinstance(res, tuple):
-                ok, msg = bool(res[0]), str(res[1])
-            else:
-                ok, msg = bool(res), ("TOTP verified." if res else "TOTP verification rejected.")
-            if not ok:
-                return False, msg
+        try:
+            res = stepup_verifier(code)
+        except Exception as exc:  # noqa: BLE001
+            return False, f"TOTP verification failed: {exc}"
+        if isinstance(res, tuple):
+            ok, msg = bool(res[0]), str(res[1])
+        else:
+            ok, msg = bool(res), ("TOTP verified." if res else "TOTP verification rejected.")
+        if not ok:
+            return False, msg
 
         self._used_codes.add(code)
         return True, "Fresh TOTP verified."
+
+
+def make_snap_hq_stepup_verifier(
+    cred_store,
+    *,
+    username_getter: Optional[Callable[[], str]] = None,
+    password_getter: Optional[Callable[[], str]] = None,
+    requester: Optional[Callable] = None,
+) -> Callable[[str], tuple[bool, str]]:
+    """Build a fail-closed SNAP HQ step-up verifier using snap_creds + snap_stepup."""
+
+    def _verify(totp_code: str) -> tuple[bool, str]:
+        if cred_store is None:
+            return False, "Protected credential vault is unavailable; live deletes are locked."
+        hub_url = str(cred_store.get("hub_url", "") or "").strip()
+        hub_key = str(cred_store.get("hub_key", "") or "").strip()
+        if not hub_url or not hub_key:
+            return (
+                False,
+                "SNAP HQ authorization endpoint/key not configured in SNAP HQ Settings; live deletes are locked.",
+            )
+        user = str(username_getter() if username_getter else "").strip()
+        pwd = str(password_getter() if password_getter else "")
+        if not user or not pwd:
+            return False, "SnapSmack username and password are required for SNAP HQ step-up verification."
+
+        req_fn = requester
+        if req_fn is None:
+            import snap_stepup
+            req_fn = snap_stepup.request_authorization
+        res = req_fn(hub_url, "hub/authorize", hub_key, user, pwd, totp_code)
+        return bool(getattr(res, "ok", False)), str(getattr(res, "message", "") or "Step-up rejected.")
+
+    return _verify
 
 
 def is_likely_b2_master_key(key_id: str) -> bool:
