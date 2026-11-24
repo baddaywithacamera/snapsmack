@@ -30,7 +30,7 @@ def _mode_with_session(tmp_path, monkeypatch):
     session = store.create("SS-1514", O.MODE_SMACKTALK)
     mode.rail.store = store
     mode.rail.session = session
-    monkeypatch.setattr(mode, "_mirror_sqlite", lambda _draft: None)
+    monkeypatch.setattr(mode, "_mirror_sqlite", lambda _draft, **_kwargs: None)
     return mode, session
 
 

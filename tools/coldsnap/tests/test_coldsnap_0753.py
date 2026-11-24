@@ -144,7 +144,7 @@ def test_take_mode_unavailable_site_colors_fallback(monkeypatch, tmp_path):
         app.processEvents()
         assert bg == "#ffffff"
         assert not mode.site_colors_note.isHidden()
-        assert "site colours unavailable" in mode.site_colors_note.text().lower()
+        assert "approximate: skin styles not loaded" in mode.site_colors_note.text().lower()
         pal = mode.body.canvas._surface_palette
         assert compute_contrast_ratio(QColor(pal["bg"]), QColor(pal["fg"])) >= 4.5
     finally:

@@ -10,6 +10,7 @@ mosaic marker keeps its one-line plain-words explainer right beside the button.
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
+import math
 import os
 import re
 import tempfile
@@ -18,11 +19,12 @@ import uuid
 
 import requests
 
-from PySide6.QtCore import QObject, Qt, QDate, QRect, QSize, Signal, QTimer, QSettings
+from concurrent.futures import ThreadPoolExecutor
+from PySide6.QtCore import QObject, Qt, QDate, QEventLoop, QMetaObject, QRect, QSize, Signal, Slot, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit,
-    QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
+    QComboBox, QPushButton, QFileDialog, QMessageBox, QProgressDialog, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
     QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton, QSlider, QDateEdit,
 )
@@ -32,6 +34,7 @@ import snap_library
 from sumna_post import AuthorizationExpiredError, SmacktalkPoster
 
 from . import theme, biggie
+from .canvas import mosaic_cells as _mosaic_cells
 from .widgets import (Accordion, Card, build_rail, hint, field_label,
                       big_button, load_pixmap)
 from .photo_loader import PhotoLoader
@@ -40,13 +43,13 @@ from .slapper_handoff import (ReturnWatch, find_executable,
                               focus_window, launch as launch_slapper)
 from .body_editor import BodyEditor
 from .block_tray import BlockAction, BlockTray
-from .photo_tray import RightPhotosTray, PhotoThumbTile
+from .photo_tray import RightPhotosTray, PhotoThumbTile, photo_orientation_badge
 from .drafts_panel import BatchRail, default_draft_row
 from .mosaic_layout import tile_rects as _tile_rects
 
 
 class _PublishedPostBridge(QObject):
-    """Marshal the published-post network read back to the GUI thread."""
+    """Move published-post network results back onto the GUI thread."""
 
     list_loaded = Signal(object)
     list_failed = Signal(object)
@@ -55,30 +58,60 @@ class _PublishedPostBridge(QObject):
 
 
 class MosaicPreview(QWidget):
-    """Large live preview; dragging one tile onto another swaps their slots."""
+    """Large live WYSIWYG preview matching BIGGIE and ss-engine-mosaic.js geometry."""
 
     swapRequested = Signal(int, int)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, content_width: int = 760, gap: int = 4):
         super().__init__(parent)
-        self.setMinimumHeight(210)
+        self._content_width = max(240, int(content_width or 760))
+        self._gap = max(0, min(20, int(gap)))
+        self.setMinimumSize(self._content_width + 16, 220)
+        self.setFixedWidth(self._content_width + 16)
         self.setToolTip("Drag one preview tile onto another to swap them.")
         self._tiles, self._rects = [], []
         self._layout_name, self._drag_from = "asymmetric", None
+        self.bucket = []
+        self.assets = {}
+        self._mosaic_size_cache = {}
+        self._mosaic_layout_cache = {}
         # Codex's loader, c0b621f3. Decoding happens off the GUI thread with
         # QImageReader.setScaledSize, so a photograph is never decoded at full
         # resolution at all -- which is the part caching alone could not fix.
         self._photos = PhotoLoader(self)
         self._ready = {}
 
-    def set_mosaic(self, tiles, layout_name):
+    def set_content_width(self, width: int):
+        self._content_width = max(240, int(width or 760))
+        self.setFixedWidth(self._content_width + 16)
+        self._sync_height()
+        self.update()
+
+    def set_mosaic(self, tiles, layout_name, gap: int = 4):
         self._tiles = list(tiles)  # (row-in-list, local-path), in mosaic order
         self._layout_name = str(layout_name or "asymmetric")
-        # Keep what is already decoded: ticking a 54th photograph must not make
-        # the other 53 reload. The loader's own cache is keyed on
-        # (path, mtime, size) and is the real store; this is just the widget's
-        # view of it, bounded below.
+        self._gap = max(0, min(20, int(gap)))
+        self.bucket = [path for _row, path in self._tiles]
+        self._mosaic_layout_cache.clear()
+        self._sync_height()
         self.update()
+
+    def computed_cells(self):
+        """Return exact site/BIGGIE cell geometry at `self._content_width`."""
+        if not self._tiles:
+            return {"items": [], "sections": [], "height": 0.0}
+        data = {
+            "order": list(range(1, len(self.bucket) + 1)),
+            "layout": self._layout_name,
+            "gap": self._gap,
+        }
+        _paths, out = _mosaic_cells(self, data, self._content_width)
+        return out
+
+    def _sync_height(self):
+        out = self.computed_cells()
+        h = max(220, int(math.ceil(float(out.get("height") or 0.0))) + 16)
+        self.setFixedHeight(h)
 
     def _tile_pixmap(self, path, edge):
         """The decoded tile, or None while it is still being read.
@@ -102,60 +135,56 @@ class MosaicPreview(QWidget):
             # not ask again.
             self.update()
 
-        # False means the loader already has four decodes in flight. Nothing to
-        # do: those will finish, call their callbacks, and repaint us.
-        self._photos.request(path, edge, arrived)
+        # False means the loader already has four decodes in flight. Schedule a
+        # brief retry so large mosaics never stall after the first four tiles.
+        if not self._photos.request(path, edge, arrived):
+            if not getattr(self, "_retry_pending", False):
+                self._retry_pending = True
+                QTimer.singleShot(60, lambda: (setattr(self, "_retry_pending", False), self.update()))
         return self._ready.get(key)
 
     @staticmethod
     def tile_rects(width, height, count, layout_name, gap=5):
-        # One geometry for the dialog preview AND the BIGGIE canvas (mosaic_layout.py).
         return _tile_rects(width, height, count, layout_name, gap)
 
     def paintEvent(self, _event):
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor("#090b0a"))
-        inner = self.rect().adjusted(7, 7, -7, -7)
-        cells = self.tile_rects(inner.width(), inner.height(), len(self._tiles),
-                                self._layout_name)
-        self._rects = [(row, rect.translated(inner.topLeft()))
-                       for (row, _path), rect in zip(self._tiles, cells)]
+        if not self._tiles:
+            self._rects = []
+            painter.setPen(QColor(theme.DIM))
+            painter.drawText(
+                self.rect().adjusted(12, 12, -12, -12),
+                Qt.AlignCenter | Qt.TextWordWrap,
+                "LIVE PREVIEW — tick 1 or more photos below",
+            )
+            return
+        out = self.computed_cells()
+        items = out.get("items") or []
+        ox, oy = 8, 8
+        self._rects = []
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        for position, ((row, path), cell) in enumerate(zip(self._tiles, cells), 1):
-            rect = cell.translated(inner.topLeft())
-            # THIS LINE WAS THE FREEZE. It was QPixmap(path): a full-resolution
-            # decode from disk, uncached, for EVERY tile on EVERY paint event.
-            # paintEvent runs on every repaint -- ticking a photo, resizing,
-            # dragging a tile, the window regaining focus -- so a mosaic of 53
-            # SNAP SLAPPER originals re-decoded all 53 at full size each time,
-            # on the GUI thread. That is why the mosaic step stopped responding.
-            #
-            # It now goes through Codex's PhotoLoader (c0b621f3), which decodes
-            # OFF the GUI thread and at reduced size via
-            # QImageReader.setScaledSize -- so these photographs are never
-            # decoded at full resolution at all. Caching alone fixed the
-            # repaints but left the first paint doing 53 full decodes, about
-            # 2.8 seconds; this removes that too.
-            #
-            # The size is still quantised to 64px steps because it is part of
-            # the cache key, and without that a slow drag-resize would ask for
-            # a size it had never seen on every single frame.
-            #
-            # Deliberately NOT thumb_square, which the lists use: that is a
-            # square crop, and this preview exists to show the whole
-            # photograph -- see the comment below, which predates me.
+        for position, ((row, path), tile) in enumerate(zip(self._tiles, items), 1):
+            rect = QRect(
+                ox + int(round(tile["x"])),
+                oy + int(round(tile["y"])),
+                max(1, int(round(tile["width"]))),
+                max(1, int(round(tile["height"]))),
+            )
+            self._rects.append((row, rect))
             edge = max(64, -(-max(rect.width(), rect.height()) // 64) * 64)
             pix = self._tile_pixmap(path, edge) or QPixmap()
             if not pix.isNull():
-                # Preview the whole photograph.  Cropping here made the composer
-                # imply a crop the photographer had never chosen.
-                scaled = pix.scaled(rect.size(), Qt.KeepAspectRatio,
+                # Match ss-engine-mosaic.css (.mosaic-item img { width:100%; height:100%; object-fit:cover })
+                scaled = pix.scaled(rect.size(), Qt.KeepAspectRatioByExpanding,
                                     Qt.SmoothTransformation)
-                painter.fillRect(rect, QColor("#141714"))
+                painter.save()
+                painter.setClipRect(rect)
                 target = QRect(rect.left() + (rect.width() - scaled.width()) // 2,
                                rect.top() + (rect.height() - scaled.height()) // 2,
                                scaled.width(), scaled.height())
                 painter.drawPixmap(target, scaled)
+                painter.restore()
             else:
                 painter.fillRect(rect, QColor("#202320"))
             painter.setPen(QPen(QColor("#35ff14"), 2 if row == self._drag_from else 1))
@@ -219,6 +248,7 @@ class TakeMode(QWidget):
     photosStateChanged = Signal(bool)       # right photos tray open
     detailsStateChanged = Signal(bool)      # post details drawer open
     exitFocusRequested = Signal()           # exit focus mode from format strip
+    _thumbsReady = Signal(object)           # background thumb job finished (queued to UI thread)
 
     def __init__(self, app_config_provider, parent=None):
         super().__init__(parent)
@@ -227,6 +257,7 @@ class TakeMode(QWidget):
         self._bucket = []          # list[O.DraftImage]
         self._cover_idx = 0
         self._selected_photo_idx = None
+        self._selected_photo_indices = []
         self._updating_photo_fields = False
         self._loading = False
         self._view_settings = QSettings("SnapSmack", "COLD SNAP")
@@ -236,6 +267,7 @@ class TakeMode(QWidget):
         self._slapper_launch_error = ""
         self._published_list_active = False
         self._published_load_active = False
+        self._published_choose_fn = None
         self._published_bridge = _PublishedPostBridge(self)
         self._published_bridge.list_loaded.connect(self._published_list_loaded)
         self._published_bridge.list_failed.connect(self._published_list_failed)
@@ -256,6 +288,8 @@ class TakeMode(QWidget):
         self.body.canvas.photographsDropped.connect(
             lambda paths: self._add_photo_paths(paths, insert=True))
         self.body.canvas.photographPasted.connect(self._paste_photo)
+        self.body.canvas.trayPhotoDropped.connect(self._drop_tray_photo_biggie)
+        self.body.editor.setAcceptDrops(True)
         # IMG picks from THIS site's cached Media Gallery (COLD STORAGE), by picture.
         self.body.canvas.set_site_provider(
             lambda: ((self.app_config() or {}).get("url") or "").strip())
@@ -309,7 +343,11 @@ class TakeMode(QWidget):
         self.page_meta = QLabel("")
         self.page_meta.setObjectName("PageMeta")
         card_col.addWidget(self.page_meta)
-        self.site_colors_note = QLabel("site colours unavailable")
+        self.linked_post_lbl = QLabel("")
+        self.linked_post_lbl.setObjectName("LinkedPostStatus")
+        self.linked_post_lbl.setVisible(False)
+        card_col.addWidget(self.linked_post_lbl)
+        self.site_colors_note = QLabel("approximate: skin styles not loaded")
         self.site_colors_note.setObjectName("SiteColorsNote")
         self.site_colors_note.setVisible(False)
         card_col.addWidget(self.site_colors_note)
@@ -395,22 +433,42 @@ class TakeMode(QWidget):
         t_row.addWidget(t_reset)
         self.photos_sec.add_layout(t_row)
 
-        brow = QHBoxLayout()
+        brow = QGridLayout()
         brow.setSpacing(4)
         add_btn = QPushButton("Add photos…")
         add_btn.clicked.connect(self._add_photos)
         open_btn = QPushButton("Open published…")
         open_btn.setToolTip("Bring an existing site post and its bucket into COLD TAKE")
         open_btn.clicked.connect(self._open_published)
+        open_draft_btn = QPushButton("Open draft…")
+        open_draft_btn.setToolTip("Open a saved local draft from your COLD TAKE session")
+        open_draft_btn.clicked.connect(self._open_draft)
         ai_btn = QPushButton("✨ AI FILL")
         ai_btn.setToolTip("Uses this site's prompt to fill all supported metadata: "
                           "post fields from the lead photo and ALT for every photo.")
         ai_btn.clicked.connect(self._ai_fill)
-        for b in (add_btn, open_btn, ai_btn):
+        for b in (add_btn, open_btn, open_draft_btn, ai_btn):
             b.setStyleSheet("padding: 5px 7px; font-size: 11px;")
-            brow.addWidget(b)
-        brow.addStretch(1)
+        brow.addWidget(add_btn, 0, 0)
+        brow.addWidget(ai_btn, 0, 1)
+        brow.addWidget(open_btn, 1, 0)
+        brow.addWidget(open_draft_btn, 1, 1)
         self.photos_sec.add_layout(brow)
+
+        insert_row = QHBoxLayout()
+        insert_row.setContentsMargins(0, 2, 0, 2)
+        insert_row.setSpacing(6)
+        self.insert_into_post_btn = big_button("INSERT INTO POST")
+        self.insert_into_post_btn.setToolTip("Place the selected photo into the post at the cursor")
+        self.insert_into_post_btn.clicked.connect(self.insert_selected_into_post)
+        self.insert_into_post_btn.setVisible(False)
+        insert_row.addWidget(self.insert_into_post_btn)
+        self.insert_mosaic_btn = big_button("INSERT MOSAIC")
+        self.insert_mosaic_btn.setToolTip("Insert the selected photos as a mosaic block at the cursor")
+        self.insert_mosaic_btn.clicked.connect(lambda: self.insert_selected_mosaic_into_post())
+        self.insert_mosaic_btn.setVisible(False)
+        insert_row.addWidget(self.insert_mosaic_btn)
+        self.photos_sec.add_layout(insert_row)
 
         # "In mosaics — N" summary bar (shown when photos are placed in mosaics)
         self.in_mosaics_bar = QFrame()
@@ -429,7 +487,7 @@ class TakeMode(QWidget):
         self.photos_sec.add(self.in_mosaics_bar)
 
         self.photos_sec.add(
-            hint("The ★ photo leads the post. This order is the order in the post."))
+            hint("★ FEATURED = landing tile on the site (e.g. TILEZ). Right-click any photo or click Featured photo."))
         self.bucket_count = hint("")   # its own line — AI-ALT progress / status only
         self.photos_sec.add(self.bucket_count)
 
@@ -575,6 +633,7 @@ class TakeMode(QWidget):
             [self.rail.send_box], width=360)
         self.photos_tray = RightPhotosTray(self.right_rail)
         self.photos_tray.stateChanged.connect(self._on_photos_tray_changed)
+        self.photos_tray.deletePressed.connect(lambda: self._remove_from_tray())
         photos_open = self._view_settings.value("take/photos_open", False, type=bool)
         self.photos_tray.set_open(photos_open)
         outer.addWidget(self.photos_tray)
@@ -583,6 +642,10 @@ class TakeMode(QWidget):
         self._autosave.setSingleShot(True)
         self._autosave.setInterval(900)
         self._autosave.timeout.connect(self._autosave_now)
+        # Thumbnails are baked off the UI thread, one job at a time.
+        self._thumb_executor = None
+        self._thumb_job = None
+        self._thumbsReady.connect(self._apply_thumb_results)
         self._slapper_timer = QTimer(self)
         self._slapper_timer.setInterval(1000)
         self._slapper_timer.timeout.connect(self._poll_slapper_return)
@@ -637,6 +700,27 @@ class TakeMode(QWidget):
         self._refresh_bucket()
 
     def eventFilter(self, obj, event):
+        if obj is self.body.editor.viewport():
+            from .photo_tray import TRAY_PHOTO_MIME
+            if event.type() in (event.Type.DragEnter, event.Type.DragMove):
+                if event.mimeData().hasFormat(TRAY_PHOTO_MIME):
+                    event.acceptProposedAction()
+                    return True
+            if event.type() == event.Type.Drop:
+                if event.mimeData().hasFormat(TRAY_PHOTO_MIME):
+                    import json as _json
+                    try:
+                        data = _json.loads(bytes(event.mimeData().data(TRAY_PHOTO_MIME)).decode("utf-8"))
+                    except Exception:
+                        data = {}
+                    cursor = self.body.editor.cursorForPosition(event.position().toPoint())
+                    self.body.editor.setTextCursor(cursor)
+                    self._drop_tray_photo_twiggy(
+                        str(data.get("asset_uuid") or ""),
+                        data.get("index"),
+                    )
+                    event.acceptProposedAction()
+                    return True
         if event.type() == event.Type.Wheel and (event.modifiers() & Qt.ControlModifier):
             delta = 10 if event.angleDelta().y() > 0 else -10
             if obj is getattr(self, "bucket_host", None):
@@ -678,10 +762,6 @@ class TakeMode(QWidget):
             self.page_zoom_slider.blockSignals(False)
         if hasattr(self, "page_zoom_lbl"):
             self.page_zoom_lbl.setText(f"{pct}%")
-        base = QFont("Georgia")
-        base.setPointSizeF(12.5 * (pct / 100.0))
-        self.body.canvas.setFont(base)
-        self.body.canvas.document().setDefaultFont(base)
         self._fit_page_card_width()
 
     @staticmethod
@@ -713,14 +793,105 @@ class TakeMode(QWidget):
         return TakeMode.resolve_site_colors(site_url)[0]
 
     def apply_canvas_background(self, site_url: str = "", explicit_bg: str = "", explicit_fg: str = "") -> str:
+        import json
         from PySide6.QtGui import QColor, QPalette
         from . import canvas as canvas_mod
+        from . import skin_css
+
+        url = str(site_url or "").strip()
+        sybu_skin = {}
+        if url:
+            try:
+                raw_skin = snap_library.meta(url, "skin_json", "")
+                if raw_skin:
+                    sybu_skin = skin_css.parse_sybu_skin(json.loads(raw_skin))
+            except Exception:  # noqa: BLE001
+                sybu_skin = {}
+
+        cached_skin = skin_css._SITE_CACHE.get(url) if url else None
+        css_loaded = bool(cached_skin and cached_skin.get("loaded"))
+
+        # Authoritative sybu-data values win whenever declared; CSS parse fills gaps.
+        eff_bg = sybu_skin.get("bg") or (cached_skin.get("bg") if css_loaded else "")
+        eff_fg = sybu_skin.get("fg") or (cached_skin.get("fg") if css_loaded else "")
+        eff_font = sybu_skin.get("body_font") or (cached_skin.get("body_font") if css_loaded else "")
+        eff_pt = float((cached_skin.get("body_pt") if css_loaded else 0.0) or 0.0)
+        eff_lh = float((cached_skin.get("line_height_pct") if css_loaded else 0.0) or 0.0)
+        eff_pmb = float((cached_skin.get("para_margin_bottom_px") if css_loaded else 0.0) or 0.0)
+        eff_imt = float((cached_skin.get("image_margin_top_px") if css_loaded else 0.0) or 0.0)
+        eff_imb = float((cached_skin.get("image_margin_bottom_px") if css_loaded else 0.0) or 0.0)
+        eff_cap_font = sybu_skin.get("caption_font") or (cached_skin.get("caption_font") if css_loaded else "")
+        eff_cap_pt = float(sybu_skin.get("caption_pt") or (cached_skin.get("caption_pt") if css_loaded else 0.0) or 0.0)
+        eff_cap_color = sybu_skin.get("caption_color") or (cached_skin.get("caption_color") if css_loaded else "")
+        eff_cap_italic = (
+            sybu_skin["caption_italic"] if sybu_skin.get("caption_italic") is not None
+            else (bool(cached_skin.get("caption_italic", True)) if css_loaded else True)
+        )
+        eff_cap_align = sybu_skin.get("caption_align") or (cached_skin.get("caption_align") if css_loaded else "") or ""
+        decl_width = int(sybu_skin.get("post_content_width") or (cached_skin.get("container_width") if css_loaded else 0) or 0)
+        if decl_width > 0 and getattr(self, "_preview_width", 760) != 360:
+            self._preview_width = decl_width
+            if hasattr(self, "preview_desktop_btn"):
+                self.preview_desktop_btn.setText(f"Desktop {decl_width}")
+            if hasattr(self, "_fit_page_card_width"):
+                self._fit_page_card_width()
+
+        note_msg = ""
         if explicit_bg and QColor(explicit_bg.strip()).isValid():
             bg = QColor(explicit_bg.strip()).name()
             fg = QColor(explicit_fg.strip()).name() if explicit_fg and QColor(explicit_fg.strip()).isValid() else ""
             available = True
+        elif eff_bg or eff_fg or eff_font or eff_cap_color or eff_cap_pt or eff_cap_font or eff_cap_align or css_loaded:
+            fallback_bg, fallback_fg, _ = self.resolve_site_colors(url)
+            bg = eff_bg or fallback_bg
+            fg = eff_fg or fallback_fg
+            if hasattr(self, "body") and hasattr(self.body, "canvas"):
+                self.body.canvas.set_skin_typography(
+                    body_font=eff_font,
+                    body_pt=eff_pt,
+                    caption_font=eff_cap_font,
+                    caption_pt=eff_cap_pt,
+                    caption_color=eff_cap_color,
+                    caption_italic=eff_cap_italic,
+                    caption_align=eff_cap_align,
+                    line_height_pct=eff_lh,
+                    para_margin_bottom=eff_pmb,
+                    image_margin_top=eff_imt,
+                    image_margin_bottom=eff_imb,
+                )
+            if sybu_skin.get("has_sybu") and (not eff_bg or not eff_font) and not css_loaded:
+                available = False
+                note_msg = "approximate: skin styles not loaded"
+            elif sybu_skin.get("has_sybu") and (not sybu_skin.get("bg") or not sybu_skin.get("body_font")) and css_loaded:
+                available = False
+                note_msg = "approximate: undeclared skin styles read from CSS fallback"
+            else:
+                available = True
         else:
-            bg, fg, available = self.resolve_site_colors(site_url)
+            bg, fg, available = self.resolve_site_colors(url)
+            note_msg = "approximate: skin styles not loaded"
+
+        if not css_loaded and url.startswith(("http://", "https://")) and getattr(self, "_skin_fetch_inflight", None) != url:
+            self._skin_fetch_inflight = url
+
+            def _bg_fetch(u=url):
+                res = skin_css.fetch_site_skin_styles(u)
+                if res.get("loaded"):
+                    try:
+                        import shiboken6
+                        if shiboken6.isValid(self):
+                            QMetaObject.invokeMethod(
+                                self, "_on_skin_styles_loaded", Qt.QueuedConnection
+                            )
+                    except Exception:  # noqa: BLE001
+                        pass
+
+            if not hasattr(self, "_skin_executor") or self._skin_executor is None:
+                self._skin_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="coldtake-skin")
+            self._skin_executor.submit(_bg_fetch)
+
+        if hasattr(self, "site_colors_note") and note_msg:
+            self.site_colors_note.setText(note_msg)
 
         pal = canvas_mod.site_surface_palette(bg, fg)
         bg = pal["bg"]
@@ -756,6 +927,20 @@ class TakeMode(QWidget):
             self.page_meta.setStyleSheet(
                 f"QLabel#PageMeta {{ background: transparent; color: {pal['muted']}; font-size: 12px; }}"
             )
+        if hasattr(self, "linked_post_lbl"):
+            rid = int(getattr(self, "_remote_post_id", 0) or 0)
+            if rid:
+                t = self.title_edit.text().strip() or f"Post #{rid}"
+                slug = str(getattr(self, "_remote_slug", "") or "").strip().lstrip("/")
+                loc = f"/{slug}" if slug else f"#{rid}"
+                self.linked_post_lbl.setText(f"Editing: {t}  {loc}")
+                self.linked_post_lbl.setStyleSheet(
+                    f"QLabel#LinkedPostStatus {{ background: transparent; color: {pal['eyebrow']};"
+                    " font-size: 11px; font-weight: 700; }}"
+                )
+                self.linked_post_lbl.setVisible(True)
+            else:
+                self.linked_post_lbl.setVisible(False)
         if hasattr(self, "site_colors_note"):
             self.site_colors_note.setStyleSheet(
                 f"QLabel#SiteColorsNote {{ background: transparent; color: {pal['muted']}; font-size: 11px; font-style: italic; }}"
@@ -769,6 +954,14 @@ class TakeMode(QWidget):
         if hasattr(self, "body") and hasattr(self.body, "apply_surface_palette"):
             self.body.apply_surface_palette(pal)
         return bg
+
+    @Slot()
+    def _on_skin_styles_loaded(self):
+        cfg = self.app_config() or {}
+        url = (cfg.get("url") or "").strip()
+        self._skin_fetch_inflight = None
+        if url:
+            self.apply_canvas_background(url)
 
     def _fit_page_card_width(self):
         pct = getattr(self, "_page_zoom", 100)
@@ -789,7 +982,8 @@ class TakeMode(QWidget):
         inner_w = max(200, target_card - 80)
         self.page_card.setFixedWidth(target_card)
         self.ruler.set_preview_width(inner_w)
-        self.body.canvas.set_preview_width(inner_w)
+        self.body.canvas.set_preview_width(self._preview_width)
+        self.body.canvas.set_zoom_scale(inner_w / float(max(1, self._preview_width)))
 
     def _set_preview_width(self, width: int):
         self._preview_width = int(width or 760)
@@ -825,29 +1019,46 @@ class TakeMode(QWidget):
             self.gutter_tag.setVisible(False)
             self.add_block_btn.setVisible(False)
 
-    def _show_add_block_menu(self):
+    def _build_add_block_menu(self):
         from PySide6.QtWidgets import QMenu
         menu = QMenu(self)
         c = self.body.canvas
+        sel_pos = c._selected_block_pos if c._selected_block_pos is not None else c._selected_obj_pos
+        target_block_pos = (
+            int(sel_pos) if sel_pos is not None
+            else c.textCursor().block().position()
+        )
+        on_object = bool(
+            (sel_pos is not None and c._object_at(sel_pos) is not None)
+            or c._object_at(target_block_pos) is not None
+        )
+        if on_object:
+            menu.addAction("Paragraph before", lambda bp=target_block_pos: c.insert_block_at_cursor("para", position="before", block_pos=bp))
+            menu.addAction("Paragraph after", lambda bp=target_block_pos: c.insert_block_at_cursor("para", position="after", block_pos=bp))
+            menu.addSeparator()
         for label, cb in (
-            ("Paragraph", lambda: c.set_kind("para")),
-            ("Heading", lambda: c.set_kind("h2")),
-            ("Subhead", lambda: c.set_kind("h3")),
-            ("Quote", lambda: c.set_kind("quote")),
-            ("Pull quote", lambda: c.set_kind("pullquote")),
-            ("Drop cap", c.toggle_dropcap),
-            ("Bullet list", lambda: c.set_list(False)),
-            ("Numbered list", lambda: c.set_list(True)),
+            ("Paragraph", lambda bp=target_block_pos: c.insert_block_at_cursor("para", position="after", block_pos=bp)),
+            ("Heading", lambda bp=target_block_pos: c.insert_block_at_cursor("h2", position="after", block_pos=bp)),
+            ("Subhead", lambda bp=target_block_pos: c.insert_block_at_cursor("h3", position="after", block_pos=bp)),
+            ("Quote", lambda bp=target_block_pos: c.insert_block_at_cursor("quote", position="after", block_pos=bp)),
+            ("Pull quote", lambda bp=target_block_pos: c.insert_block_at_cursor("pullquote", position="after", block_pos=bp)),
+            ("Drop cap", lambda bp=target_block_pos: c.insert_block_at_cursor("para", position="after", dropcap=True, block_pos=bp)),
+            ("Bullet list", lambda bp=target_block_pos: c.insert_block_at_cursor("para", position="after", ordered_list=False, block_pos=bp)),
+            ("Numbered list", lambda bp=target_block_pos: c.insert_block_at_cursor("para", position="after", ordered_list=True, block_pos=bp)),
             ("Divider", c.insert_hr),
             ("Space", c._edit_spacer),
             ("Mosaic", self._insert_mosaic),
             ("Photograph", self._add_and_insert_photo),
-            ("Image from gallery", c._edit_image),
+            ("Photo from tray", self._open_photos_tray_for_img),
             ("2 columns", lambda: c.insert_columns(2)),
             ("3 columns", lambda: c.insert_columns(3)),
-            ("Raw", lambda: c.set_kind("raw")),
+            ("Raw", lambda bp=target_block_pos: c.insert_block_at_cursor("raw", position="after", block_pos=bp)),
         ):
             menu.addAction(label, cb)
+        return menu
+
+    def _show_add_block_menu(self):
+        menu = self._build_add_block_menu()
         menu.exec(self.add_block_btn.mapToGlobal(self.add_block_btn.rect().bottomLeft()))
 
     def blocks_open(self) -> bool:
@@ -906,6 +1117,14 @@ class TakeMode(QWidget):
         super().resizeEvent(event)
         self._sync_block_tray_width()
 
+    def closeEvent(self, event):
+        if hasattr(self, "_autosave"):
+            self._autosave.stop()
+        if hasattr(self, "_slapper_timer"):
+            self._slapper_timer.stop()
+        self._thumb_job = None
+        super().closeEvent(event)
+
     def _refresh_block_actions(self, visual: bool):
         self.page_card.setProperty("textView", not visual)
         self.page_card.style().unpolish(self.page_card)
@@ -949,8 +1168,8 @@ class TakeMode(QWidget):
                         lambda: canvas.insert_columns(2)),
             BlockAction("3C", "3 columns", "PLACE", "Three columns",
                         lambda: canvas.insert_columns(3)),
-            BlockAction("IMG", "Image", "PLACE", "Pick an image from the site's Media Library",
-                        canvas._edit_image),
+            BlockAction("IMG", "Image", "PLACE", "Open the post's photos tray to drag a photo onto the page",
+                        self._open_photos_tray_for_img),
         ]
 
     def _text_block_actions(self):
@@ -970,7 +1189,8 @@ class TakeMode(QWidget):
                         lambda: bar._list("ul")),
             BlockAction("OL", "Numbers", "WRITE", "<ol><li>…</li></ol>",
                         lambda: bar._list("ol")),
-            BlockAction("IMG", "Image", "PLACE", "[img:ID|size|align]", bar._img),
+            BlockAction("IMG", "Image", "PLACE", "Open the post's photos tray to drag a photo onto the page",
+                        self._open_photos_tray_for_img),
             BlockAction("COL 2", "2 columns", "PLACE", "[columns=2]…[/columns]",
                         lambda: bar._columns(2)),
             BlockAction("COL 3", "3 columns", "PLACE", "[columns=3]…[/columns]",
@@ -1070,7 +1290,8 @@ class TakeMode(QWidget):
             existing_span = (block.position() + existing.start(),
                              block.position() + existing.end())
 
-        result = self._mosaic_dialog(existing_order, existing_layout)
+        preselected = [] if existing_order else self.selected_tray_indices()
+        result = self._mosaic_dialog(existing_order, existing_layout, preselected_order=preselected)
         if not result:
             return
         chosen, layout_name = result
@@ -1097,7 +1318,12 @@ class TakeMode(QWidget):
                 existing_order.append(uuid_to_index[str(identity)])
             elif str(identity).isdigit() and 1 <= int(identity) <= len(self._bucket):
                 existing_order.append(int(identity) - 1)
-        result = self._mosaic_dialog(existing_order, (layout or "").lower() or None)
+        preselected = [] if existing_order else self.selected_tray_indices()
+        result = self._mosaic_dialog(
+            existing_order,
+            (layout or "").lower() or None,
+            preselected_order=preselected,
+        )
         if not result:
             self.body.canvas._pending_obj_pos = None
             return
@@ -1137,28 +1363,42 @@ class TakeMode(QWidget):
         from the canvas, so both are resolved here the same way _canvas_mosaic
         already resolves them.
         """
+        return self._used_photo_indices(include_images=False, keep=keep)
+
+    def _used_photo_indices(self, *, include_images: bool = True, keep=None):
+        """0-based bucket indices already placed in mosaics (and image blocks)."""
         uuid_to_index = {str(image.asset_uuid): index
                          for index, image in enumerate(self._bucket)}
         used = set()
 
+        def _claim(identity):
+            key = str(identity or "").strip()
+            if key in uuid_to_index:
+                used.add(uuid_to_index[key])
+            elif key.startswith("asset:") and key[6:] in uuid_to_index:
+                used.add(uuid_to_index[key[6:]])
+            elif key.startswith("bucket:") and key[7:].isdigit():
+                pos = int(key[7:])
+                if 1 <= pos <= len(self._bucket):
+                    used.add(pos - 1)
+            elif key.isdigit() and 1 <= int(key) <= len(self._bucket):
+                used.add(int(key) - 1)
+
         def walk(node):
-            """Mosaics can sit inside a columns block, so this recurses rather
-            than reading only the top level."""
+            """Mosaics and images can sit inside a columns block, so recurse."""
             if isinstance(node, dict):
-                if node.get("type") == "mosaic":
+                kind = node.get("type")
+                if kind == "mosaic":
                     order = node.get("order") or []
                     if not order:
-                        # A BARE [mosaic] MEANS EVERY PHOTOGRAPH IN THE BUCKET
-                        # (biggie.py:46). Treating that as "all used" would hand
-                        # him an empty picker and no way forward, so it counts
-                        # as claiming nothing and the pool stays whole.
                         return
                     for identity in order:
-                        key = str(identity)
-                        if key in uuid_to_index:
-                            used.add(uuid_to_index[key])
-                        elif key.isdigit() and 1 <= int(key) <= len(self._bucket):
-                            used.add(int(key) - 1)
+                        _claim(identity)
+                elif include_images and kind == "image":
+                    if node.get("asset_uuid"):
+                        _claim(node.get("asset_uuid"))
+                    elif node.get("img_id"):
+                        _claim(node.get("img_id"))
                 for value in node.values():
                     walk(value)
             elif isinstance(node, (list, tuple)):
@@ -1168,44 +1408,155 @@ class TakeMode(QWidget):
         try:
             walk(self.body.authoring_blocks())
         except Exception:
-            # A body that cannot be parsed must not block mosaic building. The
-            # worst case of returning nothing is the old behaviour.
             return set()
 
         return used - set(keep or [])
 
-    def _mosaic_dialog(self, existing_order, existing_layout):
-        """The one mosaic builder (live preview, tick photos, drag order, layout,
-        rotate). Returns (chosen 1-based bucket positions, layout) or None."""
+    def _open_photos_tray_for_img(self):
+        """Open the post's photos tray so the writer can drag a photo onto the page."""
+        self.photos_tray.set_open(True)
+        if hasattr(self.photos_sec, "set_open"):
+            self.photos_sec.set_open(True)
+
+    def _find_bucket_image(self, asset_uuid: str, index_hint=None):
+        target = str(asset_uuid or "").strip()
+        if target:
+            for idx, im in enumerate(self._bucket):
+                if str(getattr(im, "asset_uuid", "")) == target:
+                    return idx, im
+        if isinstance(index_hint, int) and 0 <= index_hint < len(self._bucket):
+            return index_hint, self._bucket[index_hint]
+        return None, None
+
+    def _drop_tray_photo_biggie(self, asset_uuid: str):
+        _, im = self._find_bucket_image(asset_uuid)
+        if im is None:
+            return
+        default_cap = (im.caption or im.title or "").strip()
+        self.body.canvas.insert_image("asset:" + im.asset_uuid,
+                                      alt=im.alt, caption=default_cap)
+
+    def _drop_tray_photo_twiggy(self, asset_uuid: str, index_hint=None):
+        idx, _ = self._find_bucket_image(asset_uuid, index_hint)
+        if idx is None:
+            return
+        shortcode = f"[img:bucket:{idx + 1}|full|center]"
+        cursor = self.body.editor.textCursor()
+        if cursor.positionInBlock() > 0:
+            shortcode = "\n" + shortcode
+        cursor.insertText(shortcode + "\n")
+        self.body.editor.setTextCursor(cursor)
+
+    def selected_tray_indices(self) -> list:
+        """Return ordered list of currently selected unplaced 0-based bucket indices."""
+        used = self._used_photo_indices()
+        return [
+            i for i in getattr(self, "_selected_photo_indices", [])
+            if 0 <= i < len(self._bucket) and i not in used
+        ]
+
+    def select_tray_photos(self, indices):
+        """Select one or more unplaced tray photos by 0-based bucket index."""
+        used = self._used_photo_indices()
+        clean = []
+        for idx in (indices or []):
+            i = int(idx)
+            if 0 <= i < len(self._bucket) and i not in used and i not in clean:
+                clean.append(i)
+        self._selected_photo_indices = clean
+        self._selected_photo_idx = clean[0] if clean else None
+        self._refresh_bucket()
+
+    def insert_selected_into_post(self) -> bool:
+        """Place the single selected tray photo at the cursor (same result as dragging)."""
+        sel = self.selected_tray_indices()
+        if len(sel) != 1:
+            return False
+        idx = sel[0]
+        im = self._bucket[idx]
+        if self.body.is_biggie():
+            self._drop_tray_photo_biggie(im.asset_uuid)
+        else:
+            self._drop_tray_photo_twiggy(im.asset_uuid, idx)
+        self._selected_photo_indices = []
+        self._refresh_bucket()
+        self._changed()
+        return True
+
+    def insert_selected_mosaic_into_post(self, layout: str = "asymmetric") -> bool:
+        """Insert 2+ selected tray photos as a mosaic block at the cursor."""
+        sel = self.selected_tray_indices()
+        if len(sel) < 2:
+            return False
+        layout_name = str(layout or "asymmetric").strip().lower() or "asymmetric"
+        if self.body.is_biggie():
+            stable = [str(self._bucket[i].asset_uuid) for i in sel]
+            self.body.canvas.insert_mosaic(stable, layout_name)
+        else:
+            chosen_1based = [i + 1 for i in sel]
+            marker = "[mosaic=" + ",".join(map(str, chosen_1based)) + " layout=" + layout_name + "]"
+            cursor = self.body.editor.textCursor()
+            if cursor.positionInBlock() > 0:
+                marker = "\n" + marker
+            cursor.insertText(marker + "\n")
+            self.body.editor.setTextCursor(cursor)
+        self._selected_photo_indices = []
+        self._refresh_bucket()
+        self._changed()
+        return True
+
+    def _mosaic_dialog(self, existing_order, existing_layout, preselected_order=None):
+        """The one mosaic builder (live preview, thumbnail grid, drag/move order,
+        layout, rotate). Returns (chosen 1-based bucket positions, layout) or None."""
         existing = bool(existing_order)
+        initial_checked = list(existing_order) if existing else [
+            int(i) for i in (preselected_order or []) if 0 <= int(i) < len(self._bucket)
+        ]
         rotation_originals = {}
         dialog = QDialog(self)
         dialog.setWindowTitle("Edit mosaic" if existing else "Build mosaic")
-        dialog.resize(900, 760)
+        dialog.setWindowFlags(
+            dialog.windowFlags()
+            | Qt.Window
+            | Qt.WindowMinimizeButtonHint
+            | Qt.WindowMaximizeButtonHint
+            | Qt.WindowCloseButtonHint
+        )
+        dialog.setSizeGripEnabled(True)
+        dialog.resize(max(980, self._preview_width + 80), 820)
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel(
-            "Choose exactly which photos belong in this mosaic. Drag them—or use "
-            "the controls—to set its order. The post's photo order is unchanged."))
-        preview = MosaicPreview()
-        layout.addWidget(preview)
-        preview_hint = QLabel("LIVE PREVIEW — drag one image onto another to swap them")
+            "Choose which photos belong in this mosaic. Click tiles to include/exclude, "
+            "or drag in the preview to swap positions. Hover a tile for its filename."))
+
+        preview = MosaicPreview(content_width=self._preview_width)
+        preview_scroll = QScrollArea()
+        preview_scroll.setWidgetResizable(False)
+        preview_scroll.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        preview_scroll.setFrameShape(QFrame.NoFrame)
+        preview_scroll.setStyleSheet("QScrollArea { background: #090b0a; border: 1px solid #262926; }")
+        preview_scroll.setWidget(preview)
+        preview_scroll.setMinimumHeight(260)
+
+        preview_hint = QLabel(
+            f"LIVE WYSIWYG PREVIEW ({self._preview_width}px column) — drag one image onto another to swap them"
+        )
         preview_hint.setAlignment(Qt.AlignCenter)
-        layout.addWidget(preview_hint)
-        photos = QListWidget()
-        # Without this the thumbnails above are drawn at the ~16px default and
-        # are no more use than the filename was.
-        photos.setIconSize(QSize(96, 96))
-        photos.setDragDropMode(QListWidget.InternalMove)
-        # Checkboxes own inclusion. Row selection is only the current photo for
-        # move/rotate controls, avoiding Windows Ctrl-click multi-select rules.
-        photos.setSelectionMode(QAbstractItemView.SingleSelection)
+
+        preview_pane = QWidget()
+        preview_pane_lay = QVBoxLayout(preview_pane)
+        preview_pane_lay.setContentsMargins(0, 0, 0, 0)
+        preview_pane_lay.setSpacing(4)
+        preview_pane_lay.addWidget(preview_scroll, 1)
+        preview_pane_lay.addWidget(preview_hint)
+
         # SS-1049: photographs already used by OTHER mosaics in this post are
-        # not offered again. The ones belonging to the mosaic being edited stay,
-        # ticked, which is what existing_order is doing here.
+        # not offered again.
         _used = self._mosaic_used_indices(existing_order)
-        display_order = existing_order + [i for i in range(len(self._bucket))
-                                          if i not in existing_order
-                                          and i not in _used]
+        display_order = list(initial_checked) + [
+            i for i in range(len(self._bucket))
+            if i not in initial_checked and i not in _used
+        ]
         if not display_order:
             QMessageBox.information(
                 self, "Every photo is already in a mosaic",
@@ -1216,36 +1567,49 @@ class TakeMode(QWidget):
                 "instead of starting another."
                 % len(self._bucket))
             return None
+
         for bucket_index in display_order:
             image = self._bucket[bucket_index]
             if bucket_index not in rotation_originals:
                 rotation_originals[bucket_index] = (
                     image.local_path, image.original_path, image.width, image.height)
-            shape, ratio = self._image_shape(image)
-            name = image.filename or os.path.basename(image.local_path)
-            item = QListWidgetItem(f"{name}    {shape} · {ratio:.2f}:1")
-            # A thumbnail, because a filename is not how a photographer knows
-            # which photograph is which. This list was name + shape + ratio and
-            # nothing else, which is SS-1033: with 53 in the bucket the operator
-            # could not tell them apart, and that is what stopped the post.
-            # thumb_square is the pre-made small file every other list in this
-            # app already uses for its icons -- see the bucket rail below, which
-            # does exactly this. Falling back to the original only when there is
-            # no thumbnail yet.
-            icon = load_pixmap(image.thumb_square or image.local_path, 96)
-            if icon:
-                item.setIcon(QIcon(icon))
-            else:
-                # An explicit state rather than a silently blank row, so a
-                # photograph that will not decode is visible as a problem.
-                item.setToolTip("This photograph could not be previewed: "
-                                + (image.local_path or name))
-            item.setData(Qt.UserRole, bucket_index)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsDragEnabled)
-            item.setCheckState(Qt.Checked if existing and bucket_index in existing_order
-                               else Qt.Unchecked)
-            photos.addItem(item)
-        layout.addWidget(photos, 1)
+
+        tile_scroll = QScrollArea()
+        tile_scroll.setWidgetResizable(True)
+        tile_scroll.setFrameShape(QFrame.NoFrame)
+        tile_host = QWidget()
+        tile_grid = QGridLayout(tile_host)
+        tile_grid.setContentsMargins(4, 4, 4, 4)
+        tile_grid.setSpacing(8)
+        tile_scroll.setWidget(tile_host)
+        tile_scroll.setMinimumHeight(290)
+        preview_pane.setMinimumHeight(240)
+        splitter = QSplitter(Qt.Vertical)
+        splitter.addWidget(preview_pane)
+        splitter.addWidget(tile_scroll)
+        splitter.setChildrenCollapsible(False)
+        splitter.setStretchFactor(0, 55)
+        splitter.setStretchFactor(1, 45)
+        _settings = QSettings("SnapSmack", "ColdSnap")
+        _saved_sizes = _settings.value("take/mosaic_splitter_sizes")
+        if isinstance(_saved_sizes, (list, tuple)) and len(_saved_sizes) == 2:
+            try:
+                _s0, _s1 = int(_saved_sizes[0]), int(_saved_sizes[1])
+                if _s0 >= 240 and _s1 >= 290:
+                    splitter.setSizes([_s0, _s1])
+                else:
+                    splitter.setSizes([400, 330])
+            except (TypeError, ValueError):
+                splitter.setSizes([400, 330])
+        else:
+            splitter.setSizes([400, 330])
+
+        def _save_splitter(*_args):
+            _settings.setValue("take/mosaic_splitter_sizes", splitter.sizes())
+
+        splitter.splitterMoved.connect(_save_splitter)
+        dialog.finished.connect(_save_splitter)
+        layout.addWidget(splitter, 1)
 
         selection_row = QHBoxLayout()
         select_all = QPushButton("Select all")
@@ -1265,8 +1629,8 @@ class TakeMode(QWidget):
         layout.addLayout(preset_row)
 
         arrows = QHBoxLayout()
-        up = QPushButton("Move up")
-        down = QPushButton("Move down")
+        up = QPushButton("Move earlier")
+        down = QPushButton("Move later")
         rotate_left = QPushButton("↶ Rotate left")
         rotate_right = QPushButton("↷ Rotate right")
         suggest = QPushButton("✨ Suggest arrangement")
@@ -1275,65 +1639,115 @@ class TakeMode(QWidget):
         arrows.addStretch(1); arrows.addWidget(suggest)
         layout.addLayout(arrows)
 
-        def checked_count():
-            return sum(photos.item(i).checkState() == Qt.Checked
-                       for i in range(photos.count()))
+        checked_set = set(initial_checked)
+        active_bucket_idx = [display_order[0] if display_order else None]
+        tiles_by_idx = {}
+
+        def checked_indices():
+            return [bi for bi in display_order if bi in checked_set]
 
         def refresh_preview():
-            tiles = []
-            for i in range(photos.count()):
-                item = photos.item(i)
-                if item.checkState() == Qt.Checked:
-                    bucket_index = int(item.data(Qt.UserRole))
-                    tiles.append((i, self._bucket[bucket_index].local_path))
-            preview.set_mosaic(tiles, preset.currentData())
+            tiles = [
+                (pos, self._bucket[bi].local_path)
+                for pos, bi in enumerate(display_order)
+                if bi in checked_set
+            ]
+            preview.set_mosaic(tiles, preset.currentData() or "asymmetric")
 
         def refresh_layouts():
-            count = checked_count()
+            inc = checked_indices()
+            count = len(inc)
             previous = preset.currentData()
             preset.blockSignals(True)
             preset.clear()
-            for label, value in self._mosaic_layouts(count):
-                preset.addItem(label, value)
-            old = preset.findData(previous)
-            preset.setCurrentIndex(old if old >= 0 else 0)
+            layouts_list = self._mosaic_layouts(count)
+            if layouts_list:
+                for label, value in layouts_list:
+                    preset.addItem(label, value)
+                preset.setEnabled(True)
+                old = preset.findData(previous)
+                preset.setCurrentIndex(old if old >= 0 else 0)
+            else:
+                preset.addItem("(tick 1+ photos to choose layout)", "")
+                preset.setEnabled(False)
             preset.blockSignals(False)
-            # SS-1049 acceptance (c), the coordinator's suggestion: say how many
-            # of the bucket are still unused, so he can see he has not missed
-            # any. Only shown once something IS used -- on a first mosaic
-            # "53 of 53 unused" is noise.
             if _used:
                 selected_count.setText(
-                    f"{count} of {photos.count()} included "
+                    f"{count} of {len(display_order)} included "
                     f"— {len(self._bucket) - len(_used)} of "
                     f"{len(self._bucket)} unused in this post")
             else:
-                selected_count.setText(f"{count} of {photos.count()} included")
+                selected_count.setText(f"{count} of {len(display_order)} included")
             refresh_preview()
 
+        def rebuild_grid():
+            while tile_grid.count():
+                item = tile_grid.takeAt(0)
+                w = item.widget()
+                if w:
+                    w.deleteLater()
+            tiles_by_idx.clear()
+            cols = 6
+            tile_px = 122
+            for grid_pos, bi in enumerate(display_order):
+                image = self._bucket[bi]
+                ori_code, ratio = photo_orientation_badge(
+                    image.width, image.height, image.local_path)
+                name = image.filename or os.path.basename(image.local_path)
+                pix = load_pixmap(image.thumb_aspect or image.local_path, tile_px) or QPixmap()
+                is_inc = bi in checked_set
+                tile = PhotoThumbTile(
+                    bi,
+                    pix,
+                    selected=is_inc,
+                    is_cover=(bi == self._cover_idx),
+                    edited=bool(getattr(image, "slapper_edited_path", "")),
+                    tile_size=tile_px,
+                    asset_uuid=str(getattr(image, "asset_uuid", "")),
+                    orientation=ori_code,
+                    ratio_text=f"{ratio:.2f}:1",
+                )
+                tile.setToolTip(f"{name}\n{ori_code} · {ratio:.2f}:1")
+                if not pix or pix.isNull():
+                    tile.setToolTip("This photograph could not be previewed: " + (image.local_path or name))
+
+                def _on_tile_click(b_idx=bi):
+                    active_bucket_idx[0] = b_idx
+                    if b_idx in checked_set:
+                        checked_set.remove(b_idx)
+                    else:
+                        checked_set.add(b_idx)
+                    rebuild_grid()
+                    refresh_layouts()
+
+                tile.clicked.connect(lambda _=False, b_idx=bi: _on_tile_click(b_idx))
+                tiles_by_idx[bi] = tile
+                tile_grid.addWidget(tile, grid_pos // cols, grid_pos % cols)
+
         def set_all(state):
-            for i in range(photos.count()):
-                photos.item(i).setCheckState(state)
+            if state == Qt.Checked:
+                checked_set.update(display_order)
+            else:
+                checked_set.clear()
+            rebuild_grid()
+            refresh_layouts()
 
         def swap_rows(first, second):
             if first == second or first < 0 or second < 0:
                 return
-            low, high = sorted((first, second))
-            high_item = photos.takeItem(high)
-            low_item = photos.takeItem(low)
-            photos.insertItem(low, high_item)
-            photos.insertItem(high, low_item)
+            if first >= len(display_order) or second >= len(display_order):
+                return
+            display_order[first], display_order[second] = display_order[second], display_order[first]
+            rebuild_grid()
             refresh_preview()
 
         def rotate_current(degrees):
-            row = photos.currentRow()
-            if row < 0:
+            bi = active_bucket_idx[0]
+            if bi is None or bi not in display_order:
                 QMessageBox.information(dialog, "Choose a photo",
-                                        "Click one photo row before rotating it.")
+                                        "Click one photo tile before rotating it.")
                 return
-            item = photos.item(row)
-            bucket_index = int(item.data(Qt.UserRole))
-            image = self._bucket[bucket_index]
+            image = self._bucket[bi]
             try:
                 from PIL import Image, ImageOps
                 target_dir = os.path.join(tempfile.gettempdir(), "coldsnap-rotated")
@@ -1352,58 +1766,70 @@ class TakeMode(QWidget):
                 if not image.original_path:
                     image.original_path = image.local_path
                 image.local_path = target
-                shape, ratio = self._image_shape(image)
-                name = image.filename or os.path.basename(image.local_path)
-                item.setText(f"{name}    {shape} · {ratio:.2f}:1")
+                image.thumb_aspect = ""
+                image.thumb_square = ""
+                rebuild_grid()
                 refresh_preview()
             except Exception as exc:
                 QMessageBox.warning(dialog, "Could not rotate photo", str(exc))
 
         def suggest_arrangement():
-            included = [photos.item(i) for i in range(photos.count())
-                        if photos.item(i).checkState() == Qt.Checked]
-            if not included:
+            inc = checked_indices()
+            if not inc:
                 return
-            # Local, deterministic assist: similar shapes stay together and a
-            # three-photo hero is chosen from the strongest outlier.
-            included.sort(key=lambda item: self._image_shape(
-                self._bucket[int(item.data(Qt.UserRole))])[1])
-            excluded = [photos.item(i) for i in range(photos.count())
-                        if photos.item(i).checkState() != Qt.Checked]
-            while photos.count():
-                photos.takeItem(0)
-            for item in included + excluded:
-                photos.addItem(item)
-            if len(included) == 3:
-                ratios = [self._image_shape(self._bucket[int(i.data(Qt.UserRole))])[1]
-                          for i in included]
-                preset.setCurrentIndex(preset.findData(
-                    "one-top" if sum(r > 1.08 for r in ratios) >= 2 else "one-left"))
-            elif len(included) >= 4:
-                preset.setCurrentIndex(preset.findData("asymmetric"))
+            # Group by orientation (P, SQ, L) and aspect ratio so similar shapes sit cleanly
+            ori_rank = {"P": 0, "SQ": 1, "L": 2, "": 3}
+            def _key(bi):
+                im = self._bucket[bi]
+                ori, r = photo_orientation_badge(im.width, im.height, im.local_path)
+                return (ori_rank.get(ori, 3), r)
+            inc.sort(key=_key)
+            exc = [bi for bi in display_order if bi not in checked_set]
+            display_order[:] = inc + exc
+            oris = [photo_orientation_badge(self._bucket[bi].width, self._bucket[bi].height, self._bucket[bi].local_path)[0]
+                    for bi in inc]
+            ratios = [photo_orientation_badge(self._bucket[bi].width, self._bucket[bi].height, self._bucket[bi].local_path)[1]
+                      for bi in inc]
+            if len(inc) == 3:
+                if all(o == "P" for o in oris) or all(o == "SQ" for o in oris):
+                    target_layout = "three-across"
+                elif sum(o == "L" for o in oris) >= 2:
+                    target_layout = "one-top"
+                else:
+                    target_layout = "one-left"
+                idx_l = preset.findData(target_layout)
+                if idx_l >= 0:
+                    preset.setCurrentIndex(idx_l)
+            elif len(inc) == 2:
+                target_layout = "rows" if all(r > 1.3 for r in ratios) else "asymmetric"
+                idx_l = preset.findData(target_layout)
+                if idx_l >= 0:
+                    preset.setCurrentIndex(idx_l)
+            elif len(inc) >= 4:
+                target_layout = "square" if all(o == "SQ" for o in oris) else "asymmetric"
+                idx_l = preset.findData(target_layout)
+                if idx_l >= 0:
+                    preset.setCurrentIndex(idx_l)
+            rebuild_grid()
+            refresh_preview()
 
         select_all.clicked.connect(lambda: set_all(Qt.Checked))
         clear_all.clicked.connect(lambda: set_all(Qt.Unchecked))
         rotate_left.clicked.connect(lambda: rotate_current(90))
         rotate_right.clicked.connect(lambda: rotate_current(-90))
         suggest.clicked.connect(suggest_arrangement)
-        photos.itemChanged.connect(lambda _item: refresh_layouts())
-        photos.model().rowsMoved.connect(lambda *_args: refresh_preview())
         preset.currentIndexChanged.connect(lambda _index: refresh_preview())
         preview.swapRequested.connect(swap_rows)
-        refresh_layouts()
-        if existing_layout:
-            found = preset.findData(existing_layout)
-            if found >= 0:
-                preset.setCurrentIndex(found)
 
         def move(delta):
-            row = photos.currentRow()
-            target = row + delta
-            if row >= 0 and 0 <= target < photos.count():
-                item = photos.takeItem(row)
-                photos.insertItem(target, item)
-                photos.setCurrentRow(target)
+            bi = active_bucket_idx[0]
+            if bi is None or bi not in display_order:
+                return
+            pos = display_order.index(bi)
+            target = pos + delta
+            if 0 <= target < len(display_order):
+                display_order[pos], display_order[target] = display_order[target], display_order[pos]
+                rebuild_grid()
                 refresh_preview()
 
         up.clicked.connect(lambda: move(-1))
@@ -1412,15 +1838,29 @@ class TakeMode(QWidget):
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
+
+        # Expose dialog internals for headless/UI regression tests
+        dialog._mosaic_preview = preview
+        dialog._mosaic_preset = preset
+        dialog._mosaic_tiles = tiles_by_idx
+        dialog._mosaic_checked_indices = checked_indices
+        dialog._mosaic_selected_count_lbl = selected_count
+        dialog._mosaic_suggest_btn = suggest
+
+        rebuild_grid()
+        refresh_layouts()
+        if existing_layout:
+            found = preset.findData(existing_layout)
+            if found >= 0:
+                preset.setCurrentIndex(found)
+
         if dialog.exec() != QDialog.Accepted:
             for bucket_index, state in rotation_originals.items():
                 image = self._bucket[bucket_index]
                 image.local_path, image.original_path, image.width, image.height = state
             return None
 
-        chosen = [int(photos.item(i).data(Qt.UserRole)) + 1
-                  for i in range(photos.count())
-                  if photos.item(i).checkState() == Qt.Checked]
+        chosen = [bi + 1 for bi in display_order if bi in checked_set]
         if not chosen:
             for bucket_index, state in rotation_originals.items():
                 image = self._bucket[bucket_index]
@@ -1429,7 +1869,7 @@ class TakeMode(QWidget):
             return None
         # A rotate changed a working copy: the canvas must repaint from the new file.
         self.body.set_bucket([im.local_path for im in self._bucket])
-        return chosen, str(preset.currentData())
+        return chosen, str(preset.currentData() or "asymmetric")
 
     def _add_photos(self):
         from .pickers import pick_images
@@ -1565,10 +2005,386 @@ class TakeMode(QWidget):
         dialog._trunc_note = trunc_note
         return dialog
 
-    def _open_published(self):
-        # A pending 900 ms autosave used to be discarded by the document
-        # switch below. Flush it before the first network request or dialog so
-        # cancel, an error, and a slow server all leave a durable draft.
+    def _has_open_draft_content(self) -> bool:
+        """True when the editor currently holds any authored title, body, or photos."""
+        if self.title_edit.text().strip():
+            return True
+        if self._bucket:
+            return True
+        if self.body.is_biggie():
+            plain = self.body.canvas.toPlainText()
+            if plain.strip() or "\ufffc" in plain:
+                return True
+        elif self.body.editor.toPlainText().strip():
+            return True
+        return False
+
+    def _ask_open_published_action(self, post_title: str, choose_fn=None) -> str:
+        """Ask how to handle an open draft before opening a published post.
+        Returns 'attach', 'separate', or 'cancel'.
+        """
+        if choose_fn is not None:
+            return str(choose_fn(post_title) or "cancel")
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle("You have a draft open")
+        box.setText(
+            f"You already have a draft open in the editor.\n\n"
+            f"How do you want to open \"{post_title or 'this published post'}\"?"
+        )
+        attach_btn = box.addButton("Attach this draft to the published post", QMessageBox.AcceptRole)
+        separate_btn = box.addButton("Open separately", QMessageBox.ActionRole)
+        box.addButton("Cancel", QMessageBox.RejectRole)
+        box.exec()
+        clicked = box.clickedButton()
+        if clicked is attach_btn:
+            return "attach"
+        if clicked is separate_btn:
+            return "separate"
+        return "cancel"
+
+    def _run_off_thread(self, fn, label: str = "Loading…"):
+        """Run blocking network work off the GUI thread so the window never freezes."""
+        prog = QProgressDialog(label, None, 0, 0, self)
+        prog.setWindowTitle("COLD TAKE")
+        prog.setWindowModality(Qt.WindowModal)
+        prog.setCancelButton(None)
+        prog.setMinimumDuration(150)
+
+        loop = QEventLoop(self)
+        outcome = {}
+
+        def _worker():
+            try:
+                outcome["value"] = fn()
+            except Exception as exc:  # noqa: BLE001
+                outcome["error"] = exc
+            finally:
+                QMetaObject.invokeMethod(loop, "quit", Qt.QueuedConnection)
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            pool.submit(_worker)
+            loop.exec()
+        prog.close()
+        if "error" in outcome:
+            raise outcome["error"]
+        return outcome.get("value")
+
+    @staticmethod
+    def _draft_block_count(draft) -> int:
+        import json
+        raw_blocks = getattr(draft, "blocks_json", "") or ""
+        if raw_blocks:
+            try:
+                parsed = json.loads(raw_blocks)
+                if isinstance(parsed, list):
+                    return len(parsed)
+            except (TypeError, ValueError):
+                pass
+        cap = (getattr(draft, "caption", "") or "").strip()
+        if not cap:
+            return 0
+        return len([p for p in re.split(r"\n\s*\n", cap) if p.strip()])
+
+    @staticmethod
+    def _trash_dir() -> str:
+        path = os.path.join(O.default_sessions_root(), "trash")
+        os.makedirs(path, exist_ok=True)
+        return path
+
+    @classmethod
+    def _move_draft_to_trash(cls, session, draft) -> str:
+        import json
+        from datetime import datetime, timezone
+        tdir = cls._trash_dir()
+        payload = {
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
+            "session_id": session.session_id,
+            "draft": draft.to_dict(),
+        }
+        tpath = os.path.join(tdir, f"{draft.draft_id}.json")
+        with open(tpath, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, indent=2)
+        session.delete_draft(draft.draft_id)
+        return tpath
+
+    @classmethod
+    def _list_trash_drafts(cls) -> list:
+        import json
+        from datetime import datetime, timezone, timedelta
+        tdir = cls._trash_dir()
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        items = []
+        for fn in os.listdir(tdir):
+            if not fn.endswith(".json"):
+                continue
+            fp = os.path.join(tdir, fn)
+            try:
+                with open(fp, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                dt = datetime.fromisoformat(str(data.get("deleted_at") or ""))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                if dt < cutoff:
+                    os.remove(fp)
+                    continue
+                draft = O.Draft.from_dict(data["draft"])
+                items.append((fp, str(data.get("session_id") or ""), str(data.get("deleted_at") or ""), draft))
+            except Exception:  # noqa: BLE001
+                continue
+        items.sort(key=lambda x: x[2], reverse=True)
+        return items
+
+    @classmethod
+    def _restore_from_trash(cls, trash_path: str, target_session):
+        import json
+        with open(trash_path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        draft = O.Draft.from_dict(data["draft"])
+        target_session.add_draft(draft, copy_images=False)
+        if os.path.isfile(trash_path):
+            os.remove(trash_path)
+        return draft
+
+    @staticmethod
+    def _archived_draft_ids() -> set:
+        raw = QSettings("SnapSmack", "ColdSnap").value("take/archived_draft_ids", []) or []
+        if isinstance(raw, str):
+            raw = [x for x in raw.split(",") if x]
+        return set(str(x) for x in raw)
+
+    @staticmethod
+    def _archive_draft_id(draft_id: str):
+        settings = QSettings("SnapSmack", "ColdSnap")
+        ids = TakeMode._archived_draft_ids()
+        ids.add(str(draft_id))
+        settings.setValue("take/archived_draft_ids", sorted(ids))
+
+    def _collect_local_drafts(self, *, include_archived: bool = False):
+        """Return (session, draft) pairs for all local drafts in this mode, newest first."""
+        seen = set()
+        archived = set() if include_archived else self._archived_draft_ids()
+        entries = []
+        active_session = self.rail.ensure_session()
+        sessions = [active_session]
+        try:
+            for s in O.SessionStore().list():
+                if s.mode == self.SUITE_MODE and s.session_id != active_session.session_id:
+                    sessions.append(s)
+        except Exception:  # noqa: BLE001
+            pass
+        for s in sessions:
+            try:
+                for d in s.list_drafts():
+                    if d.draft_id not in seen and d.draft_id not in archived:
+                        seen.add(d.draft_id)
+                        entries.append((s, d))
+            except Exception:  # noqa: BLE001
+                continue
+        entries.sort(
+            key=lambda pair: (str(getattr(pair[1], "updated_at", "") or ""),
+                              str(getattr(pair[1], "created_at", "") or "")),
+            reverse=True,
+        )
+        return entries
+
+    @staticmethod
+    def _duplicate_remote_links(entries) -> dict:
+        counts = {}
+        for _sess, d in entries:
+            rid = getattr(d, "remote_post_id", None)
+            if rid:
+                counts[int(rid)] = counts.get(int(rid), 0) + 1
+        return {rid: cnt for rid, cnt in counts.items() if cnt > 1}
+
+    def _build_open_draft_dialog(self, entries):
+        from PySide6.QtWidgets import QCheckBox
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Open local draft")
+        dialog.resize(680, 480)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel("Choose a saved local draft to load into COLD TAKE:"))
+
+        dup_banner = QLabel()
+        dup_banner.setWordWrap(True)
+        dup_banner.setStyleSheet("color: #f5b942; font-weight: 700; padding: 4px 0;")
+        layout.addWidget(dup_banner)
+
+        choices = QListWidget()
+        layout.addWidget(choices, 1)
+
+        ctrl_row = QHBoxLayout()
+        archive_btn = QPushButton("Archive draft")
+        archive_btn.setToolTip("Hide this draft from the list without deleting its file on disk")
+        delete_btn = QPushButton("Delete draft")
+        delete_btn.setToolTip("Move this draft to COLD SNAP Trash (recoverable for 30 days)")
+        restore_btn = QPushButton("Restore")
+        restore_btn.setToolTip("Restore the selected draft from COLD SNAP Trash")
+        restore_btn.setVisible(False)
+        show_arch_cb = QCheckBox("Show archived")
+        show_trash_cb = QCheckBox("Show trash (30d)")
+        ctrl_row.addWidget(archive_btn)
+        ctrl_row.addWidget(delete_btn)
+        ctrl_row.addWidget(restore_btn)
+        ctrl_row.addWidget(show_arch_cb)
+        ctrl_row.addWidget(show_trash_cb)
+        ctrl_row.addStretch(1)
+        layout.addLayout(ctrl_row)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Open)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        choices.itemDoubleClicked.connect(lambda _item: dialog.accept())
+        layout.addWidget(buttons)
+
+        dialog._entries = list(entries)
+        dialog._trash_entries = []
+        dialog._choices = choices
+        dialog._dup_banner = dup_banner
+        dialog._archive_btn = archive_btn
+        dialog._delete_btn = delete_btn
+        dialog._restore_btn = restore_btn
+        dialog._show_arch_cb = show_arch_cb
+        dialog._show_trash_cb = show_trash_cb
+
+        def _populate():
+            choices.clear()
+            showing_trash = show_trash_cb.isChecked()
+            archive_btn.setVisible(not showing_trash)
+            delete_btn.setVisible(not showing_trash)
+            restore_btn.setVisible(showing_trash)
+            buttons.button(QDialogButtonBox.Open).setEnabled(not showing_trash)
+            if showing_trash:
+                dup_banner.setVisible(False)
+                dialog._trash_entries = self._list_trash_drafts()
+                for idx, (_fp, _sid, del_at, draft) in enumerate(dialog._trash_entries):
+                    title = str(getattr(draft, "title", "") or "Untitled")
+                    n_blocks = self._draft_block_count(draft)
+                    label = f"[TRASH] {title}   [{n_blocks} blocks]   — deleted {del_at[:19].replace('T', ' ')}"
+                    item = QListWidgetItem(label)
+                    item.setData(Qt.UserRole, idx)
+                    choices.addItem(item)
+                if choices.count() > 0:
+                    choices.setCurrentRow(0)
+                return
+
+            cur_entries = dialog._entries
+            dups = self._duplicate_remote_links(cur_entries)
+            if dups:
+                parts = [f"#{rid} ({cnt} drafts)" for rid, cnt in sorted(dups.items())]
+                dup_banner.setText("⚠ Multiple drafts are linked to the same published post: " + ", ".join(parts) + ". Which is current?")
+                dup_banner.setVisible(True)
+            else:
+                dup_banner.setVisible(False)
+            archived_ids = self._archived_draft_ids()
+            for idx, (_sess, draft) in enumerate(cur_entries):
+                title = str(getattr(draft, "title", "") or "Untitled")
+                date_s = str(getattr(draft, "updated_at", "") or getattr(draft, "post_date", "") or getattr(draft, "created_at", "") or "")[:19].replace("T", " ")
+                n_blocks = self._draft_block_count(draft)
+                n_photos = len(getattr(draft, "images", None) or [])
+                rid = getattr(draft, "remote_post_id", None)
+                linked = f" · linked #{rid}" if rid else ""
+                arch_tag = " [archived]" if draft.draft_id in archived_ids else ""
+                label = f"{title}{arch_tag}   [{n_blocks} blocks, {n_photos} photos{linked}]"
+                if date_s:
+                    label += f"   — {date_s}"
+                item = QListWidgetItem(label)
+                item.setData(Qt.UserRole, idx)
+                choices.addItem(item)
+            if choices.count() > 0:
+                choices.setCurrentRow(0)
+
+        def _on_archive():
+            item = choices.currentItem()
+            if not item:
+                return
+            idx = int(item.data(Qt.UserRole))
+            _s, draft = dialog._entries[idx]
+            self._archive_draft_id(draft.draft_id)
+            dialog._entries = self._collect_local_drafts(include_archived=show_arch_cb.isChecked())
+            _populate()
+
+        def _on_delete(*, confirm_fn=None):
+            item = choices.currentItem()
+            if not item:
+                return
+            idx = int(item.data(Qt.UserRole))
+            sess, draft = dialog._entries[idx]
+            title = str(getattr(draft, "title", "") or "Untitled")
+            if draft.draft_id == getattr(self, "_editing_id", None):
+                if confirm_fn is None:
+                    QMessageBox.information(
+                        dialog, "Draft is open",
+                        f"\"{title}\" is currently open in COLD TAKE. Clear or open another draft before deleting it.",
+                    )
+                return
+            if confirm_fn is not None:
+                if not confirm_fn("delete", draft):
+                    return
+            else:
+                ans = QMessageBox.question(
+                    dialog, "Delete draft",
+                    f"Move \"{title}\" to COLD SNAP Trash (recoverable for 30 days)?",
+                    QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel,
+                )
+                if ans != QMessageBox.Yes:
+                    return
+            rid = getattr(draft, "remote_post_id", None)
+            if rid:
+                if confirm_fn is not None:
+                    if not confirm_fn("linked", draft):
+                        return
+                else:
+                    ans2 = QMessageBox.warning(
+                        dialog, "Linked to published post",
+                        f"\"{title}\" is linked to published post #{rid}. Move it to Trash anyway?",
+                        QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel,
+                    )
+                    if ans2 != QMessageBox.Yes:
+                        return
+            self._move_draft_to_trash(sess, draft)
+            dialog._entries = self._collect_local_drafts(include_archived=show_arch_cb.isChecked())
+            _populate()
+
+        def _on_restore():
+            item = choices.currentItem()
+            if not item:
+                return
+            idx = int(item.data(Qt.UserRole))
+            fp, _sid, _del, _draft = dialog._trash_entries[idx]
+            self._restore_from_trash(fp, self.rail.ensure_session())
+            dialog._entries = self._collect_local_drafts(include_archived=show_arch_cb.isChecked())
+            _populate()
+
+        def _on_toggle_archived():
+            dialog._entries = self._collect_local_drafts(include_archived=show_arch_cb.isChecked())
+            _populate()
+
+        dialog._on_delete = _on_delete
+        archive_btn.clicked.connect(_on_archive)
+        delete_btn.clicked.connect(lambda: _on_delete())
+        restore_btn.clicked.connect(_on_restore)
+        show_arch_cb.toggled.connect(lambda _checked: _on_toggle_archived())
+        show_trash_cb.toggled.connect(lambda _checked: _populate())
+        _populate()
+        return dialog
+
+    def _open_draft(self):
+        entries = self._collect_local_drafts()
+        if not entries:
+            QMessageBox.information(self, "No saved drafts", "There are no saved drafts in your COLD TAKE sessions yet.")
+            return
+        dialog = self._build_open_draft_dialog(entries)
+        if dialog.exec() != QDialog.Accepted or not dialog._choices.currentItem():
+            return
+        idx = int(dialog._choices.currentItem().data(Qt.UserRole))
+        _sess, draft = dialog._entries[idx]
+        n_blocks = self._draft_block_count(draft)
+        self._edit(draft)
+        self.save_state.setText(f"Opened draft \"{draft.title or 'Untitled'}\" ({n_blocks} blocks)")
+
+    def _open_published(self, *, choose_fn=None):
+        # A pending autosave must be durable before the first network request.
         self._autosave.stop()
         if self._autosave_now() is False:
             QMessageBox.critical(
@@ -1581,10 +2397,11 @@ class TakeMode(QWidget):
         poster, _url = self._poster_and_url()
         if poster is None:
             return
+        self._published_choose_fn = choose_fn
         self._start_published_list(poster)
 
     def _start_published_list(self, poster) -> None:
-        """Fetch the published-post chooser data without blocking the GUI."""
+        """Fetch chooser data without blocking the GUI thread."""
         if self._published_list_active:
             return
         self._published_list_active = True
@@ -1616,51 +2433,33 @@ class TakeMode(QWidget):
         if dialog.exec() != QDialog.Accepted or not dialog._choices.currentItem():
             return
         post_id = int(dialog._choices.currentItem().data(Qt.UserRole) or 0)
+        selected_row = next((p for p in posts if int(p.get("id") or 0) == post_id), {})
+        selected_title = str(selected_row.get("title") or f"Post #{post_id}")
+
+        action = "separate"
+        if self._has_open_draft_content():
+            action = self._ask_open_published_action(
+                selected_title, choose_fn=self._published_choose_fn,
+            )
+            if action not in ("attach", "separate"):
+                return
         session = self.rail.ensure_session()
-        active_id = str(self._editing_id or "")
-        action = self._published_open_action(active_id)
-        if action == "cancel":
-            return
-        self._start_published_load(poster, post_id, action, session, active_id)
+        self._start_published_load(
+            poster, post_id, action, session, str(self._editing_id or ""),
+        )
 
     def _published_list_failed(self, error) -> None:
         self._published_list_active = False
+        self.save_state.setText("Could not load published posts — your draft is safe")
         if isinstance(error, AuthorizationExpiredError):
             from .connect_panel import prompt_reauthentication
             prompt_reauthentication(self, str(error), long_form=True)
             return
-        self.save_state.setText("Could not load published posts — your draft is safe")
         QMessageBox.critical(self, "Could not load posts", str(error))
-
-    def _published_open_action(self, active_id: str) -> str:
-        """Ask what to do with the durable draft already in the editor."""
-        if not active_id:
-            return "separate"
-        box = QMessageBox(self)
-        box.setIcon(QMessageBox.Question)
-        box.setWindowTitle("Keep the open draft")
-        box.setText("A draft is already open and has been saved safely.")
-        box.setInformativeText(
-            "Choose whether this draft should update the published post, or "
-            "keep it as its own draft and open the published post separately."
-        )
-        attach = box.addButton("Attach this draft to the published post", QMessageBox.AcceptRole)
-        separate = box.addButton("Keep draft and open published separately", QMessageBox.ActionRole)
-        cancel = box.addButton(QMessageBox.Cancel)
-        box.setDefaultButton(separate)
-        box.exec()
-        clicked = box.clickedButton()
-        if clicked is attach:
-            return "attach"
-        if clicked is separate:
-            return "separate"
-        if clicked is cancel:
-            return "cancel"
-        return "cancel"
 
     def _start_published_load(self, poster, post_id: int, action: str,
                               session, active_id: str) -> None:
-        """Fetch the post and its photographs without blocking the GUI."""
+        """Fetch one published post and its photos without blocking the GUI."""
         if self._published_load_active:
             return
         self._published_load_active = True
@@ -1670,10 +2469,10 @@ class TakeMode(QWidget):
             try:
                 post = poster.get_post(post_id)
                 draft = None if action == "attach" else self._draft_from_remote(post)
-                if draft is not None:
-                    # Absorbing a large published bucket copies its photographs
-                    # into the durable session. Keep that disk work off the GUI
-                    # thread along with the downloads that precede it.
+                if draft is not None and (
+                    (getattr(draft, "caption", "") or "").strip()
+                    or (getattr(draft, "body_blocks", "") or "").strip()
+                ):
                     session.add_draft(draft)
                 self._published_bridge.loaded.emit({
                     "post": post,
@@ -1685,13 +2484,14 @@ class TakeMode(QWidget):
             except Exception as exc:  # noqa: BLE001
                 self._published_bridge.failed.emit(exc)
 
-        threading.Thread(target=load, name="coldsnap-open-published", daemon=True).start()
+        threading.Thread(
+            target=load, name="coldsnap-open-published", daemon=True,
+        ).start()
 
     def _published_post_loaded(self, result: dict) -> None:
         self._published_load_active = False
         session = result["session"]
-        action = result["action"]
-        if action == "attach":
+        if result["action"] == "attach":
             draft = session.load_draft(result["active_id"])
             if draft is None:
                 self._published_post_failed("The saved draft could not be reopened.")
@@ -1707,21 +2507,22 @@ class TakeMode(QWidget):
             draft = result["draft"]
             self._edit(draft)
             self.save_state.setText("Published post opened separately — your draft is still safe")
-        self.rail.refresh_drafts()
+        self.rail.refresh_batches()
 
     def _published_post_failed(self, error) -> None:
         self._published_load_active = False
+        self.save_state.setText("Could not open published post — your draft is still safe")
         if isinstance(error, AuthorizationExpiredError):
             from .connect_panel import prompt_reauthentication
             prompt_reauthentication(self, str(error), long_form=True)
             return
-        self.save_state.setText("Could not open published post — your draft is still safe")
         QMessageBox.critical(self, "Could not open post", str(error))
 
     def _draft_from_remote(self, post):
         draft = O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK,
                         mode=self.SUITE_MODE)
         draft.remote_post_id = int(post.get("id") or 0)
+        draft.slug = str(post.get("slug") or "")
         draft.title = str(post.get("title") or "")
         draft.caption = str(post.get("content") or "")
         draft.img_status = str(post.get("status") or "draft")
@@ -1733,22 +2534,29 @@ class TakeMode(QWidget):
         cache = os.path.join(tempfile.gettempdir(), "coldsnap-published",
                              str(draft.remote_post_id))
         os.makedirs(cache, exist_ok=True)
-        for pos, row in enumerate(post.get("bucket") or []):
+        rows = list(post.get("bucket") or [])
+
+        def _fetch_one(item):
+            pos, row = item
             image_id = int(row.get("id") or 0)
             source_url = str(row.get("url") or row.get("thumb_url") or "")
             filename = os.path.basename(source_url.split("?", 1)[0]) or f"image-{image_id}.jpg"
             target = os.path.join(cache, f"{image_id}-{filename}")
-            if not os.path.isfile(target):
+            if not os.path.isfile(target) and source_url:
                 response = requests.get(source_url, timeout=90)
                 response.raise_for_status()
                 with open(target, "wb") as handle:
                     handle.write(response.content)
-            draft.images.append(O.DraftImage(
+            return O.DraftImage(
                 local_path=target, original_path=target, filename=filename,
                 width=int(row.get("width") or 0), height=int(row.get("height") or 0),
                 alt=str(row.get("img_alt") or ""), title=str(row.get("img_title") or ""),
                 remote_path=str(row.get("img_file") or ""), remote_image_id=image_id,
-                sort_position=pos, is_cover=(image_id == cover_id)))
+                sort_position=pos, is_cover=(image_id == cover_id))
+
+        if rows:
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                draft.images = list(pool.map(_fetch_one, enumerate(rows)))
         if draft.images and not any(image.is_cover for image in draft.images):
             draft.images[0].is_cover = True
         return draft
@@ -1838,30 +2646,165 @@ class TakeMode(QWidget):
             self._changed()
 
     def _remove(self, idx: int):
-        if not (0 <= idx < len(self._bucket)):
+        self._remove_from_tray([idx], in_post_fn=lambda _used: "remove_both")
+
+    def _strip_photos_from_blocks(self, remove_indices: list[int]):
+        """Remove blocks/entries referencing removed tray indices and remap 1-based refs."""
+        remove_set = set(remove_indices)
+        remove_uuids = {
+            str(getattr(self._bucket[i], "asset_uuid", "") or "")
+            for i in remove_set
+            if 0 <= i < len(self._bucket) and getattr(self._bucket[i], "asset_uuid", "")
+        }
+        remove_pos = {i + 1 for i in remove_set}
+
+        def _matches(identity) -> bool:
+            key = str(identity or "").strip()
+            if not key:
+                return False
+            if key in remove_uuids:
+                return True
+            if key.startswith("asset:") and key[6:] in remove_uuids:
+                return True
+            if key.startswith("bucket:") and key[7:].isdigit():
+                return int(key[7:]) in remove_pos
+            if key.isdigit():
+                return int(key) in remove_pos
+            return False
+
+        def _remap_identity(identity):
+            key = str(identity or "").strip()
+            if key.startswith("bucket:") and key[7:].isdigit():
+                pos = int(key[7:])
+                shift = sum(1 for r in remove_set if r < pos - 1)
+                return f"bucket:{pos - shift}"
+            if key.isdigit():
+                pos = int(key)
+                shift = sum(1 for r in remove_set if r < pos - 1)
+                remapped = pos - shift
+                return remapped if isinstance(identity, int) else str(remapped)
+            return identity
+
+        def _clean_list(items):
+            out = []
+            for node in items:
+                if not isinstance(node, dict):
+                    continue
+                kind = node.get("type")
+                if kind == "image":
+                    ident = node.get("asset_uuid") or node.get("img_id")
+                    if _matches(ident):
+                        continue
+                    copied = dict(node)
+                    if not copied.get("asset_uuid") and copied.get("img_id"):
+                        copied["img_id"] = _remap_identity(copied["img_id"])
+                    out.append(copied)
+                elif kind == "mosaic":
+                    order = node.get("order") or []
+                    kept = [_remap_identity(x) for x in order if not _matches(x)]
+                    if order and not kept:
+                        continue
+                    copied = dict(node)
+                    copied["order"] = kept
+                    out.append(copied)
+                elif kind == "columns":
+                    copied = dict(node)
+                    key = "cols" if "cols" in node else "columns"
+                    cols = node.get(key) or []
+                    copied[key] = [_clean_list(col) for col in cols]
+                    out.append(copied)
+                else:
+                    out.append(dict(node))
+            return out
+
+        try:
+            blocks = self.body.authoring_blocks()
+        except Exception:
             return
-        removed = self._bucket[idx]
-        blocks = self._without_photo_references(
-            self.body.authoring_blocks(), str(removed.asset_uuid), idx + 1,
-        )
-        if self.body.is_biggie():
-            self.body.biggie.from_blocks(blocks)
+        cleaned = _clean_list(blocks)
+        if getattr(self.body, "_biggie_on", False):
+            self.body.biggie.from_blocks(cleaned)
         else:
-            self.body.editor.setPlainText(biggie.serialize_blocks(blocks))
-        del self._bucket[idx]
-        if self._selected_photo_idx == idx:
-            self._selected_photo_idx = min(idx, len(self._bucket) - 1) if self._bucket else None
-        elif self._selected_photo_idx is not None and self._selected_photo_idx > idx:
-            self._selected_photo_idx -= 1
-        if self._cover_idx == idx:
-            self._cover_idx = min(idx, len(self._bucket) - 1) if self._bucket else 0
-        elif self._cover_idx > idx:
-            self._cover_idx -= 1
-        if str(removed.asset_uuid) == self._slapper_asset_uuid:
-            self._stop_slapper_handoff()
-            self._slapper_asset_uuid = ""
+            from . import biggie
+            self.body.editor.setPlainText(biggie.serialize_blocks(cleaned))
+
+    def _remove_from_tray(self, indices=None, *, in_post_fn=None) -> bool:
+        """Remove one or more photos from the tray only (never deletes from disk)."""
+        if not self._bucket:
+            return False
+        selected = [
+            i for i in getattr(self, "_selected_photo_indices", [])
+            if 0 <= i < len(self._bucket)
+        ]
+        if indices is not None:
+            raw = [int(i) for i in indices if 0 <= int(i) < len(self._bucket)]
+            if len(raw) == 1 and raw[0] in selected and len(selected) > 1:
+                targets = sorted(set(selected))
+            else:
+                targets = sorted(set(raw))
+        else:
+            if selected:
+                targets = sorted(set(selected))
+            elif self._selected_photo_idx is not None and 0 <= self._selected_photo_idx < len(self._bucket):
+                targets = [self._selected_photo_idx]
+            else:
+                targets = []
+        if not targets:
+            return False
+
+        used = self._used_photo_indices()
+        in_post = [i for i in targets if i in used]
+        if in_post:
+            if in_post_fn is not None:
+                choice = in_post_fn(in_post)
+            else:
+                box = QMessageBox(self)
+                box.setWindowTitle("Photo already in post")
+                noun = "This photo is" if len(in_post) == 1 else f"{len(in_post)} selected photos are"
+                box.setText(f"{noun} already placed in the post.")
+                box.setInformativeText("Remove from the post as well, or leave in the post?")
+                btn_both = box.addButton("Remove from post too", QMessageBox.DestructiveRole)
+                btn_leave = box.addButton("Leave in post", QMessageBox.AcceptRole)
+                box.addButton("Cancel", QMessageBox.RejectRole)
+                box.exec()
+                clicked = box.clickedButton()
+                if clicked == btn_both:
+                    choice = "remove_both"
+                elif clicked == btn_leave:
+                    choice = "leave_in_post"
+                else:
+                    choice = "cancel"
+            if choice == "cancel":
+                return False
+            if choice == "leave_in_post":
+                targets = [i for i in targets if i not in used]
+                if not targets:
+                    return False
+            elif choice == "remove_both":
+                self._strip_photos_from_blocks(targets)
+            else:
+                return False
+
+        if self._cover_idx in targets:
+            self._cover_idx = -1
+        elif self._cover_idx >= 0:
+            self._cover_idx -= sum(1 for i in targets if i < self._cover_idx)
+
+        for idx in sorted(targets, reverse=True):
+            del self._bucket[idx]
+
+        self._selected_photo_indices = []
+        if not self._bucket:
+            self._selected_photo_idx = None
+        elif self._selected_photo_idx is not None:
+            if self._selected_photo_idx in targets:
+                self._selected_photo_idx = min(targets[0], len(self._bucket) - 1)
+            else:
+                self._selected_photo_idx -= sum(1 for i in targets if i < self._selected_photo_idx)
+
         self._refresh_bucket()
         self._changed()
+        return True
 
     @classmethod
     def _without_photo_references(cls, blocks, asset_uuid: str, position: int):
@@ -1926,7 +2869,8 @@ class TakeMode(QWidget):
         manage.setSpacing(4)
         up = QPushButton("▲")
         down = QPushButton("▼")
-        lead = QPushButton("★ Lead")
+        self.featured_btn = QPushButton("★ Featured photo (landing tile)")
+        self.featured_btn.setToolTip("Make the selected photo the post's featured landing tile (featured_image_id)")
         self.remove_photo_btn = QPushButton("Remove photo")
         self.remove_photo_btn.setObjectName("Danger")
         self.remove_photo_btn.setToolTip(
@@ -1935,9 +2879,9 @@ class TakeMode(QWidget):
         self.remove_photo_btn.setAccessibleName("Remove selected photo from draft")
         up.clicked.connect(lambda: self._manage_selected("up"))
         down.clicked.connect(lambda: self._manage_selected("down"))
-        lead.clicked.connect(lambda: self._manage_selected("lead"))
+        self.featured_btn.clicked.connect(lambda: self._manage_selected("lead"))
         self.remove_photo_btn.clicked.connect(lambda: self._manage_selected("remove"))
-        for button in (up, down, lead, self.remove_photo_btn):
+        for button in (up, down, self.featured_btn, self.remove_photo_btn):
             manage.addWidget(button)
         manage.addStretch(1)
         col.addLayout(manage)
@@ -2245,8 +3189,21 @@ class TakeMode(QWidget):
             return None
         return self._bucket[index]
 
-    def _select_photo(self, idx: int):
-        if 0 <= idx < len(self._bucket):
+    def _select_photo(self, idx: int, *, toggle: bool = False):
+        if not (0 <= idx < len(self._bucket)):
+            return
+        used = self._used_photo_indices()
+        cur = [i for i in getattr(self, "_selected_photo_indices", [])
+               if 0 <= i < len(self._bucket) and i not in used]
+        if toggle:
+            if idx in cur:
+                cur.remove(idx)
+            else:
+                cur.append(idx)
+            self._selected_photo_indices = cur
+            self._selected_photo_idx = cur[-1] if cur else None
+        else:
+            self._selected_photo_indices = [idx] if idx not in used else []
             self._selected_photo_idx = idx
         self._refresh_bucket()
 
@@ -2261,7 +3218,7 @@ class TakeMode(QWidget):
         elif action == "lead":
             self._set_cover(index)
         elif action == "remove":
-            self._remove(index)
+            self._remove_from_tray([index])
 
     def _set_selected_field(self, attr: str, value: str):
         if self._updating_photo_fields:
@@ -2402,6 +3359,12 @@ class TakeMode(QWidget):
         n = len(self._bucket)
         self.body.set_bucket([im.local_path for im in self._bucket])   # mosaics repaint
         self.body.canvas.set_assets({im.asset_uuid: im.local_path for im in self._bucket})
+        default_caps = {}
+        for i, im in enumerate(self._bucket):
+            cap_val = (im.caption or im.title or "").strip()
+            default_caps[str(im.asset_uuid)] = cap_val
+            default_caps[f"bucket:{i + 1}"] = cap_val
+        self.body.canvas.default_captions = default_caps
         self.bucket_count.setText("")   # count lives in the header; this line = AI progress only
 
         # Count photos placed in mosaic blocks on the canvas
@@ -2420,16 +3383,44 @@ class TakeMode(QWidget):
             self.in_mosaics_thumbs.addWidget(thumb)
         self.in_mosaics_bar.setVisible(bool(mosaic_paths))
 
-        left_count = max(0, n - len(mosaic_paths))
+        used_indices = self._used_photo_indices()
+        self._last_used_indices = frozenset(used_indices)
+        left_count = max(0, n - len(used_indices))
         self.photos_sec.header.setText(
             f"THE PHOTOS — {left_count} left" if n else "THE PHOTOS — none yet")
         if not self._bucket:
             self._selected_photo_idx = None
+            self._selected_photo_indices = []
+            if hasattr(self, "insert_into_post_btn"):
+                self.insert_into_post_btn.setVisible(False)
+            if hasattr(self, "insert_mosaic_btn"):
+                self.insert_mosaic_btn.setVisible(False)
             self._populate_photo_tools()
             self.bucket_col.addWidget(hint("No photos yet — click “Add photos…”."), 0, 0)
             return
-        if self._selected_photo_idx is None or self._selected_photo_idx >= len(self._bucket):
+
+        unplaced = [i for i in range(len(self._bucket)) if i not in used_indices]
+        cur_sel = [
+            i for i in getattr(self, "_selected_photo_indices", [])
+            if 0 <= i < len(self._bucket) and i not in used_indices
+        ]
+        if not cur_sel:
+            if (self._selected_photo_idx is not None
+                    and 0 <= self._selected_photo_idx < len(self._bucket)
+                    and self._selected_photo_idx not in used_indices):
+                cur_sel = [self._selected_photo_idx]
+            elif unplaced:
+                cur_sel = [unplaced[0]]
+        self._selected_photo_indices = cur_sel
+        if cur_sel:
+            if self._selected_photo_idx not in cur_sel:
+                self._selected_photo_idx = cur_sel[0]
+        elif self._selected_photo_idx is None or self._selected_photo_idx >= len(self._bucket):
             self._selected_photo_idx = 0
+        if hasattr(self, "insert_into_post_btn"):
+            self.insert_into_post_btn.setVisible(len(cur_sel) == 1)
+        if hasattr(self, "insert_mosaic_btn"):
+            self.insert_mosaic_btn.setVisible(len(cur_sel) >= 2)
 
         zoom = getattr(self, "_thumb_zoom", 100)
         if zoom >= 135:
@@ -2441,23 +3432,39 @@ class TakeMode(QWidget):
         else:
             cols, tile_px = 4, 66
 
+        selected_set = set(self._selected_photo_indices)
+        visible_pos = 0
         for i, im in enumerate(self._bucket):
+            if i in used_indices:
+                continue
             is_cover = (i == self._cover_idx)
-            is_selected = (i == self._selected_photo_idx)
+            is_selected = (i in selected_set)
             edited = bool(getattr(im, "slapper_edited_path", ""))
             in_slapper = (
                 self._slapper_state == "waiting"
                 and str(getattr(im, "asset_uuid", "")) == self._slapper_asset_uuid
             )
-            pix = load_pixmap(im.thumb_square or im.local_path, tile_px)
+            pix = load_pixmap(im.thumb_aspect or im.local_path, tile_px)
+            ori_code, ratio = photo_orientation_badge(im.width, im.height, im.local_path)
             tile = PhotoThumbTile(
                 i, pix, selected=is_selected, is_cover=is_cover,
-                edited=edited, in_slapper=in_slapper, tile_size=tile_px)
-            tile.setToolTip(im.filename or os.path.basename(im.local_path))
+                edited=edited, in_slapper=in_slapper, tile_size=tile_px,
+                asset_uuid=str(getattr(im, "asset_uuid", "")),
+                orientation=ori_code)
+            name = im.filename or os.path.basename(im.local_path)
+            tile.setToolTip(f"{name}\n{ori_code} · {ratio:.2f}:1" if ori_code else name)
             tile.setAccessibleName(
                 "Selected photograph" if is_selected else "Select photograph")
-            tile.clicked.connect(lambda _=False, i=i: self._select_photo(i))
-            self.bucket_col.addWidget(tile, i // cols, i % cols)
+            tile.selectionClicked.connect(
+                lambda idx, toggle: self._select_photo(idx, toggle=toggle))
+            tile.setFeaturedRequested.connect(self._set_featured_photo)
+            tile.removeRequested.connect(lambda idx: self._remove_from_tray([idx]))
+            self.bucket_col.addWidget(tile, visible_pos // cols, visible_pos % cols)
+            visible_pos += 1
+        if visible_pos == 0:
+            self.bucket_col.addWidget(
+                hint("All photos are placed on the page — remove one from the page to return it here."),
+                0, 0)
         self._populate_photo_tools()
 
     def _ai_fill(self):
@@ -2494,9 +3501,36 @@ class TakeMode(QWidget):
         self.bucket_count.setText(f"AI FILL… photo 1 of {len(imgs)} (Gemini)")
         self._ai_worker.start([im.local_path for im in imgs])
 
+    def _set_featured_photo(self, idx: int):
+        if 0 <= idx < len(self._bucket):
+            self._cover_idx = idx
+            self._selected_photo_idx = idx
+            self._refresh_bucket()
+            self._changed()
+
+    def _update_linked_banner(self):
+        if not hasattr(self, "linked_post_lbl"):
+            return
+        rid = int(getattr(self, "_remote_post_id", 0) or 0)
+        if rid:
+            t = self.title_edit.text().strip() or f"Post #{rid}"
+            slug = str(getattr(self, "_remote_slug", "") or "").strip().lstrip("/")
+            loc = f"/{slug}" if slug else f"#{rid}"
+            self.linked_post_lbl.setText(f"Editing: {t}  {loc}")
+            col = (getattr(self, "_surface_palette", None) or {}).get("eyebrow", "#2b7a1e")
+            self.linked_post_lbl.setStyleSheet(
+                f"QLabel#LinkedPostStatus {{ background: transparent; color: {col};"
+                " font-size: 11px; font-weight: 700; }}"
+            )
+            self.linked_post_lbl.setVisible(True)
+        else:
+            self.linked_post_lbl.setVisible(False)
+
     def _edit(self, draft: O.Draft):
         self._loading = True
         self._editing_id = draft.draft_id
+        self._remote_post_id = int(getattr(draft, "remote_post_id", 0) or 0)
+        self._remote_slug = str(getattr(draft, "slug", "") or "")
         self.title_edit.setText(draft.title)
         self.tags_edit.setText(draft.tags)
         self.status_combo.setCurrentText(draft.img_status)
@@ -2521,12 +3555,16 @@ class TakeMode(QWidget):
         self.body.set_state(draft.caption, getattr(draft, "body_blocks", ""))
         self.body.editor.moveCursor(QTextCursor.End)   # so an insert lands where writing resumes
         self._refresh_bucket()
+        self._update_linked_banner()
         self._loading = False
+        self._update_linked_banner()
         self.save_state.setText("Safe on this computer")
 
     def _clear(self):
         self._loading = True
         self._editing_id = None
+        self._remote_post_id = 0
+        self._remote_slug = ""
         self.title_edit.clear()
         self.tags_edit.clear()
         self.status_combo.setCurrentText("published")
@@ -2536,12 +3574,17 @@ class TakeMode(QWidget):
         self._selected_photo_idx = None
         self._ai_post_meta = {}
         self._refresh_bucket()
+        self._update_linked_banner()
         self._loading = False
         self.save_state.setText("Begin the story… changes will be safe on this computer.")
 
     def _changed(self):
         if self._loading:
             return
+        if self._bucket:
+            used = frozenset(self._used_photo_indices())
+            if used != getattr(self, "_last_used_indices", frozenset()):
+                self._refresh_bucket()
         self.save_state.setText("Saving…")
         self._autosave.start()
 
@@ -2550,12 +3593,24 @@ class TakeMode(QWidget):
         positions = {str(im.asset_uuid): i + 1 for i, im in enumerate(self._bucket)}
         def convert(block):
             out = dict(block)
-            if out.get("type") == "image" and out.get("asset_uuid"):
-                pos = positions.get(str(out["asset_uuid"]))
-                if pos:
-                    out["img_id"] = f"bucket:{pos}"
-                for key in ("asset_uuid", "placement", "width_ratio", "crop", "alt", "caption", "link"):
-                    out.pop(key, None)
+            if out.get("type") == "image":
+                show_cap = bool(out.get("show_caption"))
+                cap_text = str(out.get("caption") or "").strip()
+                if out.get("asset_uuid"):
+                    pos = positions.get(str(out["asset_uuid"]))
+                    if pos:
+                        out["img_id"] = f"bucket:{pos}"
+                        if cap_text and 1 <= pos <= len(self._bucket):
+                            self._bucket[pos - 1].caption = cap_text
+                    for key in ("asset_uuid", "placement", "width_ratio", "crop", "alt", "link"):
+                        out.pop(key, None)
+                if show_cap and cap_text:
+                    out["show_caption"] = True
+                    out["caption"] = cap_text
+                    out.pop("raw", None)
+                else:
+                    out.pop("caption", None)
+                    out.pop("show_caption", None)
             if out.get("type") == "mosaic" and out.get("order"):
                 out["order"] = [positions.get(str(value), value) for value in out["order"]]
             if out.get("type") == "columns":
@@ -2563,13 +3618,18 @@ class TakeMode(QWidget):
             return out
         return [convert(block) for block in blocks]
 
-    def _build_draft(self, session):
+    def _build_draft(self, session, *, authored=None):
         draft = (session.load_draft(self._editing_id) if self._editing_id else None) \
             or O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK, mode=self.SUITE_MODE)
         self._editing_id = draft.draft_id
+        if getattr(self, "_remote_post_id", 0):
+            draft.remote_post_id = int(self._remote_post_id)
+        if getattr(self, "_remote_slug", ""):
+            draft.slug = str(self._remote_slug)
         draft.title = self.title_edit.text().strip()
         draft.tags = self.tags_edit.text().strip()
-        authored = self.body.authoring_blocks()
+        if authored is None:
+            authored = self.body.authoring_blocks()
         draft.body_blocks = biggie.blocks_to_json(authored)
         draft.caption = biggie.serialize_blocks(self._wire_blocks(authored)).strip()
         draft.img_status = self.status_combo.currentText()
@@ -2590,19 +3650,94 @@ class TakeMode(QWidget):
         if not (self.title_edit.text().strip() or self.body.toPlainText().strip() or self._bucket):
             self.save_state.setText("Begin the story… changes will be safe on this computer.")
             return True
+        # Never auto-save an unmodified empty remote post as a duplicate 0-block draft
+        if getattr(self, "_remote_post_id", 0):
+            has_body = bool(self.body.toPlainText().strip()) or any(
+                b.get("type") in ("image", "mosaic") for b in self.body.canvas.to_blocks()
+            )
+            on_disk = bool(self._editing_id and self.rail.ensure_session().load_draft(self._editing_id))
+            if not has_body and not on_disk:
+                return True
         try:
+            # Typing must never decode originals: only photos whose thumbs are
+            # missing or stale (new photo, crop/focus/zoom change, new edit)
+            # are baked, and that happens on a worker thread.
+            self._queue_stale_thumbs()
             session = self.rail.ensure_session()
-            draft = self._build_draft(session)
-            O.generate_draft_thumbs(draft)
-            session.add_draft(draft)
-            self._mirror_sqlite(draft)
+            authored = self.body.authoring_blocks()
+            draft = self._build_draft(session, authored=authored)
+            # Autosave records the draft only; copying photos into the
+            # session store happens on an explicit save.
+            session.add_draft(draft, copy_images=False)
+            self._mirror_sqlite(draft, authored=authored)
             self.save_state.setText("Safe on this computer")
             return True
         except Exception as exc:  # noqa: BLE001
             self.save_state.setText(f"Needs attention — could not save: {exc}")
             return False
 
-    def _mirror_sqlite(self, draft):
+    def _queue_stale_thumbs(self):
+        """Start a background thumb job for bucket photos whose thumbs are stale."""
+        if self._thumb_job is not None:
+            return  # the finishing job re-triggers autosave, which re-checks
+        stale = [im for im in self._bucket
+                 if im.local_path and os.path.isfile(im.local_path)
+                 and not O.image_thumbs_current(im)]
+        if not stale:
+            return
+        jobs = [O.DraftImage.from_dict(im.to_dict()) for im in stale]
+        if self._thumb_executor is None:
+            from concurrent.futures import ThreadPoolExecutor
+            self._thumb_executor = ThreadPoolExecutor(
+                max_workers=1, thread_name_prefix="coldtake-thumbs")
+
+        def work(copies):
+            done = []
+            for copy in copies:
+                try:
+                    if O.generate_image_thumbs(copy):
+                        done.append(copy)
+                except Exception:  # noqa: BLE001 - one bad photo must not stop the rest
+                    pass
+            return done
+
+        self._thumb_job = self._thumb_executor.submit(work, jobs)
+        self._thumb_job.add_done_callback(self._thumbsReady.emit)
+
+    def _apply_thumb_results(self, future):
+        """UI thread: copy finished thumbs onto photos that have not changed since."""
+        if future is not self._thumb_job:
+            return
+        self._thumb_job = None
+        try:
+            done = future.result()
+        except Exception:  # noqa: BLE001
+            done = []
+        applied = 0
+        for copy in done:
+            image = self._image_for_uuid(copy.asset_uuid)
+            if image is None or O.thumb_signature(image) != copy.thumb_params:
+                continue  # removed, or edited again while baking: next pass redoes it
+            for name in ("width", "height", "thumb_square", "thumb_aspect", "thumb_params"):
+                setattr(image, name, getattr(copy, name))
+            if not image.filename:
+                image.filename = copy.filename
+            applied += 1
+        if applied and not self._loading:
+            self._autosave.start()  # persist the thumbs; re-checks for newer staleness
+
+    def _wait_for_thumbs(self, timeout=None):
+        """Block until the current background thumb job is applied (tests/explicit save)."""
+        job = self._thumb_job
+        if job is None:
+            return
+        try:
+            job.result(timeout=timeout)
+        except Exception:  # noqa: BLE001
+            pass
+        self._apply_thumb_results(job)
+
+    def _mirror_sqlite(self, draft, *, authored=None):
         site = ((self.app_config() or {}).get("url") or "").strip()
         if not site:
             return
@@ -2617,13 +3752,34 @@ class TakeMode(QWidget):
                     site, draft.draft_id, image.local_path, alt_text=image.alt,
                     caption=image.caption, asset_uuid=image.asset_uuid)
         snap_library.save_draft(site, draft.draft_id, title=draft.title,
-                                status=draft.status, blocks=self.body.authoring_blocks())
+                                status=draft.status,
+                                blocks=authored if authored is not None else self.body.authoring_blocks())
 
-    def _save(self, ready: bool):
+    def _save(self, ready: bool, *, confirm_empty_fn=None):
         session = self.rail.ensure_session()
         if not self._bucket:
             QMessageBox.warning(self, "No photos", "Add at least one photo first.")
             return
+        if ready and getattr(self, "_remote_post_id", None):
+            has_body = bool(self.body.toPlainText().strip()) or any(
+                b.get("type") in ("image", "mosaic") for b in self.body.canvas.to_blocks()
+            )
+            if not has_body:
+                if confirm_empty_fn is not None:
+                    confirmed = bool(confirm_empty_fn(self._remote_post_id))
+                else:
+                    ans = QMessageBox.warning(
+                        self,
+                        "Empty draft over published post",
+                        f"This draft has 0 blocks and is linked to published post #{self._remote_post_id}.\n\n"
+                        "Queueing and sending it could overwrite the live post with empty content. Queue anyway?",
+                        QMessageBox.Yes | QMessageBox.Cancel,
+                        QMessageBox.Cancel,
+                    )
+                    confirmed = (ans == QMessageBox.Yes)
+                if not confirmed:
+                    return
+        self._wait_for_thumbs()  # reuse any background bake already in flight
         draft = self._build_draft(session)
         O.generate_draft_thumbs(draft)
         problems = draft.validate()
