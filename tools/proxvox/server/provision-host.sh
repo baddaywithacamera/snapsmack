@@ -4,8 +4,8 @@
 
 set -eu
 
-WRAPPER_COMMIT=d5642f25292896c6d08544847f43c5f3cfc96a39
-WRAPPER_SHA256=5f423ab350dbc7e453ff212193488c4be90646bb91f04ca1da14e82fa3a4a723
+WRAPPER_COMMIT=055966369fa77cdb66fe466bd961d3f16cfaec6a
+WRAPPER_SHA256=48b3c84357f40a3db73f679d76223472b313d5ffc5e9972f62801778aec5718c
 WRAPPER_URL="https://raw.githubusercontent.com/baddaywithacamera/snapsmack/${WRAPPER_COMMIT}/tools/proxvox/server/proxvox_readonly.py"
 
 fail() {
