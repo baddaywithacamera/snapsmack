@@ -33,6 +33,9 @@ DEFAULT_TOTP_DAYS = 30
 SCHEMA = 1
 
 TRUST_ELIGIBLE_ACTIONS = frozenset({
+    "read",
+    "inspect",
+    "local_write",
     "post",
     "sort",
     "metadata-update",
@@ -40,6 +43,8 @@ TRUST_ELIGIBLE_ACTIONS = frozenset({
     "reschedule",
     "repair",
 })
+
+ALL_SCOPES = TRUST_ELIGIBLE_ACTIONS | frozenset({"delete"})
 
 
 @dataclass
@@ -169,6 +174,33 @@ def authorize(base_url: str, route: str, api_key: str, username: str,
     return result
 
 
+def _authorize_second_factor(
+    second_factor_verifier: Callable[[], object],
+    *,
+    now: int,
+    device_id: str,
+) -> SessionState:
+    """Verify an alternative second factor (e.g., FIDO2/WebAuthn hardware key in SS-1564).
+
+    Pluggable so TOTP OR a hardware key can satisfy step-up, never both forced.
+    """
+    res = second_factor_verifier()
+    if isinstance(res, tuple):
+        ok, msg = bool(res[0]), str(res[1])
+    else:
+        ok, msg = bool(res), ("Second factor verified." if res else "Second factor verification failed.")
+    if not ok:
+        raise PermissionError(msg or "Second factor verification failed.")
+    state = load()
+    state.login_at = now
+    state.totp_at = now
+    state.last_online_ok = now
+    state.totp_required_on_reconnect = False
+    state.device_id = device_id
+    save(state)
+    return state
+
+
 def require_stepup_for_write(
     base_url: str,
     route: str,
@@ -182,8 +214,9 @@ def require_stepup_for_write(
     device_id: Optional[str] = None,
     stepup_policy: Optional[str] = None,
     requester: Callable = snap_stepup.request_authorization,
+    second_factor_verifier: Optional[Callable[[], object]] = None,
 ) -> SessionState:
-    """Enforce SNAP HQ CLI switch + step-up policy for a live-site write."""
+    """Enforce SNAP HQ CLI switch + pluggable step-up policy (TOTP or hardware key)."""
     hq_settings = snap_hq_gate.require_cli()
     policy = str(stepup_policy or hq_settings.get("stepup_policy") or snap_hq_gate.POLICY_30_DAYS)
     active_device = str(device_id if device_id is not None else current_device_id())
@@ -196,13 +229,15 @@ def require_stepup_for_write(
     t = (totp_code or "").strip()
     has_fresh_creds = bool(u and p and t)
     has_partial_creds = bool(u or p or t) and not has_fresh_creds
-    if has_partial_creds:
+    if has_partial_creds and second_factor_verifier is None:
         raise PermissionError("Step-up authentication requires username, password, and 2FA code together.")
 
     if is_delete:
+        if second_factor_verifier is not None:
+            return _authorize_second_factor(second_factor_verifier, now=stamp, device_id=active_device)
         if not has_fresh_creds:
             raise PermissionError(
-                "Deleting always requires a fresh password and 2FA TOTP code every time."
+                "Deleting always requires fresh step-up verification (TOTP or hardware key) every time."
             )
         res = authorize(
             base_url, route, api_key, u, p, t,
@@ -211,6 +246,9 @@ def require_stepup_for_write(
         if not res.ok:
             raise PermissionError(res.message or "Step-up authorization failed.")
         return load()
+
+    if second_factor_verifier is not None:
+        return _authorize_second_factor(second_factor_verifier, now=stamp, device_id=active_device)
 
     if has_fresh_creds:
         res = authorize(

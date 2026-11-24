@@ -200,7 +200,41 @@ def library_command(args):
     return result
 
 
-def run(app, configure, execute, argv=None):
+def _trusted_stepup_endpoint():
+    """Read trusted SNAP HQ endpoint & key from snap_creds (never from os.environ)."""
+    import snap_creds
+    snap_creds.init()
+    url = str(snap_creds.get("hub_url", "") or "").strip()
+    key = str(snap_creds.get("hub_key", "") or "").strip()
+    if not url or not key:
+        raise PermissionError(
+            "SNAP HQ authorization endpoint/key not configured in protected vault; step-up refused."
+        )
+    return url, "hub/authorize", key
+
+
+def _interactive_stepup_prompt():
+    """Prompt owner interactively on real stderr/tty (never swallowed by redirect_stdout)."""
+    if sys.stdin is None or not sys.stdin.isatty():
+        raise PermissionError(
+            "Fresh owner step-up verification requires an interactive terminal or GUI prompt."
+        )
+    import getpass
+    out = sys.__stderr__ or sys.stderr
+    def _ask(label: str) -> str:
+        out.write(label)
+        out.flush()
+        return sys.stdin.readline().strip()
+
+    user = _ask("SnapSmack username: ")
+    pwd = getpass.getpass("SnapSmack password: ", stream=out)
+    totp = _ask("2FA TOTP code (6 digits): ")
+    if not user or not pwd or not totp:
+        raise PermissionError("Username, password, and 2FA TOTP code are all required.")
+    return user, pwd, totp
+
+
+def run(app, configure, execute, argv=None, *, command_scopes=None, interactive_prompter=None):
     """Run one CLI request and return an exit code. Windowed builds use --result."""
     argv = list(sys.argv[1:] if argv is None else argv)
     if sys.stdout is not None and hasattr(sys.stdout, "reconfigure"):
@@ -239,6 +273,7 @@ def run(app, configure, execute, argv=None):
                     raise ValueError("--result must differ from all input/output paths")
         with contextlib.redirect_stdout(io.StringIO()):
             import snap_hq_gate
+            import snap_session_gate
             try:
                 snap_hq_gate.require_cli()
             except SystemExit as exc:
@@ -247,6 +282,22 @@ def run(app, configure, execute, argv=None):
                 data = {"commands": sorted(sub.choices), "paid_ai_fallback": False,
                         "result_file": True, "scope": "Saved files and app services; no live GUI-session attachment"}
             else:
+                scopes = dict(command_scopes or {})
+                scope = scopes.get(args.command)
+                if not scope or scope not in snap_session_gate.ALL_SCOPES:
+                    raise PermissionError(
+                        f"Command {args.command!r} has no declared scope in command_scopes; refusing to execute."
+                    )
+                try:
+                    snap_session_gate.require_stepup_for_write("", "hub/authorize", "", action=scope)
+                except PermissionError:
+                    prompter = interactive_prompter or _interactive_stepup_prompt
+                    url, route, key = _trusted_stepup_endpoint()
+                    user, pwd, totp = prompter()
+                    snap_session_gate.require_stepup_for_write(
+                        url, route, key, action=scope,
+                        username=user, password=pwd, totp_code=totp,
+                    )
                 data = execute(args)
         envelope = {"ok": True, "protocol": PROTOCOL, "app": app, "data": data}
     except SystemExit as exc:

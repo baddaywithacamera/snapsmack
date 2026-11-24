@@ -9,7 +9,16 @@ the entry script for that reason.
 #     # ===== SNAPSMACK EOF =====
 """
 
+import os
 import sys
+
+if "--cli" in sys.argv:
+    _base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    for _p in (_base, os.path.abspath(os.path.join(_base, "..", "_shared"))):
+        if _p not in sys.path:
+            sys.path.insert(0, _p)
+    import app_cli as _desktop_cli
+    raise SystemExit(_desktop_cli.main(sys.argv[sys.argv.index("--cli") + 1:]))
 
 
 def main():

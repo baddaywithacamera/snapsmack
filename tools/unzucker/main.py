@@ -16,6 +16,15 @@ creates posts through the SnapSmack admin API. No FTP required.
 
 BUILD_VERSION = "0.7.40"  # ARCH-03: confirm dialog now names the real destination site, not "SnapSmack"
 
+import os as _cli_os, sys as _cli_sys
+if "--cli" in _cli_sys.argv:
+    _cli_base = getattr(_cli_sys, "_MEIPASS", _cli_os.path.dirname(_cli_os.path.abspath(__file__)))
+    for _p in (_cli_base, _cli_os.path.abspath(_cli_os.path.join(_cli_base, "..", "_shared"))):
+        if _p not in _cli_sys.path:
+            _cli_sys.path.insert(0, _p)
+    import app_cli as _desktop_cli
+    raise SystemExit(_desktop_cli.main(_cli_sys.argv[_cli_sys.argv.index("--cli") + 1:]))
+
 import logging
 import logging.handlers
 import os
