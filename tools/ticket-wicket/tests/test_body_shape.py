@@ -187,4 +187,104 @@ def test_unwrap_queues_the_reply_with_its_lines_joined(store, forum):
     assert snap_forum.hard_wrapped_lines(body) == []
     assert model.SIGNATURES[model.CLAUDE] in body   # still signed
 
+
+# ── A PARAGRAPH BREAK IS NOT A WRAP ─────────────────────────────────────────
+#
+# WHAT HAPPENED. The wrap check counted any long line followed by any text, so
+# a body that was ALREADY right -- one paragraph per line -- was called wrapped
+# wherever a long paragraph was followed by a short label. unwrap_body then
+# glued them together, so --unwrap made a correct body worse.
+#
+# On 24 November 2026 a bulk sync published 44 tickets with --unwrap and SEVEN
+# went onto the public board with paragraphs run together: SS-1511, SS-1512,
+# SS-1515, SS-1517, SS-1520, SS-1525, SS-1526. The whole suite passed before
+# and after the fix, which is why it shipped: nothing here described the
+# difference between a wrap and a break.
+
+LABEL_BODY = ("Owner rule: the desktop makes both thumbnail sizes and sends "
+              "them to the server.\n"
+              "Required:\n"
+              "(1) It generates them with the exact dimensions and quality.\n")
+
+REAL_WRAP = ("A long paragraph that was hard wrapped at about seventy two "
+             "columns and\n"
+             "carries on into the next line without finishing its sentence "
+             "first.\n")
+
+
+def test_a_label_after_a_finished_paragraph_is_not_a_wrap():
+    assert snap_forum.hard_wrapped_lines(LABEL_BODY) == []
+    assert snap_forum.body_shape_complaints(LABEL_BODY) == []
+
+
+def test_unwrap_leaves_a_correct_body_exactly_as_it_was():
+    """The damaging half. Detecting it wrongly only matters because of this."""
+    assert snap_forum.unwrap_body(LABEL_BODY) == LABEL_BODY
+
+
+def test_a_real_mid_sentence_wrap_is_still_caught():
+    """The fix must not buy a clean report by going blind."""
+    assert snap_forum.hard_wrapped_lines(REAL_WRAP) == [1]
+    assert snap_forum.body_shape_complaints(REAL_WRAP) != []
+
+
+def test_a_wrap_that_lands_on_a_sentence_end_is_still_caught():
+    """Why the signal is two-sided.
+
+    A genuine wrap can fall exactly where a sentence ends, so "the line ends
+    in a full stop" cannot be enough on its own. Here the line after starts
+    lower-case, so it is plainly a continuation and must still be reported.
+    """
+    body = ("This paragraph was wrapped by an editor and the first line "
+            "happens to end a sentence.\n"
+            "and this line carries on in lower case, so it is a continuation.\n")
+    assert snap_forum.hard_wrapped_lines(body) == [1]
+
+
+def test_a_wrap_whose_continuation_starts_with_a_capital_is_still_caught():
+    """Why the OTHER half of the signal is needed, and this repo is full of them.
+
+    A mutation that dropped the "line before ends a sentence" half and kept
+    only "line after starts one" SURVIVED the tests above, because none of them
+    had a wrap whose continuation begins with a capital. They are everywhere
+    here: lines break mid-sentence in front of ALFRED, SMACKBACK, PROX VOX,
+    RATIONAL GEO. The line before does NOT finish a sentence, so this is a
+    wrap and must be reported.
+    """
+    body = ("This paragraph was wrapped mid sentence and carries on with the "
+            "word\n"
+            "SMACKBACK, which is still inside the very same sentence.\n")
+    assert snap_forum.hard_wrapped_lines(body) == [1]
+    assert snap_forum.body_shape_complaints(body) != []
+
+
+def test_the_three_shapes_a_numbered_list_takes_are_all_safe():
+    for nxt in ("(1) first item", "1. first item", "- first item"):
+        body = "A finished paragraph that is comfortably past the suspect length.\n" + nxt + "\n"
+        assert snap_forum.hard_wrapped_lines(body) == [], nxt
+
+
+def test_a_long_line_ending_in_a_colon_introduces_what_follows():
+    """A colon is a sentence end for this purpose, and nothing else proved it.
+
+    Dropping ':' from the set SURVIVED the tests above: every other case here
+    ends in a full stop. This is the shape the tickets actually use -- a long
+    ruling line that ends in a colon and introduces a numbered list.
+    """
+    body = ("Owner ruling: when the new site goes up these parties are "
+            "excluded:\n"
+            "(1) The licence page states the exclusion explicitly.\n")
+    assert len(body.split("\n")[0]) >= snap_forum.WRAP_SUSPECT_LENGTH
+    assert snap_forum.hard_wrapped_lines(body) == []
+
+
+def test_a_bracketed_number_counts_as_the_start_of_a_sentence():
+    """'(1)' is not caught by the stand-alone list pattern, which wants a bare
+    digit or a dash. It is the commonest list shape in these tickets, so the
+    sentence-start set has to accept an opening bracket."""
+    assert not snap_forum._STANDS_ALONE.match("(1) The licence page states it.")
+    body = ("A finished paragraph that is comfortably past the suspect length.\n"
+            "(1) The licence page states the exclusion explicitly.\n")
+    assert snap_forum.hard_wrapped_lines(body) == []
+
 # ===== SNAPSMACK EOF =====

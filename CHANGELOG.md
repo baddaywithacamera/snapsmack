@@ -13,6 +13,47 @@
 
 ## 0.7.1003D — opened
 
+- **A finished paragraph followed by a label is no longer mistaken for a
+  wrapped line, and `--unwrap` no longer glues good paragraphs together.** The
+  check that stops a ticket going onto the board as a stack of short ragged
+  lines counted ANY long line followed by ANY text. A hard wrap cuts a sentence
+  in half, so a body that was already right — one paragraph per line — was
+  called wrapped wherever a long paragraph was followed by a short label like
+  "Required:" or "Spec:". `--unwrap` then joined them, which made a correct
+  body worse. Seven threads went onto the public board that way during a bulk
+  sync and have been repaired in place; the full text was never lost, because
+  the ticket store always held the original. The signal is now two-sided: it
+  is only a paragraph break when the line before finishes a sentence AND the
+  line after starts one, so a real wrap that happens to land on a full stop is
+  still caught. This also affects FORUM CLI and LOG FLOGGER, which share the
+  same checker.
+- **TICKET WICKET can reconcile the support board in one pass, and it holds
+  open security tickets back on purpose.** Keeping the tickets and the ROACH
+  MOTEL board in step was three commands per ticket across 540 tickets, done by
+  hand — which is how three duplicate threads got created in one evening a
+  month ago. `tw.py sync-forum` now does the whole reconciliation: it posts the
+  open tickets that are not on the board, delivers the queued updates as
+  replies, and puts a closing note on the ones that are closed, citing the
+  build or commit that carries the fix and saying plainly when there is nothing
+  recorded to point at rather than inventing one. `--dry-run` prints the counts
+  and every refusal and publishes nothing. It is built out of the existing
+  `post`, `reply` and `deliver-forum` commands rather than talking to the forum
+  itself, so every guard they already carry still applies, and running it twice
+  adds nothing the second time.
+  **An open DOOR OPEN ticket — a security hole that is not fixed yet — is held
+  back and counted, never posted.** That was already the practice: of 51
+  security tickets 7 were on the board, while every other category sat between
+  62 and 89 per cent, and the ones that were public were the fixed ones. It is
+  now the behaviour, with `--include-security` as the one explicit way to
+  overrule it, so the decision is visible instead of depending on whoever is
+  running it. Tickets flagged as needing a person are held for one.
+  Two faults found by running it for real rather than by reading it: one ticket
+  with a 31,062-character body made the forum refuse the post, and the whole
+  run died on it after creating 20 threads, so a bad ticket is now a refusal
+  against that ticket and the run carries on; and the over-long body is refused
+  here, before anything is sent, instead of by the server mid-run. `--hold`
+  keeps a named ticket out of a bulk run without holding back the rest.
+
 - **A release gate that was supposed to stop a skin shipping two different
   versions of itself had quietly switched itself off, one skin at a time.**
   Nothing is wrong on any site because of it, and nothing had slipped past it
@@ -42,6 +83,33 @@
   old test could only ever see whichever single state the repository happened
   to be in that day. Nine deliberate breakages of the repaired gate were each
   caught by the new checks.
+- **A failed delivery to the support forum used to look exactly like having
+  nothing to deliver.** When the ticket tool published updates to the board in
+  bulk, it printed the same line either way -- updates delivered, zero -- and
+  reported success either way. Nobody reading the result, person or script,
+  could tell "there was nothing waiting" from "everything waiting failed to
+  go out". The second one means replies you believe are on your board are not
+  on it.
+  There was a worse version of the same fault underneath. When the board
+  itself refused a single reply, that reply was filed under "skipped" together
+  with the replies that genuinely needed nothing doing -- so the summary
+  counted a refused update as one that was ALREADY THERE. Not merely silent:
+  the opposite of what happened.
+  Both are fixed. A refusal is now reported as a refusal, with the reason the
+  board gave, and the command tells you so in its exit status. A refusal that
+  is the tool's own guard working -- a post it will not publish because the
+  wording still identifies somebody -- is still a success, because the run did
+  what it should. Something breaking is now distinguishable from something
+  being prevented.
+- **An update about an unfixed security problem can no longer be posted to the
+  public board.** The rule that holds an open security report back was being
+  applied only when the report was first published. A later reply on that same
+  report went out with no check at all -- and once the thread is on the board
+  there is no first post left to hold back, so the reply is the publication.
+  The hold now sits at the point where anything is published, so every part of
+  the tool is covered rather than one path through it. It still works the way
+  it did before in the case that matters most: once the problem is FIXED, its
+  updates and its closing note go out normally.
 
 - **Your archive shows photographs at their real shapes again, not flattened
   into letterboxes.** After updating to 0.7.1002D the found textures archive
@@ -890,7 +958,6 @@ decided with git merge-base against the tag, not from memory.
 - NEW HORIZON 1.3.34 restores independent tagline font, size and colour controls alongside the visible tagline. The text-header size can reach 20px; IMPACT PRINTER 2.1.25 also lowers its header-size minimum to 20px. Numeric skin settings are clamped to their declared limits when saved, including font-size companion controls.
 - Add image post, checksum and slug indexes through the canonical schema and schema sync. Replace daily statistics DATE() scans with timestamp ranges, and avoid the duplicate-group scan when the library has no unfiled images. Production-sized isolated benchmarks verify the indexed query plans; installed fleet performance remains to be checked after deployment.
 
-
 - AURORA 1.0.59, INSTANT CAMERA 1.0.61, JIVE TURKEY 0.1.48, SUDDEN IMPACT 1.0.26 and THE GRID 1.3.61 remove misplaced archive continuation links from decorative background overlays. JIVE TURKEY also removes the duplicate link from its dark tile-hover overlay; the real endless-scroll fallback remains.
 
 ## 0.7.988D - 2026-11-08
@@ -949,7 +1016,6 @@ decided with git merge-base against the tag, not from memory.
 - About portraits remain visible after their entrance flip. GLIDE includes its presentation baseline and its CMS User Manual topics in the skin package.
 - F1 help lists GLIDE viewer shortcuts and opens above other dialogs. GLIDE uses a dark help panel with a white accent.
 
-
 ## 0.7.980D - 2026-11-06
 
 - GLIDE defaults to 50 archive photos per page. The About overlay restores the demo typography and portrait layout, the About icon uses the information glyph, and the drag cue sits away from search. The viewer fades in and supports the demo Space shortcut.
@@ -1003,7 +1069,6 @@ decided with git merge-base against the tag, not from memory.
 - Include published post titles and body text alongside photograph search results, with explicit empty-search feedback across the five SMACKTALK skins.
 - Retain GLIDE 0.1.14 activation at 50 photographs and the prepared ALFRED presentation recovery.
 - Stable promotion replaces the obsolete 0.7.670 core, which is incompatible with current strict skins requiring CMS-owned rendering code.
-
 
 ## 0.7.974D - 2026-11-01 - HEISENBERG DECOMPENSATOR
 
@@ -1437,7 +1502,6 @@ The declared-controls reference inventory, forum-gap repair, and SMACKTALK long-
 
 - **The static-page hero keeps the photograph page's fixed height, so NEW HORIZON left dead space under the picture.** `#photobox` is the photograph page's box and is locked to `calc(100dvh - 140px)` so one photograph fills the screen. A static-page hero is not that -- it is an image in a column of text. The `.static-transmission` override released `min-height` and never released `height`, so with 0.7.960D's body-class fix in place the black band went but the space stayed. Measured on curbappeal.photoblogs.fyi: a square 2655x2655 photograph rendering at 722x722 inside an 860px box, 138px of it empty. With `height: auto` the box is 802px -- the photograph plus the 40px `.main-photo` frame above and below it, even on both sides. NEW HORIZON 1.3.26.
 
-
 ## 0.7.961D - 2026-10-27 - PUT THE PICTURE WHERE YOU MEAN IT
 
 - **Forum posts can place their images in the text.** A post could carry up to eight attachments and had no way to say where any of them belonged: the body was rendered as `nl2br(htmlspecialchars($body))` and every picture was stacked underneath it in upload order. That reads fine for "here is what I see"; it is useless for three steps with a picture after each one, which is most of what a support board is for. An author now types `[img:1]` where the first attached image belongs, `[img:2]` for the second, and so on. Anything they do not place still appears below the post exactly as before, so a post written without any of this is unchanged.
@@ -1472,7 +1536,6 @@ The declared-controls reference inventory, forum-gap repair, and SMACKTALK long-
 
 - **Archive paging appended into the pane nobody could see.** CHAPLIN and 50 SHADES render BOTH `#browse-grid` and `#justified-grid` and let the stylesheet show one. `ss-engine-rows.js` takes `.ss-scroll-wall` and `ss-engine-columns.js` takes the grid, and with both loaded each fetched page 2 and each bumped the SAME sentinel, so the thumbnail grid's next page landed in the hidden wall. 24 of 40 photographs on screen with the sentinel present and `data-has-more=1`. Both engines now skip a grid that is not visible. CHAPLIN's manifest gains `smack-columns`, which is the engine that pages a thumbnail grid. Carries Codex's fix for paging draining when the body scrolls. CHAPLIN 0.2.25.
 
-
 ## 0.7.957D - 2026-10-27 - FLIP IT AND LOOK
 
 - **The BORDER panel drew nothing on CHAPLIN's archive, and it was being thrown away rather than never drawn.** 0.7.956D put `chap-img-frame` and `chap-frame-lines` around every archive thumbnail, and all 24 rendered. `.chap-frame-lines` is positioned at `inset: calc(-1 * var(--chap-frame-gap))` so the frame stands off the photo on a photo page -- 47px on acolourlesslife.ca. Inside a 219px archive thumbnail that puts every line outside `.fsog-thumb`, which clips its overflow. Measured live at 0.7.956D: frame lines 313x313 at inset -47px inside a 219x230 thumb, top line not visible at all. The lines were painted and then thrown away. A thumbnail is not a print, so its frame now sits on the photo edge; rule count, thicknesses and ornaments still follow the owner's settings. Verified in a browser on the live page before shipping. CHAPLIN 0.2.24.
@@ -1498,7 +1561,6 @@ The declared-controls reference inventory, forum-gap repair, and SMACKTALK long-
 - **CHAPLIN rendered its archive twice.** `core/chaplin-page-component.php` emits `#browse-grid` and then `#justified-grid` with the same photographs. The stylesheet has always chosen between them -- `skins/chaplin/style.css:1562-1565` shows exactly one through `html[data-archive-layout]` -- but nothing ever set that attribute, so both drew: the thumbnail grid, then the same archive again underneath as an unstyled wall of full-width images. Measured on acolourlesslife.ca: grid about 1,480px tall, duplicate wall about 27,824px. The preamble is copied from `core/50-shades-page-component.php`, which has always done this correctly. The owner's archive layout choice still decides -- masonry still selects the wall. Known residual: CHAPLIN receives no scroll-wall stylesheet, so the wall it correctly shows under masonry is unstyled; that is the same asset-attachment defect as NEW HORIZON.
 
 - **A check that can see whether a page is laid out at all.** `tests/archive-presentation-contract-regression.php`. Sean found three broken archives in two weeks by opening them in a browser while the suite was green, because nothing in it looks at presentation: `every-skin-every-page-regression.php` renders 30 skins against every page kind and hands each one the fixture URL `https://example.test/s.css`, asserting markup and never opening a stylesheet; `skin-render-snapshot-regression.php` records stylesheet hrefs as a fingerprint, catching a link that disappears but not a baseline that was wrong from the start. The new check resolves the stylesheets a page really receives, through the same functions `index.php` calls, and asserts the element holding the photographs is given grid, flex or columns by a rule in that set. It finds the container by parsing the document rather than by name, counts JavaScript walls separately instead of failing them, and fails an archive page that renders no photographs at all. Its first version passed NEW HORIZON -- the skin it was written to catch -- on a rule that laid out a child; that is fixed and recorded. 24 skins covered, 18 laid out, 2 still failing (GLIDE, SHOW N TELL -- neither in use).
-
 
 ## 0.7.954D - 2026-10-26 - LET IT SCROLL
 
@@ -1784,7 +1846,6 @@ The declared-controls reference inventory, forum-gap repair, and SMACKTALK long-
   the settings being exported. That is about 6 seconds paid once, against 3.5
   saved on every slider.
 
-
 ## 0.7.937D - 2026-10-23 - DOOR POLICY
 
 - **The installer stated a PHP requirement and never checked it.** The docblock
@@ -1909,7 +1970,6 @@ The declared-controls reference inventory, forum-gap repair, and SMACKTALK long-
   shared `rss_last_run` timestamp cannot impersonate the hub. Hub-driven sites
   may still register local cron safely; the existing heartbeat gate makes local
   cron primary and the hub fallback.
-
 
 **Needs a CMS deploy and 1 skin package:** 50 SHADES 1.7.6.
 
@@ -3374,7 +3434,6 @@ from the earlier commit, deploy it again.
   was found by LOG FLOGGER on its first run, which is less a credit to the new
   tool than a measure of how long nobody looked.
 
-
 - Strict public routes now register the existing static-page, shortcode, and column styles whenever the CMS parses a static page. A valid `[columns]` block no longer collapses into stacked full-width images simply because its skin uses the strict public controller.
 - The existing shared lightbox engine is registered with the same page response; skins still own presentation and page content still owns which images enter a column layout.
 
@@ -3414,7 +3473,6 @@ from the earlier commit, deploy it again.
   guard so loading him twice is harmless. There is no order to get right: he survives any
   combination of CMS and skin.
 
-
 - **The render comparator's interaction pass can report a dead control again.** Pointed at a live site it found none, which was wrong: the click helper scrolled to the element first, and scrolling moves the page, so every bounding box changed and every control read as having done something. The scroll was never needed -- a synthetic DOM click takes no coordinates. The test fixture's dead button now sits below 2400px of filler so the same mistake fails the fixture instead of shipping.
 
 - **Photograph tiles are no longer counted as controls.** 27 of the 29 clickable things found on a live photoblog were tile images inside links, which crowded the real buttons out of the pass.
@@ -3431,7 +3489,6 @@ from the earlier commit, deploy it again.
   `tests/thomas-the-bear-reaches-every-skin.php` fails the build if he is — or if either
   shortcut or the dedication to Noah Grey is removed. He is what THE THOMAS CLAUSE is about.
 
-
 - **A grid skin keeps its photograph frames even on a site that has not been updated yet.**
   Caught before any site pulled it. The nine skins packaged a moment earlier would have
   stripped the inset, border, shadow AND colours from every photograph if they landed on a
@@ -3442,7 +3499,6 @@ from the earlier commit, deploy it again.
   HEURISTIC 0.1.12, INSTANT CAMERA 1.0.52, SLIDERS 0.1.13, SUDDEN IMPACT 1.0.18, THE GRID
   1.3.53. **Package these, not the previous set.**
 
-
 - **The skin packager stopped blocking nine skins.** The frame stylesheet was briefly listed
   in each skin's own manifest, and SMACK CENTRAL refused all nine — correctly. A skin is not
   allowed to name a CMS file the packager has never heard of, and the packager runs an older
@@ -3450,7 +3506,6 @@ from the earlier commit, deploy it again.
   page, which is where it always belonged: the CMS is what writes the frame settings onto each
   photograph, so the CMS provides the file that reads them. A skin no longer asks for it, and
   nothing has to be re-packaged when it changes.
-
 
 - **A site on an older grid skin keeps its photograph frames.** Caught before
   deploying, not after. The frame change above would have stripped the inset,
@@ -3461,7 +3516,6 @@ from the earlier commit, deploy it again.
   point of the skin. The CMS now checks whether the installed skin understands
   the new way and hands an older one exactly what it always got. Measured both
   ways.
-
 
 - **Three skins own their own colours again.** PARADE's twelve flags, AURORA's
   three colour packs and JIVE TURKEY's four colourways were written into the
@@ -3485,7 +3539,6 @@ from the earlier commit, deploy it again.
   them. The copy is marked for deletion once every site is on the new skins.
 
 - **Three skins released:** PARADE 1.2.49, AURORA 1.0.50, JIVE TURKEY 0.1.38.
-
 
 - **The CMS stops deciding what a photograph's frame looks like.** When you set
   a photograph's inset, border thickness or drop shadow, the CMS used to take
@@ -3762,7 +3815,6 @@ from the earlier commit, deploy it again.
 
 ## 0.7.877D - 2026-10-14 - The photograph's own navigation bar
 
-
 ## 0.7.876D - 2026-10-14 - Footers, blogrolls, static pages and the keys that move you
 
 - **Ten skins were refused by the Skin Packager, and the cause was my own invention.** To deliver the blogroll layout to the ten skins that had never styled one, I made a new stylesheet-only asset handle and taught this version's security policy to accept it. The Skin Packager runs on SMACK CENTRAL, which is **eleven builds behind**, and its policy knows only handles that carry a script — so it blocked all ten outright: *"violates skin authority policy: manifest-asset-handle."* A skin that cannot be packaged until the packager is upgraded is a worse answer than the problem it solved. The stylesheet now rides as a companion of `smack-community`, which **all thirty skins already declare**: an older policy validates a handle's script and ignores its companions, so nothing is blocked, and any site from 0.7.872D resolves it — nothing has to be upgraded in step with anything else. The handle is deleted, the ten manifests are back to what they were, and the policy and the strict-skin helper are both returned to the contract SMACK CENTRAL actually enforces, because leaving a capability behind that only a newer CMS understands is exactly how this happened. Verified by running the packager's own policy against every skin: thirty pass, none blocked. (`core/manifest-inventory.php`, `core/skin-security-policy.php`, `tests/strict-skin-feature-helper.inc`, ten skin manifests.)
@@ -3807,13 +3859,11 @@ from the earlier commit, deploy it again.
 
 ## 0.7.873D - 2026-10-13 - Keep scrolling
 
-
 - **Menus show one separator again, and the CMS no longer decides what it is.** 0.7.848D restored the pipe the legacy header had always drawn by hard-coding `|` into the shared menu renderer. That reached all twelve skins that use it: nine gained an unstyled pipe, and ALFRED, TELEGRAM and TILEZ — which each already draw their own `/` in their stylesheet — showed both, reading “HOME | / THE IDEA”. Sean found it on baddaywithacamera.ca. A separator between menu items is decoration, so the shared renderer now emits list items and links and nothing else, and every skin that wants a separator draws it in its own stylesheet where it also controls the character, colour and spacing. The three skins that already did so need no change and are untouched; the nine that relied on the CMS now carry the pipe themselves and are re-released. A code change must not alter presentation inside individual skins — that is exactly what happened on 8 October, and it reached every site at once. **This release therefore needs nine skin updates as well as the CMS: AURORA, GAME ON, HEURISTIC, INSTANT CAMERA, JIVE TURKEY, PARADE, SLIDERS, SUDDEN IMPACT and THE GRID.** (`core/skin-render-helpers.php`, those nine skins' `style.css` and `manifest.json`, `tests/menu-separator-contract-regression.php`.)
 
 - **The photo wall scrolls endlessly again; it had been stopping at its first batch on every wall skin.** The archive is endless scroll, not pages, and two separate pieces were missing — either one alone stops it dead. First, `ss-engine-rows.js` watches for a marker element carrying the next cursor, and 50 Shades never emitted one, so the engine gave up immediately and the archive showed 25 photographs out of hundreds. Second, when that marker does fire the engine asks the site for the next batch as data — and that request was only ever answered by a file inside each skin called `landing.php`, every one of which was deleted in the strict-skin conversion. Measured against the live site, the request returned a whole HTML page of 7,908 bytes instead of photographs, which the engine cannot read. The CMS now answers it directly, so no skin needs that file, and the tiles come from one shared component used by both the page and the scroll — a photograph that scrolls into view is identical to one that arrived with the page, and a fix to either reaches both. There is also now breathing room between the control row and the photographs, adjustable rather than fixed. The “is there more?” answer is worked out from the cursor rather than read from the response, because the two pages that own a wall disagree: an archive says both, while a landing page — which is where SCROLL's wall lives — says only where to continue. Reading the wrong one would have let SCROLL load exactly one more batch and then stop. (`index.php`, `core/skin-render-helpers.php`, `core/50-shades-page-component.php`, `assets/css/page-archive.css`, `tests/wall-endless-scroll-regression.php`.)
 
 ## 0.7.872D - 2026-10-13 - Links that land
-
 
 - **A static page is laid out as a page again, not as a photograph.** 50 Shades rendered its static pages through its own `skin-page.php` until that file was deleted on 2026-09-28; pages then fell into the photograph branch of the CMS renderer and came out wearing the photo layout — a photograph article, photograph navigation, and an empty technical-specifications slot on an About page. The skin never stopped styling `.static-content`, `.static-page-title`, `.description` and `#photobox.page-hero`; measured on the live site, those names appeared on `/about` **only inside its stylesheet**, with no markup to match. Pages now render the structure that file described: the content wrapper, the page title, the optional full-width hero image, and the description. Photographs are unaffected. (`core/50-shades-page-component.php`, `tests/static-page-presentation-regression.php`.)
 
@@ -4812,7 +4862,6 @@ ecovery\`, the dollar-saver); the Tk window offered to restore it on the next sc
 - **SYBU’s queue has an explicit, guarded Clear button.** It removes queued references without deleting the photographs and deliberately retains failed rows so an upload failure cannot disappear unnoticed. Build 0.7.64. (`tools/sybu/sybu_qt.py`.)
 - **SYBU can enrich without leaving the review queue.** Review Prompt and Enrich Selected now sit beside the queue controls, and the Colour/B&W and Orientation pickers are normal one-line controls centred in the taller thumbnail row instead of stretching to its full height. Build 0.7.65. (`tools/sybu/sybu_qt.py`.)
 - **50 SHADES OF NOAH GREY 1.5.0 (skin registry, not the core zip):** the masonry archive gets the SCROLL wall engine’s real controls — Tile Size (fewer across = bigger), Space Between Tiles, Wall Width — and the two border controls that had been sitting in the manifest doing nothing are now wired to the engine. The old hard-coded 4px gap that would have overridden any control is gone. Also 15px more room under the filter bar. Measured in an offline harness: 2 across → 404px tiles; 5 across → 172px tiles. (`skins/50-shades-of-noah-grey/`.)
-
 
 ## 0.7.707D "LOUD AND CLEAR" — 2026-09-13
 - **Fediverse replies finally show up on your posts.** A reply from Pixelfed, Mastodon, or another SnapSmack site was delivered, matched to the right photograph, and auto-approved — and then never displayed, on any skin. Every skin renders the community thread, and that thread only read its own table; federated replies were stored in the classic comments table beside it. The thread now merges approved federated replies in date order, read-only, with a small "fediverse" tag and the commenter's handle linked to their profile. Verified on allinthewrist.photoblogs.fyi with replies from unzucked.ca and pixelfed.social. (`core/community-component.php`, `assets/css/ss-community.css`.)
@@ -6425,8 +6474,6 @@ Security hardening for the new multisite/federation features (secaudit 051). No 
 ### One AI prompt per blog, shared across your fleet
 
 - **Each blog now has a first-class way to hand its whole-post AI prompt to the desktop tools.** New endpoints `GET gyss/prompt` (read this blog's prompt) and `POST gyss/prompt` (set it) expose the single prompt that fills a photo's caption, ALT text, tags and colours in one AI call. Reading an unset blog returns its built-in default; saving an empty prompt clears back to that default. This is what lets THE HUB's new "Prompt Sync" pull every blog's prompt into one shared place and push an edited prompt back — so you set a prompt once and reuse it everywhere, instead of retyping it per site. (Pairs with THE HUB 0.1.10.)
-
-
 
 ### OH SNAP can finally see what's in the shared library
 
@@ -9191,8 +9238,6 @@ GRAMOFSMACK-first to keep the test surface small before widening to all three in
 - **SMACKVERSE: the Pixelfed 401 is fixed — inbound Follows now verify.** Root cause, proven in openssl before a single line changed: Pixelfed 0.12.7 builds the HTTP-signature `(request-target)` from the request **path only** and drops the query string, while our inbox URL carries a `?ap=inbox` routing param. Every strict signer includes the query; Pixelfed doesn't — so our reconstructed signing string never matched its signature, and every Follow 401'd for two weeks. Eight signing-string variants were tested against the captured signature + key with raw `openssl dgst`; only the path-only form returned `Verified OK`. `sv_verify_signature()` now verifies against **both** legitimate `(request-target)` constructions — full path+query (draft-cavage strict) and path-only (Pixelfed and friends) — and accepts on the first that matches. This is not a relaxation: both forms are still cryptographically bound to the real fetched key, the already-verified body Digest, and the ±1h Date window, so tolerating the two constructions loses no security while restoring interop with the query-dropping majority. Failure logging now dumps every `(request-target)` form it tried, so any future peer quirk is one grep away. Gated OFF with the rest of SMACKVERSE.
 - **GRAM: new posts now sort to the TOP of the Grid Lighttable (matches the public feed).** The admin lighttable used the inverse of the public feed's ordering `CASE` — `THEN 0 ELSE 1` vs the feed's `THEN 1 ELSE 0` — so freshly published singles (which carry `sort_order = 0` until curated) were shoved to the bottom of the lighttable while appearing correctly on top of the live site. The lighttable now uses the same expression as the feed, so new-on-top is consistent across admin and public. (Ordering only; the separate fixes for singles bypassing the 3-across gate and square-crop posts losing their frame are tracked and land next.)
 
-
-
 - **SMACKVERSE: per-header signature diagnostics.** On `openssl_verify` failure the error log now records each signed header's value and byte length, plus the raw Signature header — to pin the exact invisible byte (whitespace, `\r`, quote nuance) where our reconstructed signing string diverges from Pixelfed's. Diagnostic only; the key fetch was already confirmed correct.
 
 ## 0.7.347 — "Fluttershy" (2026-07-03)
@@ -9282,8 +9327,6 @@ GRAMOFSMACK-first to keep the test surface small before widening to all three in
 - **Site SEARCH comes to the GRAM skins.** THE GRID, AURORA and PARADE now have full-text search — across photo titles, descriptions, `#hashtags`, and even colour words ("teal", "crimson", etc. resolve to the tag colour families). A new bottom-left **magnifying-glass dock** expands into a floating search box on hover (desktop) or tap (touch; tap-away or Esc to close), and submits to a new `?q=` route in `index.php` that renders the active skin's results page. A `#tag` query jumps straight to that hashtag archive. Results render in a shared, CSS-variable-themed grid so each skin keeps its own palette and spacing. The whole thing is **off by default** and gated on the existing **Search** setting (`search_enabled`) — turn it on per site under Settings.
 - **Search engine lifted into core, shared not copied.** The query logic (title/description/tag-slug + colour-family matching) previously lived only inside the locked PHOTOGRAM skin; it now lives in `core/search-engine.php` and is reused by every skin's `search.php` through the shared results partial (`core/gram-search-results.php`). PHOTOGRAM keeps its own `?pg=search` flow untouched. New engine `smack-gram-search` (JS + CSS) registered in the manifest inventory and wired into each GRAM skin's `require_scripts`.
 - **52 CARD PICKUP gets search too.** As a SMACKONEOUT (solo) skin, its search page follows the solo page pattern (its own header nav + footer, ghost chrome forced off) rather than the GRAM carousel layout, but shares the same core engine and results renderer.
-
-
 
 - **Grid Lighttable — trigram selection.** Ticking tiles for a trigram now shows a live **L / M / R** (or **T / M / B**) disc on each ticked tile reflecting the slot it will take when locked, so the order is unmistakable before you hit LOCK. The selection also persists across reloads (saved per-session), so a refresh no longer wipes your picks; it clears automatically once you lock or publish.
 - **3-across enforcement (blog-level).** New opt-in rule that keeps the published feed to complete rows of three: a lone trailing single post auto-drops to **queued** and auto-releases the moment two more fill its row — the same hands-off gate trigrams already use. Drafts are never touched. **Creating a trigram turns it on automatically** (a blog using trigrams is committed to the 3-across grid); a checkbox in the lighttable toolbar flips it back off. Lives in `core/trigram.php` (`threeacross_settle`) wired into single + bulk publish.
@@ -11495,7 +11538,6 @@ carried forward to 0.7.208.)
 - **Unzucker API** (`core/unzucker-api.php`, `api.php`) — new authenticated JSON API for the Unzucker Instagram import desktop tool. Routes: `GET unzucker/ping`, `GET unzucker/site` (categories + albums), `POST unzucker/posts` (create post from FTP'd image paths, handles single and carousel). Bearer token auth via `snap_ohsnap_keys` (`key_type = 'unzucker'`). Duplicate detection via `import_source = 'instagram'` / `import_id`.
 - **Unzucker key type** (`smack-api-keys.php`) — `unzucker` added to the key type dropdown.
 
-
 ### Fixed
 - **Admin theme dropdown blank entries** — `smack-globalvibe.php` discovery returns an empty array when no manifest exists; the fallback only fires on non-array, so missing manifests silently produced blank `<option>` entries. Fixed by creating the missing manifests for Prideful and Red John.
 - **Multisite registration token contrast** (`smack-multisite.php`) — token display used `color:inherit` which inherited a dark colour on some themes, making the token nearly invisible on the dark input background. Hardcoded to `color:#e0e0e0`.
@@ -11511,7 +11553,6 @@ carried forward to 0.7.208.)
 - **Red John admin theme** (`admin-theme-colours-red-john.css`) — contrast pass. All low-contrast muted text colours raised to readable levels on the dark red background. (`#662222`→`#bb5555`, `#551111`→`#993333`, `#441111`→`#883333`, `#440000`→`#772222`).
 - **API Keys page** (`smack-api-keys.php`) — renamed from "Oh Snap! API Keys" to "API Keys". Rebuilt to standard admin UI patterns (box/lens-input-wrapper/recent-item/master-update-btn). Oh Snap!-specific instructions section removed. Label field no longer prepopulated.
 - **Unzucker** (`tools/unzucker/`) — switched from session cookie auth to Bearer token API key auth. No more login timeout. `SnapSmackClient` replaced with `UnzuckerClient`. BeautifulSoup dependency removed. `config.py` drops username/password/remember in favour of `api_key`. `main.py` CONNECTION box updated (API KEY field, session timer gone). Build bumped to 0.7.8.
-
 
 ## 0.7.191 — "Shit and Git" (2026-05-31)
 
@@ -11611,8 +11652,6 @@ carried forward to 0.7.208.)
 ### Changed
 - **Image Sorter renamed to Light Table**: `smack-sorter.php` → `smack-lighttable.php`, `ss-engine-sorter.js` → `ss-engine-lighttable.js`, sidebar nav and all display text updated.
 - **FLKR DCKR renamed to FLKR FCKR**: Tool renamed throughout — `core/flkrfckr-api.php`, `tools/flkr-fckr/`, API route `flkrfckr/*`, key type `flkrfckr`, all UI labels, help topics, and snapsmack.ca static copy updated. (Flickr price hike. You know why.)
-
-
 
 ### Fixed
 - **Multisite "all spokes behind" false positive (root cause fix)**: The 0.7.183 fix corrected `snap_version_compare()` but the stored values in `snap_multisite_nodes.software_version` still contained the raw `"Alpha X.Y.Z"` prefix, making SQL `!=` comparisons fail even when PHP comparisons worked. Both heartbeat `UPDATE` paths in `smack-multisite.php` now normalise via `preg_replace('/^[^0-9]+/', '', ...)` before writing to the database. Belt-and-suspenders: `core/multisite-api.php` heartbeat response now sends `SNAPSMACK_VERSION_SHORT` (clean numeric string) instead of `SNAPSMACK_VERSION`.

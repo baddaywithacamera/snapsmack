@@ -99,14 +99,48 @@ COMMANDS = [
               "wait here for the owner to send."},
     {"name": "deliver-forum", "does": "The armed sender: deliver every queued "
      "FORUM reply to its ticket's thread, and mark it sent.",
-     "returns": "delivered / skipped lists", "args": ["--forum-url URL", "--forum-key KEY"],
+     "returns": "delivered / skipped / failed / held_security lists",
+     "args": ["--forum-url URL", "--forum-key KEY", "--hold TICKET",
+              "--include-security"],
      "example": ENTRY + " deliver-forum --json",
      "notes": "Needs a forum key -- the credential stays separate from authoring. "
               "Resolves the thread from the board if the store lost it, and will "
               "not repost an update the thread already carries. Also RESCUES an "
               "update parked as email on a published ticket that has no address on "
               "file. Genuine mail -- a real address, or no thread -- is never sent "
-              "here: that is the owner's."},
+              "here: that is the owner's. An update on an OPEN DOOR OPEN ticket is "
+              "HELD: the reply would publish a hole that is still open, and on an "
+              "already-published thread there is no first post left to withhold. "
+              "--include-security overrules. SKIPPED and FAILED are different "
+              "lists and the difference matters: skipped is a row that needed "
+              "nothing doing, failed is one the board REFUSED, and the command "
+              "exits non-zero if anything failed."},
+    {"name": "sync-forum", "does": "Reconcile the whole board in one pass: add "
+     "the open tickets that are not on it, deliver the queued updates as "
+     "replies, and post a closing note on the ones that are closed.",
+     "returns": "added / updated / closed / held / refused lists",
+     "args": ["--board NAME", "--dry-run", "--include-security",
+              "--phase all|add|update|close", "--limit N", "--unwrap"],
+     "example": ENTRY + " sync-forum --dry-run",
+     "notes": "ALWAYS --dry-run first; it prints the counts and every refusal "
+              "and publishes nothing. It REUSES post, reply and deliver-forum, "
+              "so their guards all still apply -- the anonymiser, the body "
+              "shape check, the duplicate-thread guard, the pulse refusal, and "
+              "the already-on-thread check that makes a second run safe. IT "
+              "EXITS NON-ZERO IF A DELIVERY FAILED, and 0 when the only "
+              "refusals were guards doing their job: a post the anonymiser "
+              "turned down is the tool working, a reply the board would not "
+              "take is not. An "
+              "OPEN DOOR OPEN ticket is HELD BACK and counted: a security hole "
+              "is not announced while it is open, and the DOOR OPEN tickets on "
+              "the board are the fixed ones. That hold covers its QUEUED "
+              "UPDATES too, not just the first post -- a reply describing an "
+              "open hole publishes it just as surely. --include-security is the "
+              "one way to overrule that, and it is a flag rather than a silent "
+              "filter so you can see the decision. Pulse tickets are held for a human. "
+              "A ticket whose body still identifies someone, or that would "
+              "render wrongly, is REFUSED and named -- fix the ticket, do not "
+              "work around it."},
     {"name": "mod-check", "does": "Does my forum key have the role it needs?",
      "returns": "admin (bool), boards", "args": [],
      "example": ENTRY + " mod-check --json",
