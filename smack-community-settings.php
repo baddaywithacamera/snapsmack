@@ -71,7 +71,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_community'])) {
 
         // Rate limits
         'rate_limit_comments'         => max(1, min(1000, (int)($_POST['rate_limit_comments'] ?? 10))),
-        'rate_limit_likes'            => max(1, min(1000, (int)($_POST['rate_limit_likes']    ?? 60))),
         'rate_limit_signups'          => max(1, min(100,  (int)($_POST['rate_limit_signups']  ?? 3))),
         'rate_limit_logins'           => max(1, min(100,  (int)($_POST['rate_limit_logins']   ?? 10))),
         'rate_limit_resets'           => max(1, min(100,  (int)($_POST['rate_limit_resets']   ?? 3))),
@@ -352,7 +351,6 @@ include 'core/sidebar.php';
             <?php
             $limits = [
                 'rate_limit_comments' => ['COMMENTS / HOUR',  10],
-                'rate_limit_likes'    => ['LIKES / HOUR',      60],
                 'rate_limit_signups'  => ['SIGNUPS / HOUR',    3],
                 'rate_limit_logins'   => ['LOGINS / HOUR',     10],
                 'rate_limit_resets'   => ['RESETS / HOUR',     3],

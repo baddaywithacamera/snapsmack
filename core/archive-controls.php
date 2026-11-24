@@ -98,7 +98,12 @@ function snapsmack_archive_controls(array $settings, array $manifest, array $que
     // Two owner switches, plus the visitor's last state. The button is inert
     // without its engine, so whether the skin carries it travels with the
     // flags rather than being guessed at by the component.
-    $calendarEnabled = !empty($settings['archive_calendar_enabled']);
+    // A skin with one authored archive composition may decline the shared
+    // calendar control even when an old site setting still has it enabled.
+    // The owner setting remains untouched; the skin declaration only says
+    // that this presentation has no place for the control or panel.
+    $calendarSupported = ($features['archive_calendar_supported'] ?? true) !== false;
+    $calendarEnabled = $calendarSupported && !empty($settings['archive_calendar_enabled']);
     $calendarOpen = false;
     if ($calendarEnabled) {
         if ($forceCalendarOpen) $calendarOpen = true;

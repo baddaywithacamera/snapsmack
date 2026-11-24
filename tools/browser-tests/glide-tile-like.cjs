@@ -134,10 +134,11 @@ function redistributionHtml() {
       <div class="glide-viewport"><div class="glide-field">
         ${[10, 20, 30, 40, 50].map(id => `<div class="glide-row" data-glide-row><div class="glide-track">${tileFrame(id)}</div></div>`).join('')}
       </div></div>
+      <nav data-wall-archive="/archive"></nav>
     </main></body></html>`;
 }
 
-async function installBehaviour(page) {
+async function installBehaviour(page, responseDelay = 0) {
     await page.evaluate(() => {
         window.likeRequests = [];
         window.dragStarts = 0;
@@ -146,9 +147,13 @@ async function installBehaviour(page) {
         });
         window.fetch = (url, options) => {
             window.likeRequests.push({ url, resolved: new URL(url, document.baseURI).href, method: options && options.method });
-            return Promise.resolve({ json: () => Promise.resolve({ liked: true }) });
+            return new Promise(resolve => setTimeout(
+                () => resolve({ json: () => Promise.resolve({ liked: true }) }),
+                window.likeResponseDelay || 0
+            ));
         };
     });
+    await page.evaluate(delay => { window.likeResponseDelay = delay; }, responseDelay);
     await page.addScriptTag({ content: likeJs });
 }
 
@@ -241,6 +246,50 @@ async function installBehaviour(page) {
         await touch.screenshot({ path: path.join(output, 'glide-tile-like-touch-1024.png'), fullPage: true });
         console.log('PASS touch 1024: GLIDE heart remains discoverable without hover');
         await touch.close();
+
+        for (const width of [1920, 1440, 1024]) {
+            const viewerPage = await browser.newPage({ viewport: { width, height: 900 } });
+            await viewerPage.setContent(redistributionHtml(), { waitUntil: 'load' });
+            await installBehaviour(viewerPage, 100);
+            await viewerPage.addScriptTag({ content: glideJs });
+            const sourceHeart = viewerPage.locator('.glide-tile-frame:not([aria-hidden="true"]) .ss-tile-like[data-tile-like="10"]').first();
+            await viewerPage.locator('.glide-tile-frame:not([aria-hidden="true"]) .glide-tile').first().dispatchEvent('click');
+            await viewerPage.locator('.wall-viewer[open] .wall-viewer-like').waitFor();
+            await viewerPage.waitForTimeout(400);
+            const viewerHeart = viewerPage.locator('.wall-viewer .wall-viewer-like');
+            assert.equal(await viewerHeart.count(), 1, 'viewer reuses exactly one prepared heart for the displayed photograph');
+            assert.equal(await viewerHeart.getAttribute('data-tile-like'), '10',
+                'viewer heart keeps the displayed photograph id from the prepared control');
+            const viewerGeometry = await viewerHeart.evaluate(el => {
+                const style = getComputedStyle(el);
+                const heart = el.getBoundingClientRect();
+                const image = el.parentElement.querySelector('img').getBoundingClientRect();
+                return {
+                    left: style.left, bottom: style.bottom, width: style.width, height: style.height, opacity: style.opacity,
+                    imageLeftGap: Math.round(heart.left - image.left), imageBottomGap: Math.round(image.bottom - heart.bottom)
+                };
+            });
+            assert.deepEqual(viewerGeometry,
+                { left: '10px', bottom: '10px', width: '44px', height: '44px', opacity: '1', imageLeftGap: 10, imageBottomGap: 10 },
+                'viewer heart is always visible at the photograph bottom-left with a 44px target');
+            await viewerPage.evaluate(() => {
+                document.querySelector('.wall-viewer .wall-viewer-like').click();
+                document.querySelector('.glide-tile-frame:not([aria-hidden="true"]) .ss-tile-like[data-tile-like="10"]').click();
+            });
+            await viewerPage.waitForFunction(() => window.likeRequests.length === 1);
+            await viewerPage.waitForTimeout(150);
+            assert.equal(await viewerPage.evaluate(() => window.likeRequests.length), 1,
+                'viewer and conveyor copies share one in-flight request guard per photograph');
+            assert.equal(await viewerHeart.getAttribute('aria-pressed'), 'true',
+                'viewer heart reflects the successful like');
+            assert.equal(await sourceHeart.getAttribute('aria-pressed'), 'true',
+                'the matching conveyor heart synchronizes instead of offering a second conflicting like');
+            assert.equal(await viewerPage.locator('.wall-viewer').evaluate(el => el.open), true,
+                'liking in the viewer does not close the photograph');
+            await viewerPage.screenshot({ path: path.join(output, `glide-viewer-like-${width}.png`), fullPage: true });
+            console.log(`PASS viewer ${width}: heart is bottom-left, synchronized, and duplicate taps share one request`);
+            await viewerPage.close();
+        }
 
         const redistributed = await browser.newPage({ viewport: { width: 1440, height: 900 } });
         await redistributed.setContent(redistributionHtml(), { waitUntil: 'load' });

@@ -23,12 +23,17 @@
 (function () {
     'use strict';
 
+    // One photograph can have a conveyor heart, a redistributed copy and a
+    // viewer heart at the same time. The request lock belongs to the photo,
+    // not to whichever copy was clicked first.
+    var pending = Object.create(null);
+
     function csrf() {
         var tag = document.querySelector('meta[name="csrf-token"]');
         return tag ? tag.getAttribute('content') : '';
     }
 
-    function paint(button, liked) {
+    function paintOne(button, liked) {
         button.classList.toggle('is-liked', !!liked);
         button.dataset.liked = liked ? '1' : '0';
         button.setAttribute('aria-pressed', liked ? 'true' : 'false');
@@ -37,10 +42,25 @@
         button.setAttribute('title', label);
     }
 
+    function paint(button, liked) {
+        var id = parseInt(button.dataset.tileLike || '0', 10);
+        if (!id) return paintOne(button, liked);
+        document.querySelectorAll('.ss-tile-like[data-tile-like="' + id + '"]').forEach(function (copy) {
+            paintOne(copy, liked);
+        });
+    }
+
+    function paintBusy(id, busy) {
+        document.querySelectorAll('.ss-tile-like[data-tile-like="' + id + '"]').forEach(function (copy) {
+            copy.dataset.busy = busy ? '1' : '0';
+        });
+    }
+
     function send(button) {
         var id = parseInt(button.dataset.tileLike || '0', 10);
-        if (!id || button.dataset.busy === '1') return;
-        button.dataset.busy = '1';
+        if (!id || pending[id]) return;
+        pending[id] = true;
+        paintBusy(id, true);
 
         // OPTIMISTIC, and reverted if the server disagrees. A heart that waits
         // for a round trip before it fills feels broken, and the whole point
@@ -71,7 +91,10 @@
                 else paint(button, was);          // an error shape: put it back
             })
             .catch(function () { paint(button, was); })
-            .then(function () { button.dataset.busy = '0'; });
+            .then(function () {
+                delete pending[id];
+                paintBusy(id, false);
+            });
     }
 
     function swallow(event) {
