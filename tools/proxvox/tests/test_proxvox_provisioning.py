@@ -43,6 +43,13 @@ class ProvisioningScriptTests(unittest.TestCase):
                 self.assertIn('"$sshd_path" -t', source)
                 self.assertIn("systemctl reload ssh", source)
 
+    def test_each_container_uses_its_real_web_root(self):
+        ct102 = _source("provision-ct102.sh")
+        ct106 = _source("provision-ct106.sh")
+        self.assertIn("for path in /var/www/sites /var/log/apache2", ct102)
+        self.assertIn("for path in /var/www /var/log/apache2", ct106)
+        self.assertNotIn("for path in /var/www/sites /var/log/apache2", ct106)
+
     def test_database_script_creates_only_source_bound_readers(self):
         source = _source("provision-ct110.sh")
         for address in ("192.168.1.12", "192.168.1.16"):

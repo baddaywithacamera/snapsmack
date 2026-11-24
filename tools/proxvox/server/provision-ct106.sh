@@ -25,7 +25,10 @@ printf '\n' >&2
 printf 'proxvox-ro:%s\n' "$password" | chpasswd
 unset password
 
-for path in /var/www/sites /var/log/apache2; do
+# CT106 stores each site directly under /var/www. Unlike CT102, it has no
+# /var/www/sites wrapper; the live fail-closed provisioning check confirmed
+# the six Apache document roots are /var/www/<site>.
+for path in /var/www /var/log/apache2; do
     [ -d "$path" ] || fail "required directory is missing: $path"
     setfacl -R -m u:proxvox-ro:rX "$path"
     find "$path" -type d -exec setfacl -m d:u:proxvox-ro:rX {} +
