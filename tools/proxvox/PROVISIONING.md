@@ -9,11 +9,13 @@ screen. Each line downloads one target-specific installer from the reviewed
 commit, verifies the printed SHA-256 before executing it, and stops loudly on
 the first failure.
 
-The installer commit is `8fd93087f260b0c44ced5a213a76ba7050bf392f`.
-Its four reviewed script hashes are:
+The base installer commit is `8fd93087f260b0c44ced5a213a76ba7050bf392f`.
+CT106 uses corrected commit `9d929c5f1a63b43c586423634f8a5a2b026f1be3`,
+which matches its measured live layout (`/var/www/<site>`, not
+`/var/www/sites`). The four reviewed script hashes are:
 
 - CT102: `2f95e9842426ed54f963c3743e5a058b746d5694e7ac87eb2c4ae1af13d21aae`
-- CT106: `524a5a6776cf1a69db2a41257257bf39cd887e6abf8148dfaa60d7dd216a711a`
+- CT106: `2d68518225d814950c6fa14fb8a32d9a8f55d99a495d54538a54c1e4056ef1a8`
 - CT110: `d68ea3572f13f01af9c6698429ce50fe8fae84f76fb590ea65de97c2b21dbd79`
 - Proxmox host: `9af84d21ed99f5b50d437407902fac6cf391c055219842d2d37de3bd96afc038`
 
@@ -38,7 +40,7 @@ tmp=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/baddaywithacamera/
 2. **CT106 — SFTP reader, ACLs and SSH boundary**
 
 ```sh
-tmp=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/baddaywithacamera/snapsmack/8fd93087f260b0c44ced5a213a76ba7050bf392f/tools/proxvox/server/provision-ct106.sh -o "$tmp" && printf '%s  %s\n' 524a5a6776cf1a69db2a41257257bf39cd887e6abf8148dfaa60d7dd216a711a "$tmp" | sha256sum -c - && pct push 106 "$tmp" /root/provision-proxvox.sh --perms 0700 && pct exec 106 -- /root/provision-proxvox.sh
+tmp=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/baddaywithacamera/snapsmack/9d929c5f1a63b43c586423634f8a5a2b026f1be3/tools/proxvox/server/provision-ct106.sh -o "$tmp" && printf '%s  %s\n' 2d68518225d814950c6fa14fb8a32d9a8f55d99a495d54538a54c1e4056ef1a8 "$tmp" | sha256sum -c - && pct push 106 "$tmp" /root/provision-proxvox.sh --perms 0700 && pct exec 106 -- /root/provision-proxvox.sh
 ```
 
 3. **CT110 — two source-bound read-only MariaDB accounts**

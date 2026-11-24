@@ -76,7 +76,12 @@ class ProvisioningScriptTests(unittest.TestCase):
     def test_setup_sheet_is_four_verified_pastes_and_codex_runs_proofs(self):
         with open(os.path.join(ROOT, "PROVISIONING.md"), encoding="utf-8") as stream:
             sheet = stream.read()
-        commit = "8fd93087f260b0c44ced5a213a76ba7050bf392f"
+        commits = {
+            "ct102": "8fd93087f260b0c44ced5a213a76ba7050bf392f",
+            "ct106": "9d929c5f1a63b43c586423634f8a5a2b026f1be3",
+            "ct110": "8fd93087f260b0c44ced5a213a76ba7050bf392f",
+            "host": "8fd93087f260b0c44ced5a213a76ba7050bf392f",
+        }
         commands = re.findall(r"```sh\n([^\n]+)\n```", sheet)
         self.assertEqual(len(commands), 4)
         targets = ("ct102", "ct106", "ct110", "host")
@@ -86,7 +91,7 @@ class ProvisioningScriptTests(unittest.TestCase):
                 script_path = os.path.join(SERVER, script_name)
                 with open(script_path, "rb") as stream:
                     digest = hashlib.sha256(stream.read()).hexdigest()
-                self.assertIn("/%s/tools/proxvox/server/%s" % (commit, script_name), command)
+                self.assertIn("/%s/tools/proxvox/server/%s" % (commits[target], script_name), command)
                 self.assertIn(digest, command)
                 self.assertIn("sha256sum -c -", command)
         self.assertIn("Sean's setup work ends there.", sheet)
