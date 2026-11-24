@@ -19,14 +19,14 @@
 </header>
 
 <main class="post-inner telegram-reading-column">
-<?php if (($view['response']['kind'] ?? '') === 'blogroll'): ?><main class="blogroll-page" role="main"><div class="blogroll-canvas"><h1 class="static-page-title blogroll-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Blogroll'); ?></h1><?php echo snap_render_html(snap_render_component('blogroll', ['groups' => $view['response']['blogroll_groups'] ?? []])); ?></div></main><?php elseif (($view['response']['kind'] ?? '') === 'page'): ?><article class="telegram-post static-page"><h1><?php echo snap_escape_html($view['response']['item']['title'] ?? $view['response']['page_title'] ?? ''); ?></h1><div class="telegram-body entry-content e-content"><?php echo snap_render_html($view['response']['rendered_content'] ?? $view['response']['item']['content'] ?? ''); ?></div></article><?php elseif ($view['response']['kind'] === 'single'): ?>
+<?php if (($view['response']['kind'] ?? '') === 'blogroll'): ?><div class="blogroll-page"><div class="blogroll-canvas"><h1 class="static-page-title blogroll-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Blogroll'); ?></h1><?php echo snap_render_html(snap_render_component('blogroll', ['groups' => $view['response']['blogroll_groups'] ?? []])); ?></div></div><?php elseif (($view['response']['kind'] ?? '') === 'page'): ?><article class="telegram-post static-page"><h1><?php echo snap_escape_html($view['response']['item']['title'] ?? $view['response']['page_title'] ?? ''); ?></h1><div class="telegram-body entry-content e-content"><?php echo snap_render_html($view['response']['rendered_content'] ?? $view['response']['item']['content'] ?? ''); ?></div></article><?php elseif (($view['response']['kind'] ?? '') === 'single'): ?>
     <article class="telegram-post">
         <h1><?php echo snap_escape_html(($view['response']['post']['title'] ?? '')); ?></h1>
         <p class="telegram-date"><?php echo snap_escape_html(($view['response']['post']['created_at'] ?? '')); ?></p>
         <?php if (!empty(($view['response']['post']['featured_image_path'] ?? ''))): ?>
             <?php echo snap_render_html(snap_render_component('image', ['url' => ($view['response']['post']['featured_image_path'] ?? ''), 'alt' => ($view['response']['post']['title'] ?? '')])); ?>
         <?php endif; ?>
-        <div class="telegram-content"><?php echo snap_render_html($view['response']['rendered_content']); ?></div>
+        <div class="telegram-content"><?php echo snap_render_html($view['response']['rendered_content'] ?? ''); ?></div>
         <?php if (!empty($view['response']['colophon'])): ?>
             <aside class="telegram-colophon"><?php echo snap_escape_html($view['response']['colophon']); ?></aside>
         <?php endif; ?>
@@ -34,7 +34,7 @@
             <?php echo snap_render_html(snap_render_component('comments', ['items' => $view['response']['comments']])); ?>
         <?php endif; ?>
     </article>
-<?php elseif ($view['response']['kind'] === 'feed'): ?>
+<?php elseif (($view['response']['kind'] ?? '') === 'feed'): ?>
     <section class="telegram-feed">
         <?php foreach (($view['response']['posts'] ?? []) as $post): ?>
             <article class="telegram-feed-item">
@@ -47,9 +47,9 @@
             </article>
         <?php endforeach; ?>
     <?php if (!empty($view['response']['next_url'])): ?><?php echo snap_render_html(snap_render_component('feed-pager', ['prefix' => 'telegram', 'feed' => true, 'base' => snap_route_url('home'), 'next_url' => $view['response']['next_url'], 'next_page' => $view['response']['next_page'] ?? 0, 'grid_selector' => '.telegram-feed', 'item_selector' => '.telegram-feed > .telegram-feed-item'])); ?><?php endif; ?></section>
-<?php elseif ($view['response']['kind'] === 'archive'): ?>
+<?php elseif (($view['response']['kind'] ?? '') === 'archive'): ?>
     <?php echo snap_render_html(snap_render_component('search-summary', ['term' => $view['response']['search_term'] ?? '', 'posts' => $view['response']['search_posts'] ?? [], 'tiles' => $view['response']['tiles'] ?? []])); ?><section class="telegram-archive">
-        <h1><?php echo snap_escape_html($view['response']['page_title']); ?></h1>
+        <h1><?php echo snap_escape_html($view['response']['page_title'] ?? 'Archive'); ?></h1>
         <?php foreach (($view['response']['tiles'] ?? []) as $tile): ?>
             <a href="<?php echo snap_escape_url($tile['full']); ?>">
                 <?php echo snap_render_html(snap_render_component('image', ['url' => $tile['thumb'], 'alt' => $tile['title']])); ?>
