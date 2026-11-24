@@ -882,6 +882,13 @@ def cmd_sync_forum(args):
                 closed.append(t.id)
 
     held_pulse = sorted(set(held_pulse))
+    # Muse's nit on this branch, and it became true the moment the hold was
+    # extended to the update phase: one ticket can now be held TWICE in a
+    # single run -- once as a post the ADD phase will not make, once as a
+    # queued reply the sender will not deliver. held_pulse was already deduped
+    # and held_security was not, so the report counted that ticket twice and
+    # the number stopped being a count of tickets. Same treatment for both.
+    held_security = sorted(set(held_security))
     data = {"board": board, "dry_run": bool(args.dry_run), "phase": args.phase,
             "added": added, "updated": updated, "closed": closed,
             "held_security": held_security, "held_pulse": held_pulse,

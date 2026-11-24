@@ -788,4 +788,35 @@ def test_sync_reports_an_update_held_for_open_security(tmp_path, monkeypatch, ca
     assert t.id not in out["already"], "a held update was reported as already done"
     assert rc == 0, "a hold is a decision, not a failure"
 
+
+def test_a_ticket_held_in_both_phases_is_counted_once(tmp_path, monkeypatch, capsys):
+    """Muse's nit on this branch, and it is a counting bug, not a cosmetic one.
+
+    Extending the open-security hold to the update phase made it possible for
+    ONE ticket to be held twice in a single run: once as a post the ADD phase
+    will not make, once as a queued reply the sender will not deliver.
+    held_pulse was already deduped and held_security was not, so the report
+    said two and the number stopped being a count of tickets.
+
+    Driven with a full-phase run against a ticket that qualifies for both
+    holds, rather than by calling sorted(set(...)) and agreeing with myself.
+    """
+    s = _store(tmp_path)
+    t = s.create(title="a hole", body="There is a way in that should not be there.")
+    s.update(t.id, security=True, usability="stopped", affected=5)
+    assert s.get(t.id).band == "DOOR OPEN"
+    assert (s.get(t.id).forum_thread or 0) == 0     # so ADD would want it
+    s.enqueue(t.id, "forum", "Still looking into this." + "\n\n" + "claude")
+    s.close()
+
+    monkeypatch.setattr(tw.forummod, "Forum", _RecordingForum)
+
+    rc = tw.cmd_sync_forum(_args(_db(tmp_path), phase="all", json=True))
+    out = json.loads(capsys.readouterr().out)
+
+    assert out["held_security"].count(t.id) == 1, out["held_security"]
+    assert out["added"] == [] and out["updated"] == []
+    assert _RecordingForum.calls == [], "a held ticket reached the board anyway"
+    assert rc == 0
+
 # ===== SNAPSMACK EOF =====
