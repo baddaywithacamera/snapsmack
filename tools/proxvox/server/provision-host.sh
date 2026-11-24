@@ -4,7 +4,7 @@
 
 set -eu
 
-WRAPPER_COMMIT=055966369fa77cdb66fe466bd961d3f16cfaec6a
+WRAPPER_COMMIT=055966363c8bf298cda749a09b4f83126e34166d
 WRAPPER_SHA256=48b3c84357f40a3db73f679d76223472b313d5ffc5e9972f62801778aec5718c
 WRAPPER_URL="https://raw.githubusercontent.com/baddaywithacamera/snapsmack/${WRAPPER_COMMIT}/tools/proxvox/server/proxvox_readonly.py"
 
