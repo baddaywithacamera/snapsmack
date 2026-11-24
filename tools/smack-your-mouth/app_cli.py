@@ -29,8 +29,10 @@ def execute(args):
     raise ValueError(f"Unknown command: {args.command}")
 
 
+COMMAND_SCOPES = {'sessions': 'read', 'session-detail': 'read', 'new-session': 'local_write'}
+
 def main(argv=None):
-    return C.run("smack-your-mouth", configure, execute, argv)
+    return C.run("smack-your-mouth", configure, execute, argv, command_scopes=COMMAND_SCOPES)
 
 
 if __name__ == "__main__":

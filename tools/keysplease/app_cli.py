@@ -42,8 +42,10 @@ def execute(args):
     raise ValueError(f"Unknown command: {args.command}")
 
 
+COMMAND_SCOPES = {'keys': 'read', 'audit-log': 'read'}
+
 def main(argv=None):
-    return C.run("keysplease", configure, execute, argv)
+    return C.run("keysplease", configure, execute, argv, command_scopes=COMMAND_SCOPES)
 
 
 if __name__ == "__main__":

@@ -37,8 +37,10 @@ def execute(args):
     raise ValueError(f"Unknown command: {args.command}")
 
 
+COMMAND_SCOPES = {'inspect-export': 'inspect', 'checkpoint': 'read'}
+
 def main(argv=None):
-    return C.run("flkr-fckr", configure, execute, argv)
+    return C.run("flkr-fckr", configure, execute, argv, command_scopes=COMMAND_SCOPES)
 
 
 if __name__ == "__main__":

@@ -35,6 +35,7 @@ SCHEMA = 1
 TRUST_ELIGIBLE_ACTIONS = frozenset({
     "read",
     "inspect",
+    "local_write",
     "post",
     "sort",
     "metadata-update",
@@ -42,6 +43,8 @@ TRUST_ELIGIBLE_ACTIONS = frozenset({
     "reschedule",
     "repair",
 })
+
+ALL_SCOPES = TRUST_ELIGIBLE_ACTIONS | frozenset({"delete"})
 
 
 @dataclass

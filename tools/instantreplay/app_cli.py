@@ -38,8 +38,10 @@ def execute(args):
     raise ValueError(f"Unknown command: {args.command}")
 
 
+COMMAND_SCOPES = {'backups': 'read', 'targets': 'read', 'verify': 'inspect'}
+
 def main(argv=None):
-    return C.run("instantreplay", configure, execute, argv)
+    return C.run("instantreplay", configure, execute, argv, command_scopes=COMMAND_SCOPES)
 
 
 if __name__ == "__main__":

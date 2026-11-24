@@ -172,5 +172,28 @@ def test_session_gate_stepup_enforcement(tmp_path, monkeypatch):
     )
     assert state.totp_at > 0
 
+    # 4. Env vars cannot supply credentials or bypass missing 30-day trust
+    env_with_vars = dict(env_untrusted)
+    env_with_vars.update({
+        "SNAPSMACK_STEPUP_URL": "https://evil.example",
+        "SNAPSMACK_STEPUP_KEY": "fake-key",
+        "SNAPSMACK_STEPUP_USER": "sean",
+        "SNAPSMACK_STEPUP_PASSWORD": "pw",
+        "SNAPSMACK_STEPUP_TOTP": "123456",
+    })
+    rc3, res3 = _run_cli(TOOLS_DIR / "cronometer" / "cronometer.py", ["sites"], env_with_vars)
+    assert rc3 == 3 and res3["error"]["code"] == "permission"
+
+    # 5. Unclassified command (missing command_scopes) fails closed with exit code 3
+    import snap_cli
+    rc4 = snap_cli.run(
+        "test-app",
+        lambda sub: sub.add_parser("unclassified"),
+        lambda _args: {"ok": True},
+        ["unclassified"],
+        command_scopes={},
+    )
+    assert rc4 == 3
+
 
 # ===== SNAPSMACK EOF =====

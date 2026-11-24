@@ -39,8 +39,10 @@ def execute(args):
     raise ValueError(f"Unknown command: {args.command}")
 
 
+COMMAND_SCOPES = {'inspect-archive': 'inspect', 'jobs': 'read'}
+
 def main(argv=None):
-    return C.run("blogger-flogger", configure, execute, argv)
+    return C.run("blogger-flogger", configure, execute, argv, command_scopes=COMMAND_SCOPES)
 
 
 if __name__ == "__main__":

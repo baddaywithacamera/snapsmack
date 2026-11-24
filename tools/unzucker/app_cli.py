@@ -36,8 +36,10 @@ def execute(args):
     raise ValueError(f"Unknown command: {args.command}")
 
 
+COMMAND_SCOPES = {'inspect-export': 'inspect', 'jobs': 'read'}
+
 def main(argv=None):
-    return C.run("unzucker", configure, execute, argv)
+    return C.run("unzucker", configure, execute, argv, command_scopes=COMMAND_SCOPES)
 
 
 if __name__ == "__main__":
