@@ -386,20 +386,18 @@ class SnapSmack {
             $id = (int)$m[1];
 
             try {
-                $stmt = $this->pdo->prepare("SELECT asset_ids, focus_positions, gap, emphasis, layout, gallery_shuffle FROM snap_mosaics WHERE id = ? LIMIT 1");
+                // Optional presentation columns may be absent before schema sync.
+                $stmt = $this->pdo->prepare('SELECT * FROM snap_mosaics WHERE id = ? LIMIT 1');
                 $stmt->execute([$id]);
                 $mosaic = $stmt->fetch(\PDO::FETCH_ASSOC);
             } catch (\PDOException $e) {
-                // Backward-compatible read while canonical schema sync is pending.
-                try {
-                    $stmt = $this->pdo->prepare("SELECT asset_ids, gap FROM snap_mosaics WHERE id = ? LIMIT 1");
-                    $stmt->execute([$id]);
-                    $mosaic = $stmt->fetch(\PDO::FETCH_ASSOC);
-                } catch (\PDOException $fallback) {
-                    return ''; // table absent or query failed — drop the shortcode
-                }
+                return ''; // Table absent or query failed.
             }
             if (!$mosaic) return '';
+            if (array_diff(['focus_positions', 'emphasis', 'layout', 'gallery_shuffle'], array_keys($mosaic))) {
+                // Keep the historical asset-and-gap fallback on a partially upgraded schema.
+                $mosaic = array_intersect_key($mosaic, ['asset_ids' => true, 'gap' => true]);
+            }
 
             $image_ids = json_decode($mosaic['asset_ids'] ?? '[]', true);
             if (!is_array($image_ids) || empty($image_ids)) return '';
@@ -414,19 +412,16 @@ class SnapSmack {
             // back. The ordering helper is pure and proven a permutation, so no
             // photograph is lost or repeated.
             //
-            // The older 3-column SELECT in the fallback above has no
-            // gallery_shuffle, so an install mid-schema-sync simply keeps the
-            // authored order rather than erroring.
             require_once __DIR__ . '/gallery-order.php';
             $image_ids = snap_gallery_present_order($image_ids, !empty($mosaic['gallery_shuffle']));
             $focus_positions = json_decode($mosaic['focus_positions'] ?? '{}', true);
             if (!is_array($focus_positions)) $focus_positions = [];
+            $weights = json_decode($mosaic['mosaic_weights'] ?? '{}', true);
+            if (!is_array($weights)) $weights = [];
             $gap = max(0, min(20, (int)($mosaic['gap'] ?? 4)));
             // ARRANGEMENT. ss-engine-mosaic.js reads data-emphasis and falls back
             // to 'natural' (the flattest block shape) when it is absent — which is
             // what every essay mosaic silently got before this attribute existed.
-            // The older 3-column SELECT above omits it, so an install mid-schema-sync
-            // simply keeps the old behaviour rather than erroring.
             $emphasis = (string)($mosaic['emphasis'] ?? 'natural');
             if (!in_array($emphasis, ['natural', 'balanced', 'landscape', 'portrait'], true)) {
                 $emphasis = 'natural';
@@ -456,6 +451,7 @@ class SnapSmack {
             foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $r) { $by_id[(int)$r['id']] = $r; }
 
             $images = [];
+            $has_weights = false;
             foreach ($image_ids as $iid) {
                 $iid = (int)$iid;
                 if (!isset($by_id[$iid])) continue;
@@ -481,11 +477,17 @@ class SnapSmack {
                 $w = (int)($by_id[$iid]['img_width'] ?? 0);
                 $h = (int)($by_id[$iid]['img_height'] ?? 0);
                 if ($w > 0 && $h > 0) { $item['width'] = $w; $item['height'] = $h; }
+                $weight = $weights[$iid] ?? 0;
+                if (in_array($weight, [-1, 1, 2], true)) {
+                    $item['weight'] = $weight;
+                    $has_weights = true;
+                }
                 $images[] = $item;
             }
             if (empty($images)) return '';
 
-            if ($layout === 'asymmetric' || in_array($layout, $templates, true)) {
+            // The desktop editor uses the editorial solver for explicit tile sizes.
+            if ($has_weights || $layout === 'asymmetric' || in_array($layout, $templates, true)) {
                 return '<div class="snap-mosaic" data-mosaic="'
                     . htmlspecialchars(json_encode($images), ENT_QUOTES)
                     . '" data-gap="' . $gap . '" data-emphasis="' . htmlspecialchars($emphasis, ENT_QUOTES) . '"'

@@ -992,6 +992,8 @@ CREATE TABLE IF NOT EXISTS `snap_mosaics` (
                COMMENT 'JSON array of snap_assets IDs in display order',
   `focus_positions` LONGTEXT COLLATE utf8mb4_unicode_ci DEFAULT NULL
                COMMENT 'JSON object keyed by image id: per-mosaic crop focal x/y percentages',
+  `mosaic_weights` LONGTEXT COLLATE utf8mb4_unicode_ci DEFAULT NULL
+               COMMENT 'Optional JSON object keyed by snap_images ID with tile size adjustments (-1, 1, 2)',
   `gap`        TINYINT       NOT NULL DEFAULT 4
                COMMENT 'Gap in pixels between mosaic cells (0–20)',
   `emphasis`   VARCHAR(12)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'natural'
