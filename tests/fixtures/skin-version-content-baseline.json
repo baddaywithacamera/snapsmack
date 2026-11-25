@@ -23,8 +23,8 @@
             "manifest_css_sha256": "f67477db80f99dfe768ffabd28206817df5b3c62d90a452a6ffc4979795552d3"
         },
         "chaplin": {
-            "version": "0.2.33",
-            "files_sha256": "31d4afa790c6df15670c7502b349788d2d49c3bf33af983d960b55013a2ea6a5",
+            "version": "0.2.34",
+            "files_sha256": "ad6c1c550bfd67dcbf3ca1d5634c60034d08f30e4c60ad3c3d4627eb091852c7",
             "manifest_css_sha256": "2190dc5b444023c881326610eea180b36ba855b894adf87a232d0d1038841df0"
         },
         "full-monty": {
