@@ -61,4 +61,48 @@ def test_separate_header_connection_indicators():
     assert w.status.objectName() == 'LinkOn'
     w.close()
 
+
+def test_status_pills_one_click_reconnect_only_when_disconnected(monkeypatch):
+    from PySide6.QtCore import QPointF, Qt
+    from PySide6.QtGui import QMouseEvent
+    from PySide6.QtWidgets import QApplication
+    import sybu_qt
+
+    app = QApplication.instance() or QApplication([])
+    w = sybu_qt.Window()
+    auth_calls = []
+    connect_calls = []
+    monkeypatch.setattr(w, '_auth_drive', lambda: auth_calls.append('auth_drive'))
+    monkeypatch.setattr(w, '_connect', lambda: connect_calls.append('connect'))
+
+    def click(widget):
+        ev = QMouseEvent(
+            QMouseEvent.Type.MouseButtonPress,
+            QPointF(5, 5),
+            QPointF(5, 5),
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+        widget.mousePressEvent(ev)
+
+    # Disconnected pills trigger reconnect directly
+    w._set_link_indicator(w.drive_indicator, 'Drive', False)
+    w._set_link_indicator(w.status, 'CMS', False)
+    w.drive.setChecked(False)
+    click(w.drive_indicator)
+    click(w.status)
+    assert auth_calls == ['auth_drive']
+    assert w.drive.isChecked() is True
+    assert connect_calls == ['connect']
+
+    # Connected pills do nothing on click (not a disconnect toggle)
+    w._set_link_indicator(w.drive_indicator, 'Drive', True)
+    w._set_link_indicator(w.status, 'CMS', True)
+    click(w.drive_indicator)
+    click(w.status)
+    assert auth_calls == ['auth_drive']
+    assert connect_calls == ['connect']
+    w.close()
+
 # ===== SNAPSMACK EOF =====
