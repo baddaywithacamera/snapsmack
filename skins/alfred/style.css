@@ -2233,6 +2233,37 @@ p.comment-form-author { margin-right: 5%; }
     opacity: 1;
 }
 
+.alfred-archive-frame,
+.smacktalk-feed-item.ss-tile-like-host {
+    position: relative;
+}
+
+.alfred-post-heart {
+    --ss-tile-like-ink: #333;
+    --ss-tile-like-focus: #333;
+    display: inline-flex;
+}
+
+.alfred-post-heart .ss-tile-like {
+    position: static;
+    opacity: 1;
+    filter: none;
+}
+
+.alfred-v2 .snap-portfolio-gallery {
+    --ss-column-width: 250px;
+    --scroll-border-width: 4px;
+}
+
+.alfred-v2 .snap-portfolio-gallery--one-column {
+    --ss-column-width: 800px;
+    --scroll-border-width: 10px;
+}
+
+.alfred-v2 .snap-portfolio-gallery > .ss-masonry-item {
+    border: var(--scroll-border-width) solid #333;
+}
+
 .alfred-archive-tile {
     position: relative;
     display: block;

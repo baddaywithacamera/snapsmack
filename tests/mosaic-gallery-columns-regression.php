@@ -43,5 +43,16 @@ foreach ([1 => 3, 2 => 1, 3 => null] as $id => $columns) {
     $check($matches[1] === ['panorama', 'portrait'], 'Image order changed');
     $check(str_contains($html, 'data-w="2100" data-h="700"'), 'Native panorama ratio lost');
 }
+$wide = (string)$parser->parseContent('[mosaic:1 width=260]');
+$check(str_contains($wide, 'data-column-width="260"'), 'Explicit gallery width lost');
+$safe = (string)snapsmack_trusted_html($wide);
+$check(str_contains($safe, 'data-columns="3"') && str_contains($safe, 'data-gap="10"')
+    && str_contains($safe, 'data-column-width="260"') && str_contains($safe, 'data-w="2100"'),
+    'Strict rich-text rendering must preserve gallery geometry');
+$check(!str_contains($safe, ' style='), 'Strict rich text must still filter inline CSS');
+$check(!str_contains((string)$parser->parseContent('[mosaic:1]'), 'data-column-width='),
+    'Unsized gallery should remain fluid outside the skin');
+$check(!str_contains((string)$parser->parseContent('[mosaic:3 width=260]'), 'data-column-width='),
+    'Ordinary columns should not get the portfolio sizing override');
 echo "PASS gallery masonry and full-width layouts preserve authored order.\n";
 // ===== SNAPSMACK EOF =====

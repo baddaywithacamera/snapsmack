@@ -67,7 +67,7 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         // Mosaic geometry is CMS-generated inert data consumed by the shared
         // compositor. Stripping these attributes silently turns every saved
         // three-photo composition back into the engine's generic fallback.
-        'div' => ['class', 'id', 'data-mosaic', 'data-gap', 'data-emphasis', 'data-template'],
+        'div' => ['class', 'id', 'data-mosaic', 'data-gap', 'data-emphasis', 'data-template', 'data-columns', 'data-column-width'],
         'span' => ['class', 'data-cd', 'data-cd-caption', 'data-cd-clock', 'aria-hidden'],
         'section' => ['class', 'id', 'aria-label'],
         // The photoblogs.fyi directory shortcode emits a searchable semantic
@@ -106,7 +106,7 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         // as the Board: its square crop lives on img.thumb. Stripping it made
         // portrait source files expand the entire card despite the square
         // contract in the registered Board stylesheet.
-        'img' => ['src', 'alt', 'title', 'class', 'width', 'height', 'loading', 'data-lightbox-src'],
+        'img' => ['src', 'alt', 'title', 'class', 'width', 'height', 'loading', 'data-lightbox-src', 'data-w', 'data-h'],
     ];
     $document = new DOMDocument('1.0', 'UTF-8');
     $previous = libxml_use_internal_errors(true);
@@ -138,6 +138,10 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
                 if (str_starts_with($value, '//') || ($scheme !== '' && !in_array($scheme, ['http', 'https'], true))) {
                     $node->removeAttribute($name);
                 }
+            }
+            if (in_array($name, ['data-columns', 'data-column-width', 'data-w', 'data-h'], true)
+                && !preg_match('/^[1-9][0-9]{0,5}$/D', $attribute->nodeValue)) {
+                $node->removeAttributeNode($attribute);
             }
         }
         if ($tag === 'iframe') {

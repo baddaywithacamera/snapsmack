@@ -92,8 +92,13 @@
 
     function layout(grid) {
         var cs = window.getComputedStyle(grid);
-        var cols = Math.max(1, Math.round(cssNum(cs, '--ss-cols', DEFAULT_COLS)));
-        var gap = Math.max(0, cssNum(cs, '--ss-gap', DEFAULT_GAP));
+        // Rich-text galleries carry numeric geometry through sanitization.
+        var columnsData = grid.getAttribute('data-columns');
+        var defaultCols = columnsData === '1' || columnsData === '3' ? Number(columnsData) : DEFAULT_COLS;
+        var cols = Math.max(1, Math.round(cssNum(cs, '--ss-cols', defaultCols)));
+        var gapData = parseInt(grid.getAttribute('data-gap'), 10);
+        var defaultGap = Number.isFinite(gapData) ? Math.max(0, Math.min(100, gapData)) : DEFAULT_GAP;
+        var gap = Math.max(0, cssNum(cs, '--ss-gap', defaultGap));
         var bw = Math.max(0, cssNum(cs, '--scroll-border-width', 0));
         var padL = cssNum(cs, 'padding-left', 0);
         var padR = cssNum(cs, 'padding-right', 0);
@@ -102,11 +107,22 @@
         // and a half-pixel short reads as a 1px overflow on the last column.
         var W = grid.getBoundingClientRect().width - padL - padR;
         if (!(W > 0)) return false;
+        var widthData = parseInt(grid.getAttribute('data-column-width'), 10);
+        var fixedWidth = widthData >= 120 && widthData <= 1200
+            ? widthData : cssNum(cs, '--ss-column-width', 0);
+        if (fixedWidth > 0) {
+            cols = Math.min(cols, Math.max(1, Math.floor((W + gap) / (fixedWidth + gap))));
+        }
 
         var items = readItems(grid);
         if (!items.length) { grid.style.height = '0px'; return true; }
 
         var colW = (W - gap * (cols - 1)) / cols;
+        var offset = padL;
+        if (fixedWidth > 0) {
+            colW = Math.min(colW, fixedWidth);
+            offset += (W - cols * colW - gap * (cols - 1)) / 2;
+        }
         if (!(colW > 0)) return false;
 
         var colH = new Array(cols), c;
@@ -132,7 +148,7 @@
             st.position = 'absolute';
             st.boxSizing = 'border-box';
             st.margin = '0';
-            st.left = (padL + best * (colW + gap)) + 'px';
+            st.left = (offset + best * (colW + gap)) + 'px';
             st.top = top + 'px';
             st.width = tileW + 'px';
             st.height = h + 'px';
