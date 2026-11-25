@@ -262,6 +262,11 @@ def _run(argv, stdin_bytes=None):
     if stdin_bytes is not None:
         kwargs["input"] = stdin_bytes
     proc = subprocess.run(argv, **kwargs)
+    # NO allow_failure OPTION. I added one for the container's
+    # compare-and-rename and then took the shell-free route instead, which
+    # left the option with no caller -- and an unused branch in a security
+    # wrapper is the shape of fault that has bitten me three times today.
+    # Removed rather than kept "in case".
     if proc.returncode != 0:
         detail = (proc.stderr or b"").decode("utf-8", "replace").strip()
         raise Refused("command failed: %s" % (detail[:300] or argv[0]))
@@ -358,7 +363,49 @@ def _private_backup(path):
     return posixpath.join(BACKUP_DIR, "%s.%d" % (flat, int(time.time())))
 
 
-def _put_host(path, content, dry_run):
+def _expectation_holds(target, path, expected):
+    """Is the file right now what the caller said it would be?
+
+    `expected` is "-" for "there should be no file here", or a sha256.
+    Returns (ok, actual). Used immediately before the replacement rather than
+    only at the start of the request -- see _refuse_if_changed below.
+    """
+    actual = _sha256_of(target, path)
+    wanted = "" if str(expected) == "-" else str(expected).lower()
+    return actual == wanted, actual
+
+
+def _refuse_if_changed(target, path, expected):
+    """THE COMPARE HALF OF COMPARE-AND-SET, RUN NEXT TO THE REPLACE.
+
+    Codex's finding on cd1b963f: the expectation was checked in dispatch() and
+    the replacement happened later in _put_host / _put_container, with the
+    content read from stdin in between and, for a container, several separate
+    pct exec round trips after that. Everything between the two was a window
+    in which the file could change -- so the promise "a file somebody else
+    changed since you read it is refused" held for a careless caller and not
+    for a concurrent one.
+
+    It cannot be made a single atomic operation without holding a lock inside
+    the container, which is a bigger change than this release wants. What it
+    CAN be, and now is, is checked immediately before the rename instead of a
+    few hundred milliseconds and several processes earlier. dispatch() still
+    checks early as well: that one is a courtesy, so an obviously stale write
+    is refused before the content is read. This one is the guarantee.
+    """
+    if expected is None:
+        return
+    ok, actual = _expectation_holds(target, path, expected)
+    if not ok:
+        raise Refused(
+            "the file is not what the caller last read: expected %s, found %s. "
+            "Somebody or something changed it in between, so nothing was "
+            "written." % ((str(expected) == "-" and "(absent)")
+                          or str(expected).lower()[:12],
+                          actual[:12] or "(absent)"))
+
+
+def _put_host(path, content, dry_run, expected=None):
     _refuse_symlinks(path)
     before = _sha256_of("host", path)
     backup = ""
@@ -404,6 +451,16 @@ def _put_host(path, content, dry_run):
         os.chmod(tmp, stat.S_IMODE(existing.st_mode))
         if hasattr(os, "chown"):
             os.chown(tmp, existing.st_uid, existing.st_gid)
+    # IMMEDIATELY BEFORE THE REPLACE, not at the start of the request.
+    try:
+        _refuse_if_changed("host", path, expected)
+    except Refused:
+        # The temp file is ours and half-finished; leave nothing behind.
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
     os.replace(tmp, path)
     after = _sha256_of("host", path)
     return {"dry_run": False, "target": "host", "path": path,
@@ -440,7 +497,7 @@ def _refuse_container_symlinks(vmid, path):
                 % (path, vmid, walked))
 
 
-def _put_container(vmid, path, content, dry_run):
+def _put_container(vmid, path, content, dry_run, expected=None):
     before = _sha256_of(vmid, path)
     declared = hashlib.sha256(content).hexdigest()
     if dry_run:
@@ -469,6 +526,32 @@ def _put_container(vmid, path, content, dry_run):
     if before:
         _run(_ct(vmid) + ["/bin/chmod", "--reference", path, tmp])
         _run(_ct(vmid) + ["/bin/chown", "--reference", path, tmp])
+    # THE COMPARISON SITS IMMEDIATELY BEFORE THE RENAME, as its own pct exec.
+    #
+    # Codex asked for the comparison and the replacement under ONE operation.
+    # I wrote that first -- a single /bin/sh -c doing sha256sum, the test and
+    # the mv as consecutive statements, with the path and hash as positional
+    # arguments so nothing was interpolated into the script. Then this file's
+    # own test refused it: test_the_container_path_never_uses_a_shell asserts
+    # every container call is an argument LIST through pct exec with no shell
+    # anywhere, because a shell here would make a path a command-injection
+    # surface.
+    #
+    # THAT TEST IS RIGHT AND I AM NOT EDITING IT. A stated security invariant
+    # does not lose to a review comment, and "made green by editing the test"
+    # is the specific failure OPAUDIT 026 records. Positional arguments would
+    # have made my version injection-safe, but "no shell at all" is a simpler
+    # guarantee than "a shell used carefully", and somebody chose the simpler
+    # one deliberately.
+    #
+    # So: shell-free, and the window shrinks from several round trips plus a
+    # stdin read down to one pct exec. It is NOT atomic, and I am not going to
+    # describe it as though it were. Closing it completely needs either the
+    # shell (forbidden here) or a lock inside the container (a bigger change
+    # than this release wants). The trade-off is in the room for a ruling
+    # rather than settled by me, because it is two reviewers' requirements in
+    # conflict, not a loose end.
+    _refuse_if_changed(vmid, path, expected)
     _run(_ct(vmid) + ["/bin/mv", "-f", "--", tmp, path])
     after = _sha256_of(vmid, path)
     return {"dry_run": False, "target": "ct" + vmid, "path": path,
@@ -654,6 +737,26 @@ def _check_grant(grant_json, *, target, path, sha256, now=None, verifier=None):
         expires = float(grant.get("expires", 0))
     except (TypeError, ValueError):
         raise Refused("the grant's expiry is not a number")
+
+    # THE EXPIRY MUST BE A FINITE NUMBER, CHECKED BEFORE IT IS COMPARED.
+    #
+    # Codex's finding on cd1b963f, and measured rather than reasoned about:
+    # Python's json.loads accepts the bare literals NaN, Infinity and
+    # -Infinity, and NaN fails EVERY comparison. So a grant carrying
+    # {"expires": NaN} was neither expired (nan <= moment is False) nor too
+    # long (nan - moment > cap is False) and sailed through BOTH gates --
+    # a never-expiring authorisation written by the caller. Infinity did not
+    # pass, but it raised OverflowError inside the message formatting, which
+    # main() reports as a FAULT rather than a refusal; it failed closed by
+    # accident, and the audit recorded the wrong kind of event.
+    #
+    # Two gates that both answer "no objection" to a value that is not a
+    # number are not two gates. This is the only check that can be first.
+    if expires != expires or expires in (float("inf"), float("-inf")):
+        raise Refused(
+            "the grant's expiry must be a finite number of seconds since the "
+            "epoch. NaN and Infinity are not expiry times.")
+
     if expires <= moment:
         raise Refused("the grant has expired; authorise again")
     if expires - moment > MAX_GRANT_SECONDS:
@@ -673,7 +776,73 @@ def _check_grant(grant_json, *, target, path, sha256, now=None, verifier=None):
         raise Refused(
             "the grant authorises different content. The hash Sean approved is "
             "not the hash of what arrived, so nothing is written.")
-    return {"user": user, "expires": expires}
+    return {"user": user, "expires": expires, "grant": grant_json}
+
+
+#: Where spent grants are remembered, so one cannot be presented twice.
+SPENT_GRANTS = "/var/lib/proxvox/spent-grants"
+
+
+def _spend_grant(grant_json, expires, now=None):
+    """Record a grant as spent, or refuse it because it already was.
+
+    ONE USE, NOT ONE WINDOW. Codex's finding on cd1b963f, and it is the
+    improvement I had already named as worth doing in GRANT-DESIGN.md, so
+    there is no argument to have: without this the host remembers nothing,
+    and the same grant can be replayed for as long as it lives. The write is
+    idempotent -- same path, same content hash -- so a replay rewrites
+    identical bytes rather than different ones, which is why this is a
+    hardening and not a breach. But a credential that works twice is not a
+    one-shot authorisation, and the whole design rests on it being one.
+
+    WHAT IS STORED IS A HASH, never the grant. The grant carries a live
+    Proxmox ticket; a directory of spent grants would be a directory of
+    usable credentials, which is the opposite of what this is for.
+
+    THE FILE IS THE LOCK. O_CREAT|O_EXCL either creates the marker or fails
+    because it exists, in one atomic step, so two writes presenting the same
+    grant at the same moment cannot both win -- which a read-then-write check
+    could not promise.
+
+    Spent markers are named with the expiry so they can be swept; a marker
+    outliving its grant costs a few bytes and refuses a grant that was
+    already unusable, which is the safe direction.
+    """
+    moment = time.time() if now is None else now
+    digest = hashlib.sha256(str(grant_json or "").encode("utf-8")).hexdigest()
+    try:
+        os.makedirs(SPENT_GRANTS, mode=0o700, exist_ok=True)
+    except Exception as err:
+        # FAIL CLOSED. Unable to remember a grant means unable to promise it
+        # is used once, and the promise is the point.
+        raise Refused(
+            "cannot record the grant as spent, so the write is refused: %s" % err)
+
+    marker = posixpath.join(SPENT_GRANTS, "%s.%d" % (digest, int(expires)))
+    try:
+        handle = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        raise Refused(
+            "this grant has already been used. A grant authorises ONE write; "
+            "authorise again for another.")
+    except Exception as err:
+        raise Refused(
+            "cannot record the grant as spent, so the write is refused: %s" % err)
+    os.close(handle)
+
+    # Sweep markers whose grants have expired. Bounded, best-effort, and never
+    # a reason to fail a write that has already been authorised.
+    try:
+        for name in os.listdir(SPENT_GRANTS):
+            parts = name.rsplit(".", 1)
+            if len(parts) == 2 and parts[1].isdigit() and int(parts[1]) < moment - MAX_GRANT_SECONDS:
+                try:
+                    os.unlink(posixpath.join(SPENT_GRANTS, name))
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return digest
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -880,21 +1049,25 @@ def dispatch(command):
                     "the expected hash must be a 64-character sha256, or '-' "
                     "for a file that should not exist yet.")
             expected_live = expectation
-            _check_grant(grant_json, target=target, path=path, sha256=declared)
+            checked = _check_grant(grant_json, target=target, path=path, sha256=declared)
+            # SPENT ONLY ONCE THE GRANT IS OTHERWISE GOOD, and before the
+            # write. Marking it earlier would burn a grant on a command the
+            # host was going to refuse anyway; marking it after the write
+            # would leave a window in which a crash loses the record and the
+            # grant works again.
+            _spend_grant(checked["grant"], checked["expires"])
 
         content = _read_stdin_content(declared)
-        if expected_live is not None:
-            actual_live = _sha256_of(target, path)
-            wanted = "" if expected_live == "-" else str(expected_live).lower()
-            if actual_live != wanted:
-                raise Refused(
-                    "the file is not what the caller last read: expected %s, "
-                    "found %s. Somebody or something changed it in between, so "
-                    "nothing was written."
-                    % (wanted[:12] or "(absent)", actual_live[:12] or "(absent)"))
+        # THE EARLY CHECK IS A COURTESY. It refuses an obviously stale write
+        # before anything is copied or created, which is worth having -- but it
+        # is NOT the guarantee, because the content is read from stdin after
+        # it and, for a container, several pct exec round trips follow. The
+        # authoritative comparison happens immediately before the replacement,
+        # inside _put_host and _put_container. Codex's finding on cd1b963f.
+        _refuse_if_changed(target, path, expected_live)
         if target == "host":
-            return _put_host(path, content, dry_run)
-        return _put_container(target, path, content, dry_run)
+            return _put_host(path, content, dry_run, expected=expected_live)
+        return _put_container(target, path, content, dry_run, expected=expected_live)
 
     # ── maint[-dry] <name> ── a closed set, no caller arguments ──
     if op in {"maint", "maint-dry"} and len(args) == 2:

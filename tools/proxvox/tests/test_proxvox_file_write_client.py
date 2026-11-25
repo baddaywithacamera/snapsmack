@@ -75,8 +75,16 @@ class FakeAudit:
 def w(monkeypatch, tmp_path):
     """The real host wrapper, with its host-only paths pointed at tmp_path."""
     module = _load_writer()
-    monkeypatch.setattr(module, "BACKUP_DIR", str(tmp_path / "backups").replace(os.sep, "/"))
-    monkeypatch.setattr(module, "AUDIT_LOG", str(tmp_path / "audit" / "writer.jsonl").replace(os.sep, "/"))
+    # EVERY HOST PATH THE WRAPPER WRITES TO, redirected in one place. Named
+    # one at a time, this fixture missed SPENT_GRANTS when it was added and
+    # put C:/var/lib/proxvox on Sean's drive -- the second time I have
+    # scattered a directory there. The loop is the version of the rule that
+    # survives me forgetting; test_proxvox_writer.py carries a guard that
+    # fails when a new absolute path is added and not listed.
+    for name, leaf in (("BACKUP_DIR", "backups"),
+                       ("SPENT_GRANTS", "spent-grants"),
+                       ("AUDIT_LOG", "audit/writer.jsonl")):
+        monkeypatch.setattr(module, name, str(tmp_path / leaf).replace(os.sep, "/"))
     # Same documented platform relaxation the writer's own suite uses: the
     # leading-slash rule is swapped for the platform's notion of absolute so
     # the write MECHANICS can run on a Windows checkout. Every other check --
@@ -445,6 +453,199 @@ def test_reaching_dispatch_directly_still_leaves_a_host_record(w, monkeypatch, t
     assert events == ["attempt"], events
 
 
+# ── a grant is one-use, and its expiry must be a number ───────────────────
+
+def test_a_nan_expiry_is_refused(w, monkeypatch, host_file):
+    """Codex's finding on cd1b963f, and it was worse than reported.
+
+    json.loads accepts the bare literal NaN, and NaN fails EVERY comparison:
+    nan <= moment is False, so it was not expired, and nan - moment > cap is
+    False, so it was not too long. It passed both gates -- a never-expiring
+    authorisation written by the caller. Two gates that both answer "no
+    objection" to something that is not a number are not two gates.
+    """
+    monkeypatch.setattr(w, "_verify_ticket_against_local_api", lambda t, u: True)
+    grant = ('{"ticket":"' + "t" * 40 + '","user":"root@pam","target":"host",'
+             '"path":"/x","sha256":"' + "a" * 64 + '","expires":NaN}')
+    with pytest.raises(w.Refused, match="finite"):
+        w._check_grant(grant, target="host", path="/x", sha256="a" * 64)
+
+
+def test_an_infinite_expiry_is_refused_as_a_refusal_not_a_crash(w, monkeypatch):
+    """Infinity did not pass, but it raised OverflowError inside the message.
+
+    main() reports that as a FAULT, so it failed closed by accident and the
+    audit recorded the wrong kind of event. A refusal is the wrapper working;
+    a fault is the wrapper broken, and the log must not confuse them.
+    """
+    monkeypatch.setattr(w, "_verify_ticket_against_local_api", lambda t, u: True)
+    for literal in ("Infinity", "-Infinity"):
+        grant = ('{"ticket":"' + "t" * 40 + '","user":"root@pam","target":"host",'
+                 '"path":"/x","sha256":"' + "a" * 64 + '","expires":' + literal + '}')
+        with pytest.raises(w.Refused):
+            w._check_grant(grant, target="host", path="/x", sha256="a" * 64)
+
+
+def test_a_grant_works_once_and_then_does_not(w, monkeypatch, host_file):
+    """ONE USE, NOT ONE WINDOW. Codex's finding, and the improvement I had
+    already named in GRANT-DESIGN.md as worth doing.
+
+    Without this the host remembers nothing, so the same grant can be replayed
+    for as long as it lives. The write is idempotent, so a replay rewrites
+    identical bytes -- a hardening rather than a breach -- but a credential
+    that works twice is not a one-shot authorisation, and the design rests on
+    it being one.
+    """
+    content = b"written once\n"
+    grant = _grant(target="host", path=host_file, content=content)
+    runner, _ = _real_runner(w, monkeypatch)
+    client = ScopedFileWriter("pve.local", FakeAudit(), "/key", runner=runner)
+    before = hashlib.sha256(host_file.read_bytes()).hexdigest()
+
+    client.put_file("host", _posix(host_file), content, grant, expected_live=before)
+    assert host_file.read_bytes() == content
+
+    # The same grant again, for the same file and the same bytes.
+    with pytest.raises(Refused, match="already been used"):
+        client.put_file("host", _posix(host_file), content, grant,
+                        expected_live=hashlib.sha256(content).hexdigest())
+
+
+def test_two_writes_cannot_both_spend_one_grant(w, tmp_path):
+    """The marker IS the lock: O_CREAT|O_EXCL, so there is no read-then-write
+    window in which two callers could both decide the grant was unspent."""
+    grant = '{"whatever":"the bytes are hashed, not read"}'
+    expires = time.time() + 120
+    first = w._spend_grant(grant, expires)
+    assert first
+    with pytest.raises(w.Refused, match="already been used"):
+        w._spend_grant(grant, expires)
+
+
+def test_a_grant_that_cannot_be_recorded_refuses_the_write(w, monkeypatch, tmp_path):
+    """FAIL CLOSED. Unable to remember a grant is unable to promise one use,
+    and the promise is the whole point of the marker.
+
+    THE UNWRITABLE LOCATION IS A FILE USED AS A PARENT DIRECTORY, which fails
+    on Linux and on Windows alike. My first version pointed at
+    /proc/definitely-not-writable -- unwritable on the host, but on a Windows
+    checkout just an ordinary relative path that os.makedirs created as
+    C:/proc without complaint. So the test asserted nothing AND scattered a
+    folder on Sean's drive. A test that relies on a path being unwritable has
+    to be unwritable on the machine running it, not on the machine the code
+    will eventually run on.
+    """
+    blocker = tmp_path / "not-a-directory"
+    blocker.write_bytes(b"x")
+    monkeypatch.setattr(w, "SPENT_GRANTS", str(blocker / "spent").replace(os.sep, "/"))
+    with pytest.raises(w.Refused, match="cannot record the grant"):
+        w._spend_grant('{"a":1}', time.time() + 120)
+
+
+def test_the_spent_marker_never_contains_the_grant(w, tmp_path):
+    """A directory of spent grants would be a directory of usable Proxmox
+    tickets, which is the opposite of what this is for. Only a hash is kept,
+    and in the NAME -- the file itself is empty."""
+    grant = ('{"ticket":"PVE:SUPER-SECRET-TICKET","user":"root@pam",'
+             '"target":"host","path":"/x","sha256":"' + "a" * 64 + '"}')
+    w._spend_grant(grant, time.time() + 120)
+    for name in os.listdir(w.SPENT_GRANTS):
+        assert "SUPER-SECRET" not in name
+        assert "PVE" not in name
+        with open(os.path.join(w.SPENT_GRANTS, name), "rb") as handle:
+            assert handle.read() == b""
+
+
+# ── the compare sits next to the replace, not at the start of the request ──
+
+def test_a_change_after_the_early_check_is_still_caught(w, monkeypatch, host_file):
+    """Codex's finding: the expectation was checked in dispatch(), then the
+    content was read from stdin and the write happened later, so everything
+    in between was a window.
+
+    This simulates something editing the file DURING that window: the early
+    check passes, then the file changes, and the write must still refuse. The
+    only thing that can catch it is the comparison next to the replacement.
+    """
+    original = host_file.read_bytes()
+    expected = hashlib.sha256(original).hexdigest()
+    content = b"my write\n"
+    grant = _grant(target="host", path=host_file, content=content)
+    monkeypatch.setattr(w, "_verify_ticket_against_local_api", lambda t, u: True)
+
+    # Something else writes to the file at the moment the content is read --
+    # which is after dispatch()'s early check has already passed.
+    real_reader = w._read_stdin_content
+
+    def read_then_meddle(declared):
+        payload = real_reader(declared)
+        host_file.write_bytes(b"somebody else got here first\n")
+        return payload
+
+    monkeypatch.setattr(w, "_read_stdin_content", read_then_meddle)
+
+    class _In:
+        buffer = io.BytesIO(base64.b64encode(content))
+
+    monkeypatch.setattr("sys.stdin", _In())
+    argv = ["put-file", "host", _posix(host_file),
+            hashlib.sha256(content).hexdigest(), expected, grant]
+
+    with pytest.raises(Exception, match="not what the caller last read"):
+        w.dispatch(" ".join(shlex.quote(a) for a in argv))
+
+    # The other writer's bytes survive; mine are not there.
+    assert host_file.read_bytes() == b"somebody else got here first\n"
+
+
+def test_the_refused_write_leaves_no_temp_file_behind(w, monkeypatch, host_file, tmp_path):
+    """A refusal next to the rename happens after the temp file exists, so the
+    temp file has to go. Otherwise every lost race leaves a .proxvox-tmp-NNN
+    beside a file in a web root."""
+    original = host_file.read_bytes()
+    expected = hashlib.sha256(original).hexdigest()
+    content = b"mine\n"
+    grant = _grant(target="host", path=host_file, content=content)
+    monkeypatch.setattr(w, "_verify_ticket_against_local_api", lambda t, u: True)
+    real_reader = w._read_stdin_content
+
+    def read_then_meddle(declared):
+        payload = real_reader(declared)
+        host_file.write_bytes(b"changed\n")
+        return payload
+
+    monkeypatch.setattr(w, "_read_stdin_content", read_then_meddle)
+
+    class _In:
+        buffer = io.BytesIO(base64.b64encode(content))
+
+    monkeypatch.setattr("sys.stdin", _In())
+    argv = ["put-file", "host", _posix(host_file),
+            hashlib.sha256(content).hexdigest(), expected, grant]
+    with pytest.raises(Exception):
+        w.dispatch(" ".join(shlex.quote(a) for a in argv))
+
+    leftovers = [p.name for p in tmp_path.iterdir() if "proxvox-tmp" in p.name]
+    assert leftovers == [], leftovers
+
+
+def test_the_container_replacement_uses_no_shell(w, monkeypatch, tmp_path):
+    """The invariant my first fix broke, asserted from this side too.
+
+    I wrote the compare-and-rename as a single /bin/sh -c, which is what the
+    reviewer asked for and which this repo's own test forbids: every container
+    call is an argument list, because a shell makes a path an injection
+    surface. Pinned here as well so the next person reaching for a shell finds
+    two tests rather than one.
+    """
+    source = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                               "server", "proxvox_writer.py"), encoding="utf-8").read()
+    container_block = source[source.index("def _put_container"):]
+    container_block = container_block[:container_block.index("\ndef ")]
+    for forbidden in ('"/bin/sh"', "'/bin/sh'", '"-c"', "bash"):
+        assert forbidden not in container_block, forbidden
+
+
 # ── the record, and what must never be in it ───────────────────────────────
 
 def test_the_clients_audit_never_contains_the_ticket(w, monkeypatch, host_file):
@@ -504,9 +705,15 @@ def test_the_hosts_log_separates_a_refusal_from_a_fault(w, monkeypatch, tmp_path
         "a refusal is the wrapper working; it must not be logged as a fault"
 
 
-def test_an_audit_that_cannot_be_written_does_not_block_the_answer(w, monkeypatch, host_file):
+def test_an_audit_that_cannot_be_written_does_not_block_the_answer(w, monkeypatch, host_file, tmp_path):
     """A full disk must not become a denial of service on Sean's own server."""
-    monkeypatch.setattr(w, "AUDIT_LOG", "/proc/definitely-not-writable/x.jsonl")
+    # Same correction as the spent-grant test below: /proc is unwritable on
+    # the host but an ordinary new folder on a Windows checkout, so this wrote
+    # C:/proc/definitely-not-writable/x.jsonl on Sean's drive every run since
+    # aa169f80 and I did not notice. A FILE used as a parent fails on both.
+    blocker = tmp_path / "audit-blocker"
+    blocker.write_bytes(b"x")
+    monkeypatch.setattr(w, "AUDIT_LOG", str(blocker / "x.jsonl").replace(os.sep, "/"))
     monkeypatch.setenv("SSH_ORIGINAL_COMMAND", "scope")
     assert w.main() == 0
 

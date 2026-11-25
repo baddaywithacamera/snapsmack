@@ -27,6 +27,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shlex
 import time
 
@@ -44,8 +45,52 @@ def _load():
 
 
 @pytest.fixture()
-def w():
-    return _load()
+def w(tmp_path):
+    """The wrapper, with EVERY host path it writes to redirected into tmp_path.
+
+    THIS FIXTURE EXISTS BECAUSE I SCATTERED DIRECTORIES ON SEAN'S DRIVE TWICE.
+    The first time it was C:\\var\\backups, from BACKUP_DIR; the fix was to
+    override that one constant in the fixtures that needed it. That fix was
+    too narrow, and the second time proved it: moving the audit call into
+    dispatch() meant every test in this file began writing to C:\\var\\log,
+    and adding the spent-grant marker added C:\\var\\lib. Neither needed a new
+    test to go wrong -- they went wrong in tests that already passed.
+
+    Overriding them one at a time, in the fixtures that happen to need them,
+    is a rule I have to remember on every future change. Redirecting all of
+    them here is a rule the code keeps. Sean's drive-hygiene rule is that
+    nothing scatters outside the project, and this is the only version of
+    that which survives me forgetting.
+
+    Any NEW absolute host path added to the wrapper must be added here too,
+    and the test below fails if one is not.
+    """
+    module = _load()
+    for name, leaf in (("BACKUP_DIR", "backups"),
+                       ("SPENT_GRANTS", "spent-grants"),
+                       ("AUDIT_LOG", "audit/writer.jsonl")):
+        setattr(module, name, str(tmp_path / leaf).replace(os.sep, "/"))
+    return module
+
+
+def test_no_host_path_escapes_the_test_directory(w, tmp_path):
+    """Every absolute host path in the wrapper is redirected by the fixture.
+
+    A guard, not a check of behaviour: it is what makes the fixture above a
+    rule rather than a habit. Add a constant that writes somewhere absolute
+    and forget to redirect it, and this fails here instead of appearing as a
+    folder on Sean's drive.
+    """
+    source = open(_WRITER, encoding="utf-8").read()
+    declared = set(re.findall(r'^([A-Z][A-Z_]*)\s*=\s*"(/[^"]*)"', source, re.MULTILINE))
+    for name, value in sorted(declared):
+        # PVE_CA_* are READ, never written, and must stay the real host paths.
+        if name.startswith("PVE_CA"):
+            continue
+        current = str(getattr(w, name, ""))
+        assert str(tmp_path).replace(os.sep, "/") in current, (
+            "%s is still the host path %s; redirect it in the w() fixture"
+            % (name, value))
 
 
 def _stdin(monkeypatch, content: bytes):
