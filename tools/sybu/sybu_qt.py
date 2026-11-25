@@ -65,6 +65,21 @@ def label(text, name=""):
     w = QLabel(text); w.setObjectName(name); w.setWordWrap(True); return w
 
 
+class StatusPill(QLabel):
+    clicked = Signal()
+
+    def __init__(self, text, name=""):
+        super().__init__(text)
+        self.setObjectName(name)
+        self.setWordWrap(False)
+        self.setCursor(Qt.PointingHandCursor if name == "LinkOff" else Qt.ArrowCursor)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and self.objectName() == "LinkOff":
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
+
 def card(title, subtitle=""):
     box = QFrame(); box.setObjectName("Card")
     lay = QVBoxLayout(box); lay.setContentsMargins(18, 16, 18, 16); lay.setSpacing(9)
@@ -210,8 +225,8 @@ class Window(QMainWindow):
         head=QFrame(); head.setObjectName("Header"); hl=QHBoxLayout(head); hl.setContentsMargins(24,13,24,13)
         hl.addWidget(label("SITE","Eyebrow")); self.profile=QComboBox(); self.profile.setMinimumWidth(260); self.profile.currentTextChanged.connect(self._profile); hl.addWidget(self.profile)
         hl.addSpacing(12); hl.addWidget(label("PROMPT","Eyebrow")); self.prompt_preset=QComboBox(); self.prompt_preset.setMinimumWidth(210); self.prompt_preset.currentTextChanged.connect(self._prompt_preset_changed); hl.addWidget(self.prompt_preset); hl.addStretch(1)
-        self.status=label("● CMS Disconnected","LinkOff"); self.status.setWordWrap(False); hl.addWidget(self.status)
-        self.drive_indicator=label("● Drive Disconnected","LinkOff"); self.drive_indicator.setWordWrap(False); hl.addWidget(self.drive_indicator)
+        self.status=StatusPill("● CMS Disconnected","LinkOff"); self.status.setToolTip("Click to connect CMS"); self.status.clicked.connect(self._on_cms_pill_clicked); hl.addWidget(self.status)
+        self.drive_indicator=StatusPill("● Drive Disconnected","LinkOff"); self.drive_indicator.setToolTip("Click to reconnect Google Drive"); self.drive_indicator.clicked.connect(self._on_drive_pill_clicked); hl.addWidget(self.drive_indicator)
         self.connect_btn=QPushButton("Connect"); self.connect_btn.clicked.connect(self._connect); hl.addWidget(self.connect_btn)
         # Progress strip: under every page, so a post started from the queue is
         # seen from the queue. Bar + words + STOP. (Was inside the Post page only —
@@ -555,7 +570,21 @@ class Window(QMainWindow):
     def _set_link_indicator(self, indicator, service, connected):
         indicator.setText("● %s %s" % (service, "Connected" if connected else "Disconnected"))
         indicator.setObjectName("LinkOn" if connected else "LinkOff")
+        indicator.setCursor(Qt.ArrowCursor if connected else Qt.PointingHandCursor)
+        indicator.setToolTip("" if connected else f"Click to reconnect {service}")
         indicator.style().unpolish(indicator); indicator.style().polish(indicator)
+
+    def _on_cms_pill_clicked(self):
+        if self.status.objectName() != "LinkOff" or "connect" in self.pending:
+            return
+        self._connect()
+
+    def _on_drive_pill_clicked(self):
+        if self.drive_indicator.objectName() != "LinkOff" or "drive_auth" in self.poll_seen:
+            return
+        if not self.drive.isChecked():
+            self.drive.setChecked(True)
+        self._auth_drive()
 
     def _drive_status_changed(self, *_):
         enabled = self.drive.isChecked()
