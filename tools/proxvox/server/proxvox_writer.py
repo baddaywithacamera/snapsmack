@@ -776,14 +776,46 @@ def _check_grant(grant_json, *, target, path, sha256, now=None, verifier=None):
         raise Refused(
             "the grant authorises different content. The hash Sean approved is "
             "not the hash of what arrived, so nothing is written.")
-    return {"user": user, "expires": expires, "grant": grant_json}
+    return {"user": user, "expires": expires,
+            "identity": _grant_identity(user, target, path, sha256, expires)}
+
+
+def _grant_identity(user, target, path, sha256, expires):
+    """What makes two grants THE SAME AUTHORISATION, rather than the same text.
+
+    THE FIRST VERSION HASHED THE JSON, and Codex was right that it identified
+    a representation rather than a grant. Measured: one logical grant spelled
+    five ways -- keys sorted, default separators, a trailing space, a harmless
+    extra key -- produced FIVE different digests. So "one use" was defeated by
+    adding a space, and I had told the room grants were one-use when they were
+    not.
+
+    The identity is the five things the host actually checks and enforces. Any
+    respelling of the same authorisation now collides, because none of the
+    spelling is in here.
+
+    THE TICKET IS DELIBERATELY NOT PART OF IT, for two reasons. It is a live
+    credential and must not be hashed into a filename on the off chance that
+    makes it guessable. And a FRESH login for the same operation is a new
+    authorisation that should be allowed -- it carries a new expiry, so it has
+    a different identity and is not refused as a replay.
+
+    The expiry is formatted to a fixed precision so that 1795628046 and
+    1795628046.0 are one value rather than two.
+    """
+    parts = (str(user), str(target), str(path), str(sha256).lower(),
+             "%.6f" % float(expires))
+    # NUL-separated and length-prefixed: no field's contents can impersonate a
+    # separator and shift the meaning of the ones after it.
+    blob = "".join("%d:%s\0" % (len(p), p) for p in parts)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
 #: Where spent grants are remembered, so one cannot be presented twice.
 SPENT_GRANTS = "/var/lib/proxvox/spent-grants"
 
 
-def _spend_grant(grant_json, expires, now=None):
+def _spend_grant(identity, expires, now=None):
     """Record a grant as spent, or refuse it because it already was.
 
     ONE USE, NOT ONE WINDOW. Codex's finding on cd1b963f, and it is the
@@ -809,7 +841,11 @@ def _spend_grant(grant_json, expires, now=None):
     already unusable, which is the safe direction.
     """
     moment = time.time() if now is None else now
-    digest = hashlib.sha256(str(grant_json or "").encode("utf-8")).hexdigest()
+    # The IDENTITY comes from _grant_identity: what the grant authorises, not
+    # how it was spelled. Hashing the JSON text here was the flaw Codex found.
+    digest = str(identity or "")
+    if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+        raise Refused("the grant identity is not a digest; nothing was written.")
     try:
         os.makedirs(SPENT_GRANTS, mode=0o700, exist_ok=True)
     except Exception as err:
@@ -1055,7 +1091,7 @@ def dispatch(command):
             # host was going to refuse anyway; marking it after the write
             # would leave a window in which a crash loses the record and the
             # grant works again.
-            _spend_grant(checked["grant"], checked["expires"])
+            _spend_grant(checked["identity"], checked["expires"])
 
         content = _read_stdin_content(declared)
         # THE EARLY CHECK IS A COURTESY. It refuses an obviously stale write

@@ -514,12 +514,65 @@ def test_a_grant_works_once_and_then_does_not(w, monkeypatch, host_file):
 def test_two_writes_cannot_both_spend_one_grant(w, tmp_path):
     """The marker IS the lock: O_CREAT|O_EXCL, so there is no read-then-write
     window in which two callers could both decide the grant was unspent."""
-    grant = '{"whatever":"the bytes are hashed, not read"}'
+    identity = w._grant_identity("root@pam", "host", "/x", "a" * 64, time.time() + 120)
     expires = time.time() + 120
-    first = w._spend_grant(grant, expires)
-    assert first
+    assert w._spend_grant(identity, expires)
     with pytest.raises(w.Refused, match="already been used"):
-        w._spend_grant(grant, expires)
+        w._spend_grant(identity, expires)
+
+
+def test_one_authorisation_spelled_differently_is_still_one_grant(w, tmp_path):
+    """THE FLAW CODEX FOUND, pinned.
+
+    The first version hashed the grant's JSON TEXT, so it identified a
+    representation rather than an authorisation. Measured at the time: one
+    logical grant spelled five ways -- keys sorted, default separators, a
+    trailing space, a harmless extra key -- produced FIVE different digests.
+    One-use was defeated by adding a space, and I had told the room grants
+    were one-use when they were not.
+
+    The identity is now the five things the host enforces, so none of the
+    spelling reaches it.
+    """
+    expires = 1795628046.0
+    spellings = [
+        w._grant_identity("root@pam", "host", "/var/www/x.php", "a" * 64, expires),
+        w._grant_identity("root@pam", "host", "/var/www/x.php", "A" * 64, expires),
+        w._grant_identity("root@pam", "host", "/var/www/x.php", "a" * 64, 1795628046),
+    ]
+    assert len(set(spellings)) == 1, spellings
+
+    # And a different authorisation is still a different grant.
+    for changed in (
+        w._grant_identity("sean@pam", "host", "/var/www/x.php", "a" * 64, expires),
+        w._grant_identity("root@pam", "101", "/var/www/x.php", "a" * 64, expires),
+        w._grant_identity("root@pam", "host", "/var/www/other.php", "a" * 64, expires),
+        w._grant_identity("root@pam", "host", "/var/www/x.php", "b" * 64, expires),
+        w._grant_identity("root@pam", "host", "/var/www/x.php", "a" * 64, expires + 1),
+    ):
+        assert changed != spellings[0]
+
+
+def test_no_field_can_impersonate_the_separator(w):
+    """Length-prefixed fields, so one value cannot shift the meaning of the
+    next. Without the prefix, ("ab", "c") and ("a", "bc") could collide."""
+    a = w._grant_identity("root@pam", "host", "/a", "b" * 64, 1.0)
+    b = w._grant_identity("root@pam", "host", "/a\0" + "b" * 64, "c" * 64, 1.0)
+    assert a != b
+
+
+def test_a_fresh_login_for_the_same_file_is_not_refused_as_a_replay(w, tmp_path):
+    """A NEW authorisation for the same write must still work.
+
+    The ticket is deliberately not part of the identity -- it is a live
+    credential and must not be hashed into a filename -- so what distinguishes
+    a fresh login is its new expiry. If that were not true, Sean could write a
+    file once and then be locked out of correcting it.
+    """
+    first = w._grant_identity("root@pam", "host", "/x", "a" * 64, 1795628046.0)
+    second = w._grant_identity("root@pam", "host", "/x", "a" * 64, 1795628200.0)
+    w._spend_grant(first, 1795628046.0)
+    assert w._spend_grant(second, 1795628200.0)
 
 
 def test_a_grant_that_cannot_be_recorded_refuses_the_write(w, monkeypatch, tmp_path):
@@ -531,29 +584,38 @@ def test_a_grant_that_cannot_be_recorded_refuses_the_write(w, monkeypatch, tmp_p
     /proc/definitely-not-writable -- unwritable on the host, but on a Windows
     checkout just an ordinary relative path that os.makedirs created as
     C:/proc without complaint. So the test asserted nothing AND scattered a
-    folder on Sean's drive. A test that relies on a path being unwritable has
-    to be unwritable on the machine running it, not on the machine the code
-    will eventually run on.
+    folder on Sean's drive.
     """
     blocker = tmp_path / "not-a-directory"
     blocker.write_bytes(b"x")
     monkeypatch.setattr(w, "SPENT_GRANTS", str(blocker / "spent").replace(os.sep, "/"))
+    identity = w._grant_identity("root@pam", "host", "/x", "a" * 64, time.time() + 120)
     with pytest.raises(w.Refused, match="cannot record the grant"):
-        w._spend_grant('{"a":1}', time.time() + 120)
+        w._spend_grant(identity, time.time() + 120)
 
 
 def test_the_spent_marker_never_contains_the_grant(w, tmp_path):
-    """A directory of spent grants would be a directory of usable Proxmox
-    tickets, which is the opposite of what this is for. Only a hash is kept,
-    and in the NAME -- the file itself is empty."""
-    grant = ('{"ticket":"PVE:SUPER-SECRET-TICKET","user":"root@pam",'
-             '"target":"host","path":"/x","sha256":"' + "a" * 64 + '"}')
-    w._spend_grant(grant, time.time() + 120)
+    """A directory of spent grants must not become a directory of usable
+    Proxmox tickets. The marker holds a digest in its NAME and nothing in its
+    body, and the ticket is not an input to that digest at all."""
+    ticket = "PVE:SUPER-SECRET-TICKET"
+    identity = w._grant_identity("root@pam", "host", "/x", "a" * 64, time.time() + 120)
+    assert ticket not in identity
+    w._spend_grant(identity, time.time() + 120)
     for name in os.listdir(w.SPENT_GRANTS):
-        assert "SUPER-SECRET" not in name
-        assert "PVE" not in name
+        assert "SUPER-SECRET" not in name and "PVE" not in name
+        assert "/x" not in name and "root@pam" not in name
         with open(os.path.join(w.SPENT_GRANTS, name), "rb") as handle:
             assert handle.read() == b""
+
+
+def test_a_malformed_identity_is_refused_rather_than_written(w, tmp_path):
+    """_spend_grant takes a digest, not a grant. If a caller ever hands it
+    something else -- which is how the flawed version was wired -- it refuses
+    instead of creating a marker nothing will ever match."""
+    for bad in ("", "not-a-digest", "a" * 63, "g" * 64, '{"user":"root@pam"}'):
+        with pytest.raises(w.Refused, match="not a digest"):
+            w._spend_grant(bad, time.time() + 120)
 
 
 # ── the compare sits next to the replace, not at the start of the request ──
