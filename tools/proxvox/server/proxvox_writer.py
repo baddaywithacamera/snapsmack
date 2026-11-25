@@ -592,6 +592,112 @@ def _check_grant(grant_json, *, target, path, sha256, now=None, verifier=None):
     return {"user": user, "expires": expires}
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# THE HOST'S OWN RECORD.
+#
+# The desktop client keeps an AuditBuffer, but that record lives on the
+# machine that asked for the write. It is the wrong place to keep the only
+# copy: a client can crash before it flushes, be reinstalled, or simply be a
+# different client next time, and none of that should be able to erase what
+# happened to Sean's server. The host is the only party that sees every
+# attempt, including the ones it refused, so the host keeps its own log.
+#
+# APPEND-ONLY, ROOT-ONLY, AND ONE JSON OBJECT PER LINE. 0600 in a directory
+# created 0700, opened O_APPEND so two concurrent writes cannot interleave a
+# partial line, and never truncated or rotated by this wrapper -- removing
+# audit evidence is the one thing the repository instructions forbid outright.
+#
+# IT RECORDS WHAT HAPPENED, NEVER WHAT WAS WRITTEN. Paths, sizes, hashes,
+# vmids and refusal reasons. Not file content, not the grant, not the ticket,
+# not a password. The same rule the rest of this wrapper already follows: a
+# log that quotes the thing it was protecting is a second copy of the secret.
+AUDIT_LOG = "/var/log/proxvox/writer.jsonl"
+
+# Fields that may be echoed from a dispatch result. An allowlist rather than a
+# denylist, so a field added to a result later cannot leak into the log by
+# default -- the shape of the log is decided here, not by the caller.
+# THESE NAMES ARE READ OFF THE RETURN STATEMENTS IN THIS FILE, not invented.
+# The first draft of this tuple guessed "before", "after", "backup" and
+# "sha256"; the real fields are sha256_before, sha256_after, backup_path and
+# bytes, so every one of those four would have recorded nothing while the log
+# still looked populated. The same mistake as calling a repository method that
+# does not exist: a name that is almost right fails silently.
+_AUDIT_RESULT_FIELDS = (
+    "dry_run", "target", "path", "bytes",
+    "sha256_before", "sha256_after", "sha256_after_declared",
+    "backup_path", "would_back_up", "verified",
+    "task", "ran", "would_run",
+)
+
+
+def _audit_command(command):
+    """The command line with any grant blob removed.
+
+    A grant carries a live Proxmox ticket. Logging the command verbatim would
+    write that ticket to disk in cleartext, where it stays valid for as long as
+    the ticket does. So the sixth argument of a put-file is replaced by a
+    marker: the log records THAT a grant was presented, never its bytes.
+    """
+    try:
+        args = shlex.split(str(command or ""), posix=True)
+    except ValueError:
+        return "(unparsable command)"
+    if args and args[0] in {"put-file", "put-file-dry"} and len(args) >= 6:
+        # REPLACE the grant, do not truncate at it. The protocol's longest
+        # put-file is six arguments, so for every valid command these are the
+        # same thing -- but a malformed longer one should still be logged in
+        # full apart from the grant, because a command the wrapper is about to
+        # refuse as malformed is exactly the one worth seeing whole.
+        args = args[:5] + ["(grant presented, not logged)"] + args[6:]
+    line = " ".join(args)
+    return line[:400]
+
+
+def _audit_result(data):
+    if not isinstance(data, dict):
+        return {}
+    return {key: data[key] for key in _AUDIT_RESULT_FIELDS if key in data}
+
+
+def _audit(event, detail):
+    """Append one record. A log that cannot be written never blocks a refusal.
+
+    An audit failure must not become a way to stop the wrapper answering --
+    that would turn a full disk into a denial of service on Sean's own
+    server. It is reported on stderr, which the forced command carries back,
+    so a silent loss of the record is still visible.
+    """
+    record = {
+        "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "event": event,
+        "ssh_user": os.environ.get("USER") or os.environ.get("LOGNAME") or "",
+        "from": (os.environ.get("SSH_CONNECTION", "").split(" ") or [""])[0],
+        "detail": detail,
+    }
+    try:
+        # os.path, not posixpath, FOR THIS ONE CALL. On the Proxmox host
+        # os.path IS posixpath, so this is the same code there; on the
+        # developer's Windows machine posixpath.dirname of a local temporary
+        # path returns '' and the record silently goes nowhere, which would
+        # mean the audit is the one part of this wrapper no test can exercise.
+        # Every PATH THIS WRAPPER WRITES TO on the server stays posixpath --
+        # this is the wrapper's own log location, not a caller-supplied path.
+        os.makedirs(os.path.dirname(AUDIT_LOG) or ".", mode=0o700, exist_ok=True)
+        handle = os.open(
+            AUDIT_LOG,
+            os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_BINARY", 0),
+            0o600,
+        )
+        try:
+            os.write(handle, (json.dumps(record, separators=(",", ":")) + "\n").encode("utf-8"))
+        finally:
+            os.close(handle)
+        return True
+    except Exception as err:                                  # pragma: no cover
+        sys.stderr.write("proxvox: could not write the audit record: %s\n" % err)
+        return False
+
+
 def dispatch(command):
     args = shlex.split(str(command or ""), posix=True)
     if not args:
@@ -673,12 +779,32 @@ def dispatch(command):
 
 
 def main():
+    command = os.environ.get("SSH_ORIGINAL_COMMAND", "")
+    # THE ATTEMPT IS RECORDED BEFORE IT RUNS. Sean's ruling for the write
+    # client was that every call and every refusal is logged BEFORE
+    # execution, and the same must hold here or the host's record is thinner
+    # than the client's. A write that crashes the wrapper mid-way still
+    # leaves its attempt on the host.
+    _audit("attempt", {"command": _audit_command(command)})
     try:
-        payload = {"ok": True, "data": dispatch(os.environ.get("SSH_ORIGINAL_COMMAND", ""))}
+        data = dispatch(command)
+        payload = {"ok": True, "data": data}
         code = 0
+        _audit("done", {"command": _audit_command(command),
+                        "result": _audit_result(data)})
+    except Refused as err:
+        payload = {"ok": False, "error": str(err)[:500]}
+        code = 2
+        _audit("refused", {"command": _audit_command(command),
+                           "why": str(err)[:300]})
     except Exception as err:
         payload = {"ok": False, "error": str(err)[:500]}
         code = 2
+        # A FAULT IS NOT A REFUSAL, and the log says which. A refusal is the
+        # wrapper working; a fault is the wrapper broken, and reading them as
+        # the same thing hides the second behind the first.
+        _audit("failed", {"command": _audit_command(command),
+                          "error": type(err).__name__ + ": " + str(err)[:300]})
     sys.stdout.write(json.dumps(payload, separators=(",", ":")) + "\n")
     return code
 

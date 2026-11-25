@@ -262,6 +262,83 @@ class WriteClient:
             "reason": str(reason or "manual"),
         })
 
+    # ── SS-1507: a grant for the scoped FILE writer ──────────────────────
+    #
+    # The Proxmox API has no way to put a file on the host, which is why the
+    # scoped writer exists as a forced SSH command instead. That writer will
+    # not act on the SSH account alone -- Codex's P0 -- so it demands a grant
+    # proving a live owner login, and this is where one is minted.
+    #
+    # THE TICKET NEVER LEAVES THIS OBJECT BY ANY OTHER ROUTE. There is no
+    # accessor for it and no caller needs one: the grant is built in here,
+    # bound to one operation, and handed out already sealed. A client that
+    # exposed the ticket so a helper could assemble its own grant would be a
+    # client that hands a live Proxmox credential to any code that asks.
+    MAX_FILE_GRANT_SECONDS = 900
+
+    def mint_file_grant(self, *, target: str, path: str, sha256: str,
+                        seconds: int = 300) -> str:
+        """A single-operation grant as JSON, or Refused if not authorised.
+
+        BOUND TO THE OPERATION, not to the session. target, path and the
+        content hash all travel inside the grant, and the host checks each
+        one against the write actually asked for. So a grant obtained for one
+        file cannot be replayed against another, and a grant obtained for one
+        set of bytes cannot authorise different bytes at the same path.
+        """
+        if not self.is_authorized():
+            self.audit.record("file_grant_refused", {
+                "target": str(target), "path": str(path),
+                "why": "no live owner session; authorise again",
+            })
+            raise Refused(
+                "a file write needs a live owner login with password and "
+                "authenticator. Authorise and retry.")
+        wanted = max(1, int(seconds))
+        if wanted > self.MAX_FILE_GRANT_SECONDS:
+            # REFUSE, DO NOT SILENTLY SHORTEN. A caller that asked for an
+            # hour should be told it cannot have one, not handed five minutes
+            # and left believing it has an hour.
+            self.audit.record("file_grant_refused", {
+                "target": str(target), "path": str(path),
+                "why": "asked for %ds, cap is %ds" % (wanted, self.MAX_FILE_GRANT_SECONDS),
+            })
+            raise Refused(
+                "a grant may run at most %d seconds; %d was asked for."
+                % (self.MAX_FILE_GRANT_SECONDS, wanted))
+        digest = str(sha256 or "").strip().lower()
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            self.audit.record("file_grant_refused", {
+                "target": str(target), "path": str(path),
+                "why": "the content hash is not a sha256",
+            })
+            raise Refused("the content hash must be a 64-character sha256.")
+
+        with self._session_lock:
+            # THE GRANT CANNOT OUTLIVE THE TICKET IT RESTS ON. A grant that
+            # expired later than the session would be a grant the host might
+            # still accept after the owner's authorisation had lapsed.
+            expires = min(float(self._clock()) + wanted, float(self._expires_at))
+            grant = {
+                "user": self._username,
+                "ticket": self._ticket,
+                "expires": expires,
+                "target": str(target),
+                "path": str(path),
+                "sha256": digest,
+            }
+        self.audit.record("file_grant_minted", {
+            "user": grant["user"],
+            "target": grant["target"],
+            "path": grant["path"],
+            "sha256": digest,
+            "expires": expires,
+            # The ticket is deliberately absent from this record. The audit
+            # says a grant was minted and for what; it is not a second copy
+            # of the credential.
+        })
+        return json.dumps(grant, separators=(",", ":"))
+
     # ── P3 write execution ───────────────────────────────────────────────
     def call(self, method: str, path: str, data: dict = None, timeout: int = 15):
         """Execute an authorised Proxmox API call. Refuses unauthenticated or unsafe calls."""

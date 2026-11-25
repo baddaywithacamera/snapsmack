@@ -440,6 +440,86 @@ class ProxVoxP3Tests(unittest.TestCase):
         )
 
 
+    # ── SS-1507: the grant for the scoped FILE writer ────────────────────
+    #
+    # The Proxmox API cannot put a file on the host, so the scoped writer is a
+    # forced SSH command, and it refuses to act on the SSH account alone. The
+    # grant is what proves a live owner login. These check the thing that
+    # matters most about it: that the ticket inside it never reaches anywhere
+    # else, and that it authorises exactly ONE operation.
+
+    def test_a_grant_needs_a_live_session(self):
+        wc = self._client()
+        with self.assertRaises(Refused):
+            wc.mint_file_grant(target="host", path="/var/www/x.php",
+                               sha256="a" * 64)
+        self.assertIn("file_grant_refused",
+                      [r["action"] for r in self.audit.records()])
+
+    def test_a_grant_is_bound_to_target_path_and_content(self):
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        grant = json.loads(wc.mint_file_grant(
+            target="host", path="/var/www/x.php", sha256="B" * 64))
+        self.assertEqual(grant["target"], "host")
+        self.assertEqual(grant["path"], "/var/www/x.php")
+        self.assertEqual(grant["sha256"], "b" * 64)   # normalised to lower case
+        self.assertEqual(grant["user"], "proxvox@pve")
+        self.assertTrue(grant["ticket"])
+
+    def test_the_grant_cannot_outlive_the_session_it_rests_on(self):
+        # A session with 60 seconds left must not mint a 300-second grant: the
+        # host would still accept it after the owner's authorisation lapsed.
+        wc = self._client(ticket_ttl=60)
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        grant = json.loads(wc.mint_file_grant(
+            target="host", path="/var/www/x.php", sha256="c" * 64, seconds=300))
+        self.assertLessEqual(grant["expires"], float(self.clock()) + 60)
+
+    def test_an_over_long_grant_is_refused_not_quietly_shortened(self):
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        with self.assertRaises(Refused):
+            wc.mint_file_grant(target="host", path="/var/www/x.php",
+                               sha256="d" * 64, seconds=3600)
+
+    def test_a_content_hash_that_is_not_a_sha256_is_refused(self):
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        for bad in ("", "nope", "e" * 63, "g" * 64):
+            with self.subTest(sha256=bad):
+                with self.assertRaises(Refused):
+                    wc.mint_file_grant(target="host", path="/var/www/x.php",
+                                       sha256=bad)
+
+    def test_minting_a_grant_never_writes_the_ticket_to_the_audit(self):
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        grant = json.loads(wc.mint_file_grant(
+            target="host", path="/var/www/x.php", sha256="f" * 64))
+        blob = json.dumps(self.audit.records(), default=str)
+        self.assertNotIn(grant["ticket"], blob)
+        self.assertIn("file_grant_minted", [r["action"] for r in self.audit.records()])
+
+    def test_a_revoked_session_cannot_mint_a_grant(self):
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        wc.revoke("test")
+        with self.assertRaises(Refused):
+            wc.mint_file_grant(target="host", path="/var/www/x.php",
+                               sha256="a" * 64)
+
+    def test_the_client_exposes_no_other_route_to_the_ticket(self):
+        # THE POINT OF mint_file_grant IS ENCAPSULATION. If some public
+        # accessor also handed out the ticket, any helper could assemble its
+        # own grant and the binding above would be advisory.
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        public = [name for name in dir(wc)
+                  if not name.startswith("_") and "ticket" in name.lower()]
+        self.assertEqual(public, [], public)
+
+
 if __name__ == "__main__":
     unittest.main()
 
