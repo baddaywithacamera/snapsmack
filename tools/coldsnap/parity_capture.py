@@ -13,6 +13,13 @@ import tempfile
 
 
 def run(output_dir: str) -> int:
+    out = Path(output_dir).resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    home = out / "sandbox-home"
+    shutil.rmtree(home, ignore_errors=True)
+    home.mkdir(exist_ok=True)
+    os.environ["SNAPSMACK_HOME"] = str(home)
+
     from PIL import Image, ImageDraw
     from PySide6.QtCore import QTimer, Qt
     from PySide6.QtGui import QFont, QFontDatabase
@@ -25,13 +32,6 @@ def run(output_dir: str) -> int:
     from coldsnap_qt.mode_take import MosaicPreview, TakeMode
     from coldsnap_qt.photo_loader import PhotoLoader
     from coldsnap_qt.photo_tray import PhotoThumbTile
-
-    out = Path(output_dir).resolve()
-    out.mkdir(parents=True, exist_ok=True)
-    home = out / "sandbox-home"
-    shutil.rmtree(home, ignore_errors=True)
-    home.mkdir(exist_ok=True)
-    os.environ["SNAPSMACK_HOME"] = str(home)
 
     app = QApplication.instance() or QApplication([])
     if app.platformName() == "offscreen" and os.name == "nt":
@@ -296,6 +296,8 @@ def run(output_dir: str) -> int:
     dialog_mode = TakeMode(lambda: {"url": "https://mosaic-fixture.invalid"})
     dialog_mode.setStyleSheet(theme.stylesheet())
     app.processEvents()
+    # The frozen runtime can already have recovered an earlier fixture draft.
+    dialog_mode._clear()
     dialog_mode._preview_width = 800
     for index in range(53):
         size = (800 if index == 0 else 900, 600)
@@ -319,6 +321,7 @@ def run(output_dir: str) -> int:
         preview = dialog.findChild(MosaicPreview)
         splitter = dialog.findChild(QSplitter)
         try:
+            dialog_proof["picker_count"] = len(dialog_mode._bucket)
             if not wait_for(lambda: len(preview.computed_cells()["items"]) == 14):
                 return QDialog.Rejected
             QTest.qWait(220)
@@ -373,6 +376,7 @@ def run(output_dir: str) -> int:
             and 0 < dialog_proof.get("fit_scale", 0) < 1
             and dialog_proof["pane_widths"][0] > 4 * dialog_proof["pane_widths"][1],
         "long_dialog_keeps_14_photos_and_saves_both_weights": dialog_proof.get("weights") == {"1": 1, "5": 1}
+            and dialog_proof.get("picker_count") == 53
             and dialog_proof.get("confirmed_weights") == {1: 1, 5: 1}
             and dialog_proof.get("confirmed_order_and_layout") == (list(range(1, 15)), "asymmetric")
             and [tile["id"] for tile in dialog_proof.get("after", {}).get("items", [])] == list(range(1, 15)),
