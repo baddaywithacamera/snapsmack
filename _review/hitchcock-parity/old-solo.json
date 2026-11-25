@@ -1,0 +1,580 @@
+{
+  "status": 200,
+  "url": "https://old.mccormickphotography.com/2023/11/16/an-uphill-battle/",
+  "rows": [
+    {
+      "width": 1920,
+      "vw": 1920,
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "w": 1920,
+        "h": 60,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "static",
+        "text": "HOME\nABOUT SÉAN\nAbout Séan\nArtist’s Statement\nPORTFOLIO\nFlickr Photostream\nPeople\nEngagement Shoot\nG"
+      },
+      "links": [
+        {
+          "x": 632.6875,
+          "y": 0,
+          "w": 46.453125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "HOME"
+        },
+        {
+          "x": 719.140625,
+          "y": 0,
+          "w": 111.578125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "ABOUT SÉAN"
+        },
+        {
+          "x": 870.71875,
+          "y": 0,
+          "w": 101.34375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "PORTFOLIO"
+        },
+        {
+          "x": 1012.0625,
+          "y": 0,
+          "w": 41.875,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "BLOG"
+        },
+        {
+          "x": 1093.9375,
+          "y": 0,
+          "w": 43.28125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "LINKS"
+        },
+        {
+          "x": 1177.21875,
+          "y": 0,
+          "w": 70.09375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "CONTACT"
+        }
+      ],
+      "date": {
+        "x": 492,
+        "y": 533.3125,
+        "w": 936,
+        "h": 21,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "14px",
+        "weight": "500",
+        "spacing": "normal",
+        "position": "static",
+        "text": "NOVEMBER 16, 2023"
+      },
+      "title": {
+        "x": 492,
+        "y": 564.3125,
+        "w": 936,
+        "h": 48,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "40px",
+        "weight": "700",
+        "spacing": "normal",
+        "position": "static",
+        "text": "AN UPHILL BATTLE"
+      },
+      "card": {
+        "x": 440,
+        "y": 453.3125,
+        "w": 1040,
+        "h": 5581.390625,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "relative",
+        "text": "NOVEMBER 16, 2023\n\nAN UPHILL BATTLE\n\nBridge & Power Plant Before Dawn (Closer View), Walterdale Brid"
+      },
+      "tiles": [
+        {
+          "x": 440,
+          "y": 6075.78125,
+          "w": 319.265625,
+          "h": 319.265625,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "NOVEMBER 4, 2023\n\nTHE HALF CENTURY MARK"
+        },
+        {
+          "x": 800.34375,
+          "y": 6075.78125,
+          "w": 319.265625,
+          "h": 319.265625,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "JUNE 29, 2023\n\nSUPPORTING THE STRATHMORE LIBRARY"
+        },
+        {
+          "x": 1160.6875,
+          "y": 6075.78125,
+          "w": 319.265625,
+          "h": 319.265625,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "MAY 6, 2023\n\nINSIDE VOICE! INSIDE VOICE!"
+        }
+      ],
+      "content": {
+        "x": 560,
+        "y": 692.3125,
+        "w": 800,
+        "h": 5191.390625,
+        "font": "\"Droid Serif\", Georgia, serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "relative",
+        "text": "Bridge & Power Plant Before Dawn (Closer View), Walterdale Bridge, Edmonton, AB, 2023-11-12, Samsung"
+      },
+      "gallery": [
+        {
+          "x": 560,
+          "y": 692.3125,
+          "w": 800,
+          "h": 348.4375,
+          "font": "\"Droid Serif\", Georgia, serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "static",
+          "text": ""
+        },
+        {
+          "x": 560,
+          "y": 1470.34375,
+          "w": 800,
+          "h": 445.671875,
+          "font": "\"Droid Serif\", Georgia, serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "static",
+          "text": ""
+        },
+        {
+          "x": 560,
+          "y": 2185.609375,
+          "w": 800,
+          "h": 533.328125,
+          "font": "\"Droid Serif\", Georgia, serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "static",
+          "text": ""
+        },
+        {
+          "x": 560,
+          "y": 3100.53125,
+          "w": 800,
+          "h": 533,
+          "font": "\"Droid Serif\", Georgia, serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "static",
+          "text": ""
+        },
+        {
+          "x": 560,
+          "y": 3838.328125,
+          "w": 800,
+          "h": 533.5,
+          "font": "\"Droid Serif\", Georgia, serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "static",
+          "text": ""
+        },
+        {
+          "x": 560,
+          "y": 5268.625,
+          "w": 800,
+          "h": 304.484375,
+          "font": "\"Droid Serif\", Georgia, serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "static",
+          "text": ""
+        }
+      ],
+      "galleryClasses": [],
+      "submenu": 2,
+      "fonts": [
+        [
+          "Droid Serif",
+          "400"
+        ],
+        [
+          "Droid Serif",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "500"
+        ],
+        [
+          "Montserrat",
+          "600"
+        ],
+        [
+          "Montserrat",
+          "700"
+        ],
+        [
+          "Font Awesome 5",
+          "normal"
+        ],
+        [
+          "Font Awesome 5 Brands",
+          "normal"
+        ]
+      ],
+      "dock": []
+    },
+    {
+      "width": 1024,
+      "vw": 1024,
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 60,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "static",
+        "text": "HOME\nABOUT SÉAN\nAbout Séan\nArtist’s Statement\nPORTFOLIO\nFlickr Photostream\nPeople\nEngagement Shoot\nG"
+      },
+      "links": [
+        {
+          "x": 184.6875,
+          "y": 0,
+          "w": 46.453125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "HOME"
+        },
+        {
+          "x": 271.140625,
+          "y": 0,
+          "w": 111.578125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "ABOUT SÉAN"
+        },
+        {
+          "x": 422.71875,
+          "y": 0,
+          "w": 101.34375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "PORTFOLIO"
+        },
+        {
+          "x": 564.0625,
+          "y": 0,
+          "w": 41.875,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "BLOG"
+        },
+        {
+          "x": 645.9375,
+          "y": 0,
+          "w": 43.28125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "LINKS"
+        },
+        {
+          "x": 729.21875,
+          "y": 0,
+          "w": 70.09375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "CONTACT"
+        }
+      ],
+      "date": {
+        "x": 97.28125,
+        "y": 533.3125,
+        "w": 829.421875,
+        "h": 21,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "14px",
+        "weight": "500",
+        "spacing": "normal",
+        "position": "static",
+        "text": "NOVEMBER 16, 2023"
+      },
+      "title": {
+        "x": 97.28125,
+        "y": 564.3125,
+        "w": 829.421875,
+        "h": 48,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "40px",
+        "weight": "700",
+        "spacing": "normal",
+        "position": "static",
+        "text": "AN UPHILL BATTLE"
+      },
+      "card": {
+        "x": 51.203125,
+        "y": 453.3125,
+        "w": 921.59375,
+        "h": 5525.171875,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "relative",
+        "text": "NOVEMBER 16, 2023\n\nAN UPHILL BATTLE\n\nBridge & Power Plant Before Dawn (Closer View), Walterdale Brid"
+      },
+      "tiles": [
+        {
+          "x": 51.203125,
+          "y": 6014.875,
+          "w": 282.921875,
+          "h": 282.921875,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "NOVEMBER 4, 2023\n\nTHE HALF CENTURY MARK"
+        },
+        {
+          "x": 370.515625,
+          "y": 6014.875,
+          "w": 282.921875,
+          "h": 282.921875,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "JUNE 29, 2023\n\nSUPPORTING THE STRATHMORE LIBRARY"
+        },
+        {
+          "x": 689.828125,
+          "y": 6014.875,
+          "w": 282.921875,
+          "h": 282.921875,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "MAY 6, 2023\n\nINSIDE VOICE! INSIDE VOICE!"
+        }
+      ],
+      "content": {
+        "x": 120.328125,
+        "y": 692.3125,
+        "w": 783.34375,
+        "h": 5135.171875,
+        "font": "\"Droid Serif\", Georgia, serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "relative",
+        "text": "Bridge & Power Plant Before Dawn (Closer View), Walterdale Bridge, Edmonton, AB, 2023-11-12, Samsung"
+      },
+      "gallery": [
+        {
+          "x": 120.328125,
+          "y": 692.3125,
+          "w": 783.34375,
+          "h": 341.171875,
+          "font": "\"Droid Serif\", Georgia, serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "static",
+          "text": ""
+        },
+        {
+          "x": 120.328125,
+          "y": 1463.078125,
+          "w": 783.34375,
+          "h": 436.390625,
+          "font": "\"Droid Serif\", Georgia, serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "static",
+          "text": ""
+        },
+        {
+          "x": 120.328125,
+          "y": 2169.0625,
+          "w": 783.34375,
+          "h": 522.21875,
+          "font": "\"Droid Serif\", Georgia, serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "static",
+          "text": ""
+        },
+        {
+          "x": 120.328125,
+          "y": 3072.875,
+          "w": 783.34375,
+          "h": 521.890625,
+          "font": "\"Droid Serif\", Georgia, serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "static",
+          "text": ""
+        },
+        {
+          "x": 120.328125,
+          "y": 3799.5625,
+          "w": 783.34375,
+          "h": 522.390625,
+          "font": "\"Droid Serif\", Georgia, serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "static",
+          "text": ""
+        },
+        {
+          "x": 120.328125,
+          "y": 5218.75,
+          "w": 783.34375,
+          "h": 298.140625,
+          "font": "\"Droid Serif\", Georgia, serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "static",
+          "text": ""
+        }
+      ],
+      "galleryClasses": [],
+      "submenu": 2,
+      "fonts": [
+        [
+          "Droid Serif",
+          "400"
+        ],
+        [
+          "Droid Serif",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "500"
+        ],
+        [
+          "Montserrat",
+          "600"
+        ],
+        [
+          "Montserrat",
+          "700"
+        ],
+        [
+          "Font Awesome 5",
+          "normal"
+        ],
+        [
+          "Font Awesome 5 Brands",
+          "normal"
+        ]
+      ],
+      "dock": []
+    }
+  ]
+}

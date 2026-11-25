@@ -1,0 +1,480 @@
+{
+  "status": 200,
+  "url": "https://old.mccormickphotography.com/portfolio-alberta-skies/",
+  "rows": [
+    {
+      "width": 1920,
+      "vw": 1920,
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "w": 1920,
+        "h": 60,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "static",
+        "text": "HOME\nABOUT SÉAN\nAbout Séan\nArtist’s Statement\nPORTFOLIO\nFlickr Photostream\nPeople\nEngagement Shoot\nG"
+      },
+      "links": [
+        {
+          "x": 632.6875,
+          "y": 0,
+          "w": 46.453125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "HOME"
+        },
+        {
+          "x": 719.140625,
+          "y": 0,
+          "w": 111.578125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "ABOUT SÉAN"
+        },
+        {
+          "x": 870.71875,
+          "y": 0,
+          "w": 101.34375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "PORTFOLIO"
+        },
+        {
+          "x": 1012.0625,
+          "y": 0,
+          "w": 41.875,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "BLOG"
+        },
+        {
+          "x": 1093.9375,
+          "y": 0,
+          "w": 43.28125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "LINKS"
+        },
+        {
+          "x": 1177.21875,
+          "y": 0,
+          "w": 70.09375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "CONTACT"
+        }
+      ],
+      "date": null,
+      "title": {
+        "x": 492,
+        "y": 533.3125,
+        "w": 936,
+        "h": 48,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "40px",
+        "weight": "700",
+        "spacing": "normal",
+        "position": "static",
+        "text": "PORTFOLIO: ALBERTA SKIES"
+      },
+      "card": {
+        "x": 440,
+        "y": 453.3125,
+        "w": 1040,
+        "h": 2358.515625,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "relative",
+        "text": "PORTFOLIO: ALBERTA SKIES\n\nA saying here in Alberta is, “if you don’t like the weather, wait five min"
+      },
+      "tiles": [],
+      "content": {
+        "x": 560,
+        "y": 661.3125,
+        "w": 800,
+        "h": 2060.515625,
+        "font": "\"Droid Serif\", Georgia, serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "relative",
+        "text": "A saying here in Alberta is, “if you don’t like the weather, wait five minutes.” This is not inaccur"
+      },
+      "gallery": [
+        {
+          "x": 564,
+          "y": 733.3125,
+          "w": 252,
+          "h": 127.9375,
+          "font": "-apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "size": "0px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": ""
+        },
+        {
+          "x": 834,
+          "y": 733.3125,
+          "w": 252,
+          "h": 150.21875,
+          "font": "-apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "size": "0px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": ""
+        },
+        {
+          "x": 1104,
+          "y": 733.3125,
+          "w": 252,
+          "h": 167.671875,
+          "font": "-apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "size": "0px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": ""
+        },
+        {
+          "x": 564,
+          "y": 879.25,
+          "w": 252,
+          "h": 167.671875,
+          "font": "-apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "size": "0px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": ""
+        },
+        {
+          "x": 834,
+          "y": 901.53125,
+          "w": 252,
+          "h": 167.671875,
+          "font": "-apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "size": "0px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": ""
+        },
+        {
+          "x": 1104,
+          "y": 918.984375,
+          "w": 252,
+          "h": 150.21875,
+          "font": "-apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "size": "0px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": ""
+        }
+      ],
+      "galleryClasses": [
+        "foogallery foogallery-container foogallery-masonry foogallery-lightbox-foobox fg-center fg-masonry fg-ready fg-dark fg-border-thin fg-shadow-small fg-loading-default fg-loaded-fade-in fg-captions-bottom fg-hover-fade fg-hover-plus fg-no-js fg-fixed fbx-instance"
+      ],
+      "submenu": 2,
+      "fonts": [
+        [
+          "Droid Serif",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "500"
+        ],
+        [
+          "Montserrat",
+          "600"
+        ],
+        [
+          "Montserrat",
+          "700"
+        ],
+        [
+          "Font Awesome 5",
+          "normal"
+        ],
+        [
+          "Font Awesome 5 Brands",
+          "normal"
+        ]
+      ],
+      "dock": []
+    },
+    {
+      "width": 1024,
+      "vw": 1024,
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 60,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "static",
+        "text": "HOME\nABOUT SÉAN\nAbout Séan\nArtist’s Statement\nPORTFOLIO\nFlickr Photostream\nPeople\nEngagement Shoot\nG"
+      },
+      "links": [
+        {
+          "x": 184.6875,
+          "y": 0,
+          "w": 46.453125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "HOME"
+        },
+        {
+          "x": 271.140625,
+          "y": 0,
+          "w": 111.578125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "ABOUT SÉAN"
+        },
+        {
+          "x": 422.71875,
+          "y": 0,
+          "w": 101.34375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "PORTFOLIO"
+        },
+        {
+          "x": 564.0625,
+          "y": 0,
+          "w": 41.875,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "BLOG"
+        },
+        {
+          "x": 645.9375,
+          "y": 0,
+          "w": 43.28125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "LINKS"
+        },
+        {
+          "x": 729.21875,
+          "y": 0,
+          "w": 70.09375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "CONTACT"
+        }
+      ],
+      "date": null,
+      "title": {
+        "x": 97.28125,
+        "y": 533.3125,
+        "w": 829.421875,
+        "h": 48,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "40px",
+        "weight": "700",
+        "spacing": "normal",
+        "position": "static",
+        "text": "PORTFOLIO: ALBERTA SKIES"
+      },
+      "card": {
+        "x": 51.203125,
+        "y": 453.3125,
+        "w": 921.59375,
+        "h": 2358.515625,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "relative",
+        "text": "PORTFOLIO: ALBERTA SKIES\n\nA saying here in Alberta is, “if you don’t like the weather, wait five min"
+      },
+      "tiles": [],
+      "content": {
+        "x": 120.328125,
+        "y": 661.3125,
+        "w": 783.34375,
+        "h": 2060.515625,
+        "font": "\"Droid Serif\", Georgia, serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "relative",
+        "text": "A saying here in Alberta is, “if you don’t like the weather, wait five minutes.” This is not inaccur"
+      },
+      "gallery": [
+        {
+          "x": 124.328125,
+          "y": 733.3125,
+          "w": 252,
+          "h": 127.9375,
+          "font": "-apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "size": "0px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": ""
+        },
+        {
+          "x": 394.328125,
+          "y": 733.3125,
+          "w": 252,
+          "h": 150.21875,
+          "font": "-apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "size": "0px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": ""
+        },
+        {
+          "x": 664.328125,
+          "y": 733.3125,
+          "w": 252,
+          "h": 167.671875,
+          "font": "-apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "size": "0px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": ""
+        },
+        {
+          "x": 124.328125,
+          "y": 879.25,
+          "w": 252,
+          "h": 167.671875,
+          "font": "-apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "size": "0px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": ""
+        },
+        {
+          "x": 394.328125,
+          "y": 901.53125,
+          "w": 252,
+          "h": 167.671875,
+          "font": "-apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "size": "0px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": ""
+        },
+        {
+          "x": 664.328125,
+          "y": 918.984375,
+          "w": 252,
+          "h": 150.21875,
+          "font": "-apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "size": "0px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": ""
+        }
+      ],
+      "galleryClasses": [
+        "foogallery foogallery-container foogallery-masonry foogallery-lightbox-foobox fg-center fg-masonry fg-ready fg-dark fg-border-thin fg-shadow-small fg-loading-default fg-loaded-fade-in fg-captions-bottom fg-hover-fade fg-hover-plus fg-no-js fg-fixed fbx-instance"
+      ],
+      "submenu": 2,
+      "fonts": [
+        [
+          "Droid Serif",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "500"
+        ],
+        [
+          "Montserrat",
+          "600"
+        ],
+        [
+          "Montserrat",
+          "700"
+        ],
+        [
+          "Font Awesome 5",
+          "normal"
+        ],
+        [
+          "Font Awesome 5 Brands",
+          "normal"
+        ]
+      ],
+      "dock": []
+    }
+  ]
+}

@@ -1,0 +1,504 @@
+{
+  "status": 200,
+  "url": "https://old.mccormickphotography.com/",
+  "rows": [
+    {
+      "width": 1920,
+      "vw": 1920,
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "w": 1920,
+        "h": 60,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "static",
+        "text": "HOME\nABOUT SÉAN\nAbout Séan\nArtist’s Statement\nPORTFOLIO\nFlickr Photostream\nPeople\nEngagement Shoot\nG"
+      },
+      "links": [
+        {
+          "x": 632.6875,
+          "y": 0,
+          "w": 46.453125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "HOME"
+        },
+        {
+          "x": 719.140625,
+          "y": 0,
+          "w": 111.578125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "ABOUT SÉAN"
+        },
+        {
+          "x": 870.71875,
+          "y": 0,
+          "w": 101.34375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "PORTFOLIO"
+        },
+        {
+          "x": 1012.0625,
+          "y": 0,
+          "w": 41.875,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "BLOG"
+        },
+        {
+          "x": 1093.9375,
+          "y": 0,
+          "w": 43.28125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "LINKS"
+        },
+        {
+          "x": 1177.21875,
+          "y": 0,
+          "w": 70.09375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "CONTACT"
+        }
+      ],
+      "date": null,
+      "title": null,
+      "card": null,
+      "tiles": [
+        {
+          "x": 440,
+          "y": 453.3125,
+          "w": 319.265625,
+          "h": 319.265625,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "NOVEMBER 16, 2023\n\nAN UPHILL BATTLE"
+        },
+        {
+          "x": 800.34375,
+          "y": 453.3125,
+          "w": 319.265625,
+          "h": 319.265625,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "NOVEMBER 4, 2023\n\nTHE HALF CENTURY MARK"
+        },
+        {
+          "x": 1160.6875,
+          "y": 453.3125,
+          "w": 319.265625,
+          "h": 319.265625,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "JUNE 29, 2023\n\nSUPPORTING THE STRATHMORE LIBRARY"
+        }
+      ],
+      "content": null,
+      "gallery": [],
+      "galleryClasses": [],
+      "submenu": 2,
+      "fonts": [
+        [
+          "Droid Serif",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "500"
+        ],
+        [
+          "Montserrat",
+          "600"
+        ],
+        [
+          "Montserrat",
+          "700"
+        ],
+        [
+          "Font Awesome 5",
+          "normal"
+        ],
+        [
+          "Font Awesome 5 Brands",
+          "normal"
+        ]
+      ],
+      "dock": []
+    },
+    {
+      "width": 1440,
+      "vw": 1440,
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 60,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "static",
+        "text": "HOME\nABOUT SÉAN\nAbout Séan\nArtist’s Statement\nPORTFOLIO\nFlickr Photostream\nPeople\nEngagement Shoot\nG"
+      },
+      "links": [
+        {
+          "x": 392.6875,
+          "y": 0,
+          "w": 46.453125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "HOME"
+        },
+        {
+          "x": 479.140625,
+          "y": 0,
+          "w": 111.578125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "ABOUT SÉAN"
+        },
+        {
+          "x": 630.71875,
+          "y": 0,
+          "w": 101.34375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "PORTFOLIO"
+        },
+        {
+          "x": 772.0625,
+          "y": 0,
+          "w": 41.875,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "BLOG"
+        },
+        {
+          "x": 853.9375,
+          "y": 0,
+          "w": 43.28125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "LINKS"
+        },
+        {
+          "x": 937.21875,
+          "y": 0,
+          "w": 70.09375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "CONTACT"
+        }
+      ],
+      "date": null,
+      "title": null,
+      "card": null,
+      "tiles": [
+        {
+          "x": 200,
+          "y": 453.3125,
+          "w": 319.265625,
+          "h": 319.265625,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "NOVEMBER 16, 2023\n\nAN UPHILL BATTLE"
+        },
+        {
+          "x": 560.34375,
+          "y": 453.3125,
+          "w": 319.265625,
+          "h": 319.265625,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "NOVEMBER 4, 2023\n\nTHE HALF CENTURY MARK"
+        },
+        {
+          "x": 920.6875,
+          "y": 453.3125,
+          "w": 319.265625,
+          "h": 319.265625,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "JUNE 29, 2023\n\nSUPPORTING THE STRATHMORE LIBRARY"
+        }
+      ],
+      "content": null,
+      "gallery": [],
+      "galleryClasses": [],
+      "submenu": 2,
+      "fonts": [
+        [
+          "Droid Serif",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "500"
+        ],
+        [
+          "Montserrat",
+          "600"
+        ],
+        [
+          "Montserrat",
+          "700"
+        ],
+        [
+          "Font Awesome 5",
+          "normal"
+        ],
+        [
+          "Font Awesome 5 Brands",
+          "normal"
+        ]
+      ],
+      "dock": []
+    },
+    {
+      "width": 1024,
+      "vw": 1024,
+      "nav": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 60,
+        "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+        "size": "16px",
+        "weight": "400",
+        "spacing": "normal",
+        "position": "static",
+        "text": "HOME\nABOUT SÉAN\nAbout Séan\nArtist’s Statement\nPORTFOLIO\nFlickr Photostream\nPeople\nEngagement Shoot\nG"
+      },
+      "links": [
+        {
+          "x": 184.6875,
+          "y": 0,
+          "w": 46.453125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "HOME"
+        },
+        {
+          "x": 271.140625,
+          "y": 0,
+          "w": 111.578125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "ABOUT SÉAN"
+        },
+        {
+          "x": 422.71875,
+          "y": 0,
+          "w": 101.34375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "PORTFOLIO"
+        },
+        {
+          "x": 564.0625,
+          "y": 0,
+          "w": 41.875,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "BLOG"
+        },
+        {
+          "x": 645.9375,
+          "y": 0,
+          "w": 43.28125,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "LINKS"
+        },
+        {
+          "x": 729.21875,
+          "y": 0,
+          "w": 70.09375,
+          "h": 60,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "14px",
+          "weight": "500",
+          "spacing": "0.14px",
+          "position": "relative",
+          "text": "CONTACT"
+        }
+      ],
+      "date": null,
+      "title": null,
+      "card": null,
+      "tiles": [
+        {
+          "x": 51.203125,
+          "y": 453.3125,
+          "w": 282.921875,
+          "h": 282.921875,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "NOVEMBER 16, 2023\n\nAN UPHILL BATTLE"
+        },
+        {
+          "x": 370.515625,
+          "y": 453.3125,
+          "w": 282.921875,
+          "h": 282.921875,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "NOVEMBER 4, 2023\n\nTHE HALF CENTURY MARK"
+        },
+        {
+          "x": 689.828125,
+          "y": 453.3125,
+          "w": 282.921875,
+          "h": 282.921875,
+          "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif",
+          "size": "16px",
+          "weight": "400",
+          "spacing": "normal",
+          "position": "relative",
+          "text": "JUNE 29, 2023\n\nSUPPORTING THE STRATHMORE LIBRARY"
+        }
+      ],
+      "content": null,
+      "gallery": [],
+      "galleryClasses": [],
+      "submenu": 2,
+      "fonts": [
+        [
+          "Droid Serif",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "400"
+        ],
+        [
+          "Montserrat",
+          "500"
+        ],
+        [
+          "Montserrat",
+          "600"
+        ],
+        [
+          "Montserrat",
+          "700"
+        ],
+        [
+          "Font Awesome 5",
+          "normal"
+        ],
+        [
+          "Font Awesome 5 Brands",
+          "normal"
+        ]
+      ],
+      "dock": []
+    }
+  ]
+}
