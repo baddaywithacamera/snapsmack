@@ -11,7 +11,7 @@
         "default": "layout.php"
     },
     "name": "TELEGRAM",
-  "version": "0.1.10",
+  "version": "0.1.11",
     "author": "Sean McCormick & Codex",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A phone-first reading skin for SMACKTALK longform posts. It preserves editorial image and mosaic order in a narrow reading column, with tap-to-enlarge photographs and a persistent top-right text menu.",
@@ -20,7 +20,9 @@
         "smacktalk"
     ],
     "variants": {
-        "default": "TILEZ (White Editorial Portfolio)"
+        "default": "TELEGRAM",
+        "dark": "Dark (standard palette)",
+        "light": "Light (standard palette)"
     },
     "default_variant": "default",
     "cover_aspect": "16/9",
@@ -52,6 +54,63 @@
     "community_likes": "0",
     "community_reactions": "0",
     "options": {
+        "caption_color": {
+            "section": "CAPTIONS",
+            "type": "color",
+            "label": "Caption Colour",
+            "default": "#666666",
+            "selector": "figcaption",
+            "property": "color",
+            "omit_if_default": true
+        },
+        "caption_size": {
+            "section": "CAPTIONS",
+            "type": "range",
+            "label": "Caption Size (px)",
+            "default": "14",
+            "min": "10",
+            "max": "24",
+            "unit": "px",
+            "selector": "figcaption",
+            "property": "font-size"
+        },
+        "caption_style": {
+            "section": "CAPTIONS",
+            "type": "select",
+            "label": "Caption Style",
+            "default": "italic",
+            "options": {
+                "italic": "Italic",
+                "normal": "Upright"
+            },
+            "selector": "figcaption",
+            "property": "font-style"
+        },
+        "caption_gap": {
+            "section": "CAPTIONS",
+            "type": "range",
+            "label": "Space Above Caption (px)",
+            "default": "12",
+            "min": "0",
+            "max": "48",
+            "unit": "px",
+            "selector": "figcaption",
+            "property": "padding-top"
+        },
+        "caption_align": {
+            "section": "CAPTIONS",
+            "type": "select",
+            "label": "Caption Alignment",
+            "default": "inherit",
+            "options": {
+                "inherit": "Follow the post text",
+                "left": "Left",
+                "center": "Centred",
+                "right": "Right"
+            },
+            "selector": "figcaption",
+            "property": "text-align"
+        },
         "header_image": {
             "section": "HEADER",
             "type": "image",
