@@ -1,0 +1,80 @@
+
+CHECK tests/admin-content-preview-regression.php
+SnapSmack: ignored unknown manifest key community_reactions for tilez
+Actual TILEZ post template, unsaved title/body, five-photo mosaic, registered engines and read-only rendering verified.
+
+CHECK tests/chaplin-archive-geometry-browser.cjs
+PASS 1920px cropped: 5 shapes, unclipped frames, photo unchanged
+PASS 1920px square: 5 shapes, unclipped frames, photo unchanged
+PASS 1440px cropped: 5 shapes, unclipped frames, photo unchanged
+PASS 1440px square: 5 shapes, unclipped frames, photo unchanged
+PASS 1024px cropped: 5 shapes, unclipped frames, photo unchanged
+PASS 1024px square: 5 shapes, unclipped frames, photo unchanged
+6 cases passed
+
+CHECK tests/columns-paging-browser.cjs
+PASS document observer long
+PASS document observer short
+PASS document fallback long
+PASS document fallback short
+PASS body observer long
+PASS body observer short
+PASS body fallback long
+PASS body fallback short
+PASS panel observer long
+PASS panel observer short
+PASS panel fallback long
+PASS panel fallback short
+
+CHECK tests/mosaic-preview-browser.cjs
+{"local_preview_images":5,"local_geometry":{"width":752.40625,"height":1008,"images":[{"x":0,"y":0,"width":752,"height":501.328125},{"x":0,"y":505.328125,"width":374,"height":249.328125},{"x":378,"y":505.328125,"width":374,"height":249.328125},{"x":0,"y":758.65625,"width":374,"height":249.328125},{"x":378,"y":758.65625,"width":374,"height":249.328125}]},"live_mosaic_images":null,"pageErrors":[]}
+
+CHECK tests/mosaic-weighted-geometry-browser.cjs
+PASS browser mosaic sizes match COLD SNAP, and adjusted blocks remain independent.
+
+CHECK tests/jive-border-geometry-browser.cjs
+PASS: JIVE photo/ring seam at four selected widths, desktop/mobile; missing-variable mutation fails.
+
+CHECK tests/engine-config-csp-browser.cjs
+PASS actual PHP config reaches deferred engines under strict CSP; escaping and old-inline failure proved.
+
+CHECK tests/tag-infinite-paging-browser.cjs
+PASS true-grit: 103/103 photos
+PASS feed: 103/103 photos
+PASS tag: 103/103 photos
+PASS justified: 103/103 photos
+PASS short: 11/11 photos
+PASS broken: 48/103 photos (expected regression)
+
+CHECK tests/impact-archive-controls-browser.cjs
+PASS IMPACT controls 1920: filter/search work, photo geometry unchanged
+PASS IMPACT controls 390: filter/search work, photo geometry unchanged
+
+CHECK tools/browser-tests/rationalgeo-static-frame.cjs
+PASS 1920px: visible frame edges, four border settings; old defect rejected
+PASS 390px: visible frame edges, four border settings; old defect rejected
+
+CHECK tests/archive-frame-overlay-visible-browser.cjs
+PASS overlay frame: grey line at the image edge, photo intact, no layout shift
+PASS old inset-on-element frame is correctly detected as invisible (under the photo)
+PASS none preserves skin border/shadow and geometry at 1920
+PASS none preserves skin border/shadow and geometry at 1440
+PASS none preserves skin border/shadow and geometry at 1024
+PASS: 5/5 archive frame pixel checks
+
+CHECK tests/scrolltime-beacon-regression.cjs
+PASS real engine emits dwell payload and excludes hidden time
+
+CHECK tools/browser-tests/archive-first-page-deferral.cjs
+PASS rows paint: page2=1795622138362, first-screen-settled=1795622138362
+PASS rows scroll: page2=1795622138568, first-screen-settled=null
+PASS rows timeout: page2=1795622141130, first-screen-settled=null
+PASS rows no-images: page2=1795622141220, first-screen-settled=1795622141215
+PASS rows error: page2=1795622141497, first-screen-settled=1795622141497
+PASS columns paint: page2=1795622142283, first-screen-settled=1795622142282
+PASS columns scroll: page2=1795622142485, first-screen-settled=null
+PASS columns timeout: page2=1795622145047, first-screen-settled=null
+PASS columns no-images: page2=1795622145118, first-screen-settled=1795622145118
+PASS columns error: page2=1795622145391, first-screen-settled=1795622145391
+PASS: archive page-two fetch ordering matches expected deferral=true in C:\dev\snapsmack\.codex-temp\release-1003d-devclone
+PASS: all required browser/telemetry regressions. This is not all-skin or live-site certification.

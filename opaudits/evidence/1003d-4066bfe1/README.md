@@ -5,6 +5,7 @@ The tested CMS commit is `4066bfe17e5cd7ff82798eaada214f03b4890c96`. Its immedia
 | Check | Result | Evidence |
 | --- | --- | --- |
 | Required PHP scripts | 492 scripts ended without a nonzero exit. Two environment-dependent probes explicitly skipped. | [Script results](php-results.txt) |
+| Required browser and telemetry suites | Passed when rerun in the clean dev checkout at the tested SHA. | [Runner output](browser-regressions.txt) |
 | Public fleet before capture | 102 surfaces across 17 sites, covering home, archive, and solo at 1920 and 1024. The sites ran their existing live versions. | [Manifest](fleet-before-manifest.json) |
 | Rendering versus the correction's parent | 344 fixture screenshots unchanged, no pixel differences or errors. The 114 warnings have the same missing fixture image in both captures. | [Report](portfolio-correction-pixels.json) |
 | Rendering versus 1002D | 318 fixture screenshots unchanged, 26 changed and none errored. The report records unchanged pairs as well as changes. | [Report](1002d-to-1003d-release-pixels.json), [sample before/after pairs](1002d-to-1003d-skin-pairs.png) |
