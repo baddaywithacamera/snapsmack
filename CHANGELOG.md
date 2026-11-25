@@ -110,6 +110,31 @@
   the tool is covered rather than one path through it. It still works the way
   it did before in the case that matters most: once the problem is FIXED, its
   updates and its closing note go out normally.
+- **Your menu now shows which page the visitor is on.** The navigation built
+  every link correctly and never said which one was the page being viewed, so
+  a visitor had nothing in the menu telling them where they were.
+  This was not an oversight that nobody had thought about. FIVE skins --
+  ALFRED, TELEGRAM, TILEZ, ONYX and HEURISTIC -- already carry a style for the
+  current menu item in their stylesheets, written and waiting, with nothing
+  ever arriving to switch it on. Two different conventions are in use among
+  them, so the CMS now sends both and no skin has to be changed.
+  What it marks, and what it deliberately does not: exactly one item, the page
+  you are actually on. A page that is not in the menu at all marks nothing,
+  which is the honest answer. Moving to page two of an archive does not
+  un-mark it. A submenu whose child you are viewing shows as the open branch
+  without claiming to be the page itself.
+  One case took a second attempt and is worth stating, because it would have
+  looked fine and been wrong everywhere: an album or a category is a
+  destination on the site root, the same address as Home. The first version
+  marked HOME as the current page on every album and category page on the
+  site. It now prefers the more specific of two matching destinations, so the
+  album marks the album.
+  One more place it was missing, found in review: a Collections page builds its
+  own menu rather than using the shared one, so it showed no current page at
+  all. The marking now happens at the one point every page passes through, so
+  Collections is covered like everything else.
+  **Not checked:** how it looks. Each skin's active style is its own design,
+  measured in a browser, not here.
 
 - **Your archive shows photographs at their real shapes again, not flattened
   into letterboxes.** After updating to 0.7.1002D the found textures archive

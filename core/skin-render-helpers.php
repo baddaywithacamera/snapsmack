@@ -235,11 +235,33 @@ function snap_render_navigation_tree(array $items, int $depth = 0): string {
         if (!is_array($item)) continue;
         $children = is_array($item['children'] ?? null) && $depth < 2 ? $item['children'] : [];
         $hasChildren = $children !== [];
-        $html .= '<li' . ($hasChildren ? ' class="nav-has-children"' : '') . '>';
+        // SS-1563, SECOND ATTEMPT, AND THE FIRST ONE WAS WASTED.
+        //
+        // I put the current-page markers in snapsmack_render_navigation_items()
+        // and proved them with a test that called it directly. NOTHING CALLS
+        // THAT FUNCTION. Twelve skins call this one through the
+        // navigation-tree component. So the marks were computed correctly in
+        // the view model, reached the component, and were dropped on the
+        // floor, while a green test said otherwise. The PM caught it, not me.
+        // That is the "execute the contract, don't assert its shape" rule, and
+        // a test that drives a renderer no skin reaches asserts a shape.
+        //
+        // Both conventions, because both are in use and neither group of skins
+        // is wrong: ALFRED, TELEGRAM and TILEZ style li.current-menu-item,
+        // ONYX and HEURISTIC style a[aria-current="page"].
+        $classes = [];
+        if ($hasChildren) $classes[] = 'nav-has-children';
+        if (!empty($item['current'])) $classes[] = 'current-menu-item';
+        if (!empty($item['current_ancestor'])) $classes[] = 'current-menu-ancestor';
+        $html .= '<li' . ($classes !== [] ? ' class="' . implode(' ', $classes) . '"' : '') . '>';
         $label = snap_escape_html($item['label'] ?? $item['title'] ?? '');
         $url = (string)($item['url'] ?? '');
+        // "page", and only on the current item: an ancestor is a branch you are
+        // inside, not the location, and two aria-current values in one menu
+        // announce two current pages.
+        $current = !empty($item['current']) ? ' aria-current="page"' : '';
         if ($url === '') $html .= '<span>' . $label . '</span>';
-        else $html .= '<a href="' . snap_escape_url($url) . '"' . (($item['target'] ?? '') === '_blank' ? ' target="_blank" rel="noopener noreferrer"' : '') . '>' . $label . '</a>';
+        else $html .= '<a href="' . snap_escape_url($url) . '"' . (($item['target'] ?? '') === '_blank' ? ' target="_blank" rel="noopener noreferrer"' : '') . $current . '>' . $label . '</a>';
         if ($hasChildren) $html .= '<ul class="nav-submenu">' . snap_render_navigation_tree($children, $depth + 1) . '</ul>';
         $html .= '</li>';
     }
@@ -918,10 +940,26 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             $html .= (string)ob_get_clean();
         }
     } elseif ($name === 'navigation') {
+        // SS-1563: ONYX reaches its navigation through THIS component, not
+        // through navigation-tree, and ONYX is one of the two skins that style
+        // a[aria-current="page"]. So the marker has to be emitted here as
+        // well, from the same flags the view model sets.
+        //
+        // NOT FIXED HERE, and it is not a marking fault: this component
+        // renders no children at all -- no submenu, no nested <ul> -- so a
+        // Menu Manager tree with child items loses them on ONYX before any
+        // current-page question arises. Giving it children would change ONYX's
+        // markup and its appearance, which is a skin decision and nobody has
+        // asked for it. Reported rather than done.
         $html = '<nav class="navigation" aria-label="Primary"><ul class="nav-menu">';
         foreach (($data['items'] ?? []) as $item) {
             if (!is_array($item)) continue;
-            $html .= '<li><a href="' . snap_escape_url($item['url'] ?? '') . '">'
+            $classes = [];
+            if (!empty($item['current'])) $classes[] = 'current-menu-item';
+            if (!empty($item['current_ancestor'])) $classes[] = 'current-menu-ancestor';
+            $current = !empty($item['current']) ? ' aria-current="page"' : '';
+            $html .= '<li' . ($classes !== [] ? ' class="' . implode(' ', $classes) . '"' : '') . '>'
+                . '<a href="' . snap_escape_url($item['url'] ?? '') . '"' . $current . '>'
                 . snap_escape_html($item['label'] ?? '') . '</a></li>';
         }
         $html .= '</ul></nav>';
@@ -966,7 +1004,15 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             $label = (string)($item['label'] ?? '');
             $probe = strtolower($label);
             $glyph = str_contains($probe, 'home') ? 'home' : (str_contains($probe, 'about') ? 'about' : (str_contains($probe, 'blogroll') ? 'blogroll' : 'link'));
-            $html .= '<a class="ss-grid-nav-link" href="' . snap_escape_url($item['url']) . '" title="' . snap_escape_attr($label) . '">' . $icon($glyph) . '<span class="ss-grid-nav-label">' . snap_escape_html($label) . '</span></a>';
+            // SS-1563: SCROLL's sticky nav is this component, not
+            // navigation-tree, so the current-page marker has to be emitted
+            // here too or SCROLL is the one skin left out. Same two
+            // conventions as everywhere else.
+            $navClasses = 'ss-grid-nav-link';
+            if (!empty($item['current'])) $navClasses .= ' current-menu-item';
+            if (!empty($item['current_ancestor'])) $navClasses .= ' current-menu-ancestor';
+            $navCurrent = !empty($item['current']) ? ' aria-current="page"' : '';
+            $html .= '<a class="' . $navClasses . '" href="' . snap_escape_url($item['url']) . '" title="' . snap_escape_attr($label) . '"' . $navCurrent . '>' . $icon($glyph) . '<span class="ss-grid-nav-label">' . snap_escape_html($label) . '</span></a>';
         }
         $search = is_array($model['search'] ?? null) ? $model['search'] : [];
         $html .= '<details class="scroll-nav-search"><summary class="ss-grid-nav-link" title="Search">' . $icon('search') . '<span class="ss-grid-nav-label">Search</span></summary><form class="scroll-nav-search-panel" method="get" action="' . snap_escape_url($search['action'] ?? '') . '"><label class="ss-grid-nav-label" for="crop-circles-search">Search photographs</label><input id="crop-circles-search" type="search" name="q" placeholder="' . snap_escape_attr($search['placeholder'] ?? 'Search or #tag…') . '" autocomplete="off"><button type="submit">GO</button></form></details>';

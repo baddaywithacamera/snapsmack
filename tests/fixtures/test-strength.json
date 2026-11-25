@@ -1579,6 +1579,14 @@
         "predicates": 15,
         "thresholds": []
     },
+    "navigation-marks-the-current-page-regression.php": {
+        "assertions": 49,
+        "predicates": 27,
+        "thresholds": [
+            4,
+            5
+        ]
+    },
     "new-horizon-about-two-column-regression.php": {
         "assertions": 4,
         "predicates": 23,

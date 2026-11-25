@@ -72,6 +72,13 @@ function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slu
     }
     $view['route_aliases'] = snapsmack_public_route_aliases($settings, $manifest);
     $view['navigation'] = snapsmack_prepare_skin_navigation($pdo, $settings, $manifest);
+    // SS-1563: the current-page marking used to happen HERE and that was the
+    // wrong place. This builds the view model's own navigation, which is not
+    // the menu every page ends up showing -- collections.php prefers the
+    // controller's menu and only falls back to this one. Marking moved to
+    // snapsmack_build_skin_view() in core/skin-view-contract.php, which every
+    // route passes through, so it marks whichever menu the response carries.
+    // Left unmarked here on purpose: one place, not two to drift apart.
     // About is an identity destination, not a menu-placement decision. Mobile
     // profiles link their avatar to it even when the owner intentionally keeps
     // About out of the visible navigation.
@@ -484,30 +491,23 @@ function snapsmack_prepare_public_footer(array $settings, array $manifest): arra
     ];
 }
 
-/** Render CMS-resolved navigation. No routing or data access occurs here. */
-function snapsmack_render_navigation_items(array $items, int $depth = 0): void
-{
-    foreach ($items as $item) {
-        $children = is_array($item['children'] ?? null) ? $item['children'] : [];
-        $has_children = $children && $depth < 2;
-        echo '<li' . ($has_children ? ' class="menu-item-has-children"' : '') . '>';
-        $label = htmlspecialchars((string)($item['label'] ?? ''), ENT_QUOTES);
-        $url = (string)($item['url'] ?? '');
-        if ($url === '') {
-            echo '<span>' . $label . '</span>';
-        } else {
-            $target = (($item['target'] ?? '') === '_blank')
-                ? ' target="_blank" rel="noopener noreferrer"' : '';
-            echo '<a href="' . htmlspecialchars($url, ENT_QUOTES) . '"' . $target . '>' . $label . '</a>';
-        }
-        if ($has_children) {
-            echo '<ul class="menu-item-has-children">';
-            snapsmack_render_navigation_items(array_values($children), $depth + 1);
-            echo '</ul>';
-        }
-        echo '</li>';
-    }
-}
+// REMOVED: snapsmack_render_navigation_items().
+//
+// SS-1563. It rendered CMS-resolved navigation and NOTHING CALLED IT except
+// its own recursion. The twelve skins that show a menu reach
+// snap_render_navigation_tree() through the navigation-tree component, and
+// ONYX reaches the 'navigation' component; both live in
+// core/skin-render-helpers.php.
+//
+// It is gone rather than kept, because two renderers for one job is how they
+// drift apart, and these two already had: this one emitted
+// menu-item-has-children while the live one emits nav-has-children, so a skin
+// styling the class this function produced would have styled nothing.
+//
+// It also cost a day. I added the current-page markers HERE and proved them
+// with a test that called this function directly. The test passed, the marks
+// never reached a page, and the PM found it. A test that drives a renderer no
+// skin reaches is asserting a shape, not executing a contract.
 
 /** Emit only CMS-registered browser engines declared by the active manifest. */
 function snapsmack_render_skin_scripts(string $skin_slug): void
