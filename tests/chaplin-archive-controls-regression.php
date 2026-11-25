@@ -68,7 +68,7 @@ cac(
 // ── COLUMNS reaches the grid ────────────────────────────────────────────────
 $cols_missing = [];
 for ($n = 1; $n <= 12; $n++) {
-    if (!preg_match('/\.fsog-archive-grid\.archive-cols-' . $n . '\s*\{[^}]*--grid-cols:\s*' . $n . '\s*;/', $css)) {
+    if (!preg_match('/\.chap-archive-grid\.archive-cols-' . $n . '\s*\{[^}]*--grid-cols:\s*' . $n . '\s*;/', $css)) {
         $cols_missing[] = $n;
     }
 }
@@ -97,7 +97,7 @@ cac('core thumbnail-size map parsed for both styles',
 $drift = [];
 foreach ($expected as $style => $steps) {
     foreach ($steps as $step => $px) {
-        $pattern = '/\.fsog-archive-grid\.' . $style . '-grid\.archive-thumbs-' . $step
+        $pattern = '/\.chap-archive-grid\.' . $style . '-grid\.archive-thumbs-' . $step
                  . '\s*\{[^}]*--thumb-width:\s*' . $px . 'px\s*;/';
         if (!preg_match($pattern, $css)) {
             $drift[] = "{$style}/{$step} should be {$px}px";
@@ -120,20 +120,20 @@ foreach ([1024 => [3, [1, 2]], 768 => [2, [1]]] as $width => [$cap, $preserved])
     }
     cac(
         "the {$width}px breakpoint caps dense grids at {$cap} columns",
-        (bool) preg_match('/\.fsog-archive-grid\.fsog-archive-grid\s*\{\s*--grid-cols:\s*' . $cap . '\s*;/', $block)
+        (bool) preg_match('/\.chap-archive-grid\.chap-archive-grid\s*\{\s*--grid-cols:\s*' . $cap . '\s*;/', $block)
     );
     foreach ($preserved as $cols) {
         cac(
             "the {$width}px breakpoint preserves an owner's {$cols}-column choice",
-            (bool) preg_match('/\.fsog-archive-grid\.archive-cols-' . $cols . '\s*\{\s*--grid-cols:\s*' . $cols . '\s*;/', $block)
+            (bool) preg_match('/\.chap-archive-grid\.archive-cols-' . $cols . '\s*\{\s*--grid-cols:\s*' . $cols . '\s*;/', $block)
         );
     }
 }
 
 // The override must come AFTER the per-column rules, or specificity ties the
 // wrong way round and the collapse loses.
-$first_cols_rule = strpos($css, '.fsog-archive-grid.archive-cols-1');
-$first_override  = strpos($css, '.fsog-archive-grid.fsog-archive-grid');
+$first_cols_rule = strpos($css, '.chap-archive-grid.archive-cols-1');
+$first_override  = strpos($css, '.chap-archive-grid.chap-archive-grid');
 cac(
     'the responsive override is declared after the column rules',
     $first_cols_rule !== false && $first_override !== false && $first_override > $first_cols_rule
@@ -142,7 +142,13 @@ cac(
 // ── The grid still consumes the variables ───────────────────────────────────
 cac(
     'the live grid rule lays out from --grid-cols and --thumb-width',
-    (bool) preg_match('/\.fsog-archive-grid\s*\{[^}]*grid-template-columns:\s*repeat\(\s*var\(--grid-cols[^}]*var\(--thumb-width/s', $css)
+    // SS-1569: ONE RULE BECAME TWO, and the assertion follows the real one.
+    // The base .chap-archive-grid keeps 188D's repeat(var(--grid-cols,4), 1fr).
+    // The owner's THUMBNAIL SIZE now applies through a BOUNDED track rule,
+    // .chap-archive-grid[class*="archive-thumbs-"], which is where
+    // --thumb-width lives. Asserting it on the base rule would pass only by
+    // accident and would not notice the bounded rule disappearing.
+    (bool) preg_match('/\.chap-archive-grid\[class\*="archive-thumbs-"\]\s*\{[^}]*grid-template-columns:\s*repeat\(\s*var\(--grid-cols[^}]*var\(--thumb-width/s', $css)
 );
 
 // ── No private copy of a control core already owns ──────────────────────────
