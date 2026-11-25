@@ -7,6 +7,7 @@
 import hashlib
 import os
 import re
+import subprocess
 import unittest
 
 
@@ -102,5 +103,83 @@ class ProvisioningScriptTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class WriterProvisioner(unittest.TestCase):
+    """The scoped writer's installer, and the drift check SS-1574 asked for."""
+
+    def setUp(self):
+        self.source = _source("provision-host-writer.sh")
+
+    def test_the_writer_gets_its_own_account_not_the_read_one(self):
+        """proxvox-root-ro's name is a promise.
+
+        Adding a write capability to it would mean every existing read key
+        could write, with nothing about the account saying so. Revoking write
+        access should be deleting one account, not editing a protocol.
+        """
+        self.assertIn("proxvox-root-rw", self.source)
+        self.assertIn("Match User ${WRITER_USER}", self.source)
+        self.assertIn("ForceCommand sudo -n ${WRITER_PATH}", self.source)
+        # It must not touch the read-only account in any COMMAND. The header
+        # names it in prose, explaining why there is a second account, which is
+        # the opposite of a problem -- so the check reads the executable lines
+        # rather than the whole file.
+        commands = [line for line in self.source.splitlines()
+                    if line.strip() and not line.strip().startswith("#")]
+        for line in commands:
+            self.assertNotIn("proxvox-root-ro", line, line)
+
+    def test_the_forced_command_allows_no_tty_and_no_forwarding(self):
+        for directive in ("PermitTTY no", "X11Forwarding no",
+                          "AllowAgentForwarding no", "AllowTcpForwarding no"):
+            self.assertIn(directive, self.source, directive)
+
+    def test_it_pins_a_commit_and_verifies_the_hash_before_installing(self):
+        self.assertIn("WRITER_COMMIT=", self.source)
+        self.assertIn("WRITER_SHA256=", self.source)
+        self.assertIn("sha256sum --check --status", self.source)
+        # And it checks again AFTER installing, as the reader does.
+        self.assertIn('[ "$installed_sha" = "$WRITER_SHA256" ]', self.source)
+
+    def test_an_unpinned_installer_refuses_to_run(self):
+        """An installer with no reviewed revision would fetch whatever is
+        newest, which is how an unreviewed wrapper reaches a live host."""
+        self.assertIn("REPLACE_WITH_", self.source)
+        self.assertIn("no reviewed commit pinned yet", self.source)
+        result = subprocess.run(["bash", os.path.join(SERVER, "provision-host-writer.sh")],
+                                capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("no reviewed commit pinned", result.stderr)
+
+    def test_verify_mode_exists_and_changes_nothing(self):
+        """THE POINT OF THIS FILE, and it comes straight out of SS-1574.
+
+        The read-only provisioner checks the installed checksum AT INSTALL TIME
+        and never again, so the live host ran a wrapper whose find format held
+        a real NUL byte, every directory listing failed, and it was found by
+        accident weeks later. verify compares installed against pinned at any
+        time and says so.
+        """
+        self.assertIn('if [ "${1-}" = "verify" ]', self.source)
+        self.assertIn("PROX VOX WRITER DRIFT", self.source)
+        # No install verb may appear before the verify branch returns.
+        head = self.source.split('if [ "${1-}" = "verify" ]')[1].split("fi")[0]
+        for verb in ("install -o", "useradd", "chpasswd", "visudo", "curl"):
+            self.assertNotIn(verb, head, "verify must not " + verb)
+
+    def test_verify_refuses_rather_than_comparing_against_a_placeholder(self):
+        """A verify that always reports drift is one people learn to ignore,
+        which would leave it as useless as the check it replaces."""
+        result = subprocess.run(
+            ["bash", os.path.join(SERVER, "provision-host-writer.sh"), "verify"],
+            capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("nothing to verify against", result.stderr)
+
+    def test_the_installer_is_valid_shell(self):
+        result = subprocess.run(["bash", "-n", os.path.join(SERVER, "provision-host-writer.sh")],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 # ===== SNAPSMACK EOF =====
