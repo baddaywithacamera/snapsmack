@@ -218,14 +218,20 @@
         var portraitMax = 0;
         var landscapeMax = 0;
         var smallest = Infinity;
+        var largest = 0;
         var leadArea = 0;
         var variantArea = 0;
+        var totalArea = 0;
+        var weightedArea = 0;
         var variantOrder = items.length ? variant % Math.min(items.length, 3) : 0;
         items.forEach(function (tile) {
             var area = tile.width * tile.height;
             if (tile.order === 0) leadArea = area;
             if (tile.order === variantOrder) variantArea = area;
             smallest = Math.min(smallest, area);
+            largest = Math.max(largest, area);
+            totalArea += area;
+            weightedArea += tileWeight(tile.image) * area;
             if (imageAR(tile.image) < 1.15) portraitMax = Math.max(portraitMax, area);
             else landscapeMax = Math.max(landscapeMax, area);
         });
@@ -239,6 +245,17 @@
 
         score += smallest * 0.2;
         score -= Math.abs(height - 850) * containerWidth * 0.12;
+        if (weightedArea) {
+            // Match COLD SNAP's relative-area score so the same photo takes
+            // the larger span without changing order.
+            var averageArea = totalArea / items.length;
+            var sizeScore = 0;
+            items.forEach(function (tile) {
+                sizeScore += tileWeight(tile.image) * (tile.width * tile.height - averageArea) * 25;
+            });
+            score += sizeScore;
+            if (items.length >= 3 && smallest > 0 && largest / smallest < 1.25) score -= 1e12;
+        }
         return score;
     }
 
@@ -277,7 +294,7 @@
         return emphasis === 'portrait' ? heroIsPortrait : !heroIsPortrait;
     }
 
-    function solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant) {
+    function solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant, ignoreLimit) {
         var best = null;
         candidateTrees(images, 0, images.length, {}).forEach(function (tree) {
             var trial = [];
@@ -287,7 +304,7 @@
             // that came back, so an incomplete composition silently skips a
             // photograph. Reject it and let the caller try a smaller group.
             if (trial.length !== images.length) return;
-            if (height <= 0 || trial.some(tileExceedsLimit) ||
+            if (height <= 0 || (!ignoreLimit && trial.some(tileExceedsLimit)) ||
                 (enforceUsefulSize && (!blockIsVisuallyBalanced(trial, containerWidth) ||
                     !blockMatchesEmphasis(trial, emphasis)))) return;
             var score = blockScore(trial, height, containerWidth, emphasis, variant || 0);
@@ -296,14 +313,28 @@
         return best;
     }
 
+    function tileWeight(image) {
+        var weight = image.weight;
+        return weight === -1 || weight === 1 || weight === 2 ? weight : 0;
+    }
+
+    function hasAdjustedTiles(images) {
+        return images.some(tileWeight);
+    }
+
     function preferredBlock(images, y, containerWidth, gap, emphasis, template, variant) {
         /* buildSection is the original editorial composition used by the demo.
            Keep it when it is safe, but never let it bypass either hard size
            boundary. Six-image groups require the general solver because the
            original editorial tree only defines arrangements up to four cells. */
         var enforceUsefulSize = containerWidth >= 1200;
-        if (images.length >= 5) {
-            return solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant);
+        var adjusted = hasAdjustedTiles(images);
+        if (images.length >= 5 || adjusted) {
+            var solved = solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant);
+            if (!solved && adjusted) {
+                solved = solveBlock(images, y, containerWidth, gap, emphasis, false, variant, true);
+            }
+            return solved;
         }
         var tree = buildSection(images, false, template);
         var items = [];
@@ -425,13 +456,19 @@
         var gap = parseInt(container.getAttribute('data-gap') || '4', 10);
         var emphasis = container.getAttribute('data-emphasis') || 'natural';
         var template = container.getAttribute('data-template') || '';
-        if (!template && images.length === 3) {
+        var adjusted = hasAdjustedTiles(images);
+        if (!template && !adjusted && images.length === 3) {
             template = automaticTripletTemplate(images, container);
         }
         var width = container.clientWidth || container.offsetWidth;
         if (width <= 0) return;
 
-        var layout = computeLayout(images, width, gap, emphasis, template);
+        // COLD SNAP composes groups of five or more at a reference width.
+        // Keep that behavior for weighted mosaics without changing the
+        // installed rendering of any existing unweighted mosaic.
+        var referenceWidth = adjusted && images.length >= 5 && width > MOBILE_BREAKPOINT ? 1200 : width;
+        var scale = width / referenceWidth;
+        var layout = computeLayout(images, referenceWidth, gap, emphasis, template);
         var fragment = document.createDocumentFragment();
 
         layout.items.forEach(function (tile) {
@@ -441,10 +478,10 @@
             var media = item;
 
             item.className = 'mosaic-item';
-            item.style.left = tile.x.toFixed(2) + 'px';
-            item.style.top = tile.y.toFixed(2) + 'px';
-            item.style.width = tile.width.toFixed(2) + 'px';
-            item.style.height = tile.height.toFixed(2) + 'px';
+            item.style.left = (tile.x * scale).toFixed(2) + 'px';
+            item.style.top = (tile.y * scale).toFixed(2) + 'px';
+            item.style.width = (tile.width * scale).toFixed(2) + 'px';
+            item.style.height = (tile.height * scale).toFixed(2) + 'px';
 
             if (image.lazy) {
                 img.setAttribute('data-src', image.src);
@@ -471,7 +508,7 @@
         });
 
         container.replaceChildren(fragment);
-        container.style.height = layout.height.toFixed(2) + 'px';
+        container.style.height = (layout.height * scale).toFixed(2) + 'px';
         if (images.some(function (image) { return !!image.lazy; }) && window.ssLazyScan) {
             window.ssLazyScan(container);
         }
@@ -561,7 +598,7 @@
                     } catch (error) {
                         return;
                     }
-                    if (!Array.isArray(images)) return;
+                    if (!Array.isArray(images) || hasAdjustedTiles(images)) return;
                 }
 
                 var cursor = first.nextElementSibling;
@@ -577,7 +614,7 @@
                     if (kind === 'asymmetric') {
                         try {
                             var nextImages = JSON.parse(cursor.getAttribute('data-mosaic') || '[]');
-                            if (!Array.isArray(nextImages)) break;
+                            if (!Array.isArray(nextImages) || hasAdjustedTiles(nextImages)) break;
                             images = images.concat(nextImages);
                         } catch (error) {
                             break;

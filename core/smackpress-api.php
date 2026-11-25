@@ -12,6 +12,7 @@
  *   POST   smackpress/posts            — create or update longform post
  *   GET    smackpress/posts/{id}       — read back a post
  *   GET    smackpress/categories       — list all categories
+ *   GET    smackpress/mosaics          — report available mosaic editing features
  *   POST   smackpress/mosaics          — create mosaic panel
  */
 
@@ -929,8 +930,22 @@ if ($sub === 'categories' && $method === 'GET') {
 }
 
 // =====================================================================
-// ROUTE: POST smackpress/mosaics
+// ROUTE: GET / POST smackpress/mosaics
 // =====================================================================
+function smackpress_mosaic_weights_available(PDO $pdo): bool {
+    try {
+        return $pdo->query(
+            'SELECT asset_ids, focus_positions, gap, emphasis, layout, gallery_shuffle, mosaic_weights FROM snap_mosaics LIMIT 0'
+        ) !== false;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+if ($sub === 'mosaics' && $method === 'GET') {
+    smackpress_ok(['mosaic_weights' => smackpress_mosaic_weights_available($pdo)]);
+}
+
 if ($sub === 'mosaics' && $method === 'POST') {
     $body = json_decode(file_get_contents('php://input'), true);
     if (!$body) smackpress_error(400, 'Invalid JSON body.');
@@ -946,6 +961,20 @@ if ($sub === 'mosaics' && $method === 'POST') {
 
     if (empty($asset_ids)) smackpress_error(422, 'asset_ids required.');
 
+    $weights = [];
+    if (array_key_exists('mosaic_weights', $body)) {
+        if (!is_array($body['mosaic_weights'])) {
+            smackpress_error(422, 'mosaic_weights must map selected Gallery image IDs to tile sizes.');
+        }
+        foreach ($body['mosaic_weights'] as $image_id => $weight) {
+            if (!is_int($image_id) || $image_id < 1 || !in_array($image_id, $asset_ids, true)
+                || !in_array($weight, [-1, 1, 2], true)) {
+                smackpress_error(422, 'Every mosaic weight must be -1, 1 or 2 and refer to a selected Gallery image.');
+            }
+            $weights[$image_id] = $weight;
+        }
+    }
+
     // SS-1185: six of the galleries migrating from mccormickphotography.com
     // were owner-random in WordPress, and the import had nowhere to put that,
     // so it either dropped the setting or claimed an order the owner never
@@ -958,10 +987,21 @@ if ($sub === 'mosaics' && $method === 'POST') {
     // shuffling is presentation and never rewrites what was saved.
     $gallery_shuffle = !empty($body['gallery_shuffle']) ? 1 : 0;
 
-    $stmt = $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, gap, layout, gallery_shuffle) VALUES (?, ?, ?, ?, ?)");
-    $stmt->execute([$title, json_encode($asset_ids), $gap, $layout, $gallery_shuffle]);
+    $values = [$title, json_encode($asset_ids), $gap, $layout, $gallery_shuffle];
+    if ($weights) {
+        if (!smackpress_mosaic_weights_available($pdo)) {
+            smackpress_error(409, 'Update the site schema before publishing resized mosaic tiles.');
+        }
+        $stmt = $pdo->prepare('INSERT INTO snap_mosaics (title, asset_ids, gap, layout, gallery_shuffle, mosaic_weights) VALUES (?, ?, ?, ?, ?, ?)');
+        $values[] = json_encode((object)$weights, JSON_THROW_ON_ERROR);
+    } else {
+        $stmt = $pdo->prepare('INSERT INTO snap_mosaics (title, asset_ids, gap, layout, gallery_shuffle) VALUES (?, ?, ?, ?, ?)');
+    }
+    $stmt->execute($values);
     $mosaic_id = (int)$pdo->lastInsertId();
-    smackpress_ok(['mosaic_id' => $mosaic_id, 'shortcode' => '[mosaic:' . $mosaic_id . ']']);
+    $receipt = ['mosaic_id' => $mosaic_id, 'shortcode' => '[mosaic:' . $mosaic_id . ']'];
+    if ($weights) $receipt['mosaic_weights'] = (object)$weights;
+    smackpress_ok($receipt);
 }
 
 // =====================================================================

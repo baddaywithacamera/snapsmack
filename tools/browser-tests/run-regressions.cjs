@@ -1,3 +1,5 @@
+// SNAPSMACK_EOF_HEADER
+// Last non-empty line must be the JavaScript SNAPSMACK EOF marker.
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -9,6 +11,7 @@ const checks = [
   [process.execPath, 'tests/chaplin-archive-geometry-browser.cjs'],
   [process.execPath, 'tests/columns-paging-browser.cjs'],
   [process.execPath, 'tests/mosaic-preview-browser.cjs'],
+  [process.execPath, 'tests/mosaic-weighted-geometry-browser.cjs'],
   [process.execPath, 'tests/jive-border-geometry-browser.cjs'],
   [process.execPath, 'tests/engine-config-csp-browser.cjs'],
   [process.execPath, 'tests/tag-infinite-paging-browser.cjs'],
@@ -44,3 +47,4 @@ if (failed) {
   fs.rmSync(output, { recursive: true, force: true });
   console.log('PASS: all required browser/telemetry regressions. This is not all-skin or live-site certification.');
 }
+// ===== SNAPSMACK EOF =====

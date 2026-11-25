@@ -72,6 +72,11 @@ function snapsmack_view_row_fields(array $row, string $thumbStyle): array
 
 function snapsmack_build_skin_view(array $response, array $presentation = []): array
 {
+    if (($response['kind'] ?? '') === 'single' && !empty($response['post']['created_at'])) {
+        $createdAt = strtotime((string)$response['post']['created_at']);
+        if ($createdAt !== false) $response['post']['created_label'] = date('F j, Y', $createdAt);
+    }
+
     $kind = (string)($response['kind'] ?? '');
     $item = is_array($response['item'] ?? null) ? $response['item'] : [];
     $bodyClasses = ['skin-' . preg_replace('/[^a-z0-9_-]/i', '-', (string)($presentation['skin_slug'] ?? 'default'))];

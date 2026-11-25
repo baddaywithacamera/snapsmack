@@ -255,7 +255,7 @@ foreach (glob($root . '/core/*.php') ?: [] as $file) {
         if (str_contains($src, "'" . $slug . "'")) $coupled[] = basename($file) . ' -> ' . $slug;
     }
 }
-$COUPLING_BUDGET = 55;   // measured 15 Oct 2026; may only go down
+$COUPLING_BUDGET = 54;   // measured 15 Oct 2026; may only go down
 $n = count($coupled);
 $check($n <= $COUPLING_BUDGET,
     'CMS core now names ' . $n . ' skin slugs, budget ' . $COUPLING_BUDGET
@@ -330,8 +330,7 @@ $JS_DATA_TYPES = ['application/ld+json', 'application/json', 'application/schema
 $JS_IN_PHP_ALLOWLIST = [
     // smack-lt-gram.php -- 1 block(s), 503 lines
     'smack-lt-gram.php#d7fe6016d3cc15d9' => 'SS-1041 (503 lines, was line 762)',
-    // smack-mosaics.php -- 2 block(s), 489 lines
-    'smack-mosaics.php#ac56c92ee3e52060' => 'SS-1041 (480 lines, was line 491)',
+    // smack-mosaics.php -- 1 block(s), 9 lines
     'smack-mosaics.php#b3c8589fdd90507c' => 'SS-1041 (9 lines, was line 1028)',
     // smack-fingerprints.php -- 1 block(s), 399 lines
     'smack-fingerprints.php#2f2e8144e77fe197' => 'SS-1041 (399 lines, was line 424)',

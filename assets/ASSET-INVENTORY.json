@@ -209,6 +209,37 @@
             "purpose": "Visual controls for inline image shortcodes in the longform editor."
         },
         {
+            "file": "assets/js/smack-mosaic-editor.js",
+            "owner": "cms",
+            "scope": "admin",
+            "registry_handle": "asset:admin:smack-mosaic-editor",
+            "legacy_handle": null,
+            "callers": [
+                "smack-mosaics.php"
+            ],
+            "security_signals": [
+                "html-sink",
+                "network"
+            ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "Codex",
+                "review": "The editor calls the same-origin authenticated mosaic admin endpoint. Generated preview markup uses numeric positions and dimensions and escapes interpolated filenames, titles and attribute values."
+            },
+            "enable": "loaded by the CMS where needed",
+            "family": "Admin & tool scripts (smack-*) \u2014 the CMS back office",
+            "vendor": false,
+            "requires": [
+                "ss-engine-mosaic.js",
+                "ss-engine-columns.js",
+                "ss-engine-rows.js"
+            ],
+            "purpose": "Select, arrange and preview photographs in the mosaic editor."
+        },
+        {
             "file": "assets/js/smack-passphrase.js",
             "owner": "cms",
             "scope": "admin",

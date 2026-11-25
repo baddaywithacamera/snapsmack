@@ -131,8 +131,6 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
                         COMMENT 'Editorial classification: color, bw, or blank when not yet classified.',
   `post_id`             int            DEFAULT NULL
                         COMMENT 'FK to snap_posts — populated when image is wrapped in a post',
-  `user_id`             int unsigned   DEFAULT NULL
-                        COMMENT 'FK to snap_users — owner/author for per-user import attribution. NULL = legacy/unattributed.',
   `sort_order`          int            NOT NULL DEFAULT '0'
                         COMMENT 'Manual display order. Lower = earlier in feed. 0 = unset (falls back to img_date DESC).',
   `modified_at`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -992,6 +990,8 @@ CREATE TABLE IF NOT EXISTS `snap_mosaics` (
                COMMENT 'JSON array of snap_assets IDs in display order',
   `focus_positions` LONGTEXT COLLATE utf8mb4_unicode_ci DEFAULT NULL
                COMMENT 'JSON object keyed by image id: per-mosaic crop focal x/y percentages',
+  `mosaic_weights` LONGTEXT COLLATE utf8mb4_unicode_ci DEFAULT NULL
+               COMMENT 'Optional JSON object keyed by snap_images ID with tile size adjustments (-1, 1, 2)',
   `gap`        TINYINT       NOT NULL DEFAULT 4
                COMMENT 'Gap in pixels between mosaic cells (0–20)',
   `emphasis`   VARCHAR(12)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'natural'
