@@ -14,7 +14,8 @@ import tempfile
 
 def run(output_dir: str) -> int:
     from PIL import Image
-    from PySide6.QtCore import QTimer, Qt
+    from PySide6.QtCore import QEventLoop, QTimer, Qt
+    from PySide6.QtGui import QFont, QFontDatabase
     from PySide6.QtWidgets import QApplication, QDialog, QPushButton
 
     import sumna_offline as O
@@ -30,6 +31,12 @@ def run(output_dir: str) -> int:
     os.environ["SNAPSMACK_HOME"] = str(home)
 
     app = QApplication.instance() or QApplication([])
+    if app.platformName() == "offscreen" and os.name == "nt":
+        font_path = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts" / "segoeui.ttf"
+        font_id = QFontDatabase.addApplicationFont(str(font_path))
+        families = QFontDatabase.applicationFontFamilies(font_id)
+        if families:
+            app.setFont(QFont(families[0], 10))
     mode = TakeMode(lambda: {})
     mode.resize(1440, 900)
     mode.show()
@@ -131,6 +138,17 @@ def run(output_dir: str) -> int:
         return [[round(tile[key], 3) for key in ("x", "y", "width", "height")]
                 for tile in preview.computed_cells()["items"]]
 
+    def save_preview(dialog, name):
+        preview = dialog._mosaic_preview
+        # The real photo loader is asynchronous. Paint once to request the
+        # images, allow the worker callbacks to run, then grab the entire
+        # preview widget even if the modal's scroll viewport clips it.
+        preview.grab()
+        loop = QEventLoop()
+        QTimer.singleShot(250, loop.quit)
+        loop.exec()
+        preview.grab().save(str(out / name), "PNG")
+
     def resize_mosaic():
         dialog = app.activeModalWidget()
         if not isinstance(dialog, QDialog):
@@ -139,11 +157,11 @@ def run(output_dir: str) -> int:
         preview.set_content_width(760)
         span["before"] = rects(preview)
         span["order_before"] = dialog._mosaic_checked_indices()
-        dialog.grab().save(str(out / "03-mosaic-before.png"), "PNG")
+        save_preview(dialog, "03-mosaic-before.png")
         dialog._mosaic_resize(2, 1)
         span["larger"] = rects(preview)
         span["order_after"] = dialog._mosaic_checked_indices()
-        dialog.grab().save(str(out / "04-mosaic-larger.png"), "PNG")
+        save_preview(dialog, "04-mosaic-larger.png")
         dialog._mosaic_resize(2, -1)
         span["smaller"] = rects(preview)
         dialog._mosaic_resize(2, 1)
@@ -157,7 +175,7 @@ def run(output_dir: str) -> int:
         preview.set_content_width(760)
         span["reopened"] = rects(preview)
         span["reopened_order"] = dialog._mosaic_checked_indices()
-        dialog.grab().save(str(out / "05-mosaic-reopened.png"), "PNG")
+        save_preview(dialog, "05-mosaic-reopened.png")
         dialog.reject()
 
     mode.body.canvas._pending_obj_pos = mode.body.canvas.document().begin().position()
