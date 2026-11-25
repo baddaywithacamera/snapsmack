@@ -25,7 +25,10 @@ import base64
 import hashlib
 import importlib.util
 import io
+import json
 import os
+import shlex
+import time
 
 import pytest
 
@@ -57,14 +60,32 @@ def _stdin(monkeypatch, content: bytes):
 
 # ── the allowlist is reportable, so Sean can read it back ────────────────────
 
-def test_scope_reports_the_allowlist_and_says_who_owns_it(w):
+def test_the_allowlist_ships_empty_so_the_writer_can_do_nothing(w):
+    """The PM's ruling plus my own wrong guesses, together.
+
+    mariadb_backup.sh is OUT: a root-executed script is not a first-release
+    write target. My three other entries were wrong -- the provisioner
+    measured CT102 serving from /var/www/sites, not the /var/www/*/public_html
+    I invented, and CT101 appears in no provisioner at all. The roots come
+    from the read inventory, which needs Sean's session, so the list is empty
+    until a path is confirmed and approved. Empty means every write is
+    refused, which is right for something with no approved target.
+    """
     scope = w.dispatch("scope")
-    assert scope["allowed"], "an empty allowlist would be a writer with no scope"
-    assert any(row["target"] == "host"
-               and row["pattern"] == "/usr/local/bin/mariadb_backup.sh"
-               for row in scope["allowed"])
+    assert scope["allowed"] == [],         "a path is in the allowlist that nobody has confirmed against the host"
     assert "ct101-console-mode-restore" in scope["maintenance"]
     assert "cannot widen" in scope["note"]
+    assert not any("mariadb_backup" in row["pattern"] for row in scope["allowed"])
+
+
+def test_with_an_empty_allowlist_every_write_is_refused(w):
+    """Otherwise "it ships empty" would be a claim about a constant."""
+    for where, path in (("host", "/usr/local/bin/mariadb_backup.sh"),
+                        ("101", "/var/www/snapsmack.ca/index.php"),
+                        ("102", "/var/www/sites/example/index.php")):
+        with pytest.raises(Exception) as caught:
+            w.dispatch("put-file %s %s %s" % (where, path, "0" * 64))
+        assert "not in the allowlist" in str(caught.value)
 
 
 def test_the_allowlist_does_not_contain_a_catch_all(w):
@@ -160,9 +181,48 @@ def target(tmp_path, w, monkeypatch):
     return path
 
 
-def _cmd(path, content):
-    return "put-file host %s %s" % (
-        str(path).replace(os.sep, "/"), hashlib.sha256(content).hexdigest())
+def _grant(w, monkeypatch, *, target, path, sha256, user="root@pam",
+           expires_in=120, ticket="x" * 32, valid=True):
+    """A grant as the desktop client would hand one over.
+
+    The Proxmox API verification is injected: these tests must never need a
+    Proxmox box, and the point of the grant is that the HOST checks it, not
+    that the client asserts it.
+    """
+    monkeypatch.setattr(w, "_verify_ticket_against_local_api",
+                        lambda t, u: bool(valid))
+    return json.dumps({
+        "ticket": ticket, "user": user, "target": target,
+        "path": str(path).replace(os.sep, "/"), "sha256": sha256,
+        "expires": time.time() + expires_in,
+    })
+
+
+def _cmd(path, content, *, w=None, monkeypatch=None, expected_live=None,
+         grant=None):
+    """The put-file command line.
+
+    With w and monkeypatch it mints a matching grant, which is what a LIVE
+    write now needs: the first version authorised by SSH account alone, which
+    was Codex's P0.
+    """
+    posix = str(path).replace(os.sep, "/")
+    sha = hashlib.sha256(content).hexdigest()
+    base = "put-file host %s %s" % (posix, sha)
+    if w is None:
+        return base
+    if expected_live is None:
+        # Default to what the file actually holds now, which is what a caller
+        # that has just read it would declare. "-" means "expect it absent".
+        if os.path.exists(str(path)):
+            live = hashlib.sha256(open(str(path), "rb").read()).hexdigest()
+        else:
+            live = "-"
+    else:
+        live = expected_live
+    if grant is None:
+        grant = _grant(w, monkeypatch, target="host", path=posix, sha256=sha)
+    return "%s %s %s" % (base, live, shlex.quote(grant))
 
 
 def test_a_write_backs_up_the_old_file_and_verifies_the_new_one(w, target, monkeypatch):
@@ -170,7 +230,8 @@ def test_a_write_backs_up_the_old_file_and_verifies_the_new_one(w, target, monke
     new = b"#!/bin/sh\nrepaired\n"
     _stdin(monkeypatch, new)
 
-    result = w.dispatch(_cmd(target, new))
+    result = w.dispatch(_cmd(target, new, w=w, monkeypatch=monkeypatch,
+                            expected_live=hashlib.sha256(original).hexdigest()))
 
     assert result["dry_run"] is False
     assert result["verified"] is True
@@ -187,7 +248,7 @@ def test_the_result_carries_hashes_and_never_content(w, target, monkeypatch):
     file's contents in a log or a room post would be a leak."""
     secret = b"#!/bin/sh\n# token=do-not-log-me\n"
     _stdin(monkeypatch, secret)
-    result = w.dispatch(_cmd(target, secret))
+    result = w.dispatch(_cmd(target, secret, w=w, monkeypatch=monkeypatch))
     flat = repr(result)
     assert "do-not-log-me" not in flat
     assert result["sha256_after"] in flat
@@ -208,7 +269,8 @@ def test_a_hash_mismatch_writes_nothing_at_all(w, target, monkeypatch):
 
     with pytest.raises(Exception) as caught:
         # Declare the hash of the FULL content while sending the truncated half.
-        w.dispatch(_cmd(target, b"#!/bin/sh\nrepaired\n"))
+        w.dispatch(_cmd(target, b"#!/bin/sh\nrepaired\n",
+                        w=w, monkeypatch=monkeypatch))
 
     assert "does not match" in str(caught.value)
     assert target.read_bytes() == original, "the original was modified anyway"
@@ -255,7 +317,7 @@ def test_writing_a_file_that_does_not_exist_yet_makes_no_backup(w, tmp_path, mon
     new = b"#!/bin/sh\nfresh\n"
     _stdin(monkeypatch, new)
 
-    result = w.dispatch(_cmd(path, new))
+    result = w.dispatch(_cmd(path, new, w=w, monkeypatch=monkeypatch))
 
     assert result["sha256_before"] == ""
     assert result["backup_path"] == ""
@@ -268,7 +330,7 @@ def test_content_larger_than_the_cap_is_refused(w, target, monkeypatch):
     original = target.read_bytes()
     _stdin(monkeypatch, b"x" * 64)
     with pytest.raises(Exception) as caught:
-        w.dispatch(_cmd(target, b"x" * 64))
+        w.dispatch(_cmd(target, b"x" * 64, w=w, monkeypatch=monkeypatch))
     assert "larger than" in str(caught.value)
     assert target.read_bytes() == original
 
@@ -371,7 +433,7 @@ def test_a_symlinked_target_is_refused(w, tmp_path, monkeypatch):
     _stdin(monkeypatch, b"new\n")
 
     with pytest.raises(Exception) as caught:
-        w.dispatch(_cmd(link, b"new\n"))
+        w.dispatch(_cmd(link, b"new\n", w=w, monkeypatch=monkeypatch))
 
     assert "symbolic link" in str(caught.value)
     assert elsewhere.read_bytes() == b"do not touch\n", "it followed the link"
@@ -394,7 +456,7 @@ def test_a_symlinked_parent_is_refused(w, tmp_path, monkeypatch):
     _stdin(monkeypatch, b"new\n")
 
     with pytest.raises(Exception) as caught:
-        w.dispatch(_cmd(target, b"new\n"))
+        w.dispatch(_cmd(target, b"new\n", w=w, monkeypatch=monkeypatch))
 
     assert "symbolic link" in str(caught.value)
     assert (real_dir / "x.sh").read_bytes() == b"original\n"
@@ -408,7 +470,7 @@ def test_the_backup_does_not_land_beside_a_web_served_file(w, target, tmp_path, 
     """
     new = b"#!/bin/sh\nrepaired\n"
     _stdin(monkeypatch, new)
-    result = w.dispatch(_cmd(target, new))
+    result = w.dispatch(_cmd(target, new, w=w, monkeypatch=monkeypatch))
 
     assert result["backup_path"]
     assert not list(target.parent.glob("*.proxvox-bak-*")), \
@@ -431,7 +493,7 @@ def test_the_temp_file_is_opened_exclusively(w, target, monkeypatch):
     _stdin(monkeypatch, b"new\n")
 
     with pytest.raises(Exception):
-        w.dispatch(_cmd(target, b"new\n"))
+        w.dispatch(_cmd(target, b"new\n", w=w, monkeypatch=monkeypatch))
 
     assert target.read_bytes() == original
     assert open(planted, "rb").read() == b"planted\n", "it wrote through the planted file"
@@ -480,7 +542,7 @@ def test_the_symlink_refusal_fires_even_where_links_cannot_be_made(w, target, mo
     monkeypatch.setattr(w.os.path, "islink", lambda p: True)
 
     with pytest.raises(Exception) as caught:
-        w.dispatch(_cmd(target, b"new\n"))
+        w.dispatch(_cmd(target, b"new\n", w=w, monkeypatch=monkeypatch))
 
     assert "symbolic link" in str(caught.value)
     assert target.read_bytes() == original
@@ -497,8 +559,284 @@ def test_a_parent_link_is_checked_segment_by_segment(w, target, monkeypatch):
     monkeypatch.setattr(w.os.path, "islink", lambda p: str(p) != whole)
 
     with pytest.raises(Exception) as caught:
-        w.dispatch(_cmd(target, b"new\n"))
+        w.dispatch(_cmd(target, b"new\n", w=w, monkeypatch=monkeypatch))
 
     assert "above it is a symbolic link" in str(caught.value)
+
+
+# ── THE GRANT: CODEX'S FIRST P0 ─────────────────────────────────────────────
+#
+# The first version authorised by SSH ACCOUNT ALONE. The TOTP lived in the
+# desktop client, so the host could not tell an authorised write from a stolen
+# key: anyone reaching the account wrote whatever the allowlist permitted.
+#
+# A live write now carries a grant, and the HOST verifies it -- the Proxmox
+# ticket against its own local API, then the user, the expiry, and the target,
+# path and content hash against the operation actually asked for. Every check
+# below is driven by making exactly one thing wrong, so each one is shown to be
+# load-bearing rather than decorative.
+
+
+@pytest.fixture()
+def granted_target(tmp_path, w, monkeypatch):
+    """An allowlisted real file, with the grant machinery testable."""
+    _posix_absolute_for_this_platform(w, monkeypatch)
+    monkeypatch.setattr(w, "BACKUP_DIR", str(tmp_path / "backups").replace(os.sep, "/"))
+    path = tmp_path / "target.sh"
+    path.write_bytes(b"original\n")
+    monkeypatch.setattr(w, "ALLOWED", (("host", str(path).replace(os.sep, "/")),))
+    return path
+
+
+def _attempt(w, monkeypatch, path, content, **grant_kwargs):
+    """Try a live write with a grant that differs in one stated way."""
+    posix = str(path).replace(os.sep, "/")
+    sha = hashlib.sha256(content).hexdigest()
+    fields = {"target": "host", "path": posix, "sha256": sha}
+    fields.update(grant_kwargs)
+    grant = _grant(w, monkeypatch, **fields)
+    _stdin(monkeypatch, content)
+    live = hashlib.sha256(open(str(path), "rb").read()).hexdigest()
+    return w.dispatch("put-file host %s %s %s %s"
+                      % (posix, sha, live, shlex.quote(grant)))
+
+
+def test_a_live_write_with_a_good_grant_succeeds(w, granted_target, monkeypatch):
+    """The half that makes every refusal below mean something."""
+    result = _attempt(w, monkeypatch, granted_target, b"repaired\n")
+    assert result["verified"] is True
+    assert granted_target.read_bytes() == b"repaired\n"
+
+
+def test_a_live_write_with_no_grant_is_refused(w, granted_target, monkeypatch):
+    posix = str(granted_target).replace(os.sep, "/")
+    content = b"repaired\n"
+    _stdin(monkeypatch, content)
+    with pytest.raises(Exception) as caught:
+        w.dispatch("put-file host %s %s" % (posix, hashlib.sha256(content).hexdigest()))
+    assert "needs a grant" in str(caught.value)
+    assert granted_target.read_bytes() == b"original\n"
+
+
+def test_a_dry_run_needs_no_grant(w, granted_target, monkeypatch):
+    """Deliberate: a rehearsal must not spend an authorisation, and a dry run
+    changes nothing, which is what makes that safe."""
+    content = b"repaired\n"
+    _stdin(monkeypatch, content)
+    result = w.dispatch("put-file-dry host %s %s"
+                        % (str(granted_target).replace(os.sep, "/"),
+                           hashlib.sha256(content).hexdigest()))
+    assert result["dry_run"] is True
+    assert granted_target.read_bytes() == b"original\n"
+
+
+@pytest.mark.parametrize("kwargs,because", [
+    ({"valid": False}, "the Proxmox API says the ticket is not live"),
+    ({"user": "someone@pve"}, "the ticket belongs to a non-owner account"),
+    ({"ticket": "short"}, "there is no real ticket"),
+    ({"expires_in": -5}, "the grant has expired"),
+    ({"expires_in": 60 * 60 * 24}, "the grant runs longer than the cap"),
+    ({"target": "102"}, "the grant authorises a different target"),
+    ({"path": "/var/www/somewhere/else.php"}, "the grant authorises another path"),
+    ({"sha256": "0" * 64}, "the grant authorises different content"),
+])
+def test_one_wrong_thing_in_the_grant_refuses_the_write(
+        w, granted_target, monkeypatch, kwargs, because):
+    with pytest.raises(Exception) as caught:
+        _attempt(w, monkeypatch, granted_target, b"repaired\n", **kwargs)
+    assert str(caught.value), because
+    assert granted_target.read_bytes() == b"original\n", \
+        "the write landed anyway: " + because
+
+
+def test_a_malformed_grant_is_refused_rather_than_ignored(w, granted_target, monkeypatch):
+    posix = str(granted_target).replace(os.sep, "/")
+    content = b"repaired\n"
+    sha = hashlib.sha256(content).hexdigest()
+    live = hashlib.sha256(b"original\n").hexdigest()
+    for bad in ("not json at all", "[]", '"a string"', "{}"):
+        _stdin(monkeypatch, content)
+        with pytest.raises(Exception):
+            w.dispatch("put-file host %s %s %s %s"
+                       % (posix, sha, live, shlex.quote(bad)))
+    assert granted_target.read_bytes() == b"original\n"
+
+
+def test_the_expiry_cap_is_a_cap_and_not_a_default(w):
+    """A long-lived grant must not be mintable by asking for one."""
+    assert w.MAX_GRANT_SECONDS <= 900
+    with pytest.raises(Exception) as caught:
+        w._check_grant(
+            json.dumps({"ticket": "x" * 32, "user": "root@pam", "target": "host",
+                        "path": "/x", "sha256": "a" * 64,
+                        "expires": time.time() + 99999}),
+            target="host", path="/x", sha256="a" * 64,
+            verifier=lambda t, u: True)
+    assert "cap" in str(caught.value)
+
+
+def test_only_owner_accounts_may_authorise(w):
+    """Named accounts, not "any valid ticket". A valid ticket for a service
+    user is still not Sean."""
+    assert w.OWNER_USERS
+    for user in ("backup@pve", "www-data@pam", "", "root@pve"):
+        with pytest.raises(Exception) as caught:
+            w._verify_ticket("x" * 32, user, verifier=lambda t, u: True)
+        assert "owner account" in str(caught.value)
+
+
+# ── CODEX'S EXPECTED-LIVE-HASH REQUEST ──────────────────────────────────────
+
+def test_a_file_changed_since_the_caller_read_it_is_not_overwritten(
+        w, granted_target, monkeypatch):
+    """Compare-and-set, not blind overwrite.
+
+    Codex asked for an expected-live hash before mutation. Without it, two
+    writers or a human editing on the box between the read and the write lose
+    one of the changes silently.
+    """
+    posix = str(granted_target).replace(os.sep, "/")
+    content = b"repaired\n"
+    sha = hashlib.sha256(content).hexdigest()
+    grant = _grant(w, monkeypatch, target="host", path=posix, sha256=sha)
+    _stdin(monkeypatch, content)
+
+    stale = hashlib.sha256(b"what the caller thought was there\n").hexdigest()
+    with pytest.raises(Exception) as caught:
+        w.dispatch("put-file host %s %s %s %s" % (posix, sha, stale, shlex.quote(grant)))
+
+    assert "not what the caller last read" in str(caught.value)
+    assert granted_target.read_bytes() == b"original\n"
+
+
+def test_expecting_absence_refuses_when_the_file_is_there(w, granted_target, monkeypatch):
+    posix = str(granted_target).replace(os.sep, "/")
+    content = b"repaired\n"
+    sha = hashlib.sha256(content).hexdigest()
+    grant = _grant(w, monkeypatch, target="host", path=posix, sha256=sha)
+    _stdin(monkeypatch, content)
+    with pytest.raises(Exception) as caught:
+        w.dispatch("put-file host %s %s - %s" % (posix, sha, shlex.quote(grant)))
+    assert "not what the caller last read" in str(caught.value)
+    assert granted_target.read_bytes() == b"original\n"
+
+
+# ── THE CONTAINER PATH, WHICH HAD NO GUARDS AND HAD NEVER RUN ──────────────
+#
+# It was written second and never executed, which is how the stdin bug lived
+# and why it had none of the host path's protections. The PM's item 5(b) asked
+# for parity. There is no pct on a Windows checkout, so every container
+# command is captured through a fake subprocess and the ARGUMENT LISTS are
+# asserted -- which is what the guards actually are. That is weaker than
+# running it on the host and it is said so here rather than implied.
+
+
+class _FakePct:
+    """Captures every pct call and answers the probes the writer makes."""
+
+    def __init__(self, *, links=(), exists=True):
+        self.calls = []
+        self.links = set(links)
+        self.exists = exists
+
+    def run(self, argv, **kwargs):
+        self.calls.append((list(argv), kwargs.get("input")))
+        joined = " ".join(argv)
+
+        class _Done:
+            returncode = 0
+            stdout = b""
+            stderr = b""
+
+        done = _Done()
+        if "/usr/bin/test" in argv and "-L" in argv:
+            done.returncode = 0 if argv[-1] in self.links else 1
+        elif "/usr/bin/test" in argv and "-e" in argv:
+            done.returncode = 0 if self.exists else 1
+        elif "/usr/bin/sha256sum" in argv:
+            done.stdout = b"a" * 64 + b"  file\n"
+        return done
+
+    def argv_strings(self):
+        return [" ".join(argv) for argv, _ in self.calls]
+
+
+def _container_attempt(w, monkeypatch, fake, content=b"payload\n"):
+    path = "/var/www/sites/example/index.php"
+    monkeypatch.setattr(w, "ALLOWED", (("102", path),))
+    monkeypatch.setattr(w.subprocess, "run", fake.run)
+    sha = hashlib.sha256(content).hexdigest()
+    grant = _grant(w, monkeypatch, target="102", path=path, sha256=sha)
+    _stdin(monkeypatch, content)
+    return w.dispatch("put-file 102 %s %s %s %s"
+                      % (path, sha, "a" * 64, shlex.quote(grant))), path
+
+
+def test_a_symlink_anywhere_in_a_container_path_is_refused(w, monkeypatch):
+    fake = _FakePct(links={"/var/www/sites/example"})
+    with pytest.raises(Exception) as caught:
+        _container_attempt(w, monkeypatch, fake)
+    assert "symbolic link" in str(caught.value)
+    # And it stopped BEFORE writing anything.
+    assert not any("dd" in line for line in fake.argv_strings())
+
+
+def test_the_container_backup_goes_outside_the_web_root(w, monkeypatch):
+    fake = _FakePct()
+    _container_attempt(w, monkeypatch, fake)
+    copies = [line for line in fake.argv_strings() if "/bin/cp" in line]
+    assert copies, "no backup was taken"
+    assert w.BACKUP_DIR in copies[0], \
+        "the backup stayed in the web root, where it can be fetched as source"
+    assert "/var/www/sites/example/index.php.proxvox-bak" not in copies[0]
+
+
+def test_the_container_temp_file_refuses_to_clobber(w, monkeypatch):
+    """conv=excl is the container's O_EXCL: dd must not write through a
+    pre-planted name."""
+    fake = _FakePct()
+    _container_attempt(w, monkeypatch, fake)
+    dd = [line for line in fake.argv_strings() if "/usr/bin/dd" in line]
+    assert dd, "nothing was written"
+    assert "conv=excl" in dd[0]
+
+
+def test_the_container_write_passes_the_content_on_stdin(w, monkeypatch):
+    """The bug that proved the path had never run: stdin= alongside input=."""
+    fake = _FakePct()
+    _container_attempt(w, monkeypatch, fake, content=b"the payload\n")
+    for argv, sent in fake.calls:
+        if "/usr/bin/dd" in argv:
+            assert sent == b"the payload\n"
+            break
+    else:
+        pytest.fail("dd was never called with the content")
+
+
+def test_a_container_write_also_needs_a_grant(w, monkeypatch):
+    path = "/var/www/sites/example/index.php"
+    fake = _FakePct()
+    monkeypatch.setattr(w, "ALLOWED", (("102", path),))
+    monkeypatch.setattr(w.subprocess, "run", fake.run)
+    content = b"payload\n"
+    _stdin(monkeypatch, content)
+    with pytest.raises(Exception) as caught:
+        w.dispatch("put-file 102 %s %s" % (path, hashlib.sha256(content).hexdigest()))
+    assert "needs a grant" in str(caught.value)
+    assert not any("dd" in line for line in fake.argv_strings())
+
+
+def test_the_container_path_never_uses_a_shell(w, monkeypatch):
+    """Every call is an argument LIST through pct exec. A shell anywhere here
+    would make the path a command-injection surface."""
+    fake = _FakePct()
+    _container_attempt(w, monkeypatch, fake)
+    assert fake.calls
+    for argv, _ in fake.calls:
+        assert isinstance(argv, list)
+        assert argv[0] == "/usr/sbin/pct", argv[0]
+        assert "exec" in argv and "--" in argv
+        for arg in argv:
+            assert ";" not in arg and "&&" not in arg and "|" not in arg, arg
 
 # ===== SNAPSMACK EOF =====

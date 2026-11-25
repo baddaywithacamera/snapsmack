@@ -78,15 +78,31 @@ BACKUP_DIR = "/var/backups/proxvox"
 # only normalised the string, which is the exact fault this repo calls out:
 # a code comment is not evidence. Codex caught it in review.
 # ─────────────────────────────────────────────────────────────────────────────
-ALLOWED = (
-    # The Proxmox host: the backup script the PM named, and nothing else.
-    ("host", "/usr/local/bin/mariadb_backup.sh"),
-    # CT101 is snapsmack.ca -- the project/release site, not a CMS install.
-    ("101", "/var/www/snapsmack.ca/*"),
-    # CT102 holds the site roots.
-    ("102", "/var/www/*/public_html/*"),
-    ("102", "/var/www/*/htdocs/*"),
-)
+# IT SHIPS EMPTY, AND THAT IS THE POINT.
+#
+# The PM's ruling, 2026-11-24 23:45: REMOVE /usr/local/bin/mariadb_backup.sh.
+# A root-executed script is not a first-release write target; it can be added
+# later with a per-change hash approval from Sean. Agreed, and it is gone.
+#
+# My other three entries were WRONG, and Codex caught it. I had guessed
+# /var/www/*/public_html/* and /var/www/*/htdocs/* for CT102. The provisioner
+# measured the real layout on the live container: CT102 serves from
+# /var/www/sites, and CT106 from /var/www/<site> with no wrapper. Neither of my
+# patterns would have matched anything, and the one that nearly did would have
+# granted far more than it read. CT101 is named in no provisioner at all, so I
+# have no verified path for it and will not invent one -- the PM said the roots
+# come from the read inventory, not guesses, and I cannot run that inventory
+# without Sean's session.
+#
+# So the list is EMPTY until a path is confirmed against the host and approved.
+# An empty allowlist means this wrapper refuses every write, which is the
+# correct state for something that is not installed and has no approved
+# target. The structure, the grant and the guards are all reviewable without
+# it, and a wrong path here is worse than no path.
+#
+# To add one: confirm it with the read-only broker's inventory, post it in the
+# room, get Sean's yes, and add (target, pattern) with the reason beside it.
+ALLOWED = ()
 
 # Refused even if a matching pattern is added to ALLOWED by mistake. A write to
 # any of these is either a credential replacement or a way to impersonate the
@@ -365,6 +381,34 @@ def _put_host(path, content, dry_run):
             "verified": after == hashlib.sha256(content).hexdigest()}
 
 
+def _refuse_container_symlinks(vmid, path):
+    """The host symlink refusal, inside a container.
+
+    Same reasoning as _refuse_symlinks: a link at the target, or at any parent,
+    means the real destination is not the path the allowlist approved. `test
+    -L` per component rather than readlink -f, because refusing is simpler to
+    verify than resolving and re-checking, and a maintenance target that is a
+    link is a surprise worth stopping on.
+
+    Not atomic against a path swapped between this check and the write, which
+    is the same honest limit the host path carries.
+    """
+    walked = ""
+    for seg in path.strip("/").split("/"):
+        if not seg:
+            continue
+        walked = walked + "/" + seg
+        probe = subprocess.run(
+            _ct(vmid) + ["/usr/bin/test", "-L", walked],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=REMOTE_COMMAND_TIMEOUT_SECONDS, check=False)
+        if probe.returncode == 0:
+            raise Refused(
+                "refusing to write %s in CT%s: %s is a symbolic link, so the "
+                "real destination is not the path the allowlist approved."
+                % (path, vmid, walked))
+
+
 def _put_container(vmid, path, content, dry_run):
     before = _sha256_of(vmid, path)
     declared = hashlib.sha256(content).hexdigest()
@@ -372,14 +416,24 @@ def _put_container(vmid, path, content, dry_run):
         return {"dry_run": True, "target": "ct" + vmid, "path": path,
                 "sha256_before": before, "sha256_after_declared": declared,
                 "bytes": len(content), "would_back_up": bool(before)}
+    # THE SAME GUARDS AS THE HOST PATH. The PM's item 5(b): the container half
+    # had none of them, because it was written second and never run at all --
+    # which is also how the stdin bug survived. Each one is the container
+    # equivalent of the host check above.
+    _refuse_container_symlinks(vmid, path)
     backup = ""
     if before:
-        backup = "%s.proxvox-bak-%d" % (path, int(time.time()))
+        # Outside every document root, like the host path, and for the same
+        # reason: a .proxvox-bak beside a PHP file is fetchable as source.
+        _run(_ct(vmid) + ["/bin/mkdir", "-p", "-m", "700", "--", BACKUP_DIR])
+        backup = posixpath.join(
+            BACKUP_DIR, "%s.%d" % (path.strip("/").replace("/", "_"), int(time.time())))
         _run(_ct(vmid) + ["/bin/cp", "-p", "--", path, backup])
     tmp = "%s.proxvox-tmp-%d" % (path, os.getpid())
     # dd from stdin rather than echo: no shell, no argument-length limit, and
-    # the bytes never appear in a process listing.
-    _run(_ct(vmid) + ["/usr/bin/dd", "of=" + tmp, "status=none"],
+    # the bytes never appear in a process listing. conv=excl is the container's
+    # O_EXCL: dd refuses rather than writing through a pre-planted name.
+    _run(_ct(vmid) + ["/usr/bin/dd", "of=" + tmp, "conv=excl", "status=none"],
          stdin_bytes=content)
     if before:
         _run(_ct(vmid) + ["/bin/chmod", "--reference", path, tmp])
@@ -390,6 +444,127 @@ def _put_container(vmid, path, content, dry_run):
             "sha256_before": before, "sha256_after": after,
             "bytes": len(content), "backup_path": backup,
             "verified": after == declared}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THE GRANT: A WRITE IS BOUND TO A FRESH OWNER AUTHORISATION, ON THE HOST.
+#
+# Codex's P0, and he was right: the first version authorised by SSH ACCOUNT
+# ALONE. The TOTP lived in the desktop client, so the host could not tell an
+# authorised write from a stolen key -- anyone who reached the account wrote
+# whatever the allowlist permitted.
+#
+# NO NEW AUTH, per Sean's instruction. The client already logs in to Proxmox
+# with password plus TOTP in a TOTP-required realm and holds a short-lived
+# Proxmox TICKET. It passes that ticket here, and the HOST verifies it against
+# its own local Proxmox API. So the thing the host trusts is not the SSH
+# account and not anything the client asserts: it is a live Proxmox session
+# that could only have been created by someone holding Sean's password and his
+# authenticator.
+#
+# The grant binds four things, and all four are checked against the operation
+# actually requested rather than taken as a description of it:
+#   user     the ticket's owner, which must be an approved owner account
+#   target   host or a container id
+#   path     the exact path, and the sha256 of the content to be written
+#   expiry   a timestamp, capped so a long-lived grant cannot be minted
+#
+# WHAT THIS STILL DOES NOT DO. It does not protect against someone operating
+# Sean's desktop DURING a live session; nothing at this layer can, and saying
+# otherwise would be the kind of guard that is worse than none. It also trusts
+# the local Proxmox API, which is the same thing the rest of the box trusts.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Who may authorise a write. A ticket for any other user is refused even when
+# the ticket itself is perfectly valid.
+OWNER_USERS = ("root@pam", "sean@pam")
+
+# A grant may not be minted further ahead than this, however far the caller
+# asks. Without a cap, "expires" is decoration.
+MAX_GRANT_SECONDS = 900
+
+
+def _verify_ticket(ticket, user, verifier=None):
+    """Confirm the Proxmox ticket is live and belongs to `user`.
+
+    The verifier is injected so this is testable without a Proxmox box. In
+    production it asks the LOCAL API, which is the whole point: the host does
+    not take the client's word for the authorisation.
+    """
+    if not isinstance(ticket, str) or len(ticket.strip()) < 16:
+        raise Refused("a write needs a Proxmox ticket from a live owner login")
+    if user not in OWNER_USERS:
+        raise Refused(
+            "%s is not an owner account; a write must be authorised by one of "
+            "%s" % (user, ", ".join(OWNER_USERS)))
+    check = verifier or _verify_ticket_against_local_api
+    if not check(ticket, user):
+        raise Refused(
+            "the Proxmox ticket is not valid for %s. A write needs a FRESH "
+            "owner login with password and authenticator; the SSH account on "
+            "its own authorises nothing." % user)
+
+
+def _verify_ticket_against_local_api(ticket, user):          # pragma: no cover
+    """Ask the local Proxmox API whether this ticket is still good.
+
+    Not covered by the unit tests: it needs a Proxmox box. It is deliberately
+    the smallest possible call -- read the ticket's own access list -- so a
+    verification can never have a side effect.
+    """
+    import urllib.error
+    import urllib.request
+    request = urllib.request.Request(
+        "https://127.0.0.1:8006/api2/json/access/permissions",
+        headers={"Cookie": "PVEAuthCookie=" + ticket})
+    try:
+        import ssl
+        context = ssl._create_unverified_context()
+        with urllib.request.urlopen(request, timeout=15, context=context) as response:
+            return response.status == 200
+    except urllib.error.HTTPError:
+        return False
+    except Exception:
+        return False
+
+
+def _check_grant(grant_json, *, target, path, sha256, now=None, verifier=None):
+    """Parse and check the grant against the operation actually asked for."""
+    try:
+        grant = json.loads(grant_json)
+    except Exception:
+        raise Refused("the grant is not readable JSON")
+    if not isinstance(grant, dict):
+        raise Refused("the grant must be an object")
+
+    user = str(grant.get("user", ""))
+    _verify_ticket(grant.get("ticket"), user, verifier=verifier)
+
+    moment = time.time() if now is None else now
+    try:
+        expires = float(grant.get("expires", 0))
+    except (TypeError, ValueError):
+        raise Refused("the grant's expiry is not a number")
+    if expires <= moment:
+        raise Refused("the grant has expired; authorise again")
+    if expires - moment > MAX_GRANT_SECONDS:
+        raise Refused(
+            "the grant runs %d seconds, longer than the %d-second cap. A "
+            "long-lived grant is not a short-lived one with a bigger number."
+            % (int(expires - moment), MAX_GRANT_SECONDS))
+
+    # BOUND TO THIS OPERATION. A grant for one path must not authorise
+    # another, and a grant for one payload must not authorise different bytes.
+    if str(grant.get("target", "")) != str(target):
+        raise Refused("the grant authorises %r, not %r"
+                      % (grant.get("target"), target))
+    if str(grant.get("path", "")) != str(path):
+        raise Refused("the grant authorises a different path")
+    if str(grant.get("sha256", "")).lower() != str(sha256).lower():
+        raise Refused(
+            "the grant authorises different content. The hash Sean approved is "
+            "not the hash of what arrived, so nothing is written.")
+    return {"user": user, "expires": expires}
 
 
 def dispatch(command):
@@ -412,13 +587,41 @@ def dispatch(command):
     # ── put-file[-dry] host|<vmid> <path> <sha256>, content base64 on stdin ──
     # Two op NAMES rather than a --dry-run flag, so a mistyped flag can never
     # turn a rehearsal into a write.
-    if op in {"put-file", "put-file-dry"} and len(args) == 4:
+    if op in {"put-file", "put-file-dry"} and len(args) in (4, 5, 6):
         dry_run = op == "put-file-dry"
         where = args[1]
         path = _absolute(args[2])
         target = "host" if where == "host" else _vmid(where)
         _check_allowed(target, path)
-        content = _read_stdin_content(args[3])
+        declared = args[3]
+        # args[4], when present, is the hash the caller EXPECTS the file to
+        # hold right now -- Codex asked for this. It turns a blind overwrite
+        # into a compare-and-set, so a file somebody else changed since the
+        # caller read it is refused instead of silently replaced. "-" means
+        # the caller expects the file not to exist yet.
+        expected_live = args[4] if len(args) >= 5 else None
+        grant_json = args[5] if len(args) >= 6 else None
+
+        # A LIVE WRITE NEEDS A GRANT. The dry run deliberately does not, so a
+        # rehearsal can be done without spending an authorisation -- and a dry
+        # run changes nothing, which is what makes that safe.
+        if not dry_run:
+            if not grant_json:
+                raise Refused(
+                    "a live write needs a grant from a fresh owner login. Run "
+                    "the dry run to rehearse, or authorise and retry.")
+            _check_grant(grant_json, target=target, path=path, sha256=declared)
+
+        content = _read_stdin_content(declared)
+        if expected_live is not None:
+            actual_live = _sha256_of(target, path)
+            wanted = "" if expected_live == "-" else str(expected_live).lower()
+            if actual_live != wanted:
+                raise Refused(
+                    "the file is not what the caller last read: expected %s, "
+                    "found %s. Somebody or something changed it in between, so "
+                    "nothing was written."
+                    % (wanted[:12] or "(absent)", actual_live[:12] or "(absent)"))
         if target == "host":
             return _put_host(path, content, dry_run)
         return _put_container(target, path, content, dry_run)
