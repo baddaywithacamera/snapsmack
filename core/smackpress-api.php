@@ -939,7 +939,7 @@ if ($sub === 'mosaics' && $method === 'POST') {
     $asset_ids = array_map('intval', $body['asset_ids'] ?? []);
     $gap       = max(0, min(20, (int)($body['gap'] ?? 4)));
     $layout    = (string)($body['layout'] ?? 'asymmetric');
-    if (!in_array($layout, ['asymmetric', 'columns', 'rows', 'square',
+    if (!in_array($layout, ['asymmetric', 'columns', 'rows', 'square', 'masonry', 'one-column',
                             'one-left', 'one-right', 'three-across', 'one-top'], true)) {
         $layout = 'asymmetric';
     }
