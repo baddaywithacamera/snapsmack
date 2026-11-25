@@ -16,6 +16,8 @@
 - **POCKET ALBUM puts a photo album inside a page or post.** The block shows
   the album with lazy-loaded photographs. The source site must opt in before
   a second site can read its albums.
+- **TRUE GRIT archive categories and albums filter the photos again.** The
+  archive restores its category and album menus. Show All clears the filter.
 - **Skin Packager verifies the files against a specific source commit.**
   It checks the skin content and rendering options against that commit's
   recorded baseline and refuses a package that reuses a published version.
