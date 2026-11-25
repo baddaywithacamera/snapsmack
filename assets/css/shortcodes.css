@@ -407,4 +407,49 @@
 .snap-game-score-columns li span { display:inline-block; min-width:70px; margin-left:8px; }
 .snap-game-score-columns time { opacity:.65; font-size:.85em; }
 @media (max-width:650px) { .snap-game-score-columns { grid-template-columns:1fr; } }
+/* =========================================================================
+   POCKET ALBUM — [pocket_album] (SS-1575)
+   =========================================================================
+   One album's photographs as a grid, this site's own or another SnapSmack
+   site's. No JavaScript: the tiles carry width and height, so the browser
+   knows each photograph's shape before any image arrives and the grid does
+   not reflow as they load.
+
+   Measured, not assumed: this stylesheet is already in the <head> of
+   https://baddaywithacamera.ca/images (shortcodes.css?v=0.7.1002D), which is
+   why this block needs no skin edit to appear there. Skins override
+   .snap-pocket-* in their own style.css like every other .snap-* class.
+
+   Checked at 1920, 1440 and 1024, the supported desktop and large-tablet
+   range. The one narrow rule is for PHOTOGRAM and TELEGRAM, the two phone
+   skins; it is not a phone layout for anything else. */
+.snap-pocket-album {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--pocket-album-min, 230px), 1fr));
+    gap: var(--pocket-album-gap, 10px);
+    margin: 28px 0;
+    align-items: start;
+}
+.snap-pocket-tile {
+    display: block;
+    overflow: hidden;
+    line-height: 0;
+    background: var(--pocket-album-mat, rgba(0, 0, 0, .04));
+}
+/* The photograph keeps its OWN shape. A forced square with object-fit:cover
+   would crop every portrait, which is the fault the found-textures archive
+   had; height:auto plus the intrinsic width and height attributes lets each
+   tile be as tall as the photograph actually is. */
+.snap-pocket-shot {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+.snap-pocket-tile:hover .snap-pocket-shot { opacity: .9; }
+.snap-pocket-album-all { margin: 18px 0 0; }
+.snap-pocket-album-empty { opacity: .75; }
+@media (max-width: 560px) {
+    .snap-pocket-album { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
+
 /* ===== SNAPSMACK EOF ===== */

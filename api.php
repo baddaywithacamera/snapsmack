@@ -147,6 +147,16 @@ if (strpos($route, 'threeacross') === 0 || strpos($route, 'unzucker') === 0) {
     exit;
 }
 
+// --- POCKET ALBUM (SS-1575) ---
+// GET /api/pocket-album?album=N&page=1 -- one album's published photographs as
+// JSON, so another SnapSmack site can show it. Read-only and unauthenticated,
+// because everything it returns is already on the public album page, but dark
+// until the site owner sets pocket_album_share=on. See core/pocket-album-api.php.
+if (strpos($route, 'pocket-album') === 0) {
+    require_once 'core/pocket-album-api.php';
+    exit;
+}
+
 // --- STATS BEACON ROUTES ---
 // Route all /api/stats/* requests (Scroll Time dwell beacon) to the stats API.
 if (strpos($route, 'stats') === 0) {

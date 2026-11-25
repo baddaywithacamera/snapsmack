@@ -40,6 +40,11 @@
  *   [bio img="" name="" role=""]text[/bio] — portrait + bio copy
  *   [snapsmack_contact] — contact form (rendered by core/contact-form.php,
  *                         submitted by ss-engine-contact.js → process-contact.php)
+ *   [pocket_album album="N" src="" limit="N"]
+ *                       — one album's photographs as a grid (SS-1575). src
+ *                         names another SnapSmack site; omitted means this
+ *                         site's own album. limit is an author's subset, not
+ *                         a cap: left out, the whole album renders.
  *
  * Auto-paragraph: double newlines (\n\n) become <p> tags automatically.
  * Single newlines within a paragraph become <br>.
@@ -169,6 +174,12 @@ class SnapSmack {
         // so it runs after block-nesting cleanup like the contact form / mosaics.
         $content = $this->parseFeed($content);
 
+        // --- PHASE 10B: POCKET ALBUM ---
+        // [pocket_album album="N" src="https://other-site"] -> a grid of one
+        // album's photographs, this site's own or another SnapSmack site's.
+        // Block-level, so it runs here with the feed and the contact form.
+        $content = $this->parsePocketAlbum($content);
+
         // --- PHASE 11: PHOTOBLOG DIRECTORY ---
         // Body-only output: the CMS page and active skin own all page chrome.
         $content = $this->parsePhotoblogsDirectory($content);
@@ -225,6 +236,31 @@ class SnapSmack {
                 require_once __DIR__ . '/photoblogs-feed.php';
             }
             return pbfeed_grid_html($this->pdo);
+        }, $content);
+    }
+
+    /**
+     * [pocket_album album="N" src="..." limit="N"] -> one album's grid.
+     *
+     * The attributes are read by core/pocket-album-display.php, in ONE place,
+     * so this parser and the cron that refreshes the cache agree about what a
+     * shortcode means. A src this site cannot prove is a public http(s)
+     * address, or a missing album id, renders nothing rather than guessing.
+     */
+    private function parsePocketAlbum($content) {
+        if (stripos($content, '[pocket_album') === false) {
+            return $content;
+        }
+        if (!function_exists('pocket_album_html')) {
+            require_once __DIR__ . '/pocket-album-display.php';
+        }
+        return preg_replace_callback('/\[pocket_album(?![a-z_])[^\]]*\]/i', function (array $match): string {
+            $uses = pocket_album_shortcodes($match[0]);
+            if ($uses === []) {
+                return '';
+            }
+            $use = $uses[0];
+            return pocket_album_html($this->pdo, $use['src'], $use['album'], $use['limit']);
         }, $content);
     }
 

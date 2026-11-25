@@ -1806,6 +1806,37 @@
             10
         ]
     },
+    "pocket-album-display-regression.php": {
+        "assertions": 64,
+        "predicates": 49,
+        "thresholds": [
+            2,
+            2,
+            24,
+            24,
+            40,
+            191,
+            191,
+            250,
+            512,
+            512,
+            512,
+            512
+        ]
+    },
+    "pocket-album-feed-regression.php": {
+        "assertions": 28,
+        "predicates": 3,
+        "thresholds": [
+            2,
+            50,
+            100,
+            191,
+            250,
+            800,
+            1200
+        ]
+    },
     "portfolio-admin-controls-save-regression.php": {
         "assertions": 21,
         "predicates": 17,

@@ -171,12 +171,19 @@ function cron_stamp_scheduler_fire(PDO $pdo, string $job): bool {
     }
 }
 
-/** The three scheduled jobs every site runs: key => [tag, schedule, script, interval seconds]. */
+/** The scheduled jobs: key => [tag, schedule, script, interval seconds]. The
+ *  first three run on every site; see the pocket_album note below. */
 function cron_job_catalogue(): array {
     return [
         'fediverse'     => ['# snapsmack-fediverse',     '*/10 * * * *', 'cron-fediverse.php',     600],
         'rss_fetch'     => ['# snapsmack-rss-fetch',     '0 * * * *',    'cron-rss-fetch.php',     3600],
         'version_check' => ['# snapsmack-version-check', '0 */6 * * *',  'cron-version-check.php', 21600],
+        // SS-1575. NOT a job every site runs: it is only needed on a site that
+        // DISPLAYS another site's album with [pocket_album src=...]. A site
+        // using only its own albums needs no cron at all, because a local
+        // album is a query at render time rather than a cache. Listed here so
+        // cron_job_verdict() knows its interval where it is registered.
+        'pocket_album'  => ['# snapsmack-pocket-album',  '0 * * * *',    'cron-pocket-album.php',  3600],
     ];
 }
 
