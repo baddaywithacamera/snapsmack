@@ -256,6 +256,16 @@ class RewriteTests(unittest.TestCase):
         body, _ = wp_source.rewrite_body(gallery + other, [], gallery_shuffle=True)
         self.assertEqual(body.count("shuffle"), 2)
 
+    def test_companion_gallery_preserves_per_gallery_geometry_and_order(self):
+        body, ordered = wp_source.rewrite_body(
+            '[smackpress-gallery layout="one-column" gap="10"]'
+            f'[smackpress-image id="3" url="{WP}/panorama.jpg"]'
+            f'[smackpress-image id="1" url="{WP}/second.jpg"]'
+            '[/smackpress-gallery]', [], gallery_shuffle=True)
+        self.assertEqual(body, "[mosaic=1,2 layout=one-column shuffle gap=10]")
+        self.assertEqual([photo["url"] for photo in ordered],
+                         [f"{WP}/panorama.jpg", f"{WP}/second.jpg"])
+
     def test_wordpress_derivatives_collapse_to_largest_variant(self):
         images = [
             {"url": f"{WP}/lake-1024x683.jpg", "width": 1024, "height": 683},

@@ -13,16 +13,23 @@ function get_shortcode_regex($tags) { return '\\[(\\[?)(foogallery)\\b([^\\]]*)(
 function shortcode_parse_atts($s) { preg_match_all('/(\w+)="([^"]*)"/', $s, $m, PREG_SET_ORDER); $a=[];foreach($m as $v)$a[$v[1]]=$v[2];return $a; }
 class FooGallery {
  public $ID; public $attachment_ids=[1,2,3];
+ public $gallery_template = 'masonry';
  public function __construct($id){$this->ID=$id;}
- public static function get_by_id($id){return in_array($id,[7,8,9],true)?new self($id):false;}
+ public static function get_by_id($id){return in_array($id,[7,8,9,10],true)?new self($id):false;}
  public static function get_by_slug($slug){return $slug==='example'?new self(7):false;}
  public function is_published(){return $this->ID!==9;}
  public function attachments(){return array_map(fn($id)=>(object)['ID'=>absint($id)],$this->attachment_ids);}
+ public function get_meta($key,$default){return $key==='masonry_thumbnail_width' && $this->ID===10 ? 800 : $default;}
 }
 require dirname(__DIR__, 2).'/smackpress-wp-companion/smackpress-wp-companion.php';
 $checks=0;
 function run_case($input,$ids){global $checks;$images=[];foreach([1,2,3] as $id)$images[$id]=['url'=>'https://example.test/'.$id.'.jpg'];$out=smackpress_expand_foogallery($input,$images);preg_match_all('/smackpress-image id="(\d+)"/',$out,$m);if($m[1]!==array_map('strval',$ids))throw new RuntimeException($input.' => '.$out);$checks++;return $out;}
-run_case('[foogallery id="7"]',[1,2,3]);
+if (!str_contains(run_case('[foogallery id="7"]',[1,2,3]), '[smackpress-gallery layout="masonry" gap="10"]')) {
+    throw new RuntimeException('Standard masonry geometry was dropped');
+}
+if (!str_contains(run_case('[foogallery id="10" attachment_ids="3,1"]',[3,1]), '[smackpress-gallery layout="one-column" gap="10"]')) {
+    throw new RuntimeException('Full-width geometry was dropped');
+}
 run_case('[foogallery id="7" attachment_ids="3,1"]',[3,1]);
 run_case('[foogallery gallery="example" attachment_ids="2"]',[2]);
 run_case('<!-- wp:fooplugins/foogallery {"id":7,"attachment_ids":[2,1]} /--> ',[2,1]);
