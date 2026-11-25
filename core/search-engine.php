@@ -11,9 +11,6 @@
  *   - 52 Card Pickup (solo) via its search.php
  *   - index.php routes ?q= here through the skin's search.php template.
  *
- * PHOTOGRAM keeps its own skins/photogram/search.php as part of its individual
- * mobile workflow.
- *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
