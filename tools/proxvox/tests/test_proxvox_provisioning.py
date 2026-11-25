@@ -80,7 +80,7 @@ class ProvisioningScriptTests(unittest.TestCase):
             "ct102": "055966363c8bf298cda749a09b4f83126e34166d",
             "ct106": "055966363c8bf298cda749a09b4f83126e34166d",
             "ct110": "8fd93087f260b0c44ced5a213a76ba7050bf392f",
-            "host": "cd71c3c8a3648ede0a019c6c9da2cfc7e474a291",
+            "host": "0ac1ef6c3642500976a62ebb213bab37244e6016",
         }
         commands = re.findall(r"```sh\n([^\n]+)\n```", sheet)
         self.assertEqual(len(commands), 4)

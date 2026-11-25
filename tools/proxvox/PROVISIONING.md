@@ -14,13 +14,13 @@ CT110 remains at base installer commit
 repair commit `055966363c8bf298cda749a09b4f83126e34166d`; CT106 matches its measured
 layout (`/var/www/<site>`, not `/var/www/sites`) and both container installers
 skip an unnecessary service reload on idempotent password-only reruns. The host
-installer uses commit `cd71c3c8a3648ede0a019c6c9da2cfc7e474a291`. The four reviewed script
+installer uses commit `0ac1ef6c3642500976a62ebb213bab37244e6016`. The four reviewed script
 hashes are:
 
 - CT102: `4e6ed32bb3a0f22c9607345db855ec183bbbaa54ad7c430cbbeff7783515b026`
 - CT106: `ca5112dcda02b156780c8193373deae6d27fe22436ed4aff557450ee049fb909`
 - CT110: `d68ea3572f13f01af9c6698429ce50fe8fae84f76fb590ea65de97c2b21dbd79`
-- Proxmox host: `06a855c84a77b0b994c84f48196c5ae89a6ae90d002415421cea7d1cd0d39ac6`
+- Proxmox host: `22d11fb51f8731311f0e5c9d2049d55eaa79635a72d00bd6724dc31e801cb755`
 
 The host installer separately fetches the reviewed root reader from commit
 `055966363c8bf298cda749a09b4f83126e34166d`, verifies SHA-256
@@ -52,10 +52,14 @@ tmp=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/baddaywithacamera/
 tmp=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/baddaywithacamera/snapsmack/8fd93087f260b0c44ced5a213a76ba7050bf392f/tools/proxvox/server/provision-ct110.sh -o "$tmp" && printf '%s  %s\n' d68ea3572f13f01af9c6698429ce50fe8fae84f76fb590ea65de97c2b21dbd79 "$tmp" | sha256sum -c - && pct push 110 "$tmp" /root/provision-proxvox.sh --perms 0700 && pct exec 110 -- /root/provision-proxvox.sh
 ```
 
+For a read-only drift check, use the checksum-verified host command below with
+`bash "$tmp" verify` as its final step. It reports the installed reader digest
+and exits successfully only when it matches the pinned reader.
+
 4. **Proxmox host — root-owned read wrapper and SSH boundary**
 
 ```sh
-tmp=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/baddaywithacamera/snapsmack/cd71c3c8a3648ede0a019c6c9da2cfc7e474a291/tools/proxvox/server/provision-host.sh -o "$tmp" && printf '%s  %s\n' 06a855c84a77b0b994c84f48196c5ae89a6ae90d002415421cea7d1cd0d39ac6 "$tmp" | sha256sum -c - && bash "$tmp"
+tmp=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/baddaywithacamera/snapsmack/0ac1ef6c3642500976a62ebb213bab37244e6016/tools/proxvox/server/provision-host.sh -o "$tmp" && printf '%s  %s\n' 22d11fb51f8731311f0e5c9d2049d55eaa79635a72d00bd6724dc31e801cb755 "$tmp" | sha256sum -c - && bash "$tmp"
 ```
 
 Each target prints `PROX VOX ... PASS` only after its account, permissions and
