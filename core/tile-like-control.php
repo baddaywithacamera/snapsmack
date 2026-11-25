@@ -227,4 +227,41 @@ function snap_tile_like_annotate(array $response, array $html): array {
 }
 
 }
+/**
+ * Prepare shared hearts for the three long-form view shapes. Posts may use
+ * their available featured photograph, never a long-form post ID.
+ */
+function snap_smacktalk_tile_likes(PDO $pdo, array $settings, array $response): array {
+    if (!snap_tile_like_enabled($settings)) return $response;
+
+    $kind = $response['kind'] ?? '';
+    $records = match ($kind) {
+        'archive' => $response['tiles'] ?? [],
+        'feed' => $response['posts'] ?? [],
+        'single' => isset($response['post']) ? [$response['post']] : [],
+        default => [],
+    };
+    $ids = [];
+    foreach ($records as $key => $record) {
+        if (!is_array($record)) continue;
+        $imageId = $kind === 'archive' ? (int)($record['image_id'] ?? 0)
+            : (!empty($record['featured_image_path']) ? (int)($record['featured_image_id'] ?? 0) : 0);
+        if ($imageId > 0) $ids[$key] = $imageId;
+    }
+    if (!$ids) return $response;
+
+    require_once __DIR__ . '/community-session.php';
+    require_once __DIR__ . '/secret-store.php';
+    require_once __DIR__ . '/like-identity.php';
+    [$userId, $guestHash] = snap_like_identity($pdo);
+    $liked = snap_tile_like_state($pdo, array_values($ids), $userId, $guestHash);
+    foreach ($ids as $key => $imageId) {
+        $records[$key]['tile_like'] = snap_tile_like_html($imageId, in_array($imageId, $liked, true));
+    }
+    if ($kind === 'archive') $response['tiles'] = $records;
+    elseif ($kind === 'feed') $response['posts'] = $records;
+    else $response['post'] = $records[0];
+    return $response;
+}
+
 // ===== SNAPSMACK EOF =====

@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK_EOF_HEADER � last non-empty line: // ===== SNAPSMACK EOF =====
+ * SNAPSMACK_EOF_HEADER — last non-empty line: // ===== SNAPSMACK EOF =====
  * SNAPSMACK - Public SMACKTALK Controller
  *
  * Owns request interpretation, publication policy, data access and derived
@@ -178,7 +178,7 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
         $single = snapsmack_smacktalk_single($pdo, $settings, $base, $post_slug, $post_id);
         if ($single !== null) return ['handled' => true, 'kind' => 'single'] + $single;
         if (!$candidate_from_path || trim((string)($request['post_slug'] ?? '')) !== '' || $post_id > 0) {
-            return ['handled' => true, 'kind' => 'not_found', 'page_title' => '404 — Not Found'];
+            return ['handled' => true, 'kind' => 'not_found', 'page_title' => '404 â€” Not Found'];
         }
         return ['handled' => false];
     }
@@ -216,7 +216,7 @@ function snapsmack_smacktalk_page(PDO $pdo, string $slug, ?array $page = null): 
     try {
         $page = $page ?? (new SnapPublicRepository($pdo))->activePageBySlug($slug);
     } catch (Throwable $e) { $page = null; }
-    if (!$page) return ['kind' => 'not_found', 'page_title' => '404 — Not Found'];
+    if (!$page) return ['kind' => 'not_found', 'page_title' => '404 â€” Not Found'];
 
     $parser = new SnapSmack($pdo);
     // Prose that sits between two inline photographs arrives here as a loose
@@ -235,7 +235,7 @@ function snapsmack_smacktalk_page(PDO $pdo, string $slug, ?array $page = null): 
     }
     $plain = preg_replace('/\[[^\]]+\]/', ' ', (string)($page['content'] ?? ''));
     $plain = html_entity_decode(strip_tags((string)$plain), ENT_QUOTES | ENT_HTML5);
-    preg_match_all('/[\p{L}\p{N}]+(?:[’\'\-][\p{L}\p{N}]+)*/u', $plain, $words);
+    preg_match_all('/[\p{L}\p{N}]+(?:[â€™\'\-][\p{L}\p{N}]+)*/u', $plain, $words);
     return [
         'kind' => 'page',
         'page_title' => (string)($page['title'] ?? ''),
@@ -299,7 +299,8 @@ function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base, int $category
             }
         }
         if ($thumb === '') continue;
-        $tiles[] = ['full' => $base . $full, 'thumb' => $base . $thumb,
+        $tiles[] = ['image_id' => (int)($image['id'] ?? 0),
+            'full' => $base . $full, 'thumb' => $base . $thumb,
             'title' => (string)($image['img_title'] ?? ''),
             'width' => max(1, (int)($image['img_width'] ?? 3)),
             'height' => max(1, (int)($image['img_height'] ?? 2))];
@@ -362,7 +363,7 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
     }
     $plain = preg_replace('/\[[^\]]+\]/', ' ', (string)($post['content'] ?? ''));
     $plain = html_entity_decode(strip_tags((string)$plain), ENT_QUOTES | ENT_HTML5);
-    preg_match_all('/[\p{L}\p{N}]+(?:[’\'\-][\p{L}\p{N}]+)*/u', $plain, $words);
+    preg_match_all('/[\p{L}\p{N}]+(?:[â€™\'\-][\p{L}\p{N}]+)*/u', $plain, $words);
 
     return [
         'page_title' => (string)$post['title'], 'post' => $post, 'rendered_content' => $rendered,

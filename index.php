@@ -321,6 +321,10 @@ try {
                     $_smacktalk['rendered_content'] = snapsmack_trusted_html((string)$_smacktalk['rendered_content']);
                 }
                 $_smacktalk['navigation'] = $skin_view['navigation'] ?? [];
+                if (in_array('smack-tile-like', (array)($_active_manifest['require_scripts'] ?? []), true)) {
+                    require_once __DIR__ . '/core/tile-like-control.php';
+                    $_smacktalk = snap_smacktalk_tile_likes($pdo, $settings, $_smacktalk);
+                }
                 // SS-986D: THE SMACKTALK FRONT FEED PAGES LIKE THE STRICT LANDING.
                 //
                 // The smacktalk controller never goes through snapsmack_public_runtime(),
