@@ -17,10 +17,10 @@ def run(output_dir: str) -> int:
     from PySide6.QtCore import QTimer, Qt
     from PySide6.QtGui import QFont, QFontDatabase
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication, QDialog, QPushButton
+    from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QPushButton, QSplitter
 
     import sumna_offline as O
-    from coldsnap_qt import biggie
+    from coldsnap_qt import biggie, theme
     from coldsnap_qt.canvas import BiggieCanvas
     from coldsnap_qt.mode_take import MosaicPreview, TakeMode
     from coldsnap_qt.photo_loader import PhotoLoader
@@ -291,6 +291,94 @@ def run(output_dir: str) -> int:
         "inline_row_break_captures": bool(inline_row.get("before_capture") and inline_row.get("after_capture")),
     })
 
+    # Exercise the actual Edit Mosaic menu and the long preview separately
+    # from the inline four-photo cases above.
+    dialog_mode = TakeMode(lambda: {"url": "https://mosaic-fixture.invalid"})
+    dialog_mode.setStyleSheet(theme.stylesheet())
+    app.processEvents()
+    dialog_mode._preview_width = 800
+    for index in range(53):
+        size = (800 if index == 0 else 900, 600)
+        source = fixture_dir / f"quilt-{index + 1:02}.jpg"
+        fixture = Image.new("RGB", size, ((42 + index * 51) % 256,
+                                         (67 + index * 27) % 256, (88 + index * 19) % 256))
+        ImageDraw.Draw(fixture).text((32, 32), f"{index + 2:02}", fill="white", font_size=150)
+        fixture.save(source)
+        photo = O.DraftImage(local_path=str(source), filename=source.name)
+        photo.width, photo.height = size
+        dialog_mode._bucket.append(photo)
+    # Another group already has an authored size, so the leading quad uses
+    # the shared weighted reference width before the leading tile is edited.
+    dialog_mode._pending_mosaic_weights = {4: 1}
+    dialog_proof = {}
+    original_dialog_exec = QDialog.exec
+
+    def capture_dialog(dialog):
+        dialog.resize(1032, 820)
+        dialog.show()
+        preview = dialog.findChild(MosaicPreview)
+        splitter = dialog.findChild(QSplitter)
+        try:
+            if not wait_for(lambda: len(preview.computed_cells()["items"]) == 14):
+                return QDialog.Rejected
+            QTest.qWait(220)
+            dialog_proof["before"] = preview.computed_cells()
+            dialog_proof["before_capture"] = dialog.grab().save(str(out / "10-dialog-quilt-before.png"), "PNG")
+            point = preview._rects[0][1].center()
+            menu = preview._arrangement_menu(preview._row_at(point))
+            next(action for action in menu.actions() if action.text() == "Make larger").trigger()
+            if not wait_for(lambda: preview._weights.get("1") == 1
+                            and len(preview.computed_cells()["items"]) == 14):
+                return QDialog.Rejected
+            QTest.qWait(220)
+            dialog_proof["after"] = preview.computed_cells()
+            dialog_proof["after_capture"] = dialog.grab().save(str(out / "11-dialog-quilt-after.png"), "PNG")
+            dialog_proof["weights"] = preview._weights
+            dialog_proof["fit_scale"] = preview._fit_scale
+            dialog_proof["pane_widths"] = splitter.sizes()
+            dialog_proof["right_picker"] = (splitter.orientation() == Qt.Horizontal
+                                             and splitter.widget(1).verticalScrollBar().maximum() > 0)
+            dialog_proof["fits_preview"] = (preview.width() <= preview._fit_viewport.width()
+                                             and preview.height() <= preview._fit_viewport.height())
+            buttons = dialog.findChild(QDialogButtonBox)
+            QTest.mouseClick(buttons.button(QDialogButtonBox.Ok), Qt.LeftButton)
+            return dialog.result()
+        finally:
+            if dialog.isVisible():
+                dialog.reject()
+
+    QDialog.exec = capture_dialog
+    try:
+        result = dialog_mode._mosaic_dialog(list(range(14)), "asymmetric")
+        dialog_proof["confirmed_order_and_layout"] = result
+        dialog_proof["confirmed_weights"] = dict(getattr(dialog_mode, "_last_mosaic_weights", {}))
+    finally:
+        QDialog.exec = original_dialog_exec
+        dialog_mode.close()
+    quad_before = dialog_proof.get("before", {}).get("items", [])[:4]
+    quad_after = dialog_proof.get("after", {}).get("items", [])[:4]
+
+    def tile_area(tile):
+        return tile["width"] * tile["height"]
+
+    checks.update({
+        "long_dialog_quad_becomes_a_span": len(quad_before) == 4 and len(quad_after) == 4
+            and sum(tile["x"] < 1 for tile in quad_before) == 2
+            and sum(tile["x"] < 1 for tile in quad_after) == 1
+            and quad_before[0]["width"] <= max(tile["width"] for tile in quad_before[1:]) * 1.1
+            and tile_area(quad_after[0]) > tile_area(quad_before[0]) * 1.25
+            and tile_area(quad_after[0]) > max(map(tile_area, quad_after[1:])) * 1.5,
+        "long_dialog_full_preview_with_right_picker": bool(dialog_proof.get("right_picker"))
+            and bool(dialog_proof.get("fits_preview"))
+            and 0 < dialog_proof.get("fit_scale", 0) < 1
+            and dialog_proof["pane_widths"][0] > 4 * dialog_proof["pane_widths"][1],
+        "long_dialog_keeps_14_photos_and_saves_both_weights": dialog_proof.get("weights") == {"1": 1, "5": 1}
+            and dialog_proof.get("confirmed_weights") == {1: 1, 5: 1}
+            and dialog_proof.get("confirmed_order_and_layout") == (list(range(1, 15)), "asymmetric")
+            and [tile["id"] for tile in dialog_proof.get("after", {}).get("items", [])] == list(range(1, 15)),
+        "long_dialog_captures": bool(dialog_proof.get("before_capture") and dialog_proof.get("after_capture")),
+    })
+
     mode._remote_post_id = 42
     mode._remote_slug = "parity-gate"
     saved = mode._autosave_now()
@@ -304,6 +392,7 @@ def run(output_dir: str) -> int:
         "mosaic_resize": span,
         "inline_break": inline,
         "inline_row_break": inline_row,
+        "dialog_quilt": dialog_proof,
         "pass": all(value for key, value in checks.items() if key != "mosaic_thumbnail_count"),
     }
     (out / "parity.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
