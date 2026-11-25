@@ -149,6 +149,11 @@ def _posix_absolute_for_this_platform(w, monkeypatch):
 def target(tmp_path, w, monkeypatch):
     """A real file on disk, allowlisted for this test only."""
     _posix_absolute_for_this_platform(w, monkeypatch)
+    # BACKUP_DIR IS AN ABSOLUTE HOST PATH (/var/backups/proxvox). Left alone,
+    # these tests would create C:arackups on a Windows checkout -- which
+    # mine did once, and Sean's drive-hygiene rule is that nothing scatters
+    # outside the project. Pointed at the per-test temp directory instead.
+    monkeypatch.setattr(w, "BACKUP_DIR", str(tmp_path / "backups").replace(os.sep, "/"))
     path = tmp_path / "mariadb_backup.sh"
     path.write_bytes(b"#!/bin/sh\noriginal\n")
     monkeypatch.setattr(w, "ALLOWED", (("host", str(path).replace(os.sep, "/")),))
@@ -244,6 +249,7 @@ def test_dry_and_live_are_different_op_names_not_a_flag(w, target, monkeypatch):
 
 def test_writing_a_file_that_does_not_exist_yet_makes_no_backup(w, tmp_path, monkeypatch):
     _posix_absolute_for_this_platform(w, monkeypatch)
+    monkeypatch.setattr(w, "BACKUP_DIR", str(tmp_path / "backups").replace(os.sep, "/"))
     path = tmp_path / "new-file.sh"
     monkeypatch.setattr(w, "ALLOWED", (("host", str(path).replace(os.sep, "/")),))
     new = b"#!/bin/sh\nfresh\n"
@@ -311,5 +317,188 @@ def test_the_envelope_is_json_and_a_refusal_is_not_ok(w, monkeypatch, capsys):
     payload = _json.loads(out)
     assert payload["ok"] is False
     assert payload["error"]
+
+
+# ── CODEX'S SECURITY READ OF 9e9920b3: THE FOUR I COULD FIX ────────────────
+#
+# He FAILED it for installation and use, and every finding was real. Nothing
+# had been installed, so nothing was at risk; these are the fixes with the
+# checks that were missing the first time.
+
+
+def test_a_star_in_the_allowlist_does_not_cross_a_slash(w):
+    """Codex's P1, measured before the fix.
+
+    fnmatch's * matches "/", so the entry /var/www/*/public_html/* ALSO matched
+    /var/www/a/b/c/public_html/deep/evil.php -- a pattern that reads as "one
+    site directory" granted arbitrary depth. Segment matching stops that.
+    """
+    pattern = "/var/www/*/public_html/*"
+    assert w._segment_match("/var/www/site/public_html/index.php", pattern)
+    assert not w._segment_match("/var/www/a/b/c/public_html/deep/evil.php", pattern)
+    assert not w._segment_match("/var/www/site/public_html/sub/deeper.php", pattern)
+    # And the explicit form still exists for a pattern that MEANS any depth.
+    assert w._segment_match("/var/www/site/public_html/sub/deeper.php",
+                            "/var/www/*/public_html/**")
+
+
+def test_the_live_allowlist_is_checked_segment_wise(w, monkeypatch):
+    """Driven through the real refusal, not just the matcher."""
+    monkeypatch.setattr(w, "ALLOWED", (("102", "/var/www/*/public_html/*"),))
+    with pytest.raises(Exception) as caught:
+        w.dispatch("put-file 102 /var/www/a/b/c/public_html/deep/evil.php " + "0" * 64)
+    assert "not in the allowlist" in str(caught.value)
+
+
+def test_a_symlinked_target_is_refused(w, tmp_path, monkeypatch):
+    """Codex's P0: the allowlist was checked against the STRING.
+
+    A symlink sitting at an allowlisted path and pointing somewhere else would
+    have passed the check and been written through. Skipped where the platform
+    will not make a link without privileges, because a test that silently does
+    nothing is worse than one that says it did nothing.
+    """
+    _posix_absolute_for_this_platform(w, monkeypatch)
+    elsewhere = tmp_path / "elsewhere.txt"
+    elsewhere.write_bytes(b"do not touch\n")
+    link = tmp_path / "allowed.sh"
+    try:
+        os.symlink(elsewhere, link)
+    except (OSError, NotImplementedError, AttributeError):
+        pytest.skip("this platform will not create a symlink here")
+    monkeypatch.setattr(w, "ALLOWED", (("host", str(link).replace(os.sep, "/")),))
+    monkeypatch.setattr(w, "BACKUP_DIR", str(tmp_path / "backups").replace(os.sep, "/"))
+    _stdin(monkeypatch, b"new\n")
+
+    with pytest.raises(Exception) as caught:
+        w.dispatch(_cmd(link, b"new\n"))
+
+    assert "symbolic link" in str(caught.value)
+    assert elsewhere.read_bytes() == b"do not touch\n", "it followed the link"
+
+
+def test_a_symlinked_parent_is_refused(w, tmp_path, monkeypatch):
+    """The same hole one level up, which is the easier one to plant."""
+    _posix_absolute_for_this_platform(w, monkeypatch)
+    real_dir = tmp_path / "real"
+    real_dir.mkdir()
+    (real_dir / "x.sh").write_bytes(b"original\n")
+    link_dir = tmp_path / "linked"
+    try:
+        os.symlink(real_dir, link_dir, target_is_directory=True)
+    except (OSError, NotImplementedError, AttributeError):
+        pytest.skip("this platform will not create a directory symlink here")
+    target = link_dir / "x.sh"
+    monkeypatch.setattr(w, "ALLOWED", (("host", str(target).replace(os.sep, "/")),))
+    monkeypatch.setattr(w, "BACKUP_DIR", str(tmp_path / "backups").replace(os.sep, "/"))
+    _stdin(monkeypatch, b"new\n")
+
+    with pytest.raises(Exception) as caught:
+        w.dispatch(_cmd(target, b"new\n"))
+
+    assert "symbolic link" in str(caught.value)
+    assert (real_dir / "x.sh").read_bytes() == b"original\n"
+
+
+def test_the_backup_does_not_land_beside_a_web_served_file(w, target, tmp_path, monkeypatch):
+    """Codex's P1: a .proxvox-bak of a PHP file in a web root is fetchable.
+
+    A safety copy that anyone can download as source is a disclosure, so the
+    backup goes to a private directory outside every document root.
+    """
+    new = b"#!/bin/sh\nrepaired\n"
+    _stdin(monkeypatch, new)
+    result = w.dispatch(_cmd(target, new))
+
+    assert result["backup_path"]
+    assert not list(target.parent.glob("*.proxvox-bak-*")), \
+        "the backup was written beside the file it is protecting"
+    assert "backups" in result["backup_path"]
+    assert open(result["backup_path"], "rb").read() == b"#!/bin/sh\noriginal\n"
+
+
+def test_the_temp_file_is_opened_exclusively(w, target, monkeypatch):
+    """Codex's P0: the temp name is predictable.
+
+    Without O_EXCL a pre-planted file at that name -- or a symlink -- is opened
+    and written through. With it, a collision is an error instead of a silent
+    takeover.
+    """
+    planted = "%s.proxvox-tmp-%d" % (str(target).replace(os.sep, "/"), os.getpid())
+    with open(planted, "wb") as handle:
+        handle.write(b"planted\n")
+    original = target.read_bytes()
+    _stdin(monkeypatch, b"new\n")
+
+    with pytest.raises(Exception):
+        w.dispatch(_cmd(target, b"new\n"))
+
+    assert target.read_bytes() == original
+    assert open(planted, "rb").read() == b"planted\n", "it wrote through the planted file"
+
+
+def test_the_container_write_path_can_actually_run(w, monkeypatch):
+    """Codex's P1 functional, and the one that embarrasses me.
+
+    _run passed stdin=PIPE alongside input=, which subprocess rejects with
+    "stdin and input arguments may not both be used" BEFORE the command runs.
+    So the container write had never worked, and no test of mine caught it
+    because I only exercised the HOST path. This drives _run with content and
+    asserts the bytes reach the command's stdin.
+    """
+    seen = {}
+
+    def _fake(argv, **kwargs):
+        seen["argv"] = argv
+        seen["kwargs"] = kwargs
+
+        class _Done:
+            returncode = 0
+            stdout = b""
+            stderr = b""
+        return _Done()
+
+    monkeypatch.setattr(w.subprocess, "run", _fake)
+    w._run(["/usr/bin/dd", "of=/tmp/x"], stdin_bytes=b"payload")
+
+    assert seen["kwargs"].get("input") == b"payload"
+    assert "stdin" not in seen["kwargs"], \
+        "stdin= alongside input= is the ValueError that broke this path"
+
+
+def test_the_symlink_refusal_fires_even_where_links_cannot_be_made(w, target, monkeypatch):
+    """The two tests above SKIP on Windows, so the guard was unproven here.
+
+    A skipped test is not a passing one, and "unknown is never a pass" is the
+    rule. This drives the refusal by forcing the one thing it asks the OS --
+    is this a link -- so the BRANCH is covered on every platform. The real
+    symlink tests still cover the OS integration wherever links can be made,
+    which includes the Debian host this actually runs on.
+    """
+    _stdin(monkeypatch, b"new\n")
+    original = target.read_bytes()
+    monkeypatch.setattr(w.os.path, "islink", lambda p: True)
+
+    with pytest.raises(Exception) as caught:
+        w.dispatch(_cmd(target, b"new\n"))
+
+    assert "symbolic link" in str(caught.value)
+    assert target.read_bytes() == original
+
+
+def test_a_parent_link_is_checked_segment_by_segment(w, target, monkeypatch):
+    """And the parent walk is driven too, by making only a parent look linked."""
+    _stdin(monkeypatch, b"new\n")
+    # The walk builds POSIX names from "/" downwards, which is right for the
+    # Debian host but does not reproduce a Windows path. So the condition is
+    # "anything ABOVE the target looks like a link", which is what the branch
+    # actually asks, rather than a path string this platform would never form.
+    whole = str(target).replace(os.sep, "/")
+    monkeypatch.setattr(w.os.path, "islink", lambda p: str(p) != whole)
+
+    with pytest.raises(Exception) as caught:
+        w.dispatch(_cmd(target, b"new\n"))
+
+    assert "above it is a symbolic link" in str(caught.value)
 
 # ===== SNAPSMACK EOF =====

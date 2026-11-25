@@ -63,10 +63,20 @@ import time
 REMOTE_COMMAND_TIMEOUT_SECONDS = 120
 MAX_WRITE_BYTES = 8 * 1024 * 1024
 
+# BACKUPS DO NOT LIVE BESIDE THE FILE. Codex caught this: a .proxvox-bak of a
+# PHP file inside a web root can be fetched as source by anyone who guesses
+# the name, which turns a safety copy into a disclosure. They go here instead,
+# outside every document root, created 0700.
+BACKUP_DIR = "/var/backups/proxvox"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # THE ALLOWLIST. Sean sees this list before it goes live and adding to it needs
 # his yes. Each entry is (target, glob). target is "host" or a container vmid
-# as a string. A glob matches a WHOLE absolute path after resolution.
+# as a string. A glob is matched SEGMENT BY SEGMENT -- a * never crosses a
+# slash -- and it is checked against the path BOTH as given and after symlink
+# resolution. This comment used to claim "after resolution" while the code
+# only normalised the string, which is the exact fault this repo calls out:
+# a code comment is not evidence. Codex caught it in review.
 # ─────────────────────────────────────────────────────────────────────────────
 ALLOWED = (
     # The Proxmox host: the backup script the PM named, and nothing else.
@@ -141,9 +151,37 @@ def _vmid(value):
     return raw
 
 
+def _segment_match(path, pattern):
+    """Match a path against a glob WITHOUT letting * cross a slash.
+
+    fnmatch's * matches "/" happily, which Codex caught in review: the
+    allowlist entry /var/www/*/public_html/* also matched
+    /var/www/a/b/c/public_html/deep/evil.php, so a pattern that reads like
+    "one site directory" granted arbitrary depth. Measured before the fix.
+
+    So each segment is matched against the corresponding pattern segment and a
+    * stops at the separator, which is what the patterns were always meant to
+    say. "**" is accepted as the explicit way to say "any depth below here",
+    so a pattern that wants it has to ask.
+    """
+    path_parts = [seg for seg in str(path).split("/") if seg != ""]
+    pat_parts = [seg for seg in str(pattern).split("/") if seg != ""]
+    for index, pat_seg in enumerate(pat_parts):
+        if pat_seg == "**":
+            return index == len(pat_parts) - 1 and len(path_parts) >= index
+        if index >= len(path_parts):
+            return False
+        if not fnmatch.fnmatch(path_parts[index], pat_seg):
+            return False
+    return len(path_parts) == len(pat_parts)
+
+
 def _never_write(path):
     for pattern in NEVER_WRITE:
-        if fnmatch.fnmatch(path, pattern):
+        # NEVER_WRITE is deliberately matched the OLD, wider way: these are
+        # refusals, and a refusal that reaches further than its pattern reads
+        # is the safe direction. /etc/pve/* must cover /etc/pve/priv/authkey.
+        if fnmatch.fnmatch(path, pattern) or _segment_match(path, pattern):
             return pattern
     return ""
 
@@ -157,7 +195,7 @@ def _check_allowed(target, path):
             "host-identity file. No maintenance task needs one."
             % (path, blocked))
     for allowed_target, pattern in ALLOWED:
-        if allowed_target == target and fnmatch.fnmatch(path, pattern):
+        if allowed_target == target and _segment_match(path, pattern):
             return pattern
     raise Refused(
         "refusing to write %s on %s: it is not in the allowlist. The list "
@@ -166,10 +204,17 @@ def _check_allowed(target, path):
 
 
 def _run(argv, stdin_bytes=None):
-    proc = subprocess.run(
-        argv, stdin=subprocess.PIPE if stdin_bytes is not None else None,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        timeout=REMOTE_COMMAND_TIMEOUT_SECONDS, input=stdin_bytes, check=False)
+    # NO stdin= ALONGSIDE input=. subprocess raises "stdin and input arguments
+    # may not both be used" BEFORE the command runs, so the container write
+    # path could never have worked. Codex found it in review; no test of mine
+    # caught it because I only ever exercised the HOST path, where this
+    # argument is unused. That is the whole lesson: an untested branch is not
+    # a working branch, however carefully it reads.
+    kwargs = {"stdout": subprocess.PIPE, "stderr": subprocess.PIPE,
+              "timeout": REMOTE_COMMAND_TIMEOUT_SECONDS, "check": False}
+    if stdin_bytes is not None:
+        kwargs["input"] = stdin_bytes
+    proc = subprocess.run(argv, **kwargs)
     if proc.returncode != 0:
         detail = (proc.stderr or b"").decode("utf-8", "replace").strip()
         raise Refused("command failed: %s" % (detail[:300] or argv[0]))
@@ -225,7 +270,49 @@ def _read_stdin_content(declared_sha256):
     return content
 
 
+def _refuse_symlinks(path):
+    """Refuse a symlink at the target or anywhere above it.
+
+    Codex's P0: the allowlist was checked against the STRING, so a symlink at
+    an allowlisted path pointing at /etc/shadow would have passed it and been
+    written through. The honest fix at this size is to refuse links outright
+    rather than to resolve and re-check: a maintenance target that is a
+    symlink is a surprise worth stopping on, and refusing is simpler to
+    verify than a resolution routine I would have to get exactly right.
+
+    Anchored descriptor traversal (openat with O_NOFOLLOW per segment) is the
+    thorough answer and is NOT what this does. Said plainly because a guard
+    believed to do more than it does is worse than no guard: this closes the
+    symlinked-target and symlinked-parent cases, and it does not make the
+    traversal atomic against a path swapped mid-call.
+    """
+    if os.path.islink(path):
+        raise Refused(
+            "refusing to write %s: it is a symbolic link. A maintenance "
+            "target that is a link is a surprise, and following it would "
+            "write somewhere the allowlist never approved." % path)
+    parent = posixpath.dirname(path) or "/"
+    walked = ""
+    for seg in parent.strip("/").split("/"):
+        if not seg:
+            continue
+        walked = walked + "/" + seg
+        if os.path.islink(walked):
+            raise Refused(
+                "refusing to write %s: %s above it is a symbolic link, so the "
+                "real destination is not the path the allowlist approved."
+                % (path, walked))
+
+
+def _private_backup(path):
+    """A backup path outside every document root, created 0700."""
+    os.makedirs(BACKUP_DIR, mode=0o700, exist_ok=True)
+    flat = path.strip("/").replace("/", "_")
+    return posixpath.join(BACKUP_DIR, "%s.%d" % (flat, int(time.time())))
+
+
 def _put_host(path, content, dry_run):
+    _refuse_symlinks(path)
     before = _sha256_of("host", path)
     backup = ""
     if dry_run:
@@ -241,7 +328,7 @@ def _put_host(path, content, dry_run):
     # mechanics can be exercised on any platform instead of only on the host.
     # The CONTAINER path below still uses pct exec: there is no other way in.
     if before:
-        backup = "%s.proxvox-bak-%d" % (path, int(time.time()))
+        backup = _private_backup(path)
         shutil.copy2(path, backup)
     tmp = "%s.proxvox-tmp-%d" % (path, os.getpid())
     # O_BINARY OR THE BYTES CHANGE UNDER YOU. Found by the readback check in
@@ -252,7 +339,12 @@ def _put_host(path, content, dry_run):
     # getattr), and it is here because the desktop half of this tool is
     # developed and tested on Windows -- and because CRLF drift has already
     # cost this project a release night once.
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0)
+    # O_EXCL AND O_NOFOLLOW. The temp name is predictable, so without O_EXCL
+    # a pre-planted file -- or a symlink pointing anywhere -- would be opened
+    # and written through. Codex's P0. O_EXCL means a collision is an error
+    # rather than a silent takeover.
+    flags = (os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_TRUNC
+             | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0))
     handle = os.open(tmp, flags, 0o600)
     try:
         os.write(handle, content)
