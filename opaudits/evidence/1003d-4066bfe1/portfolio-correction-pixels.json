@@ -1,0 +1,4940 @@
+{
+  "schema": "snapsmack.skin-render-pixel-parity.v1",
+  "baseline_dir": "C:\\dev\\snapsmack\\.codex-temp\\1003d-gate-evidence\\portfolio-parent-fixtures",
+  "candidate_dir": "C:\\dev\\snapsmack\\.codex-temp\\1003d-gate-evidence\\portfolio-corrected-fixtures",
+  "checked": 344,
+  "unchanged": 344,
+  "changed": 0,
+  "errors": 0,
+  "warnings": 114,
+  "results": [
+    {
+      "skin": "50-shades-of-noah-grey",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "0A5A8E31830E2C05694B325B899B1213651CE98886C31B93E069D0CCD9FF13FB",
+      "candidate_sha256": "0A5A8E31830E2C05694B325B899B1213651CE98886C31B93E069D0CCD9FF13FB",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "50-shades-of-noah-grey",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "BE903582618EE4F3F3242FCC7EF6FCBA444887BB03A44F0C4B96A3F59BD0EB3F",
+      "candidate_sha256": "BE903582618EE4F3F3242FCC7EF6FCBA444887BB03A44F0C4B96A3F59BD0EB3F",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "50-shades-of-noah-grey",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "B833F459F313D45CB083984044554E0ABC82B96D499047AB92E2C2FE52887740",
+      "candidate_sha256": "B833F459F313D45CB083984044554E0ABC82B96D499047AB92E2C2FE52887740",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "50-shades-of-noah-grey",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "E29E82A529FE4447A7D965A8ED4519F052CE8FBEE1042CA799D3FDB53AEF56E5",
+      "candidate_sha256": "E29E82A529FE4447A7D965A8ED4519F052CE8FBEE1042CA799D3FDB53AEF56E5",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "50-shades-of-noah-grey",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "0A7FDB55B1043281AB50AB1BCA32988CC7FEFC5F5248345B55EA5A917DCBCA71",
+      "candidate_sha256": "0A7FDB55B1043281AB50AB1BCA32988CC7FEFC5F5248345B55EA5A917DCBCA71",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "50-shades-of-noah-grey",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "3AAD683AB523B8A476AE71393E8D091B5294B0C1F419CDD722E73D728B6BFC38",
+      "candidate_sha256": "3AAD683AB523B8A476AE71393E8D091B5294B0C1F419CDD722E73D728B6BFC38",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "50-shades-of-noah-grey",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "7A721F9FDD529E0F7D389010B233B614EC9F8168CBAD746FD52219B6F50CCC2F",
+      "candidate_sha256": "7A721F9FDD529E0F7D389010B233B614EC9F8168CBAD746FD52219B6F50CCC2F",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "50-shades-of-noah-grey",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "D9BBAE62449158B91B6C7BD42FC8ADE812BBC9366B950F3032114843CC774D81",
+      "candidate_sha256": "D9BBAE62449158B91B6C7BD42FC8ADE812BBC9366B950F3032114843CC774D81",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "50-shades-of-noah-grey",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "D7343144594ABA3225326F80C228378506E206CE11F65D582E5F602D86685629",
+      "candidate_sha256": "D7343144594ABA3225326F80C228378506E206CE11F65D582E5F602D86685629",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "50-shades-of-noah-grey",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "9CDD5F7BDCA896340773626B7AD45588BDD7F4B2CA9DC2F021156FE6BEFC7153",
+      "candidate_sha256": "9CDD5F7BDCA896340773626B7AD45588BDD7F4B2CA9DC2F021156FE6BEFC7153",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "50-shades-of-noah-grey",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "C9E5F6C387F5C806E4D2C082787428782B2287D512E18B578200C9BA1F675EF3",
+      "candidate_sha256": "C9E5F6C387F5C806E4D2C082787428782B2287D512E18B578200C9BA1F675EF3",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "50-shades-of-noah-grey",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "C66C2AEBCA0E834F825E3586BF834BAC61AD02E044DF53B1067F9757B9240A42",
+      "candidate_sha256": "C66C2AEBCA0E834F825E3586BF834BAC61AD02E044DF53B1067F9757B9240A42",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "52-card-pickup",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "0127895C060E1B0DFC5FD7C90E51E7F646C1BA79860ECFFEC4A150EF0C74B332",
+      "candidate_sha256": "0127895C060E1B0DFC5FD7C90E51E7F646C1BA79860ECFFEC4A150EF0C74B332",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "52-card-pickup",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "A7CFE116314DA9BEE689D0D548919BE3975F877D65E0216BBBA01C09D217A1E3",
+      "candidate_sha256": "A7CFE116314DA9BEE689D0D548919BE3975F877D65E0216BBBA01C09D217A1E3",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "52-card-pickup",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "16EDE7317CBA6BA424F363B898DFCC9617DB1FBF084758FFE1DA25CA72BE5DD8",
+      "candidate_sha256": "16EDE7317CBA6BA424F363B898DFCC9617DB1FBF084758FFE1DA25CA72BE5DD8",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "52-card-pickup",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "0127895C060E1B0DFC5FD7C90E51E7F646C1BA79860ECFFEC4A150EF0C74B332",
+      "candidate_sha256": "0127895C060E1B0DFC5FD7C90E51E7F646C1BA79860ECFFEC4A150EF0C74B332",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "52-card-pickup",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "A7CFE116314DA9BEE689D0D548919BE3975F877D65E0216BBBA01C09D217A1E3",
+      "candidate_sha256": "A7CFE116314DA9BEE689D0D548919BE3975F877D65E0216BBBA01C09D217A1E3",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "52-card-pickup",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "16EDE7317CBA6BA424F363B898DFCC9617DB1FBF084758FFE1DA25CA72BE5DD8",
+      "candidate_sha256": "16EDE7317CBA6BA424F363B898DFCC9617DB1FBF084758FFE1DA25CA72BE5DD8",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "52-card-pickup",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "8B5D5B78613931C790EC2A31F28FDCFBDA69DF6557E3CF5D1E66D56B9C3B7F19",
+      "candidate_sha256": "8B5D5B78613931C790EC2A31F28FDCFBDA69DF6557E3CF5D1E66D56B9C3B7F19",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "52-card-pickup",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "75B2B56E9FFC769C5FFD0F075BC73DB788DD3EE1B6FC06A9F8075592BCFC98C6",
+      "candidate_sha256": "75B2B56E9FFC769C5FFD0F075BC73DB788DD3EE1B6FC06A9F8075592BCFC98C6",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "52-card-pickup",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "0E76687BB3DCE15275768C1D2E47ADA71CDA2912CE8F69F6991F2F11992246C5",
+      "candidate_sha256": "0E76687BB3DCE15275768C1D2E47ADA71CDA2912CE8F69F6991F2F11992246C5",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "52-card-pickup",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "E4C132B61ACDFB74F53515AE7CBDF25AA53383B4145E25A47AA722E0B4788DD7",
+      "candidate_sha256": "E4C132B61ACDFB74F53515AE7CBDF25AA53383B4145E25A47AA722E0B4788DD7",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "52-card-pickup",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "A8754B4BDF6AC866FAC0C0F29A38CFF040D36E9F62F7409960A0EDB1C25BE61A",
+      "candidate_sha256": "A8754B4BDF6AC866FAC0C0F29A38CFF040D36E9F62F7409960A0EDB1C25BE61A",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "52-card-pickup",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "F3442A76F5A1E22200284E5FA1DF930B5E13EE0759E32801614CAB8CB64A6A5B",
+      "candidate_sha256": "F3442A76F5A1E22200284E5FA1DF930B5E13EE0759E32801614CAB8CB64A6A5B",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "alfred",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "E6099C5191EF3842613856A506BAA81C162B93926814D35D5BC61BFEE78A38B8",
+      "candidate_sha256": "E6099C5191EF3842613856A506BAA81C162B93926814D35D5BC61BFEE78A38B8",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "alfred",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "29E055E1B21CE29A281CE32E17526C391DC7A6E8BEDBADA97479C1C50AA82669",
+      "candidate_sha256": "29E055E1B21CE29A281CE32E17526C391DC7A6E8BEDBADA97479C1C50AA82669",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "alfred",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "78C6D1F6395CE8435D8CF402A8AADB6993AFA9B35AEE871B57BDFB809F5629D0",
+      "candidate_sha256": "78C6D1F6395CE8435D8CF402A8AADB6993AFA9B35AEE871B57BDFB809F5629D0",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "alfred",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "9501F49C54AD0D161F0185D603A86553AD015339D565612DC61C68C408BFEBAF",
+      "candidate_sha256": "9501F49C54AD0D161F0185D603A86553AD015339D565612DC61C68C408BFEBAF",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "alfred",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "B8E9B23FD842E4EF4C4ADDCBCA653974DBFF7F2E1D06F2BEA08C20BAA93450E8",
+      "candidate_sha256": "B8E9B23FD842E4EF4C4ADDCBCA653974DBFF7F2E1D06F2BEA08C20BAA93450E8",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "alfred",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "C74AA375DC38D84CCDC75EAB95041F3EE94879C1D9DB14700A72D9A28A7EB9CA",
+      "candidate_sha256": "C74AA375DC38D84CCDC75EAB95041F3EE94879C1D9DB14700A72D9A28A7EB9CA",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "alfred",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "A566FF6E2C1412EA5F230EEA13F8DC2BBBCD3586F622D1D2189F9A8B748C6484",
+      "candidate_sha256": "A566FF6E2C1412EA5F230EEA13F8DC2BBBCD3586F622D1D2189F9A8B748C6484",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "alfred",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "B16196BEAC17B1F0C2DDE8502C819F67CB3209D6B96DC2310D5B95FFD7DF0C04",
+      "candidate_sha256": "B16196BEAC17B1F0C2DDE8502C819F67CB3209D6B96DC2310D5B95FFD7DF0C04",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "alfred",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "B9306E0DAD210B8D5460CC839F3048B1617406375BD5E7948BEB89EFA7546FB3",
+      "candidate_sha256": "B9306E0DAD210B8D5460CC839F3048B1617406375BD5E7948BEB89EFA7546FB3",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "alfred",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "5D714EE5070C4695F9427F4C7C73F5139FE7EA658DAA565B1740FD56BB2CE618",
+      "candidate_sha256": "5D714EE5070C4695F9427F4C7C73F5139FE7EA658DAA565B1740FD56BB2CE618",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "alfred",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "A017F96D951DF046021173549AC5BB4866061762B81E960758D33B063C744B59",
+      "candidate_sha256": "A017F96D951DF046021173549AC5BB4866061762B81E960758D33B063C744B59",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "alfred",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "54FA29EA7C7C0E33A0D61ECB765789F5E8C5D14C11C6BD3377BF76D89DDAA3BC",
+      "candidate_sha256": "54FA29EA7C7C0E33A0D61ECB765789F5E8C5D14C11C6BD3377BF76D89DDAA3BC",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "aurora",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "1E5B1211CDC37B365851961FB9DFA600C6FDBDC32BA22B3EF6BBF974A9489916",
+      "candidate_sha256": "1E5B1211CDC37B365851961FB9DFA600C6FDBDC32BA22B3EF6BBF974A9489916",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "aurora",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "7A135780D7B432F4B8D288A54AD6C13660FA05DFEB746709220C198006705B9D",
+      "candidate_sha256": "7A135780D7B432F4B8D288A54AD6C13660FA05DFEB746709220C198006705B9D",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "aurora",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "990B5C766C2205E712195335FFBB669931783E1E6A0589222808AA2AA3CE379D",
+      "candidate_sha256": "990B5C766C2205E712195335FFBB669931783E1E6A0589222808AA2AA3CE379D",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "aurora",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "223A76567C16FB68535648E148C8FCC9A524F448BEE5D2386774491D50A5CDD1",
+      "candidate_sha256": "223A76567C16FB68535648E148C8FCC9A524F448BEE5D2386774491D50A5CDD1",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "aurora",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "B00039126499223E35D183AA16914439E5CDB400244BC3BC7B2B292269E7B56B",
+      "candidate_sha256": "B00039126499223E35D183AA16914439E5CDB400244BC3BC7B2B292269E7B56B",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "aurora",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "97A301E7AA74BE76BE709E4DE073050BABAE23BD046B0723E2039D015ED0CC07",
+      "candidate_sha256": "97A301E7AA74BE76BE709E4DE073050BABAE23BD046B0723E2039D015ED0CC07",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "aurora",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "4FAD433F50C759F08A9E3B087FAB957714890A16BFA4D4898679B139BF08D06D",
+      "candidate_sha256": "4FAD433F50C759F08A9E3B087FAB957714890A16BFA4D4898679B139BF08D06D",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "aurora",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "AD1644C6466508A9ABA0F599A09435FEFC865AABF727EE9CD1FB663EC86A54CF",
+      "candidate_sha256": "AD1644C6466508A9ABA0F599A09435FEFC865AABF727EE9CD1FB663EC86A54CF",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "aurora",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "706C2B0057E62A8FEFE7C4F6543CB5F864D2FEDEF39D49BD3032A67E33CE3128",
+      "candidate_sha256": "706C2B0057E62A8FEFE7C4F6543CB5F864D2FEDEF39D49BD3032A67E33CE3128",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "aurora",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "BA63FDBC3ED475AE09243C70895F34D45BDF7A6AF4F1500A682E8B56B0D79218",
+      "candidate_sha256": "BA63FDBC3ED475AE09243C70895F34D45BDF7A6AF4F1500A682E8B56B0D79218",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "aurora",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "A2180FDC80EFACCC2DA04D1EE4E2F945675CD85410BFE5CEDFDF33391B7DA1CE",
+      "candidate_sha256": "A2180FDC80EFACCC2DA04D1EE4E2F945675CD85410BFE5CEDFDF33391B7DA1CE",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "aurora",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "6E5D364EA5E6477F8849CFD085271D998ADF325910A11DAD1559CB65A8CB23E5",
+      "candidate_sha256": "6E5D364EA5E6477F8849CFD085271D998ADF325910A11DAD1559CB65A8CB23E5",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "chaplin",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "9AD30F683DFCE18357C083401F4159460464A69F745F2CD4DB838288539B7148",
+      "candidate_sha256": "9AD30F683DFCE18357C083401F4159460464A69F745F2CD4DB838288539B7148",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "chaplin",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "FA67C9D11AB35FD4C06E88D235305A2ECDF05501E6C660F9AB8416398DDC49E2",
+      "candidate_sha256": "FA67C9D11AB35FD4C06E88D235305A2ECDF05501E6C660F9AB8416398DDC49E2",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "chaplin",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "B3C4B36E9947295647231A71398F269D37A0F5C9ED8CF65C2D6DC4212D10F36E",
+      "candidate_sha256": "B3C4B36E9947295647231A71398F269D37A0F5C9ED8CF65C2D6DC4212D10F36E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "chaplin",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "1861AAF3071888C3012884228511648048FADDE61D8D91FF4505220ECADDD738",
+      "candidate_sha256": "1861AAF3071888C3012884228511648048FADDE61D8D91FF4505220ECADDD738",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "chaplin",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "DC613F03688F7EAF0DD329B767B4B86AA9CA749A80EF6E8A8D4BDE30FB1926C4",
+      "candidate_sha256": "DC613F03688F7EAF0DD329B767B4B86AA9CA749A80EF6E8A8D4BDE30FB1926C4",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "chaplin",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "4849326B867F8264862FAE4B5500194119AE73A4F0B973D0F897DBB4FE29E0DC",
+      "candidate_sha256": "4849326B867F8264862FAE4B5500194119AE73A4F0B973D0F897DBB4FE29E0DC",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "chaplin",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "444B8F5A25C134BCBD9E5937C0882D2D5C479E7E9660D20465FD5A85A4A0919E",
+      "candidate_sha256": "444B8F5A25C134BCBD9E5937C0882D2D5C479E7E9660D20465FD5A85A4A0919E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "chaplin",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "22B64AA82C817AC54A6AE55EF483A35A132C87069B73941E14E2ED79B2D0748E",
+      "candidate_sha256": "22B64AA82C817AC54A6AE55EF483A35A132C87069B73941E14E2ED79B2D0748E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "chaplin",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "83F60900178820D4F69143CE4335CFBCC56B4C8B23B32B9E9ED7834A3AC1776B",
+      "candidate_sha256": "83F60900178820D4F69143CE4335CFBCC56B4C8B23B32B9E9ED7834A3AC1776B",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "chaplin",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "EDD9D4D087514C43B714BB8055834096E18B3FA61133768C594F93012FDFFE7C",
+      "candidate_sha256": "EDD9D4D087514C43B714BB8055834096E18B3FA61133768C594F93012FDFFE7C",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "chaplin",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "14F7BEBB2ECBD82734B1C6DD298F59AC62AA4044DFCF74CAA8F14C95997F5FD4",
+      "candidate_sha256": "14F7BEBB2ECBD82734B1C6DD298F59AC62AA4044DFCF74CAA8F14C95997F5FD4",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "chaplin",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "AFA90E639A97C7FD8510539D4F9BE458942A6B20A3F634DD0CD3457C5BBEBC52",
+      "candidate_sha256": "AFA90E639A97C7FD8510539D4F9BE458942A6B20A3F634DD0CD3457C5BBEBC52",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "full-monty",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "5F7E2725D2D094617AC6BF60B160074978E15778D987159E101BDBF97B8FE631",
+      "candidate_sha256": "5F7E2725D2D094617AC6BF60B160074978E15778D987159E101BDBF97B8FE631",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "full-monty",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "D6E75E09BA33A97BBA7A25818B30CE5A673B40C63F26E141EDAF5E318CDF0147",
+      "candidate_sha256": "D6E75E09BA33A97BBA7A25818B30CE5A673B40C63F26E141EDAF5E318CDF0147",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "full-monty",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "2CD7C3568FDB03F089B892FCE2999B8F0DD971681280747029DD5D615417F8E4",
+      "candidate_sha256": "2CD7C3568FDB03F089B892FCE2999B8F0DD971681280747029DD5D615417F8E4",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "full-monty",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "5F7E2725D2D094617AC6BF60B160074978E15778D987159E101BDBF97B8FE631",
+      "candidate_sha256": "5F7E2725D2D094617AC6BF60B160074978E15778D987159E101BDBF97B8FE631",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "full-monty",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "D6E75E09BA33A97BBA7A25818B30CE5A673B40C63F26E141EDAF5E318CDF0147",
+      "candidate_sha256": "D6E75E09BA33A97BBA7A25818B30CE5A673B40C63F26E141EDAF5E318CDF0147",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "full-monty",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "2CD7C3568FDB03F089B892FCE2999B8F0DD971681280747029DD5D615417F8E4",
+      "candidate_sha256": "2CD7C3568FDB03F089B892FCE2999B8F0DD971681280747029DD5D615417F8E4",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "full-monty",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "5F7E2725D2D094617AC6BF60B160074978E15778D987159E101BDBF97B8FE631",
+      "candidate_sha256": "5F7E2725D2D094617AC6BF60B160074978E15778D987159E101BDBF97B8FE631",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "full-monty",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "D6E75E09BA33A97BBA7A25818B30CE5A673B40C63F26E141EDAF5E318CDF0147",
+      "candidate_sha256": "D6E75E09BA33A97BBA7A25818B30CE5A673B40C63F26E141EDAF5E318CDF0147",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "full-monty",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "2CD7C3568FDB03F089B892FCE2999B8F0DD971681280747029DD5D615417F8E4",
+      "candidate_sha256": "2CD7C3568FDB03F089B892FCE2999B8F0DD971681280747029DD5D615417F8E4",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "full-monty",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "512BBBBB873EC216A9060B71A2A7A72E9369879111C8EC1A01C633E383CA1D4D",
+      "candidate_sha256": "512BBBBB873EC216A9060B71A2A7A72E9369879111C8EC1A01C633E383CA1D4D",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "full-monty",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "B3DD1D358C436DB2C326BA2BF18729E3BD6337DC6CBF37459A26BD061E30F8CE",
+      "candidate_sha256": "B3DD1D358C436DB2C326BA2BF18729E3BD6337DC6CBF37459A26BD061E30F8CE",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "full-monty",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "B3DD1D358C436DB2C326BA2BF18729E3BD6337DC6CBF37459A26BD061E30F8CE",
+      "candidate_sha256": "B3DD1D358C436DB2C326BA2BF18729E3BD6337DC6CBF37459A26BD061E30F8CE",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "galleria",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "EA29C9ADCEA5B226E83CDC9522B865FD06FD5C889FD17A9E0BA7049E041E81CE",
+      "candidate_sha256": "EA29C9ADCEA5B226E83CDC9522B865FD06FD5C889FD17A9E0BA7049E041E81CE",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "galleria",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "22AC8751FFB74AD8B347C021817C9CDDBB91002ECC53728B60B41F47F89574A9",
+      "candidate_sha256": "22AC8751FFB74AD8B347C021817C9CDDBB91002ECC53728B60B41F47F89574A9",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "galleria",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "D15AE12E1A4FAC873EB046388E51794A076B265385981EB8280349598E3B8123",
+      "candidate_sha256": "D15AE12E1A4FAC873EB046388E51794A076B265385981EB8280349598E3B8123",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "galleria",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "343F475CF24FB3E4D5C437ED8964E554A092371809960AE197B6EAD7B769F0B1",
+      "candidate_sha256": "343F475CF24FB3E4D5C437ED8964E554A092371809960AE197B6EAD7B769F0B1",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "galleria",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "AB2793B59E1A6F94CDE9D2BFA433BD0AE1D217DDF2A58ABF8C6999E796FE9EF9",
+      "candidate_sha256": "AB2793B59E1A6F94CDE9D2BFA433BD0AE1D217DDF2A58ABF8C6999E796FE9EF9",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "galleria",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "88BB8A3CBF325ABA3ABD04112827659BAD9F8FDE5B6ADFB1F30DD8B3E7497D98",
+      "candidate_sha256": "88BB8A3CBF325ABA3ABD04112827659BAD9F8FDE5B6ADFB1F30DD8B3E7497D98",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "galleria",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "BD9434FE209D31F92EA97EE9CB1D52E52E7BD8DB9B58FA312B568F151AF300E6",
+      "candidate_sha256": "BD9434FE209D31F92EA97EE9CB1D52E52E7BD8DB9B58FA312B568F151AF300E6",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "galleria",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "1DD0EADA70900E1877D19D4E8EA22C68185C2FA1623B0969F8B49AB7B447E44D",
+      "candidate_sha256": "1DD0EADA70900E1877D19D4E8EA22C68185C2FA1623B0969F8B49AB7B447E44D",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "galleria",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "C7B02E86442EB10E1A01F5978FDCDE77CD4C4D6D54A1D9767ED63CA9C3DA3AA2",
+      "candidate_sha256": "C7B02E86442EB10E1A01F5978FDCDE77CD4C4D6D54A1D9767ED63CA9C3DA3AA2",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "galleria",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "CFFF3B349701B951BE5A897E0BD88B9DE34FE896DB2390E22B4935A1596554E6",
+      "candidate_sha256": "CFFF3B349701B951BE5A897E0BD88B9DE34FE896DB2390E22B4935A1596554E6",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "galleria",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "047DDCE3AB12323CB481D1233647F2D4F41716531A7E784E040496728348559B",
+      "candidate_sha256": "047DDCE3AB12323CB481D1233647F2D4F41716531A7E784E040496728348559B",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "galleria",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "60399AA4361E26A23E61512221FE966275F6A960FBEBCFA5269A4635682314F4",
+      "candidate_sha256": "60399AA4361E26A23E61512221FE966275F6A960FBEBCFA5269A4635682314F4",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "game-on",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "9DECFB827BF8F41DFAEC17D88799D93ECD25B276BB19DCEAA2F7DD249B55F7DA",
+      "candidate_sha256": "9DECFB827BF8F41DFAEC17D88799D93ECD25B276BB19DCEAA2F7DD249B55F7DA",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "game-on",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "5F2A4AC1BA9C92D90756B2DE6A04054853051E49AAB4DF86453E6588CDD3FBB4",
+      "candidate_sha256": "5F2A4AC1BA9C92D90756B2DE6A04054853051E49AAB4DF86453E6588CDD3FBB4",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "game-on",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "19E8DEA686A188914E5978994B8F7E4F655BACA3247190A96EF4293B33FBE2D4",
+      "candidate_sha256": "19E8DEA686A188914E5978994B8F7E4F655BACA3247190A96EF4293B33FBE2D4",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "game-on",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "F5CF2AE48E7D3E5D744A7B28A0A2DE96D490F47CD924BDE19475D666F3AC352F",
+      "candidate_sha256": "F5CF2AE48E7D3E5D744A7B28A0A2DE96D490F47CD924BDE19475D666F3AC352F",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "game-on",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "08C3534EA1DC1ED1C8BDE21ABC1B49D8D0030CEB10BAFBC772C140F26FA6B8C7",
+      "candidate_sha256": "08C3534EA1DC1ED1C8BDE21ABC1B49D8D0030CEB10BAFBC772C140F26FA6B8C7",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "game-on",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "A276F5BF53BD28ADA41A0A76CBA8E907A1DC293DA259AC909501DA5D0921ED01",
+      "candidate_sha256": "A276F5BF53BD28ADA41A0A76CBA8E907A1DC293DA259AC909501DA5D0921ED01",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "game-on",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "6288A1C07877F87D6762341C49512D6D71A95554460598227947B5DAE263FC15",
+      "candidate_sha256": "6288A1C07877F87D6762341C49512D6D71A95554460598227947B5DAE263FC15",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "game-on",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "26353AC0246E4B21777C8D63D3929F0DD910CF3B38BCF7B9DD75C72B6BFA5B18",
+      "candidate_sha256": "26353AC0246E4B21777C8D63D3929F0DD910CF3B38BCF7B9DD75C72B6BFA5B18",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "game-on",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "0C1F7FFBBECF921BAC759DBC1B5CDBDA8F43B8BA4F7B178761DF1E7E2617200F",
+      "candidate_sha256": "0C1F7FFBBECF921BAC759DBC1B5CDBDA8F43B8BA4F7B178761DF1E7E2617200F",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "game-on",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "026A322874E92A847F27B093FF77C7E938DAB3031438FB57E80F119772504E5D",
+      "candidate_sha256": "026A322874E92A847F27B093FF77C7E938DAB3031438FB57E80F119772504E5D",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "game-on",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "4B86DFAB0602A71B7CC0C296A4B4AADB3E8040ACB05E9B579113C331FFFD5D45",
+      "candidate_sha256": "4B86DFAB0602A71B7CC0C296A4B4AADB3E8040ACB05E9B579113C331FFFD5D45",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "game-on",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "181BFB8E8E558E5FEFFA53230501CE463BBAAFC9B8C116144F346B618BDC2886",
+      "candidate_sha256": "181BFB8E8E558E5FEFFA53230501CE463BBAAFC9B8C116144F346B618BDC2886",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "glide",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "9229AF60B7FB87C2D48AFA8DD28F042C2388400025D3C4D7CF5F26182E4643CB",
+      "candidate_sha256": "9229AF60B7FB87C2D48AFA8DD28F042C2388400025D3C4D7CF5F26182E4643CB",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "glide",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "78BAC8C631E7CC3CE00B14012B0CF5FA498DC181F79E4B53EA995CB2504533C1",
+      "candidate_sha256": "78BAC8C631E7CC3CE00B14012B0CF5FA498DC181F79E4B53EA995CB2504533C1",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "glide",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "842156CF9D4FFAA2476B79027D3F11898FA6F35641F7C16EB25449360D4CC2C0",
+      "candidate_sha256": "842156CF9D4FFAA2476B79027D3F11898FA6F35641F7C16EB25449360D4CC2C0",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "glide",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "9229AF60B7FB87C2D48AFA8DD28F042C2388400025D3C4D7CF5F26182E4643CB",
+      "candidate_sha256": "9229AF60B7FB87C2D48AFA8DD28F042C2388400025D3C4D7CF5F26182E4643CB",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "glide",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "78BAC8C631E7CC3CE00B14012B0CF5FA498DC181F79E4B53EA995CB2504533C1",
+      "candidate_sha256": "78BAC8C631E7CC3CE00B14012B0CF5FA498DC181F79E4B53EA995CB2504533C1",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "glide",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "842156CF9D4FFAA2476B79027D3F11898FA6F35641F7C16EB25449360D4CC2C0",
+      "candidate_sha256": "842156CF9D4FFAA2476B79027D3F11898FA6F35641F7C16EB25449360D4CC2C0",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "glide",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "13EA483B0A3F348E48FC3B3627E030D019CAABA2B016DD660F7B58A946ACF491",
+      "candidate_sha256": "13EA483B0A3F348E48FC3B3627E030D019CAABA2B016DD660F7B58A946ACF491",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "glide",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "B501B4590F4C162943725F82BA8E785E4C87ADEBEEA0081AB23E9364EFD620B7",
+      "candidate_sha256": "B501B4590F4C162943725F82BA8E785E4C87ADEBEEA0081AB23E9364EFD620B7",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "glide",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "9C9FF2A9A7FF2689C01D6485D7953B3EB8B5029E496433DB3E0B7E109D9D01F2",
+      "candidate_sha256": "9C9FF2A9A7FF2689C01D6485D7953B3EB8B5029E496433DB3E0B7E109D9D01F2",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "glide",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "83DC14D2D7DEB1B5AC41A45C86B37D8B38C97182381463DAD6C0D3E6EB88027C",
+      "candidate_sha256": "83DC14D2D7DEB1B5AC41A45C86B37D8B38C97182381463DAD6C0D3E6EB88027C",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "glide",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "383319DF7E68D256FB203AA4F0C95F457B0D09524C305E9026C28E88BFFB3574",
+      "candidate_sha256": "383319DF7E68D256FB203AA4F0C95F457B0D09524C305E9026C28E88BFFB3574",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "glide",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "38AB7305231DA94695908E9BEB577F6A5C0B2BDFFD22E2B4AD4B40A465C80493",
+      "candidate_sha256": "38AB7305231DA94695908E9BEB577F6A5C0B2BDFFD22E2B4AD4B40A465C80493",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "heuristic",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "75DD9B3B2A869A66D574AA1C9416778020B6B67995210065C1D119EF4A5A9BE4",
+      "candidate_sha256": "75DD9B3B2A869A66D574AA1C9416778020B6B67995210065C1D119EF4A5A9BE4",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "heuristic",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "51014798852BC2DCB862B93A547FAB356DC25CD5E107B42313E8C5AD01876BD2",
+      "candidate_sha256": "51014798852BC2DCB862B93A547FAB356DC25CD5E107B42313E8C5AD01876BD2",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "heuristic",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "8840DA035E6586421C078B4157098AB28D54B20086A020D3D6DC16EF61E8053C",
+      "candidate_sha256": "8840DA035E6586421C078B4157098AB28D54B20086A020D3D6DC16EF61E8053C",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "heuristic",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "100A9622C3DC90617BEE1EAB4B8A9DAC363C40657E52C7DE2FFE1F4083D09C12",
+      "candidate_sha256": "100A9622C3DC90617BEE1EAB4B8A9DAC363C40657E52C7DE2FFE1F4083D09C12",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "heuristic",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "CE78F617435528D038BCA73358BA60B6D1B599C2526E9DD60462D81169E1E544",
+      "candidate_sha256": "CE78F617435528D038BCA73358BA60B6D1B599C2526E9DD60462D81169E1E544",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "heuristic",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "040D10D07A1451DB0AEB8AEDA437DB3B8EC1EBDA698B230613DA47FD2BF614B1",
+      "candidate_sha256": "040D10D07A1451DB0AEB8AEDA437DB3B8EC1EBDA698B230613DA47FD2BF614B1",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "heuristic",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "DCA66F2667CB65E99A93C0BACAE3C55606C14A05ACB34B309F722231BFA7A80C",
+      "candidate_sha256": "DCA66F2667CB65E99A93C0BACAE3C55606C14A05ACB34B309F722231BFA7A80C",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "heuristic",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "38836A8CEADA8140CB8F00B5A72F701C4E8673A4C2605E43C253AC05555C11E9",
+      "candidate_sha256": "38836A8CEADA8140CB8F00B5A72F701C4E8673A4C2605E43C253AC05555C11E9",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "heuristic",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "53CE4CF2337AD6111146E7BCDA40DF44E1CE048157B32D5175585C26CBDD8926",
+      "candidate_sha256": "53CE4CF2337AD6111146E7BCDA40DF44E1CE048157B32D5175585C26CBDD8926",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "heuristic",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "E99112E84E2DD208D8530BD7A57BC5EAAC7E88538BA532DA6F4E03C9556DEB37",
+      "candidate_sha256": "E99112E84E2DD208D8530BD7A57BC5EAAC7E88538BA532DA6F4E03C9556DEB37",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "heuristic",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "AB99EA4C9A35544AF4398595FE83C6DF695BB8B75F34005820B3944464B1777A",
+      "candidate_sha256": "AB99EA4C9A35544AF4398595FE83C6DF695BB8B75F34005820B3944464B1777A",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "heuristic",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "41FF8AB6CDBAC20C7D24C88C28385233F33F72214EF34279891064FE765463EC",
+      "candidate_sha256": "41FF8AB6CDBAC20C7D24C88C28385233F33F72214EF34279891064FE765463EC",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "hip-to-be-square",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "2FA03374FEC23471CA41263FCCE80C7DBBA6868D358A3024EBBA87431C271DD4",
+      "candidate_sha256": "2FA03374FEC23471CA41263FCCE80C7DBBA6868D358A3024EBBA87431C271DD4",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "hip-to-be-square",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "0CE9B18C126058F6C8044625EA656B53DBAC9E082A653B9FB01385C04ECD2EE5",
+      "candidate_sha256": "0CE9B18C126058F6C8044625EA656B53DBAC9E082A653B9FB01385C04ECD2EE5",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "hip-to-be-square",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "A1B51601892622B3C16D74B462A6BA3DC10463ADEA64AC754EBFA783751627A2",
+      "candidate_sha256": "A1B51601892622B3C16D74B462A6BA3DC10463ADEA64AC754EBFA783751627A2",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "hip-to-be-square",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "EB14C1CA119F9E1DDB670868219C241D06E0922CB95B47AC31D4ED4065FFD9C4",
+      "candidate_sha256": "EB14C1CA119F9E1DDB670868219C241D06E0922CB95B47AC31D4ED4065FFD9C4",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "hip-to-be-square",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "926853C57E4C3F34E00A81FE8FE3E279EE4964B7A19F32CCA40669B410DFECFD",
+      "candidate_sha256": "926853C57E4C3F34E00A81FE8FE3E279EE4964B7A19F32CCA40669B410DFECFD",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "hip-to-be-square",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "5A800398A880A9D1A674146BF182C09A34903A188C590F199A60D3AE0408B6C4",
+      "candidate_sha256": "5A800398A880A9D1A674146BF182C09A34903A188C590F199A60D3AE0408B6C4",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "hip-to-be-square",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "CE880E3A89EA6E1EA2E4494D904E42EA4F11DE9B20647E22BF940E4559E00BD9",
+      "candidate_sha256": "CE880E3A89EA6E1EA2E4494D904E42EA4F11DE9B20647E22BF940E4559E00BD9",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "hip-to-be-square",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "0F85E9A76F1502569A8888C3DDA39078C8F7BAA119DA617983BBBD3357C882D5",
+      "candidate_sha256": "0F85E9A76F1502569A8888C3DDA39078C8F7BAA119DA617983BBBD3357C882D5",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "hip-to-be-square",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "2DA1F69C51E911E0CA772BF4726B9A2F2C8798BA0BC96FC86D4C0BBB0A249817",
+      "candidate_sha256": "2DA1F69C51E911E0CA772BF4726B9A2F2C8798BA0BC96FC86D4C0BBB0A249817",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "hip-to-be-square",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "9AEDB8ECB890AB6C08E4FF606A0DC39BC819A2864AB9C90D0B2FEAFB0189F4BC",
+      "candidate_sha256": "9AEDB8ECB890AB6C08E4FF606A0DC39BC819A2864AB9C90D0B2FEAFB0189F4BC",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "hip-to-be-square",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "E732E444063D81C13DC1BFCE08629760F8D6FE8EE733015E20619914615338EB",
+      "candidate_sha256": "E732E444063D81C13DC1BFCE08629760F8D6FE8EE733015E20619914615338EB",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "hip-to-be-square",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "7D6FBC6FA1AC611A85E9A754D618D648746D97D7ED18A9708DF612F783FAD417",
+      "candidate_sha256": "7D6FBC6FA1AC611A85E9A754D618D648746D97D7ED18A9708DF612F783FAD417",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "impact-printer",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "6946B1D41E3D1EC1CAFA34AE6D3D4F9B0A56288FED6A41E68B789908DA838334",
+      "candidate_sha256": "6946B1D41E3D1EC1CAFA34AE6D3D4F9B0A56288FED6A41E68B789908DA838334",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "impact-printer",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "0A85267FC1CEC557EB9800BAA4F8E9B6F671C0E07A468405BADCB7403E0D8884",
+      "candidate_sha256": "0A85267FC1CEC557EB9800BAA4F8E9B6F671C0E07A468405BADCB7403E0D8884",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "impact-printer",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "897004242E15F486AF59FE6AF63C2D50F7F67495D3B6D1A2F6D4925573CA6A6E",
+      "candidate_sha256": "897004242E15F486AF59FE6AF63C2D50F7F67495D3B6D1A2F6D4925573CA6A6E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "impact-printer",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "F33BCF2EAC51D8BF043BEB120A487195DE02B1545E63C0D621421D2E6F02F892",
+      "candidate_sha256": "F33BCF2EAC51D8BF043BEB120A487195DE02B1545E63C0D621421D2E6F02F892",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "impact-printer",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "77D3A432446FE2F63E071FC93B344D7EE1405678F3A10E7F40D84D9C1A2694D2",
+      "candidate_sha256": "77D3A432446FE2F63E071FC93B344D7EE1405678F3A10E7F40D84D9C1A2694D2",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "impact-printer",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "F719030808550D365575041EB21F0DB21FD683A067CF0612FA8CA8B94DD25DAC",
+      "candidate_sha256": "F719030808550D365575041EB21F0DB21FD683A067CF0612FA8CA8B94DD25DAC",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "impact-printer",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "F33BCF2EAC51D8BF043BEB120A487195DE02B1545E63C0D621421D2E6F02F892",
+      "candidate_sha256": "F33BCF2EAC51D8BF043BEB120A487195DE02B1545E63C0D621421D2E6F02F892",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "impact-printer",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "77D3A432446FE2F63E071FC93B344D7EE1405678F3A10E7F40D84D9C1A2694D2",
+      "candidate_sha256": "77D3A432446FE2F63E071FC93B344D7EE1405678F3A10E7F40D84D9C1A2694D2",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "impact-printer",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "F719030808550D365575041EB21F0DB21FD683A067CF0612FA8CA8B94DD25DAC",
+      "candidate_sha256": "F719030808550D365575041EB21F0DB21FD683A067CF0612FA8CA8B94DD25DAC",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "impact-printer",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "336258507F734013A3E8C88CB704CAE5174F2904CFB54D53BFE3BD7AFB017F13",
+      "candidate_sha256": "336258507F734013A3E8C88CB704CAE5174F2904CFB54D53BFE3BD7AFB017F13",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "impact-printer",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "C0D64CB3FC6671665458631BE89F468C299EDCFDA2518F6C7F4248948B5AE766",
+      "candidate_sha256": "C0D64CB3FC6671665458631BE89F468C299EDCFDA2518F6C7F4248948B5AE766",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "impact-printer",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "B455298DF3C4E330BE4C5F6989B3347428ADB98CC98F8D4B033169FF8F8CD041",
+      "candidate_sha256": "B455298DF3C4E330BE4C5F6989B3347428ADB98CC98F8D4B033169FF8F8CD041",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "instant-camera",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "F3296660C0BB7C3FE2C3015472AB93C4B92C65D62892878A2BFA971D67C5DA52",
+      "candidate_sha256": "F3296660C0BB7C3FE2C3015472AB93C4B92C65D62892878A2BFA971D67C5DA52",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "instant-camera",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "6FB195437D079257ED3A6FC351D650904A3DF0047BC7E0AA45CB7E785181C538",
+      "candidate_sha256": "6FB195437D079257ED3A6FC351D650904A3DF0047BC7E0AA45CB7E785181C538",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "instant-camera",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "9C8C78B0814076F8864E5F6F7DF5A4CFAD0BC413FA22D51EA97DE99DE2224D21",
+      "candidate_sha256": "9C8C78B0814076F8864E5F6F7DF5A4CFAD0BC413FA22D51EA97DE99DE2224D21",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "instant-camera",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "7B128094B1C419A409CA3A9EB15C674DA5EB2B2ACAE7C44B25FAF66158BC36E3",
+      "candidate_sha256": "7B128094B1C419A409CA3A9EB15C674DA5EB2B2ACAE7C44B25FAF66158BC36E3",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "instant-camera",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "7B8512B492CAC1C85187D944037BA9D223C8A3A7CA646347630299E50FE44D77",
+      "candidate_sha256": "7B8512B492CAC1C85187D944037BA9D223C8A3A7CA646347630299E50FE44D77",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "instant-camera",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "D3FBEEAAC2DB60DEB1F246EE3F96696FE331DA16F80E06FD6430D609AE97CE5D",
+      "candidate_sha256": "D3FBEEAAC2DB60DEB1F246EE3F96696FE331DA16F80E06FD6430D609AE97CE5D",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "instant-camera",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "E5B1A274F1455F3B6DA0FE672801B61FB02B49BD63D3EDAF1BC060110A5E2444",
+      "candidate_sha256": "E5B1A274F1455F3B6DA0FE672801B61FB02B49BD63D3EDAF1BC060110A5E2444",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "instant-camera",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "F227C778D796655CFD7860B4FE73F050482528551DE653622FCA4561471F4F8B",
+      "candidate_sha256": "F227C778D796655CFD7860B4FE73F050482528551DE653622FCA4561471F4F8B",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "instant-camera",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "004BA2A755F7B99990462D47ED404B08194E88089DAACE53BCBDBB57E3E89E47",
+      "candidate_sha256": "004BA2A755F7B99990462D47ED404B08194E88089DAACE53BCBDBB57E3E89E47",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "instant-camera",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "1A7B31DFFDE706ABEDC136EF074C490D8C6D52757EC9A63F769D3448FD3D23FE",
+      "candidate_sha256": "1A7B31DFFDE706ABEDC136EF074C490D8C6D52757EC9A63F769D3448FD3D23FE",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "instant-camera",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "731BBB2275E92784B5901E6B832D716387A081EDACFF3BB29AB0601F6CD44AA8",
+      "candidate_sha256": "731BBB2275E92784B5901E6B832D716387A081EDACFF3BB29AB0601F6CD44AA8",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "instant-camera",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "A8B9C88A31FB4E5B8601EC41C2C7ACACBC24E1F4A5121CA4B3702F6A01362A94",
+      "candidate_sha256": "A8B9C88A31FB4E5B8601EC41C2C7ACACBC24E1F4A5121CA4B3702F6A01362A94",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "jive-turkey",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "F6775A868EF6E40C65F1F8E9E041FBD409E9822BC09C51ADBA5E7A7C06C2B09D",
+      "candidate_sha256": "F6775A868EF6E40C65F1F8E9E041FBD409E9822BC09C51ADBA5E7A7C06C2B09D",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "jive-turkey",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "1778B6C1144F96AB83C9391595D843561A0FFBBF3B80462B2D209CA0651E5B91",
+      "candidate_sha256": "1778B6C1144F96AB83C9391595D843561A0FFBBF3B80462B2D209CA0651E5B91",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "jive-turkey",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "4DE8595A1A471EAD800DDE2663CB57AAB7EAFA033C9C140273F304FA1944E204",
+      "candidate_sha256": "4DE8595A1A471EAD800DDE2663CB57AAB7EAFA033C9C140273F304FA1944E204",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "jive-turkey",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "0319204F69B29D89958E3942D1C5A967F076201E1755D3B91ABEC153A6AF7E7E",
+      "candidate_sha256": "0319204F69B29D89958E3942D1C5A967F076201E1755D3B91ABEC153A6AF7E7E",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "jive-turkey",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "06181858721539E951C2F384542A96C126910448C27BD51E7ABE5EB15D8B8E55",
+      "candidate_sha256": "06181858721539E951C2F384542A96C126910448C27BD51E7ABE5EB15D8B8E55",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "jive-turkey",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "F8A1DB1C6A31BCB4B982F0F7FC221A2C1E25F307CE7413BEC8A692AF9EF3E076",
+      "candidate_sha256": "F8A1DB1C6A31BCB4B982F0F7FC221A2C1E25F307CE7413BEC8A692AF9EF3E076",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "jive-turkey",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "905A20D74F5C0EB20C0E6B701D9F9BC74306437579D41EDB1BAE31E6E804D988",
+      "candidate_sha256": "905A20D74F5C0EB20C0E6B701D9F9BC74306437579D41EDB1BAE31E6E804D988",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "jive-turkey",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "962888E166D12262B5886EE02EDD059ECA84C6BD495CD33F34DF7A8D2A2BFDBC",
+      "candidate_sha256": "962888E166D12262B5886EE02EDD059ECA84C6BD495CD33F34DF7A8D2A2BFDBC",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "jive-turkey",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "53EF0963B5B7A7A2002239E798DCA5AE34B58A2AA679219E879670D141B5AF1E",
+      "candidate_sha256": "53EF0963B5B7A7A2002239E798DCA5AE34B58A2AA679219E879670D141B5AF1E",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "jive-turkey",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "8DE130A584A55D072A9DC28006D98B79BF160DB3BFABC0799BA3377B3A44F7CA",
+      "candidate_sha256": "8DE130A584A55D072A9DC28006D98B79BF160DB3BFABC0799BA3377B3A44F7CA",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "jive-turkey",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "8EEAD7675266F8DB5E02846D8CA78A30305340DBDBA6F251C492882C64BA4F5E",
+      "candidate_sha256": "8EEAD7675266F8DB5E02846D8CA78A30305340DBDBA6F251C492882C64BA4F5E",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "jive-turkey",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "91C6A1C6AF245D31BC427B404441FC4F04F9B4C06E72526E681163AF24EFC311",
+      "candidate_sha256": "91C6A1C6AF245D31BC427B404441FC4F04F9B4C06E72526E681163AF24EFC311",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "new-horizon",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "CC2E48518D186E1F8F7DBAE75237F5F0E42A9351498FA80F9BE340BCCB367B6F",
+      "candidate_sha256": "CC2E48518D186E1F8F7DBAE75237F5F0E42A9351498FA80F9BE340BCCB367B6F",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "new-horizon",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "735897372186DD82AC2C7946EF2EBD665ACF0FDCD5FF897EAB287F9D2C84F1C6",
+      "candidate_sha256": "735897372186DD82AC2C7946EF2EBD665ACF0FDCD5FF897EAB287F9D2C84F1C6",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "new-horizon",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "B7D0C68C11879CF5833BBA963C58B418BD2993BD90F271D7080EEF96F0EB5353",
+      "candidate_sha256": "B7D0C68C11879CF5833BBA963C58B418BD2993BD90F271D7080EEF96F0EB5353",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "new-horizon",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "9D303241083F56F618C398A1B93BD58BB6374A2FC38F21BDE8C34B8102669888",
+      "candidate_sha256": "9D303241083F56F618C398A1B93BD58BB6374A2FC38F21BDE8C34B8102669888",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "new-horizon",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "418014DBF896797307C8D7E6861FF328DBAFFE4D39C542E4B0BAE376F520373C",
+      "candidate_sha256": "418014DBF896797307C8D7E6861FF328DBAFFE4D39C542E4B0BAE376F520373C",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "new-horizon",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "7327EBCFFAF41D67A0440DD2A9D8A6CF39D913B6FBD19CA570BD51DB725B93F9",
+      "candidate_sha256": "7327EBCFFAF41D67A0440DD2A9D8A6CF39D913B6FBD19CA570BD51DB725B93F9",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "new-horizon",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "0A7F99C29071A858243037B0B73DDBD509D71DB7516377CEBAA9330AA319B3C3",
+      "candidate_sha256": "0A7F99C29071A858243037B0B73DDBD509D71DB7516377CEBAA9330AA319B3C3",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "new-horizon",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "4A761915AAB9C9C2F061DEA1F1C2C7A673D786D981BA951C25D0D4245583770C",
+      "candidate_sha256": "4A761915AAB9C9C2F061DEA1F1C2C7A673D786D981BA951C25D0D4245583770C",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "new-horizon",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "1AA602C7718BA292B0DAD984A40A8A4FBD1BB47D9866919A20EA1EB4D95BEEE5",
+      "candidate_sha256": "1AA602C7718BA292B0DAD984A40A8A4FBD1BB47D9866919A20EA1EB4D95BEEE5",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "new-horizon",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "DF6C3431FCBC194378E53CF303328C2F282B903C4B65397803DC16A53AC02CFB",
+      "candidate_sha256": "DF6C3431FCBC194378E53CF303328C2F282B903C4B65397803DC16A53AC02CFB",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "new-horizon",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "54B70F22CB9C9E86E4C8C2A5A786193DCB29900344BC2833556066F91C9EDF1A",
+      "candidate_sha256": "54B70F22CB9C9E86E4C8C2A5A786193DCB29900344BC2833556066F91C9EDF1A",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "new-horizon",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "499C8038487B70D2139053C39D7D935F958EA3EA1E54E354DA06365AEE02B7F1",
+      "candidate_sha256": "499C8038487B70D2139053C39D7D935F958EA3EA1E54E354DA06365AEE02B7F1",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "onyx",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "AB7CED3311F13FE5EC8603DDD50AD0894926AC7C325EB7A370758EF206FE15A8",
+      "candidate_sha256": "AB7CED3311F13FE5EC8603DDD50AD0894926AC7C325EB7A370758EF206FE15A8",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "onyx",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "DB9D057A66FE0357EB657142B9768CE7E5323284D07D115E67BC0F94FC4BEB40",
+      "candidate_sha256": "DB9D057A66FE0357EB657142B9768CE7E5323284D07D115E67BC0F94FC4BEB40",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "onyx",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "28185FC8CE29CAB0BC181ED9BB3FF483CDCC607D265C3E30CC1EB55E3C433C5B",
+      "candidate_sha256": "28185FC8CE29CAB0BC181ED9BB3FF483CDCC607D265C3E30CC1EB55E3C433C5B",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "onyx",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "E1CC5590B67525B366E7675600B920ACA3383E6E6A3E499F0785C3182C2B73BD",
+      "candidate_sha256": "E1CC5590B67525B366E7675600B920ACA3383E6E6A3E499F0785C3182C2B73BD",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "onyx",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "AC04C56DF6F72FADF1AF15FCA04295252BB7167BA84372B4F6498E70974A0425",
+      "candidate_sha256": "AC04C56DF6F72FADF1AF15FCA04295252BB7167BA84372B4F6498E70974A0425",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "onyx",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "960E239EB6511B77647B44A78C338B0361091AF88A61E673D19188C21961CAAF",
+      "candidate_sha256": "960E239EB6511B77647B44A78C338B0361091AF88A61E673D19188C21961CAAF",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "onyx",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "3EA67154F91F4908E21AFE26C992E55A3BD35043B8F80A09251AB489773F16B2",
+      "candidate_sha256": "3EA67154F91F4908E21AFE26C992E55A3BD35043B8F80A09251AB489773F16B2",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "onyx",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "7F3DBC6B98DB0AA93506DAF615CA9025A754BC93A1CC61394A5B7BB838823605",
+      "candidate_sha256": "7F3DBC6B98DB0AA93506DAF615CA9025A754BC93A1CC61394A5B7BB838823605",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "onyx",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "919C3B1333FD245B54E835852856D5A2CC1C073AE644D81FBD469C3DCDA3E30D",
+      "candidate_sha256": "919C3B1333FD245B54E835852856D5A2CC1C073AE644D81FBD469C3DCDA3E30D",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "onyx",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "2F933FC8D6C8A2CC9EC5192CE55259F72945113F9200D34D912209FF045243AF",
+      "candidate_sha256": "2F933FC8D6C8A2CC9EC5192CE55259F72945113F9200D34D912209FF045243AF",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "onyx",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "195766DCF011C61C50B0286B65BC8EE4ED75F94481CF5062D18A76ADD99B170A",
+      "candidate_sha256": "195766DCF011C61C50B0286B65BC8EE4ED75F94481CF5062D18A76ADD99B170A",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "onyx",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "90ADEC5AEBA932F8182B9B45E7C2C8237C5643E0F3B6D4363B620397C5E2DBA1",
+      "candidate_sha256": "90ADEC5AEBA932F8182B9B45E7C2C8237C5643E0F3B6D4363B620397C5E2DBA1",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "parade",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "AE07DCA36F1EF47650D2371F65462F20B7FE0A641F7E3B7E3BE2B98A9341B935",
+      "candidate_sha256": "AE07DCA36F1EF47650D2371F65462F20B7FE0A641F7E3B7E3BE2B98A9341B935",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "parade",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "DEFF4B35EA4D93E8B024CDA58C516FBF9D872463DBAD0D33F9A10EDB59CFEC82",
+      "candidate_sha256": "DEFF4B35EA4D93E8B024CDA58C516FBF9D872463DBAD0D33F9A10EDB59CFEC82",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "parade",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "223E73616DABB1EB45B39549B1D11E87010E60EE450B7D569AB2700E60E2D259",
+      "candidate_sha256": "223E73616DABB1EB45B39549B1D11E87010E60EE450B7D569AB2700E60E2D259",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "parade",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "E6D6EAD6A78859C63932E982FB06214F2C4454DC824D58FDC6EFD9E8FACB0990",
+      "candidate_sha256": "E6D6EAD6A78859C63932E982FB06214F2C4454DC824D58FDC6EFD9E8FACB0990",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "parade",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "D7FE3AC5B0627F1EBEFD257B0CD2F3EA47B627C470D79736BDD11574863F808C",
+      "candidate_sha256": "D7FE3AC5B0627F1EBEFD257B0CD2F3EA47B627C470D79736BDD11574863F808C",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "parade",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "ED0ACC93243BFBEF4AD8C5CC051912E2B3C554CD7BC348FB53252F353E1C13A1",
+      "candidate_sha256": "ED0ACC93243BFBEF4AD8C5CC051912E2B3C554CD7BC348FB53252F353E1C13A1",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "parade",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "ECBD0305B525DC6F7568FFE72BB8D78D564BC9A24779797B9A6EA969E8B3CFE8",
+      "candidate_sha256": "ECBD0305B525DC6F7568FFE72BB8D78D564BC9A24779797B9A6EA969E8B3CFE8",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "parade",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "40E0E3C8C21D5F9FA74981E36234049E330A63D7B766EFB43BF0D83E6DAAD35A",
+      "candidate_sha256": "40E0E3C8C21D5F9FA74981E36234049E330A63D7B766EFB43BF0D83E6DAAD35A",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "parade",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "CC02F64512D36DFCB64619AF8565D0E05B7C74DCFC9DA9797C4CF46949480BE7",
+      "candidate_sha256": "CC02F64512D36DFCB64619AF8565D0E05B7C74DCFC9DA9797C4CF46949480BE7",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "parade",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "CD49CD6E799F93C21F70E5A052F0AFE57601E1FFC960EFA92D87DE5C028F7426",
+      "candidate_sha256": "CD49CD6E799F93C21F70E5A052F0AFE57601E1FFC960EFA92D87DE5C028F7426",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "parade",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "6490CDB98BD86C7E9743125434D178AD5F57C73EEDBABC66C60349F55A02046D",
+      "candidate_sha256": "6490CDB98BD86C7E9743125434D178AD5F57C73EEDBABC66C60349F55A02046D",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "parade",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "6C333603E45F2F18D567916501A1AAFC07F45D19095C417C231766D48168A8A6",
+      "candidate_sha256": "6C333603E45F2F18D567916501A1AAFC07F45D19095C417C231766D48168A8A6",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "photogram",
+      "kind": "archive",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline_sha256": "19E06EA0CECBD16E81723B4394919918D2140CC0942B22968822E5B5C1B12C59",
+      "candidate_sha256": "19E06EA0CECBD16E81723B4394919918D2140CC0942B22968822E5B5C1B12C59",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "photogram",
+      "kind": "feed",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline_sha256": "F006F4B74FBF8CD37553FB1656B51D120F0AED9F6CFF3D233B1283FAB1050EDA",
+      "candidate_sha256": "F006F4B74FBF8CD37553FB1656B51D120F0AED9F6CFF3D233B1283FAB1050EDA",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "photogram",
+      "kind": "landing",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline_sha256": "013E23FAEE88D0B2002E4FDE3F0D855FC2467524799ACFE5145FF2FD18271EE2",
+      "candidate_sha256": "013E23FAEE88D0B2002E4FDE3F0D855FC2467524799ACFE5145FF2FD18271EE2",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "photogram",
+      "kind": "page",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline_sha256": "ED508DE3BD790F35CD1A94C2521B774220EDDD9CE6F7722D8043D77EA54F019B",
+      "candidate_sha256": "ED508DE3BD790F35CD1A94C2521B774220EDDD9CE6F7722D8043D77EA54F019B",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "rational-geo",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "D3F01CE8639B28B3C240A8FDB4587D7225CB55C08B0528443F06F6E23A0479E5",
+      "candidate_sha256": "D3F01CE8639B28B3C240A8FDB4587D7225CB55C08B0528443F06F6E23A0479E5",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "rational-geo",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "C565A9CE35A602119047C65D0A882064C46DEC175814A7BC75BBA987DD447A9F",
+      "candidate_sha256": "C565A9CE35A602119047C65D0A882064C46DEC175814A7BC75BBA987DD447A9F",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "rational-geo",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "71EB8FA041D33FC29CA5FA7D089F34FB3C1242DA7716C6579FACF6549C2589F9",
+      "candidate_sha256": "71EB8FA041D33FC29CA5FA7D089F34FB3C1242DA7716C6579FACF6549C2589F9",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "rational-geo",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "820DA1F138143B23E55D75EA5C95700C9CB66828C52E376140876DCD66EF02EC",
+      "candidate_sha256": "820DA1F138143B23E55D75EA5C95700C9CB66828C52E376140876DCD66EF02EC",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "rational-geo",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "28C7DDC648665FAEA1065DAF8A4030E1DBD78D85F59B5310CD1EEC0B16B88152",
+      "candidate_sha256": "28C7DDC648665FAEA1065DAF8A4030E1DBD78D85F59B5310CD1EEC0B16B88152",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "rational-geo",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "0EBF6A18134887CFBB24159B223452FA016F7F1BCC2DB27823B1BBBFC91B520D",
+      "candidate_sha256": "0EBF6A18134887CFBB24159B223452FA016F7F1BCC2DB27823B1BBBFC91B520D",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "rational-geo",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "820DA1F138143B23E55D75EA5C95700C9CB66828C52E376140876DCD66EF02EC",
+      "candidate_sha256": "820DA1F138143B23E55D75EA5C95700C9CB66828C52E376140876DCD66EF02EC",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "rational-geo",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "28C7DDC648665FAEA1065DAF8A4030E1DBD78D85F59B5310CD1EEC0B16B88152",
+      "candidate_sha256": "28C7DDC648665FAEA1065DAF8A4030E1DBD78D85F59B5310CD1EEC0B16B88152",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "rational-geo",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "0EBF6A18134887CFBB24159B223452FA016F7F1BCC2DB27823B1BBBFC91B520D",
+      "candidate_sha256": "0EBF6A18134887CFBB24159B223452FA016F7F1BCC2DB27823B1BBBFC91B520D",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "rational-geo",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "2E4F288E6BB5DD05BD62EACF1626069B3307C846687EC651AE3918850FEAAA00",
+      "candidate_sha256": "2E4F288E6BB5DD05BD62EACF1626069B3307C846687EC651AE3918850FEAAA00",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "rational-geo",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "418E9C7A7FFB720E3906DADB2F65E7268DE048088BDD14BF92138D10CE2611FC",
+      "candidate_sha256": "418E9C7A7FFB720E3906DADB2F65E7268DE048088BDD14BF92138D10CE2611FC",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "rational-geo",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "2202D98E5734A85DDA2B4416C63390C2AC1A8A54DABF5F4FC5CCDCE2048AA053",
+      "candidate_sha256": "2202D98E5734A85DDA2B4416C63390C2AC1A8A54DABF5F4FC5CCDCE2048AA053",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "scroll",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "9084DBA9F52CE41071E7D6026084B49FBCA0442B8D8847EACD05444CEEE6CB29",
+      "candidate_sha256": "9084DBA9F52CE41071E7D6026084B49FBCA0442B8D8847EACD05444CEEE6CB29",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "scroll",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "A45D81BD1FB18B31792C34166A1CEF33DCCECC450E465F1FDFC6F9ED4DF784BA",
+      "candidate_sha256": "A45D81BD1FB18B31792C34166A1CEF33DCCECC450E465F1FDFC6F9ED4DF784BA",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "scroll",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "C794DB399FD30C486B591188423A8F68FD8199F3C00CFCEA12884CAED7CBFB35",
+      "candidate_sha256": "C794DB399FD30C486B591188423A8F68FD8199F3C00CFCEA12884CAED7CBFB35",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "scroll",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "3CAECCFF2F12824CC549CCCAD27630EB6C77363FADD34EAB79CFF3CD2B8218B0",
+      "candidate_sha256": "3CAECCFF2F12824CC549CCCAD27630EB6C77363FADD34EAB79CFF3CD2B8218B0",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "scroll",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "67704837CE56FF3A37055FAEB2BFEADA30BBD0727F3EE105653BFB8AE3296EE3",
+      "candidate_sha256": "67704837CE56FF3A37055FAEB2BFEADA30BBD0727F3EE105653BFB8AE3296EE3",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "scroll",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "C3A333BD84DAC92FE54A19E3D2078FD7802247A56F4D132F9505DF97873C5618",
+      "candidate_sha256": "C3A333BD84DAC92FE54A19E3D2078FD7802247A56F4D132F9505DF97873C5618",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "scroll",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "BEECC9759DFFDEF513AA9BF91D15B2B5F20D78FE53A5EAA075E7A01A2AE82AC9",
+      "candidate_sha256": "BEECC9759DFFDEF513AA9BF91D15B2B5F20D78FE53A5EAA075E7A01A2AE82AC9",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "scroll",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "299292813EFC876D50038EE0BE51410AE04CE72F5B0790325F867B9F2CB80FD9",
+      "candidate_sha256": "299292813EFC876D50038EE0BE51410AE04CE72F5B0790325F867B9F2CB80FD9",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "scroll",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "75E2AD5D25D31EBAB2B83E72A026CA82A2F5BCFDF08E7963796DDF5A8D855FE7",
+      "candidate_sha256": "75E2AD5D25D31EBAB2B83E72A026CA82A2F5BCFDF08E7963796DDF5A8D855FE7",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "scroll",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "E3E97AC50AE88F2ED10E46BB50D41E644C60B73A00C4D3B5372403A84476D46F",
+      "candidate_sha256": "E3E97AC50AE88F2ED10E46BB50D41E644C60B73A00C4D3B5372403A84476D46F",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "scroll",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "91DCD4C88E1B8097A017E8C3E69FBA75DB29A464A2DA55F76A5D50344F7F756A",
+      "candidate_sha256": "91DCD4C88E1B8097A017E8C3E69FBA75DB29A464A2DA55F76A5D50344F7F756A",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "scroll",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "7CBF019D8FD80D18B9EF52F33281409BC61F995035CBE115F5B5DD0A07DF7D59",
+      "candidate_sha256": "7CBF019D8FD80D18B9EF52F33281409BC61F995035CBE115F5B5DD0A07DF7D59",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "show-n-tell",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "19910CDB250112D54B58A9248C3250049555EDDDC566F908127D7354688C6C22",
+      "candidate_sha256": "19910CDB250112D54B58A9248C3250049555EDDDC566F908127D7354688C6C22",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "show-n-tell",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "22D09A3E6525941B9B53C0A82C9B227D98C64837953556A1BD5C519F43E12E0F",
+      "candidate_sha256": "22D09A3E6525941B9B53C0A82C9B227D98C64837953556A1BD5C519F43E12E0F",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "show-n-tell",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "D3250DAB24C002B52F5B51C9EA3481A261706D54802A3D436B1903A5DD52C30A",
+      "candidate_sha256": "D3250DAB24C002B52F5B51C9EA3481A261706D54802A3D436B1903A5DD52C30A",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "show-n-tell",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "C829166CF386E6C088DDB3C6AEDDB78F96E14C21016E6C40595C5D36A64C8DDA",
+      "candidate_sha256": "C829166CF386E6C088DDB3C6AEDDB78F96E14C21016E6C40595C5D36A64C8DDA",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "show-n-tell",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "5FEEFD6140191CD2DEEBBF7A493AB7539388653AF7DB77D0FD7AB1623D32168E",
+      "candidate_sha256": "5FEEFD6140191CD2DEEBBF7A493AB7539388653AF7DB77D0FD7AB1623D32168E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "show-n-tell",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "56248187B03F7D5A087E41D714E463A464C9E9A060BBBF7469EA621B73BAA169",
+      "candidate_sha256": "56248187B03F7D5A087E41D714E463A464C9E9A060BBBF7469EA621B73BAA169",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "show-n-tell",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "FD4DEA8C0881CB2A75077C541D227B40B5CCA05E3294EA6B6A35B1EA332418A4",
+      "candidate_sha256": "FD4DEA8C0881CB2A75077C541D227B40B5CCA05E3294EA6B6A35B1EA332418A4",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "show-n-tell",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "50A4D651149A3A04EE7FDDE9D1350951FAAD08EE765A4F0C83828CFBB5F20E90",
+      "candidate_sha256": "50A4D651149A3A04EE7FDDE9D1350951FAAD08EE765A4F0C83828CFBB5F20E90",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "show-n-tell",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "6F6E344DC91BA0F2A0E9F3D6D6C36C4DF0EC8752C2B1A544D75951EA2CD8B485",
+      "candidate_sha256": "6F6E344DC91BA0F2A0E9F3D6D6C36C4DF0EC8752C2B1A544D75951EA2CD8B485",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "show-n-tell",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "FDBB03CE31F481E36F35A0083AA5D17E502717BF125B1E37598192C164B2E4C3",
+      "candidate_sha256": "FDBB03CE31F481E36F35A0083AA5D17E502717BF125B1E37598192C164B2E4C3",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "show-n-tell",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "E90B1A2870D00B327625930409B22347AF67376220DAF76A244E040B6D1BB056",
+      "candidate_sha256": "E90B1A2870D00B327625930409B22347AF67376220DAF76A244E040B6D1BB056",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "show-n-tell",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "D8568C78B6B5E6BC7CBED5C93E724DEDA1579D98CDF1F46F16C2F2FC78022D9A",
+      "candidate_sha256": "D8568C78B6B5E6BC7CBED5C93E724DEDA1579D98CDF1F46F16C2F2FC78022D9A",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "slickr",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "0C7F5E086500F2DD56A5F759D21B829C665AC9F10B262BCCAE9D6E70422F197A",
+      "candidate_sha256": "0C7F5E086500F2DD56A5F759D21B829C665AC9F10B262BCCAE9D6E70422F197A",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "slickr",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "8A3D86B9D1997E95E0193FFD5A31AEF4ECC6B53CC68B08A15D2430B324B57769",
+      "candidate_sha256": "8A3D86B9D1997E95E0193FFD5A31AEF4ECC6B53CC68B08A15D2430B324B57769",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "slickr",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "F0E68DB1CBCC3EDC29119C1C19C0B710B1BC8D7B14DA51EB4C8A6C716D3F0C3D",
+      "candidate_sha256": "F0E68DB1CBCC3EDC29119C1C19C0B710B1BC8D7B14DA51EB4C8A6C716D3F0C3D",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "slickr",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "1E25FADECBFBED2D840CA2C3286464343BA6BE4DE9237CA7947E4758C8619E3C",
+      "candidate_sha256": "1E25FADECBFBED2D840CA2C3286464343BA6BE4DE9237CA7947E4758C8619E3C",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "slickr",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "F447CC878F40C0C51A4B5EDB82B6DC032204D0AE0B32F042CE4A70862F5C3FB2",
+      "candidate_sha256": "F447CC878F40C0C51A4B5EDB82B6DC032204D0AE0B32F042CE4A70862F5C3FB2",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "slickr",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "9CAB29F2ABAEE33DBDCCA5AFA6365A5F3A8F12B231D493A87AB21E8DEDA5C91E",
+      "candidate_sha256": "9CAB29F2ABAEE33DBDCCA5AFA6365A5F3A8F12B231D493A87AB21E8DEDA5C91E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "slickr",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "294A1244C5C7B4BDD8238945976AC32050D418FB639B76F51A67601B8BC8FAAE",
+      "candidate_sha256": "294A1244C5C7B4BDD8238945976AC32050D418FB639B76F51A67601B8BC8FAAE",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "slickr",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "DF2DA8CA0D42436A43EB239DE4D811532BA5A9A5D91CBAE4352EC4050567E7C2",
+      "candidate_sha256": "DF2DA8CA0D42436A43EB239DE4D811532BA5A9A5D91CBAE4352EC4050567E7C2",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "slickr",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "D75CBC1511EF6A9AF8DEC0B0C326DF540FB785A8D23903F279A2C2127A22C420",
+      "candidate_sha256": "D75CBC1511EF6A9AF8DEC0B0C326DF540FB785A8D23903F279A2C2127A22C420",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "slickr",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "26835ED2DE89CC99967342167FAC0755343CD0B4BFB5BAE35C230762D6E54BA4",
+      "candidate_sha256": "26835ED2DE89CC99967342167FAC0755343CD0B4BFB5BAE35C230762D6E54BA4",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "slickr",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "2C974092F6DD88FFD9A0C50305F506AB3148584044C4D1E89CF2093EE2E8739F",
+      "candidate_sha256": "2C974092F6DD88FFD9A0C50305F506AB3148584044C4D1E89CF2093EE2E8739F",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "slickr",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "E408638695EF2EEC23346FC0992F07514B93E1156F368378C679E7C9FDC5D997",
+      "candidate_sha256": "E408638695EF2EEC23346FC0992F07514B93E1156F368378C679E7C9FDC5D997",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "sliders",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "336AECDCA8F9CAD7C5603B2C55AD81B67CE3A8611A852DC0D53CD69785030E15",
+      "candidate_sha256": "336AECDCA8F9CAD7C5603B2C55AD81B67CE3A8611A852DC0D53CD69785030E15",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sliders",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "412BAB1BC8477D6F310FE607CC8E489E9ED8C3C7E4146F1E7F3DE3C8971522F7",
+      "candidate_sha256": "412BAB1BC8477D6F310FE607CC8E489E9ED8C3C7E4146F1E7F3DE3C8971522F7",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sliders",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "E120313AA192A84907990EBA61C3D7CFE7F24683E518A745116D0959815C529D",
+      "candidate_sha256": "E120313AA192A84907990EBA61C3D7CFE7F24683E518A745116D0959815C529D",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sliders",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "824631901B837C1EBC3F9D9D7B6473E5CBDCEEF6CA883F3B1FD05DE56DFA1224",
+      "candidate_sha256": "824631901B837C1EBC3F9D9D7B6473E5CBDCEEF6CA883F3B1FD05DE56DFA1224",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sliders",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "F47557E066933148EB7D1EC7F32ACC4368FDA49B4AAA4496C9F885EC0DD9BA33",
+      "candidate_sha256": "F47557E066933148EB7D1EC7F32ACC4368FDA49B4AAA4496C9F885EC0DD9BA33",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sliders",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "AED44B9ABB58B26BA11CA8B9977AB01FB46DDAA81149EDF13FC6825F27127CD8",
+      "candidate_sha256": "AED44B9ABB58B26BA11CA8B9977AB01FB46DDAA81149EDF13FC6825F27127CD8",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sliders",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "649487AE9F117199F89B74602B16A5D8F6156E6F1D04FDE8F5070B8170C06BBD",
+      "candidate_sha256": "649487AE9F117199F89B74602B16A5D8F6156E6F1D04FDE8F5070B8170C06BBD",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sliders",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "C64FA236B7AB052F196CE20F32CA21661F08A3B385739B8525B2DE88F9E5AE9A",
+      "candidate_sha256": "C64FA236B7AB052F196CE20F32CA21661F08A3B385739B8525B2DE88F9E5AE9A",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sliders",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "B8C6A7EDA544AAB95E6E6D098299492A34670431792F58A3409901EEAEED4FF3",
+      "candidate_sha256": "B8C6A7EDA544AAB95E6E6D098299492A34670431792F58A3409901EEAEED4FF3",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sliders",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "04DABDCF3B710FD035474DDA6663362240D7C238A14A568D5F441D4D8557034E",
+      "candidate_sha256": "04DABDCF3B710FD035474DDA6663362240D7C238A14A568D5F441D4D8557034E",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sliders",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "A41BABCBE467B39173124227BA17A9BE04D2C75FDA81C9435C56BF12DC9FB27B",
+      "candidate_sha256": "A41BABCBE467B39173124227BA17A9BE04D2C75FDA81C9435C56BF12DC9FB27B",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sliders",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "4DB0829EEAF1CB231D071C00063ED40E4C85B924BE5CDF71A83365FA7CDC5035",
+      "candidate_sha256": "4DB0829EEAF1CB231D071C00063ED40E4C85B924BE5CDF71A83365FA7CDC5035",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "stanley",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "606C8575B375696C95657481ED128C3EBD2C01393AD33D565E5FE18E0FFA3A0F",
+      "candidate_sha256": "606C8575B375696C95657481ED128C3EBD2C01393AD33D565E5FE18E0FFA3A0F",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "stanley",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "F69F3EAE82D8DAC70B8AEE16667B27C7CBC59585930B72CA896B88A0926916BF",
+      "candidate_sha256": "F69F3EAE82D8DAC70B8AEE16667B27C7CBC59585930B72CA896B88A0926916BF",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "stanley",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "00667EB01488E973E7D429075D0C82694FF31366619984C10061CC56ACC60BF5",
+      "candidate_sha256": "00667EB01488E973E7D429075D0C82694FF31366619984C10061CC56ACC60BF5",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "stanley",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "883BF6BFCC35BDA034879EAC2AC229090C904DA92301FAD46AFAEEAE0671FE91",
+      "candidate_sha256": "883BF6BFCC35BDA034879EAC2AC229090C904DA92301FAD46AFAEEAE0671FE91",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "stanley",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "509C74F7AEFBC43BFAC71155008ACDCAA5A405FFDE69DA781909F430D934AC62",
+      "candidate_sha256": "509C74F7AEFBC43BFAC71155008ACDCAA5A405FFDE69DA781909F430D934AC62",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "stanley",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "BFF045A4AC3A92940FACD038FDD09D095DA2E0F0326521D5768C06FA94073A59",
+      "candidate_sha256": "BFF045A4AC3A92940FACD038FDD09D095DA2E0F0326521D5768C06FA94073A59",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "stanley",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "4A0DF00AF02D6B9469A1BAC497351AB958AE31AD70A72C367C650C9D3EF9FB8E",
+      "candidate_sha256": "4A0DF00AF02D6B9469A1BAC497351AB958AE31AD70A72C367C650C9D3EF9FB8E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "stanley",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "22B51A2402A88AE3911F9AA55FB1E0E24B588ADD275C91D2227DCD2358B1DD62",
+      "candidate_sha256": "22B51A2402A88AE3911F9AA55FB1E0E24B588ADD275C91D2227DCD2358B1DD62",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "stanley",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "C85A1F16D91AED7A3088200E2684127FF8DB36370FFDCF512A83980C3F3A3534",
+      "candidate_sha256": "C85A1F16D91AED7A3088200E2684127FF8DB36370FFDCF512A83980C3F3A3534",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "stanley",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "99B6CA85EB7393C0EA883667D99FC24122344784F3DF8D9DFC75CF961CF5A3F5",
+      "candidate_sha256": "99B6CA85EB7393C0EA883667D99FC24122344784F3DF8D9DFC75CF961CF5A3F5",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "stanley",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "2794C2ADC868766A3DDDEC1121C8C621E11E704DCB728E2A9B855F1A9B761136",
+      "candidate_sha256": "2794C2ADC868766A3DDDEC1121C8C621E11E704DCB728E2A9B855F1A9B761136",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "stanley",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "5E65B8966A98252EC57A611DCE651FEFE2656BBF2ECD0CD65FE2E8578613395E",
+      "candidate_sha256": "5E65B8966A98252EC57A611DCE651FEFE2656BBF2ECD0CD65FE2E8578613395E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "sudden-impact",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "9FC0F1C45E907AE01D3E95C2151998FE95BE5C3F8BBC54C63ABBF63352BF47B3",
+      "candidate_sha256": "9FC0F1C45E907AE01D3E95C2151998FE95BE5C3F8BBC54C63ABBF63352BF47B3",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sudden-impact",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "A1DD27C578498E36A55141B97877E41EA06F88E77DB09CF6E575A54A6B2B2853",
+      "candidate_sha256": "A1DD27C578498E36A55141B97877E41EA06F88E77DB09CF6E575A54A6B2B2853",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sudden-impact",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "6E7A35F486521E5B66361276CD46C43D2A054076527EDA328DE670B37CEC480E",
+      "candidate_sha256": "6E7A35F486521E5B66361276CD46C43D2A054076527EDA328DE670B37CEC480E",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sudden-impact",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "E35653A652F98078A62ABD81E40CBACA1143F854B6200FA981B5610A6882C381",
+      "candidate_sha256": "E35653A652F98078A62ABD81E40CBACA1143F854B6200FA981B5610A6882C381",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sudden-impact",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "C4E4E17498A9E015FE6756187A7F9F907B81486EA6A17019BB90C4B42A30A468",
+      "candidate_sha256": "C4E4E17498A9E015FE6756187A7F9F907B81486EA6A17019BB90C4B42A30A468",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sudden-impact",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "C03F3D21074E6FFDAD4D8479868755695A6E3A596AE41592F73EE8424D194FD6",
+      "candidate_sha256": "C03F3D21074E6FFDAD4D8479868755695A6E3A596AE41592F73EE8424D194FD6",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sudden-impact",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "46E4EDAB319D8B4E694A2C9948F922CC4074CD8310C557C1530C0CEDC17E631D",
+      "candidate_sha256": "46E4EDAB319D8B4E694A2C9948F922CC4074CD8310C557C1530C0CEDC17E631D",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sudden-impact",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "BD8D4A5468EC97E9CAC2CC12D97A585D71178E0B7961B9CE748B8775954F2BCD",
+      "candidate_sha256": "BD8D4A5468EC97E9CAC2CC12D97A585D71178E0B7961B9CE748B8775954F2BCD",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sudden-impact",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "5851A8142BBB7DFC9B18378DB17D001F31FA69484B59D6CFD9B8F2311310A0D0",
+      "candidate_sha256": "5851A8142BBB7DFC9B18378DB17D001F31FA69484B59D6CFD9B8F2311310A0D0",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sudden-impact",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "E913CA8B23B3F1DAC0A7FBFD2A158F887DB33C87E5FDA491B081F4F035C2157A",
+      "candidate_sha256": "E913CA8B23B3F1DAC0A7FBFD2A158F887DB33C87E5FDA491B081F4F035C2157A",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sudden-impact",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "B4C53921DF8CE8FC64066595F2B7B9B2B862F322D3EF1E8983B7D1E8D27C3676",
+      "candidate_sha256": "B4C53921DF8CE8FC64066595F2B7B9B2B862F322D3EF1E8983B7D1E8D27C3676",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "sudden-impact",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "2D6B3C06B7C545172CF70300C84723E0D61744196E6F7660F3D93AE2EB99A16F",
+      "candidate_sha256": "2D6B3C06B7C545172CF70300C84723E0D61744196E6F7660F3D93AE2EB99A16F",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "telegram",
+      "kind": "archive",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline_sha256": "B2663C77645C1F464E89C338179068615E2DF2EA4BB26AD93E02251D4F01A081",
+      "candidate_sha256": "B2663C77645C1F464E89C338179068615E2DF2EA4BB26AD93E02251D4F01A081",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "telegram",
+      "kind": "feed",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline_sha256": "CB264C93D6AB1DD710CC61F0315348A528E467BA0051CC088D6628D3BDF3FE5B",
+      "candidate_sha256": "CB264C93D6AB1DD710CC61F0315348A528E467BA0051CC088D6628D3BDF3FE5B",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "telegram",
+      "kind": "landing",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline_sha256": "4D78BBED9C52508F8F40E257366AC0B41688E789262902A888A42DDE54084B33",
+      "candidate_sha256": "4D78BBED9C52508F8F40E257366AC0B41688E789262902A888A42DDE54084B33",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "telegram",
+      "kind": "page",
+      "viewport": "phone",
+      "width": 390,
+      "height": 844,
+      "baseline_sha256": "F3FCC0669E3EE523D2355B59A76357EFE0B3077FA31036D2F919EF770ACC7183",
+      "candidate_sha256": "F3FCC0669E3EE523D2355B59A76357EFE0B3077FA31036D2F919EF770ACC7183",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "the-grid",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "8C4DA7BF5535869F8D53B0468AC0893A053FAAF379FDB584962B9728880E4AA5",
+      "candidate_sha256": "8C4DA7BF5535869F8D53B0468AC0893A053FAAF379FDB584962B9728880E4AA5",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "the-grid",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "B1A552DF4CA52921D00BBBEFEA5D81840BAFB6C6C20D9A4C0419E3BE8522C623",
+      "candidate_sha256": "B1A552DF4CA52921D00BBBEFEA5D81840BAFB6C6C20D9A4C0419E3BE8522C623",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "the-grid",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "D1D4F0843C32EA32917AB51622C108242E3900520BA11AD6C18C856A1C565AD2",
+      "candidate_sha256": "D1D4F0843C32EA32917AB51622C108242E3900520BA11AD6C18C856A1C565AD2",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "the-grid",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "4719D77B16C37C0B9864CB3A546A0972DADAC7B6F4262A51486170D6279F1E96",
+      "candidate_sha256": "4719D77B16C37C0B9864CB3A546A0972DADAC7B6F4262A51486170D6279F1E96",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "the-grid",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "1ADE302EFBF49F0E6073CFEC8B87363558581D551E7C4FAB3729CB14FAF655CD",
+      "candidate_sha256": "1ADE302EFBF49F0E6073CFEC8B87363558581D551E7C4FAB3729CB14FAF655CD",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "the-grid",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "072A8DC23363CE7C586F0A23FF77B2E7A22F174353733C85DD94682818F9902B",
+      "candidate_sha256": "072A8DC23363CE7C586F0A23FF77B2E7A22F174353733C85DD94682818F9902B",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "the-grid",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "E1145D34E25E6F02A46176AE1CA7E45DC5150F1D8A632C1DA603C90D5A75A834",
+      "candidate_sha256": "E1145D34E25E6F02A46176AE1CA7E45DC5150F1D8A632C1DA603C90D5A75A834",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "the-grid",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "628B0184A67F3B62A2F2438A50FC06F7E8C2F96B087E765F52725933B886B536",
+      "candidate_sha256": "628B0184A67F3B62A2F2438A50FC06F7E8C2F96B087E765F52725933B886B536",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "the-grid",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "07B11497CBBC510523EFA9D29E5245CD31520E69F57EC433ABBEB3A2409B3804",
+      "candidate_sha256": "07B11497CBBC510523EFA9D29E5245CD31520E69F57EC433ABBEB3A2409B3804",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "the-grid",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "6B8CC288F9F118CDA3DD7A0F68B9094A13D9970A5F465BC197B1FEEB53373498",
+      "candidate_sha256": "6B8CC288F9F118CDA3DD7A0F68B9094A13D9970A5F465BC197B1FEEB53373498",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "the-grid",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "8FAD808C650B22AE8859FA4C26BC42528F7EA779126CEED668751ED855E0E6A0",
+      "candidate_sha256": "8FAD808C650B22AE8859FA4C26BC42528F7EA779126CEED668751ED855E0E6A0",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "the-grid",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "784835C78DB9AB30789F1FE6B32139D484A5CD22894A25F8680F554902A415E5",
+      "candidate_sha256": "784835C78DB9AB30789F1FE6B32139D484A5CD22894A25F8680F554902A415E5",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "tilez",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "7C3CADCC9255AD14C85FFE5F71C649E60AB55ADB059E1F0F8F78CF1CCBAF1B83",
+      "candidate_sha256": "7C3CADCC9255AD14C85FFE5F71C649E60AB55ADB059E1F0F8F78CF1CCBAF1B83",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "tilez",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "E8A57DE805E29A9D917AC93A15372B665411C39805E57DE815B5171D7EB2BBD4",
+      "candidate_sha256": "E8A57DE805E29A9D917AC93A15372B665411C39805E57DE815B5171D7EB2BBD4",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "tilez",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "C757F179868325D1DD3B5FBF4D497856807C8F7E919CFA78EF1F92FCA73D79D0",
+      "candidate_sha256": "C757F179868325D1DD3B5FBF4D497856807C8F7E919CFA78EF1F92FCA73D79D0",
+      "baseline_broken_images": [
+        ""
+      ],
+      "candidate_broken_images": [
+        ""
+      ],
+      "warning": "1 broken fixture image(s) on both sides",
+      "status": "PASS"
+    },
+    {
+      "skin": "tilez",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "8A1104035FC465779DBEAA4351B585924D60ADD8E4C4333C625301FCC4EEAAFF",
+      "candidate_sha256": "8A1104035FC465779DBEAA4351B585924D60ADD8E4C4333C625301FCC4EEAAFF",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "tilez",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "40143C62EC751171DD29AFFAECEA06257BBF51DDBC17042469002B5282F12E5E",
+      "candidate_sha256": "40143C62EC751171DD29AFFAECEA06257BBF51DDBC17042469002B5282F12E5E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "tilez",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "843F2224A69EF71978959E1084E1ED5337D64035AD6C7300BEA1FB061909C95E",
+      "candidate_sha256": "843F2224A69EF71978959E1084E1ED5337D64035AD6C7300BEA1FB061909C95E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "tilez",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "87CFF20D76C7CEA5B8E1A4DC65B8EE5AE13A57C639604127DF76164BBB99323B",
+      "candidate_sha256": "87CFF20D76C7CEA5B8E1A4DC65B8EE5AE13A57C639604127DF76164BBB99323B",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "tilez",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "60818B7EE825F56F9409100A956D20E60A78F7D1BA82352D5F72EB1FE01E5238",
+      "candidate_sha256": "60818B7EE825F56F9409100A956D20E60A78F7D1BA82352D5F72EB1FE01E5238",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "tilez",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "35EBEA6B733B0544F797268B3BAABFADDBE8AF9EE7758F9F46A33D11808FDA0E",
+      "candidate_sha256": "35EBEA6B733B0544F797268B3BAABFADDBE8AF9EE7758F9F46A33D11808FDA0E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "tilez",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "F5CC6610190305C01CA095C6A814C7C6368BD0069F8EBD5BD8E13A30EF512664",
+      "candidate_sha256": "F5CC6610190305C01CA095C6A814C7C6368BD0069F8EBD5BD8E13A30EF512664",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "tilez",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "755E447E53A02F5D16CEA3B08025DD4C580E03D6DEF2C8DA5C352A933CF874E8",
+      "candidate_sha256": "755E447E53A02F5D16CEA3B08025DD4C580E03D6DEF2C8DA5C352A933CF874E8",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "tilez",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "15D06CA918622F01E58B361DCA9262104AB5A48977CE02ECBE1FDB8D80B8010A",
+      "candidate_sha256": "15D06CA918622F01E58B361DCA9262104AB5A48977CE02ECBE1FDB8D80B8010A",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "true-grit",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "64638F23E1C0AF3C1CCCF61925F8231F27C7833258B53AC09A69CCB666F08F7E",
+      "candidate_sha256": "64638F23E1C0AF3C1CCCF61925F8231F27C7833258B53AC09A69CCB666F08F7E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "true-grit",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "AD7F1BFD308DB349223F713B279F92B8B2A656EC1B522DF2D7678EF46D9E71F2",
+      "candidate_sha256": "AD7F1BFD308DB349223F713B279F92B8B2A656EC1B522DF2D7678EF46D9E71F2",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "true-grit",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "CD671842B1A0DE76C8D6DE55BBB6F7EAAC498DAADC9E2B5166BFE09795926677",
+      "candidate_sha256": "CD671842B1A0DE76C8D6DE55BBB6F7EAAC498DAADC9E2B5166BFE09795926677",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "true-grit",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "9A33B93223A53FEFB404A4ED8A9CB20275D90750B39207CE7E9507E760221692",
+      "candidate_sha256": "9A33B93223A53FEFB404A4ED8A9CB20275D90750B39207CE7E9507E760221692",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "true-grit",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "149869A6EBAF925EF677F7EA71F5AB32F408C04E472853C5FACB07834A749C15",
+      "candidate_sha256": "149869A6EBAF925EF677F7EA71F5AB32F408C04E472853C5FACB07834A749C15",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "true-grit",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "D7E2A0DE1C4712CC7A91A26E3B99C895DAA1CB723423D4794FFBF657644C6B0E",
+      "candidate_sha256": "D7E2A0DE1C4712CC7A91A26E3B99C895DAA1CB723423D4794FFBF657644C6B0E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "true-grit",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "9A33B93223A53FEFB404A4ED8A9CB20275D90750B39207CE7E9507E760221692",
+      "candidate_sha256": "9A33B93223A53FEFB404A4ED8A9CB20275D90750B39207CE7E9507E760221692",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "true-grit",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "149869A6EBAF925EF677F7EA71F5AB32F408C04E472853C5FACB07834A749C15",
+      "candidate_sha256": "149869A6EBAF925EF677F7EA71F5AB32F408C04E472853C5FACB07834A749C15",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "true-grit",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "D7E2A0DE1C4712CC7A91A26E3B99C895DAA1CB723423D4794FFBF657644C6B0E",
+      "candidate_sha256": "D7E2A0DE1C4712CC7A91A26E3B99C895DAA1CB723423D4794FFBF657644C6B0E",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "true-grit",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "71C886F48AA82556ED965864E0E32FB37301C2A10F1CC626F546F174E9B72D9D",
+      "candidate_sha256": "71C886F48AA82556ED965864E0E32FB37301C2A10F1CC626F546F174E9B72D9D",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "true-grit",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "86582FC0D42EEE3F07026A71A641A2FC5DE22067A3F36D81EBC3A94FC3B404EE",
+      "candidate_sha256": "86582FC0D42EEE3F07026A71A641A2FC5DE22067A3F36D81EBC3A94FC3B404EE",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "true-grit",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "2A15ABB7E5EB0255E01C0E09E08CA271F0C0FFB9C8B8552EA468C416DB361559",
+      "candidate_sha256": "2A15ABB7E5EB0255E01C0E09E08CA271F0C0FFB9C8B8552EA468C416DB361559",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "writing-with-impact",
+      "kind": "archive",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "0883736C4CAF6417FE4ED09DCFA5C510B3CBDFCD662B089088C62E3075AA1978",
+      "candidate_sha256": "0883736C4CAF6417FE4ED09DCFA5C510B3CBDFCD662B089088C62E3075AA1978",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "writing-with-impact",
+      "kind": "archive",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "F0A7BAD1C896DAC3743862FF4ADDAF29A4D10FF0522B65B1FFE4061B8296C24F",
+      "candidate_sha256": "F0A7BAD1C896DAC3743862FF4ADDAF29A4D10FF0522B65B1FFE4061B8296C24F",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "writing-with-impact",
+      "kind": "archive",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "A129D5A67C875C0308ADFC13A8B4931D7EB27CB208D3E3713C0826FDC449EA50",
+      "candidate_sha256": "A129D5A67C875C0308ADFC13A8B4931D7EB27CB208D3E3713C0826FDC449EA50",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "writing-with-impact",
+      "kind": "feed",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "10BD284F456B373EDA13AB5C91B512D54AEC925F48D5852D2E9C39339E918E6A",
+      "candidate_sha256": "10BD284F456B373EDA13AB5C91B512D54AEC925F48D5852D2E9C39339E918E6A",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "writing-with-impact",
+      "kind": "feed",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "B7674F68F5FD78031BA7C1B7D3741373D25193D9A08FCE98B256F3DD779133DC",
+      "candidate_sha256": "B7674F68F5FD78031BA7C1B7D3741373D25193D9A08FCE98B256F3DD779133DC",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "writing-with-impact",
+      "kind": "feed",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "DE0C8CBF8F7C93315C86E2A5BB470041EAE3BD2B4C228B80F59B74DBBABE21C3",
+      "candidate_sha256": "DE0C8CBF8F7C93315C86E2A5BB470041EAE3BD2B4C228B80F59B74DBBABE21C3",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "writing-with-impact",
+      "kind": "landing",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "1D9B3E8F382ACF54B71473579E518591FBF30BDCC33AFFC273AEC5C99ECEAD96",
+      "candidate_sha256": "1D9B3E8F382ACF54B71473579E518591FBF30BDCC33AFFC273AEC5C99ECEAD96",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "writing-with-impact",
+      "kind": "landing",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "2197E124A085A74F67344F827FF8F47FFDF1E503726EBA00AD1080515D8E171B",
+      "candidate_sha256": "2197E124A085A74F67344F827FF8F47FFDF1E503726EBA00AD1080515D8E171B",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "writing-with-impact",
+      "kind": "landing",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "3C48B02001779575D498F31909052B3467925A62C6C43D95D62B671E8F4A2B70",
+      "candidate_sha256": "3C48B02001779575D498F31909052B3467925A62C6C43D95D62B671E8F4A2B70",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "writing-with-impact",
+      "kind": "page",
+      "viewport": "reference",
+      "width": 1920,
+      "height": 1080,
+      "baseline_sha256": "BDB8D33484DD91001E393D9369D4471B973E37128B2CD9D027982E3C0D44C317",
+      "candidate_sha256": "BDB8D33484DD91001E393D9369D4471B973E37128B2CD9D027982E3C0D44C317",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "writing-with-impact",
+      "kind": "page",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 900,
+      "baseline_sha256": "E5AE2997FAA71B6DEDD6D7347DFEC9F0F66AA4981A0CB8A1C4A335FD997E804F",
+      "candidate_sha256": "E5AE2997FAA71B6DEDD6D7347DFEC9F0F66AA4981A0CB8A1C4A335FD997E804F",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    },
+    {
+      "skin": "writing-with-impact",
+      "kind": "page",
+      "viewport": "tablet",
+      "width": 1024,
+      "height": 768,
+      "baseline_sha256": "1CB9B960CF8505CD91715789EAED427E8C766545D3B230F2AA0EDCAF379FF85C",
+      "candidate_sha256": "1CB9B960CF8505CD91715789EAED427E8C766545D3B230F2AA0EDCAF379FF85C",
+      "baseline_broken_images": [],
+      "candidate_broken_images": [],
+      "warning": null,
+      "status": "PASS"
+    }
+  ]
+}
