@@ -50,8 +50,35 @@ const server=http.createServer((req,res)=>{
         await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
         await page.waitForTimeout(100);
         const start=await page.locator('#btn-new-offline').boundingBox();assert.ok(start.y>=0&&start.y+start.height<1000,'Start controls must remain visible with a large shared fleet.');
+        const helpDialog=page.getByRole('dialog',{name:'OH SNAP — Help'});
+        const welcomeHelp=page.locator('#screen-connect [data-ohsnap-help]');
+        await welcomeHelp.click();
+        await helpDialog.waitFor();
+        await page.keyboard.press('Escape');
+        await helpDialog.waitFor({state:'hidden'});
+        assert(await welcomeHelp.evaluate(button=>button===document.activeElement),'closing Help returns focus to its launcher');
         await page.click('#btn-new-offline');
         await page.waitForFunction(()=>document.querySelector('#preview-frame').contentDocument?.querySelector('[data-preview-site]'));
+        for(const width of [1024,1440,1920]){
+            await page.setViewportSize({width,height:1000});
+            const editorHelp=page.locator('#screen-app [data-ohsnap-help]');
+            const settings=page.locator('#btn-settings');
+            const helpBox=await editorHelp.boundingBox(), settingsBox=await settings.boundingBox();
+            assert(helpBox.x>=0&&helpBox.x+helpBox.width<=settingsBox.x,'Help and Settings use separate toolbar space');
+            assert(settingsBox.x+settingsBox.width<=width,'Settings stays within the window');
+            await settings.click();
+            await page.locator('#oh-snap-settings-modal.open').waitFor();
+            await page.keyboard.press('Escape');
+            await editorHelp.click();
+            await helpDialog.waitFor();
+            await page.keyboard.press('Escape');
+            await page.keyboard.press('F1');
+            await helpDialog.waitFor();
+            await page.keyboard.press('Escape');
+            await helpDialog.waitFor({state:'hidden'});
+        }
+        await page.setViewportSize({width:1440,height:1000});
+        results.push('Help and Settings are independently usable at 1024, 1440 and 1920, including F1');
         assert.equal(await page.locator('#preview-frame').getAttribute('sandbox'),'allow-same-origin');
         assert.deepEqual(await page.evaluate(()=>{
             const doc=document.querySelector('#preview-frame').contentDocument;

@@ -26,16 +26,8 @@
     ];
 
     function buildHelpUi() {
-        if (document.getElementById("ohsnap-help-btn")) return;
-
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.id = "ohsnap-help-btn";
-        btn.className = "btn";
-        btn.textContent = "Help (F1)";
-        btn.title = "Open OH SNAP Help (F1)";
-        btn.style.cssText = "position:fixed;top:12px;right:14px;z-index:9000;";
-        document.body.appendChild(btn);
+        if (document.getElementById("ohsnap-help-modal")) return;
+        let previousFocus;
 
         const overlay = document.createElement("div");
         overlay.id = "ohsnap-help-modal";
@@ -43,11 +35,15 @@
         overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:none;align-items:center;justify-content:center;";
 
         const card = document.createElement("div");
+        card.setAttribute("role", "dialog");
+        card.setAttribute("aria-modal", "true");
+        card.setAttribute("aria-labelledby", "ohsnap-help-title");
         card.style.cssText = "width:min(720px,92vw);max-height:80vh;background:#121512;color:#eaeaea;border:1px solid #3a4;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px;";
 
         const header = document.createElement("div");
         header.style.cssText = "display:flex;justify-content:space-between;align-items:center;";
         const title = document.createElement("strong");
+        title.id = "ohsnap-help-title";
         title.textContent = "OH SNAP — Help";
         title.style.color = "#9f3";
         const closeBtn = document.createElement("button");
@@ -60,6 +56,7 @@
         const search = document.createElement("input");
         search.type = "search";
         search.placeholder = "Search help…";
+        search.setAttribute("aria-label", "Search help");
         search.style.cssText = "padding:8px;background:#1a1e1a;color:#eee;border:1px solid #333;border-radius:6px;";
 
         const list = document.createElement("div");
@@ -98,6 +95,8 @@
         }
 
         function openHelp() {
+            if (!overlay.hidden) return;
+            previousFocus = document.activeElement;
             render(search.value);
             overlay.style.display = "flex";
             overlay.hidden = false;
@@ -107,9 +106,10 @@
         function closeHelp() {
             overlay.style.display = "none";
             overlay.hidden = true;
+            previousFocus?.focus();
         }
 
-        btn.addEventListener("click", openHelp);
+        document.querySelectorAll("[data-ohsnap-help]").forEach(button => button.addEventListener("click", openHelp));
         closeBtn.addEventListener("click", closeHelp);
         search.addEventListener("input", () => render(search.value));
         document.addEventListener("keydown", (e) => {

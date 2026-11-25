@@ -117,6 +117,13 @@ html, body {
     gap: 20px;
 }
 
+.connect-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
 .connect-card-title {
     font-size: 0.9rem;
     font-weight: 600;
