@@ -93,6 +93,28 @@ def test_two_by_two_detector_requires_four_adjacent_equal_boxes():
     assert uniform_clusters([dict(cell, width=230) if cell["id"] == 3 else cell for cell in cells]) == []
 
 
+def test_inline_two_by_two_click_breaks_the_four_landscapes(tmp_path):
+    _app()
+    paths = [_make_photo(tmp_path / f"landscape-{i}.jpg", (900, 600)) for i in range(4)]
+    canvas = BiggieCanvas()
+    canvas.set_preview_width(240)
+    canvas.resize(260, 650)
+    canvas.set_bucket(paths)
+    canvas.insert_mosaic([1, 2, 3, 4], "rows")
+    canvas.show()
+    try:
+        _wait_for(lambda: any(buttons for _, buttons in canvas._inline_mosaic_hits.values()))
+        pos, (tiles, buttons) = next(
+            (pos, item) for pos, item in canvas._inline_mosaic_hits.items() if item[1])
+        assert len({rect.x() for _, rect in tiles.values()}) == 2
+        assert len({rect.y() for _, rect in tiles.values()}) == 2
+        QTest.mouseClick(canvas.viewport(), Qt.LeftButton, pos=buttons[0][0].center())
+        _wait_for(lambda: canvas._object_at(pos)[1].get("weights") == {"1": 1})
+        assert canvas._object_at(pos)[1]["order"] == [1, 2, 3, 4]
+    finally:
+        canvas.close()
+
+
 def test_inline_break_button_changes_mosaic_without_opening_dialog(tmp_path):
     _app()
     paths = [_make_photo(tmp_path / f"inline-{i}.jpg", (900, 600)) for i in range(4)]

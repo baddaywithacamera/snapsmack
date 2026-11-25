@@ -26,7 +26,7 @@ function coldSnapRenderMosaic(model) {
         if (model.layout !== 'asymmetric' && !wallClasses[model.layout]) grid.dataset.template = model.layout;
         window.SnapMosaic.renderMosaic(grid);
     } else {
-        grid.className = wall + ' preview-grid';
+        grid.className = wall + ' snap-mosaic-wall preview-grid';
         grid.style.setProperty('--ss-gap', model.gap + 'px');
         if (model.layout === 'masonry') grid.style.setProperty('--ss-cols', '3');
         if (model.layout === 'one-column') grid.style.setProperty('--ss-cols', '1');
