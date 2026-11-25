@@ -58,15 +58,25 @@ _shared_files = glob.glob(os.path.join(_shared_dir, '*.py'))
 _shared_data  = [(f, '.') for f in _shared_files]
 _shared_mods  = [os.path.splitext(os.path.basename(f))[0] for f in _shared_files]
 
+_cms_assets = os.path.join(_src, '..', '..', 'assets')
+_preview_engines = [
+    (os.path.join(_cms_assets, 'js', name), 'preview_engines/js')
+    for name in ('ss-engine-mosaic.js', 'ss-engine-columns.js', 'ss-engine-rows.js')
+] + [
+    (os.path.join(_cms_assets, 'css', name), 'preview_engines/css')
+    for name in ('ss-engine-mosaic.css', 'ss-engine-scroll-wall.css')
+]
+
 a = Analysis(
     ['coldsnap_qt_launcher.py'],
     pathex=[_src, _shared_dir],
     binaries=[],
-    datas=_local_data + _pkg_data + _shared_data + (
+    datas=_local_data + _pkg_data + _shared_data + _preview_engines + (
         [(os.path.join(_src, 'assets'), 'assets')]
         if os.path.isdir(os.path.join(_src, 'assets')) else []),
     hiddenimports=_local_mods + _pkg_mods + _shared_mods + [
         'PySide6', 'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
+        'PySide6.QtWebEngineCore', 'PySide6.QtWebEngineWidgets',
         'PIL', 'PIL.Image',
         'requests',
         'concurrent.futures',
@@ -87,7 +97,6 @@ a = Analysis(
         # The application imports no unittest code; keep it out of the bundle.
         'unittest',
         # Qt modules the shell never touches — keeps the onefile exe lean.
-        'PySide6.QtWebEngineCore', 'PySide6.QtWebEngineWidgets',
         'PySide6.QtQml', 'PySide6.QtQuick', 'PySide6.Qt3DCore',
         'PySide6.QtMultimedia', 'PySide6.QtCharts', 'PySide6.QtPdf',
     ],

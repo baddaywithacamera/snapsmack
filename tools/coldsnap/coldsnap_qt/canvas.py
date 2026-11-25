@@ -44,6 +44,8 @@ from PySide6.QtWidgets import (
 
 from . import theme
 from . import biggie
+from .mosaic_browser import MosaicBrowser
+from .mosaic_clusters import uniform_clusters
 from .mosaic_site_layout import compute_layout as site_compute_layout
 from .photo_loader import PhotoLoader
 
@@ -99,7 +101,8 @@ def _mosaic_images(canvas, data):
         elif isinstance(raw_weights, (list, tuple)) and idx < len(raw_weights):
             w_val = int(raw_weights[idx] or 0)
         paths.append(path)
-        images.append({"width": width, "height": height, "src": path, "weight": w_val})
+        images.append({"width": width, "height": height, "src": path,
+                       "weight": w_val, "identity": identity})
     return paths, images
 
 
@@ -292,7 +295,7 @@ class _Objects(QPyTextObject):
             # arithmetic the site uses, rather than the old w * 0.3 * ceil(n/3)
             # guess -- which for 53 photographs returned 5.4x the column width
             # and bore no relation to what would be published.
-            paths, out = mosaic_cells(self.canvas, data, w)
+            paths, out = self.canvas.browser_mosaic_cells(data, w)
             if not paths:
                 return QSizeF(w, 160)
             return QSizeF(w, out["height"] + 22)
@@ -313,7 +316,7 @@ class _Objects(QPyTextObject):
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
         painter.setRenderHint(QPainter.Antialiasing, True)
         if kind == "mosaic":
-            self._draw_mosaic(painter, r, data)
+            self._draw_mosaic(painter, r, data, pos)
         elif kind == "image":
             self._draw_image(painter, r, data)
         elif kind == "spacer":
@@ -348,20 +351,12 @@ class _Objects(QPyTextObject):
             return "#444444", "#222222"
         return "#9aa39b", "#e4e8e4"
 
-    def _draw_mosaic(self, painter, r, data):
-        """Draw the mosaic the SITE will draw.
-
-        Every cell comes from mosaic_site_layout.compute_layout, which is the
-        site's own composition in Python and is proved identical to
-        assets/js/ss-engine-mosaic.js over 350 layouts. Because the cells are
-        already each photograph's own shape, a photograph scaled to fit its
-        cell FILLS it -- the empty bands were never a scaling choice, they were
-        a uniform grid asking square cells to hold rectangular photographs.
-        """
+    def _draw_mosaic(self, painter, r, data, pos=None):
+        """Paint the shared browser engine's cells inside the text document."""
         layout = data.get("layout", "asymmetric")
         outline_col, text_col = self._placeholder_colors()
         inner = r.adjusted(0, 0, 0, -22)
-        paths, out = mosaic_cells(self.canvas, data, inner.width())
+        paths, out = self.canvas.browser_mosaic_cells(data, inner.width())
 
         if not paths:
             order = list(data.get("order") or [])
@@ -387,6 +382,11 @@ class _Objects(QPyTextObject):
             self._mosaic_footer(painter, r, len(paths), layout)
             return
 
+        if not out['items']:
+            painter.setPen(QColor(text_col))
+            status = self.canvas._inline_browser_error or 'Loading mosaic preview…'
+            painter.drawText(inner, Qt.AlignCenter, status)
+        tile_hits = {}
         for n, tile in enumerate(out["items"], 1):
             cell = QRect(inner.left() + int(round(tile["x"])),
                          inner.top() + int(round(tile["y"])),
@@ -416,6 +416,29 @@ class _Objects(QPyTextObject):
             painter.fillRect(badge, QColor(0, 0, 0, 190))
             painter.setPen(QColor("#ffffff"))
             painter.drawText(badge, Qt.AlignCenter, str(n))
+            tile_hits[tile['id']] = (tile['image']['identity'], cell)
+
+        clusters = uniform_clusters(out['items'], _mosaic_gap(data))
+        buttons = []
+        for cluster in clusters:
+            frame = QRect()
+            for tile in cluster:
+                frame = frame.united(tile_hits[tile['id']][1])
+            painter.setBrush(Qt.NoBrush)
+            painter.setPen(QPen(QColor('#ffc44a'), 3))
+            painter.drawRect(frame.adjusted(1, 1, -1, -1))
+            button = QRect(frame.left() + 29, frame.top() + 4, 70, 23)
+            painter.fillRect(button, QColor('#ffc44a'))
+            painter.setPen(QColor('#111111'))
+            painter.drawText(button, Qt.AlignCenter, 'Break up')
+            buttons.append((button, [tile_hits[tile['id']][0] for tile in cluster]))
+        if pos is not None:
+            self.canvas._inline_mosaic_hits[pos] = (tile_hits, buttons)
+        if clusters:
+            painter.setPen(QColor(text_col))
+            footer = QRect(r.left(), r.bottom() - 20, r.width(), 20)
+            painter.drawText(footer, Qt.AlignRight | Qt.AlignVCenter,
+                             f"{len(clusters)} cluster{'s' if len(clusters) != 1 else ''} to break up")
 
         self._mosaic_footer(painter, r, len(paths), layout)
 
@@ -798,6 +821,12 @@ class BiggieCanvas(QTextEdit):
         self._mosaic_layout_cache = {}
         self._mosaic_size_cache = {}
         self._mosaic_stat_cache = {}
+        self._inline_browser = None
+        self._inline_browser_error = ''
+        self._inline_browser_active = None
+        self._inline_browser_jobs = {}
+        self._inline_browser_cache = {}
+        self._inline_mosaic_hits = {}
         self._selected_obj_pos = None
         self._selected_block_pos = None
         self._block_close_rect = None
@@ -836,6 +865,56 @@ class BiggieCanvas(QTextEdit):
         QShortcut(QKeySequence("Ctrl+I"), self).activated.connect(self.toggle_italic)
         QShortcut(QKeySequence("Ctrl+U"), self).activated.connect(self.toggle_underline)
         QShortcut(QKeySequence("Ctrl+K"), self).activated.connect(self.insert_link)
+
+    def browser_mosaic_cells(self, data, width):
+        paths, images = _mosaic_images(self, data)
+        empty = {'items': [], 'height': 138}
+        if not paths:
+            return paths, empty
+        layout = str(data.get('layout') or 'asymmetric')
+        gap = max(0, min(20, _mosaic_gap(data)))
+        width = max(1, round(width))
+        key = (tuple(paths), tuple(str(item['identity']) for item in images),
+               tuple(item['weight'] for item in images), layout, gap, width)
+        if key in self._inline_browser_cache:
+            return paths, self._inline_browser_cache[key]
+        if key != self._inline_browser_active and key not in self._inline_browser_jobs:
+            self._inline_browser_jobs[key] = images
+            QTimer.singleShot(0, self._start_inline_mosaic)
+        return paths, empty
+
+    def _start_inline_mosaic(self):
+        if self._inline_browser_active is not None or not self._inline_browser_jobs:
+            return
+        if self._inline_browser is None:
+            self._inline_browser = MosaicBrowser(self, measure_only=True)
+            self._inline_browser.geometry_ready.connect(self._finish_inline_mosaic)
+            self._inline_browser.failed.connect(self._fail_inline_mosaic)
+        key = next(iter(self._inline_browser_jobs))
+        paths, _identities, weights, layout, gap, width = key
+        self._inline_browser_active = key
+        self._inline_browser.set_mosaic(list(enumerate(paths)), layout, gap,
+                                        {str(i): w for i, w in enumerate(weights, 1)}, width)
+
+    def _fail_inline_mosaic(self, message):
+        self._inline_browser_error = message
+        self._finish_inline_mosaic({'items': [], 'height': 138})
+
+    def _finish_inline_mosaic(self, geometry):
+        key = self._inline_browser_active
+        if key is None:
+            return
+        images = self._inline_browser_jobs.pop(key)
+        for tile in geometry['items']:
+            tile['image'] = images[tile['id'] - 1]
+        if len(self._inline_browser_cache) >= 128:
+            self._inline_browser_cache.pop(next(iter(self._inline_browser_cache)))
+        self._inline_browser_cache[key] = geometry
+        self._inline_browser_active = None
+        document = self.document()
+        document.markContentsDirty(0, document.characterCount())
+        self.viewport().update()
+        self._start_inline_mosaic()
 
     def _base_font(self) -> QFont:
         f = QFont(self._body_font_family or "Georgia")
@@ -1611,6 +1690,7 @@ class BiggieCanvas(QTextEdit):
         return r
 
     def paintEvent(self, event):
+        self._inline_mosaic_hits.clear()
         scale = float(getattr(self, "_zoom_scale", 1.0) or 1.0)
         doc = self.document()
         layout = doc.documentLayout()
@@ -1699,6 +1779,12 @@ class BiggieCanvas(QTextEdit):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             pt = event.position().toPoint()
+            document_point = self._unscale_point(event.position()).toPoint()
+            for pos, (_tiles, buttons) in self._inline_mosaic_hits.items():
+                for rect, identities in buttons:
+                    if rect.contains(document_point):
+                        self._break_inline_cluster(pos, identities)
+                        return
             if self._block_close_rect is not None and self._block_close_rect.contains(pt):
                 if self._selected_block_pos is not None:
                     self._remove_block_at(self._selected_block_pos)
@@ -1789,6 +1875,22 @@ class BiggieCanvas(QTextEdit):
             kind, data, pos = hit
             menu.addSeparator()
             if kind == "mosaic":
+                point = self._unscale_point(event.pos()).toPoint()
+                tiles, _buttons = self._inline_mosaic_hits.get(pos, ({}, []))
+                identity = next((ident for ident, rect in tiles.values() if rect.contains(point)), None)
+                if identity is not None:
+                    order = list(data.get('order') or range(1, len(self.bucket) + 1))
+                    index = next((i for i, item in enumerate(order) if str(item) == str(identity)), -1)
+                    for label, change, step, enabled in (
+                        ('Make larger', 'size', 1, len(order) > 1),
+                        ('Make smaller', 'size', -1, len(order) > 1),
+                        ('Move photo earlier', 'move', -1, index > 0),
+                        ('Move photo later', 'move', 1, 0 <= index < len(order) - 1),
+                    ):
+                        action = menu.addAction(label, lambda p=pos, i=identity, c=change, s=step:
+                                                self._edit_inline_photo(p, i, c, s))
+                        action.setEnabled(enabled)
+                    menu.addSeparator()
                 menu.addAction("Change this mosaic…", lambda: self._edit_mosaic(hit))
             elif kind == "image":
                 menu.addAction("Change this image…", lambda: self._edit_image(hit))
@@ -1810,6 +1912,40 @@ class BiggieCanvas(QTextEdit):
                 menu.addAction("Make wider", lambda: self._nudge_image(pos, .17))
             menu.addAction(f"Remove this {KIND_OBJ.get(kind, kind)}", lambda: self._remove_object(pos))
         menu.exec(event.globalPos())
+
+    def _edit_inline_photo(self, pos, identity, change, step):
+        hit = self._object_at(pos)
+        if not hit or hit[0] != 'mosaic':
+            return False
+        data = dict(hit[1])
+        order = list(data.get('order') or range(1, len(self.bucket) + 1))
+        index = next((i for i, item in enumerate(order) if str(item) == str(identity)), -1)
+        if index < 0 or len(order) < 2:
+            return False
+        _paths, images = _mosaic_images(self, data)
+        weights = {str(image['identity']): image['weight'] for image in images if image['weight']}
+        if change == 'move':
+            target = index + step
+            if not 0 <= target < len(order):
+                return False
+            order[index], order[target] = order[target], order[index]
+        else:
+            old = weights.get(str(identity), 0)
+            new = max(-1, min(2, old + step))
+            if new == old:
+                return False
+            if new:
+                weights[str(identity)] = new
+            else:
+                weights.pop(str(identity), None)
+        data.update(order=order, weights=weights)
+        self._insert_object('mosaic', data, replace_at=hit[2])
+        return True
+
+    def _break_inline_cluster(self, pos, identities):
+        for identity in identities:
+            if self._edit_inline_photo(pos, identity, 'size', 1):
+                return
 
     def _prompt_image_caption(self, pos: int):
         hit = self._object_at(pos)

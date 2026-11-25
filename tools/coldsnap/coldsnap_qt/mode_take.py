@@ -38,7 +38,8 @@ from . import theme, biggie
 from .canvas import mosaic_cells as _mosaic_cells
 from .widgets import (Accordion, Card, build_rail, hint, field_label,
                       big_button, load_pixmap)
-from .photo_loader import PhotoLoader
+from .mosaic_browser import MosaicBrowser
+from .mosaic_clusters import uniform_clusters
 from .photo_edits import render_non_destructive
 from .slapper_handoff import (ReturnWatch, find_executable,
                               focus_window, launch as launch_slapper)
@@ -59,13 +60,15 @@ class _PublishedPostBridge(QObject):
 
 
 class MosaicPreview(QWidget):
-    """Large live WYSIWYG preview matching BIGGIE and ss-engine-mosaic.js geometry."""
+    """Embedded site preview with native controls for the selected photographs."""
 
     swapRequested = Signal(int, int)
     moveRequested = Signal(int, int)
     sideSwapRequested = Signal(int)
     sizeRequested = Signal(int, int)
     reverseRequested = Signal()
+    breakRequested = Signal(object)
+    clustersChanged = Signal(int)
 
     def __init__(self, parent=None, *, content_width: int = 760, gap: int = 4):
         super().__init__(parent)
@@ -78,131 +81,100 @@ class MosaicPreview(QWidget):
             "photo to move, resize, swap sides, or reverse the arrangement.")
         self._tiles, self._rects = [], []
         self._layout_name, self._drag_from = "asymmetric", None
+        self._rendered_layout = "asymmetric"
         self._weights = {}
-        self.bucket = []
-        self.assets = {}
-        self._mosaic_size_cache = {}
-        self._mosaic_layout_cache = {}
-        # Codex's loader, c0b621f3. Decoding happens off the GUI thread with
-        # QImageReader.setScaledSize, so a photograph is never decoded at full
-        # resolution at all -- which is the part caching alone could not fix.
-        self._photos = PhotoLoader(self)
-        self._ready = {}
+        self._cells = {"items": [], "height": 0}
+        self._clusters = []
+        self._cluster_widgets = []
+        self._browser = MosaicBrowser(self)
+        self._browser.geometry_ready.connect(self._use_geometry)
+        self._browser.failed.connect(self._show_error)
+        self._error = QLabel(self)
+        self._error.setAlignment(Qt.AlignCenter)
+        self._error.hide()
+        stack = QVBoxLayout(self)
+        stack.setContentsMargins(8, 8, 8, 8)
+        stack.addWidget(self._browser)
+        stack.addWidget(self._error)
+        self.setFixedHeight(220)
+
+    def _show_error(self, message):
+        self._browser.hide()
+        self._error.setText(message)
+        self._error.show()
 
     def set_content_width(self, width: int):
         self._content_width = max(240, int(width or 760))
         self.setFixedWidth(self._content_width + 16)
-        self._sync_height()
-        self.update()
+        self._refresh_browser()
 
     def set_mosaic(self, tiles, layout_name, gap: int = 4, weights=None):
-        self._tiles = list(tiles)  # (row-in-list, local-path), in mosaic order
+        self._tiles = list(tiles)
         self._layout_name = str(layout_name or "asymmetric")
         self._gap = max(0, min(20, int(gap)))
         self._weights = {str(k): int(v) for k, v in (weights or {}).items() if int(v or 0) != 0}
-        self.bucket = [path for _row, path in self._tiles]
-        self._mosaic_layout_cache.clear()
-        self._sync_height()
-        self.update()
+        self._refresh_browser()
+
+    def _refresh_browser(self):
+        self._clear_cluster_widgets()
+        self._clusters = []
+        self._rects = []
+        self._cells = {"items": [], "height": 0}
+        self._browser.set_mosaic(
+            self._tiles, self._layout_name, self._gap, self._weights, self._content_width)
 
     def computed_cells(self):
-        """Return exact site/BIGGIE cell geometry at `self._content_width`."""
-        if not self._tiles:
-            return {"items": [], "sections": [], "height": 0.0}
-        data = {
-            "order": list(range(1, len(self.bucket) + 1)),
-            "layout": self._layout_name,
-            "gap": self._gap,
-            "weights": self._weights,
-        }
-        _paths, out = _mosaic_cells(self, data, self._content_width)
-        return out
+        """Geometry from the last completed browser render."""
+        return self._cells
 
-    def _sync_height(self):
-        out = self.computed_cells()
-        h = max(220, int(math.ceil(float(out.get("height") or 0.0))) + 16)
-        self.setFixedHeight(h)
+    def _use_geometry(self, geometry):
+        self._error.hide()
+        self._browser.show()
+        self._cells = geometry
+        self._rendered_layout = self._layout_name
+        self._rects = [
+            (self._tiles[cell["id"] - 1][0], QRect(
+                8 + round(cell["x"]), 8 + round(cell["y"]),
+                max(1, round(cell["width"])), max(1, round(cell["height"])),
+            ))
+            for cell in geometry["items"]
+        ]
+        self.setFixedHeight(max(220, math.ceil(geometry["height"]) + 16))
+        self._show_clusters(geometry["items"])
 
-    def _tile_pixmap(self, path, edge):
-        """The decoded tile, or None while it is still being read.
+    def _clear_cluster_widgets(self):
+        for widget in self._cluster_widgets:
+            widget.hide()
+            widget.deleteLater()
+        self._cluster_widgets = []
 
-        paintEvent cannot block, so this returns what is in hand and asks for
-        anything missing. The loader answers on a 40ms timer and the callback
-        repaints. A cache hit answers immediately, inside this call.
-        """
-        key = (path, edge)
-        if key in self._ready:
-            return self._ready[key]
-
-        def arrived(pixmap, key=key):
-            # Bounded so a slow drag-resize cannot grow this without limit;
-            # every entry is recoverable from the loader's own cache.
-            if len(self._ready) > 192:
-                self._ready.clear()
-            self._ready[key] = pixmap
-            # Safe from inside paintEvent: update() SCHEDULES a repaint rather
-            # than recursing, and the next paint finds the pixmap here and does
-            # not ask again.
-            self.update()
-
-        # False means the loader already has four decodes in flight. Schedule a
-        # brief retry so large mosaics never stall after the first four tiles.
-        if not self._photos.request(path, edge, arrived):
-            if not getattr(self, "_retry_pending", False):
-                self._retry_pending = True
-                QTimer.singleShot(60, lambda: (setattr(self, "_retry_pending", False), self.update()))
-        return self._ready.get(key)
+    def _show_clusters(self, cells):
+        self._clear_cluster_widgets()
+        self._clusters = uniform_clusters(cells, self._gap)
+        for cluster in self._clusters:
+            x = min(cell["x"] for cell in cluster)
+            y = min(cell["y"] for cell in cluster)
+            right = max(cell["x"] + cell["width"] for cell in cluster)
+            bottom = max(cell["y"] + cell["height"] for cell in cluster)
+            outline = QFrame(self)
+            outline.setGeometry(8 + round(x), 8 + round(y), round(right - x), round(bottom - y))
+            outline.setAttribute(Qt.WA_TransparentForMouseEvents)
+            outline.setStyleSheet("border: 3px solid #ffc44a; background: transparent;")
+            outline.show()
+            outline.raise_()
+            button = QPushButton("Break up", self)
+            rows = [self._tiles[cell["id"] - 1][0] for cell in cluster]
+            button.clicked.connect(lambda _checked=False, rows=rows: self.breakRequested.emit([rows]))
+            button.adjustSize()
+            button.move(16 + round(x), 16 + round(y))
+            button.show()
+            button.raise_()
+            self._cluster_widgets.extend((outline, button))
+        self.clustersChanged.emit(len(self._clusters))
 
     @staticmethod
     def tile_rects(width, height, count, layout_name, gap=5):
         return _tile_rects(width, height, count, layout_name, gap)
-
-    def paintEvent(self, _event):
-        painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor("#090b0a"))
-        if not self._tiles:
-            self._rects = []
-            painter.setPen(QColor(theme.DIM))
-            painter.drawText(
-                self.rect().adjusted(12, 12, -12, -12),
-                Qt.AlignCenter | Qt.TextWordWrap,
-                "LIVE PREVIEW — tick 1 or more photos below",
-            )
-            return
-        out = self.computed_cells()
-        items = out.get("items") or []
-        ox, oy = 8, 8
-        self._rects = []
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        for position, ((row, path), tile) in enumerate(zip(self._tiles, items), 1):
-            rect = QRect(
-                ox + int(round(tile["x"])),
-                oy + int(round(tile["y"])),
-                max(1, int(round(tile["width"]))),
-                max(1, int(round(tile["height"]))),
-            )
-            self._rects.append((row, rect))
-            edge = max(64, -(-max(rect.width(), rect.height()) // 64) * 64)
-            pix = self._tile_pixmap(path, edge) or QPixmap()
-            if not pix.isNull():
-                # Match ss-engine-mosaic.css (.mosaic-item img { width:100%; height:100%; object-fit:cover })
-                scaled = pix.scaled(rect.size(), Qt.KeepAspectRatioByExpanding,
-                                    Qt.SmoothTransformation)
-                painter.save()
-                painter.setClipRect(rect)
-                target = QRect(rect.left() + (rect.width() - scaled.width()) // 2,
-                               rect.top() + (rect.height() - scaled.height()) // 2,
-                               scaled.width(), scaled.height())
-                painter.drawPixmap(target, scaled)
-                painter.restore()
-            else:
-                painter.fillRect(rect, QColor("#202320"))
-            painter.setPen(QPen(QColor("#35ff14"), 2 if row == self._drag_from else 1))
-            painter.drawRect(rect.adjusted(0, 0, -1, -1))
-            badge = QRect(rect.left() + 4, rect.top() + 4, 24, 20)
-            painter.fillRect(badge, QColor(0, 0, 0, 190))
-            painter.setPen(QColor("#ffffff"))
-            painter.drawText(badge, Qt.AlignCenter, str(position))
 
     def _row_at(self, point):
         return next((row for row, rect in self._rects if rect.contains(point)), None)
@@ -210,12 +182,10 @@ class MosaicPreview(QWidget):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self._drag_from = self._row_at(event.position().toPoint())
-            self.update()
 
     def mouseReleaseEvent(self, event):
         source, target = self._drag_from, self._row_at(event.position().toPoint())
         self._drag_from = None
-        self.update()
         if source is not None and target is not None and source != target:
             self.swapRequested.emit(source, target)
 
@@ -1692,6 +1662,13 @@ class TakeMode(QWidget):
         preview_pane_lay.setSpacing(4)
         preview_pane_lay.addWidget(preview_scroll, 1)
         preview_pane_lay.addWidget(preview_hint)
+        cluster_bar = QHBoxLayout()
+        cluster_count = QLabel()
+        break_all = QPushButton("Break up all")
+        cluster_bar.addWidget(cluster_count, 1)
+        cluster_bar.addWidget(break_all)
+        preview_pane_lay.addLayout(cluster_bar)
+        break_all.hide()
 
         # SS-1049: photographs already used by OTHER mosaics in this post are
         # not offered again.
@@ -1792,6 +1769,8 @@ class TakeMode(QWidget):
         }
         active_bucket_idx = [display_order[0] if display_order else None]
         tiles_by_idx = {}
+        constraint = {"previous": None, "attempts": 0, "keep_partial": False}
+        focus_after_resize = [None]
 
         def checked_indices():
             return [bi for bi in display_order if bi in checked_set]
@@ -1799,7 +1778,7 @@ class TakeMode(QWidget):
         def refresh_preview():
             inc = checked_indices()
             tiles = [
-                (pos, self._bucket[bi].local_path)
+                (pos, self._bucket[bi].local_path, self._bucket[bi].thumb_aspect)
                 for pos, bi in enumerate(display_order)
                 if bi in checked_set
             ]
@@ -1968,7 +1947,70 @@ class TakeMode(QWidget):
                 weights_by_idx.pop(bi, None)
             else:
                 weights_by_idx[bi] = nxt
+            focus_after_resize[0] = row
             refresh_preview()
+
+        def break_clusters(clusters):
+            changed = False
+            for rows in clusters:
+                for row in rows:
+                    bi = display_order[row]
+                    weight = weights_by_idx.get(bi, 0)
+                    if bi in checked_set and weight < 2:
+                        weights_by_idx[bi] = max(1, weight + 1)
+                        if not changed:
+                            focus_after_resize[0] = row
+                        changed = True
+                        break
+            if changed:
+                refresh_preview()
+            return changed
+
+        def cluster_status(count):
+            cluster_count.setText(f"{count} cluster{'s' if count != 1 else ''} to break up" if count else "")
+            break_all.setVisible(count > 0)
+            target = next((rect for row, rect in preview._rects if row == focus_after_resize[0]), None)
+            if target is not None:
+                preview_scroll.ensureVisible(target.center().x(), target.top() + 16)
+                focus_after_resize[0] = None
+            saved = constraint["previous"]
+            if saved is None:
+                return
+            if not count:
+                constraint["previous"] = None
+                return
+            constraint["attempts"] += 1
+            if constraint["attempts"] <= 8:
+                groups = [[preview._tiles[cell["id"] - 1][0] for cell in group]
+                          for group in preview._clusters]
+                if break_clusters(groups):
+                    return
+            constraint["previous"] = None
+            if constraint["keep_partial"]:
+                return
+            order, weights, previous_layout = saved
+            display_order[:] = order
+            weights_by_idx.clear()
+            weights_by_idx.update(weights)
+            index = preset.findData(previous_layout)
+            if index >= 0:
+                preset.setCurrentIndex(index)
+            rebuild_grid()
+            refresh_preview()
+
+        def constrain_layout(previous_layout, *, keep_partial=False):
+            constraint["previous"] = (list(display_order), dict(weights_by_idx), previous_layout)
+            constraint["attempts"] = 0
+            constraint["keep_partial"] = keep_partial
+
+        def break_every_cluster():
+            constrain_layout(preset.currentData(), keep_partial=True)
+            cluster_status(len(preview._clusters))
+
+        def selected_layout(_index):
+            if preset.currentData() == "asymmetric":
+                constrain_layout(preview._rendered_layout)
+                refresh_preview()
 
         def rotate_current(degrees):
             bi = active_bucket_idx[0]
@@ -2006,6 +2048,7 @@ class TakeMode(QWidget):
             inc = checked_indices()
             if not inc:
                 return
+            constrain_layout(preset.currentData())
             # Group by orientation (P, SQ, L) and aspect ratio so similar shapes sit cleanly
             ori_rank = {"P": 0, "SQ": 1, "L": 2, "": 3}
             def _key(bi):
@@ -2048,11 +2091,15 @@ class TakeMode(QWidget):
         rotate_right.clicked.connect(lambda: rotate_current(-90))
         suggest.clicked.connect(suggest_arrangement)
         preset.currentIndexChanged.connect(lambda _index: refresh_preview())
+        preset.activated.connect(selected_layout)
         preview.swapRequested.connect(swap_rows)
         preview.moveRequested.connect(move_preview_row)
         preview.sideSwapRequested.connect(swap_preview_side)
         preview.sizeRequested.connect(resize_preview_row)
         preview.reverseRequested.connect(reverse_arrangement)
+        preview.breakRequested.connect(break_clusters)
+        preview.clustersChanged.connect(cluster_status)
+        break_all.clicked.connect(break_every_cluster)
 
         def move(delta):
             bi = active_bucket_idx[0]

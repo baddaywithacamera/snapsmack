@@ -11,6 +11,7 @@ import sys
 from types import SimpleNamespace
 
 from PIL import Image
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialog, QPushButton
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -42,9 +43,18 @@ def _digest(path):
     return hashlib.sha256(open(path, "rb").read()).hexdigest()
 
 
+def _wait_for_preview(preview):
+    for _ in range(400):
+        items = preview.computed_cells()["items"]
+        if items:
+            return items
+        QTest.qWait(20)
+    raise AssertionError("Timed out waiting for browser geometry")
+
+
 def _run_dialog(monkeypatch, mode, order, layout, action):
     def fake_exec(dialog):
-        dialog._mosaic_preview.grab()
+        _wait_for_preview(dialog._mosaic_preview)
         action(dialog)
         return QDialog.Accepted
 
@@ -151,8 +161,7 @@ def test_preview_right_click_names_arrangement_actions(tmp_path):
     preview = MosaicPreview(content_width=760)
     preview.set_mosaic(list(enumerate(paths)), "one-left")
     preview.show()
-    app.processEvents()
-    preview.grab()
+    _wait_for_preview(preview)
     menu = preview._arrangement_menu(preview._rects[0][0])
     labels = [action.text() for action in menu.actions() if not action.isSeparator()]
     assert labels == [
@@ -221,17 +230,17 @@ def test_size_action_preserves_order_enlarges_span_and_survives_reopen(monkeypat
     mode._bucket = [O.DraftImage(local_path=path, original_path=path) for path in paths]
     try:
         def _act(dialog):
-            # Default asymmetric quilt has mixed tile sizes
             init_areas = [
                 c["width"] * c["height"]
-                for c in dialog._mosaic_preview.computed_cells()["items"]
+                for c in _wait_for_preview(dialog._mosaic_preview)
             ]
             assert max(init_areas) > min(init_areas) * 1.15
             before_area = init_areas[2]
             dialog._mosaic_resize(2, 1)
             assert dialog._mosaic_checked_indices() == [0, 1, 2, 3]
             assert dialog._mosaic_weights == {2: 1}
-            after_area = dialog._mosaic_preview.computed_cells()["items"][2]["width"] * dialog._mosaic_preview.computed_cells()["items"][2]["height"]
+            tile = _wait_for_preview(dialog._mosaic_preview)[2]
+            after_area = tile["width"] * tile["height"]
             assert after_area > before_area
             # Survives Suggest arrangement and Move earlier/later
             dialog._mosaic_suggest_btn.click()
