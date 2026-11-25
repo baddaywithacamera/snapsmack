@@ -1,0 +1,542 @@
+[
+  {
+    "skin": "50-shades-of-noah-grey",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "50-shades-of-noah-grey",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "52-card-pickup",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "52-card-pickup",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "alfred",
+    "mode": "smacktalk",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "alfred",
+    "mode": "smacktalk",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "aurora",
+    "mode": "carousel",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "aurora",
+    "mode": "carousel",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "chaplin",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "chaplin",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "full-monty",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "full-monty",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "galleria",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "galleria",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "game-on",
+    "mode": "carousel",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "game-on",
+    "mode": "carousel",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "glide",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "glide",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "heuristic",
+    "mode": "carousel",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "heuristic",
+    "mode": "carousel",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "hip-to-be-square",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "hip-to-be-square",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "impact-printer",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "impact-printer",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "instant-camera",
+    "mode": "carousel",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "instant-camera",
+    "mode": "carousel",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "jive-turkey",
+    "mode": "carousel",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "jive-turkey",
+    "mode": "carousel",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "new-horizon",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "new-horizon",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "onyx",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "onyx",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "parade",
+    "mode": "carousel",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "parade",
+    "mode": "carousel",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "photogram",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "photogram",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "rational-geo",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "rational-geo",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "scroll",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "scroll",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "show-n-tell",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "show-n-tell",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "slickr",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "slickr",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "sliders",
+    "mode": "carousel",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "sliders",
+    "mode": "carousel",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "stanley",
+    "mode": "smacktalk",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "stanley",
+    "mode": "smacktalk",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "sudden-impact",
+    "mode": "carousel",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "sudden-impact",
+    "mode": "carousel",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "telegram",
+    "mode": "smacktalk",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "telegram",
+    "mode": "smacktalk",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "the-grid",
+    "mode": "carousel",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "the-grid",
+    "mode": "carousel",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "tilez",
+    "mode": "smacktalk",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "tilez",
+    "mode": "smacktalk",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "true-grit",
+    "mode": "photoblog",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "true-grit",
+    "mode": "photoblog",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "writing-with-impact",
+    "mode": "smacktalk",
+    "oldToggle": "0",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  },
+  {
+    "skin": "writing-with-impact",
+    "mode": "smacktalk",
+    "oldToggle": "1",
+    "status": 200,
+    "skinAssetLoaded": true,
+    "picker": false,
+    "result": "PASS"
+  }
+]
