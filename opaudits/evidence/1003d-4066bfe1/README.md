@@ -24,7 +24,7 @@ NEW HORIZON was installed using the ordinary signature and integrity checks agai
 
 Community settings saved and reloaded in both states. GLIDE showed ten hearts when enabled and zero when disabled. A clicked heart persisted across a reload. The retired reaction route returned 410 and a stored historical reaction row remained unchanged. [Measurements](1003d-community-settings.json).
 
-**Open SS-1580.** Selecting the only category in the TRUE GRIT filter panel submitted `f[]=cat:1` and left all ten photos visible. The legacy `cat=1` query showed one, and Show All restored ten. Source inspection found the same missing `f[]` handoff in 1002D. [Panel output](1003d-archive-filter-panel-result.png), [legacy query output](1003d-archive-filter-legacy-result.png). This release gate remains unsigned while the PM decides how to handle the failed panel path.
+**Open SS-1580.** Selecting the only category in the TRUE GRIT filter panel submitted `f[]=cat:1` and left all ten photos visible. The legacy `cat=1` query showed one, and Show All restored ten. Installed 1002D and 1003D gave the same counts against the same staged data. [1002D measurement](stage-filter-d2846b66.json), [1003D measurement](stage-filter-4066bfe1.json), [panel output](1003d-archive-filter-panel-result.png), [legacy query output](1003d-archive-filter-legacy-result.png). This release gate remains unsigned while the PM decides how to handle the failed panel path.
 
 Brain Trust 7647 is the portfolio correction's conditional review. The release package, live installation and fleet-after sweep are pending.
 
