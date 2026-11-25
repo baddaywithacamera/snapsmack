@@ -147,7 +147,7 @@ function snapsmack_prepare_crop_circles(PDO $pdo, array $settings, array $manife
         $platforms = [
             'flickr'=>'Flickr','smugmug'=>'SmugMug','instagram'=>'Instagram','facebook'=>'Facebook',
             'youtube'=>'YouTube','500px'=>'500px','vero'=>'Vero','threads'=>'Threads',
-            'mastodon'=>'Mastodon','bluesky'=>'Bluesky','linkedin'=>'LinkedIn','pinterest'=>'Pinterest',
+            'mastodon'=>'Mastodon','bluesky'=>'Bluesky','pinterest'=>'Pinterest',
             'tumblr'=>'Tumblr','deviantart'=>'DeviantArt','behance'=>'Behance','linktree'=>'Linktree',
             'pixelfed'=>'Pixelfed','email'=>'Email','website'=>'Website',
         ];

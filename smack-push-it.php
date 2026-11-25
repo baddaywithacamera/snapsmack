@@ -63,7 +63,7 @@ $push_group_keys = [
         'social_dock_color_mode', 'social_dock_icon_style', 'social_dock_shadow', 'social_dock_opacity',
         'social_dock_flickr', 'social_dock_smugmug', 'social_dock_instagram', 'social_dock_facebook',
         'social_dock_youtube', 'social_dock_500px', 'social_dock_vero', 'social_dock_threads',
-        'social_dock_mastodon', 'social_dock_bluesky', 'social_dock_linkedin', 'social_dock_pinterest',
+        'social_dock_mastodon', 'social_dock_bluesky', 'social_dock_pinterest',
         'social_dock_tumblr', 'social_dock_deviantart', 'social_dock_behance', 'social_dock_linktree',
         'social_dock_pixelfed', 'social_dock_email', 'social_dock_website',
         'social_dock_own_fedi',
@@ -596,7 +596,7 @@ include 'core/sidebar.php';
                 <div class="lens-input-wrapper">
                     <label>PROFILE LINKS SET</label>
                     <div class="read-only-display"><?php
-                        $_dock_platform_keys = ['social_dock_flickr','social_dock_smugmug','social_dock_instagram','social_dock_facebook','social_dock_youtube','social_dock_500px','social_dock_vero','social_dock_threads','social_dock_mastodon','social_dock_bluesky','social_dock_linkedin','social_dock_pinterest','social_dock_tumblr','social_dock_deviantart','social_dock_behance','social_dock_linktree','social_dock_pixelfed','social_dock_email','social_dock_website'];
+                        $_dock_platform_keys = ['social_dock_flickr','social_dock_smugmug','social_dock_instagram','social_dock_facebook','social_dock_youtube','social_dock_500px','social_dock_vero','social_dock_threads','social_dock_mastodon','social_dock_bluesky','social_dock_pinterest','social_dock_tumblr','social_dock_deviantart','social_dock_behance','social_dock_linktree','social_dock_pixelfed','social_dock_email','social_dock_website'];
                         $_dock_set = 0;
                         foreach ($_dock_platform_keys as $_dk) { if (trim((string)($settings[$_dk] ?? '')) !== '') $_dock_set++; }
                         echo (int)$_dock_set . ' of ' . count($_dock_platform_keys);

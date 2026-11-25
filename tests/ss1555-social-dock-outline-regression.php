@@ -20,7 +20,10 @@ echo "SS-1560 / SS-1555: one shared Social Dock glyph family\n\n";
 $check('the temporary selectable outline/solid families are gone',
        !preg_match('/<symbol\s+id="[^"]+-(?:outline|solid)"/', $sprite));
 
-foreach (['bluesky', 'youtube'] as $platform) {
+$platforms = ['flickr', 'smugmug', 'instagram', 'facebook', 'youtube', '500px',
+              'vero', 'threads', 'mastodon', 'bluesky', 'pinterest', 'tumblr',
+              'deviantart', 'behance', 'linktree', 'pixelfed', 'email', 'website'];
+foreach ($platforms as $platform) {
     preg_match('/<symbol\s+id="' . preg_quote($platform, '/') . '"[^>]*>(.*?)<\/symbol>/s',
                $sprite, $match);
     $art = $match[1] ?? '';
@@ -30,6 +33,17 @@ foreach (['bluesky', 'youtube'] as $platform) {
            !str_contains($art, 'stroke=') && !str_contains($art, 'fill="none"'));
     $check("{$platform} includes no embedded hardcoded colour", !preg_match('/fill="#[a-f0-9]+"/i', $art));
 }
+
+$check('the shared sprite has no LinkedIn symbol', !str_contains($sprite, 'id="linkedin"'));
+$check('the platform picker has no LinkedIn field',
+       !str_contains((string)file_get_contents($root . '/smack-social-dock.php'), 'social_dock_linkedin'));
+require_once $root . '/core/indieweb.php';
+$check('legacy saved LinkedIn values are also omitted from identity discovery',
+       snapsmack_indieweb_identity_urls([
+           'social_dock_enabled' => '1',
+           'social_dock_linkedin' => 'https://www.linkedin.com/in/example',
+           'social_dock_vero' => 'https://vero.co/example',
+       ]) === ['https://vero.co/example']);
 
 $dock = $manifest['social_dock'] ?? [];
 $check('ALFRED preserves the existing outline chip setting',
@@ -46,6 +60,6 @@ if ($failures) {
     fwrite(STDERR, "Social Dock glyph family FAILED:\n  - " . implode("\n  - ", $failures) . "\n");
     exit(1);
 }
-echo "PASS: Bluesky and YouTube are solid brand glyphs; ALFRED defaults to a white owner-editable dock.\n";
+echo "PASS: the shared glyphs are solid; ALFRED defaults to a white owner-editable dock.\n";
 
 // ===== SNAPSMACK EOF =====
