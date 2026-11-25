@@ -131,8 +131,6 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
                         COMMENT 'Editorial classification: color, bw, or blank when not yet classified.',
   `post_id`             int            DEFAULT NULL
                         COMMENT 'FK to snap_posts — populated when image is wrapped in a post',
-  `user_id`             int unsigned   DEFAULT NULL
-                        COMMENT 'FK to snap_users — owner/author for per-user import attribution. NULL = legacy/unattributed.',
   `sort_order`          int            NOT NULL DEFAULT '0'
                         COMMENT 'Manual display order. Lower = earlier in feed. 0 = unset (falls back to img_date DESC).',
   `modified_at`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
