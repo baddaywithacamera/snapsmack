@@ -105,7 +105,8 @@ label {
     color: #004DFF;
 }
 
-input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="text"], input[type="number"], input[type="email"], input[type="url"],
+input[type="tel"], input[type="password"],
 input[type="datetime-local"], input[type="date"], select, textarea,
 .preview-box, .select-box {
     background-color: #ffffff;

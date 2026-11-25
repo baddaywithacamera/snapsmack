@@ -272,15 +272,15 @@ include 'core/sidebar.php';
                     <label>THREADS</label>
                     <input type="url" name="social_dock_threads" value="<?php echo htmlspecialchars($settings['social_dock_threads'] ?? ''); ?>" placeholder="https://www.threads.net/@you">
 
-                </div>
-
-                <div class="post-col-right">
-
                     <label>MASTODON</label>
                     <input type="url" name="social_dock_mastodon" value="<?php echo htmlspecialchars($settings['social_dock_mastodon'] ?? ''); ?>" placeholder="https://mastodon.social/@you">
 
                     <label>BLUESKY</label>
                     <input type="url" name="social_dock_bluesky" value="<?php echo htmlspecialchars($settings['social_dock_bluesky'] ?? ''); ?>" placeholder="https://bsky.app/profile/you.bsky.social">
+
+                </div>
+
+                <div class="post-col-right">
 
                     <label>LINKEDIN</label>
                     <input type="url" name="social_dock_linkedin" value="<?php echo htmlspecialchars($settings['social_dock_linkedin'] ?? ''); ?>" placeholder="https://www.linkedin.com/in/you">
