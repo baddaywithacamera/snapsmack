@@ -114,12 +114,31 @@ function snapsmack_pocket_album_payload(
         ];
     }
 
-    $album = ['id' => $albumId, 'name' => ''];
-    if (method_exists($repository, 'albumById')) {
+    // THE REAL METHOD IS publicAlbum(), NOT albumById().
+    //
+    // This asked only for albumById() when it was written, and the test's fake
+    // repository offered exactly that -- so 26 checks passed while the live
+    // site would have served every album with a blank name, because
+    // SnapPublicRepository has no albumById() at all. The same mistake as
+    // SS-1563, where a renderer nothing called was wired and thirteen mutants
+    // died against dead code. The method name here is read off
+    // core/public-repository.php:1000, and the regression test fakes THAT
+    // name.
+    //
+    // publicAlbum() also recomputes the published count from the join rather
+    // than trusting a stored column, so the count travelling in this feed
+    // agrees with the grid on the album page -- the same reason it does that
+    // for the album header.
+    $album = ['id' => $albumId, 'name' => '', 'photograph_count' => 0];
+    $found = null;
+    if (method_exists($repository, 'publicAlbum')) {
+        $found = $repository->publicAlbum($albumId);
+    } elseif (method_exists($repository, 'albumById')) {
         $found = $repository->albumById($albumId);
-        if (is_array($found)) {
-            $album['name'] = (string)($found['album_name'] ?? $found['name'] ?? '');
-        }
+    }
+    if (is_array($found)) {
+        $album['name'] = (string)($found['album_name'] ?? $found['name'] ?? '');
+        $album['photograph_count'] = max(0, (int)($found['photograph_count'] ?? 0));
     }
 
     return [

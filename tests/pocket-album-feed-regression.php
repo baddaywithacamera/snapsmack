@@ -65,8 +65,15 @@ final class PocketAlbumFakeRepository
         return $rows;
     }
 
-    public function albumById(int $id): ?array {
-        return ['album_name' => 'Found Textures'];
+    // publicAlbum() IS THE REAL METHOD NAME on SnapPublicRepository
+    // (core/public-repository.php:1000). This fake offered albumById() when it
+    // was first written, which is a name the live repository does not have --
+    // so every check here passed while the real site would have served a blank
+    // album name. A fake that answers to a name production does not use proves
+    // nothing about production.
+    public function publicAlbum(int $id): ?array {
+        return ['id' => $id, 'album_name' => 'Found Textures',
+                'view_count' => 12, 'photograph_count' => 250];
     }
 }
 
@@ -168,7 +175,20 @@ $check('a caller cannot ask for the whole archive in one request',
 $check('  nor for zero per page', snapsmack_pocket_album_payload($repo, 191, 1, 0)['per_page'] >= 1);
 $check('page 0 is treated as page one',
        snapsmack_pocket_album_payload($repo, 191, 0, 100, $SOURCE)['page'] === 1);
-$check('a repository with no albumById still works',
+$check('the album name comes back from publicAlbum, the real method',
+       $page1['album']['name'] === 'Found Textures');
+$check('  and the published count comes with it, recomputed from the join',
+       $page1['album']['photograph_count'] === 250);
+$check('a repository exposing only the old albumById name still works',
+       (static function () use ($SOURCE) {
+           $old = new class {
+               public function archivePhotographs(int $l, int $o = 0, int $c = 0,
+                                                   int $a = 0, string $s = ''): array { return []; }
+               public function albumById(int $id): ?array { return ['album_name' => 'Legacy']; }
+           };
+           return snapsmack_pocket_album_payload($old, 191, 1, 100, $SOURCE)['album']['name'] === 'Legacy';
+       })());
+$check('a repository with no album lookup at all still works',
        (static function () use ($SOURCE) {
            $noName = new class {
                public function archivePhotographs(int $l, int $o = 0, int $c = 0,

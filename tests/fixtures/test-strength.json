@@ -1806,14 +1806,27 @@
             10
         ]
     },
+    "pocket-album-display-regression.php": {
+        "assertions": 55,
+        "predicates": 41,
+        "thresholds": [
+            2,
+            2,
+            40,
+            191,
+            191,
+            250
+        ]
+    },
     "pocket-album-feed-regression.php": {
-        "assertions": 25,
+        "assertions": 28,
         "predicates": 3,
         "thresholds": [
             2,
             50,
             100,
             191,
+            250,
             800,
             1200
         ]
