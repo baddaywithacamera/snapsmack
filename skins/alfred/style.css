@@ -42,6 +42,31 @@
     --alfred-accent: #1e73be;
 }
 
+/* The same locally hosted Montserrat faces Hitchcock uses. */
+@font-face {
+    font-family: Montserrat;
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("assets/montserrat-v24-latin-regular.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: Montserrat;
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("assets/montserrat-v24-latin-500.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: Montserrat;
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("assets/montserrat-v24-latin-700.woff2") format("woff2");
+}
+
 .header-media-image { display:block; width:100%; height:100%; object-fit:var(--alfred-header-fit,cover); }
 .site-logo {
     display: block;
@@ -617,6 +642,15 @@ input[type="button"],
     justify-content: center;
     flex-wrap: wrap;
     position: relative;
+    width: 100%;
+    max-width: none;
+    min-height: 60px;
+    padding-inline: 0;
+}
+
+.alfred-v2 .navigation,
+.alfred-v2 .post-header {
+    font-family: Montserrat, "Helvetica Neue", Helvetica, sans-serif;
 }
 
 .alfred-nav-search {
@@ -654,6 +688,11 @@ input[type="button"],
 }
 
 .alfred-nav-search-input {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
     width: 0;
     opacity: 0;
     padding: 0;
@@ -678,6 +717,7 @@ input[type="button"],
     list-style: none;
     justify-content: center;
     margin: 0;
+    padding: 0;
     text-align: center;
 }
 
@@ -715,6 +755,11 @@ input[type="button"],
 .main-menu li:hover > a,
 .main-menu li.current-menu-item > a {
     color: #fff;
+}
+
+.alfred-v2 .main-menu > li > a[aria-current="page"] {
+    color: #fff;
+    font-weight: 700;
 }
 
 .main-menu > li.menu-item-has-children > a,
@@ -1080,6 +1125,7 @@ input[type="button"],
 }
 
 .post-date {
+    display: block;
     color: #757575;
     font-size: 0.875em;
     font-weight: 500;
@@ -1118,6 +1164,13 @@ input[type="button"],
    Measured after: 1040px grid with 342px columns at 1920 and 1440, 908 with
    298px at 1024. Post and page keep their 800px column untouched. */
 body.landing-page #scroll-stage.post-inner {
+    width: auto;
+    max-width: none;
+}
+
+/* The photograph archive uses the same 1040px HITCHCOCK lane as the landing
+   grid. It is not prose, so the post-reading column must not narrow it. */
+body.archive-page #scroll-stage.post-inner {
     width: auto;
     max-width: none;
 }
@@ -2091,6 +2144,7 @@ p.comment-form-author { margin-right: 5%; }
    the input from its CMS control; the extra class makes this mapping outrank
    the engine's four-column fallback regardless of stylesheet order. */
 .alfred-archive-grid.ss-square-wall {
+    display: grid;
     --ss-square-cols: var(--alfred-square-cols, 3);
     --ss-gap: 30px;
 }
@@ -2131,6 +2185,28 @@ p.comment-form-author { margin-right: 5%; }
 .smacktalk-archive > h1 {
     color: #fff;
     text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+/* Hitchcock's 1040px card wraps an 800px reading measure. */
+.alfred-v2 #scroll-stage.post-inner:has(> .smacktalk-post) {
+    width: 1040px;
+    max-width: 90%;
+}
+
+.alfred-v2 .smacktalk-post > .post-inner,
+.alfred-v2 .static-page > .post-content {
+    width: 800px;
+    max-width: 85%;
+    margin-inline: auto;
+}
+
+.alfred-v2 .static-page > .post-content {
+    padding-bottom: 90px;
+}
+
+/* Hitchcock's 3.95% gutter, applied to both landing grid modes. */
+.alfred-v2.landing-page .alfred-archive-grid {
+    column-gap: 3.95%;
 }
 
 /* Imported static pages can contain a full-size portrait and tiny badges.

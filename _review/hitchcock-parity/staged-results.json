@@ -1,0 +1,380 @@
+[
+  {
+    "key": "home",
+    "width": 1920,
+    "centerDelta": 0,
+    "nav": {
+      "x": 0,
+      "w": 1920,
+      "y": 0,
+      "h": 60,
+      "text": "HOME\nBLOG\nABOUT SÉAN\nExample\nPORTFOLIO\nExample\nCONTACT\nIMAGE USE",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "fontLoaded": true,
+    "card": null,
+    "date": null,
+    "title": null,
+    "tab": null,
+    "grid": [
+      "grid",
+      "319.281px 319.281px 319.281px",
+      "1040px",
+      "3",
+      "3",
+      "3.95%",
+      "30px"
+    ],
+    "tiles": [
+      [
+        440,
+        319.28125
+      ],
+      [
+        800.359375,
+        319.28125
+      ],
+      [
+        1160.71875,
+        319.28125
+      ]
+    ],
+    "overflow": 0
+  },
+  {
+    "key": "home",
+    "width": 1440,
+    "centerDelta": 0,
+    "nav": {
+      "x": 0,
+      "w": 1440,
+      "y": 0,
+      "h": 60,
+      "text": "HOME\nBLOG\nABOUT SÉAN\nExample\nPORTFOLIO\nExample\nCONTACT\nIMAGE USE",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "fontLoaded": true,
+    "card": null,
+    "date": null,
+    "title": null,
+    "tab": null,
+    "grid": [
+      "grid",
+      "319.281px 319.281px 319.281px",
+      "1040px",
+      "3",
+      "3",
+      "3.95%",
+      "30px"
+    ],
+    "tiles": [
+      [
+        200,
+        319.28125
+      ],
+      [
+        560.359375,
+        319.28125
+      ],
+      [
+        920.71875,
+        319.28125
+      ]
+    ],
+    "overflow": 0
+  },
+  {
+    "key": "home",
+    "width": 1024,
+    "centerDelta": 0,
+    "nav": {
+      "x": 0,
+      "w": 1024,
+      "y": 0,
+      "h": 60,
+      "text": "HOME\nBLOG\nABOUT SÉAN\nExample\nPORTFOLIO\nExample\nCONTACT\nIMAGE USE",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "fontLoaded": true,
+    "card": null,
+    "date": null,
+    "title": null,
+    "tab": null,
+    "grid": [
+      "grid",
+      "282.938px 282.938px 282.938px",
+      "921.594px",
+      "3",
+      "3",
+      "3.95%",
+      "30px"
+    ],
+    "tiles": [
+      [
+        51.203125,
+        282.9375
+      ],
+      [
+        370.53125,
+        282.9375
+      ],
+      [
+        689.859375,
+        282.9375
+      ]
+    ],
+    "overflow": 0
+  },
+  {
+    "key": "solo",
+    "width": 1920,
+    "centerDelta": 0,
+    "nav": {
+      "x": 0,
+      "w": 1920,
+      "y": 0,
+      "h": 60,
+      "text": "HOME\nBLOG\nABOUT SÉAN\nExample\nPORTFOLIO\nExample\nCONTACT\nIMAGE USE",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "fontLoaded": true,
+    "card": {
+      "x": 440,
+      "w": 1040,
+      "y": 258,
+      "h": 350,
+      "text": "NOVEMBER 16, 2023\nAN UPHILL BATTLE\n\nFixture body",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "date": {
+      "x": 492,
+      "w": 936,
+      "y": 338,
+      "h": 18,
+      "text": "NOVEMBER 16, 2023",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "title": {
+      "x": 492,
+      "w": 936,
+      "y": 366,
+      "h": 48,
+      "text": "AN UPHILL BATTLE",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "tab": {
+      "x": 1875,
+      "w": 45,
+      "y": 440,
+      "h": 200,
+      "text": "›\n\nEarlier post",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "grid": null,
+    "tiles": [],
+    "overflow": 0
+  },
+  {
+    "key": "solo",
+    "width": 1440,
+    "centerDelta": 0,
+    "nav": {
+      "x": 0,
+      "w": 1440,
+      "y": 0,
+      "h": 60,
+      "text": "HOME\nBLOG\nABOUT SÉAN\nExample\nPORTFOLIO\nExample\nCONTACT\nIMAGE USE",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "fontLoaded": true,
+    "card": {
+      "x": 200,
+      "w": 1040,
+      "y": 258,
+      "h": 350,
+      "text": "NOVEMBER 16, 2023\nAN UPHILL BATTLE\n\nFixture body",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "date": {
+      "x": 252,
+      "w": 936,
+      "y": 338,
+      "h": 18,
+      "text": "NOVEMBER 16, 2023",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "title": {
+      "x": 252,
+      "w": 936,
+      "y": 366,
+      "h": 48,
+      "text": "AN UPHILL BATTLE",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "tab": {
+      "x": 1395,
+      "w": 45,
+      "y": 440,
+      "h": 200,
+      "text": "›\n\nEarlier post",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "grid": null,
+    "tiles": [],
+    "overflow": 0
+  },
+  {
+    "key": "solo",
+    "width": 1024,
+    "centerDelta": 0,
+    "nav": {
+      "x": 0,
+      "w": 1024,
+      "y": 0,
+      "h": 60,
+      "text": "HOME\nBLOG\nABOUT SÉAN\nExample\nPORTFOLIO\nExample\nCONTACT\nIMAGE USE",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "fontLoaded": true,
+    "card": {
+      "x": 51.203125,
+      "w": 921.59375,
+      "y": 258,
+      "h": 350,
+      "text": "NOVEMBER 16, 2023\nAN UPHILL BATTLE\n\nFixture body",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "date": {
+      "x": 97.28125,
+      "w": 829.421875,
+      "y": 338,
+      "h": 18,
+      "text": "NOVEMBER 16, 2023",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "title": {
+      "x": 97.28125,
+      "w": 829.421875,
+      "y": 366,
+      "h": 48,
+      "text": "AN UPHILL BATTLE",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "tab": {
+      "x": 979,
+      "w": 45,
+      "y": 440,
+      "h": 200,
+      "text": "›\n\nEarlier post",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "grid": null,
+    "tiles": [],
+    "overflow": 0
+  },
+  {
+    "key": "portfolio",
+    "width": 1920,
+    "centerDelta": 0,
+    "nav": {
+      "x": 0,
+      "w": 1920,
+      "y": 0,
+      "h": 60,
+      "text": "HOME\nBLOG\nABOUT SÉAN\nExample\nPORTFOLIO\nExample\nCONTACT\nIMAGE USE",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "fontLoaded": true,
+    "card": {
+      "x": 440,
+      "w": 1040,
+      "y": 258,
+      "h": 322,
+      "text": "PORTFOLIO\n\nFixture portfolio content",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "date": null,
+    "title": {
+      "x": 492,
+      "w": 936,
+      "y": 338,
+      "h": 48,
+      "text": "PORTFOLIO",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "tab": null,
+    "grid": null,
+    "tiles": [],
+    "overflow": 0
+  },
+  {
+    "key": "portfolio",
+    "width": 1440,
+    "centerDelta": 0,
+    "nav": {
+      "x": 0,
+      "w": 1440,
+      "y": 0,
+      "h": 60,
+      "text": "HOME\nBLOG\nABOUT SÉAN\nExample\nPORTFOLIO\nExample\nCONTACT\nIMAGE USE",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "fontLoaded": true,
+    "card": {
+      "x": 200,
+      "w": 1040,
+      "y": 258,
+      "h": 322,
+      "text": "PORTFOLIO\n\nFixture portfolio content",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "date": null,
+    "title": {
+      "x": 252,
+      "w": 936,
+      "y": 338,
+      "h": 48,
+      "text": "PORTFOLIO",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "tab": null,
+    "grid": null,
+    "tiles": [],
+    "overflow": 0
+  },
+  {
+    "key": "portfolio",
+    "width": 1024,
+    "centerDelta": 0,
+    "nav": {
+      "x": 0,
+      "w": 1024,
+      "y": 0,
+      "h": 60,
+      "text": "HOME\nBLOG\nABOUT SÉAN\nExample\nPORTFOLIO\nExample\nCONTACT\nIMAGE USE",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "fontLoaded": true,
+    "card": {
+      "x": 51.203125,
+      "w": 921.59375,
+      "y": 258,
+      "h": 322,
+      "text": "PORTFOLIO\n\nFixture portfolio content",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "date": null,
+    "title": {
+      "x": 97.28125,
+      "w": 829.421875,
+      "y": 338,
+      "h": 48,
+      "text": "PORTFOLIO",
+      "font": "Montserrat, \"Helvetica Neue\", Helvetica, sans-serif"
+    },
+    "tab": null,
+    "grid": null,
+    "tiles": [],
+    "overflow": 0
+  }
+]
