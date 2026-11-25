@@ -965,10 +965,42 @@ class SmacktalkPoster:
         r'(?:\s+layout=([a-z-]+))?'
         r'(?:\s+(shuffle))?'
         r'(?:\s+gap=([0-9]{1,2}))?'
+        r'(?:\s+weights=([0-9]+:-?[0-9]+(?:\s*,\s*[0-9]+:-?[0-9]+)*))?'
         r'(?::\s*(?:bucket|new|auto)\s*)?\]', re.I)
+    _WEIGHTED_MOSAIC = re.compile(r'\[mosaic\b[^\]\r\n]*\bweights=[^\]\r\n]*\]', re.I)
+
+    def _check_mosaic_weights(self, body, photo_count):
+        weighted = self._WEIGHTED_MOSAIC.findall(body)
+        if not weighted:
+            return
+        for token in weighted:
+            match = self._MOSAIC_TOKEN.fullmatch(token)
+            if not match or not match.group(1) or not match.group(5):
+                raise ValueError("The mosaic size choices are invalid. Reopen the mosaic and save it again.")
+            positions = {int(pos) for pos in match.group(1).split(",")}
+            weights = self._mosaic_weights(match.group(5))
+            if not weights or any(pos not in positions or pos > photo_count for pos in weights):
+                raise ValueError("A resized mosaic photo is missing. Reopen the mosaic and save it again.")
+        response = self.session.get(self._route("smackpress/mosaics"), timeout=20)
+        if response.status_code in (404, 405):
+            raise RuntimeError("This site's CMS cannot publish resized mosaic tiles yet. Update the site before sending this draft.")
+        response.raise_for_status()
+        if response.json().get("mosaic_weights") is not True:
+            raise RuntimeError("This site's CMS cannot publish resized mosaic tiles yet. Update the site before sending this draft.")
+
+    @staticmethod
+    def _mosaic_weights(raw):
+        weights = {}
+        for pair in raw.split(",") if raw else ():
+            bucket_pos, weight = map(int, pair.split(":"))
+            if bucket_pos < 1 or weight not in (-1, 1, 2) or bucket_pos in weights:
+                raise ValueError("The mosaic size choices are invalid. Reopen the mosaic and save it again.")
+            weights[bucket_pos] = weight
+        return weights
 
     def create_mosaic(self, image_ids, title="Mosaic", gap=4,
-                      layout="asymmetric", gallery_shuffle=False) -> Tuple[int, str]:
+                      layout="asymmetric", gallery_shuffle=False,
+                      mosaic_weights=None) -> Tuple[int, str]:
         """Create a snap_mosaics panel from ordered Gallery image ids via
         POST smackpress/mosaics. Returns (mosaic_id, '[mosaic:ID]').
 
@@ -983,6 +1015,8 @@ class SmacktalkPoster:
                    "gap": _gap_value(gap), "layout": layout}
         if gallery_shuffle:
             payload["gallery_shuffle"] = True
+        if mosaic_weights:
+            payload["mosaic_weights"] = mosaic_weights
         r = self.session.post(
             self._route("smackpress/mosaics"),
             json=payload,
@@ -992,6 +1026,8 @@ class SmacktalkPoster:
                 r, "Mosaic create rejected — this site's SMACKTALK key must be a 'smackpress' key."))
         r.raise_for_status()
         data = r.json()
+        if mosaic_weights and data.get("mosaic_weights") != mosaic_weights:
+            raise RuntimeError("The site did not confirm the mosaic sizes. The post was not sent.")
         mid = int(data.get("mosaic_id") or 0)
         if mid <= 0:
             raise RuntimeError("mosaics endpoint did not return a mosaic_id")
@@ -1072,15 +1108,21 @@ class SmacktalkPoster:
             if layout not in self._MOSAIC_LAYOUTS:
                 layout = 'asymmetric'
             chosen = list(image_ids)
+            site_weights = {}
             if selection:
                 positions = [int(value.strip()) for value in selection.split(',')]
                 chosen = [image_ids[pos - 1] for pos in positions
                           if 1 <= pos <= len(image_ids)]
+                site_weights = {
+                    str(image_ids[pos - 1]): weight
+                    for pos, weight in self._mosaic_weights(match.group(5)).items()
+                    if pos in positions and 1 <= pos <= len(image_ids)
+                }
             if not chosen:
                 return ''
             mid, shortcode = self.create_mosaic(
                 chosen, title=(draft.title or "Mosaic"), gap=gallery_gap, layout=layout,
-                gallery_shuffle=shuffle)
+                gallery_shuffle=shuffle, **({"mosaic_weights": site_weights} if site_weights else {}))
             mosaic_ids.append(mid)
             return shortcode
 
@@ -1146,7 +1188,7 @@ class SmacktalkPoster:
                         out.pop("caption", None)
                         out.pop("show_caption", None)
                 if out.get("type") == "mosaic" and out.get("order"):
-                    out["order"] = [positions.get(str(v), v) for v in out["order"]]
+                    biggie.wire_mosaic_ids(out, positions)
                 if out.get("type") == "columns":
                     out["cols"] = [[_wire(c) for c in col] for col in out.get("cols", [])]
                 return out
@@ -1275,6 +1317,7 @@ class SmacktalkPoster:
                 "This post asks for a MOSAIC but has no photographs. Add the "
                 "photos, or take the mosaic out of the writing."))
         try:
+            self._check_mosaic_weights(body_text, len(draft.images))
             if not is_page:
                 err_msg, was_cancelled = self._resolve_existing_post_id(
                     draft, confirm_overwrite_fn=confirm_overwrite_fn)

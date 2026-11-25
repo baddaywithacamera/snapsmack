@@ -346,6 +346,52 @@ def _gap_checks():
     return n
 
 
+def test_weighted_mosaic_does_not_send_when_the_cms_cannot_save_sizes():
+    from types import SimpleNamespace
+    from sumna_post import SmacktalkPoster
+
+    traffic = []
+
+    class OldSite:
+        def get(self, url, **kwargs):
+            traffic.append(("GET", url))
+            return FakeResp(404, {})
+
+        def post(self, url, **kwargs):
+            raise AssertionError("A draft with unsupported sizes must not upload anything")
+
+    draft = SimpleNamespace(title="Mosaic", caption="[mosaic=2,1 layout=asymmetric weights=2:1]",
+                            images=[object(), object()])
+    poster = SmacktalkPoster("https://example.test", "key", session=OldSite())
+    reply = poster.sync_smacktalk(draft)
+    assert not reply.ok
+    assert "cannot publish resized mosaic tiles yet" in reply.message
+    assert len(traffic) == 1 and traffic[0][0] == "GET"
+
+
+def test_weighted_mosaic_create_requires_a_server_receipt_for_the_weights():
+    from sumna_post import SmacktalkPoster
+    from pytest import raises
+
+    class Site:
+        def __init__(self, receipt):
+            self.receipt = receipt
+
+        def post(self, url, *, json, **kwargs):
+            assert url.endswith("smackpress/mosaics")
+            assert json["asset_ids"] == [205, 101, 203]
+            assert json["mosaic_weights"] == {"205": 1, "101": -1}
+            return FakeResp(200, self.receipt)
+
+    weights = {"205": 1, "101": -1}
+    reply = {"mosaic_id": 91, "mosaic_weights": weights}
+    poster = SmacktalkPoster("https://example.test", "key", session=Site(reply))
+    assert poster.create_mosaic([205, 101, 203], mosaic_weights=weights) == (91, "[mosaic:91]")
+    poster = SmacktalkPoster("https://example.test", "key", session=Site({"mosaic_id": 91}))
+    with raises(RuntimeError, match="did not confirm the mosaic sizes"):
+        poster.create_mosaic([205, 101, 203], mosaic_weights=weights)
+
+
 if __name__ == "__main__":
     passed = (_checks() + _mosaic_token_checks() + _bucket_img_checks()
               + _gap_checks())

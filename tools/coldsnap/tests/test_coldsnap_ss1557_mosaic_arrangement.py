@@ -18,6 +18,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 import sumna_offline as O  # noqa: E402
+from coldsnap_qt import biggie  # noqa: E402
 from coldsnap_qt.mode_take import (  # noqa: E402
     MosaicPreview, TakeMode, _mosaic_area_profile, _resize_mosaic_order,
 )
@@ -265,15 +266,19 @@ def test_size_action_preserves_order_enlarges_span_and_survives_reopen(monkeypat
         block = mode.body.canvas.document().begin()
         hit = mode.body.canvas._object_at(block.position())
         assert hit[1]["weights"] == {identities[2]: 1}
+        assert mode.body.authoring_blocks()[0]["weights"] == {identities[2]: 1}
 
         poster = object.__new__(SmacktalkPoster)
         calls = []
         poster.create_mosaic = lambda image_ids, **kwargs: (
             calls.append((list(image_ids), dict(kwargs))) or (77, "[mosaic:77]")
         )
-        marker = "[mosaic=%s layout=%s]" % (
-            ",".join(map(str, saved_order)), saved_layout,
-        )
+        saved = {"type": "mosaic", "order": [identities[pos - 1] for pos in saved_order],
+                 "layout": saved_layout, "weights": {identities[2]: 1}}
+        marker = biggie.serialize_blocks(mode._wire_blocks([saved]))
+        backup_draft = SimpleNamespace(images=mode._bucket, body_blocks=biggie.blocks_to_json([saved]))
+        assert poster._body_text_for_sync(backup_draft) == marker
+        assert marker.endswith(" weights=3:1]")
         resolved, ids = poster._resolve_mosaics(
             marker,
             [101, 102, 103, 104],
@@ -288,6 +293,7 @@ def test_size_action_preserves_order_enlarges_span_and_survives_reopen(monkeypat
                 "gap": 4,
                 "layout": "asymmetric",
                 "gallery_shuffle": False,
+                "mosaic_weights": {"103": 1},
             },
         )]
     finally:

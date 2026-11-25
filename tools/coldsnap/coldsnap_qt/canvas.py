@@ -76,16 +76,17 @@ def _mosaic_images(canvas, data):
     bucket = canvas.bucket
     if not order:
         order = list(range(1, len(bucket) + 1))
-    paths = []
-    for identity in order:
+    selected = []
+    for index, identity in enumerate(order):
         if str(identity).isdigit() and 1 <= int(identity) <= len(bucket):
-            paths.append(bucket[int(identity) - 1])
+            selected.append((index, identity, bucket[int(identity) - 1]))
         elif str(identity) in canvas.assets:
-            paths.append(canvas.assets[str(identity)])
+            selected.append((index, identity, canvas.assets[str(identity)]))
     size_cache = getattr(canvas, "_mosaic_size_cache", None)
     raw_weights = data.get("weights") or {}
+    paths = []
     images = []
-    for idx, (identity, path) in enumerate(zip(order, paths)):
+    for idx, identity, path in selected:
         if size_cache is not None and path in size_cache:
             width, height = size_cache[path]
         else:
@@ -97,6 +98,7 @@ def _mosaic_images(canvas, data):
             w_val = int(raw_weights.get(str(identity), raw_weights.get(identity, 0)) or 0)
         elif isinstance(raw_weights, (list, tuple)) and idx < len(raw_weights):
             w_val = int(raw_weights[idx] or 0)
+        paths.append(path)
         images.append({"width": width, "height": height, "src": path, "weight": w_val})
     return paths, images
 
@@ -137,13 +139,7 @@ def mosaic_cells(canvas, data, width):
     layout = data.get("layout", "asymmetric")
     gap = _mosaic_gap(data)
     w_int = max(1, int(round(width)))
-    raw_weights = data.get("weights") or {}
-    if isinstance(raw_weights, dict):
-        weight_key = tuple((str(k), int(v)) for k, v in sorted(raw_weights.items()) if int(v or 0) != 0)
-    elif isinstance(raw_weights, (list, tuple)):
-        weight_key = tuple(int(v or 0) for v in raw_weights)
-    else:
-        weight_key = ()
+    weight_key = tuple(image["weight"] for image in images)
     cache = getattr(canvas, "_mosaic_layout_cache", None)
     key = (tuple(paths), layout, gap, w_int, weight_key)
     if cache is not None and key in cache:
@@ -2291,6 +2287,8 @@ def _export_block(block, nested: bool = False) -> list:
                     if data.get("order"):
                         blk["order"] = list(data["order"])
                         blk["layout"] = str(data.get("layout") or "asymmetric")
+                        if data.get("weights"):
+                            blk["weights"] = dict(data["weights"])
                     out.append(blk)
                 elif okind == "image":
                     image = {"type": "image", "img_id": str(data.get("img_id", ""))}

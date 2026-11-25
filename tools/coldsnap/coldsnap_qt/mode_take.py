@@ -2949,6 +2949,12 @@ class TakeMode(QWidget):
                         continue
                     copied = dict(node)
                     copied["order"] = kept
+                    if copied.get("weights"):
+                        copied["weights"] = {
+                            str(_remap_identity(key)): weight
+                            for key, weight in copied["weights"].items()
+                            if not _matches(key)
+                        }
                     out.append(copied)
                 elif kind == "columns":
                     copied = dict(node)
@@ -3069,6 +3075,8 @@ class TakeMode(QWidget):
                         out["img_id"] = "bucket:%d" % (old_position - 1)
             elif kind == "mosaic" and out.get("order"):
                 order = []
+                saved_weights = {str(key): weight for key, weight in (out.get("weights") or {}).items()}
+                weights = {}
                 for identity in out["order"]:
                     key = str(identity)
                     if key == asset_uuid:
@@ -3079,9 +3087,13 @@ class TakeMode(QWidget):
                             continue
                         identity = old_position - 1 if old_position > position else old_position
                     order.append(identity)
+                    if key in saved_weights:
+                        weights[str(identity)] = saved_weights[key]
                 if not order:
                     continue
                 out["order"] = order
+                if "weights" in out:
+                    out["weights"] = weights
             elif kind == "columns":
                 out["cols"] = [
                     cls._without_photo_references(column, asset_uuid, position)
@@ -3837,7 +3849,7 @@ class TakeMode(QWidget):
                     out.pop("caption", None)
                     out.pop("show_caption", None)
             if out.get("type") == "mosaic" and out.get("order"):
-                out["order"] = [positions.get(str(value), value) for value in out["order"]]
+                biggie.wire_mosaic_ids(out, positions)
             if out.get("type") == "columns":
                 out["cols"] = [[convert(child) for child in col] for col in out.get("cols", [])]
             return out

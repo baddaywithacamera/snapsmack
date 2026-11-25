@@ -131,6 +131,16 @@ def serialize_block(b: dict) -> str:
     return str(b.get("text", ""))          # raw — verbatim
 
 
+def wire_mosaic_ids(block: dict, positions: dict) -> None:
+    """Translate both the arranged photographs and their sizes to bucket positions."""
+    block["order"] = [positions.get(str(identity), identity) for identity in block["order"]]
+    if block.get("weights"):
+        block["weights"] = {
+            str(positions.get(str(identity), identity)): weight
+            for identity, weight in block["weights"].items()
+        }
+
+
 def serialize_blocks(blocks: list) -> str:
     parts = [serialize_block(b) for b in (blocks or [])]
     return "\n\n".join(p for p in parts if p != "")

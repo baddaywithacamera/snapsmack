@@ -18,6 +18,7 @@ def run(output_dir: str) -> int:
     from PySide6.QtWidgets import QApplication, QDialog, QPushButton
 
     import sumna_offline as O
+    from coldsnap_qt import biggie
     from coldsnap_qt.mode_take import MosaicPreview, TakeMode
     from coldsnap_qt.photo_tray import PhotoThumbTile
 
@@ -113,6 +114,74 @@ def run(output_dir: str) -> int:
     mode._mosaic_dialog([], "asymmetric", preselected_order=[0, 1, 2, 3])
     checks.update(captured)
 
+    # Equal-aspect photographs isolate changes in the assigned span from
+    # differences in the photographs. Drive the same modal as the editor uses.
+    span_paths = []
+    for i, color in enumerate(((33, 85, 120), (129, 71, 41), (55, 106, 64), (98, 55, 107))):
+        path = fixture_dir / f"span-{i + 1}.jpg"
+        Image.new("RGB", (1200, 800), color).save(path)
+        span_paths.append(str(path))
+    mode._add_photo_paths(span_paths, insert=False)
+    span_indices = list(range(len(mode._bucket) - 4, len(mode._bucket)))
+    span_ids = [str(mode._bucket[i].asset_uuid) for i in span_indices]
+    mode.body.canvas.from_blocks([{"type": "mosaic", "order": span_ids, "layout": "asymmetric"}])
+    span = {}
+
+    def rects(preview):
+        return [[round(tile[key], 3) for key in ("x", "y", "width", "height")]
+                for tile in preview.computed_cells()["items"]]
+
+    def resize_mosaic():
+        dialog = app.activeModalWidget()
+        if not isinstance(dialog, QDialog):
+            return
+        preview = dialog._mosaic_preview
+        preview.set_content_width(760)
+        span["before"] = rects(preview)
+        span["order_before"] = dialog._mosaic_checked_indices()
+        dialog.grab().save(str(out / "03-mosaic-before.png"), "PNG")
+        dialog._mosaic_resize(2, 1)
+        span["larger"] = rects(preview)
+        span["order_after"] = dialog._mosaic_checked_indices()
+        dialog.grab().save(str(out / "04-mosaic-larger.png"), "PNG")
+        dialog._mosaic_resize(2, -1)
+        span["smaller"] = rects(preview)
+        dialog._mosaic_resize(2, 1)
+        dialog.accept()
+
+    def reopen_mosaic():
+        dialog = app.activeModalWidget()
+        if not isinstance(dialog, QDialog):
+            return
+        preview = dialog._mosaic_preview
+        preview.set_content_width(760)
+        span["reopened"] = rects(preview)
+        span["reopened_order"] = dialog._mosaic_checked_indices()
+        dialog.grab().save(str(out / "05-mosaic-reopened.png"), "PNG")
+        dialog.reject()
+
+    mode.body.canvas._pending_obj_pos = mode.body.canvas.document().begin().position()
+    QTimer.singleShot(250, resize_mosaic)
+    mode._canvas_mosaic(span_ids, "asymmetric")
+    captured_block = mode.body.authoring_blocks()[0]
+    marker = biggie.serialize_blocks(mode._wire_blocks([captured_block]))
+    mode.body.canvas.from_blocks(biggie.blocks_from_json(biggie.blocks_to_json([captured_block])))
+    mode.body.canvas._pending_obj_pos = mode.body.canvas.document().begin().position()
+    QTimer.singleShot(250, reopen_mosaic)
+    mode._canvas_mosaic(span_ids, "asymmetric")
+    target = span["larger"][2]
+    smaller_tile = span["larger"][0]
+    checks.update({
+        "default_quilt_has_mixed_spans": len({(tile[2], tile[3]) for tile in span["before"]}) > 1,
+        "larger_mosaic_tile_spans_two_by_two": abs(target[2] - 2 * smaller_tile[2] - 4) < 1
+            and abs(target[3] - 2 * smaller_tile[3]) < 4,
+        "larger_mosaic_reflows_neighbors": any(span["before"][i] != span["larger"][i] for i in (0, 1, 3)),
+        "smaller_mosaic_returns_to_authored_size": span["smaller"] == span["before"],
+        "mosaic_resize_preserves_picker_order": span["order_after"] == span["order_before"] == span["reopened_order"],
+        "mosaic_sizes_survive_reopen": span["reopened"] == span["larger"],
+        "mosaic_sizes_reach_publish_marker": marker.endswith(f" weights={span_indices[2] + 1}:1]"),
+    })
+
     mode._remote_post_id = 42
     mode._remote_slug = "parity-gate"
     saved = mode._autosave_now()
@@ -123,6 +192,7 @@ def run(output_dir: str) -> int:
         "build": __import__("_version").BUILD_VERSION,
         "checks": checks,
         "tile_badges": tile_badges,
+        "mosaic_resize": span,
         "pass": all(value for key, value in checks.items() if key != "mosaic_thumbnail_count"),
     }
     (out / "parity.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
