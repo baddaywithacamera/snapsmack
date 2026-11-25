@@ -351,6 +351,61 @@
         return solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant);
     }
 
+    /**
+     * NO PHOTOGRAPH IS RENDERED LARGER THAN IT ACTUALLY IS. (SS-1584.)
+     *
+     * Sean, on the weighted mosaics: no blurry photos. A tile's box comes from
+     * the layout, and a weighted tile's box can be wider than the photograph
+     * has pixels -- the stylesheet then has object-fit: cover on an img sized
+     * width:100%/height:100%, so the browser stretches it and the photograph
+     * goes soft. boundedSingle() already caps the one-photo path at
+     * sourceWidth; the multi-tile path never did.
+     *
+     * THIS DOES NOT MOVE THE TILE. The box keeps the exact x, y, width and
+     * height the layout chose -- so an existing mosaic is laid out today
+     * exactly as it was yesterday, and the golden geometry digest (which
+     * hashes order, x, y, width, height and the layout height, and nothing
+     * else) does not move either. What changes is only the PHOTOGRAPH inside
+     * a box too big for it: it renders at most 1:1 and sits centred, with the
+     * tile's own background showing around it.
+     *
+     * THE TILE'S ASPECT RATIO IS KEPT, not the photograph's. The crop the
+     * layout chose is the composition Sean saw when he made the mosaic;
+     * switching to the photograph's own shape here would re-frame it. So the
+     * image box shrinks along both axes by one factor and the same crop
+     * survives, just smaller.
+     *
+     * Pure arithmetic, exported below, so it is measured by
+     * tests/mosaic-layout.test.js in a vm rather than needing a browser --
+     * which matters because this repository's geometry faults are exactly the
+     * ones that markup-reading tests miss.
+     */
+    function noUpscaleFit(tileWidth, tileHeight, nativeWidth, nativeHeight) {
+        var boxW = Number(tileWidth) || 0;
+        var boxH = Number(tileHeight) || 0;
+        var nativeW = Number(nativeWidth) || 0;
+        var nativeH = Number(nativeHeight) || 0;
+        // A photograph whose size we do not know is left alone. Guessing a
+        // size would be the 3:2 mistake again: a tile shrunk on a guess is a
+        // visible change made on no evidence.
+        if (boxW <= 0 || boxH <= 0 || nativeW <= 0 || nativeH <= 0) {
+            return { width: boxW, height: boxH, left: 0, top: 0, capped: false };
+        }
+        var factor = Math.min(1, nativeW / boxW, nativeH / boxH);
+        if (factor >= 1) {
+            return { width: boxW, height: boxH, left: 0, top: 0, capped: false };
+        }
+        var width = boxW * factor;
+        var height = boxH * factor;
+        return {
+            width: width,
+            height: height,
+            left: (boxW - width) / 2,
+            top: (boxH - height) / 2,
+            capped: true
+        };
+    }
+
     function boundedSingle(image, y, containerWidth) {
         var ar = imageAR(image);
         var sourceWidth = Math.max(1, Number(image.width) || MAX_SECTION_HEIGHT);
@@ -503,6 +558,24 @@
                 img.setAttribute('data-lightbox-src', image.full || image.src);
             }
             img.style.objectPosition = focalValue(image.focusX) + '% ' + focalValue(image.focusY) + '%';
+
+            // Cap at 1:1 against the RENDERED box, which is the tile scaled to
+            // the real container -- not the reference width the layout was
+            // solved at. A cap computed before the scale would be right only
+            // at one viewport width.
+            var fit = noUpscaleFit(tile.width * scale, tile.height * scale,
+                                   image.width, image.height);
+            if (fit.capped) {
+                // position:absolute against .mosaic-item, which is already
+                // positioned, so this needs no change to the stylesheet and
+                // leaves the hover transform free to do its own job.
+                img.style.position = 'absolute';
+                img.style.left = fit.left.toFixed(2) + 'px';
+                img.style.top = fit.top.toFixed(2) + 'px';
+                img.style.width = fit.width.toFixed(2) + 'px';
+                img.style.height = fit.height.toFixed(2) + 'px';
+                img.setAttribute('data-upscale-capped', '1');
+            }
             media.appendChild(img);
             fragment.appendChild(item);
         });
@@ -664,6 +737,11 @@
     window.SnapMosaic = {
         computeLayout: computeLayout,
         renderMosaic: renderMosaic,
+        // Exported so the no-upscale arithmetic is MEASURED in a vm rather
+        // than only exercised through a browser. The geometry faults that
+        // reach Sean are exactly the ones a markup-reading test misses, and a
+        // browser harness is not installed in every checkout.
+        noUpscaleFit: noUpscaleFit,
         init: initMosaics
     };
 

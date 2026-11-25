@@ -1,0 +1,13 @@
+SS-1584 mosaic upscale cap — where the blur comes from, measured
+run at: 2026-11-25T18:11:02Z
+branch: claude/ss1575-pocket-album
+
+Five images, one weighted (the COLD SNAP reference-width path), native 1200x800:
+
+  container  scale   widest rendered tile   native   upscaled?
+        760  1.000                760px   1200px   no
+       1024  0.853                682px   1200px   no
+       1200  1.000                799px   1200px   no
+       1440  1.200                959px   1200px   no
+       1600  1.333               1066px   1200px   no
+       1920  1.600               1279px   1200px   YES
