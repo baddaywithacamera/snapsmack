@@ -26,7 +26,8 @@ $expect(!str_contains($gallery, 'activate_uploaded_skin'), 'gallery must not off
 $expect(str_contains($gallery, 'skin_registry_fetch('), 'gallery must retain registry-backed skin installation');
 $expect(str_contains($packager, 'function sc_extract_one_skin('), 'Skin Packager must support fetching one directory');
 $expect(str_contains($packager, 'name="fetch_one_skin"'), 'Skin Packager must expose the one-skin fetch action');
-$expect(str_contains($packager, "['master', 'dev']"), 'one-skin fetch must offer stable and dev branches');
+$expect(str_contains($packager, 'function sc_skin_source_is_commit(')
+    && !str_contains($packager, 'value="dev"'), 'skin fetch must require an explicit reviewed commit');
 $expect(!str_contains($updater, "setting_key='update_public_key'"), 'skin updates must not depend on a nonexistent database key');
 $expect(substr_count($updater, "defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : ''") >= 2,
     'manual and automatic skin updates must use the protected installed release key');
