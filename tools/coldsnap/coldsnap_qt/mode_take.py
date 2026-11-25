@@ -20,7 +20,7 @@ import uuid
 import requests
 
 from concurrent.futures import ThreadPoolExecutor
-from PySide6.QtCore import QObject, Qt, QDate, QEventLoop, QMetaObject, QRect, QSize, Signal, Slot, QTimer, QSettings
+from PySide6.QtCore import QObject, Qt, QDate, QEvent, QEventLoop, QMetaObject, QRect, QSize, Signal, Slot, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit,
@@ -84,6 +84,8 @@ class MosaicPreview(QWidget):
         self._rendered_layout = "asymmetric"
         self._weights = {}
         self._cells = {"items": [], "height": 0}
+        self._fit_viewport = None
+        self._fit_scale = 1.0
         self._clusters = []
         self._cluster_widgets = []
         self._browser = MosaicBrowser(self)
@@ -127,19 +129,44 @@ class MosaicPreview(QWidget):
         """Geometry from the last completed browser render."""
         return self._cells
 
+    def fit_to_viewport(self, viewport):
+        self._fit_viewport = viewport
+        viewport.installEventFilter(self)
+        self._place_geometry()
+
+    def eventFilter(self, watched, event):
+        if watched is self._fit_viewport and event.type() == QEvent.Resize:
+            self._place_geometry()
+        return super().eventFilter(watched, event)
+
     def _use_geometry(self, geometry):
         self._error.hide()
         self._browser.show()
         self._cells = geometry
         self._rendered_layout = self._layout_name
+        self._place_geometry()
+        self.clustersChanged.emit(len(self._clusters))
+
+    def _place_geometry(self):
+        geometry = self._cells
+        height = geometry["height"] if geometry["items"] else 220
+        scale = 1.0
+        if self._fit_viewport is not None:
+            available = self._fit_viewport.size()
+            scale = min(1, max(1, available.width() - 16) / self._content_width,
+                        max(1, available.height() - 16) / height)
+        self._fit_scale = scale
+        self._browser.set_visual_scale(scale)
         self._rects = [
             (self._tiles[cell["id"] - 1][0], QRect(
-                8 + round(cell["x"]), 8 + round(cell["y"]),
-                max(1, round(cell["width"])), max(1, round(cell["height"])),
+                8 + round(cell["x"] * scale), 8 + round(cell["y"] * scale),
+                max(1, round(cell["width"] * scale)), max(1, round(cell["height"] * scale)),
             ))
             for cell in geometry["items"]
         ]
-        self.setFixedHeight(max(220, math.ceil(geometry["height"]) + 16))
+        self.setFixedSize(math.ceil(self._content_width * scale) + 16,
+                          max(0 if self._fit_viewport is not None else 220,
+                              math.ceil(height * scale) + 16))
         self._show_clusters(geometry["items"])
 
     def _clear_cluster_widgets(self):
@@ -157,7 +184,9 @@ class MosaicPreview(QWidget):
             right = max(cell["x"] + cell["width"] for cell in cluster)
             bottom = max(cell["y"] + cell["height"] for cell in cluster)
             outline = QFrame(self)
-            outline.setGeometry(8 + round(x), 8 + round(y), round(right - x), round(bottom - y))
+            scale = self._fit_scale
+            outline.setGeometry(8 + round(x * scale), 8 + round(y * scale),
+                                round((right - x) * scale), round((bottom - y) * scale))
             outline.setAttribute(Qt.WA_TransparentForMouseEvents)
             outline.setStyleSheet("border: 3px solid #ffc44a; background: transparent;")
             outline.show()
@@ -166,11 +195,10 @@ class MosaicPreview(QWidget):
             rows = [self._tiles[cell["id"] - 1][0] for cell in cluster]
             button.clicked.connect(lambda _checked=False, rows=rows: self.breakRequested.emit([rows]))
             button.adjustSize()
-            button.move(16 + round(x), 16 + round(y))
+            button.move(16 + round(x * scale), 16 + round(y * scale))
             button.show()
             button.raise_()
             self._cluster_widgets.extend((outline, button))
-        self.clustersChanged.emit(len(self._clusters))
 
     @staticmethod
     def tile_rects(width, height, count, layout_name, gap=5):
@@ -1638,18 +1666,20 @@ class TakeMode(QWidget):
         dialog.resize(max(980, self._preview_width + 80), 820)
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel(
-            "Choose which photos belong in this mosaic. Click tiles to include/exclude, "
-            "drag in the preview to swap positions, or right-click a preview photo to "
-            "make it larger or smaller. Hover a tile for its filename."))
+            "Click photos to include them. Drag in the preview to swap positions. "
+            "Right-click a preview photo to rearrange or resize it."))
 
         preview = MosaicPreview(content_width=self._preview_width)
         preview_scroll = QScrollArea()
         preview_scroll.setWidgetResizable(False)
-        preview_scroll.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        preview_scroll.setAlignment(Qt.AlignCenter)
+        preview_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        preview_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         preview_scroll.setFrameShape(QFrame.NoFrame)
         preview_scroll.setStyleSheet("QScrollArea { background: #090b0a; border: 1px solid #262926; }")
         preview_scroll.setWidget(preview)
         preview_scroll.setMinimumHeight(260)
+        preview.fit_to_viewport(preview_scroll.viewport())
 
         preview_hint = QLabel(
             f"LIVE WYSIWYG PREVIEW ({self._preview_width}px column) — drag to swap; right-click to resize or rearrange"
@@ -1702,33 +1732,17 @@ class TakeMode(QWidget):
         tile_grid.setContentsMargins(4, 4, 4, 4)
         tile_grid.setSpacing(8)
         tile_scroll.setWidget(tile_host)
-        tile_scroll.setMinimumHeight(290)
+        tile_scroll.setMinimumWidth(130)
+        tile_scroll.setMaximumWidth(185)
+        tile_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         preview_pane.setMinimumHeight(240)
-        splitter = QSplitter(Qt.Vertical)
+        splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(preview_pane)
         splitter.addWidget(tile_scroll)
         splitter.setChildrenCollapsible(False)
-        splitter.setStretchFactor(0, 55)
-        splitter.setStretchFactor(1, 45)
-        _settings = QSettings("SnapSmack", "ColdSnap")
-        _saved_sizes = _settings.value("take/mosaic_splitter_sizes")
-        if isinstance(_saved_sizes, (list, tuple)) and len(_saved_sizes) == 2:
-            try:
-                _s0, _s1 = int(_saved_sizes[0]), int(_saved_sizes[1])
-                if _s0 >= 240 and _s1 >= 290:
-                    splitter.setSizes([_s0, _s1])
-                else:
-                    splitter.setSizes([400, 330])
-            except (TypeError, ValueError):
-                splitter.setSizes([400, 330])
-        else:
-            splitter.setSizes([400, 330])
-
-        def _save_splitter(*_args):
-            _settings.setValue("take/mosaic_splitter_sizes", splitter.sizes())
-
-        splitter.splitterMoved.connect(_save_splitter)
-        dialog.finished.connect(_save_splitter)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
+        splitter.setSizes([820, 143])
         layout.addWidget(splitter, 1)
 
         selection_row = QHBoxLayout()
@@ -1822,8 +1836,7 @@ class TakeMode(QWidget):
                 if w:
                     w.deleteLater()
             tiles_by_idx.clear()
-            cols = 6
-            tile_px = 122
+            tile_px = 98
             for grid_pos, bi in enumerate(display_order):
                 image = self._bucket[bi]
                 ori_code, ratio = photo_orientation_badge(
@@ -1857,7 +1870,7 @@ class TakeMode(QWidget):
 
                 tile.clicked.connect(lambda _=False, b_idx=bi: _on_tile_click(b_idx))
                 tiles_by_idx[bi] = tile
-                tile_grid.addWidget(tile, grid_pos // cols, grid_pos % cols)
+                tile_grid.addWidget(tile, grid_pos, 0, Qt.AlignHCenter)
 
         def set_all(state):
             if state == Qt.Checked:

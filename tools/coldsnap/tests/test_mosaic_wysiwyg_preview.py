@@ -10,7 +10,7 @@ import sys
 from PIL import Image
 import pytest
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import QApplication, QDialog, QPushButton
+from PySide6.QtWidgets import QApplication, QDialog, QPushButton, QSplitter
 from PySide6.QtTest import QTest
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -228,5 +228,40 @@ def test_mosaic_dialog_is_maximisable_and_uses_preview_width(monkeypatch, tmp_pa
         assert seen["content_width"] == 360
     finally:
         mode.close()
+
+def test_long_dialog_fits_the_site_geometry_beside_the_picker(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
+    app = _app()
+    mode = TakeMode(lambda: {"url": "https://mosaic-fixture.invalid"})
+    app.processEvents()
+    mode._preview_width = 800
+    paths = [_make_photo(tmp_path / f"quilt-{i}.jpg", (900, 600)) for i in range(14)]
+    mode._add_photo_paths(paths, insert=False)
+
+    def inspect_dialog(dialog):
+        dialog.resize(1032, 820)
+        dialog.show()
+        preview = dialog.findChild(MosaicPreview)
+        splitter = dialog.findChild(QSplitter)
+        try:
+            _wait_for(lambda: len(preview.computed_cells()["items"]) == 14)
+            assert splitter.orientation() == Qt.Horizontal
+            assert splitter.sizes()[0] > 4 * splitter.sizes()[1]
+            assert splitter.widget(1).verticalScrollBar().maximum() > 0
+            assert preview._content_width == 800 and 0 < preview._fit_scale < 1
+            assert preview.width() <= preview._fit_viewport.width()
+            assert preview.height() <= preview._fit_viewport.height()
+            assert len(preview._rects) == 14
+            assert all(preview.rect().contains(rect) for _, rect in preview._rects)
+        finally:
+            dialog.reject()
+        return QDialog.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect_dialog)
+    try:
+        mode._mosaic_dialog(list(range(14)), "asymmetric")
+    finally:
+        mode.close()
+
 
 # ===== SNAPSMACK EOF =====

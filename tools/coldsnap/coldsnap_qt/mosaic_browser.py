@@ -55,6 +55,7 @@ class MosaicBrowser(QWebEngineView):
         self._ready = False
         self._revision = 0
         self._pending = None
+        self._visual_scale = 1.0
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         settings = self.settings()
@@ -109,8 +110,23 @@ class MosaicBrowser(QWebEngineView):
 
     def _render(self):
         revision = self._revision
-        script = self._adapter() + '\nJSON.stringify(coldSnapRenderMosaic(' + json.dumps(self._pending) + '));'
+        script = self._adapter() + '\n' + (
+            "(() => { const preview = document.getElementById('preview');"
+            "const previous = preview.style.transform; preview.style.transform = 'none';"
+            "try { return JSON.stringify(coldSnapRenderMosaic(" + json.dumps(self._pending) + ")); }"
+            "finally { preview.style.transform = previous; } })();")
         self.page().runJavaScript(script, lambda output: self._receive(revision, output))
+
+    def set_visual_scale(self, scale):
+        """Fit the painted preview without giving the compositor a different width."""
+        scale = float(scale)
+        if not self._ready or self._visual_scale == scale:
+            return
+        self._visual_scale = scale
+        self.page().runJavaScript(
+            "(() => { const preview = document.getElementById('preview');"
+            "preview.style.transformOrigin = 'top left';"
+            f"preview.style.transform = 'scale({scale})'; }})();")
 
     def _receive(self, revision, output):
         if not isValid(self) or revision != self._revision:
