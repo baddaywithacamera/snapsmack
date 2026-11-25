@@ -270,18 +270,22 @@
         return tile.width < minWidth || tile.height < minHeight || tile.width * tile.height < minArea;
     }
 
-    function blockIsVisuallyBalanced(items, containerWidth) {
+    function blockIsVisuallyBalanced(items, containerWidth, authoredSize) {
         var smallest = Infinity;
         var largest = 0;
+        // An explicit size edit may make a supporting tile narrower while the
+        // featured one spans the block. Keep a smaller floor on those blocks.
+        var balanceWidth = authoredSize ? containerWidth * 0.75 : containerWidth;
+        var maxAreaRatio = authoredSize ? 9 : 6;
         for (var i = 0; i < items.length; i++) {
-            if (tileIsTooSmall(items[i], containerWidth)) return false;
+            if (tileIsTooSmall(items[i], balanceWidth)) return false;
             var area = items[i].width * items[i].height;
             smallest = Math.min(smallest, area);
             largest = Math.max(largest, area);
         }
         /* A hero may lead, but no supporting photograph may collapse into a
            thumbnail beside it. */
-        return smallest > 0 && largest / smallest <= 6;
+        return smallest > 0 && largest / smallest <= maxAreaRatio;
     }
 
     function blockMatchesEmphasis(items, emphasis) {
@@ -296,6 +300,7 @@
 
     function solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant, ignoreLimit) {
         var best = null;
+        var authoredSize = enforceUsefulSize && hasAdjustedTiles(images);
         candidateTrees(images, 0, images.length, {}).forEach(function (tree) {
             var trial = [];
             var height = placeNode(tree, 0, y, containerWidth, gap, trial);
@@ -305,7 +310,7 @@
             // photograph. Reject it and let the caller try a smaller group.
             if (trial.length !== images.length) return;
             if (height <= 0 || (!ignoreLimit && trial.some(tileExceedsLimit)) ||
-                (enforceUsefulSize && (!blockIsVisuallyBalanced(trial, containerWidth) ||
+                (enforceUsefulSize && (!blockIsVisuallyBalanced(trial, containerWidth, authoredSize) ||
                     !blockMatchesEmphasis(trial, emphasis)))) return;
             var score = blockScore(trial, height, containerWidth, emphasis, variant || 0);
             if (!best || score > best.score) best = { items: trial, height: height, score: score };
