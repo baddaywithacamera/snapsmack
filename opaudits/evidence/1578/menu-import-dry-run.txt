@@ -1,0 +1,40 @@
+SS-1578 second half â€” WordPress menu import DRY RUN
+run at: 2026-11-25T22:33:15Z
+source: old.mccormickphotography.com, rendered primary menu, READ ONLY
+target: mccormickphotography.com -- NOTHING WRITTEN to either site
+
+WORDPRESS PRIMARY MENU, as it renders on old.mccormickphotography.com
+  top-level items: 7    items in all: 23
+  dropdowns:       2
+  search item:     yes
+
+MAPPED TO nav_menu_json TYPES (dry run, nothing saved):
+  home       HOME                           
+  container  ABOUT SÉAN                     
+      page       ABOUT SÉAN                     about-sean
+      custom     ARTIST’S STATEMENT             /2023/02/17/artists-statement   <-- dated WordPress permalink, not a page slug; needs the real destination on the new site
+  container  PORTFOLIO                      
+      page       FLICKR PHOTOSTREAM             flickr
+      container  PEOPLE                         
+          page       ENGAGEMENT SHOOT               portfolio-engagement-shoot
+          page       GRAD SHOOT                     portfolio-grad-shoot
+          page       HIGH SCHOOL SPORTS             portfolio-high-school-sports
+          page       WEDDING SHOOT                  portfolio-wedding-shoot
+      container  FINE ART                       
+          page       ALBERTA SKIES                  portfolio-alberta-skies
+          page       AROUND TOWN                    portfolio-around-town
+          page       CARS, TRUCKS, & TRACTORS       portfolio-cars-trucks-and-tractors
+          page       LANDSCAPES                     portfolio-landscapes
+          page       OLD AND ABANDONED              portfolio-old-and-abandoned
+          page       PANORAMIC IMAGES               portfolio-panoramic-images
+      page       SEAN’S SELECTIONS              portfolio-seans-selections
+  custom     BLOG                           /category/blog   <-- WordPress taxonomy; needs a SnapSmack album or category id
+  page       LINKS                          links
+  page       CONTACT                        contact
+  search     SEARCH                         
+
+ITEMS THAT CANNOT BE IMPORTED CLEANLY: 2
+  ABOUT SÉAN > ARTIST’S STATEMENT                dated WordPress permalink, not a page slug; needs the real destination on the new site
+  BLOG                                           WordPress taxonomy; needs a SnapSmack album or category id
+
+written: C:/Users/neutr/AppData/Local/Temp/claude/eef2486353c8a6b1/e6de35bf-8a44-41f5-9d77-3f7ade7be04a/scratchpad/mccormick-menu.json
