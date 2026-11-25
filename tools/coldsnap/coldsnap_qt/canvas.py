@@ -434,13 +434,7 @@ class _Objects(QPyTextObject):
             buttons.append((button, [tile_hits[tile['id']][0] for tile in cluster]))
         if pos is not None:
             self.canvas._inline_mosaic_hits[pos] = (tile_hits, buttons)
-        if clusters:
-            painter.setPen(QColor(text_col))
-            footer = QRect(r.left(), r.bottom() - 20, r.width(), 20)
-            painter.drawText(footer, Qt.AlignRight | Qt.AlignVCenter,
-                             f"{len(clusters)} cluster{'s' if len(clusters) != 1 else ''} to break up")
-
-        self._mosaic_footer(painter, r, len(paths), layout)
+        self._mosaic_footer(painter, r, len(paths), layout, len(clusters))
 
     def _cached_cell_pixmap(self, path: str, cell_size: QSize):
         """Return a cell-sized QPixmap from QPixmapCache or request off-thread decode.
@@ -479,8 +473,7 @@ class _Objects(QPyTextObject):
         def _on_ready(pix):
             if pix is None or pix.isNull():
                 return
-            scaled = pix if abs(pix.width() - cw) <= 64 else pix.scaled(
-                cell_size, Qt.KeepAspectRatio, Qt.FastTransformation)
+            scaled = pix.scaled(cell_size, Qt.KeepAspectRatio, Qt.FastTransformation)
             QPixmapCache.insert(ckey, scaled)
             if in_sync[0]:
                 sync_result[0] = scaled
@@ -511,7 +504,7 @@ class _Objects(QPyTextObject):
             QTimer.singleShot(50, _retry_paint)
         return None
 
-    def _mosaic_footer(self, painter, r, count, layout):
+    def _mosaic_footer(self, painter, r, count, layout, clusters=0):
         """The strip under the mosaic. It says when the preview is EXACT and
         when it is not, because a preview that quietly guesses is the fault
         this whole change exists to fix.
@@ -526,8 +519,15 @@ class _Objects(QPyTextObject):
         foot = QRect(r.left(), r.bottom() - 20, r.width(), 20)
         _outline_col, text_col = self._placeholder_colors()
         painter.setPen(QColor(text_col))
-        painter.drawText(foot, Qt.AlignVCenter | Qt.AlignLeft,
-                         mosaic_note(count, layout))
+        metrics = painter.fontMetrics()
+        if clusters:
+            status = f"{clusters} cluster{'s' if clusters != 1 else ''} to break up"
+            status = metrics.elidedText(status, Qt.ElideRight, foot.width())
+            painter.drawText(foot, Qt.AlignVCenter | Qt.AlignRight, status)
+            foot.adjust(0, 0, -metrics.horizontalAdvance(status) - 8, 0)
+        if foot.width() > 0:
+            note = metrics.elidedText(mosaic_note(count, layout), Qt.ElideRight, foot.width())
+            painter.drawText(foot, Qt.AlignVCenter | Qt.AlignLeft, note)
 
     def _draw_image(self, painter, r, data):
         iw, _ih, align, cap_text, cap_h = self._image_box_metrics(data, r.width())

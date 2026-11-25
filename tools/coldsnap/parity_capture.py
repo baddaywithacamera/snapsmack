@@ -23,6 +23,7 @@ def run(output_dir: str) -> int:
     from coldsnap_qt import biggie
     from coldsnap_qt.canvas import BiggieCanvas
     from coldsnap_qt.mode_take import MosaicPreview, TakeMode
+    from coldsnap_qt.photo_loader import PhotoLoader
     from coldsnap_qt.photo_tray import PhotoThumbTile
 
     out = Path(output_dir).resolve()
@@ -133,7 +134,8 @@ def run(output_dir: str) -> int:
     # Equal-aspect photographs isolate changes in the assigned span from
     # differences in the photographs. Drive the same modal as the editor uses.
     span_paths = []
-    for i, color in enumerate(((33, 85, 120), (129, 71, 41), (55, 106, 64), (98, 55, 107))):
+    span_colors = ((33, 85, 120), (129, 71, 41), (55, 106, 64), (98, 55, 107))
+    for i, color in enumerate(span_colors):
         path = fixture_dir / f"span-{i + 1}.jpg"
         Image.new("RGB", (1200, 800), color).save(path)
         span_paths.append(str(path))
@@ -233,19 +235,34 @@ def run(output_dir: str) -> int:
                                   for photo, (_, box) in tiles.items()}, buttons
         return None, {}, []
 
+    def save_inline_frame(boxes, name):
+        def all_photos_painted():
+            frame = canvas.grab().toImage()
+            ratio = frame.devicePixelRatio()
+            for photo, (x, y, w, h) in boxes.items():
+                pixel = frame.pixelColor(round((x + w * .80) * ratio),
+                                         round((y + h * .80) * ratio))
+                actual = (pixel.red(), pixel.green(), pixel.blue())
+                if any(abs(actual[i] - span_colors[photo - 1][i]) > 12 for i in range(3)):
+                    return False
+            return frame.save(str(out / name), "PNG")
+
+        return wait_for(all_photos_painted)
+
     inline = {}
     if wait_for(lambda: any(len(ids) == 4 for _, ids in inline_boxes()[2])):
         position, before, buttons = inline_boxes()
         inline["before"] = before
         cluster_button = next(box for box, ids in buttons if len(ids) == 4)
-        inline["before_capture"] = canvas.grab().save(str(out / "06-inline-2x2-before.png"), "PNG")
+        inline["before_capture"] = save_inline_frame(before, "06-inline-2x2-before.png")
         QTest.mouseClick(canvas.viewport(), Qt.LeftButton, pos=cluster_button.center())
         if wait_for(lambda: inline_boxes()[1] and inline_boxes()[1] != before):
             _, after, badges = inline_boxes()
             inline["after"] = after
-            inline["after_capture"] = canvas.grab().save(str(out / "07-inline-2x2-after.png"), "PNG")
+            inline["after_capture"] = save_inline_frame(after, "07-inline-2x2-after.png")
             inline["stored"] = canvas._object_at(position)[1]
             inline["removed_original_cluster"] = all(len(ids) < 4 for _, ids in badges)
+    wait_for(lambda: all(not loader._pending for loader in canvas.findChildren(PhotoLoader)))
     canvas.close()
     before = inline.get("before", {})
     after = inline.get("after", {})
@@ -277,6 +294,7 @@ def run(output_dir: str) -> int:
         "pass": all(value for key, value in checks.items() if key != "mosaic_thumbnail_count"),
     }
     (out / "parity.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    wait_for(lambda: all(not loader._pending for loader in mode.findChildren(PhotoLoader)))
     mode.close()
     app.processEvents()
     return 0 if payload["pass"] else 1
