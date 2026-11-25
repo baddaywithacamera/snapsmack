@@ -11,7 +11,7 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.1004D
+## 0.7.1004D — opened
 
 - **POCKET ALBUM puts a photo album inside a page or post.** The block shows
   the album with lazy-loaded photographs. The source site must opt in before
