@@ -15,6 +15,16 @@ function tg_check(bool $ok, string $label): void {
 }
 
 $root     = dirname(__DIR__);
+
+// SS-1495: this file read nothing but source text until now. The sanitized
+// rich-content check below RENDERS the skin instead of grepping its layout, so
+// it needs the same core the real request path loads.
+define('SNAPSMACK_SKIN_RENDER', true);
+require_once $root . '/core/trusted-html.php';
+require_once $root . '/core/skin-render-helpers.php';
+require_once $root . '/core/skin-view-contract.php';
+require_once $root . '/core/skin-presentation.php';
+
 $index    = file_get_contents($root . '/index.php');
 $layout   = file_get_contents($root . '/skins/telegram/layout.php');
 $style    = file_get_contents($root . '/skins/telegram/style.css');
@@ -54,9 +64,61 @@ tg_check(($manifest['schema_version'] ?? 0) === 2
     && ($manifest['view_model'] ?? '') === 'snapsmack.public.v1'
     && !is_file($root . '/skins/telegram/preload.php'),
     'TELEGRAM uses the strict CMS controller and has no legacy preload');
-tg_check(strpos($layout, "snap_render_html(\$view['response']['rendered_content'])") !== false
+// ── SANITIZED RICH CONTENT, DRIVEN RATHER THAN GREPPED ──────────────────────
+//
+// This check used to be strpos($layout, "snap_render_html($view['response']
+// ['rendered_content'])") -- the layout's exact source text. It failed the
+// moment the layout gained a null-coalescing fallback (rendered_content ?? ''),
+// which made the behaviour SAFER: a response with no rendered_content now
+// falls back to an empty string instead of raising a warning. A check that
+// reads source text called that improvement a regression, and it blocked an
+// approved merge.
+//
+// So render the skin and ask the page. Both halves matter: the sanitized HTML
+// must arrive, AND a response missing the key must not warn or crash. The
+// first is what the old check was trying to say; the second is what the
+// fallback is for, and nothing was holding it.
+$tg_render = static function (array $response) use ($root): array {
+    $view = snapsmack_build_skin_view($response, [
+        'site_name' => 'Example', 'tagline' => 'T', 'language' => 'en',
+        'direction' => 'ltr', 'skin_slug' => 'telegram',
+        'skin_style_url' => '/skins/telegram/style.css',
+        'skin_presentation' => snapsmack_skin_presentation([], 'telegram'),
+    ]);
+    $warnings = [];
+    set_error_handler(static function (int $no, string $msg) use (&$warnings): bool {
+        $warnings[] = $msg;
+        return true;
+    });
+    ob_start();
+    $ok = snapsmack_render_strict_skin_template($root . '/skins/telegram', 'layout.php', $view);
+    $html = (string) ob_get_clean();
+    restore_error_handler();
+    return ['ok' => $ok, 'html' => $html, 'warnings' => $warnings];
+};
+
+$tg_marker = '<p>Sanitized paragraph.</p>';
+$tg_page = $tg_render([
+    'status' => 200, 'kind' => 'page', 'navigation' => [],
+    'page_title' => 'About',
+    'rendered_content' => snapsmack_trusted_html($tg_marker),
+    'item' => ['id' => 11, 'title' => 'About', 'slug' => 'about'],
+]);
+$tg_missing = $tg_render([
+    'status' => 200, 'kind' => 'page', 'navigation' => [],
+    'page_title' => 'About',
+    'item' => ['id' => 11, 'title' => 'About', 'slug' => 'about'],
+]);
+
+tg_check($tg_page['ok']
+    && strpos($tg_page['html'], $tg_marker) !== false
+    && $tg_page['warnings'] === []
     && in_array('smack-rows', $manifest['require_scripts'] ?? [], true),
     'TELEGRAM renders CMS-sanitized rich content and shared mosaic engines');
+tg_check($tg_missing['ok']
+    && $tg_missing['warnings'] === []
+    && strpos($tg_missing['html'], $tg_marker) === false,
+    'TELEGRAM survives a response with no rendered_content, without warning');
 tg_check(strpos($layout, "snap_render_component('comments'") !== false
     && strpos($index, "=== 'not_found'") !== false,
     'TELEGRAM renders moderated CMS comments and the CMS owns error status');

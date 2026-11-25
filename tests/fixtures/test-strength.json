@@ -2976,8 +2976,8 @@
         ]
     },
     "telegram-mobile-skin-regression.php": {
-        "assertions": 16,
-        "predicates": 28,
+        "assertions": 17,
+        "predicates": 30,
         "thresholds": [
             2,
             2
