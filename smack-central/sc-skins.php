@@ -1,8 +1,9 @@
 <?php
+// SNAPSMACK_EOF_HEADER. Last non-empty line must be: <?php // ===== SNAPSMACK EOF =====
 /**
  * SMACK CENTRAL - Skin Packager
  *
- * Downloads the SnapSmack repo zip from GitHub for a given branch or tag,
+ * Downloads the SnapSmack repo zip from GitHub for a reviewed commit,
  * extracts the skins/ directory, lets you pick which skins to package,
  * zips each one, signs with Ed25519, saves to RELEASES_DIR/skins/, and
  * updates the skin registry JSON at RELEASES_DIR/skins/registry.json.
@@ -11,6 +12,7 @@
  */
 
 require_once __DIR__ . '/sc-auth.php';
+require_once dirname(__DIR__) . '/core/skin-version-digest.php';
 $sc_active_nav = 'sc-skins.php';
 $sc_page_title = 'Skin Packager';
 
@@ -146,18 +148,24 @@ if (!function_exists('sc_github_get')) {
     }
 }
 
-// Skin packaging fetches from the git ref chosen at the select-ref step below —
-// master or dev (both accepted; see the clamp near the phase handling). USE DEV:
-// stable and dev are no longer pushed together, so master lags badly (it sat at
-// SCROLL 0.1.5 while dev carried the current skins) and DEV is the branch with
-// up-to-date skins. Consequence: a skin change must be pushed to Github/dev before
-// it can be packaged. (The old "always uses master, picker removed, dev never used"
-// note here was simply wrong — corrected 2026-08-02.)
+function sc_skin_source_is_commit(string $source): bool {
+    return preg_match('/^[a-f0-9]{40}$/D', $source) === 1;
+}
+
+function sc_skin_record_source(string $directory, string $commit, string|false $raw): bool {
+    $baseline = is_string($raw) ? json_decode($raw, true) : null;
+    if (!is_array($baseline) || ($baseline['schema_version'] ?? null) !== 2
+        || !is_array($baseline['skins'] ?? null) || !$baseline['skins']) return false;
+    $record = json_encode(['commit' => $commit, 'skins' => $baseline['skins']], JSON_THROW_ON_ERROR);
+    return file_put_contents($directory . 'source.json', $record, LOCK_EX) === strlen($record);
+}
 
 // ── Download repo zip and extract skins/ to a temp directory ─────────────────
 
 function sc_extract_skins(string $ref): array {
-    // Works for both branches and tags
+    if (!sc_skin_source_is_commit($ref)) {
+        return ['ok' => false, 'msg' => 'Enter the full reviewed commit SHA.'];
+    }
     $url     = 'https://github.com/' . SNAPSMACK_GITHUB_REPO . '/archive/' . urlencode($ref) . '.zip';
     $tmp_zip = sc_skin_workroot() . '/repo_' . md5($ref . microtime()) . '.zip';
     // Stream to disk. The archive is ~220MB (the heavy skins — true-grit,
@@ -229,9 +237,14 @@ function sc_extract_skins(string $ref): array {
         file_put_contents($tmp_dir . 'assets/ASSET-INVENTORY.json', $asset_catalog);
     }
 
+    $baseline = $src->getFromName($prefix . 'tests/fixtures/skin-version-content-baseline.json');
     $src->close();
     @unlink($tmp_zip);
 
+    if (!sc_skin_record_source($tmp_dir, $ref, $baseline)) {
+        sc_rrmdir($tmp_dir);
+        return ['ok' => false, 'msg' => 'The reviewed commit has no readable skin version baseline.'];
+    }
     return ['ok' => true, 'tmp_dir' => $tmp_dir, 'tmp_key' => $tmp_key];
 }
 
@@ -240,9 +253,9 @@ function sc_extract_skins(string $ref): array {
  * entire repository archive. Used for quick beta/fix packaging.
  */
 function sc_extract_one_skin(string $ref, string $slug): array {
-    if (!in_array($ref, ['master', 'dev'], true)
+    if (!sc_skin_source_is_commit($ref)
         || !preg_match('/^[a-z0-9][a-z0-9-]*$/', $slug)) {
-        return ['ok' => false, 'msg' => 'Invalid branch or skin slug.'];
+        return ['ok' => false, 'msg' => 'Enter the full reviewed commit SHA and a valid skin slug.'];
     }
 
     $tmp_key = md5($ref . $slug . uniqid('', true));
@@ -307,6 +320,16 @@ function sc_extract_one_skin(string $ref, string $slug): array {
             @mkdir($tmp_dir . 'assets', 0755, true);
             file_put_contents($tmp_dir . 'assets/ASSET-INVENTORY.json', $catalog_body);
         }
+    }
+
+    $baseline_entry = sc_github_get(
+        'repos/' . SNAPSMACK_GITHUB_REPO . '/contents/tests/fixtures/skin-version-content-baseline.json?ref=' . rawurlencode($ref)
+    );
+    $encoded = is_array($baseline_entry) ? ($baseline_entry['content'] ?? '') : '';
+    $baseline = is_string($encoded) ? base64_decode($encoded, true) : false;
+    if (!sc_skin_record_source($tmp_dir, $ref, $baseline)) {
+        sc_rrmdir($tmp_dir);
+        return ['ok' => false, 'msg' => 'The reviewed commit has no readable skin version baseline.'];
     }
 
     return [
@@ -407,15 +430,16 @@ if (file_exists($registry_path)) {
 // phase 3 (POST package): package selected skins, show results
 
 $phase        = 'select_ref';
-$ref          = trim($_POST['ref'] ?? 'dev');
-$tmp_key      = preg_replace('/[^a-f0-9]/', '', $_POST['tmp_key'] ?? '');
+$ref          = is_string($_POST['ref'] ?? null) ? strtolower(trim($_POST['ref'])) : '';
+$tmp_key      = is_string($_POST['tmp_key'] ?? null) && preg_match('/^[a-f0-9]{32}$/D', $_POST['tmp_key'])
+    ? $_POST['tmp_key'] : '';
 $tmp_dir      = $tmp_key ? sc_skin_workdir($tmp_key) : '';
 $repo_skins   = [];
 $build_results = [];
 $build_errors  = [];
 $fetch_error  = '';
-
-if (!in_array($ref, ['master', 'dev'], true)) $ref = 'dev';
+$published_zips = [];
+$previous_zips = [];
 
 // ── Delete skin from registry (no preflight required) ─────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_skin'])) {
@@ -506,6 +530,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
     // ── Phase 3: package selected skins ──────────────────────────────────────
     elseif (isset($_POST['package'])) {
         $phase = 'results';
+        $publish_lock = @fopen(sc_skin_workroot() . '/publish.lock', 'c');
+        if ($publish_lock === false || !flock($publish_lock, LOCK_EX)) {
+            $build_errors[] = 'Could not lock the Skin Packager. Try again.';
+            goto render;
+        }
+        // Another request may have published after the initial page read.
+        if (is_file($registry_path)) {
+            $latest = json_decode((string)@file_get_contents($registry_path), true);
+            if (!is_array($latest) || !is_array($latest['skins'] ?? null)) {
+                $build_errors[] = 'The published skin registry could not be read.';
+                goto render;
+            }
+            $existing_registry = $latest;
+        }
 
         // Use cached temp dir if it still exists; re-download if not
         if (!$tmp_key || !is_dir($tmp_dir)) {
@@ -522,6 +560,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
             $tmp_key = $result['tmp_key'];
         }
 
+        $record_raw = @file_get_contents($tmp_dir . 'source.json');
+        $source = is_string($record_raw) ? json_decode($record_raw, true) : null;
+        if (!sc_skin_source_is_commit($ref) || !is_array($source)
+            || ($source['commit'] ?? null) !== $ref || !is_array($source['skins'] ?? null)) {
+            $build_errors[] = 'The fetched files do not belong to the selected reviewed commit. Fetch the commit again.';
+            goto render;
+        }
         $repo_skins = sc_read_manifests($tmp_dir . 'skins/');
         $selected   = (array)($_POST['skins'] ?? []);
 
@@ -547,6 +592,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
 
                 $meta         = $repo_skins[$slug];
                 $skin_dir     = rtrim($tmp_dir, '/') . '/skins/' . $slug;
+                $baseline_problem = snapsmack_skin_package_baseline_problem($skin_dir, $source['skins'][$slug] ?? null);
+                if ($baseline_problem !== '') {
+                    $build_results[] = ['slug' => $slug, 'ok' => false, 'msg' => $baseline_problem];
+                    continue;
+                }
 
                 // ── Shared skin authority gate ────────────────────────────────
                 // Missing policy code is a hard failure: signing proves origin,
@@ -581,6 +631,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                 $zip_name     = $slug . '-' . $version . '.zip';
                 $zip_path     = rtrim(RELEASES_DIR, '/') . '/skins/' . $zip_name;
                 $download_url = rtrim(RELEASES_URL, '/') . '/skins/' . $zip_name;
+                $published_version = $existing_registry['skins'][$slug]['version'] ?? null;
+                if (is_file($zip_path) || (is_string($published_version) && version_compare($version, $published_version, '<='))) {
+                    $build_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'This version is already published or older. Use a new skin version.'];
+                    continue;
+                }
 
                 $screenshot = trim($_POST['screenshot'][$slug] ?? '');
                 if ($screenshot === '') {
@@ -607,16 +662,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                     }
                 }
 
-                // Delete any old versioned zips for this skin (e.g. chaplin-2.1.zip,
-                // chaplin-2.2.zip) before writing the new one. The glob pattern matches
-                // any file starting with "$slug-" and ending in ".zip".
-                foreach (glob(rtrim(RELEASES_DIR, '/') . '/skins/' . $slug . '-*.zip') ?: [] as $old_zip) {
-                    if (basename($old_zip) !== $zip_name) @unlink($old_zip);
-                }
-                if (file_exists($zip_path)) @unlink($zip_path);
-
                 $zip = new ZipArchive();
-                if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::EXCL) !== true) {
                     $build_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'Failed to create zip.'];
                     continue;
                 }
@@ -673,27 +720,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                 $zip->addFromString('smackback-manifest.json', json_encode([
                     'smackback_version' => 1,
                     'package_version' => $version,
+                    'source_commit' => $ref,
                     'skin_id' => $slug,
                     'generated_at' => gmdate('Y-m-d\\TH:i:s\\Z'),
                     'files' => $smackback_files,
                 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
-                $zip->close();
-
-                if ($file_count === 0) {
+                $zip_closed = $zip->close();
+                $zip_data = $zip_closed ? @file_get_contents($zip_path) : false;
+                if ($file_count === 0 || $zip_data === false) {
                     @unlink($zip_path);
-                    $build_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'Skin directory was empty in zip.'];
+                    $build_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'Could not finish the skin ZIP.'];
                     continue;
                 }
 
-                $zip_data = file_get_contents($zip_path);
                 $zip_size = strlen($zip_data);
                 $sig_hex  = sodium_bin2hex(sodium_crypto_sign_detached($zip_data, $privkey));
                 unset($zip_data);
+                $published_zips[] = $zip_path;
+                if (is_string($published_version) && preg_match('/^[0-9][a-zA-Z0-9.+-]*$/D', $published_version)) {
+                    $previous_zips[] = dirname($zip_path) . '/' . $slug . '-' . $published_version . '.zip';
+                }
 
                 $existing_registry['skins'][$slug] = [
                     'name'               => $meta['name'],
                     'version'            => $version,
+                    'source_commit'      => $ref,
                     'status'             => $meta['status'],
                     'modes'              => $meta['modes'],
                     'author'             => $meta['author'],
@@ -719,11 +771,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                 ];
             }
 
-            // Write registry
-            $existing_registry['generated'] = gmdate('Y-m-d\TH:i:s\Z');
-            $registry_json = json_encode($existing_registry, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-            if (file_put_contents($registry_path, $registry_json) === false) {
-                $build_errors[] = 'Packaged skins successfully, but could not write registry.json to: ' . $registry_path;
+            if ($published_zips) {
+                $existing_registry['generated'] = gmdate('Y-m-d\TH:i:s\Z');
+                $registry_json = json_encode($existing_registry, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                $pending_registry = $registry_path . '.' . bin2hex(random_bytes(12)) . '.tmp';
+                if (!is_string($registry_json)
+                    || @file_put_contents($pending_registry, $registry_json) !== strlen($registry_json)
+                    || !@rename($pending_registry, $registry_path)) {
+                    @unlink($pending_registry);
+                    foreach ($published_zips as $new_zip) @unlink($new_zip);
+                    foreach ($build_results as &$result) {
+                        if ($result['ok']) $result = ['slug' => $result['slug'], 'ok' => false, 'msg' => 'Could not publish the skin registry.'];
+                    }
+                    unset($result);
+                } else {
+                    foreach ($previous_zips as $old_zip) @unlink($old_zip);
+                }
             }
         }
 
@@ -819,30 +882,29 @@ include __DIR__ . '/sc-layout-top.php';
         <h2 class="sc-card-title">Package Skins</h2>
         <p class="sc-dim" style="margin-bottom:20px; font-size:0.875rem;">
             Downloads <strong><?php echo htmlspecialchars(SNAPSMACK_GITHUB_REPO); ?></strong>
-            from <strong>dev</strong> and extracts the skins directory for packaging.
-            Dev is the source of truth for skins — master lags (see the note at the top of this file).
+            at the full reviewed commit SHA. The packager checks the skin against that commit’s version baseline.
+            Use the SHA from the review record.
         </p>
         <form method="POST" action="sc-skins.php">
-            <input type="hidden" name="ref" value="dev">
+            <div class="sc-field">
+                <label for="all-skins-ref">REVIEWED COMMIT SHA</label>
+                <input id="all-skins-ref" name="ref" type="text" pattern="[a-fA-F0-9]{40}" required>
+            </div>
             <button type="submit" name="fetch_skins" value="1" class="sc-btn sc-btn--primary">
-                Fetch Skins from Dev
+                Fetch Skins
             </button>
         </form>
 
         <hr style="border:0; border-top:1px solid var(--sc-border); margin:22px 0;">
         <h3 style="margin-bottom:8px;">Fetch One Skin</h3>
         <p class="sc-dim" style="margin-bottom:14px; font-size:0.875rem;">
-            Pull only one skin directory. Defaults to <strong>dev</strong> (the current skins);
-            <strong>master</strong> is still selectable but lags and is rarely what you want.
+            Fetch one skin and its version baseline from the reviewed commit.
         </p>
         <form method="POST" action="sc-skins.php"
               style="display:grid; grid-template-columns:150px minmax(220px,1fr) auto; gap:10px; align-items:end;">
             <div class="sc-field" style="margin:0;">
-                <label for="one-skin-ref">BRANCH</label>
-                <select id="one-skin-ref" name="ref" class="sc-select">
-                    <option value="dev">dev — BITCHIN'</option>
-                    <option value="master">master — BORING</option>
-                </select>
+                <label for="one-skin-ref">REVIEWED COMMIT SHA</label>
+                <input id="one-skin-ref" name="ref" type="text" pattern="[a-fA-F0-9]{40}" required>
             </div>
             <div class="sc-field" style="margin:0;">
                 <label for="one-skin-slug">SKIN SLUG</label>
@@ -1073,4 +1135,4 @@ include __DIR__ . '/sc-layout-top.php';
 <?php endif; ?>
 
 <?php include __DIR__ . '/sc-layout-bottom.php'; ?>
-<?php // EOF
+<?php // ===== SNAPSMACK EOF =====
