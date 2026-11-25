@@ -1,0 +1,104 @@
+[
+  {
+    "kind": "landing",
+    "viewport": 1024,
+    "documentWidth": 1024,
+    "overflow": 0,
+    "grid": {
+      "left": 0,
+      "right": 1024,
+      "width": 1024
+    },
+    "stage": {
+      "left": 0,
+      "right": 1024,
+      "width": 1024
+    },
+    "columns": "233.5px 233.5px 233.5px 233.5px"
+  },
+  {
+    "kind": "landing",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "overflow": 0,
+    "grid": {
+      "left": 80,
+      "right": 1360,
+      "width": 1280
+    },
+    "stage": {
+      "left": 0,
+      "right": 1440,
+      "width": 1440
+    },
+    "columns": "235.188px 235.203px 235.203px 235.203px 235.188px"
+  },
+  {
+    "kind": "landing",
+    "viewport": 1920,
+    "documentWidth": 1920,
+    "overflow": 0,
+    "grid": {
+      "left": 320,
+      "right": 1600,
+      "width": 1280
+    },
+    "stage": {
+      "left": 0,
+      "right": 1920,
+      "width": 1920
+    },
+    "columns": "235.188px 235.203px 235.203px 235.203px 235.188px"
+  },
+  {
+    "kind": "archive",
+    "viewport": 1024,
+    "documentWidth": 1024,
+    "overflow": 0,
+    "grid": {
+      "left": 0,
+      "right": 1024,
+      "width": 1024
+    },
+    "stage": {
+      "left": 0,
+      "right": 1024,
+      "width": 1024
+    },
+    "columns": "233.5px 233.5px 233.5px 233.5px"
+  },
+  {
+    "kind": "archive",
+    "viewport": 1440,
+    "documentWidth": 1440,
+    "overflow": 0,
+    "grid": {
+      "left": 80,
+      "right": 1360,
+      "width": 1280
+    },
+    "stage": {
+      "left": 0,
+      "right": 1440,
+      "width": 1440
+    },
+    "columns": "235.188px 235.203px 235.203px 235.203px 235.188px"
+  },
+  {
+    "kind": "archive",
+    "viewport": 1920,
+    "documentWidth": 1920,
+    "overflow": 0,
+    "grid": {
+      "left": 320,
+      "right": 1600,
+      "width": 1280
+    },
+    "stage": {
+      "left": 0,
+      "right": 1920,
+      "width": 1920
+    },
+    "columns": "235.188px 235.203px 235.203px 235.203px 235.188px"
+  }
+]

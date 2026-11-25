@@ -971,6 +971,8 @@ body.homepage-static .pfd-lede {
 
 /* --- archive: thumbnail grid ------------------------------------------- */
 .pfd-archive-grid {
+    width: 100%;
+    min-width: 0;
     max-width: 1280px;
     margin: 0 auto;
     padding: 40px var(--pfd-gutter);
