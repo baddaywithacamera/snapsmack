@@ -201,9 +201,14 @@ def _block_score(items, height, container_width, emphasis, variant) -> float:
     score += smallest * 0.2
     score -= abs(height - 850) * container_width * 0.12
     if weight_bonus:
-        score += weight_bonus
-        if len(items) >= 3 and smallest > 0 and (largest / smallest) < 1.15:
-            score -= container_width * container_width * 0.5
+        avg_area = sum(t["width"] * t["height"] for t in items) / max(1, len(items))
+        rel_bonus = sum(
+            int(t["image"].get("weight") or 0) * ((t["width"] * t["height"]) - avg_area) * 25.0
+            for t in items
+        )
+        score += rel_bonus
+        if len(items) >= 3 and smallest > 0 and (largest / smallest) < 1.25:
+            score -= 1e12
     return score
 
 
