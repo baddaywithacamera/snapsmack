@@ -102,7 +102,21 @@ BACKUP_DIR = "/var/backups/proxvox"
 #
 # To add one: confirm it with the read-only broker's inventory, post it in the
 # room, get Sean's yes, and add (target, pattern) with the reason beside it.
-ALLOWED = ()
+ALLOWED = (
+    # CT101, snapsmack.ca -- the project and release site, not a CMS install.
+    # VERIFIED, NOT GUESSED: Codex ran the read-only inventory on 2026-11-25
+    # (SS-1507, room seq 7538). /etc/apache2/sites-enabled/snapsmack.ca.conf
+    # names snapsmack.ca and www.snapsmack.ca with DocumentRoot
+    # /var/www/snapsmack.ca, and he read the file itself back at SHA-256
+    # 7141f5ed07da5555aa34ce38bb348dfdf4d2f555e53e9be1357f0a3ddf10ea0f.
+    #
+    # ONE FILE, NOT THE TREE. The PM's spec said "CT101 snapsmack.ca web
+    # root", and the only approved use is the Desktop Tools section of the
+    # homepage. A whole web root would grant far more than that needs, and the
+    # narrowest entry that serves the actual job is the single file. Widening
+    # it later is a decision somebody makes on purpose.
+    ("101", "/var/www/snapsmack.ca/index.php"),
+)
 
 # Refused even if a matching pattern is added to ALLOWED by mistake. A write to
 # any of these is either a credential replacement or a way to impersonate the
@@ -132,11 +146,22 @@ NEVER_WRITE = (
 # nothing else -- no paths, no flags, no values. Sean's first use is restoring
 # CT101's console mode, which is what broke his jsconsole session.
 # ─────────────────────────────────────────────────────────────────────────────
-MAINTENANCE = {
-    "ct101-console-mode-restore": [
-        ["/usr/sbin/pct", "set", "101", "--cmode", "tty"],
-    ],
-}
+# EMPTY, BECAUSE MY ONE ENTRY WAS A GUESS AND I SHOULD NOT HAVE WRITTEN IT.
+#
+# It was ["pct", "set", "101", "--cmode", "tty"]. Nothing in this repository
+# says tty is the wanted value -- I chose it while writing the dict. Codex then
+# MEASURED the live container on 2026-11-25: CT101 is currently cmode=shell.
+#
+# Those two values behave differently for the thing Sean actually complained
+# about, which is a console that starts its own login he cannot get past. So a
+# task that flips it could just as easily be the fix or the cause, and it runs
+# as root on a live container. I am not shipping a privileged guess.
+#
+# It goes back in when somebody states the target value and why. Until then
+# this wrapper runs no maintenance at all, which is the same honest position
+# as the allowlist: a capability appears when it is approved, not when it is
+# plausible.
+MAINTENANCE = {}
 
 
 class Refused(Exception):

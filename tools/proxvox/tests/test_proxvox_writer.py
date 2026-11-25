@@ -60,29 +60,48 @@ def _stdin(monkeypatch, content: bytes):
 
 # ── the allowlist is reportable, so Sean can read it back ────────────────────
 
-def test_the_allowlist_ships_empty_so_the_writer_can_do_nothing(w):
-    """The PM's ruling plus my own wrong guesses, together.
+def test_every_allowlisted_path_was_measured_not_guessed(w):
+    """The list holds exactly one entry and it came from a live read.
 
-    mariadb_backup.sh is OUT: a root-executed script is not a first-release
-    write target. My three other entries were wrong -- the provisioner
-    measured CT102 serving from /var/www/sites, not the /var/www/*/public_html
-    I invented, and CT101 appears in no provisioner at all. The roots come
-    from the read inventory, which needs Sean's session, so the list is empty
-    until a path is confirmed and approved. Empty means every write is
-    refused, which is right for something with no approved target.
+    The history is the reason this test exists. I first shipped four entries:
+    mariadb_backup.sh, which the PM ruled OUT as a root-executed script, and
+    three CT102/CT101 patterns I GUESSED. The provisioner had already measured
+    CT102 serving from /var/www/sites, so my /var/www/*/public_html/* matched
+    nothing real, and CT101 appeared in no provisioner at all.
+
+    Codex then ran the read-only inventory on CT101 and found the Apache
+    DocumentRoot. THAT is where this entry comes from.
     """
     scope = w.dispatch("scope")
-    assert scope["allowed"] == [],         "a path is in the allowlist that nobody has confirmed against the host"
-    assert "ct101-console-mode-restore" in scope["maintenance"]
+    assert [row["pattern"] for row in scope["allowed"]] == [
+        "/var/www/snapsmack.ca/index.php"]
+    assert scope["allowed"][0]["target"] == "101"
     assert "cannot widen" in scope["note"]
-    assert not any("mariadb_backup" in row["pattern"] for row in scope["allowed"])
+    flat = " ".join(row["pattern"] for row in scope["allowed"])
+    assert "mariadb_backup" not in flat
+    assert "public_html" not in flat and "htdocs" not in flat
 
 
-def test_with_an_empty_allowlist_every_write_is_refused(w):
-    """Otherwise "it ships empty" would be a claim about a constant."""
+def test_the_allowlisted_entry_is_one_file_and_not_the_web_root(w):
+    """The approved use is one section of one page, so the entry is the file.
+    A whole document root would grant far more than the job needs."""
+    scope = w.dispatch("scope")
+    pattern = scope["allowed"][0]["pattern"]
+    assert not pattern.endswith("*"), "the entry is a tree, not a file"
+    for other in ("/var/www/snapsmack.ca/wp-config.php",
+                  "/var/www/snapsmack.ca/sub/page.php",
+                  "/var/www/snapsmack.ca/index.php.bak"):
+        with pytest.raises(Exception) as caught:
+            w.dispatch("put-file 101 %s %s" % (other, "0" * 64))
+        assert str(caught.value), other
+
+
+def test_everything_outside_the_one_entry_is_refused(w):
+    """Otherwise "one narrow entry" is a claim about a constant."""
     for where, path in (("host", "/usr/local/bin/mariadb_backup.sh"),
-                        ("101", "/var/www/snapsmack.ca/index.php"),
-                        ("102", "/var/www/sites/example/index.php")):
+                        ("102", "/var/www/sites/example/index.php"),
+                        ("106", "/var/www/example/index.php"),
+                        ("101", "/var/www/other-site/index.php")):
         with pytest.raises(Exception) as caught:
             w.dispatch("put-file %s %s %s" % (where, path, "0" * 64))
         assert "not in the allowlist" in str(caught.value)
@@ -337,10 +356,24 @@ def test_content_larger_than_the_cap_is_refused(w, target, monkeypatch):
 
 # ── maintenance is a closed set with no caller arguments ────────────────────
 
-def test_maintenance_dry_run_shows_the_exact_command(w):
-    result = w.dispatch("maint-dry ct101-console-mode-restore")
-    assert result["dry_run"] is True
-    assert result["would_run"] == [["/usr/sbin/pct", "set", "101", "--cmode", "tty"]]
+def test_there_are_no_maintenance_tasks_because_mine_was_a_guess(w):
+    """The entry I removed, and why it should not have been written.
+
+    It was pct set 101 --cmode tty. Nothing in the repository says tty is the
+    wanted value; I chose it while writing the dict. Codex then MEASURED the
+    live container: CT101 is cmode=shell. Those two behave differently for
+    exactly what Sean complained about -- a console that starts a login he
+    cannot get past -- so flipping it could be the fix or the cause, and it
+    runs as root on a live container.
+
+    It goes back when somebody states the target value and why.
+    """
+    assert w.MAINTENANCE == {}
+    assert w.dispatch("scope")["maintenance"] == []
+    for name in ("ct101-console-mode-restore", "anything-else"):
+        with pytest.raises(Exception) as caught:
+            w.dispatch("maint " + name)
+        assert "not a maintenance task" in str(caught.value)
 
 
 def test_every_maintenance_task_is_a_fixed_argument_list(w):
@@ -349,6 +382,9 @@ def test_every_maintenance_task_is_a_fixed_argument_list(w):
     A task that interpolated anything would be an arbitrary-command hole
     wearing a task's name, so the shape is checked rather than described.
     """
+    if not w.MAINTENANCE:
+        pytest.skip("no maintenance tasks are defined; the test above "
+                    "asserts that emptiness deliberately")
     for name, steps in w.MAINTENANCE.items():
         assert steps, name
         for step in steps:
