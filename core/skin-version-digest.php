@@ -4,6 +4,10 @@ declare(strict_types=1);
 // SNAPSMACK_EOF_HEADER
 // Last non-empty line must be: // ===== SNAPSMACK EOF =====
 
+// The baseline checks files and rendering options against the selected commit.
+// It cannot establish that the commit was reviewed. Use the SHA from the
+// review record. The package publisher also refuses duplicate versions.
+
 /**
  * Line endings are not content.
  *
