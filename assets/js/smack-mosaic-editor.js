@@ -301,8 +301,7 @@
                 return;
             }
 
-            var gap    = parseInt(document.getElementById('mosaic-gap').value, 10);
-            if (!Number.isFinite(gap)) gap = 4;
+            var gap = currentGap();
             var images = [];
             selectedIds.forEach(function (id) {
                 var a = allAssets[id];
@@ -340,6 +339,11 @@
         function currentLayout() {
             var s = document.getElementById('mosaic-layout');
             return s ? s.value : 'asymmetric';
+        }
+
+        function currentGap() {
+            var gap = parseInt(document.getElementById('mosaic-gap').value, 10);
+            return Number.isFinite(gap) ? Math.max(0, Math.min(20, gap)) : 4;
         }
 
         function renderWithData(images, gap, container) {
@@ -451,7 +455,7 @@
         // --- Save ---
         window.saveMosaic = function () {
             var title = (document.getElementById('mosaic-title').value.trim() || 'Untitled Mosaic');
-            var gap   = parseInt(document.getElementById('mosaic-gap').value, 10) || 4;
+            var gap   = currentGap();
             if (selectedIds.length === 0) { alert('Select at least one image.'); return; }
 
             ajax('save_mosaic', {
