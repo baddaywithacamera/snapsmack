@@ -369,6 +369,20 @@
         });
     }
 
+    // Search box button (SS-1578). Mirrors the container button exactly: a
+    // label and nothing else, because the CMS resolves the form's action
+    // itself from the site's own archive route. An owner typing a URL here
+    // would be typing one the CMS already knows and could get wrong.
+    var sBtn = document.getElementById('add-search-btn');
+    if (sBtn) {
+        sBtn.addEventListener('click', function () {
+            var label = (document.getElementById('search-label').value.trim() || 'SEARCH').toUpperCase();
+            menu.push({ id: uid(), type: 'search', label: label, url: '', active: true, children: [] });
+            document.getElementById('search-label').value = '';
+            render();
+        });
+    }
+
     // ── JSON SYNC ─────────────────────────────────────────────────────────
     function syncJson() {
         function clean(items, depth) {

@@ -123,6 +123,14 @@ if (is_array($_gn_items) && count($_gn_items) > 0) {
         if (isset($_gn_item['active']) && !$_gn_item['active']) continue;
         $_gn_type = $_gn_item['type'] ?? 'custom';
         if ($_gn_type === 'challenge_feed') continue; // retired: history now lives on The Board
+        // SS-1578. A search item is a FORM, and this nav emits links only, so
+        // an unknown type here would fall through to the empty-url branch
+        // below and print <li><span>SEARCH</span></li> -- a menu item that
+        // says SEARCH and does nothing, which is worse than its absence. The
+        // strict navigation component renders the real thing; this GRAM nav
+        // skips it until somebody decides a search box belongs in it, which
+        // is a design decision and not mine to take here.
+        if ($_gn_type === 'search') continue;
         $_gn_seen_required[$_gn_type] = true;
         if ($_gn_type === 'archive' && $_gn_archive_off) continue;   // archive disabled
 
