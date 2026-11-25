@@ -102,25 +102,22 @@ $check('the thumb box is .chap-thumb', substr_count($html, 'class="chap-thumb') 
 $check('the caption is .chap-archive-title',
        substr_count($html, 'class="chap-archive-title"') === 6);
 
-// AND IT IS A <div>, WHICH COSTS TWO HEADINGS AND I AM NOT HIDING IT.
+// THE CAPTION IS AN <h2>, AND THAT IS THE ONE PLACE 188D IS NOT FOLLOWED.
 //
 // 188D's caption is <div class="chap-archive-title">. The replacement made it
-// <h2 class="fsog-archive-title">, so restoring 188D verbatim DROPS two <h2>
-// elements from the archive, and the render snapshot caught exactly that
-// (chaplin/archive headings 2 -> 0).
+// <h2 class="fsog-archive-title">, so restoring 188D verbatim DROPPED two
+// headings from the archive, and the render snapshot caught it
+// (chaplin/archive headings 2 -> 0). I flagged that loss rather than take it,
+// and the PM RULED to keep the heading, so the h2 is folded back in with
+// 188D's class name on it.
 //
-// Restoring the div is what the PM's rule allows: an <h2> is not one of the
-// changes (a) to (c), so keeping it would be the kind of improvised
-// improvement that caused this ticket. It is also arguably more correct --
-// 188D's caption is opacity:0 until hover, and a heading nobody can see until
-// they hover is a strange heading.
-//
-// But it IS a loss for anyone navigating by heading, so it is pinned here as a
-// deliberate decision rather than left as a number in a fixture. If the PM
-// wants the heading back, this assertion is what changes, and it should be a
-// stated choice about CHAPLIN's semantics rather than a leftover.
-$check('  as a div, exactly as 188D had it, and not an h2',
-       !str_contains($html, '<h2 class="chap-archive-title"')
+// It is the right call: 188D's caption is opacity:0 until hover, so the
+// heading was invisible either way, and anyone navigating an archive by
+// heading gets the photograph titles back. The class is what 188D's
+// stylesheet styles, so the appearance is unaffected -- this changes the
+// ELEMENT, not the look.
+$check('  as an h2 carrying the 188D class, the PM-approved change',
+       substr_count($html, '<h2 class="chap-archive-title">') === 6
        && !str_contains($html, 'fsog-archive-title'));
 
 // ─────────────────────────────────────────────────────────────────────────────
