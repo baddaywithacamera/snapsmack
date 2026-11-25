@@ -294,7 +294,21 @@ class WriteClient:
             raise Refused(
                 "a file write needs a live owner login with password and "
                 "authenticator. Authorise and retry.")
-        wanted = max(1, int(seconds))
+        # A NONSENSE LIFETIME IS REFUSED, NOT REPAIRED. Muse's note: this
+        # clamped a negative or zero request up to one second, so a caller
+        # asking for -60 got a grant rather than an error. Quietly turning a
+        # caller's mistake into a different working value is how a mistake
+        # survives to be depended on.
+        try:
+            wanted = int(seconds)
+        except (TypeError, ValueError):
+            wanted = 0
+        if wanted < 1:
+            self.audit.record("file_grant_refused", {
+                "target": str(target), "path": str(path),
+                "why": "a grant lifetime must be at least one second",
+            })
+            raise Refused("a grant lifetime must be a whole number of seconds, at least one.")
         if wanted > self.MAX_FILE_GRANT_SECONDS:
             # REFUSE, DO NOT SILENTLY SHORTEN. A caller that asked for an
             # hour should be told it cannot have one, not handed five minutes

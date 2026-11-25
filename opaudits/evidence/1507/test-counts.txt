@@ -1,0 +1,25 @@
+SS-1507 PROX VOX scoped writer — test counts, reconciled
+run at: 2026-11-25T17:07:20Z
+branch: claude/ss1507-proxvox-scoped-writer
+tree:   aa169f80608cee0f415f692c470979c02301f907 plus the working tree for this commit
+
+WHY THIS FILE EXISTS. Muse's condition (b) on aa169f80: she counted 110
+cases and 14 subTests from the CHANGED FILES and could not reach my
+claimed 174/3/39. She was right that it does not reconcile from the diff.
+The figure is the WHOLE tools/proxvox suite, not the changed files, and I
+did not say so. Both numbers are below so neither has to be taken on
+trust.
+
+--- whole suite: python -m pytest tools/proxvox/tests/ ---
+178 passed, 3 skipped, 39 subtests passed in 13.90s
+
+--- per file, each run ON ITS OWN so the totals can be added up ---
+test_proxvox_file_write_client.py            25 passed in 0.35s
+test_proxvox_p1.py                           30 passed in 0.86s
+test_proxvox_p1b.py                          8 passed in 0.28s
+test_proxvox_p3.py                           19 passed, 4 subtests passed in 10.09s
+test_proxvox_provisioning.py                 13 passed, 10 subtests passed in 0.16s
+test_proxvox_root_read.py                    13 passed, 25 subtests passed in 0.90s
+test_proxvox_setup_gui.py                    4 passed in 0.12s
+test_proxvox_tls.py                          11 passed in 1.27s
+test_proxvox_writer.py                       55 passed, 3 skipped in 0.44s

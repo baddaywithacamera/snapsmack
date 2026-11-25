@@ -359,6 +359,92 @@ def test_a_live_write_without_a_grant_never_leaves_the_client(w, monkeypatch, ho
     assert audit.actions() == ["file_write_refused"]
 
 
+# ── the host enforces the compare-and-set, not only the client ─────────────
+
+def _blind_argv(w, monkeypatch, host_file, content, tail):
+    """A live put-file command, with whatever tail the caller wants to try."""
+    monkeypatch.setattr(w, "_verify_ticket_against_local_api", lambda t, u: True)
+
+    class _In:
+        buffer = io.BytesIO(base64.b64encode(content))
+
+    monkeypatch.setattr("sys.stdin", _In())
+    argv = ["put-file", "host", _posix(host_file),
+            hashlib.sha256(content).hexdigest()] + list(tail)
+    return " ".join(shlex.quote(a) for a in argv)
+
+
+def test_every_live_shape_without_an_expectation_is_refused(w, monkeypatch, host_file):
+    """Every live put-file shape that omits an expectation, against dispatch().
+
+    Muse's finding (a) said a four-argument put-file let a direct SSH caller
+    blind-overwrite with a valid grant. I probed every shape the protocol
+    allows at aa169f80 before agreeing, and it did NOT: a live write needs a
+    grant, grant_json is read from args[5], so args[4] is necessarily
+    occupied. The guarantee was real but ACCIDENTAL -- a consequence of
+    argument positions that nothing stated and nothing tested, which one
+    reordered argument would have removed in silence. These pin it.
+    """
+    content = b"blind overwrite\n"
+    original = host_file.read_bytes()
+    grant = _grant(target="host", path=host_file, content=content)
+
+    for tail, why in [
+        ([], "four arguments: no expectation and no grant"),
+        ([grant], "five arguments: the grant in the expectation slot"),
+        (["", grant], "six arguments, but the expectation says nothing"),
+    ]:
+        host_file.write_bytes(original)
+        command = _blind_argv(w, monkeypatch, host_file, content, tail)
+        with pytest.raises(Exception) as caught:
+            w.dispatch(command)
+        message = str(caught.value)
+        assert ("grant" in message) or ("expects" in message), (why, message)
+        assert host_file.read_bytes() == original, why
+
+
+def test_a_dry_run_still_needs_no_expectation(w, monkeypatch, host_file):
+    """The exemption, stated: you must be able to rehearse to LEARN the hash.
+
+    Demanding an expectation in order to rehearse would mean reading the file
+    before you are allowed to ask whether you may read it.
+    """
+    class _In:
+        buffer = io.BytesIO(base64.b64encode(b"x"))
+
+    monkeypatch.setattr("sys.stdin", _In())
+    answer = w.dispatch("put-file-dry host %s %s" % (
+        shlex.quote(_posix(host_file)), hashlib.sha256(b"x").hexdigest()))
+    assert answer["dry_run"] is True
+    assert host_file.read_bytes() == b"<?php // before\n"
+
+
+def test_the_legitimate_write_still_goes_through(w, monkeypatch, host_file):
+    """The control. Without it the three refusals above prove nothing."""
+    content = b"legitimate\n"
+    grant = _grant(target="host", path=host_file, content=content)
+    command = _blind_argv(w, monkeypatch, host_file, content,
+                          [hashlib.sha256(host_file.read_bytes()).hexdigest(), grant])
+    answer = w.dispatch(command)
+    assert answer["verified"] is True
+    assert host_file.read_bytes() == content
+
+
+def test_reaching_dispatch_directly_still_leaves_a_host_record(w, monkeypatch, tmp_path):
+    """Muse's caveat: _audit ran only from main(), so this route left nothing.
+
+    The host's log is meant to be the copy that cannot be lost, and a log with
+    a documented way around it is not that.
+    """
+    try:
+        w.dispatch("nonsense-operation")
+    except Exception:
+        pass
+    log = (tmp_path / "audit" / "writer.jsonl").read_text(encoding="utf-8")
+    events = [json.loads(line)["event"] for line in log.strip().splitlines()]
+    assert events == ["attempt"], events
+
+
 # ── the record, and what must never be in it ───────────────────────────────
 
 def test_the_clients_audit_never_contains_the_ticket(w, monkeypatch, host_file):

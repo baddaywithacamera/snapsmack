@@ -5,7 +5,17 @@
 """
 
 import os
+import sys
 import unittest
+
+# THIS FILE COULD NOT BE RUN ON ITS OWN. Every other test module in this
+# directory inserts tools/proxvox into sys.path; this one did not, and relied
+# on a sibling having been imported first. So the whole suite passed while
+# `pytest tools/proxvox/tests/test_proxvox_setup_gui.py` failed at collection
+# with "No module named 'proxvox'" -- which also means a change to pytest's
+# collection order could have broken it with nothing having changed here.
+# Found while reconciling the suite counts for Muse.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from proxvox.credentials import NoToken
 from proxvox.setup_gui import ROWS, credential_presence, save_setup_secret

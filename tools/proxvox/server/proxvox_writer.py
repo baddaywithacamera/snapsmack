@@ -217,6 +217,12 @@ def _segment_match(path, pattern):
     return len(path_parts) == len(pat_parts)
 
 
+def _is_sha256(value):
+    """A 64-character lowercase hex digest, and nothing else."""
+    text = str(value or "").strip().lower()
+    return len(text) == 64 and all(c in "0123456789abcdef" for c in text)
+
+
 def _never_write(path):
     for pattern in NEVER_WRITE:
         # NEVER_WRITE is deliberately matched the OLD, wider way: these are
@@ -530,27 +536,105 @@ def _verify_ticket(ticket, user, verifier=None):
             "its own authorises nothing." % user)
 
 
-def _verify_ticket_against_local_api(ticket, user):          # pragma: no cover
-    """Ask the local Proxmox API whether this ticket is still good.
+# The Proxmox cluster CA, so the loopback call is verified rather than trusted.
+# BOTH CANDIDATES ARE LISTED BECAUSE I AM NOT GUESSING THE PATH. My last guess
+# about this node was `pct set --cmode tty`, and Codex measured the live
+# container as cmode=shell -- a guess that would have made Sean's console
+# worse. These are the two documented Proxmox locations; the live path is for
+# Codex to confirm from the node, and until one of them is readable this
+# verification REFUSES rather than falling back to an unverified connection.
+PVE_CA_CANDIDATES = (
+    "/etc/pve/pve-root-ca.pem",
+    "/etc/pve/local/pve-ssl.pem",
+)
 
-    Not covered by the unit tests: it needs a Proxmox box. It is deliberately
-    the smallest possible call -- read the ticket's own access list -- so a
-    verification can never have a side effect.
+
+def _pve_ssl_context():
+    """A context that verifies the chain against the node's own CA, or None.
+
+    WHY HOSTNAME CHECKING IS OFF AND CHAIN CHECKING IS ON. The call goes to
+    127.0.0.1, and the node's certificate is issued for its own name, so a
+    hostname check could only ever fail. The chain check is the part that
+    matters: it is what stops another local listener on 8006 from answering
+    as the Proxmox API and simply saying yes.
+
+    PREVIOUSLY ssl._create_unverified_context(), which Muse flagged. That
+    accepted ANY certificate, so the "verification" this wrapper rests on
+    could have been answered by anything at all that held the port.
+    """
+    import ssl
+    for candidate in PVE_CA_CANDIDATES:
+        if not os.path.isfile(candidate):
+            continue
+        try:
+            context = ssl.create_default_context(cafile=candidate)
+        except Exception:
+            continue
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_REQUIRED
+        return context
+    return None
+
+
+def _verify_ticket_against_local_api(ticket, user):          # pragma: no cover
+    """Ask the local Proxmox API WHO this ticket belongs to.
+
+    HTTP 200 WAS NOT ENOUGH, and this is the fault Codex and Muse both found.
+    The previous version read the ticket's access list and returned
+    `response.status == 200`, which proves only that the ticket is valid for
+    SOMEBODY. The user it was supposedly checked against came out of the
+    grant, and the grant is written by the caller -- so anyone holding any
+    valid Proxmox ticket could claim to be root@pam and be believed. That is a
+    privilege escalation, not a loose end.
+    #
+    So this asks the one question with an unambiguous answer: it renews the
+    ticket through /access/ticket, passing the ticket itself as the password,
+    which Proxmox accepts only when the ticket genuinely belongs to the
+    username given. The reply then CARRIES the principal, and that principal
+    is compared as well. Two independent checks on the same call.
+
+    Renewal mints a new ticket and is otherwise side-effect free: it does not
+    extend, invalidate or alter the one presented, and the new one is
+    discarded here unread.
+
+    Not covered by the unit tests: it needs a Proxmox box. The logic a test
+    CAN reach is in _verify_ticket(), which this only answers.
     """
     import urllib.error
+    import urllib.parse
     import urllib.request
+
+    context = _pve_ssl_context()
+    if context is None:
+        # FAIL CLOSED. An unverified connection here would mean the writer's
+        # one proof of authorisation could be forged by any local listener.
+        sys.stderr.write(
+            "proxvox: refusing to verify a ticket over an unverified "
+            "connection; none of %s is readable\n" % ", ".join(PVE_CA_CANDIDATES))
+        return False
+
+    body = urllib.parse.urlencode({"username": user, "password": ticket}).encode("ascii")
     request = urllib.request.Request(
-        "https://127.0.0.1:8006/api2/json/access/permissions",
-        headers={"Cookie": "PVEAuthCookie=" + ticket})
+        "https://127.0.0.1:8006/api2/json/access/ticket",
+        data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
     try:
-        import ssl
-        context = ssl._create_unverified_context()
         with urllib.request.urlopen(request, timeout=15, context=context) as response:
-            return response.status == 200
+            if response.status != 200:
+                return False
+            answer = json.loads(response.read(65536).decode("utf-8", "replace"))
     except urllib.error.HTTPError:
         return False
     except Exception:
         return False
+
+    data = answer.get("data") if isinstance(answer, dict) else None
+    if not isinstance(data, dict):
+        return False
+    # THE PRINCIPAL THE API REPORTS, not the one the caller claimed.
+    principal = str(data.get("username", ""))
+    return principal != "" and principal == str(user)
 
 
 def _check_grant(grant_json, *, target, path, sha256, now=None, verifier=None):
@@ -699,6 +783,15 @@ def _audit(event, detail):
 
 
 def dispatch(command):
+    # THE ATTEMPT IS LOGGED HERE, NOT ONLY IN main(). Muse's caveat on
+    # aa169f80: _audit was called from main() alone, so anything reaching
+    # dispatch() directly -- a test, a future local caller, anyone who imports
+    # this module -- left no record at all. The host's log is meant to be the
+    # copy that cannot be lost, and a log with a documented way to bypass it is
+    # not that. main() still records the OUTCOME, because only main() sees
+    # whether the operation returned or raised.
+    _audit("attempt", {"command": _audit_command(command)})
+
     args = shlex.split(str(command or ""), posix=True)
     if not args:
         raise Refused("no operation given")
@@ -741,6 +834,52 @@ def dispatch(command):
                 raise Refused(
                     "a live write needs a grant from a fresh owner login. Run "
                     "the dry run to rehearse, or authorise and retry.")
+            # A LIVE WRITE MUST SAY WHAT IT EXPECTED TO FIND.
+            #
+            # THIS MAKES AN EXISTING GUARANTEE EXPLICIT. IT DID NOT CLOSE AN
+            # OPEN HOLE, and the distinction matters enough to write down.
+            # Muse's finding (a) on aa169f80 said a direct SSH caller could
+            # present a valid grant and blind-overwrite, because dispatch()
+            # accepted a four-argument put-file. I tried it against the real
+            # dispatch() at aa169f80 rather than agreeing: every shape the
+            # protocol allows, with the file on disk checked after each.
+            #
+            #   4 args, no expectation, no grant  -> refused (no grant)
+            #   5 args, grant in slot five        -> refused (no grant)
+            #   6 args, expectation '-'           -> refused (file exists)
+            #   6 args, correct expectation       -> wrote, as intended
+            #
+            # Identical before and after this change. The guarantee held
+            # already, but only as an ACCIDENT OF ARGUMENT POSITIONS: a live
+            # write needs a grant, grant_json is read from args[5], so args[4]
+            # is necessarily occupied. Nothing said so, nothing tested it, and
+            # one reordered argument or a seventh option would have removed it
+            # silently. An emergent guarantee is one nobody knows they are
+            # breaking, so it is now a stated rule with a test behind it.
+            #
+            # The dry run is exempt: it changes nothing, so there is nothing to
+            # overwrite blindly, and demanding an expectation in order to
+            # rehearse would mean reading the file before you are allowed to
+            # ask whether you may.
+            #
+            # AN EMPTY EXPECTATION IS REFUSED TOO, and that one was ambiguous
+            # rather than merely unstated. "" fell through to the comparison
+            # as "", which is exactly what _sha256_of returns for a file that
+            # does not exist -- so an empty string silently MEANT "expect
+            # absent", by accident, alongside the "-" that means it on
+            # purpose. Two spellings of the same intent, one of them a typo.
+            # Only "-" says absent now; anything else must be a real hash.
+            expectation = "" if expected_live is None else str(expected_live).strip()
+            if expectation == "":
+                raise Refused(
+                    "a live write must declare the sha256 it expects the file "
+                    "to hold right now, or '-' if it expects no file. Rehearse "
+                    "with put-file-dry to read the current hash.")
+            if expectation != "-" and not _is_sha256(expectation):
+                raise Refused(
+                    "the expected hash must be a 64-character sha256, or '-' "
+                    "for a file that should not exist yet.")
+            expected_live = expectation
             _check_grant(grant_json, target=target, path=path, sha256=declared)
 
         content = _read_stdin_content(declared)
@@ -780,12 +919,11 @@ def dispatch(command):
 
 def main():
     command = os.environ.get("SSH_ORIGINAL_COMMAND", "")
-    # THE ATTEMPT IS RECORDED BEFORE IT RUNS. Sean's ruling for the write
-    # client was that every call and every refusal is logged BEFORE
-    # execution, and the same must hold here or the host's record is thinner
-    # than the client's. A write that crashes the wrapper mid-way still
+    # The attempt is recorded by dispatch() now, so that a caller reaching it
+    # directly is recorded too; main() records the outcome, which only main()
+    # can see. Sean's ruling stands either way: the attempt is written BEFORE
+    # the operation runs, so a write that crashes the wrapper mid-way still
     # leaves its attempt on the host.
-    _audit("attempt", {"command": _audit_command(command)})
     try:
         data = dispatch(command)
         payload = {"ok": True, "data": data}
