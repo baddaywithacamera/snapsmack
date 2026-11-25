@@ -284,11 +284,30 @@ function snap_render_navigation_tree(array $items, int $depth = 0): string {
         if ((string)($item['kind'] ?? '') === 'search') {
             $action = snap_escape_url($url);
             $classes[] = 'header-search';
+            // THE LABEL WRAPS THE INPUT, so there is no id to collide.
+            //
+            // Codex's finding, and he was right: my first version used
+            // for="snap-menu-search" with a matching id, and THREE skins
+            // render this component twice -- alfred, telegram and tilez all
+            // emit a desktop menu and a collapsed one from the same items. So
+            // the page carried two inputs with one id, which is invalid, and
+            // the label bound to whichever came first: the second search box
+            // had no working label at all. He reported it on ALFRED; it was
+            // never only ALFRED.
+            //
+            // A WRAPPING LABEL NEEDS NO ID. That removes the uniqueness
+            // requirement rather than working around it with a counter, which
+            // would have had to stay unique across two render passes and
+            // every future skin that renders the tree a third time. The
+            // visible text stays in a screen-reader span inside the label, so
+            // what a screen reader announces is unchanged.
             $html .= '<li class="' . implode(' ', $classes) . '">'
                 . '<form method="get" class="search-form" action="' . $action . '" role="search">'
-                . '<label class="screen-reader-text" for="snap-menu-search">' . $label . '</label>'
-                . '<input id="snap-menu-search" type="search" class="search-field" name="q"'
+                . '<label class="search-label">'
+                . '<span class="screen-reader-text">' . $label . '</span>'
+                . '<input type="search" class="search-field" name="q"'
                 . ' placeholder="' . snap_escape_attr($item['label'] ?? 'Search') . '">'
+                . '</label>'
                 . '<button type="submit" class="search-button">'
                 . '<span class="screen-reader-text">' . $label . '</span>'
                 . '<svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'

@@ -1474,9 +1474,10 @@
         ]
     },
     "menu-search-item-regression.php": {
-        "assertions": 33,
-        "predicates": 28,
+        "assertions": 35,
+        "predicates": 31,
         "thresholds": [
+            2,
             2,
             5
         ]

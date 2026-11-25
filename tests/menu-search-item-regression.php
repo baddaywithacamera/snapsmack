@@ -124,8 +124,22 @@ $check('  and the owner\'s label is the placeholder',
        str_contains($html, 'placeholder="SEARCH PHOTOGRAPHS"'));
 $check('the submit button has screen-reader text, not an unlabelled icon',
        str_contains($html, '<span class="screen-reader-text">SEARCH PHOTOGRAPHS</span>'));
-$check('  the label is tied to the input by id, as a label must be',
-       str_contains($html, 'for="snap-menu-search"') && str_contains($html, 'id="snap-menu-search"'));
+// THE LABEL WRAPS THE INPUT, so there is no id to collide. Codex found that
+// my first version used for=/id= and that alfred, telegram and tilez each
+// render this component TWICE -- a desktop menu and a collapsed one from the
+// same items -- so the page carried two inputs with one id and the second
+// search box had no working label. Rendering the tree twice is now part of
+// what this test checks.
+$check('  the input is wrapped in its label, so no id is needed',
+       preg_match('#<label class="search-label"><span class="screen-reader-text">[^<]*</span><input type="search"#', $html) === 1);
+$check('  and NO id or for attribute is emitted at all',
+       !str_contains($html, 'id="snap-menu-search"') && !str_contains($html, 'for='));
+$check('rendering the tree TWICE emits no duplicate id, as three skins do',
+       (static function () use ($nav) {
+           $twice = snap_render_navigation_tree($nav) . snap_render_navigation_tree($nav);
+           return substr_count($twice, 'class="header-search"') === 2
+               && !str_contains($twice, ' id=');
+       })());
 $check('  and the icon is an inline svg, hidden from screen readers',
        str_contains($html, '<svg class="search-icon"') && str_contains($html, 'aria-hidden="true"'));
 $check('no link is emitted for the search item',
