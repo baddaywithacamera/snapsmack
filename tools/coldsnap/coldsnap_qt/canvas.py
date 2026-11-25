@@ -83,15 +83,21 @@ def _mosaic_images(canvas, data):
         elif str(identity) in canvas.assets:
             paths.append(canvas.assets[str(identity)])
     size_cache = getattr(canvas, "_mosaic_size_cache", None)
+    raw_weights = data.get("weights") or {}
     images = []
-    for path in paths:
+    for idx, (identity, path) in enumerate(zip(order, paths)):
         if size_cache is not None and path in size_cache:
             width, height = size_cache[path]
         else:
             width, height = _image_size(path)
             if size_cache is not None:
                 size_cache[path] = (width, height)
-        images.append({"width": width, "height": height, "src": path})
+        w_val = 0
+        if isinstance(raw_weights, dict):
+            w_val = int(raw_weights.get(str(identity), raw_weights.get(identity, 0)) or 0)
+        elif isinstance(raw_weights, (list, tuple)) and idx < len(raw_weights):
+            w_val = int(raw_weights[idx] or 0)
+        images.append({"width": width, "height": height, "src": path, "weight": w_val})
     return paths, images
 
 
@@ -131,8 +137,15 @@ def mosaic_cells(canvas, data, width):
     layout = data.get("layout", "asymmetric")
     gap = _mosaic_gap(data)
     w_int = max(1, int(round(width)))
+    raw_weights = data.get("weights") or {}
+    if isinstance(raw_weights, dict):
+        weight_key = tuple((str(k), int(v)) for k, v in sorted(raw_weights.items()) if int(v or 0) != 0)
+    elif isinstance(raw_weights, (list, tuple)):
+        weight_key = tuple(int(v or 0) for v in raw_weights)
+    else:
+        weight_key = ()
     cache = getattr(canvas, "_mosaic_layout_cache", None)
-    key = (tuple(paths), layout, gap, w_int)
+    key = (tuple(paths), layout, gap, w_int, weight_key)
     if cache is not None and key in cache:
         return cache[key]
     # For 1-4 photos, compose at the actual column width (760px/360px) so
@@ -1364,16 +1377,21 @@ class BiggieCanvas(QTextEdit):
         self.setCurrentCharFormat(self._char_format_for(_block_kind(cur.block())))
         self.setFocus()
 
-    def insert_mosaic(self, order, layout: str, *, position: str = "after"):
-        self._insert_object("mosaic", {"order": list(order), "layout": str(layout)}, position=position)
+    def insert_mosaic(self, order, layout: str, *, position: str = "after", weights=None):
+        payload = {"order": list(order), "layout": str(layout)}
+        if weights:
+            payload["weights"] = {str(k): int(v) for k, v in weights.items() if int(v or 0) != 0}
+        self._insert_object("mosaic", payload, position=position)
 
-    def replace_mosaic(self, order, layout: str):
+    def replace_mosaic(self, order, layout: str, weights=None):
         pos = self._pending_obj_pos
         self._pending_obj_pos = None
         if pos is None:
-            return self.insert_mosaic(order, layout)
-        self._insert_object("mosaic", {"order": list(order), "layout": str(layout)},
-                            replace_at=pos)
+            return self.insert_mosaic(order, layout, weights=weights)
+        payload = {"order": list(order), "layout": str(layout)}
+        if weights:
+            payload["weights"] = {str(k): int(v) for k, v in weights.items() if int(v or 0) != 0}
+        self._insert_object("mosaic", payload, replace_at=pos)
 
     def insert_image(self, img_id: str, size: str = "full", align: str = "center",
                      *, width_ratio=None, alt="", caption="", show_caption: bool = False,

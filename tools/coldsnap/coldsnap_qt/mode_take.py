@@ -78,6 +78,7 @@ class MosaicPreview(QWidget):
             "photo to move, resize, swap sides, or reverse the arrangement.")
         self._tiles, self._rects = [], []
         self._layout_name, self._drag_from = "asymmetric", None
+        self._weights = {}
         self.bucket = []
         self.assets = {}
         self._mosaic_size_cache = {}
@@ -94,10 +95,11 @@ class MosaicPreview(QWidget):
         self._sync_height()
         self.update()
 
-    def set_mosaic(self, tiles, layout_name, gap: int = 4):
+    def set_mosaic(self, tiles, layout_name, gap: int = 4, weights=None):
         self._tiles = list(tiles)  # (row-in-list, local-path), in mosaic order
         self._layout_name = str(layout_name or "asymmetric")
         self._gap = max(0, min(20, int(gap)))
+        self._weights = {str(k): int(v) for k, v in (weights or {}).items() if int(v or 0) != 0}
         self.bucket = [path for _row, path in self._tiles]
         self._mosaic_layout_cache.clear()
         self._sync_height()
@@ -111,6 +113,7 @@ class MosaicPreview(QWidget):
             "order": list(range(1, len(self.bucket) + 1)),
             "layout": self._layout_name,
             "gap": self._gap,
+            "weights": self._weights,
         }
         _paths, out = _mosaic_cells(self, data, self._content_width)
         return out
@@ -245,7 +248,7 @@ class MosaicPreview(QWidget):
             "Make smaller",
             lambda: self.sizeRequested.emit(row, -1),
         )
-        can_resize = len(ordered_rows) >= 3
+        can_resize = len(ordered_rows) >= 2
         larger.setEnabled(can_resize)
         smaller.setEnabled(can_resize)
         menu.addSeparator()
@@ -1387,25 +1390,36 @@ class TakeMode(QWidget):
         block = cursor.block()
         block_text = block.text()
         existing = re.search(
-            r'\[mosaic=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+)\]',
+            r'\[mosaic=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+)(?:\s+weights=([0-9]+:-?[0-9]+(?:\s*,\s*[0-9]+:-?[0-9]+)*))?\]',
             block_text, re.IGNORECASE)
         existing_span = None
-        existing_order, existing_layout = [], None
+        existing_order, existing_layout, existing_weights = [], None, {}
         rotation_originals = {}
         if existing:
             existing_order = [int(value) - 1 for value in existing.group(1).split(',')]
             existing_order = [value for value in existing_order
                               if 0 <= value < len(self._bucket)]
             existing_layout = existing.group(2).lower()
+            if existing.group(3):
+                for pair in existing.group(3).split(','):
+                    k, v = pair.strip().split(':', 1)
+                    bi = int(k) - 1
+                    if 0 <= bi < len(self._bucket) and int(v) != 0:
+                        existing_weights[bi] = int(v)
             existing_span = (block.position() + existing.start(),
                              block.position() + existing.end())
 
         preselected = [] if existing_order else self.selected_tray_indices()
+        self._pending_mosaic_weights = dict(existing_weights)
+        self._last_mosaic_weights = {}
         result = self._mosaic_dialog(existing_order, existing_layout, preselected_order=preselected)
         if not result:
             return
         chosen, layout_name = result
-        marker = "[mosaic=" + ",".join(map(str, chosen)) + " layout=" + layout_name + "]"
+        chosen_weights = dict(getattr(self, "_last_mosaic_weights", {}) or {})
+        w_parts = [f"{k}:{v}" for k, v in sorted(chosen_weights.items()) if int(v or 0) != 0]
+        w_attr = (" weights=" + ",".join(w_parts)) if w_parts else ""
+        marker = "[mosaic=" + ",".join(map(str, chosen)) + " layout=" + layout_name + w_attr + "]"
         if existing_span:
             replace_cursor = self.body.editor.textCursor()
             replace_cursor.setPosition(existing_span[0])
@@ -1428,7 +1442,19 @@ class TakeMode(QWidget):
                 existing_order.append(uuid_to_index[str(identity)])
             elif str(identity).isdigit() and 1 <= int(identity) <= len(self._bucket):
                 existing_order.append(int(identity) - 1)
+        existing_weights = {}
+        if self.body.canvas._pending_obj_pos is not None:
+            hit = self.body.canvas._object_at(self.body.canvas._pending_obj_pos)
+            if hit and hit[0] == "mosaic":
+                raw_w = (hit[1] or {}).get("weights") or {}
+                for k, v in raw_w.items():
+                    if str(k) in uuid_to_index:
+                        existing_weights[uuid_to_index[str(k)]] = int(v)
+                    elif str(k).isdigit() and 1 <= int(k) <= len(self._bucket):
+                        existing_weights[int(k) - 1] = int(v)
         preselected = [] if existing_order else self.selected_tray_indices()
+        self._pending_mosaic_weights = dict(existing_weights)
+        self._last_mosaic_weights = {}
         result = self._mosaic_dialog(
             existing_order,
             (layout or "").lower() or None,
@@ -1438,11 +1464,17 @@ class TakeMode(QWidget):
             self.body.canvas._pending_obj_pos = None
             return
         chosen, layout_name = result
+        chosen_weights = dict(getattr(self, "_last_mosaic_weights", {}) or {})
         stable = [self._bucket[i - 1].asset_uuid for i in chosen]
+        stable_weights = {
+            str(self._bucket[int(k) - 1].asset_uuid): int(v)
+            for k, v in chosen_weights.items()
+            if 1 <= int(k) <= len(self._bucket) and int(v or 0) != 0
+        }
         if order:
-            self.body.canvas.replace_mosaic(stable, layout_name)
+            self.body.canvas.replace_mosaic(stable, layout_name, weights=stable_weights)
         else:
-            self.body.canvas.insert_mosaic(stable, layout_name)
+            self.body.canvas.insert_mosaic(stable, layout_name, weights=stable_weights)
 
     def _mosaic_used_indices(self, keep):
         """0-based bucket indices already spoken for by OTHER mosaics in this post.
@@ -1751,6 +1783,13 @@ class TakeMode(QWidget):
         layout.addLayout(arrows)
 
         checked_set = set(initial_checked)
+        pending_w = getattr(self, "_pending_mosaic_weights", None) or {}
+        self._pending_mosaic_weights = {}
+        weights_by_idx = {
+            int(bi): max(-1, min(2, int(w)))
+            for bi, w in pending_w.items()
+            if int(w or 0) != 0
+        }
         active_bucket_idx = [display_order[0] if display_order else None]
         tiles_by_idx = {}
 
@@ -1758,12 +1797,18 @@ class TakeMode(QWidget):
             return [bi for bi in display_order if bi in checked_set]
 
         def refresh_preview():
+            inc = checked_indices()
             tiles = [
                 (pos, self._bucket[bi].local_path)
                 for pos, bi in enumerate(display_order)
                 if bi in checked_set
             ]
-            preview.set_mosaic(tiles, preset.currentData() or "asymmetric")
+            w_map = {
+                i + 1: weights_by_idx[bi]
+                for i, bi in enumerate(inc)
+                if weights_by_idx.get(bi, 0) != 0
+            }
+            preview.set_mosaic(tiles, preset.currentData() or "asymmetric", weights=w_map)
 
         def refresh_layouts():
             inc = checked_indices()
@@ -1911,27 +1956,18 @@ class TakeMode(QWidget):
             refresh_preview()
 
         def resize_preview_row(row, direction):
-            included_rows = [
-                position for position, bucket_index in enumerate(display_order)
-                if bucket_index in checked_set
-            ]
-            if row not in included_rows or len(included_rows) < 3:
+            if row < 0 or row >= len(display_order):
                 return
-            included = [display_order[position] for position in included_rows]
-            target = display_order[row]
-            resized, target_layout, _changed_order = _resize_mosaic_order(
-                included,
-                target,
-                lambda bucket_index: self._bucket[bucket_index].local_path,
-                larger=int(direction) > 0,
-                width=self._preview_width,
-            )
-            for position, bucket_index in zip(included_rows, resized):
-                display_order[position] = bucket_index
-            layout_index = preset.findData(target_layout)
-            if layout_index >= 0:
-                preset.setCurrentIndex(layout_index)
-            rebuild_grid()
+            bi = display_order[row]
+            if bi not in checked_set or len(checked_indices()) < 2:
+                return
+            step = 1 if int(direction) > 0 else -1
+            cur = weights_by_idx.get(bi, 0)
+            nxt = max(-1, min(2, cur + step))
+            if nxt == 0:
+                weights_by_idx.pop(bi, None)
+            else:
+                weights_by_idx[bi] = nxt
             refresh_preview()
 
         def rotate_current(degrees):
@@ -2046,6 +2082,7 @@ class TakeMode(QWidget):
         dialog._mosaic_move_preview = move_preview_row
         dialog._mosaic_swap_side = swap_preview_side
         dialog._mosaic_resize = resize_preview_row
+        dialog._mosaic_weights = weights_by_idx
         dialog._mosaic_reverse = reverse_arrangement
 
         rebuild_grid()
@@ -2070,6 +2107,11 @@ class TakeMode(QWidget):
             return None
         # A rotate changed a working copy: the canvas must repaint from the new file.
         self.body.set_bucket([im.local_path for im in self._bucket])
+        self._last_mosaic_weights = {
+            bi + 1: weights_by_idx[bi]
+            for bi in display_order
+            if bi in checked_set and weights_by_idx.get(bi, 0) != 0
+        }
         return chosen, str(preset.currentData() or "asymmetric")
 
     def _add_photos(self):

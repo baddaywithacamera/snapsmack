@@ -211,7 +211,7 @@ def test_three_photo_size_action_uses_the_real_one_left_spans(tmp_path):
     assert large_area > small_area
 
 
-def test_size_action_saves_order_and_publishes_that_same_order(monkeypatch, tmp_path):
+def test_size_action_preserves_order_enlarges_span_and_survives_reopen(monkeypatch, tmp_path):
     monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
     _app()
     paths = _photos(tmp_path)
@@ -219,17 +219,52 @@ def test_size_action_saves_order_and_publishes_that_same_order(monkeypatch, tmp_
     mode = TakeMode(lambda: {"url": "https://example.test"})
     mode._bucket = [O.DraftImage(local_path=path, original_path=path) for path in paths]
     try:
+        def _act(dialog):
+            # Default asymmetric quilt has mixed tile sizes
+            init_areas = [
+                c["width"] * c["height"]
+                for c in dialog._mosaic_preview.computed_cells()["items"]
+            ]
+            assert max(init_areas) > min(init_areas) * 1.15
+            before_area = init_areas[2]
+            dialog._mosaic_resize(2, 1)
+            assert dialog._mosaic_checked_indices() == [0, 1, 2, 3]
+            assert dialog._mosaic_weights == {2: 1}
+            after_area = dialog._mosaic_preview.computed_cells()["items"][2]["width"] * dialog._mosaic_preview.computed_cells()["items"][2]["height"]
+            assert after_area > before_area
+            # Survives Suggest arrangement and Move earlier/later
+            dialog._mosaic_suggest_btn.click()
+            assert dialog._mosaic_weights == {2: 1}
+            dialog._mosaic_move_preview(0, 1)
+            assert dialog._mosaic_weights == {2: 1}
+
         result = _run_dialog(
             monkeypatch,
             mode,
             [0, 1, 2, 3],
-            "square",
-            lambda dialog: dialog._mosaic_resize(2, 1),
+            "asymmetric",
+            _act,
         )
         saved_order, saved_layout = result
         assert saved_layout == "asymmetric"
-        assert saved_order != [1, 2, 3, 4]
+        assert set(saved_order) == {1, 2, 3, 4}
+        assert mode._last_mosaic_weights == {3: 1}
         assert [_digest(path) for path in paths] == before
+
+        # Reopening from canvas preserves per-photo weight
+        identities = [str(im.asset_uuid) for im in mode._bucket]
+        mode.body._set_biggie(True)
+        mode.body.canvas.from_blocks([
+            {
+                "type": "mosaic",
+                "order": identities,
+                "layout": "asymmetric",
+                "weights": {identities[2]: 1},
+            },
+        ])
+        block = mode.body.canvas.document().begin()
+        hit = mode.body.canvas._object_at(block.position())
+        assert hit[1]["weights"] == {identities[2]: 1}
 
         poster = object.__new__(SmacktalkPoster)
         calls = []

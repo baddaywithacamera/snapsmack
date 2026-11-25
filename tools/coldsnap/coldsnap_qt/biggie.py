@@ -116,7 +116,18 @@ def serialize_block(b: dict) -> str:
         if not order:
             return "[mosaic]"
         layout = str(b.get("layout") or "asymmetric").lower()
-        return "[mosaic=" + ",".join(map(str, order)) + " layout=" + layout + "]"
+        weights = b.get("weights") or {}
+        w_parts = []
+        if isinstance(weights, dict):
+            for k, v in sorted(weights.items(), key=lambda kv: str(kv[0])):
+                try:
+                    iv = int(v)
+                except (TypeError, ValueError):
+                    iv = 0
+                if iv != 0:
+                    w_parts.append(f"{k}:{iv}")
+        w_attr = (" weights=" + ",".join(w_parts)) if w_parts else ""
+        return "[mosaic=" + ",".join(map(str, order)) + " layout=" + layout + w_attr + "]"
     return str(b.get("text", ""))          # raw — verbatim
 
 
@@ -155,7 +166,7 @@ _RX = {
         r"^<figure[^>]*>\s*(\[img:[^\]]+\])\s*<figcaption[^>]*>(.*?)</figcaption>\s*</figure>$",
         re.DOTALL | re.IGNORECASE,
     ),
-    "mosaic":  re.compile(r"^\[mosaic(?:=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+))?\]$", re.IGNORECASE),
+    "mosaic":  re.compile(r"^\[mosaic(?:=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+)(?:\s+weights=([0-9]+:-?[0-9]+(?:\s*,\s*[0-9]+:-?[0-9]+)*))?)?\]$", re.IGNORECASE),
     "columns": re.compile(r"^\[columns=(\d+)(?:\s+ratio=([0-9-]+))?\](.*)\[/columns\]$", re.DOTALL | re.IGNORECASE),
     "list":    re.compile(r"^<(ul|ol)>(.*)</\1>$", re.DOTALL | re.IGNORECASE),
     "quote":   re.compile(r"^<blockquote>(.*)</blockquote>$", re.DOTALL | re.IGNORECASE),
@@ -198,9 +209,17 @@ def _classify(seg: str) -> dict:
     m = _RX["mosaic"].match(seg)
     if m:
         if m.group(1):
-            return {"type": "mosaic",
-                    "order": [int(v) for v in re.split(r"\s*,\s*", m.group(1).strip())],
-                    "layout": m.group(2).lower()}
+            out = {"type": "mosaic",
+                   "order": [int(v) for v in re.split(r"\s*,\s*", m.group(1).strip())],
+                   "layout": m.group(2).lower()}
+            if m.group(3):
+                weights = {}
+                for pair in re.split(r"\s*,\s*", m.group(3).strip()):
+                    k, v = pair.split(":", 1)
+                    weights[int(k)] = int(v)
+                if weights:
+                    out["weights"] = weights
+            return out
         return {"type": "mosaic"}
     fm = _RX["figure_image"].match(seg)
     if fm:
