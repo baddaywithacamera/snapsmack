@@ -13,13 +13,15 @@ import tempfile
 
 
 def run(output_dir: str) -> int:
-    from PIL import Image
-    from PySide6.QtCore import QEventLoop, QTimer, Qt
+    from PIL import Image, ImageDraw
+    from PySide6.QtCore import QTimer, Qt
     from PySide6.QtGui import QFont, QFontDatabase
+    from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QDialog, QPushButton
 
     import sumna_offline as O
     from coldsnap_qt import biggie
+    from coldsnap_qt.canvas import BiggieCanvas
     from coldsnap_qt.mode_take import MosaicPreview, TakeMode
     from coldsnap_qt.photo_tray import PhotoThumbTile
 
@@ -65,7 +67,7 @@ def run(output_dir: str) -> int:
         {"type": "para", "text": "The second paragraph remains separate below the photograph."},
         {"type": "mosaic", "order": identities[1:5], "layout": "asymmetric"},
     ])
-    mode.title_edit.setText("COLD SNAP 0.7.57 parity gate")
+    mode.title_edit.setText("COLD SNAP parity gate")
     app.processEvents()
     mode.grab().save(str(out / "01-editor-parity.png"), "PNG")
 
@@ -87,6 +89,13 @@ def run(output_dir: str) -> int:
 
     captured = {}
 
+    def wait_for(check):
+        for _ in range(250):
+            if check():
+                return True
+            QTest.qWait(20)
+        return False
+
     def capture_mosaic():
         dialog = app.activeModalWidget()
         if not isinstance(dialog, QDialog):
@@ -100,7 +109,7 @@ def run(output_dir: str) -> int:
         dialog._mosaic_reverse()
         reversed_order = dialog._mosaic_checked_indices()
         before_side_swap = list(reversed_order)
-        dialog._mosaic_preview.grab()
+        wait_for(lambda: len(dialog._mosaic_preview._rects) == len(before_side_swap))
         dialog._mosaic_swap_side(0)
         side_swapped_order = dialog._mosaic_checked_indices()
         captured.update({
@@ -140,14 +149,10 @@ def run(output_dir: str) -> int:
 
     def save_preview(dialog, name):
         preview = dialog._mosaic_preview
-        # The real photo loader is asynchronous. Paint once to request the
-        # images, allow the worker callbacks to run, then grab the entire
-        # preview widget even if the modal's scroll viewport clips it.
-        preview.grab()
-        loop = QEventLoop()
-        QTimer.singleShot(250, loop.quit)
-        loop.exec()
+        if not wait_for(lambda: len(rects(preview)) == 4):
+            return []
         preview.grab().save(str(out / name), "PNG")
+        return rects(preview)
 
     def resize_mosaic():
         dialog = app.activeModalWidget()
@@ -155,14 +160,13 @@ def run(output_dir: str) -> int:
             return
         preview = dialog._mosaic_preview
         preview.set_content_width(760)
-        span["before"] = rects(preview)
         span["order_before"] = dialog._mosaic_checked_indices()
-        save_preview(dialog, "03-mosaic-before.png")
+        span["before"] = save_preview(dialog, "03-mosaic-before.png")
         dialog._mosaic_resize(2, 1)
-        span["larger"] = rects(preview)
         span["order_after"] = dialog._mosaic_checked_indices()
-        save_preview(dialog, "04-mosaic-larger.png")
+        span["larger"] = save_preview(dialog, "04-mosaic-larger.png")
         dialog._mosaic_resize(2, -1)
+        wait_for(lambda: len(rects(preview)) == 4)
         span["smaller"] = rects(preview)
         dialog._mosaic_resize(2, 1)
         dialog.accept()
@@ -173,9 +177,8 @@ def run(output_dir: str) -> int:
             return
         preview = dialog._mosaic_preview
         preview.set_content_width(760)
-        span["reopened"] = rects(preview)
         span["reopened_order"] = dialog._mosaic_checked_indices()
-        save_preview(dialog, "05-mosaic-reopened.png")
+        span["reopened"] = save_preview(dialog, "05-mosaic-reopened.png")
         dialog.reject()
 
     mode.body.canvas._pending_obj_pos = mode.body.canvas.document().begin().position()
@@ -187,17 +190,76 @@ def run(output_dir: str) -> int:
     mode.body.canvas._pending_obj_pos = mode.body.canvas.document().begin().position()
     QTimer.singleShot(250, reopen_mosaic)
     mode._canvas_mosaic(span_ids, "asymmetric")
-    target = span["larger"][2]
-    smaller_tile = span["larger"][0]
+    span_ready = all(len(span.get(key, [])) == 4
+                     for key in ("before", "larger", "smaller", "reopened"))
+    target = span["larger"][2] if span_ready else [0, 0, 0, 0]
+    smaller_tile = span["larger"][0] if span_ready else [0, 0, 0, 0]
     checks.update({
+        "mosaic_browser_geometry_ready": span_ready,
         "default_quilt_has_mixed_spans": len({(tile[2], tile[3]) for tile in span["before"]}) > 1,
         "larger_mosaic_tile_spans_two_by_two": abs(target[2] - 2 * smaller_tile[2] - 4) < 1
             and abs(target[3] - 2 * smaller_tile[3]) < 4,
-        "larger_mosaic_reflows_neighbors": any(span["before"][i] != span["larger"][i] for i in (0, 1, 3)),
+        "larger_mosaic_reflows_neighbors": span_ready
+            and any(span["before"][i] != span["larger"][i] for i in (0, 1, 3)),
         "smaller_mosaic_returns_to_authored_size": span["smaller"] == span["before"],
         "mosaic_resize_preserves_picker_order": span["order_after"] == span["order_before"] == span["reopened_order"],
         "mosaic_sizes_survive_reopen": span["reopened"] == span["larger"],
         "mosaic_sizes_reach_publish_marker": marker.endswith(f" weights={span_indices[2] + 1}:1]"),
+    })
+
+    # Exercise the production post-body widget in the frozen application.
+    # Four 3:2 photos at this fixed test width start as exactly two rows.
+    for number, name in enumerate(span_paths, 1):
+        with Image.open(name) as source:
+            labelled = source.copy()
+        ImageDraw.Draw(labelled).text(
+            (600, 400), str(number), fill="white", anchor="mm",
+            font_size=160,
+        )
+        labelled.save(name)
+    canvas = BiggieCanvas()
+    canvas.set_preview_width(240)
+    canvas.resize(260, 680)
+    canvas.set_bucket(span_paths)
+    canvas.insert_mosaic([1, 2, 3, 4], "rows")
+    dialog_requests = []
+    canvas.mosaicEditRequested.connect(lambda *args: dialog_requests.append(args))
+    canvas.show()
+
+    def inline_boxes():
+        for position, (tiles, buttons) in canvas._inline_mosaic_hits.items():
+            if len(tiles) == 4:
+                return position, {photo: list(box.getRect())
+                                  for photo, (_, box) in tiles.items()}, buttons
+        return None, {}, []
+
+    inline = {}
+    if wait_for(lambda: any(len(ids) == 4 for _, ids in inline_boxes()[2])):
+        position, before, buttons = inline_boxes()
+        inline["before"] = before
+        cluster_button = next(box for box, ids in buttons if len(ids) == 4)
+        inline["before_capture"] = canvas.grab().save(str(out / "06-inline-2x2-before.png"), "PNG")
+        QTest.mouseClick(canvas.viewport(), Qt.LeftButton, pos=cluster_button.center())
+        if wait_for(lambda: inline_boxes()[1] and inline_boxes()[1] != before):
+            _, after, badges = inline_boxes()
+            inline["after"] = after
+            inline["after_capture"] = canvas.grab().save(str(out / "07-inline-2x2-after.png"), "PNG")
+            inline["stored"] = canvas._object_at(position)[1]
+            inline["removed_original_cluster"] = all(len(ids) < 4 for _, ids in badges)
+    canvas.close()
+    before = inline.get("before", {})
+    after = inline.get("after", {})
+    checks.update({
+        "inline_original_group_is_2x2": len(before) == 4
+            and len({box[0] for box in before.values()}) == 2
+            and len({box[1] for box in before.values()}) == 2,
+        "inline_break_changes_target_size": set(before) == set(after) == {1, 2, 3, 4}
+            and after[1][2] > before[1][2],
+        "inline_break_changed_saved_weight_with_no_dialog": not dialog_requests
+            and inline.get("stored", {}).get("order") == [1, 2, 3, 4]
+            and inline.get("stored", {}).get("weights") == {"1": 1},
+        "inline_break_removes_original_cluster": bool(inline.get("removed_original_cluster")),
+        "inline_break_captures": bool(inline.get("before_capture") and inline.get("after_capture")),
     })
 
     mode._remote_post_id = 42
@@ -211,6 +273,7 @@ def run(output_dir: str) -> int:
         "checks": checks,
         "tile_badges": tile_badges,
         "mosaic_resize": span,
+        "inline_break": inline,
         "pass": all(value for key, value in checks.items() if key != "mosaic_thumbnail_count"),
     }
     (out / "parity.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
