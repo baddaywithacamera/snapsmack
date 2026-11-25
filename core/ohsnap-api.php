@@ -164,7 +164,9 @@ function os_skin_meta(string $slug, string $active_skin): ?array {
     $path = dirname(__DIR__) . '/skins/' . $safe . '/manifest.json';
     if (!is_readable($path)) return null;
     try { $manifest = snapsmack_load_manifest($path); } catch (Throwable $e) { return null; }
-    $locked = in_array($safe, ['photogram', 'the-grid'], true);
+    // THE GRID follows ordinary GRAMOFSMACK eligibility. Keep PHOTOGRAM on
+    // its existing individual mobile workflow.
+    $locked = $safe === 'photogram';
     $compatible = snapsmack_skin_allowed_distribution($manifest);
     return [
         'slug' => $safe, 'name' => $manifest['name'] ?? $safe, 'version' => $manifest['version'] ?? '',
