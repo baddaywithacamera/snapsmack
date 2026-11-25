@@ -215,4 +215,60 @@ def test_session_gate_stepup_enforcement(tmp_path, monkeypatch):
     assert "2FA TOTP code" in err_text
 
 
+def test_stepup_security_bypasses_refused(tmp_path, monkeypatch):
+    import argparse
+    import snap_cli
+    import snap_home
+    import snap_hq_gate
+    import snap_session_gate
+
+    # 1. Packaged (frozen) builds ignore SNAPSMACK_HOME and bind to canonical C:\snapsmack
+    evil_home = tmp_path / "evil_home"
+    evil_cfg = evil_home / "config_files" / "snap-hq" / "desktop_cli.json"
+    evil_cfg.parent.mkdir(parents=True, exist_ok=True)
+    evil_cfg.write_text(json.dumps({"cli_enabled": True, "stepup_policy": "30_days"}), encoding="utf-8")
+    monkeypatch.setenv("SNAPSMACK_HOME", str(evil_home))
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    assert snap_hq_gate._cli_config_path() == os.path.join(
+        snap_home._DEFAULT_ROOT, "config_files", "snap-hq", "desktop_cli.json"
+    )
+    assert snap_session_gate._state_path() == os.path.join(
+        snap_home._DEFAULT_ROOT, "config_files", "snap-hq", "desktop_session.json"
+    )
+
+    # 2. SNAPSMACK_DEVICE_ID override is ignored in frozen or non-test processes
+    monkeypatch.setenv("SNAPSMACK_DEVICE_ID", "spoofed-device-id")
+    frozen_id = snap_session_gate.current_device_id()
+    assert frozen_id != "spoofed-device-id"
+    monkeypatch.setattr(sys, "frozen", False, raising=False)
+    monkeypatch.setattr(snap_home, "_is_test_process", lambda: False)
+    assert snap_session_gate.current_device_id() == frozen_id
+
+    # 3. --stepup-password and --stepup-totp flags are rejected by parser
+    p = argparse.ArgumentParser()
+    snap_cli.add_stepup_options(p)
+    try:
+        p.parse_args(["--stepup-password", "secret"])
+        assert False, "--stepup-password must be rejected"
+    except SystemExit as exc:
+        assert exc.code != 0
+    try:
+        p.parse_args(["--stepup-totp", "123456"])
+        assert False, "--stepup-totp must be rejected"
+    except SystemExit as exc:
+        assert exc.code != 0
+
+    # 4. SNAPSMACK_STEPUP_PASSWORD and SNAPSMACK_STEPUP_TOTP env vars are never forwarded
+    monkeypatch.setenv("SNAPSMACK_STEPUP_PASSWORD", "env-pw")
+    monkeypatch.setenv("SNAPSMACK_STEPUP_TOTP", "654321")
+    captured = {}
+    def _fake_gate(*args, **kwargs):
+        captured.update(kwargs)
+        return snap_session_gate.SessionState()
+    monkeypatch.setattr(snap_session_gate, "require_stepup_for_write", _fake_gate)
+    snap_cli.require_stepup("https://example.com", "key", route="hub/authorize", action="post")
+    assert captured["password"] == ""
+    assert captured["totp_code"] == ""
+
+
 # ===== SNAPSMACK EOF =====

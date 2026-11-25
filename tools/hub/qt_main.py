@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QFil
 import main as core
 import snap_creds
 import snap_discovery
+import snap_hq_gate
 import snap_profiles
 import snap_prompt_sync
 import snap_settings_sync
@@ -239,6 +240,20 @@ class SettingsDialog(QDialog):
             outer.addLayout(line)
         self.migrations = QCheckBox("Show Migration Centre")
         self.migrations.setChecked(self.settings.value("showMigrationCentre", True, type=bool)); outer.addWidget(self.migrations)
+        cli_cfg = snap_hq_gate.cli_settings()
+        self.cli_enabled_check = QCheckBox("Enable Desktop CLI (default OFF — live-site writes require password + 2FA step-up)")
+        self.cli_enabled_check.setChecked(bool(cli_cfg.get("cli_enabled", False)))
+        outer.addWidget(self.cli_enabled_check)
+        cli_row = QHBoxLayout()
+        cli_lbl = QLabel("Desktop CLI step-up"); cli_lbl.setMinimumWidth(185); cli_row.addWidget(cli_lbl)
+        self.cli_policy_combo = QComboBox()
+        self.cli_policy_combo.addItem("Once per device every 30 days (deletes & new devices always require 2FA)", snap_hq_gate.POLICY_30_DAYS)
+        self.cli_policy_combo.addItem("Every live-site write requires password + 2FA", snap_hq_gate.POLICY_EVERY_USE)
+        idx = self.cli_policy_combo.findData(cli_cfg.get("stepup_policy", snap_hq_gate.POLICY_30_DAYS))
+        if idx >= 0:
+            self.cli_policy_combo.setCurrentIndex(idx)
+        cli_row.addWidget(self.cli_policy_combo, 1)
+        outer.addLayout(cli_row)
         self.status = QLabel(""); self.status.setObjectName("muted"); outer.addWidget(self.status)
         self.progress = QProgressBar(); self.progress.setRange(0, 0)
         self.progress.setTextVisible(False); self.progress.hide(); outer.addWidget(self.progress)
@@ -259,6 +274,10 @@ class SettingsDialog(QDialog):
             if value: snap_creds.set(key, value)
             elif snap_creds.get(key, ""): snap_creds.delete(key)
         self.settings.setValue("showMigrationCentre", self.migrations.isChecked())
+        snap_hq_gate.set_cli_settings(
+            cli_enabled=bool(self.cli_enabled_check.isChecked()),
+            stepup_policy=str(self.cli_policy_combo.currentData() or snap_hq_gate.POLICY_30_DAYS),
+        )
         self.status.setText("Saved to the shared protected store.")
 
     def _test_credential(self, provider, key_name, button):

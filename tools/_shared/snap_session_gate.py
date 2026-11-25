@@ -18,6 +18,7 @@ import hashlib
 import json
 import os
 import platform
+import sys
 import time
 import uuid
 from dataclasses import asdict, dataclass
@@ -69,14 +70,17 @@ class GateDecision:
 
 def current_device_id() -> str:
     """Stable local device identifier for binding 30-day step-up trust to one device."""
-    override = (os.environ.get("SNAPSMACK_DEVICE_ID") or "").strip()
-    if override:
-        return override
+    if not getattr(sys, "frozen", False) and snap_home._is_test_process():
+        override = (os.environ.get("SNAPSMACK_DEVICE_ID") or "").strip()
+        if override:
+            return override
     raw = f"{platform.node()}|{platform.system()}|{platform.machine()}|{uuid.getnode()}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
 
 
 def _state_path() -> str:
+    if getattr(sys, "frozen", False):
+        return os.path.join(snap_home._DEFAULT_ROOT, "config_files", "snap-hq", "desktop_session.json")
     return snap_home.config_path("snap-hq", "desktop_session.json")
 
 

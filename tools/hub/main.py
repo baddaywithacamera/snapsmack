@@ -48,6 +48,7 @@ try:
     import snap_site_settings
     import snap_settings_sync
     import snap_device_auth
+    import snap_hq_gate
     import snap_stepup
     import snap_session_gate
     _SHARED_OK = True
@@ -803,6 +804,51 @@ class Hub(tk.Tk):
         self._device_status.pack(side="left", padx=8)
         self._show_device_auth_status()
 
+        cli_card = self._card(parent, "DESKTOP CLI  ·  command-line automation (default off)")
+        cli_cfg = snap_hq_gate.cli_settings() if _SHARED_OK else {"cli_enabled": False, "stepup_policy": "30_days"}
+        self._cli_enabled_var = tk.BooleanVar(value=bool(cli_cfg.get("cli_enabled", False)))
+        self._cli_policy_var = tk.StringVar(value=str(cli_cfg.get("stepup_policy", "30_days") or "30_days"))
+        cli_body = tk.Frame(cli_card, bg=CARD)
+        cli_body.pack(fill="x", padx=14, pady=(0, 8))
+        tk.Checkbutton(
+            cli_body,
+            text="Enable desktop CLI commands for installed tools (default OFF)",
+            variable=self._cli_enabled_var,
+            command=self._save_cli_settings,
+            bg=CARD, fg=INK, selectcolor=FIELD,
+            activebackground=CARD, activeforeground=ACCENT,
+            font=("Segoe UI", 9, "bold"),
+        ).pack(anchor="w")
+        tk.Label(
+            cli_body,
+            text="Live-site writes require password + 2FA step-up. Deleting and new devices always require 2FA.",
+            bg=CARD, fg=DIM, font=("Segoe UI", 8),
+        ).pack(anchor="w", pady=(2, 4))
+        for val, text in (
+            ("30_days", "Step-up once per device every 30 days (posts, sort order & updates)"),
+            ("every_use", "Step-up on every live-site write"),
+        ):
+            tk.Radiobutton(
+                cli_body, text=text, variable=self._cli_policy_var, value=val,
+                command=self._save_cli_settings,
+                bg=CARD, fg=INK, selectcolor=FIELD,
+                activebackground=CARD, activeforeground=ACCENT,
+                font=("Segoe UI", 9),
+            ).pack(anchor="w")
+        cli_btns = tk.Frame(cli_card, bg=CARD)
+        cli_btns.pack(fill="x", padx=14, pady=(0, 12))
+        tk.Button(
+            cli_btns, text="SAVE CLI SETTINGS", command=self._save_cli_settings,
+            bg=ACCENT, fg=BG, relief="flat", font=("Segoe UI", 9, "bold"),
+        ).pack(side="left", ipadx=8, ipady=4)
+        tk.Button(
+            cli_btns, text="STEP UP THIS DEVICE", command=self._stepup_cli_device,
+            bg=FIELD, fg=INK, relief="flat", font=("Segoe UI", 9, "bold"),
+        ).pack(side="left", padx=8, ipadx=8, ipady=4)
+        self._cli_status = tk.Label(cli_btns, text="", bg=CARD, fg=DIM, font=("Segoe UI", 9))
+        self._cli_status.pack(side="left", padx=8)
+        self._refresh_cli_status()
+
         card = self._card(parent, "HUB SETUP  Ã‚Â·  set once, every tool has it")
         self._field(card, "HUB SITE URL",   "hub_url")
         self._field(card, "HUB API KEY",    "hub_key", show="Ã¢â‚¬Â¢", test=self._test_hub)
@@ -884,6 +930,54 @@ class Hub(tk.Tk):
         except Exception as exc:
             self._device_status.configure(text=f"check failed: {exc}", fg="#ff5555")
 
+    def _refresh_cli_status(self):
+        if not hasattr(self, "_cli_status"):
+            return
+        cfg = snap_hq_gate.cli_settings() if _SHARED_OK else {"cli_enabled": False, "stepup_policy": "30_days"}
+        on_label = "CLI ON" if cfg.get("cli_enabled") else "CLI OFF"
+        pol_label = "30-day device trust" if cfg.get("stepup_policy") == "30_days" else "every write"
+        colour = ACCENT if cfg.get("cli_enabled") else DIM
+        self._cli_status.configure(text=f"{on_label} | step-up: {pol_label}", fg=colour)
+
+    def _save_cli_settings(self):
+        if not _SHARED_OK:
+            return
+        try:
+            snap_hq_gate.set_cli_settings(
+                cli_enabled=bool(self._cli_enabled_var.get()),
+                stepup_policy=str(self._cli_policy_var.get() or "30_days"),
+            )
+            self._refresh_cli_status()
+        except Exception as exc:
+            if hasattr(self, "_cli_status"):
+                self._cli_status.configure(text=f"save failed: {exc}", fg="#ff5555")
+
+    def _stepup_cli_device(self):
+        site = (self._device_site.get().strip() if hasattr(self, "_device_site") else "") or (
+            self._creds_vars.get("hub_url").get().strip() if "hub_url" in self._creds_vars else ""
+        )
+        hub_key = self._creds_vars.get("hub_key").get().strip() if "hub_key" in self._creds_vars else ""
+        if not site or not hub_key:
+            messagebox.showwarning(
+                "Desktop CLI step-up",
+                "Enter the Hub site URL and save its Hub API key first.",
+                parent=self._settings_window)
+            return
+        evidence = snap_session_gate.load()
+        creds = snap_stepup.prompt_stepup_dialog(
+            self._settings_window, site_url=site,
+            username_default=getattr(evidence, "username", ""),
+            title="Desktop CLI Step-Up (Password + 2FA)")
+        if creds is None:
+            return
+        username, password, totp = creds
+        self._cli_status.configure(text="verifying 2FA...", fg=DIM)
+        self.update_idletasks()
+        res = snap_session_gate.authorize(site, "multisite/authorize", hub_key, username, password, totp)
+        if res.ok:
+            self._cli_status.configure(text="device trusted for 30 days (deletes still require 2FA)", fg=ACCENT)
+        else:
+            self._cli_status.configure(text=f"step-up failed: {res.message}", fg="#ff5555")
 
     def _load_creds(self):
         for key, var in self._creds_vars.items():

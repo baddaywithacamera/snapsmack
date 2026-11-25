@@ -28,6 +28,8 @@ SCHEMA = 1
 
 
 def _cli_config_path() -> str:
+    if getattr(sys, "frozen", False):
+        return os.path.join(snap_home._DEFAULT_ROOT, "config_files", "snap-hq", "desktop_cli.json")
     return snap_home.config_path("snap-hq", "desktop_cli.json")
 
 

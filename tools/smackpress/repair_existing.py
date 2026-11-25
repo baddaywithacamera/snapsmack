@@ -12,8 +12,17 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import sys
 
+_HERE = Path(__file__).resolve().parent
+_SHARED = _HERE.parent / "_shared"
+for _p in (str(_HERE), str(_SHARED), str(_HERE.parent / "coldsnap")):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+import snap_cli as C
 import snap_connections
+import snap_hq_gate
 from smackpress import config, db, links, wp_client, wp_source
 from sumna_post import SmacktalkPoster
 
@@ -27,7 +36,7 @@ def _all_source(kind: str) -> list[dict]:
     return rows
 
 
-def main() -> int:
+def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--state-dir", type=Path, required=True)
     parser.add_argument("--destination", required=True)
@@ -36,7 +45,10 @@ def main() -> int:
     parser.add_argument("--link-page-images", action="store_true",
                         help="make imported static-page images open their Gallery originals")
     parser.add_argument("--apply", action="store_true")
-    args = parser.parse_args()
+    C.add_stepup_options(parser)
+    args = parser.parse_args(argv)
+
+    snap_hq_gate.require_cli()
 
     config.DB_DIR = args.state_dir.resolve()
     config.DB_PATH = config.DB_DIR / "smackpress.db"
@@ -44,6 +56,14 @@ def main() -> int:
     connection = snap_connections.resolve(args.destination, "smackpress")
     if not connection or not connection.get("api_key"):
         raise SystemExit("No SMACKPRESS destination credential is available.")
+    if args.apply:
+        C.require_stepup(
+            connection["site_url"],
+            connection["api_key"],
+            route="smackpress/authorize",
+            action="post",
+            args=args,
+        )
     poster = SmacktalkPoster(connection["site_url"], connection["api_key"])
 
     destinations = {

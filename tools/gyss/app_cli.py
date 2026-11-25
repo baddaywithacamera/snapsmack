@@ -10,12 +10,14 @@ def configure(sub):
     p = sub.add_parser("metadata-update", help="Plan or apply reviewed metadata using existing CMS conflict checks")
     p.add_argument("--site", required=True); p.add_argument("--input", required=True)
     p.add_argument("--apply", action="store_true")
+    C.add_stepup_options(p)
     for name in ("ping", "photos", "audit", "enrichment-sync"):
         p = sub.add_parser(name); p.add_argument("--site", required=True)
         if name == "photos":
             p.add_argument("--offset", type=int, default=0); p.add_argument("--limit", type=int, default=100)
         if name == "enrichment-sync":
             p.add_argument("--apply", action="store_true")
+            C.add_stepup_options(p)
 
 
 def execute(args):
@@ -53,12 +55,47 @@ def execute(args):
                     raise ValueError("colors must contain up to five RGB hex strings")
         if not args.apply:
             return {"status": "planned", "site": args.site, "updates": updates}
+        conn_profile = C.profile(args.site, "gyss")
+        action = "sort" if all(set(u) <= {"id", "expected_modified_at", "sort_order"} for u in updates) else "metadata-update"
+        C.require_stepup(
+            conn_profile.get("site_url") or args.site,
+            conn_profile["api_key"],
+            route="gyss/authorize",
+            action=action,
+            args=args,
+        )
         from gyss_api import API
-        reply = API(C.profile(args.site, "gyss")).batch(updates)
+        reply = API(conn_profile).batch(updates)
         if reply.get("failed") or reply.get("conflicts"):
             raise C.OperationError("Some metadata updates failed or conflicted; inspect details before retrying", reply)
         return reply
     from gyss_api import API
+    if args.command == "enrichment-sync":
+        import snap_enrichment_cache as cache
+        records = cache.pending(args.site)
+        if not args.apply:
+            return {"status": "planned", "pending": len(records), "cache_keys": [r["cache_key"] for r in records]}
+        conn_profile = C.profile(args.site, "gyss")
+        C.require_stepup(
+            conn_profile.get("site_url") or args.site,
+            conn_profile["api_key"],
+            route="gyss/authorize",
+            action="enrichment-sync",
+            args=args,
+        )
+        client = API(conn_profile)
+        synced = []
+        for record in records:
+            reply = client.call("POST", "enrichment-cache", body={"record": record})
+            # A newer local edit must stay dirty even if this request was accepted.
+            with cache._connect(args.site) as conn:
+                cursor = conn.execute("UPDATE enrichment_cache SET revision=?,base_revision=?,dirty=0 "
+                                      "WHERE cache_key=? AND revision=? AND modified_at=? AND bundle_json=? AND accepted_json=?",
+                                      (reply["revision"], reply["revision"], record["cache_key"], record["revision"], record["modified_at"],
+                                       __import__('json').dumps(record["bundle"], ensure_ascii=False, sort_keys=True),
+                                       __import__('json').dumps(record["accepted"], ensure_ascii=False, sort_keys=True)))
+                synced.append({"cache_key": record["cache_key"], "acknowledged": bool(cursor.rowcount)})
+        return {"synced": synced, "applied_to_site_metadata": False}
     client = API(C.profile(args.site, "gyss"))
     if args.command == "ping":
         return client.ping()
@@ -70,22 +107,6 @@ def execute(args):
         return client.call("GET", "photos", {"offset": args.offset, "limit": args.limit})
     if args.command == "audit":
         return client.audit()
-    import snap_enrichment_cache as cache
-    records = cache.pending(args.site)
-    if not args.apply:
-        return {"status": "planned", "pending": len(records), "cache_keys": [r["cache_key"] for r in records]}
-    synced = []
-    for record in records:
-        reply = client.call("POST", "enrichment-cache", body={"record": record})
-        # A newer local edit must stay dirty even if this request was accepted.
-        with cache._connect(args.site) as conn:
-            cursor = conn.execute("UPDATE enrichment_cache SET revision=?,base_revision=?,dirty=0 "
-                                  "WHERE cache_key=? AND revision=? AND modified_at=? AND bundle_json=? AND accepted_json=?",
-                                  (reply["revision"], reply["revision"], record["cache_key"], record["revision"], record["modified_at"],
-                                   __import__('json').dumps(record["bundle"], ensure_ascii=False, sort_keys=True),
-                                   __import__('json').dumps(record["accepted"], ensure_ascii=False, sort_keys=True)))
-            synced.append({"cache_key": record["cache_key"], "acknowledged": bool(cursor.rowcount)})
-    return {"synced": synced, "applied_to_site_metadata": False}
 
 
 def main(argv=None):

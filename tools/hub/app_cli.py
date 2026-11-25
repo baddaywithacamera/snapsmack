@@ -57,14 +57,10 @@ def execute(args):
     if args.command in {"lewk-validate", "lewk-save"}:
         recipe = safe_lewk(C.object_json(args.input))
         if args.command == "lewk-save":
-            import snap_device_auth
-            snap_device_auth.require_full("Saving LEWKs")
             C.atomic_json(C.output_path(args, args.input), recipe)
         return recipe
     import editor_engine as engine
     if args.command == "project-create":
-        import snap_device_auth
-        snap_device_auth.require_full("Creating editing projects")
         doc = engine.EditorDocument(args.image)
         path = C.output_path(args, args.image)
         doc.save_project(path)
@@ -75,8 +71,6 @@ def execute(args):
     path = C.output_path(args, args.project, doc.source_path, getattr(doc, "recorded_source_path", None),
                          getattr(doc, "browse_source_path", None), getattr(args, "input", None), getattr(args, "recipe", None))
     if args.command in {"project-edit", "apply-lewk"}:
-        import snap_device_auth
-        snap_device_auth.require_full("Editing projects")
         if args.command == "project-edit":
             import lewk_again
             changes = C.object_json(args.input)

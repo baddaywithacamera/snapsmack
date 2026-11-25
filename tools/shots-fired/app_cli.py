@@ -13,6 +13,7 @@ def configure(sub):
         if name == "reschedule":
             p.add_argument("--id", type=int, required=True); p.add_argument("--date", required=True)
             p.add_argument("--apply", action="store_true")
+            C.add_stepup_options(p)
 
 
 def execute(args):
@@ -33,6 +34,7 @@ def execute(args):
         raise ValueError("A valid post ID and date are required")
     if not args.apply:
         return {"status": "planned", "site": site.url, "id": args.id, "date": date.isoformat()}
+    C.require_stepup(site.url, site.api_key, route="multisite/authorize", action="reschedule", args=args)
     reply = client.reschedule(site, args.id, date)
     if reply.status != client.ApiStatus.OK:
         raise ValueError(f"Scheduling API: {reply.status.value}")
