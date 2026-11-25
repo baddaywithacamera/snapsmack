@@ -1,0 +1,128 @@
+[
+  {
+    "width": 1920,
+    "title": "Sean McCormick Photography",
+    "photos": [
+      [
+        346,
+        175,
+        231,
+        154,
+        1920,
+        1280
+      ],
+      [
+        595,
+        175,
+        231,
+        154,
+        1920,
+        1280
+      ],
+      [
+        844,
+        175,
+        231,
+        154,
+        1920,
+        1280
+      ],
+      [
+        1094,
+        175,
+        231,
+        154,
+        1920,
+        1280
+      ]
+    ],
+    "overflow": false,
+    "layoutButtons": [],
+    "calendar": true,
+    "warnings": false
+  },
+  {
+    "width": 1440,
+    "title": "Sean McCormick Photography",
+    "photos": [
+      [
+        106,
+        175,
+        231,
+        154,
+        1440,
+        960
+      ],
+      [
+        355,
+        175,
+        231,
+        154,
+        1440,
+        960
+      ],
+      [
+        604,
+        175,
+        231,
+        154,
+        1440,
+        960
+      ],
+      [
+        854,
+        175,
+        231,
+        154,
+        1440,
+        960
+      ]
+    ],
+    "overflow": false,
+    "layoutButtons": [],
+    "calendar": true,
+    "warnings": false
+  },
+  {
+    "width": 1024,
+    "title": "Sean McCormick Photography",
+    "photos": [
+      [
+        26,
+        175,
+        230,
+        153,
+        1024,
+        682
+      ],
+      [
+        274,
+        175,
+        230,
+        153,
+        1024,
+        682
+      ],
+      [
+        521,
+        175,
+        230,
+        153,
+        1024,
+        682
+      ],
+      [
+        769,
+        175,
+        230,
+        153,
+        1024,
+        682
+      ]
+    ],
+    "overflow": false,
+    "layoutButtons": [],
+    "calendar": true,
+    "warnings": false
+  }
+]

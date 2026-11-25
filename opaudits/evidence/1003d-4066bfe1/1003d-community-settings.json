@@ -1,0 +1,24 @@
+{
+  "saves": [
+    {
+      "enabled": true,
+      "savedAndReloaded": true,
+      "archiveHearts": 10,
+      "reactionPickers": 0
+    },
+    {
+      "enabled": false,
+      "savedAndReloaded": true,
+      "archiveHearts": 0,
+      "reactionPickers": 0
+    },
+    {
+      "enabled": true,
+      "savedAndReloaded": true,
+      "archiveHearts": 10,
+      "reactionPickers": 0
+    }
+  ],
+  "legacyReactionWrite": 410,
+  "historicalReactionUnchanged": true
+}

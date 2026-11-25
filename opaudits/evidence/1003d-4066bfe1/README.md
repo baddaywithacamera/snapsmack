@@ -14,6 +14,18 @@ The tested CMS commit is `4066bfe17e5cd7ff82798eaada214f03b4890c96`. Its immedia
 
 Twenty skin folders changed. Browser fixture differences are visible for ALFRED, CHAPLIN, GALLERIA, NEW HORIZON, ONYX and TRUE GRIT. These differences are available for review. The ALFRED landing fixture shows a placeholder page on both commits. Its fixture is evidence for the framing of that fallback page.
 
-The fleet capture documents the public baseline. The disposable installation provides acceptance for portfolio layout and weighted rendering. Release-wide feature acceptance on a running site, including settings save and reload, still needs a completed release parity record. Brain Trust 7647 is the correction's conditional review. The package, live installation and after-deploy sweep are pending.
+## Staging click-through
+
+Brain Trust 7656 approved the disposable HTTP installation as the staging target. The exact 1003D installer created a new database, completed setup and served its first page with HTTP 200. [Install capture](1003d-fresh-install-complete.png), [result](1003d-fresh-install.json).
+
+The staging database used synthetic photos. TRUE GRIT preserved 4:3, 3:2 and intermediate image proportions at 1920, 1440 and 1024 pixels. CHAPLIN and GALLERIA centred mixed-height images in their rows. ALFRED drew its three-column portfolio with natural image proportions. [TRUE GRIT](1003d-true-grit-staging.json), [CHAPLIN](1003d-chaplin-staging.json), [GALLERIA](1003d-galleria-staging.json), [ALFRED](1003d-alfred-staging.json).
+
+NEW HORIZON was installed using the ordinary signature and integrity checks against a test-only key. The calendar saved and reloaded off and on. The public calendar toggled open and closed, and the archive offered no masonry control. [Calendar](1003d-new-horizon-calendar.png), [measurements](1003d-new-horizon-staging.json).
+
+Community settings saved and reloaded in both states. GLIDE showed ten hearts when enabled and zero when disabled. A clicked heart persisted across a reload. The retired reaction route returned 410 and a stored historical reaction row remained unchanged. [Measurements](1003d-community-settings.json).
+
+**Open SS-1580.** Selecting the only category in the TRUE GRIT filter panel submitted `f[]=cat:1` and left all ten photos visible. The legacy `cat=1` query showed one, and Show All restored ten. Source inspection found the same missing `f[]` handoff in 1002D. [Panel output](1003d-archive-filter-panel-result.png), [legacy query output](1003d-archive-filter-legacy-result.png). This release gate remains unsigned while the PM decides how to handle the failed panel path.
+
+Brain Trust 7647 is the portfolio correction's conditional review. The release package, live installation and fleet-after sweep are pending.
 
 <!-- ===== SNAPSMACK EOF ===== -->
