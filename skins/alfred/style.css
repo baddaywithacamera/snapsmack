@@ -67,6 +67,38 @@
     src: url("assets/montserrat-v24-latin-700.woff2") format("woff2");
 }
 
+@font-face {
+    font-family: 'Droid Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("assets/droid-serif-400.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: 'Droid Serif';
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url("assets/droid-serif-400italic.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: 'Droid Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("assets/droid-serif-700.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: 'Droid Serif';
+    font-style: italic;
+    font-weight: 700;
+    font-display: swap;
+    src: url("assets/droid-serif-700italic.woff2") format("woff2");
+}
+
 .header-media-image { display:block; width:100%; height:100%; object-fit:var(--alfred-header-fit,cover); }
 .site-logo {
     display: block;
@@ -636,79 +668,64 @@ input[type="button"],
 .nav-toggle { display: none; }
 
 .navigation { background: #1d1d1d; }
-.navigation .section-inner {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    position: relative;
-    width: 100%;
-    max-width: none;
-    min-height: 60px;
-    padding-inline: 0;
-}
-
+/* Navigation and search dimensions from Hitchcock 2.2.2 by Anders Norén. */
 .alfred-v2 .navigation,
-.alfred-v2 .post-header {
-    font-family: Montserrat, "Helvetica Neue", Helvetica, sans-serif;
+.alfred-v2 .post-header,
+.alfred-v2 .post-title {
+    font-family: 'Montserrat', 'Helvetica Neue', 'Helvetica', sans-serif;
 }
 
-.alfred-nav-search {
-    position: relative;
+.alfred-v2 .header-search .search-form {
     display: flex;
     align-items: center;
-    margin-left: 40px;
-}
-
-.alfred-nav-search::before {
-    content: "/";
-    font-size: 14px;
-    color: #3d3d3d;
     position: absolute;
-    left: -25px;
-    top: 50%;
-    margin-top: 1px;
-    transform: translateY(-50%);
+    inset: 0 auto 0 0;
+    width: 166px;
 }
 
-.alfred-nav-search-btn {
-    background: transparent;
-    border: 0;
-    color: #999;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
-}
-
-.alfred-nav-search-btn:hover,
-.alfred-nav-search:focus-within .alfred-nav-search-btn {
-    color: #fff;
-}
-
-.alfred-nav-search-input {
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 1;
+.alfred-v2 .main-menu .search-field {
+    display: block;
     width: 0;
-    opacity: 0;
+    margin: 0;
     padding: 0;
-    border: 0;
-    background: #2d2d2d;
+    background: none;
+    border: none;
+    border-radius: 0;
+    font-size: 14px;
     color: #fff;
-    font-size: 13px;
-    transition: width 0.2s ease, opacity 0.2s ease, padding 0.2s ease;
+    text-indent: -9999px;
+    transition: width 200ms linear;
 }
 
-.alfred-nav-search:hover .alfred-nav-search-input,
-.alfred-nav-search:focus-within .alfred-nav-search-input {
-    width: 180px;
-    opacity: 1;
-    padding: 6px 10px;
-    margin-left: 4px;
+.alfred-v2 .header-search .search-button {
+    appearance: none;
+    background: #1d1d1d;
+    border: 0;
+    color: #757575;
+    display: block;
+    font-size: 18px;
+    padding: 0;
+    text-align: center;
+    width: 20px;
+}
+
+.alfred-v2 .header-search .search-button:hover {
+    cursor: pointer;
+    color: #fff;
+}
+
+.alfred-v2 .header-search form:hover .search-field,
+.alfred-v2 .header-search form:focus-within .search-field {
+    width: 150px;
+    padding: 8px 32px 7px 0;
+    border-bottom: 1px solid #3d3d3d;
+    text-indent: 0;
+    outline: none;
+}
+
+.alfred-v2 .header-search form:hover .search-button,
+.alfred-v2 .header-search form:focus-within .search-button {
+    width: 32px;
 }
 
 .main-menu {
@@ -739,7 +756,7 @@ input[type="button"],
     transform: translateY(-50%);
 }
 
-.main-menu a {
+.main-menu li > :is(a, span, button) {
     color: #999;
     display: block;
     font-size: 14px;
@@ -752,23 +769,28 @@ input[type="button"],
     text-transform: uppercase;
 }
 
-.main-menu li:hover > a,
-.main-menu li.current-menu-item > a {
+.main-menu li > :is(span, button) {
+    background: none;
+    border: 0;
+}
+
+.main-menu li:hover > :is(a, span, button),
+.main-menu li.current-menu-item > :is(a, span, button) {
     color: #fff;
 }
 
-.alfred-v2 .main-menu > li > a[aria-current="page"] {
+.alfred-v2 .main-menu > li > :is(a, span, button)[aria-current="page"] {
     color: #fff;
     font-weight: 700;
 }
 
-.main-menu > li.menu-item-has-children > a,
-.main-menu > li.page_item_has_children > a,
-.main-menu > li.nav-has-children > a { padding-right: 15px; }
+.main-menu > li.menu-item-has-children > :is(a, span, button),
+.main-menu > li.page_item_has_children > :is(a, span, button),
+.main-menu > li.nav-has-children > :is(a, span, button) { padding-right: 15px; }
 
-.main-menu .menu-item-has-children > a:after,
-.main-menu .page_item_has_children > a:after,
-.main-menu .nav-has-children > a:after {
+.main-menu .menu-item-has-children > :is(a, span, button):after,
+.main-menu .page_item_has_children > :is(a, span, button):after,
+.main-menu .nav-has-children > :is(a, span, button):after {
     content: "";
     display: block;
     border: 4px solid transparent;
@@ -779,9 +801,9 @@ input[type="button"],
     right: 0;
 }
 
-.main-menu > .menu-item-has-children > a:before,
-.main-menu > .page_item_has_children > a:before,
-.main-menu > .nav-has-children > a:before {
+.main-menu > .menu-item-has-children > :is(a, span, button):before,
+.main-menu > .page_item_has_children > :is(a, span, button):before,
+.main-menu > .nav-has-children > :is(a, span, button):before {
     content: "";
     display: block;
     border: 6px solid transparent;
@@ -793,13 +815,13 @@ input[type="button"],
     bottom: 0;
 }
 
-.main-menu > .menu-item-has-children:hover > a:before,
-.main-menu > .page_item_has_children:hover > a:before,
-.main-menu > .nav-has-children:hover > a:before { bottom: -12px; }
+.main-menu > .menu-item-has-children:hover > :is(a, span, button):before,
+.main-menu > .page_item_has_children:hover > :is(a, span, button):before,
+.main-menu > .nav-has-children:hover > :is(a, span, button):before { bottom: -12px; }
 
-.main-menu > .menu-item-has-children:hover > a:after,
-.main-menu > .page_item_has_children:hover > a:after,
-.main-menu > .nav-has-children:hover > a:after { border-top-color: #fff; }
+.main-menu > .menu-item-has-children:hover > :is(a, span, button):after,
+.main-menu > .page_item_has_children:hover > :is(a, span, button):after,
+.main-menu > .nav-has-children:hover > :is(a, span, button):after { border-top-color: #fff; }
 
 /* Sub Menus */
 
@@ -822,7 +844,7 @@ input[type="button"],
 
 .main-menu ul li + li { border-top: 1px solid rgba(255,255,255,0.075); }
 
-.main-menu ul a {
+.main-menu ul li > :is(a, span, button) {
     display: block;
     padding: 16px;
     font-size: 14px;
@@ -831,18 +853,18 @@ input[type="button"],
     text-transform: none;
 }
 
-.main-menu ul .menu-item-has-children > a:after,
-.main-menu ul .page_item_has_children > a:after,
-.main-menu ul .nav-has-children > a:after {
+.main-menu ul .menu-item-has-children > :is(a, span, button):after,
+.main-menu ul .page_item_has_children > :is(a, span, button):after,
+.main-menu ul .nav-has-children > :is(a, span, button):after {
     margin-top: -3px;
     border-top-color: transparent;
     border-left-color: #757575;
     right: 10px;
 }
 
-.main-menu ul .menu-item-has-children:hover > a:after,
-.main-menu ul .page_item_has_children:hover > a:after,
-.main-menu ul .nav-has-children:hover > a:after {
+.main-menu ul .menu-item-has-children:hover > :is(a, span, button):after,
+.main-menu ul .page_item_has_children:hover > :is(a, span, button):after,
+.main-menu ul .nav-has-children:hover > :is(a, span, button):after {
     border-width: 5px;
     border-top-color: transparent;
     border-left-color: #2d2d2d;
@@ -850,7 +872,8 @@ input[type="button"],
     right: -10px;
 }
 
-.main-menu > li:hover > ul {
+.main-menu > li:hover > ul,
+.main-menu > li:focus-within > ul {
     opacity: 1;
     left: 50%;
     margin-left: -100px;
@@ -864,28 +887,29 @@ input[type="button"],
     top: 5px;
 }
 
-.main-menu li > ul > li:hover > ul {
+.main-menu li > ul > li:hover > ul,
+.main-menu li > ul > li:focus-within > ul {
     opacity: 1;
     left: 200px;
     top: 0;
 }
 
 .main-menu ul ul li { background: #3d3d3d; }
-.main-menu ul ul .menu-item-has-children:hover > a:after,
-.main-menu ul ul .page_item_has_children:hover > a:after,
-.main-menu ul ul .nav-has-children:hover > a:after { border-left-color: #3d3d3d; }
+.main-menu ul ul .menu-item-has-children:hover > :is(a, span, button):after,
+.main-menu ul ul .page_item_has_children:hover > :is(a, span, button):after,
+.main-menu ul ul .nav-has-children:hover > :is(a, span, button):after { border-left-color: #3d3d3d; }
 .main-menu ul ul ul li { background: #4d4d4d; }
-.main-menu ul ul ul .menu-item-has-children:hover > a:after,
-.main-menu ul ul ul .page_item_has_children:hover > a:after,
-.main-menu ul ul ul .nav-has-children:hover > a:after { border-left-color: #4d4d4d; }
+.main-menu ul ul ul .menu-item-has-children:hover > :is(a, span, button):after,
+.main-menu ul ul ul .page_item_has_children:hover > :is(a, span, button):after,
+.main-menu ul ul ul .nav-has-children:hover > :is(a, span, button):after { border-left-color: #4d4d4d; }
 .main-menu ul ul ul ul li { background: #5d5d5d; }
-.main-menu ul ul ul ul .menu-item-has-children:hover > a:after,
-.main-menu ul ul ul ul .page_item_has_children:hover > a:after,
-.main-menu ul ul ul ul .nav-has-children:hover > a:after { border-left-color: #5d5d5d; }
+.main-menu ul ul ul ul .menu-item-has-children:hover > :is(a, span, button):after,
+.main-menu ul ul ul ul .page_item_has_children:hover > :is(a, span, button):after,
+.main-menu ul ul ul ul .nav-has-children:hover > :is(a, span, button):after { border-left-color: #5d5d5d; }
 .main-menu ul ul ul ul ul li { background: #6d6d6d; }
-.main-menu ul ul ul ul ul .menu-item-has-children:hover > a:after,
-.main-menu ul ul ul ul ul .page_item_has_children:hover > a:after,
-.main-menu ul ul ul ul ul .nav-has-children:hover > a:after { border-left-color: #6d6d6d; }
+.main-menu ul ul ul ul ul .menu-item-has-children:hover > :is(a, span, button):after,
+.main-menu ul ul ul ul ul .page_item_has_children:hover > :is(a, span, button):after,
+.main-menu ul ul ul ul ul .nav-has-children:hover > :is(a, span, button):after { border-left-color: #6d6d6d; }
 
 
 /* -------------------------------------------------------------------------- */
@@ -1842,8 +1866,7 @@ p.comment-form-author { margin-right: 5%; }
 
     /* Navigation */
 
-    .main-menu,
-    .alfred-nav-search { display: none; }
+    .main-menu { display: none; }
 
     .mobile-menu,
     .mobile-menu ul,
@@ -2190,21 +2213,18 @@ p.comment-form-author { margin-right: 5%; }
     text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
 }
 
-/* Hitchcock's 1040px card wraps an 800px reading measure. */
+/* Hitchcock's 1040px card and the 800px site stylesheet override. */
 .alfred-v2 #scroll-stage.post-inner:has(> .smacktalk-post) {
     width: 1040px;
     max-width: 90%;
+    margin: 0 auto;
+    padding: 0;
 }
 
-.alfred-v2 .smacktalk-post > .post-inner,
-.alfred-v2 .static-page > .post-content {
+.alfred-v2 .smacktalk-post > .post-inner {
     width: 800px;
     max-width: 85%;
-    margin-inline: auto;
-}
-
-.alfred-v2 .static-page > .post-content {
-    padding-bottom: 90px;
+    margin: 0 auto;
 }
 
 /* Hitchcock's 3.95% gutter, applied to both landing grid modes. */
