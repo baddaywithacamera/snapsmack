@@ -78,8 +78,8 @@
             "manifest_css_sha256": "636c3055d28a87d25c9279c82d8828206732c034b63459d62a81214e1bacea0d"
         },
         "onyx": {
-            "version": "0.1.26",
-            "files_sha256": "31fcf8c590065603dbe625142dcdec459c8e74b08ad059cee24c6137a6fa796b",
+            "version": "0.1.27",
+            "files_sha256": "bce976e97d9ee54177c5a829c3387b8a39aa31c2bc6fb886c15cd5cb988215d0",
             "manifest_css_sha256": "d140a8d1a2446bb436bf161c5223d8a1e02ba36b7607318565a7d1a9acaa09b7"
         },
         "parade": {
