@@ -55,7 +55,13 @@ const POCKET_ALBUM_MAX_PAGE_SIZE = 100;
  * Build the public payload for one album.
  *
  * @param object $repository anything exposing archivePhotographs() and
- *                           albumById(); the real SnapPublicRepository does.
+ *                           publicAlbum(); the real SnapPublicRepository does.
+ *                           This said albumById() -- a method the real
+ *                           repository has never had -- which is the fault
+ *                           recorded below. Muse caught that the docblock
+ *                           still asserted the wrong name after the code was
+ *                           fixed, which would have sent the next reader
+ *                           straight back into it.
  * @return array{ok:bool,album:array,photographs:list<array>,page:int,next_page:int|null}
  */
 function snapsmack_pocket_album_payload(

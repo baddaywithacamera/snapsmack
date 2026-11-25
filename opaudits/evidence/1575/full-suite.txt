@@ -1,0 +1,16 @@
+SS-1575 POCKET ALBUM — full PHP suite
+run at: 2026-11-25T16:39:55Z
+branch: claude/ss1575-pocket-album
+tree:   a761e5fa4a590b409ec79d2a0a9328778f98e1b0 plus the SS-1575 whole-album working tree
+why:    Muse's condition on a761e5fa -- I claimed 495/495 and left no evidence.
+
+PASS=495 FAIL=0 of 495 test files
+failing: none
+
+POCKET ALBUM's own two files, executed check counts:
+  feed:    34 checks
+  display: 72 checks
+
+Muse counted 34 runtime checks in the feed and was right; my earlier
+claim of 29 was measured before the publicAlbum checks were added and
+never re-measured.

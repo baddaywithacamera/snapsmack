@@ -59,7 +59,7 @@ if ($pa_settings === []) {
 }
 $pa_base = rtrim((string)($pa_settings['site_url'] ?? ''), '/');
 
-// SHARING IS OFF UNTIL THE OWNER TURNS IT ON.
+// SHARING IS OFF UNTIL THE OWNER TURNS IT ON. RULED, not merely inherited.
 //
 // Sean's standing rule is that access describes what you CAN do, not what you
 // MAY: the fact that an album is publicly readable on its own page is not by
@@ -67,6 +67,18 @@ $pa_base = rtrim((string)($pa_settings['site_url'] ?? ''), '/');
 // absent, which means off, so this endpoint is dark on all 25 sites until the
 // owner of a site switches it on. foreverphotograph.ing is the site that needs
 // it on; nothing else changes anywhere.
+//
+// I argued for defaulting this ON, on the grounds that the endpoint creates no
+// trust relationship and returns strictly less than the public album page
+// beside it. The Claude Web PM ruled on 2026-11-25 that it stays OFF. Recorded
+// here so the next person to have that thought finds the decision rather than
+// the argument, and does not quietly flip it.
+//
+// NOTE FOR THE LOCAL CASE, so nobody reads this gate as broken: a site showing
+// its OWN album with [pocket_album album="N"] does not come through here at
+// all. That path is a direct repository query in
+// core/pocket-album-display.php, so /images works with sharing off. This gate
+// only governs another site reading this one.
 $pa_enabled = (string)($pa_settings['pocket_album_share'] ?? '') === 'on';
 if (!$pa_enabled) {
     http_response_code(404);

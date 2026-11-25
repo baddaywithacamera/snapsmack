@@ -52,22 +52,62 @@ declare(strict_types=1);
  * stripped off here. Checked against core/trusted-html.php:49 before writing
  * a single tag, not after finding blank tiles on a live page.
  *
- * WHAT IT DOES NOT DO. A page block does not scroll endlessly: it renders one
- * grid of up to POCKET_ALBUM_DISPLAY_MAX photographs and, when the album holds
- * more, prints a plain link to the album's own archive page, which already
- * scrolls endlessly. That is not pagination -- there is no page two here, and
- * no "next" control. Endless scroll inside a page block would need a public
- * JS engine registered in assets/ASSET-INVENTORY.json with an asset security
- * review, which is its own ticket and not something to smuggle in here.
+ * THE WHOLE ALBUM, NO CAP. Sean's ruling of 2026-11-25 10:06: the block shows
+ * the entire album. An earlier version of this file stopped at 300 and printed
+ * a link to the archive underneath, which I called honest; it was not. A grid
+ * that stops at 300 with a link under it is an archive stuck on page one by
+ * another name, and pagination is never correct anywhere in this product.
+ *
+ * HOW THE WHOLE ALBUM IS AFFORDABLE: every tile carries loading="lazy" plus
+ * its real width and height, so the browser lays the grid out immediately and
+ * fetches only the photographs approaching the viewport. The page weight is
+ * markup, not images. MEASURED on the exact tile this file emits, 320 bytes:
+ *
+ *     100 photographs ->    31 KB of HTML
+ *   1,000 photographs ->   313 KB
+ *   2,000 photographs ->   625 KB
+ *   7,000 photographs -> 2,188 KB
+ *
+ * So for a curated album -- which is what an album IS, and what /images is for
+ * -- this is the right answer and the simplest one. At several thousand it
+ * stops being reasonable, and that is the point at which the other half of
+ * Sean's ruling is needed: 100 per load with auto-load on scroll. That needs a
+ * registered public engine in assets/ASSET-INVENTORY.json with its security
+ * review, a data attribute added to the snapsmack_trusted_html() allowlist,
+ * and a same-origin JSON endpoint that does not collide with the cross-site
+ * sharing switch. It is a separate ticket, not something to smuggle in here,
+ * and the numbers above are recorded so the decision rests on them rather
+ * than on anyone's guess.
+ *
+ * `limit` remains as an AUTHOR'S choice -- "show me the first 24 of this
+ * album" is a legitimate thing to want on a landing page -- and when it is
+ * set, and only then, the block prints a link to the rest. It is not a cap:
+ * left out, every photograph in the album is rendered.
  */
 
 require_once __DIR__ . '/safe-remote-fetch.php';
 
-/** One grid, at most this many photographs. A curated album, not an archive. */
-const POCKET_ALBUM_DISPLAY_MAX = 300;
+/**
+ * A safety bound on ONE rendered grid, not a cap on the album.
+ *
+ * There is no product limit: Sean ruled that the block shows the whole album.
+ * This exists only so a runaway value -- a corrupted album map, a bad limit
+ * attribute -- cannot ask the renderer for a million rows and take the page
+ * down. It is far above any real album on the fleet (the largest is about
+ * 7,000 photographs) and a block that hits it is a fault to investigate, not
+ * a visitor to paginate.
+ */
+const POCKET_ALBUM_SANITY_MAX = 20000;
 
-/** Most pages of 100 the cron will pull from one source in a single refresh. */
-const POCKET_ALBUM_REFRESH_MAX_PAGES = 12;
+/**
+ * Pages of 100 the cron pulls from one source per refresh.
+ *
+ * Raised from 12 when the cap went: a cross-site album that stops caching at
+ * 1,200 photographs would show a truncated album on the displaying site while
+ * the source showed all of it, which is a worse fault than a slow cron. The
+ * cron runs hourly with nobody waiting on it.
+ */
+const POCKET_ALBUM_REFRESH_MAX_PAGES = 200;
 
 /** Cache rows older than this with no successful refresh are still served. */
 const POCKET_ALBUM_STALE_SECONDS = 86400;
@@ -146,11 +186,13 @@ function pocket_album_shortcodes(string $content): array
         if ($src !== '' && snap_safe_remote_target($src) === null) {
             continue;
         }
+        // limit="0", or no limit at all, means EVERY photograph in the album.
+        // It is an author's choice, never a cap applied on their behalf.
         $limit = (int)$read('limit');
         $found[] = [
             'src' => rtrim($src, '/'),
             'album' => $album,
-            'limit' => $limit > 0 ? min($limit, POCKET_ALBUM_DISPLAY_MAX) : POCKET_ALBUM_DISPLAY_MAX,
+            'limit' => $limit > 0 ? min($limit, POCKET_ALBUM_SANITY_MAX) : 0,
         ];
     }
     return $found;
@@ -341,8 +383,12 @@ function pocket_album_refresh(PDO $pdo, ?callable $log = null): array
  */
 function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit): array
 {
-    $limit = max(1, min(POCKET_ALBUM_DISPLAY_MAX, $limit));
-    $out = ['photographs' => [], 'album_name' => '', 'total' => 0, 'archive_url' => ''];
+    // 0 (or anything negative) means the whole album. The sanity bound is the
+    // only ceiling and it is not a product limit -- see POCKET_ALBUM_SANITY_MAX.
+    $wholeAlbum = $limit <= 0;
+    $limit = $wholeAlbum ? POCKET_ALBUM_SANITY_MAX : min($limit, POCKET_ALBUM_SANITY_MAX);
+    $out = ['photographs' => [], 'album_name' => '', 'total' => 0,
+            'archive_url' => '', 'whole_album' => $wholeAlbum];
     if ($album <= 0) {
         return $out;
     }
@@ -420,7 +466,7 @@ function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit)
  * data attribute, because both are stripped on this path and a stripped
  * attribute fails silently.
  */
-function pocket_album_html(PDO $pdo, string $src, int $album, int $limit = POCKET_ALBUM_DISPLAY_MAX): string
+function pocket_album_html(PDO $pdo, string $src, int $album, int $limit = 0): string
 {
     if (!function_exists('snap_escape_html')) {
         require_once __DIR__ . '/skin-render-helpers.php';
@@ -456,10 +502,13 @@ function pocket_album_html(PDO $pdo, string $src, int $album, int $limit = POCKE
     }
     $html .= '</div>';
 
-    // MORE THAN ONE GRID'S WORTH: a link to the album's own archive, which
-    // scrolls endlessly. Not a "next page" -- there is no page two here.
+    // A LINK ONLY WHEN THE AUTHOR ASKED FOR A SUBSET. When the block is showing
+    // the whole album there is nothing left to link to, and printing "all N
+    // photographs" under a grid that already holds all N is the sort of
+    // almost-true detail that makes a page feel broken. When the author set
+    // limit="24", the link is the point.
     $shown = count($data['photographs']);
-    if ($data['total'] > $shown && $data['archive_url'] !== '') {
+    if (empty($data['whole_album']) && $data['total'] > $shown && $data['archive_url'] !== '') {
         $html .= '<p class="snap-pocket-album-all"><a href="' . snap_escape_url($data['archive_url']) . '">'
             . 'All ' . (int)$data['total'] . ' photographs'
             . ($data['album_name'] !== '' ? ' in ' . snap_escape_html($data['album_name']) : '')

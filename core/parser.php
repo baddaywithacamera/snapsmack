@@ -40,6 +40,11 @@
  *   [bio img="" name="" role=""]text[/bio] — portrait + bio copy
  *   [snapsmack_contact] — contact form (rendered by core/contact-form.php,
  *                         submitted by ss-engine-contact.js → process-contact.php)
+ *   [pocket_album album="N" src="" limit="N"]
+ *                       — one album's photographs as a grid (SS-1575). src
+ *                         names another SnapSmack site; omitted means this
+ *                         site's own album. limit is an author's subset, not
+ *                         a cap: left out, the whole album renders.
  *
  * Auto-paragraph: double newlines (\n\n) become <p> tags automatically.
  * Single newlines within a paragraph become <br>.

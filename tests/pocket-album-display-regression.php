@@ -60,7 +60,17 @@ final class PocketAlbumFakeStatement extends PDOStatement
     public function __construct(private PocketAlbumFakePdo $pdo, private string $sql) {}
     public function execute(?array $params = null): bool { $this->bound = $params ?? []; $this->pdo->queries[] = 'EXEC:' . json_encode($this->bound); return true; }
     public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array {
-        return str_contains($this->sql, 'snap_pocket_album_items') ? $this->pdo->rows : [];
+        if (!str_contains($this->sql, 'snap_pocket_album_items')) {
+            return [];
+        }
+        // THE FAKE HONOURS LIMIT, because the real database does. Ignoring it
+        // made the subset test return all 512 rows and look like a product
+        // bug; a fake that quietly serves more than it was asked for cannot
+        // tell you whether the limit reached the query at all.
+        if (preg_match('/LIMIT\s+(\d+)/i', $this->sql, $m)) {
+            return array_slice($this->pdo->rows, 0, (int)$m[1]);
+        }
+        return $this->pdo->rows;
     }
     public function fetch(int $mode = PDO::FETCH_DEFAULT, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed {
         return false;
@@ -79,15 +89,23 @@ echo "THE SHORTCODE IS READ IN ONE PLACE, AND REFUSES WHAT IT CANNOT PROVE\n";
 $one = pocket_album_shortcodes('<p>text</p>[pocket_album album="191"]<p>more</p>');
 $check('a local album is read', count($one) === 1 && $one[0]['album'] === 191);
 $check('  with no source, so nothing is fetched for it', $one[0]['src'] === '');
-$check('  and the default cap applies', $one[0]['limit'] === POCKET_ALBUM_DISPLAY_MAX);
+// NO CAP. Sean's ruling of 2026-11-25: the block shows the whole album. 0
+// means every photograph, and an earlier version of this test asserted a
+// default of 300 -- a cap I had applied on the author's behalf and then
+// called honest.
+$check('  and with no limit it means the WHOLE album, not a default cap',
+       $one[0]['limit'] === 0);
 
 $remote = pocket_album_shortcodes('[pocket_album src="https://foreverphotograph.ing/" album="191" limit="40"]');
 $check('a remote album is read', count($remote) === 1 && $remote[0]['album'] === 191);
 $check('  its source keeps no trailing slash, so cache keys cannot split in two',
        $remote[0]['src'] === 'https://foreverphotograph.ing');
 $check('  and limit is honoured', $remote[0]['limit'] === 40);
-$check('a limit above the cap is clamped',
-       pocket_album_shortcodes('[pocket_album album="1" limit="99999"]')[0]['limit'] === POCKET_ALBUM_DISPLAY_MAX);
+$check('an author may ask for a subset, and it is honoured exactly',
+       pocket_album_shortcodes('[pocket_album album="1" limit="24"]')[0]['limit'] === 24);
+$check('a runaway limit is bounded for safety, not paginated',
+       pocket_album_shortcodes('[pocket_album album="1" limit="99999999"]')[0]['limit']
+           === POCKET_ALBUM_SANITY_MAX);
 $check('no album id renders nothing', pocket_album_shortcodes('[pocket_album]') === []);
 $check('album="0" renders nothing', pocket_album_shortcodes('[pocket_album album="0"]') === []);
 $check('two shortcodes on one page are both read',
@@ -123,7 +141,7 @@ foreach ([
 $check('  a src that is present but unreadable refuses the whole shortcode',
        pocket_album_shortcodes('[pocket_album album="1" src="http://[::1]/x"]') === []);
 $check('  and it does not quietly become a local album',
-       pocket_album_shortcodes('[pocket_album album="1" src="http://[::1]/x"]') !== [['src' => '', 'album' => 1, 'limit' => POCKET_ALBUM_DISPLAY_MAX]]);
+       pocket_album_shortcodes('[pocket_album album="1" src="http://[::1]/x"]') !== [['src' => '', 'album' => 1, 'limit' => 0]]);
 
 echo "\n";
 // ─────────────────────────────────────────────────────────────────────────────
@@ -235,6 +253,50 @@ $check('  and the album id it was asked for is the one it binds',
        str_contains($localSql, '191'));
 
 // ─────────────────────────────────────────────────────────────────────────────
+echo "THE WHOLE ALBUM RENDERS. THERE IS NO CAP.
+";
+// ─────────────────────────────────────────────────────────────────────────────
+// Sean's ruling of 2026-11-25 10:06. An earlier version of this file stopped
+// at 300 and printed a link to the archive underneath. A grid that stops at
+// 300 with a link under it is an archive stuck on page one by another name,
+// and pagination is never correct anywhere in this product. Proved with more
+// rows than the old cap, not by reading the constant.
+
+$big = new PocketAlbumFakePdo();
+$big->total = 512;
+$big->rows = [];
+for ($i = 1; $i <= 512; $i++) {
+    $big->rows[] = [
+        'album_name' => 'Found Textures',
+        'page_url' => 'https://foreverphotograph.ing/photo-' . $i,
+        'thumb_url' => 'https://foreverphotograph.ing/media/p' . $i . '-a.jpg',
+        'title' => 'Photo ' . $i, 'alt_text' => 'Alt ' . $i,
+        'img_width' => 1200, 'img_height' => 800,
+    ];
+}
+$all = pocket_album_html($big, 'https://foreverphotograph.ing', 191);
+$check('all 512 photographs are rendered, well past the old 300 cap',
+       substr_count($all, 'class="snap-pocket-tile"') === 512);
+$check('  the last one is there, not just the first page',
+       str_contains($all, 'media/p512-a.jpg'));
+$check('  and NO "all N photographs" link is printed, because none is needed',
+       !str_contains($all, 'snap-pocket-album-all'));
+$check('every tile is lazy-loaded, which is what makes a whole album affordable',
+       substr_count($all, 'loading="lazy"') === 512);
+$check('  and every tile carries its own shape, so the grid does not reflow',
+       substr_count($all, 'width="1200" height="800"') === 512);
+
+// AND WHEN THE AUTHOR ASKED FOR A SUBSET, the link is the point.
+$subset = pocket_album_html($big, 'https://foreverphotograph.ing', 191, 24);
+$check('an author asking for 24 gets 24',
+       substr_count($subset, 'class="snap-pocket-tile"') === 24);
+$check('  and THEN the link to the rest appears',
+       str_contains($subset, 'All 512 photographs'));
+
+echo "
+";
+
+// ─────────────────────────────────────────────────────────────────────────────
 echo "AN EMPTY ALBUM SAYS WHICH ALBUM IS EMPTY\n";
 // ─────────────────────────────────────────────────────────────────────────────
 // /images spent weeks looking like a layout fault because a page that should
@@ -283,6 +345,19 @@ $check('  with the photograph and its shape',
        str_contains($rendered, 'media/p1-a.jpg') && str_contains($rendered, 'width="1200"'));
 $check('  and the surrounding page text is untouched',
        str_contains($rendered, 'Here they are.'));
+// MUSE'S WORDING CONDITION. A refused shortcode produces SILENT EMPTY OUTPUT.
+// It is not "refused with an error": nothing is printed, no message reaches
+// the page and nothing is logged. That is right for a public page -- a
+// visitor should never read a diagnostic -- but it means an author who
+// mistypes a src sees an empty space and no explanation. Worth stating
+// plainly rather than calling it a refusal and leaving the reader to assume
+// somebody gets told.
+$check('a refused shortcode renders the EMPTY STRING, silently',
+       (static function () {
+           $pdo = new PocketAlbumFakePdo();
+           $out = (new SnapSmack($pdo))->parseContent('[pocket_album src="http://127.0.0.1/x" album="1"]');
+           return trim(strip_tags($out)) === '';
+       })());
 $check('a shortcode the reader refuses leaves nothing behind, not raw text',
        (static function () {
            $pdo = new PocketAlbumFakePdo();
