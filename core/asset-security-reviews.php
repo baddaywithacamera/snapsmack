@@ -4,6 +4,7 @@ declare(strict_types=1);
 // Explicit SECAUDIT-059 dispositions for heuristic asset signals.
 // A changed signal set invalidates the matching review in the inventory gate.
 return [
+    'assets/js/smack-mosaic-editor.js' => ['signals' => ['html-sink', 'network'], 'reviewer' => 'Codex', 'review' => 'The editor calls the same-origin authenticated mosaic admin endpoint. Generated preview markup uses numeric positions and dimensions and escapes interpolated filenames, titles and attribute values.'],
     'assets/js/fjGallery.min.js' => ['signals' => ['remote-url'], 'reviewer' => 'SECAUDIT-059', 'review' => 'Reviewed vendor header citations only; no remote request is made.'],
     'assets/js/shortcode-toolbar.js' => ['signals' => ['html-sink', 'remote-url'], 'reviewer' => 'SECAUDIT-059', 'review' => 'Reviewed URL-field placeholder value only; no remote request is made. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution.'],
     'assets/js/smack-app.js' => ['signals' => ['html-sink'], 'reviewer' => 'SECAUDIT-059', 'review' => 'Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution.'],

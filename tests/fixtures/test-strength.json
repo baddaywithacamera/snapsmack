@@ -1535,6 +1535,11 @@
         "predicates": 3,
         "thresholds": []
     },
+    "mosaic-gallery-columns-regression.php": {
+        "assertions": 6,
+        "predicates": 7,
+        "thresholds": []
+    },
     "mosaic-shuffle-render-regression.php": {
         "assertions": 3,
         "predicates": 3,
@@ -1553,6 +1558,13 @@
         "predicates": 6,
         "thresholds": [
             3
+        ]
+    },
+    "mosaic-weighted-render-regression.php": {
+        "assertions": 4,
+        "predicates": 3,
+        "thresholds": [
+            8
         ]
     },
     "multisite-bulk-push-version-verified-regression.php": {
@@ -2742,6 +2754,11 @@
         "thresholds": [
             6
         ]
+    },
+    "smacktalk-tile-like-regression.php": {
+        "assertions": 3,
+        "predicates": 7,
+        "thresholds": []
     },
     "smackthemup-contract-regression.php": {
         "assertions": 23,
