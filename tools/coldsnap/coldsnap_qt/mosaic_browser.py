@@ -92,6 +92,7 @@ class MosaicBrowser(QWebEngineView):
             images.append({
                 'id': index, 'src': _MEASURE_PIXEL if self._measure_only
                 else QUrl.fromLocalFile(str(thumbnail)).toString(),
+                'full': '' if self._measure_only else QUrl.fromLocalFile(str(source)).toString(),
                 'alt': source.name, 'width': w, 'height': h,
                 'weight': weights.get(str(index), 0),
             })
