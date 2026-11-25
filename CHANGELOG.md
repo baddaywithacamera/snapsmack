@@ -11,6 +11,15 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.1004D
+
+- **POCKET ALBUM puts a photo album inside a page or post.** The block shows
+  the album with lazy-loaded photographs. The source site must opt in before
+  a second site can read its albums.
+- **Skin Packager verifies the files against a specific source commit.**
+  It checks the skin content and rendering options against that commit's
+  recorded baseline and refuses a package that reuses a published version.
+
 ## 0.7.1003D — opened
 
 - **A finished paragraph followed by a label is no longer mistaken for a
