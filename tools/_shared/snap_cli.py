@@ -80,24 +80,20 @@ def output_options(parser):
 
 def add_stepup_options(parser):
     parser.add_argument("--stepup-user", default="", help="Account username for password + 2FA step-up")
-    parser.add_argument("--stepup-password", default="", help="Account password for password + 2FA step-up")
-    parser.add_argument("--stepup-totp", default="", help="6-digit 2FA authenticator code for step-up")
 
 
 def require_stepup(site_url, api_key, *, route, action="post", args=None, requester=None):
     import snap_session_gate
     import snap_stepup
     user = (getattr(args, "stepup_user", "") if args is not None else "") or os.environ.get("SNAPSMACK_STEPUP_USER", "")
-    password = (getattr(args, "stepup_password", "") if args is not None else "") or os.environ.get("SNAPSMACK_STEPUP_PASSWORD", "")
-    totp = (getattr(args, "stepup_totp", "") if args is not None else "") or os.environ.get("SNAPSMACK_STEPUP_TOTP", "")
     return snap_session_gate.require_stepup_for_write(
         site_url,
         route,
         api_key,
         action=action,
         username=user,
-        password=password,
-        totp_code=totp,
+        password="",
+        totp_code="",
         requester=requester or snap_stepup.request_authorization,
     )
 

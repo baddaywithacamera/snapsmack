@@ -36,11 +36,14 @@ fn operation(args: &[String]) -> Result<Value, String> {
 }
 
 fn require_hq_cli_switch() -> Result<(), String> {
+    #[cfg(test)]
     let home = std::env::var("SNAPSMACK_HOME")
         .ok()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| r"C:\snapsmack".to_string());
+    #[cfg(not(test))]
+    let home = r"C:\snapsmack".to_string();
     let cfg_path = Path::new(&home).join("config_files").join("snap-hq").join("desktop_cli.json");
     let enabled = fs::read_to_string(&cfg_path)
         .ok()
