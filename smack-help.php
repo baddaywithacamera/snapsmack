@@ -368,10 +368,10 @@ HTML
 
 $help_topics['media-library'] = [
     'section'  => 'The Good Shit',
-    'title'    => 'Media Library',
+    'title'    => 'Asset Library',
     'icon'     => '&#x25A8;',
     'content'  => <<<'HTML'
-<h3>Media Library</h3>
+<h3>Asset Library</h3>
 <p>The media library is a general-purpose file repository for assets that aren't
 transmissions — logos, illustrations, supplementary images, documents, etc. Files
 uploaded here are stored in the <code>media_assets/</code> directory.</p>
@@ -399,11 +399,11 @@ HTML
 
 $help_topics['media-gallery'] = [
     'section'  => 'The Good Shit',
-    'title'    => 'Media Gallery',
+    'title'    => 'Post Photo Gallery',
     'icon'     => '&#x25A6;',
     'content'  => <<<'HTML'
-<h3>Media Gallery</h3>
-<p>The Media Gallery is a visual digital asset manager for your entire transmission
+<h3>Post Photo Gallery</h3>
+<p>The Post Photo Gallery is a visual digital asset manager for your entire transmission
 library. Unlike Manage Archive (which is a table), the gallery displays your images
 as a thumbnail grid with instant search, filtering, and inline editing.</p>
 
@@ -824,7 +824,7 @@ will wrap your selection.</p>
 <ul>
     <li><strong>IMG</strong> — Prompts for an image ID, size (full/wall/small), and
     alignment (center/left/right), then inserts the <code>[img:ID|size|align]</code>
-    shortcode. Get image IDs from the Media Library page.</li>
+    shortcode. Get image IDs from the Asset Library page.</li>
     <li><strong>COL 2 / COL 3</strong> — Inserts a multi-column layout block with
     placeholder content. Edit the text between <code>[col]</code> markers. See the
     <em>Shortcodes</em> topic for full syntax.</li>
@@ -859,7 +859,7 @@ They are processed by the parser and converted to HTML when the page is displaye
 <pre>[img:ID|size|align]</pre>
 <p>Inserts an image from the media library or your transmissions.</p>
 <ul>
-    <li><strong>ID</strong> — the numeric ID of the asset (shown in Media Library).</li>
+    <li><strong>ID</strong> — the numeric ID of the asset (shown in Asset Library).</li>
     <li><strong>size</strong> — <code>full</code> (original), <code>wall</code> (gallery variant),
     or <code>small</code> (400&times;400 thumbnail). Default: full.</li>
     <li><strong>align</strong> — <code>center</code>, <code>left</code> (floats left with
@@ -1310,7 +1310,7 @@ registration token now requires your password (plus 2FA if enabled).
 and may be needed in a hurry.</p>
 
 <h4>Pushing Settings From the Hub</h4>
-<p>On a hub, the <strong>Push It</strong> and <strong>Network Settings</strong> pages ask for
+<p>On a hub, the <strong>Fleet Settings Push</strong> and <strong>Network Settings</strong> pages ask for
 your password once per push. One entry covers the whole batch — push six settings to every
 spoke and you authenticate a single time, not six. If 2FA is enabled on your hub account, the
 code is required too.</p>
@@ -1337,11 +1337,11 @@ you don't have to configure anything to get going.</p>
 <p>Once you've got some posts under your belt, the admin will offer to unlock
 <strong>Pimpmobile</strong> mode. Pimpmobile is the full admin interface with everything visible:</p>
 <ul>
-    <li>Media Library &amp; Media Gallery</li>
+    <li>Asset Library &amp; Post Photo Gallery</li>
     <li>Blogroll network tools</li>
     <li>Community / Interaction settings</li>
     <li>Static Pages</li>
-    <li>Companion Tools</li>
+    <li>Desktop Tools</li>
     <li>Social Dock, custom CSS, custom scripts</li>
     <li>Archive, Solo, and Static appearance editors</li>
     <li>User Manager, Maintenance, Troll Control</li>
@@ -1401,7 +1401,7 @@ copy carries all the detail these fields need). Always review what it wrote befo
 <h4>ALT text (accessibility)</h4>
 <p><strong>ALT text</strong> is a plain one-sentence description of what's in the photo, read aloud
 by screen readers and used by search engines. Every posting surface now has an ALT field —
-new post, edit, gram, carousel, the Media-Gallery quick-edit, and the Media Library — and SYBU
+new post, edit, gram, carousel, the Post Photo Gallery quick-edit, and the Asset Library — and SYBU
 writes it on every batch. If you leave ALT blank, the site falls back to the photo's title so an
 image is never left with nothing. To backfill ALT (and any other missing field) across your existing
 library in one pass, use <strong>GYSS &rarr; Repair</strong>, which now includes a "Missing ALT text"
@@ -1429,7 +1429,7 @@ lapsed, a notice explaining it switched off and how to turn it back on.</p>
 <p>Two ways, either end:</p>
 <ul>
 <li><strong>On the site</strong> — click <strong>RENEW (30 DAYS)</strong> in Settings &rarr; AI. That extends the window another 30 days from now.</li>
-<li><strong>From a network hub</strong> — pushing the AI group in <strong>Push It</strong> gives every spoke its own fresh 30-day window.</li>
+<li><strong>From a network hub</strong> — pushing the AI group in <strong>Fleet Settings Push</strong> gives every spoke its own fresh 30-day window.</li>
 </ul>
 <p>When AI has lapsed, any AI feature you invoke tells you plainly what happened and points you to
 renew — it won't fail silently.</p>
@@ -1671,7 +1671,7 @@ folders is safe and will not trigger a breach, and updates remove them automatic
 toggle Enable on. Choose a response mode (Lockout is recommended). Optionally enable the
 pageload stat check — it's a filesystem metadata-only operation that costs essentially
 nothing per request. Save.</p>
-<p>On a multisite fleet, if the hub controls SMACKBACK via Push It, the enabled state and
+<p>On a multisite fleet, if the hub controls SMACKBACK via Fleet Settings Push, the enabled state and
 response mode are locked and managed centrally. You can still set your local alert email and
 pageload check independently.</p>
 
@@ -1813,7 +1813,7 @@ privacy@snapsmack.ca. Contributing breach reports and receiving push alerts are 
 options — you can mix and match as you see fit.</p>
 <p>On a multisite fleet, if push registration gets out of sync across spokes — for example
 after a re-init or a spoke that was offline during initial registration — a hub admin can
-hit <strong>Force Re-Register Push</strong> on the Push It page. This pushes
+hit <strong>Force Re-Register Push</strong> on the Fleet Settings Push page. This pushes
 <code>push_registered=0</code> to all spokes; each spoke then self-registers on its next
 admin page load.</p>
 
@@ -2860,7 +2860,7 @@ to SnapSmack. It connects to your site, pulls your categories and albums, and le
 you queue up dozens of images for posting in a single batch.</p>
 
 <h4>Getting Started</h4>
-<p>Download the tool from the Companion Tools page in the admin panel or from
+<p>Download the tool from the Desktop Tools page in the admin panel or from
 <code>https://snapsmack.ca/tools/smackyourbatchup.zip</code>. Extract and run the
 .exe — no installation required. On first launch, enter your SnapSmack site URL and
 admin credentials. The app connects to your site and loads your categories and albums.</p>
@@ -3191,7 +3191,7 @@ ZIP, and optionally uploads it to Google Drive or OneDrive.</p>
 </ul>
 
 <h4>Setting Up</h4>
-<p>Download SUYB from the <a href="smack-tools.php">Companion Tools</a> page. On first
+<p>Download SUYB from the <a href="smack-tools.php">Desktop Tools</a> page. On first
 launch the setup wizard walks you through creating a profile: site URL, admin credentials
 (same ones you use to log into this panel), FTP connection details, and a local folder
 for backup storage.</p>
@@ -3539,8 +3539,8 @@ site that reports back to the hub).</p>
     report back. <em>UPDATE ALL BEHIND</em> does the whole fleet in sequence with
     one click. When all spokes are current the button becomes a greyed <em>ALL UP
     TO DATE</em> indicator.</li>
-    <li><strong>Push It (Push It Real Good)</strong> — fleet settings control lives on its own
-    page (Multisite → Push It). For each setting group — timezone, Akismet, AI provider and
+    <li><strong>Fleet Settings Push</strong> — fleet settings control lives on its own
+    page (Multisite → Fleet Settings Push). For each setting group — timezone, Akismet, AI provider and
     keys, SMACKBACK, global comments, contact email — you can toggle <em>Hub Controls This
     Setting</em>. When on, the hub owns that setting fleet-wide: spokes receive the value and
     their corresponding settings UI locks to read-only with a "Managed by Network Hub" notice.
@@ -4065,7 +4065,7 @@ where a follower saw it, and inside another SnapSmack blog's FEDIVERSE reader. B
     else's words. A reply you hold for moderation is not forwarded.</li>
     <li><strong>Old comments go out once.</strong> Comments typed on the blog before 0.7.708D
     were shown but never sent. The delivery job sends them once after this update, original
-    dates kept; <strong>SEND UNSENT BLOG COMMENTS</strong> on Push &amp; Tools does the same on
+    dates kept; <strong>SEND UNSENT BLOG COMMENTS</strong> on Fediverse Publishing Tools does the same on
     demand and never sends a comment twice.</li>
 </ul>
 <p>What this does not do: a reply you later hide or delete is not yet retracted from the

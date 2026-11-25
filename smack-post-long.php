@@ -515,7 +515,7 @@ include 'core/sidebar.php';
                     <button type="button" class="sc-btn" data-action="spacer" title="Vertical Spacer (1-100px)">SPACER</button>
                     <span class="sc-sep"></span>
                     <button type="button" class="sc-btn" id="mosaic-insert-btn" title="Insert MOSAIC panel">MOSAIC</button>
-                    <button type="button" class="sc-btn" id="gallery-insert-btn" title="Insert an image already in the Media Gallery">GALLERY</button>
+                    <button type="button" class="sc-btn" id="gallery-insert-btn" title="Insert an image already in the Post Photo Gallery">GALLERY</button>
                     <button type="button" class="sc-btn sc-btn-preview" data-action="preview" title="Preview in New Tab">PREVIEW</button>
                 </div>
             </div>

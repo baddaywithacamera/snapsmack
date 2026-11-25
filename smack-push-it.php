@@ -231,14 +231,14 @@ $ai_has_key = !empty($settings[$ai_key_map[$ai_prov] ?? ''] ?? '');
 
 // ─── PAGE RENDER ─────────────────────────────────────────────────────────────
 
-$page_title = 'Push It';
+$page_title = 'Fleet Settings Push';
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
     <div class="header-row">
-        <h2>PUSH IT</h2>
+        <h2>FLEET SETTINGS PUSH</h2>
     </div>
     <p class="dim" style="font-size:0.95rem;margin-bottom:4px;letter-spacing:2px;text-transform:uppercase;">Push it real good.</p>
 
@@ -252,7 +252,7 @@ include 'core/sidebar.php';
             <a href="smack-multisite-crosspost.php" class="btn-clear">CROSS-POST</a>
             <a href="smack-multisite-blogroll.php"  class="btn-clear">BLOGROLL</a>
             <a href="smack-multisite-settings.php"  class="btn-clear">SETTINGS</a>
-            <a href="smack-push-it.php"             class="btn-clear active">PUSH IT</a>
+            <a href="smack-push-it.php"             class="btn-clear active">FLEET SETTINGS PUSH</a>
         </div>
     </div>
 

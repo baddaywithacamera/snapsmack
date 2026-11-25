@@ -11,10 +11,10 @@
 $_pc_sections = [
     'good-shit' => [
         'smack-admin.php', 'smack-post-solo.php', 'smack-manage.php',
-        'smack-edit.php', 'smack-comments.php', 'smack-pages.php',
+        'smack-edit.php', 'smack-comments.php', 'smack-pages.php', 'smack-fediverse.php',
     ],
     'fediverse' => [
-        'smack-fediverse.php', 'smack-dms.php', 'smack-fediverse-portal.php',
+        'smack-pixelfed.php', 'smack-photochallenge.php', 'smack-dms.php', 'smack-fediverse-portal.php',
         'smack-sv-followers.php', 'smack-sv-tools.php',
         'smack-sv-delivery-log.php',
     ],
@@ -25,7 +25,7 @@ $_pc_sections = [
         'smack-appearance-solo.php', 'smack-appearance-static.php',
     ],
     'turbo-boost' => [
-        'smack-photochallenge.php', 'smack-photochallenge-queue.php',
+        'smack-photochallenge-queue.php',
         'smack-photochallenge-queued.php',
     ],
     'boring' => [
@@ -60,24 +60,31 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                     <li class="<?php echo $_pc_active_class('smack-admin.php'); ?>"><a href="smack-admin.php">Dashboard</a></li>
                     <li class="<?php echo $_pc_active_class('smack-post-solo.php'); ?>"><a href="smack-post-solo.php">New Post</a></li>
                     <li class="<?php echo in_array($current_page, ['smack-manage.php', 'smack-edit.php'], true) ? 'active' : ''; ?>"><a href="smack-manage.php">Manage Posts</a></li>
-                    <li class="<?php echo $_pc_active_class('smack-comments.php'); ?>"><a href="smack-comments.php">Signals</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-comments.php'); ?>"><a href="smack-comments.php">Comments</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-fediverse.php'); ?>"><a href="smack-fediverse.php">Interactions</a></li>
                     <li class="<?php echo $_pc_active_class('smack-pages.php'); ?>"><a href="smack-pages.php">Static Pages</a></li>
                 </ul>
             </div>
 
             <div class="nav-section<?php echo $_pc_active === 'fediverse' ? ' open' : ''; ?>" data-section="fediverse">
                 <button type="button" class="nav-section-toggle">
-                    <span class="nav-section-label">FEDIVERSE</span>
+                    <span class="nav-section-label-stack">
+                        <span class="nav-section-label">Set up by the Feds</span>
+                        <span class="nav-section-hint">Fediverse settings</span>
+                    </span>
                     <span class="nav-section-arrow"></span>
                 </button>
                 <ul class="nav-section-links">
-                    <li><a href="pixel.php" target="_blank" rel="noopener">Pixelfed &#8599;</a></li>
-                    <li class="<?php echo $_pc_active_class('smack-fediverse.php'); ?>"><a href="smack-fediverse.php">Interactions</a></li>
+                    <li><a href="pixel.php" target="_blank" rel="noopener">Pixelfed Gateway &#8599;</a></li>
+                    <?php if (smack_is_admin()): ?>
+                    <li class="<?php echo $_pc_active_class('smack-pixelfed.php'); ?>"><a href="smack-pixelfed.php">Pixelfed Client</a></li>
+                    <?php endif; ?>
                     <li class="<?php echo $_pc_active_class('smack-dms.php'); ?>"><a href="smack-dms.php">Messages</a></li>
-                    <li class="<?php echo $_pc_active_class('smack-fediverse-portal.php'); ?>"><a href="smack-fediverse-portal.php">Federation</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-fediverse-portal.php'); ?>"><a href="smack-fediverse-portal.php">Portal</a></li>
                     <li class="<?php echo $_pc_active_class('smack-sv-followers.php'); ?>"><a href="smack-sv-followers.php">Followers</a></li>
-                    <li class="<?php echo $_pc_active_class('smack-sv-tools.php'); ?>"><a href="smack-sv-tools.php">Push &amp; Tools</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-sv-tools.php'); ?>"><a href="smack-sv-tools.php">Fediverse Publishing Tools</a></li>
                     <li class="<?php echo $_pc_active_class('smack-sv-delivery-log.php'); ?>"><a href="smack-sv-delivery-log.php">Delivery Log</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-photochallenge.php'); ?>"><a href="smack-photochallenge.php">Photo Challenge</a></li>
                 </ul>
             </div>
 
@@ -106,7 +113,6 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                     <span class="nav-section-arrow"></span>
                 </button>
                 <ul class="nav-section-links">
-                    <li class="<?php echo $_pc_active_class('smack-photochallenge.php'); ?>"><a href="smack-photochallenge.php">Contest &amp; Feed</a></li>
                     <li class="<?php echo $_pc_active_class('smack-photochallenge-queue.php'); ?>"><a href="smack-photochallenge-queue.php">Queue Contest Post</a></li>
                     <li class="<?php echo $_pc_active_class('smack-photochallenge-queued.php'); ?>"><a href="smack-photochallenge-queued.php">Queued Posts</a></li>
                 </ul>

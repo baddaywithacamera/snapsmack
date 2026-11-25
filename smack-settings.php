@@ -416,9 +416,9 @@ include 'core/sidebar.php';
                     <label for="og-image-override">OG IMAGE OVERRIDE <span class="field-tip" data-tip="Default social-share image (path or URL) used when a page has no image of its own. Individual post images still take priority.">ⓘ</span></label>
                     <input id="og-image-override" type="text" name="settings[og_image_override]" value="<?php echo htmlspecialchars($settings['og_image_override'] ?? ''); ?>" placeholder="e.g. uploads/social-card.jpg">
                     <?php if ($og_picker_assets !== []): ?>
-                        <button type="button" class="sc-btn" data-asset-picker-field="og-image-override">Choose from Media Library</button>
+                        <button type="button" class="sc-btn" data-asset-picker-field="og-image-override">Choose from Asset Library</button>
                     <?php else: ?>
-                        <p class="dim">Add an image in <a href="smack-media.php">Media Library</a> to choose it here.</p>
+                        <p class="dim">Add an image in <a href="smack-media.php">Asset Library</a> to choose it here.</p>
                     <?php endif; ?>
 
                     <label>BASE SITE URL</label>
