@@ -129,8 +129,8 @@
         },
         "telegram": {
             "version": "0.1.11",
-            "files_sha256": "bf7982fbf6c42b1eec775c74b4e311b46fa8f5321e477908050c400acb214a45",
-            "manifest_css_sha256": "40d93d561cc6f78a3f73760621c14648711e31f61dcc93bbfcea876755ba0ce9"
+            "files_sha256": "daebd030115a6bce38234364a592874a8deb9790986b272377cffd0d74bfe707",
+            "manifest_css_sha256": "355acaa76a8b27c202de6090980326edcf78f2ddc2af94a00498378dae67d7db"
         },
         "the-grid": {
             "version": "1.3.63",

@@ -90,7 +90,7 @@
             "section": "CAPTIONS",
             "type": "range",
             "label": "Space Above Caption (px)",
-            "default": "0",
+            "default": "12",
             "min": "0",
             "max": "48",
             "unit": "px",
