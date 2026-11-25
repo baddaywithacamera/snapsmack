@@ -107,6 +107,26 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     // served it.
     if ($kind === 'feed' || $kind === 'landing') $bodyClasses[] = 'landing-page';
     $presentation['body_class'] = implode(' ', $bodyClasses);
+    // SS-1563, MOVED HERE AFTER MUSE'S REVIEW. The current-page marking was in
+    // snapsmack_prepare_skin_view(), which builds the VIEW MODEL's navigation
+    // -- and that is not the menu every page shows. collections.php lets the
+    // controller build its own menu and only falls back to the view model's
+    // when the controller gave nothing (it says why: an earlier version
+    // replaced it wholesale and a six-item menu came back with three). So on a
+    // collections page the marks were absent, which is exactly the hole Muse
+    // found and it qualified my claim that all five skins were covered.
+    //
+    // THIS is the single place every route passes through: index.php,
+    // collections.php, the admin preview and every fixture harness all call
+    // snapsmack_build_skin_view(), and nothing renders a layout without it --
+    // I checked the two lists of callers against each other rather than
+    // assuming. Marking the navigation the response ACTUALLY carries covers
+    // whoever built it.
+    if (!empty($response['navigation']) && is_array($response['navigation'])) {
+        require_once __DIR__ . '/navigation-current.php';
+        $response['navigation'] = snapsmack_navigation_mark_current(
+            $response['navigation'], snapsmack_navigation_request_target());
+    }
     // Skins display this bounded value; they do not search or interpret the
     // CMS navigation tree themselves.
     if (empty($response['about_url'])) {

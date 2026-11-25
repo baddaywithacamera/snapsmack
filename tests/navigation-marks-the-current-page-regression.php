@@ -291,6 +291,51 @@ $check('the dead renderer no longer exists, so it cannot be tested again',
        !function_exists('snapsmack_render_navigation_items'));
 
 // ─────────────────────────────────────────────────────────────────────────────
+echo "\nAND IT MARKS THE MENU THE RESPONSE CARRIES, NOT JUST THE VIEW MODEL'S\n";
+// ─────────────────────────────────────────────────────────────────────────────
+// MUSE'S CAVEAT, AND SHE WAS RIGHT. The marking was done in
+// snapsmack_prepare_skin_view(), which builds the VIEW MODEL's navigation.
+// That is not the menu every page shows: collections.php lets the controller
+// build its own and only falls back to the view model's when the controller
+// gave nothing. So collections pages carried no marks at all, and my claim
+// that all five skins were covered was wrong for that route.
+//
+// It is marked in snapsmack_build_skin_view() now -- the one function every
+// render path calls, which I checked by comparing the list of its callers
+// against the list of everything that renders a layout. This drives a
+// CONTROLLER-BUILT menu, arriving on the response, which is the shape missed.
+
+require_once $root . '/core/skin-view-contract.php';
+require_once $root . '/core/skin-presentation.php';
+
+$controllerMenu = [
+    ['label' => 'Home', 'url' => '/', 'children' => []],
+    ['label' => 'Archive', 'url' => '/archive', 'children' => []],
+    ['label' => 'Collections', 'url' => '/collections', 'children' => []],
+];
+$marksFor = static function (string $request) use ($controllerMenu): array {
+    $_SERVER['REQUEST_URI'] = $request;
+    $view = snapsmack_build_skin_view(
+        ['status' => 200, 'kind' => 'archive', 'items' => [], 'navigation' => $controllerMenu],
+        ['site_name' => 'E', 'language' => 'en', 'direction' => 'ltr',
+         'skin_slug' => 'alfred', 'skin_style_url' => '/s.css',
+         'skin_presentation' => snapsmack_skin_presentation([], 'alfred')]);
+    $out = [];
+    foreach (($view['response']['navigation'] ?? []) as $i) {
+        if (!empty($i['current'])) { $out[] = (string)$i['label']; }
+    }
+    return $out;
+};
+
+$check('a controller-built menu on the response is marked',
+       $marksFor('/archive') === ['Archive']);
+$check('  and it follows the request, rather than marking a fixed item',
+       $marksFor('/collections') === ['Collections']);
+$check('  a request matching nothing in it marks nothing',
+       $marksFor('/somewhere-else') === []);
+$check('  and the root still matches Home exactly', $marksFor('/') === ['Home']);
+
+// ─────────────────────────────────────────────────────────────────────────────
 echo "\nTHE SKINS THIS WAS FOR STILL ASK FOR IT\n";
 // ─────────────────────────────────────────────────────────────────────────────
 // If every skin stopped styling a current item, emitting both conventions

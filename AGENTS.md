@@ -109,11 +109,11 @@ him the month.
   Moving existing skin behaviour into the CMS must preserve it. Never replace a
   skin's working behaviour with new shared markup. A regression is fixed by
   restoring the last known-good code — moved to the CMS if needed — not by
-  new code.
+  freshly written replacement behaviour.
 
   This has been the architecture since February and was only ever written down
   as the rule above it, which says where logic belongs and not that you must
-  keep what was there. The gap is what most of the last eight weeks went on:
+  keep what was there. The gap is where most of the last eight weeks went:
   a migration swapped a skin's working behaviour for freshly written shared
   markup, the markup looked reasonable, and the site lost something nobody had
   asked to change. When you find such a case, name the last pre-migration

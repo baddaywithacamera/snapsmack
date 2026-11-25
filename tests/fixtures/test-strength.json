@@ -1580,7 +1580,7 @@
         "thresholds": []
     },
     "navigation-marks-the-current-page-regression.php": {
-        "assertions": 45,
+        "assertions": 49,
         "predicates": 27,
         "thresholds": [
             4,

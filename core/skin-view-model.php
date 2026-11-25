@@ -72,12 +72,13 @@ function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slu
     }
     $view['route_aliases'] = snapsmack_public_route_aliases($settings, $manifest);
     $view['navigation'] = snapsmack_prepare_skin_navigation($pdo, $settings, $manifest);
-    // SS-1563: say which item is the page being served. The CMS decides it
-    // here because a strict skin may hold no route logic, and five skins
-    // already style a current item with nothing to apply it to.
-    require_once __DIR__ . '/navigation-current.php';
-    $view['navigation'] = snapsmack_navigation_mark_current(
-        $view['navigation'], snapsmack_navigation_request_target());
+    // SS-1563: the current-page marking used to happen HERE and that was the
+    // wrong place. This builds the view model's own navigation, which is not
+    // the menu every page ends up showing -- collections.php prefers the
+    // controller's menu and only falls back to this one. Marking moved to
+    // snapsmack_build_skin_view() in core/skin-view-contract.php, which every
+    // route passes through, so it marks whichever menu the response carries.
+    // Left unmarked here on purpose: one place, not two to drift apart.
     // About is an identity destination, not a menu-placement decision. Mobile
     // profiles link their avatar to it even when the owner intentionally keeps
     // About out of the visible navigation.
