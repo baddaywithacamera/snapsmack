@@ -883,6 +883,7 @@ include __DIR__ . '/sc-layout-top.php';
         <p class="sc-dim" style="margin-bottom:20px; font-size:0.875rem;">
             Downloads <strong><?php echo htmlspecialchars(SNAPSMACK_GITHUB_REPO); ?></strong>
             at the full reviewed commit SHA. The packager checks the skin against that commit’s version baseline.
+            Use the SHA from the review record.
         </p>
         <form method="POST" action="sc-skins.php">
             <div class="sc-field">
