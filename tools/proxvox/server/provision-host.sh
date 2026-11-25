@@ -7,11 +7,27 @@ set -eu
 WRAPPER_COMMIT=055966363c8bf298cda749a09b4f83126e34166d
 WRAPPER_SHA256=48b3c84357f40a3db73f679d76223472b313d5ffc5e9972f62801778aec5718c
 WRAPPER_URL="https://raw.githubusercontent.com/baddaywithacamera/snapsmack/${WRAPPER_COMMIT}/tools/proxvox/server/proxvox_readonly.py"
+WRAPPER_PATH=/usr/local/sbin/proxvox-readonly
 
 fail() {
     printf 'PROX VOX HOST FAILED: %s\n' "$*" >&2
     exit 1
 }
+
+# Verify the deployed reader without provisioning or changing SSH.
+if [ "${1-}" = "verify" ]; then
+    command -v sha256sum >/dev/null 2>&1 || fail "missing command: sha256sum"
+    [ -f "$WRAPPER_PATH" ] || fail "no reader installed at $WRAPPER_PATH"
+    checksum=$(sha256sum -- "$WRAPPER_PATH") || fail "could not read $WRAPPER_PATH"
+    installed_sha=${checksum%% *}
+    if [ "$installed_sha" = "$WRAPPER_SHA256" ]; then
+        printf 'PROX VOX READER PASS — installed SHA-256 %s matches %s\n' "$installed_sha" "$WRAPPER_COMMIT"
+        exit 0
+    fi
+    printf 'PROX VOX READER DRIFT\n  installed: %s\n  pinned:    %s (%s)\n' \
+        "$installed_sha" "$WRAPPER_SHA256" "$WRAPPER_COMMIT" >&2
+    exit 1
+fi
 
 [ "$(id -u)" -eq 0 ] || fail "run this on the Proxmox host as root"
 for command_name in curl sha256sum install useradd chpasswd visudo grep mktemp cp; do
@@ -24,7 +40,7 @@ trap cleanup EXIT HUP INT TERM
 curl --fail --silent --show-error --location "$WRAPPER_URL" --output "$wrapper_tmp"
 printf '%s  %s\n' "$WRAPPER_SHA256" "$wrapper_tmp" | sha256sum --check --status \
     || fail "reviewed wrapper SHA-256 mismatch"
-install -o root -g root -m 0755 "$wrapper_tmp" /usr/local/sbin/proxvox-readonly
+install -o root -g root -m 0755 "$wrapper_tmp" "$WRAPPER_PATH"
 
 if ! id proxvox-root-ro >/dev/null 2>&1; then
     useradd --system --no-create-home --shell /bin/sh proxvox-root-ro
@@ -80,7 +96,7 @@ sshd_path=$(command -v sshd || true)
 "$sshd_path" -t || fail "sshd validation failed"
 systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || fail "could not reload SSH"
 
-installed_sha=$(sha256sum /usr/local/sbin/proxvox-readonly | awk '{print $1}')
+installed_sha=$(sha256sum "$WRAPPER_PATH" | awk '{print $1}')
 [ "$installed_sha" = "$WRAPPER_SHA256" ] || fail "installed wrapper SHA-256 mismatch"
 printf 'PROX VOX HOST PASS — wrapper SHA-256 %s\n' "$installed_sha"
 
