@@ -1122,6 +1122,13 @@ body.landing-page #scroll-stage.post-inner {
     max-width: none;
 }
 
+/* The photograph archive uses the same 1040px HITCHCOCK lane as the landing
+   grid. It is not prose, so the post-reading column must not narrow it. */
+body.archive-page #scroll-stage.post-inner {
+    width: auto;
+    max-width: none;
+}
+
 .post-inner {
     width: 520px;
     max-width: 85%;

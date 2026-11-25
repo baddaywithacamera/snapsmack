@@ -1,0 +1,258 @@
+{
+  "generatedAt": "2026-11-25T02:38:39.685Z",
+  "results": [
+    {
+      "kind": "home",
+      "width": 1920,
+      "status": 200,
+      "screenshot": "home-1920.jpg",
+      "errors": [],
+      "title": "Sean McCormick Photography – Saving the beauty in this moment for the ones that follow.",
+      "url": "https://old.mccormickphotography.com/",
+      "documentWidth": 1920,
+      "viewportWidth": 1920,
+      "bodyClass": "home blog wp-custom-logo wp-theme-hitchcock mysticky-welcomebar-apper",
+      "header": null,
+      "navigation": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 60
+      },
+      "main": {
+        "x": 0,
+        "y": 412.234375,
+        "width": 1920,
+        "height": 2522.40625
+      },
+      "footer": null,
+      "imageCount": 1,
+      "visibleImages": 1
+    },
+    {
+      "kind": "home",
+      "width": 1024,
+      "status": 200,
+      "screenshot": "home-1024.jpg",
+      "errors": [],
+      "title": "Sean McCormick Photography – Saving the beauty in this moment for the ones that follow.",
+      "url": "https://old.mccormickphotography.com/",
+      "documentWidth": 1024,
+      "viewportWidth": 1024,
+      "bodyClass": "home blog wp-custom-logo wp-theme-hitchcock mysticky-welcomebar-apper",
+      "header": null,
+      "navigation": {
+        "x": 0,
+        "y": 0,
+        "width": 1024,
+        "height": 60
+      },
+      "main": {
+        "x": 0,
+        "y": 416.921875,
+        "width": 1024,
+        "height": 2235.1875
+      },
+      "footer": null,
+      "imageCount": 1,
+      "visibleImages": 1
+    },
+    {
+      "kind": "archive",
+      "width": 1920,
+      "status": 200,
+      "screenshot": "archive-1920.jpg",
+      "errors": [],
+      "title": "Blog – Sean McCormick Photography",
+      "url": "https://old.mccormickphotography.com/category/blog/",
+      "documentWidth": 1920,
+      "viewportWidth": 1920,
+      "bodyClass": "archive category category-blog category-1 wp-custom-logo wp-theme-hitchcock mysticky-welcomebar-apper",
+      "header": {
+        "x": 440,
+        "y": 453.3125,
+        "width": 1040,
+        "height": 58
+      },
+      "navigation": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 60
+      },
+      "main": {
+        "x": 0,
+        "y": 453.3125,
+        "width": 1920,
+        "height": 2609.328125
+      },
+      "footer": null,
+      "imageCount": 1,
+      "visibleImages": 1
+    },
+    {
+      "kind": "archive",
+      "width": 1024,
+      "status": 200,
+      "screenshot": "archive-1024.jpg",
+      "errors": [],
+      "title": "Blog – Sean McCormick Photography",
+      "url": "https://old.mccormickphotography.com/category/blog/",
+      "documentWidth": 1024,
+      "viewportWidth": 1024,
+      "bodyClass": "archive category category-blog category-1 wp-custom-logo wp-theme-hitchcock mysticky-welcomebar-apper",
+      "header": {
+        "x": 51.203125,
+        "y": 453.3125,
+        "width": 921.59375,
+        "height": 58
+      },
+      "navigation": {
+        "x": 0,
+        "y": 0,
+        "width": 1024,
+        "height": 60
+      },
+      "main": {
+        "x": 0,
+        "y": 453.3125,
+        "width": 1024,
+        "height": 2326.796875
+      },
+      "footer": null,
+      "imageCount": 1,
+      "visibleImages": 1
+    },
+    {
+      "kind": "solo",
+      "width": 1920,
+      "status": 200,
+      "screenshot": "solo-1920.jpg",
+      "errors": [],
+      "title": "An Uphill Battle – Sean McCormick Photography",
+      "url": "https://old.mccormickphotography.com/2023/11/16/an-uphill-battle/",
+      "documentWidth": 1920,
+      "viewportWidth": 1920,
+      "bodyClass": "wp-singular post-template-default single single-post postid-1261 single-format-standard wp-custom-logo wp-theme-hitchcock post single mysticky-welcomebar-apper",
+      "header": null,
+      "navigation": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 60
+      },
+      "main": {
+        "x": 0,
+        "y": 453.3125,
+        "width": 1920,
+        "height": 5941.734375
+      },
+      "footer": null,
+      "imageCount": 9,
+      "visibleImages": 8
+    },
+    {
+      "kind": "solo",
+      "width": 1024,
+      "status": 200,
+      "screenshot": "solo-1024.jpg",
+      "errors": [],
+      "title": "An Uphill Battle – Sean McCormick Photography",
+      "url": "https://old.mccormickphotography.com/2023/11/16/an-uphill-battle/",
+      "documentWidth": 1024,
+      "viewportWidth": 1024,
+      "bodyClass": "wp-singular post-template-default single single-post postid-1261 single-format-standard wp-custom-logo wp-theme-hitchcock post single mysticky-welcomebar-apper",
+      "header": null,
+      "navigation": {
+        "x": 0,
+        "y": 0,
+        "width": 1024,
+        "height": 60
+      },
+      "main": {
+        "x": 0,
+        "y": 453.3125,
+        "width": 1024,
+        "height": 5844.125
+      },
+      "footer": null,
+      "imageCount": 9,
+      "visibleImages": 8
+    },
+    {
+      "kind": "alfred-archive",
+      "width": 1920,
+      "screenshot": "archive-1920.png",
+      "grid": {
+        "left": 440,
+        "right": 1480,
+        "width": 1040
+      },
+      "tiles": [
+        326.65625,
+        326.671875,
+        326.65625,
+        326.65625,
+        326.671875,
+        326.65625,
+        326.65625,
+        326.671875,
+        326.65625,
+        326.65625,
+        326.671875,
+        326.65625
+      ],
+      "overflow": 0
+    },
+    {
+      "kind": "alfred-archive",
+      "width": 1440,
+      "screenshot": "archive-1440.png",
+      "grid": {
+        "left": 200,
+        "right": 1240,
+        "width": 1040
+      },
+      "tiles": [
+        326.65625,
+        326.671875,
+        326.65625,
+        326.65625,
+        326.671875,
+        326.65625,
+        326.65625,
+        326.671875,
+        326.65625,
+        326.65625,
+        326.671875,
+        326.65625
+      ],
+      "overflow": 0
+    },
+    {
+      "kind": "alfred-archive",
+      "width": 1024,
+      "screenshot": "archive-1024.png",
+      "grid": {
+        "left": 51.203125,
+        "right": 972.796875,
+        "width": 921.59375
+      },
+      "tiles": [
+        287.1875,
+        287.203125,
+        287.1875,
+        287.1875,
+        287.203125,
+        287.1875,
+        287.1875,
+        287.203125,
+        287.1875,
+        287.1875,
+        287.203125,
+        287.1875
+      ],
+      "overflow": 0
+    }
+  ]
+}
