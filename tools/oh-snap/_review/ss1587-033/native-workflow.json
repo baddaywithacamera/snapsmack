@@ -1,0 +1,16 @@
+{
+  "pass": true,
+  "version": "0.3.3",
+  "nativeBridge": true,
+  "previewViews": [
+    "post",
+    "archive",
+    "landing",
+    "page"
+  ],
+  "cssVisible": true,
+  "projectSavedAndReopened": true,
+  "nativeZipExported": true,
+  "pickerPathsStubbed": true,
+  "pageErrors": []
+}
