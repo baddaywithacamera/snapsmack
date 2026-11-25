@@ -351,4 +351,29 @@ test('long mosaics never create one- or two-photo tail sections', () => {
     }
 });
 
+test('making the top-left photo larger breaks a 2x2 inside a fourteen-photo quilt', () => {
+    const photos = Array.from({ length: 14 }, (_, index) => ({
+        id: index + 1,
+        width: index === 0 ? 800 : 900,
+        height: 600,
+        // One later photo is already weighted, keeping the reference width
+        // identical before and after the leading photo is edited.
+        weight: index === 4 ? 1 : 0
+    }));
+    const before = engine.computeLayout(photos, 1200, 4, 'natural');
+    const edited = [{ ...photos[0], weight: 1 }, ...photos.slice(1)];
+    const after = engine.computeLayout(edited, 1200, 4, 'natural');
+    const leading = after.items[0];
+    const peers = after.items.slice(1, 4);
+    const area = ({ width, height }) => width * height;
+
+    assert.deepEqual(Array.from(after.items, item => item.image.id), photos.map(photo => photo.id));
+    assert.equal(before.items.slice(0, 4).filter(item => item.x < 1).length, 2);
+    assert.ok(peers.every(item => item.x > leading.x));
+    assert.ok(area(leading) > area(before.items[0]) * 1.25);
+    assert.ok(peers.every(item => area(leading) > area(item) * 1.5));
+    assert.ok(peers.every(item => item.width >= 195 && item.height >= 150));
+    assertCleanGeometry(after, 1200);
+});
+
 // ===== SNAPSMACK EOF =====
