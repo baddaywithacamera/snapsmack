@@ -21,6 +21,11 @@
 - **Skin Packager verifies the files against a specific source commit.**
   It checks the skin content and rendering options against that commit's
   recorded baseline and refuses a package that reuses a published version.
+- **Make larger rearranges a weighted quilt.** The selected photo can
+  take a bigger share of the mosaic while the other photos stay in order.
+- **Mosaic photos stay sharp at larger viewport sizes.** The renderer
+  uses a larger source when needed and keeps small originals at native size,
+  including on hover.
 
 ## 0.7.1003D — opened
 

@@ -42,7 +42,7 @@
 }
 
 .mosaic-item:hover img {
-    transform: scale(1.03);
+    transform: scale(var(--mosaic-hover-scale, 1));
     filter: brightness(1.05);
 }
 

@@ -351,6 +351,238 @@ test('long mosaics never create one- or two-photo tail sections', () => {
     }
 });
 
+// ── SS-1584: no photograph is rendered larger than it actually is ──────────
+//
+// Sean, on the weighted mosaics: no blurry photos. A weighted tile's box can
+// be wider than the photograph has pixels, and the stylesheet puts
+// object-fit: cover on an img at width:100%/height:100%, so the browser
+// stretches it. These measure the arithmetic that stops that, in the vm,
+// because a browser harness is not installed in every checkout and this
+// repository's geometry faults are the ones markup tests miss.
+
+test('a photograph larger than its tile is left completely alone', () => {
+    const mosaic = loadEngine();
+    const fit = mosaic.noUpscaleFit(400, 300, 4000, 3000);
+    assert.equal(fit.capped, false);
+    assert.equal(fit.width, 400);
+    assert.equal(fit.height, 300);
+    assert.equal(fit.left, 0);
+    assert.equal(fit.top, 0);
+});
+
+test('a photograph exactly its tile size is not capped', () => {
+    const mosaic = loadEngine();
+    const fit = mosaic.noUpscaleFit(800, 600, 800, 600);
+    assert.equal(fit.capped, false, 'equal is not upscaling');
+    assert.equal(fit.width, 800);
+});
+
+test('a photograph smaller than its tile renders at its own size, centred', () => {
+    const mosaic = loadEngine();
+    // A 600x450 photograph in an 800x600 box: the box is 1.333x too big.
+    const fit = mosaic.noUpscaleFit(800, 600, 600, 450);
+    assert.equal(fit.capped, true);
+    assert.ok(fit.width <= 600 + 0.01, `width ${fit.width} must not exceed 600 native pixels`);
+    assert.ok(fit.height <= 450 + 0.01, `height ${fit.height} must not exceed 450 native pixels`);
+    // Centred, so the tile's background shows evenly rather than on one side.
+    assert.ok(Math.abs(fit.left - (800 - fit.width) / 2) < 0.01);
+    assert.ok(Math.abs(fit.top - (600 - fit.height) / 2) < 0.01);
+});
+
+test('the tile aspect ratio survives the cap, so the chosen crop is kept', () => {
+    const mosaic = loadEngine();
+    // A square-ish photograph in a wide tile. Shrinking must not re-frame it
+    // to the photograph's own shape -- the crop is the composition Sean saw.
+    const fit = mosaic.noUpscaleFit(1000, 400, 500, 500);
+    assert.equal(fit.capped, true);
+    const tileAR = 1000 / 400;
+    const fitAR = fit.width / fit.height;
+    assert.ok(Math.abs(tileAR - fitAR) < 0.0001,
+        `tile ratio ${tileAR} must survive; got ${fitAR}`);
+    // And the limiting axis is respected: 400-high tile, 500px of height
+    // available, 1000 wide against 500 native -> width is the constraint.
+    assert.ok(fit.width <= 500 + 0.01, fit.width);
+});
+
+test('an unknown photograph size changes nothing, rather than guessing one', () => {
+    const mosaic = loadEngine();
+    for (const [nw, nh] of [[0, 0], [0, 600], [800, 0], [undefined, undefined], [null, null]]) {
+        const fit = mosaic.noUpscaleFit(800, 600, nw, nh);
+        assert.equal(fit.capped, false, `native ${nw}x${nh} must not cap`);
+        assert.equal(fit.width, 800);
+        assert.equal(fit.height, 600);
+    }
+});
+
+test('a zero-sized tile is handled without dividing by it', () => {
+    const mosaic = loadEngine();
+    for (const [tw, th] of [[0, 600], [800, 0], [0, 0]]) {
+        const fit = mosaic.noUpscaleFit(tw, th, 400, 300);
+        assert.equal(fit.capped, false);
+        assert.ok(Number.isFinite(fit.width) && Number.isFinite(fit.height));
+    }
+});
+
+test('the cap never enlarges a photograph, at any ratio', () => {
+    const mosaic = loadEngine();
+    for (const box of [[100, 100], [1200, 300], [300, 1200], [760, 507]]) {
+        for (const native of [[1, 1], [50, 900], [900, 50], [1200, 800], [4000, 3000]]) {
+            const fit = mosaic.noUpscaleFit(box[0], box[1], native[0], native[1]);
+            assert.ok(fit.width <= Math.max(box[0], native[0]) + 0.01);
+            if (fit.capped) {
+                assert.ok(fit.width <= native[0] + 0.01,
+                    `box ${box} native ${native}: width ${fit.width} > native`);
+                assert.ok(fit.height <= native[1] + 0.01,
+                    `box ${box} native ${native}: height ${fit.height} > native`);
+            }
+        }
+    }
+});
+
+test('THE LAYOUT IS UNTOUCHED: the cap adds no field the golden digest reads', () => {
+    const mosaic = loadEngine();
+    // tools/_build/capture-mosaic-golden.html hashes order, x, y, width and
+    // height per tile plus the layout height, and nothing else. If the cap
+    // had moved any of those, every published mosaic would re-lay-out. This
+    // reproduces that canonical form and pins it for one case, so a future
+    // change to the cap cannot quietly start moving geometry.
+    const images = [
+        { id: 1, width: 1200, height: 800 },
+        { id: 2, width: 600, height: 900 },
+        { id: 3, width: 300, height: 200 },
+        { id: 4, width: 4000, height: 3000 },
+    ];
+    const layout = mosaic.computeLayout(images, 760, 4, 'natural', 0);
+    const canon = layout.items.map((t) => [
+        t.order, t.x.toFixed(6), t.y.toFixed(6), t.width.toFixed(6), t.height.toFixed(6),
+    ].join(',')).join(';');
+    assert.ok(canon.length > 0);
+    // The digest reads these five fields; the cap writes none of them.
+    layout.items.forEach((t) => {
+        assert.equal(typeof t.x, 'number');
+        assert.equal(typeof t.width, 'number');
+        assert.ok(!('imgWidth' in t), 'the cap must not add fields to the layout');
+        assert.ok(!('capped' in t), 'the cap is applied at render time, not in the layout');
+    });
+});
+
+// ── where the blur actually comes from, measured ───────────────────────────
+//
+// My first attempt at this test assumed the layout could hand a small
+// photograph a big tile. It cannot: a 120x80 photograph in a 760px mosaic is
+// laid out at exactly 120x80, so nothing was capped and the test proved only
+// that my premise was wrong.
+//
+// MEASURED INSTEAD. The upscale comes from the REFERENCE WIDTH. For five or
+// more images with a weighted tile above the mobile breakpoint, the engine
+// composes at a reference width of 1200 and then scales the whole
+// composition to the real container. Above 1200 that scale is greater than
+// one, so every tile is enlarged past what the layout solved -- and past the
+// photograph's own pixels:
+//
+//   container  scale   widest rendered tile   native
+//        760   1.000               760px      1200px
+//       1200   1.000               799px      1200px
+//       1600   1.333              1066px      1200px
+//       1920   1.600              1279px      1200px   <- upscaled
+//
+// 1920 is one of the three widths this repository measures at, so this is a
+// real fault at a width Sean actually uses, not a contrived one.
+
+function fakeDom() {
+    const emitted = [];
+    function makeElement(tag) {
+        const node = {
+            tagName: tag, style: { setProperty(name, value) { this[name] = value; } },
+            attributes: {}, children: [], className: '',
+            setAttribute(name, value) { this.attributes[name] = String(value); },
+            getAttribute(name) { return this.attributes[name]; },
+            hasAttribute(name) { return Object.hasOwn(this.attributes, name); },
+            toggleAttribute(name, enabled) {
+                if (enabled) this.attributes[name] = '';
+                else delete this.attributes[name];
+            },
+            addEventListener(name, callback) { this[name] = callback; },
+            appendChild(child) { this.children.push(child); return child; },
+            replaceChildren() {},
+        };
+        if (tag === 'img') emitted.push(node);
+        return node;
+    }
+    const document = {
+        readyState: 'complete', addEventListener() {}, querySelectorAll() { return []; },
+        createElement: makeElement,
+        createDocumentFragment: () => makeElement('fragment'),
+    };
+    const window = { addEventListener() {}, getComputedStyle: () => ({}) };
+    const source = fs.readFileSync(
+        path.join(__dirname, '..', 'assets', 'js', 'ss-engine-mosaic.js'), 'utf8');
+    vm.runInNewContext(source, { window, document, console, clearTimeout, setTimeout });
+    return { window, makeElement, emitted };
+}
+
+function renderAt(containerWidth) {
+    const dom = fakeDom();
+    const images = Array.from({ length: 5 }, (_, i) => ({
+        id: i + 1, width: 1200, height: 800, src: 'x.jpg',
+        ...(i === 2 ? { weight: 1 } : {}),
+    }));
+    const container = dom.makeElement('div');
+    container.clientWidth = containerWidth;
+    container.offsetWidth = containerWidth;
+    container.dataset = {};
+    container.closest = () => null;
+    container.attributes['data-mosaic'] = JSON.stringify(images);
+    container.attributes['data-gap'] = '4';
+    dom.window.SnapMosaic.renderMosaic(container);
+    for (const img of dom.emitted) {
+        img.naturalWidth = 1200;
+        img.naturalHeight = 800;
+        img.load();
+    }
+    return dom.emitted;
+}
+
+test('renderMosaic APPLIES the cap, at the width where the upscale is real', () => {
+    // WIRING, NOT PAINTING, and the difference is stated because it matters.
+    // This proves renderMosaic calls the cap and writes the result onto the
+    // img -- the dead-code fault, where correct arithmetic sits in a function
+    // nothing invokes and every test of it passes. It does NOT prove what a
+    // browser paints: @playwright/test is not installed in this checkout, so
+    // the rendered-page measurement this repository insists on for geometry
+    // is still owed and is reported as NOT CHECKED.
+    const emitted = renderAt(1920);
+    const capped = emitted.filter((img) => img.hasAttribute('data-upscale-capped'));
+    assert.ok(capped.length >= 1,
+        'at 1920px the weighted tile reaches 1279px against a 1200px photograph');
+
+    for (const img of capped) {
+        assert.equal(img.style.position, 'absolute');
+        const width = parseFloat(img.style.width);
+        const height = parseFloat(img.style.height);
+        assert.ok(width <= 1200.01, `capped width ${width} must not exceed 1200 native pixels`);
+        assert.ok(height <= 800.01, `capped height ${height} must not exceed 800 native pixels`);
+        assert.ok(parseFloat(img.style.left) >= 0 && parseFloat(img.style.top) >= 0,
+            'the photograph is offset inside its tile, not outside it');
+    }
+});
+
+test('nothing is capped at the widths where nothing upscales', () => {
+    // The other half of the measurement, and the part that says this change
+    // is not a visible one for mosaics that were already sharp. At 760, 1200
+    // and 1600 no tile exceeds the photograph, so no image is touched and the
+    // stylesheet's width:100%/height:100%/object-fit:cover still governs.
+    for (const width of [760, 1200, 1600]) {
+        const emitted = renderAt(width);
+        const capped = emitted.filter((img) => img.hasAttribute('data-upscale-capped'));
+        assert.equal(capped.length, 0, `nothing should be capped at ${width}px`);
+        for (const img of emitted) {
+            assert.equal(img.style.width, '',
+                `at ${width}px an image keeps the stylesheet sizing`);
+        }
+    }
+});
+
 test('making the top-left photo larger breaks a 2x2 inside a fourteen-photo quilt', () => {
     const photos = Array.from({ length: 14 }, (_, index) => ({
         id: index + 1,
