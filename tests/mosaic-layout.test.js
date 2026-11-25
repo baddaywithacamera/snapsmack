@@ -493,9 +493,16 @@ function fakeDom() {
     const emitted = [];
     function makeElement(tag) {
         const node = {
-            tagName: tag, style: {}, attributes: {}, children: [], className: '',
+            tagName: tag, style: { setProperty(name, value) { this[name] = value; } },
+            attributes: {}, children: [], className: '',
             setAttribute(name, value) { this.attributes[name] = String(value); },
             getAttribute(name) { return this.attributes[name]; },
+            hasAttribute(name) { return Object.hasOwn(this.attributes, name); },
+            toggleAttribute(name, enabled) {
+                if (enabled) this.attributes[name] = '';
+                else delete this.attributes[name];
+            },
+            addEventListener(name, callback) { this[name] = callback; },
             appendChild(child) { this.children.push(child); return child; },
             replaceChildren() {},
         };
@@ -528,6 +535,11 @@ function renderAt(containerWidth) {
     container.attributes['data-mosaic'] = JSON.stringify(images);
     container.attributes['data-gap'] = '4';
     dom.window.SnapMosaic.renderMosaic(container);
+    for (const img of dom.emitted) {
+        img.naturalWidth = 1200;
+        img.naturalHeight = 800;
+        img.load();
+    }
     return dom.emitted;
 }
 
@@ -540,7 +552,7 @@ test('renderMosaic APPLIES the cap, at the width where the upscale is real', () 
     // the rendered-page measurement this repository insists on for geometry
     // is still owed and is reported as NOT CHECKED.
     const emitted = renderAt(1920);
-    const capped = emitted.filter((img) => img.attributes['data-upscale-capped'] === '1');
+    const capped = emitted.filter((img) => img.hasAttribute('data-upscale-capped'));
     assert.ok(capped.length >= 1,
         'at 1920px the weighted tile reaches 1279px against a 1200px photograph');
 
@@ -562,10 +574,10 @@ test('nothing is capped at the widths where nothing upscales', () => {
     // stylesheet's width:100%/height:100%/object-fit:cover still governs.
     for (const width of [760, 1200, 1600]) {
         const emitted = renderAt(width);
-        const capped = emitted.filter((img) => img.attributes['data-upscale-capped'] === '1');
+        const capped = emitted.filter((img) => img.hasAttribute('data-upscale-capped'));
         assert.equal(capped.length, 0, `nothing should be capped at ${width}px`);
         for (const img of emitted) {
-            assert.equal(img.style.width, undefined,
+            assert.equal(img.style.width, '',
                 `at ${width}px an image keeps the stylesheet sizing`);
         }
     }

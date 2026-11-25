@@ -406,6 +406,46 @@
         };
     }
 
+    function fitMosaicPhoto(img, item, image) {
+        var triedOriginal = false;
+        function tryOriginal() {
+            if (triedOriginal || !image.full || image.full === image.src) return;
+            triedOriginal = true;
+            // Load offscreen so a missing original cannot hide a usable derivative.
+            var original = new Image();
+            original.onload = function () {
+                if (!img.isConnected || !original.naturalWidth || !original.naturalHeight) return;
+                img.src = original.src;
+            };
+            original.src = image.full;
+        }
+        img.addEventListener('error', tryOriginal);
+        img.addEventListener('load', function () {
+            // The shared lazy loader replaces its placeholder before firing load.
+            if (img.hasAttribute('data-src') || !img.naturalWidth || !img.naturalHeight) return;
+            var style = window.getComputedStyle(item);
+            var width = parseFloat(item.style.width);
+            var height = parseFloat(item.style.height);
+            if (style.boxSizing === 'border-box') {
+                width -= parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
+                height -= parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+            }
+            if (width <= 0 || height <= 0) return;
+            var fit = noUpscaleFit(width, height, img.naturalWidth, img.naturalHeight);
+
+            img.style.position = fit.capped ? 'absolute' : '';
+            img.style.left = fit.capped ? fit.left + 'px' : '';
+            img.style.top = fit.capped ? fit.top + 'px' : '';
+            img.style.width = fit.capped ? fit.width + 'px' : '';
+            img.style.height = fit.capped ? fit.height + 'px' : '';
+            img.toggleAttribute('data-upscale-capped', fit.capped);
+            var hoverScale = fit.capped ? 1 : Math.min(1.03, img.naturalWidth / width, img.naturalHeight / height);
+            img.style.setProperty('--mosaic-hover-scale', hoverScale);
+
+            if (fit.capped) tryOriginal();
+        });
+    }
+
     function boundedSingle(image, y, containerWidth) {
         var ar = imageAR(image);
         var sourceWidth = Math.max(1, Number(image.width) || MAX_SECTION_HEIGHT);
@@ -538,13 +578,6 @@
             item.style.width = (tile.width * scale).toFixed(2) + 'px';
             item.style.height = (tile.height * scale).toFixed(2) + 'px';
 
-            if (image.lazy) {
-                img.setAttribute('data-src', image.src);
-                img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                img.className = 'ss-lazy';
-            } else {
-                img.src = image.src;
-            }
             img.alt = image.alt || '';
             img.loading = 'lazy';
             img.setAttribute('data-asset-id', image.id || '');
@@ -559,22 +592,13 @@
             }
             img.style.objectPosition = focalValue(image.focusX) + '% ' + focalValue(image.focusY) + '%';
 
-            // Cap at 1:1 against the RENDERED box, which is the tile scaled to
-            // the real container -- not the reference width the layout was
-            // solved at. A cap computed before the scale would be right only
-            // at one viewport width.
-            var fit = noUpscaleFit(tile.width * scale, tile.height * scale,
-                                   image.width, image.height);
-            if (fit.capped) {
-                // position:absolute against .mosaic-item, which is already
-                // positioned, so this needs no change to the stylesheet and
-                // leaves the hover transform free to do its own job.
-                img.style.position = 'absolute';
-                img.style.left = fit.left.toFixed(2) + 'px';
-                img.style.top = fit.top.toFixed(2) + 'px';
-                img.style.width = fit.width.toFixed(2) + 'px';
-                img.style.height = fit.height.toFixed(2) + 'px';
-                img.setAttribute('data-upscale-capped', '1');
+            fitMosaicPhoto(img, item, image);
+            if (image.lazy) {
+                img.setAttribute('data-src', image.src);
+                img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                img.className = 'ss-lazy';
+            } else {
+                img.src = image.src;
             }
             media.appendChild(img);
             fragment.appendChild(item);
