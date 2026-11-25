@@ -924,7 +924,7 @@ body.archive-page #scroll-stage {
     max-width: 1600px;
     width: 100%;
     align-content: start;
-    align-items: start;
+    align-items: center;
     justify-items: center;
 }
 
