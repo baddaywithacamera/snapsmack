@@ -189,7 +189,7 @@ if ($is_ajax && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']
             $emphasis = 'natural';
         }
         $layout    = (string)($_POST['layout'] ?? 'asymmetric');
-        if (!in_array($layout, ['asymmetric', 'columns', 'rows', 'square'], true)) {
+        if (!in_array($layout, ['asymmetric', 'columns', 'rows', 'square', 'masonry', 'one-column'], true)) {
             $layout = 'asymmetric';
         }
 
@@ -290,7 +290,7 @@ include 'core/sidebar.php';
     $mosaic_emph  = (string)($editing['emphasis'] ?? ($editing ? 'natural' : 'landscape'));
     if (!in_array($mosaic_emph, ['natural', 'balanced', 'landscape', 'portrait'], true)) $mosaic_emph = 'natural';
     $mosaic_layout = (string)($editing['layout'] ?? 'asymmetric');
-    if (!in_array($mosaic_layout, ['asymmetric', 'columns', 'rows', 'square'], true)) $mosaic_layout = 'asymmetric';
+    if (!in_array($mosaic_layout, ['asymmetric', 'columns', 'rows', 'square', 'masonry', 'one-column'], true)) $mosaic_layout = 'asymmetric';
     ?>
 
     <div class="header-row header-row--ruled">
@@ -340,6 +340,8 @@ include 'core/sidebar.php';
                         <select id="mosaic-layout" style="width:230px;">
                             <?php foreach ([
                                 'columns'    => 'Columns (portraits stand tallest)',
+                                'masonry'    => 'Gallery (three columns)',
+                                'one-column' => 'Gallery (one full-width column)',
                                 'rows'       => 'Rows (landscapes lead)',
                                 'square'     => 'Square (even cropped grid)',
                                 'asymmetric' => 'Asymmetric (MOSAIC quilt)',
@@ -859,6 +861,8 @@ include 'core/sidebar.php';
             container.removeAttribute('data-mosaic');
             container.removeAttribute('data-emphasis');
             container.style.setProperty('--ss-gap', gap + 'px');
+            if (layout === 'masonry') container.style.setProperty('--ss-cols', '3');
+            if (layout === 'one-column') container.style.setProperty('--ss-cols', '1');
             var html = '';
             images.forEach(function (im) {
                 var dims = (im.width && im.height)
@@ -869,7 +873,9 @@ include 'core/sidebar.php';
             container.innerHTML = html;
 
             // Square is native CSS Grid — no engine call. The other two relayout.
-            if (layout === 'columns' && window.SSColumns) window.SSColumns.init(container);
+            if (['columns', 'masonry', 'one-column'].includes(layout) && window.SSColumns) {
+                window.SSColumns.init(container);
+            }
             if (layout === 'rows'    && window.SSRows)    window.SSRows.init(container);
         }
 

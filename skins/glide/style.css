@@ -1352,6 +1352,8 @@ a.logo-area,
     margin: 40px auto;
     padding: 0 24px;
 }
+.glide-archive-item.ss-tile-like-host { position: relative; }
+
 .glide-archive-item a {
     display: block;
     color: inherit;

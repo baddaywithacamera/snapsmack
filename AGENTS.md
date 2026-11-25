@@ -93,8 +93,10 @@ him the month.
   now, which is part of why it happened.
 - **Do not remove audit evidence.** `opaudits/` and its `evidence/` folders
   are the record, including the parts that are unflattering.
-- **Skins are for desktop and large tablet.** PHOTOGRAM and TELEGRAM are the
-  only two phone skins. This is throwback software; a phone layout is an
+- **Skins are for desktop and large tablet.** PHOTOGRAM and TELEGRAM are mobile
+  skins, handled individually and excluded from bulk desktop changes and
+  sweeps. Check them at phone widths. THE GRID is a normal GRAMOFSMACK skin.
+  This is throwback software; a phone layout is an
   anachronism everywhere else. Measure at 1920, 1440 and 1024. A finding at
   390px on any other skin is not a defect, and chasing one has already cost
   two published skin versions.

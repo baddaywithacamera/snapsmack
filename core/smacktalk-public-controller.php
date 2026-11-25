@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK_EOF_HEADER — last non-empty line: // ===== SNAPSMACK EOF =====
+ * SNAPSMACK_EOF_HEADER â€” last non-empty line: // ===== SNAPSMACK EOF =====
  * SNAPSMACK - Public SMACKTALK Controller
  *
  * Owns request interpretation, publication policy, data access and derived
@@ -299,7 +299,8 @@ function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base, int $category
             }
         }
         if ($thumb === '') continue;
-        $tiles[] = ['full' => $base . $full, 'thumb' => $base . $thumb,
+        $tiles[] = ['image_id' => (int)($image['id'] ?? 0),
+            'full' => $base . $full, 'thumb' => $base . $thumb,
             'title' => (string)($image['img_title'] ?? ''),
             'width' => max(1, (int)($image['img_width'] ?? 3)),
             'height' => max(1, (int)($image['img_height'] ?? 2))];

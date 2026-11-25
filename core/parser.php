@@ -439,7 +439,7 @@ class SnapSmack {
             // three. Square needs no JS at all — it is native CSS Grid.
             $layout = (string)($mosaic['layout'] ?? 'asymmetric');
             $templates = ['one-left', 'one-right', 'three-across', 'one-top'];
-            if (!in_array($layout, array_merge(['asymmetric', 'columns', 'rows', 'square'], $templates), true)) {
+            if (!in_array($layout, array_merge(['asymmetric', 'columns', 'rows', 'square', 'masonry', 'one-column'], $templates), true)) {
                 $layout = 'asymmetric';
             }
 
@@ -501,6 +501,8 @@ class SnapSmack {
             $container = $layout === 'rows'   ? 'ss-scroll-wall'
                        : ($layout === 'square' ? 'ss-square-wall' : 'ss-masonry');
             $style = '--ss-gap:' . $gap . 'px;';
+            if ($layout === 'masonry') $style .= '--ss-cols:3;';
+            if ($layout === 'one-column') $style .= '--ss-cols:1;';
 
             $tiles = '';
             foreach ($images as $im) {
@@ -514,7 +516,9 @@ class SnapSmack {
                         . $dims . ' loading="lazy"></a>';
             }
 
-            return '<div class="' . $container . ' snap-mosaic-wall" style="' . $style . '">'
+            $galleryClass = in_array($layout, ['masonry', 'one-column'], true)
+                ? ' snap-portfolio-gallery snap-portfolio-gallery--' . $layout : '';
+            return '<div class="' . $container . ' snap-mosaic-wall' . $galleryClass . '" style="' . $style . '">'
                 . $tiles . '</div>';
         }, $content);
     }

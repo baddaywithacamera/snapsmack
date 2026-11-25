@@ -6,7 +6,7 @@
  *              so the SmackPress desktop tool can pull posts from WordPress and mark
  *              migrated posts as private. Authenticate with a WordPress Application Password.
  *              Delete this plugin once migration is complete.
- * Version:     1.1.2
+ * Version:     1.1.3
  * Author:      SnapSmack
  * License:     GPL-2.0-or-later
  *
@@ -432,7 +432,20 @@ function smackpress_expand_foogallery( string $content, array &$images ): string
             return $original;
         }
         $images += $resolved;
-        return "[smackpress-gallery]\n" . implode( "\n", $lines ) . "\n[/smackpress-gallery]";
+        $geometry = '';
+        if ( ( $gallery->gallery_template ?? '' ) === 'masonry' && method_exists( $gallery, 'get_meta' ) ) {
+            $source_layout = (string) $gallery->get_meta( 'masonry_layout', 'fixed' );
+            $source_width  = (int) $gallery->get_meta( 'masonry_thumbnail_width', 250 );
+            $source_gap    = max( 0, min( 20, (int) $gallery->get_meta( 'masonry_gutter_width', 10 ) ) );
+            // Fixed tiles which already fill the destination's reading measure
+            // keep a single column. Other masonry galleries use the owner-editable
+            // three-column gallery preset on import.
+            $reading_width = 800;
+            $layout = $source_layout === 'fixed' && 2 * $source_width + $source_gap > $reading_width
+                ? 'one-column' : 'masonry';
+            $geometry = ' layout="' . $layout . '" gap="' . $source_gap . '"';
+        }
+        return "[smackpress-gallery" . $geometry . "]\n" . implode( "\n", $lines ) . "\n[/smackpress-gallery]";
     };
 
     $content = preg_replace_callback(

@@ -3,16 +3,13 @@
  * SNAPSMACK - Shared Search Engine
  *
  * Full-text image search across img_title, img_description, hashtag slugs, and
- * colour families. Lifted out of the (locked) Photogram skin so every skin can
+ * colour families. Lifted out of the mobile PHOTOGRAM skin so every skin can
  * share ONE implementation instead of each carrying its own copy.
  *
  * Consumers:
  *   - The carousel GRAM skins (The Grid, AURORA, PARADE) via their search.php
  *   - 52 Card Pickup (solo) via its search.php
  *   - index.php routes ?q= here through the skin's search.php template.
- *
- * Photogram keeps its own skins/photogram/search.php for now (locked skin —
- * not refactored). It can be migrated onto this helper later.
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====

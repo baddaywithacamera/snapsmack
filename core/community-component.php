@@ -52,18 +52,12 @@ require_once __DIR__ . '/secret-store.php'; // SECAUDIT 047
 if (!snap_community_ready()) return;
 
 // --- MANIFEST FLAGS ---
-// Skin manifest may override global settings per-skin.
+// The skin can place the control; the owner decides whether likes are on.
 // $skin_manifest is loaded by the declarative core loader before layout.php runs.
 $manifest_data = $skin_manifest ?? [];
 
 $show_comments  = (string)($manifest_data['community_comments']  ?? $settings['community_comments_enabled']  ?? '1') === '1';
-$show_likes     = (string)($manifest_data['community_likes']     ?? $settings['community_likes_enabled']     ?? '1') !== '0';
-
-// If the community dock is active (migration has run), it handles likes.
-// The component becomes comments-only to avoid showing likes in two places.
-if (array_key_exists('community_dock_position', $settings)) {
-    $show_likes     = false;
-}
+$show_likes     = (string)($settings['community_likes_enabled'] ?? '1') !== '0';
 
 // If the calling skin handles likes inline (e.g. Photogram), suppress them here.
 if (!empty($pg_suppress_likes)) {
