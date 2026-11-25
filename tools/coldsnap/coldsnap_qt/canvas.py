@@ -45,7 +45,7 @@ from PySide6.QtWidgets import (
 from . import theme
 from . import biggie
 from .mosaic_browser import MosaicBrowser
-from .mosaic_clusters import uniform_clusters
+from .mosaic_clusters import break_cluster_weights, uniform_clusters
 from .mosaic_site_layout import compute_layout as site_compute_layout
 from .photo_loader import PhotoLoader
 
@@ -1943,9 +1943,18 @@ class BiggieCanvas(QTextEdit):
         return True
 
     def _break_inline_cluster(self, pos, identities):
-        for identity in identities:
-            if self._edit_inline_photo(pos, identity, 'size', 1):
-                return
+        hit = self._object_at(pos)
+        if not hit or hit[0] != 'mosaic':
+            return
+        data = dict(hit[1])
+        _paths, images = _mosaic_images(self, data)
+        weights = {str(image['identity']): image['weight'] for image in images if image['weight']}
+        changes = break_cluster_weights(
+            (str(identity) for identity in identities), lambda identity: weights.get(identity, 0))
+        if changes:
+            weights.update(changes)
+            data['weights'] = {identity: weight for identity, weight in weights.items() if weight}
+            self._insert_object('mosaic', data, replace_at=hit[2])
 
     def _prompt_image_caption(self, pos: int):
         hit = self._object_at(pos)

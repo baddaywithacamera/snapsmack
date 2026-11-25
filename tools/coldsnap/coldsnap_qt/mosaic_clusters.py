@@ -59,4 +59,19 @@ def uniform_clusters(cells, gap=4):
     return clusters
 
 
+def break_cluster_weights(identities, weight_for):
+    """Choose contrasting sizes without changing the authored order."""
+    identities = list(dict.fromkeys(identities))
+    lead = next((identity for identity in identities if weight_for(identity) < 2), None)
+    changes = {} if lead is None else {lead: max(1, weight_for(lead) + 1)}
+    # Promoting only one photo in four equal tiles can leave a new row of
+    # three equal tiles. Give the other end of that cluster a different size.
+    if len(identities) >= 4 or not changes:
+        other = next((identity for identity in reversed(identities)
+                      if identity != lead and weight_for(identity) > -1), None)
+        if other is not None:
+            changes[other] = weight_for(other) - 1
+    return changes
+
+
 # ===== SNAPSMACK EOF =====

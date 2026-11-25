@@ -39,7 +39,7 @@ from .canvas import mosaic_cells as _mosaic_cells
 from .widgets import (Accordion, Card, build_rail, hint, field_label,
                       big_button, load_pixmap)
 from .mosaic_browser import MosaicBrowser
-from .mosaic_clusters import uniform_clusters
+from .mosaic_clusters import break_cluster_weights, uniform_clusters
 from .photo_edits import render_non_destructive
 from .slapper_handoff import (ReturnWatch, find_executable,
                               focus_window, launch as launch_slapper)
@@ -1953,15 +1953,18 @@ class TakeMode(QWidget):
         def break_clusters(clusters):
             changed = False
             for rows in clusters:
-                for row in rows:
-                    bi = display_order[row]
-                    weight = weights_by_idx.get(bi, 0)
-                    if bi in checked_set and weight < 2:
-                        weights_by_idx[bi] = max(1, weight + 1)
-                        if not changed:
-                            focus_after_resize[0] = row
-                        changed = True
-                        break
+                selected = {row: display_order[row] for row in rows if display_order[row] in checked_set}
+                changes = break_cluster_weights(
+                    selected, lambda row: weights_by_idx.get(selected[row], 0))
+                for row, weight in changes.items():
+                    bi = selected[row]
+                    if weight:
+                        weights_by_idx[bi] = weight
+                    else:
+                        weights_by_idx.pop(bi, None)
+                    if not changed:
+                        focus_after_resize[0] = row
+                    changed = True
             if changed:
                 refresh_preview()
             return changed

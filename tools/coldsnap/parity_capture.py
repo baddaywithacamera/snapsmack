@@ -219,23 +219,14 @@ def run(output_dir: str) -> int:
             font_size=160,
         )
         labelled.save(name)
-    canvas = BiggieCanvas()
-    canvas.set_preview_width(240)
-    canvas.resize(260, 680)
-    canvas.set_bucket(span_paths)
-    canvas.insert_mosaic([1, 2, 3, 4], "rows")
-    dialog_requests = []
-    canvas.mosaicEditRequested.connect(lambda *args: dialog_requests.append(args))
-    canvas.show()
-
-    def inline_boxes():
+    def inline_boxes(canvas):
         for position, (tiles, buttons) in canvas._inline_mosaic_hits.items():
             if len(tiles) == 4:
                 return position, {photo: list(box.getRect())
                                   for photo, (_, box) in tiles.items()}, buttons
         return None, {}, []
 
-    def save_inline_frame(boxes, name):
+    def save_inline_frame(canvas, boxes, name):
         def all_photos_painted():
             frame = canvas.grab().toImage()
             ratio = frame.devicePixelRatio()
@@ -249,21 +240,35 @@ def run(output_dir: str) -> int:
 
         return wait_for(all_photos_painted)
 
-    inline = {}
-    if wait_for(lambda: any(len(ids) == 4 for _, ids in inline_boxes()[2])):
-        position, before, buttons = inline_boxes()
-        inline["before"] = before
-        cluster_button = next(box for box, ids in buttons if len(ids) == 4)
-        inline["before_capture"] = save_inline_frame(before, "06-inline-2x2-before.png")
-        QTest.mouseClick(canvas.viewport(), Qt.LeftButton, pos=cluster_button.center())
-        if wait_for(lambda: inline_boxes()[1] and inline_boxes()[1] != before):
-            _, after, badges = inline_boxes()
-            inline["after"] = after
-            inline["after_capture"] = save_inline_frame(after, "07-inline-2x2-after.png")
-            inline["stored"] = canvas._object_at(position)[1]
-            inline["removed_original_cluster"] = all(len(ids) < 4 for _, ids in badges)
-    wait_for(lambda: all(not loader._pending for loader in canvas.findChildren(PhotoLoader)))
-    canvas.close()
+    def capture_inline_break(width, layout, before_name, after_name):
+        canvas = BiggieCanvas()
+        canvas.set_preview_width(width)
+        canvas.resize(width + 20, 1100)
+        canvas.set_bucket(span_paths)
+        canvas.insert_mosaic([1, 2, 3, 4], layout)
+        dialog_requests = []
+        canvas.mosaicEditRequested.connect(lambda *args: dialog_requests.append(args))
+        canvas.show()
+        result = {}
+        if wait_for(lambda: any(len(ids) == 4 for _, ids in inline_boxes(canvas)[2])):
+            position, before, buttons = inline_boxes(canvas)
+            result["before"] = before
+            cluster_button = next(box for box, ids in buttons if len(ids) == 4)
+            result["before_capture"] = save_inline_frame(canvas, before, before_name)
+            QTest.mouseClick(canvas.viewport(), Qt.LeftButton, pos=cluster_button.center())
+            if wait_for(lambda: inline_boxes(canvas)[1] and inline_boxes(canvas)[1] != before):
+                _, after, badges = inline_boxes(canvas)
+                result["after"] = after
+                result["after_capture"] = save_inline_frame(canvas, after, after_name)
+                result["stored"] = canvas._object_at(position)[1]
+                result["removed_original_cluster"] = not badges
+        result["opened_dialog"] = bool(dialog_requests)
+        wait_for(lambda: all(not loader._pending for loader in canvas.findChildren(PhotoLoader)))
+        canvas.close()
+        return result
+
+    inline = capture_inline_break(240, "rows", "06-inline-2x2-before.png", "07-inline-2x2-after.png")
+    inline_row = capture_inline_break(760, "columns", "08-inline-row-before.png", "09-inline-row-after.png")
     before = inline.get("before", {})
     after = inline.get("after", {})
     checks.update({
@@ -272,11 +277,18 @@ def run(output_dir: str) -> int:
             and len({box[1] for box in before.values()}) == 2,
         "inline_break_changes_target_size": set(before) == set(after) == {1, 2, 3, 4}
             and after[1][2] > before[1][2],
-        "inline_break_changed_saved_weight_with_no_dialog": not dialog_requests
+        "inline_break_changed_saved_weight_with_no_dialog": not inline["opened_dialog"]
             and inline.get("stored", {}).get("order") == [1, 2, 3, 4]
-            and inline.get("stored", {}).get("weights") == {"1": 1},
+            and inline.get("stored", {}).get("weights") == {"1": 1, "4": -1},
         "inline_break_removes_original_cluster": bool(inline.get("removed_original_cluster")),
         "inline_break_captures": bool(inline.get("before_capture") and inline.get("after_capture")),
+        "inline_row_starts_with_four_equal_tiles": len(inline_row.get("before", {})) == 4
+            and len({tuple(box[1:]) for box in inline_row["before"].values()}) == 1,
+        "inline_row_break_clears_every_cluster": bool(inline_row.get("removed_original_cluster"))
+            and inline_row.get("stored", {}).get("order") == [1, 2, 3, 4]
+            and inline_row.get("stored", {}).get("weights") == {"1": 1, "4": -1}
+            and not inline_row["opened_dialog"],
+        "inline_row_break_captures": bool(inline_row.get("before_capture") and inline_row.get("after_capture")),
     })
 
     mode._remote_post_id = 42
@@ -291,6 +303,7 @@ def run(output_dir: str) -> int:
         "tile_badges": tile_badges,
         "mosaic_resize": span,
         "inline_break": inline,
+        "inline_row_break": inline_row,
         "pass": all(value for key, value in checks.items() if key != "mosaic_thumbnail_count"),
     }
     (out / "parity.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
