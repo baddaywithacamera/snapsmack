@@ -113,7 +113,8 @@ _ALT_ATTR  = re.compile(r"""\balt\s*=\s*["']([^"']*)["']""", re.I)
 # companion's gallery expansion: [smackpress-image id="12" url="https://…"]
 _SP_IMAGE  = re.compile(r"""\[smackpress-image\s+id=["'](\d+)["']\s+url=["']([^"']+)["']\s*\]""", re.I)
 _SP_GALLERY = re.compile(
-    r"\[smackpress-gallery\](.*?)\[/smackpress-gallery\]", re.I | re.S)
+    r'\[smackpress-gallery(?:\s+layout="(masonry|one-column)"\s+gap="(\d{1,2})")?\]'
+    r"(.*?)\[/smackpress-gallery\]", re.I | re.S)
 # an <img> wrapped in <a>…</a> and/or <figure>…</figure> (with optional figcaption)
 _WRAPPED   = re.compile(
     r"(?:<figure\b[^>]*>\s*)?(?:<a\b[^>]*>\s*)?(<img\b[^>]*>)(?:\s*</a>)?"
@@ -271,7 +272,7 @@ def rewrite_body(content: str, images: List[dict], *,
 
     body = content or ""
 
-    def mosaic_marker(positions) -> str:
+    def mosaic_marker(positions, layout="asymmetric", gap=None) -> str:
         """Leave imported mosaics automatic unless the author chose a layout.
 
         The shared mosaic engine varies three-photo compositions by page and
@@ -280,16 +281,19 @@ def rewrite_body(content: str, images: List[dict], *,
         placement.
         """
         positions = list(positions)
-        return "\n[mosaic=%s layout=asymmetric%s]\n" % (
+        return "\n[mosaic=%s layout=%s%s%s]\n" % (
             ",".join(str(position) for position in positions),
-            " shuffle" if gallery_shuffle else "")
+            layout,
+            " shuffle" if gallery_shuffle else "",
+            f" gap={min(20, int(gap))}" if gap is not None else "")
 
     # Classic [gallery] shortcodes are expanded by the companion inside this
     # explicit boundary.  Resolve every member through slot() first, then carry
     # the whole authored group forward as one native mosaic placeholder.
     def repl_sp_gallery(match):
-        positions = [slot(item.group(2)) for item in _SP_IMAGE.finditer(match.group(1))]
-        return mosaic_marker(positions) if positions else ""
+        layout, gap, content = match.groups()
+        positions = [slot(item.group(2)) for item in _SP_IMAGE.finditer(content)]
+        return mosaic_marker(positions, (layout or "asymmetric").lower(), gap) if positions else ""
 
     body = _SP_GALLERY.sub(repl_sp_gallery, body)
     body = _SP_IMAGE.sub(repl_sp, body)

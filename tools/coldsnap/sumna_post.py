@@ -952,7 +952,7 @@ class SmacktalkPoster:
     # Every layout name smackpress/mosaics accepts. The old pattern only knew the
     # four three-photo layouts, so a mosaic built as Columns / Rows / Square /
     # Asymmetric never matched and went to the site as literal marker text.
-    _MOSAIC_LAYOUTS = ("asymmetric", "columns", "rows", "square",
+    _MOSAIC_LAYOUTS = ("asymmetric", "columns", "rows", "square", "masonry", "one-column",
                        "one-left", "one-right", "three-across", "one-top")
     # `shuffle` (optional, after the layout) means the owner wants this gallery
     # SHOWN in a random order. It is the only channel between the WordPress
@@ -964,6 +964,7 @@ class SmacktalkPoster:
         r'\[mosaic(?:=\s*([0-9]+(?:\s*,\s*[0-9]+)*))?'
         r'(?:\s+layout=([a-z-]+))?'
         r'(?:\s+(shuffle))?'
+        r'(?:\s+gap=([0-9]{1,2}))?'
         r'(?::\s*(?:bucket|new|auto)\s*)?\]', re.I)
 
     def create_mosaic(self, image_ids, title="Mosaic", gap=4,
@@ -1067,6 +1068,7 @@ class SmacktalkPoster:
             selection = match.group(1)
             layout = (match.group(2) or 'asymmetric').lower()
             shuffle = bool(match.group(3))
+            gallery_gap = _gap_value(match.group(4)) if match.group(4) is not None else gap
             if layout not in self._MOSAIC_LAYOUTS:
                 layout = 'asymmetric'
             chosen = list(image_ids)
@@ -1077,7 +1079,7 @@ class SmacktalkPoster:
             if not chosen:
                 return ''
             mid, shortcode = self.create_mosaic(
-                chosen, title=(draft.title or "Mosaic"), gap=gap, layout=layout,
+                chosen, title=(draft.title or "Mosaic"), gap=gallery_gap, layout=layout,
                 gallery_shuffle=shuffle)
             mosaic_ids.append(mid)
             return shortcode
