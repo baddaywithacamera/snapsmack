@@ -615,6 +615,8 @@ try {
             'skin_canvas_width_option' => (string)($_active_manifest['features']['canvas_width_option'] ?? ''),
             'archive_layout' => (string)($settings['archive_layout'] ?? 'square'),
             'archive_thumb_style' => (string)($settings['archive_thumb_style'] ?? 'cropped'),
+            'archive_filter_variant' => (($_active_manifest['features']['archive_filter_variant'] ?? '') === 'legacy-selects')
+                ? 'legacy-selects' : 'panel',
             'archive_grid' => snapsmack_archive_grid_metrics(
                 $settings, (string)($settings['archive_thumb_style'] ?? 'cropped')),
             'search_dock' => snapsmack_gram_search_dock_presentation($settings),
