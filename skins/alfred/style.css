@@ -675,6 +675,26 @@ input[type="button"],
     font-family: 'Montserrat', 'Helvetica Neue', 'Helvetica', sans-serif;
 }
 
+/* A menu-configured search takes the place of ALFRED's default search. */
+.alfred-v2 .main-menu:has(> .header-search:not(.alfred-search-fallback)) > .alfred-search-fallback {
+    display: none;
+}
+
+.alfred-v2 .main-menu > .header-search:not(.alfred-search-fallback) {
+    width: 182px;
+}
+
+.alfred-v2 .header-search .search-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    margin-inline: auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2px;
+    stroke-linecap: round;
+}
+
 .alfred-v2 .header-search .search-form {
     display: flex;
     align-items: center;
