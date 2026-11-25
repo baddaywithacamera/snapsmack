@@ -1145,6 +1145,7 @@ body.archive-page #scroll-stage {
 .chap-archive-grid[class*="archive-thumbs-"] {
   grid-template-columns: repeat(var(--grid-cols, 4), minmax(0, var(--thumb-width, 250px)));
   justify-content: center;
+  align-items: center;
 }
 
 .chap-archive-empty {
