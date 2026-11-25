@@ -10,6 +10,7 @@ if (!in_array('sqlite', PDO::getAvailableDrivers(), true)) {
 
 require_once __DIR__ . '/../core/trusted-html.php';
 require_once __DIR__ . '/../core/parser.php';
+require_once __DIR__ . '/../core/public-runtime.php';
 
 $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $pdo->exec("CREATE TABLE snap_mosaics (
@@ -42,6 +43,18 @@ foreach ([1 => 3, 2 => 1, 3 => null] as $id => $columns) {
     preg_match_all('~href="[^"]*/(panorama|portrait)\.jpg"~', $html, $matches);
     $check($matches[1] === ['panorama', 'portrait'], 'Image order changed');
     $check(str_contains($html, 'data-w="2100" data-h="700"'), 'Native panorama ratio lost');
+    if ($columns !== null) {
+        $trusted = snapsmack_trusted_html($html);
+        $safe = (string)$trusted;
+        $check(str_contains($safe, 'data-columns="' . $columns . '"')
+            && str_contains($safe, 'data-gap="10"')
+            && str_contains($safe, 'data-w="2100" data-h="700"'),
+            'Strict rendering removed portfolio geometry');
+        $check(!str_contains($safe, ' style='), 'Portfolio geometry reopened inline style');
+        $assets = snapsmack_assets_required_by_content(['rendered_content' => $trusted]);
+        $check(in_array('asset:public:ss-engine-columns', $assets['scripts'], true),
+            'Strict portfolio did not request the columns renderer');
+    }
 }
 echo "PASS gallery masonry and full-width layouts preserve authored order.\n";
 // ===== SNAPSMACK EOF =====

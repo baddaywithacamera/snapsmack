@@ -755,6 +755,8 @@ function snapsmack_assets_required_by_content(array $response): array
         }
     };
     $collect($response['item'] ?? null);
+    $rendered = $response['rendered_content'] ?? '';
+    if (is_string($rendered) || $rendered instanceof SnapTrustedHtml) $haystack .= (string)$rendered;
     foreach (['items', 'photographs', 'slider_items', 'filmstrip'] as $group) {
         if (!is_array($response[$group] ?? null)) continue;
         foreach ($response[$group] as $entry) $collect($entry);
@@ -762,6 +764,9 @@ function snapsmack_assets_required_by_content(array $response): array
     if ($haystack === '') return ['scripts' => [], 'styles' => []];
 
     $scripts = $styles = [];
+    if (strpos($haystack, 'snap-portfolio-gallery') !== false) {
+        $scripts[] = 'asset:public:ss-engine-columns';
+    }
     if (strpos($haystack, 'snap-mosaic-wall') !== false) {
         // Handles copied from core/admin-content-preview.php:27-30.
         $scripts[] = 'asset:public:ss-engine-mosaic';

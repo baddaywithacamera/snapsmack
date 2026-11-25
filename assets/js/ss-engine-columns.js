@@ -92,8 +92,12 @@
 
     function layout(grid) {
         var cs = window.getComputedStyle(grid);
-        var cols = Math.max(1, Math.round(cssNum(cs, '--ss-cols', DEFAULT_COLS)));
-        var gap = Math.max(0, cssNum(cs, '--ss-gap', DEFAULT_GAP));
+        var columnsData = grid.getAttribute('data-columns');
+        var defaultCols = columnsData === '1' || columnsData === '3' ? Number(columnsData) : DEFAULT_COLS;
+        var cols = Math.max(1, Math.round(cssNum(cs, '--ss-cols', defaultCols)));
+        var gapData = parseInt(grid.getAttribute('data-gap'), 10);
+        var defaultGap = Number.isFinite(gapData) ? Math.max(0, Math.min(100, gapData)) : DEFAULT_GAP;
+        var gap = Math.max(0, cssNum(cs, '--ss-gap', defaultGap));
         var bw = Math.max(0, cssNum(cs, '--scroll-border-width', 0));
         var padL = cssNum(cs, 'padding-left', 0);
         var padR = cssNum(cs, 'padding-right', 0);

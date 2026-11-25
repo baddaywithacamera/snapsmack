@@ -320,6 +320,10 @@ try {
                 if (isset($_smacktalk['rendered_content'])) {
                     $_smacktalk['rendered_content'] = snapsmack_trusted_html((string)$_smacktalk['rendered_content']);
                 }
+                $_registered_skin_assets = snapsmack_merge_registered_assets(
+                    $_registered_skin_assets,
+                    snapsmack_assets_required_by_content($_smacktalk)
+                );
                 $_smacktalk['navigation'] = $skin_view['navigation'] ?? [];
                 if (in_array('smack-tile-like', (array)($_active_manifest['require_scripts'] ?? []), true)) {
                     require_once __DIR__ . '/core/tile-like-control.php';

@@ -10,6 +10,7 @@ require_once __DIR__ . '/skin-presentation.php';
 require_once __DIR__ . '/custom-code-policy.php';
 require_once __DIR__ . '/asset-registry.php';
 require_once __DIR__ . '/smacktalk-public-controller.php';
+require_once __DIR__ . '/public-runtime.php';
 
 /** Called only after the preview endpoint has enforced the admin session. */
 function snapsmack_admin_content_preview(PDO $pdo, array $settings, array $input): string
@@ -71,6 +72,10 @@ function snapsmack_admin_content_preview(PDO $pdo, array $settings, array $input
             'rendered_content' => snapsmack_trusted_html($rendered), 'comments_enabled' => false];
     }
     $response['navigation'] = $navigation;
+    $presentation['registered_assets'] = snapsmack_merge_registered_assets(
+        $assets,
+        snapsmack_assets_required_by_content($response)
+    );
     $view = snapsmack_build_skin_view($response, $presentation);
     $templates = $manifest['templates'] ?? [];
     $template = (string)($templates[$response['kind']] ?? $templates['default'] ?? '');

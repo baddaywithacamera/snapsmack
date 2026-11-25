@@ -520,7 +520,9 @@ class SnapSmack {
 
             $galleryClass = in_array($layout, ['masonry', 'one-column'], true)
                 ? ' snap-portfolio-gallery snap-portfolio-gallery--' . $layout : '';
-            return '<div class="' . $container . ' snap-mosaic-wall' . $galleryClass . '" style="' . $style . '">'
+            $geometry = $galleryClass === '' ? '' : ' data-columns="' . ($layout === 'masonry' ? 3 : 1)
+                . '" data-gap="' . $gap . '"';
+            return '<div class="' . $container . ' snap-mosaic-wall' . $galleryClass . '" style="' . $style . '"' . $geometry . '>'
                 . $tiles . '</div>';
         }, $content);
     }
