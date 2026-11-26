@@ -52,12 +52,15 @@
     "tray_remove_correct_photo": true,
     "tray_remove_original_preserved": true,
     "queued": true,
+    "saved_photo_copy_paths_stay_stable": true,
     "queued_link_options_0": true,
     "queued_link_options_1": true,
     "queued_link_options_2": true,
     "queued_link_options_3": true,
     "queued_colophon": true,
     "draft_roundtrip": true,
+    "save_and_queue_show_errors_without_clearing": true,
+    "renderer_failure_visible": true,
     "one_mosaic_browser_at_a_time": true
   },
   "tile_badges": [

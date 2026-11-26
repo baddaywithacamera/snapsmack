@@ -1,0 +1,13 @@
+{
+  "version": "0.7.65",
+  "source_commit": "6a09ab57370f19bbc40c9b26b3e21bb2061e6f5a",
+  "executable": "C:/snapsmack/coldsnap/coldsnap.exe",
+  "sha256": "fb002ce677a53875638c36865cebe8400145d56a2a174fa41fb973af40680cf3",
+  "installed_pass": true,
+  "installed_checks": 61,
+  "rollback_path": "C:/snapsmack/coldsnap-backups/0.7.64-before-ss1608-1609",
+  "rollback_sha256": "2493f06ccd76c701f4e3a7253700981d3ffe8136a9e1edbccf20ddf66065e915",
+  "test_processes_after_exit": 0,
+  "original_post_reopened_by_owner_on_prior_build": true,
+  "owner_acceptance_on_new_build": "not checked"
+}
