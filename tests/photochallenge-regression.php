@@ -234,7 +234,7 @@ pc_test(str_contains($photo, 'pc_notice_closed_window')
     'closed-window entries are not held for review without automatically sending a DM');
 pc_test(str_contains($admin, 'Thursday 10:00 UTC through Saturday 12:00 UTC'),
     'admin describes a non-canonical challenge window');
-foreach (['THE GOOD SHIT', 'FEDIVERSE', 'CHALLENGE ME', 'BORING ASS STUFF'] as $heading) {
+foreach (['THE GOOD SHIT', 'Set up by the Feds', 'CHALLENGE ME', 'BORING ASS STUFF'] as $heading) {
     pc_test(str_contains($sidebar, $heading), "photo challenge sidebar is missing {$heading}");
 }
 foreach (['Categories', 'Albums', 'Collections', 'Blogroll', 'User Manual',
@@ -311,11 +311,13 @@ pc_test(str_contains($photo, "\$caption = trim((string)(\$data['caption'] ?? '')
 pc_test(!str_contains($photo, "return \$prompt\n"), 'card body must not lead with the bare prompt word');
 pc_test(str_contains($photo, "'tags'        => \$hash['display']"),
     'the card must be tagged via ingest opts so discovery works without an inline hashtag');
-pc_test(str_contains($sidebar, '>Contest &amp; Feed</a>')
-    && str_contains($sidebar, 'smack-photochallenge-queue.php">Queue Contest Post</a>')
-    && str_contains($sidebar, 'smack-photochallenge-queued.php">Queued Posts</a>')
+preg_match('/data-section="fediverse"[^>]*>(.*?)<\/ul>/s', $sidebar, $fediverseNav);
+preg_match('/data-section="turbo-boost"[^>]*>(.*?)<\/ul>/s', $sidebar, $challengeNav);
+pc_test(str_contains($fediverseNav[1] ?? '', 'smack-photochallenge.php">Photo Challenge</a>')
+    && str_contains($challengeNav[1] ?? '', 'smack-photochallenge-queue.php">Queue Contest Post</a>')
+    && str_contains($challengeNav[1] ?? '', 'smack-photochallenge-queued.php">Queued Posts</a>')
     && str_contains($admin, 'id="queue-contest-post"'),
-    'CHALLENGE ME must expose three distinct task pages');
+    'Photo Challenge and the two queue task pages must remain in their sidebar sections');
 pc_test(is_file(__DIR__ . '/../smack-photochallenge-queue.php')
     && is_file(__DIR__ . '/../smack-photochallenge-queued.php'),
     'queue composer and queued-post management must be separate pages');
