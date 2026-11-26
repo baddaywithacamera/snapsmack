@@ -7,7 +7,7 @@ const fs=require('node:fs');const assert=require('node:assert/strict');
  const shared=fs.readFileSync('assets/css/page-archive.css','utf8');
  const skin=fs.readFileSync('skins/chaplin/style.css','utf8');
  // Mutation restores the faulty landscape constraint; this must fail geometry.
- const baseline=skin+'\n.chap-archive-grid.cropped-grid > .chap-archive-item {align-self:start; aspect-ratio:3/2; overflow:hidden}';
+ const baseline=skin+'\n.chap-archive-grid.cropped-grid > .chap-archive-item {align-self:start; aspect-ratio:3/2; overflow:hidden; width:100%!important}';
  let checks=0;
  for(const width of [1920,1440,1024])for(const mode of ['cropped','square']){
   const page=await browser.newPage({viewport:{width,height:844}});
@@ -24,6 +24,15 @@ const fs=require('node:fs');const assert=require('node:assert/strict');
   await page.setContent(html(skin));const after=await page.evaluate(measure);
   assert.equal(after.length,5,'every prepared tile must be measured');
   for(const {thumb,link} of after){assert(thumb.width>0 && thumb.height>0,'frame must have area');assert(thumb.bottom<=link.bottom+1,'link must not clip frame');if(mode==='square')assert(Math.abs(thumb.width-thumb.height)<1,'square mode must stay square');}
+  if(mode==='cropped'){
+   const columnWidth=after[3].link.width;
+   for(const index of [0,1]){
+    const portrait=after[index];
+    assert(Math.abs(portrait.link.width-columnWidth*0.7)<1,'portrait uses the historical 70% column width');
+    const column=before[index].link;
+    assert(Math.abs(portrait.link.x+portrait.link.width/2-column.x-column.width/2)<1,'portrait stays centred in its column');
+   }
+  }
   const photoAfter=await page.locator('#photo').boundingBox(); assert.equal(photoAfter.width,photoBefore.width); assert.equal(photoAfter.height,photoBefore.height);
   console.log(`PASS ${width}px ${mode}: ${after.length} shapes, unclipped frames, photo unchanged`);checks++;await page.close();
  }
