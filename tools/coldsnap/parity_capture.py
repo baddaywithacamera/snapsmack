@@ -5,6 +5,7 @@
 # Last non-empty line of this file MUST match the line above.
 """
 
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -13,13 +14,22 @@ import tempfile
 
 
 
+@contextmanager
+def _replace_for_fixture(owner, name, replacement):
+    original = getattr(owner, name)
+    setattr(owner, name, replacement)
+    try:
+        yield
+    finally:
+        setattr(owner, name, original)
+
+
 def take_composer_checks(mode, files):
     """Exercise the real composer controls against a disposable queued post."""
     from PySide6.QtCore import QPoint, QPointF, QTimer, Qt
     from PySide6.QtGui import QDragEnterEvent, QDropEvent, QMouseEvent
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QLineEdit, QListWidget, QMenu
-    from unittest.mock import patch
 
     import sumna_offline as O
     from coldsnap_qt import photo_tray
@@ -43,7 +53,7 @@ def take_composer_checks(mode, files):
         photos.setCurrentRow(0)
         return QDialog.Accepted
 
-    with patch.object(QDialog, "exec", choose):
+    with _replace_for_fixture(QDialog, "exec", choose):
         menu = mode._build_add_block_menu()
         next(action for action in menu.actions() if action.text() == "Photo from tray").trigger()
         results["add_block_photo_from_tray"] = last_asset() == identities[0]
@@ -88,7 +98,7 @@ def take_composer_checks(mode, files):
         qend = QPointF(end)
         move = QMouseEvent(QMouseEvent.MouseMove, qend, QPointF(tile.mapToGlobal(end)),
                            Qt.NoButton, Qt.LeftButton, Qt.NoModifier)
-        with patch.object(photo_tray, "QDrag", FixtureDrag):
+        with _replace_for_fixture(photo_tray, "QDrag", FixtureDrag):
             app.sendEvent(tile, move)
         QTest.mouseRelease(tile, Qt.LeftButton, pos=end)
         return same_tile and delivered == [True]
@@ -123,7 +133,7 @@ def take_composer_checks(mode, files):
     tile = mode.bucket_col.itemAt(0).widget()
     from PySide6.QtWidgets import QMessageBox
     removed = mode._bucket[tile._index]
-    with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
+    with _replace_for_fixture(QMessageBox, "question", lambda *args: QMessageBox.Yes):
         menu_action(tile, "Remove from tray")
     results["tray_remove"] = (
         len(mode._bucket) == 5 and all(photo.asset_uuid != removed.asset_uuid for photo in mode._bucket)
@@ -144,7 +154,7 @@ def take_composer_checks(mode, files):
             return QDialog.Accepted
 
         mode.body.canvas.insertPlainText(" ")
-        with patch.object(QDialog, "exec", enter):
+        with _replace_for_fixture(QDialog, "exec", enter):
             mode.body.canvas.insert_link()
 
     session = mode.rail.ensure_session()
