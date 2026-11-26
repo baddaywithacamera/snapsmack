@@ -182,6 +182,49 @@ def run(output_dir: str) -> int:
     home.mkdir(exist_ok=True)
     os.environ["SNAPSMACK_HOME"] = str(home)
 
+    from PySide6.QtCore import QCoreApplication, QEvent
+    from PySide6.QtWidgets import QApplication
+    from shiboken6 import delete, isValid
+
+    from coldsnap_qt.mosaic_browser import MosaicBrowser
+
+    app = QApplication([])
+    app.setQuitOnLastWindowClosed(False)
+
+    def retire_views():
+        for window in app.allWidgets():
+            if isValid(window) and isinstance(window, MosaicBrowser):
+                window.stop()
+                window.close()
+                delete(window)
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+    overlap = []
+
+    def guarded_init(view, *args, **kwargs):
+        if any(isinstance(window, MosaicBrowser) for window in app.allWidgets()):
+            overlap.append(True)
+            raise RuntimeError("Parity capture attempted to open a second mosaic browser")
+        original_init(view, *args, **kwargs)
+
+    original_init = MosaicBrowser.__init__
+    try:
+        with _replace_for_fixture(MosaicBrowser, "__init__", guarded_init):
+            return _run_capture(out, app, retire_views, overlap)
+    finally:
+        for window in app.topLevelWidgets():
+            if isValid(window):
+                window.close()
+        retire_views()
+        for window in app.topLevelWidgets():
+            if isValid(window):
+                delete(window)
+        app.quit()
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+        delete(app)
+
+
+def _run_capture(out, app, retire_views, overlap):
     from PIL import Image, ImageDraw
     from PySide6.QtCore import QPoint, QTimer, Qt
     from PySide6.QtGui import QContextMenuEvent, QFont, QFontDatabase
@@ -195,7 +238,6 @@ def run(output_dir: str) -> int:
     from coldsnap_qt.photo_loader import PhotoLoader
     from coldsnap_qt.photo_tray import PhotoThumbTile
 
-    app = QApplication.instance() or QApplication([])
     if app.platformName() == "offscreen" and os.name == "nt":
         font_path = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts" / "segoeui.ttf"
         font_id = QFontDatabase.addApplicationFont(str(font_path))
@@ -233,6 +275,12 @@ def run(output_dir: str) -> int:
     mode.title_edit.setText("COLD SNAP parity gate")
     app.processEvents()
     mode.grab().save(str(out / "01-editor-parity.png"), "PNG")
+    mode.hide()
+    mode.body.canvas.setUpdatesEnabled(False)
+    retire_views()
+    mode.body.canvas._inline_browser = None
+    mode.body.canvas._inline_browser_active = None
+    mode.body.canvas._inline_browser_jobs.clear()
 
     tiles = mode.findChildren(PhotoThumbTile)
     tile_badges = [
@@ -293,6 +341,7 @@ def run(output_dir: str) -> int:
 
     QTimer.singleShot(250, capture_mosaic)
     mode._mosaic_dialog([], "asymmetric", preselected_order=[0, 1, 2, 3])
+    retire_views()
     checks.update(captured)
 
     # Equal-aspect photographs isolate changes in the assigned span from
@@ -350,12 +399,14 @@ def run(output_dir: str) -> int:
     mode.body.canvas._pending_obj_pos = mode.body.canvas.document().begin().position()
     QTimer.singleShot(250, resize_mosaic)
     mode._canvas_mosaic(span_ids, "asymmetric")
+    retire_views()
     captured_block = mode.body.authoring_blocks()[0]
     marker = biggie.serialize_blocks(mode._wire_blocks([captured_block]))
     mode.body.canvas.from_blocks(biggie.blocks_from_json(biggie.blocks_to_json([captured_block])))
     mode.body.canvas._pending_obj_pos = mode.body.canvas.document().begin().position()
     QTimer.singleShot(250, reopen_mosaic)
     mode._canvas_mosaic(span_ids, "asymmetric")
+    retire_views()
     span_ready = all(len(span.get(key, [])) == 4
                      for key in ("before", "larger", "smaller", "reopened"))
     target = span["larger"][2] if span_ready else [0, 0, 0, 0]
@@ -429,6 +480,7 @@ def run(output_dir: str) -> int:
         result["opened_dialog"] = bool(dialog_requests)
         wait_for(lambda: all(not loader._pending for loader in canvas.findChildren(PhotoLoader)))
         canvas.close()
+        retire_views()
         return result
 
     inline = capture_inline_break(240, "rows", "06-inline-2x2-before.png", "07-inline-2x2-after.png")
@@ -581,6 +633,7 @@ def run(output_dir: str) -> int:
     finally:
         QDialog.exec = original_dialog_exec
         dialog_mode.close()
+        retire_views()
     quad_before = dialog_proof.get("before", {}).get("items", [])[:4]
     quad_after = dialog_proof.get("after", {}).get("items", [])[:4]
     quilt_after = dialog_proof.get("mirror_base", {}).get("items", [])
@@ -686,6 +739,7 @@ def run(output_dir: str) -> int:
         ("menu_matches", "menu_capture", "before_capture", "after_capture", "stored", "undo", "redo"))
     wait_for(lambda: all(not loader._pending for loader in post_canvas.findChildren(PhotoLoader)))
     post_canvas.close()
+    retire_views()
 
     # Drive the reported 15-photo trailing cluster and photo 28 through the
     # frozen dialog. Keep the proof on generated photos and a sandbox draft.
@@ -786,6 +840,7 @@ def run(output_dir: str) -> int:
     finally:
         QDialog.exec = original_dialog_exec
         trailing_mode.close()
+        retire_views()
     checks["trailing_quad_actions_on_all_four_tiles"] = len(trailing["tile_actions"]) == 12 and all(
         trailing["tile_actions"].values()) and trailing.get("before_capture", False)
     checks["dialog_removes_photo_28_without_losing_photo_29"] = all(trailing.get(key) for key in (
@@ -806,6 +861,7 @@ def run(output_dir: str) -> int:
     checks.update(take_composer_checks(composer_mode, paths))
     composer_mode.close()
 
+    checks["one_mosaic_browser_at_a_time"] = not overlap
     payload = {
         "build": __import__("_version").BUILD_VERSION,
         "checks": checks,

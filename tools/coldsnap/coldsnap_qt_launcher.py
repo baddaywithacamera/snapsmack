@@ -26,6 +26,8 @@ if "--cli" in _cli_sys.argv:
     import app_cli as _desktop_cli
     raise SystemExit(_desktop_cli.main(_cli_sys.argv[_cli_sys.argv.index("--cli") + 1:]))
 if "--parity-capture" in _cli_sys.argv:
+    if _cli_os.name == "nt" and _cli_os.environ.get("SNAPSMACK_PARITY_RUNNER") != "1":
+        raise SystemExit("Run Windows parity through parity_run_windows.py.")
     import parity_capture as _parity_capture
     _capture_index = _cli_sys.argv.index("--parity-capture")
     if _capture_index + 1 >= len(_cli_sys.argv):

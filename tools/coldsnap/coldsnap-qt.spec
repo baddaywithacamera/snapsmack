@@ -42,7 +42,7 @@ _py_files   = glob.glob(os.path.join(_src, '*.py'))
 _local_data = [(f, '.') for f in _py_files]
 _local_mods = [os.path.splitext(os.path.basename(f))[0]
                for f in _py_files
-               if os.path.basename(f) not in ('coldsnap.py', 'coldsnap_qt_launcher.py')]
+               if os.path.basename(f) not in ('coldsnap.py', 'coldsnap_qt_launcher.py', 'parity_run_windows.py')]
 
 # --- the Qt shell package -----------------------------------------------------
 _pkg_dir   = os.path.join(_src, 'coldsnap_qt')
