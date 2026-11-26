@@ -282,6 +282,7 @@ def run(output_dir: str) -> int:
     os.environ["SNAPSMACK_HOME"] = str(home)
 
     from PySide6.QtCore import QCoreApplication, QEvent
+    from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication
     from shiboken6 import delete, isValid
 
@@ -294,10 +295,12 @@ def run(output_dir: str) -> int:
     def retire_views():
         for window in app.allWidgets():
             if isValid(window) and isinstance(window, MosaicBrowser):
+                window.blockSignals(True)
                 window.stop()
                 window.close()
-                delete(window)
+                window.deleteLater()
         QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+        QTest.qWait(50)
 
     overlap = []
 
@@ -590,7 +593,9 @@ def _run_capture(out, app, retire_views, overlap):
                 result["removed_original_cluster"] = not badges
         result["opened_dialog"] = bool(dialog_requests)
         wait_for(lambda: all(not loader._pending for loader in canvas.findChildren(PhotoLoader)))
+        canvas._fixture_pause_inline = True
         canvas.close()
+        canvas.deleteLater()
         retire_views()
         return result
 
@@ -850,7 +855,9 @@ def _run_capture(out, app, retire_views, overlap):
     checks["post_body_photo_menu_mirror_and_undo"] = all(post_proof.get(key) for key in
         ("menu_matches", "menu_capture", "before_capture", "after_capture", "stored", "undo", "redo"))
     wait_for(lambda: all(not loader._pending for loader in post_canvas.findChildren(PhotoLoader)))
+    post_canvas._fixture_pause_inline = True
     post_canvas.close()
+    post_canvas.deleteLater()
     retire_views()
 
     # Drive the reported 15-photo trailing cluster and photo 28 through the
