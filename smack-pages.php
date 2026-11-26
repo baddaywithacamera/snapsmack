@@ -56,7 +56,7 @@ function smack_autop($text) {
             $chunk = $trimmed;
         } elseif (preg_match('/^\[img:\s*\d+(?:\s*\|[^\]]*)*\]$/', $trimmed)) {
             $chunk = $trimmed;
-        } elseif (preg_match('/^\[spacer:\s*\d+\]$/', $trimmed)) {
+        } elseif (preg_match('/^\[(?:mosaic-images:[1-9]\d{0,9}(?:,[1-9]\d{0,9}){1,499}\s+layout=(?:masonry|one-column)|spacer:\s*\d+)\]$/i', $trimmed)) {
             $chunk = $trimmed;
         } else {
             $chunk = '<p>' . nl2br($trimmed) . '</p>';
@@ -291,6 +291,37 @@ include 'core/sidebar.php';
                 </div>
             </div>
             <input type="file" id="page-html-import-file" accept=".html,.htm,text/html" style="display:none">
+            <?php
+            // Plain [img:ID] looks in the Library first. Exclude those IDs from
+            // regrouping, which deliberately reads the Gallery for its mosaics.
+            $page_gallery_ids = [];
+            $page_plain_gallery_ids = [];
+            if ($edit_page && preg_match_all('/\[img:\s*g?([1-9]\d{0,9})\s*\]/i', (string)$edit_page['content'], $figure_ids)) {
+                $ids = array_unique(array_map('intval', $figure_ids[1]));
+                foreach (array_chunk($ids, 250) as $chunk) {
+                    $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+                    $gallery_lookup = $pdo->prepare("SELECT i.id, a.id AS library_id FROM snap_images i LEFT JOIN snap_assets a ON a.id = i.id WHERE i.id IN ($placeholders)");
+                    $gallery_lookup->execute($chunk);
+                    foreach ($gallery_lookup->fetchAll(PDO::FETCH_ASSOC) as $image) {
+                        $page_gallery_ids[] = (int)$image['id'];
+                        if ($image['library_id'] === null) $page_plain_gallery_ids[] = (int)$image['id'];
+                    }
+                }
+            }
+            ?>
+            <?php if (count($page_gallery_ids) >= 2): ?>
+                <div class="sc-row" id="page-gallery-repair"
+                     data-gallery-ids="<?php echo implode(',', $page_gallery_ids); ?>"
+                     data-plain-gallery-ids="<?php echo implode(',', $page_plain_gallery_ids); ?>">
+                    <label for="page-gallery-layout">Imported gallery layout</label>
+                    <select id="page-gallery-layout">
+                        <option value="masonry">Masonry</option>
+                        <option value="one-column">One column</option>
+                    </select>
+                    <button type="button" class="sc-btn" id="page-gallery-group">GROUP IMPORTED PHOTOS</button>
+                    <span id="page-gallery-feedback" role="status"></span>
+                </div>
+            <?php endif; ?>
             <textarea id="page-content" name="content" rows="20"><?php echo htmlspecialchars($edit_page['content'] ?? ''); ?></textarea>
 
             <div class="form-action-row">

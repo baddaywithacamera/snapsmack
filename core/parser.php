@@ -420,16 +420,27 @@ class SnapSmack {
      * [mosaic:42 width=260]. Omitted widths inherit the skin or stay fluid.
      */
     private function parseMosaics($content) {
-        return preg_replace_callback('/\[mosaic:\s*(\d+)(?:\s+width=(\d{2,4}))?\s*\]/i', function ($m) {
-            $id = (int)$m[1];
-
-            try {
-                // Optional presentation columns may be absent before schema sync.
-                $stmt = $this->pdo->prepare('SELECT * FROM snap_mosaics WHERE id = ? LIMIT 1');
-                $stmt->execute([$id]);
-                $mosaic = $stmt->fetch(\PDO::FETCH_ASSOC);
-            } catch (\PDOException $e) {
-                return ''; // Table absent or query failed.
+        $pattern = '/\[mosaic:(?<id>\s*\d+)(?:\s+width=(?<width>\d{2,4}))?\s*\]'
+                 . '|\[mosaic-images:(?<ids>[1-9]\d{0,9}(?:,[1-9]\d{0,9}){1,499})'
+                 . '\s+layout=(?<layout>masonry|one-column)\s*\]/i';
+        return preg_replace_callback($pattern, function ($m) {
+            if (!empty($m['ids'])) {
+                // A page-editor regroup uses already-associated Gallery photos.
+                // It needs no separate row, so Preview and Save use the same block.
+                $mosaic = [
+                    'asset_ids' => '[' . $m['ids'] . ']',
+                    'focus_positions' => '{}', 'emphasis' => 'auto',
+                    'layout' => strtolower($m['layout']), 'gallery_shuffle' => false, 'gap' => 10,
+                ];
+            } else {
+                try {
+                    // Optional presentation columns may be absent before schema sync.
+                    $stmt = $this->pdo->prepare('SELECT * FROM snap_mosaics WHERE id = ? LIMIT 1');
+                    $stmt->execute([(int)$m['id']]);
+                    $mosaic = $stmt->fetch(\PDO::FETCH_ASSOC);
+                } catch (\PDOException $e) {
+                    return ''; // Table absent or query failed.
+                }
             }
             if (!$mosaic) return '';
             if (array_diff(['focus_positions', 'emphasis', 'layout', 'gallery_shuffle'], array_keys($mosaic))) {
@@ -560,8 +571,8 @@ class SnapSmack {
                 ? ' snap-portfolio-gallery snap-portfolio-gallery--' . $layout : '';
             $geometry = $galleryClass === '' ? '' : ' data-columns="' . ($layout === 'masonry' ? 3 : 1)
                 . '" data-gap="' . $gap . '"';
-            if ($galleryClass !== '' && isset($m[2])) {
-                $geometry .= ' data-column-width="' . max(120, min(1200, (int)$m[2])) . '"';
+            if ($galleryClass !== '' && !empty($m['width'])) {
+                $geometry .= ' data-column-width="' . max(120, min(1200, (int)$m['width'])) . '"';
             }
             return '<div class="' . $container . ' snap-mosaic-wall' . $galleryClass . '" style="' . $style . '"' . $geometry . '>'
                 . $tiles . '</div>';
