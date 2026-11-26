@@ -2530,6 +2530,13 @@ body.blog, body.single, body.archive { background: #fff; }
     margin-top: 2.6em;
     margin-bottom: 2.6em;
 }
+/* Keep a centered shortcode photo and its caption together as one media block. */
+.entry-content > figure:has(> .snap-inline-frame.align-center):has(> figcaption) {
+    margin-block: 2.6em;
+}
+.entry-content > figure:has(> figcaption) > .snap-inline-frame.align-center {
+    margin-block: 0;
+}
 /* Consecutive standalone photos are a sequence, not separate text sections. */
 .entry-content > .snap-inline-frame:has(+ .snap-inline-frame) {
     margin-bottom: 4px;
