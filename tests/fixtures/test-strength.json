@@ -1570,8 +1570,8 @@
         ]
     },
     "mosaic-weighted-render-regression.php": {
-        "assertions": 4,
-        "predicates": 3,
+        "assertions": 9,
+        "predicates": 8,
         "thresholds": [
             8
         ]
@@ -1816,8 +1816,8 @@
         ]
     },
     "pocket-album-display-regression.php": {
-        "assertions": 64,
-        "predicates": 49,
+        "assertions": 66,
+        "predicates": 50,
         "thresholds": [
             2,
             2,
@@ -1845,6 +1845,11 @@
             800,
             1200
         ]
+    },
+    "pocket-album-share-control-regression.php": {
+        "assertions": 28,
+        "predicates": 14,
+        "thresholds": []
     },
     "portfolio-admin-controls-save-regression.php": {
         "assertions": 21,

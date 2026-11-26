@@ -11,12 +11,21 @@
 # SnapSmack Changelog
 ## Unreleased
 
-- **Switch POCKET ALBUM sharing on from the Albums page.** The 0.7.1004D note
-  said the source site must opt in before a second site can read its albums.
-  There was no way to opt in: the setting existed only as a check the sharing
-  request failed, so it failed on every site. The Albums page now carries the
-  switch. It stays off until you turn it on, and your own albums show on your
-  own site either way.
+## 0.7.1006D — opened
+
+- **Switch POCKET ALBUM sharing on from the Albums page.** Sharing starts
+  off. Your own albums still show on your own site either way.
+- **See when remote album photos haven't been cached yet.** The editor
+  preview explains the wait. The public page displays the album once photos
+  are available.
+- **Group imported portfolio photos in Static Pages.** Preview a masonry or
+  single-column gallery using the photographs you already imported.
+- **Read the examples in SMACKCODES.** The preview panels use higher-contrast
+  text and colours.
+- **Find Fediverse tools under SET UP BY THE FEDS.** Both admin sidebars
+  display the section name on a single line.
+- **Publish mirrored COLD SNAP mosaic blocks.** The site preserves the
+  arrangement set in the editor, including the existing grouping and sizes.
 
 ## 0.7.1005D — opened
 
