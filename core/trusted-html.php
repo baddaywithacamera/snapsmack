@@ -67,7 +67,7 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         // Mosaic geometry is CMS-generated inert data consumed by the shared
         // compositor. Stripping these attributes silently turns every saved
         // three-photo composition back into the engine's generic fallback.
-        'div' => ['class', 'id', 'data-mosaic', 'data-gap', 'data-emphasis', 'data-template'],
+        'div' => ['class', 'id', 'data-mosaic', 'data-gap', 'data-emphasis', 'data-template', 'data-mirror-sections'],
         'span' => ['class', 'data-cd', 'data-cd-caption', 'data-cd-clock', 'aria-hidden'],
         'section' => ['class', 'id', 'aria-label'],
         // The photoblogs.fyi directory shortcode emits a searchable semantic
@@ -129,6 +129,11 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         foreach (iterator_to_array($node->attributes ?? []) as $attribute) {
             $name = strtolower($attribute->nodeName);
             if (!isset($keep[$name])) {
+                $node->removeAttributeNode($attribute);
+                continue;
+            }
+            if ($name === 'data-mirror-sections'
+                && !preg_match('/^[0-9]{1,6}:[0-9]{1,6}(?:,[0-9]{1,6}:[0-9]{1,6})*$/D', $attribute->nodeValue)) {
                 $node->removeAttributeNode($attribute);
                 continue;
             }

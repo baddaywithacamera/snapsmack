@@ -49,6 +49,13 @@ $pdo->exec("UPDATE snap_mosaics SET mosaic_mirrors = '[[8,10,9]]' WHERE id = 2")
 if (!str_contains($render(2), 'data-mirror-sections="0:3"')) {
     throw new RuntimeException('The mirrored group must reach the compositor.');
 }
+if (!str_contains((string)snapsmack_trusted_html($render(2)), 'data-mirror-sections="0:3"')) {
+    throw new RuntimeException('The public content sanitizer must preserve the valid mirror group.');
+}
+$malformed = '<div class="snap-mosaic" data-mirror-sections="0:3,invalid">Test</div>';
+if (str_contains((string)snapsmack_trusted_html($malformed), 'data-mirror-sections=')) {
+    throw new RuntimeException('The content sanitizer must remove malformed mirror attributes.');
+}
 $pdo->exec("UPDATE snap_mosaics SET asset_ids = '[9,10,8]' WHERE id = 2");
 if (str_contains($render(2), 'data-mirror-sections=')) {
     throw new RuntimeException('An edited group must not inherit the old mirror.');
