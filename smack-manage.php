@@ -224,12 +224,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['purge_orphans'])) {
     exit;
 }
 
+// SmackTalk and Carousel list post rows. Unfiled media can still be in use
+// there, including inline and featured images, so this image tool is solo-only.
+$mng_site_mode = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog';
+$is_post_mode  = in_array($mng_site_mode, ['carousel', 'smacktalk'], true);
+
 // --- REMOVE DUPLICATE POSTS (DESTRUCTIVE — password + 2FA) ---
 // Deletes the ticked copies of duplicate solo posts. A safety net recomputes the
 // sets server-side and NEVER lets the LAST surviving copy of a set be deleted, so
 // a duplicated photo is thinned to one — it can never be wiped out entirely, even
 // if every box in a set was ticked.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['remove_dupes'])) {
+    if ($is_post_mode) {
+        http_response_code(403);
+        exit('Duplicate photo removal is available for Photoblog archives only.');
+    }
     $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
     if (!$ra['ok']) {
         header('Location: smack-manage.php?find_dupes=1&purge_err=' . urlencode($ra['error']));
@@ -415,9 +424,6 @@ $where_sql = $where_clauses ? " WHERE " . implode(" AND ", $where_clauses) : "";
 // a post is a real snap_posts row, so the manager must list THOSE — never the raw
 // images that belong to a post. Post-images are managed in the Media Gallery;
 // page-images in the Media Library. (0.7.538 — stop listing images as posts.)
-$mng_site_mode = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog';
-$is_post_mode  = in_array($mng_site_mode, ['carousel', 'smacktalk'], true);
-
 if (!$is_post_mode) {
     // ---- PHOTOBLOG: the image IS the post (unchanged) ----
     $count_stmt = $pdo->prepare("SELECT COUNT(i.id) FROM snap_images i $where_sql");
@@ -591,7 +597,7 @@ $orphan_count = (int)$pdo->query(
 // grouped scan entirely on the common case -- a tidy library with nothing
 // unfiled, where the answer is always zero.
 $dupe_extra_count = 0;
-$has_unfiled = (bool)$pdo->query(
+$has_unfiled = !$is_post_mode && (bool)$pdo->query(
     "SELECT 1 FROM snap_images WHERE post_id IS NULL LIMIT 1"
 )->fetchColumn();
 if ($has_unfiled) $dupe_extra_count = (int)$pdo->query(
@@ -608,7 +614,7 @@ if ($has_unfiled) $dupe_extra_count = (int)$pdo->query(
         HAVING COUNT(*) > 1
      ) d"
 )->fetchColumn();
-$show_dupes  = isset($_GET['find_dupes']);
+$show_dupes  = !$is_post_mode && isset($_GET['find_dupes']);
 $dupe_groups = $show_dupes ? snap_manage_duplicate_groups($pdo) : [];
 
 $page_title = "Manage Archive";
