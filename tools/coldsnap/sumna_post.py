@@ -1117,7 +1117,18 @@ class SmacktalkPoster:
                         or re.match(r"^\[(?:img|mosaic|spacer|columns|pullquote)\b", t, re.I)):
                     out_chunks.append(t)
                 else:
-                    out_chunks.append("<p>" + _html.escape(t, quote=False).replace("\n", "<br>\n") + "</p>")
+                    # Keep the exact anchor form emitted by COLD SNAP's link tool.
+                    # Escape all other text as before, including literal angle brackets.
+                    parts = re.split(
+                        r'(<a href="[^"<>\r\n]+"(?: target="_blank")?'
+                        r'(?: rel="(?:noopener(?: nofollow)?|nofollow)")?>[^<>\r\n]*</a>)',
+                        t,
+                    )
+                    parts[::2] = [
+                        _html.escape(part, quote=False).replace("\n", "<br>\n")
+                        for part in parts[::2]
+                    ]
+                    out_chunks.append("<p>" + "".join(parts) + "</p>")
             content = "\n\n".join(out_chunks)
         return content
 
