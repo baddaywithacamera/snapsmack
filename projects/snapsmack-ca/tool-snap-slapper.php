@@ -20,7 +20,7 @@ $tool_facts    = [
     ['What it is', 'Photo library + non-destructive editor'],
     ['Originals', 'Never touched. Exports are new files.'],
     ['Formats out', 'JPEG, PNG, TIFF, PSD, OpenRaster'],
-    ['AI', 'LEWK AGAIN, AI Heal, Generative Fill, Generative Expand; five providers, your key'],
+    ['AI', 'LEWK AGAIN, AI Heal, Generative Fill; five providers, your key'],
     ['AI on the record', 'Every generative edit is written into the export. Cannot be switched off.'],
 ];
 $tool_body = <<<'HTML'
@@ -50,8 +50,8 @@ $tool_body = <<<'HTML'
             <p>LEWK AGAIN sends only your written request to the provider. The photograph stays on your computer; the provider returns an adjustment recipe, and SNAP SLAPPER applies those ordinary controls locally. A model suggested the settings, but it did not render pixels into the frame.</p>
             <p>SNAP SLAPPER runs locally, arrives through SNAP HQ, and works beside a SnapSmack installation rather than inventing another subscription account or cloud library. The desktop application does the heavy image work on your computer. Your site, your archive, your edits, and your exit remain yours.</p>
             <h2 id="provenance">Generative tools, and what they leave behind.</h2>
-            <p>SNAP SLAPPER now has <strong>Generative Fill</strong> and <strong>Generative Expand</strong> alongside AI Heal: paint a region and a model reconstructs it, or push the canvas past the captured frame and the model invents the rest. Useful. Also exactly the kind of thing a photograph should not be quiet about.</p>
-            <p>So it isn&rsquo;t quiet. Every generative operation that is still in the picture at export &mdash; Generative Fill, Generative Expand, AI Heal, whole-image restoration &mdash; is written into the exported file&rsquo;s metadata: what tool did it, where, how much of the frame (measured by the region you handed to the model, not the blend around it), which provider and model, and when. Your exact written instruction stays in the local .slapper project; the exported photograph carries a neutral summary instead. A dust spot repaired by a generative model is labelled as AI-assisted restoration, not &ldquo;AI-generated photograph&rdquo; &mdash; and a replaced sky is labelled as what it is, not as dust. Undo something before you export and it isn&rsquo;t in the file, because it isn&rsquo;t in the picture.</p>
+            <p>With <strong>Generative Fill</strong>, paint a region and describe what you want the model to put there. AI Heal uses a model to repair a selected area.</p>
+            <p>Every generative operation that is still in the picture at export &mdash; Generative Fill, AI Heal, whole-image restoration &mdash; is written into the exported file&rsquo;s metadata: what tool did it, where, how much of the frame (measured by the region you handed to the model, not the blend around it), which provider and model, and when. Your exact written instruction stays in the local .slapper project; the exported photograph carries a neutral summary instead. A dust spot repaired by a generative model is labelled as AI-assisted restoration, not &ldquo;AI-generated photograph&rdquo; &mdash; and a replaced sky is labelled as what it is, not as dust. Undo something before you export and it isn&rsquo;t in the file, because it isn&rsquo;t in the picture.</p>
             <p><strong>This cannot be disabled.</strong> There is no setting, no advanced-mode override, no export option that strips it. If you want to hide that a generative model touched a photograph, you will have to do that in someone else&rsquo;s software. We&rsquo;re not driving your getaway car if you rob the pixel bank. The original file is never modified either way. The full rules are written down in the provenance spec; the short version is: the picture that ships says what happened to it.</p>
 HTML;
 $tool_shots = [

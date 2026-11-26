@@ -67,6 +67,21 @@ foreach ($_receipt_sources as $_receipt_source) {
 }
 unset($_receipt_source, $_receipt_domain, $_receipt_stats, $_receipt_url, $_receipt_count, $_receipt_since, $_receipt_since_override, $_receipt_since_label, $_receipt_date, $_receipt_sources, $_receipt_overrides);
 
+// Four rotating standouts from the production gallery. The total in the copy
+// comes from the gallery's live-site source list above, never a typed number.
+$_featured_skin_pool = [
+    ['name' => 'SCROLL', 'image' => 'scroll-primary.png', 'domain' => 'usedcarparts.photoblogs.fyi', 'url' => 'https://usedcarparts.photoblogs.fyi'],
+    ['name' => 'TILEZ', 'image' => 'tilez-primary.png', 'domain' => 'baddaywithacamera.ca', 'url' => 'https://baddaywithacamera.ca'],
+    ['name' => 'GLIDE', 'image' => 'glide-primary.png', 'domain' => 'portalproject.photoblogs.fyi', 'url' => 'https://portalproject.photoblogs.fyi'],
+    ['name' => 'GAME ON', 'image' => 'gameon-primary.png', 'domain' => 'theschoolofhardnocks.ca', 'url' => 'https://theschoolofhardnocks.ca'],
+    ['name' => 'NEW HORIZON', 'image' => 'newhorizon-landing.png', 'domain' => 'curbappeal.photoblogs.fyi', 'url' => 'https://curbappeal.photoblogs.fyi'],
+    ['name' => 'SLICKR', 'image' => 'slickr-primary.png', 'domain' => 'foreverphotograph.ing', 'url' => 'https://foreverphotograph.ing'],
+    ['name' => 'GALLERIA', 'image' => 'galleria-primary.png', 'domain' => 'hekeepsdroningon.ca', 'url' => 'https://hekeepsdroningon.ca'],
+];
+shuffle($_featured_skin_pool);
+$_featured_skins = array_slice($_featured_skin_pool, 0, 4);
+$_skin_gallery_count = count($_skin_demo_sites);
+
 $page_title       = 'SnapSmack — Free, self-hosted photoblog software';
 $page_description = 'What is new is old again. Free, self-hosted photo blogging that gives back the single-photo blog, long-form posting, classic Insta and Picasa-style albums, on hardware you control. Your photos. Your voice. Your style. Your dignity.';
 $page_og_url      = 'https://snapsmack.ca/';
@@ -80,8 +95,8 @@ $page_css = <<<'CSS'
 .door-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 40%); gap: 48px; align-items: center; max-width: var(--max); margin: 0 auto; padding: 0 32px; }
 .door-media { min-width: 0; }
 .door-shot { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; text-align: left; font: inherit; }
-.door-shot img { display: block; width: 100%; height: auto; border: 3px solid var(--black); box-shadow: 8px 8px 0 var(--red); }
-.door-shot:hover img, .door-shot:focus-visible img { box-shadow: 8px 8px 0 var(--black); border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
+.door-shot img { display: block; width: 100%; height: auto; border: 3px solid var(--black); }
+.door-shot:hover img, .door-shot:focus-visible img { border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
 .door-shot-cap { display: block; margin-top: 14px; color: #666; font: 900 .7rem/1.3 Arial Black, Arial, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
 .door-shot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
 .door-shot-thumb { display: block; width: 100%; padding: 0; border: 1px solid #777; background: var(--black); cursor: zoom-in; }
@@ -220,6 +235,27 @@ $page_css = <<<'CSS'
 .scale-copy .scale-pull { margin: 6px 0 0; color: #D5D6D8; font: 900 clamp(1rem, 1.6vw, 1.2rem)/1.35 Arial Black, Arial, sans-serif; }
 .scale-copy .scale-heading + p { margin-top: 0; }
 
+/* --- DESKTOP TOOLS: the workstation does the heavy lifting --- */
+#desktop-tools { padding: 72px 0; scroll-margin-top: 92px; color: #ddd; background: #171717; border-top: 8px solid var(--red); }
+#desktop-tools .site-discovery-kicker { color: var(--white); }
+#desktop-tools h2 { margin-bottom: 8px; color: var(--red); }
+.desktop-tools-subline { margin: 0 0 34px; color: var(--white); font: 900 clamp(1.05rem, 2vw, 1.35rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.desktop-tools-lead { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr); gap: 48px; align-items: start; }
+.desktop-tools-copy { font-size: 1rem; line-height: 1.65; }
+.desktop-tools-copy p + p { margin-top: 20px; }
+.desktop-tools-quote { display: inline-block; margin: 24px 0; padding: 10px 14px; border-left: 3px solid var(--red); color: #d0d0d0; background: #000; font: italic .82rem/1.4 Georgia, serif; }
+.desktop-tools-quote cite { margin-inline-start: .65em; color: #ff3838; font-style: normal; font-weight: 700; }
+.desktop-tools-platform { display: inline-block; margin-top: 24px; padding: 8px 12px; color: var(--black); background: var(--white); font: 900 .72rem/1 Arial Black, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.desktop-tools-shot { margin: 0; }
+.desktop-tools-shot button { display: block; width: 100%; padding: 0; border: 3px solid var(--white); background: var(--black); cursor: zoom-in; }
+.desktop-tools-shot button:hover, .desktop-tools-shot button:focus-visible { border-color: var(--red); outline: 3px solid var(--red); outline-offset: -3px; }
+.desktop-tools-shot img { display: block; width: 100%; height: auto; }
+.desktop-tools-shot figcaption { margin-top: 12px; color: #aaa; font: 700 .7rem/1.4 'Courier New', monospace; text-transform: uppercase; }
+.desktop-tools-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 48px; background: #555; border: 1px solid #555; }
+.desktop-tool { padding: 22px 24px; background: #242424; }
+.desktop-tool strong { display: block; margin-bottom: 8px; color: var(--white); font: 900 .82rem/1.25 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.desktop-tool p { margin: 0; color: #ccc; font-size: .9rem; line-height: 1.55; }
+
 /* --- SKINS BAND --- */
 #featured-skins { background: var(--white); color: var(--dark-grey); border-top: 8px solid var(--black); }
 #featured-skins h2 { color: var(--red); }
@@ -305,6 +341,8 @@ $page_css = <<<'CSS'
     .running-late-copy { order: 1; }
     .running-late-media { order: 2; justify-self: start; }
     .camera-blog-layout, .why-blog-layout, .scale-layout { grid-template-columns: 1fr; gap: 30px; }
+    .desktop-tools-lead { grid-template-columns: 1fr; gap: 34px; }
+    .desktop-tools-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .camera-blog-copy { order: 1; }
     .camera-grid { order: 2; width: min(100%, 720px); justify-self: start; }
     .why-blog-copy-wrap { order: 1; }
@@ -326,6 +364,7 @@ $page_css = <<<'CSS'
     #door { padding: 56px 0 44px; }
     .door-inner { grid-template-columns: 1fr; gap: 32px; }
     .featured-skin-grid { grid-template-columns: 1fr; }
+    .desktop-tools-list { grid-template-columns: 1fr; }
     .was-list { grid-template-columns: 1fr; }
     .whodat-card { display: block; }
     .whodat-portrait { margin: -22px -22px 20px; }
@@ -481,30 +520,55 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
+    <section id="desktop-tools" aria-labelledby="desktop-tools-title">
+        <div class="wrap">
+            <p class="site-discovery-kicker">By the power of Grayskull&hellip;</p>
+            <h2 id="desktop-tools-title">DESKTOP TOOLS</h2>
+            <p class="desktop-tools-subline">Putting the muscle where it matters.</p>
+            <div class="desktop-tools-lead">
+                <div class="desktop-tools-copy">
+                    <p>Most software lives in a browser now. Ask yourself who that suits. It isn't you. A browser app is cheaper to build, cheaper to run, and it bills monthly. When the company behind it changes its mind, gets bought, or shuts the doors, your work is locked inside a building you don't own, on a computer you can't touch.</p>
+                    <blockquote class="desktop-tools-quote">&ldquo;This is some bullshit!&rdquo; <cite>Harry Vanderspeigle</cite></blockquote>
+                    <p>SNAPSMACK does it the other way round. The website stays light. It's a publishing engine, not a gymnasium. The heavy lifting happens on your own computer, with tools that work offline, on files that never pass through anyone's cloud to reach your own site. When SMACK YOUR BATCH UP publishes a shoot, the resizing happens on your machine, before anything uploads. Your server never breaks a sweat, and neither does your wallet: there is no per-seat fee, no subscription, and no landlord.</p>
+                    <span class="desktop-tools-platform">Platform: Windows</span>
+                </div>
+                <figure class="desktop-tools-shot">
+                    <button type="button" data-lightbox="img/snap-hq-new.png" data-lightbox-caption="SNAP HQ, mission control for the desktop suite" aria-label="Open a full-size screenshot of SNAP HQ"><img src="img/snap-hq-new.png" alt="SNAP HQ desktop suite launcher" width="1920" height="1000" loading="lazy"></button>
+                    <figcaption>Mission control. Launches every tool in the suite and keeps your sites and keys in one place.</figcaption>
+                </figure>
+            </div>
+            <div class="desktop-tools-list" aria-label="SNAPSMACK desktop tools">
+                <article class="desktop-tool"><strong>SNAP SLAPPER + LEWK AGAIN</strong><p>A private photo library and a real non-destructive editor. LEWKS are looks you can see, change, and keep. Your style stays yours.</p></article>
+                <article class="desktop-tool"><strong>SMACK YOUR BATCH UP</strong><p>Load a shoot, order it, categorise it, and publish the whole batch. Your computer handles the resizing.</p></article>
+                <article class="desktop-tool"><strong>GET YOUR SHIT SORTED</strong><p>An offline sorter for a whole blog. Repair the titles, captions, alt text and tags; reorder the feed; push it back when it's straight.</p></article>
+                <article class="desktop-tool"><strong>COLD SNAP</strong><p>Closed beta. Write posts and build photo essays with no connection at all, then sync when the internet comes back.</p></article>
+                <article class="desktop-tool"><strong>SMACK UP YOUR BACKUP</strong><p>Back up one site or a fleet, audit what exists where, and recover even when the original installation is gone.</p></article>
+                <article class="desktop-tool"><strong>OH SNAP</strong><p>Design a skin visually and export it for review. Your blog's face, drawn instead of coded.</p></article>
+                <article class="desktop-tool"><strong>SMACK YOUR MOUTH</strong><p>Moderate and reply to comments offline, across a whole fleet.</p></article>
+                <article class="desktop-tool"><strong>SHOTS FIRED</strong><p>Queue posts now, publish them later. The schedule lives on your desktop; no browser left open, no cron to babysit.</p></article>
+                <article class="desktop-tool"><strong>CRONOMETER</strong><p>Is every scheduled job on every site actually running? One screen tells you.</p></article>
+                <article class="desktop-tool"><strong>INSTANT REPLAY</strong><p>Restore a backup to a test blog and prove it actually comes back.</p></article>
+                <article class="desktop-tool"><strong>KEYS PLEASE</strong><p>See, create and revoke every site's API keys in one place.</p></article>
+                <article class="desktop-tool"><strong>DRIVE BY</strong><p>List and prune your blog backups on cloud storage.</p></article>
+            </div>
+
+        </div>
+    </section>
+
     <section id="featured-skins">
         <div class="wrap">
             <div class="section-heading">
                 <p class="site-discovery-kicker">Real sites, running today</p>
                 <h2>One engine. No house style.</h2>
-                <p class="lede">Four live SnapSmack sites, four completely different answers to what a photography website should look like. Hover for the numbers. <strong>All skins are free, always.</strong></p>
+                <p class="lede">Four of <?php echo $_skin_gallery_count; ?> free skins, running on real SNAPSMACK sites today &mdash; four completely different answers to what a photography website should look like. Hover for the numbers. <strong>All skins are free, always.</strong></p>
             </div>
             <div class="featured-skin-grid">
-                <a class="featured-skin" href="https://hekeepsdroningon.ca" target="_blank" rel="noopener" data-stats="<?php echo ss_skin_card_stats('hekeepsdroningon.ca', $_skin_demo_stats); ?>">
-                    <img src="img/galleria-primary.png" alt="Galleria skin running on hekeepsdroningon.ca" width="1920" height="1080" loading="lazy">
-                    <strong>Galleria</strong><span>hekeepsdroningon.ca</span>
-                </a>
-                <a class="featured-skin" href="https://usedcarparts.photoblogs.fyi" target="_blank" rel="noopener" data-stats="<?php echo ss_skin_card_stats('usedcarparts.photoblogs.fyi', $_skin_demo_stats); ?>">
-                    <img src="img/scroll-primary.png" alt="SCROLL skin running on usedcarparts.photoblogs.fyi" width="1920" height="1080" loading="lazy">
-                    <strong>SCROLL</strong><span>usedcarparts.photoblogs.fyi</span>
-                </a>
-                <a class="featured-skin" href="https://fauxlaroid.fyi" target="_blank" rel="noopener" data-stats="<?php echo ss_skin_card_stats('fauxlaroid.fyi', $_skin_demo_stats); ?>">
-                    <img src="img/instantcam-primary.png" alt="Instant Camera skin running on fauxlaroid.fyi" width="1920" height="1080" loading="lazy">
-                    <strong>Instant Camera</strong><span>fauxlaroid.fyi</span>
-                </a>
-                <a class="featured-skin" href="https://theschoolofhardnocks.ca" target="_blank" rel="noopener" data-stats="<?php echo ss_skin_card_stats('theschoolofhardnocks.ca', $_skin_demo_stats); ?>">
-                    <img src="img/gameon-primary.png" alt="GAME ON skin running on theschoolofhardnocks.ca" width="1920" height="1080" loading="lazy">
-                    <strong>GAME ON</strong><span>theschoolofhardnocks.ca</span>
-                </a>
+                <?php foreach ($_featured_skins as $_featured_skin): ?>
+                    <a class="featured-skin" href="<?php echo htmlspecialchars($_featured_skin['url']); ?>" target="_blank" rel="noopener" data-stats="<?php echo ss_skin_card_stats($_featured_skin['domain'], $_skin_demo_stats); ?>">
+                        <img src="img/<?php echo htmlspecialchars($_featured_skin['image']); ?>" alt="<?php echo htmlspecialchars($_featured_skin['name'] . ' skin running on ' . $_featured_skin['domain']); ?>" width="1920" height="1080" loading="lazy">
+                        <strong><?php echo htmlspecialchars($_featured_skin['name']); ?></strong><span><?php echo htmlspecialchars($_featured_skin['domain']); ?></span>
+                    </a>
+                <?php endforeach; ?>
             </div>
             <p class="section-link"><a href="skins.php">See every skin &rarr;</a></p>
         </div>
