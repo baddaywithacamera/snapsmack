@@ -21,7 +21,7 @@ def run(output_dir: str) -> int:
     os.environ["SNAPSMACK_HOME"] = str(home)
 
     from PIL import Image, ImageDraw
-    from PySide6.QtCore import QTimer, Qt
+    from PySide6.QtCore import QPoint, QTimer, Qt
     from PySide6.QtGui import QFont, QFontDatabase
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QMenu, QPushButton, QSplitter
@@ -356,7 +356,27 @@ def run(output_dir: str) -> int:
             if not wait_for(lambda: len(preview.computed_cells()["items"]) == 14):
                 return QDialog.Rejected
             dialog_proof["mirror_base"] = preview.computed_cells()
-            dialog_proof["mirror_base_capture"] = dialog.grab().save(str(out / "12-dialog-quilt-original-stack.png"), "PNG")
+
+            def save_painted_stack(filename):
+                origin = preview.mapTo(dialog, QPoint())
+
+                def painted():
+                    capture = dialog.grab()
+                    frame = capture.toImage()
+                    ratio = capture.devicePixelRatio()
+                    for photo, rect in preview._rects[:4]:
+                        x = origin.x() + rect.left() + rect.width() * .72
+                        y = origin.y() + rect.top() + rect.height() * .72
+                        pixel = frame.pixelColor(round(x * ratio), round(y * ratio))
+                        actual = (pixel.red(), pixel.green(), pixel.blue())
+                        expected = ((42 + photo * 51) % 256, (67 + photo * 27) % 256, (88 + photo * 19) % 256)
+                        if any(abs(a - b) > 12 for a, b in zip(actual, expected)):
+                            return False
+                    return capture.save(str(out / filename), "PNG")
+
+                return wait_for(painted)
+
+            dialog_proof["mirror_base_capture"] = save_painted_stack("12-dialog-quilt-original-stack.png")
             photo_menu = preview._arrangement_menu(preview._rects[0][0])
             labels = [action.text() for action in photo_menu.actions() if not action.isSeparator()]
             dialog_proof["photo_menu"] = labels
@@ -369,11 +389,11 @@ def run(output_dir: str) -> int:
             if not wait_for(lambda: len(preview.computed_cells()["items"]) == 14):
                 return QDialog.Rejected
             dialog_proof["mirrored"] = preview.computed_cells()
-            dialog_proof["mirror_capture"] = dialog.grab().save(str(out / "13-dialog-quilt-mirrored.png"), "PNG")
+            dialog_proof["mirror_capture"] = save_painted_stack("13-dialog-quilt-mirrored.png")
             controls = {button.text(): button for button in dialog.findChildren(QPushButton)}
             controls["Undo"].click()
             dialog_proof["undo"] = wait_for(lambda: preview.computed_cells() == dialog_proof["mirror_base"])
-            dialog_proof["undo_capture"] = dialog.grab().save(str(out / "14-dialog-quilt-undo.png"), "PNG")
+            dialog_proof["undo_capture"] = save_painted_stack("14-dialog-quilt-undo.png")
             controls["Redo"].click()
             dialog_proof["redo"] = wait_for(lambda: preview.computed_cells() == dialog_proof["mirrored"])
             controls["100%"].click()
