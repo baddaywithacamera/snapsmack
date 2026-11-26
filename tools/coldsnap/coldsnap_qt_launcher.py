@@ -32,7 +32,15 @@ if "--parity-capture" in _cli_sys.argv:
     _capture_index = _cli_sys.argv.index("--parity-capture")
     if _capture_index + 1 >= len(_cli_sys.argv):
         raise SystemExit("--parity-capture requires an output directory")
-    raise SystemExit(_parity_capture.run(_cli_sys.argv[_capture_index + 1]))
+    _capture_dir = _cli_sys.argv[_capture_index + 1]
+    try:
+        _capture_status = _parity_capture.run(_capture_dir)
+    except Exception:
+        from pathlib import Path
+        import traceback
+        (Path(_capture_dir) / "capture-error.txt").write_text(traceback.format_exc(), encoding="utf-8")
+        raise
+    raise SystemExit(_capture_status)
 
 from _version import BUILD_VERSION  # noqa: E402
 

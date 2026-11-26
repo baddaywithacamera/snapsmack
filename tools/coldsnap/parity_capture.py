@@ -245,6 +245,32 @@ def take_composer_checks(mode, files, *, check_renderer=False):
             browser.close()
             delete(browser)
 
+        from PySide6.QtCore import QTimer
+
+        rail = mode.rail
+        reason = "This import key is not bound to a system user. Regenerate it with a default author."
+        rail.section.set_expanded(False)
+        rail._bridge.finished.emit(0, 1, [(draft.title, reason)])
+        results["send_error_visible_in_footer"] = (
+            reason in rail.sync_status.text() and not rail.send_error_btn.isHidden()
+            and rail.section.header.isChecked()
+        )
+        dialog_text = []
+
+        def dismiss_send_error():
+            warning = app.activeModalWidget()
+            if isinstance(warning, QMessageBox):
+                dialog_text.append(warning.text())
+                warning.accept()
+
+        QTimer.singleShot(0, dismiss_send_error)
+        rail.send_error_btn.click()
+        results["send_error_details_open"] = (
+            len(dialog_text) == 1 and draft.title in dialog_text[0] and reason in dialog_text[0]
+        )
+        results["failed_send_does_not_clear_draft"] = session.load_draft(draft.draft_id).title == draft.title
+
+
     return results
 
 def run(output_dir: str) -> int:
