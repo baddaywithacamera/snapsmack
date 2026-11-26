@@ -537,10 +537,23 @@ class SnapSmack {
 
             // The desktop editor uses the editorial solver for explicit tile sizes.
             if ($has_weights || $layout === 'asymmetric' || in_array($layout, $templates, true)) {
+                $mirror_sections = [];
+                if (empty($mosaic['gallery_shuffle'])) {
+                    $mirrored_groups = json_decode($mosaic['mosaic_mirrors'] ?? '[]', true);
+                    $rendered_ids = array_column($images, 'id');
+                    foreach ((array)$mirrored_groups as $group) {
+                        if (!is_array($group) || !array_is_list($group) || count($group) < 2) continue;
+                        $start = array_search($group[0], $rendered_ids, true);
+                        if ($start !== false && array_slice($rendered_ids, $start, count($group)) === $group) {
+                            $mirror_sections[] = $start . ':' . count($group);
+                        }
+                    }
+                }
                 return '<div class="snap-mosaic" data-mosaic="'
                     . htmlspecialchars(json_encode($images), ENT_QUOTES)
                     . '" data-gap="' . $gap . '" data-emphasis="' . htmlspecialchars($emphasis, ENT_QUOTES) . '"'
                     . ($layout !== 'asymmetric' ? ' data-template="' . htmlspecialchars($layout, ENT_QUOTES) . '"' : '')
+                    . ($mirror_sections ? ' data-mirror-sections="' . implode(',', $mirror_sections) . '"' : '')
                     . '></div>';
             }
 
