@@ -33,8 +33,29 @@
 
 set -eu
 
-WRITER_COMMIT=REPLACE_WITH_REVIEWED_COMMIT
-WRITER_SHA256=REPLACE_WITH_REVIEWED_SHA256
+# PINNED TO A REVIEWED REVISION, MEASURED RATHER THAN COPIED.
+#
+# WRITER_SHA256 is the sha256 of tools/proxvox/server/proxvox_writer.py AS
+# COMMITTED at WRITER_COMMIT, which is what raw.githubusercontent.com serves
+# and therefore what lands at WRITER_PATH. I verified that by fetching the
+# real URL rather than trusting it: HTTP 200, 57,271 bytes, and the digest
+# below. I also checked the committed bytes against my working copy, because
+# git hands a Windows checkout CRLF while it stores LF and that difference has
+# already cost this project a release night -- here they are identical.
+#
+# WHY THIS COMMIT. 7be5cca4 is the writer with every finding so far closed:
+# Codex's principal-binding and certificate-chain fixes, the finite-expiry
+# refusal, one-use grants keyed on the grant's MEANING rather than its
+# spelling, the host-side compare-and-set, and the host's own audit log.
+# Pinning the file does not change the file, so there is no chicken and egg:
+# this line lives in a different file from the one it hashes.
+#
+# RE-PIN WHEN THE WRITER MERGES. A commit reachable only from a topic branch
+# stops being fetchable if that branch is deleted without being merged or
+# archived, and this URL would then 404 on a host that is trying to install.
+# Once the writer lands on dev, re-pin to the dev commit.
+WRITER_COMMIT=7be5cca40d079319450827ca33de7385411ed69a
+WRITER_SHA256=221901cf6414a69e1c02f5122a7fac16826b1807acefbe3c4fdc666b2cdf5268
 WRITER_URL="https://raw.githubusercontent.com/baddaywithacamera/snapsmack/${WRITER_COMMIT}/tools/proxvox/server/proxvox_writer.py"
 WRITER_PATH=/usr/local/sbin/proxvox-writer
 WRITER_USER=proxvox-root-rw

@@ -8,6 +8,7 @@ import hashlib
 import os
 import re
 import subprocess
+import tempfile
 import unittest
 
 
@@ -144,13 +145,76 @@ class WriterProvisioner(unittest.TestCase):
 
     def test_an_unpinned_installer_refuses_to_run(self):
         """An installer with no reviewed revision would fetch whatever is
-        newest, which is how an unreviewed wrapper reaches a live host."""
-        self.assertIn("REPLACE_WITH_", self.source)
+        newest, which is how an unreviewed wrapper reaches a live host.
+
+        THIS NOW RUNS AGAINST A COPY, because the real file IS pinned. The
+        first version ran the real script and asserted it refused, so it
+        started failing the moment the pin landed -- and the tempting fix was
+        to delete the test, which would have removed the guarantee at exactly
+        the moment it began to matter. The behaviour is still protected: the
+        placeholders are put back in a copy and the refusal is still executed.
+        """
         self.assertIn("no reviewed commit pinned yet", self.source)
-        result = subprocess.run(["bash", os.path.join(SERVER, "provision-host-writer.sh")],
-                                capture_output=True, text=True)
+        unpinned = re.sub(r"^WRITER_COMMIT=.*$", "WRITER_COMMIT=REPLACE_WITH_REVIEWED_COMMIT",
+                          self.source, count=1, flags=re.MULTILINE)
+        unpinned = re.sub(r"^WRITER_SHA256=.*$", "WRITER_SHA256=REPLACE_WITH_REVIEWED_SHA256",
+                          unpinned, count=1, flags=re.MULTILINE)
+        with tempfile.TemporaryDirectory() as work:
+            copy = os.path.join(work, "provision-host-writer.sh")
+            with open(copy, "w", encoding="utf-8", newline="\n") as stream:
+                stream.write(unpinned)
+            result = subprocess.run(["bash", copy], capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("no reviewed commit pinned", result.stderr)
+
+    def test_the_pinned_hash_IS_the_writer_at_the_pinned_commit(self):
+        """A pin that does not match what it names is worse than no pin.
+
+        It would install bytes nobody reviewed and then report success,
+        because the installer compares the fetched file against WRITER_SHA256
+        and both came from the same wrong place. So the pinned digest is
+        checked against the writer AS COMMITTED at WRITER_COMMIT -- the bytes
+        raw.githubusercontent.com serves, which is what lands on the host.
+
+        Committed bytes, not the working tree: git hands a Windows checkout
+        CRLF while it stores LF, and that difference has already cost this
+        project a release night.
+        """
+        commit = re.search(r"^WRITER_COMMIT=([0-9a-f]{40})$", self.source, re.MULTILINE)
+        digest = re.search(r"^WRITER_SHA256=([0-9a-f]{64})$", self.source, re.MULTILINE)
+        self.assertIsNotNone(commit, "WRITER_COMMIT must be a full 40-character sha")
+        self.assertIsNotNone(digest, "WRITER_SHA256 must be a 64-character sha256")
+
+        shown = subprocess.run(
+            ["git", "show", "%s:tools/proxvox/server/proxvox_writer.py" % commit.group(1)],
+            capture_output=True, cwd=os.path.dirname(ROOT))
+        if shown.returncode != 0:
+            self.skipTest(
+                "the pinned commit %s is not in this checkout, so the digest "
+                "cannot be verified here. NOT a pass: fetch it and re-run."
+                % commit.group(1)[:12])
+        measured = hashlib.sha256(shown.stdout).hexdigest()
+        self.assertEqual(
+            measured, digest.group(1),
+            "WRITER_SHA256 does not match proxvox_writer.py at WRITER_COMMIT. "
+            "The installer would fetch bytes nobody reviewed and call it a match.")
+
+    def test_verify_refuses_rather_than_comparing_against_a_placeholder(self):
+        """A verify that always reports drift is one people learn to ignore,
+        which would leave it as useless as the check it replaces.
+
+        Also runs against a placeholder COPY now, for the same reason as the
+        install test above.
+        """
+        unpinned = re.sub(r"^WRITER_SHA256=.*$", "WRITER_SHA256=REPLACE_WITH_REVIEWED_SHA256",
+                          self.source, count=1, flags=re.MULTILINE)
+        with tempfile.TemporaryDirectory() as work:
+            copy = os.path.join(work, "provision-host-writer.sh")
+            with open(copy, "w", encoding="utf-8", newline="\n") as stream:
+                stream.write(unpinned)
+            result = subprocess.run(["bash", copy, "verify"], capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("nothing to verify against", result.stderr)
 
     def test_verify_mode_exists_and_changes_nothing(self):
         """THE POINT OF THIS FILE, and it comes straight out of SS-1574.
@@ -167,15 +231,6 @@ class WriterProvisioner(unittest.TestCase):
         head = self.source.split('if [ "${1-}" = "verify" ]')[1].split("fi")[0]
         for verb in ("install -o", "useradd", "chpasswd", "visudo", "curl"):
             self.assertNotIn(verb, head, "verify must not " + verb)
-
-    def test_verify_refuses_rather_than_comparing_against_a_placeholder(self):
-        """A verify that always reports drift is one people learn to ignore,
-        which would leave it as useless as the check it replaces."""
-        result = subprocess.run(
-            ["bash", os.path.join(SERVER, "provision-host-writer.sh"), "verify"],
-            capture_output=True, text=True)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("nothing to verify against", result.stderr)
 
     def test_the_installer_is_valid_shell(self):
         result = subprocess.run(["bash", "-n", os.path.join(SERVER, "provision-host-writer.sh")],
