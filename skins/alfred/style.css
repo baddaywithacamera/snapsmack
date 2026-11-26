@@ -937,10 +937,10 @@ input[type="button"],
 /* -------------------------------------------------------------------------- */
 
 
-.header { padding: 48px 0 36px; }
+.header { padding: 70px 0; }
 
 .header.section-inner {
-    width: min(600px, 90%);
+    width: 600px;
     position: relative;
     z-index: 2;
 }
@@ -977,17 +977,18 @@ input[type="button"],
     color: #fff;
     font-family: 'Droid Serif', Georgia, serif;
     line-height: 145%;
-    margin-top: 18px;
+    margin-top: 25px;
     text-align: center;
     text-shadow: 0 1px 0 rgba(0,0,0,0.2);
 }
 
 /* The same CMS-owned dock appears beneath the masthead and in the footer.
-   ALFRED owns only its placement and Hitchcock-sized presentation; accounts,
-   links and visibility remain the shared component's data and decisions. */
+   Hitchcock's social-menu and item spacing is applied to the shared dock. */
 .site-header .social-dock-inline {
+    flex-wrap: wrap;
     justify-content: center;
-    margin: 24px auto 0;
+    gap: 0;
+    margin: 19px 0 0;
 }
 
 .site-header .dock-link,
@@ -1004,7 +1005,10 @@ input[type="button"],
     flex: 0 0 36px;
     width: 36px;
     height: 36px;
+    margin: 6px 3px 0;
 }
+
+.site-header .dock-link:first-child { margin-left: 0; }
 
 .site-header .dock-link svg {
     width: 16px;
