@@ -66,7 +66,7 @@ function snapsmack_admin_content_preview(PDO $pdo, array $settings, array $input
         $response['kind'] = 'single'; $response['status'] = 200;
         $response['rendered_content'] = snapsmack_trusted_html((string)$response['rendered_content']);
     } else {
-        $rendered = snap_wrap_bare_paragraphs((new SnapSmack($pdo))->parseContent($content));
+        $rendered = snap_wrap_bare_paragraphs((new SnapSmack($pdo, adminPreview: true))->parseContent($content));
         $response = ['status' => 200, 'kind' => 'page', 'page_title' => $title,
             'item' => ['title' => $title, 'content' => snapsmack_trusted_html($rendered)],
             'rendered_content' => snapsmack_trusted_html($rendered), 'comments_enabled' => false];

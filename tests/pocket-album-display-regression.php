@@ -26,6 +26,7 @@ $root = dirname(__DIR__);
 require_once $root . '/core/pocket-album-display.php';
 require_once $root . '/core/skin-render-helpers.php';
 require_once $root . '/core/trusted-html.php';
+require_once $root . '/core/parser.php';
 
 $failures = [];
 $check = static function (string $what, bool $ok) use (&$failures): void {
@@ -297,17 +298,23 @@ echo "
 ";
 
 // ─────────────────────────────────────────────────────────────────────────────
-echo "AN EMPTY ALBUM SAYS WHICH ALBUM IS EMPTY\n";
+echo "AN EMPTY REMOTE CACHE IS SILENT FOR VISITORS\n";
 // ─────────────────────────────────────────────────────────────────────────────
 // /images spent weeks looking like a layout fault because a page that should
 // hold photographs held nothing and said nothing.
 
 $bare = new PocketAlbumFakePdo();
 $empty = pocket_album_html($bare, 'https://foreverphotograph.ing', 191, 100);
-$check('it names the album', str_contains($empty, 'album 191'));
-$check('  and the site it came from', str_contains($empty, 'foreverphotograph.ing'));
+$check('a public page shows no remote-cache notice', $empty === '');
+$source = '[pocket_album src="https://foreverphotograph.ing" album="191"]';
+$check('the public parser keeps the notice out of cached HTML',
+       !str_contains((new SnapSmack($bare))->parseContent($source), 'photographs cached'));
+$preview = (new SnapSmack($bare, adminPreview: true))->parseContent($source);
+$check('the admin preview names the album', str_contains($preview, 'Album 191'));
+$check('  and describes the cache rather than the source contents',
+       str_contains($preview, 'no photographs cached from foreverphotograph.ing'));
 $check('  and it survives the sanitiser too',
-       str_contains((string)snapsmack_trusted_html($empty), 'album 191'));
+       str_contains((string)snapsmack_trusted_html($preview), 'Album 191'));
 
 echo "\n";
 // ─────────────────────────────────────────────────────────────────────────────
@@ -324,7 +331,6 @@ echo "THE PARSER IS THE REAL ENTRY POINT, AND IT IS WIRED\n";
 // and a live page would have printed "[pocket_album album=...]" as text. Four
 // source greps all passed against it. So the content goes through
 // parseContent() exactly as a CMS page's does.
-require_once $root . '/core/parser.php';
 $parserPdo = new PocketAlbumFakePdo();
 $parserPdo->total = 250;
 $parserPdo->rows = [[
