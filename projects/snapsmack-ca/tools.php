@@ -57,7 +57,7 @@ require_once __DIR__ . '/includes/header.php';
 function ss_tool_card(string $href, string $name, string $platform, string $status, string $line, ?string $shot, string $alt = ''): string {
     $beta = (stripos($status, 'beta') !== false) ? ' status--beta' : '';
     $img  = $shot
-        ? '<div class="tool-card-shot"><img src="img/' . htmlspecialchars($shot) . '" alt="' . htmlspecialchars($alt) . '" width="1920" height="1080" loading="lazy"></div>'
+        ? '<div class="tool-card-shot"><img src="' . htmlspecialchars(ss_site_image_url('img/' . $shot)) . '" alt="' . htmlspecialchars($alt) . '" width="1920" height="1080" loading="lazy"></div>'
         : '<div class="tool-card-shot tool-card-shot--none" aria-hidden="true">' . '<span>' . htmlspecialchars($name) . '</span><small>screenshot coming soon</small>' . '</div>';
     return '<a class="tool-card" href="' . $href . '">' . $img .
         '<div class="tool-card-copy"><p class="meta"><span class="platform">' . htmlspecialchars($platform) . '</span><span class="status' . $beta . '">' . htmlspecialchars($status) . '</span></p>' .

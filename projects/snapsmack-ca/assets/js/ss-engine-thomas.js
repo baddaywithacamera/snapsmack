@@ -3,7 +3,7 @@
  * SNAPSMACK.CA — Thomas the Bear Engine
  *
  * Mirrors ss-engine-thomas.js from the SnapSmack core.
- * Image path is hardcoded to img/thomas-transparent.png (snapsmack.ca layout).
+ * The script tag supplies the versioned image URL.
  * No UID tracking — snapsmack.ca is not a SnapSmack install.
  *
  * Easter egg: Ctrl+Shift+Y spawns bears. Click, press X, or ESC to clear.
@@ -13,6 +13,8 @@
 (function() {
     'use strict';
 
+    var imageSource = document.currentScript && document.currentScript.dataset.imageSrc
+        || 'img/thomas-transparent.png';
     var dedicationShown = false;
     var bearsActive     = false;
 
@@ -41,7 +43,10 @@
         bear.style.left = Math.max(10, Math.floor(Math.random() * maxX)) + 'px';
         bear.style.top  = Math.max(10, Math.floor(Math.random() * maxY)) + 'px';
 
-        bear.innerHTML = '<img src="img/thomas-transparent.png" alt="Thomas the Bear">';
+        var image = document.createElement('img');
+        image.src = imageSource;
+        image.alt = 'Thomas the Bear';
+        bear.appendChild(image);
         document.body.appendChild(bear);
         bearsActive = true;
     }

@@ -128,7 +128,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
 <?php if ($_breach_shot): ?>
             <figure class="wrong-shot">
-                <img src="img/smackback-breach.png" alt="SMACKBACK file integrity monitor showing BREACH DETECTED, LOCKOUT response mode, the tampered file, and the password + 2FA fields required to restore or re-bless it" width="1920" height="1080" loading="lazy">
+                <img src="<?php echo htmlspecialchars(ss_site_image_url('img/smackback-breach.png')); ?>" alt="SMACKBACK file integrity monitor showing BREACH DETECTED, LOCKOUT response mode, the tampered file, and the password + 2FA fields required to restore or re-bless it" width="1920" height="1080" loading="lazy">
                 <figcaption>The real screen, from the real incident: one unsigned file, one locked site, one owner asked to decide.</figcaption>
             </figure>
 <?php endif; ?>

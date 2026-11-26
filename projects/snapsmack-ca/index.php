@@ -391,14 +391,14 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             </div>
             <div class="door-media">
-                <button type="button" class="door-shot" data-lightbox="img/snapslapper-editor-adv.png" data-lightbox-group="snapslapper" data-lightbox-caption="SNAP SLAPPER photo editor, advanced mode, editing a Banff landscape" aria-label="Open a full-size screenshot of the SNAP SLAPPER photo editor">
-                    <img src="img/snapslapper-editor-adv.png" alt="SNAP SLAPPER photo editor, advanced mode, editing a Banff landscape" width="1920" height="1032" loading="lazy">
+                <button type="button" class="door-shot" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/snapslapper-editor-adv.png')); ?>" data-lightbox-group="snapslapper" data-lightbox-caption="SNAP SLAPPER photo editor, advanced mode, editing a Banff landscape" aria-label="Open a full-size screenshot of the SNAP SLAPPER photo editor">
+                    <img src="<?php echo htmlspecialchars(ss_site_image_url('img/snapslapper-editor-adv.png')); ?>" alt="SNAP SLAPPER photo editor, advanced mode, editing a Banff landscape" width="1920" height="1032" loading="lazy">
                 </button>
                 <div class="door-shot-grid" aria-label="More SNAP SLAPPER screenshots">
-                    <button type="button" class="door-shot-thumb" data-lightbox="img/snapslapper-editor-adv-nofilm-large.png" data-lightbox-group="snapslapper" data-lightbox-caption="SNAP SLAPPER editor, Advanced mode"><img src="img/snapslapper-editor-adv-nofilm-thumb.png" alt="SNAP SLAPPER editor, Advanced mode" width="480" height="258" loading="lazy"></button>
-                    <button type="button" class="door-shot-thumb" data-lightbox="img/snapslapper-editor-lewks-large.png" data-lightbox-group="snapslapper" data-lightbox-caption="LEWKS: one-click looks previewed on your own photo"><img src="img/snapslapper-editor-lewks-thumb.png" alt="LEWKS: one-click looks previewed on your own photo" width="480" height="258" loading="lazy"></button>
-                    <button type="button" class="door-shot-thumb" data-lightbox="img/snapslapper-genfill-01-large.png" data-lightbox-group="snapslapper" data-lightbox-caption="AI Heal: paint the defect, choose whether to send it"><img src="img/snapslapper-genfill-01-thumb.png" alt="AI Heal: paint the defect, choose whether to send it" width="480" height="270" loading="lazy"></button>
-                    <button type="button" class="door-shot-thumb" data-lightbox="img/snapslapper-library-large.png" data-lightbox-group="snapslapper" data-lightbox-caption="The photo library"><img src="img/snapslapper-library-thumb.png" alt="The photo library" width="480" height="258" loading="lazy"></button>
+                    <button type="button" class="door-shot-thumb" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/snapslapper-editor-adv-nofilm-large.png')); ?>" data-lightbox-group="snapslapper" data-lightbox-caption="SNAP SLAPPER editor, Advanced mode"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/snapslapper-editor-adv-nofilm-thumb.png')); ?>" alt="SNAP SLAPPER editor, Advanced mode" width="480" height="258" loading="lazy"></button>
+                    <button type="button" class="door-shot-thumb" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/snapslapper-editor-lewks-large.png')); ?>" data-lightbox-group="snapslapper" data-lightbox-caption="LEWKS: one-click looks previewed on your own photo"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/snapslapper-editor-lewks-thumb.png')); ?>" alt="LEWKS: one-click looks previewed on your own photo" width="480" height="258" loading="lazy"></button>
+                    <button type="button" class="door-shot-thumb" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/snapslapper-genfill-01-large.png')); ?>" data-lightbox-group="snapslapper" data-lightbox-caption="AI Heal: paint the defect, choose whether to send it"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/snapslapper-genfill-01-thumb.png')); ?>" alt="AI Heal: paint the defect, choose whether to send it" width="480" height="270" loading="lazy"></button>
+                    <button type="button" class="door-shot-thumb" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/snapslapper-library-large.png')); ?>" data-lightbox-group="snapslapper" data-lightbox-caption="The photo library"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/snapslapper-library-thumb.png')); ?>" alt="The photo library" width="480" height="258" loading="lazy"></button>
                 </div>
                 <span class="door-shot-cap">SNAP SLAPPER &mdash; the free photo editor. Click screenshots to enlarge.</span>
             </div>
@@ -429,10 +429,10 @@ require_once __DIR__ . '/includes/header.php';
                 <p>The camera's only half the look. The blog is the other half. Make your photos slap.</p>
             </div>
             <div class="camera-grid" aria-label="Four point-and-shoot cameras">
-                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-canon-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Canon Powershot S3IS, $10 thrift find"><img src="img/pointnshoot-canon-thumb.jpg" alt="Canon Powershot S3IS, $10 thrift find" width="480" height="480" loading="lazy"></button></figure>
-                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-fujifilm-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Fujifilm Finepix F480, $20 thrift find"><img src="img/pointnshoot-fujifilm-thumb.jpg" alt="Fujifilm Finepix F480, $20 thrift find" width="480" height="480" loading="lazy"></button></figure>
-                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-olympus-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Olympus SP510-UZ, $15 thrift find"><img src="img/pointnshoot-olympus-thumb.jpg" alt="Olympus SP510-UZ, $15 thrift find" width="480" height="480" loading="lazy"></button></figure>
-                <figure class="camera-card"><button type="button" data-lightbox="img/pointnshoot-minolta-large.jpg" data-lightbox-group="camera-blog" data-lightbox-caption="Minolta DiMAGE 7, $1,527 new in 2001"><img src="img/pointnshoot-minolta-thumb.jpg" alt="Minolta DiMAGE 7, $1,527 new in 2001" width="480" height="480" loading="lazy"></button></figure>
+                <figure class="camera-card"><button type="button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/pointnshoot-canon-large.jpg')); ?>" data-lightbox-group="camera-blog" data-lightbox-caption="Canon Powershot S3IS, $10 thrift find"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/pointnshoot-canon-thumb.jpg')); ?>" alt="Canon Powershot S3IS, $10 thrift find" width="480" height="480" loading="lazy"></button></figure>
+                <figure class="camera-card"><button type="button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/pointnshoot-fujifilm-large.jpg')); ?>" data-lightbox-group="camera-blog" data-lightbox-caption="Fujifilm Finepix F480, $20 thrift find"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/pointnshoot-fujifilm-thumb.jpg')); ?>" alt="Fujifilm Finepix F480, $20 thrift find" width="480" height="480" loading="lazy"></button></figure>
+                <figure class="camera-card"><button type="button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/pointnshoot-olympus-large.jpg')); ?>" data-lightbox-group="camera-blog" data-lightbox-caption="Olympus SP510-UZ, $15 thrift find"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/pointnshoot-olympus-thumb.jpg')); ?>" alt="Olympus SP510-UZ, $15 thrift find" width="480" height="480" loading="lazy"></button></figure>
+                <figure class="camera-card"><button type="button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/pointnshoot-minolta-large.jpg')); ?>" data-lightbox-group="camera-blog" data-lightbox-caption="Minolta DiMAGE 7, $1,527 new in 2001"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/pointnshoot-minolta-thumb.jpg')); ?>" alt="Minolta DiMAGE 7, $1,527 new in 2001" width="480" height="480" loading="lazy"></button></figure>
             </div>
             </div>
         </div>
@@ -442,7 +442,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <div class="why-blog-layout">
             <div class="why-blog-media">
-                <button type="button" class="why-blog-shot" data-lightbox="img/admin-dashboard-large.png" data-lightbox-caption="The SnapSmack admin dashboard" aria-label="Open a full-size screenshot of the SnapSmack admin dashboard"><img src="img/admin-dashboard-thumb.png" alt="The SnapSmack admin dashboard" width="480" height="442" loading="lazy"></button>
+                <button type="button" class="why-blog-shot" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/admin-dashboard-large.png')); ?>" data-lightbox-caption="The SnapSmack admin dashboard" aria-label="Open a full-size screenshot of the SnapSmack admin dashboard"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/admin-dashboard-thumb.png')); ?>" alt="The SnapSmack admin dashboard" width="480" height="442" loading="lazy"></button>
             </div>
             <div class="why-blog-copy-wrap">
             <p class="site-discovery-kicker">The burning question</p>
@@ -466,7 +466,7 @@ require_once __DIR__ . '/includes/header.php';
                     <p>First and foremost, the software isn't ready yet. It not only has rough edges and some remaining security holes we're fixing, but it is not elegant. That is important. This software is built in the memory of a deceased friend who did everything elegantly and expected the same out of every tool he used. SnapSmack doesn't ship until it reaches the point where he would have enjoyed using it.</p>
                     <p>We've had setbacks and are behind schedule, which happens in the real world, and we're sorry for that. But you've probably heard the words &quot;AI slop&quot; &mdash; and this isn't it. What it is, is lacking some polish and some of its wardrobe, as we're also 7 skins short of our launch target. We'll get there. <a href="https://baddaywithacamera.ca/rest-in-peace" target="_blank" rel="noopener">This is for Ray</a>. It will ship when it's what he would approve of.</p>
                 </div>
-                <a class="running-late-media" href="ding-dong-bell.php"><img src="img/opaudit-sample.png" alt="Sample operability audit: OPAUDIT 027" width="1423" height="1800" loading="lazy"></a>
+                <a class="running-late-media" href="ding-dong-bell.php"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/opaudit-sample.png')); ?>" alt="Sample operability audit: OPAUDIT 027" width="1423" height="1800" loading="lazy"></a>
             </div>
         </div>
     </section>
@@ -479,9 +479,9 @@ require_once __DIR__ . '/includes/header.php';
             <p class="lede">What is the fediverse? It is a network of independently run sites that talk to each other using a shared standard, the same way Gmail and Fastmail exchange email without being the same company. Because your SnapSmack site speaks that standard, people on Mastodon, Pixelfed, and other fediverse apps can follow your blog and reply to your photos right from their own accounts. Their comments land back on your site, and your photos stay on your own server. You don't need an account anywhere else to take part. SnapSmack lets you have your cake and eat it, too.</p>
             <p class="alone-payoff">Reach more people without leaving your home.</p>
             <div class="fed-shots">
-                <figure><button type="button" data-lightbox="img/fediverse-blog-view.png"><img src="img/fediverse-blog-view.png?v=20260814" alt="The unzucked photoblog on its own SnapSmack site" width="1920" height="1080" loading="lazy"></button><figcaption>Your blog. Your skin, your domain.</figcaption></figure>
-                <figure><button type="button" data-lightbox="img/fediverse-home-view.png"><img src="img/fediverse-home-view.png?v=20260814" alt="The same account in the FEDIVERSE network reader" width="1920" height="1080" loading="lazy"></button><figcaption>The same account in the network reader.</figcaption></figure>
-                <figure><button type="button" data-lightbox="img/fediverse-pixelfed-ca-view.png"><img src="img/fediverse-pixelfed-ca-view.png?v=20260814" alt="The same photographs seen from Pixelfed, with a follower" width="1920" height="1080" loading="lazy"></button><figcaption>The same photographs on Pixelfed. Someone else&rsquo;s software, following you.</figcaption></figure>
+                <figure><button type="button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/fediverse-blog-view.png')); ?>"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/fediverse-blog-view.png?v=20260814')); ?>" alt="The unzucked photoblog on its own SnapSmack site" width="1920" height="1080" loading="lazy"></button><figcaption>Your blog. Your skin, your domain.</figcaption></figure>
+                <figure><button type="button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/fediverse-home-view.png')); ?>"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/fediverse-home-view.png?v=20260814')); ?>" alt="The same account in the FEDIVERSE network reader" width="1920" height="1080" loading="lazy"></button><figcaption>The same account in the network reader.</figcaption></figure>
+                <figure><button type="button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/fediverse-pixelfed-ca-view.png')); ?>"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/fediverse-pixelfed-ca-view.png?v=20260814')); ?>" alt="The same photographs seen from Pixelfed, with a follower" width="1920" height="1080" loading="lazy"></button><figcaption>The same photographs on Pixelfed. Someone else&rsquo;s software, following you.</figcaption></figure>
             </div>
             <p class="alone-how">How it works, for those who care: your site speaks ActivityPub &mdash; the fediverse &mdash; so people on Pixelfed, Mastodon, and the rest can follow it directly. photoblogs.fyi is the shared directory and reader. <a href="features.php#network">Details &rarr;</a></p>
         </div>
@@ -505,7 +505,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <div class="scale-layout">
                 <div class="scale-media">
-                    <button type="button" class="scale-shot" data-lightbox="img/fleet-view-no-backup.png" data-lightbox-caption="1 hub, 27 spokes, one dashboard" aria-label="Open a full-size screenshot showing 1 hub and 27 spokes in one dashboard"><img src="img/fleet-view-no-backup.png" alt="1 hub, 27 spokes, one dashboard" width="1832" height="1706" loading="lazy"></button>
+                    <button type="button" class="scale-shot" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/fleet-view-no-backup.png')); ?>" data-lightbox-caption="1 hub, 27 spokes, one dashboard" aria-label="Open a full-size screenshot showing 1 hub and 27 spokes in one dashboard"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/fleet-view-no-backup.png')); ?>" alt="1 hub, 27 spokes, one dashboard" width="1832" height="1706" loading="lazy"></button>
                 </div>
                 <div class="scale-copy">
                     <div class="scale-heading">
@@ -533,7 +533,7 @@ require_once __DIR__ . '/includes/header.php';
                     <span class="desktop-tools-platform">Platform: Windows</span>
                 </div>
                 <figure class="desktop-tools-shot">
-                    <button type="button" data-lightbox="img/snap-hq-new.png" data-lightbox-caption="SNAP HQ, mission control for the desktop suite" aria-label="Open a full-size screenshot of SNAP HQ"><img src="img/snap-hq-new.png" alt="SNAP HQ desktop suite launcher" width="1920" height="1000" loading="lazy"></button>
+                    <button type="button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/snap-hq-new.png')); ?>" data-lightbox-caption="SNAP HQ, mission control for the desktop suite" aria-label="Open a full-size screenshot of SNAP HQ"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/snap-hq-new.png')); ?>" alt="SNAP HQ desktop suite launcher" width="1920" height="1000" loading="lazy"></button>
                     <figcaption>Mission control. Launches every tool in the suite and keeps your sites and keys in one place.</figcaption>
                 </figure>
             </div>
@@ -565,7 +565,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="featured-skin-grid">
                 <?php foreach ($_featured_skins as $_featured_skin): ?>
                     <a class="featured-skin" href="<?php echo htmlspecialchars($_featured_skin['url']); ?>" target="_blank" rel="noopener" data-stats="<?php echo ss_skin_card_stats($_featured_skin['domain'], $_skin_demo_stats); ?>">
-                        <img src="img/<?php echo htmlspecialchars($_featured_skin['image']); ?>" alt="<?php echo htmlspecialchars($_featured_skin['name'] . ' skin running on ' . $_featured_skin['domain']); ?>" width="1920" height="1080" loading="lazy">
+                        <img src="<?php echo htmlspecialchars(ss_site_image_url('img/' . $_featured_skin['image'])); ?>" alt="<?php echo htmlspecialchars($_featured_skin['name'] . ' skin running on ' . $_featured_skin['domain']); ?>" width="1920" height="1080" loading="lazy">
                         <strong><?php echo htmlspecialchars($_featured_skin['name']); ?></strong><span><?php echo htmlspecialchars($_featured_skin['domain']); ?></span>
                     </a>
                 <?php endforeach; ?>
@@ -579,7 +579,7 @@ require_once __DIR__ . '/includes/header.php';
             <p class="xkcd-proof-kicker" id="xkcd-proof-title">This has been the problem since 2012.</p>
             <figure>
                 <a href="https://xkcd.com/1150/" target="_blank" rel="noopener">
-                    <img class="xkcd-proof-image" src="img/xkcd-instagram.png" width="1480" height="494" loading="lazy" alt="XKCD comic comparing storing your work on a free social platform to leaving your belongings in someone else's garage.">
+                    <img class="xkcd-proof-image" src="<?php echo htmlspecialchars(ss_site_image_url('img/xkcd-instagram.png')); ?>" width="1480" height="494" loading="lazy" alt="XKCD comic comparing storing your work on a free social platform to leaving your belongings in someone else's garage.">
                 </a>
                 <figcaption>&ldquo;<a href="https://xkcd.com/1150/" target="_blank" rel="noopener">Instagram</a>&rdquo; by Randall Munroe / XKCD, used unmodified under <a href="https://creativecommons.org/licenses/by-nc/2.5/" target="_blank" rel="license noopener">CC BY-NC 2.5</a>.</figcaption>
             </figure>
@@ -622,7 +622,7 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="receipt-stack">
 <?php foreach ($_receipt_cards as $_receipt_card): ?>
                     <a class="receipt-card" href="<?php echo htmlspecialchars($_receipt_card['url'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
-                        <img src="img/<?php echo htmlspecialchars($_receipt_card['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($_receipt_card['name'], ENT_QUOTES, 'UTF-8'); ?> landing page" width="<?php echo (int)$_receipt_card['width']; ?>" height="<?php echo (int)$_receipt_card['height']; ?>" loading="lazy">
+                        <img src="<?php echo htmlspecialchars(ss_site_image_url('img/' . $_receipt_card['image']), ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($_receipt_card['name'], ENT_QUOTES, 'UTF-8'); ?> landing page" width="<?php echo (int)$_receipt_card['width']; ?>" height="<?php echo (int)$_receipt_card['height']; ?>" loading="lazy">
                         <span><strong><?php echo htmlspecialchars($_receipt_card['name'], ENT_QUOTES, 'UTF-8'); ?></strong><?php echo number_format((int)$_receipt_card['count']); ?> <?php echo htmlspecialchars($_receipt_card['metric_label'], ENT_QUOTES, 'UTF-8'); ?> posted since <?php echo htmlspecialchars($_receipt_card['since'], ENT_QUOTES, 'UTF-8'); ?></span>
                     </a>
 <?php endforeach; ?>
@@ -649,7 +649,7 @@ require_once __DIR__ . '/includes/header.php';
             <p class="whodat-order">Listed in the order they joined.</p>
             <div class="whodat-grid">
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-sean.png" data-lightbox-group="co-authors" data-lightbox-caption="Sean McCormick" aria-label="Open a larger portrait of Sean McCormick"><img src="img/whodat-sean.png" alt="Sean McCormick" width="686" height="784" loading="lazy"></button></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/whodat-sean.png')); ?>" data-lightbox-group="co-authors" data-lightbox-caption="Sean McCormick" aria-label="Open a larger portrait of Sean McCormick"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/whodat-sean.png')); ?>" alt="Sean McCormick" width="686" height="784" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">Sean McCormick</p>
                         <p class="whodat-title">Just a guy with a camera.</p>
@@ -657,7 +657,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </article>
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-gemini.png" data-lightbox-group="co-authors" data-lightbox-caption="Gemini (Antigravity)" aria-label="Open a larger portrait of Gemini Antigravity"><img src="img/whodat-gemini.png" alt="Gemini Antigravity" width="1875" height="1671" loading="lazy"></button></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/whodat-gemini.png')); ?>" data-lightbox-group="co-authors" data-lightbox-caption="Gemini (Antigravity)" aria-label="Open a larger portrait of Gemini Antigravity"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/whodat-gemini.png')); ?>" alt="Gemini Antigravity" width="1875" height="1671" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">Gemini (Antigravity)</p>
                         <p class="whodat-title">Proved it could be done.</p>
@@ -665,7 +665,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </article>
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-claude.png" data-lightbox-group="co-authors" data-lightbox-caption="Claude (Opus)" aria-label="Open a larger portrait of Claude Opus"><img src="img/whodat-claude.png" alt="Claude" width="686" height="784" loading="lazy"></button></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/whodat-claude.png')); ?>" data-lightbox-group="co-authors" data-lightbox-caption="Claude (Opus)" aria-label="Open a larger portrait of Claude Opus"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/whodat-claude.png')); ?>" alt="Claude" width="686" height="784" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">Claude (Opus)</p>
                         <p class="whodat-title">Like HAL, but without the murder.</p>
@@ -673,7 +673,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </article>
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-codex.png" data-lightbox-group="co-authors" data-lightbox-caption="OpenAI Codex" aria-label="Open a larger portrait of OpenAI Codex"><img src="img/whodat-codex.png" alt="OpenAI Codex" width="1128" height="1338" loading="lazy"></button></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/whodat-codex.png')); ?>" data-lightbox-group="co-authors" data-lightbox-caption="OpenAI Codex" aria-label="Open a larger portrait of OpenAI Codex"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/whodat-codex.png')); ?>" alt="OpenAI Codex" width="1128" height="1338" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">OpenAI Codex</p>
                         <p class="whodat-title">Skilled, but spicy.</p>
@@ -681,7 +681,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </article>
                 <article class="whodat-card">
-                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="img/whodat-muse.png?v=5a111ce9" data-lightbox-group="co-authors" data-lightbox-caption="Muse" aria-label="Open a larger portrait of Muse"><img src="img/whodat-muse.png?v=5a111ce9" alt="Muse" width="1857" height="1715" loading="lazy"></button></div>
+                    <div class="whodat-portrait"><button type="button" class="whodat-portrait-button" data-lightbox="<?php echo htmlspecialchars(ss_site_image_url('img/whodat-muse.png?v=5a111ce9')); ?>" data-lightbox-group="co-authors" data-lightbox-caption="Muse" aria-label="Open a larger portrait of Muse"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/whodat-muse.png?v=5a111ce9')); ?>" alt="Muse" width="1857" height="1715" loading="lazy"></button></div>
                     <div>
                         <p class="whodat-name">Muse</p>
                         <p class="whodat-title">Gets the last word in.</p>
@@ -703,7 +703,7 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <link rel="stylesheet" href="assets/css/ss-engine-thomas.css">
-<script src="assets/js/ss-engine-thomas.js"></script>
+<script src="assets/js/ss-engine-thomas.js?v=<?php echo filemtime(__DIR__ . '/assets/js/ss-engine-thomas.js'); ?>" data-image-src="<?php echo htmlspecialchars(ss_site_image_url('img/thomas-transparent.png')); ?>"></script>
 <script>
 // Screenshot lightbox. Grouped images get previous/next controls and arrow
 // keys; ungrouped screenshots remain single-image views.

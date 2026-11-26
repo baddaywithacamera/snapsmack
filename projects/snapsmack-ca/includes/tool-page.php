@@ -81,7 +81,7 @@ require_once __DIR__ . '/header.php';
         <div class="tool-shots">
 <?php foreach ($tool_shots as [$src, $alt, $cap]): ?>
             <figure class="tool-shot">
-                <img src="img/<?php echo htmlspecialchars($src); ?>" alt="<?php echo htmlspecialchars($alt); ?>" loading="lazy">
+                <img src="<?php echo htmlspecialchars(ss_site_image_url('img/' . $src)); ?>" alt="<?php echo htmlspecialchars($alt); ?>" loading="lazy">
                 <figcaption><?php echo $cap; ?></figcaption>
             </figure>
 <?php endforeach; ?>

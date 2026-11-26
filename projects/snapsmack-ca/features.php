@@ -172,9 +172,9 @@ require_once __DIR__ . '/includes/header.php';
                 <article class="feat-card"><h3>Manners included</h3><p>Federation also means consent, attribution, content warnings, and local norms. SnapSmack treats that culture as part of the feature, not an obstacle to growth-hack around.</p></article>
             </div>
             <div class="fed-shots">
-                <figure><img src="img/fediverse-blog-view.png?v=20260814" alt="A photography profile on its own SnapSmack blog" width="1920" height="1080" loading="lazy"><figcaption>Your blog</figcaption></figure>
-                <figure><img src="img/fediverse-home-view.png?v=20260814" alt="The same photography profile on the Fediverse" width="1920" height="1080" loading="lazy"><figcaption>On the Fediverse</figcaption></figure>
-                <figure><img src="img/fediverse-pixelfed-ca-view.png?v=20260814" alt="The same photography profile seen from Pixelfed" width="1920" height="1080" loading="lazy"><figcaption>Seen from Pixelfed</figcaption></figure>
+                <figure><img src="<?php echo htmlspecialchars(ss_site_image_url('img/fediverse-blog-view.png?v=20260814')); ?>" alt="A photography profile on its own SnapSmack blog" width="1920" height="1080" loading="lazy"><figcaption>Your blog</figcaption></figure>
+                <figure><img src="<?php echo htmlspecialchars(ss_site_image_url('img/fediverse-home-view.png?v=20260814')); ?>" alt="The same photography profile on the Fediverse" width="1920" height="1080" loading="lazy"><figcaption>On the Fediverse</figcaption></figure>
+                <figure><img src="<?php echo htmlspecialchars(ss_site_image_url('img/fediverse-pixelfed-ca-view.png?v=20260814')); ?>" alt="The same photography profile seen from Pixelfed" width="1920" height="1080" loading="lazy"><figcaption>Seen from Pixelfed</figcaption></figure>
             </div>
             <div class="fed-band">Federation is the +1 that makes an independent blog work in the age of social.<span class="fed-band-kicker">Your art never leaves your server. Ever.</span></div>
         </div>

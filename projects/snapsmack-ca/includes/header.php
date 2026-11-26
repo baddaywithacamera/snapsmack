@@ -19,6 +19,21 @@
 
 require_once __DIR__ . '/site-version.php';
 
+function ss_site_image_url(string $url): string {
+    if (!preg_match('~\A((?:https://snapsmack\.ca/|/)?img/)([\w.-]+(?:/[\w.-]+)*)(?:\?([^#]*))?(#.*)?\z~', $url, $parts)
+        || array_intersect(explode('/', $parts[2]), ['.', '..'])) {
+        return $url;
+    }
+    $path = __DIR__ . '/../img/' . $parts[2];
+    $mtime = is_file($path) ? filemtime($path) : false;
+    if ($mtime === false) {
+        return $url;
+    }
+    $query = array_filter(explode('&', $parts[3] ?? ''), static fn(string $part): bool => $part !== '' && !str_starts_with($part, 'v='));
+    $query[] = 'v=' . $mtime;
+    return $parts[1] . $parts[2] . '?' . implode('&', $query) . ($parts[4] ?? '');
+}
+
 function ss_nav_link(string $href, string $label, string $key, string $active): string {
     $cls = ($active === $key) ? ' class="active"' : '';
     return '            <a href="' . $href . '"' . $cls . '>' . $label . '</a>';
@@ -71,7 +86,7 @@ $_social_description = trim((string)($page_social_description ?? $page_descripti
 if (stripos($_social_description, $_free_claim) === false) {
     $_social_description = rtrim($_social_description, ". \t\n\r\0\x0B") . '. ' . $_free_claim;
 }
-$_social_image = $page_social_image ?? 'https://snapsmack.ca/img/logo.png';
+$_social_image = ss_site_image_url($page_social_image ?? 'https://snapsmack.ca/img/logo.png');
 $_schema = [[
     '@context' => 'https://schema.org',
     '@type' => 'WebPage',
@@ -169,7 +184,7 @@ echo json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 <!-- MINI HEADER -->
 <div id="mini-header">
     <div class="mini-inner">
-        <a href="index.php" class="mini-logo"><img src="img/logo.png" alt="SnapSmack" width="1024" height="1024"></a>
+        <a href="index.php" class="mini-logo"><img src="<?php echo htmlspecialchars(ss_site_image_url('img/logo.png')); ?>" alt="SnapSmack" width="1024" height="1024"></a>
         <input type="checkbox" id="ss-nav-mini" class="nav-toggle" aria-hidden="true">
         <label for="ss-nav-mini" class="nav-burger" role="button" aria-label="Toggle menu"></label>
         <nav>
@@ -182,7 +197,7 @@ echo json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 <header id="site-header">
     <div class="header-inner">
         <a href="index.php" class="logo-lockup">
-            <img src="img/logo.png" alt="SnapSmack" width="1024" height="1024">
+            <img src="<?php echo htmlspecialchars(ss_site_image_url('img/logo.png')); ?>" alt="SnapSmack" width="1024" height="1024">
             <div class="logo-text">
                 <div class="snap"><em>Snap</em><strong>Smack</strong></div>
                 <div class="tagline">PHOTO <em>BLOGGING</em> IS BACK, BITCHEZ</div>

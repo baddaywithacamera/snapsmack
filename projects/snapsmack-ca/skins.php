@@ -78,8 +78,8 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="skin-gallery">
                         <?php foreach ($images as $slot => [$image]): ?>
                             <?php $caption = $images[$slot][1] ?? ucfirst($slot); ?>
-                            <a class="shot" href="img/<?php echo htmlspecialchars($image); ?>" target="_blank" rel="noopener">
-                                <img src="img/<?php echo htmlspecialchars($image); ?>" alt="<?php echo htmlspecialchars($name . ' skin — ' . $caption); ?>" width="1920" height="1080" loading="lazy">
+                            <a class="shot" href="<?php echo htmlspecialchars(ss_site_image_url('img/' . $image)); ?>" target="_blank" rel="noopener">
+                                <img src="<?php echo htmlspecialchars(ss_site_image_url('img/' . $image)); ?>" alt="<?php echo htmlspecialchars($name . ' skin — ' . $caption); ?>" width="1920" height="1080" loading="lazy">
                                 <span class="shot-label"><?php echo htmlspecialchars(ucfirst($slot)); ?></span>
                             </a>
                         <?php endforeach; ?>
