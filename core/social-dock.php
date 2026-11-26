@@ -90,7 +90,7 @@ $_dock_platforms = [
     'vero' => [
         'label' => 'Vero',
         'key' => 'social_dock_vero',
-        'svg' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"/></svg>'
+        'svg' => '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 3h4.2L12 17l4.8-14H21l-6.9 18H9.9z"/></svg>'
     ],
     'threads' => [
         'label' => 'Threads',
@@ -106,11 +106,6 @@ $_dock_platforms = [
         'label' => 'Bluesky',
         'key' => 'social_dock_bluesky',
         'svg' => '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.335 3.836c2.15 1.653 4.468 5.007 5.665 7.196 1.197-2.189 3.514-5.543 5.665-7.196 1.553-1.192 4.065-2.108 4.065 1.186 0 .658-.377 5.53-.598 6.32-.77 2.758-3.577 3.46-6.063 3.035 4.343.744 5.448 3.203 3.063 5.66-4.534 4.671-6.517-1.17-7.025-2.665a4.358 4.358 0 01-.14-.452c-.018-.062-.027-.093-.027-.068s-.009.006-.028.068c-.038.13-.084.284-.139.452-.508 1.496-2.491 7.336-7.025 2.666-2.385-2.458-1.28-4.917 3.063-5.66-2.486.424-5.294-.278-6.064-3.036C.647 10.552.27 5.68.27 5.022c0-3.294 2.512-2.378 4.065-1.186z"/></svg>'
-    ],
-    'linkedin' => [
-        'label' => 'LinkedIn',
-        'key' => 'social_dock_linkedin',
-        'svg' => '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>'
     ],
     'pinterest' => [
         'label' => 'Pinterest',
@@ -167,11 +162,9 @@ $_dock_outline = [
     'facebook'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 5.5H14A2.5 2.5 0 0 0 11.5 8v11"/><path d="M8.5 11.5h6.5"/></svg>',
     'youtube'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="3.2"/><path d="M10.8 9.6l4 2.4-4 2.4z" fill="currentColor" stroke="none"/></svg>',
     '500px'      => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="5.5"/><path d="M8.5 6.5h7"/></svg>',
-    'vero'       => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5l8 12 8-12"/></svg>',
     'threads'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.8 13.2c0 1.5 1.3 2.4 3.1 2.3 2-.1 3.1-1.4 3.1-3.3 0-2.2-1.5-3.6-3.5-3.6-1.3 0-2.4.6-3 1.6"/></svg>',
     'bluesky'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10.4C9.7 6.1 5.4 4 3.2 5.4 1.4 6.6 2.3 10.4 6.2 11.7 2.6 12.5 1.7 15.4 3.6 17c2.6 2.1 6.4-.6 8.4-4.6 2 4 5.8 6.7 8.4 4.6 1.9-1.6 1-4.5-2.6-5.3 3.9-1.3 4.8-5.1 3-6.3-2.2-1.4-6.5.7-8.8 5z"/></svg>',
     'mastodon'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9.6c0-3-1.9-4-1.9-4C15.9 5 14 4.8 12 4.8s-3.9.2-5.1.8c0 0-1.9 1-1.9 4 0 3.6.4 6.1 3.5 6.8 1.4.3 2.6.4 3.6.3"/><path d="M8.6 12.4V9.6c0-1 .6-1.6 1.5-1.6.9 0 1.5.6 1.9 1.4.4-.8 1-1.4 1.9-1.4.9 0 1.5.6 1.5 1.6v2.8"/><path d="M15.2 15.6c1.2-.1 2-.7 2.2-1.6"/></svg>',
-    'linkedin'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M7.5 10.5v6"/><path d="M7.5 7.6v.01"/><path d="M11.5 16.5v-3.4c0-1.1.8-1.9 1.9-1.9s1.9.8 1.9 1.9v3.4"/></svg>',
     'pinterest'  => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.6 16.8l1.6-6.4"/><path d="M9.9 10.6c0-1.5 1.2-2.7 2.9-2.7 1.7 0 2.8 1.2 2.8 2.9 0 2-1.2 3.5-2.8 3.5-.9 0-1.5-.7-1.3-1.6"/></svg>',
     'tumblr'     => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 5v10c0 1.8 1 2.7 2.8 2.5"/><path d="M10.5 9.5h5.5"/></svg>',
     'deviantart' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 4.5h-3l-1.4 2.8H8.5v3.4h2.4L8.5 15.4v4.1h3l1.4-2.8h4.1v-3.4h-2.4L17 8.6z"/></svg>',
