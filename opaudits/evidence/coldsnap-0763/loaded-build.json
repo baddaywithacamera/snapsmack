@@ -1,0 +1,8 @@
+{
+  "runtime_sha256": "481970452fae7c1aabcfe6ce670376f34f7606491c094d0edc7a549dfd277fcb",
+  "checks": 37,
+  "exe_sha256": "d896d1324f22c3326a772612378dbfc59ec3d97b756c49202e8c40ad96d1f140",
+  "post_canvas_photos": 14,
+  "passed": true,
+  "source": "1f5d201c3e42c717ea7fa926a5e1dfbe251a7f02"
+}
