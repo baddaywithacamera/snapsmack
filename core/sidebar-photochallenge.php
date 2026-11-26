@@ -68,10 +68,7 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
 
             <div class="nav-section<?php echo $_pc_active === 'fediverse' ? ' open' : ''; ?>" data-section="fediverse">
                 <button type="button" class="nav-section-toggle">
-                    <span class="nav-section-label-stack">
-                        <span class="nav-section-label">Set up by the Feds</span>
-                        <span class="nav-section-hint">Fediverse settings</span>
-                    </span>
+                    <span class="nav-section-label">Set up by the Feds</span>
                     <span class="nav-section-arrow"></span>
                 </button>
                 <ul class="nav-section-links">
