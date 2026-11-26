@@ -10,6 +10,7 @@ Group=trollbooth
 WorkingDirectory=/opt/snapsmack/troll-booth/current
 EnvironmentFile=/etc/troll-booth/server.env
 ExecStart=/opt/snapsmack/troll-booth/venv/bin/troll-booth-server
+ExecStopPost=/usr/bin/echo adapter.stop result=${SERVICE_RESULT} code=${EXIT_CODE} status=${EXIT_STATUS}
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true

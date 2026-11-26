@@ -53,9 +53,14 @@ The experimental v0.1.3 collaboration slice is implemented in `troll_booth/`:
 - systemd and Apache deployment templates.
 - credential-free Windows owner-console installer and a recovery runbook.
 
-OAuth sessions are intentionally revoked whenever the remote service restarts
-in this first build. This is safer than persisting bearer and refresh tokens
-before the owner-facing revocation UI exists.
+Approved OAuth grants survive a remote adapter restart. MariaDB stores
+issuer-bound token verifiers and encrypted OAuth registrations. The service
+keeps the registration encryption key in its private state directory. Revoking
+an access or refresh token removes its entire grant. In-flight approvals and
+unexchanged authorization codes remain temporary.
+
+The first upgrade from the memory-backed adapter requires one fresh pairing.
+Existing approved grants remain effective across subsequent restarts.
 
 The pairing code is the owner's explicit step-up decision. A normal code grants
 read-only access. A code issued with `--write` adds collaboration write access

@@ -1,4 +1,5 @@
 from __future__ import annotations
+# SNAPSMACK_EOF_HEADER: preserve the final EOF marker.
 
 import asyncio
 import html
@@ -10,7 +11,7 @@ from urllib.parse import urlparse
 
 import uvicorn
 from mcp.server.auth.middleware.auth_context import get_access_token
-from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
+from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import AnyHttpUrl
@@ -19,6 +20,7 @@ from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from . import __version__
 from .oauth import BoothOAuthProvider
+from .oauth_storage import OAuthGrantStore, load_client_key
 from .store import BoothStore
 
 
@@ -26,17 +28,26 @@ PUBLIC_URL = os.environ.get("TROLL_BOOTH_PUBLIC_URL", "http://127.0.0.1:8765").r
 DATABASE = os.environ.get("TROLL_BOOTH_DATABASE", str(Path.home() / ".troll-booth" / "remote.sqlite3"))
 WORKER_TOKEN = os.environ.get("TROLL_BOOTH_WORKER_TOKEN", "")
 store = BoothStore(DATABASE)
-provider = BoothOAuthProvider(store, PUBLIC_URL)
+mariadb_url = os.environ.get("TROLL_BOOTH_MARIADB_URL", "").strip()
+if mariadb_url:
+    key_path = Path(os.environ.get("TROLL_BOOTH_OAUTH_KEY_FILE", str(Path(DATABASE).with_suffix(".oauth-key"))))
+    provider = BoothOAuthProvider(store, PUBLIC_URL, OAuthGrantStore.for_mariadb(mariadb_url, load_client_key(key_path), PUBLIC_URL))
+else:
+    if urlparse(PUBLIC_URL).hostname not in {"127.0.0.1", "::1", "localhost"}:
+        raise RuntimeError("Remote BRAIN TRUST requires the existing TROLL_BOOTH_MARIADB_URL")
+    provider = BoothOAuthProvider(store, PUBLIC_URL)
 
 auth = AuthSettings(
     issuer_url=AnyHttpUrl(PUBLIC_URL),
     resource_server_url=AnyHttpUrl(f"{PUBLIC_URL}/mcp"),
-    required_scopes=["booth:read"],
+    required_scopes=[],
     client_registration_options=ClientRegistrationOptions(
         enabled=True,
-        valid_scopes=["booth:read", "booth:write"],
+        valid_scopes=["booth:read", "booth:write", "conversation:read", "conversation:post",
+                      "scope:read", "scope:write"],
         default_scopes=["booth:read", "booth:write"],
     ),
+    revocation_options=RevocationOptions(enabled=True),
     validate_token_resource=True,
 )
 mcp = MCPServer("TROLL BOOTH", version=__version__, auth=auth, auth_server_provider=provider)
@@ -44,7 +55,9 @@ mcp = MCPServer("TROLL BOOTH", version=__version__, auth=auth, auth_server_provi
 
 def _actor() -> str:
     token = get_access_token()
-    return token.subject if token and token.subject else "authenticated-agent"
+    actor = token.subject if token and token.subject else "authenticated-agent"
+    store.agent_heartbeat(actor)
+    return actor
 
 
 def _require_scope(scope: str) -> None:
@@ -54,7 +67,41 @@ def _require_scope(scope: str) -> None:
         raise PermissionError(f"This paired session requires the {scope} permission.")
 
 
+def _require_any_scope(*accepted: str) -> None:
+    """Any one of these is enough.
+
+    Claiming a work scope needs scope:write OR booth:write. The second is not
+    redundant: every existing seat holds booth:write and none holds
+    scope:write, so without it this change would silently take claim/release
+    away from claude, codex and the owner console the moment it deployed.
+    """
+    token = get_access_token()
+    scopes = set(token.scopes if token else [])
+    if not scopes.intersection(accepted):
+        raise PermissionError(
+            "This paired session requires one of: " + ", ".join(accepted))
+
+
 async def _queued(capability: str, arguments: dict, reason: str, ticket_id: str | None = None) -> dict:
+    token = get_access_token()
+    scopes = set(token.scopes if token else [])
+    # A seat may be granted one family without the others. booth:read still
+    # satisfies everything, so every existing pairing is unchanged.
+    if capability.startswith("conversation."):
+        required = "conversation:read"
+    elif capability.startswith("scope."):
+        # SS: Sean approved a Brain Trust seat for Google Antigravity that may
+        # read and claim work scopes but may NOT write to apps. Before this,
+        # scope.list fell through to booth:read and claim/release required
+        # booth:write -- and booth:write also permits confirmed app-write
+        # actions. There was no way to express "work scopes yes, app writes
+        # no", so granting the approved seat would have granted more than was
+        # approved. These two scopes are that boundary.
+        required = "scope:read"
+    else:
+        required = "booth:read"
+    if "booth:read" not in scopes and required not in scopes:
+        raise PermissionError("This session cannot use this capability")
     job_id = store.enqueue(_actor(), capability, arguments, reason, ticket_id)
     for _ in range(150):
         await asyncio.sleep(0.2)
@@ -66,6 +113,8 @@ async def _queued(capability: str, arguments: dict, reason: str, ticket_id: str 
 
 @mcp.tool(description="Report TROLL BOOTH health, connected local workers, and queued read-only work.")
 def booth_status() -> dict:
+    _require_scope("booth:read")
+    _actor()
     return store.status()
 
 
@@ -77,6 +126,21 @@ async def list_apps(reason: str = "Inspect available SnapSmack tools") -> dict:
 @mcp.tool(description="Read the declared capability sheet for one installed SnapSmack application.")
 async def app_capabilities(app: str, reason: str = "Inspect app capabilities") -> dict:
     return await _queued("apps.capabilities", {"app": app}, reason)
+
+
+@mcp.tool(description="Run one explicitly declared app action. Read actions are automatic; write actions require booth:write and confirmed=true.")
+async def run_app_action(
+    app: str,
+    action: str,
+    argv: list[str] | None = None,
+    confirmed: bool = False,
+    reason: str = "Run a declared SnapSmack app action",
+) -> dict:
+    worker_arguments = {"app": app, "action": action, "argv": argv or [], "allow_write": False}
+    if confirmed:
+        _require_scope("booth:write")
+        worker_arguments["allow_write"] = True
+    return await _queued("apps.run", worker_arguments, reason)
 
 
 @mcp.tool(description="List locally stored collaboration rooms without exposing the history database publicly.")
@@ -91,6 +155,11 @@ async def conversation_messages(
     return await _queued(
         "conversation.messages", {"room_id": room_id, "limit": limit, "before": before}, reason
     )
+
+
+@mcp.tool(description="Catch up in append order. Save next_cursor only after processing messages; null starts at the beginning.")
+async def conversation_catch_up(room_id: str, after: str | None = None, limit: int = 200, reason: str = "Catch up on room") -> dict:
+    return await _queued("conversation.catch_up", {"room_id": room_id, "after": after, "limit": limit}, reason)
 
 
 @mcp.tool(description="Full-text search locally stored collaboration history, optionally within one room.")
@@ -111,7 +180,9 @@ async def post_message(
     task_id: str | None = None,
     reason: str = "Collaborate in TROLL BOOTH",
 ) -> dict:
-    _require_scope("booth:write")
+    token = get_access_token()
+    if not {"booth:write", "conversation:post"}.intersection(token.scopes if token else []):
+        raise PermissionError("This session cannot post messages")
     return await _queued(
         "conversation.post",
         {"room_id": room_id, "body": body, "title": title, "ticket_id": ticket_id, "task_id": task_id},
@@ -133,7 +204,7 @@ async def claim_work_scope(
     ttl: int = 3600,
     reason: str = "Prevent overlapping edits",
 ) -> dict:
-    _require_scope("booth:write")
+    _require_any_scope("scope:write", "booth:write")
     return await _queued(
         "scope.claim", {"scope": scope, "task_id": task_id, "note": note, "ttl": ttl}, reason, task_id
     )
@@ -141,7 +212,7 @@ async def claim_work_scope(
 
 @mcp.tool(description="Release a work scope previously claimed by this paired identity.")
 async def release_work_scope(scope: str, reason: str = "Work scope completed") -> dict:
-    _require_scope("booth:write")
+    _require_any_scope("scope:write", "booth:write")
     return await _queued("scope.release", {"scope": scope}, reason)
 
 
@@ -154,6 +225,13 @@ def _worker_authorized(request: Request) -> bool:
 @mcp.custom_route("/health", methods=["GET"])
 async def health(_: Request) -> JSONResponse:
     return JSONResponse({"status": "ok", "service": "troll-booth", "version": __version__})
+
+
+@mcp.custom_route("/owner/status", methods=["GET"])
+async def owner_status(request: Request) -> JSONResponse:
+    if not _worker_authorized(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    return JSONResponse(store.status())
 
 
 @mcp.custom_route("/approve", methods=["GET", "POST"])
@@ -204,6 +282,46 @@ async def worker_result(request: Request) -> JSONResponse:
     return JSONResponse({"ok": ok}, status_code=200 if ok else 409)
 
 
+# Who may be issued a pairing code at all, and what each one gets. A seat is
+# defined HERE, in one readable place, rather than inferred from a boolean --
+# because "write" in this route means booth:write, and booth:write also
+# permits confirmed app-write actions. A seat that should not write to apps
+# cannot be expressed by that flag.
+PAIR_ACTORS = {"claude", "codex", "muse", "gemini", "antigravity"}
+
+
+def pair_scopes(actor: str, write: bool = True) -> list[str]:
+    """Exactly the scopes this actor is issued. A pure function, so it can be
+    tested rather than read.
+
+    gemini is Google Antigravity, approved by Sean: read room history, post,
+    and read/claim/release work scopes. NOT deployment, service control,
+    arbitrary app write, build/package or host control. Listed literally.
+    """
+    if actor == "muse":
+        return ["conversation:read", "conversation:post"]
+    if actor in {"gemini", "antigravity"}:
+        return ["conversation:read", "conversation:post",
+                "scope:read", "scope:write"]
+    return ["booth:read", "booth:write"] if write else ["booth:read"]
+
+
+@mcp.custom_route("/owner/pair-code", methods=["POST"])
+async def owner_pair_code(request: Request) -> JSONResponse:
+    """Issue a code only to the authenticated local worker/owner application."""
+    if not _worker_authorized(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    data = await request.json()
+    actor = str(data.get("actor", "")).strip().lower()
+    if actor not in PAIR_ACTORS:
+        return JSONResponse(
+            {"error": "actor must be " + ", ".join(sorted(PAIR_ACTORS))},
+            status_code=400)
+    scopes = pair_scopes(actor, bool(data.get("write", True)))
+    code = store.issue_pair_code(actor, scopes, ttl=300)
+    return JSONResponse({"actor": actor, "code": code, "expires_in": 300, "scopes": scopes})
+
+
 public_host = urlparse(PUBLIC_URL).netloc
 app = mcp.streamable_http_app(
     transport_security=TransportSecuritySettings(
@@ -215,9 +333,11 @@ app = mcp.streamable_http_app(
 
 
 def main() -> None:
+    print(f"adapter.start pid={os.getpid()} oauth_store={'mariadb' if mariadb_url else 'sqlite-local'}", flush=True)
     uvicorn.run(app, host=os.environ.get("TROLL_BOOTH_BIND", "127.0.0.1"), port=int(os.environ.get("TROLL_BOOTH_PORT", "8765")))
 
 
 if __name__ == "__main__":
     main()
 
+# ===== SNAPSMACK EOF =====

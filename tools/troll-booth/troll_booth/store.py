@@ -60,6 +60,10 @@ class BoothStore:
                     version TEXT NOT NULL,
                     apps_json TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS agents (
+                    actor TEXT PRIMARY KEY,
+                    last_seen INTEGER NOT NULL
+                );
                 """
             )
 
@@ -138,12 +142,27 @@ class BoothStore:
         now = int(time.time())
         status = "failed" if error else "complete"
         with self._connect() as db:
+            job = db.execute(
+                "SELECT actor,capability,arguments_json,reason,ticket_id FROM jobs WHERE id=? AND status='claimed'",
+                (job_id,),
+            ).fetchone()
             changed = db.execute(
                 "UPDATE jobs SET status=?,finished_at=?,result_json=?,error=? WHERE id=? AND status='claimed'",
                 (status, now, json.dumps(result) if result is not None else None, error, job_id),
             ).rowcount
         if changed:
-            self.audit("worker", f"job.{status}", {"job_id": job_id})
+            self.audit(
+                str(job["actor"]) if job else "worker",
+                f"job.{status}",
+                {
+                    "job_id": job_id,
+                    "capability": str(job["capability"]) if job else None,
+                    "arguments": json.loads(job["arguments_json"]) if job else None,
+                    "reason": str(job["reason"]) if job else None,
+                    "ticket_id": job["ticket_id"] if job else None,
+                    "error": error,
+                },
+            )
         return changed == 1
 
     def job(self, job_id: str) -> dict[str, Any] | None:
@@ -192,15 +211,29 @@ class BoothStore:
                 (worker_id, now, version, json.dumps(apps)),
             )
 
+    def agent_heartbeat(self, actor: str) -> None:
+        now = int(time.time())
+        with self._connect() as db:
+            db.execute(
+                "INSERT INTO agents(actor,last_seen) VALUES(?,?) "
+                "ON CONFLICT(actor) DO UPDATE SET last_seen=excluded.last_seen",
+                (actor, now),
+            )
+
     def status(self) -> dict[str, Any]:
         now = int(time.time())
         with self._connect() as db:
             workers = [dict(row) for row in db.execute("SELECT * FROM workers ORDER BY worker_id")]
+            agents = [dict(row) for row in db.execute("SELECT * FROM agents ORDER BY actor")]
             queued = db.execute("SELECT COUNT(*) FROM jobs WHERE status='queued'").fetchone()[0]
         for worker in workers:
             worker["online"] = now - worker["last_seen"] <= 30
             worker["apps"] = json.loads(worker.pop("apps_json"))
-        return {"workers": workers, "queued_jobs": queued, "server_time": now}
+        for agent in agents:
+            age = max(0, now - agent["last_seen"])
+            agent["age_seconds"] = age
+            agent["online"] = age <= 90
+        return {"workers": workers, "agents": agents, "queued_jobs": queued, "server_time": now}
 
     def audit(self, actor: str, event: str, detail: dict[str, Any]) -> None:
         with self._connect() as db:

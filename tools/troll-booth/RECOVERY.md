@@ -18,7 +18,8 @@ live user data do not.
 - `/etc/troll-booth/server.env` and its worker credential;
 - `~/.troll-booth/owner-token`;
 - `~/.troll-booth/apps.json` when it contains local paths or credentials;
-- conversation and audit databases;
+- conversation and audit databases, including the MariaDB OAuth tables;
+- the adapter OAuth client key (`remote.oauth-key` beside `remote.sqlite3` by default);
 - the working agreement and its previous copy;
 - TLS, SSH, Cloudflare, signing, and TOTP secrets.
 
@@ -40,7 +41,10 @@ does not create, read, print, or embed production credentials.
 2. Install this package into `/opt/snapsmack/troll-booth/venv`.
 3. Copy `deploy/server.env.example` to `/etc/troll-booth/server.env`, replace
    placeholders locally, set mode `0600`, and assign it to the service account.
-4. Restore the conversation/audit database from the encrypted backup.
+   Set `TROLL_BOOTH_MARIADB_URL` to the existing conversation database connection.
+4. Restore the conversation/audit database and the adapter OAuth client key
+   from the same encrypted backup. The service creates the key on a fresh
+   install. Keep the key and the service issuer stable for restored grants.
 5. Install `deploy/troll-booth.service` and the appropriate reverse-proxy
    configuration.
 6. Start the service and verify `/health` before reconnecting any browser agent.
@@ -52,4 +56,9 @@ does not create, read, print, or embed production credentials.
 - Confirm the owner console listens only on `127.0.0.1`.
 - Confirm the public adapter exposes no shell capability.
 - Confirm read-only browser sessions cannot post or claim work.
+- Pair a test browser seat, read a room, restart the adapter and read it again.
+  Revoke that grant, restart again, and confirm both credentials are refused.
+- Inspect the service journal for `adapter.start`, `adapter.stop`, and the
+  systemd result when distinguishing a clean stop from a crash or OOM. Record
+  the deployment time separately when restarting for an upgrade.
 - Confirm database backup restoration before declaring recovery complete.
