@@ -21,6 +21,10 @@
 require_once __DIR__ . '/core/auth-smack.php';
 require_once __DIR__ . '/core/menu-presentation.php';
 
+if (!isset($settings)) {
+    $settings = $pdo->query('SELECT setting_key, setting_val FROM snap_settings')->fetchAll(PDO::FETCH_KEY_PAIR);
+}
+
 $menu_is_gramofsmack = (($settings['site_mode'] ?? 'photoblog') === 'carousel');
 
 /** GRAMOFSMACK's continuous landing scroll is its archive. */

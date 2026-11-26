@@ -197,8 +197,15 @@ $check('the Menu Manager offers a Search Box control',
 $check('the builder wires that button', str_contains($builder, "getElementById('add-search-btn')"));
 $check('  and pushes an item of type search',
        preg_match("/type:\s*'search'/", $builder) === 1);
-$check('the saved JSON keeps the type verbatim, so it survives a reload',
+$check('the browser serializes the search type verbatim',
        preg_match('/type:\s*item\.type/', $builder) === 1);
+
+// SS-1591: admin-header.php used to load settings only after the editor had
+// already built defaults. The database accepted changes but reload hid them.
+$settingsLoad = strpos($manager, 'SELECT setting_key, setting_val FROM snap_settings');
+$firstSettingsRead = strpos($manager, '$settings[');
+$check('Menu Manager loads saved settings before choosing a mode or menu',
+       $settingsLoad !== false && $firstSettingsRead !== false && $settingsLoad < $firstSettingsRead);
 
 echo "\n";
 // ─────────────────────────────────────────────────────────────────────────────
