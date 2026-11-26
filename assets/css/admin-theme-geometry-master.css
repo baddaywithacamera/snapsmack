@@ -124,6 +124,17 @@ html, body {
 }
 
 /* Label — fully visible, theme colour is the colour */
+.nav-section-label-stack {
+    display: grid;
+    gap: 4px;
+}
+
+.nav-section-hint {
+    font-size: 0.72rem;
+    font-weight: normal;
+    line-height: 1.2;
+}
+
 .nav-section-label {
     font-size: 0.8rem;
     font-weight: 700;

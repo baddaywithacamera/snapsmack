@@ -1,0 +1,956 @@
+{
+  "main": {
+    "before": {
+      "active": "good-shit",
+      "links": [
+        {
+          "href": "smack-admin.php",
+          "text": "Dashboard",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-post-solo.php",
+          "text": "New Post",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-manage.php",
+          "text": "Manage Archive",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-lighttable.php",
+          "text": "Light Table",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-cats.php",
+          "text": "Categories",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-albums.php",
+          "text": "Albums",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-collections.php",
+          "text": "Collections",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-mosaics.php",
+          "text": "Mosaic",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-media.php",
+          "text": "Media Library",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-gallery.php",
+          "text": "Media Gallery",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-comments.php",
+          "text": "Comments",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-fediverse.php",
+          "text": "Interactions",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-blogroll.php",
+          "text": "Blogroll",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-pages.php",
+          "text": "Static Pages",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-shortcodes.php",
+          "text": "Smackcodes",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-privacy.php",
+          "text": "Privacy Policy",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-tools.php",
+          "text": "Companion Tools",
+          "section": "good-shit"
+        },
+        {
+          "href": "pixel.php",
+          "text": "Pixelfed Gateway ↗",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-dms.php",
+          "text": "Messages",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-fediverse-portal.php",
+          "text": "Portal",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-relay-status.php",
+          "text": "Relay Status",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-sv-followers.php",
+          "text": "Followers",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-sv-tools.php",
+          "text": "Push & Tools",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-sv-delivery-log.php",
+          "text": "Delivery Log",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-globalvibe.php",
+          "text": "Global Vibe",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-skin.php",
+          "text": "Smooth Your Skin",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-menu.php",
+          "text": "Menu Manager",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-social-dock.php",
+          "text": "Social Dock",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-css.php",
+          "text": "Smack Your CSS Up!",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-scripts.php",
+          "text": "Smack Your Scripts Up!",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-appearance-archive.php",
+          "text": "Archive Appearance",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-appearance-solo.php",
+          "text": "Solo Image Appearance",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-appearance-static.php",
+          "text": "Static Page Appearance",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-settings.php",
+          "text": "Configuration",
+          "section": "boring"
+        },
+        {
+          "href": "smack-update.php",
+          "text": "System Updates",
+          "section": "boring"
+        },
+        {
+          "href": "smack-schema.php",
+          "text": "Database Schema",
+          "section": "boring"
+        },
+        {
+          "href": "smack-back.php",
+          "text": "SMACKBACK Security",
+          "section": "boring"
+        },
+        {
+          "href": "smack-2fa.php",
+          "text": "Two-Factor Auth",
+          "section": "boring"
+        },
+        {
+          "href": "smack-users.php",
+          "text": "User Manager",
+          "section": "boring"
+        },
+        {
+          "href": "smack-community-settings.php",
+          "text": "Community",
+          "section": "boring"
+        },
+        {
+          "href": "smack-maintenance.php",
+          "text": "Maintenance",
+          "section": "boring"
+        },
+        {
+          "href": "smack-cron.php",
+          "text": "Cron & Jobs",
+          "section": "boring"
+        },
+        {
+          "href": "smack-fingerprints.php",
+          "text": "Troll Control",
+          "section": "boring"
+        },
+        {
+          "href": "smack-backup.php",
+          "text": "Backup & Recovery",
+          "section": "boring"
+        },
+        {
+          "href": "smack-disaster.php",
+          "text": "Disaster Recovery",
+          "section": "boring"
+        },
+        {
+          "href": "smack-break-glass.php",
+          "text": "Break the Glass",
+          "section": "boring"
+        },
+        {
+          "href": "smack-stats.php",
+          "text": "Traffic Stats",
+          "section": "boring"
+        },
+        {
+          "href": "smack-api-keys.php",
+          "text": "API Keys",
+          "section": "boring"
+        },
+        {
+          "href": "smack-multisite.php",
+          "text": "Multisite Management",
+          "section": "boring"
+        },
+        {
+          "href": "smack-directory.php",
+          "text": "Directory",
+          "section": "boring"
+        },
+        {
+          "href": "smack-help.php",
+          "text": "User Manual",
+          "section": "help"
+        },
+        {
+          "href": "smack-forum.php",
+          "text": "Community Forum",
+          "section": "help"
+        }
+      ]
+    },
+    "after": {
+      "active": "boring",
+      "links": [
+        {
+          "href": "smack-admin.php",
+          "text": "Dashboard",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-post-solo.php",
+          "text": "New Post",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-manage.php",
+          "text": "Manage Archive",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-lighttable.php",
+          "text": "Light Table",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-cats.php",
+          "text": "Categories",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-albums.php",
+          "text": "Albums",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-collections.php",
+          "text": "Collections",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-mosaics.php",
+          "text": "Mosaic",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-media.php",
+          "text": "Asset Library",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-gallery.php",
+          "text": "Post Photo Gallery",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-comments.php",
+          "text": "Comments",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-fediverse.php",
+          "text": "Interactions",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-blogroll.php",
+          "text": "Blogroll",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-pages.php",
+          "text": "Static Pages",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-shortcodes.php",
+          "text": "Smackcodes",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-privacy.php",
+          "text": "Privacy Policy",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-tools.php",
+          "text": "Desktop Tools",
+          "section": "good-shit"
+        },
+        {
+          "href": "pixel.php",
+          "text": "Pixelfed Gateway ↗",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-pixelfed.php",
+          "text": "Pixelfed Client",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-dms.php",
+          "text": "Messages",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-fediverse-portal.php",
+          "text": "Portal",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-relay-status.php",
+          "text": "Relay Status",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-sv-followers.php",
+          "text": "Followers",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-sv-tools.php",
+          "text": "Fediverse Publishing Tools",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-sv-delivery-log.php",
+          "text": "Delivery Log",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-globalvibe.php",
+          "text": "Global Vibe",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-skin.php",
+          "text": "Smooth Your Skin",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-menu.php",
+          "text": "Menu Manager",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-social-dock.php",
+          "text": "Social Dock",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-css.php",
+          "text": "Smack Your CSS Up!",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-scripts.php",
+          "text": "Smack Your Scripts Up!",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-appearance-archive.php",
+          "text": "Archive Appearance",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-appearance-solo.php",
+          "text": "Solo Image Appearance",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-appearance-static.php",
+          "text": "Static Page Appearance",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-settings.php",
+          "text": "Configuration",
+          "section": "boring"
+        },
+        {
+          "href": "smack-update.php",
+          "text": "System Updates",
+          "section": "boring"
+        },
+        {
+          "href": "smack-schema.php",
+          "text": "Database Schema",
+          "section": "boring"
+        },
+        {
+          "href": "smack-back.php",
+          "text": "SMACKBACK Security",
+          "section": "boring"
+        },
+        {
+          "href": "smack-2fa.php",
+          "text": "Two-Factor Auth",
+          "section": "boring"
+        },
+        {
+          "href": "smack-users.php",
+          "text": "User Manager",
+          "section": "boring"
+        },
+        {
+          "href": "smack-community-settings.php",
+          "text": "Community",
+          "section": "boring"
+        },
+        {
+          "href": "smack-maintenance.php",
+          "text": "Maintenance",
+          "section": "boring"
+        },
+        {
+          "href": "smack-cron.php",
+          "text": "Cron & Jobs",
+          "section": "boring"
+        },
+        {
+          "href": "smack-fingerprints.php",
+          "text": "Troll Control",
+          "section": "boring"
+        },
+        {
+          "href": "smack-backup.php",
+          "text": "Backup & Recovery",
+          "section": "boring"
+        },
+        {
+          "href": "smack-disaster.php",
+          "text": "Disaster Recovery",
+          "section": "boring"
+        },
+        {
+          "href": "smack-break-glass.php",
+          "text": "Break the Glass",
+          "section": "boring"
+        },
+        {
+          "href": "smack-stats.php",
+          "text": "Traffic Stats",
+          "section": "boring"
+        },
+        {
+          "href": "smack-api-keys.php",
+          "text": "API Keys",
+          "section": "boring"
+        },
+        {
+          "href": "smack-multisite.php",
+          "text": "Multisite Management",
+          "section": "boring"
+        },
+        {
+          "href": "smack-directory.php",
+          "text": "Directory",
+          "section": "boring"
+        },
+        {
+          "href": "smack-help.php",
+          "text": "User Manual",
+          "section": "help"
+        },
+        {
+          "href": "smack-forum.php",
+          "text": "Community Forum",
+          "section": "help"
+        }
+      ]
+    }
+  },
+  "challenge": {
+    "before": {
+      "active": "boring",
+      "links": [
+        {
+          "href": "smack-admin.php",
+          "text": "Dashboard",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-post-solo.php",
+          "text": "New Post",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-manage.php",
+          "text": "Manage Posts",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-comments.php",
+          "text": "Signals",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-pages.php",
+          "text": "Static Pages",
+          "section": "good-shit"
+        },
+        {
+          "href": "pixel.php",
+          "text": "Pixelfed ↗",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-fediverse.php",
+          "text": "Interactions",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-dms.php",
+          "text": "Messages",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-fediverse-portal.php",
+          "text": "Federation",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-sv-followers.php",
+          "text": "Followers",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-sv-tools.php",
+          "text": "Push & Tools",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-sv-delivery-log.php",
+          "text": "Delivery Log",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-globalvibe.php",
+          "text": "Global Vibe",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-masthead.php",
+          "text": "Masthead Cover",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-skin.php",
+          "text": "Smooth Your Skin",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-menu.php",
+          "text": "Menu Manager",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-social-dock.php",
+          "text": "Social Dock",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-css.php",
+          "text": "Smack Your CSS Up!",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-scripts.php",
+          "text": "Smack Your Scripts Up!",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-appearance-archive.php",
+          "text": "Archive Appearance",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-appearance-solo.php",
+          "text": "Solo Image Appearance",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-appearance-static.php",
+          "text": "Static Page Appearance",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-photochallenge.php",
+          "text": "Contest & Feed",
+          "section": "turbo-boost"
+        },
+        {
+          "href": "smack-photochallenge-queue.php",
+          "text": "Queue Contest Post",
+          "section": "turbo-boost"
+        },
+        {
+          "href": "smack-photochallenge-queued.php",
+          "text": "Queued Posts",
+          "section": "turbo-boost"
+        },
+        {
+          "href": "smack-settings.php",
+          "text": "Configuration",
+          "section": "boring"
+        },
+        {
+          "href": "smack-users.php",
+          "text": "User Manager",
+          "section": "boring"
+        },
+        {
+          "href": "smack-2fa.php",
+          "text": "Two-Factor Auth",
+          "section": "boring"
+        },
+        {
+          "href": "smack-maintenance.php",
+          "text": "Maintenance",
+          "section": "boring"
+        },
+        {
+          "href": "smack-cron.php",
+          "text": "Cron & Jobs",
+          "section": "boring"
+        },
+        {
+          "href": "smack-fingerprints.php",
+          "text": "Troll Control",
+          "section": "boring"
+        },
+        {
+          "href": "smack-backup.php",
+          "text": "Backup & Recovery",
+          "section": "boring"
+        },
+        {
+          "href": "smack-disaster.php",
+          "text": "Disaster Recovery",
+          "section": "boring"
+        },
+        {
+          "href": "smack-break-glass.php",
+          "text": "Break the Glass",
+          "section": "boring"
+        },
+        {
+          "href": "smack-stats.php",
+          "text": "Traffic Stats",
+          "section": "boring"
+        },
+        {
+          "href": "smack-update.php",
+          "text": "System Updates",
+          "section": "boring"
+        },
+        {
+          "href": "smack-schema.php",
+          "text": "Database Schema",
+          "section": "boring"
+        },
+        {
+          "href": "smack-back.php",
+          "text": "SMACKBACK Security",
+          "section": "boring"
+        },
+        {
+          "href": "smack-api-keys.php",
+          "text": "API Keys",
+          "section": "boring"
+        },
+        {
+          "href": "smack-multisite.php",
+          "text": "Multisite Management",
+          "section": "boring"
+        }
+      ]
+    },
+    "after": {
+      "active": "boring",
+      "links": [
+        {
+          "href": "smack-admin.php",
+          "text": "Dashboard",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-post-solo.php",
+          "text": "New Post",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-manage.php",
+          "text": "Manage Posts",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-comments.php",
+          "text": "Comments",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-fediverse.php",
+          "text": "Interactions",
+          "section": "good-shit"
+        },
+        {
+          "href": "smack-pages.php",
+          "text": "Static Pages",
+          "section": "good-shit"
+        },
+        {
+          "href": "pixel.php",
+          "text": "Pixelfed Gateway ↗",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-pixelfed.php",
+          "text": "Pixelfed Client",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-dms.php",
+          "text": "Messages",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-fediverse-portal.php",
+          "text": "Portal",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-sv-followers.php",
+          "text": "Followers",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-sv-tools.php",
+          "text": "Fediverse Publishing Tools",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-sv-delivery-log.php",
+          "text": "Delivery Log",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-photochallenge.php",
+          "text": "Photo Challenge",
+          "section": "fediverse"
+        },
+        {
+          "href": "smack-globalvibe.php",
+          "text": "Global Vibe",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-masthead.php",
+          "text": "Masthead Cover",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-skin.php",
+          "text": "Smooth Your Skin",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-menu.php",
+          "text": "Menu Manager",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-social-dock.php",
+          "text": "Social Dock",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-css.php",
+          "text": "Smack Your CSS Up!",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-scripts.php",
+          "text": "Smack Your Scripts Up!",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-appearance-archive.php",
+          "text": "Archive Appearance",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-appearance-solo.php",
+          "text": "Solo Image Appearance",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-appearance-static.php",
+          "text": "Static Page Appearance",
+          "section": "pimp"
+        },
+        {
+          "href": "smack-photochallenge-queue.php",
+          "text": "Queue Contest Post",
+          "section": "turbo-boost"
+        },
+        {
+          "href": "smack-photochallenge-queued.php",
+          "text": "Queued Posts",
+          "section": "turbo-boost"
+        },
+        {
+          "href": "smack-settings.php",
+          "text": "Configuration",
+          "section": "boring"
+        },
+        {
+          "href": "smack-users.php",
+          "text": "User Manager",
+          "section": "boring"
+        },
+        {
+          "href": "smack-2fa.php",
+          "text": "Two-Factor Auth",
+          "section": "boring"
+        },
+        {
+          "href": "smack-maintenance.php",
+          "text": "Maintenance",
+          "section": "boring"
+        },
+        {
+          "href": "smack-cron.php",
+          "text": "Cron & Jobs",
+          "section": "boring"
+        },
+        {
+          "href": "smack-fingerprints.php",
+          "text": "Troll Control",
+          "section": "boring"
+        },
+        {
+          "href": "smack-backup.php",
+          "text": "Backup & Recovery",
+          "section": "boring"
+        },
+        {
+          "href": "smack-disaster.php",
+          "text": "Disaster Recovery",
+          "section": "boring"
+        },
+        {
+          "href": "smack-break-glass.php",
+          "text": "Break the Glass",
+          "section": "boring"
+        },
+        {
+          "href": "smack-stats.php",
+          "text": "Traffic Stats",
+          "section": "boring"
+        },
+        {
+          "href": "smack-update.php",
+          "text": "System Updates",
+          "section": "boring"
+        },
+        {
+          "href": "smack-schema.php",
+          "text": "Database Schema",
+          "section": "boring"
+        },
+        {
+          "href": "smack-back.php",
+          "text": "SMACKBACK Security",
+          "section": "boring"
+        },
+        {
+          "href": "smack-api-keys.php",
+          "text": "API Keys",
+          "section": "boring"
+        },
+        {
+          "href": "smack-multisite.php",
+          "text": "Multisite Management",
+          "section": "boring"
+        }
+      ]
+    }
+  }
+}

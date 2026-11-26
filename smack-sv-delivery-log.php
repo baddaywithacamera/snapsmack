@@ -230,7 +230,7 @@ include 'core/sidebar.php';
             read-only. The outbound queue keeps only jobs that are <strong>still waiting or failing</strong>;
             a send that succeeds is removed the instant it lands, so an empty queue is the healthy state. To act on
             what you see here, use <a href="smack-cron.php">RUN NOW on Cron &amp; Jobs</a> to drain the
-            queue now, or <a href="smack-sv-tools.php">PUSH / RE-IMPRINT on Push &amp; Tools</a>.
+            queue now, or <a href="smack-sv-tools.php">PUSH / RE-IMPRINT on Fediverse Publishing Tools</a>.
         </p>
         <p class="mb-10">
             <strong><?php echo $verdict_ok ? '&#10003;' : '&#9888;'; ?>
@@ -451,7 +451,7 @@ include 'core/sidebar.php';
     </div>
 
     <p class="dim">Read-only. This page never sends, retries or deletes &mdash; it only shows you the state
-    so you can decide what to do on Cron &amp; Jobs or Push &amp; Tools.</p>
+    so you can decide what to do on Cron &amp; Jobs or Fediverse Publishing Tools.</p>
 
 </div>
 

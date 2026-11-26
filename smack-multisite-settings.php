@@ -178,7 +178,7 @@ require_once 'core/admin-header.php';
             <a href="smack-multisite-crosspost.php" class="btn-clear">CROSS-POST</a>
             <a href="smack-multisite-blogroll.php"  class="btn-clear">BLOGROLL</a>
             <a href="smack-multisite-settings.php"  class="btn-clear active">SETTINGS</a>
-            <a href="smack-push-it.php"             class="btn-clear">PUSH IT</a>
+            <a href="smack-push-it.php"             class="btn-clear">FLEET SETTINGS PUSH</a>
         </div>
     </div>
 
@@ -189,7 +189,7 @@ require_once 'core/admin-header.php';
     <?php else: ?>
 
     <p class="dim" style="margin-bottom:24px; font-size:0.85rem;">
-        Downloads can be targeted to specific spokes. To push settings to your fleet, use <a href="smack-push-it.php">PUSH IT</a>.
+        Downloads can be targeted to specific spokes. To push settings to your fleet, use <a href="smack-push-it.php">FLEET SETTINGS PUSH</a>.
     </p>
 
     <!-- DOWNLOADS — custom spoke selector -->

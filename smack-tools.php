@@ -50,14 +50,14 @@ $tools = [
     ],
 ];
 
-$page_title = 'Companion Tools';
+$page_title = 'Desktop Tools';
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
 
 <div class="main">
     <div class="header-row header-row--ruled">
-        <h2>COMPANION TOOLS</h2>
+        <h2>DESKTOP TOOLS</h2>
     </div>
 
     <div class="box">

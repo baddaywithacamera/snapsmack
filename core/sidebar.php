@@ -75,7 +75,7 @@ $_section_map = [
     'good-shit'  => ['smack-admin.php','smack-post-solo.php','smack-post-long.php','smack-manage.php','smack-edit.php','smack-lighttable.php','smack-lt-gram.php','smack-slicer.php','smack-cats.php','smack-albums.php','smack-collections.php','smack-mosaics.php','smack-media.php','smack-gallery.php','smack-comments.php','smack-fediverse.php','smack-blogroll.php','smack-pages.php','smack-shortcodes.php','smack-privacy.php','smack-tools.php'],
     'fediverse'  => ['smack-pixelfed.php','smack-dms.php','smack-fediverse-portal.php','smack-relay-status.php','smack-sv-followers.php','smack-sv-tools.php','smack-sv-delivery-log.php','smack-photochallenge.php'],
     'pimp'       => ['smack-globalvibe.php','smack-masthead.php','smack-skin.php','smack-menu.php','smack-social-dock.php','smack-css.php','smack-scripts.php','smack-appearance-archive.php','smack-appearance-solo.php','smack-appearance-static.php'],
-    'boring'     => ['smack-settings.php','smack-users.php','smack-community-settings.php','smack-community-users.php','smack-maintenance.php','smack-cron.php','smack-fingerprints.php','smack-backup.php','smack-disaster.php','smack-break-glass.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php','smack-schema.php','smack-stats.php','smack-api-keys.php','smack-back.php','smack-multisite.php','smack-multisite-breaches.php','smack-directory.php','smack-multisite-comments.php','smack-multisite-posts.php','smack-multisite-backup.php','smack-multisite-stats.php','smack-multisite-crosspost.php','smack-multisite-blogroll.php','smack-multisite-settings.php','smack-push-it.php'],
+    'boring'     => ['smack-settings.php','smack-users.php','smack-community-settings.php','smack-community-users.php','smack-maintenance.php','smack-cron.php','smack-fingerprints.php','smack-backup.php','smack-disaster.php','smack-break-glass.php','smack-ftp.php','smack-2fa.php','smack-verify.php','smack-update.php','smack-schema.php','smack-stats.php','smack-api-keys.php','smack-back.php','smack-multisite.php','smack-multisite-breaches.php','smack-directory.php','smack-multisite-comments.php','smack-multisite-posts.php','smack-multisite-backup.php','smack-multisite-stats.php','smack-multisite-crosspost.php','smack-multisite-blogroll.php','smack-multisite-settings.php','smack-push-it.php'],
     'help'       => ['smack-help.php','smack-forum.php'],
 ];
 $_active_section = 'good-shit'; // default
@@ -158,10 +158,10 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <?php endif; ?>
                     <?php if ($_ui_pimpmobile): ?>
                     <li class="<?php echo ($current_page == 'smack-media.php') ? 'active' : ''; ?>">
-                        <a href="smack-media.php">Media Library</a>
+                        <a href="smack-media.php">Asset Library</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-gallery.php') ? 'active' : ''; ?>">
-                        <a href="smack-gallery.php">Media Gallery</a>
+                        <a href="smack-gallery.php">Post Photo Gallery</a>
                     </li>
                     <?php endif; ?>
 
@@ -188,7 +188,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                         <a href="smack-privacy.php">Privacy Policy</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-tools.php') ? 'active' : ''; ?>">
-                        <a href="smack-tools.php">Companion Tools</a>
+                        <a href="smack-tools.php">Desktop Tools</a>
                     </li>
                     <?php endif; ?>
                 </ul>
@@ -201,12 +201,18 @@ foreach ($_section_map as $sec => $_sec_pages) {
             <?php if (smack_is_admin()): ?>
             <div class="nav-section<?php echo ($_active_section === 'fediverse') ? ' open' : ''; ?>" data-section="fediverse">
                 <button type="button" class="nav-section-toggle">
-                    <span class="nav-section-label">Fediverse Config</span>
+                    <span class="nav-section-label-stack">
+                        <span class="nav-section-label">Set up by the Feds</span>
+                        <span class="nav-section-hint">Fediverse settings</span>
+                    </span>
                     <span class="nav-section-arrow"></span>
                 </button>
                 <ul class="nav-section-links">
                     <li>
                         <a href="pixel.php" target="_blank" rel="noopener"><?php echo $_site_is_smacktalk ? 'Mastodon Gateway' : 'Pixelfed Gateway'; ?> &#8599;</a>
+                    </li>
+                    <li class="<?php echo ($current_page == 'smack-pixelfed.php') ? 'active' : ''; ?>">
+                        <a href="smack-pixelfed.php">Pixelfed Client</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-dms.php') ? 'active' : ''; ?>">
                         <a href="smack-dms.php">Messages</a>
@@ -221,7 +227,7 @@ foreach ($_section_map as $sec => $_sec_pages) {
                         <a href="smack-sv-followers.php">Followers</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-sv-tools.php') ? 'active' : ''; ?>">
-                        <a href="smack-sv-tools.php">Push &amp; Tools</a>
+                        <a href="smack-sv-tools.php">Fediverse Publishing Tools</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-sv-delivery-log.php') ? 'active' : ''; ?>">
                         <a href="smack-sv-delivery-log.php">Delivery Log</a>

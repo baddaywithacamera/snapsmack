@@ -498,7 +498,7 @@ $categories = $pdo->query("SELECT id, cat_name FROM snap_categories ORDER BY cat
 $albums     = $pdo->query("SELECT id, album_name FROM snap_albums ORDER BY album_name")->fetchAll(PDO::FETCH_ASSOC);
 $total_images = (int)$pdo->query("SELECT COUNT(*) FROM snap_images")->fetchColumn();
 
-$page_title = 'Media Gallery';
+$page_title = 'Post Photo Gallery';
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -507,7 +507,7 @@ include 'core/sidebar.php';
 
 <div class="main">
     <div class="header-row header-row--ruled">
-        <h2>MEDIA GALLERY</h2>
+        <h2>POST PHOTO GALLERY</h2>
         <span class="dim" id="gallery-count"><?php echo number_format($total_images); ?> images</span>
         <button type="button" class="btn-smack btn-smack--dim gallery-select-toggle" id="gal-select-mode"
                 title="Turn on to select images by clicking them, then delete from the bar below.">Select</button>

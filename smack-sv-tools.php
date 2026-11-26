@@ -14,7 +14,7 @@ require_once 'core/auth-smack.php';
 require_once 'core/fediverse.php';
 require_once 'core/fediverse-admin-shared.php';
 
-$page_title = 'Fediverse - Push & Tools';
+$page_title = 'Fediverse Publishing Tools';
 include 'core/admin-header.php';
 include 'core/sidebar.php';
 ?>
@@ -22,7 +22,7 @@ include 'core/sidebar.php';
 <div class="main">
 
     <div class="header-row header-row--ruled">
-        <h2>FEDIVERSE &mdash; PUSH &amp; TOOLS</h2>
+        <h2>FEDIVERSE PUBLISHING TOOLS</h2>
     </div>
 
     <?php if (isset($_GET['msg'])): ?>

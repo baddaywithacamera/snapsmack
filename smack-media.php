@@ -216,7 +216,7 @@ if (isset($_GET['delete'])) {
 
 // Load all assets ordered by creation date.
 $assets = $pdo->query("SELECT * FROM snap_assets ORDER BY created_at DESC")->fetchAll();
-$page_title = "Media Library";
+$page_title = "Asset Library";
 
 // Formats browsers can actually render as <img>.
 $web_formats = ['jpg','jpeg','png','gif','webp','svg','avif','bmp','ico'];
@@ -228,7 +228,7 @@ include 'core/sidebar.php';
 
 <div class="main">
     <div class="header-row header-row--ruled">
-        <h2>MEDIA LIBRARY</h2>
+        <h2>ASSET LIBRARY</h2>
     </div>
 
     <div class="box">
