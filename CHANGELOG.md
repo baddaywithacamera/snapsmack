@@ -11,6 +11,18 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.1005D — opened
+
+- **Find the Pixelfed Client from the admin sidebar.** The site and Photo
+  Challenge sidebars use the same labels for shared tasks, and the correct
+  section opens on the two-factor authentication page.
+- **Add a search box to a public menu.** It searches the archive. ALFRED
+  displays one search control when the menu has a search box of its own.
+- **Update the Social Dock icons.** Vero uses a plain V. LinkedIn is removed
+  from the dock and its settings.
+- **Identify the current OH SNAP build as 0.3.3.** The version appears in
+  the app and on exported skin packages.
+
 ## 0.7.1004D — opened
 
 - **POCKET ALBUM puts a photo album inside a page or post.** The block shows
