@@ -63,6 +63,7 @@ class MosaicBrowser(QWebEngineView):
         settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, False)
         settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, False)
         self.loadFinished.connect(self._loaded)
+        self.renderProcessTerminated.connect(self._renderer_stopped)
         self.setHtml(_DOCUMENT, QUrl.fromLocalFile(str(self._assets()) + '/'))
 
     @staticmethod
@@ -101,6 +102,12 @@ class MosaicBrowser(QWebEngineView):
                          'mirroredSections': list(mirrored_sections)}
         if self._ready:
             self._render()
+
+    def _renderer_stopped(self, status, _exit_code):
+        if status != self.page().RenderProcessTerminationStatus.NormalTerminationStatus:
+            self._ready = False
+            self._revision += 1
+            self.failed.emit("The mosaic preview renderer stopped.")
 
     def _loaded(self, ok):
         if not ok:

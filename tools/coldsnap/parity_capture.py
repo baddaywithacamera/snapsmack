@@ -39,7 +39,7 @@ def isolated_settings(directory):
             stack.enter_context(_replace_for_fixture(module, "QSettings", fixture_settings))
         yield
 
-def take_composer_checks(mode, files):
+def take_composer_checks(mode, files, *, check_renderer=False):
     """Exercise the real composer controls against a disposable queued post."""
     from PySide6.QtCore import QPoint, QPointF, Qt
     from PySide6.QtGui import QDragEnterEvent, QDropEvent, QMouseEvent
@@ -160,6 +160,16 @@ def take_composer_checks(mode, files):
     results["tray_remove_original_preserved"] = Path(removed.local_path).is_file()
 
 
+    first = mode._bucket[0]
+    source = Path(first.local_path)
+    variant = source.with_name("edited-composer-fixture.jpg")
+    shutil.copy2(source, variant)
+    first.original_path = str(source)
+    first.local_path = str(variant)
+    first.slapper_base_path = str(source)
+    first.slapper_edited_path = str(variant)
+    mode._refresh_bucket()
+
     suffixes = ("", ' target="_blank" rel="noopener"', ' rel="nofollow"',
                 ' target="_blank" rel="noopener nofollow"')
     mode.body.canvas.from_blocks([{"type": "para", "text": "Links: "}])
@@ -182,6 +192,14 @@ def take_composer_checks(mode, files):
     draft = next((item for item in session.list_drafts() if item.title == "Composer proof"), None)
     results["queued"] = bool(draft and draft.status == O.ST_READY)
     if draft:
+        saved_paths = [(im.original_path, im.slapper_base_path, im.slapper_edited_path)
+                       for im in draft.images]
+        for _ in range(5):
+            session.add_draft(draft)
+            draft = session.load_draft(draft.draft_id)
+        results["saved_photo_copy_paths_stay_stable"] = saved_paths == [
+            (im.original_path, im.slapper_base_path, im.slapper_edited_path) for im in draft.images
+        ] and all(Path(path).is_file() for path in saved_paths[0])
         payload = SmacktalkPoster("https://example.test", "fixture").build_payload(draft, [1], 1)
         for index, suffix in enumerate(suffixes):
             markup = f'<a href="https://example.test/{index}?one=1&amp;two=2"{suffix}>Link {index}</a>'
@@ -192,6 +210,41 @@ def take_composer_checks(mode, files):
         mode.body._set_biggie(True)
         rebuilt = mode._build_draft(session)
         results["draft_roundtrip"] = rebuilt.colophon == draft.colophon and rebuilt.caption == draft.caption
+        from PySide6.QtWidgets import QMessageBox
+
+        errors = []
+        def fail_save(_session, _draft, **_options):
+            raise OSError(22, "fixture image copy failed")
+
+        def record_error(_widget, title, text):
+            errors.append((title, text))
+            return QMessageBox.Ok
+
+        with _replace_for_fixture(O.Session, "add_draft", fail_save), \
+                _replace_for_fixture(QMessageBox, "critical", record_error):
+            mode.save_btn.click()
+            mode.queue_btn.click()
+        results["save_and_queue_show_errors_without_clearing"] = (
+            len(errors) == 2 and "save this draft" in errors[0][1]
+            and "queue this post" in errors[1][1] and "fixture image copy failed" in errors[1][1]
+            and mode.title_edit.text() == draft.title and mode._build_draft(session).caption == draft.caption
+        )
+
+        if check_renderer:
+            from coldsnap_qt.mosaic_browser import MosaicBrowser
+            from PySide6.QtWebEngineCore import QWebEnginePage
+            browser = MosaicBrowser(mode.body.canvas, measure_only=True)
+            browser.failed.connect(mode.body.canvas._fail_inline_mosaic)
+            browser.renderProcessTerminated.emit(
+                QWebEnginePage.RenderProcessTerminationStatus.CrashedTerminationStatus, 1)
+            results["renderer_failure_visible"] = (
+                mode.canvas_warning.isVisible() and "renderer stopped" in mode.canvas_warning.text()
+            )
+            from shiboken6 import delete
+            browser.stop()
+            browser.close()
+            delete(browser)
+
     return results
 
 def run(output_dir: str) -> int:
@@ -892,7 +945,7 @@ def _run_capture(out, app, retire_views, overlap):
     composer_mode.resize(1440, 900)
     composer_mode.show()
     app.processEvents()
-    checks.update(take_composer_checks(composer_mode, paths))
+    checks.update(take_composer_checks(composer_mode, paths, check_renderer=True))
     composer_mode.close()
 
     checks["one_mosaic_browser_at_a_time"] = not overlap

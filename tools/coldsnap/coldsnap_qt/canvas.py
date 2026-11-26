@@ -819,6 +819,7 @@ class BiggieCanvas(QTextEdit):
     #: or [] / "" for a fresh one). The host owns the bucket + dialog and
     #: answers with insert_mosaic()/replace_mosaic().
     mosaicEditRequested = Signal(list, str)
+    mosaicPreviewFailed = Signal(str)
     photographsDropped = Signal(list)
     photographPasted = Signal(object)
     trayPhotoDropped = Signal(str)
@@ -928,6 +929,7 @@ class BiggieCanvas(QTextEdit):
 
     def _fail_inline_mosaic(self, message):
         self._inline_browser_error = message
+        self.mosaicPreviewFailed.emit(message)
         self._finish_inline_mosaic({'items': [], 'height': 138})
 
     def _finish_inline_mosaic(self, geometry):

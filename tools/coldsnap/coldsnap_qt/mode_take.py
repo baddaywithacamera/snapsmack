@@ -14,6 +14,7 @@ import math
 import os
 import re
 import tempfile
+import traceback
 import threading
 import uuid
 
@@ -420,6 +421,7 @@ class TakeMode(QWidget):
         self.body = BodyEditor(allow_mosaic=True, simple_height=220)
         self.body.bar.hide()  # SHORTCODES live in the left rail (Slice 8)
         self.body.canvas.mosaicEditRequested.connect(self._canvas_mosaic)
+        self.body.canvas.mosaicPreviewFailed.connect(self._show_canvas_failure)
         self.body.canvas.mosaic_tray_additions = self._mosaic_tray_additions
         self.body.canvas.photographsDropped.connect(
             lambda paths: self._add_photo_paths(paths, insert=True))
@@ -495,6 +497,10 @@ class TakeMode(QWidget):
         self.site_colors_note.setObjectName("SiteColorsNote")
         self.site_colors_note.setVisible(False)
         card_col.addWidget(self.site_colors_note)
+        self.canvas_warning = hint("")
+        self.canvas_warning.setWordWrap(True)
+        self.canvas_warning.hide()
+        card_col.addWidget(self.canvas_warning)
         self.text_view_hint = hint(
             "A plain text editor. Each block uses CMS shortcodes from core/parser.php "
             "(plus COLD SNAP [mosaic=…] markers resolved to [mosaic:ID] on send).")
@@ -4262,39 +4268,61 @@ class TakeMode(QWidget):
                                 status=draft.status,
                                 blocks=authored if authored is not None else self.body.authoring_blocks())
 
+    def _show_canvas_failure(self, message):
+        self.canvas_warning.setText(
+            f"{message} You can still save your draft. Reopen COLD SNAP to restore the preview.")
+        self.canvas_warning.show()
+
     def _save(self, ready: bool, *, confirm_empty_fn=None):
-        session = self.rail.ensure_session()
         if not self._bucket:
             QMessageBox.warning(self, "No photos", "Add at least one photo first.")
             return
-        if ready and getattr(self, "_remote_post_id", None):
-            has_body = bool(self.body.toPlainText().strip()) or any(
-                b.get("type") in ("image", "mosaic") for b in self.body.canvas.to_blocks()
-            )
-            if not has_body:
-                if confirm_empty_fn is not None:
-                    confirmed = bool(confirm_empty_fn(self._remote_post_id))
-                else:
-                    ans = QMessageBox.warning(
-                        self,
-                        "Empty draft over published post",
-                        f"This draft has 0 blocks and is linked to published post #{self._remote_post_id}.\n\n"
-                        "Queueing and sending it could overwrite the live post with empty content. Queue anyway?",
-                        QMessageBox.Yes | QMessageBox.Cancel,
-                        QMessageBox.Cancel,
-                    )
-                    confirmed = (ans == QMessageBox.Yes)
-                if not confirmed:
-                    return
-        self._wait_for_thumbs()  # reuse any background bake already in flight
-        draft = self._build_draft(session)
-        O.generate_draft_thumbs(draft)
-        problems = draft.validate()
-        if ready and problems:
-            QMessageBox.warning(self, "Not ready", "\n".join(problems))
-        draft.status = O.ST_READY if (ready and not problems) else O.ST_DRAFT
-        session.add_draft(draft)
-        self._mirror_sqlite(draft)
+        try:
+            session = self.rail.ensure_session()
+            if ready and getattr(self, "_remote_post_id", None):
+                has_body = bool(self.body.toPlainText().strip()) or any(
+                    b.get("type") in ("image", "mosaic") for b in self.body.canvas.to_blocks()
+                )
+                if not has_body:
+                    if confirm_empty_fn is not None:
+                        confirmed = bool(confirm_empty_fn(self._remote_post_id))
+                    else:
+                        ans = QMessageBox.warning(
+                            self,
+                            "Empty draft over published post",
+                            f"This draft has 0 blocks and is linked to published post #{self._remote_post_id}.\n\n"
+                            "Queueing and sending it could overwrite the live post with empty content. Queue anyway?",
+                            QMessageBox.Yes | QMessageBox.Cancel,
+                            QMessageBox.Cancel,
+                        )
+                        confirmed = (ans == QMessageBox.Yes)
+                    if not confirmed:
+                        return
+            self._wait_for_thumbs()  # reuse any background bake already in flight
+            draft = self._build_draft(session)
+            O.generate_draft_thumbs(draft)
+            problems = draft.validate()
+            if ready and problems:
+                QMessageBox.warning(self, "Not ready", "\n".join(problems))
+            draft.status = O.ST_READY if (ready and not problems) else O.ST_DRAFT
+            session.add_draft(draft)
+        except Exception as exc:
+            traceback.print_exc()
+            action = "queue this post" if ready else "save this draft"
+            self.save_state.setText(f"Could not {action}")
+            QMessageBox.critical(
+                self, "Post could not be saved",
+                f"COLD SNAP could not {action}. It is still open in the editor.\n\n{exc}")
+            return
+
+        try:
+            self._mirror_sqlite(draft)
+        except Exception as exc:
+            traceback.print_exc()
+            outcome = "queued" if draft.status == O.ST_READY else "saved as a draft"
+            QMessageBox.warning(
+                self, "Library update failed",
+                f"The post was {outcome} on this computer. The library copy could not be updated.\n\n{exc}")
         self._clear()
         self.rail.refresh_batches()
 
