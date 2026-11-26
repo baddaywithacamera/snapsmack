@@ -1,0 +1,107 @@
+{
+  "results": [
+    {
+      "width": 1024,
+      "configured": true,
+      "itemStarts": [
+        174.6875,
+        261.140625,
+        412.71875,
+        554.0625,
+        635.9375,
+        719.21875,
+        829.3125
+      ],
+      "centerDelta": -0.5,
+      "itemWidth": 20,
+      "fieldWidth": 0,
+      "submits": true
+    },
+    {
+      "width": 1024,
+      "configured": false,
+      "itemStarts": [
+        174.6875,
+        261.140625,
+        412.71875,
+        554.0625,
+        635.9375,
+        719.21875,
+        829.3125
+      ],
+      "centerDelta": -0.5,
+      "itemWidth": 20,
+      "fieldWidth": 0,
+      "submits": true
+    },
+    {
+      "width": 1440,
+      "configured": true,
+      "itemStarts": [
+        382.6875,
+        469.140625,
+        620.71875,
+        762.0625,
+        843.9375,
+        927.21875,
+        1037.3125
+      ],
+      "centerDelta": -0.5,
+      "itemWidth": 20,
+      "fieldWidth": 0,
+      "submits": true
+    },
+    {
+      "width": 1440,
+      "configured": false,
+      "itemStarts": [
+        382.6875,
+        469.140625,
+        620.71875,
+        762.0625,
+        843.9375,
+        927.21875,
+        1037.3125
+      ],
+      "centerDelta": -0.5,
+      "itemWidth": 20,
+      "fieldWidth": 0,
+      "submits": true
+    },
+    {
+      "width": 1920,
+      "configured": true,
+      "itemStarts": [
+        622.6875,
+        709.140625,
+        860.71875,
+        1002.0625,
+        1083.9375,
+        1167.21875,
+        1277.3125
+      ],
+      "centerDelta": -0.5,
+      "itemWidth": 20,
+      "fieldWidth": 0,
+      "submits": true
+    },
+    {
+      "width": 1920,
+      "configured": false,
+      "itemStarts": [
+        622.6875,
+        709.140625,
+        860.71875,
+        1002.0625,
+        1083.9375,
+        1167.21875,
+        1277.3125
+      ],
+      "centerDelta": -0.5,
+      "itemWidth": 20,
+      "fieldWidth": 0,
+      "submits": true
+    }
+  ],
+  "dockMargin": "15px"
+}
