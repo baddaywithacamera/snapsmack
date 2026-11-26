@@ -32,6 +32,8 @@ import backup_engine
 from checkpoint import BackupCheckpoint
 import batch_job as batch_job_module
 import cloud_client
+import connection_status
+import sync_manager
 import config as config_module
 import ftps_pins
 import profile_manager
@@ -39,7 +41,7 @@ import restore_engine
 import secret_vault
 from _version import BUILD_VERSION
 from suyb_qt_common import (
-    STYLE, FitScrollArea, Relay, card as _card, engine_asker, label as _label,
+    STYLE, FitScrollArea, Relay, card as _card, engine_asker, label as _label, run_in_thread,
 )
 from suyb_qt_audit import AuditPage
 from suyb_qt_cloudsync import CloudSyncPage
@@ -65,7 +67,7 @@ class Bridge(QObject):
     stats = Signal(str, int, int, int, 'qint64', 'qint64', 'qint64')
     log = Signal(str)
     finished = Signal(object)
-    tested = Signal(bool, str)
+    tested = Signal(int, object)
     restoreProgress = Signal(str, float)
     restoreLog = Signal(str)
     restoreFinished = Signal(object)
@@ -108,6 +110,7 @@ class SuybWindow(QMainWindow):
         self._last_stats = None
         self._clock = QTimer(self); self._clock.setInterval(1000); self._clock.timeout.connect(self._refresh_stats)
         self.current_profile = None
+        self._connection_generation = 0
         self.selected_profile_names = []
         self._cloud_file_id = ""
         self._quitting = False
@@ -238,13 +241,14 @@ class SuybWindow(QMainWindow):
         self.nav_group = QButtonGroup(self); self.nav_group.setExclusive(True)
         self.pages = QStackedWidget()
         self.manage_page = ManagePage(self)
+        self.cloud_sync_page = CloudSyncPage(self)
         entries = (("Overview", "Your safety net", self._overview_page()),
                    ("Restore", "Bring a site back", self._restore_page()),
                    ("Backups", "What you have", self._backups_page()),
                    ("Manage", "Backups in the cloud", self.manage_page),
                    ("Audit", "Check what you have", AuditPage(self)),
                    ("Schedule", "When backups run", SchedulePage(self)),
-                   ("Cloud Sync", "Copy between clouds", CloudSyncPage(self)),
+                   ("Cloud Sync", "Copy between clouds", self.cloud_sync_page),
                    ("SLAP HAPPY", "Back up SNAP SLAPPER", SlapHappyPage(self)),
                    ("Connection", "Site and destination", self._settings_page()),
                    ("Settings", "Transfer, cloud, security", SettingsPage(self)))
@@ -281,7 +285,9 @@ class SuybWindow(QMainWindow):
         self.connection.setWordWrap(False)
         hl.addWidget(self.connection)
         help_btn = QPushButton("HELP · F1"); help_btn.clicked.connect(self._show_help); hl.addWidget(help_btn)
-        test = QPushButton("Test connection"); test.clicked.connect(self._test_connection); hl.addWidget(test)
+        self.test_button = QPushButton("Test connection")
+        self.test_button.clicked.connect(self._test_connection)
+        hl.addWidget(self.test_button)
         ml.addWidget(header); ml.addWidget(self.pages, 1); shell.addWidget(main, 1)
         self.setCentralWidget(root)
 
@@ -294,6 +300,16 @@ class SuybWindow(QMainWindow):
 
     def _overview_page(self):
         page, layout = self._page("Your backup cockpit", "One clear view of the selected site, its latest safety copy, and what happens next.")
+        status_card, status_layout = _card("Connections", "Check access to the selected site and configured cloud destinations.")
+        self.connection_selection = _label("", "Muted")
+        self.connection_selection.setTextFormat(Qt.PlainText)
+        status_layout.addWidget(self.connection_selection)
+        self.active_backup_label = _label("No active backup", "Muted")
+        self.active_backup_label.setTextFormat(Qt.PlainText)
+        status_layout.addWidget(self.active_backup_label)
+        self.connection_rows = QVBoxLayout()
+        status_layout.addLayout(self.connection_rows)
+        layout.addWidget(status_card)
         self.incomplete_card, inc_col = _card(
             "Incomplete backup ready to resume",
             "An interrupted backup checkpoint is on disk. Resume picks up where it left off without re-downloading completed files."
@@ -556,8 +572,11 @@ class SuybWindow(QMainWindow):
         self.name_edit.setText(str(p.get("name", ""))); self.url_edit.setText(str(p.get("site_url", "")))
         self.key_edit.setText(str(p.get("api_key", ""))); self.dir_edit.setText(str(p.get("backup_dir", "")))
         self._render_site_summary()
-        self.connection.setText("● Ready to verify" if p else "Choose a site")
-        self.connection.setObjectName("StatusGood" if p else "StatusWarn"); self.connection.style().unpolish(self.connection); self.connection.style().polish(self.connection)
+        self._connection_generation += 1
+        self.connection_selection.setText("Selected site · " + (p.get("name") or "None"))
+        self._set_connection_status("Not checked" if p else "Choose a site")
+        self._render_connections([])
+        self.test_button.setEnabled(bool(p))
         self.run_btn.setEnabled(bool(p) and not self.engine); self._update_backup_selection(); self._refresh_backups()
         self._cloud_file_id = ""; self.cloud_choice.setText("No package selected")
         if name:
@@ -747,25 +766,98 @@ class SuybWindow(QMainWindow):
         return config_module.effective_backup_key(profile)
 
     def _test_connection(self):
-        p = dict(self.current_profile or {})
-        if not p: return
-        self.connection.setText("Checking…"); self.connection.setObjectName("StatusWarn")
+        profile = dict(self.current_profile or {})
+        if not profile:
+            return
+        self._connection_generation += 1
+        generation = self._connection_generation
+        self.test_button.setEnabled(False)
+        self._set_connection_status("Checking…")
+        self._render_connections([])
+
         def work():
             try:
-                key = self._resolved_key(p)
-                if not key: raise RuntimeError("No usable backup key is available")
-                session = backup_engine.SnapSmackSession(p["site_url"], api_key=key)
-                response = session.session.get(p["site_url"].rstrip("/") + "/suyb-export.php?type=schema", timeout=20, allow_redirects=False, stream=True)
-                code = response.status_code; ctype = response.headers.get("Content-Type", ""); response.close()
-                if code != 200 or "sql" not in ctype.lower(): raise RuntimeError(f"Site returned HTTP {code}")
-                self.bridge.tested.emit(True, "Connected · database export ready")
-            except Exception as exc:
-                self.bridge.tested.emit(False, str(exc))
+                key = self._resolved_key(profile)
+                global_cloud = self._global_cloud()
+                jobs = []
+                for name in sync_manager.list_jobs():
+                    try:
+                        jobs.append((name, sync_manager.load_job(name)))
+                    except Exception:
+                        jobs.append((name, None))
+                result = connection_status.check_connections(profile, global_cloud, jobs, key)
+            except Exception:
+                result = None
+            self.bridge.tested.emit(generation, result)
+
         threading.Thread(target=work, daemon=True).start()
 
-    def _test_done(self, ok, message):
-        self.connection.setText(("● " if ok else "⚠ ") + message)
-        self.connection.setObjectName("StatusGood" if ok else "StatusWarn"); self.connection.style().unpolish(self.connection); self.connection.style().polish(self.connection)
+    def _set_connection_status(self, message):
+        self.connection.setText(message)
+        self.connection.setObjectName("StatusGood" if message == connection_status.CONNECTED else "StatusWarn")
+        self.connection.style().unpolish(self.connection)
+        self.connection.style().polish(self.connection)
+
+    def _render_connections(self, results):
+        while self.connection_rows.count():
+            self.connection_rows.takeAt(0).widget().deleteLater()
+        for result in results:
+            row = QWidget()
+            layout = QHBoxLayout(row)
+            layout.setContentsMargins(0, 0, 0, 0)
+            style = "StatusGood" if result.state == connection_status.CONNECTED else "StatusWarn"
+            label = _label(f"{result.label} · {result.state} · Checked {result.checked}", style)
+            label.setTextFormat(Qt.PlainText)
+            layout.addWidget(label, 1)
+            if result.state != connection_status.CONNECTED:
+                reconnect = result.state == connection_status.SIGN_IN and result.fix[0] == "drive"
+                action = QPushButton("Reconnect" if reconnect else "Fix")
+                action.clicked.connect(lambda _checked=False, r=result: self._fix_connection(r))
+                layout.addWidget(action)
+            self.connection_rows.addWidget(row)
+
+    def _test_done(self, generation, results):
+        if generation != self._connection_generation:
+            return
+        self.test_button.setEnabled(True)
+        if not results:
+            self._set_connection_status("Could not check connections")
+            return
+        self._connection_results = results
+        self._render_connections(results)
+        states = {result.state for result in results}
+        status = next(state for state in (connection_status.SIGN_IN, connection_status.UNREACHABLE,
+                                          connection_status.CONNECTED) if state in states)
+        self._set_connection_status(status)
+
+    def _fix_connection(self, result):
+        target, page, *args = result.fix
+        if target == "drive" and result.state == connection_status.SIGN_IN:
+            generation = self._connection_generation
+            self._set_connection_status("Waiting for Google Drive sign-in…")
+            self._render_connections([])
+            self.test_button.setEnabled(False)
+
+            def done(outcome):
+                if generation != self._connection_generation:
+                    return
+                if outcome[0]:
+                    self._test_connection()
+                else:
+                    self.test_button.setEnabled(True)
+                    self._set_connection_status("Google Drive sign-in did not complete")
+                    self._render_connections(self._connection_results)
+
+            run_in_thread(self.relay, lambda: cloud_client.authenticate_oauth(args[0]),
+                          done, lambda _error: done((False, "")))
+        else:
+            self._show_page(page)
+            if page == 6:
+                self.cloud_sync_page._refresh_jobs(select=args[-1])
+                self.cloud_sync_page._edit_job()
+
+    def _show_active_backup(self, name=""):
+        self.active_backup_label.setText("Active backup · " + name if name else "No active backup")
 
     def _global_cloud(self):
         return self.global_cloud()
@@ -989,6 +1081,7 @@ class SuybWindow(QMainWindow):
         # A placeholder so busy() is true from this instant, before the worker
         # thread has built the first real engine.
         self.engine = _StartingEngine()
+        self._show_active_backup(names[0])
         cloud_required = bool(global_cloud) or any(
             bool((profile_manager.load_profile(n) or {}).get("cloud_provider"))
             for n in names
@@ -1127,6 +1220,7 @@ class SuybWindow(QMainWindow):
     def _on_stats(self, site, files_done, files_total, files_failed, bytes_done, bytes_total, bytes_failed):
         if site != self._stats_site:
             self._stats_site = site; self._site_started = time.monotonic()
+            self._show_active_backup(site)
         self._last_stats = (site, files_done, files_total, files_failed, bytes_done, bytes_total, bytes_failed)
         remaining_files = max(0, files_total - files_done)
         self.files_stats.setText(f"FILES · {site}\n{files_done:,} complete · {remaining_files:,} remaining · {files_total:,} total" + (f" · {files_failed:,} failed" if files_failed else ""))
@@ -1190,6 +1284,7 @@ class SuybWindow(QMainWindow):
     def _backup_done(self, result):
         self._clock.stop()
         self.engine = None; self._pause_requested = False
+        self._show_active_backup()
         unattended = self._unattended; self._unattended = False
         self.pause_btn.setEnabled(False); self.pause_btn.setText("PAUSE"); self.cancel_btn.setEnabled(False)
         if self.tray_pause_action:
@@ -1457,7 +1552,6 @@ class SuybWindow(QMainWindow):
         if old_name and old_name != p["name"]:
             profile_manager.delete_profile(old_name)
         self._load_profiles(select=p["name"])
-        self.connection.setText("● Saved · ready to verify"); self.connection.setObjectName("StatusGood")
 
     # ── Close ────────────────────────────────────────────────────────────
 
