@@ -156,10 +156,22 @@ include 'core/sidebar.php';
     line-height: 1.5;
 }
 .shortcode-preview {
-    background: var(--preview-bg, #fafafa);
+    /* Use the public shortcode palette on a known light preview surface. */
+    --white: #fff;
+    --light-grey: #f4f4f4;
+    --mid-grey: #4b4b4b;
+    --dark-grey: #333;
+    --black: #111;
+    --red: #b00020;
+    --border: #d3d3d3;
+    background: #fafafa;
+    color: #222;
     border: 1px solid var(--border);
     padding: 28px 32px;
     overflow: hidden;
+}
+.shortcode-preview .snap-feature-box {
+    --red: #ff5b66;
 }
 </style>
 
