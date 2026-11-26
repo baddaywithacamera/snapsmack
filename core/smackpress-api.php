@@ -114,14 +114,14 @@ if (!function_exists('smack_autop_long')) {
             $text
         )) return $text;
         $text = preg_replace('/(\[img:[^\]]+\])\s*\n+/', '$1', $text);
-        $text = preg_replace('/(\[mosaic:\d+\])\s*\n+/', '$1', $text);
+        $text = preg_replace('/(\[mosaic:\d+(?:\s+width=\d{2,4})?\])\s*\n+/', '$1', $text);
         $text = str_replace(["\r\n", "\r"], "\n", $text);
         $chunks = preg_split('/\n\n+/', $text, -1, PREG_SPLIT_NO_EMPTY);
         foreach ($chunks as &$chunk) {
             $trimmed = trim($chunk);
             if (preg_match('/^\[img:\s*\d+(?:\s*\|[^\]]*)*\]$/', $trimmed)) {
                 $chunk = $trimmed;
-            } elseif (preg_match('/^\[mosaic:\d+\]$/', $trimmed)) {
+            } elseif (preg_match('/^\[mosaic:\d+(?:\s+width=\d{2,4})?\]$/', $trimmed)) {
                 $chunk = $trimmed;
             } elseif (preg_match('/^\[spacer:\s*\d+\]$/', $trimmed)) {
                 $chunk = $trimmed;

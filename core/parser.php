@@ -416,9 +416,11 @@ class SnapSmack {
      * aspect thumbnail, so tiles load the light thumb while the lightbox opens the
      * full image (engine reads `full` for data-lightbox-src, falling back to `src`).
      * Order is preserved.
+     * Portfolio mosaics may specify an outer column width in pixels, for example
+     * [mosaic:42 width=260]. Omitted widths inherit the skin or stay fluid.
      */
     private function parseMosaics($content) {
-        return preg_replace_callback('/\[mosaic:\s*(\d+)\s*\]/i', function ($m) {
+        return preg_replace_callback('/\[mosaic:\s*(\d+)(?:\s+width=(\d{2,4}))?\s*\]/i', function ($m) {
             $id = (int)$m[1];
 
             try {
@@ -558,6 +560,9 @@ class SnapSmack {
                 ? ' snap-portfolio-gallery snap-portfolio-gallery--' . $layout : '';
             $geometry = $galleryClass === '' ? '' : ' data-columns="' . ($layout === 'masonry' ? 3 : 1)
                 . '" data-gap="' . $gap . '"';
+            if ($galleryClass !== '' && isset($m[2])) {
+                $geometry .= ' data-column-width="' . max(120, min(1200, (int)$m[2])) . '"';
+            }
             return '<div class="' . $container . ' snap-mosaic-wall' . $galleryClass . '" style="' . $style . '"' . $geometry . '>'
                 . $tiles . '</div>';
         }, $content);
