@@ -1,0 +1,11 @@
+{
+  "version": "0.7.66",
+  "source_commit": "d24c4d4a",
+  "sha256": "b0d69cacc6674398a84f72112594ef84ce041d69514b6d14ee698e593edebb7d",
+  "staged_pass": true,
+  "checks": 64,
+  "test_processes_after_exit": 0,
+  "installed": false,
+  "install_status": "The owner instance remains open at the HQ launch path.",
+  "previous_fixture_failure": "An offscreen Qt access violation was reproduced before the dialog stage. Explicitly deferred old canvas/browser teardown and drained the event queue before new scenes."
+}
