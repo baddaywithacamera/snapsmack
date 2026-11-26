@@ -4,6 +4,7 @@
 # Last non-empty line must be the canonical SNAPSMACK EOF marker.
 """
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 import hashlib
 import json
@@ -16,6 +17,79 @@ import stat
 
 class UnsafeDatabaseUpdate(ValueError):
     """The target cannot be limited to an inspectable, restorable row."""
+
+
+_PHP_LITERAL = r"'((?:[^'\\\r\n]|\\['\\])*)'"
+_CREDENTIAL_STANZA = re.compile(
+    r"(?m)^[ \t]*require_once\s+__DIR__\s*\.\s*'/constants\.php';[ \t]*\r?$"
+    + r"(?:\n[ \t]*(?://[^\r\n]*)?\r?$)*"
+    + "".join(
+        rf"\n[ \t]*\${name}[ \t]*=[ \t]*{_PHP_LITERAL};[ \t]*\r?$"
+        for name in ("host", "db", "user", "pass")
+    )
+)
+_SETTING_ASSIGNMENT = re.compile(r"(?m)^[ \t]*\$(host|db|user|pass)[ \t]*=")
+
+
+def _site_login(content, database):
+    """Read installer-generated literals only. Never evaluate the site's PHP."""
+    try:
+        php = content.decode("utf-8")
+    except UnicodeError:
+        raise UnsafeDatabaseUpdate("The site database config is not readable UTF-8.") from None
+    stanza = _CREDENTIAL_STANZA.search(php)
+    if stanza is None or _SETTING_ASSIGNMENT.findall(php) != ["host", "db", "user", "pass"]:
+        raise UnsafeDatabaseUpdate("The site database config does not use supported literal settings.")
+    host, configured, user, password = (
+        re.sub(r"\\(['\\])", r"\1", literal) for literal in stanza.groups()
+    )
+    if configured != database:
+        raise UnsafeDatabaseUpdate("The selected site's database does not match the requested database.")
+    if not user or not re.fullmatch(r"[a-zA-Z0-9.-]+", host):
+        raise UnsafeDatabaseUpdate("The site database endpoint is not supported.")
+    return host, user, password
+
+
+@contextmanager
+def connect_site_database(content, database, *, container, connect=None):
+    """Use the site's existing login in memory and suppress driver diagnostics."""
+    host, user, password = _site_login(content, database)
+    del content
+    if container and host.lower() in {"localhost", "127.0.0.1"}:
+        raise UnsafeDatabaseUpdate("This site's container-local database needs a local connector.")
+    if connect is None:
+        try:
+            import pymysql
+        except ImportError:
+            raise UnsafeDatabaseUpdate("The host MariaDB connector is not installed.") from None
+        connect = pymysql.connect
+
+    try:
+        connection = connect(host=host, user=user, password=password, database=database,
+                             charset="utf8mb4", connect_timeout=10, read_timeout=20,
+                             write_timeout=20, binary_prefix=True, autocommit=False)
+    except Exception:
+        raise UnsafeDatabaseUpdate("Could not connect using the site's database configuration.") from None
+    finally:
+        del password
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SHOW GRANTS FOR CURRENT_USER")
+            grants = cursor.fetchall()
+        scopes = {f"`{database}`.*", "*.*"}
+        for row in grants:
+            statement = row[0].partition(" TO ")[0]
+            privileges, separator, scope = statement.removeprefix("GRANT ").partition(" ON ")
+            if separator and scope in scopes and (
+                privileges == "ALL PRIVILEGES" or "TRIGGER" in privileges.split(", ")
+            ):
+                break
+        else:
+            raise UnsafeDatabaseUpdate("The site's database login cannot verify table triggers.")
+        yield connection
+    finally:
+        connection.close()
 
 
 def _identifier(name):
@@ -102,6 +176,15 @@ def _validate_table(cursor, change):
     )
     if cursor.fetchone()[0]:
         raise UnsafeDatabaseUpdate("Referenced foreign-key columns require a wider backup.")
+    # A site login may not see foreign keys owned by another schema. An unindexed
+    # column cannot be the referenced side of a MariaDB foreign key.
+    cursor.execute(
+        "SELECT COUNT(*) FROM information_schema.STATISTICS "
+        "WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s AND COLUMN_NAME=%s",
+        (*target, change.column),
+    )
+    if cursor.fetchone()[0]:
+        raise UnsafeDatabaseUpdate("Indexed columns require a wider backup.")
 
 
 def _locked_row(cursor, change):

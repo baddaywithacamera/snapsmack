@@ -53,6 +53,7 @@ SSH_TIMEOUT_SECONDS = 150
 SESSION_OPERATIONS = {
     "authorize-write-session", "check-write-session", "revoke-write-session",
     "preview-maintenance", "issue-maintenance-nonce", "run-maintenance",
+    "preview-db-update", "issue-db-update-nonce", "run-db-update",
 }
 
 
@@ -125,6 +126,18 @@ class ScopedFileWriter:
                 or any(digit not in "0123456789abcdef" for digit in nonce)):
             raise Refused("the host did not issue a valid maintenance nonce")
         return self._session_request("run-maintenance", user, nonce=nonce, **plan)
+
+    def preview_db_update(self, user, ticket, plan):
+        return self._session_request("preview-db-update", user, ticket=ticket, **plan)
+
+    def run_db_update(self, user, ticket, plan, expected):
+        request = dict(plan, ticket=ticket, expected=expected)
+        issued = self._session_request("issue-db-update-nonce", user, **request)
+        nonce = issued.get("write_nonce") if isinstance(issued, dict) else None
+        if (not isinstance(nonce, str) or len(nonce) != 64
+                or any(digit not in "0123456789abcdef" for digit in nonce)):
+            raise Refused("the host did not issue a valid database nonce")
+        return self._session_request("run-db-update", user, nonce=nonce, **request)
 
     def put_file_dry(self, target, path, content, expected_live=None):
         """Rehearse. Changes nothing, and deliberately needs no grant.

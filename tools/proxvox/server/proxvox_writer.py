@@ -774,6 +774,8 @@ WRITE_SESSIONS = "/run/proxvox/write-sessions"
 WRITE_SESSION_SECONDS = 3600
 MAINTENANCE_LOCKS = "/run/proxvox/maintenance"
 ATTESTED_MAINTENANCE = {"preview-maintenance", "issue-maintenance-nonce", "run-maintenance"}
+ATTESTED_DATABASE = {"preview-db-update", "issue-db-update-nonce", "run-db-update"}
+SITE_CONFIG_MAX_BYTES = 65536
 
 
 def _write_nonce_name(nonce):
@@ -1154,6 +1156,93 @@ def _attested_maintenance(op, user, request):
         return result
 
 
+def _read_site_db_config(target, path):
+    if not (path.startswith(("/var/www/", "/srv/www/")) and path.endswith("/core/db.php")):
+        raise Refused("Choose the site's core/db.php in a web root.")
+    try:
+        if target == "host":
+            _refuse_symlinks(path)
+            if not stat.S_ISREG(os.lstat(path).st_mode):
+                raise Refused("The site database config is not a regular file.")
+            with open(path, "rb") as config:
+                data = config.read(SITE_CONFIG_MAX_BYTES + 1)
+        else:
+            _refuse_container_symlinks(target, path)
+            _run(_ct(target) + ["/usr/bin/test", "-f", path])
+            data = _run(_ct(target) + ["/usr/bin/head", "-c", str(SITE_CONFIG_MAX_BYTES + 1), "--", path])
+    except (OSError, Refused, subprocess.SubprocessError):
+        raise Refused("Could not read the selected site's database configuration.") from None
+    if not data or len(data) > SITE_CONFIG_MAX_BYTES:
+        raise Refused("The site database configuration is empty or too large.")
+    return data
+
+
+def _attested_database(op, user, request):
+    from proxvox_database import (
+        RowUpdate, UnsafeDatabaseUpdate, apply_row_update, connect_site_database, read_row_fingerprint,
+    )
+
+    ticket = request.get("ticket")
+
+    def attest():
+        return _check_write_session(user, ticket)
+
+    attest()
+    where = request.get("target")
+    target = "host" if where == "host" else _vmid(where)
+    path = _absolute(request.get("config_path"))
+    try:
+        change = RowUpdate(*(request.get(field) for field in
+                           ("database", "table", "key_column", "key", "column", "value")))
+        expected = request.get("expected")
+        with _maintenance_lock(target):
+            config = _read_site_db_config(target, path)
+            config_digest = hashlib.sha256(config).hexdigest()
+            attest()
+            with connect_site_database(config, change.database, container=target != "host") as connection:
+                del config
+                if op == "preview-db-update":
+                    return {"expected": read_row_fingerprint(connection, change)}
+                if not isinstance(expected, str) or not _is_sha256(expected):
+                    raise Refused("Preview the database row before requesting a write.")
+                operation = hashlib.sha256(json.dumps(
+                    ["db-update", user, _write_session_path(ticket), target, path, config_digest,
+                     change.audit_record(), expected], separators=(",", ":"), sort_keys=True,
+                ).encode("utf-8")).hexdigest()
+                if op == "issue-db-update-nonce":
+                    if read_row_fingerprint(connection, change) != expected:
+                        raise Refused("The database row changed since preview.")
+                    return {"write_nonce": _issue_write_nonce(operation, attest())}
+                _consume_write_nonce(request.get("nonce"), operation)
+                os.makedirs(BACKUP_DIR, mode=0o700, exist_ok=True)
+
+                # A driver can expose connection/authentication details in its error
+                # text. Never forward driver messages to the client or the audit.
+                def record_intent(detail):
+                    if not _audit("database-update-intent", dict(detail, target=target), durable=True):
+                        raise Refused("Could not persist the database audit; the row was not written.")
+
+                try:
+                    result = apply_row_update(connection, change, expected, BACKUP_DIR,
+                                              attest=attest, record_intent=record_intent)
+                except Exception:
+                    _audit("database-update-result", {
+                        "target": target, "result": "failed or not confirmed",
+                        **change.audit_record(),
+                    }, durable=True)
+                    raise
+                if not _audit("database-update-result", dict(result, target=target, result="success"),
+                              durable=True):
+                    raise Refused("The row was committed but its result could not be audited.")
+                return result
+    except UnsafeDatabaseUpdate as err:
+        raise Refused(str(err)) from None
+    except Refused:
+        raise
+    except Exception:
+        raise Refused("Database operation failed; verify the row before retrying.") from None
+
+
 def _audit_command(command):
     """The command line with any grant blob removed.
 
@@ -1166,7 +1255,7 @@ def _audit_command(command):
         args = shlex.split(str(command or ""), posix=True)
     except ValueError:
         return "(unparsable command)"
-    if args and (args[0] in ATTESTED_MAINTENANCE or args[0] in {
+    if args and (args[0] in ATTESTED_MAINTENANCE | ATTESTED_DATABASE or args[0] in {
         "authorize-write-session", "check-write-session", "revoke-write-session"
     }):
         return args[0]
@@ -1272,6 +1361,11 @@ def dispatch(command):
             raise Refused("the account cannot authorize a host writer session")
         return _attested_maintenance(op, args[1], _read_session_request())
 
+    if op in ATTESTED_DATABASE and len(args) == 2:
+        if args[1] not in OWNER_USERS:
+            raise Refused("The account cannot authorize a host writer session.")
+        return _attested_database(op, args[1], _read_session_request())
+
     # ── what may I write? The allowlist, readable so Sean can check it. ──
     if op == "scope" and len(args) == 1:
         return {
@@ -1279,6 +1373,7 @@ def dispatch(command):
             "never_write": list(NEVER_WRITE),
             "maintenance": sorted(MAINTENANCE),
             "attested_maintenance": ["chmod", "chown", "reload", "restart", "status"],
+            "attested_database": ["row-update"],
             "max_write_bytes": MAX_WRITE_BYTES,
             "note": "Without a live owner session, only listed paths can be rehearsed. "
                     "With host-witnessed TOTP and an operation nonce, the file writer supports "

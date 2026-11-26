@@ -19,7 +19,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "server"))
 from proxvox_database import (
-    RowUpdate, UnsafeDatabaseUpdate, apply_row_update, read_row_fingerprint,
+
+    RowUpdate, UnsafeDatabaseUpdate, apply_row_update, connect_site_database, read_row_fingerprint,
 )
 
 
@@ -71,13 +72,14 @@ def database(tmp_path):
                     [(4, "before 'quoted'", b"\x00\xff"), (5, "other row", b"xyz")],
                 )
             connection.commit()
-            yield connection
+            yield connection, port, password
     finally:
         server.terminate()
         server.wait(timeout=15)
 
 
 def test_locked_row_backup_audit_rollback_and_restore(database, tmp_path):
+    database, _, _ = database
     backup = tmp_path / "backup"
     backup.mkdir(mode=0o700)
     change = RowUpdate("fixture", "pages", "id", 4, "content", "updated 'é' 🌑")
@@ -129,6 +131,143 @@ def test_locked_row_backup_audit_rollback_and_restore(database, tmp_path):
                        "FOR EACH ROW SET NEW.content = 'triggered'")
     with pytest.raises(UnsafeDatabaseUpdate, match="triggers"):
         read_row_fingerprint(database, change)
+
+
+def test_site_connector_parses_config_without_evaluating_php_or_leaking_errors():
+    php = br"""<?php
+require_once __DIR__ . '/constants.php';
+
+// --- DATABASE CREDENTIALS ---
+$host = 'maria.internal';
+$db = 'fixture';
+$user = 'site_login';
+$pass = 'synthetic\'quoted\\password';
+$charset = 'utf8mb4';
+throw new RuntimeException('must never execute PHP');
+"""
+    opened = []
+
+    def unavailable(**options):
+        opened.append(options)
+        raise RuntimeError(options["password"])
+
+    with pytest.raises(UnsafeDatabaseUpdate, match="Could not connect") as exc:
+        with connect_site_database(php, "fixture", container=True, connect=unavailable):
+            pytest.fail("Could not have opened the connection")
+    assert opened[0]["password"] == "synthetic'quoted\\password"
+    assert opened[0]["host"] == "maria.internal"
+    assert "synthetic" not in str(exc.value)
+    with pytest.raises(UnsafeDatabaseUpdate, match="does not match"):
+        with connect_site_database(php, "other", container=True, connect=unavailable):
+            pytest.fail("Unexpected site/database pairing")
+    with pytest.raises(UnsafeDatabaseUpdate, match="local connector"):
+        with connect_site_database(php.replace(b"maria.internal", b"localhost"), "fixture",
+                                   container=True, connect=unavailable):
+            pytest.fail("Container localhost cannot be routed from the host")
+    assert len(opened) == 1
+
+
+def test_site_connector_refuses_login_without_trigger_visibility():
+    php = b"""<?php
+require_once __DIR__ . '/constants.php';
+$host = 'maria.internal';
+$db = 'fixture';
+$user = 'site_login';
+$pass = 'fixture';
+"""
+    class Connection:
+        closed = False
+
+        def cursor(self):
+            return self
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def execute(self, query):
+            assert query == "SHOW GRANTS FOR CURRENT_USER"
+
+        def fetchall(self):
+            return (("GRANT SELECT, UPDATE ON `fixture`.* TO ignored",),)
+
+        def close(self):
+            self.closed = True
+
+    connection = Connection()
+    with pytest.raises(UnsafeDatabaseUpdate, match="cannot verify table triggers"):
+        with connect_site_database(php, "fixture", container=True, connect=lambda **_: connection):
+            pytest.fail("A login that cannot see triggers is insufficient")
+    assert connection.closed
+
+
+def test_forced_command_connects_with_site_login_and_rejects_nonce_drift(database, tmp_path, monkeypatch):
+    from contextlib import nullcontext
+    import pymysql
+    import proxvox_database
+    from test_proxvox_writer import _load
+
+    _, port, password = database
+    writer = _load()
+    user = "root@pam"
+    ticket = "PVE:root@pam:fixture"
+    active = True
+    backup = tmp_path / "row-backups"
+    log = tmp_path / "writer.jsonl"
+    config = f"""<?php
+require_once __DIR__ . '/constants.php';
+$host = '127.0.0.1';
+$db = 'fixture';
+$user = 'root';
+$pass = '{password}';
+""".encode()
+
+    def site_connect(content, db, *, container):
+        assert not container
+
+        def connect_fixture(**options):
+            return pymysql.connect(**options, port=port)
+
+        return connect_site_database(content, db, container=container, connect=connect_fixture)
+
+    def session(account, supplied):
+        if not active or (account, supplied) != (user, ticket):
+            raise writer.Refused("Inactive fixture session")
+        return time.time() + 120
+
+    monkeypatch.setattr(proxvox_database, "connect_site_database", site_connect)
+    monkeypatch.setattr(writer, "_read_site_db_config", lambda target, path: config)
+    monkeypatch.setattr(writer, "_maintenance_lock", lambda target: nullcontext())
+    monkeypatch.setattr(writer, "_check_write_session", session)
+    monkeypatch.setattr(writer, "BACKUP_DIR", str(backup))
+    monkeypatch.setattr(writer, "AUDIT_LOG", str(log))
+    monkeypatch.setattr(writer, "WRITE_NONCES", str(tmp_path / "nonces"))
+    plan = {"ticket": ticket, "target": "host", "config_path": "/var/www/fixture/core/db.php",
+            "database": "fixture", "table": "pages", "key_column": "id", "key": 4,
+            "column": "content", "value": "updated by the site connector"}
+
+    def call(action, **extras):
+        monkeypatch.setattr(writer, "_read_session_request", lambda: dict(plan, **extras))
+        return writer.dispatch(f"{action} {user}")
+
+    before = call("preview-db-update")["expected"]
+    nonce = call("issue-db-update-nonce", expected=before)["write_nonce"]
+    with pytest.raises(writer.Refused, match="different operation"):
+        call("run-db-update", expected=before, nonce=nonce, value="tampered")
+    active = False
+    with pytest.raises(writer.Refused, match="Inactive fixture session"):
+        call("run-db-update", expected=before, nonce=nonce)
+    active = True
+    result = call("run-db-update", expected=before, nonce=nonce)
+    assert result["after_sha256"] != result["before_sha256"]
+    assert Path(result["backup_path"]).exists()
+    with pytest.raises(writer.Refused, match="already used"):
+        call("run-db-update", expected=before, nonce=nonce)
+    audit = log.read_text()
+    assert "database-update-intent" in audit and "database-update-result" in audit
+    assert all(secret not in audit for secret in (password, ticket, nonce, plan["value"]))
 
 
 # ===== SNAPSMACK EOF =====
