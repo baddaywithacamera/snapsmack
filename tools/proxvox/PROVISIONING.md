@@ -111,4 +111,32 @@ Codex posts one Brain Trust result naming the host, installed wrapper SHA-256,
 proof count, PASS/FAIL and any failed proof numbers. The setup is not complete
 until all proofs have an explicit result.
 
+## Live writer setup
+
+Use this section after the writer and provisioner pass review. The read-only
+credentials above keep working without this setup.
+
+1. Prepare a dedicated Ed25519 key on the Windows machine that will use the
+   writer. Keep the private key there. Put only its public key on the host
+   for the installer. Use the already verified Proxmox host identity for SSH.
+2. In an explicitly authorized host maintenance session, run
+   `./provision-host-writer.sh /path/to/writer.pub` with the reviewed script.
+   It checks the pinned writer digest and validates the effective SSH
+   configuration before reload. Run `./provision-host-writer.sh verify` to
+   confirm the installed binary. Keep the admin session open until the
+   writer's forced command and ordinary read-only access both respond.
+3. Use that key with `ScopedFileWriter` and pass it to `WriteClient` as
+   `host_writer`. Authorize with the enrolled owner account once per working
+   session. The password goes to the Proxmox login and the next TOTP is
+   confirmed by the host writer. Keep both in the local authorization form.
+   The default host session expires after one hour.
+4. Exercise the whole path on a disposable file. Verify the hash after a
+   successful write. Revoke the session and verify that a write with the old
+   authorization is refused. Check the root-owned JSONL log at
+   `/var/log/proxvox/writer.jsonl` for the operation and refusal. Record only
+   the evidence and digests in the room.
+5. For approved publication, obtain the current origin hash for each file,
+   submit one file at a time, and read back the new hash and public page
+   before proceeding. Revoke when the batch is finished.
+
 <!-- ===== SNAPSMACK EOF ===== -->

@@ -136,6 +136,16 @@ class WriterProvisioner(unittest.TestCase):
                           "AllowAgentForwarding no", "AllowTcpForwarding no"):
             self.assertIn(directive, self.source, directive)
 
+    def test_writer_provisioner_uses_the_same_key_only_transport_as_the_client(self):
+        for directive in ("AuthenticationMethods publickey", "PasswordAuthentication no",
+                          "KbdInteractiveAuthentication no", "DisableForwarding yes",
+                          "AuthorizedKeysFile /etc/ssh/authorized_keys/%u"):
+            self.assertIn(directive, self.source, directive)
+        self.assertNotIn("| chpasswd", self.source)
+        self.assertLess(self.source.index('-t -f "$candidate"'),
+                        self.source.index('mv -f "$candidate" "$config"'))
+        self.assertIn('cp -p "$backup" "$config"', self.source)
+
     def test_it_pins_a_commit_and_verifies_the_hash_before_installing(self):
         self.assertIn("WRITER_COMMIT=", self.source)
         self.assertIn("WRITER_SHA256=", self.source)

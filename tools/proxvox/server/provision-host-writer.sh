@@ -14,13 +14,11 @@
 # its own sudoers line. Revoking write access is then deleting one account,
 # not editing a protocol.
 #
-# IT INSTALLS NOTHING THAT CAN WRITE ANYTHING YET. The wrapper ships with an
-# allowlist holding one verified file and no maintenance tasks, and a live
-# write additionally needs a grant from a fresh owner login. Installing this
-# does not grant a capability; it puts the mechanism in place for one.
+# The SSH key only connects to the protocol. A live write still requires
+# host-witnessed owner TOTP and the nonce for the exact file operation.
 #
-#   ./provision-host-writer.sh           install or re-install
-#   ./provision-host-writer.sh verify    check the installed copy, change nothing
+#   ./provision-host-writer.sh /path/to/writer.pub  install or re-install
+#   ./provision-host-writer.sh verify               check the installed binary
 #
 # THE verify MODE IS WHY THIS FILE EXISTS IN THIS SHAPE, and it comes straight
 # out of SS-1574. The read-only provisioner checks the installed checksum AT
@@ -38,24 +36,20 @@ set -eu
 # WRITER_SHA256 is the sha256 of tools/proxvox/server/proxvox_writer.py AS
 # COMMITTED at WRITER_COMMIT, which is what raw.githubusercontent.com serves
 # and therefore what lands at WRITER_PATH. I verified that by fetching the
-# real URL rather than trusting it: HTTP 200, 57,271 bytes, and the digest
+# real URL rather than trusting it: HTTP 200, 64,373 bytes, and the digest
 # below. I also checked the committed bytes against my working copy, because
 # git hands a Windows checkout CRLF while it stores LF and that difference has
 # already cost this project a release night -- here they are identical.
 #
-# WHY THIS COMMIT. 7be5cca4 is the writer with every finding so far closed:
-# Codex's principal-binding and certificate-chain fixes, the finite-expiry
-# refusal, one-use grants keyed on the grant's MEANING rather than its
-# spelling, the host-side compare-and-set, and the host's own audit log.
-# Pinning the file does not change the file, so there is no chicken and egg:
-# this line lives in a different file from the one it hashes.
+# The writer at this commit adds host-attested sessions, operation nonces,
+# server-side expiry and revoke, and full regular-file scope while authorized.
 #
 # RE-PIN WHEN THE WRITER MERGES. A commit reachable only from a topic branch
 # stops being fetchable if that branch is deleted without being merged or
 # archived, and this URL would then 404 on a host that is trying to install.
 # Once the writer lands on dev, re-pin to the dev commit.
-WRITER_COMMIT=7be5cca40d079319450827ca33de7385411ed69a
-WRITER_SHA256=221901cf6414a69e1c02f5122a7fac16826b1807acefbe3c4fdc666b2cdf5268
+WRITER_COMMIT=36f450db3ba6166238d96d06d0e3bdeab0e3bc7d
+WRITER_SHA256=8ad94bfa4ee13f14fcf79c217e307225fd6146f3cd5662bb0dd6e823703d5104
 WRITER_URL="https://raw.githubusercontent.com/baddaywithacamera/snapsmack/${WRITER_COMMIT}/tools/proxvox/server/proxvox_writer.py"
 WRITER_PATH=/usr/local/sbin/proxvox-writer
 WRITER_USER=proxvox-root-rw
@@ -102,9 +96,12 @@ case "$WRITER_COMMIT" in
 esac
 
 [ "$(id -u)" -eq 0 ] || fail "run this on the Proxmox host as root"
-for command_name in curl sha256sum install useradd chpasswd visudo grep mktemp awk sshd; do
+for command_name in curl sha256sum install useradd visudo grep mktemp awk sshd ssh-keygen systemctl; do
     command -v "$command_name" >/dev/null 2>&1 || fail "missing command: $command_name"
 done
+[ "$#" -eq 1 ] && [ -f "$1" ] || fail "supply the dedicated writer's Ed25519 public-key file"
+public_key=$(awk 'NF { if (++lines > 1 || $1 != "ssh-ed25519" || NF < 2) exit 1; key = $1 " " $2 } END { if (lines != 1) exit 1; if (key != "") print key }' "$1") +    || fail "expected one Ed25519 public key"
+[ -n "$public_key" ] && ssh-keygen -lf "$1" >/dev/null || fail "invalid Ed25519 public key"
 
 writer_tmp=$(mktemp /tmp/proxvox-writer.XXXXXX)
 cleanup() { rm -f "$writer_tmp"; }
@@ -112,18 +109,6 @@ trap cleanup EXIT HUP INT TERM
 curl --fail --silent --show-error --location "$WRITER_URL" --output "$writer_tmp"
 printf '%s  %s\n' "$WRITER_SHA256" "$writer_tmp" | sha256sum --check --status \
     || fail "reviewed writer SHA-256 mismatch; nothing was installed"
-install -o root -g root -m 0755 "$writer_tmp" "$WRITER_PATH"
-
-if ! id "$WRITER_USER" >/dev/null 2>&1; then
-    useradd --system --no-create-home --shell /bin/sh "$WRITER_USER"
-fi
-printf 'Proxmox host %s password: ' "$WRITER_USER" >&2
-IFS= read -r -s password
-printf '\n' >&2
-[ -n "$password" ] || fail "password cannot be empty"
-printf '%s:%s\n' "$WRITER_USER" "$password" | chpasswd
-unset password
-
 # The writer runs under sudo with SSH_ORIGINAL_COMMAND kept, exactly as the
 # reader does. It is a SEPARATE sudoers line naming a SEPARATE binary, so the
 # read-only account gains nothing from this file existing.
@@ -134,50 +119,84 @@ ${WRITER_USER} ALL=(root) NOPASSWD: ${WRITER_PATH}
 EOF
 chmod 0440 "$sudoers_tmp"
 visudo -cf "$sudoers_tmp" >/dev/null || fail "sudoers validation failed"
-install -o root -g root -m 0440 "$sudoers_tmp" /etc/sudoers.d/proxvox-root-rw
-rm -f "$sudoers_tmp"
 
 config=/etc/ssh/sshd_config
 marker="# BEGIN PROX VOX ${WRITER_USER}"
-if ! grep -Fqx "$marker" "$config"; then
-    if grep -Eq "^[[:space:]]*Match[[:space:]]+User[[:space:]]+${WRITER_USER}([[:space:]]|$)" "$config"; then
-        fail "an unmarked ${WRITER_USER} Match block already exists; no change was made"
-    fi
-    backup=$(mktemp /etc/ssh/sshd_config.proxvox-writer.XXXXXX)
-    cp -p "$config" "$backup"
-    cat >>"$config" <<EOF
+end_marker="# END PROX VOX ${WRITER_USER}"
+candidate=$(mktemp /etc/ssh/sshd_config.proxvox-writer-candidate.XXXXXX)
+backup=$(mktemp /etc/ssh/sshd_config.proxvox-writer-backup.XXXXXX)
+key_tmp=$(mktemp /tmp/proxvox-writer-key.XXXXXX)
+key_backup=$(mktemp /tmp/proxvox-writer-key-backup.XXXXXX)
+trap 'rm -f "$writer_tmp" "$sudoers_tmp" "$candidate" "$backup" "$key_tmp" "$key_backup"' EXIT
+cp -p "$config" "$backup"
+awk -v start="$marker" -v end="$end_marker" '
+    $0 == start { if (inside || seen++) exit 1; inside = 1; next }
+    $0 == end { if (!inside) exit 1; inside = 0; next }
+    !inside { print }
+    END { if (inside) exit 1 }
+' "$config" > "$candidate" || fail "existing writer Match block is malformed"
+if grep -Eq "^[[:space:]]*Match[[:space:]]+User[[:space:]]+${WRITER_USER}([[:space:]]|$)" "$candidate"; then
+    fail "an unmarked ${WRITER_USER} Match block already exists"
+fi
+cat >>"$candidate" <<EOF
 
 # BEGIN PROX VOX ${WRITER_USER}
 Match User ${WRITER_USER}
+    AuthenticationMethods publickey
+    PasswordAuthentication no
+    KbdInteractiveAuthentication no
+    AuthorizedKeysFile /etc/ssh/authorized_keys/%u
     ForceCommand sudo -n ${WRITER_PATH}
+    DisableForwarding yes
     PermitTTY no
     X11Forwarding no
     AllowAgentForwarding no
     AllowTcpForwarding no
 # END PROX VOX ${WRITER_USER}
 EOF
-    sshd_path=$(command -v sshd || true)
-    [ -n "$sshd_path" ] || { cp -p "$backup" "$config"; fail "sshd is missing; configuration restored"; }
-    if ! "$sshd_path" -t; then
-        cp -p "$backup" "$config"
-        fail "sshd validation failed; configuration restored"
-    fi
-    rm -f "$backup"
-fi
-
 sshd_path=$(command -v sshd || true)
 [ -n "$sshd_path" ] || fail "sshd is missing"
-"$sshd_path" -t || fail "sshd validation failed"
+"$sshd_path" -t -f "$candidate" || fail "candidate sshd configuration failed validation"
+effective=$("$sshd_path" -T -f "$candidate" -C "user=$WRITER_USER,host=localhost,addr=127.0.0.1")
+for setting in "authenticationmethods publickey" "passwordauthentication no" \
+    "kbdinteractiveauthentication no" "disableforwarding yes" \
+    "authorizedkeysfile /etc/ssh/authorized_keys/%u" "forcecommand sudo -n $WRITER_PATH"; do
+    printf '%s\n' "$effective" | grep -Fqx "$setting" || fail "writer SSH setting did not take effect: $setting"
+done
+install -o root -g root -m 0755 "$writer_tmp" "$WRITER_PATH"
+if ! id "$WRITER_USER" >/dev/null 2>&1; then
+    useradd --system --no-create-home --shell /bin/sh "$WRITER_USER"
+fi
+install -o root -g root -m 0440 "$sudoers_tmp" /etc/sudoers.d/proxvox-root-rw
+install -d -o root -g root -m 0755 /etc/ssh/authorized_keys
+key_path="/etc/ssh/authorized_keys/$WRITER_USER"
+if [ -f "$key_path" ]; then
+    cp -p "$key_path" "$key_backup"
+fi
+printf 'restrict %s\n' "$public_key" > "$key_tmp"
+install -o root -g root -m 0644 "$key_tmp" "$key_path"
+chmod --reference="$config" "$candidate"
+chown --reference="$config" "$candidate"
+mv -f "$candidate" "$config"
+if ! systemctl reload ssh; then
+    cp -p "$backup" "$config"
+    if [ -s "$key_backup" ]; then
+        cp -p "$key_backup" "$key_path"
+    else
+        rm -f "$key_path"
+    fi
+    systemctl reload ssh || true
+    fail "SSH reload failed; the previous configuration was restored"
+fi
 
 # The same check the reader does, and then the reason verify exists.
 installed_sha=$(sha256sum "$WRITER_PATH" | awk '{print $1}')
 [ "$installed_sha" = "$WRITER_SHA256" ] || fail "installed writer SHA-256 mismatch"
 
 note "installed $WRITER_PATH from $WRITER_COMMIT"
-note "account $WRITER_USER created with a forced command and no TTY"
+note "account $WRITER_USER uses the dedicated public key and forced command"
 note "the read-only account is untouched and remains read-only"
 note "run '$0 verify' at any time to confirm the installed copy still matches"
-note "no path can be written until one is in the wrapper's allowlist AND a"
-note "grant from a fresh owner login accompanies the write"
+note "live writes require host-witnessed owner TOTP and the exact operation nonce"
 
 # ===== SNAPSMACK EOF =====
