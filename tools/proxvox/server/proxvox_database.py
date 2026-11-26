@@ -190,6 +190,8 @@ def apply_row_update(connection, change, expected, backup_directory, *, attest, 
             if after_columns != columns or after_row != tuple(expected_values):
                 raise UnsafeDatabaseUpdate("The resulting row did not match the authorized update.")
             _, after = _snapshot(cursor, change, after_columns, after_row)
+        # A revoke during execution can still prevent a transactional write from committing.
+        attest()
         connection.commit()
         return dict(detail, after_sha256=after)
     except BaseException:

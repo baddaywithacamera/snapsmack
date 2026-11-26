@@ -97,9 +97,20 @@ def test_locked_row_backup_audit_rollback_and_restore(database, tmp_path):
         assert change.value not in repr(detail)
         callbacks.append("audit")
 
+    def revoke_before_commit():
+        callbacks.append("attested")
+        if callbacks.count("attested") == 2:
+            raise RuntimeError("authorization revoked")
+
+    with pytest.raises(RuntimeError, match="authorization revoked"):
+        apply_row_update(database, change, before, backup,
+                         attest=revoke_before_commit, record_intent=record)
+    assert read_row_fingerprint(database, change) == before
+    callbacks.clear()
+
     result = apply_row_update(database, change, before, backup,
                               attest=lambda: callbacks.append("attested"), record_intent=record)
-    assert callbacks == ["audit", "attested"]
+    assert callbacks == ["audit", "attested", "attested"]
     assert read_row_fingerprint(database, change) == result["after_sha256"] != before
 
     with pytest.raises(UnsafeDatabaseUpdate, match="changed since preview"):
