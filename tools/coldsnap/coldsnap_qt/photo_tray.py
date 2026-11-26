@@ -143,13 +143,14 @@ class PhotoThumbTile(QPushButton):
                  is_cover: bool = False, edited: bool = False,
                  in_slapper: bool = False, tile_size: int = 92,
                  asset_uuid: str = "", orientation: str = "",
-                 ratio_text: str = "", parent=None):
+                 ratio_text: str = "", parent=None, *, can_remove=True):
         super().__init__(parent)
         self._index = index
         self._asset_uuid = str(asset_uuid or "")
         self._pixmap = pixmap
         self._selected = selected
         self._is_cover = is_cover
+        self._can_remove = can_remove
         self._edited = edited
         self._in_slapper = in_slapper
         self._orientation = str(orientation or "")
@@ -204,6 +205,7 @@ class PhotoThumbTile(QPushButton):
         act_feat.setEnabled(not self._is_cover)
         menu.addSeparator()
         act_rem = menu.addAction("Remove from tray")
+        act_rem.setEnabled(self._can_remove)
         chosen = menu.exec(event.globalPos())
         if chosen is act_feat:
             self.setFeaturedRequested.emit(self._index)

@@ -222,7 +222,7 @@
         var leadArea = 0;
         var variantArea = 0;
         var totalArea = 0;
-        var weightedArea = 0;
+        var adjusted = false;
         var variantOrder = items.length ? variant % Math.min(items.length, 3) : 0;
         items.forEach(function (tile) {
             var area = tile.width * tile.height;
@@ -231,7 +231,7 @@
             smallest = Math.min(smallest, area);
             largest = Math.max(largest, area);
             totalArea += area;
-            weightedArea += tileWeight(tile.image) * area;
+            adjusted = adjusted || tileWeight(tile.image) !== 0;
             if (imageAR(tile.image) < 1.15) portraitMax = Math.max(portraitMax, area);
             else landscapeMax = Math.max(landscapeMax, area);
         });
@@ -245,7 +245,7 @@
 
         score += smallest * 0.2;
         score -= Math.abs(height - 850) * containerWidth * 0.12;
-        if (weightedArea) {
+        if (adjusted) {
             // Match COLD SNAP's relative-area score so the same photo takes
             // the larger span without changing order.
             var averageArea = totalArea / items.length;
@@ -298,7 +298,22 @@
         return emphasis === 'portrait' ? heroIsPortrait : !heroIsPortrait;
     }
 
-    function solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant, ignoreLimit) {
+    function hasSizeContrast(items) {
+        var areas = items.map(function (tile) { return tile.width * tile.height; });
+        return Math.max.apply(null, areas) >= Math.min.apply(null, areas) * 1.25;
+    }
+
+    function honorsSizeEdits(items, uniform) {
+        return hasSizeContrast(items) && items.every(function (item) {
+            var weight = tileWeight(item.image);
+            if (!weight) return true;
+            var before = uniform[item.order];
+            var area = item.width * item.height / (before.width * before.height);
+            return weight > 0 ? area > 1.01 : area < 0.99;
+        });
+    }
+
+    function solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant, ignoreLimit, uniform) {
         var best = null;
         var authoredSize = enforceUsefulSize && hasAdjustedTiles(images);
         candidateTrees(images, 0, images.length, {}).forEach(function (tree) {
@@ -310,6 +325,7 @@
             // photograph. Reject it and let the caller try a smaller group.
             if (trial.length !== images.length) return;
             if (height <= 0 || (!ignoreLimit && trial.some(tileExceedsLimit)) ||
+                (uniform && !honorsSizeEdits(trial, uniform)) ||
                 (enforceUsefulSize && (!blockIsVisuallyBalanced(trial, containerWidth, authoredSize) ||
                     !blockMatchesEmphasis(trial, emphasis)))) return;
             var score = blockScore(trial, height, containerWidth, emphasis, variant || 0);
@@ -336,6 +352,13 @@
         var adjusted = hasAdjustedTiles(images);
         if (images.length >= 5 || adjusted) {
             var solved = solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant);
+            if (adjusted && images.length >= 3 && solved && !hasSizeContrast(solved.items)) {
+                // An equal-sized block can be the only candidate inside the
+                // desktop balance limits. Give explicit size edits the same
+                // fallback as other weighted blocks before keeping that grid.
+                solved = solveBlock(images, y, containerWidth, gap, emphasis, false, variant, false, solved.items) ||
+                    solveBlock(images, y, containerWidth, gap, emphasis, false, variant, true, solved.items) || solved;
+            }
             if (!solved && adjusted) {
                 solved = solveBlock(images, y, containerWidth, gap, emphasis, false, variant, true);
             }

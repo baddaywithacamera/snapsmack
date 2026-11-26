@@ -389,6 +389,7 @@ class TakeMode(QWidget):
         self.app_config = app_config_provider
         self._editing_id = None
         self._bucket = []          # list[O.DraftImage]
+        self._mosaic_tray_edits = (), None
         self._cover_idx = 0
         self._selected_photo_idx = None
         self._selected_photo_indices = []
@@ -1449,6 +1450,7 @@ class TakeMode(QWidget):
             self.body.editor.setTextCursor(replace_cursor)
         else:
             self.body.editor.insertPlainText(marker)
+        self._apply_mosaic_tray_edits()
         self.body.editor.setFocus()
 
     def _canvas_mosaic(self, order, layout):
@@ -1501,6 +1503,16 @@ class TakeMode(QWidget):
         else:
             self.body.canvas.insert_mosaic(stable, layout_name, weights=stable_weights,
                                            mirrors=self._last_mosaic_mirrors)
+        self._apply_mosaic_tray_edits()
+
+    def _apply_mosaic_tray_edits(self):
+        # Apply only after the mosaic has saved using the original bucket indices.
+        removed, featured = self._mosaic_tray_edits
+        self._mosaic_tray_edits = (), None
+        if featured is not None:
+            self._set_featured_photo(featured)
+        if removed:
+            self._remove_from_tray(removed, exact=True)
 
     def _mosaic_tray_additions(self, order):
         positions = {str(photo.asset_uuid): index for index, photo in enumerate(self._bucket)}
@@ -1684,6 +1696,7 @@ class TakeMode(QWidget):
     def _mosaic_dialog(self, existing_order, existing_layout, preselected_order=None):
         """The one mosaic builder (live preview, thumbnail grid, drag/move order,
         layout, rotate). Returns (chosen 1-based bucket positions, layout) or None."""
+        self._mosaic_tray_edits = (), None
         existing = bool(existing_order)
         initial_checked = list(existing_order) if existing else [
             int(i) for i in (preselected_order or []) if 0 <= int(i) < len(self._bucket)
@@ -1755,6 +1768,7 @@ class TakeMode(QWidget):
         # SS-1049: photographs already used by OTHER mosaics in this post are
         # not offered again.
         _used = self._mosaic_used_indices(existing_order)
+        used_in_post = self._used_photo_indices()
         display_order = list(initial_checked) + [
             i for i in range(len(self._bucket))
             if i not in initial_checked and i not in _used
@@ -1770,6 +1784,8 @@ class TakeMode(QWidget):
                 % len(self._bucket))
             return None
 
+        original_picker = tuple(display_order)
+        featured = self._cover_idx
         for bucket_index in display_order:
             image = self._bucket[bucket_index]
             if bucket_index not in rotation_originals:
@@ -1867,20 +1883,20 @@ class TakeMode(QWidget):
 
         def snapshot():
             return (tuple(display_order), frozenset(checked_set), dict(weights_by_idx),
-                    preset.currentData(), frozenset(mirrored_groups))
+                    preset.currentData(), frozenset(mirrored_groups), featured)
 
         def update_history_buttons():
             undo.setEnabled(bool(undo_history))
             redo.setEnabled(bool(redo_history))
 
         def restore_history(source, destination):
-            nonlocal current_state
+            nonlocal current_state, featured
             if not source:
                 return
             constraint["previous"] = None
             destination.append(snapshot())
             current_state = source.pop()
-            order, included, saved_weights, saved_layout, saved_mirrors = current_state
+            order, included, saved_weights, saved_layout, saved_mirrors, featured = current_state
             display_order[:] = order
             checked_set.clear()
             checked_set.update(included)
@@ -1961,7 +1977,8 @@ class TakeMode(QWidget):
                     bi,
                     pix,
                     selected=is_inc,
-                    is_cover=(bi == self._cover_idx),
+                    is_cover=(bi == featured),
+                    can_remove=not is_inc and bi not in used_in_post,
                     edited=bool(getattr(image, "slapper_edited_path", "")),
                     tile_size=tile_px,
                     asset_uuid=str(getattr(image, "asset_uuid", "")),
@@ -1982,8 +1999,26 @@ class TakeMode(QWidget):
                     refresh_layouts()
 
                 tile.clicked.connect(lambda _=False, b_idx=bi: _on_tile_click(b_idx))
+                tile.removeRequested.connect(remove_picker_photo)
+                tile.setFeaturedRequested.connect(feature_picker_photo)
                 tiles_by_idx[bi] = tile
                 tile_grid.addWidget(tile, grid_pos, 0, Qt.AlignHCenter)
+
+        def remove_picker_photo(bi):
+            nonlocal featured
+            if bi in checked_set or bi in used_in_post:
+                return
+            display_order.remove(bi)
+            if featured == bi:
+                featured = -1
+            rebuild_grid()
+            refresh_layouts()
+
+        def feature_picker_photo(bi):
+            nonlocal featured
+            featured = bi
+            rebuild_grid()
+            refresh_preview()
 
         def set_all(state):
             if state == Qt.Checked:
@@ -2292,6 +2327,10 @@ class TakeMode(QWidget):
             if bi in checked_set and weights_by_idx.get(bi, 0) != 0
         }
         self._last_mosaic_mirrors = mirror_positions(checked_indices())
+        remaining = set(display_order)
+        removed = tuple(bi for bi in original_picker if bi not in remaining)
+        new_featured = featured if featured >= 0 and featured != self._cover_idx else None
+        self._mosaic_tray_edits = removed, new_featured
         return chosen, str(preset.currentData() or "asymmetric")
 
     def _add_photos(self):
@@ -3120,7 +3159,11 @@ class TakeMode(QWidget):
                         continue
                     copied = dict(node)
                     if not copied.get("asset_uuid") and copied.get("img_id"):
-                        copied["img_id"] = _remap_identity(copied["img_id"])
+                        old_id = copied["img_id"]
+                        new_id = _remap_identity(old_id)
+                        copied["img_id"] = new_id
+                        if new_id != old_id and copied.get("raw"):
+                            copied["raw"] = copied["raw"].replace(str(old_id), str(new_id), 1)
                     out.append(copied)
                 elif kind == "mosaic":
                     order = node.get("order") or []
@@ -3154,12 +3197,14 @@ class TakeMode(QWidget):
         except Exception:
             return
         cleaned = _clean_list(blocks)
+        if cleaned == blocks:
+            return
         if getattr(self.body, "_biggie_on", False):
             self.body.biggie.from_blocks(cleaned)
         else:
             self.body.editor.setPlainText(biggie.serialize_blocks(cleaned))
 
-    def _remove_from_tray(self, indices=None, *, in_post_fn=None) -> bool:
+    def _remove_from_tray(self, indices=None, *, in_post_fn=None, exact=False) -> bool:
         """Remove one or more photos from the tray only (never deletes from disk)."""
         if not self._bucket:
             return False
@@ -3169,7 +3214,7 @@ class TakeMode(QWidget):
         ]
         if indices is not None:
             raw = [int(i) for i in indices if 0 <= int(i) < len(self._bucket)]
-            if len(raw) == 1 and raw[0] in selected and len(selected) > 1:
+            if not exact and len(raw) == 1 and raw[0] in selected and len(selected) > 1:
                 targets = sorted(set(selected))
             else:
                 targets = sorted(set(raw))
@@ -3211,11 +3256,10 @@ class TakeMode(QWidget):
                 targets = [i for i in targets if i not in used]
                 if not targets:
                     return False
-            elif choice == "remove_both":
-                self._strip_photos_from_blocks(targets)
-            else:
+            elif choice != "remove_both":
                 return False
 
+        self._strip_photos_from_blocks(targets)
         if self._cover_idx in targets:
             self._cover_idx = -1
         elif self._cover_idx >= 0:

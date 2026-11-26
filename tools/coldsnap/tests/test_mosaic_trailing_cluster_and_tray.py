@@ -8,7 +8,7 @@ from PIL import Image
 from PySide6.QtCore import QPoint, Qt, QTimer
 from PySide6.QtGui import QContextMenuEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QMenu
+from PySide6.QtWidgets import QApplication, QDialog, QMenu
 
 from test_coldsnap_ss1557_mosaic_arrangement import (
     O, TakeMode, _app, _run_dialog, _wait_for_preview,
@@ -53,8 +53,17 @@ def test_trailing_quad_actions_change_rendered_geometry(monkeypatch, tmp_path, t
         assert [cell for cell in after if cell["id"] in target] != [
             cell for cell in before if cell["id"] in target
         ]
+        assert after[:11] == before[:11]
         if action_text == "Break up":
             assert not any({cell["id"] for cell in group} == target for group in preview._clusters)
+        else:
+            original, edited = before[tile - 1], after[tile - 1]
+            before_area = original["width"] * original["height"]
+            after_area = edited["width"] * edited["height"]
+            if action_text == "Make larger":
+                assert after_area > before_area
+            else:
+                assert after_area < before_area
 
     try:
         _run_dialog(monkeypatch, mode, list(range(15)), "asymmetric", exercise)
@@ -63,7 +72,8 @@ def test_trailing_quad_actions_change_rendered_geometry(monkeypatch, tmp_path, t
 
 
 @pytest.mark.parametrize("action_text", ["Remove from tray", "★ Set as featured (landing tile)"])
-def test_edit_mosaic_tray_photo_28_actions(monkeypatch, tmp_path, action_text):
+@pytest.mark.parametrize("accept_edits", [True, False])
+def test_edit_mosaic_tray_photo_28_actions(monkeypatch, tmp_path, action_text, accept_edits):
     monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
     _app()
     mode = TakeMode(lambda: {})
@@ -91,16 +101,28 @@ def test_edit_mosaic_tray_photo_28_actions(monkeypatch, tmp_path, action_text):
             assert all(tile._asset_uuid != photo.asset_uuid for tile in dialog._mosaic_tiles.values())
         else:
             assert dialog._mosaic_tiles[27]._is_cover
-        assert dialog._mosaic_checked_indices() == [0, 1, 2, 3]
+        assert dialog._mosaic_checked_indices() == [0, 1, 2, 28]
 
     try:
-        assert _run_dialog(monkeypatch, mode, [0, 1, 2, 3], "asymmetric", exercise) == (
-            [1, 2, 3, 4], "asymmetric",
+        def accept(dialog):
+            _wait_for_preview(dialog._mosaic_preview)
+            exercise(dialog)
+            assert mode._bucket[27] is photo
+            return QDialog.Accepted if accept_edits else QDialog.Rejected
+
+        monkeypatch.setattr(QDialog, "exec", accept)
+        mode.body._set_biggie(False)
+        mode.body.editor.setPlainText(
+            "[mosaic=1,2,3,29 layout=asymmetric]\n\n[img:bucket:29|full|center]"
         )
-        if action_text == "Remove from tray":
-            assert photo not in mode._bucket
-        else:
-            assert mode._bucket[mode._cover_idx] is photo
+        mode._insert_mosaic()
+        removed = accept_edits and action_text == "Remove from tray"
+        expected_order = [1, 2, 3, 28 if removed else 29]
+        blocks = mode.body.authoring_blocks()
+        assert blocks[0]["order"] == expected_order
+        assert blocks[1]["raw"] == f"[img:bucket:{expected_order[-1]}|full|center]"
+        assert (photo not in mode._bucket) == removed
+        assert (mode._cover_idx == 27) == (accept_edits and action_text.startswith("★"))
         assert (tmp_path / photo.filename).is_file()
     finally:
         mode.close()

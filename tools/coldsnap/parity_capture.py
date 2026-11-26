@@ -22,9 +22,9 @@ def run(output_dir: str) -> int:
 
     from PIL import Image, ImageDraw
     from PySide6.QtCore import QPoint, QTimer, Qt
-    from PySide6.QtGui import QFont, QFontDatabase
+    from PySide6.QtGui import QContextMenuEvent, QFont, QFontDatabase
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QMenu, QPushButton, QSplitter
+    from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QMenu, QPushButton, QScrollArea, QSplitter
 
     import sumna_offline as O
     from coldsnap_qt import biggie, theme
@@ -525,6 +525,112 @@ def run(output_dir: str) -> int:
     wait_for(lambda: all(not loader._pending for loader in post_canvas.findChildren(PhotoLoader)))
     post_canvas.close()
 
+    # Drive the reported 15-photo trailing cluster and photo 28 through the
+    # frozen dialog. Keep the proof on generated photos and a sandbox draft.
+    trailing_mode = TakeMode(lambda: {"url": "https://trailing-mosaic-fixture.invalid"})
+    trailing_mode.setStyleSheet(theme.stylesheet())
+    app.processEvents()
+    trailing_mode._clear()
+    trailing_mode._preview_width = 1200
+    trailing_mode.body._set_biggie(False)
+    ratios = [.66, .55, 3, .66, .8, 2, 2, 1.5, 1.2, 3, 3] + [1.5] * 18
+    for index, ratio in enumerate(ratios, 1):
+        source = fixture_dir / f"trailing-{index:02}.jpg"
+        size = (round(ratio * 800), 800)
+        photo = Image.new("RGB", size, ((index * 31) % 256, 100, 130))
+        ImageDraw.Draw(photo).text((35, 30), str(index), fill="white", font_size=160)
+        photo.save(source)
+        trailing_mode._bucket.append(O.DraftImage(
+            local_path=str(source), filename=source.name, asset_uuid=f"trailing-{index}",
+            width=size[0], height=size[1],
+        ))
+    trailing_mode.body.editor.setPlainText(
+        "[mosaic=" + ",".join(map(str, range(1, 16))) + " layout=asymmetric]\n\n"
+        "[img:bucket:29|full|center]"
+    )
+    trailing = {"tile_actions": {}, "tray_choices": []}
+    tail_ids = {12, 13, 14, 15}
+
+    def capture_trailing(dialog):
+        dialog.resize(1280, 820)
+        dialog.show()
+        preview = dialog._mosaic_preview
+        undo = next(button for button in dialog.findChildren(QPushButton) if button.text() == "Undo")
+        cells = lambda: preview.computed_cells()["items"]
+        has_tail = lambda: any({cell["id"] for cell in group} == tail_ids for group in preview._clusters)
+        try:
+            if not wait_for(lambda: len(cells()) == 15 and has_tail()):
+                return QDialog.Rejected
+            before = cells()
+            QTest.qWait(220)
+            trailing["before_capture"] = dialog.grab().save(str(out / "20-trailing-before.png"), "PNG")
+            for label in ("Make larger", "Make smaller", "Break up"):
+                for tile_id in sorted(tail_ids):
+                    menu = preview._arrangement_menu(tile_id - 1)
+                    action = next(action for action in menu.actions() if action.text() == label)
+                    action.trigger()
+                    key = f"{label} {tile_id}"
+                    trailing["tile_actions"][key] = False
+                    if not wait_for(lambda: len(cells()) == 15):
+                        return QDialog.Rejected
+                    after = cells()
+                    prior_area = tile_area(before[tile_id - 1])
+                    area = tile_area(after[tile_id - 1])
+                    effect = {"Make larger": area > prior_area, "Make smaller": area < prior_area,
+                              "Break up": not has_tail()}[label]
+                    trailing["tile_actions"][key] = effect and after[:11] == before[:11] and (
+                        [cell["id"] for cell in after] == list(range(1, 16)))
+                    if tile_id == 14:
+                        QTest.qWait(220)
+                        dialog.grab().save(str(out / f"21-trailing-{label.lower().replace(' ', '-')}.png"), "PNG")
+                    undo.click()
+                    if not wait_for(lambda: cells() == before and has_tail()):
+                        return QDialog.Rejected
+            tile = dialog._mosaic_tiles[27]
+            picker = next(scroll for scroll in dialog.findChildren(QScrollArea)
+                          if scroll.widget().isAncestorOf(tile))
+            picker.ensureWidgetVisible(tile)
+            point = tile.rect().center()
+
+            def choose_remove():
+                menu = app.activePopupWidget()
+                if isinstance(menu, QMenu):
+                    action = next(action for action in menu.actions() if action.text() == "Remove from tray")
+                    trailing["tray_choices"].append(action.text())
+                    menu.grab().save(str(out / "22-tray-photo-28-menu.png"), "PNG")
+                    QTest.mouseClick(menu, Qt.LeftButton, pos=menu.actionGeometry(action).center())
+                    menu.close()
+
+            QTimer.singleShot(0, choose_remove)
+            QTimer.singleShot(1500, lambda: app.activePopupWidget() and app.activePopupWidget().close())
+            tile.contextMenuEvent(QContextMenuEvent(QContextMenuEvent.Mouse, point, tile.mapToGlobal(point)))
+            trailing["photo_28_hidden"] = 27 not in dialog._mosaic_tiles
+            trailing["mosaic_selection_preserved"] = dialog._mosaic_checked_indices() == list(range(15))
+            QTest.qWait(220)
+            trailing["tray_capture"] = dialog.grab().save(str(out / "23-tray-photo-28-removed.png"), "PNG")
+            return QDialog.Accepted
+        finally:
+            dialog.hide()
+
+    QDialog.exec = capture_trailing
+    try:
+        trailing_mode._insert_mosaic()
+        trailing["photo_28_removed"] = all(photo.asset_uuid != "trailing-28" for photo in trailing_mode._bucket)
+        trailing["photo_28_file_kept"] = (fixture_dir / "trailing-28.jpg").is_file()
+        blocks = trailing_mode.body.authoring_blocks()
+        trailing["photo_29_reference_kept"] = len(trailing_mode._bucket) == 28 and (
+            trailing_mode._bucket[27].asset_uuid == "trailing-29"
+            and any(block.get("img_id") == "bucket:28" for block in blocks))
+    finally:
+        QDialog.exec = original_dialog_exec
+        trailing_mode.close()
+    checks["trailing_quad_actions_on_all_four_tiles"] = len(trailing["tile_actions"]) == 12 and all(
+        trailing["tile_actions"].values()) and trailing.get("before_capture", False)
+    checks["dialog_removes_photo_28_without_losing_photo_29"] = all(trailing.get(key) for key in (
+        "tray_choices", "photo_28_hidden", "mosaic_selection_preserved", "tray_capture", "photo_28_removed",
+        "photo_28_file_kept", "photo_29_reference_kept",
+    ))
+
     mode._remote_post_id = 42
     mode._remote_slug = "parity-gate"
     saved = mode._autosave_now()
@@ -540,6 +646,7 @@ def run(output_dir: str) -> int:
         "inline_row_break": inline_row,
         "dialog_quilt": dialog_proof,
         "post_quilt": post_proof,
+        "trailing_mosaic_and_tray": trailing,
         "pass": all(value for key, value in checks.items() if key != "mosaic_thumbnail_count"),
     }
     (out / "parity.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
