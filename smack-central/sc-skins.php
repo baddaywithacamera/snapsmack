@@ -417,6 +417,26 @@ function sc_read_manifests(string $skins_dir): array {
 
 // ── Load existing registry ────────────────────────────────────────────────────
 
+function sc_skin_change_note(string $slug, string $version): string {
+    // Summaries describe the named release. Keep the reviewed source beside
+    // each entry so a new version cannot accidentally inherit an older note.
+    $notes = [
+        // 6d058098 and 8d3b98dd
+        'telegram' => [
+            '0.1.11' => 'Adds caption colour, size, style, spacing and alignment controls. Keeps the 12 px default gap above captions and updates the Help.',
+        ],
+        // f9ab2de6
+        'chaplin' => [
+            '0.2.35' => 'Restores the narrower archive thumbnails for portrait photos so they keep their shape without stretching the rows.',
+        ],
+        // 25342917
+        'the-grid' => [
+            '1.3.64' => 'Uses the full photo when a square thumbnail is missing so the archive still shows the photo.',
+        ],
+    ];
+    return $notes[$slug][$version] ?? '';
+}
+
 $registry_path    = rtrim(RELEASES_DIR, '/') . '/skins/registry.json';
 $existing_registry = ['registry_version' => 1, 'generated' => '', 'skins' => []];
 if (file_exists($registry_path)) {
@@ -965,6 +985,7 @@ include __DIR__ . '/sc-layout-top.php';
                     $reg_version    = $existing_registry['skins'][$slug]['version'] ?? null;
                     $reg_screenshot = $existing_registry['skins'][$slug]['screenshot'] ?? '';
                     $needs_update   = $in_registry && $reg_version !== $meta['version'];
+                    $change_note    = $needs_update ? sc_skin_change_note($slug, $meta['version']) : '';
                     $status_class   = match($meta['status']) {
                         'stable'      => 'sc-status--ok',
                         'beta'        => 'sc-status--warn',
@@ -988,6 +1009,12 @@ include __DIR__ . '/sc-layout-top.php';
                             <?php if (!empty($meta['description'])): ?>
                                 <div style="font-size:0.78rem; color:#666; margin-top:3px; max-width:300px;">
                                     <?php echo htmlspecialchars($meta['description']); ?>
+                                </div>
+                            <?php endif; ?>
+                            <?php if ($needs_update): ?>
+                                <div class="sc-dim">
+                                    <strong>What changed</strong>
+                                    <?php echo htmlspecialchars($change_note !== '' ? $change_note : 'No reviewed summary for this version.'); ?>
                                 </div>
                             <?php endif; ?>
                         </td>
