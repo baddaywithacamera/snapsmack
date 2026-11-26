@@ -426,7 +426,7 @@ class TakeMode(QWidget):
         self.body.canvas.photographPasted.connect(self._paste_photo)
         self.body.canvas.trayPhotoDropped.connect(self._drop_tray_photo_biggie)
         self.body.editor.setAcceptDrops(True)
-        # IMG picks from THIS site's cached Media Gallery (COLD STORAGE), by picture.
+        # Existing media gallery images can still be edited on the canvas.
         self.body.canvas.set_site_provider(
             lambda: ((self.app_config() or {}).get("url") or "").strip())
 
@@ -475,6 +475,14 @@ class TakeMode(QWidget):
         self.title_edit.setObjectName("PageTitle")
         self.title_edit.setPlaceholderText("Essay title…")
         card_col.addWidget(self.title_edit)
+
+        colophon_label = field_label("Colophon")
+        self.colophon_edit = QLineEdit()
+        self.colophon_edit.setPlaceholderText("Equipment or production note (optional)")
+        self.colophon_edit.setAccessibleName("Colophon")
+        colophon_label.setBuddy(self.colophon_edit)
+        card_col.addWidget(colophon_label)
+        card_col.addWidget(self.colophon_edit)
 
         self.page_meta = QLabel("")
         self.page_meta.setObjectName("PageMeta")
@@ -789,6 +797,7 @@ class TakeMode(QWidget):
         self.body.changed.connect(self._update_page_chrome)
         self.body.canvas.cursorPositionChanged.connect(self._update_page_chrome)
         self.title_edit.textChanged.connect(self._changed)
+        self.colophon_edit.textChanged.connect(self._changed)
         self.tags_edit.textChanged.connect(self._changed)
         self._update_page_chrome()
         QTimer.singleShot(0, self._recover_last_draft)
@@ -1185,7 +1194,7 @@ class TakeMode(QWidget):
             ("Space", c._edit_spacer),
             ("Mosaic", self._insert_mosaic),
             ("Photograph", self._add_and_insert_photo),
-            ("Photo from tray", self._open_photos_tray_for_img),
+            ("Photo from tray", self._pick_tray_photo),
             ("2 columns", lambda: c.insert_columns(2)),
             ("3 columns", lambda: c.insert_columns(3)),
             ("Raw", lambda bp=target_block_pos: c.insert_block_at_cursor("raw", position="after", block_pos=bp)),
@@ -1304,8 +1313,8 @@ class TakeMode(QWidget):
                         lambda: canvas.insert_columns(2)),
             BlockAction("3C", "3 columns", "PLACE", "Three columns",
                         lambda: canvas.insert_columns(3)),
-            BlockAction("IMG", "Image", "PLACE", "Open the post's photos tray to drag a photo onto the page",
-                        self._open_photos_tray_for_img),
+            BlockAction("IMG", "Image", "PLACE", "Choose an unplaced photo from this post",
+                        self._pick_tray_photo),
         ]
 
     def _text_block_actions(self):
@@ -1325,8 +1334,8 @@ class TakeMode(QWidget):
                         lambda: bar._list("ul")),
             BlockAction("OL", "Numbers", "WRITE", "<ol><li>…</li></ol>",
                         lambda: bar._list("ol")),
-            BlockAction("IMG", "Image", "PLACE", "Open the post's photos tray to drag a photo onto the page",
-                        self._open_photos_tray_for_img),
+            BlockAction("IMG", "Image", "PLACE", "Choose an unplaced photo from this post",
+                        self._pick_tray_photo),
             BlockAction("COL 2", "2 columns", "PLACE", "[columns=2]…[/columns]",
                         lambda: bar._columns(2)),
             BlockAction("COL 3", "3 columns", "PLACE", "[columns=3]…[/columns]",
@@ -1600,11 +1609,36 @@ class TakeMode(QWidget):
 
         return used - set(keep or [])
 
-    def _open_photos_tray_for_img(self):
-        """Open the post's photos tray so the writer can drag a photo onto the page."""
-        self.photos_tray.set_open(True)
-        if hasattr(self.photos_sec, "set_open"):
-            self.photos_sec.set_open(True)
+    def _pick_tray_photo(self):
+        """Choose an unplaced tray photo and insert it at the cursor."""
+        used = self._used_photo_indices()
+        available = [i for i in range(len(self._bucket)) if i not in used]
+        if not available:
+            QMessageBox.information(self, "Photo from tray", "There are no unplaced photos in the tray.")
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Photo from tray")
+        layout = QVBoxLayout(dialog)
+        photos = QListWidget()
+        photos.setIconSize(QSize(64, 64))
+        for index in available:
+            photo = self._bucket[index]
+            icon = QIcon(load_pixmap(photo.thumb_aspect or photo.local_path, 64))
+            item = QListWidgetItem(icon, photo.filename or os.path.basename(photo.local_path))
+            item.setData(Qt.UserRole, index)
+            photos.addItem(item)
+        selected = self.selected_tray_indices()
+        photos.setCurrentRow(available.index(selected[0]) if selected else 0)
+        layout.addWidget(photos)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.button(QDialogButtonBox.Ok).setText("Insert photo")
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        photos.itemDoubleClicked.connect(dialog.accept)
+        layout.addWidget(buttons)
+        photos.setFocus()
+        if dialog.exec() == QDialog.Accepted:
+            self._insert_tray_photo(photos.currentItem().data(Qt.UserRole))
 
     def _find_bucket_image(self, asset_uuid: str, index_hint=None):
         target = str(asset_uuid or "").strip()
@@ -1660,16 +1694,18 @@ class TakeMode(QWidget):
         sel = self.selected_tray_indices()
         if len(sel) != 1:
             return False
-        idx = sel[0]
-        im = self._bucket[idx]
+        self._insert_tray_photo(sel[0])
+        return True
+
+    def _insert_tray_photo(self, index):
+        photo = self._bucket[index]
         if self.body.is_biggie():
-            self._drop_tray_photo_biggie(im.asset_uuid)
+            self._drop_tray_photo_biggie(photo.asset_uuid)
         else:
-            self._drop_tray_photo_twiggy(im.asset_uuid, idx)
+            self._drop_tray_photo_twiggy(photo.asset_uuid, index)
         self._selected_photo_indices = []
         self._refresh_bucket()
         self._changed()
-        return True
 
     def insert_selected_mosaic_into_post(self, layout: str = "asymmetric") -> bool:
         """Insert 2+ selected tray photos as a mosaic block at the cursor."""
@@ -2469,7 +2505,7 @@ class TakeMode(QWidget):
 
     def _has_open_draft_content(self) -> bool:
         """True when the editor currently holds any authored title, body, or photos."""
-        if self.title_edit.text().strip():
+        if self.title_edit.text().strip() or self.colophon_edit.text().strip():
             return True
         if self._bucket:
             return True
@@ -2987,6 +3023,7 @@ class TakeMode(QWidget):
         draft.slug = str(post.get("slug") or "")
         draft.title = str(post.get("title") or "")
         draft.caption = str(post.get("content") or "")
+        draft.colophon = str(post.get("colophon") or "")
         draft.img_status = str(post.get("status") or "draft")
         draft.post_date = str(post.get("created_at") or "")
         draft.tags = " ".join("#" + str(tag).lstrip("#") for tag in (post.get("tags") or []))
@@ -3999,6 +4036,7 @@ class TakeMode(QWidget):
         self._remote_post_id = int(getattr(draft, "remote_post_id", 0) or 0)
         self._remote_slug = str(getattr(draft, "slug", "") or "")
         self.title_edit.setText(draft.title)
+        self.colophon_edit.setText(draft.colophon)
         self.tags_edit.setText(draft.tags)
         self.status_combo.setCurrentText(draft.img_status)
         self._bucket = [O.DraftImage(local_path=im.local_path, filename=im.filename,
@@ -4033,6 +4071,7 @@ class TakeMode(QWidget):
         self._remote_post_id = 0
         self._remote_slug = ""
         self.title_edit.clear()
+        self.colophon_edit.clear()
         self.tags_edit.clear()
         self.status_combo.setCurrentText("published")
         self.body.clear()
@@ -4094,6 +4133,7 @@ class TakeMode(QWidget):
         if getattr(self, "_remote_slug", ""):
             draft.slug = str(self._remote_slug)
         draft.title = self.title_edit.text().strip()
+        draft.colophon = self.colophon_edit.text().strip()
         draft.tags = self.tags_edit.text().strip()
         if authored is None:
             authored = self.body.authoring_blocks()
@@ -4114,7 +4154,7 @@ class TakeMode(QWidget):
         return draft
 
     def _autosave_now(self):
-        if not (self.title_edit.text().strip() or self.body.toPlainText().strip() or self._bucket):
+        if not self._has_open_draft_content():
             self.save_state.setText("Begin the story… changes will be safe on this computer.")
             return True
         # Never auto-save an unmodified empty remote post as a duplicate 0-block draft

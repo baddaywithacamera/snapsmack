@@ -12,6 +12,158 @@ import shutil
 import tempfile
 
 
+
+def take_composer_checks(mode, files):
+    """Exercise the real composer controls against a disposable queued post."""
+    from PySide6.QtCore import QPoint, QPointF, QTimer, Qt
+    from PySide6.QtGui import QDragEnterEvent, QDropEvent, QMouseEvent
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QLineEdit, QListWidget, QMenu
+    from unittest.mock import patch
+
+    import sumna_offline as O
+    from coldsnap_qt import photo_tray
+    from sumna_post import SmacktalkPoster
+
+    app = QApplication.instance()
+    mode.body._set_biggie(True)
+    mode._add_photo_paths(files, insert=False)
+    mode.title_edit.setText("Composer proof")
+    mode.colophon_edit.setText("Made with a 50 mm lens.")
+    mode._toggle_post_details(False)
+    identities = [photo.asset_uuid for photo in mode._bucket]
+    results = {"colophon_visible_with_details_closed": mode.colophon_edit.isVisible()}
+
+    def last_asset():
+        images = [block for block in mode.body.authoring_blocks() if block["type"] == "image"]
+        return images[-1].get("asset_uuid") if images else None
+
+    def choose(dialog):
+        photos = dialog.findChild(QListWidget)
+        photos.setCurrentRow(0)
+        return QDialog.Accepted
+
+    with patch.object(QDialog, "exec", choose):
+        menu = mode._build_add_block_menu()
+        next(action for action in menu.actions() if action.text() == "Photo from tray").trigger()
+        results["add_block_photo_from_tray"] = last_asset() == identities[0]
+        next(action for action in mode._visual_block_actions() if action.tag == "IMG").callback()
+        results["img_button"] = last_asset() == identities[1]
+
+    tile = mode.bucket_col.itemAt(0).widget()
+    QTest.mouseClick(tile, Qt.LeftButton, pos=tile.rect().center())
+    mode.insert_into_post_btn.click()
+    results["highlight_and_insert"] = last_asset() == identities[2]
+
+    def drag(tile, editor):
+        viewport = editor.viewport()
+        point = editor.cursorRect().center()
+        delivered = []
+
+        class FixtureDrag:
+            def __init__(self, source):
+                self.source = source
+
+            def setMimeData(self, mime):
+                self.mime = mime
+
+            def setPixmap(self, pixmap):
+                pass
+
+            def exec(self, action):
+                enter = QDragEnterEvent(point, action, self.mime, Qt.LeftButton, Qt.NoModifier)
+                app.sendEvent(viewport, enter)
+                drop = QDropEvent(QPointF(point), action, self.mime, Qt.LeftButton, Qt.NoModifier)
+                app.sendEvent(viewport, drop)
+                delivered.append(enter.isAccepted() and drop.isAccepted())
+                return drop.dropAction()
+
+            def deleteLater(self):
+                pass
+
+        start = tile.rect().center()
+        QTest.mousePress(tile, Qt.LeftButton, pos=start)
+        same_tile = mode.bucket_col.itemAt(0).widget() is tile
+        end = start + QPoint(QApplication.startDragDistance() + 2, 0)
+        qend = QPointF(end)
+        move = QMouseEvent(QMouseEvent.MouseMove, qend, QPointF(tile.mapToGlobal(end)),
+                           Qt.NoButton, Qt.LeftButton, Qt.NoModifier)
+        with patch.object(photo_tray, "QDrag", FixtureDrag):
+            app.sendEvent(tile, move)
+        QTest.mouseRelease(tile, Qt.LeftButton, pos=end)
+        return same_tile and delivered == [True]
+
+    tile = mode.bucket_col.itemAt(0).widget()
+    results["drag_biggie"] = drag(tile, mode.body.canvas) and last_asset() == identities[3]
+    mode.body._set_biggie(False)
+    tile = mode.bucket_col.itemAt(0).widget()
+    results["drag_twiggy"] = drag(tile, mode.body.editor) and "[img:bucket:5|" in mode.body.editor.toPlainText()
+    mode.body._set_biggie(True)
+    mode.body.canvas.moveCursor(mode.body.canvas.textCursor().MoveOperation.End)
+    tile = mode.bucket_col.itemAt(0).widget()
+
+    def menu_action(tile, label):
+        def select():
+            menu = app.activePopupWidget()
+            if isinstance(menu, QMenu):
+                action = next(action for action in menu.actions() if label in action.text())
+                QTest.mouseClick(menu, Qt.LeftButton, pos=menu.actionGeometry(action).center())
+                menu.close()
+
+        from PySide6.QtGui import QContextMenuEvent
+        point = tile.rect().center()
+        QTimer.singleShot(0, select)
+        tile.contextMenuEvent(QContextMenuEvent(QContextMenuEvent.Mouse, point, tile.mapToGlobal(point)))
+
+    featured_index = tile._index
+    mode._set_featured_photo((featured_index + 1) % len(mode._bucket))
+    tile = mode.bucket_col.itemAt(0).widget()
+    menu_action(tile, "Set as featured")
+    results["tray_set_featured"] = mode._cover_idx == featured_index
+    tile = mode.bucket_col.itemAt(0).widget()
+    from PySide6.QtWidgets import QMessageBox
+    removed = mode._bucket[tile._index]
+    with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
+        menu_action(tile, "Remove from tray")
+    results["tray_remove"] = (
+        len(mode._bucket) == 5 and all(photo.asset_uuid != removed.asset_uuid for photo in mode._bucket)
+        and Path(removed.local_path).is_file()
+    )
+
+    suffixes = ("", ' target="_blank" rel="noopener"', ' rel="nofollow"',
+                ' target="_blank" rel="noopener nofollow"')
+    mode.body.canvas.from_blocks([{"type": "para", "text": "Links: "}])
+    for index, suffix in enumerate(suffixes):
+        def enter(dialog):
+            edits = dialog.findChildren(QLineEdit)
+            edits[0].setText(f"https://example.test/{index}?one=1&two=2")
+            edits[1].setText(f"Link {index}")
+            new_tab, nofollow = dialog.findChildren(QCheckBox)
+            new_tab.setChecked(bool(index & 1))
+            nofollow.setChecked(bool(index & 2))
+            return QDialog.Accepted
+
+        mode.body.canvas.insertPlainText(" ")
+        with patch.object(QDialog, "exec", enter):
+            mode.body.canvas.insert_link()
+
+    session = mode.rail.ensure_session()
+    mode._save(True)
+    draft = next((item for item in session.list_drafts() if item.title == "Composer proof"), None)
+    results["queued"] = bool(draft and draft.status == O.ST_READY)
+    if draft:
+        payload = SmacktalkPoster("https://example.test", "fixture").build_payload(draft, [1], 1)
+        for index, suffix in enumerate(suffixes):
+            markup = f'<a href="https://example.test/{index}?one=1&amp;two=2"{suffix}>Link {index}</a>'
+            results[f"queued_link_options_{index}"] = markup in payload.get("content", "")
+        results["queued_colophon"] = payload.get("colophon") == "Made with a 50 mm lens."
+        mode._edit(draft)
+        mode.body._set_biggie(False)
+        mode.body._set_biggie(True)
+        rebuilt = mode._build_draft(session)
+        results["draft_roundtrip"] = rebuilt.colophon == draft.colophon and rebuilt.caption == draft.caption
+    return results
+
 def run(output_dir: str) -> int:
     out = Path(output_dir).resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -636,6 +788,13 @@ def run(output_dir: str) -> int:
     saved = mode._autosave_now()
     checks["autosave_without_errno22"] = bool(saved) and "could not save" not in mode.save_state.text().lower()
     checks["source_files_preserved"] = all(Path(path).is_file() for path in paths)
+
+    composer_mode = TakeMode(lambda: {})
+    composer_mode.resize(1440, 900)
+    composer_mode.show()
+    app.processEvents()
+    checks.update(take_composer_checks(composer_mode, paths))
+    composer_mode.close()
 
     payload = {
         "build": __import__("_version").BUILD_VERSION,

@@ -23,6 +23,7 @@ Spec, in Sean's words: _spec/SPEC-biggie-wysiwyg-in-seans-words-2026-09-09.md
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
+from html import unescape
 import json
 import math
 import os
@@ -48,6 +49,7 @@ from .mosaic_browser import MosaicBrowser
 from .mosaic_clusters import break_cluster_weights, uniform_clusters
 from .mosaic_site_layout import compute_layout as site_compute_layout
 from .photo_loader import PhotoLoader
+from .shortcode_bar import link_markup, link_values
 
 # ── document vocabulary ─────────────────────────────────────────────────────
 OBJ_TYPE     = QTextFormat.UserObject + 41          # our inline objects
@@ -55,6 +57,10 @@ PROP_KIND    = QTextFormat.UserProperty + 1         # block kind / object kind
 PROP_DATA    = QTextFormat.UserProperty + 2         # object payload (JSON)
 PROP_DROPCAP = QTextFormat.UserProperty + 3         # paragraph: drop cap on
 PROP_RATIO   = QTextFormat.UserProperty + 4         # table: columns ratio
+PROP_LINK_OPTIONS = QTextFormat.UserProperty + 5
+_LINK = re.compile(
+    r'<a href="([^"]*)"( target="_blank")?(?: rel="(noopener(?: nofollow)?|nofollow)")?>([^<]*)</a>'
+)
 OBJECT_CHAR  = "￼"
 
 BLOCK_KINDS = ("para", "h2", "h3", "quote", "pullquote", "raw")
@@ -1157,6 +1163,7 @@ class BiggieCanvas(QTextEdit):
                             if old_f.isAnchor():
                                 merged.setAnchor(True)
                                 merged.setAnchorHref(old_f.anchorHref())
+                                merged.setProperty(PROP_LINK_OPTIONS, old_f.property(PROP_LINK_OPTIONS) or 0)
                                 merged.setForeground(QColor(self._surface_palette["link"]))
                                 merged.setFontUnderline(True)
                             fc.setCharFormat(merged)
@@ -1261,17 +1268,34 @@ class BiggieCanvas(QTextEdit):
 
     def insert_link(self):
         cur = self.textCursor()
-        url, ok = QInputDialog.getText(self, "Insert link", "URL:")
-        if not ok or not url.strip():
+        values = link_values(self, cur.selectedText().replace("\u2029", " "))
+        if values is None:
             return
-        url = url.strip()
-        label = cur.selectedText() or url
-        fmt = QTextCharFormat()
+        url, label, new_tab, nofollow = values
+        base = self._char_format_for(_block_kind(cur.block()))
+        cur.insertText(label, self._link_format(cur.charFormat(), url, new_tab, nofollow))
+        self.setTextCursor(cur)
+        self.setCurrentCharFormat(base)
+
+    def _link_format(self, base, url, new_tab, nofollow):
+        fmt = QTextCharFormat(base)
         fmt.setAnchor(True)
         fmt.setAnchorHref(url)
-        fmt.setForeground(QColor("#1e6610"))
+        fmt.setProperty(PROP_LINK_OPTIONS, int(new_tab) | (int(nofollow) << 1))
+        fmt.setForeground(QColor(self._surface_palette["link"]))
         fmt.setFontUnderline(True)
-        cur.insertText(label, fmt)
+        return fmt
+
+    def _insert_link_text(self, cursor, text, kind):
+        fmt = self._char_format_for(kind)
+        end = 0
+        for match in _LINK.finditer(text):
+            cursor.insertText(text[end:match.start()], fmt)
+            href, target, rel, label = match.groups()
+            cursor.insertText(unescape(label), self._link_format(
+                fmt, unescape(href), bool(target), "nofollow" in (rel or "").split()))
+            end = match.end()
+        cursor.insertText(text[end:], fmt)
 
     def current_block_tag(self) -> str:
         block = self.textCursor().block()
@@ -2318,7 +2342,7 @@ class BiggieCanvas(QTextEdit):
             flush_table()
             tl = block.textList()
             if tl is not None:
-                text = block.text().strip()
+                text = _block_inline_text(block).strip()
                 ordered = tl.format().style() == QTextListFormat.ListDecimal
                 if list_acc and list_acc[0] is tl:
                     if text:
@@ -2378,12 +2402,16 @@ class BiggieCanvas(QTextEdit):
             kind = {"para": "para", "raw": "raw", "quote": "quote", "pullquote": "pullquote"}[t]
             cur.setBlockFormat(self._block_format_for(kind, bool(b.get("dropcap"))))
             cur.setBlockCharFormat(self._char_format_for(kind))
-            cur.insertText(str(b.get("text", "")), self._char_format_for(kind))
+            text = str(b.get("text", ""))
+            if kind == "raw":
+                cur.insertText(text, self._char_format_for(kind))
+            else:
+                self._insert_link_text(cur, text, kind)
         elif t == "heading":
             kind = "h3" if int(b.get("level", 2)) == 3 else "h2"
             cur.setBlockFormat(self._block_format_for(kind))
             cur.setBlockCharFormat(self._char_format_for(kind))
-            cur.insertText(str(b.get("text", "")), self._char_format_for(kind))
+            self._insert_link_text(cur, str(b.get("text", "")), kind)
         elif t == "list":
             fmt = QTextListFormat()
             fmt.setStyle(QTextListFormat.ListDecimal if b.get("ordered") else QTextListFormat.ListDisc)
@@ -2396,7 +2424,7 @@ class BiggieCanvas(QTextEdit):
                 if n:
                     cur.insertBlock()
                     lst.add(cur.block())
-                cur.insertText(item, self._char_format_for("para"))
+                self._insert_link_text(cur, item, "para")
         elif t in ("image", "spacer", "hr", "mosaic"):
             fmt = QTextCharFormat()
             fmt.setObjectType(OBJ_TYPE)
@@ -2465,6 +2493,25 @@ def _ratio_parts(ratio: str, n: int):
     return [int(p) for p in ratio.split("-")]
 
 
+def _fragment_text(fragment):
+    fmt = fragment.charFormat()
+    if fmt.isAnchor() and fmt.anchorHref():
+        options = int(fmt.property(PROP_LINK_OPTIONS) or 0)
+        return link_markup(fmt.anchorHref(), fragment.text(), bool(options & 1), bool(options & 2))
+    return fragment.text()
+
+
+def _block_inline_text(block):
+    parts = []
+    it = block.begin()
+    while not it.atEnd():
+        fragment = it.fragment()
+        if fragment.isValid():
+            parts.append(_fragment_text(fragment))
+        it += 1
+    return "".join(parts)
+
+
 def _export_block(block, nested: bool = False) -> list:
     """One document paragraph → zero or more model blocks."""
     kind = _block_kind(block)
@@ -2522,7 +2569,7 @@ def _export_block(block, nested: bool = False) -> list:
                 elif okind == "hr":
                     out.append({"type": "hr"})
             else:
-                buf += frag.text()
+                buf += _fragment_text(frag)
         it += 1
     flush_text()
     return out

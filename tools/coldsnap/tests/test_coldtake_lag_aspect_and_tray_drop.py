@@ -93,13 +93,26 @@ def test_tray_drop_hides_used_photo_and_restores_on_remove(tmp_path):
     assert take.bucket_col.count() == 1
     assert "1 left" in take.photos_sec.header.text()
 
-    # IMG action opens photos tray instead of Media Library picker
-    take.photos_tray.set_open(False)
-    img_action = next(a for a in take._visual_block_actions() if a.tag == "IMG")
-    img_action.callback()
-    assert take.photos_tray._opened is True
     take.close()
     take.deleteLater()
+
+
+def test_cold_take_composer_controls_in_queued_post(tmp_path, monkeypatch):
+    from parity_capture import take_composer_checks
+
+    app = _app()
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path / "home"))
+    take = TakeMode(lambda: {})
+    take.resize(1440, 900)
+    take.show()
+    app.processEvents()
+    paths = [_make_photo(tmp_path / f"{i}.jpg") for i in range(6)]
+    try:
+        checks = take_composer_checks(take, paths)
+        assert all(checks.values()), checks
+    finally:
+        take.close()
+        take.deleteLater()
 
 
 def test_backup_import_prompt_remembered_after_answer(tmp_path):

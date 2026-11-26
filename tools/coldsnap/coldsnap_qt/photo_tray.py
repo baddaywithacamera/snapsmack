@@ -176,18 +176,24 @@ class PhotoThumbTile(QPushButton):
             w = w.parentWidget()
         if event.button() == Qt.LeftButton:
             self._drag_start = event.position().toPoint()
-            mods = event.modifiers()
-            in_check = self._check_rect().contains(self._drag_start)
-            toggle = bool((mods & (Qt.ControlModifier | Qt.ShiftModifier)) or in_check)
-            self.selectionClicked.emit(self._index, toggle)
         super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        start = self._drag_start
+        self._drag_start = None
+        super().mouseReleaseEvent(event)
+        if event.button() == Qt.LeftButton and start is not None and self.rect().contains(event.position().toPoint()):
+            mods = event.modifiers()
+            toggle = bool((mods & (Qt.ControlModifier | Qt.ShiftModifier)) or self._check_rect().contains(start))
+            self.selectionClicked.emit(self._index, toggle)
 
     def mouseMoveEvent(self, event):
         if ((event.buttons() & Qt.LeftButton) and self._drag_start is not None
                 and (event.position().toPoint() - self._drag_start).manhattanLength()
                 >= QApplication.startDragDistance()):
             self._drag_start = None
-            drag = QDrag(self)
+            self.setDown(False)
+            drag = QDrag(self.window())
             mime = QMimeData()
             payload = json.dumps({"asset_uuid": self._asset_uuid, "index": self._index}).encode("utf-8")
             mime.setData(TRAY_PHOTO_MIME, payload)
@@ -195,6 +201,7 @@ class PhotoThumbTile(QPushButton):
             if not self._pixmap.isNull():
                 drag.setPixmap(self._pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
             drag.exec(Qt.CopyAction)
+            drag.deleteLater()
             return
         super().mouseMoveEvent(event)
 

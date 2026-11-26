@@ -13,6 +13,8 @@ logged-in admin session in a browser.
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
+from html import escape
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut, QIntValidator
 from PySide6.QtWidgets import (
@@ -21,6 +23,62 @@ from PySide6.QtWidgets import (
 )
 
 from .widgets import hint, field_label
+
+
+def link_values(parent, selected):
+    """Run the CMS link dialog for either editor."""
+    dlg = QDialog(parent)
+    dlg.setWindowTitle("Insert link")
+    lay = QVBoxLayout(dlg)
+    lay.addWidget(field_label("URL"))
+    url_edit = QLineEdit("https://")
+    lay.addWidget(url_edit)
+    lay.addWidget(field_label("Link text"))
+    text_edit = QLineEdit(selected)
+    text_edit.setPlaceholderText("Selected text, or type here")
+    lay.addWidget(text_edit)
+    opts = QHBoxLayout()
+    newtab = QCheckBox("Open in new tab")
+    newtab.setChecked(True)
+    nofollow = QCheckBox("Nofollow")
+    opts.addWidget(newtab)
+    opts.addWidget(nofollow)
+    opts.addStretch(1)
+    lay.addLayout(opts)
+    btns = QHBoxLayout()
+    btns.addStretch(1)
+    cancel = QPushButton("Cancel")
+    cancel.clicked.connect(dlg.reject)
+    insert = QPushButton("Insert link")
+    insert.setObjectName("Primary")
+    insert.setDefault(True)
+    insert.clicked.connect(dlg.accept)
+    btns.addWidget(cancel)
+    btns.addWidget(insert)
+    lay.addLayout(btns)
+    url_edit.setFocus()
+    url_edit.selectAll()
+
+    if dlg.exec() != QDialog.Accepted:
+        return
+    url = url_edit.text().strip()
+    if not url or url == "https://":
+        return
+    label = text_edit.text().strip() or selected or url
+    return url, label, newtab.isChecked(), nofollow.isChecked()
+
+
+def link_markup(url, label, new_tab=False, nofollow=False):
+    tag = f'<a href="{escape(url, quote=True)}"'
+    rels = []
+    if new_tab:
+        tag += ' target="_blank"'
+        rels.append("noopener")
+    if nofollow:
+        rels.append("nofollow")
+    if rels:
+        tag += f' rel="{" ".join(rels)}"'
+    return f"{tag}>{escape(label, quote=False)}</a>"
 
 
 class ShortcodeBar(QWidget):
@@ -148,55 +206,10 @@ class ShortcodeBar(QWidget):
         sel = c.selectedText().replace(" ", "\n")
         start, end = c.selectionStart(), c.selectionEnd()
 
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Insert link")
-        lay = QVBoxLayout(dlg)
-        lay.addWidget(field_label("URL"))
-        url_edit = QLineEdit("https://")
-        lay.addWidget(url_edit)
-        lay.addWidget(field_label("Link text"))
-        text_edit = QLineEdit(sel)
-        text_edit.setPlaceholderText("Selected text, or type here")
-        lay.addWidget(text_edit)
-        opts = QHBoxLayout()
-        newtab = QCheckBox("Open in new tab")
-        newtab.setChecked(True)
-        nofollow = QCheckBox("Nofollow")
-        opts.addWidget(newtab)
-        opts.addWidget(nofollow)
-        opts.addStretch(1)
-        lay.addLayout(opts)
-        btns = QHBoxLayout()
-        btns.addStretch(1)
-        cancel = QPushButton("Cancel")
-        cancel.clicked.connect(dlg.reject)
-        insert = QPushButton("Insert link")
-        insert.setObjectName("Primary")
-        insert.setDefault(True)
-        insert.clicked.connect(dlg.accept)
-        btns.addWidget(cancel)
-        btns.addWidget(insert)
-        lay.addLayout(btns)
-        url_edit.setFocus()
-        url_edit.selectAll()
-
-        if dlg.exec() != QDialog.Accepted:
+        values = link_values(self, sel)
+        if values is None:
             return
-        url = url_edit.text().strip()
-        if not url or url == "https://":
-            return
-        tag = f'<a href="{url}"'
-        rels = []
-        if newtab.isChecked():
-            tag += ' target="_blank"'
-            rels.append("noopener")
-        if nofollow.isChecked():
-            rels.append("nofollow")
-        if rels:
-            tag += f' rel="{" ".join(rels)}"'
-        tag += ">"
-        link_text = text_edit.text().strip() or sel or "link text"
-        replacement = tag + link_text + "</a>"
+        replacement = link_markup(*values)
         c.setPosition(start)
         c.setPosition(end, c.MoveMode.KeepAnchor)
         c.insertText(replacement)
