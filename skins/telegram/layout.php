@@ -24,7 +24,7 @@
         <h1><?php echo snap_escape_html(($view['response']['post']['title'] ?? '')); ?></h1>
         <p class="telegram-date"><?php echo snap_escape_html(($view['response']['post']['created_at'] ?? '')); ?></p>
         <?php if (!empty(($view['response']['post']['featured_image_path'] ?? ''))): ?>
-            <?php echo snap_render_html(snap_render_component('image', ['url' => ($view['response']['post']['featured_image_path'] ?? ''), 'alt' => ($view['response']['post']['title'] ?? '')])); ?>
+            <?php echo snap_render_html(snap_render_component('image', ['url' => ($view['response']['post']['featured_image_path'] ?? ''), 'alt' => ($view['response']['post']['featured_image_alt'] ?? '')])); ?>
         <?php endif; ?>
         <div class="telegram-content"><?php echo snap_render_html($view['response']['rendered_content'] ?? ''); ?></div>
         <?php if (!empty($view['response']['colophon'])): ?>
@@ -40,7 +40,7 @@
             <article class="telegram-feed-item">
                 <a href="<?php echo snap_escape_url($post['url']); ?>">
                     <?php if (!empty($post['image_url'])): ?>
-                        <?php echo snap_render_html(snap_render_component('image', ['url' => $post['image_url'], 'alt' => $post['title']])); ?>
+                        <?php echo snap_render_html(snap_render_component('image', ['url' => $post['image_url'], 'alt' => $post['featured_image_alt'] ?? ''])); ?>
                     <?php endif; ?>
                     <h2><?php echo snap_escape_html($post['title']); ?></h2>
                 </a>
@@ -52,7 +52,7 @@
         <h1><?php echo snap_escape_html($view['response']['page_title'] ?? 'Archive'); ?></h1>
         <?php foreach (($view['response']['tiles'] ?? []) as $tile): ?>
             <a href="<?php echo snap_escape_url($tile['full']); ?>">
-                <?php echo snap_render_html(snap_render_component('image', ['url' => $tile['thumb'], 'alt' => $tile['title']])); ?>
+                <?php echo snap_render_html(snap_render_component('image', ['url' => $tile['thumb'], 'alt' => $tile['alt'] ?? ''])); ?>
             </a>
         <?php endforeach; ?>
     </section>
