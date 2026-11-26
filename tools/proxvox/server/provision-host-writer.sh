@@ -100,7 +100,7 @@ for command_name in curl sha256sum install useradd visudo grep mktemp awk sshd s
     command -v "$command_name" >/dev/null 2>&1 || fail "missing command: $command_name"
 done
 [ "$#" -eq 1 ] && [ -f "$1" ] || fail "supply the dedicated writer's Ed25519 public-key file"
-public_key=$(awk 'NF { if (++lines > 1 || $1 != "ssh-ed25519" || NF < 2) exit 1; key = $1 " " $2 } END { if (lines != 1) exit 1; if (key != "") print key }' "$1") +    || fail "expected one Ed25519 public key"
+public_key=$(awk 'NF { if (++lines > 1 || $1 != "ssh-ed25519" || NF < 2) exit 1; key = $1 " " $2 } END { if (lines != 1) exit 1; if (key != "") print key }' "$1") || fail "expected one Ed25519 public key"
 [ -n "$public_key" ] && ssh-keygen -lf "$1" >/dev/null || fail "invalid Ed25519 public key"
 
 writer_tmp=$(mktemp /tmp/proxvox-writer.XXXXXX)

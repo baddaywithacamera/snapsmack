@@ -242,6 +242,33 @@ class WriterProvisioner(unittest.TestCase):
         for verb in ("install -o", "useradd", "chpasswd", "visudo", "curl"):
             self.assertNotIn(verb, head, "verify must not " + verb)
 
+    def test_writer_public_key_validation_executes(self):
+        """Exercise the actual shell statements without running the installer."""
+        lines = self.source.splitlines()
+        start = next(i for i, line in enumerate(lines) if line.startswith("public_key=$(awk "))
+        validation = "\n".join(lines[start:start + 2])
+        script = 'set -eu\nfail() { printf "%s\\n" "$1" >&2; exit 1; }\n' + validation
+        with tempfile.TemporaryDirectory() as work:
+            subprocess.run(
+                ["bash", "-c", "ssh-keygen -q -t ed25519 -N '' -f fixture"],
+                cwd=work, check=True, capture_output=True,
+            )
+            valid = subprocess.run(
+                ["bash", "-c", script, "validate", "fixture.pub"],
+                cwd=work, capture_output=True, text=True,
+            )
+            self.assertEqual(valid.returncode, 0, valid.stderr)
+            with open(os.path.join(work, "fixture.pub"), encoding="utf-8") as key:
+                public_key = key.read()
+            with open(os.path.join(work, "two-keys.pub"), "w", encoding="utf-8") as keys:
+                keys.write(public_key + public_key)
+            invalid = subprocess.run(
+                ["bash", "-c", script, "validate", "two-keys.pub"],
+                cwd=work, capture_output=True, text=True,
+            )
+            self.assertNotEqual(invalid.returncode, 0)
+            self.assertIn("expected one Ed25519 public key", invalid.stderr)
+
     def test_the_installer_is_valid_shell(self):
         result = subprocess.run(["bash", "-n", os.path.join(SERVER, "provision-host-writer.sh")],
                                 capture_output=True, text=True)
